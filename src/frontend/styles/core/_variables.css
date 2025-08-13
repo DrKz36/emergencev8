@@ -1,6 +1,6 @@
 /* src/frontend/styles/core/variables.css */
 /* ======================================= */
-/* Fondations Visuelles ÉMERGENCE V8.3     */
+/* Fondations Visuelles ÉMERGENCE V8.4     */
 /* Palette "Aura" & Style Glassmorphism    */
 /* ======================================= */
 
@@ -13,14 +13,14 @@
   --color-primary-hover: #33bbff;
   --color-primary-focus-ring: rgba(0, 170, 255, 0.4);
 
-  /* Agents (Anima rouge-rose, Neo bleu, Nexus émeraude) */
-  --color-anima: #e11d48;             /* rose/rouge */
-  --color-neo:   #2563eb;             /* bleu */
-  --color-nexus: #10b981;             /* ✅ émeraude */
+  /* Agents */
+  --color-anima: #e11d48;
+  --color-neo:   #2563eb;
+  --color-nexus: #10b981;
 
   --color-anima-bg: rgba(225, 29, 72, 0.12);
   --color-neo-bg:   rgba(37, 99, 235, 0.12);
-  --color-nexus-bg: rgba(16, 185, 129, 0.12); /* ✅ émeraude */
+  --color-nexus-bg: rgba(16, 185, 129, 0.12);
 
   /* Bulles chat */
   --color-accent-anima: var(--color-anima-bg);
@@ -51,23 +51,34 @@
   --text-sm: .875rem; --text-base: 1rem; --text-lg: 1.125rem; --text-xl: 1.25rem; --text-2xl: 1.5rem; --text-3xl: 2rem;
   --weight-regular: 400; --weight-medium: 500; --weight-semibold: 600; --weight-bold: 700;
 
+  /* Line-heights */
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+
   /* === SPACING / RADII / ETC. === */
   --space-1: .25rem; --space-2: .5rem; --space-3: .75rem; --space-4: 1rem; --space-6: 1.5rem; --space-8: 2rem; --space-12: 3rem;
+  --radius-sm: .375rem;
   --radius-md: .5rem; --radius-lg: .75rem; --radius-xl: 1rem; --radius-full: 9999px;
   --border-width: 1px; --border-color: rgba(255, 255, 255, 0.12);
 
   /* === MOTION === */
+  --duration-fast: 150ms;
   --duration-subtle: 150ms; --duration-normal: 300ms;
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* === LAYOUT === */
   --header-height: 60px; --sidebar-width: 280px; --mobile-nav-height: 64px; --max-content-width: 1600px;
+  --content-inline: clamp(12px, 3vw, 24px);
+
+  /* Safe areas iOS */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 
   /* === Z === */
   --z-base: 0; --z-content: 1; --z-header: 10; --z-sidebar: 11; --z-modal-backdrop: 20; --z-modal-content: 21; --z-notification: 30;
 }
 
-/* === ALIAS DE COMPATIBILITÉ (stabilise les anciens styles) === */
+/* === ALIAS DE COMPATIBILITÉ === */
 :root {
   /* Vocabulaire "background" utilisé par certains fichiers */
   --color-background: var(--color-bg);
@@ -75,4 +86,12 @@
   --color-background-secondary: rgba(255, 255, 255, 0.04);
   --color-background-tertiary: rgba(255, 255, 255, 0.06);
   --color-background-light: rgba(255, 255, 255, 0.08);
+
+  /* Aliases pour reset/typo existants */
+  --color-text: var(--color-text-primary);
+  --color-bg-secondary: var(--color-background-secondary);
+  --color-bg-tertiary: var(--color-background-tertiary);
+
+  /* ✅ Manquant, utilisé par main-styles.css */
+  --color-border: var(--border-color);
 }
