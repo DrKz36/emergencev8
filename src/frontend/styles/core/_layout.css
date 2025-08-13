@@ -2,7 +2,8 @@
 /* V10 - Fond stable (AURA) + layout desktop/mobile */
 
 :root {
-    --sidebar-width: 240px;
+    --sidebar-w: 360px;
+    --sidebar-width: 360px;
     --header-height: 56px;
 }
 
