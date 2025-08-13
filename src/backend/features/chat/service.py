@@ -1,5 +1,5 @@
 # src/backend/features/chat/service.py
-# V29.0 - UNIFIED COSTING REFACTOR
+# V29.1 - UNIFIED COSTING + DEBUG CONTEXT + OFF ISOLATION
 import os
 import re
 import asyncio
@@ -44,10 +44,10 @@ MODEL_PRICING = {
 
 class ChatService:
     """
-    ChatService V29.0
-    - Implémente une grille tarifaire unifiée pour tous les modèles.
-    - Corrige le calcul des coûts pour Gemini et OpenAI.
-    - Remplace gpt-4o par gpt-4o-mini pour l'agent Anima pour optimiser les coûts.
+    ChatService V29.1
+    - Grille tarifaire unifiée (identique V29.0).
+    - + Instrumentation WS: ws:debug_context par réponse d'agent.
+    - + OFF isolation: 'stateless' par défaut, 'agent_local' via EMERGENCE_RAG_OFF_POLICY.
     """
     def __init__(
         self,
@@ -60,7 +60,13 @@ class ChatService:
         self.cost_tracker = cost_tracker
         self.vector_service = vector_service
         self.settings = settings
-        
+
+        # Politique OFF: 'stateless' (par défaut) ou 'agent_local' (env)
+        self.off_history_policy = os.getenv("EMERGENCE_RAG_OFF_POLICY", "stateless").strip().lower()
+        if self.off_history_policy not in ("stateless", "agent_local"):
+            self.off_history_policy = "stateless"
+        logger.info(f"ChatService OFF policy: {self.off_history_policy}")
+
         try:
             self.openai_client = AsyncOpenAI(api_key=self.settings.openai_api_key)
             genai.configure(api_key=self.settings.google_api_key)
@@ -70,7 +76,7 @@ class ChatService:
             raise
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V29.0 (Unified Costing) initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V29.1 initialisé. Prompts chargés: {len(self.prompts)}")
 
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
         prompts = {}
@@ -113,6 +119,11 @@ class ChatService:
         except Exception as e:
             logger.error(f"Erreur lors du traitement du message de chat (gather): {e}", exc_info=True)
 
+    # --- Helpers DEBUG ---
+    def _extract_sensitive_tokens(self, text: str) -> List[str]:
+        # détecte des formats du type AZUR-8152 / ONYX-4472
+        return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
+
     async def _process_agent_response_stream(self, session_id: str, agent_id: str, use_rag: bool, connection_manager: ConnectionManager):
         temp_message_id = str(uuid4())
         full_response_text = ""
@@ -137,10 +148,53 @@ class ChatService:
                     rag_context = "\n".join([result['text'] for result in search_results])
                     await connection_manager.send_personal_message({"type": "ws:rag_status", "payload": {"status": "found", "agent_id": agent_id}}, session_id)
 
+            # DEBUG pré-normalisation
+            raw_concat = "\n".join([(m.get('content') or m.get('message', '')) for m in history])
+            raw_tokens = self._extract_sensitive_tokens(raw_concat)
+            await connection_manager.send_personal_message({
+                "type": "ws:debug_context",
+                "payload": {
+                    "phase": "before_normalize",
+                    "agent_id": agent_id,
+                    "use_rag": use_rag,
+                    "history_total": len(history),
+                    "rag_context_chars": len(rag_context),
+                    "off_policy": self.off_history_policy,
+                    "sensitive_tokens_in_history": list(set(raw_tokens))
+                }
+            }, session_id)
+
             provider, model, system_prompt = self._get_agent_config(agent_id)
             model_used = model
-            normalized_history = self._normalize_history_for_llm(provider, history, rag_context)
-            
+            normalized_history = self._normalize_history_for_llm(
+                provider=provider,
+                history=history,
+                rag_context=rag_context,
+                use_rag=use_rag,
+                agent_id=agent_id
+            )
+
+            # DEBUG post-normalisation
+            norm_concat = ""
+            if provider == "google":
+                norm_concat = "\n".join(["".join(p.get("parts", [])) if isinstance(p.get("parts"), list) else p.get("parts", "") for p in normalized_history])
+            else:
+                norm_concat = "\n".join([p.get("content", "") for p in normalized_history])
+            norm_tokens = self._extract_sensitive_tokens(norm_concat)
+
+            await connection_manager.send_personal_message({
+                "type": "ws:debug_context",
+                "payload": {
+                    "phase": "after_normalize",
+                    "agent_id": agent_id,
+                    "use_rag": use_rag,
+                    "history_filtered": len(normalized_history),
+                    "rag_context_chars": len(rag_context),
+                    "off_policy": self.off_history_policy,
+                    "sensitive_tokens_in_prompt": list(set(norm_tokens))
+                }
+            }, session_id)
+
             response_generator = self._get_llm_response_stream(provider, model, system_prompt, normalized_history, cost_info_container)
 
             async for chunk in response_generator:
@@ -190,21 +244,60 @@ class ChatService:
             except Exception as send_error:
                 logger.error(f"Impossible d'envoyer le message d'erreur au client pour la session {session_id}: {send_error}", exc_info=True)
 
-    def _normalize_history_for_llm(self, provider: str, history: List[Dict], rag_context: str = "") -> List[Dict]:
-        normalized = []
-        history_copy = list(history)
-        if rag_context:
+    def _normalize_history_for_llm(self, provider: str, history: List[Dict], rag_context: str = "", use_rag: bool = False, agent_id: Optional[str] = None) -> List[Dict]:
+        """
+        - Si rag_context est fourni, il est injecté dans le dernier message utilisateur.
+        - Si use_rag=False, applique la politique OFF:
+            * 'stateless': ne conserve que le dernier message utilisateur
+            * 'agent_local': conserve les derniers tours de l'agent cible + user
+        """
+        # 1) Construire une copie de l'historique selon la politique
+        if use_rag:
+            history_copy = list(history)
+        else:
+            if self.off_history_policy == "agent_local" and agent_id:
+                # On garde les 6 derniers messages pertinents pour l'agent cible
+                filtered = []
+                for m in reversed(history):
+                    r = m.get('role')
+                    a = m.get('agent')
+                    if r == Role.USER or (r == Role.ASSISTANT and a == agent_id):
+                        filtered.append(m)
+                    if len(filtered) >= 6:
+                        break
+                history_copy = list(reversed(filtered)) if filtered else []
+            else:
+                # 'stateless': dernier message utilisateur uniquement
+                last_user_message_obj = next((msg for msg in reversed(history) if msg.get('role') == Role.USER), None)
+                history_copy = [last_user_message_obj] if last_user_message_obj else []
+
+        # 2) Injection du contexte RAG (si présent)
+        if rag_context and history_copy:
             rag_prompt = f"Contexte pertinent issu de documents:\n---\n{rag_context}\n---\nEn te basant sur ce contexte, réponds à la question suivante:"
-            if history_copy and history_copy[-1].get('role') == Role.USER:
+            if history_copy[-1].get('role') == Role.USER:
+                history_copy[-1] = dict(history_copy[-1])  # éviter de muter l'original
                 history_copy[-1]['content'] = f"{rag_prompt}\n{history_copy[-1].get('content', '')}"
+
+        # 3) Normalisation selon le provider
+        normalized = []
         for msg in history_copy:
-            msg_role, content = msg.get('role'), None
-            if msg_role == Role.USER: role, content = "user", msg.get('content')
-            elif msg_role == Role.ASSISTANT: role, content = "model" if provider == "google" else "assistant", msg.get('message')
-            if not content: continue
-            if provider == "google": normalized.append({"role": role, "parts": [content]})
-            elif provider == "anthropic" and normalized and normalized[-1]["role"] == role: normalized[-1]["content"] += f"\n\n{content}"
-            else: normalized.append({"role": role, "content": content})
+            msg_role = msg.get('role')
+            content = None
+            if msg_role == Role.USER:
+                role, content = "user", msg.get('content')
+            elif msg_role == Role.ASSISTANT:
+                role, content = ("model" if provider == "google" else "assistant"), msg.get('message')
+            else:
+                continue
+            if not content:
+                continue
+            if provider == "google":
+                normalized.append({"role": role, "parts": [content]})
+            elif provider == "anthropic" and normalized and normalized[-1]["role"] == role:
+                # Anthropic: merge si deux mêmes rôles successifs
+                normalized[-1]["content"] += f"\n\n{content}"
+            else:
+                normalized.append({"role": role, "content": content})
         return normalized
 
     async def _get_llm_response_stream(
@@ -231,7 +324,6 @@ class ChatService:
         )
         
         # --- CORRECTION V29.0: Capture de l'usage pour OpenAI ---
-        # On itère sur le stream et on capture le dernier chunk qui contient les métadonnées d'usage.
         final_chunk = None
         async for chunk in stream:
             content = chunk.choices[0].delta.content or ""
@@ -271,7 +363,8 @@ class ChatService:
         })
 
     async def _get_anthropic_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
-        if not history: raise ValueError("L'historique des messages pour Anthropic ne peut pas être vide.")
+        if not history:
+            raise ValueError("L'historique des messages pour Anthropic ne peut pas être vide.")
         
         async with self.anthropic_client.messages.stream(
             model=model, messages=history, system=system_prompt, temperature=0.2, max_tokens=4000
@@ -292,20 +385,24 @@ class ChatService:
         })
 
     # ... (Les méthodes non-stream restent inchangées mais bénéficieront implicitement des nouveaux tarifs si elles sont appelées)
-    # ... (Le reste du fichier est omis pour la clarté, il reste identique)
 
     async def get_llm_response_for_debate(self, agent_id: str, history: List[Dict], session_id: str) -> Tuple[str, Dict]:
         try:
             provider, model, system_prompt = self._get_agent_config(agent_id)
             debate_prompt = history[0]['content']
-            if provider == 'google': normalized_history = [{'role': 'user', 'parts': [debate_prompt]}]
-            else: normalized_history = [{'role': 'user', 'content': debate_prompt}]
+            if provider == 'google':
+                normalized_history = [{'role': 'user', 'parts': [debate_prompt]}]
+            else:
+                normalized_history = [{'role': 'user', 'content': debate_prompt}]
             
             response_text, cost_info = await self._get_llm_response_single(provider, model, system_prompt, normalized_history)
 
             await self.cost_tracker.record_cost(
-                agent=agent_id, model=model, input_tokens=cost_info.get("input_tokens", 0),
-                output_tokens=cost_info.get("output_tokens", 0), total_cost=cost_info.get("total_cost", 0.0),
+                agent=agent_id,
+                model=model,
+                input_tokens=cost_info.get("input_tokens", 0),
+                output_tokens=cost_info.get("output_tokens", 0),
+                total_cost=cost_info.get("total_cost", 0.0),
                 feature="debate"
             )
             return response_text, cost_info
@@ -316,8 +413,10 @@ class ChatService:
     async def get_structured_llm_response(self, agent_id: str, prompt: str, json_schema: Dict) -> Optional[Dict]:
         try:
             provider, model, _ = self._get_agent_config(agent_id)
-            if provider == 'google': history = [{'role': 'user', 'parts': [prompt]}]
-            else: history = [{'role': 'user', 'content': prompt}]
+            if provider == 'google':
+                history = [{'role': 'user', 'parts': [prompt]}]
+            else:
+                history = [{'role': 'user', 'content': prompt}]
             system_prompt = "Tu es un assistant expert en traitement de données. Tu ne réponds qu'au format JSON."
             
             response_str, cost = await self._get_llm_response_single(provider, model, system_prompt, history, json_mode=True)
@@ -338,10 +437,14 @@ class ChatService:
             return None
 
     async def _get_llm_response_single(self, provider: str, model: str, system_prompt: str, history: List[Dict], json_mode: bool = False) -> Tuple[str, Dict]:
-        if provider == "openai": return await self._get_openai_response_single(model, system_prompt, history, json_mode)
-        elif provider == "google": return await self._get_gemini_response_single(model, system_prompt, history, json_mode)
-        elif provider == "anthropic": return await self._get_anthropic_response_single(model, system_prompt, history, json_mode)
-        else: raise ValueError(f"Fournisseur LLM non supporté: {provider}")
+        if provider == "openai":
+            return await self._get_openai_response_single(model, system_prompt, history, json_mode)
+        elif provider == "google":
+            return await self._get_gemini_response_single(model, system_prompt, history, json_mode)
+        elif provider == "anthropic":
+            return await self._get_anthropic_response_single(model, system_prompt, history, json_mode)
+        else:
+            raise ValueError(f"Fournisseur LLM non supporté: {provider}")
 
     async def _get_openai_response_single(self, model: str, system_prompt: str, history: List[Dict], json_mode: bool = False) -> Tuple[str, Dict]:
         messages = [{"role": "system", "content": system_prompt}] + history
@@ -353,7 +456,7 @@ class ChatService:
             usage = response.usage
             pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
             cost = (usage.prompt_tokens * pricing["input"]) + (usage.completion_tokens * pricing["output"])
-            cost_info.update({"input_tokens": usage.prompt_tokens, "output_tokens": usage.completion_tokens, "total_cost": cost})
+            cost_info.update({"input_tokens": usage.prompt_tokens, "output_tokens": usage.completed_tokens if hasattr(usage, 'completed_tokens') else usage.completion_tokens, "total_cost": cost})
         return content, cost_info
 
     async def _get_gemini_response_single(self, model: str, system_prompt: str, history: List[Dict], json_mode: bool = False) -> Tuple[str, Dict]:
@@ -370,8 +473,10 @@ class ChatService:
         return content, cost_info
 
     async def _get_anthropic_response_single(self, model: str, system_prompt: str, history: List[Dict], json_mode: bool = False) -> Tuple[str, Dict]:
-        if not history: raise ValueError("L'historique des messages pour Anthropic ne peut pas être vide.")
-        if json_mode and history and history[-1]['role'] == 'user': history[-1]['content'] += "\n\nRéponds uniquement avec un objet JSON valide."
+        if not history:
+            raise ValueError("L'historique des messages pour Anthropic ne peut pas être vide.")
+        if json_mode and history and history[-1]['role'] == 'user':
+            history[-1]['content'] += "\n\nRéponds uniquement avec un objet JSON valide."
         response = await self.anthropic_client.messages.create(model=model, messages=history, system=system_prompt, temperature=0.2, max_tokens=4000)
         content = response.content[0].text or ""
         usage = response.usage
