@@ -1,6 +1,6 @@
 /**
  * src/frontend/features/chat/chat-ui.js
- * V22 — Rendu robuste (content string|array|object), update(), sélecteur d’agent, sync RAG
+ * V23 — Nexus inclus, FG à gauche, heure + style manuscrit, bleu clair utilisateur
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
@@ -14,7 +14,7 @@ export class ChatUI {
       ragEnabled: false,
       messages: {} // { [agentId]: Message[] }
     };
-    console.log('✅ ChatUI V22 prêt.');
+    console.log('✅ ChatUI V23 prêt.');
   }
 
   render(container, chatState = {}) {
@@ -61,60 +61,46 @@ export class ChatUI {
     this.update(container, this.state);
   }
 
-  /**
-   * Mise à jour incrémentale (appelée par le module après chaque set())
-   */
   update(container, chatState = {}) {
     if (!container) return;
     this.state = { ...this.state, ...chatState };
 
-    // Sync RAG
     container.querySelector('#chat-rag-toggle')
       ?.setAttribute('aria-checked', String(!!this.state.ragEnabled));
 
-    // Sync onglets agents
     this._setActiveAgentTab(container, this.state.currentAgentId);
 
-    // Messages de l'agent courant (robuste à tout format)
     const raw = this.state.messages?.[this.state.currentAgentId];
     const list = this._asArray(raw).map((m) => this._normalizeMessage(m));
     this._renderMessages(container.querySelector('#chat-messages'), list);
   }
-
-  /* ─────────────────── private ─────────────────── */
 
   _bindEvents(container) {
     const form = container.querySelector('#chat-form');
     const input = container.querySelector('#chat-input');
     const ragBtn = container.querySelector('#chat-rag-toggle');
 
-    // Envoi message
     form?.addEventListener('submit', (e) => {
       e.preventDefault();
       const text = (input?.value || '').trim();
       if (!text) return;
-      // Envoi objet (le module accepte string|objet)
       this.eventBus.emit(EVENTS.CHAT_SEND, { text, agent: 'user' });
       input.value = '';
       input.dispatchEvent(new Event('input'));
     });
 
-    // Export
     container.querySelector('#chat-export')
       ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_EXPORT, null));
 
-    // Clear
     container.querySelector('#chat-clear')
       ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_CLEAR, null));
 
-    // RAG toggle
     ragBtn?.addEventListener('click', () => {
       const on = ragBtn.getAttribute('aria-checked') === 'true';
       ragBtn.setAttribute('aria-checked', String(!on));
       this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, { enabled: !on });
     });
 
-    // Sélecteur d’agent
     container.querySelector('.agent-selector')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-agent-id]');
       if (!btn) return;
@@ -134,23 +120,27 @@ export class ChatUI {
   _messageHTML(m) {
     const side = m.role === 'user' ? 'user' : 'assistant';
     const agentId = m.agent_id || m.agent || 'nexus';
-    const you = this.stateManager?.get?.('user.name') || 'Vous';
+    const you = "FG";
     const name = side === 'user' ? you : (AGENTS[agentId]?.name || 'Agent');
     const raw = this._toPlainText(m.content);
     const content = this._escapeHTML(raw).replace(/\n/g, '<br/>');
     const cursor = m.isStreaming ? `<span class="blinking-cursor">▍</span>` : '';
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     return `
       <div class="message ${side} ${side === 'assistant' ? agentId : ''}">
         <div class="message-content">
-          <div class="message-meta meta-inside"><strong class="sender-name">${name}</strong></div>
+          <div class="message-meta meta-inside">
+            <strong class="sender-name">${name}</strong>
+            <span class="message-time">${time}</span>
+          </div>
           <div class="message-text">${content}${cursor}</div>
         </div>
       </div>`;
   }
 
   _agentTabsHTML(activeId) {
-    const ids = Object.keys(AGENTS).filter(id => id !== 'nexus');
+    const ids = Object.keys(AGENTS); // Nexus inclus maintenant
     return `
       <div class="segmented" id="chat-agent-tabs">
         ${ids.map(id => `
@@ -168,8 +158,6 @@ export class ChatUI {
     container.querySelectorAll('.agent-selector .button-tab')
       ?.forEach(b => b.classList.toggle('active', b.getAttribute('data-agent-id') === activeId));
   }
-
-  /* ─── helpers robustes ─── */
 
   _asArray(v) {
     if (Array.isArray(v)) return v;
