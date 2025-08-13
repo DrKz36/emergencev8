@@ -1,20 +1,14 @@
 /* src/frontend/styles/core/_layout.css */
-/* V10 - Fond stable (AURA) + layout desktop/mobile */
-
-:root {
-    --sidebar-w: 360px;
-    --sidebar-width: 360px;
-    --header-height: 56px;
-}
+/* V11 - Mobile-first + safe areas + header sticky (AURA) */
 
 /* Conteneur global */
 .app-container {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    min-height: 100vh;
+    min-height: 100dvh; /* iOS moderne */
     width: 100vw;
 
-    /* FIX: utiliser les vraies variables définies dans _variables.css */
     background-color: var(--color-bg);
     background-image: var(--color-bg-gradient);
     background-attachment: fixed;
@@ -24,20 +18,22 @@
     overflow: hidden;
 }
 
-/* Header en verre, sans fond parasite */
+/* Header en verre */
 .app-header {
-    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+
     height: var(--header-height);
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
-    position: relative;
-    z-index: 10;
-    background-color: transparent !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 
-    /* Stabilise le rendu GPU (évite les scintillements avec blur) */
+    backdrop-filter: blur(var(--glass-blur));
+    background: var(--glass-bg);
+    border-bottom: 1px solid var(--glass-border-color);
+
     will-change: transform;
     backface-visibility: hidden;
     transform: translateZ(0);
@@ -48,17 +44,20 @@
 .header-title { font-size: 16px; font-weight: 600; }
 
 .app-sidebar { display: none; }
-
 .header-nav { display: flex; }
 
+/* Zone contenu */
 .app-content {
     flex-grow: 1;
     overflow-y: auto;
-    padding: 0;
+    padding-inline: var(--content-inline);
+    /* réserve de place pour l’UI bas d’écran et la home bar iOS */
+    padding-bottom: calc(var(--space-6) + var(--safe-bottom));
     display: flex;
     flex-direction: column;
 }
 
+/* Conteneurs d’onglets */
 .tab-content {
     display: none;
     flex-grow: 1;
@@ -102,5 +101,5 @@
         display: block;
     }
 
-    .app-content { grid-area: content; padding: 24px; }
+    .app-content { grid-area: content; padding-inline: 24px; }
 }

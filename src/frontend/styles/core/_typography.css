@@ -1,5 +1,5 @@
 /* src/frontend/styles/core/typography.css */
-/* Typography styles - ÉMERGENCE V7.0 */
+/* Typography styles - ÉMERGENCE V7.1 (fluid) */
 
 /* Base typography */
 body {
@@ -9,16 +9,16 @@ body {
     color: var(--color-text);
 }
 
-/* Headings */
+/* Headings (fluid via clamp) */
 h1 {
-    font-size: var(--text-3xl);
+    font-size: clamp(1.5rem, 3.8vw, var(--text-3xl));
     font-weight: var(--weight-bold);
     line-height: var(--line-height-tight);
     margin-bottom: var(--space-lg);
 }
 
 h2 {
-    font-size: var(--text-2xl);
+    font-size: clamp(1.25rem, 3.2vw, var(--text-2xl));
     font-weight: var(--weight-semibold);
     line-height: var(--line-height-tight);
     margin-bottom: var(--space-md);
@@ -31,19 +31,14 @@ h3 {
 }
 
 /* Paragraphs */
-p {
-    margin-bottom: var(--space-md);
-}
+p { margin-bottom: var(--space-md); }
 
 /* Links */
 a {
     color: var(--color-primary);
     transition: color var(--duration-fast);
 }
-
-a:hover {
-    color: var(--color-primary-hover);
-}
+a:hover { color: var(--color-primary-hover); }
 
 /* Code */
 code {
@@ -63,9 +58,7 @@ pre {
 }
 
 /* Strong */
-strong {
-    font-weight: var(--weight-semibold);
-}
+strong { font-weight: var(--weight-semibold); }
 
 /* Small text */
 .text-xs { font-size: var(--text-xs); }

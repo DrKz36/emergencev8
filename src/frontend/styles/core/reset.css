@@ -1,0 +1,81 @@
+/* src/frontend/styles/core/reset.css */
+/* Reset CSS minimal - ÉMERGENCE V7.1 (mobile-safe) */
+
+/* Box sizing */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+/* Remove margins */
+* { margin: 0; padding: 0; }
+
+/* Prevent font size inflation */
+html {
+    -moz-text-size-adjust: none;
+    -webkit-text-size-adjust: none;
+    text-size-adjust: none;
+}
+
+/* Core body defaults */
+body {
+    min-height: 100vh;
+    line-height: var(--line-height-normal);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    color: var(--color-text);
+    background-color: var(--color-bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent; /* iOS */
+}
+
+/* Media defaults */
+img, picture, video, canvas, svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+/* Form elements */
+input, button, textarea, select {
+    font: inherit;
+    color: inherit;
+}
+
+/* Remove text decoration */
+a { text-decoration: none; color: inherit; }
+
+/* List style */
+ul, ol { list-style: none; }
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: var(--weight-semibold);
+    line-height: var(--line-height-tight);
+}
+
+/* Overflow */
+p, h1, h2, h3, h4, h5, h6 { overflow-wrap: break-word; }
+
+/* Buttons */
+button {
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+button, [role="button"] { touch-action: manipulation; }
+
+/* Focus styles */
+:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: var(--color-bg-secondary); }
+::-webkit-scrollbar-thumb {
+    background: var(--color-bg-tertiary);
+    border-radius: var(--radius-sm);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
