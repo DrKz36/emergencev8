@@ -1,0 +1,54 @@
+﻿/* src/frontend/styles/components/tabs.css */
+/* ======================================================= */
+/* Onglets de Navigation - V9.0 "Ultimate Mobile UI"     */
+/* ======================================================= */
+
+/* --- Conteneur des onglets (dans la sidebar/menu) --- */
+.app-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* --- Style de base du bouton d'onglet --- */
+.tab-button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-4); /* Un peu plus d'espace pour l'icône */
+  background-color: transparent;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text-secondary);
+  font-size: var(--text-lg); /* Police plus grande pour le tactile */
+  font-weight: var(--weight-medium);
+  transition: all 0.2s ease-out;
+}
+
+/* --- États d'interaction --- */
+.tab-button:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-primary);
+}
+
+.tab-button:focus-visible {
+  outline: 2px solid var(--color-primary-focus-ring);
+  outline-offset: 2px;
+}
+
+/* État Actif (onglet sélectionné) */
+.tab-button.active {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-weight: var(--weight-semibold);
+  box-shadow: 0 4px 20px rgba(0, 170, 255, 0.25);
+}
+
+/* --- Icône de l'onglet --- */
+.tab-icon {
+  font-size: 1.2em; /* Icône proportionnelle au texte */
+  color: inherit;
+}

@@ -1,0 +1,101 @@
+/* ========================================================================== */
+/* --- STYLES POUR LA NAVIGATION (SIDEBAR & HEADER) - V2 "Concordance" --- */
+/* ========================================================================== */
+
+#app-sidebar {
+    justify-content: flex-start;
+    padding-top: 1.5rem; 
+}
+
+/* --- Barre de navigation latérale (Desktop) --- */
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%; /* S'assure que la liste prend toute la largeur */
+}
+
+/* [CORRECTION] Remplacement de .tab-button par .nav-link pour correspondre au HTML */
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: var(--radius-md, 8px);
+    cursor: pointer;
+    font-size: var(--text-base, 1rem);
+    font-weight: var(--weight-medium, 500);
+    color: var(--color-text-secondary);
+    background-color: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    text-decoration: none; /* Enlève le soulignement des liens */
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--color-text-primary);
+}
+
+.nav-link.active {
+    background-color: var(--color-primary-bg, rgba(0, 170, 255, 0.1));
+    color: var(--color-primary);
+}
+
+/* [CORRECTION] Ciblage correct de l'icône dans le lien */
+.nav-link .nav-icon {
+    width: 1.5rem; /* 24px - Augmenté pour une meilleure visibilité */
+    height: 1.5rem; /* 24px */
+    flex-shrink: 0;
+    display: flex; /* Assure que le SVG remplit bien le conteneur */
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-link .nav-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.nav-link .nav-text {
+    opacity: 1;
+    transition: opacity 0.2s ease;
+}
+
+/* --- Barre de navigation du header (Mobile) --- */
+/* Pas de changement ici, mais conservé pour la cohérence */
+.header-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.header-nav-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background-color: transparent;
+    border: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.header-nav-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--color-text-primary);
+}
+
+.header-nav-button.active {
+    color: var(--color-primary);
+}
+
+.header-nav-button svg {
+    width: 1.5rem;
+    height: 1.5rem;
+}

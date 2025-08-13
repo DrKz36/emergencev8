@@ -1,0 +1,22 @@
+{
+  "name": "emergence-v7",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "backend": "python run_backend.py",
+    "start": "concurrently \"npm run backend\" \"npm run dev\"",
+    "start:win": "concurrently \"python src/backend/main.py\" \"npm run dev\"",
+    "start:venv": "concurrently \".venv\\\\Scripts\\\\activate && python src/backend/main.py\" \"npm run dev\""
+  },
+  "dependencies": {
+    "marked": "^12.0.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "vite": "^7.1.2"
+  }
+}

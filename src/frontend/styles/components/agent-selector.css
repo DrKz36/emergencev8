@@ -1,0 +1,42 @@
+/*
+ * Fichier : agent-selector.css
+ * Description : Style pour les boutons de sélection d'agents dans le header du chat.
+ */
+
+.agent-selector-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* ✅ C'est ici qu'on ajoute l'espacement manquant */
+}
+
+.agent-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: var(--border-radius-medium);
+    background-color: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.agent-button:hover {
+    background-color: var(--color-background-hover);
+    border-color: var(--color-primary);
+    color: var(--color-text-primary);
+}
+
+.agent-button.active {
+    background-color: var(--color-primary-transparent);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.agent-button-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}

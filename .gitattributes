@@ -1,0 +1,20 @@
+# Normalise les fins de lignes en texte
+* text=auto eol=lf
+
+# Garder CRLF pour scripts PowerShell (exigence projet)
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Marquer binaires (pas de diff verbeux)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.pdf binary
+*.ico binary
+
+# Mieux pour diffs Markdown / JSON
+*.md  text diff=markdown
+*.json text

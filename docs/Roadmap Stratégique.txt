@@ -1,0 +1,86 @@
+# 🗺️ Roadmap Stratégique - ÉMERGENCE V7.0
+
+*Version : 2025-07-04*
+
+Ce document formalise la vision et la feuille de route pour le développement d'Émergence V7. Il sert de référence pour s'assurer que chaque nouvelle fonctionnalité s'intègre de manière cohérente dans une architecture modulaire, robuste et maintenable.
+
+### Principes Directeurs
+- **Architecture Modulaire :** Chaque fonctionnalité est un module indépendant.
+- **Responsabilité Unique :** Un fichier = une seule et unique fonction.
+- **Développement Pragmatique :** Utilisation d'un "Mode Dev" avec des modèles peu coûteux (Gemini 1.5 Flash) pour accélérer le développement sans impacter la facture.
+- **Zéro Dette Technique :** On construit bien du premier coup.
+
+---
+
+### Phase 2 : La Mémoire Vive (Fondation)
+* **Objectif Principal :** Donner à ÉMERGENCE une mémoire persistante, intelligente et capable d'oubli sélectif.
+* **Concepts Clés :**
+    - **Sauvegarde Intégrale :** Stockage de chaque session (dialogues, débats, métadonnées) dans un champ JSON unique.
+    - **Analyse Sémantique :** Extraction automatique de thèmes, concepts et entités de chaque session.
+    - **Score de Vivacité & Oubli :** Simulation d'un mécanisme d'oubli en faisant décroître un "score de pertinence" dans le temps, pour prioriser les souvenirs récents ou importants.
+* **Modules Impactés/Créés :**
+    - `core/database.py` (Modifié)
+    - `core/session_manager.py` (Nouveau)
+    - `features/memory/analyzer.py` (Nouveau)
+    - `features/memory/gardener.py` (Nouveau, pour l'oubli)
+    - `core/temporal_search.py` (Nouveau)
+
+---
+
+### Phase 3 : Le RAG Maîtrisé (Gestion des Documents)
+* **Objectif Principal :** Permettre l'upload et l'analyse de documents (`.pdf`, `.docx`, `.txt`) pour que les agents puissent s'y référer dans leurs conversations.
+* **Concepts Clés :**
+    - **Parsing & Chunking :** Extraction du texte et découpage en morceaux sémantiques.
+    - **Vectorisation :** Transformation des morceaux de texte en vecteurs pour la recherche sémantique.
+    - **Augmentation de Contexte :** Les agents trouvent les morceaux de documents les plus pertinents et les utilisent pour formuler leurs réponses.
+* **Modules Impactés/Créés :**
+    - `features/documents/` (Nouveau module de feature)
+    - `features/documents/parser.py` (Nouveau)
+    - `database.py` (Étendu pour gérer les collections de vecteurs de documents)
+
+---
+
+### Phase 4 : L'Interaction Vocale
+* **Objectif Principal :** Permettre des conversations vocales fluides avec les agents, en particulier sur mobile.
+* **Concepts Clés :**
+    - **Speech-to-Text :** Transcription de la voix de l'utilisateur en texte via une API externe (ex: Whisper).
+    - **Text-to-Speech :** Synthèse de la réponse textuelle de l'agent en audio via une API externe (ex: ElevenLabs).
+    - **Streaming :** Assurer une faible latence pour une conversation naturelle.
+* **Modules Impactés/Créés :**
+    - `features/voice/` (Nouveau module de feature)
+    - `core/websocket.py` (Probablement modifié pour gérer le streaming audio)
+
+---
+
+### Phase 5 : L'Analyse d'Images
+* **Objectif Principal :** Permettre de soumettre une image aux agents pour analyse ou discussion.
+* **Concepts Clés :**
+    - **Modèles Multimodaux :** Utilisation de la capacité des modèles récents (GPT-4o, Gemini 1.5) à interpréter des images.
+    - **Description Textuelle :** Le modèle décrit l'image en interne pour que le contexte puisse être utilisé par tous les agents.
+* **Modules Impactés/Créés :**
+    - `features/images/` (Nouveau module de feature)
+
+---
+
+### Phase 6 : L'Agent Connecté (Accès Web)
+* **Objectif Principal :** Donner aux agents la capacité de chercher des informations en temps réel sur le web.
+* **Concepts Clés :**
+    - **Mode Curateur (Proactif) :** Suggérer des articles ou lectures en se basant sur les concepts d'une session terminée.
+    - **Mode Chercheur (Réactif) :** Lancer une recherche web sur demande explicite de l'utilisateur.
+    - **Tool Use / Function Calling :** Utilisation des capacités natives des LLMs à appeler des outils externes.
+* **Modules Impactés/Créés :**
+    - `features/tools/web_connector.py` (Nouveau)
+
+---
+
+### Phase 7 : Le Cockpit de Pilotage (Tableau de Bord)
+* **Objectif Principal :** Fournir une interface claire pour maîtriser les coûts, surveiller la performance et comprendre l'usage de l'application.
+* **Concepts Clés :**
+    - **Gestion des Coûts :** Suivi par session, par agent, par fonctionnalité, avec un système d'alertes.
+    - **Santé du Système :** Monitoring de la base de données, latence des API, performance de la recherche.
+    - **Analyse d'Usage :** Statistiques sur les agents, modes et concepts les plus utilisés.
+* **Modules Impactés/Créés :**
+    - `features/dashboard/` (Nouveau module de feature backend + frontend)
+    - `core/system_monitor.py` (Nouveau)
+
+---

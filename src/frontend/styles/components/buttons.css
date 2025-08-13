@@ -1,0 +1,107 @@
+﻿/* src/frontend/styles/components/buttons.css */
+
+/* === BOUTON PRIMAIRE GÉNÉRIQUE (NOUVEAU) === */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-3) var(--space-6);
+    font-size: var(--text-base);
+    font-weight: var(--weight-medium);
+    border-radius: var(--radius-lg);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    text-align: center;
+}
+
+.btn-primary {
+    background-color: var(--color-primary);
+    color: white;
+    box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.25);
+}
+
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.35);
+}
+
+.btn-primary:disabled {
+    background-color: var(--background-tertiary);
+    color: var(--color-text-muted);
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+
+/* === BOUTONS DE CONTRÔLE (Exporter/Effacer) "Aura" V2.1 === */
+.control-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-base);
+    font-weight: var(--weight-medium);
+    background-color: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid transparent;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all var(--duration-subtle) var(--ease-out-quint);
+}
+
+.control-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.control-btn span {
+    display: block;
+}
+
+.control-btn:hover {
+    background-color: var(--glass-bg);
+    border-color: var(--glass-border-color);
+    color: var(--color-text-primary);
+}
+
+.control-btn.destructive:hover {
+    background-color: var(--color-error);
+    border-color: var(--color-error);
+    color: white;
+}
+
+/* === BOUTON ENVOYER "Aura" (Inchangé) === */
+.send-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: var(--radius-md);
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all var(--duration-normal) var(--ease-out-quint);
+}
+
+.send-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+.send-button:hover:not(:disabled) {
+    transform: scale(1.1);
+    box-shadow: 0 0 15px 0px var(--color-primary);
+}
+
+.send-button:disabled {
+    background-color: var(--color-text-muted);
+    cursor: not-allowed;
+    transform: scale(1);
+    box-shadow: none;
+}

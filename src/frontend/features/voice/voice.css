@@ -1,0 +1,48 @@
+/* src/frontend/features/voice/voice.css */
+
+/* Définition de l'animation de pulsation pour l'état d'enregistrement */
+@keyframes pulsate {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 82, 82, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 82, 82, 0);
+    }
+}
+
+/* Style de base du bouton d'enregistrement */
+.record-button {
+    background-color: transparent;
+    border: 1px solid var(--border-color-light);
+    color: var(--text-secondary);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%; /* Bouton rond */
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    margin-left: var(--space-xs);
+    transition: all 0.2s ease-in-out;
+}
+
+.record-button:hover {
+    background-color: var(--background-color-hover);
+    color: var(--accent-color);
+}
+
+/* Style du bouton quand l'enregistrement est actif */
+.record-button.is-recording {
+    background-color: var(--color-danger);
+    color: white;
+    border-color: var(--color-danger);
+    animation: pulsate 1.5s infinite; /* On applique l'animation */
+}
+
+.record-button.is-recording:hover {
+    background-color: #d94747; /* Un rouge un peu plus foncé au survol */
+}

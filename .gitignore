@@ -1,0 +1,70 @@
+# --- Python / venv
+.venv/
+env/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pytest_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.cache/
+.mypy_cache/
+.dmypy.json
+.pyre/
+
+# --- Build / dist
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- IDE / OS
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# --- Logs & temps
+logs/
+*.log
+*.tmp
+*.temp
+
+# --- Data locales / caches app
+data/
+datasets/
+storage/
+cache/
+tmp/
+
+# --- Secrets (NE JAMAIS COMMIT)
+*.env
+.env*
+secrets/
+**/secrets.json
+**/config.local.json
+
+# --- Node / frontend (si présent)
+node_modules/
+npm-debug.log*
+yarn.lock
+pnpm-lock.yaml
+
+# --- Artefacts Streamlit/Frontend (si générés)
+.streamlit/
+.svelte-kit/
+
+# --- DB locales
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Snapshots arbo anciens (garder le plus récent)
+arborescence_synchronisée_*.txt
+
+# --- OS Windows
+desktop.ini

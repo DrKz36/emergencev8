@@ -1,0 +1,12 @@
+﻿=== AUDIT IMPORTS - Summary ===
+Repo          : C:\dev\emergenceV8
+ARBO snapshot : C:\dev\emergenceV8\arborescence_synchronisée_20250812_post_boot.txt
+Namespaces    : backend, data, frontend, src
+
+Total imports found         : 331
+Internal imports analyzed   : 99
+Resolved OK                 : 0
+Ambiguous                   : 0
+UNRESOLVED (to fix)         : 99
+
+Files written under: C:\dev\emergenceV8\audit

@@ -1,0 +1,75 @@
+emergence-v7/
+├── .vscode/
+│   └── settings.json
+├── src/
+│   ├── frontend/
+│   │   ├── core/
+│   │   │   ├── app.js
+│   │   │   ├── event-bus.js
+│   │   │   ├── state-manager.js
+│   │   │   └── websocket.js
+│   │   ├── features/
+│   │   │   ├── chat/
+│   │   │   ├── debate/
+│   │   │   ├── documents/
+│   │   │   ├── timeline/
+│   │   │   ├── costs/
+│   │   │   └── dashboard/               # NOUVEAU : UI pour le cockpit
+│   │   │       ├── dashboard.js
+│   │   │       ├── dashboard-ui.js
+│   │   │       └── dashboard.css
+│   │   ├── shared/
+│   │   ├── ui/
+│   │   ├── styles/
+│   │   ├── main.css
+│   │   └── index.html
+│   └── backend/
+│       ├── core/
+│       │   ├── agents.py
+│       │   ├── database.py              # MODIFIÉ : Structure V7
+│       │   ├── websocket.py
+│       │   ├── logger.py
+│       │   ├── session_manager.py       # NOUVEAU : Gestion du cycle de vie des sessions
+│       │   ├── temporal_search.py       # NOUVEAU : Recherche dans la mémoire
+│       │   └── system_monitor.py        # NOUVEAU : Pour le dashboard
+│       ├── features/
+│       │   ├── chat/
+│       │   ├── debate/
+│       │   ├── documents/
+│       │   │   ├── router.py
+│       │   │   ├── service.py
+│       │   │   └── parser.py            # NOUVEAU : Extraction texte des fichiers
+│       │   ├── timeline/
+│       │   ├── memory/                  # NOUVEAU : Module pour la mémoire intelligente
+│       │   │   ├── analyzer.py          # NOUVEAU : Analyse sémantique des sessions
+│       │   │   └── gardener.py          # NOUVEAU : Gestion de "l'oubli"
+│       │   ├── tools/                   # NOUVEAU : Outils externes
+│       │   │   └── web_connector.py     # NOUVEAU : Pour l'accès web
+│       │   └── dashboard/               # NOUVEAU : API pour le cockpit
+│       │       └── router.py
+│       ├── shared/
+│       │   ├── config.py                # MODIFIÉ : Pour le DEV_MODE
+│       │   ├── dependencies.py
+│       │   ├── models.py
+│       │   └── utils.py
+│       └── main.py
+├── data/
+│   ├── db/
+│   │   └── emergence_v7.db
+│   ├── uploads/
+│   ├── vectors/
+│   └── sessions/
+├── prompts/
+│   ├── anima_system_v2.md
+│   ├── neo_system_v3.md
+│   └── nexus_system_v2.md
+├── tests/
+├── docs/
+│   ├── architecture.md
+│   ├── ROADMAP.md                   # NOUVEAU : Ce que nous venons de créer
+│   └── ARBORESCENCE_PROJETEE.txt    # NOUVEAU : Ce que nous venons de créer
+├── scripts/
+├── .gitignore
+├── README.md
+├── requirements.txt
+└── ...

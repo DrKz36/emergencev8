@@ -1,0 +1,76 @@
+/* Styles pour le composant de toggle RAG */
+
+.custom-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 16px;
+    background-color: var(--color-background-light);
+    border: 1px solid var(--color-border);
+    transition: background-color 0.2s ease;
+}
+
+.custom-toggle:has(input:checked) {
+    background-color: rgba(0, 122, 255, 0.2);
+    border-color: var(--color-primary);
+}
+
+.custom-toggle-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--color-text-secondary);
+    transition: color 0.2s ease;
+}
+
+.custom-toggle:has(input:checked) .custom-toggle-icon {
+    color: var(--color-primary);
+}
+
+.custom-toggle-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    transition: color 0.2s ease;
+}
+
+.custom-toggle:has(input:checked) .custom-toggle-label {
+    color: var(--color-text-primary);
+}
+
+
+/* On cache la checkbox native */
+.custom-toggle input {
+    display: none;
+}
+
+/* Style du slider (l'interrupteur visuel) */
+.custom-toggle .slider {
+    width: 34px;
+    height: 20px;
+    background-color: #444;
+    border-radius: 17px;
+    position: relative;
+    transition: background-color 0.2s;
+}
+
+.custom-toggle .slider::before {
+    content: '';
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+}
+
+.custom-toggle input:checked + .slider {
+    background-color: var(--color-primary);
+}
+
+.custom-toggle input:checked + .slider::before {
+    transform: translateX(14px);
+}

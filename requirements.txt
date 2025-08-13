@@ -1,0 +1,56 @@
+# ---------------------------------
+# CORE FRAMEWORK & SERVER
+# Dépendances essentielles pour faire tourner l'application web.
+# ---------------------------------
+fastapi>=0.104.0,<0.110.0
+uvicorn[standard]>=0.24.0
+websockets>=11.0.2          # Pour la communication temps réel
+python-multipart>=0.0.6     # Nécessaire pour le traitement des formulaires (uploads)
+
+# ---------------------------------
+# DEPENDENCY INJECTION & CONFIG
+# Outils pour une architecture propre.
+# ---------------------------------
+dependency-injector>=4.41.0
+pydantic>=2.5.0,<3.0.0
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0
+
+# ---------------------------------
+# AI & LLM PROVIDERS
+# SDKs pour interagir avec les modèles de langage.
+# ---------------------------------
+openai>=1.35.0,<2.0.0
+google-generativeai>=0.7.0
+anthropic>=0.28.0,<1.0.0
+tiktoken>=0.5.2             # Pour le comptage de tokens (souvent utilisé par OpenAI)
+
+# ---------------------------------
+# DATA, DATABASE & VECTOR STORES
+# Gestion de la persistance des données structurées et vectorielles.
+# ---------------------------------
+aiosqlite>=0.19.0           # Base de données SQL asynchrone
+chromadb==0.4.22            # Base de données vectorielle
+
+# ---------------------------------
+# SEMANTIC & ML LIBRARIES
+# Librairies pour le traitement sémantique et le machine learning.
+# ---------------------------------
+sentence-transformers>=2.7.0
+torch>=2.1.0
+numpy>=1.24.0,<2.0.0
+
+# ---------------------------------
+# FILE PROCESSING & UTILITIES
+# Librairies pour l'extraction de texte et autres opérations.
+# ---------------------------------
+aiofiles>=23.2.0            # Pour la gestion de fichiers asynchrone
+PyMuPDF>=1.24.0             # Extraction depuis les PDF
+python-docx>=1.1.0          # Extraction depuis les .docx
+
+# ⚠️ Spécifique OS : sur Windows on prend python-magic-bin, ailleurs python-magic
+python-magic>=0.4.27; platform_system!="Windows"
+python-magic-bin>=0.4.14; platform_system=="Windows"
+
+chardet>=5.2.0              # Détection de l'encodage des caractères
+psutil>=5.9.5               # Monitoring des ressources

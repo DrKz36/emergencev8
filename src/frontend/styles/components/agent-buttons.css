@@ -1,0 +1,44 @@
+/* src/frontend/features/chat/agent-buttons.css */
+/* Styles pour les boutons de sélection d'agent sur l'interface Desktop */
+
+.agent-selector-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.agent-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: var(--radius-md, 8px);
+    border: 1px solid transparent;
+    background-color: var(--color-background-light, #2a2a2a);
+    color: var(--color-text-secondary, #a0a0a0);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    white-space: nowrap;
+}
+
+.agent-button:hover {
+    background-color: var(--color-background-tertiary, #3a3a3a);
+    color: var(--color-text-primary, #e0e0e0);
+}
+
+.agent-button.active {
+    color: var(--color-text-primary, #e0e0e0);
+    background-color: var(--color-primary-muted, rgba(0, 122, 255, 0.2));
+    border-color: var(--color-primary, #007aff);
+}
+
+.agent-button .agent-button-emoji {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.agent-button .agent-button-name {
+    line-height: 1;
+}

@@ -1,0 +1,46 @@
+﻿/* src/frontend/styles/components/inputs.css */
+
+.form-group { margin-bottom: var(--space-lg); }
+.form-label { display: block; margin-bottom: var(--space-sm); font-weight: var(--weight-medium); color: var(--color-text-secondary); }
+
+.form-input,
+.form-textarea,
+.form-select {
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    background-color: var(--color-bg-secondary);
+    border: var(--border-width) solid var(--border-color);
+    border-radius: var(--radius-lg);
+    color: var(--color-text-primary);
+    font-size: var(--text-base);
+    font-weight: var(--weight-medium); /* Police un peu plus grasse */
+    transition: all var(--duration-normal) var(--ease-out-quint);
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(0, 170, 255, 0.3);
+}
+
+.form-textarea { min-height: 120px; resize: vertical; }
+
+.form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a1a1aa' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.8rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 3rem;
+}
+
+/* FIX V18.4: Améliorer la lisibilité des options */
+.form-select option {
+    background: var(--color-bg-tertiary); /* Fond sombre pour les options */
+    color: var(--color-text-primary); /* Texte clair */
+}
+
+/* ... (le reste du fichier, .input-wrapper etc., est inchangé) ... */
+.input-wrapper{display:flex;align-items:center;background-color:rgba(0,0,0,.25);border-radius:var(--radius-lg);padding:var(--space-2);border:1px solid transparent;transition:border-color var(--duration-normal) var(--ease-out-quint)}.input-wrapper:focus-within{border-color:var(--color-primary)}#chat-input{flex-grow:1;background:transparent;border:none;outline:none;color:var(--color-text-primary);font-size:var(--text-base);resize:none;padding:var(--space-2);height:28px;line-height:1.5}#chat-input::placeholder{color:var(--color-text-muted)}

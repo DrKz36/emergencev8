@@ -1,0 +1,20 @@
+﻿/* ÉMERGENCE V7 - costs module styles */
+
+.costs-container {
+  padding: var(--space-md);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.costs-header {
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.costs-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* Module-specific styles */
