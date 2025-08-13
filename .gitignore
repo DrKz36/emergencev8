@@ -1,3 +1,6 @@
+# ARBO-LOCK — on versionne explicitement les snapshots d'arbo
+!arborescence_synchronisée_*.txt
+
 # --- Python / venv
 .venv/
 env/
