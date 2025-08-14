@@ -1,30 +1,51 @@
 ﻿/* src/frontend/features/debate/debate.css */
-/* V35 — centrage forcé (override chat.css), synthèse Nexus verte (+3 espaces, italique),
-   création : espacements + tabs colorés par agent, RAG métal aligné chat. */
+/* V37 — layout PC exact (grille 2×2), centrage bulles override chat.css,
+   textarea sujet large, toggle métal lisible, responsive mobile propre. */
 
 :root{
-  /* Verre & couleurs */
+  /* Verre & couleurs (aligné _layout.css / _typography.css) */
   --glass-bg: rgba(22,22,26,.55);
   --glass-blur: 18px;
   --glass-border-color: rgba(255,255,255,.10);
   --radius-xl: 18px;
 
-  --color-anima:#e11d48; --color-neo:#2563eb; --color-nexus:#10b981;
-  --color-text-primary:#e9e9ef; --color-text-secondary:#bfc2cd;
+  --color-anima:#e11d48;
+  --color-neo:#2563eb;
+  --color-nexus:#10b981;
+
+  --color-text-primary:#e9e9ef;
+  --color-text-secondary:#bfc2cd;
+
+  --color-background-secondary: rgba(255,255,255,.02);
+  --color-background-tertiary: rgba(255,255,255,.035);
+  --color-background-light: rgba(255,255,255,.06);
+
+  --border-color: rgba(255,255,255,.18);
+  --border-width: 1px;
 
   /* Rythme */
-  --space-2:.5rem; --space-3:.75rem; --space-4:1rem; --space-6:1.25rem; --space-8:1.75rem; --space-12:2.5rem;
+  --space-2:.5rem;
+  --space-3:.75rem;
+  --space-4:1rem;
+  --space-6:1.25rem;
+  --space-8:1.75rem;
+  --space-12:2.5rem;
 
-  /* Colonne centrale (clamp) — dédiée au module débat */
-  --debate-bubble-width: 900px;                               /* desktop */
-  --debateBubbleW: min(var(--debate-bubble-width), 90%);
+  /* Typo */
+  --text-base: 1rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --weight-medium: 500;
+  --weight-semibold: 600;
 
-  /* Halos */
-  --anima-hex:#ff496a; --neo-hex:#30a4ff; --nexus-hex:#10b981;
-  --bubble-tint: 80%; --halo-opacity:.40;
+  /* Débat : largeur visuelle des bulles */
+  --debateBubbleW: min(920px, 92vw);
 }
 
-/* Wrapper & Card */
+/* ======================== */
+/* === Wrapper + Card   === */
+/* ======================== */
+
 .debate-view-wrapper{
   width:100%;
   display:flex; justify-content:center; align-items:flex-start;
@@ -37,14 +58,12 @@
   backdrop-filter:blur(calc(var(--glass-blur)*1.25));
   -webkit-backdrop-filter:blur(calc(var(--glass-blur)*1.25));
   box-shadow:0 16px 40px rgba(0,0,0,.35), inset 0 0 32px rgba(255,255,255,.03);
-
-  /* Panneau élargi (~1200px) */
   max-width:1200px;
   width:95%;
 }
 
 .card-header{ text-align:center; border-bottom:1px solid var(--glass-border-color); }
-.card-title{ color:#fff; margin:0; }
+.card-title{ color:#fff; margin:0; font-size:var(--text-2xl); font-weight:var(--weight-semibold); }
 .debate-status{ margin-top:var(--space-2); color:var(--color-text-secondary); }
 
 .card-body{ padding:var(--space-6); }
@@ -54,11 +73,18 @@
 /* === Vue Création UI === */
 /* ======================= */
 
+/* Grille par zones nommées : 
+   Sujet (plein), puis 1ère ligne Attaquant/Challenger, 2e ligne Rounds/Médiateur */
 .debate-create-body{
-  display:grid; grid-template-columns: 1fr 1fr;
-  column-gap: var(--space-6);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: var(--space-8);
   row-gap: var(--space-6);
   align-items:start;
+  grid-template-areas:
+    "topic topic"
+    "attacker challenger"
+    "rounds mediator";
 }
 
 /* “+1 espace” sous les labels */
@@ -67,17 +93,23 @@
   margin-bottom: var(--space-4);
 }
 
-.debate-create-body .form-topic{ grid-column:1 / -1; }
-.debate-create-body .form-attacker{ grid-column:1; }
-.debate-create-body .form-challenger{ grid-column:2; }
-.debate-create-body .form-rounds{ grid-column:1; }
-.debate-create-body .form-mediator{ grid-column:2; }
+.debate-create-body .form-topic{ grid-area: topic; }
+.debate-create-body .form-attacker{ grid-area: attacker; }
+.debate-create-body .form-challenger{ grid-area: challenger; }
+.debate-create-body .form-rounds{ grid-area: rounds; }
+.debate-create-body .form-mediator{ grid-area: mediator; }
 
 /* Espaces supplémentaires sous les groupes de sélection */
 .debate-create-body .form-attacker,
 .debate-create-body .form-challenger,
-.debate-create-body .form-rounds{
-  margin-bottom: var(--space-8);
+.debate-create-body .form-rounds,
+.debate-create-body .form-mediator{ margin-bottom: var(--space-4); }
+
+/* Sujet large + hauteur confortable */
+.debate-create-body .form-topic .input-text{
+  width:100%;
+  min-height:12rem;       /* ~200px */
+  resize:vertical;
 }
 
 /* Footer de création */
@@ -87,6 +119,7 @@
 .debate-create-footer .footer-left{ justify-self:start; }
 .debate-create-footer .footer-center{ justify-self:center; }
 .debate-create-footer .footer-right{ justify-self:end; }
+.debate-create-footer .footer-center .button{ min-width:220px; }
 
 /* Segmented (tabs) */
 .segmented{ display:flex; gap:.5rem; flex-wrap:wrap; }
@@ -102,55 +135,26 @@
 .debate-create-body .button-tab.agent--neo.active{
   color: var(--color-neo) !important;
   border-bottom-color: var(--color-neo) !important;
-  box-shadow: 0 0 10px rgba(37,99,235,.55) !important;
+  box-shadow: 0 0 10px rgba(37,99,235,.45) !important;
 }
 .debate-create-body .button-tab.agent--nexus.active{
   color: var(--color-nexus) !important;
   border-bottom-color: var(--color-nexus) !important;
-  box-shadow: 0 0 10px rgba(16,185,129,.55) !important;
+  box-shadow: 0 0 10px rgba(16,185,129,.45) !important;
 }
-
-/* === RAG toggle : rendu métal identique au chat (scopé débat) === */
-.debate-create-footer .toggle.toggle-metal{
-  display:inline-flex; align-items:center; height:34px;
-  padding:.25rem .6rem; border-radius:999px; border:1px solid rgba(255,255,255,.22);
-  background:
-    radial-gradient(130% 130% at 25% 15%, rgba(255,255,255,.9) 0%, rgba(255,255,255,.35) 35%, rgba(255,255,255,0) 60%),
-    linear-gradient(145deg, #2e2e2e, #4a4a4a);
-  color:#e9e9e9;
-  transition:filter .25s ease, box-shadow .25s ease;
-}
-.debate-create-footer .toggle.toggle-metal:hover{ filter:brightness(1.05); }
-.debate-create-footer .toggle.toggle-metal[aria-checked="true"]{
-  background:
-    radial-gradient(130% 130% at 25% 15%, rgba(255,255,255,.95) 0%, rgba(255,255,255,.4) 35%, rgba(255,255,255,0) 60%),
-    linear-gradient(145deg, #53b76a, #9be2b3);
-  box-shadow:0 0 10px rgba(129,199,132,.6);
-}
-.rag-toggle .toggle-track{ display:none; }
-.rag-toggle .toggle-label{ margin-left:0; font-weight:600; }
 
 /* ======================= */
-/* === Vue Déroulé UI  === */
+/* === Vue Déroulé (log) == */
 /* ======================= */
 
-.debate-timeline{
-  margin-top:var(--space-8);
-  display:flex; flex-direction:column; align-items:center;
-  gap:var(--space-12);
-}
-
-/* Séparateur “Tour X” : aligné EXACTEMENT sur la colonne des bulles */
-.timeline-turn-separator{
-  position:relative; text-align:center; color:var(--color-text-secondary);
-  width:var(--debateBubbleW);
-  margin:0 auto;
-}
+.debate-timeline{ display:flex; flex-direction:column; gap:18px; padding:var(--space-4) 0; }
+.timeline-turn-separator{ position:relative; display:flex; justify-content:center; align-items:center; color:var(--color-text-secondary); font-size:.85rem; }
 .timeline-turn-separator::before,
 .timeline-turn-separator::after{
   content:""; position:absolute; top:50%; height:1px; width:45%; background:rgba(255,255,255,.14);
 }
-.timeline-turn-separator::before{ left:0; } .timeline-turn-separator::after{ right:0; }
+.timeline-turn-separator::before{ left:0; } 
+.timeline-turn-separator::after{ right:0; }
 .timeline-turn-separator>span{ display:inline-block; padding:0 var(--space-3); background:transparent; }
 
 /* >>> Centrage robuste des bulles (override chat.css) <<< */
@@ -174,37 +178,69 @@
 
 .debate-timeline .message-text{
   border:none; border-radius:14px; padding:.9rem 1rem; color:#fff;
-  -webkit-backdrop-filter:blur(6px) saturate(120%); backdrop-filter:blur(6px) saturate(120%);
-  box-shadow:0 8px 24px rgba(0,0,0,.25), 0 0 22px rgba(255,255,255,.07);
+  -webkit-backdrop-filter:blur(6px) saturate(120%); 
+  backdrop-filter:blur(6px) saturate(120%);
+  box-shadow:0 10px 24px rgba(0,0,0,.25), 0 0 20px rgba(255,255,255,.07);
 }
 
-/* Fonds + halos par agent (Anima / Neo / Nexus vert) */
-.debate-timeline .message.assistant.agent--anima .message-text{
-  background:linear-gradient(180deg, rgba(225,29,72,.80) 0%, rgba(225,29,72,.60) 100%);
-  box-shadow:0 14px 34px rgba(255,73,106,var(--halo-opacity)), 0 0 0 1px rgba(255,255,255,.06) inset;
-}
-.debate-timeline .message.assistant.agent--neo .message-text{
-  background:linear-gradient(180deg, rgba(37,99,235,.80) 0%, rgba(37,99,235,.60) 100%);
-  box-shadow:0 14px 34px rgba(48,164,255,var(--halo-opacity)), 0 0 0 1px rgba(255,255,255,.06) inset;
-}
-.debate-timeline .message.assistant.agent--nexus .message-text{
-  background:linear-gradient(180deg, rgba(16,185,129,.80) 0%, rgba(16,185,129,.60) 100%);  /* Nexus vert */
-  box-shadow:0 14px 34px rgba(16,185,129,var(--halo-opacity)), 0 0 0 1px rgba(255,255,255,.06) inset;  /* halo */
-}
+/* Couleurs par agent */
+.message.assistant.agent--anima   .message-text{ background: color-mix(in srgb, var(--color-anima) 26%, transparent); }
+.message.assistant.agent--neo     .message-text{ background: color-mix(in srgb, var(--color-neo) 22%, transparent); }
+.message.assistant.agent--nexus   .message-text{ background: color-mix(in srgb, var(--color-nexus) 22%, transparent); }
 
-/* Synthèse = bulle agent, +3 espaces au‑dessus, italique dans le corps */
-.debate-timeline .message.assistant.synthesis{ margin-top: calc(var(--space-6) * 3); }
+/* Synthèse : italique du corps + en-tête “Synthèse par …” teinté */
 .debate-timeline .message.assistant.synthesis .message-text{ font-style: italic; }
-
-/* Titre “Synthèse par …” en teinte agent */
 .debate-timeline .message.assistant.agent--anima .sender-name{ color:#ffd3db; }
 .debate-timeline .message.assistant.agent--neo   .sender-name{ color:#cfe7ff; }
 .debate-timeline .message.assistant.agent--nexus .sender-name{ color:#b1fcd4; }
 
-/* Responsive */
+/* =================== */
+/* === Toggle métal === */
+/* =================== */
+.toggle.toggle-metal{ display:inline-flex; align-items:center; gap:.5rem; }
+.toggle.toggle-metal .toggle-track{
+  position:relative; width:56px; height:28px; border-radius:999px;
+  background:rgba(255,255,255,.16);
+  border:1px solid rgba(255,255,255,.35);
+  transition:background .2s ease, border-color .2s ease;
+}
+.toggle.toggle-metal .toggle-thumb{
+  position:absolute; top:2px; left:2px; width:24px; height:24px; border-radius:50%;
+  background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.45);
+  transition:left .2s ease;
+}
+.toggle.toggle-metal[aria-checked="true"] .toggle-thumb{ left:calc(100% - 26px); }
+.toggle.toggle-metal[aria-checked="true"] .toggle-track{
+  background: color-mix(in srgb, var(--color-nexus) 45%, rgba(255,255,255,.16));
+  border-color: rgba(255,255,255,.5);
+}
+.toggle-label{ font-size:.85rem; opacity:.9; }
+
+/* =============== */
+/* === Responsive */
+/* =============== */
+
 @media (max-width: 900px){
-  .debate-create-body{ grid-template-columns: 1fr; }
+  .debate-create-body{
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "topic"
+      "attacker"
+      "challenger"
+      "rounds"
+      "mediator";
+  }
   .debate-create-footer{ grid-template-columns: 1fr; }
   .debate-create-footer .footer-left{ order:1; justify-self:start; }
   .debate-create-footer .footer-center{ order:2; justify-self:stretch; }
+}
+
+@media (max-width: 430px){
+  .debate-create-footer{ grid-template-columns: 1fr; row-gap:.5rem; }
+  .debate-create-footer .footer-center .button{ width:100%; }
+  .debate-create-footer .footer-left{ order:2; }
+  .debate-create-footer .footer-center{ order:1; }
+  .toggle.toggle-metal .toggle-track{ width:64px; height:32px; }
+  .toggle.toggle-metal .toggle-thumb{ width:28px; height:28px; }
+  .toggle.toggle-metal[aria-checked="true"] .toggle-thumb{ left:calc(100% - 30px); }
 }
