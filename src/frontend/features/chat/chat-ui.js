@@ -95,6 +95,20 @@ export class ChatUI {
       input.dispatchEvent(new Event('input'));
     });
 
+    // Enter pour envoyer (Shift+Enter = retour à la ligne)
+    input?.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' && !ev.shiftKey) {
+        ev.preventDefault();
+        try {
+          if (typeof form?.requestSubmit === 'function') {
+            form.requestSubmit();
+          } else {
+            form?.dispatchEvent(new Event('submit', { cancelable: true }));
+          }
+        } catch {}
+      }
+    });
+
     container.querySelector('#chat-export')
       ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_EXPORT, null));
 
