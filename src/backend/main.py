@@ -1,4 +1,3 @@
-# src/backend/main.py
 from __future__ import annotations
 
 import os
@@ -100,13 +99,14 @@ async def _startup(container: ServiceContainer):
         logger.warning(f"Initialisation DB partielle/repoussée: {e}")
     t.mark("db_ready")
 
-    # 2) Wire DI (sans instancier les services lourds)
+    # 2) Wire DI (ajout de debate.router)
     try:
-        import backend.features.chat.router as chat_router_module  # type: ignore
-        container.wire(modules=[chat_router_module])
-        logger.info("DI wired (chat.router).")
+        import backend.features.chat.router as chat_router_module      # type: ignore
+        import backend.features.debate.router as debate_router_module  # type: ignore
+        container.wire(modules=[chat_router_module, debate_router_module])
+        logger.info("DI wired (chat.router, debate.router).")
     except Exception as e:
-        logger.warning(f"Wire DI partiel (chat.router): {e}")
+        logger.warning(f"Wire DI partiel: {e}")
     t.mark("di_wired")
 
     # 3) Dump facultatif des métriques de boot (si EMERGENCE_BOOT_LOG défini)
