@@ -1,6 +1,7 @@
 /**
  * src/frontend/features/chat/chat-ui.js
- * V23 — Nexus inclus, FG à gauche, heure + style manuscrit, bleu clair utilisateur
+ * V23.1 — Bouton RAG "Power" (IEC 60417-5007) rouge/vert + scoping chat
+ * Remplace l'ancien toggle .toggle-metal par un bouton SVG accessible.
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
@@ -14,7 +15,7 @@ export class ChatUI {
       ragEnabled: false,
       messages: {} // { [agentId]: Message[] }
     };
-    console.log('✅ ChatUI V23 prêt.');
+    console.log('✅ ChatUI V23.1 prêt.');
   }
 
   render(container, chatState = {}) {
@@ -39,15 +40,19 @@ export class ChatUI {
           </form>
 
           <div class="chat-actions">
+            <span class="rag-label">RAG</span>
             <button
               type="button"
-              id="chat-rag-toggle"
-              class="toggle toggle-metal action-rag-toggle"
+              id="chat-rag-power"
+              class="rag-power"
               role="switch"
               aria-checked="${String(!!this.state.ragEnabled)}"
-              title="Activer/Désactiver RAG">
-              <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">RAG</span>
+              title="${this.state.ragEnabled ? 'RAG activé' : 'RAG désactivé'}">
+              <svg viewBox="0 0 24 24" class="icon-power" aria-hidden="true" focusable="false">
+                <!-- IEC 60417-5007 style -->
+                <path class="power-line" d="M12 3 v7" />
+                <path class="power-circle" d="M6.5 7.5a7 7 0 1 0 11 0" />
+              </svg>
             </button>
 
             <button type="button" id="chat-export" class="button">Exporter</button>
@@ -65,7 +70,8 @@ export class ChatUI {
     if (!container) return;
     this.state = { ...this.state, ...chatState };
 
-    container.querySelector('#chat-rag-toggle')
+    container
+      .querySelector('#chat-rag-power')
       ?.setAttribute('aria-checked', String(!!this.state.ragEnabled));
 
     this._setActiveAgentTab(container, this.state.currentAgentId);
@@ -78,7 +84,7 @@ export class ChatUI {
   _bindEvents(container) {
     const form = container.querySelector('#chat-form');
     const input = container.querySelector('#chat-input');
-    const ragBtn = container.querySelector('#chat-rag-toggle');
+    const ragBtn = container.querySelector('#chat-rag-power');
 
     form?.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -98,6 +104,7 @@ export class ChatUI {
     ragBtn?.addEventListener('click', () => {
       const on = ragBtn.getAttribute('aria-checked') === 'true';
       ragBtn.setAttribute('aria-checked', String(!on));
+      ragBtn.setAttribute('title', !on ? 'RAG activé' : 'RAG désactivé');
       this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, { enabled: !on });
     });
 
@@ -140,7 +147,7 @@ export class ChatUI {
   }
 
   _agentTabsHTML(activeId) {
-    const ids = Object.keys(AGENTS); // Nexus inclus maintenant
+    const ids = Object.keys(AGENTS);
     return `
       <div class="segmented" id="chat-agent-tabs">
         ${ids.map(id => `

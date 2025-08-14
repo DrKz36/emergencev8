@@ -1,6 +1,5 @@
 ﻿/* src/frontend/features/debate/debate.css */
-/* V38 — layout PC exact (schéma), cadre "Configuration", RAG sous config, CTA centré.
-   Déroulé/timeline identiques à V37 ; responsive mobile 1 colonne. */
+/* V38.2 — layout PC (schéma) + RAG "Power" SVG rouge/vert (scopé Débat) */
 
 :root{
   --glass-bg: rgba(22,22,26,.55);
@@ -8,9 +7,9 @@
   --glass-border-color: rgba(255,255,255,.10);
   --radius-xl: 18px;
 
-  --color-anima:#e11d48;
+  --color-anima:#e11d48; /* Rouge OFF */
   --color-neo:#2563eb;
-  --color-nexus:#10b981;
+  --color-nexus:#10b981; /* Vert ON  */
 
   --color-text-primary:#e9e9ef;
   --color-text-secondary:#bfc2cd;
@@ -35,6 +34,9 @@
   --weight-semibold: 600;
 
   --debateBubbleW: min(920px, 92vw);
+
+  --rag-off: var(--color-anima);
+  --rag-on:  var(--color-nexus);
 }
 
 /* ===== Wrapper + Card ===== */
@@ -64,11 +66,6 @@
 
 /* ===== Vue Création ===== */
 
-/* Structure de la page de création :
-   - Sujet (plein) 
-   - config-grid (2x2)
-   - rag-row (ligne RAG)
-*/
 .debate-create-body{
   display:grid;
   grid-template-columns: 1fr;
@@ -86,7 +83,7 @@
 }
 .debate-create-body .form-topic .input-text{
   width:100%;
-  min-height:16rem;         /* ~256px, confortable */
+  min-height:16rem;
   resize:vertical;
 }
 
@@ -147,7 +144,7 @@
   box-shadow: 0 0 10px rgba(16,185,129,.45) !important;
 }
 
-/* Affichage "Synthèse par" (Nexus figé) */
+/* Affichage "Synthèse par" */
 .mediator-display{
   display:inline-block;
   padding:.55rem 1rem;
@@ -158,30 +155,36 @@
   text-align: center;
 }
 
-/* Ligne RAG (optionnel) */
+/* Ligne RAG */
 .debate-create-body .rag-row{
   grid-area: rag;
   display:flex; align-items:center; gap:.75rem;
 }
-.checkbox-rag{
-  display:inline-flex; align-items:center; gap:.75rem;
-  color: var(--color-text-secondary);
-  user-select:none;
-}
-.checkbox-rag input{ width:18px; height:18px; }
+.debate-create-body .rag-label{ color:#fff; opacity:.9; font-size:.95rem; }
 
-/* Footer — CTA centré large */
-.debate-create-footer{
-  display:flex; justify-content:center; align-items:center;
+/* RAG Power (SVG rouge/vert, scopé Débat) */
+.debate-create-body .rag-power{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:34px; height:34px; border-radius:50%;
+  background: rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.25);
+  cursor:pointer;
+  transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
 }
-.debate-create-footer .button-xxl{
-  min-width: 420px;
-  padding: 18px 32px;
-  font-size: 1.15rem;
-  border-radius: 999px;
+.debate-create-body .rag-power:hover{ transform: translateY(-1px); background: rgba(255,255,255,.12); }
+.debate-create-body .rag-power .icon-power{ width:22px; height:22px; }
+.debate-create-body .rag-power .power-line,
+.debate-create-body .rag-power .power-circle{
+  fill:none; stroke: var(--rag-off); stroke-width:2.25; stroke-linecap:round; stroke-linejoin:round;
+  transition: stroke .2s ease, filter .2s ease;
+}
+.debate-create-body .rag-power[aria-checked="true"] .power-line,
+.debate-create-body .rag-power[aria-checked="true"] .power-circle{
+  stroke: var(--rag-on);
+  filter: drop-shadow(0 0 6px rgba(16,185,129,.65));
 }
 
-/* ===== Vue Déroulé (log) — identique V37 ===== */
+/* ===== Vue Déroulé ===== */
 
 .debate-timeline{ display:flex; flex-direction:column; gap:18px; padding:var(--space-4) 0; }
 .timeline-turn-separator{ position:relative; display:flex; justify-content:center; align-items:center; color:var(--color-text-secondary); font-size:.85rem; }
@@ -193,7 +196,7 @@
 .timeline-turn-separator::after{ right:0; }
 .timeline-turn-separator>span{ display:inline-block; padding:0 var(--space-3); background:transparent; }
 
-/* Centrage robuste des bulles (override chat.css) */
+/* Centrage bulles (override chat.css) */
 .debate-timeline .message{ display:flex; width:100%; margin:0; }
 .debate-timeline .message-content{
   width:var(--debateBubbleW) !important;

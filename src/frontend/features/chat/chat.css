@@ -1,6 +1,5 @@
 /* src/frontend/features/chat/chat.css */
-/* V11 — scope strict au chat, pas d'override global. Pas de largeur figée
-   hors conteneur, toggle stylé uniquement dans .chat-container. */
+/* V11.2 — Ajout styles RAG "Power" rouge/vert (IEC 60417-5007) + scope strict chat. */
 
 :root{
   --glass-bg: rgba(22,22,26,.55);
@@ -14,11 +13,14 @@
   --chat-bubble-width: 900px;
   --bubbleW: min(var(--chat-bubble-width), 90%);
 
-  --color-anima:#e11d48;
+  --color-anima:#e11d48; /* Rouge "OFF" */
   --color-neo:#2563eb;
-  --color-nexus:#10b981;
-  --user-hex: #6a0dad; /* violet foncé */
+  --color-nexus:#10b981; /* Vert "ON"  */
+  --user-hex: #6a0dad;
   --bubble-tint: 80%;
+
+  --rag-off: var(--color-anima);
+  --rag-on:  var(--color-nexus);
 }
 
 .chat-container{
@@ -47,7 +49,7 @@
 .sender-name { font-family: 'Comic Sans MS', cursive, sans-serif; }
 .message-time { font-size: 0.7rem; opacity: 0.75; }
 
-/* >>> largeur NON figée en dehors du conteneur chat <<< */
+/* Largeur des bulles */
 .chat-container .message-content{
   width:100%;
   max-width: var(--bubbleW);
@@ -63,7 +65,7 @@
   box-shadow:0 8px 24px rgba(0,0,0,.25), 0 0 22px rgba(255,255,255,.07);
 }
 
-/* Halo + couleurs par rôle/agent (scopé) */
+/* Couleurs par rôle/agent */
 .chat-container .message.assistant.anima .message-text{
   background: color-mix(in srgb, #ff496a var(--bubble-tint), transparent);
   color:#fff;
@@ -98,35 +100,35 @@
 .chat-input:focus{ border-color:var(--user-hex); background:rgba(255,255,255,.08); outline:none; }
 .chat-send-button{ width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; }
 
-/* Actions header : wrap en mobile */
-.chat-actions{ display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
+/* Actions */
+.chat-actions{ display:flex; gap:.75rem; flex-wrap:wrap; align-items:center; }
 
-/* ============================= */
-/* Toggle “métal” — SCOPÉ au chat */
-/* ============================= */
-.chat-container .toggle.toggle-metal{ display:inline-flex; align-items:center; gap:.5rem; }
-.chat-container .toggle.toggle-metal .toggle-track{
-  position:relative; width:56px; height:28px; border-radius:999px;
-  background:rgba(255,255,255,.16);
-  border:1px solid rgba(255,255,255,.35);
-  transition:background .2s ease, border-color .2s ease;
+/* =============================== */
+/* RAG Power (SVG rouge/vert)      */
+/* =============================== */
+.chat-container .rag-label{ color:#fff; opacity:.9; font-size:.95rem; }
+.chat-container .rag-power{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:34px; height:34px; border-radius:50%;
+  background: rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.25);
+  cursor:pointer;
+  transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
 }
-.chat-container .toggle.toggle-metal .toggle-thumb{
-  position:absolute; top:2px; left:2px; width:24px; height:24px; border-radius:50%;
-  background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.45);
-  transition:left .2s ease;
+.chat-container .rag-power:hover{ transform: translateY(-1px); background: rgba(255,255,255,.12); }
+.chat-container .rag-power .icon-power{ width:22px; height:22px; }
+.chat-container .rag-power .power-line,
+.chat-container .rag-power .power-circle{
+  fill:none; stroke: var(--rag-off); stroke-width:2.25; stroke-linecap:round; stroke-linejoin:round;
+  transition: stroke .2s ease, filter .2s ease;
 }
-.chat-container .toggle.toggle-metal[aria-checked="true"] .toggle-thumb{ left:calc(100% - 26px); }
-.chat-container .toggle.toggle-metal[aria-checked="true"] .toggle-track{
-  background: color-mix(in srgb, var(--user-hex) 45%, rgba(255,255,255,.16));
-  border-color: rgba(255,255,255,.5);
+.chat-container .rag-power[aria-checked="true"] .power-line,
+.chat-container .rag-power[aria-checked="true"] .power-circle{
+  stroke: var(--rag-on);
+  filter: drop-shadow(0 0 6px rgba(16,185,129,.65));
 }
-.chat-container .toggle-label{ font-size:.85rem; opacity:.9; }
 
 @media (max-width: 430px){
   .chat-send-button{ width:44px; height:44px; border:1px solid rgba(255,255,255,.4); border-radius:10px; }
   .chat-actions .button{ padding:.6rem .8rem; }
-  .chat-container .toggle.toggle-metal .toggle-track{ width:64px; height:32px; }
-  .chat-container .toggle.toggle-metal .toggle-thumb{ width:28px; height:28px; }
-  .chat-container .toggle.toggle-metal[aria-checked="true"] .toggle-thumb{ left:calc(100% - 30px); }
 }

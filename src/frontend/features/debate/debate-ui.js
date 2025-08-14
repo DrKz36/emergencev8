@@ -1,6 +1,6 @@
 /**
  * src/frontend/features/debate/debate-ui.js
- * V36.2 — layout PC selon schéma : config-grid 2×2, RAG (checkbox) sous config, CTA centré large.
+ * V36.5 — RAG "Power" SVG rouge/vert + Médiateur autonome (agent restant) + layout PC
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
@@ -11,7 +11,7 @@ export class DebateUI {
     this.eventBus = eventBus;
     this.localState = {};
     try { loadCSS('../features/debate/debate.css'); } catch (_) {}
-    console.log('✅ DebateUI V36.2 prêt (CSS chargée).');
+    console.log('✅ DebateUI V36.5 prêt (CSS chargée).');
   }
 
   render(container, debateState) {
@@ -71,10 +71,18 @@ export class DebateUI {
 
             <!-- RAG (optionnel) -->
             <div class="rag-row">
-              <label class="checkbox-rag" for="debate-rag">
-                <input id="debate-rag" type="checkbox" />
-                <span>Activer RAG (recherche documentaire)</span>
-              </label>
+              <span class="rag-label">RAG</span>
+              <button
+                id="debate-rag-power"
+                class="rag-power"
+                role="switch"
+                aria-checked="false"
+                title="RAG désactivé">
+                <svg viewBox="0 0 24 24" class="icon-power" aria-hidden="true" focusable="false">
+                  <path class="power-line" d="M12 3 v7" />
+                  <path class="power-circle" d="M6.5 7.5a7 7 0 1 0 11 0" />
+                </svg>
+              </button>
             </div>
           </div>
 
@@ -88,18 +96,20 @@ export class DebateUI {
 
     this.localState = { ...defaultState };
     this._bindCreationEvents(container);
-    this._updateAgentSelection(container);
+    this._updateAgentSelection(container); // initialise médiateur affiché
   }
 
   _bindCreationEvents(container) {
     const topicEl = container.querySelector('#debate-topic');
-    const ragInput = container.querySelector('#debate-rag');
+    const ragBtn = container.querySelector('#debate-rag-power');
 
     this._bindSegClicks(container.querySelector('#attacker-selector'), v => {
-      this.localState.attacker = v; this._updateAgentSelection(container);
+      this.localState.attacker = v;
+      this._updateAgentSelection(container);
     });
     this._bindSegClicks(container.querySelector('#challenger-selector'), v => {
-      this.localState.challenger = v; this._updateAgentSelection(container);
+      this.localState.challenger = v;
+      this._updateAgentSelection(container);
     });
     this._bindSegClicks(container.querySelector('#rounds-selector'), v => {
       this.localState.rounds = Number(v);
@@ -107,9 +117,13 @@ export class DebateUI {
 
     topicEl?.addEventListener('input', (e) => { this.localState.topic = e.target.value || ''; });
 
-    ragInput?.addEventListener('change', (e) => {
-      this.localState.use_rag = !!e.target.checked;
-      this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, { enabled: this.localState.use_rag });
+    ragBtn?.addEventListener('click', () => {
+      const on = ragBtn.getAttribute('aria-checked') === 'true';
+      const next = !on;
+      ragBtn.setAttribute('aria-checked', String(next));
+      ragBtn.setAttribute('title', next ? 'RAG activé' : 'RAG désactivé');
+      this.localState.use_rag = next;
+      this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, { enabled: next });
     });
 
     container.querySelector('#create-debate-btn')?.addEventListener('click', () => {
@@ -118,10 +132,11 @@ export class DebateUI {
         this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type:'warning', message:'Le sujet du débat est trop court.' });
         return;
       }
+      const mediatorId = this._computeMediatorId();
       const config = {
         topic,
         rounds: this.localState.rounds,
-        agent_order: [this.localState.attacker, this.localState.challenger, 'nexus'],
+        agent_order: [this.localState.attacker, this.localState.challenger, mediatorId],
         use_rag: this.localState.use_rag
       };
       this.eventBus.emit(EVENTS.DEBATE_CREATE, config);
@@ -150,14 +165,33 @@ export class DebateUI {
   }
 
   _updateAgentSelection(container) {
+    // Si A == C, choisir automatiquement un challenger différent d'A (Nexus autorisé).
     if (this.localState.attacker === this.localState.challenger) {
-      this.localState.challenger = Object.keys(AGENTS).find(k => k !== this.localState.attacker && k !== 'nexus') || 'neo';
+      const next = Object.keys(AGENTS).find(k => k !== this.localState.attacker) || this.localState.challenger;
+      this.localState.challenger = next;
       this._setSeg(container.querySelector('#challenger-selector'), this.localState.challenger);
     }
+    // Mettre à jour l’UI du médiateur selon l’agent restant.
+    this._updateMediatorUI(container);
+  }
+
+  _computeMediatorId() {
+    const all = Object.keys(AGENTS);
+    const { attacker, challenger } = this.localState;
+    return (
+      all.find(k => k !== attacker && k !== challenger) || // agent restant
+      all.find(k => k !== attacker) ||                     // fallback
+      all[0] || 'nexus'
+    );
+  }
+
+  _updateMediatorUI(container) {
     const el = container.querySelector('#mediator-info');
-    el?.classList.remove('agent--anima','agent--neo','agent--nexus');
-    el?.classList.add('agent--nexus');   // Nexus confirmé (backend)
-    if (el) el.textContent = AGENTS['nexus']?.name || 'Nexus';
+    if (!el) return;
+    const mediatorId = this._computeMediatorId();
+    el.classList.remove('agent--anima','agent--neo','agent--nexus');
+    el.classList.add(`agent--${mediatorId}`);
+    el.textContent = AGENTS[mediatorId]?.name || mediatorId;
   }
 
   _setSeg(el, val){ el?.querySelectorAll('.button-tab').forEach(b => b.classList.toggle('active', b.dataset.value === val)); }
