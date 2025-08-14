@@ -1,9 +1,8 @@
 ﻿/* src/frontend/features/debate/debate.css */
-/* V37 — layout PC exact (grille 2×2), centrage bulles override chat.css,
-   textarea sujet large, toggle métal lisible, responsive mobile propre. */
+/* V38 — layout PC exact (schéma), cadre "Configuration", RAG sous config, CTA centré.
+   Déroulé/timeline identiques à V37 ; responsive mobile 1 colonne. */
 
 :root{
-  /* Verre & couleurs (aligné _layout.css / _typography.css) */
   --glass-bg: rgba(22,22,26,.55);
   --glass-blur: 18px;
   --glass-border-color: rgba(255,255,255,.10);
@@ -18,12 +17,10 @@
 
   --color-background-secondary: rgba(255,255,255,.02);
   --color-background-tertiary: rgba(255,255,255,.035);
-  --color-background-light: rgba(255,255,255,.06);
 
   --border-color: rgba(255,255,255,.18);
   --border-width: 1px;
 
-  /* Rythme */
   --space-2:.5rem;
   --space-3:.75rem;
   --space-4:1rem;
@@ -31,20 +28,16 @@
   --space-8:1.75rem;
   --space-12:2.5rem;
 
-  /* Typo */
   --text-base: 1rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
   --weight-medium: 500;
   --weight-semibold: 600;
 
-  /* Débat : largeur visuelle des bulles */
   --debateBubbleW: min(920px, 92vw);
 }
 
-/* ======================== */
-/* === Wrapper + Card   === */
-/* ======================== */
+/* ===== Wrapper + Card ===== */
 
 .debate-view-wrapper{
   width:100%;
@@ -69,64 +62,75 @@
 .card-body{ padding:var(--space-6); }
 .card-footer{ padding:var(--space-6); }
 
-/* ======================= */
-/* === Vue Création UI === */
-/* ======================= */
+/* ===== Vue Création ===== */
 
-/* Grille par zones nommées : 
-   Sujet (plein), puis 1ère ligne Attaquant/Challenger, 2e ligne Rounds/Médiateur */
+/* Structure de la page de création :
+   - Sujet (plein) 
+   - config-grid (2x2)
+   - rag-row (ligne RAG)
+*/
 .debate-create-body{
-  display: grid;
+  display:grid;
+  grid-template-columns: 1fr;
+  row-gap: var(--space-8);
+  grid-template-areas:
+    "topic"
+    "config"
+    "rag";
+}
+
+/* Sujet */
+.debate-create-body .form-topic{ grid-area: topic; }
+.debate-create-body .form-group > label{
+  display:block; margin-bottom: var(--space-4);
+}
+.debate-create-body .form-topic .input-text{
+  width:100%;
+  min-height:16rem;         /* ~256px, confortable */
+  resize:vertical;
+}
+
+/* Cadre pointillé "Configuration" (2x2) */
+.debate-create-body .config-grid{ 
+  grid-area: config;
+  position:relative;
+  padding: var(--space-6);
+  border:1px dashed var(--glass-border-color);
+  border-radius: 14px;
+  display:grid;
   grid-template-columns: 1fr 1fr;
   column-gap: var(--space-8);
   row-gap: var(--space-6);
-  align-items:start;
   grid-template-areas:
-    "topic topic"
     "attacker challenger"
-    "rounds mediator";
+    "rounds   mediator";
+}
+.debate-create-body .config-grid::before{
+  content:"Configuration";
+  position:absolute;
+  top:-0.75rem; left:1rem;
+  padding:0 .4rem;
+  font-size:.95rem;
+  color: var(--color-text-secondary);
+  background: var(--glass-bg);
 }
 
-/* “+1 espace” sous les labels */
-.debate-create-body .form-group > label{
-  display:block;
-  margin-bottom: var(--space-4);
-}
-
-.debate-create-body .form-topic{ grid-area: topic; }
+/* Slots de la config */
 .debate-create-body .form-attacker{ grid-area: attacker; }
 .debate-create-body .form-challenger{ grid-area: challenger; }
 .debate-create-body .form-rounds{ grid-area: rounds; }
 .debate-create-body .form-mediator{ grid-area: mediator; }
-
-/* Espaces supplémentaires sous les groupes de sélection */
 .debate-create-body .form-attacker,
 .debate-create-body .form-challenger,
 .debate-create-body .form-rounds,
-.debate-create-body .form-mediator{ margin-bottom: var(--space-4); }
+.debate-create-body .form-mediator{ margin-bottom: var(--space-2); }
 
-/* Sujet large + hauteur confortable */
-.debate-create-body .form-topic .input-text{
-  width:100%;
-  min-height:12rem;       /* ~200px */
-  resize:vertical;
-}
-
-/* Footer de création */
-.debate-create-footer{
-  display:grid; grid-template-columns: 1fr auto 1fr; align-items:center;
-}
-.debate-create-footer .footer-left{ justify-self:start; }
-.debate-create-footer .footer-center{ justify-self:center; }
-.debate-create-footer .footer-right{ justify-self:end; }
-.debate-create-footer .footer-center .button{ min-width:220px; }
-
-/* Segmented (tabs) */
+/* Segmented */
 .segmented{ display:flex; gap:.5rem; flex-wrap:wrap; }
 .button-tab{ padding:.45rem .9rem; border:none; background:transparent; cursor:pointer; }
-
-/* Tabs actifs colorés par agent (override styles globaux) */
 .debate-create-body .button-tab.active{ border-bottom:2px solid currentColor; }
+
+/* Tabs actifs colorés par agent */
 .debate-create-body .button-tab.agent--anima.active{
   color: var(--color-anima) !important;
   border-bottom-color: var(--color-anima) !important;
@@ -143,9 +147,41 @@
   box-shadow: 0 0 10px rgba(16,185,129,.45) !important;
 }
 
-/* ======================= */
-/* === Vue Déroulé (log) == */
-/* ======================= */
+/* Affichage "Synthèse par" (Nexus figé) */
+.mediator-display{
+  display:inline-block;
+  padding:.55rem 1rem;
+  border:1px solid var(--glass-border-color);
+  border-radius: 10px;
+  background: var(--color-background-tertiary);
+  min-width: 120px;
+  text-align: center;
+}
+
+/* Ligne RAG (optionnel) */
+.debate-create-body .rag-row{
+  grid-area: rag;
+  display:flex; align-items:center; gap:.75rem;
+}
+.checkbox-rag{
+  display:inline-flex; align-items:center; gap:.75rem;
+  color: var(--color-text-secondary);
+  user-select:none;
+}
+.checkbox-rag input{ width:18px; height:18px; }
+
+/* Footer — CTA centré large */
+.debate-create-footer{
+  display:flex; justify-content:center; align-items:center;
+}
+.debate-create-footer .button-xxl{
+  min-width: 420px;
+  padding: 18px 32px;
+  font-size: 1.15rem;
+  border-radius: 999px;
+}
+
+/* ===== Vue Déroulé (log) — identique V37 ===== */
 
 .debate-timeline{ display:flex; flex-direction:column; gap:18px; padding:var(--space-4) 0; }
 .timeline-turn-separator{ position:relative; display:flex; justify-content:center; align-items:center; color:var(--color-text-secondary); font-size:.85rem; }
@@ -157,14 +193,9 @@
 .timeline-turn-separator::after{ right:0; }
 .timeline-turn-separator>span{ display:inline-block; padding:0 var(--space-3); background:transparent; }
 
-/* >>> Centrage robuste des bulles (override chat.css) <<< */
-.debate-timeline .message{
-  display:flex;
-  width:100%;
-  margin:0;                 /* pas d’offset parasite */
-}
+/* Centrage robuste des bulles (override chat.css) */
+.debate-timeline .message{ display:flex; width:100%; margin:0; }
 .debate-timeline .message-content{
-  /* chat.css force une largeur globale : on écrase ici pour le module débat */
   width:var(--debateBubbleW) !important;
   max-width:var(--debateBubbleW) !important;
   min-width:var(--debateBubbleW) !important;
@@ -188,59 +219,27 @@
 .message.assistant.agent--neo     .message-text{ background: color-mix(in srgb, var(--color-neo) 22%, transparent); }
 .message.assistant.agent--nexus   .message-text{ background: color-mix(in srgb, var(--color-nexus) 22%, transparent); }
 
-/* Synthèse : italique du corps + en-tête “Synthèse par …” teinté */
+/* Synthèse : italique */
 .debate-timeline .message.assistant.synthesis .message-text{ font-style: italic; }
 .debate-timeline .message.assistant.agent--anima .sender-name{ color:#ffd3db; }
 .debate-timeline .message.assistant.agent--neo   .sender-name{ color:#cfe7ff; }
 .debate-timeline .message.assistant.agent--nexus .sender-name{ color:#b1fcd4; }
 
-/* =================== */
-/* === Toggle métal === */
-/* =================== */
-.toggle.toggle-metal{ display:inline-flex; align-items:center; gap:.5rem; }
-.toggle.toggle-metal .toggle-track{
-  position:relative; width:56px; height:28px; border-radius:999px;
-  background:rgba(255,255,255,.16);
-  border:1px solid rgba(255,255,255,.35);
-  transition:background .2s ease, border-color .2s ease;
-}
-.toggle.toggle-metal .toggle-thumb{
-  position:absolute; top:2px; left:2px; width:24px; height:24px; border-radius:50%;
-  background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.45);
-  transition:left .2s ease;
-}
-.toggle.toggle-metal[aria-checked="true"] .toggle-thumb{ left:calc(100% - 26px); }
-.toggle.toggle-metal[aria-checked="true"] .toggle-track{
-  background: color-mix(in srgb, var(--color-nexus) 45%, rgba(255,255,255,.16));
-  border-color: rgba(255,255,255,.5);
-}
-.toggle-label{ font-size:.85rem; opacity:.9; }
-
-/* =============== */
-/* === Responsive */
-/* =============== */
+/* ===== Responsive ===== */
 
 @media (max-width: 900px){
-  .debate-create-body{
+  .debate-create-body .config-grid{
     grid-template-columns: 1fr;
     grid-template-areas:
-      "topic"
       "attacker"
       "challenger"
       "rounds"
       "mediator";
   }
-  .debate-create-footer{ grid-template-columns: 1fr; }
-  .debate-create-footer .footer-left{ order:1; justify-self:start; }
-  .debate-create-footer .footer-center{ order:2; justify-self:stretch; }
+  .debate-create-footer .button-xxl{ width:100%; min-width:0; }
 }
 
 @media (max-width: 430px){
-  .debate-create-footer{ grid-template-columns: 1fr; row-gap:.5rem; }
-  .debate-create-footer .footer-center .button{ width:100%; }
-  .debate-create-footer .footer-left{ order:2; }
-  .debate-create-footer .footer-center{ order:1; }
-  .toggle.toggle-metal .toggle-track{ width:64px; height:32px; }
-  .toggle.toggle-metal .toggle-thumb{ width:28px; height:28px; }
-  .toggle.toggle-metal[aria-checked="true"] .toggle-thumb{ left:calc(100% - 30px); }
+  .debate-create-footer{ padding-top:0; }
+  .debate-create-footer .button-xxl{ width:100%; }
 }

@@ -1,28 +1,27 @@
 /**
  * src/frontend/features/debate/debate-ui.js
- * V35 — Synthèse DANS la timeline (alignée, +3 espaces), Nexus VERT + halo, italique.
+ * V36.2 — layout PC selon schéma : config-grid 2×2, RAG (checkbox) sous config, CTA centré large.
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
+import { loadCSS } from '../../core/utils.js';
 
 export class DebateUI {
   constructor(eventBus) {
     this.eventBus = eventBus;
     this.localState = {};
-    console.log('✅ DebateUI V35 prêt.');
+    try { loadCSS('../features/debate/debate.css'); } catch (_) {}
+    console.log('✅ DebateUI V36.2 prêt (CSS chargée).');
   }
 
   render(container, debateState) {
     if (!container) return;
-
     const showHistory = Array.isArray(debateState?.history) && debateState.history.length > 0;
-    if (showHistory || debateState?.status) {
-      return this.renderDebateView(container, debateState);
-    }
+    if (showHistory || debateState?.status) return this.renderDebateView(container, debateState);
     return this.renderCreationView(container);
   }
 
-  /* ──────────────── Vue Création ──────────────── */
+  /* ───────────── Vue Création ───────────── */
   renderCreationView(container) {
     const defaultState = { topic:'', attacker:'anima', challenger:'neo', rounds:2, use_rag:false };
     const agentOptions = Object.values(AGENTS).map(a => ({ value:a.id, label:a.name }));
@@ -36,48 +35,52 @@ export class DebateUI {
           </div>
 
           <div class="card-body debate-create-body">
+            <!-- Sujet -->
             <div class="form-group form-topic">
               <label for="debate-topic">Sujet du Débat</label>
               <textarea id="debate-topic" class="input-text" rows="3"
                 placeholder="Ex: L'IA peut-elle développer une conscience authentique ?"></textarea>
             </div>
 
-            <div class="form-group form-attacker">
-              <label>Attaquant</label>
-              ${this._seg('attacker-selector', agentOptions, defaultState.attacker, true)}
+            <!-- Cadre CONFIGURATION (2×2) -->
+            <div class="config-grid">
+              <div class="form-group form-attacker">
+                <label>Attaquant</label>
+                ${this._seg('attacker-selector', agentOptions, defaultState.attacker, true)}
+              </div>
+
+              <div class="form-group form-challenger">
+                <label>Challenger</label>
+                ${this._seg('challenger-selector', agentOptions, defaultState.challenger, true)}
+              </div>
+
+              <div class="form-group form-rounds">
+                <label>Nombre de Rounds</label>
+                ${this._seg('rounds-selector', [
+                    {value:1,label:'1 round'},
+                    {value:2,label:'2 rounds'},
+                    {value:3,label:'3 rounds'}
+                  ], defaultState.rounds, false)}
+              </div>
+
+              <div class="form-group form-mediator">
+                <label>Synthèse par</label>
+                <span id="mediator-info" class="mediator-display agent--nexus">Nexus</span>
+              </div>
             </div>
 
-            <div class="form-group form-challenger">
-              <label>Challenger</label>
-              ${this._seg('challenger-selector', agentOptions, defaultState.challenger, true)}
-            </div>
-
-            <div class="form-group form-rounds">
-              <label>Nombre de Rounds</label>
-              ${this._seg('rounds-selector', [
-                  {value:1,label:'1 Round'},
-                  {value:2,label:'2 Rounds'},
-                  {value:3,label:'3 Rounds'}
-                ], defaultState.rounds, false)}
-            </div>
-
-            <div class="form-group form-mediator">
-              <label>Synthèse par</label>
-              <span id="mediator-info" class="mediator-display agent--nexus">Nexus</span>
+            <!-- RAG (optionnel) -->
+            <div class="rag-row">
+              <label class="checkbox-rag" for="debate-rag">
+                <input id="debate-rag" type="checkbox" />
+                <span>Activer RAG (recherche documentaire)</span>
+              </label>
             </div>
           </div>
 
+          <!-- CTA -->
           <div class="card-footer debate-create-footer">
-            <div class="footer-left">
-              <button type="button" class="toggle toggle-metal rag-toggle action-rag-toggle" role="switch" aria-checked="false" title="Activer/Désactiver RAG">
-                <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                <span class="toggle-label">RAG</span>
-              </button>
-            </div>
-            <div class="footer-center">
-              <button id="create-debate-btn" class="button button-primary">Lancer le Débat</button>
-            </div>
-            <div class="footer-right"></div>
+            <button id="create-debate-btn" class="button button-primary button-xxl">Lancer le Débat</button>
           </div>
         </div>
       </div>
@@ -90,7 +93,7 @@ export class DebateUI {
 
   _bindCreationEvents(container) {
     const topicEl = container.querySelector('#debate-topic');
-    const ragBtn = container.querySelector('.rag-toggle');
+    const ragInput = container.querySelector('#debate-rag');
 
     this._bindSegClicks(container.querySelector('#attacker-selector'), v => {
       this.localState.attacker = v; this._updateAgentSelection(container);
@@ -104,10 +107,8 @@ export class DebateUI {
 
     topicEl?.addEventListener('input', (e) => { this.localState.topic = e.target.value || ''; });
 
-    ragBtn?.addEventListener('click', () => {
-      const on = ragBtn.getAttribute('aria-checked') === 'true';
-      ragBtn.setAttribute('aria-checked', String(!on));
-      this.localState.use_rag = !on;
+    ragInput?.addEventListener('change', (e) => {
+      this.localState.use_rag = !!e.target.checked;
       this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, { enabled: this.localState.use_rag });
     });
 
@@ -155,13 +156,13 @@ export class DebateUI {
     }
     const el = container.querySelector('#mediator-info');
     el?.classList.remove('agent--anima','agent--neo','agent--nexus');
-    el?.classList.add('agent--nexus');   // Nexus confirmé
+    el?.classList.add('agent--nexus');   // Nexus confirmé (backend)
     if (el) el.textContent = AGENTS['nexus']?.name || 'Nexus';
   }
 
   _setSeg(el, val){ el?.querySelectorAll('.button-tab').forEach(b => b.classList.toggle('active', b.dataset.value === val)); }
 
-  /* ──────────────── Vue Déroulé ──────────────── */
+  /* ───────────── Vue Déroulé ───────────── */
   renderDebateView(container, state) {
     const order = state.config?.agentOrder || state.config?.agent_order || [];
     const attackerId = order[0] || state.config?.attacker || 'anima';
@@ -216,7 +217,6 @@ export class DebateUI {
     }).join('');
   }
 
-  /* Synthèse = bulle identique aux messages agents (alignée + italique du corps) */
   _buildSynthesis(text, synthesizerId, synthesizerName) {
     return `
       <div class="message assistant agent--${synthesizerId} synthesis">
