@@ -1,0 +1,14 @@
+@"
+.venv
+__pycache__/
+*.pyc
+.git
+.gitignore
+docs/
+tests/
+*.log
+node_modules/
+dist/
+build/
+.DS_Store
+"@ | Set-Content .dockerignore -Encoding UTF8

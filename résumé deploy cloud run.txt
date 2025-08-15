@@ -1,0 +1,118 @@
+Voici la **version mise à jour** de ton `resume_global_cloudrun_emergence`, intégrant les infos récentes de la session pour que tu puisses **reprendre plus tard sans perte ni ambiguïté**.
+
+---
+
+# **Résumé Global – Déploiement & Tests Cloud Run – ÉMERGENCE (MAJ 2025-08-14)**
+
+## 1. **Contexte & Objectifs**
+
+* **Projet** : ÉMERGENCE – Backend **FastAPI** multi-agents IA (**Anima, Neo, Nexus**) + gestion documents, débats, dashboard.
+* **Cible** : Déploiement **Google Cloud Run**.
+* **Ressources** :
+
+  * Projet GCP : `emergence-469005`
+  * Service : `emergence-app`
+  * Région : `europe-west1`
+  * Secrets API : `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `ANTHROPIC_API_KEY` via **Secret Manager**.
+* **Config Cloud Run** :
+
+  * RAM : **2 GiB** (CPU=2, timeout=900 s)
+  * `CHROMA_TELEMETRY_ENABLED=FALSE`
+  * Région par défaut : `gcloud config set run/region europe-west1`
+* **Objectif général** :
+  Assurer un déploiement stable, valider endpoints API, corriger les erreurs détectées.
+
+---
+
+## 2. **Déploiement & Configuration**
+
+* **IAM** :
+
+  * `roles/secretmanager.secretAccessor` → SA Cloud Run.
+  * `roles/run.invoker` → `gonzalefernando@gmail.com`.
+  * **MAJ 14/08** : ajout `roles/artifactregistry.reader` au SA d’exécution
+    `486095406755-compute@developer.gserviceaccount.com`.
+* **Commandes de déploiement** :
+
+  * Tentative `gcloud run deploy --source .` → **ContainerImageImportFailed**.
+  * Build Cloud Build OK → image poussée dans `cloud-run-source-deploy` mais **non importée**.
+* **URL Service** :
+  `https://emergence-app-47nct44nma-ew.a.run.app`
+
+---
+
+## 3. **Tests Fonctionnels API**
+
+### 3.1 `/api/health`
+
+✅ `{"status":"ok","message":"Emergence Backend is running."}`
+
+### 3.2 Module Documents
+
+* Upload TXT → ✅
+* Upload PDF invalide → ❌ 500 (`PyMuPDF FzErrorFormat code=7`)
+* Upload PDF valide → ✅
+* CRUD complet → ✅
+* Nettoyage des “pending” après PDF invalides → ✅
+
+### 3.3 Routes disponibles
+
+* `/api/health` (GET)
+* `/api/documents`, `/api/documents/{document_id}` (GET/DELETE)
+* `/api/documents/upload` (POST)
+* `/api/debate/` (GET)
+* `/api/debate/{debate_id}` (GET)
+* `/api/dashboard/costs/summary` (GET)
+  **Absents** : `/api/chat`, POST `/api/debate/`.
+
+### 3.4 Module Dashboard
+
+✅ GET `/api/dashboard/costs/summary`
+
+### 3.5 Module Débat
+
+* Local → ✅ `GET /api/debate/` retourne `{"active_debates":[]}`
+* Prod (ancienne image) → ❌ `GET /api/debate/` = 500 (`AttributeError: 'Provide' object has no attribute 'active_debates'`)
+* `GET /api/debate/{debate_id}` non testé (aucun débat en base).
+
+---
+
+## 4. **Analyse Problèmes & Résolutions**
+
+* **PDF invalide → 500** : résolu par PDF valide ; nécessite validation côté backend.
+* **OOM initial** : corrigé par RAM=2 GiB ; optimisations possibles.
+* **/api/debate/ 500** : bug DI corrigé en local mais non déployé en prod (ancienne image toujours active).
+* **ContainerImageImportFailed** : lié à IAM/dépôt image → suspicion sur dépôt ou service account utilisé.
+* **Absence POST chat/débat** : à implémenter.
+
+---
+
+## 5. **Étapes Suivantes**
+
+### Backend
+
+* Validation stricte PDF + `try/except` PyMuPDF.
+* Corriger `/api/debate/` en prod (forcer déploiement image corrigée).
+* Ajouter POST `/api/debate/` + garde-fou 503 si DI KO.
+
+### Déploiement
+
+* Identifier **URI exacte** image Cloud Build.
+* Vérifier dépôt cible + droits `artifactregistry.reader`.
+* Re-déployer avec `--service-account` explicite.
+* **Alternative** : build local + push → `emergence-repo`.
+
+### Tests
+
+* CRUD complet documents/débats.
+* Smoke tests `/api/health` et `/api/debate/`.
+
+### Optimisations
+
+* Init lazy embeddings.
+* `--min-instances=1` pour warm-start.
+
+---
+
+Veux-tu que je te prépare **tout de suite** la **version mise à jour du PDF** avec ce contenu pour remplacer `resume_global_cloudrun_emergence.pdf` ?
+Comme ça tu repars plus tard avec un doc prêt à l’emploi.

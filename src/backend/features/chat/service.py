@@ -1,5 +1,5 @@
 # src/backend/features/chat/service.py
-# V29.1 - UNIFIED COSTING + DEBUG CONTEXT + OFF ISOLATION
+# V29.2 - STREAM ROBUST + FALLBACK + ANTHROPIC FORMAT + SAFE MODEL FOR 'ANIMA'
 import os
 import re
 import asyncio
@@ -26,9 +26,7 @@ from backend.core import config
 
 logger = logging.getLogger(__name__)
 
-# --- CORRECTION V29.0: Grille tarifaire unifiée ---
-# Source de vérité unique pour tous les coûts des modèles.
-# Les prix sont par token, pour un calcul direct.
+# --- Grille tarifaire unifiée (inchangée) ---
 MODEL_PRICING = {
     # OpenAI
     "gpt-4o-mini": {"input": 0.15 / 1_000_000, "output": 0.60 / 1_000_000},
@@ -41,13 +39,22 @@ MODEL_PRICING = {
     "claude-3-opus-20240229": {"input": 15.00 / 1_000_000, "output": 75.00 / 1_000_000},
 }
 
+# --- Modèles stables par provider (fallback chain) ---
+SAFE_DEFAULTS = {
+    "openai": "gpt-4o-mini",
+    "anthropic": "claude-3-haiku-20240307",
+    "google": "gemini-1.5-flash",
+}
+
 
 class ChatService:
     """
-    ChatService V29.1
-    - Grille tarifaire unifiée (identique V29.0).
-    - + Instrumentation WS: ws:debug_context par réponse d'agent.
-    - + OFF isolation: 'stateless' par défaut, 'agent_local' via EMERGENCE_RAG_OFF_POLICY.
+    ChatService V29.2
+    - Timeouts/retries SDK.
+    - Fallback provider chain (openai -> anthropic -> google) en cas d'échec stream.
+    - Fallback single-shot si stream ne produit aucun chunk.
+    - Format Anthropic messages conforme (content blocks).
+    - 'anima' forcé sur OpenAI/gpt-4o-mini pour cohérence.
     """
     def __init__(
         self,
@@ -61,22 +68,31 @@ class ChatService:
         self.vector_service = vector_service
         self.settings = settings
 
-        # Politique OFF: 'stateless' (par défaut) ou 'agent_local' (env)
+        # Politique OFF
         self.off_history_policy = os.getenv("EMERGENCE_RAG_OFF_POLICY", "stateless").strip().lower()
         if self.off_history_policy not in ("stateless", "agent_local"):
             self.off_history_policy = "stateless"
         logger.info(f"ChatService OFF policy: {self.off_history_policy}")
 
         try:
-            self.openai_client = AsyncOpenAI(api_key=self.settings.openai_api_key)
+            # Timeouts/retries côté SDK
+            self.openai_client = AsyncOpenAI(
+                api_key=self.settings.openai_api_key,
+                timeout=30.0,
+                max_retries=2,
+            )
             genai.configure(api_key=self.settings.google_api_key)
-            self.anthropic_client = AsyncAnthropic(api_key=self.settings.anthropic_api_key)
+            self.anthropic_client = AsyncAnthropic(
+                api_key=self.settings.anthropic_api_key,
+                max_retries=2,
+                timeout=30.0,  # accepté dans SDK récent ; si non supporté, ignoré sans casse
+            )
         except Exception as e:
             logger.error(f"Erreur lors de l'initialisation des clients API: {e}", exc_info=True)
             raise
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V29.1 initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V29.2 initialisé. Prompts chargés: {len(self.prompts)}")
 
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
         prompts = {}
@@ -88,16 +104,30 @@ class ChatService:
                 logger.info(f"Prompt chargé pour l'agent '{agent_id}' depuis {Path(file_path).name}.")
         return prompts
 
+    def _ensure_supported(self, provider: Optional[str], model: Optional[str]) -> Tuple[str, str]:
+        """Garantit un couple (provider, model) exploitable."""
+        if not provider:
+            provider = "openai"
+        if not model:
+            model = SAFE_DEFAULTS[provider]
+        # Si modèle inconnu de la grille: on bascule sur le safe default du provider
+        if model not in MODEL_PRICING and provider in SAFE_DEFAULTS:
+            logger.warning(f"Modèle '{model}' non répertorié, fallback -> {SAFE_DEFAULTS[provider]} ({provider}).")
+            model = SAFE_DEFAULTS[provider]
+        return provider, model
+
     def _get_agent_config(self, agent_id: str) -> Tuple[str, str, str]:
         clean_agent_id = agent_id.replace('_lite', '')
         agent_configs = self.settings.agents
         provider = agent_configs.get(clean_agent_id, {}).get("provider")
         model = agent_configs.get(clean_agent_id, {}).get("model")
 
-        # --- CORRECTION V29.0: Remplacement stratégique du modèle ---
+        # Sécurisation 'anima' : impose OpenAI/gpt-4o-mini
         if clean_agent_id == 'anima':
-            model = 'gpt-4o-mini'
-            logger.info("Remplacement du modèle pour 'anima' -> 'gpt-4o-mini' pour optimiser les coûts.")
+            provider, model = "openai", "gpt-4o-mini"
+            logger.info("Remplacement du modèle pour 'anima' -> provider=openai, model=gpt-4o-mini (coût & stabilité).")
+
+        provider, model = self._ensure_supported(provider, model)
 
         system_prompt = self.prompts.get(agent_id, self.prompts.get(clean_agent_id, ""))
         if not all([provider, model, system_prompt]):
@@ -121,14 +151,26 @@ class ChatService:
 
     # --- Helpers DEBUG ---
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
-        # détecte des formats du type AZUR-8152 / ONYX-4472
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
+
+    def _to_anthropic_messages(self, history: List[Dict]) -> List[Dict]:
+        """Anthropic v1: content = list[{'type':'text','text':...}]"""
+        fixed = []
+        for m in history:
+            role = m.get("role")
+            content = m.get("content") or ""
+            fixed.append({
+                "role": role,
+                "content": [{"type": "text", "text": content}],
+            })
+        return fixed
 
     async def _process_agent_response_stream(self, session_id: str, agent_id: str, use_rag: bool, connection_manager: ConnectionManager):
         temp_message_id = str(uuid4())
         full_response_text = ""
         cost_info_container = {} 
         model_used = ""
+        chunk_count = 0
 
         try:
             await connection_manager.send_personal_message({
@@ -175,7 +217,6 @@ class ChatService:
             )
 
             # DEBUG post-normalisation
-            norm_concat = ""
             if provider == "google":
                 norm_concat = "\n".join(["".join(p.get("parts", [])) if isinstance(p.get("parts"), list) else p.get("parts", "") for p in normalized_history])
             else:
@@ -195,15 +236,70 @@ class ChatService:
                 }
             }, session_id)
 
-            response_generator = self._get_llm_response_stream(provider, model, system_prompt, normalized_history, cost_info_container)
+            # --- Streaming principal avec fallback provider si échec ---
+            response_generator = None
+            try:
+                response_generator = self._get_llm_response_stream(provider, model, system_prompt, normalized_history, cost_info_container)
+                async for chunk in response_generator:
+                    if chunk:
+                        chunk_count += 1
+                        full_response_text += chunk
+                        await connection_manager.send_personal_message({
+                            "type": "ws:chat_stream_chunk",
+                            "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}
+                        }, session_id)
+            except Exception as primary_err:
+                logger.error(f"[STREAM FAIL] provider={provider}, model={model}: {primary_err}", exc_info=True)
+                # Fallback chain
+                chain = ["openai", "anthropic", "google"]
+                if provider in chain:
+                    chain.remove(provider)
+                for fb in chain:
+                    fb_model = SAFE_DEFAULTS[fb]
+                    try:
+                        await connection_manager.send_personal_message({
+                            "type": "ws:debug_context",
+                            "payload": {"phase": "fallback", "agent_id": agent_id, "fallback_provider": fb, "fallback_model": fb_model}
+                        }, session_id)
+                        alt_history = normalized_history
+                        if fb == "anthropic":
+                            alt_history = self._to_anthropic_messages(normalized_history)
+                        async for chunk in self._get_llm_response_stream(fb, fb_model, system_prompt, alt_history, cost_info_container):
+                            if chunk:
+                                chunk_count += 1
+                                full_response_text += chunk
+                                await connection_manager.send_personal_message({
+                                    "type": "ws:chat_stream_chunk",
+                                    "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}
+                                }, session_id)
+                        if chunk_count > 0:
+                            provider, model = fb, fb_model
+                            break
+                    except Exception as fb_err:
+                        logger.error(f"[FALLBACK FAIL] provider={fb}, model={fb_model}: {fb_err}", exc_info=True)
+                        continue
 
-            async for chunk in response_generator:
-                full_response_text += chunk
-                await connection_manager.send_personal_message({
-                    "type": "ws:chat_stream_chunk",
-                    "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}
-                }, session_id)
-            
+            # --- Fallback single-shot si aucun chunk n'a été produit ---
+            if chunk_count == 0:
+                try:
+                    single_history = normalized_history
+                    p = provider
+                    m = model
+                    if p == "anthropic":
+                        single_history = self._to_anthropic_messages(normalized_history)
+                    content, _cost = await self._get_llm_response_single(p, m, system_prompt, single_history, json_mode=False)
+                    if content:
+                        full_response_text = content
+                        cost_info_container.update(_cost)
+                        await connection_manager.send_personal_message({
+                            "type": "ws:chat_stream_chunk",
+                            "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": content}
+                        }, session_id)
+                except Exception as single_err:
+                    logger.error(f"[SINGLE-SHOT FAIL] provider={provider}, model={model}: {single_err}", exc_info=True)
+                    raise single_err
+
+            # --- Persist & coût ---
             final_agent_message = AgentMessage(
                 id=temp_message_id,
                 session_id=session_id,
@@ -245,18 +341,11 @@ class ChatService:
                 logger.error(f"Impossible d'envoyer le message d'erreur au client pour la session {session_id}: {send_error}", exc_info=True)
 
     def _normalize_history_for_llm(self, provider: str, history: List[Dict], rag_context: str = "", use_rag: bool = False, agent_id: Optional[str] = None) -> List[Dict]:
-        """
-        - Si rag_context est fourni, il est injecté dans le dernier message utilisateur.
-        - Si use_rag=False, applique la politique OFF:
-            * 'stateless': ne conserve que le dernier message utilisateur
-            * 'agent_local': conserve les derniers tours de l'agent cible + user
-        """
         # 1) Construire une copie de l'historique selon la politique
         if use_rag:
             history_copy = list(history)
         else:
             if self.off_history_policy == "agent_local" and agent_id:
-                # On garde les 6 derniers messages pertinents pour l'agent cible
                 filtered = []
                 for m in reversed(history):
                     r = m.get('role')
@@ -267,7 +356,6 @@ class ChatService:
                         break
                 history_copy = list(reversed(filtered)) if filtered else []
             else:
-                # 'stateless': dernier message utilisateur uniquement
                 last_user_message_obj = next((msg for msg in reversed(history) if msg.get('role') == Role.USER), None)
                 history_copy = [last_user_message_obj] if last_user_message_obj else []
 
@@ -275,7 +363,7 @@ class ChatService:
         if rag_context and history_copy:
             rag_prompt = f"Contexte pertinent issu de documents:\n---\n{rag_context}\n---\nEn te basant sur ce contexte, réponds à la question suivante:"
             if history_copy[-1].get('role') == Role.USER:
-                history_copy[-1] = dict(history_copy[-1])  # éviter de muter l'original
+                history_copy[-1] = dict(history_copy[-1])
                 history_copy[-1]['content'] = f"{rag_prompt}\n{history_copy[-1].get('content', '')}"
 
         # 3) Normalisation selon le provider
@@ -294,7 +382,6 @@ class ChatService:
             if provider == "google":
                 normalized.append({"role": role, "parts": [content]})
             elif provider == "anthropic" and normalized and normalized[-1]["role"] == role:
-                # Anthropic: merge si deux mêmes rôles successifs
                 normalized[-1]["content"] += f"\n\n{content}"
             else:
                 normalized.append({"role": role, "content": content})
@@ -303,88 +390,83 @@ class ChatService:
     async def _get_llm_response_stream(
         self, provider: str, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict
     ) -> AsyncGenerator[str, None]:
-        streamer = None
         if provider == "openai":
-            streamer = self._get_openai_stream(model, system_prompt, history, cost_info_container)
+            async for c in self._get_openai_stream(model, system_prompt, history, cost_info_container):
+                yield c
         elif provider == "google":
-            streamer = self._get_gemini_stream(model, system_prompt, history, cost_info_container)
+            async for c in self._get_gemini_stream(model, system_prompt, history, cost_info_container):
+                yield c
         elif provider == "anthropic":
-            streamer = self._get_anthropic_stream(model, system_prompt, history, cost_info_container)
+            # convertit au format Anthropic si besoin (sécurité)
+            hist = history
+            if history and "content" in history[0] and not isinstance(history[0]["content"], list):
+                hist = self._to_anthropic_messages(history)
+            async for c in self._get_anthropic_stream(model, system_prompt, hist, cost_info_container):
+                yield c
         else:
             raise ValueError(f"Fournisseur LLM non supporté pour le streaming: {provider}")
-
-        if streamer:
-            async for chunk in streamer:
-                yield chunk
 
     async def _get_openai_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
         messages = [{"role": "system", "content": system_prompt}] + history
         stream = await self.openai_client.chat.completions.create(
             model=model, messages=messages, temperature=0.2, max_tokens=4000, stream=True
         )
-        
-        # --- CORRECTION V29.0: Capture de l'usage pour OpenAI ---
         final_chunk = None
         async for chunk in stream:
-            content = chunk.choices[0].delta.content or ""
-            if chunk.usage:
+            try:
+                content = (chunk.choices[0].delta.content or "")
+            except Exception:
+                content = ""
+            if hasattr(chunk, "usage") and chunk.usage:
                 final_chunk = chunk
-            yield content
-        
-        if final_chunk and final_chunk.usage:
+            if content:
+                yield content
+        if final_chunk and getattr(final_chunk, "usage", None):
             usage = final_chunk.usage
             pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
             cost = (usage.prompt_tokens * pricing["input"]) + (usage.completion_tokens * pricing["output"])
             cost_info_container.update({
                 "input_tokens": usage.prompt_tokens,
-                "output_tokens": usage.completion_tokens,
+                "output_tokens": getattr(usage, "completed_tokens", usage.completion_tokens),
                 "total_cost": cost
             })
         else:
-            logger.warning(f"Impossible de récupérer les informations de coût pour le stream OpenAI (modèle: {model}). Coûts non enregistrés.")
             cost_info_container.update({"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0, "note": "Cost not available for OpenAI streams"})
 
     async def _get_gemini_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
         model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
         response = await model_instance.generate_content_async(history, stream=True)
         async for chunk in response:
-            yield chunk.text or ""
-        
-        # --- CORRECTION V29.0: Calcul du coût pour Gemini ---
-        usage_metadata = response.usage_metadata
-        logger.info(f"Usage Gemini stream ({model}): {usage_metadata}")
-        pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
-        cost = (usage_metadata.prompt_token_count * pricing["input"]) + (usage_metadata.candidates_token_count * pricing["output"])
-        
-        cost_info_container.update({
-            "input_tokens": usage_metadata.prompt_token_count,
-            "output_tokens": usage_metadata.candidates_token_count,
-            "total_cost": cost,
-        })
+            if getattr(chunk, "text", None):
+                yield chunk.text
+        usage_metadata = getattr(response, "usage_metadata", None)
+        if usage_metadata:
+            pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
+            cost = (usage_metadata.prompt_token_count * pricing["input"]) + (usage_metadata.candidates_token_count * pricing["output"])
+            cost_info_container.update({
+                "input_tokens": usage_metadata.prompt_token_count,
+                "output_tokens": usage_metadata.candidates_token_count,
+                "total_cost": cost,
+            })
 
     async def _get_anthropic_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
         if not history:
             raise ValueError("L'historique des messages pour Anthropic ne peut pas être vide.")
-        
         async with self.anthropic_client.messages.stream(
             model=model, messages=history, system=system_prompt, temperature=0.2, max_tokens=4000
         ) as stream:
             async for text in stream.text_stream:
-                yield text
-        
-        final_message = await stream.get_final_message()
+                if text:
+                    yield text
+            final_message = await stream.get_final_message()
         usage = final_message.usage
-        # --- CORRECTION V29.0: Utilisation de la grille unifiée ---
         pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
         cost = (usage.input_tokens * pricing["input"]) + (usage.output_tokens * pricing["output"])
-        
         cost_info_container.update({
             "input_tokens": usage.input_tokens,
             "output_tokens": usage.output_tokens,
             "total_cost": cost
         })
-
-    # ... (Les méthodes non-stream restent inchangées mais bénéficieront implicitement des nouveaux tarifs si elles sont appelées)
 
     async def get_llm_response_for_debate(self, agent_id: str, history: List[Dict], session_id: str) -> Tuple[str, Dict]:
         try:
@@ -392,6 +474,8 @@ class ChatService:
             debate_prompt = history[0]['content']
             if provider == 'google':
                 normalized_history = [{'role': 'user', 'parts': [debate_prompt]}]
+            elif provider == 'anthropic':
+                normalized_history = [{'role': 'user', 'content': [{"type": "text", "text": debate_prompt}]}]
             else:
                 normalized_history = [{'role': 'user', 'content': debate_prompt}]
             
@@ -415,6 +499,8 @@ class ChatService:
             provider, model, _ = self._get_agent_config(agent_id)
             if provider == 'google':
                 history = [{'role': 'user', 'parts': [prompt]}]
+            elif provider == 'anthropic':
+                history = [{'role': 'user', 'content': [{"type": "text", "text": prompt}]}]
             else:
                 history = [{'role': 'user', 'content': prompt}]
             system_prompt = "Tu es un assistant expert en traitement de données. Tu ne réponds qu'au format JSON."
@@ -442,6 +528,9 @@ class ChatService:
         elif provider == "google":
             return await self._get_gemini_response_single(model, system_prompt, history, json_mode)
         elif provider == "anthropic":
+            # sécurité format
+            if history and "content" in history[0] and not isinstance(history[0]["content"], list):
+                history = self._to_anthropic_messages(history)
             return await self._get_anthropic_response_single(model, system_prompt, history, json_mode)
         else:
             raise ValueError(f"Fournisseur LLM non supporté: {provider}")
@@ -449,14 +538,20 @@ class ChatService:
     async def _get_openai_response_single(self, model: str, system_prompt: str, history: List[Dict], json_mode: bool = False) -> Tuple[str, Dict]:
         messages = [{"role": "system", "content": system_prompt}] + history
         response_format = {"type": "json_object"} if json_mode else {"type": "text"}
-        response = await self.openai_client.chat.completions.create(model=model, messages=messages, temperature=0.2, max_tokens=4000, response_format=response_format)
+        response = await self.openai_client.chat.completions.create(
+            model=model, messages=messages, temperature=0.2, max_tokens=4000, response_format=response_format
+        )
         content = response.choices[0].message.content or ""
         cost_info = {"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0}
         if response.usage:
             usage = response.usage
             pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
             cost = (usage.prompt_tokens * pricing["input"]) + (usage.completion_tokens * pricing["output"])
-            cost_info.update({"input_tokens": usage.prompt_tokens, "output_tokens": usage.completed_tokens if hasattr(usage, 'completed_tokens') else usage.completion_tokens, "total_cost": cost})
+            cost_info.update({
+                "input_tokens": usage.prompt_tokens,
+                "output_tokens": getattr(usage, "completed_tokens", usage.completion_tokens),
+                "total_cost": cost
+            })
         return content, cost_info
 
     async def _get_gemini_response_single(self, model: str, system_prompt: str, history: List[Dict], json_mode: bool = False) -> Tuple[str, Dict]:
@@ -469,15 +564,25 @@ class ChatService:
             usage = response.usage_metadata
             pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
             cost = (usage.prompt_token_count * pricing["input"]) + (usage.candidates_token_count * pricing["output"])
-            cost_info.update({"input_tokens": usage.prompt_token_count, "output_tokens": usage.candidates_token_count, "total_cost": cost})
+            cost_info.update({
+                "input_tokens": usage.prompt_token_count,
+                "output_tokens": usage.candidates_token_count,
+                "total_cost": cost
+            })
         return content, cost_info
 
     async def _get_anthropic_response_single(self, model: str, system_prompt: str, history: List[Dict], json_mode: bool = False) -> Tuple[str, Dict]:
         if not history:
             raise ValueError("L'historique des messages pour Anthropic ne peut pas être vide.")
-        if json_mode and history and history[-1]['role'] == 'user':
-            history[-1]['content'] += "\n\nRéponds uniquement avec un objet JSON valide."
-        response = await self.anthropic_client.messages.create(model=model, messages=history, system=system_prompt, temperature=0.2, max_tokens=4000)
+        if json_mode and history and isinstance(history[-1].get('content'), list):
+            # Ajoute une consigne JSON dans le dernier bloc user
+            for blk in history[-1]['content']:
+                if blk.get("type") == "text":
+                    blk["text"] += "\n\nRéponds uniquement avec un objet JSON valide."
+                    break
+        response = await self.anthropic_client.messages.create(
+            model=model, messages=history, system=system_prompt, temperature=0.2, max_tokens=4000
+        )
         content = response.content[0].text or ""
         usage = response.usage
         pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})

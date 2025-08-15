@@ -1,60 +1,66 @@
 /**
  * @module core/main
- * @description Entrée client (statique) — chargement CSS via <link> pour compat mobile.
- *              On évite tout import ESM de .css (non supporté sans bundler).
+ * @description Entrée client statique — V35.1
+ *  - Charge les CSS via <link> (pas d'import ESM de .css) pour compat Cloud Run / mobile.
+ *  - Initialise EventBus, StateManager, WebSocketClient et App.
  */
 
-// --- JS uniquement ---
 import { App } from './core/app.js';
 import { EventBus } from './core/event-bus.js';
 import { StateManager } from './core/state-manager.js';
 import { WebSocketClient } from './core/websocket.js';
 import { WS_CONFIG, EVENTS } from './shared/constants.js';
-import { loadCSS } from './core/utils.js'; // util existant pour injecter des <link> . :contentReference[oaicite:4]{index=4}
+import { loadCSSBatch } from './core/utils.js';
 
-// --- Feuilles de style à charger (ordre important : variables → reset → layout/typo → reste) ---
-[
-  'styles/core/_variables.css',   // tokens & palette Aura . :contentReference[oaicite:5]{index=5}
-  'styles/core/reset.css',        // reset V7.1 mobile-safe . :contentReference[oaicite:6]{index=6}
-  'styles/core/_layout.css',      // layout responsive + safe areas . :contentReference[oaicite:7]{index=7}
-  'styles/core/_typography.css',  // typo fluide . :contentReference[oaicite:8]{index=8}
-  'styles/core/_navigation.css',  // styles de nav (sidebar/header) . :contentReference[oaicite:9]{index=9}
+// --- CSS à charger (ordre: variables → reset → layout/typo → modules) ---
+const CSS_ORDERED = [
+  'styles/core/_variables.css',
+  'styles/core/reset.css',
+  'styles/core/_layout.css',
+  'styles/core/_typography.css',
+  'styles/core/_navigation.css',
   'styles/main-styles.css',
+
+  // Features
   'features/chat/chat.css',
   'features/debate/debate.css',
   'features/documents/documents.css',
   'features/dashboard/dashboard.css'
-].forEach(loadCSS);
+];
 
+// Démarrage client
 class EmergenceClient {
   constructor() { this.initialize(); }
 
   async initialize() {
-    console.log("🚀 ÉMERGENCE - Lancement du client.");
+    console.log('🚀 ÉMERGENCE - Lancement du client.');
 
+    // 1) Bus & state
     const eventBus = new EventBus();
     const stateManager = new StateManager();
     await stateManager.init();
 
-    const websocket = new WebSocketClient(WS_CONFIG.URL, eventBus, stateManager);
+    // 2) CSS en séquence (limite FOUC)
+    await loadCSSBatch(CSS_ORDERED);
 
+    // 3) WebSocket + App
+    const websocket = new WebSocketClient(WS_CONFIG.URL, eventBus, stateManager);
     eventBus.on(EVENTS.APP_READY, () => this.hideLoader());
 
     const app = new App(eventBus, stateManager);
     websocket.connect();
 
-    console.log("✅ Client ÉMERGENCE prêt. En attente du signal APP_READY...");
+    console.log('✅ Client ÉMERGENCE prêt. En attente du signal APP_READY...');
   }
 
   hideLoader() {
     const loader = document.getElementById('app-loader');
-    if (loader) {
-      loader.classList.add('fade-out');
-      setTimeout(() => {
-        loader.remove();
-        document.body.classList.remove('loading');
-      }, 500);
-    }
+    if (!loader) return;
+    loader.classList.add('fade-out');
+    setTimeout(() => {
+      loader.remove();
+      document.body.classList.remove('loading');
+    }, 500);
   }
 }
 
