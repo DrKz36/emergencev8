@@ -153,10 +153,12 @@ def create_app() -> FastAPI:
     async def _on_shutdown():
         await _shutdown(container)
 
-    @app.get("/api/health", tags=["Health"])
+    # --- PUBLIC: Healthcheck (exempt de toute auth applicative) ---------------
+    @app.get("/api/health", tags=["Public"])
     async def health():
         return {"status": "ok", "message": "Emergence Backend is running."}
 
+    # --- Montage des routers REST --------------------------------------------
     def _mount_router(router, desired_prefix: str):
         if router is None:
             return
@@ -175,7 +177,7 @@ def create_app() -> FastAPI:
     _mount_router(DASHBOARD_ROUTER, "/api/dashboard")
     t.mark("routers_mounted")
 
-    # WebSocket Chat — lazy container access (aucune instanciation au boot)
+    # --- WebSocket Chat (lazy DI) --------------------------------------------
     if CHAT_ROUTER is not None:
         try:
             app.include_router(CHAT_ROUTER)
@@ -187,6 +189,7 @@ def create_app() -> FastAPI:
         _mount_local_ws(app, container)
     t.mark("ws_ready")
 
+    # --- Fichiers statiques ---------------------------------------------------
     try:
         app.mount("/", StaticFiles(directory=str(REPO_ROOT), html=True), name="static")
         logger.info(f"Fichiers statiques montés depuis: {REPO_ROOT}")
