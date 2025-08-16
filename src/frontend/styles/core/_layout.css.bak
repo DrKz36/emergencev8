@@ -114,21 +114,3 @@
         min-height: 0;
     }
 }
- 
-/* === PATCH SCROLL EXTERNE — 2025-08-16 ===
-   Objectif : barre de scroll au bord droit de la page, pas dans la carte du chat. */
-
-html {
-  overflow-y: auto;
-  scrollbar-gutter: stable both-edges;
-}
-
-.app-content {
-  overflow: visible !important;
-  min-height: 0 !important;
-}
-
-.tab-content {
-  min-height: 0;
-}
-

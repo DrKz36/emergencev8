@@ -20,7 +20,8 @@
 .card-body {
     padding: 1.5rem;
     flex-grow: 1;
-    overflow-y: auto;
+    /* PATCH: on déplace le scroll au niveau page → pas de scrollbar interne */
+    overflow: visible;
 }
 
 .card-footer {
@@ -75,7 +76,7 @@
 .chat-send-button,
 .toggle-metal {
     background:
-      radial-gradient(130% 130% at 25% 15%, rgba(255,255,255,.9) 0%, rgba(255,255,255,.35) 35%, rgba(255,255,255,0) 60%),
+      radial-gradient(130% 130% at 25% 15%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.35) 35%, rgba(255,255,255,0) 60%),
       linear-gradient(145deg, #b3b3b3, #e6e6e6);
     color: #111;
     border: 1px solid rgba(255,255,255,0.3);
@@ -83,7 +84,7 @@
     box-shadow:
       inset 0 0 8px rgba(255,255,255,0.55),
       inset 0 -10px 18px rgba(0,0,0,0.18),
-      0 6px 18px rgba(0,0,0,.25);
+      0 6px 18px rgba(0,0,0,0.25);
     background-blend-mode: overlay;
     background-image: url("data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjZmZmIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxIiBoZWlnaHQ9IjEiPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9InJnYmEoMCwwLDAsMC4wMykiLz48L3N2Zz4=");
     transition: box-shadow .25s ease, filter .25s ease, background .25s ease;
@@ -93,19 +94,19 @@
 .toggle-metal:hover {
     filter: brightness(1.05);
     background:
-      radial-gradient(130% 130% at 25% 15%, rgba(255,255,255,1) 0%, rgba(255,255,255,.4) 35%, rgba(255,255,255,0) 60%),
+      radial-gradient(130% 130% at 25% 15%, rgba(255,255,255,1) 0%, rgba(255,255,255,0.4) 35%, rgba(255,255,255,0) 60%),
       linear-gradient(145deg, #c8c8c8, #f3f3f3);
     box-shadow:
       inset 0 0 10px rgba(255,255,255,0.65),
       inset 0 -12px 20px rgba(0,0,0,0.2),
-      0 8px 22px rgba(0,0,0,.32);
+      0 8px 22px rgba(0,0,0,0.32);
 }
 .button-metal[aria-pressed="true"],
 .toggle-metal[aria-checked="true"] {
     background:
-      radial-gradient(130% 130% at 25% 15%, rgba(255,255,255,.95) 0%, rgba(255,255,255,.4) 35%, rgba(255,255,255,0) 60%),
+      radial-gradient(130% 130% at 25% 15%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.4) 35%, rgba(255,255,255,0) 60%),
       linear-gradient(145deg, #53b76a, #9be2b3);
-    box-shadow: 0 0 10px rgba(129,199,132,.6);
+    box-shadow: 0 0 10px rgba(129,199,132,0.6);
 }
 
 /* --- Tabs / Segmented Controls --- */
@@ -160,3 +161,65 @@
     color: var(--color-text-secondary);
     font-size: var(--text-lg);
 }
+
+/* ========================================================================== */
+/* Patch global: barre de scroll au bord de la page (stable)                  */
+/* ========================================================================== */
+html {
+    overflow-y: auto;
+    scrollbar-gutter: stable both-edges;
+}
+
+/* Défensif : si la zone messages existe, s'assurer qu’elle ne crée pas
+   de scroll interne parasite (n’impacte rien si la classe n’existe pas). */
+.chat-messages {
+    overflow: visible;
+}
+
+/* ========================================================================== */
+/* Patch global: scroll unique à droite & neutralisation des scroll internes  */
+/* ========================================================================== */
+/* Neutralise tout scroll interne courant dans les conteneurs de chat */
+.chat-wrapper,
+.chat-container,
+.chat-panel,
+.chat-thread,
+.chat-scroll,
+.messages,
+.chat-messages,
+#chat,
+#messages,
+#conversation {
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+/* L'aire principale NE scrolle PAS : scroll porté par la page */
+.app-content { overflow: visible; }
+
+/* ========================================================================== */
+/* === SIDEBAR BRAND (logo + titre inline)                                    */
+/* ========================================================================== */
+.app-sidebar::before { content: none !important; }
+.sidebar-brand {
+  display: flex;
+  flex-direction: row;   /* logo à gauche du texte */
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 16px 8px;
+}
+.sidebar-logo {
+  width: 32px;
+  height: 32px;
+  display: block;
+  border-radius: 50%;
+}
+.brand-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  line-height: 1;
+  color: var(--color-text-primary);
+  user-select: none;
+}
+.sidebar-nav { margin-top: 8px; }

@@ -13,6 +13,10 @@ export default class ChatModule {
     this.container = null;
     this.listeners = [];
     this.isInitialized = false;
+
+    // NEW: buffer streaming par messageId pour batcher les updates UI
+    this._streamBuffers = new Map(); // id -> string
+    this._flushScheduled = false;
   }
 
   init() {
@@ -70,7 +74,6 @@ export default class ChatModule {
   }
 
   handleSendMessage(payload) {
-    // Compat string | object { text }
     const text = typeof payload === 'string' ? payload : (payload && payload.text) || '';
     const trimmed = (text || '').trim();
     if (!trimmed) return;
@@ -98,21 +101,54 @@ export default class ChatModule {
     const currentMessages = this.state.get(`chat.messages.${agent_id}`) || [];
     this.state.set(`chat.messages.${agent_id}`, [...currentMessages, agentMessage]);
     this.state.set('chat.isLoading', true);
+    // reset buffer pour cet id
+    this._streamBuffers.set(id, '');
   }
 
   handleStreamChunk({ id, chunk }) {
+    // Bufferise et flush au max 1x par frame
+    const prev = this._streamBuffers.get(id) || '';
+    this._streamBuffers.set(id, prev + (chunk || ''));
+    if (!this._flushScheduled) {
+      this._flushScheduled = true;
+      // requestAnimationFrame pour grouper tous les chunks de la frame
+      (window.requestAnimationFrame || setTimeout)(() => this._flushStreamBuffers(), 16);
+    }
+  }
+
+  _flushStreamBuffers() {
+    if (this._streamBuffers.size === 0) { this._flushScheduled = false; return; }
+
     const messages = this.state.get('chat.messages');
-    for (const agentId in messages) {
-      const idx = messages[agentId].findIndex(m => m.id === id);
-      if (idx !== -1) {
-        messages[agentId][idx].content = (messages[agentId][idx].content || '') + (chunk || '');
-        this.state.set('chat.messages', { ...messages });
-        return;
+    let mutated = false;
+
+    // Applique les buffers dans le store
+    this._streamBuffers.forEach((bufferText, msgId) => {
+      if (!bufferText) return;
+      for (const agentId in messages) {
+        const arr = messages[agentId] || [];
+        const idx = arr.findIndex(m => m.id === msgId);
+        if (idx !== -1) {
+          const current = arr[idx].content || '';
+          arr[idx] = { ...arr[idx], content: current + bufferText };
+          mutated = true;
+          break;
+        }
       }
+    });
+
+    // Clear buffers et push un seul set() pour limiter les reflows
+    this._streamBuffers.clear();
+    this._flushScheduled = false;
+    if (mutated) {
+      this.state.set('chat.messages', { ...messages });
     }
   }
 
   handleStreamEnd({ id }) {
+    // Flushe toute fin de buffer avant de clore
+    this._flushStreamBuffers();
+
     const messages = this.state.get('chat.messages');
     for (const agentId in messages) {
       const idx = messages[agentId].findIndex(m => m.id === id);
