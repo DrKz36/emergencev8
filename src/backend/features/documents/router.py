@@ -2,7 +2,7 @@
 # V3.2 - Hotfix 500 serialization:
 #        - Retire response_model (validation stricte) sur GET
 #        - Normalise en liste + jsonable_encoder pour éviter erreurs de sérialisation
-#        - Garde Bearer stricte + try/except + compat sync/async
+#        - Garde Google ID token (require_google_user) + try/except + compat sync/async
 
 import logging
 import inspect
@@ -14,6 +14,7 @@ from fastapi.encoders import jsonable_encoder
 
 from .service import DocumentService
 from backend.shared import dependencies
+from backend.shared.auth.google_oauth import require_google_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Documents"])
@@ -41,7 +42,7 @@ def _to_list(value: Any) -> list:
 
 @router.get("/")  # ❌ pas de response_model pour éviter 500 côté validation
 async def list_documents(
-    _token: str = Depends(dependencies.require_bearer_or_401),
+    user = Depends(require_google_user),
     service: DocumentService = Depends(dependencies.get_document_service),
 ):
     """Retourne la liste des documents (format libre côté service)."""
@@ -61,7 +62,7 @@ async def list_documents(
 # ✅ Alias sans slash: /api/documents (en plus de /api/documents/)
 @router.get("")  # idem: pas de response_model
 async def list_documents_alias(
-    _token: str = Depends(dependencies.require_bearer_or_401),
+    user = Depends(require_google_user),
     service: DocumentService = Depends(dependencies.get_document_service),
 ):
     """Alias sans slash final pour éviter 404."""
@@ -81,6 +82,7 @@ async def list_documents_alias(
 @router.post("/upload", status_code=201)
 async def upload_document(
     file: UploadFile = File(...),
+    user = Depends(require_google_user),
     service: DocumentService = Depends(dependencies.get_document_service),
 ):
     supported_types = [".pdf", ".txt", ".docx"]
@@ -105,6 +107,7 @@ async def upload_document(
 @router.delete("/{document_id}", status_code=200)
 async def delete_document(
     document_id: str,
+    user = Depends(require_google_user),
     service: DocumentService = Depends(dependencies.get_document_service),
 ):
     """Supprime un document, ses chunks et ses vecteurs."""
