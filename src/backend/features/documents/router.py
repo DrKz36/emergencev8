@@ -1,13 +1,16 @@
 # src/backend/features/documents/router.py
-# V3.1 - Robustesse sync/async:
-#        - Supporte DocumentService.get_all_documents() qu'il soit sync ou async
-#        - Garde Bearer stricte + try/except conservés
+# V3.2 - Hotfix 500 serialization:
+#        - Retire response_model (validation stricte) sur GET
+#        - Normalise en liste + jsonable_encoder pour éviter erreurs de sérialisation
+#        - Garde Bearer stricte + try/except + compat sync/async
+
 import logging
 import inspect
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any
 
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
+from fastapi.encoders import jsonable_encoder
 
 from .service import DocumentService
 from backend.shared import dependencies
@@ -21,15 +24,33 @@ async def _maybe_await(value):
     return await value if inspect.isawaitable(value) else value
 
 
-@router.get("/", response_model=List[Dict[str, Any]])
+def _to_list(value: Any) -> list:
+    """Normalise la sortie en liste (générateurs/sets/tuples -> list; objet seul -> [obj])."""
+    if isinstance(value, list):
+        return value
+    if isinstance(value, (tuple, set)):
+        return list(value)
+    # Iterable non string/bytes/dict → on tente list()
+    try:
+        if hasattr(value, "__iter__") and not isinstance(value, (str, bytes, dict)):
+            return list(value)
+    except Exception:
+        pass
+    return [value]
+
+
+@router.get("/")  # ❌ pas de response_model pour éviter 500 côté validation
 async def list_documents(
     _token: str = Depends(dependencies.require_bearer_or_401),
     service: DocumentService = Depends(dependencies.get_document_service),
 ):
-    """Retourne la liste de tous les documents uploadés."""
+    """Retourne la liste des documents (format libre côté service)."""
     try:
         result = service.get_all_documents()
-        return await _maybe_await(result)
+        raw = await _maybe_await(result)
+        items = _to_list(raw)
+        payload = jsonable_encoder(items)  # BaseModel -> dict, Path -> str, etc.
+        return payload
     except HTTPException:
         raise
     except Exception as e:
@@ -38,7 +59,7 @@ async def list_documents(
 
 
 # ✅ Alias sans slash: /api/documents (en plus de /api/documents/)
-@router.get("", response_model=List[Dict[str, Any]])
+@router.get("")  # idem: pas de response_model
 async def list_documents_alias(
     _token: str = Depends(dependencies.require_bearer_or_401),
     service: DocumentService = Depends(dependencies.get_document_service),
@@ -46,7 +67,10 @@ async def list_documents_alias(
     """Alias sans slash final pour éviter 404."""
     try:
         result = service.get_all_documents()
-        return await _maybe_await(result)
+        raw = await _maybe_await(result)
+        items = _to_list(raw)
+        payload = jsonable_encoder(items)
+        return payload
     except HTTPException:
         raise
     except Exception as e:
@@ -64,7 +88,6 @@ async def upload_document(
     if file_extension not in supported_types:
         raise HTTPException(status_code=400, detail=f"Type de fichier non supporté. Types acceptés : {supported_types}")
     try:
-        # Support sync/async sur process_uploaded_file aussi, par cohérence
         result = service.process_uploaded_file(file)
         document_id = await _maybe_await(result)
         return {
