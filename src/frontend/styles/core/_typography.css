@@ -1,5 +1,5 @@
 /* src/frontend/styles/core/typography.css */
-/* Typography styles - ÉMERGENCE V7.1 (fluid) */
+/* Typography styles - ÉMERGENCE V7.2 (fluid, authors unified) */
 
 /* Base typography */
 body {
@@ -68,3 +68,26 @@ strong { font-weight: var(--weight-semibold); }
 .text-xl { font-size: var(--text-xl); }
 .text-2xl { font-size: var(--text-2xl); }
 .text-3xl { font-size: var(--text-3xl); }
+
+/* ==========================================================================
+   Auteurs (agents & utilisateur)
+   Objectif : Uniformiser la police des noms d’auteurs avec le corps de texte
+   — Scope large mais sémantique (classes usuelles + data-attrs)
+   ========================================================================== */
+.chat-author,
+.message-author,
+.message-sender,
+.sender,
+.agent-name,
+.user-name,
+.bubble-author,
+.author,
+.message .meta .name,
+[data-role="author"],
+[data-agent],
+[data-user] {
+    font-family: var(--font-sans);      /* exactement comme le texte */
+    font-weight: var(--weight-regular); /* pas de sur-emboldening non souhaité */
+    font-variant: normal;               /* évite small-caps involontaires */
+    letter-spacing: normal;             /* évite le tracking type heading */
+}
