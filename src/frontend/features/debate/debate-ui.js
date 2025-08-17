@@ -1,6 +1,6 @@
 /**
  * src/frontend/features/debate/debate-ui.js
- * V36.5 — RAG "Power" SVG rouge/vert + Médiateur autonome (agent restant) + layout PC
+ * V36.6 — Fix double émission + RAG "Power" SVG rouge/vert + Médiateur autonome (agent restant) + layout PC
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
@@ -11,7 +11,7 @@ export class DebateUI {
     this.eventBus = eventBus;
     this.localState = {};
     try { loadCSS('../features/debate/debate.css'); } catch (_) {}
-    console.log('✅ DebateUI V36.5 prêt (CSS chargée).');
+    console.log('✅ DebateUI V36.6 prêt (CSS chargée).');
   }
 
   render(container, debateState) {
@@ -139,7 +139,8 @@ export class DebateUI {
         agent_order: [this.localState.attacker, this.localState.challenger, mediatorId],
         use_rag: this.localState.use_rag
       };
-      this.eventBus.emit(EVENTS.DEBATE_CREATE, config);
+
+      // IMPORTANT: émettre UNE SEULE FOIS (on supprime l’émission doublon)
       this.eventBus.emit('debate:create', config);
     });
   }
@@ -203,6 +204,9 @@ export class DebateUI {
     const synthesizerId = order[order.length - 1] || 'nexus';
     const synthesizerName = AGENTS[synthesizerId]?.name || 'Nexus';
 
+    // Désactive le bouton "Lancer" tant qu’un débat est en cours côté store
+    const busy = state?.status === 'pending' || state?.status === 'in_progress';
+
     container.innerHTML = `
       <div class="debate-view-wrapper">
         <div class="card debate-in-progress">
@@ -218,7 +222,7 @@ export class DebateUI {
           </div>
           <div class="card-footer" style="display:flex; justify-content:flex-end; gap:.5rem;">
             <button id="debate-export-btn" class="button" title="Exporter">Exporter</button>
-            <button id="debate-reset-btn" class="button" title="Réinitialiser">Réinitialiser</button>
+            <button id="debate-reset-btn" class="button" title="Réinitialiser"${busy ? '' : ''}>Réinitialiser</button>
           </div>
         </div>
       </div>

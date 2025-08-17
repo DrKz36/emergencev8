@@ -1,7 +1,8 @@
 /**
  * @module features/debate/debate
- * @description Orchestrateur du module Débat - V26.0 "Concordance"
+ * @description Orchestrateur du module Débat - V27.0 "Concordance+inFlight"
  * - Applique le pattern init/mount pour une initialisation découplée du DOM.
+ * - Bloque la double émission via un drapeau inFlight.
  */
 import { DebateUI } from './debate-ui.js';
 import { EVENTS, AGENTS } from '../../shared/constants.js';
@@ -14,7 +15,11 @@ export default class DebateModule {
         this.container = null;
         this.listeners = [];
         this.isInitialized = false;
-        console.log("✅ DebateModule V26.0 (Concordance) Prêt.");
+
+        // NEW: drapeau anti double-émission
+        this.inFlight = false;
+
+        console.log("✅ DebateModule V27.0 (Concordance+inFlight) Prêt.");
     }
     
     init() {
@@ -23,7 +28,7 @@ export default class DebateModule {
         this.registerEvents();
         this.registerStateChanges();
         this.isInitialized = true;
-        console.log("✅ DebateModule V26.0 (Concordance) Initialisé UNE SEULE FOIS.");
+        console.log("✅ DebateModule V27.0 (Concordance+inFlight) Initialisé UNE SEULE FOIS.");
     }
 
     mount(container) {
@@ -39,6 +44,14 @@ export default class DebateModule {
     
     registerStateChanges() {
         const unsubscribe = this.state.subscribe('debate', (debateState) => {
+            // Ajuste inFlight selon le statut remonté
+            const status = debateState?.status;
+            if (status === 'pending' || status === 'in_progress') {
+                this.inFlight = true;
+            } else if (status === 'completed' || status === 'failed' || !status) {
+                this.inFlight = false;
+            }
+
             if (this.container) {
                 this.ui.render(this.container, debateState);
             }
@@ -58,6 +71,8 @@ export default class DebateModule {
     }
 
     reset() {
+        // Le reset remet inFlight à false
+        this.inFlight = false;
         this.state.set('debate', {
             isActive: false,
             debateId: null,
@@ -71,13 +86,32 @@ export default class DebateModule {
     }
 
     handleCreateDebate(config) {
-        this.reset();
+        // Garde-fou anti double émission
+        const cur = this.state.get('debate');
+        const status = cur?.status;
+        const isBusy = this.inFlight || status === 'pending' || status === 'in_progress';
+        if (isBusy) {
+            // Optionnel: message discret
+            this.eventBus.emit('ui:show_notification', { type:'info', message:'Un débat est déjà en cours.' });
+            return;
+        }
+
+        this.inFlight = true;
+        this.reset(); // Nettoie l’état avant de lancer le nouveau débat
         this.state.set('debate.statusText', 'Création du débat en cours...');
         this.eventBus.emit(EVENTS.WS_SEND, { type: "debate:create", payload: config });
     }
 
     handleServerUpdate(serverState) {
         const clientState = this._normalizeServerState(serverState);
+
+        // Met à jour le drapeau selon le statut serveur
+        if (clientState.status === 'completed' || clientState.status === 'failed') {
+            this.inFlight = false;
+        } else if (clientState.status === 'pending' || clientState.status === 'in_progress') {
+            this.inFlight = true;
+        }
+
         this.state.set('debate', clientState);
     }
 
