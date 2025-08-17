@@ -1,8 +1,8 @@
 ﻿﻿/**
  * @file /src/frontend/shared/constants.js
- * @description Fichier de constantes V24.1 - "Opération Vélocité"
- * - Réintégration de TOUS les événements pour assurer la communication inter-modules.
- * - Ajout AUTH.TOKEN_KEY pour l’API client.
+ * @description Fichier de constantes V24.2 - "Opération Vélocité"
+ * - Ajout AUTH.ensureDevToken(): lecture ?token=… et auto-seed d'un Bearer en environnement LAN/localhost.
+ * - Conserve TOKEN_KEY = 'emergence_bearer'.
  */
 
 const wsUrl = '/ws';
@@ -64,10 +64,65 @@ export const EVENTS = {
     SHOW_NOTIFICATION: 'ui:show_notification',
 };
 
-/**
- * ✅ Constantes d'auth centralisées
- * - TOKEN_KEY: clé utilisée par le client API pour récupérer le Bearer en localStorage
- */
+/* ---------- AUTH: token Bearer centralisé ---------- */
+
+function isLanHost(h) {
+    return (
+        h === 'localhost' ||
+        h === '127.0.0.1' ||
+        /^192\.168\./.test(h) ||
+        /^10\./.test(h) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(h)
+    );
+}
+
 export const AUTH = {
+    /** Clé de stockage du Bearer (utilisée par l'API client). */
     TOKEN_KEY: 'emergence_bearer',
+
+    getToken() {
+        try { return localStorage.getItem(this.TOKEN_KEY) || null; } catch { return null; }
+    },
+
+    setToken(token) {
+        try { localStorage.setItem(this.TOKEN_KEY, token); } catch { /* no-op */ }
+    },
+
+    /** Lis ?token=... dans l’URL, le stocke puis nettoie l’URL. */
+    readTokenFromUrl() {
+        try {
+            const url = new URL(window.location.href);
+            const t = url.searchParams.get('token');
+            if (t) {
+                this.setToken(t);
+                url.searchParams.delete('token');
+                history.replaceState({}, '', url.toString());
+                return t;
+            }
+        } catch { /* no-op */ }
+        return null;
+    },
+
+    /**
+     * Dev helper: si aucun token et qu’on est en LAN/localhost,
+     * seed automatiquement un Bearer 'testtoken' pour éviter les 401 en mobile.
+     * (Sans effet en prod/public.)
+     */
+    ensureDevToken() {
+        const existing = this.getToken();
+        if (existing) return existing;
+
+        const fromUrl = this.readTokenFromUrl();
+        if (fromUrl) return fromUrl;
+
+        if (isLanHost(window.location.hostname)) {
+            const dev = 'testtoken';
+            this.setToken(dev);
+            return dev;
+        }
+        return null;
+    },
 };
+
+// Seed automatique dès le chargement du module (avant tout appel API).
+try { AUTH.ensureDevToken(); } catch { /* no-op */ }
