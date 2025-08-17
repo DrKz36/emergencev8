@@ -1,7 +1,8 @@
 ﻿/**
- * DOCUMENTS CSS - V6.4
+ * DOCUMENTS CSS - V6.5
  * - Correctifs mobiles : AUCUN débordement horizontal (iPhone portrait)
  * - Wrap toolbar, 2 colonnes ≤ 540px, ellipses, safe-areas iOS
+ * - [NOUVEAU] Neutralise le thème "métal" UNIQUEMENT dans la vue Documents
  */
 
 .documents-view-wrapper * { box-sizing: border-box; }  /* confinement local */
@@ -214,4 +215,49 @@
   .upload-section{ max-width:100%; min-height:220px; }
   .drop-zone{ padding: var(--space-4); }
   .drop-zone-prompt p{ font-size:1em; }
+}
+
+/* ============================================================
+   [NOUVEAU] Anti-"métal" pour la vue Documents uniquement
+   Objectif : garder un fond sombre/verre et un texte lisible
+   sur .button-metal au hover/focus/disabled.
+   ============================================================ */
+
+.documents-view-wrapper .button-metal,
+.documents-view-wrapper .button-metal:hover,
+.documents-view-wrapper .button-metal:focus {
+    background-image: none !important;
+    background-color: var(--color-background-tertiary) !important;
+    color: var(--color-text-primary) !important;
+    border: 1px solid var(--glass-border-color) !important;
+    box-shadow: none !important;
+    filter: none !important;
+}
+
+/* Variante danger/outline dans Documents : mêmes règles, couleurs danger intactes */
+.documents-view-wrapper .button-metal.button-danger-outline,
+.documents-view-wrapper .button-metal.button-danger-outline:hover,
+.documents-view-wrapper .button-metal.button-danger-outline:focus {
+    background: transparent !important;
+    color: var(--color-text-primary) !important;
+    border: 1px solid rgba(239, 68, 68, .5) !important;
+    box-shadow: none !important;
+    filter: none !important;
+}
+
+/* Focus visible (accessibilité) */
+.documents-view-wrapper .button-metal:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-primary) 60%, transparent);
+    outline-offset: 2px;
+}
+
+/* Disabled (Uploader inactif / Suppression sélection vide) */
+.documents-view-wrapper .button-metal:disabled {
+    opacity: .85 !important;
+    background-color: var(--color-background-tertiary) !important;
+    color: var(--color-text-secondary) !important;
+    border-color: var(--glass-border-color) !important;
+    pointer-events: none;
+    box-shadow: none !important;
+    filter: none !important;
 }
