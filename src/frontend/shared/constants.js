@@ -1,7 +1,8 @@
-﻿/**
+﻿﻿/**
  * @file /src/frontend/shared/constants.js
- * @description Fichier de constantes V24.0 - "Opération Vélocité"
+ * @description Fichier de constantes V24.1 - "Opération Vélocité"
  * - Réintégration de TOUS les événements pour assurer la communication inter-modules.
+ * - Ajout AUTH.TOKEN_KEY pour l’API client.
  */
 
 const wsUrl = '/ws';
@@ -24,19 +25,18 @@ export const WS_CONFIG = {
     RECONNECT_DELAY: 5000,
 };
 
-// ✅ CORRECTION : Tous les événements sont présents.
 export const EVENTS = {
-    // --- Core & App Lifecycle ---
+    // Core & App Lifecycle
     APP_READY: 'app:ready',
     MODULE_SHOW: 'module:show',
 
-    // --- WebSocket ---
+    // WebSocket
     WS_CONNECTED: 'ws:connected',
     WS_SEND: 'ws:send',
     WS_ERROR: 'ws:error',
     SERVER_NOTIFICATION: 'notification',
-    
-    // --- Server Events (préfixe 'ws:') ---
+
+    // Server Events (ws:)
     WS_SESSION_ESTABLISHED: 'ws:session_established',
     WS_CHAT_STREAM_START: 'ws:chat_stream_start',
     WS_CHAT_STREAM_CHUNK: 'ws:chat_stream_chunk',
@@ -47,7 +47,7 @@ export const EVENTS = {
     WS_DEBATE_ENDED: 'ws:debate_ended',
     WS_DEBATE_STATUS_UPDATE: 'ws:debate_status_update',
 
-    // --- UI/Module Events (préfixe 'ui:') ---
+    // UI/Modules
     CHAT_SEND: 'ui:chat:send',
     CHAT_CLEAR: 'ui:chat:clear',
     CHAT_EXPORT: 'ui:chat:export',
@@ -55,11 +55,19 @@ export const EVENTS = {
     CHAT_AGENT_SELECTED: 'ui:chat:agent_selected',
     CHAT_PARALLEL_AGENTS_CHANGED: 'ui:chat:parallel_agents_changed',
     CHAT_RAG_TOGGLED: 'ui:chat:rag_toggled',
-    
+
     DEBATE_CREATE: 'debate:create',
     DEBATE_RESET: 'debate:reset',
     DEBATE_EXPORT: 'debate:export',
 
     SHOW_MODAL: 'ui:show_modal',
     SHOW_NOTIFICATION: 'ui:show_notification',
+};
+
+/**
+ * ✅ Constantes d'auth centralisées
+ * - TOKEN_KEY: clé utilisée par le client API pour récupérer le Bearer en localStorage
+ */
+export const AUTH = {
+    TOKEN_KEY: 'emergence_bearer',
 };
