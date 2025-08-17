@@ -60,6 +60,7 @@ DASHBOARD_ROUTER = _import_router("backend.features.dashboard.router")
 DEBATE_ROUTER    = _import_router("backend.features.debate.router")
 CHAT_ROUTER      = _import_router("backend.features.chat.router")
 MEMORY_ROUTER    = _import_router("backend.features.memory.router")
+DEV_AUTH_ROUTER  = _import_router("backend.features.dev_auth.router")  # <-- ajout
 
 
 def _migrations_dir() -> str:
@@ -164,10 +165,15 @@ def create_app() -> FastAPI:
     _mount_router(DEBATE_ROUTER,    "/api/debate",    "debate")
     _mount_router(DASHBOARD_ROUTER, "/api/dashboard", "dashboard")
     _mount_router(MEMORY_ROUTER,    "/api/memory",    "memory")
-    # Le router WebSocket « chat » est dans features.chat.router
+
+    # Router WebSocket « chat »
     if CHAT_ROUTER and getattr(CHAT_ROUTER, "router", None):
         app.include_router(CHAT_ROUTER.router)
         logger.info("Router WebSocket 'chat' monté.")
+
+    # --- DEV: page de test GIS (ID token) ------------------------------------
+    # Sert /dev-auth.html sans préfixe pour que l’origin soit le domaine prod.
+    _mount_router(DEV_AUTH_ROUTER, "", "dev_auth")  # <-- ajout
 
     # --- Fichiers statiques ---------------------------------------------------
     # Racine du projet (2 niveaux au-dessus de backend/)

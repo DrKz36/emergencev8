@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Emergence — GIS ID Token Tester</title>
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; padding: 24px; background:#0b0d12; color:#e9eef5; }
+    h1 { margin: 0 0 16px; font-size: 22px; }
+    .card { background:#131722; border:1px solid #20263a; border-radius:12px; padding:16px; margin:0 0 16px; }
+    label { display:block; font-size:13px; color:#9fb0c3; margin:0 0 6px; }
+    input, textarea { width:100%; box-sizing:border-box; border-radius:8px; border:1px solid #2a344a; background:#0f1320; color:#e9eef5; padding:10px; }
+    textarea { min-height:120px; resize:vertical; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; }
+    .row > * { flex:1 1 260px; }
+    .btn { display:inline-block; border:1px solid #38507a; background:#1b2740; color:#e9eef5; padding:10px 14px; border-radius:10px; cursor:pointer; user-select:none; }
+    .btn:hover { background:#213052; }
+    .muted { color:#9fb0c3; font-size:12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .ok { color:#84ffb5; }
+    .err { color:#ff6b6b; }
+    .grid { display:grid; grid-template-columns: 1fr; gap:16px; }
+    pre { white-space:pre-wrap; word-break:break-word; background:#0f1320; border:1px solid #2a344a; border-radius:8px; padding:10px; margin:0; }
+  </style>
+</head>
+<body>
+  <h1>Emergence — Google Identity Services (ID Token) Tester</h1>
+
+  <div class="card grid">
+    <div class="row">
+      <div>
+        <label for="clientId">Google OAuth **Client ID Web**</label>
+        <input id="clientId" placeholder="486095406755-xxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com"/>
+        <div class="muted">Doit être exactement le <span class="mono">client_id</span> Web configuré en prod.</div>
+      </div>
+      <div>
+        <label for="baseUrl">Base URL de l’API protégée</label>
+        <input id="baseUrl" value="https://emergence-app.ch" placeholder="https://emergence-app.ch"/>
+        <div class="muted">Les appels testeront <span class="mono">GET {baseUrl}/api/documents</span>.</div>
+      </div>
+    </div>
+
+    <div>
+      <label>Connexion Google (GIS)</label>
+      <div id="g_id_onload"
+           data-client_id=""
+           data-auto_prompt="false"
+           data-callback="onGoogleCredential"></div>
+      <div id="googleButton"></div>
+      <div class="row">
+        <button class="btn" id="btnInit">1) Initialiser GIS</button>
+        <button class="btn" id="btnPrompt">2) Ouvrir le sélecteur de compte</button>
+      </div>
+      <div class="muted">Si le bouton « Se connecter avec Google » n’apparaît pas, clique « Initialiser GIS » puis « Ouvrir le sélecteur ».</div>
+    </div>
+  </div>
+
+  <div class="card grid">
+    <div>
+      <label for="idToken">ID Token (JWT)</label>
+      <textarea id="idToken" class="mono" placeholder="Le token sera rempli automatiquement après connexion."></textarea>
+      <div class="row">
+        <button class="btn" id="btnDecode">Décoder header/payload</button>
+        <button class="btn" id="btnClear">Effacer</button>
+      </div>
+    </div>
+    <div>
+      <label>Header</label>
+      <pre id="hdr" class="mono"></pre>
+    </div>
+    <div>
+      <label>Payload (claims)</label>
+      <pre id="pld" class="mono"></pre>
+    </div>
+  </div>
+
+  <div class="card grid">
+    <div class="row">
+      <div>
+        <label>Appel API: <span class="mono">GET /api/documents</span></label>
+        <button class="btn" id="btnCall">Appeler avec Authorization: Bearer &lt;id_token&gt;</button>
+      </div>
+      <div>
+        <label>Statut</label>
+        <pre id="status" class="mono"></pre>
+      </div>
+    </div>
+    <div>
+      <label>Réponse (headers + body)</label>
+      <pre id="resp" class="mono"></pre>
+    </div>
+  </div>
+
+  <script>
+    // Helpers
+    function b64urlDecode(str){
+      try{
+        const pad = '='.repeat((4 - (str.length % 4)) % 4);
+        const base64 = (str + pad).replace(/-/g, '+').replace(/_/g, '/');
+        const bytes = atob(base64);
+        const out = new TextDecoder().decode(Uint8Array.from(bytes, c => c.charCodeAt(0)));
+        return out;
+      }catch(e){ return ''; }
+    }
+    function decodeJwt(jwt){
+      const [h,p] = jwt.split('.');
+      let header = {}, payload = {};
+      try { header = JSON.parse(b64urlDecode(h)); } catch(e){}
+      try { payload = JSON.parse(b64urlDecode(p)); } catch(e){}
+      return { header, payload };
+    }
+    function setStatus(text, ok=false){
+      const el = document.getElementById('status');
+      el.textContent = (ok ? 'OK ' : 'ERR ') + text;
+      el.className = 'mono ' + (ok ? 'ok' : 'err');
+    }
+    function setResp(text){ document.getElementById('resp').textContent = text; }
+
+    // GIS
+    let gisInitialized = false;
+
+    window.onGoogleCredential = (response) => {
+      // New GIS ("One Tap" / Button) returns a "credential" (ID token JWT)
+      const token = response && response.credential;
+      if (!token){
+        setStatus('Credential callback sans token', false);
+        return;
+      }
+      document.getElementById('idToken').value = token;
+      const {header, payload} = decodeJwt(token);
+      document.getElementById('hdr').textContent = JSON.stringify(header, null, 2);
+      document.getElementById('pld').textContent = JSON.stringify(payload, null, 2);
+      setStatus('ID token récupéré (aud/iss à vérifier côté payload).', true);
+    };
+
+    function initGIS(){
+      const cid = document.getElementById('clientId').value.trim();
+      if(!cid){ alert('Renseigne le Client ID Web'); return; }
+
+      // Mettre à jour l’auto-config div
+      const onloadDiv = document.getElementById('g_id_onload');
+      onloadDiv.setAttribute('data-client_id', cid);
+
+      // Initialisation explicite (nouvelle API GIS)
+      /* global google */
+      if (!window.google || !google.accounts || !google.accounts.id){
+        alert('Le SDK GIS n’est pas encore chargé. Réessaye dans 1-2 secondes.');
+        return;
+      }
+
+      google.accounts.id.initialize({
+        client_id: cid,
+        callback: onGoogleCredential,
+        auto_select: false,
+        cancel_on_tap_outside: false
+      });
+
+      google.accounts.id.renderButton(
+        document.getElementById('googleButton'),
+        { theme: 'filled_black', size: 'large', shape:'pill', width: 280 }
+      );
+
+      gisInitialized = true;
+      setStatus('GIS initialisé (client_id chargé).', true);
+    }
+
+    function promptGIS(){
+      if(!gisInitialized){ initGIS(); }
+      if (window.google && google.accounts && google.accounts.id){
+        google.accounts.id.prompt(); // ouvre le sélecteur de compte
+      }
+    }
+
+    async function callApi(){
+      const baseUrl = document.getElementById('baseUrl').value.trim().replace(/\/+$/,'');
+      const token = document.getElementById('idToken').value.trim();
+      if(!baseUrl){ alert('Base URL vide'); return; }
+      if(!token){ alert('Aucun ID token'); return; }
+
+      try{
+        setStatus('Appel en cours...', true);
+        setResp('');
+        const res = await fetch(baseUrl + '/api/documents', {
+          method: 'GET',
+          headers: {
+            'Authorization': 'Bearer ' + token
+          }
+        });
+
+        const headers = [];
+        res.headers.forEach((v,k)=>headers.push(k+': '+v));
+        const bodyText = await res.text();
+        setStatus('HTTP ' + res.status + ' ' + res.statusText, res.ok);
+        setResp(['# Headers:', ...headers, '', '# Body:', bodyText].join('\n'));
+      }catch(e){
+        setStatus('Fetch error: ' + (e && e.message ? e.message : e), false);
+        setResp(String(e));
+      }
+    }
+
+    // Fill from query params if present
+    (function bootstrapFromQuery(){
+      const qs = new URLSearchParams(location.search);
+      const cid = qs.get('client_id');
+      const base = qs.get('base');
+      if(cid) document.getElementById('clientId').value = cid;
+      if(base) document.getElementById('baseUrl').value = base;
+    })();
+
+    // Wire UI
+    document.getElementById('btnInit').addEventListener('click', initGIS);
+    document.getElementById('btnPrompt').addEventListener('click', promptGIS);
+    document.getElementById('btnDecode').addEventListener('click', () => {
+      const t = document.getElementById('idToken').value.trim();
+      if(!t){ return; }
+      const {header, payload} = decodeJwt(t);
+      document.getElementById('hdr').textContent = JSON.stringify(header, null, 2);
+      document.getElementById('pld').textContent = JSON.stringify(payload, null, 2);
+    });
+    document.getElementById('btnClear').addEventListener('click', () => {
+      document.getElementById('idToken').value = '';
+      document.getElementById('hdr').textContent = '';
+      document.getElementById('pld').textContent = '';
+      setStatus('Nettoyé.', true);
+      setResp('');
+    });
+    document.getElementById('btnCall').addEventListener('click', callApi);
+  </script>
+</body>
+</html>

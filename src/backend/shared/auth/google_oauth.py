@@ -1,26 +1,24 @@
 # src/backend/shared/auth/google_oauth.py
-# V1.0 — Vérification d’ID Token Google (OAuth) + garde FastAPI prête à brancher.
-# - Valide un ID token (Google Sign-In / One Tap) côté backend.
-# - Whitelist optionnelle par email et/ou domaine (GSuite).
+# V1.1 — Audience multiple + logs de diagnostic (aud/iss/azp) + garde FastAPI
+# - Valide un ID token Google (One Tap / GIS) côté backend.
+# - Audience: supporte plusieurs client_id (séparés par des virgules dans l'env).
 # - Dev mode optionnel pour accepter "testtoken" localement.
 #
-# INTÉGRATION MINIMALE (après validation de ta part) :
-#   from backend.shared.auth.google_oauth import require_google_user
-#   @router.get("/secure")
-#   async def secure_ep(user = Depends(require_google_user)): ...
-#
 # ENV attendues :
-#   GOOGLE_OAUTH_CLIENT_ID        -> aud à vérifier (id client OAuth Web)
-#   GOOGLE_ALLOWED_EMAILS         -> liste csv d’emails autorisés (optionnel)
-#   GOOGLE_ALLOWED_HD             -> liste csv de domaines GSuite (optionnel)
+#   GOOGLE_OAUTH_CLIENT_ID        -> aud à vérifier (id client OAuth Web) ; peut être "id1,id2,id3"
+#   GOOGLE_ID_TOKEN_AUDIENCE      -> (optionnel) alias pour la même valeur
+#   GOOGLE_ALLOWED_EMAILS         -> CSV d’emails autorisés (optionnel) [non loggé]
+#   GOOGLE_ALLOWED_HD             -> CSV de domaines GSuite (optionnel) [non loggé]
 #   AUTH_DEV_MODE                 -> "1/true/on" pour autoriser "testtoken" (dev only)
 
 from __future__ import annotations
 
 import os
+import json
+import time
 import logging
 from dataclasses import dataclass
-from typing import Optional, Sequence, Dict, Any
+from typing import Optional, Sequence, Dict, Any, Iterable
 
 from fastapi import Header, HTTPException, status
 
@@ -45,12 +43,21 @@ class VerifiedGoogleUser:
     raw_claims: Dict[str, Any] | None = None
 
 
+def _split_csv_env(value: Optional[str]) -> list[str]:
+    if not value:
+        return []
+    return [s.strip() for s in value.split(",") if s.strip()]
+
+
 class AuthConfig:
-    AUDIENCE: Optional[str] = (
-        os.getenv("GOOGLE_OAUTH_CLIENT_ID")
-        or os.getenv("GOOGLE_ID_TOKEN_AUDIENCE")
-        or None
+    # Audience(s) acceptée(s) : support multi client_id via CSV
+    _AUD: list[str] = (
+        _split_csv_env(os.getenv("GOOGLE_OAUTH_CLIENT_ID"))
+        or _split_csv_env(os.getenv("GOOGLE_ID_TOKEN_AUDIENCE"))
+        or []
     )
+    AUDIENCES: Optional[Sequence[str]] = _AUD if _AUD else None
+
     ALLOWED_EMAILS: Optional[Sequence[str]] = (
         [e.strip().lower() for e in os.getenv("GOOGLE_ALLOWED_EMAILS", "").split(",") if e.strip()] or None
     )
@@ -69,17 +76,64 @@ def _parse_bearer(authorization: Optional[str]) -> str:
     return parts[1]
 
 
-def _verify_with_google(token: str, audience: Optional[str]) -> Dict[str, Any]:
+def _unsafe_decode_payload(jwt_token: str) -> dict:
+    """
+    Décode SANS vérifier la signature — UNIQUEMENT pour logs de diag.
+    Ne logge jamais d'email complet ni d'identifiants bruts.
+    """
+    try:
+        header_b64, payload_b64, _ = jwt_token.split(".")
+        import base64
+        def b64url_to_bytes(b: str) -> bytes:
+            pad = "=" * ((4 - (len(b) % 4)) % 4)
+            return base64.urlsafe_b64decode(b + pad)
+        raw = b64url_to_bytes(payload_b64)
+        return json.loads(raw.decode("utf-8"))
+    except Exception:
+        return {}
+
+
+def _verify_with_google(token: str, audiences: Optional[Iterable[str]]) -> Dict[str, Any]:
     if not _GOOGLE_AUTH_AVAILABLE:
         # Dépendance côté serveur manquante (google-auth)
         raise HTTPException(status_code=500, detail="Missing dependency: google-auth")
-    try:
-        req = google_requests.Request()
-        claims = google_id_token.verify_oauth2_token(token, req, audience=audience)
-        return claims
-    except Exception as e:
-        logger.info(f"Invalid Google ID token: {e}")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google ID token.")
+
+    req = google_requests.Request()
+
+    # Stratégie :
+    # - Si plusieurs audiences sont définies, on essaie chacune.
+    # - Si aucune audience n'est fournie (None), on laisse google-auth vérifier tout sauf aud.
+    tried = 0
+    last_err: Optional[Exception] = None
+    audiences_list = list(audiences) if audiences else [None]
+
+    for aud in audiences_list:
+        tried += 1
+        try:
+            claims = google_id_token.verify_oauth2_token(token, req, audience=aud)
+            # google-auth accepte déjà iss = accounts.google.com OU https://accounts.google.com
+            return claims
+        except Exception as e:
+            last_err = e
+            continue
+
+    # Échec → log de diagnostic minimal (sans PII)
+    pld = _unsafe_decode_payload(token)
+    diag = {
+        "diag": "google_id_token_validation_failed",
+        "aud_env": audiences_list,
+        "payload_iss": pld.get("iss"),
+        "payload_aud": pld.get("aud"),
+        "payload_azp": pld.get("azp"),
+        "payload_email_verified": pld.get("email_verified"),
+        "now_epoch": int(time.time()),
+        # ATTENTION : pas d'email en clair, pas de sub, pas de name/photo
+    }
+    logger.warning("Auth failure (ID token). Details=%s", json.dumps(diag, ensure_ascii=False))
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid Google ID token (aud/iss mismatch or expired)."
+    )
 
 
 def _enforce_allowlists(claims: Dict[str, Any]) -> None:
@@ -105,7 +159,7 @@ def verify_id_token(token: str) -> VerifiedGoogleUser:
             raw_claims={"dev": True},
         )
 
-    claims = _verify_with_google(token, audience=AuthConfig.AUDIENCE)
+    claims = _verify_with_google(token, audiences=AuthConfig.AUDIENCES)
     _enforce_allowlists(claims)
 
     return VerifiedGoogleUser(
