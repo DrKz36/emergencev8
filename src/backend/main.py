@@ -72,6 +72,7 @@ DOCUMENTS_ROUTER = _import_router("backend.features.documents.router")
 DASHBOARD_ROUTER = _import_router("backend.features.dashboard.router")
 DEBATE_ROUTER    = _import_router("backend.features.debate.router")
 CHAT_ROUTER      = _import_router("backend.features.chat.router")
+MEMORY_ROUTER   = _import_router("backend.features.memory.router")
 
 
 def _migrations_dir() -> str:
@@ -99,11 +100,12 @@ async def _startup(container: ServiceContainer):
         logger.warning(f"Initialisation DB partielle/repoussée: {e}")
     t.mark("db_ready")
 
-    # 2) Wire DI (ajout de debate.router)
+    # 2) Wire DI (ajout de debate.router + memory.router)
     try:
         import backend.features.chat.router as chat_router_module      # type: ignore
         import backend.features.debate.router as debate_router_module  # type: ignore
-        container.wire(modules=[chat_router_module, debate_router_module])
+        import backend.features.memory.router as memory_router_module  # type: ignore
+        container.wire(modules=[chat_router_module, debate_router_module, memory_router_module])
         logger.info("DI wired (chat.router, debate.router).")
     except Exception as e:
         logger.warning(f"Wire DI partiel: {e}")
@@ -175,6 +177,7 @@ def create_app() -> FastAPI:
     _mount_router(DOCUMENTS_ROUTER, "/api/documents")
     _mount_router(DEBATE_ROUTER,    "/api/debate")
     _mount_router(DASHBOARD_ROUTER, "/api/dashboard")
+    _mount_router(MEMORY_ROUTER,   "/api/memory")
     t.mark("routers_mounted")
 
     # --- WebSocket Chat (lazy DI) --------------------------------------------

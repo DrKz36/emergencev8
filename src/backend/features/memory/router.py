@@ -1,5 +1,5 @@
 # src/backend/features/memory/router.py
-# NOUVEAU - V1.0: Endpoint pour déclencher le MemoryGardener.
+# V2.0 - Endpoint(s) de maintenance de la mémoire consolidée
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any
@@ -7,34 +7,25 @@ from typing import Dict, Any
 from backend.features.memory.gardener import MemoryGardener
 from backend.shared.dependencies import get_memory_gardener
 
-router = APIRouter(
-    prefix="/api/memory",
-    tags=["Memory & Knowledge"]
-)
+router = APIRouter(prefix="/api/memory", tags=["Memory"])
+
 logger = logging.getLogger(__name__)
 
-@router.post(
-    "/tend-garden",
-    response_model=Dict[str, Any],
-    summary="Déclenche la tâche de consolidation de la mémoire",
-    description="Lance manuellement le 'MemoryGardener' pour analyser les sessions récentes, "
-                "consolider les concepts dans la base de connaissance et gérer le cycle de vie des souvenirs."
-)
-async def tend_garden_endpoint(
-    gardener: MemoryGardener = Depends(get_memory_gardener)
-) -> Dict[str, Any]:
+@router.get("/tend-garden")
+@router.post("/tend-garden")
+async def tend_garden(gardener: MemoryGardener = Depends(get_memory_gardener)) -> Dict[str, Any]:
     """
-    Déclenche le processus du jardinier de la mémoire.
-    
-    Cette opération peut être longue si de nombreuses sessions doivent être traitées.
+    Déclenche la consolidation des sessions -> concepts + vecteurs.
+    GET ou POST acceptés.
     """
-    logger.info("Requête reçue sur l'endpoint /tend-garden.")
+    logger.info("Endpoint /api/memory/tend-garden déclenché.")
     try:
         report = await gardener.tend_the_garden()
-        if report["status"] == "error":
-            raise HTTPException(status_code=500, detail=report["message"])
+        if report.get("status") == "error":
+            raise HTTPException(status_code=500, detail=report.get("message", "Erreur inconnue."))
         return report
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.critical(f"Erreur non gérée dans l'endpoint tend_garden: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Une erreur interne critique est survenue.")
-
+        logger.exception("Échec serveur dans tend_garden.")
+        raise HTTPException(status_code=500, detail=str(e))
