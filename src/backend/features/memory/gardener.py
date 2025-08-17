@@ -1,9 +1,9 @@
 # src/backend/features/memory/gardener.py
-# V3.3 - Plante aussi le résumé en vecteur (en plus des concepts) + déduplication.
+# V3.5 - Ajout user_id dans metadata vector store + robustesse lecture BDD + consolidation inconditionnelle + dédup inter-collections.
 import logging
 import uuid
 import json
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Set
 from datetime import datetime, timezone
 
 from backend.core.database.manager import DatabaseManager
@@ -14,6 +14,7 @@ from backend.core import config
 
 logger = logging.getLogger(__name__)
 
+
 class MemoryGardener:
     """Consolide la connaissance issue des sessions:
     - Récolte les sessions non consolidées (is_consolidated = 0)
@@ -22,7 +23,7 @@ class MemoryGardener:
         * SQL (knowledge_concepts)
         * VectorStore ('emergence_knowledge')
         * Recopie aussi dans 'emergence_documents' pour le RAG existant.
-    - Marque les sessions consolidées.
+    - Marque les sessions consolidées (même si aucun concept/summary).
     """
     KNOWLEDGE_COLLECTION_NAME = "emergence_knowledge"
 
@@ -43,56 +44,76 @@ class MemoryGardener:
             if not sessions_to_process:
                 logger.info("Aucune session à consolider.")
                 await self._decay_knowledge()
-                return {"status": "success", "message": "Aucune session à traiter.", "consolidated_sessions": 0, "new_concepts": 0}
+                return {
+                    "status": "success",
+                    "message": "Aucune session à traiter.",
+                    "consolidated_sessions": 0,
+                    "new_concepts": 0
+                }
 
             total_concepts = 0
             consolidated_ids: List[str] = []
 
             for s in sessions_to_process:
-                sid = s['id']
+                sid = s["id"]
                 try:
+                    # 0) Lecture "vérité BDD" (user_id + éventuel fallback des champs)
+                    row = await dbq.get_session_by_id(self.db, sid)
+                    row_dict = row if isinstance(row, dict) else (dict(row) if row else {})
+                    user_id: Optional[str] = row_dict.get("user_id")
+
                     # 1) Historique
                     history: List[Dict[str, Any]] = []
-                    raw = s.get('session_data')
+                    raw = s.get("session_data") or row_dict.get("session_data")
                     if raw:
                         try:
                             history = json.loads(raw) if isinstance(raw, str) else raw
                         except Exception:
-                            logger.warning(f"Session {sid}: 'session_data' non JSON.")
+                            logger.warning("Session %s: 'session_data' non JSON.", sid)
 
                     # 2) Analyse sémantique (écrit summary/concepts/entities en BDD)
                     analysis = await self.analyzer.analyze_session_for_concepts(sid, history)
                     concepts: List[str] = list(dict.fromkeys((analysis or {}).get("concepts", []) or []))
                     summary: str = (analysis or {}).get("summary") or ""
 
-                    # 3) Relecture “vérité BDD” des concepts si nécessaire
+                    # 3) Relecture “vérité BDD” si nécessaire (concepts éventuellement stockés)
                     if not concepts:
-                        row = await dbq.get_session_by_id(self.db, sid)
-                        if row:
-                            try:
-                                row_dict = row if isinstance(row, dict) else dict(row)
-                                raw_concepts = row_dict.get('extracted_concepts')
-                                if isinstance(raw_concepts, str):
-                                    concepts = json.loads(raw_concepts or "[]")
-                                elif isinstance(raw_concepts, list):
-                                    concepts = raw_concepts
-                            except Exception:
-                                logger.warning(f"Session {sid}: 'extracted_concepts' illisible.")
+                        try:
+                            raw_concepts = row_dict.get("extracted_concepts")
+                            if isinstance(raw_concepts, str):
+                                concepts = json.loads(raw_concepts or "[]")
+                            elif isinstance(raw_concepts, list):
+                                concepts = raw_concepts
+                        except Exception:
+                            logger.warning("Session %s: 'extracted_concepts' illisible.", sid)
 
-                    # 4) Étend le set avec le résumé (utile au RAG même si concepts maigres)
-                    extended_concepts = list(dict.fromkeys([c for c in concepts if c] + ([summary] if summary else [])))
+                    # 4) Étend avec le résumé (utile au RAG même si concepts maigres)
+                    extended_concepts = list(
+                        dict.fromkeys([c for c in concepts if c] + ([summary] if summary else []))
+                    )
 
+                    # 5) Plante si contenu
                     if extended_concepts:
-                        await self._plant_concepts(extended_concepts, sid)
+                        await self._plant_concepts(
+                            concepts=extended_concepts,
+                            source_session_id=sid,
+                            summary_text=(summary if summary else None),
+                            user_id=user_id,
+                        )
                         total_concepts += len(extended_concepts)
-                        consolidated_ids.append(sid)
+                        logger.info("Session %s: %d concept(s)/résumé(s) plantés.", sid, len(extended_concepts))
                     else:
-                        logger.info(f"Session {sid}: aucun concept détecté.")
+                        logger.info("Session %s: aucun concept/résumé détecté (rien de planté).", sid)
+
+                    # 6) IMPORTANT: on consolide la session dans tous les cas
+                    consolidated_ids.append(sid)
+
                 except Exception as e:
-                    logger.error(f"Erreur pendant consolidation de {sid}: {e}", exc_info=True)
+                    logger.error("Erreur pendant consolidation de %s: %s", sid, e, exc_info=True)
 
             if consolidated_ids:
                 await dbq.mark_sessions_as_consolidated(self.db, consolidated_ids)
+                logger.info("Sessions consolidées: %s", consolidated_ids)
 
             await self._decay_knowledge()
 
@@ -103,44 +124,94 @@ class MemoryGardener:
                 "new_concepts": total_concepts
             }
         except Exception as e:
-            logger.critical(f"Échec critique de la ronde du jardinier: {e}", exc_info=True)
+            logger.critical("Échec critique de la ronde du jardinier: %s", e, exc_info=True)
             return {"status": "error", "message": str(e)}
 
-    async def _plant_concepts(self, concepts: List[str], source_session_id: str):
-        seen = set()
-        items = []
+    # ------------------------------------------------------------------ #
+    # Implémentation
+    # ------------------------------------------------------------------ #
+    def _collection_existing_texts(self, collection) -> Set[str]:
+        """
+        Récupère l'ensemble des 'documents' déjà présents dans une collection Chroma.
+        On tolère les structures [List[str]] ou [str] selon l'implémentation.
+        """
+        try:
+            data = collection.get(include=["documents"])
+            docs = data.get("documents") or []
+            # Flatten soft
+            flat: List[str] = []
+            for d in docs:
+                if isinstance(d, list):
+                    flat.extend([x for x in d if isinstance(x, str)])
+                elif isinstance(d, str):
+                    flat.append(d)
+            return set(flat)
+        except Exception as e:
+            logger.warning("Impossible de lister les documents existants (dedup) : %s", e)
+            return set()
+
+    async def _plant_concepts(
+        self,
+        concepts: List[str],
+        source_session_id: str,
+        summary_text: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ):
+        # Dédup inter-collections (knowledge + documents)
+        existing_texts = self._collection_existing_texts(self.knowledge_collection)
+        existing_texts |= self._collection_existing_texts(self.document_collection)
+
+        seen_local: Set[str] = set()
+        items: List[Dict[str, Any]] = []
+        sql_payloads: List[Dict[str, Any]] = []
+
         for concept_text in concepts:
             concept_text = (concept_text or "").strip()
-            if not concept_text or concept_text in seen:
+            if not concept_text:
                 continue
-            seen.add(concept_text)
+            if concept_text in seen_local:
+                continue
+            if concept_text in existing_texts:
+                # déjà présent dans au moins une collection, on saute
+                continue
+
+            seen_local.add(concept_text)
 
             cid = str(uuid.uuid4())
+            role = "summary" if (summary_text and concept_text == summary_text) else "concept"
+
             # 1) SQL (index sémantique)
-            await dbq.upsert_knowledge_concept(self.db, {
+            sql_payloads.append({
                 "id": cid,
                 "concept": concept_text,
                 "description": f"Concept extrait de la session {source_session_id}",
                 "categories": [],
                 "vector_id": cid
             })
-            # 2) Vector items (connaissances)
+
+            # 2) Vector items (connaissances + documents)
             meta = {
                 "source_session_id": source_session_id,
+                "user_id": user_id,
                 "kind": "memory",
+                "role": role,  # utile pour le RAG si besoin
                 "concept_text": concept_text,
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             items.append({"id": cid, "text": concept_text, "metadata": meta})
 
         if not items:
+            logger.info("Aucun nouvel item à vectoriser (tout était déjà présent).")
             return
 
-        # Ajout dans la collection "mémoire"
+        # Upsert SQL d'abord (pour garder une trace indexée)
+        for payload in sql_payloads:
+            await dbq.upsert_knowledge_concept(self.db, payload)
+
+        # Ajout dans la collection "mémoire" puis "documents"
         self.vector_service.add_items(self.knowledge_collection, items)
-        # Ajout également dans la collection documents (pour RAG existant)
         self.vector_service.add_items(self.document_collection, items)
-        logger.info(f"{len(items)} concept(s)/résumé(s) vectorisés (knowledge + documents).")
+        logger.info("%d concept(s)/résumé(s) vectorisés (knowledge + documents).", len(items))
 
     async def _decay_knowledge(self):
         # Stratégie future (décroissance). No-op pour l'instant.

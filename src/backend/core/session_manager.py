@@ -1,14 +1,14 @@
 # src/backend/core/session_manager.py
-# V13.2 - FIX: Alignement avec queries.py V5.1 et ajout du chargement de session.
+# V13.3 - Persist-incremental: UPSERT DB à chaque message + seed DB à la création + load depuis BDD.
 import logging
 import json
+import asyncio
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 
-# Imports corrigés pour refléter la structure réelle
 from backend.shared.models import Session, ChatMessage, AgentMessage
 from backend.core.database.manager import DatabaseManager
-from backend.core.database import queries # Import du module queries
+from backend.core.database import queries  # Import du module queries
 from backend.features.memory.analyzer import MemoryAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,10 @@ logger = logging.getLogger(__name__)
 class SessionManager:
     """
     Gère les sessions de chat actives en mémoire et leur persistance.
-    V13.2: Ajout du chargement de session depuis la BDD et correction des dépendances.
+    V13.3 :
+      - UPSERT BDD à chaque message (user/assistant) -> sessions jamais "vides".
+      - Seed initial de la session en BDD à la création (fire-and-forget).
+      - Chargement possible d'une session passée depuis la BDD.
     """
 
     def __init__(self, db_manager: DatabaseManager, memory_analyzer: Optional[MemoryAnalyzer] = None):
@@ -24,7 +27,7 @@ class SessionManager:
         self.memory_analyzer = memory_analyzer
         self.active_sessions: Dict[str, Session] = {}
         is_ready = self.memory_analyzer is not None
-        logger.info(f"SessionManager V13.2 initialisé. MemoryAnalyzer prêt : {is_ready}")
+        logger.info(f"SessionManager V13.3 initialisé. MemoryAnalyzer prêt : {is_ready}")
 
     def _ensure_analyzer_ready(self):
         """Vérifie que le service dépendant est bien injecté avant utilisation."""
@@ -33,13 +36,19 @@ class SessionManager:
             raise ReferenceError("SessionManager: memory_analyzer manquant.")
 
     def create_session(self, session_id: str, user_id: str):
-        """Crée une session et la garde active en mémoire."""
-        if session_id not in self.active_sessions:
-            new_session = Session(id=session_id, user_id=user_id, start_time=datetime.now(timezone.utc))
-            self.active_sessions[session_id] = new_session
-            logger.info(f"Session active créée : {session_id} pour l'utilisateur {user_id}")
-        else:
+        """Crée la session (RAM) et déclenche un seed en BDD (fire-and-forget)."""
+        if session_id in self.active_sessions:
             logger.warning(f"Tentative de création d'une session déjà existante: {session_id}")
+            return
+        new_session = Session(id=session_id, user_id=user_id, start_time=datetime.now(timezone.utc))
+        self.active_sessions[session_id] = new_session
+        logger.info(f"Session active créée : {session_id} pour l'utilisateur {user_id}")
+        # Seed BDD (sans bloquer l'accept WS)
+        try:
+            asyncio.create_task(self.db_manager.save_session(new_session))
+        except RuntimeError:
+            # Pas de boucle en cours (rare): on ignore le seed, l'UPSERT arrivera au 1er message.
+            pass
 
     def get_session(self, session_id: str) -> Optional[Session]:
         """Récupère une session depuis le cache mémoire actif."""
@@ -47,14 +56,13 @@ class SessionManager:
 
     async def load_session_from_db(self, session_id: str) -> Optional[Session]:
         """
-        NOUVEAU V13.2: Charge une session depuis la BDD si elle n'est pas active.
-        C'est le chaînon manquant pour travailler sur des sessions passées.
+        Charge une session depuis la BDD si elle n'est pas active.
+        Utile pour retravailler des sessions passées.
         """
         if session_id in self.active_sessions:
             return self.active_sessions[session_id]
 
         logger.info(f"Session {session_id} non active, tentative de chargement depuis la BDD...")
-        # On utilise la nouvelle fonction de queries.py
         session_row = await queries.get_session_by_id(self.db_manager, session_id)
 
         if not session_row:
@@ -65,7 +73,7 @@ class SessionManager:
             # Reconstruction de l'objet Session à partir des données de la BDD
             session_dict = dict(session_row)
             history_json = session_dict.get('session_data', '[]')
-            
+
             # Reconstruction de l'historique avec les bons modèles Pydantic
             history_list = json.loads(history_json)
             reconstructed_history = [
@@ -85,8 +93,8 @@ class SessionManager:
                     "entities": json.loads(session_dict.get('extracted_entities', '[]') or '[]')
                 }
             )
-            
-            self.active_sessions[session_id] = session # On la met en cache actif
+
+            self.active_sessions[session_id] = session  # On la met en cache actif
             logger.info(f"Session {session_id} chargée et reconstruite depuis la BDD.")
             return session
         except Exception as e:
@@ -94,28 +102,35 @@ class SessionManager:
             return None
 
     async def add_message_to_session(self, session_id: str, message: ChatMessage | AgentMessage):
+        """
+        Append en RAM + UPSERT immédiat en BDD pour éviter les sessions 'vides'
+        quand le jardinier passe avant la finalisation.
+        """
         session = self.get_session(session_id)
-        if session:
-            # On utilise bien model_dump pour la sérialisation JSON
-            session.history.append(message.model_dump(mode='json'))
-        else:
+        if not session:
             logger.error(f"Impossible d'ajouter un message : session {session_id} non trouvée.")
+            return
+        session.history.append(message.model_dump(mode='json'))
+        try:
+            await self.db_manager.save_session(session)
+            logger.debug(f"Session {session_id} upsert après message ({message.role}).")
+        except Exception as e:
+            logger.error(f"UPSERT session {session_id} après message: {e}", exc_info=True)
 
     def get_full_history(self, session_id: str) -> List[Dict[str, Any]]:
         session = self.get_session(session_id)
         return session.history if session else []
-    
+
     async def finalize_session(self, session_id: str):
+        """Clôture, UPSERT final et analyse post-session (concepts/entities/summary)."""
         session = self.active_sessions.pop(session_id, None)
         if session:
             session.end_time = datetime.now(timezone.utc)
             duration = (session.end_time - session.start_time).total_seconds()
             logger.info(f"Finalisation de la session {session_id}. Durée: {duration:.2f}s.")
-            
-            # On utilise la méthode robuste du DatabaseManager pour sauvegarder
+
             await self.db_manager.save_session(session)
 
-            # Lancement de l'analyse sémantique post-session
             if self.memory_analyzer:
                 await self.memory_analyzer.analyze_session_for_concepts(session_id, session.history)
             else:
@@ -133,10 +148,10 @@ class SessionManager:
         try:
             if not hasattr(session, 'metadata'):
                 session.metadata = {}
-            
+
             session.metadata.update(update_data.get("metadata", {}))
             logger.info(f"Session {session_id} mise à jour avec les données du débat.")
-            
+
             await self.db_manager.save_session(session)
         except Exception as e:
             logger.error(f"Erreur lors de la mise à jour et sauvegarde de la session {session_id}: {e}", exc_info=True)
