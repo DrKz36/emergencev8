@@ -1,7 +1,6 @@
 /**
  * src/frontend/features/chat/chat-ui.js
- * V23.1 — Bouton RAG "Power" (IEC 60417-5007) rouge/vert + scoping chat
- * Remplace l'ancien toggle .toggle-metal par un bouton SVG accessible.
+ * V23.2 — Unification police auteurs (data-role="author") + RAG "Power"
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
@@ -15,7 +14,7 @@ export class ChatUI {
       ragEnabled: false,
       messages: {} // { [agentId]: Message[] }
     };
-    console.log('✅ ChatUI V23.1 prêt.');
+    console.log('✅ ChatUI V23.2 prêt.');
   }
 
   render(container, chatState = {}) {
@@ -152,7 +151,7 @@ export class ChatUI {
       <div class="message ${side} ${side === 'assistant' ? agentId : ''}">
         <div class="message-content">
           <div class="message-meta meta-inside">
-            <strong class="sender-name">${name}</strong>
+            <strong class="sender-name" data-role="author">${name}</strong>
             <span class="message-time">${time}</span>
           </div>
           <div class="message-text">${content}${cursor}</div>

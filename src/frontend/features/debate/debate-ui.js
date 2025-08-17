@@ -1,6 +1,6 @@
 /**
  * src/frontend/features/debate/debate-ui.js
- * V36.6 — Fix double émission + RAG "Power" SVG rouge/vert + Médiateur autonome (agent restant) + layout PC
+ * V36.7 — Unification police auteurs (data-role="author") + garde-fou émission
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
@@ -11,7 +11,7 @@ export class DebateUI {
     this.eventBus = eventBus;
     this.localState = {};
     try { loadCSS('../features/debate/debate.css'); } catch (_) {}
-    console.log('✅ DebateUI V36.6 prêt (CSS chargée).');
+    console.log('✅ DebateUI V36.7 prêt (CSS chargée).');
   }
 
   render(container, debateState) {
@@ -140,7 +140,7 @@ export class DebateUI {
         use_rag: this.localState.use_rag
       };
 
-      // IMPORTANT: émettre UNE SEULE FOIS (on supprime l’émission doublon)
+      // IMPORTANT: émettre UNE SEULE FOIS
       this.eventBus.emit('debate:create', config);
     });
   }
@@ -245,7 +245,7 @@ export class DebateUI {
           <div class="message assistant agent--${agentId}">
             <div class="message-content">
               <div class="message-text">
-                <div class="message-meta"><strong class="sender-name">${agent.name}</strong></div>
+                <div class="message-meta"><strong class="sender-name" data-role="author">${agent.name}</strong></div>
                 ${marked.parse(response)}
               </div>
             </div>
@@ -260,7 +260,7 @@ export class DebateUI {
       <div class="message assistant agent--${synthesizerId} synthesis">
         <div class="message-content">
           <div class="message-text">
-            <div class="message-meta"><strong class="sender-name">Synthèse par ${synthesizerName}</strong></div>
+            <div class="message-meta"><strong class="sender-name" data-role="author">Synthèse par ${synthesizerName}</strong></div>
             <div class="synthesis-body">${marked.parse(text)}</div>
           </div>
         </div>
