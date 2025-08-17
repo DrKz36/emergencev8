@@ -1,5 +1,5 @@
 # src/backend/features/debate/service.py
-# V13.0 - DEBUG CONTEXT + OFF ISOLATION (full_transcript | round_local | stateless)
+# V14.0 - DEBUG CONTEXT + OFF ISOLATION (full_transcript | round_local | stateless) + STRICT ROLE ISOLATION
 import os
 import re
 import asyncio
@@ -61,6 +61,47 @@ class DebateService:
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
         """Détecte des patterns de type AZUR-8152 / ONYX-4472."""
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
+
+    def _sanitize_agent_output(self, agent_id: str, text: str, synthesizer_id: str) -> str:
+        """
+        STRICT ROLE ISOLATION:
+        - Empêche un agent d'écrire au nom d'un autre (ex: "**neo a dit :** ...").
+        - Supprime les en-têtes "Intervention de <agent>" dans les tours.
+        - Empêche la production d'une "Synthèse" par un agent qui n'est pas le médiateur.
+        """
+        if not text:
+            return text
+
+        known = {"anima", "neo", "nexus"}
+        agent_id_l = (agent_id or "").lower()
+        other_agents = [a for a in known if a != agent_id_l]
+        cleaned = text
+
+        for other in other_agents:
+            # Bloc du type: **neo a dit :** + blockquotes suivants
+            cleaned = re.sub(
+                rf"(?mis)(^|\n)\s*\*\*\s*{other}\s+a dit\s*:?\s*\*\*\s*\n(?:\s*>.*\n?)+",
+                "\n",
+                cleaned
+            )
+            # En-tête 'Intervention de other' + paragraphe/blockquote suivant
+            cleaned = re.sub(
+                rf"(?mis)^\s*#{1,6}\s*Intervention\s+de\s+{other}\s*\n.*?(?=^\s*#{1,6}\s|\Z)",
+                "",
+                cleaned
+            )
+            # Préfixe 'other:' en début de ligne
+            cleaned = re.sub(
+                rf"(?mi)^\s*{other}\s*:\s*",
+                "",
+                cleaned
+            )
+
+        # Empêcher la "Synthèse" côté non-synthétiseur
+        if agent_id_l != (synthesizer_id or "").lower():
+            cleaned = re.sub(r"(?mi)^\s*#{1,6}\s*Synth[èe]se.*(?:\n.*)*", "", cleaned)
+
+        return cleaned.strip()
 
     def _policy_for_session(self, session: DebateSession) -> str:
         """Si RAG ON, on garde le transcript complet pour la cohérence du débat."""
@@ -222,7 +263,12 @@ class DebateService:
                 f"{transcript}\n\n---\n"
                 f"**INSTRUCTION POUR {agent_id.upper()} :**\n"
                 f"C'est à ton tour de parler. En te basant sur l'intégralité des éléments ci-dessus (selon policy={policy}), "
-                f"apporte ta contribution au débat. Sois pertinent, concis et fais avancer la discussion."
+                f"apporte ta contribution au débat. Sois pertinent, concis et fais avancer la discussion.\n\n"
+                f"RÈGLES D'ISOLATION (OBLIGATOIRES) :\n"
+                f"- Tu parles uniquement au nom de {agent_id}. N'invente JAMAIS de répliques attribuées à d'autres agents (ex: \"**neo a dit :**\").\n"
+                f"- Tu peux faire référence aux idées DES AUTRES uniquement en style indirect (ex: \"Comme Neo le suggère...\").\n"
+                f"- N'écris pas d'en-têtes comme \"Intervention de ...\" ni de section \"Synthèse\".\n"
+                f"- Ne préfixe PAS ta sortie par ton nom/role. Réponds en un seul bloc de texte."
             )
             structured_history = [{"role": "user", "content": prompt_for_agent}]
 
@@ -250,6 +296,7 @@ class DebateService:
                 session_id=session.session_id
             )
             
+            response_text = self._sanitize_agent_output(agent_id, response_text, session.config.agent_order[-1])
             current_turn.agent_responses[agent_id] = response_text
 
             # DEBUG (après appel)
