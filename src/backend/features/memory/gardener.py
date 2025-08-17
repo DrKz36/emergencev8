@@ -1,5 +1,5 @@
 # src/backend/features/memory/gardener.py
-# V3.1 - Consolidation mémoire (SQL + Chroma) + injection dans la collection documents pour RAG
+# V3.3 - Plante aussi le résumé en vecteur (en plus des concepts) + déduplication.
 import logging
 import uuid
 import json
@@ -16,13 +16,13 @@ logger = logging.getLogger(__name__)
 
 class MemoryGardener:
     """Consolide la connaissance issue des sessions:
-    - Récolte les sessions non consolidées (sessions.is_consolidated = 0)
-    - Analyse -> concepts / entités (via MemoryAnalyzer + LLM)
-    - Plante les concepts:
-        * en SQL (knowledge_concepts)
-        * dans le VectorStore (collection 'emergence_knowledge')
-        * et également dans la collection DOCUMENTS pour qu'ils soient pris en compte par le RAG existant.
-    - Marque les sessions comme consolidées.
+    - Récolte les sessions non consolidées (is_consolidated = 0)
+    - Analyse -> summary/concepts/entities
+    - Plante:
+        * SQL (knowledge_concepts)
+        * VectorStore ('emergence_knowledge')
+        * Recopie aussi dans 'emergence_documents' pour le RAG existant.
+    - Marque les sessions consolidées.
     """
     KNOWLEDGE_COLLECTION_NAME = "emergence_knowledge"
 
@@ -51,7 +51,7 @@ class MemoryGardener:
             for s in sessions_to_process:
                 sid = s['id']
                 try:
-                    # Préparer l'historique
+                    # 1) Historique
                     history: List[Dict[str, Any]] = []
                     raw = s.get('session_data')
                     if raw:
@@ -60,20 +60,31 @@ class MemoryGardener:
                         except Exception:
                             logger.warning(f"Session {sid}: 'session_data' non JSON.")
 
-                    # Analyse sémantique (écrit summary / concepts / entities dans la table sessions)
-                    await self.analyzer.analyze_session_for_concepts(sid, history)
+                    # 2) Analyse sémantique (écrit summary/concepts/entities en BDD)
+                    analysis = await self.analyzer.analyze_session_for_concepts(sid, history)
+                    concepts: List[str] = list(dict.fromkeys((analysis or {}).get("concepts", []) or []))
+                    summary: str = (analysis or {}).get("summary") or ""
 
-                    # Relire les concepts extraits depuis la BDD
-                    row = await dbq.get_session_by_id(self.db, sid)
-                    concepts = []
-                    if row:
-                        try:
-                            concepts = json.loads(row.get('extracted_concepts') or '[]') if isinstance(row, dict) else []
-                        except Exception:
-                            logger.warning(f"Session {sid}: 'extracted_concepts' illisible.")
-                    if concepts:
-                        await self._plant_concepts(concepts, sid)
-                        total_concepts += len(concepts)
+                    # 3) Relecture “vérité BDD” des concepts si nécessaire
+                    if not concepts:
+                        row = await dbq.get_session_by_id(self.db, sid)
+                        if row:
+                            try:
+                                row_dict = row if isinstance(row, dict) else dict(row)
+                                raw_concepts = row_dict.get('extracted_concepts')
+                                if isinstance(raw_concepts, str):
+                                    concepts = json.loads(raw_concepts or "[]")
+                                elif isinstance(raw_concepts, list):
+                                    concepts = raw_concepts
+                            except Exception:
+                                logger.warning(f"Session {sid}: 'extracted_concepts' illisible.")
+
+                    # 4) Étend le set avec le résumé (utile au RAG même si concepts maigres)
+                    extended_concepts = list(dict.fromkeys([c for c in concepts if c] + ([summary] if summary else [])))
+
+                    if extended_concepts:
+                        await self._plant_concepts(extended_concepts, sid)
+                        total_concepts += len(extended_concepts)
                         consolidated_ids.append(sid)
                     else:
                         logger.info(f"Session {sid}: aucun concept détecté.")
@@ -96,8 +107,14 @@ class MemoryGardener:
             return {"status": "error", "message": str(e)}
 
     async def _plant_concepts(self, concepts: List[str], source_session_id: str):
+        seen = set()
         items = []
         for concept_text in concepts:
+            concept_text = (concept_text or "").strip()
+            if not concept_text or concept_text in seen:
+                continue
+            seen.add(concept_text)
+
             cid = str(uuid.uuid4())
             # 1) SQL (index sémantique)
             await dbq.upsert_knowledge_concept(self.db, {
@@ -123,7 +140,7 @@ class MemoryGardener:
         self.vector_service.add_items(self.knowledge_collection, items)
         # Ajout également dans la collection documents (pour RAG existant)
         self.vector_service.add_items(self.document_collection, items)
-        logger.info(f"{len(items)} concept(s) vectorisés (knowledge + documents).")
+        logger.info(f"{len(items)} concept(s)/résumé(s) vectorisés (knowledge + documents).")
 
     async def _decay_knowledge(self):
         # Stratégie future (décroissance). No-op pour l'instant.
