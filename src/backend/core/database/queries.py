@@ -1,17 +1,18 @@
 # src/backend/core/database/queries.py
-# V5.2 - ADD: Ajout de update_session_analysis_data pour la sauvegarde post-analyse.
+# V6.0 - Mémoire persistante : sessions.is_consolidated + knowledge_concepts + helpers MemoryGardener.
 import logging
 import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
-import aiosqlite
 
+import aiosqlite
 from .manager import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
-# --- Cost Queries ---
-# ... (inchangé)
+# ------------------------------
+# Cost Queries
+# ------------------------------
 async def add_cost_log(db: DatabaseManager, timestamp: datetime, agent: str, model: str, input_tokens: int, output_tokens: int, total_cost: float, feature: str):
     query = "INSERT INTO costs (timestamp, agent, model, input_tokens, output_tokens, total_cost, feature) VALUES (?, ?, ?, ?, ?, ?, ?)"
     params = (timestamp.isoformat(), agent, model, input_tokens, output_tokens, total_cost, feature)
@@ -28,12 +29,17 @@ async def get_costs_summary(db: DatabaseManager) -> Dict[str, float]:
     """
     row = await db.fetch_one(query)
     if row:
-        return {"total": row["total_cost"] or 0.0, "today": row["today_cost"] or 0.0, "this_week": row["week_cost"] or 0.0, "this_month": row["month_cost"] or 0.0}
+        return {
+            "total": row["total_cost"] or 0.0,
+            "today": row["today_cost"] or 0.0,
+            "this_week": row["week_cost"] or 0.0,
+            "this_month": row["month_cost"] or 0.0,
+        }
     return {"total": 0.0, "today": 0.0, "this_week": 0.0, "this_month": 0.0}
 
-
-# --- Document Queries ---
-# ... (inchangé)
+# ------------------------------
+# Document Queries
+# ------------------------------
 async def insert_document(db: DatabaseManager, filename: str, filepath: str, status: str, uploaded_at: str) -> int:
     query = "INSERT INTO documents (filename, filepath, status, uploaded_at) VALUES (?, ?, ?, ?)"
     params = (filename, filepath, status, uploaded_at)
@@ -58,7 +64,7 @@ async def get_all_documents(db: DatabaseManager) -> List[Dict[str, Any]]:
     query = "SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents ORDER BY uploaded_at DESC"
     rows = await db.fetch_all(query)
     return [dict(row) for row in rows]
-    
+
 async def get_document_by_id(db: DatabaseManager, doc_id: int) -> Optional[Dict[str, Any]]:
     query = "SELECT * FROM documents WHERE id = ?"
     row = await db.fetch_one(query, (doc_id,))
@@ -68,11 +74,11 @@ async def delete_document(db: DatabaseManager, doc_id: int):
     query = "DELETE FROM documents WHERE id = ?"
     await db.execute(query, (doc_id,))
 
-# --- Session Queries ---
-
-# ... (save_session reste déprécié)
+# ------------------------------
+# Session Queries (mémoire brut)
+# ------------------------------
 async def save_session(*args, **kwargs):
-    logger.warning("DEPRECATION WARNING: queries.save_session est obsolète. Utiliser SessionManager.")
+    logger.warning("DEPRECATION WARNING: queries.save_session est obsolète. Utiliser SessionManager (DatabaseManager.save_session).")
     pass
 
 async def get_session_by_id(db: DatabaseManager, session_id: str) -> Optional[aiosqlite.Row]:
@@ -84,16 +90,15 @@ async def get_all_sessions_overview(db: DatabaseManager) -> List[Dict[str, Any]]
     query = """
     SELECT id, created_at, updated_at, summary, 
            json_array_length(extracted_concepts) as concept_count, 
-           json_array_length(extracted_entities) as entity_count
+           json_array_length(extracted_entities) as entity_count,
+           is_consolidated
     FROM sessions ORDER BY updated_at DESC
     """
     rows = await db.fetch_all(query)
     return [dict(row) for row in rows]
 
 async def update_session_analysis_data(db: DatabaseManager, session_id: str, summary: str, concepts: List[str], entities: List[str]):
-    """
-    NOUVEAU V5.2: Met à jour une session existante avec les données d'analyse.
-    """
+    """Met à jour une session existante avec les données d'analyse."""
     query = """
     UPDATE sessions
     SET
@@ -113,10 +118,58 @@ async def update_session_analysis_data(db: DatabaseManager, session_id: str, sum
     await db.execute(query, params)
     logger.info(f"Données d'analyse pour la session {session_id} mises à jour en BDD.")
 
+async def get_unconsolidated_sessions(db: DatabaseManager, limit: int = 10) -> List[Dict[str, Any]]:
+    """Retourne des sessions à consolider (pas encore consolidées)."""
+    query = """
+    SELECT id, session_data, summary, extracted_concepts, extracted_entities, created_at, updated_at
+    FROM sessions
+    WHERE IFNULL(is_consolidated, 0) = 0
+    ORDER BY updated_at DESC
+    LIMIT ?
+    """
+    rows = await db.fetch_all(query, (limit,))
+    result: List[Dict[str, Any]] = []
+    for r in rows:
+        item = dict(r)
+        # Assurer des valeurs par défaut
+        item.setdefault('summary', None)
+        item.setdefault('extracted_concepts', None)
+        item.setdefault('extracted_entities', None)
+        result.append(item)
+    return result
 
-# --- Monitoring Queries ---
-# ... (inchangé)
-async def get_monitoring_summary(db: DatabaseManager) -> List[Dict[str, Any]]:
-    query = "SELECT event_type, COUNT(*) as count, MAX(timestamp) as last_event FROM monitoring GROUP BY event_type"
-    rows = await db.fetch_all(query)
-    return [dict(row) for row in rows]
+async def mark_sessions_as_consolidated(db: DatabaseManager, session_ids: List[str]):
+    if not session_ids:
+        return
+    # Construction d'un IN (?, ?, ...)
+    placeholders = ",".join(["?"] * len(session_ids))
+    query = f"UPDATE sessions SET is_consolidated = 1 WHERE id IN ({placeholders})"
+    await db.execute(query, tuple(session_ids))
+
+# ------------------------------
+# Knowledge base (concepts consolidés)
+# ------------------------------
+async def upsert_knowledge_concept(db: DatabaseManager, concept: Dict[str, Any]):
+    """Enregistre/Met à jour un concept consolidé.
+    Fields attendus : id, concept, description, categories(list|json), vector_id
+    """
+    # Normalisation
+    cid = concept.get('id')
+    cname = concept.get('concept')
+    desc = concept.get('description')
+    cats = concept.get('categories') or []  # list or json
+    vid  = concept.get('vector_id')
+
+    cats_json = json.dumps(cats) if not isinstance(cats, str) else cats
+    created_at = datetime.now(timezone.utc).isoformat()
+
+    query = """
+    INSERT INTO knowledge_concepts (id, concept, description, categories, vector_id, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+        concept = excluded.concept,
+        description = excluded.description,
+        categories = excluded.categories,
+        vector_id = excluded.vector_id
+    """
+    await db.execute(query, (cid, cname, desc, cats_json, vid, created_at))

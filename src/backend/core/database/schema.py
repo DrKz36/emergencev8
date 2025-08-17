@@ -1,13 +1,15 @@
 # src/backend/core/database/schema.py
-# V5.0 - FIX: Schéma de la table 'sessions' entièrement resynchronisé.
+# V6.0 - Mémoire persistante : ajoute 'is_consolidated' à sessions + table 'knowledge_concepts'.
 import logging
 import os
 from datetime import datetime, timezone
+from typing import List
 from .manager import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
-TABLE_DEFINITIONS = [
+TABLE_DEFINITIONS: List[str] = [
+    # --- Costs ---
     """
     CREATE TABLE IF NOT EXISTS costs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,6 +22,8 @@ TABLE_DEFINITIONS = [
         feature TEXT NOT NULL CHECK(feature IN ('chat', 'document_processing', 'debate'))
     );
     """,
+
+    # --- Documents ---
     """
     CREATE TABLE IF NOT EXISTS documents (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,6 +36,8 @@ TABLE_DEFINITIONS = [
         uploaded_at TEXT NOT NULL
     );
     """,
+
+    # --- Document chunks ---
     """
     CREATE TABLE IF NOT EXISTS document_chunks (
         id TEXT PRIMARY KEY,
@@ -41,9 +47,9 @@ TABLE_DEFINITIONS = [
         FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
     );
     """,
-    # --- CORRECTION V5.0 - SCHÉMA 'SESSIONS' FINAL ---
-    # Ce schéma est maintenant aligné avec les requêtes (queries.py)
-    # et inclut toutes les colonnes nécessaires.
+
+    # --- Sessions (mémoire brut de session) ---
+    # Ajout de 'is_consolidated' (DEFAULT 0) pour le suivi de consolidation par le MemoryGardener.
     """
     CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
@@ -53,9 +59,12 @@ TABLE_DEFINITIONS = [
         session_data TEXT,
         summary TEXT,
         extracted_concepts TEXT,
-        extracted_entities TEXT
+        extracted_entities TEXT,
+        is_consolidated INTEGER NOT NULL DEFAULT 0
     );
     """,
+
+    # --- Migrations bookkeeping ---
     """
     CREATE TABLE IF NOT EXISTS migrations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,6 +72,8 @@ TABLE_DEFINITIONS = [
         applied_at TEXT NOT NULL
     );
     """,
+
+    # --- Monitoring ---
     """
     CREATE TABLE IF NOT EXISTS monitoring (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,18 +81,49 @@ TABLE_DEFINITIONS = [
         event_details TEXT,
         timestamp TEXT NOT NULL
     );
+    """,
+
+    # --- Knowledge base (concepts consolidés) ---
+    # NOTE: les vecteurs sont gérés par ChromaDB ; on conserve ici un index sémantique minimal.
+    """
+    CREATE TABLE IF NOT EXISTS knowledge_concepts (
+        id TEXT PRIMARY KEY,
+        concept TEXT NOT NULL,
+        description TEXT,
+        categories TEXT,          -- JSON array (TEXT)
+        vector_id TEXT,           -- id correspondant dans le store vectoriel (Chroma)
+        created_at TEXT NOT NULL
+    );
     """
 ]
 
 async def create_tables(db_manager: DatabaseManager):
-    logger.info("Vérification et création des tables de la base de données...")
+    logger.info("Vérification et création des tables de la base de données.")
     for table_sql in TABLE_DEFINITIONS:
         if table_sql.strip():
             await db_manager.execute(table_sql)
     logger.info("Toutes les tables ont été créées ou existent déjà.")
 
+async def _ensure_schema_upgrades(db_manager: DatabaseManager):
+    """Applique les petites migrations idempotentes nécessaires sans fichiers .sql.
+    - Ajoute la colonne sessions.is_consolidated si absente.
+    - Crée knowledge_concepts si absent (déjà couvert par CREATE IF NOT EXISTS).
+    """
+    # 1) Ajouter 'is_consolidated' à sessions si manquant
+    try:
+        cols = await db_manager.fetch_all("PRAGMA table_info(sessions);")
+        colnames = {row[1] if isinstance(row, tuple) else row["name"] for row in cols}
+        if "is_consolidated" not in colnames:
+            logger.warning("Colonne 'is_consolidated' absente de 'sessions' -> ALTER TABLE en cours…")
+            await db_manager.execute("ALTER TABLE sessions ADD COLUMN is_consolidated INTEGER NOT NULL DEFAULT 0;")
+            logger.info("Colonne 'is_consolidated' ajoutée avec succès.")
+    except Exception as e:
+        logger.error(f"Échec lors de l'assurance du schéma 'sessions.is_consolidated': {e}", exc_info=True)
+        raise
+
 async def run_migrations(db_manager: DatabaseManager, migrations_dir: str):
-    logger.info("Démarrage du processus de migration de la base de données...")
+    """Conserve le mécanisme existant si des fichiers .sql sont présents."""
+    logger.info("Démarrage du processus de migration de la base de données…")
     await db_manager.execute("""
         CREATE TABLE IF NOT EXISTS migrations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -121,5 +163,8 @@ async def run_migrations(db_manager: DatabaseManager, migrations_dir: str):
 async def initialize_database(db_manager: DatabaseManager, migrations_dir: str):
     await db_manager.connect()
     await create_tables(db_manager)
+    # Assure les petites mises à niveau sans fichiers de migration.
+    await _ensure_schema_upgrades(db_manager)
+    # Puis exécute d'éventuels scripts .sql existants
     await run_migrations(db_manager, migrations_dir)
     logger.info("Initialisation de la base de données terminée.")
