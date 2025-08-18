@@ -8,6 +8,16 @@
   <link rel="icon" href="assets/favicon.ico" />
   <link rel="modulepreload" href="/src/frontend/main.js" />
 
+  <!-- Google Identity Services (One Tap / Button) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- Expose le client_id Web Google côté front (REMPLACE la valeur ci-dessous) -->
+  <script>
+    // ⚠️ Mets ici ton vrai Client ID Web Google (exactement celui utilisé en prod)
+    // ex: "486095406755-xxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com"
+    window.EMERGENCE_GOOGLE_CLIENT_ID = "486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com";
+  </script>
+
   <!-- CSS critique (layout de base + loader) -->
   <style>
     :root{
