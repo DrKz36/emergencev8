@@ -1,5 +1,5 @@
 # src/backend/features/dashboard/router.py
-# V3.0 - FIX: Added the '/api/dashboard' prefix to align with frontend calls.
+# V3.1 - Corrigé : pas de préfixe ici (géré par main.py)
 import logging
 from fastapi import APIRouter, Depends
 from typing import Dict, Any
@@ -7,8 +7,7 @@ from typing import Dict, Any
 from backend.features.dashboard.service import DashboardService
 from backend.shared.dependencies import get_dashboard_service
 
-# --- CORRECTION : Ajout du préfixe d'API ---
-router = APIRouter(prefix="/api/dashboard")
+router = APIRouter()
 logger = logging.getLogger(__name__)
 
 @router.get(
@@ -23,7 +22,7 @@ async def get_dashboard_summary(
 ) -> Dict[str, Any]:
     """
     Endpoint V9.1 pour récupérer toutes les données du cockpit.
-    L'URL est maintenant correctement préfixée par /api/dashboard.
+    Accessible via /api/dashboard/costs/summary (prefix appliqué par main.py).
     """
     logger.info("Récupération du résumé des données pour le dashboard...")
     
