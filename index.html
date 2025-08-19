@@ -95,6 +95,17 @@
       .app-sidebar{display:none}
       .app-content{padding:12px; overflow:visible}
     }
+
+    /* ✅ Paysage “compact” quand la sidebar reste visible (ex: >500px de hauteur) :
+       on réduit un peu la sidebar et les marges pour encadrer l’essentiel */
+    @media (orientation: landscape) and (min-width:768px) and (max-height:700px){
+      :root{ --sidebar-w:210px; }
+      .app-sidebar{ padding:6px; }
+      .sidebar-brand{ padding:6px 4px 10px; margin-bottom:8px; }
+      .sidebar-brand .sidebar-logo{ width:40px; height:40px; }
+      .brand-title{ font-size:18px; }
+      .app-content{ padding:12px; }
+    }
   </style>
 </head>
 <body class="loading">

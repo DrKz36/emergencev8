@@ -246,3 +246,43 @@
   .debate-create-footer{ padding-top:0; }
   .debate-create-footer .button-xxl{ width:100%; }
 }
+
+/* ────────────────────────────────────────────────────────────── */
+/*  V38.3 — Optim mobile                                             */
+/*  - Portrait : bulles quasi plein écran avec petite marge          */
+/*  - Paysage (petite hauteur) : compacité, boutons plus courts      */
+/* ────────────────────────────────────────────────────────────── */
+
+/* Portrait — toutes largeurs mobiles/tablettes : marges réduites */
+@media (orientation: portrait){
+  :root{ --debateBubbleW: calc(100vw - 24px); } /* petite marge latérale globale */
+  .debate-view-wrapper{ padding: var(--space-3); }
+  .debate-view-wrapper .card{ width:100%; border-radius:16px; }
+  .card-header, .card-body, .card-footer{ padding: var(--space-4); }
+  .debate-timeline{ padding: var(--space-2) 0; }
+}
+
+/* Téléphones étroits (portrait) – marge minimale */
+@media (max-width: 480px) and (orientation: portrait){
+  :root{ --debateBubbleW: calc(100vw - 16px); }
+  .debate-view-wrapper{ padding: 8px; }
+  .card-header, .card-body, .card-footer{ padding: 12px; }
+}
+
+/* Paysage à faible hauteur (smartphones tournés) */
+@media (orientation: landscape) and (max-height: 500px){
+  :root{ --debateBubbleW: calc(100vw - 24px); } /* occupe presque toute la largeur utile */
+  .debate-view-wrapper{ padding: 8px; }
+  .debate-view-wrapper .card{ width:100%; border-radius:14px; }
+  .card-header, .card-body, .card-footer{ padding: 12px; }
+  .segmented{ gap:.35rem; }
+  .button-tab{ padding:.35rem .7rem; } /* sélecteurs moins longs, juste ce qu’il faut */
+  .debate-create-body .config-grid{ column-gap: var(--space-6); row-gap: var(--space-4); }
+}
+
+/* Paysage “moyenne hauteur” (tablettes/phones récents non couverts par règle ci-dessus) */
+@media (orientation: landscape) and (min-width: 700px) and (max-height: 700px){
+  :root{ --debateBubbleW: calc(100vw - 32px); }
+  .debate-view-wrapper{ padding: 10px; }
+  .button-tab{ padding:.4rem .8rem; }
+}
