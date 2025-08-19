@@ -16,6 +16,22 @@ export class ChatUI {
       ragStatus: {},
       ragSources: {},
     };
+
+    this.listeners = [];
+    this.isInitialized = false;
+
+    // buffer streaming par messageId pour batcher les updates UI
+    this._streamBuffers = new Map(); // id -> string
+    this._flushScheduled = false;
+  }
+
+  init() {
+    if (this.isInitialized) return;
+    this.ui = new ChatUI(this.eventBus, this.state);
+    this.initializeState();
+    this.registerStateChanges();
+    this.registerEvents();
+    this.isInitialized = true;
     console.log('✅ ChatUI V24.1 prêt.');
   }
 
@@ -93,6 +109,23 @@ export class ChatUI {
     this._renderRagBanner(container);
   }
 
+  // 🔧 AJOUT V24.2 — rendu de la liste des messages (manquante précédemment)
+  _renderMessages(container, list = []) {
+    try {
+      if (!container) return;
+      const items = Array.isArray(list) ? list : [];
+      const atBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight < 8;
+
+      container.innerHTML = items.map(m => this._messageHTML(m)).join('');
+
+      // autoscroll uniquement si l'utilisateur est déjà en bas
+      if (atBottom) container.scrollTop = container.scrollHeight;
+    } catch (err) {
+      console.error('[ChatUI] _renderMessages error', err);
+    }
+  }
+
   _bindEvents(container) {
     const form = container.querySelector('#chat-form');
     const input = container.querySelector('#chat-input');
@@ -111,70 +144,58 @@ export class ChatUI {
     input?.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' && !ev.shiftKey) {
         ev.preventDefault();
-        try { typeof form?.requestSubmit === 'function' ? form.requestSubmit() : form?.dispatchEvent(new Event('submit',{cancelable:true})); } catch {}
+        try {
+          if (typeof form?.requestSubmit === 'function') form.requestSubmit();
+          else form?.dispatchEvent(new Event('submit', { cancelable: true }));
+        } catch {}
       }
     });
 
-    container.querySelector('#chat-export')?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_EXPORT, null));
-    container.querySelector('#chat-clear')?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_CLEAR, null));
+    container.querySelector('#chat-export')
+      ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_EXPORT, null));
+
+    container.querySelector('#chat-clear')
+      ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_CLEAR, null));
 
     ragBtn?.addEventListener('click', () => {
-      const on = ragBtn.getAttribute('aria-checked') === 'true';
-      ragBtn.setAttribute('aria-checked', String(!on));
-      ragBtn.setAttribute('title', !on ? 'RAG activé' : 'RAG désactivé');
-      this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, { enabled: !on });
-      if (on) {
-        const banner = container.querySelector('#rag-banner');
-        if (banner) banner.hidden = true;
-      }
+      this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, null);
     });
 
-    container.querySelector('.agent-selector')?.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-agent-id]');
-      if (!btn) return;
-      const agentId = btn.getAttribute('data-agent-id');
-      this.eventBus.emit(EVENTS.CHAT_AGENT_SELECTED, agentId);
-      this._setActiveAgentTab(container, agentId);
-      this._renderRagBanner(container); // refresh banner for new agent
-    });
+    container.querySelector('#chat-agent-tabs')
+      ?.addEventListener('click', (e) => {
+        const btn = e.target?.closest('button[data-agent-id]');
+        if (!btn) return;
+        const id = btn.getAttribute('data-agent-id');
+        if (!id || id === this.state.currentAgentId) return;
+        this.eventBus.emit(EVENTS.CHAT_AGENT_SELECTED, { id });
+      });
   }
 
   _renderRagBanner(container) {
     const banner = container.querySelector('#rag-banner');
-    if (!banner) return;
-
-    const enabled = !!this.state.ragEnabled;
+    const textEl = container.querySelector('#rag-status-text');
+    const sourcesEl = container.querySelector('#rag-sources');
     const agentId = this.state.currentAgentId;
-    const status = this.state.ragStatus?.[agentId];
-    const sources = this.state.ragSources?.[agentId] || [];
 
-    if (!enabled || (!status && sources.length === 0)) {
+    const status = this.state.ragStatus?.[agentId];
+    const sources = this._asArray(this.state.ragSources?.[agentId]);
+
+    if (!status && sources.length === 0) {
       banner.hidden = true;
+      textEl.textContent = '';
+      sourcesEl.innerHTML = '';
       return;
     }
 
-    // Texte statut
-    const statusEl = banner.querySelector('#rag-status-text');
-    const dot = banner.querySelector('.rag-dot');
-    if (status === 'searching') {
-      statusEl.textContent = 'Recherche de contexte…';
-      banner.classList.remove('found'); banner.classList.add('searching');
-      dot.setAttribute('data-state', 'searching');
-    } else if (status === 'found') {
-      statusEl.textContent = sources.length ? 'Contexte trouvé' : 'Contexte trouvé (sources indisponibles)';
-      banner.classList.remove('searching'); banner.classList.add('found');
-      dot.setAttribute('data-state', 'found');
-    } else {
-      statusEl.textContent = 'RAG prêt';
-      banner.classList.remove('searching','found');
-      dot.setAttribute('data-state', 'idle');
-    }
+    const statusText =
+      status === 'searching' ? 'Recherche en cours…'
+      : status === 'found'   ? 'Sources disponibles'
+      : 'RAG';
 
-    // Liste sources
-    const host = banner.querySelector('#rag-sources');
-    host.innerHTML = (sources || []).map((s, i) => `
-      <button type="button" class="rag-chip" title="${this._escapeHTML(s.filename || 'Document')}" data-docid="${this._escapeAttr(s.document_id || '')}">
-        ${this._escapeHTML(s.filename || `Source ${i+1}`)}
+    textEl.textContent = statusText;
+    sourcesEl.innerHTML = sources.map((s, i) => `
+      <button class="chip" title="${this._escapeAttr(s?.filename || '')}">
+        ${this._escapeHTML(s?.filename || `Source ${i+1}`)}
       </button>
     `).join('');
 
@@ -189,8 +210,6 @@ export class ChatUI {
     const raw = this._toPlainText(m.content);
     const content = this._escapeHTML(raw).replace(/\n/g, '<br/>');
     const cursor = m.isStreaming ? `<span class="blinking-cursor">▍</span>` : '';
-
-    // Horodatage JJ.MM.AAAA HH:MM (prend m.ts si présent, sinon now)
     const stamp = this._formatTimestamp(m?.ts || Date.now());
 
     return `
@@ -225,7 +244,12 @@ export class ChatUI {
       ?.forEach(b => b.classList.toggle('active', b.getAttribute('data-agent-id') === activeId));
   }
 
-  _asArray(v) { if (Array.isArray(v)) return v; if (!v) return []; if (typeof v === 'object') return Object.values(v); return []; }
+  _asArray(v) {
+    if (Array.isArray(v)) return v;
+    if (!v) return [];
+    if (typeof v === 'object') return Object.values(v);
+    return [];
+  }
 
   _normalizeMessage(m) {
     if (!m) return { role:'assistant', content:'' };
