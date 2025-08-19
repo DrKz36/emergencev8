@@ -1,5 +1,5 @@
 # src/backend/features/memory/gardener.py
-# V3.5 - Ajout user_id dans metadata vector store + robustesse lecture BDD + consolidation inconditionnelle + dédup inter-collections.
+# V3.6 - Ajout meta["text"]=concept_text pour compat RAG (ChatService lit meta.text) + dédup inter-collections.
 import logging
 import uuid
 import json
@@ -196,7 +196,11 @@ class MemoryGardener:
                 "kind": "memory",
                 "role": role,  # utile pour le RAG si besoin
                 "concept_text": concept_text,
-                "created_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                # 🔑 Compat RAG: ChatService lit meta["text"] / meta["chunk"]
+                "text": concept_text,
+                # (facultatif pour l’UI): une “source” lisible
+                "source": f"memory:{role}"
             }
             items.append({"id": cid, "text": concept_text, "metadata": meta})
 
