@@ -1,6 +1,6 @@
 # src/backend/features/chat/service.py
-# V29.5 – Fix syntax (_normalize_history_for_llm), streaming stable, RAG sources WS,
-# provider fallbacks, coûts unifiés. Encodage UTF-8, lignes CRLF recommandées sous Windows.
+# V29.7 – Gemini 'model_name' ok, Anthropic guard (no key => disabled),
+# dynamic fallbacks, RAG sources WS, coûts unifiés. UTF-8 (CRLF conseillé sous Windows).
 
 import os
 import re
@@ -51,13 +51,13 @@ SAFE_DEFAULTS: Dict[str, str] = {
 
 class ChatService:
     """
-    ChatService V29.5
+    ChatService V29.7
     - Initialisation clients OpenAI / Anthropic / Google
-    - Fallback (openai → anthropic → google) si stream échoue
+    - Fallback dynamique (ignore provider non configuré)
     - Fallback single-shot si stream ne renvoie aucun chunk
     - Format Anthropic conforme (content blocks)
     - 'anima' forcé sur OpenAI gpt-4o-mini (stabilité/coût)
-    - Emission côté client des sources RAG (ws:chat_sources)
+    - Emission des sources RAG (ws:chat_sources)
     """
 
     def __init__(
@@ -81,9 +81,17 @@ class ChatService:
         # Clients LLM
         try:
             self.openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            self.anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-            if os.getenv("GOOGLE_API_KEY"):
-                genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
+            anth_key = os.getenv("ANTHROPIC_API_KEY")
+            if anth_key:
+                self.anthropic_client = AsyncAnthropic(api_key=anth_key)
+            else:
+                self.anthropic_client = None
+                logger.warning("ANTHROPIC_API_KEY manquant – Anthropic désactivé (aucun essai / fallback).")
+
+            gkey = os.getenv("GOOGLE_API_KEY")
+            if gkey:
+                genai.configure(api_key=gkey)
             else:
                 logger.warning("GOOGLE_API_KEY manquant – Gemini ne sera pas utilisable.")
         except Exception as e:
@@ -134,6 +142,12 @@ class ChatService:
             logger.info("Remplacement modèle pour 'anima' -> openai/gpt-4o-mini.")
 
         provider, model = self._ensure_supported(provider, model)
+
+        # Si Anthropic demandé mais pas de clé -> fallback immédiat OpenAI
+        if provider == "anthropic" and self.anthropic_client is None:
+            logger.warning("Agent '%s' configuré Anthropic sans clé – fallback -> openai/%s.", agent_id, SAFE_DEFAULTS["openai"])
+            provider, model = "openai", SAFE_DEFAULTS["openai"]
+
         system_prompt = self.prompts.get(agent_id, self.prompts.get(clean_agent_id, ""))
         if not system_prompt:
             logger.warning("Prompt système non trouvé pour '%s' – utilisation d'un prompt vide.", agent_id)
@@ -164,7 +178,6 @@ class ChatService:
     # Helpers
     # ──────────────────────────────────────────────────────────────────────
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
-        # Filtrage basique pour débogage (ex: FAKE-1234)
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
 
     def _to_anthropic_messages(self, history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -176,7 +189,6 @@ class ChatService:
             if not content:
                 continue
             if out and out[-1]["role"] == role:
-                # Fusionne même rôle consécutif
                 out[-1]["content"][0]["text"] += f"\n\n{content}"
             else:
                 out.append({"role": role, "content": [{"type": "text", "text": content}]})
@@ -202,7 +214,7 @@ class ChatService:
         sources_payload: List[Dict[str, Any]] = []
 
         if use_rag:
-            # Dernier message user pour la requête
+            # Dernier message user
             last_user_message_obj = next((m for m in reversed(history) if m.get("role") in (Role.USER, "user")), None)
             last_user_message = (last_user_message_obj or {}).get("content", "")
 
@@ -287,8 +299,17 @@ class ChatService:
                 )
         except Exception as primary_err:
             logger.error("[STREAM FAIL] provider=%s model=%s: %s", provider, model, primary_err, exc_info=True)
-            # Fallback chain
-            for fb in [p for p in ["openai", "anthropic", "google"] if p != provider]:
+
+            # Fallback chain dynamique (ignore providers non configurés)
+            fallback_candidates: List[str] = []
+            if provider != "openai" and self.openai_client is not None:
+                fallback_candidates.append("openai")
+            if provider != "google" and os.getenv("GOOGLE_API_KEY"):
+                fallback_candidates.append("google")
+            if provider != "anthropic" and self.anthropic_client is not None:
+                fallback_candidates.append("anthropic")
+
+            for fb in fallback_candidates:
                 try:
                     fb_model = SAFE_DEFAULTS[fb]
                     gen = self._get_llm_response_stream(fb, fb_model, system_prompt, normalized_history, cost_info)
@@ -297,7 +318,10 @@ class ChatService:
                             continue
                         full_text += chunk
                         await connection_manager.send_personal_message(
-                            {"type": "ws:chat_stream_chunk", "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}},
+                            {
+                                "type": "ws:chat_stream_chunk",
+                                "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk},
+                            },
                             session_id,
                         )
                     provider, model = fb, fb_model
@@ -365,7 +389,6 @@ class ChatService:
             role = m.get("role")
             content = m.get("content") or m.get("message") or ""
             if role in (Role.USER, "user", Role.ASSISTANT, "assistant"):
-                # On normalise en str pour le contenu
                 pairs.append((role, str(content)))
 
         # Injection RAG dans le dernier message user
@@ -388,7 +411,6 @@ class ChatService:
             return normalized
 
         if provider == "anthropic":
-            # Anthropic: pas de system dans l'historique → sera passé séparément
             for role, content in pairs:
                 anth_role = "user" if (role == Role.USER or role == "user") else "assistant"
                 if not normalized or normalized[-1]["role"] != anth_role:
@@ -397,7 +419,7 @@ class ChatService:
                     normalized[-1]["content"][0]["text"] += f"\n\n{content}"
             return normalized
 
-        # OpenAI (default): system message en dehors, ici on ne renvoie que le fil
+        # OpenAI (default)
         for role, content in pairs:
             normalized.append({"role": "user" if (role == Role.USER or role == "user") else "assistant", "content": content})
         return normalized
@@ -415,8 +437,9 @@ class ChatService:
             async for c in self._get_gemini_stream(model, system_prompt, history, cost_info_container):
                 yield c
         elif provider == "anthropic":
+            if self.anthropic_client is None:
+                raise ValueError("Anthropic non configuré (clé absente).")
             hist = history
-            # Sécurité si on a reçu un format openai par erreur
             if history and "content" in history[0] and not isinstance(history[0]["content"], list):
                 hist = self._to_anthropic_messages(history)
             async for c in self._get_anthropic_stream(model, system_prompt, hist, cost_info_container):
@@ -452,7 +475,7 @@ class ChatService:
     async def _get_gemini_stream(
         self, model: str, system_prompt: str, history: List[Dict[str, Any]], cost_info_container: Dict[str, Any]
     ) -> AsyncGenerator[str, None]:
-        model_instance = genai.GenerativeModel(model=model, system_instruction=system_prompt)
+        model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
         response = await model_instance.generate_content_async(contents=history, stream=True)
         usage_metadata = None
         async for chunk in response:
@@ -555,6 +578,8 @@ class ChatService:
         elif provider == "google":
             return await self._get_gemini_response_single(model, system_prompt, history, json_mode)
         elif provider == "anthropic":
+            if self.anthropic_client is None:
+                raise ValueError("Anthropic non configuré (clé absente).")
             hist = history
             if history and "content" in history[0] and not isinstance(history[0]["content"], list):
                 hist = self._to_anthropic_messages(history)
@@ -581,7 +606,7 @@ class ChatService:
     async def _get_gemini_response_single(
         self, model: str, system_prompt: str, history: List[Dict[str, Any]], json_mode: bool = False
     ) -> Tuple[str, Dict[str, Any]]:
-        model_instance = genai.GenerativeModel(model=model, system_instruction=system_prompt)
+        model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
         gen_cfg = {}
         if json_mode:
             gen_cfg["response_mime_type"] = "application/json"
@@ -598,7 +623,6 @@ class ChatService:
         self, model: str, system_prompt: str, history: List[Dict[str, Any]], json_mode: bool = False
     ) -> Tuple[str, Dict[str, Any]]:
         if json_mode and history and isinstance(history[-1].get("content"), list):
-            # Ajoute indication JSON au dernier bloc user
             for blk in history[-1]["content"]:
                 if blk.get("type") == "text":
                     blk["text"] += "\n\nRéponds uniquement avec un objet JSON valide."

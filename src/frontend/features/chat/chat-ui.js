@@ -1,6 +1,7 @@
 /**
  * src/frontend/features/chat/chat-ui.js
- * V24.1 — RAG banner + sources (par agent) + Horodatage JJ.MM.AAAA HH:MM
+ * V24.6 — Agent selector en header (haut-gauche), bandeau RAG retiré, composer dark lisible,
+ *         payload propre (plus de agent:"user").
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
@@ -16,23 +17,16 @@ export class ChatUI {
       ragStatus: {},
       ragSources: {},
     };
-
     this.listeners = [];
     this.isInitialized = false;
 
-    // buffer streaming par messageId pour batcher les updates UI
     this._streamBuffers = new Map(); // id -> string
     this._flushScheduled = false;
   }
 
   init() {
     if (this.isInitialized) return;
-    this.ui = new ChatUI(this.eventBus, this.state);
-    this.initializeState();
-    this.registerStateChanges();
-    this.registerEvents();
     this.isInitialized = true;
-    console.log('✅ ChatUI V24.1 prêt.');
   }
 
   render(container, chatState = {}) {
@@ -44,16 +38,12 @@ export class ChatUI {
     container.innerHTML = `
       <div class="chat-container card">
         <div class="chat-header card-header">
-          <div class="chat-title">Dialogue</div>
-          <div class="agent-selector">${agentTabs}</div>
-        </div>
-
-        <div class="rag-banner" id="rag-banner" hidden>
-          <div class="rag-row">
-            <span class="rag-dot" aria-hidden="true"></span>
-            <span class="rag-text" id="rag-status-text">RAG…</span>
+          <div class="header-left">
+            <div class="agent-selector agent-selector--header">
+              ${agentTabs}
+            </div>
           </div>
-          <div class="rag-sources" id="rag-sources"></div>
+          <div class="chat-title">Dialogue</div>
         </div>
 
         <div class="chat-messages card-body" id="chat-messages"></div>
@@ -61,7 +51,7 @@ export class ChatUI {
         <div class="chat-input-area card-footer">
           <form id="chat-form" class="chat-form" autocomplete="off">
             <textarea id="chat-input" class="chat-input" rows="1" placeholder="Écrivez votre message..."></textarea>
-            <button type="submit" id="chat-send" class="chat-send-button" title="Envoyer">➤</button>
+            <button type="submit" id="chat-send" class="chat-send-button" title="Envoyer" aria-label="Envoyer">➤</button>
           </form>
 
           <div class="chat-actions">
@@ -100,16 +90,13 @@ export class ChatUI {
 
     this._setActiveAgentTab(container, this.state.currentAgentId);
 
-    // Messages
     const raw = this.state.messages?.[this.state.currentAgentId];
     const list = this._asArray(raw).map((m) => this._normalizeMessage(m));
     this._renderMessages(container.querySelector('#chat-messages'), list);
 
-    // Bandeau RAG
-    this._renderRagBanner(container);
+    // (Plus de rendu de bandeau RAG/sources)
   }
 
-  // 🔧 AJOUT V24.2 — rendu de la liste des messages (manquante précédemment)
   _renderMessages(container, list = []) {
     try {
       if (!container) return;
@@ -118,8 +105,6 @@ export class ChatUI {
         container.scrollHeight - container.scrollTop - container.clientHeight < 8;
 
       container.innerHTML = items.map(m => this._messageHTML(m)).join('');
-
-      // autoscroll uniquement si l'utilisateur est déjà en bas
       if (atBottom) container.scrollTop = container.scrollHeight;
     } catch (err) {
       console.error('[ChatUI] _renderMessages error', err);
@@ -135,7 +120,10 @@ export class ChatUI {
       e.preventDefault();
       const text = (input?.value || '').trim();
       if (!text) return;
-      this.eventBus.emit(EVENTS.CHAT_SEND, { text, agent: 'user' });
+
+      // On n'envoie QUE le texte ; l'agent courant est géré par ChatModule via le state global
+      this.eventBus.emit(EVENTS.CHAT_SEND, { text });
+
       input.value = '';
       input.dispatchEvent(new Event('input'));
     });
@@ -161,45 +149,15 @@ export class ChatUI {
       this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, null);
     });
 
+    // ⚠️ Émet l'ID string attendu par ChatModule.handleAgentSelected(agentId) (pas {id}):contentReference[oaicite:2]{index=2}
     container.querySelector('#chat-agent-tabs')
       ?.addEventListener('click', (e) => {
         const btn = e.target?.closest('button[data-agent-id]');
         if (!btn) return;
         const id = btn.getAttribute('data-agent-id');
         if (!id || id === this.state.currentAgentId) return;
-        this.eventBus.emit(EVENTS.CHAT_AGENT_SELECTED, { id });
+        this.eventBus.emit(EVENTS.CHAT_AGENT_SELECTED, id);
       });
-  }
-
-  _renderRagBanner(container) {
-    const banner = container.querySelector('#rag-banner');
-    const textEl = container.querySelector('#rag-status-text');
-    const sourcesEl = container.querySelector('#rag-sources');
-    const agentId = this.state.currentAgentId;
-
-    const status = this.state.ragStatus?.[agentId];
-    const sources = this._asArray(this.state.ragSources?.[agentId]);
-
-    if (!status && sources.length === 0) {
-      banner.hidden = true;
-      textEl.textContent = '';
-      sourcesEl.innerHTML = '';
-      return;
-    }
-
-    const statusText =
-      status === 'searching' ? 'Recherche en cours…'
-      : status === 'found'   ? 'Sources disponibles'
-      : 'RAG';
-
-    textEl.textContent = statusText;
-    sourcesEl.innerHTML = sources.map((s, i) => `
-      <button class="chip" title="${this._escapeAttr(s?.filename || '')}">
-        ${this._escapeHTML(s?.filename || `Source ${i+1}`)}
-      </button>
-    `).join('');
-
-    banner.hidden = false;
   }
 
   _messageHTML(m) {

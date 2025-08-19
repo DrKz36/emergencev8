@@ -1,6 +1,7 @@
 /**
  * src/frontend/features/debate/debate-ui.js
- * V36.7 — Unification police auteurs (data-role="author") + garde-fou émission
+ * V36.9 — Validation stricte (agents/rounds), anti double-émission, options agents robustes,
+ *          pas de fuite de contexte côté UI (rôles isolés).
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
@@ -10,8 +11,9 @@ export class DebateUI {
   constructor(eventBus) {
     this.eventBus = eventBus;
     this.localState = {};
+    this._createLocked = false; // anti double-émission
     try { loadCSS('../features/debate/debate.css'); } catch (_) {}
-    console.log('✅ DebateUI V36.7 prêt (CSS chargée).');
+    console.log('✅ DebateUI V36.9 prêt (CSS chargée).');
   }
 
   render(container, debateState) {
@@ -24,14 +26,16 @@ export class DebateUI {
   /* ───────────── Vue Création ───────────── */
   renderCreationView(container) {
     const defaultState = { topic:'', attacker:'anima', challenger:'neo', rounds:2, use_rag:false };
-    const agentOptions = Object.values(AGENTS).map(a => ({ value:a.id, label:a.name }));
+
+    // Options agents robustes (depuis les clés pour éviter tout décalage id/name)
+    const agentOptions = Object.keys(AGENTS).map(id => ({ value:id, label: AGENTS[id]?.name || id }));
 
     container.innerHTML = `
       <div class="debate-view-wrapper">
         <div class="card">
           <div class="card-header">
             <h2 class="card-title">Nouveau Débat Autonome</h2>
-            <p class="card-subtitle">Configurez les participants et le sujet du débat.</p>
+            <p class="card-subtitle">Configure les participants et le sujet du débat.</p>
           </div>
 
           <div class="card-body debate-create-body">
@@ -94,6 +98,7 @@ export class DebateUI {
       </div>
     `;
 
+    this._createLocked = false;
     this.localState = { ...defaultState };
     this._bindCreationEvents(container);
     this._updateAgentSelection(container); // initialise médiateur affiché
@@ -102,6 +107,7 @@ export class DebateUI {
   _bindCreationEvents(container) {
     const topicEl = container.querySelector('#debate-topic');
     const ragBtn = container.querySelector('#debate-rag-power');
+    const createBtn = container.querySelector('#create-debate-btn');
 
     this._bindSegClicks(container.querySelector('#attacker-selector'), v => {
       this.localState.attacker = v;
@@ -126,21 +132,36 @@ export class DebateUI {
       this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, { enabled: next });
     });
 
-    container.querySelector('#create-debate-btn')?.addEventListener('click', () => {
+    createBtn?.addEventListener('click', () => {
+      if (this._createLocked) return; // anti double-émission
       const topic = (topicEl?.value || '').trim();
+
+      // Validation sujet
       if (topic.length < 10) {
         this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type:'warning', message:'Le sujet du débat est trop court.' });
         return;
       }
-      const mediatorId = this._computeMediatorId();
+
+      // Validation agents + rounds
+      const attacker = this._ensureValidAgent(this.localState.attacker, 'anima');
+      let challenger = this._ensureValidAgent(this.localState.challenger, 'neo');
+      if (challenger === attacker) {
+        challenger = this._fallbackOtherAgent(attacker) || 'nexus';
+      }
+      const mediatorId = this._computeMediatorId(attacker, challenger);
+      const rounds = this._clampInt(this.localState.rounds, 1, 3);
+
+      // Payload propre (UI n’injecte aucun prompt croisé ⇒ pas de fuite T1)
       const config = {
         topic,
-        rounds: this.localState.rounds,
-        agent_order: [this.localState.attacker, this.localState.challenger, mediatorId],
-        use_rag: this.localState.use_rag
+        rounds,
+        agent_order: [attacker, challenger, mediatorId],
+        use_rag: !!this.localState.use_rag
       };
 
-      // IMPORTANT: émettre UNE SEULE FOIS
+      // Émettre UNE SEULE FOIS et verrouiller le bouton
+      this._createLocked = true;
+      createBtn.setAttribute('disabled', 'true');
       this.eventBus.emit('debate:create', config);
     });
   }
@@ -149,7 +170,7 @@ export class DebateUI {
     return `
       <div id="${id}" class="segmented">
         ${options.map(opt => `
-          <button class="button-tab ${colorByAgent ? `agent--${opt.value}` : ''} ${opt.value===selected ? 'active' : ''}" data-value="${opt.value}">
+          <button class="button-tab ${colorByAgent ? `agent--${opt.value}` : ''} ${String(opt.value)===String(selected) ? 'active' : ''}" data-value="${opt.value}">
             <span class="tab-label">${opt.label}</span>
           </button>`).join('')}
       </div>`;
@@ -166,9 +187,9 @@ export class DebateUI {
   }
 
   _updateAgentSelection(container) {
-    // Si A == C, choisir automatiquement un challenger différent d'A (Nexus autorisé).
+    // Si A == C, choisir automatiquement un challenger différent (Nexus autorisé).
     if (this.localState.attacker === this.localState.challenger) {
-      const next = Object.keys(AGENTS).find(k => k !== this.localState.attacker) || this.localState.challenger;
+      const next = this._fallbackOtherAgent(this.localState.attacker) || this.localState.challenger;
       this.localState.challenger = next;
       this._setSeg(container.querySelector('#challenger-selector'), this.localState.challenger);
     }
@@ -176,9 +197,13 @@ export class DebateUI {
     this._updateMediatorUI(container);
   }
 
-  _computeMediatorId() {
+  _fallbackOtherAgent(excludeId) {
     const all = Object.keys(AGENTS);
-    const { attacker, challenger } = this.localState;
+    return all.find(k => k !== excludeId);
+  }
+
+  _computeMediatorId(attacker = this.localState.attacker, challenger = this.localState.challenger) {
+    const all = Object.keys(AGENTS);
     return (
       all.find(k => k !== attacker && k !== challenger) || // agent restant
       all.find(k => k !== attacker) ||                     // fallback
@@ -195,7 +220,17 @@ export class DebateUI {
     el.textContent = AGENTS[mediatorId]?.name || mediatorId;
   }
 
-  _setSeg(el, val){ el?.querySelectorAll('.button-tab').forEach(b => b.classList.toggle('active', b.dataset.value === val)); }
+  _setSeg(el, val){ el?.querySelectorAll('.button-tab').forEach(b => b.classList.toggle('active', b.dataset.value === String(val))); }
+
+  _ensureValidAgent(id, fallback='anima') {
+    const valid = id && Object.prototype.hasOwnProperty.call(AGENTS, id);
+    return valid ? id : (Object.prototype.hasOwnProperty.call(AGENTS, fallback) ? fallback : Object.keys(AGENTS)[0]);
+    }
+
+  _clampInt(n, min, max) {
+    const v = Number.isFinite(Number(n)) ? Math.trunc(Number(n)) : min;
+    return Math.max(min, Math.min(max, v));
+  }
 
   /* ───────────── Vue Déroulé ───────────── */
   renderDebateView(container, state) {
@@ -204,15 +239,15 @@ export class DebateUI {
     const synthesizerId = order[order.length - 1] || 'nexus';
     const synthesizerName = AGENTS[synthesizerId]?.name || 'Nexus';
 
-    // Désactive le bouton "Lancer" tant qu’un débat est en cours côté store
+    // Désactive le bouton "Lancer" tant qu’un débat est en cours côté store (nouvelle vue = nouveau bouton)
     const busy = state?.status === 'pending' || state?.status === 'in_progress';
 
     container.innerHTML = `
       <div class="debate-view-wrapper">
         <div class="card debate-in-progress">
           <div class="card-header">
-            <h2 class="card-title">${state.config?.topic || 'Débat'}</h2>
-            <div class="debate-status">${state.statusText || ''}</div>
+            <h2 class="card-title">${this._escapeHTML(state.config?.topic || 'Débat')}</h2>
+            <div class="debate-status">${this._escapeHTML(state.statusText || '')}</div>
           </div>
           <div class="card-body">
             <div class="debate-timeline">
@@ -238,15 +273,15 @@ export class DebateUI {
       return `<div class="placeholder">Le débat va bientôt commencer...</div>`;
     }
     return state.history.map((turn) => {
-      const header = `<div class="timeline-turn-separator turn--${attackerId}"><span>Tour ${turn.roundNumber}</span></div>`;
+      const header = `<div class="timeline-turn-separator turn--${attackerId}"><span>Tour ${this._escapeHTML(String(turn.roundNumber ?? ''))}</span></div>`;
       const messages = Object.entries(turn.agentResponses).map(([agentId, response]) => {
         const agent = AGENTS[agentId] || { name: 'Inconnu', id: agentId };
         return `
           <div class="message assistant agent--${agentId}">
             <div class="message-content">
               <div class="message-text">
-                <div class="message-meta"><strong class="sender-name" data-role="author">${agent.name}</strong></div>
-                ${marked.parse(response)}
+                <div class="message-meta"><strong class="sender-name" data-role="author">${this._escapeHTML(agent.name)}</strong></div>
+                ${marked.parse(response || '')}
               </div>
             </div>
           </div>`;
@@ -260,11 +295,13 @@ export class DebateUI {
       <div class="message assistant agent--${synthesizerId} synthesis">
         <div class="message-content">
           <div class="message-text">
-            <div class="message-meta"><strong class="sender-name" data-role="author">Synthèse par ${synthesizerName}</strong></div>
-            <div class="synthesis-body">${marked.parse(text)}</div>
+            <div class="message-meta"><strong class="sender-name" data-role="author">Synthèse par ${this._escapeHTML(synthesizerName)}</strong></div>
+            <div class="synthesis-body">${marked.parse(text || '')}</div>
           </div>
         </div>
       </div>
     `;
   }
+
+  _escapeHTML(s='') { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
 }
