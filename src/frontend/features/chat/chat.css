@@ -1,11 +1,11 @@
 /* src/frontend/features/chat/chat.css */
-/* V11.2 — Ajout styles RAG "Power" rouge/vert (IEC 60417-5007) + scope strict chat. */
+/* V11.3 — Bandeau RAG + chips sources */
 
 :root{
-  --glass-bg: rgba(22,22,26,.55);
+  --glass-bg: rgba(22,22,26,55);
   --glass-blur: 18px;
-  --glass-border-color: rgba(255,255,255,.10);
-  --glass-shadow: 0 10px 30px rgba(0,0,0,.35);
+  --glass-border-color: rgba(255,255,255,10);
+  --glass-shadow: 0 10px 30px rgba(0,0,0,35);
   --radius-xl: 18px;
 
   --color-text-primary:#e9e9ef;
@@ -36,10 +36,39 @@
   display:flex; align-items:center; justify-content:space-between; gap:.75rem;
   padding:.875rem 1.25rem;
   border-bottom:1px solid var(--glass-border-color);
-  background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+  background:linear-gradient(180deg, rgba(255,255,255,04), rgba(255,255,255,02));
 }
 
-/* Messages (50% centrés sur desktop, 100% en mobile) */
+/* ===== Bandeau RAG ===== */
+.rag-banner{
+  display:flex; flex-direction:column; gap:.5rem;
+  padding:.6rem 1.0rem .7rem;
+  border-bottom:1px solid var(--glass-border-color);
+  background:linear-gradient(180deg, rgba(16,185,129,0.12), rgba(16,185,129,0.06));
+}
+.rag-banner.searching{ background:linear-gradient(180deg, rgba(37,99,235,0.12), rgba(37,99,235,0.06)); }
+.rag-row{ display:flex; align-items:center; gap:.5rem; color:#fff; opacity:.95; font-weight:600; font-size:.95rem; }
+.rag-dot{
+  width:9px; height:9px; border-radius:50%;
+  background:var(--rag-on);
+  position:relative;
+}
+.rag-dot[data-state="searching"]::after{
+  content:''; position:absolute; inset:-6px; border-radius:50%;
+  border:2px solid rgba(255,255,255,.35); animation: rag-pulse 1s infinite;
+}
+@keyframes rag-pulse{ from{ transform:scale(.85); opacity:.6 } to{ transform:scale(1.25); opacity:0 } }
+
+.rag-sources{ display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.2rem; }
+.rag-chip{
+  appearance:none; border:none; cursor:pointer;
+  padding:.25rem .55rem; border-radius:999px;
+  background:rgba(255,255,255,.12); color:#fff; font-weight:600; font-size:.8rem;
+  border:1px solid rgba(255,255,255,.25);
+}
+.rag-chip:hover{ background:rgba(255,255,255,.18); }
+
+/* Messages */
 .chat-messages{
   display:flex; flex-direction:column; gap:14px;
   padding:1rem 1.25rem;
@@ -58,7 +87,6 @@
 .sender-name { font-family: 'Comic Sans MS', cursive, sans-serif; }
 .message-time { font-size: 0.7rem; opacity: 0.75; }
 
-/* Largeur des bulles */
 .chat-container .message-content{
   width:100%;
   max-width: var(--bubbleW);
@@ -71,7 +99,7 @@
   padding:.85rem 1rem; border-radius:14px; border:none; text-align:left;
   width:100% !important;
   -webkit-backdrop-filter:blur(6px) saturate(120%); backdrop-filter:blur(6px) saturate(120%);
-  box-shadow:0 8px 24px rgba(0,0,0,.25), 0 0 22px rgba(255,255,255,.07);
+  background: color-mix(in srgb, #8b5cff var(--bubble-tint), transparent);
 }
 
 /* Couleurs par rôle/agent */
@@ -92,39 +120,32 @@
   color:#fff;
 }
 
-/* Input */
-.chat-input-area{
-  padding:.9rem 1.25rem 1.25rem;
-  border-top:1px solid var(--glass-border-color);
-  background:linear-gradient(0deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-}
+/* Input + actions (inchangé) */
+.chat-input-area{ padding:.9rem 1.25rem 1.25rem; border-top:1px solid var(--glass-border-color);
+  background:linear-gradient(0deg, rgba(255,255,255,04), rgba(255,255,255,02)); }
 .chat-form{ display:grid; grid-template-columns:1fr auto; gap:.5rem; align-items:center; }
 .chat-input{
   width:100%; max-height:160px; resize:none;
-  background:rgba(255,255,255,.06);
+  background:rgba(255,255,255,06);
   border:1px solid var(--glass-border-color);
   border-radius:12px; padding:.75rem .9rem; color:#fff; line-height:1.5;
   transition:border-color .2s ease, background .2s ease;
 }
-.chat-input:focus{ border-color:var(--user-hex); background:rgba(255,255,255,.08); outline:none; }
+.chat-input:focus{ border-color:var(--user-hex); background:rgba(255,255,255,08); outline:none; }
 .chat-send-button{ width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; }
 
-/* Actions */
+/* Bouton RAG (ON/OFF) */
 .chat-actions{ display:flex; gap:.75rem; flex-wrap:wrap; align-items:center; }
-
-/* =============================== */
-/* RAG Power (SVG rouge/vert)      */
-/* =============================== */
 .chat-container .rag-label{ color:#fff; opacity:.9; font-size:.95rem; display:inline-flex; align-items:center; height:27px; }
 .chat-container .rag-power{
   display:inline-flex; align-items:center; justify-content:center;
   width:27px; height:27px; border-radius:50%;
-  background: rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.25);
+  background: rgba(255,255,255,08);
+  border:1px solid rgba(255,255,255,25);
   cursor:pointer;
   transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
 }
-.chat-container .rag-power:hover{ transform: translateY(-1px); background: rgba(255,255,255,.12); }
+.chat-container .rag-power:hover{ transform: translateY(-1px); background: rgba(255,255,255,12); }
 .chat-container .rag-power .icon-power{ width:18px; height:18px; }
 .chat-container .rag-power .power-line,
 .chat-container .rag-power .power-circle{
@@ -134,29 +155,14 @@
 .chat-container .rag-power[aria-checked="true"] .power-line,
 .chat-container .rag-power[aria-checked="true"] .power-circle{
   stroke: var(--rag-on);
-  filter: drop-shadow(0 0 6px rgba(16,185,129,.65));
+  filter: drop-shadow(0 0 6px rgba(16,185,129,65));
 }
 
-/* Force "hover" metallic style as base for the chat send button (always visible) */
-.chat-send-button{
-  filter: brightness(1.05);
-  background:
-    radial-gradient(130% 130% at 25% 15%, rgba(255,255,255,1) 0%, rgba(255,255,255,.4) 35%, rgba(255,255,255,0) 60%),
-    linear-gradient(145deg, #c8c8c8, #f3f3f3);
-  box-shadow:
-    inset 0 0 10px rgba(255,255,255,0.65),
-    inset 0 -12px 20px rgba(0,0,0,0.2),
-    0 8px 22px rgba(0,0,0,.32);
-  border: 1px solid rgba(255,255,255,0.3);
-  border-radius: var(--radius-md);
-}
-
-/* Responsive : chat centré à 100% sur mobile */
+/* Responsive */
 @media (max-width: 768px){
   .chat-messages{ max-width:100%; }
 }
-
 @media (max-width: 430px){
-  .chat-send-button{ width:44px; height:44px; border:1px solid rgba(255,255,255,.4); border-radius:10px; }
+  .chat-send-button{ width:44px; height:44px; border:1px solid rgba(255,255,255,4); border-radius:10px; }
   .chat-actions .button{ padding:.6rem .8rem; }
 }

@@ -1,6 +1,6 @@
-﻿﻿/**
+﻿﻿﻿﻿/**
  * @file /src/frontend/shared/constants.js
- * @description Fichier de constantes V24.2 - "Opération Vélocité"
+ * @description Fichier de constantes V24.3 - +WS_CHAT_SOURCES
  * - Ajout AUTH.ensureDevToken(): lecture ?token=… et auto-seed d'un Bearer en environnement LAN/localhost.
  * - Conserve TOKEN_KEY = 'emergence_bearer'.
  */
@@ -42,6 +42,7 @@ export const EVENTS = {
     WS_CHAT_STREAM_CHUNK: 'ws:chat_stream_chunk',
     WS_CHAT_STREAM_END: 'ws:chat_stream_end',
     WS_RAG_STATUS: 'ws:rag_status',
+    WS_CHAT_SOURCES: 'ws:chat_sources',   // NEW
     WS_DEBATE_STARTED: 'ws:debate_started',
     WS_DEBATE_TURN_UPDATE: 'ws:debate_turn_update',
     WS_DEBATE_ENDED: 'ws:debate_ended',

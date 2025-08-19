@@ -1,6 +1,6 @@
 /**
  * @module features/chat/chat
- * @description Module Chat - V22.3 "Compat payload + UI.update + destroy sûr"
+ * @description Module Chat - V22.5 "RAG banner + sources + horodatage ISO"
  */
 import { ChatUI } from './chat-ui.js';
 import { EVENTS } from '../../shared/constants.js';
@@ -14,7 +14,7 @@ export default class ChatModule {
     this.listeners = [];
     this.isInitialized = false;
 
-    // NEW: buffer streaming par messageId pour batcher les updates UI
+    // buffer streaming par messageId pour batcher les updates UI
     this._streamBuffers = new Map(); // id -> string
     this._flushScheduled = false;
   }
@@ -26,7 +26,7 @@ export default class ChatModule {
     this.registerStateChanges();
     this.registerEvents();
     this.isInitialized = true;
-    console.log('✅ ChatModule V22.3 initialisé.');
+    console.log('✅ ChatModule V22.5 initialisé.');
   }
 
   mount(container) {
@@ -46,7 +46,9 @@ export default class ChatModule {
         isLoading: false,
         currentAgentId: 'anima',
         ragEnabled: false,
-        messages: {}, // { [agentId]: Message[] }
+        messages: {},     // { [agentId]: Message[] }
+        ragStatus: {},    // { [agentId]: 'searching'|'found'|undefined }
+        ragSources: {},   // { [agentId]: Array<{document_id, filename}> }
       });
     }
   }
@@ -71,6 +73,10 @@ export default class ChatModule {
     this.listeners.push(this.eventBus.on('ws:chat_stream_start', this.handleStreamStart.bind(this)));
     this.listeners.push(this.eventBus.on('ws:chat_stream_chunk', this.handleStreamChunk.bind(this)));
     this.listeners.push(this.eventBus.on('ws:chat_stream_end', this.handleStreamEnd.bind(this)));
+
+    // WS RAG status + sources
+    this.listeners.push(this.eventBus.on('ws:rag_status', this.handleRagStatus.bind(this)));
+    this.listeners.push(this.eventBus.on('ws:chat_sources', this.handleChatSources.bind(this)));
   }
 
   handleSendMessage(payload) {
@@ -83,7 +89,8 @@ export default class ChatModule {
     const userMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: trimmed
+      content: trimmed,
+      ts: new Date().toISOString() // stockage UTC ISO-8601
     };
 
     const currentMessages = this.state.get(`chat.messages.${currentAgentId}`) || [];
@@ -97,21 +104,33 @@ export default class ChatModule {
   }
 
   handleStreamStart({ agent_id, id }) {
-    const agentMessage = { id, role: 'assistant', content: '', agent_id, isStreaming: true };
+    const agentMessage = {
+      id,
+      role: 'assistant',
+      content: '',
+      agent_id,
+      isStreaming: true,
+      ts: new Date().toISOString() // stockage UTC ISO-8601
+    };
     const currentMessages = this.state.get(`chat.messages.${agent_id}`) || [];
     this.state.set(`chat.messages.${agent_id}`, [...currentMessages, agentMessage]);
     this.state.set('chat.isLoading', true);
     // reset buffer pour cet id
     this._streamBuffers.set(id, '');
+
+    // reset statut RAG/sources pour cet agent (nouvelle requête)
+    const s = this.state.get('chat');
+    const ragStatus = { ...(s.ragStatus || {}), [agent_id]: undefined };
+    const ragSources = { ...(s.ragSources || {}), [agent_id]: [] };
+    this.state.set('chat.ragStatus', ragStatus);
+    this.state.set('chat.ragSources', ragSources);
   }
 
   handleStreamChunk({ id, chunk }) {
-    // Bufferise et flush au max 1x par frame
     const prev = this._streamBuffers.get(id) || '';
     this._streamBuffers.set(id, prev + (chunk || ''));
     if (!this._flushScheduled) {
       this._flushScheduled = true;
-      // requestAnimationFrame pour grouper tous les chunks de la frame
       (window.requestAnimationFrame || setTimeout)(() => this._flushStreamBuffers(), 16);
     }
   }
@@ -122,7 +141,6 @@ export default class ChatModule {
     const messages = this.state.get('chat.messages');
     let mutated = false;
 
-    // Applique les buffers dans le store
     this._streamBuffers.forEach((bufferText, msgId) => {
       if (!bufferText) return;
       for (const agentId in messages) {
@@ -137,7 +155,6 @@ export default class ChatModule {
       }
     });
 
-    // Clear buffers et push un seul set() pour limiter les reflows
     this._streamBuffers.clear();
     this._flushScheduled = false;
     if (mutated) {
@@ -146,9 +163,7 @@ export default class ChatModule {
   }
 
   handleStreamEnd({ id }) {
-    // Flushe toute fin de buffer avant de clore
     this._flushStreamBuffers();
-
     const messages = this.state.get('chat.messages');
     for (const agentId in messages) {
       const idx = messages[agentId].findIndex(m => m.id === id);
@@ -161,6 +176,19 @@ export default class ChatModule {
     }
   }
 
+  handleRagStatus({ status, agent_id }) {
+    if (!agent_id) return;
+    const cur = this.state.get('chat.ragStatus') || {};
+    this.state.set('chat.ragStatus', { ...cur, [agent_id]: status });
+  }
+
+  handleChatSources({ agent_id, sources }) {
+    if (!agent_id) return;
+    const list = Array.isArray(sources) ? sources : [];
+    const cur = this.state.get('chat.ragSources') || {};
+    this.state.set('chat.ragSources', { ...cur, [agent_id]: list });
+  }
+
   handleAgentSelected(agentId) {
     this.state.set('chat.currentAgentId', agentId);
   }
@@ -168,6 +196,10 @@ export default class ChatModule {
   handleClearChat() {
     const agentId = this.state.get('chat.currentAgentId');
     this.state.set(`chat.messages.${agentId}`, []);
+    // efface aussi le bandeau RAG
+    const curS = this.state.get('chat');
+    this.state.set('chat.ragStatus', { ...(curS.ragStatus || {}), [agentId]: undefined });
+    this.state.set('chat.ragSources', { ...(curS.ragSources || {}), [agentId]: [] });
   }
 
   handleExport() {
@@ -175,7 +207,12 @@ export default class ChatModule {
     const conv = messages[currentAgentId] || [];
     const you = this.state.get('user.id') || 'Vous';
     const text = conv
-      .map(m => `${m.role === 'user' ? you : (m.agent_id || 'Assistant')}: ${typeof m.content === 'string' ? m.content : JSON.stringify(m.content || '')}`)
+      .map(m => {
+        const who = m.role === 'user' ? you : (m.agent_id || 'Assistant');
+        const stamp = m.ts ? new Date(m.ts).toISOString() : '';
+        const body = typeof m.content === 'string' ? m.content : JSON.stringify(m.content || '');
+        return `${who} @ ${stamp}\n${body}`;
+      })
       .join('\n\n');
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);

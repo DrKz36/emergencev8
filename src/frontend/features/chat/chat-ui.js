@@ -1,6 +1,6 @@
 /**
  * src/frontend/features/chat/chat-ui.js
- * V23.2 — Unification police auteurs (data-role="author") + RAG "Power"
+ * V24.1 — RAG banner + sources (par agent) + Horodatage JJ.MM.AAAA HH:MM
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
@@ -12,9 +12,11 @@ export class ChatUI {
       isLoading: false,
       currentAgentId: 'anima',
       ragEnabled: false,
-      messages: {} // { [agentId]: Message[] }
+      messages: {},
+      ragStatus: {},
+      ragSources: {},
     };
-    console.log('✅ ChatUI V23.2 prêt.');
+    console.log('✅ ChatUI V24.1 prêt.');
   }
 
   render(container, chatState = {}) {
@@ -28,6 +30,14 @@ export class ChatUI {
         <div class="chat-header card-header">
           <div class="chat-title">Dialogue</div>
           <div class="agent-selector">${agentTabs}</div>
+        </div>
+
+        <div class="rag-banner" id="rag-banner" hidden>
+          <div class="rag-row">
+            <span class="rag-dot" aria-hidden="true"></span>
+            <span class="rag-text" id="rag-status-text">RAG…</span>
+          </div>
+          <div class="rag-sources" id="rag-sources"></div>
         </div>
 
         <div class="chat-messages card-body" id="chat-messages"></div>
@@ -48,7 +58,6 @@ export class ChatUI {
               aria-checked="${String(!!this.state.ragEnabled)}"
               title="${this.state.ragEnabled ? 'RAG activé' : 'RAG désactivé'}">
               <svg viewBox="0 0 24 24" class="icon-power" aria-hidden="true" focusable="false">
-                <!-- IEC 60417-5007 style -->
                 <path class="power-line" d="M12 3 v7" />
                 <path class="power-circle" d="M6.5 7.5a7 7 0 1 0 11 0" />
               </svg>
@@ -75,9 +84,13 @@ export class ChatUI {
 
     this._setActiveAgentTab(container, this.state.currentAgentId);
 
+    // Messages
     const raw = this.state.messages?.[this.state.currentAgentId];
     const list = this._asArray(raw).map((m) => this._normalizeMessage(m));
     this._renderMessages(container.querySelector('#chat-messages'), list);
+
+    // Bandeau RAG
+    this._renderRagBanner(container);
   }
 
   _bindEvents(container) {
@@ -94,31 +107,26 @@ export class ChatUI {
       input.dispatchEvent(new Event('input'));
     });
 
-    // Enter pour envoyer (Shift+Enter = retour à la ligne)
+    // Enter = envoyer (Shift+Enter = retour ligne)
     input?.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' && !ev.shiftKey) {
         ev.preventDefault();
-        try {
-          if (typeof form?.requestSubmit === 'function') {
-            form.requestSubmit();
-          } else {
-            form?.dispatchEvent(new Event('submit', { cancelable: true }));
-          }
-        } catch {}
+        try { typeof form?.requestSubmit === 'function' ? form.requestSubmit() : form?.dispatchEvent(new Event('submit',{cancelable:true})); } catch {}
       }
     });
 
-    container.querySelector('#chat-export')
-      ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_EXPORT, null));
-
-    container.querySelector('#chat-clear')
-      ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_CLEAR, null));
+    container.querySelector('#chat-export')?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_EXPORT, null));
+    container.querySelector('#chat-clear')?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_CLEAR, null));
 
     ragBtn?.addEventListener('click', () => {
       const on = ragBtn.getAttribute('aria-checked') === 'true';
       ragBtn.setAttribute('aria-checked', String(!on));
       ragBtn.setAttribute('title', !on ? 'RAG activé' : 'RAG désactivé');
       this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, { enabled: !on });
+      if (on) {
+        const banner = container.querySelector('#rag-banner');
+        if (banner) banner.hidden = true;
+      }
     });
 
     container.querySelector('.agent-selector')?.addEventListener('click', (e) => {
@@ -127,14 +135,50 @@ export class ChatUI {
       const agentId = btn.getAttribute('data-agent-id');
       this.eventBus.emit(EVENTS.CHAT_AGENT_SELECTED, agentId);
       this._setActiveAgentTab(container, agentId);
+      this._renderRagBanner(container); // refresh banner for new agent
     });
   }
 
-  _renderMessages(host, messages) {
-    if (!host) return;
-    const html = (messages || []).map(m => this._messageHTML(m)).join('');
-    host.innerHTML = html || `<div class="placeholder" style="opacity:.6;padding:1rem;">Commence à discuter…</div>`;
-    host.scrollTo(0, 1e9);
+  _renderRagBanner(container) {
+    const banner = container.querySelector('#rag-banner');
+    if (!banner) return;
+
+    const enabled = !!this.state.ragEnabled;
+    const agentId = this.state.currentAgentId;
+    const status = this.state.ragStatus?.[agentId];
+    const sources = this.state.ragSources?.[agentId] || [];
+
+    if (!enabled || (!status && sources.length === 0)) {
+      banner.hidden = true;
+      return;
+    }
+
+    // Texte statut
+    const statusEl = banner.querySelector('#rag-status-text');
+    const dot = banner.querySelector('.rag-dot');
+    if (status === 'searching') {
+      statusEl.textContent = 'Recherche de contexte…';
+      banner.classList.remove('found'); banner.classList.add('searching');
+      dot.setAttribute('data-state', 'searching');
+    } else if (status === 'found') {
+      statusEl.textContent = sources.length ? 'Contexte trouvé' : 'Contexte trouvé (sources indisponibles)';
+      banner.classList.remove('searching'); banner.classList.add('found');
+      dot.setAttribute('data-state', 'found');
+    } else {
+      statusEl.textContent = 'RAG prêt';
+      banner.classList.remove('searching','found');
+      dot.setAttribute('data-state', 'idle');
+    }
+
+    // Liste sources
+    const host = banner.querySelector('#rag-sources');
+    host.innerHTML = (sources || []).map((s, i) => `
+      <button type="button" class="rag-chip" title="${this._escapeHTML(s.filename || 'Document')}" data-docid="${this._escapeAttr(s.document_id || '')}">
+        ${this._escapeHTML(s.filename || `Source ${i+1}`)}
+      </button>
+    `).join('');
+
+    banner.hidden = false;
   }
 
   _messageHTML(m) {
@@ -145,14 +189,16 @@ export class ChatUI {
     const raw = this._toPlainText(m.content);
     const content = this._escapeHTML(raw).replace(/\n/g, '<br/>');
     const cursor = m.isStreaming ? `<span class="blinking-cursor">▍</span>` : '';
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Horodatage JJ.MM.AAAA HH:MM (prend m.ts si présent, sinon now)
+    const stamp = this._formatTimestamp(m?.ts || Date.now());
 
     return `
       <div class="message ${side} ${side === 'assistant' ? agentId : ''}">
         <div class="message-content">
           <div class="message-meta meta-inside">
             <strong class="sender-name" data-role="author">${name}</strong>
-            <span class="message-time">${time}</span>
+            <span class="message-time">${stamp}</span>
           </div>
           <div class="message-text">${content}${cursor}</div>
         </div>
@@ -179,36 +225,28 @@ export class ChatUI {
       ?.forEach(b => b.classList.toggle('active', b.getAttribute('data-agent-id') === activeId));
   }
 
-  _asArray(v) {
-    if (Array.isArray(v)) return v;
-    if (!v) return [];
-    if (typeof v === 'object') return Object.values(v);
-    return [];
-  }
+  _asArray(v) { if (Array.isArray(v)) return v; if (!v) return []; if (typeof v === 'object') return Object.values(v); return []; }
 
   _normalizeMessage(m) {
-    if (m == null) return { role: 'assistant', content: '' };
-    if (typeof m === 'string') return { role: 'assistant', content: m };
-    const role = m.role || (m.author === 'user' ? 'user' : 'assistant');
-    const content = m.content ?? m.text ?? m.message ?? '';
-    const agent_id = m.agent_id || m.agent || m.agentId;
-    return { ...m, role, content, agent_id };
+    if (!m) return { role:'assistant', content:'' };
+    if (typeof m === 'string') return { role:'assistant', content:m };
+    return m;
   }
 
-  _toPlainText(val) {
-    if (val == null) return '';
-    if (typeof val === 'string') return val;
-    if (Array.isArray(val)) return val.map(v => this._toPlainText(v)).join('');
-    if (typeof val === 'object') {
-      if ('text' in val) return this._toPlainText(val.text);
-      if ('content' in val) return this._toPlainText(val.content);
-      if ('message' in val) return this._toPlainText(val.message);
-      try { return JSON.stringify(val); } catch { return String(val); }
-    }
-    return String(val);
-  }
+  _escapeHTML(s='') { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
+  _escapeAttr(s='') { return this._escapeHTML(String(s)).replace(/\s+/g, ' ').trim(); }
+  _toPlainText(v) { if (v == null) return ''; return typeof v === 'string' ? v : JSON.stringify(v); }
 
-  _escapeHTML(s) {
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  _pad2(n) { return n < 10 ? `0${n}` : String(n); }
+  _formatTimestamp(input) {
+    try {
+      const d = new Date(input);
+      const DD = this._pad2(d.getDate());
+      const MM = this._pad2(d.getMonth() + 1);
+      const YYYY = d.getFullYear();
+      const hh = this._pad2(d.getHours());
+      const mm = this._pad2(d.getMinutes());
+      return `${DD}.${MM}.${YYYY} ${hh}:${mm}`;
+    } catch { return ''; }
   }
 }
