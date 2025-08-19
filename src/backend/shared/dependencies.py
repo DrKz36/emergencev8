@@ -1,5 +1,5 @@
 # src/backend/shared/dependencies.py
-# V7.0 - DI unifiée + garde Bearer + Mémoire (gardener)
+# V7.1 - DI unifiée : plus de fallback config; vector_service/analyzer issus du container; garde Bearer + WS.
 import logging
 from typing import Optional
 
@@ -10,7 +10,6 @@ from backend.core.session_manager import SessionManager
 from backend.core.cost_tracker import CostTracker
 from backend.core.websocket import ConnectionManager
 from backend.shared.config import Settings
-from backend.core import config
 
 from backend.features.chat.service import ChatService
 from backend.features.documents.service import DocumentService
@@ -46,22 +45,8 @@ def get_settings(request: Request) -> Settings:
     return _container(request).settings()
 
 def get_vector_service(request: Request) -> VectorService:
-    # On réutilise le VectorService déjà attaché au ChatService si disponible.
-    try:
-        cs = _container(request).chat_service()
-        vs = getattr(cs, "vector_service", None)
-        if vs is not None:
-            return vs
-    except Exception:
-        pass
-    # Sinon créer un singleton sur app.state
-    vs = getattr(request.app.state, "_vector_service", None)
-    if vs is None:
-        persist_dir = getattr(config, "VECTOR_STORE_DIR", "src/backend/data/vector_store")
-        embed_model = getattr(config, "EMBED_MODEL_NAME", "all-MiniLM-L6-v2")
-        vs = VectorService(persist_directory=persist_dir, embed_model_name=embed_model)
-        request.app.state._vector_service = vs
-    return vs
+    # Source de vérité unique : container.vector_service()
+    return _container(request).vector_service()
 
 def get_chat_service(request: Request) -> ChatService:
     return _container(request).chat_service()
@@ -76,13 +61,19 @@ def get_dashboard_service(request: Request) -> DashboardService:
 def get_memory_gardener(request: Request) -> MemoryGardener:
     container = _container(request)
     db = container.db_manager()
-    chat_service = container.chat_service()
-    vector_service = getattr(chat_service, "vector_service", None) or get_vector_service(request)
+    vector_service = container.vector_service()
+    analyzer: MemoryAnalyzer = container.memory_analyzer()
 
-    # Singleton sur app.state
+    # Injection tardive si nécessaire (sécurisé)
+    if getattr(analyzer, "chat_service", None) is None:
+        try:
+            analyzer.set_chat_service(container.chat_service())
+        except Exception:
+            pass
+
+    # Singleton app.state
     gard = getattr(request.app.state, "_memory_gardener", None)
     if gard is None:
-        analyzer = MemoryAnalyzer(db_manager=db, chat_service=chat_service)
         gard = MemoryGardener(db_manager=db, vector_service=vector_service, memory_analyzer=analyzer)
         request.app.state._memory_gardener = gard
         logger.info("MemoryGardener initialisé (singleton app.state).")
