@@ -1,5 +1,9 @@
 ﻿/* src/frontend/features/debate/debate.css */
-/* V38.4 — compat aria-pressed, médiateur coloré, portrait +large */
+/* V38.6 — Fix overflow mobile:
+   - Bulles clampées à la largeur disponible (no overflow X)
+   - Word-wrapping agressif (anywhere + hyphens)
+   - Card/timeline sans débordement horizontal
+   - Portrait encore un poil plus large mais borné par 100%    */
 
 :root{
   --glass-bg: rgba(22,22,26,.55);
@@ -14,18 +18,14 @@
   --color-text-primary:#e9e9ef;
   --color-text-secondary:#bfc2cd;
 
-  --color-background-secondary: rgba(255,255,255,.02);
   --color-background-tertiary: rgba(255,255,255,.035);
 
-  --border-color: rgba(255,255,255,.18);
-  --border-width: 1px;
-
   --space-2:.5rem; --space-3:.75rem; --space-4:1rem; --space-6:1.25rem;
-  --space-8:1.75rem; --space-12:2.5rem;
+  --space-8:1.75rem;
 
-  --text-base: 1rem; --text-xl: 1.25rem; --text-2xl: 1.5rem;
-  --weight-medium: 500; --weight-semibold: 600;
+  --text-2xl: 1.5rem;
 
+  /* largeur préférée d’une bulle ; sera CLAMPÉE à 100% du conteneur */
   --debateBubbleW: min(920px, 92vw);
 
   --rag-off: var(--color-anima);
@@ -33,7 +33,12 @@
 }
 
 /* ===== Wrapper + Card ===== */
-.debate-view-wrapper{ width:100%; display:flex; justify-content:center; align-items:flex-start; padding:var(--space-8); }
+.debate-view-wrapper{
+  width:100%;
+  display:flex; justify-content:center; align-items:flex-start;
+  padding:var(--space-8);
+  overflow-x:hidden; /* ⛑ empêche le scroll horizontal global */
+}
 .debate-view-wrapper .card{
   background-color:var(--glass-bg);
   border:1px solid var(--glass-border-color);
@@ -41,10 +46,13 @@
   backdrop-filter:blur(calc(var(--glass-blur)*1.25));
   -webkit-backdrop-filter:blur(calc(var(--glass-blur)*1.25));
   box-shadow:0 16px 40px rgba(0,0,0,.35), inset 0 0 32px rgba(255,255,255,.03);
-  max-width:1200px; width:95%;
+  width:100%;             /* ✅ plein conteneur (pas 95%) */
+  max-width:1200px;       /* borne desktop */
+  box-sizing:border-box;  /* padding/bord dans le calcul de largeur */
 }
+
 .card-header{ text-align:center; border-bottom:1px solid var(--glass-border-color); }
-.card-title{ color:#fff; margin:0; font-size:var(--text-2xl); font-weight:var(--weight-semibold); }
+.card-title{ color:#fff; margin:0; font-size:var(--text-2xl); font-weight:600; }
 .debate-status{ margin-top:var(--space-2); color:var(--color-text-secondary); }
 .card-body{ padding:var(--space-6); }
 .card-footer{ padding:var(--space-6); }
@@ -55,10 +63,14 @@
   grid-template-areas:"topic" "config" "rag";
 }
 .debate-create-body .form-topic{ grid-area: topic; }
-.debate-create-body .form-group > label{ display:block; margin-bottom: var(--space-4); }
-.debate-create-body .form-topic .input-text{ width:100%; min-height:16rem; resize:vertical; }
+.debate-create-body .form-group > label{ display:block; margin-bottom: var(--space-3); }
+.debate-create-body .form-topic .input-text,
+.debate-view-wrapper .card .input-text{
+  width:100%; box-sizing:border-box;
+  overflow-wrap:anywhere; word-break:break-word; hyphens:auto; /* ✅ pas de débordement */
+}
 
-/* Cadre pointillé "Configuration" (2x2) */
+/* Cadre CONFIG (2x2) */
 .debate-create-body .config-grid{
   grid-area: config; position:relative; padding: var(--space-6);
   border:1px dashed var(--glass-border-color); border-radius:14px;
@@ -73,65 +85,37 @@
 .debate-create-body .form-challenger{ grid-area: challenger; }
 .debate-create-body .form-rounds{ grid-area: rounds; }
 .debate-create-body .form-mediator{ grid-area: mediator; }
-.debate-create-body .form-attacker,
-.debate-create-body .form-challenger,
-.debate-create-body .form-rounds,
-.debate-create-body .form-mediator{ margin-bottom: var(--space-2); }
 
-/* Segmented */
 .segmented{ display:flex; gap:.5rem; flex-wrap:wrap; }
 .button-tab{ padding:.45rem .9rem; border:none; background:transparent; cursor:pointer; }
 
-/* ✅ Etat actif : compat .active ET aria-pressed */
+/* état actif (compat .active + aria-pressed) */
 .debate-create-body .button-tab.active,
-.debate-create-body .button-tab[aria-pressed="true"]{
-  border-bottom:2px solid currentColor;
-}
-
-/* ✅ Couleur par agent pour l’état actif (2 sélecteurs pour compat) */
+.debate-create-body .button-tab[aria-pressed="true"]{ border-bottom:2px solid currentColor; }
 .debate-create-body .button-tab.agent--anima.active,
-.debate-create-body .button-tab.agent--anima[aria-pressed="true"]{
-  color: var(--color-anima) !important; border-bottom-color: var(--color-anima) !important;
-  box-shadow: 0 0 10px rgba(225,29,72,.45) !important;
-}
+.debate-create-body .button-tab.agent--anima[aria-pressed="true"]{ color:var(--color-anima); box-shadow:0 0 8px rgba(225,29,72,.35); }
 .debate-create-body .button-tab.agent--neo.active,
-.debate-create-body .button-tab.agent--neo[aria-pressed="true"]{
-  color: var(--color-neo) !important; border-bottom-color: var(--color-neo) !important;
-  box-shadow: 0 0 10px rgba(37,99,235,.35) !important;
-}
+.debate-create-body .button-tab.agent--neo[aria-pressed="true"]{ color:var(--color-neo);   box-shadow:0 0 8px rgba(37,99,235,.30); }
 .debate-create-body .button-tab.agent--nexus.active,
-.debate-create-body .button-tab.agent--nexus[aria-pressed="true"]{
-  color: var(--color-nexus) !important; border-bottom-color: var(--color-nexus) !important;
-  box-shadow: 0 0 10px rgba(16,185,129,.35) !important;
-}
+.debate-create-body .button-tab.agent--nexus[aria-pressed="true"]{ color:var(--color-nexus);box-shadow:0 0 8px rgba(16,185,129,.30); }
 
-/* Affichage "Synthèse par" (médiateur coloré) */
 .mediator-display{
   display:inline-block; padding:.55rem 1rem;
   border:1px solid var(--glass-border-color); border-radius:10px;
   background: var(--color-background-tertiary); min-width:120px; text-align:center;
 }
-.mediator-display.agent--anima{ color:var(--color-anima); border-color:color-mix(in srgb, var(--color-anima) 35%, transparent); }
-.mediator-display.agent--neo{ color:var(--color-neo); border-color:color-mix(in srgb, var(--color-neo) 35%, transparent); }
-.mediator-display.agent--nexus{ color:var(--color-nexus); border-color:color-mix(in srgb, var(--color-nexus) 35%, transparent); }
+.mediator-display.agent--anima{ color:var(--color-anima); }
+.mediator-display.agent--neo{   color:var(--color-neo); }
+.mediator-display.agent--nexus{ color:var(--color-nexus); }
 
-/* Ligne RAG */
+/* RAG */
 .debate-create-body .rag-row{ grid-area: rag; display:flex; align-items:center; gap:.75rem; }
 .debate-create-body .rag-label{ color:#fff; opacity:.9; font-size:.95rem; }
-
-/* RAG Power */
 .debate-create-body .rag-power{
   display:inline-flex; align-items:center; justify-content:center;
   width:34px; height:34px; border-radius:50%;
   background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.25);
-  cursor:pointer; transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
-}
-.debate-create-body .rag-power:hover{ transform: translateY(-1px); background: rgba(255,255,255,.12); }
-.debate-create-body .rag-power .icon-power{ width:22px; height:22px; }
-.debate-create-body .rag-power .power-line,
-.debate-create-body .rag-power .power-circle{
-  fill:none; stroke: var(--rag-off); stroke-width:2.25; stroke-linecap:round; stroke-linejoin:round;
-  transition: stroke .2s ease, filter .2s ease;
+  cursor:pointer; transition:.15s transform,.2s box-shadow,.2s background;
 }
 .debate-create-body .rag-power[aria-checked="true"] .power-line,
 .debate-create-body .rag-power[aria-checked="true"] .power-circle{
@@ -139,27 +123,30 @@
 }
 
 /* ===== Vue Déroulé ===== */
-.debate-timeline{ display:flex; flex-direction:column; gap:18px; padding:var(--space-4) 0; }
+.debate-timeline{ display:flex; flex-direction:column; gap:18px; padding:var(--space-4) 0; overflow-x:hidden; }
 .timeline-turn-separator{ position:relative; display:flex; justify-content:center; align-items:center; color:var(--color-text-secondary); font-size:.85rem; }
 .timeline-turn-separator::before,
 .timeline-turn-separator::after{ content:""; position:absolute; top:50%; height:1px; width:45%; background:rgba(255,255,255,.14); }
 .timeline-turn-separator::before{ left:0; } .timeline-turn-separator::after{ right:0; }
-.timeline-turn-separator>span{ display:inline-block; padding:0 var(--space-3); background:transparent; }
+.timeline-turn-separator>span{ display:inline-block; padding:0 var(--space-3); }
 
-/* Centrage bulles */
+/* ✅ Bulles clampées à 100% du conteneur (pas de dépassement) */
 .debate-timeline .message{ display:flex; width:100%; margin:0; }
 .debate-timeline .message-content{
-  width:var(--debateBubbleW) !important; max-width:var(--debateBubbleW) !important; min-width:var(--debateBubbleW) !important;
-  margin:0 auto !important; background:transparent !important; border:none !important; box-shadow:none !important;
-  display:flex; flex-direction:column; gap:.5rem;
+  /* largeur préférée → ne dépassera JAMAIS 100% du conteneur */
+  width: min(var(--debateBubbleW), 100%);
+  max-width:100%;
+  min-width:0;
+  margin:0 auto;
+  background:transparent !important; border:none !important; box-shadow:none !important;
+  display:flex; flex-direction:column; gap:.5rem; box-sizing:border-box;
 }
-.debate-timeline .message-avatar{ display:none; }
 .debate-timeline .message-text{
   border:none; border-radius:14px; padding:.9rem 1rem; color:#fff;
   -webkit-backdrop-filter:blur(6px) saturate(120%); backdrop-filter:blur(6px) saturate(120%);
   box-shadow:0 10px 24px rgba(0,0,0,.25), 0 0 20px rgba(255,255,255,.07);
+  overflow-wrap:anywhere; word-break:break-word; hyphens:auto; /* ✅ casse les mots longs */
 }
-/* Couleurs par agent */
 .message.assistant.agent--anima   .message-text{ background: color-mix(in srgb, var(--color-anima) 26%, transparent); }
 .message.assistant.agent--neo     .message-text{ background: color-mix(in srgb, var(--color-neo) 22%, transparent); }
 .message.assistant.agent--nexus   .message-text{ background: color-mix(in srgb, var(--color-nexus) 22%, transparent); }
@@ -177,28 +164,30 @@
   .debate-create-footer .button-xxl{ width:100%; min-width:0; }
 }
 
-/* Portrait — marges réduites */
+/* Portrait — marges réduites (préférence élargie) */
 @media (orientation: portrait){
-  :root{ --debateBubbleW: calc(100vw - 12px); } /* +large qu'avant */
+  /* largeur préférée de bulle en portrait ; restera ≤ 100% grâce au clamp ci-dessus */
+  :root{ --debateBubbleW: calc(100vw - 6px); }
   .debate-view-wrapper{ padding: var(--space-3); }
-  .debate-view-wrapper .card{ width:100%; border-radius:16px; }
+  .debate-view-wrapper .card{ border-radius:16px; }
   .card-header, .card-body, .card-footer{ padding: var(--space-4); }
   .debate-timeline{ padding: var(--space-2) 0; }
 }
-/* Téléphones étroits (portrait) – marge minimale */
+
+/* Téléphones étroits (portrait) – marge mini */
 @media (max-width: 480px) and (orientation: portrait){
-  :root{ --debateBubbleW: calc(100vw - 8px); } /* encore un poil plus large */
+  :root{ --debateBubbleW: calc(100vw - 4px); }
   .debate-view-wrapper{ padding: 8px; }
   .card-header, .card-body, .card-footer{ padding: 12px; }
 }
 
-/* Paysage à faible hauteur (smartphones tournés) */
+/* Paysage faible hauteur (smartphones tournés) */
 @media (orientation: landscape) and (max-height: 500px){
+  /* même si on garde une valeur en vw, la bulle est bornée par 100% → pas d’overflow */
   :root{ --debateBubbleW: calc(100vw - 24px); }
   .debate-view-wrapper{ padding: 8px; }
-  .debate-view-wrapper .card{ width:100%; border-radius:14px; }
+  .debate-view-wrapper .card{ border-radius:14px; }
   .card-header, .card-body, .card-footer{ padding: 12px; }
   .segmented{ gap:.35rem; }
   .button-tab{ padding:.35rem .7rem; }
-  .debate-create-body .config-grid{ column-gap: var(--space-6); row-gap: var(--space-4); }
 }
