@@ -1,6 +1,6 @@
 # src/backend/features/chat/service.py
-# V29.7 – Gemini 'model_name' ok, Anthropic guard (no key => disabled),
-# dynamic fallbacks, RAG sources WS, coûts unifiés. UTF-8 (CRLF conseillé sous Windows).
+# V30.0 – Mémoire incrément 1 (P2): injection mémoire + WS memory_* ; RAG inchangé.
+# UTF-8 (CRLF conseillé sous Windows).
 
 import os
 import re
@@ -28,7 +28,7 @@ from backend.core import config
 logger = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Tarification unifiée (par token)
+# Tarification unifiée (par token) — inchangé
 # ──────────────────────────────────────────────────────────────────────────────
 MODEL_PRICING: Dict[str, Dict[str, float]] = {
     # OpenAI
@@ -48,16 +48,21 @@ SAFE_DEFAULTS: Dict[str, str] = {
     "google": "gemini-1.5-flash",
 }
 
+# Collection mémoire (fallback si non défini en config)
+KNOWLEDGE_COLLECTION_NAME: str = getattr(config, "KNOWLEDGE_COLLECTION_NAME", "emergence_knowledge")
+
 
 class ChatService:
     """
-    ChatService V29.7
+    ChatService V30.0
     - Initialisation clients OpenAI / Anthropic / Google
-    - Fallback dynamique (ignore provider non configuré)
-    - Fallback single-shot si stream ne renvoie aucun chunk
-    - Format Anthropic conforme (content blocks)
-    - 'anima' forcé sur OpenAI gpt-4o-mini (stabilité/coût)
-    - Emission des sources RAG (ws:chat_sources)
+    - Fallback dynamique
+    - RAG inchangé (sources WS)
+    - NOUVEAU: Mémoire P2
+        * Requête mémoire (collection 'emergence_knowledge' par défaut)
+        * Injection [MEMORY] ... [/MEMORY] dans le dernier message user
+        * WS: ws:memory_status, ws:memory_sources
+        * Debug enrichi (mémoire)
     """
 
     def __init__(
@@ -72,13 +77,13 @@ class ChatService:
         self.vector_service = vector_service
         self.settings = settings
 
-        # Politique OFF quand RAG désactivé
+        # Politique OFF quand RAG désactivé (inchangé)
         self.off_history_policy = os.getenv("EMERGENCE_RAG_OFF_POLICY", "stateless").strip().lower()
         if self.off_history_policy not in ("stateless", "agent_local"):
             self.off_history_policy = "stateless"
         logger.info("ChatService OFF policy: %s", self.off_history_policy)
 
-        # Clients LLM
+        # Clients LLM (inchangé)
         try:
             self.openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -98,12 +103,12 @@ class ChatService:
             logger.error("Erreur lors de l'initialisation des clients API: %s", e, exc_info=True)
             raise
 
-        # Prompts (fichiers *.md dans settings.paths.prompts)
+        # Prompts
         self.prompts: Dict[str, str] = self._load_prompts(self.settings.paths.prompts)
         logger.info("ChatService initialisé. Prompts chargés: %d", len(self.prompts))
 
     # ──────────────────────────────────────────────────────────────────────
-    # Chargement des prompts
+    # Chargement des prompts (inchangé)
     # ──────────────────────────────────────────────────────────────────────
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
         prompts: Dict[str, str] = {}
@@ -120,7 +125,6 @@ class ChatService:
         return prompts
 
     def _ensure_supported(self, provider: Optional[str], model: Optional[str]) -> Tuple[str, str]:
-        """Garantit un couple (provider, model) exploitable."""
         if not provider:
             provider = "openai"
         if not model:
@@ -136,14 +140,14 @@ class ChatService:
         provider = agent_configs.get(clean_agent_id, {}).get("provider")
         model = agent_configs.get(clean_agent_id, {}).get("model")
 
-        # Sécurisation 'anima' : impose OpenAI/gpt-4o-mini
+        # 'anima' forcé OpenAI/gpt-4o-mini
         if clean_agent_id == "anima":
             provider, model = "openai", "gpt-4o-mini"
             logger.info("Remplacement modèle pour 'anima' -> openai/gpt-4o-mini.")
 
         provider, model = self._ensure_supported(provider, model)
 
-        # Si Anthropic demandé mais pas de clé -> fallback immédiat OpenAI
+        # Anthropic sans clé -> fallback OpenAI
         if provider == "anthropic" and self.anthropic_client is None:
             logger.warning("Agent '%s' configuré Anthropic sans clé – fallback -> openai/%s.", agent_id, SAFE_DEFAULTS["openai"])
             provider, model = "openai", SAFE_DEFAULTS["openai"]
@@ -181,7 +185,6 @@ class ChatService:
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
 
     def _to_anthropic_messages(self, history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Convertit un historique {role, content} -> Anthropic {role, content=[{type:text,text:...}]}"""
         out: List[Dict[str, Any]] = []
         for it in history:
             role = it.get("role")
@@ -195,7 +198,65 @@ class ChatService:
         return out
 
     # ──────────────────────────────────────────────────────────────────────
-    # Orchestration d'un agent (streaming + RAG + coûts)
+    # Mémoire — build context snippets + payload WS
+    # ──────────────────────────────────────────────────────────────────────
+    def _dedup_preserve(self, items: List[str]) -> List[str]:
+        seen = set()
+        out = []
+        for s in items:
+            if s and s not in seen:
+                out.append(s); seen.add(s)
+        return out
+
+    def _safe_preview(self, s: str, max_len: int = 140) -> str:
+        s = (s or "").strip()
+        return s if len(s) <= max_len else (s[:max_len - 1] + "…")
+
+    def _build_memory_context(self, query_text: str, max_items: int = 5) -> Tuple[str, List[Dict[str, Any]]]:
+        """
+        Retourne (context_en_bullets, sources_payload) depuis la collection mémoire.
+        """
+        if not (query_text or "").strip():
+            return "", []
+
+        try:
+            knowledge_collection = self.vector_service.get_or_create_collection(KNOWLEDGE_COLLECTION_NAME)
+        except Exception as e:
+            logger.error("Impossible d'ouvrir la collection mémoire '%s': %s", KNOWLEDGE_COLLECTION_NAME, e, exc_info=True)
+            return "", []
+
+        try:
+            results = self.vector_service.query(collection=knowledge_collection, query_text=query_text) or []
+        except Exception as e:
+            logger.error("Erreur requête mémoire: %s", e, exc_info=True)
+            return "", []
+
+        snippets: List[str] = []
+        payload: List[Dict[str, Any]] = []
+        for r in results:
+            meta = (r.get("metadata") or {}) if isinstance(r, dict) else {}
+            text = meta.get("text") or meta.get("chunk") or ""
+            if not text:
+                continue
+            snippets.append(text)
+            payload.append({
+                "source_session_id": meta.get("source_session_id"),
+                "role": meta.get("role"),
+                "score": r.get("score") if isinstance(r, dict) else None,
+                "preview": self._safe_preview(text),
+            })
+            if len(snippets) >= max_items:
+                break
+
+        snippets = self._dedup_preserve(snippets)[:max_items]
+        if not snippets:
+            return "", []
+
+        bullets = "\n".join([f"• {s}" for s in snippets])
+        return bullets, payload
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Orchestration d'un agent (streaming + RAG + Mémoire + coûts)
     # ──────────────────────────────────────────────────────────────────────
     async def _process_agent_response_stream(
         self, session_id: str, agent_id: str, use_rag: bool, connection_manager: ConnectionManager
@@ -208,16 +269,16 @@ class ChatService:
             {"type": "ws:chat_stream_start", "payload": {"agent_id": agent_id, "id": temp_message_id}}, session_id
         )
 
-        # Construit historique + option RAG
+        # Construit historique + récupère dernier message user
         history = self.session_manager.get_full_history(session_id)
+        last_user_message_obj = next((m for m in reversed(history) if m.get("role") in (Role.USER, "user")), None)
+        last_user_message = (last_user_message_obj or {}).get("content", "")
+
+        # RAG : inchangé (documents)
         rag_context = ""
         sources_payload: List[Dict[str, Any]] = []
 
         if use_rag:
-            # Dernier message user
-            last_user_message_obj = next((m for m in reversed(history) if m.get("role") in (Role.USER, "user")), None)
-            last_user_message = (last_user_message_obj or {}).get("content", "")
-
             await connection_manager.send_personal_message(
                 {"type": "ws:rag_status", "payload": {"status": "searching", "agent_id": agent_id}}, session_id
             )
@@ -250,10 +311,37 @@ class ChatService:
                     {"type": "ws:rag_status", "payload": {"status": "error", "agent_id": agent_id}}, session_id
                 )
 
-        # Normalisation provider
+        # NOUVEAU — Mémoire : build + WS status
+        memory_context = ""
+        memory_sources: List[Dict[str, Any]] = []
+        try:
+            await connection_manager.send_personal_message(
+                {"type": "ws:memory_status", "payload": {"status": "searching", "agent_id": agent_id}}, session_id
+            )
+            memory_context, memory_sources = self._build_memory_context(last_user_message, max_items=5)
+            await connection_manager.send_personal_message(
+                {"type": "ws:memory_sources", "payload": {"agent_id": agent_id, "sources": memory_sources}}, session_id
+            )
+            await connection_manager.send_personal_message(
+                {"type": "ws:memory_status", "payload": {"status": ("found" if memory_context else "empty"), "agent_id": agent_id}},
+                session_id,
+            )
+        except Exception as e:
+            logger.error("Erreur Mémoire: %s", e, exc_info=True)
+            await connection_manager.send_personal_message(
+                {"type": "ws:memory_status", "payload": {"status": "error", "agent_id": agent_id}}, session_id
+            )
+
+        # Normalisation provider + injection RAG/MEMORY
         normalized_history = self._normalize_history_for_llm(
-            provider=provider, history=history, rag_context=rag_context, use_rag=use_rag, agent_id=agent_id
+            provider=provider,
+            history=history,
+            rag_context=rag_context,
+            memory_context=memory_context,
+            use_rag=use_rag,
+            agent_id=agent_id,
         )
+
         # Debug prompt envoyé (sans le system)
         try:
             if provider == "google":
@@ -277,6 +365,8 @@ class ChatService:
                     "use_rag": use_rag,
                     "history_filtered": len(normalized_history),
                     "rag_context_chars": len(rag_context),
+                    "memory_context_chars": len(memory_context),
+                    "memory_snippets": len(memory_sources),
                     "off_policy": self.off_history_policy,
                     "sensitive_tokens_in_prompt": norm_tokens,
                 },
@@ -284,7 +374,7 @@ class ChatService:
             session_id,
         )
 
-        # Stream + fallback
+        # Stream + fallback (inchangé)
         cost_info: Dict[str, Any] = {"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0}
         full_text = ""
         try:
@@ -300,7 +390,7 @@ class ChatService:
         except Exception as primary_err:
             logger.error("[STREAM FAIL] provider=%s model=%s: %s", provider, model, primary_err, exc_info=True)
 
-            # Fallback chain dynamique (ignore providers non configurés)
+            # Fallback chain
             fallback_candidates: List[str] = []
             if provider != "openai" and self.openai_client is not None:
                 fallback_candidates.append("openai")
@@ -329,7 +419,7 @@ class ChatService:
                 except Exception as fb_err:
                     logger.error("[FALLBACK STREAM FAIL] %s/%s: %s", fb, fb_model, fb_err, exc_info=True)
 
-        # Si toujours vide → single-shot
+        # Single-shot si nécessaire (inchangé)
         if not full_text.strip():
             try:
                 content, _cost = await self._get_llm_response_single(provider, model, system_prompt, normalized_history, False)
@@ -348,7 +438,7 @@ class ChatService:
                 logger.error("[SINGLE-SHOT FAIL] %s/%s: %s", provider, model, single_err, exc_info=True)
                 raise
 
-        # Persistance + tracking coûts
+        # Persistance + tracking coûts (inchangé)
         final_agent_message = AgentMessage(
             id=temp_message_id,
             session_id=session_id,
@@ -377,12 +467,19 @@ class ChatService:
         )
 
     # ──────────────────────────────────────────────────────────────────────
-    # Normalisation des historiques par provider
+    # Normalisation des historiques + injection RAG/MEMORY
     # ──────────────────────────────────────────────────────────────────────
     def _normalize_history_for_llm(
-        self, *, provider: str, history: List[Dict[str, Any]], rag_context: str, use_rag: bool, agent_id: str
+        self,
+        *,
+        provider: str,
+        history: List[Dict[str, Any]],
+        rag_context: str,
+        memory_context: str,
+        use_rag: bool,
+        agent_id: str,
     ) -> List[Dict[str, Any]]:
-        """Transforme l'historique interne -> format messages du provider."""
+        """Transforme l'historique interne -> format messages du provider + injections RAG/MEMORY."""
         # Copie "user/assistant" uniquement
         pairs: List[Tuple[Any, str]] = []
         for m in history:
@@ -391,19 +488,23 @@ class ChatService:
             if role in (Role.USER, "user", Role.ASSISTANT, "assistant"):
                 pairs.append((role, str(content)))
 
-        # Injection RAG dans le dernier message user
-        if use_rag and pairs:
+        # Injection dans le dernier message user
+        if pairs:
             for i in range(len(pairs) - 1, -1, -1):
                 r = pairs[i][0]
                 if r == Role.USER or r == "user":
                     original = pairs[i][1]
-                    ctx = rag_context.strip()
-                    if ctx:
-                        enriched = f"{original}\n\n[CONTEXT]\n{ctx}\n[/CONTEXT]"
-                        pairs[i] = (r, enriched)
+                    enriched = original
+                    ctx = (rag_context or "").strip()
+                    mem = (memory_context or "").strip()
+                    if use_rag and ctx:
+                        enriched = f"{enriched}\n\n[CONTEXT]\n{ctx}\n[/CONTEXT]"
+                    if mem:
+                        enriched = f"{enriched}\n\n[MEMORY]\n{mem}\n[/MEMORY]"
+                    pairs[i] = (r, enriched)
                     break
 
-        # Conversion
+        # Conversion par provider
         normalized: List[Dict[str, Any]] = []
         if provider == "google":
             for role, content in pairs:
@@ -425,7 +526,7 @@ class ChatService:
         return normalized
 
     # ──────────────────────────────────────────────────────────────────────
-    # Streaming provider-agnostic
+    # Streaming provider-agnostic (inchangé)
     # ──────────────────────────────────────────────────────────────────────
     async def _get_llm_response_stream(
         self, provider: str, model: str, system_prompt: str, history: List[Dict[str, Any]], cost_info_container: Dict[str, Any]
@@ -511,65 +612,8 @@ class ChatService:
             cost_info_container.update({"input_tokens": in_tok, "output_tokens": out_tok, "total_cost": cost})
 
     # ──────────────────────────────────────────────────────────────────────
-    # Single-shot (utilisé pour débats & outils)
+    # Single-shot (inchangé)
     # ──────────────────────────────────────────────────────────────────────
-    async def get_llm_response_for_debate(self, agent_id: str, history: List[Dict[str, Any]], session_id: str) -> Tuple[str, Dict]:
-        provider, model, system_prompt = self._get_agent_config(agent_id)
-        # Le prompt débat est le premier item user
-        debate_prompt = ""
-        for it in history:
-            if it.get("role") in (Role.USER, "user"):
-                debate_prompt = str(it.get("content", ""))
-                break
-
-        if provider == "google":
-            normalized = [{"role": "user", "parts": [debate_prompt]}]
-        elif provider == "anthropic":
-            normalized = [{"role": "user", "content": [{"type": "text", "text": debate_prompt}]}]
-        else:
-            normalized = [{"role": "user", "content": debate_prompt}]
-
-        content, cost = await self._get_llm_response_single(provider, model, system_prompt, normalized, json_mode=False)
-        await self.cost_tracker.record_cost(
-            agent=f"debate_{agent_id}",
-            model=model,
-            input_tokens=cost.get("input_tokens", 0),
-            output_tokens=cost.get("output_tokens", 0),
-            total_cost=cost.get("total_cost", 0.0),
-            feature="debate",
-        )
-        return content, cost
-
-    async def get_structured_llm_response(
-        self, agent_id: str, prompt: str, session_id: str, json_schema_hint: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
-        """Demande une réponse JSON stricte au LLM et renvoie l'objet parsé."""
-        provider, model, system_prompt = self._get_agent_config(agent_id)
-        if json_schema_hint:
-            prompt += f"\n\nRéponds UNIQUEMENT avec un objet JSON valide correspondant à ce schéma (indicatif) :\n{json_schema_hint}"
-        if provider == "google":
-            history = [{"role": "user", "parts": [prompt]}]
-        elif provider == "anthropic":
-            history = [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
-        else:
-            history = [{"role": "user", "content": prompt}]
-
-        text, cost = await self._get_llm_response_single(provider, model, system_prompt, history, json_mode=True)
-        await self.cost_tracker.record_cost(
-            agent=f"internal_analyzer_{agent_id}",
-            model=model,
-            input_tokens=cost.get("input_tokens", 0),
-            output_tokens=cost.get("output_tokens", 0),
-            total_cost=cost.get("total_cost", 0.0),
-            feature="document_processing",
-        )
-
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError as e:
-            logger.error("Erreur de décodage JSON: %s – Réponse brute: %r", e, text, exc_info=True)
-            return None
-
     async def _get_llm_response_single(
         self, provider: str, model: str, system_prompt: str, history: List[Dict[str, Any]], json_mode: bool = False
     ) -> Tuple[str, Dict[str, Any]]:
@@ -590,8 +634,8 @@ class ChatService:
     async def _get_openai_response_single(
         self, model: str, system_prompt: str, history: List[Dict[str, Any]], json_mode: bool = False
     ) -> Tuple[str, Dict[str, Any]]:
-        messages = [{"role": "system", "content": system_prompt}] + history
         response_format = {"type": "json_object"} if json_mode else {"type": "text"}
+        messages = [{"role": "system", "content": system_prompt}] + history
         response = await self.openai_client.chat.completions.create(
             model=model, messages=messages, temperature=0.2, max_tokens=4000, stream=False, response_format=response_format
         )
