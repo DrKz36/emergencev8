@@ -54,3 +54,4 @@ python-magic-bin>=0.4.14; platform_system=="Windows"
 
 chardet>=5.2.0              # Détection de l'encodage des caractères
 psutil>=5.9.5               # Monitoring des ressources
+google-cloud-firestore>=2.16.0
