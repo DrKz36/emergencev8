@@ -60,7 +60,8 @@ DASHBOARD_ROUTER = _import_router("backend.features.dashboard.router")
 DEBATE_ROUTER    = _import_router("backend.features.debate.router")
 CHAT_ROUTER      = _import_router("backend.features.chat.router")
 MEMORY_ROUTER    = _import_router("backend.features.memory.router")
-DEV_AUTH_ROUTER  = _import_router("backend.features.dev_auth.router")  # <-- ajout
+DEV_AUTH_ROUTER  = _import_router("backend.features.dev_auth.router")
+THREADS_ROUTER   = _import_router("backend.features.threads.router")  # <-- NOUVEAU
 
 
 def _migrations_dir() -> str:
@@ -102,7 +103,6 @@ async def _startup(container: ServiceContainer):
     try:
         analyzer = container.memory_analyzer()
         chat = container.chat_service()
-        # SessionManager a déjà reçu memory_analyzer via DI ; on relie ici le ChatService à l’analyseur
         analyzer.set_chat_service(chat)
     except Exception as e:
         logger.warning(f"Injection tardive MemoryAnalyzer/ChatService: {e}")
@@ -165,6 +165,7 @@ def create_app() -> FastAPI:
     _mount_router(DEBATE_ROUTER,    "/api/debate",    "debate")
     _mount_router(DASHBOARD_ROUTER, "/api/dashboard", "dashboard")
     _mount_router(MEMORY_ROUTER,    "/api/memory",    "memory")
+    _mount_router(THREADS_ROUTER,   "/api/threads",   "threads")  # <-- NOUVEAU
 
     # Router WebSocket « chat »
     if CHAT_ROUTER and getattr(CHAT_ROUTER, "router", None):
@@ -172,11 +173,9 @@ def create_app() -> FastAPI:
         logger.info("Router WebSocket 'chat' monté.")
 
     # --- DEV: page de test GIS (ID token) ------------------------------------
-    # Sert /dev-auth.html sans préfixe pour que l’origin soit le domaine prod.
-    _mount_router(DEV_AUTH_ROUTER, "", "dev_auth")  # <-- ajout
+    _mount_router(DEV_AUTH_ROUTER, "", "dev_auth")
 
     # --- Fichiers statiques ---------------------------------------------------
-    # Racine du projet (2 niveaux au-dessus de backend/)
     static_dir = Path(__file__).resolve().parents[2]
     if static_dir.exists():
         app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
@@ -184,6 +183,4 @@ def create_app() -> FastAPI:
 
     return app
 
-
-# Instance module-level pour uvicorn : backend.main:app
 app = create_app()

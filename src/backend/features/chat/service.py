@@ -1,5 +1,5 @@
 # src/backend/features/chat/service.py
-# V30.1 – Ajout API non-stream pour Débat: get_llm_response_for_debate(...)
+# V31.0 – P1.5-b: Persistance auto (Threads) des messages user + réponses agents
 # UTF-8 (CRLF conseillé sous Windows).
 
 import os
@@ -25,10 +25,14 @@ from backend.features.memory.vector_service import VectorService
 from backend.shared.config import Settings
 from backend.core import config
 
+# 🔗 Threads (nouveau)
+from backend.features.threads.service import ThreadsService
+from backend.features.threads.schemas import MessageCreate
+
 logger = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Tarification unifiée (par token) — inchangé
+# Tarification unifiée (par token)
 # ──────────────────────────────────────────────────────────────────────────────
 MODEL_PRICING: Dict[str, Dict[str, float]] = {
     # OpenAI
@@ -54,12 +58,13 @@ KNOWLEDGE_COLLECTION_NAME: str = getattr(config, "KNOWLEDGE_COLLECTION_NAME", "e
 
 class ChatService:
     """
-    ChatService V30.1
+    ChatService V31.0
     - Initialisation clients OpenAI / Anthropic / Google
     - Fallback dynamique
     - RAG inchangé (sources WS)
     - Mémoire P2 (bandeau & injection dans le chat)
-    - ✅ NOUVEAU (P1 Débat): get_llm_response_for_debate(...) non-stream, provider-agnostic
+    - API non-stream pour Débat: get_llm_response_for_debate(...)
+    - ✅ P1.5-b: Persistance auto (Threads) des messages user + réponses agents
     """
 
     def __init__(
@@ -103,6 +108,9 @@ class ChatService:
         # Prompts
         self.prompts: Dict[str, str] = self._load_prompts(self.settings.paths.prompts)
         logger.info("ChatService initialisé. Prompts chargés: %d", len(self.prompts))
+
+        # Threads service (persistance P1.5-b)
+        self._threads = ThreadsService()
 
     # ──────────────────────────────────────────────────────────────────────
     # Chargement des prompts (inchangé)
@@ -155,13 +163,92 @@ class ChatService:
         return provider, model, system_prompt
 
     # ──────────────────────────────────────────────────────────────────────
+    # Helpers persistance Threads (P1.5-b)
+    # ──────────────────────────────────────────────────────────────────────
+    def _safe_get_user_text(self, message: ChatMessage) -> str:
+        for k in ("content", "message", "text"):
+            v = getattr(message, k, None)
+            if v:
+                return str(v)
+        try:
+            return str(message)
+        except Exception:
+            return ""
+
+    def _resolve_user_id_from_session(self, session_id: str) -> Optional[str]:
+        """
+        Essaie plusieurs patterns de SessionManager pour obtenir user_id.
+        Tolérant aux différences de versions.
+        """
+        try:
+            # pattern get_session() -> dict/obj
+            if hasattr(self.session_manager, "get_session"):
+                s = self.session_manager.get_session(session_id)  # type: ignore[attr-defined]
+            elif hasattr(self.session_manager, "get"):
+                s = self.session_manager.get(session_id)  # type: ignore[attr-defined]
+            else:
+                s = None
+            if s:
+                if isinstance(s, dict):
+                    return s.get("user_id") or (s.get("user") or {}).get("id")
+                # obj
+                return getattr(s, "user_id", None) or getattr(getattr(s, "user", None), "id", None)
+        except Exception:
+            pass
+        # autres helpers potentiels
+        for fn in ("get_user_id", "get_session_user_id"):
+            try:
+                if hasattr(self.session_manager, fn):
+                    return getattr(self.session_manager, fn)(session_id)  # type: ignore[misc]
+            except Exception:
+                continue
+        return None
+
+    async def _persist_to_threads(
+        self,
+        *,
+        session_id: str,
+        role: str,
+        content: str,
+        agent: Optional[str] = None,
+        model: Optional[str] = None,
+        rag_sources: Optional[List[Dict[str, Any]]] = None,
+        thread_title_if_new: Optional[str] = None,
+    ) -> None:
+        if not (content or "").strip():
+            return
+        try:
+            user_id = self._resolve_user_id_from_session(session_id)
+            if not user_id:
+                logger.warning("[Threads] user_id introuvable pour session %s — persistance sautée.", session_id)
+                return
+            tid = await self._threads.ensure_session_thread(user_id=user_id, session_id=session_id, title=thread_title_if_new)
+            msg = MessageCreate(role=role, content=content, agent=agent, model=model, rag_sources=rag_sources)
+            await self._threads.add_message(user_id=user_id, thread_id=tid, msg=msg)
+        except Exception as e:
+            logger.warning("[Threads] Persistance sautée (session=%s, role=%s): %s", session_id, role, e)
+
+    # ──────────────────────────────────────────────────────────────────────
     # API publique – traitement d'un message user pour N agents (chat streaming)
     # ──────────────────────────────────────────────────────────────────────
     async def process_user_message_for_agents(
         self, session_id: str, message: ChatMessage, connection_manager: ConnectionManager
     ) -> None:
-        # Persiste le message utilisateur
+        # Persiste le message utilisateur (session)
         await self.session_manager.add_message_to_session(session_id, message)
+
+        # ✅ Nouveau — persistance Threads du message user
+        try:
+            user_text = self._safe_get_user_text(message)
+            await self._persist_to_threads(
+                session_id=session_id,
+                role="user",
+                content=user_text,
+                thread_title_if_new="Chat"
+            )
+        except Exception as e:
+            logger.warning("[Threads] Persistance message user échouée: %s", e)
+
         if not message.agents:
             logger.warning("Aucun agent spécifié dans le message.")
             return
@@ -415,7 +502,7 @@ class ChatService:
                 logger.error("[SINGLE-SHOT FAIL] %s/%s: %s", provider, model, single_err, exc_info=True)
                 raise
 
-        # Persistance + tracking coûts (inchangé)
+        # Persistance session + coûts (inchangé)
         final_agent_message = AgentMessage(
             id=temp_message_id,
             session_id=session_id,
@@ -435,6 +522,19 @@ class ChatService:
             feature="chat",
         )
 
+        # ✅ Nouveau — persistance Threads de la réponse agent
+        try:
+            await self._persist_to_threads(
+                session_id=session_id,
+                role="assistant",
+                content=full_text,
+                agent=agent_id,
+                model=model,
+                rag_sources=sources_payload,
+            )
+        except Exception as e:
+            logger.warning("[Threads] Persistance message agent échouée: %s", e)
+
         await connection_manager.send_personal_message(
             {
                 "type": "ws:chat_stream_end",
@@ -444,7 +544,7 @@ class ChatService:
         )
 
     # ──────────────────────────────────────────────────────────────────────
-    # Normalisation des historiques + injection RAG/MEMORY
+    # Normalisation des historiques + injection RAG/MEMORY (inchangé)
     # ──────────────────────────────────────────────────────────────────────
     def _normalize_history_for_llm(
         self,
@@ -456,8 +556,7 @@ class ChatService:
         use_rag: bool,
         agent_id: str,
     ) -> List[Dict[str, Any]]:
-        """Transforme l'historique interne -> format messages du provider + injections RAG/MEMORY."""
-        # Copie "user/assistant" uniquement
+
         pairs: List[Tuple[Any, str]] = []
         for m in history:
             role = m.get("role")
@@ -465,7 +564,6 @@ class ChatService:
             if role in (Role.USER, "user", Role.ASSISTANT, "assistant"):
                 pairs.append((role, str(content)))
 
-        # Injection dans le dernier message user
         if pairs:
             for i in range(len(pairs) - 1, -1, -1):
                 r = pairs[i][0]
@@ -481,7 +579,6 @@ class ChatService:
                     pairs[i] = (r, enriched)
                     break
 
-        # Conversion par provider
         normalized: List[Dict[str, Any]] = []
         if provider == "google":
             for role, content in pairs:
@@ -497,13 +594,12 @@ class ChatService:
                     normalized[-1]["content"][0]["text"] += f"\n\n{content}"
             return normalized
 
-        # OpenAI (default)
         for role, content in pairs:
             normalized.append({"role": "user" if (role == Role.USER or role == "user") else "assistant", "content": content})
         return normalized
 
     # ──────────────────────────────────────────────────────────────────────
-    # Streaming provider-agnostic (inchangé)
+    # Streaming, Single-shot, API débat (inchangé sauf version header)
     # ──────────────────────────────────────────────────────────────────────
     async def _get_llm_response_stream(
         self, provider: str, model: str, system_prompt: str, history: List[Dict[str, Any]], cost_info_container: Dict[str, Any]
@@ -588,9 +684,6 @@ class ChatService:
             cost = (in_tok * pricing["input"]) + (out_tok * pricing["output"])
             cost_info_container.update({"input_tokens": in_tok, "output_tokens": out_tok, "total_cost": cost})
 
-    # ──────────────────────────────────────────────────────────────────────
-    # Single-shot (inchangé)
-    # ──────────────────────────────────────────────────────────────────────
     async def _get_llm_response_single(
         self, provider: str, model: str, system_prompt: str, history: List[Dict[str, Any]], json_mode: bool = False
     ) -> Tuple[str, Dict[str, Any]]:
@@ -660,7 +753,7 @@ class ChatService:
         return content, {"input_tokens": in_tok, "output_tokens": out_tok, "total_cost": cost}
 
     # ──────────────────────────────────────────────────────────────────────
-    # ✅ API non-stream pour le module Débat
+    # ✅ API non-stream pour le module Débat (inchangé)
     # ──────────────────────────────────────────────────────────────────────
     async def get_llm_response_for_debate(
         self,
@@ -669,14 +762,6 @@ class ChatService:
         history: List[Dict[str, Any]],
         session_id: str
     ) -> Tuple[str, Dict[str, Any]]:
-        """
-        Retourne (texte, coûts) pour un agent donné à partir d'un petit 'history' déjà construit
-        (ex: [{"role":"user","content":"<transcript+instruction>"}]).
-        - Sélectionne provider/model & prompt agent
-        - Normalise l'historique au format du provider
-        - Single-shot + fallback providers (OpenAI/Google/Anthropic)
-        - Enregistre le coût avec feature='debate'
-        """
         provider, model, system_prompt = self._get_agent_config(agent_id)
 
         def _ensure_openai_style(msgs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -698,7 +783,6 @@ class ChatService:
                 norm = _ensure_openai_style(history)
                 return await self._get_openai_response_single(model_name, system_prompt, norm, False)
             if provider_name == "google":
-                # Gemini attend {"role":"user"|"model","parts":[text]}
                 base = _ensure_openai_style(history)
                 gem = [{"role": ("user" if m["role"] == "user" else "model"), "parts": [m["content"]]} for m in base]
                 return await self._get_gemini_response_single(model_name, system_prompt, gem, False)
@@ -708,7 +792,6 @@ class ChatService:
                 return await self._get_anthropic_response_single(model_name, system_prompt, ant, False)
             raise ValueError(f"Provider non supporté: {provider_name}")
 
-        # tentative primaire
         try:
             text, cost = await _single(provider, model)
             await self.cost_tracker.record_cost(
@@ -723,7 +806,6 @@ class ChatService:
         except Exception as e:
             logger.error("[DEBATE SINGLE FAIL] %s/%s: %s", provider, model, e, exc_info=True)
 
-        # fallback providers (comme pour le chat)
         fallback_candidates: List[str] = []
         if provider != "openai" and self.openai_client is not None:
             fallback_candidates.append("openai")
@@ -748,5 +830,4 @@ class ChatService:
             except Exception as fb_err:
                 logger.error("[DEBATE FALLBACK FAIL] %s: %s", fb, fb_err, exc_info=True)
 
-        # si tout échoue
         return "", {}

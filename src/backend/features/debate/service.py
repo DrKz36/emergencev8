@@ -1,5 +1,6 @@
 # src/backend/features/debate/service.py
-# V14.2 - DEBUG CONTEXT + OFF ISOLATION (full_transcript | round_local | stateless) + STRICT ROLE ISOLATION
+# V15.0 - DEBUG CONTEXT + OFF ISOLATION + STRICT ROLE ISOLATION + P1.5-b (persistance synthèse)
+
 import os
 import re
 import asyncio
@@ -16,17 +17,19 @@ from backend.shared.config import Settings
 from backend.core import config as core_config
 from .models import DebateConfig, DebateSession, DebateTurn, DebateStatus
 
+# 🔗 Threads
+from backend.features.threads.service import ThreadsService
+from backend.features.threads.schemas import MessageCreate
+
 logger = logging.getLogger(__name__)
 
 class DebateService:
     """
-    DebateService V14.2
-    - DEBUG: envoie 'ws:debug_context' (scope='debate') avant/après chaque appel agent.
-    - OFF ISOLATION: contrôle du transcript quand use_rag=False via EMERGENCE_DEBATE_OFF_POLICY.
-        * full_transcript (défaut) : historique complet (comportement précédent).
-        * round_local : uniquement le round courant (+ N rounds précédents optionnels).
-        * stateless : aucun transcript (isolation maximale).
-    - RAG: si use_rag=True, rag_context est injecté et la policy est forcée à 'full_transcript'.
+    DebateService V15.0
+    - DEBUG: ws:debug_context (scope='debate')
+    - OFF ISOLATION: EMERGENCE_DEBATE_OFF_POLICY (full_transcript / round_local / stateless)
+    - RAG: si use_rag=True, policy forcée à 'full_transcript'
+    - ✅ P1.5-b: persistance de la synthèse finale dans un thread lié à la session
     """
     def __init__(
         self,
@@ -55,13 +58,11 @@ class DebateService:
         except ValueError:
             self.round_local_n = 0
 
-        logger.info(f"DebateService V14.2 initialisé. OFF policy={self.off_policy}, round_local_n={self.round_local_n}")
+        self._threads = ThreadsService()
+
+        logger.info(f"DebateService V15.0 initialisé. OFF policy={self.off_policy}, round_local_n={self.round_local_n}")
 
     def _normalize_llm_result(self, result):
-        """
-        Normalise la sortie d'un appel LLM en (text, meta).
-        Accepte: (text, meta) | dict | str.
-        """
         try:
             if isinstance(result, tuple) and len(result) == 2:
                 text, meta = result
@@ -76,20 +77,12 @@ class DebateService:
         return (str(result), {})
 
     async def _call_llm(self, *, agent_id: str, history: list, session_id: str):
-        """
-        Compatibilité ChatService:
-        - Essaie get_llm_response_for_debate(agent_id, history, session_id)
-        - Sinon get_llm_response(..., mode='debate') puis sans 'mode'
-        - Sinon méthodes alternatives ('chat', 'generate_response', 'generate', 'ask')
-        """
-        # 1) API dédiée débat
         try:
             method = getattr(self.chat_service, "get_llm_response_for_debate")
             result = await method(agent_id=agent_id, history=history, session_id=session_id)
             return self._normalize_llm_result(result)
         except AttributeError:
             pass
-        # 2) API générique
         try:
             method = getattr(self.chat_service, "get_llm_response")
             try:
@@ -99,7 +92,6 @@ class DebateService:
             return self._normalize_llm_result(result)
         except AttributeError:
             pass
-        # 3) Fallbacks connus
         for alt in ("chat", "generate_response", "generate", "ask"):
             try:
                 method = getattr(self.chat_service, alt)
@@ -111,16 +103,9 @@ class DebateService:
 
     # ---------- utilitaires ----------
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
-        """Détecte des patterns de type AZUR-8152 / ONYX-4472."""
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
 
     def _sanitize_agent_output(self, agent_id: str, text: str, synthesizer_id: str) -> str:
-        """
-        STRICT ROLE ISOLATION:
-        - Empêche un agent d'écrire au nom d'un autre (ex: "**neo a dit :** ...").
-        - Supprime les en-têtes "Intervention de <agent>" dans les tours.
-        - Empêche la production d'une "Synthèse" par un agent qui n'est pas le médiateur.
-        """
         if not text:
             return text
         known = {"anima", "neo", "nexus"}
@@ -128,8 +113,6 @@ class DebateService:
         other_agents = [a for a in known if a != agent_id_l]
 
         cleaned = text
-
-        # En-têtes type "Intervention de XXX"
         for other in other_agents:
             cleaned = re.sub(
                 rf"(?mis)(^|\n)\s*\*\*\s*{other}\s+a dit\s*:?\s*\*\*\s*\n(?:\s*>.*\n?)+",
@@ -141,17 +124,13 @@ class DebateService:
                 "",
                 cleaned
             )
-            # pattern simple "neo:" en début de ligne
             cleaned = re.sub(rf"(?mi)^\s*{other}\s*:\s*", "", cleaned)
 
-        # Supprimer une section "Synthèse" quand l'agent n'est pas le médiateur
         if agent_id_l != (synthesizer_id or "").lower():
             cleaned = re.sub(r"(?mi)^\s*#{1,6}\s*Synth[èe]se.*(?:\n.*)*", "", cleaned)
-
         return cleaned.strip()
 
     def _policy_for_session(self, session: DebateSession) -> str:
-        """Si RAG ON, on garde le transcript complet pour la cohérence du débat."""
         return "full_transcript" if session.config.use_rag else self.off_policy
 
     def _build_full_transcript(
@@ -160,12 +139,6 @@ class DebateService:
         with_header: bool = True,
         policy: Optional[str] = None
     ) -> str:
-        """
-        Construit le transcript selon la policy.
-        - full_transcript : comportement historique (tous les tours)
-        - round_local : round en cours (+ N précédents)
-        - stateless : aucun historique (header éventuel seulement)
-        """
         policy = policy or self._policy_for_session(session)
         parts: List[str] = []
 
@@ -174,7 +147,6 @@ class DebateService:
             if session.rag_context:
                 parts.append(f"\n--- CONTEXTE DOCUMENTAIRE ---\n{session.rag_context}\n---------------------------\n")
 
-        # Pas d'historique
         if policy == "stateless":
             return "\n".join(parts)
 
@@ -187,7 +159,6 @@ class DebateService:
                     parts.append(f"\n**{agent_name} a dit :**\n> {response}")
             return "\n".join(parts)
 
-        # round_local
         if not history:
             return "\n".join(parts)
 
@@ -207,7 +178,6 @@ class DebateService:
         return "\n".join(parts)
 
     def _resolve_synthesizer(self, session: DebateSession) -> str:
-        """Choisit le médiateur réel: fallback si nexus (Gemini) est indisponible."""
         proposed = (session.config.agent_order[-1] or "").lower()
         if proposed != "nexus":
             return proposed
@@ -259,7 +229,6 @@ class DebateService:
                 session.session_id
             )
 
-            # RAG facultatif
             if session.config.use_rag:
                 logger.info(f"Débat {debate_id}: Recherche RAG en cours pour le sujet.")
                 await self.connection_manager.send_personal_message(
@@ -326,7 +295,6 @@ class DebateService:
             )
             structured_history = [{"role": "user", "content": prompt_for_agent}]
 
-            # DEBUG (avant appel)
             sens_in_prompt = list(set(self._extract_sensitive_tokens(prompt_for_agent)))
             await self.connection_manager.send_personal_message({
                 "type": "ws:debug_context",
@@ -353,7 +321,6 @@ class DebateService:
             response_text = self._sanitize_agent_output(agent_id, response_text, session.config.agent_order[-1])
             current_turn.agent_responses[agent_id] = response_text
 
-            # DEBUG (après appel)
             sens_in_resp = list(set(self._extract_sensitive_tokens(response_text)))
             await self.connection_manager.send_personal_message({
                 "type": "ws:debug_context",
@@ -402,3 +369,44 @@ class DebateService:
         except Exception as e:
             logger.error(f"[Debate] Échec synthèse via {synthesizer_id}: {e}", exc_info=True)
             session.synthesis = "_Synthèse indisponible pour raisons techniques._"
+
+        # ✅ Nouveau — Persistance de la synthèse dans un thread lié à la session
+        try:
+            # user_id via SessionManager (mêmes patterns que côté chat)
+            user_id = None
+            try:
+                if hasattr(self.session_manager, "get_session"):
+                    s = self.session_manager.get_session(session.session_id)  # type: ignore[attr-defined]
+                elif hasattr(self.session_manager, "get"):
+                    s = self.session_manager.get(session.session_id)  # type: ignore[attr-defined]
+                else:
+                    s = None
+                if s:
+                    if isinstance(s, dict):
+                        user_id = s.get("user_id") or (s.get("user") or {}).get("id")
+                    else:
+                        user_id = getattr(s, "user_id", None) or getattr(getattr(s, "user", None), "id", None)
+            except Exception:
+                pass
+
+            if not user_id:
+                for fn in ("get_user_id", "get_session_user_id"):
+                    try:
+                        if hasattr(self.session_manager, fn):
+                            user_id = getattr(self.session_manager, fn)(session.session_id)  # type: ignore[misc]
+                            if user_id:
+                                break
+                    except Exception:
+                        continue
+
+            if user_id:
+                threads = ThreadsService()
+                tid = await threads.ensure_session_thread(
+                    user_id=user_id, session_id=session.session_id, title=f"Débat: {session.config.topic}"
+                )
+                msg = MessageCreate(role="assistant", content=session.synthesis or "", agent=synthesizer_id, model=None, rag_sources=None)
+                await threads.add_message(user_id=user_id, thread_id=tid, msg=msg)
+            else:
+                logger.warning("[Debate/Threads] user_id introuvable pour session %s — persistance synthèse sautée.", session.session_id)
+        except Exception as e:
+            logger.warning("[Debate/Threads] Persistance synthèse sautée: %s", e)
