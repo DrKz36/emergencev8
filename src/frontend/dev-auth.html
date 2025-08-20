@@ -46,9 +46,12 @@
 
     <div>
       <label>Connexion Google (GIS)</label>
+      <!-- IMPORTANT : forcer le popup et désactiver FedCM pour le prompt -->
       <div id="g_id_onload"
            data-client_id=""
            data-auto_prompt="false"
+           data-ux_mode="popup"
+           data-use_fedcm_for_prompt="false"
            data-callback="onGoogleCredential"></div>
       <div id="googleButton"></div>
       <div class="row">
@@ -124,7 +127,6 @@
     let gisInitialized = false;
 
     window.onGoogleCredential = (response) => {
-      // New GIS ("One Tap" / Button) returns a "credential" (ID token JWT)
       const token = response && response.credential;
       if (!token){
         setStatus('Credential callback sans token', false);
@@ -145,8 +147,6 @@
       const onloadDiv = document.getElementById('g_id_onload');
       onloadDiv.setAttribute('data-client_id', cid);
 
-      // Initialisation explicite (nouvelle API GIS)
-      /* global google */
       if (!window.google || !google.accounts || !google.accounts.id){
         alert('Le SDK GIS n’est pas encore chargé. Réessaye dans 1-2 secondes.');
         return;
@@ -156,7 +156,10 @@
         client_id: cid,
         callback: onGoogleCredential,
         auto_select: false,
-        cancel_on_tap_outside: false
+        cancel_on_tap_outside: false,
+        // CONTRE-MESURE FedCM
+        ux_mode: 'popup',
+        use_fedcm_for_prompt: false
       });
 
       google.accounts.id.renderButton(
@@ -171,7 +174,8 @@
     function promptGIS(){
       if(!gisInitialized){ initGIS(); }
       if (window.google && google.accounts && google.accounts.id){
-        google.accounts.id.prompt(); // ouvre le sélecteur de compte
+        // Ouvre le sélecteur (One Tap/Prompt) — FedCM explicitement désactivé, popup privilégié
+        google.accounts.id.prompt();
       }
     }
 
@@ -186,9 +190,7 @@
         setResp('');
         const res = await fetch(baseUrl + '/api/documents', {
           method: 'GET',
-          headers: {
-            'Authorization': 'Bearer ' + token
-          }
+          headers: { 'Authorization': 'Bearer ' + token }
         });
 
         const headers = [];
@@ -202,7 +204,6 @@
       }
     }
 
-    // Fill from query params if present
     (function bootstrapFromQuery(){
       const qs = new URLSearchParams(location.search);
       const cid = qs.get('client_id');
@@ -211,7 +212,6 @@
       if(base) document.getElementById('baseUrl').value = base;
     })();
 
-    // Wire UI
     document.getElementById('btnInit').addEventListener('click', initGIS);
     document.getElementById('btnPrompt').addEventListener('click', promptGIS);
     document.getElementById('btnDecode').addEventListener('click', () => {

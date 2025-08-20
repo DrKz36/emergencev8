@@ -16,6 +16,9 @@ export class ChatUI {
       messages: {},
       ragStatus: {},
       ragSources: {},
+      // Mémoire
+      memoryStatus: {},
+      memorySources: {},
     };
     this.listeners = [];
     this.isInitialized = false;
@@ -44,6 +47,13 @@ export class ChatUI {
             </div>
           </div>
           <div class="chat-title">Dialogue</div>
+        </div>
+
+        <!-- Bandeau mémoire (placeholder, mis à jour dynamiquement) -->
+        <div class="memory-banner" style="display:none">
+          <div class="memory-dot"></div>
+          <div class="memory-text"><strong> Mémoire </strong><span class="memory-status"></span></div>
+          <div class="memory-sources"></div>
         </div>
 
         <div class="chat-messages card-body" id="chat-messages"></div>
@@ -77,7 +87,7 @@ export class ChatUI {
     `;
 
     this._bindEvents(container);
-    this.update(container, this.state);
+    this.update(container, this.state); // met aussi à jour le bandeau mémoire
   }
 
   update(container, chatState = {}) {
@@ -94,9 +104,71 @@ export class ChatUI {
     const list = this._asArray(raw).map((m) => this._normalizeMessage(m));
     this._renderMessages(container.querySelector('#chat-messages'), list);
 
-    // (Plus de rendu de bandeau RAG/sources)
+    // MAJ bandeau mémoire pour l’agent courant
+    const agentId = this.state.currentAgentId;
+    const status = (this.state.memoryStatus || {})[agentId];
+    const sources = (this.state.memorySources || {})[agentId] || [];
+    this.updateMemoryBanner(agentId, { status, sources });
   }
 
+  // ───────────────────── Bandeau Mémoire ─────────────────────
+  _formatMemoryStatus(status) {
+    switch (status) {
+      case 'searching': return { label: 'Recherche en cours…', cls: 'memory--searching' };
+      case 'found':     return { label: 'Mémoire chargée',     cls: 'memory--found' };
+      case 'empty':     return { label: 'Aucune mémoire pertinente', cls: 'memory--empty' };
+      case 'error':     return { label: 'Erreur mémoire',      cls: 'memory--error' };
+      default:          return { label: '', cls: '' };
+    }
+  }
+
+  updateMemoryBanner(agentId, data) {
+    const el = this._ensureMemoryBanner();
+    const statusEl = el.querySelector('.memory-status');
+    const sourcesEl = el.querySelector('.memory-sources');
+
+    // reset classes
+    el.classList.remove('memory--searching','memory--found','memory--empty','memory--error');
+
+    const { label, cls } = this._formatMemoryStatus((data && data.status) || '');
+    if (!label) { el.style.display = 'none'; return; }
+
+    el.style.display = 'flex';
+    el.classList.add(cls);
+    if (statusEl) statusEl.textContent = `— ${label}`;
+
+    const sources = (data && Array.isArray(data.sources)) ? data.sources.slice(0,5) : [];
+    if (sourcesEl) {
+      if (!sources.length) { sourcesEl.innerHTML = ''; }
+      else {
+        sourcesEl.innerHTML = `
+          <ul class="memory-list">
+            ${sources.map(s => `<li title="${this._escapeAttr(s.preview||'')}">
+              ${(s.preview||'').slice(0,90)}${(s.preview||'').length>90?'…':''}
+            </li>`).join('')}
+          </ul>
+        `;
+      }
+    }
+  }
+
+  _ensureMemoryBanner() {
+    const container = document.querySelector('.chat-container');
+    let el = container?.querySelector('.memory-banner');
+    if (!el && container) {
+      el = document.createElement('div');
+      el.className = 'memory-banner';
+      el.innerHTML = `
+        <div class="memory-dot"></div>
+        <div class="memory-text"><strong> Mémoire </strong><span class="memory-status"></span></div>
+        <div class="memory-sources"></div>
+      `;
+      container.insertBefore(el, container.querySelector('.chat-messages'));
+    }
+    return el || document.createElement('div');
+  }
+
+  // ───────────────────── Messages ─────────────────────
   _renderMessages(container, list = []) {
     try {
       if (!container) return;
@@ -120,15 +192,11 @@ export class ChatUI {
       e.preventDefault();
       const text = (input?.value || '').trim();
       if (!text) return;
-
-      // On n'envoie QUE le texte ; l'agent courant est géré par ChatModule via le state global
       this.eventBus.emit(EVENTS.CHAT_SEND, { text });
-
       input.value = '';
       input.dispatchEvent(new Event('input'));
     });
 
-    // Enter = envoyer (Shift+Enter = retour ligne)
     input?.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' && !ev.shiftKey) {
         ev.preventDefault();
@@ -149,7 +217,7 @@ export class ChatUI {
       this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, null);
     });
 
-    // ⚠️ Émet l'ID string attendu par ChatModule.handleAgentSelected(agentId) (pas {id}):contentReference[oaicite:2]{index=2}
+    // ⚠️ Émet l'ID string attendu par ChatModule.handleAgentSelected(agentId)
     container.querySelector('#chat-agent-tabs')
       ?.addEventListener('click', (e) => {
         const btn = e.target?.closest('button[data-agent-id]');

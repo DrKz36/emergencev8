@@ -49,6 +49,9 @@ export default class ChatModule {
         messages: {},     // { [agentId]: Message[] }
         ragStatus: {},    // { [agentId]: 'searching'|'found'|undefined }
         ragSources: {},   // { [agentId]: Array<{document_id, filename}> }
+        // Mémoire (nouveau)
+        memoryStatus: {},   // { [agentId]: 'searching'|'found'|'empty'|'error'|undefined }
+        memorySources: {},  // { [agentId]: Array<{preview, score, source_session_id, role}> }
       });
     }
   }
@@ -77,6 +80,10 @@ export default class ChatModule {
     // WS RAG status + sources
     this.listeners.push(this.eventBus.on('ws:rag_status', this.handleRagStatus.bind(this)));
     this.listeners.push(this.eventBus.on('ws:chat_sources', this.handleChatSources.bind(this)));
+
+    // WS Mémoire (nouveau)
+    this.listeners.push(this.eventBus.on('ws:memory_status', this.handleMemoryStatus.bind(this)));
+    this.listeners.push(this.eventBus.on('ws:memory_sources', this.handleMemorySources.bind(this)));
   }
 
   handleSendMessage(payload) {
@@ -124,6 +131,12 @@ export default class ChatModule {
     const ragSources = { ...(s.ragSources || {}), [agent_id]: [] };
     this.state.set('chat.ragStatus', ragStatus);
     this.state.set('chat.ragSources', ragSources);
+
+    // reset mémoire pour cet agent (nouvelle requête)
+    const memoryStatus = { ...(s.memoryStatus || {}), [agent_id]: undefined };
+    const memorySources = { ...(s.memorySources || {}), [agent_id]: [] };
+    this.state.set('chat.memoryStatus', memoryStatus);
+    this.state.set('chat.memorySources', memorySources);
   }
 
   handleStreamChunk({ id, chunk }) {
@@ -189,6 +202,30 @@ export default class ChatModule {
     this.state.set('chat.ragSources', { ...cur, [agent_id]: list });
   }
 
+  // ───────────── Mémoire ─────────────
+  handleMemoryStatus({ agent_id, status }) {
+    if (!agent_id) return;
+    const cur = this.state.get('chat.memoryStatus') || {};
+    this.state.set('chat.memoryStatus', { ...cur, [agent_id]: status });
+    if (this.ui && typeof this.ui.updateMemoryBanner === 'function') {
+      this.ui.updateMemoryBanner(agent_id, {
+        status,
+        sources: (this.state.get('chat.memorySources') || {})[agent_id] || []
+      });
+    }
+  }
+
+  handleMemorySources({ agent_id, sources }) {
+    if (!agent_id) return;
+    const list = Array.isArray(sources) ? sources : [];
+    const cur = this.state.get('chat.memorySources') || {};
+    this.state.set('chat.memorySources', { ...cur, [agent_id]: list });
+    if (this.ui && typeof this.ui.updateMemoryBanner === 'function') {
+      const status = (this.state.get('chat.memoryStatus') || {})[agent_id];
+      this.ui.updateMemoryBanner(agent_id, { status, sources: list });
+    }
+  }
+
   handleAgentSelected(agentId) {
     this.state.set('chat.currentAgentId', agentId);
   }
@@ -196,10 +233,12 @@ export default class ChatModule {
   handleClearChat() {
     const agentId = this.state.get('chat.currentAgentId');
     this.state.set(`chat.messages.${agentId}`, []);
-    // efface aussi le bandeau RAG
+    // efface RAG + mémoire pour l’agent courant
     const curS = this.state.get('chat');
-    this.state.set('chat.ragStatus', { ...(curS.ragStatus || {}), [agentId]: undefined });
-    this.state.set('chat.ragSources', { ...(curS.ragSources || {}), [agentId]: [] });
+    this.state.set('chat.ragStatus',   { ...(curS.ragStatus   || {}), [agentId]: undefined });
+    this.state.set('chat.ragSources',  { ...(curS.ragSources  || {}), [agentId]: [] });
+    this.state.set('chat.memoryStatus',{ ...(curS.memoryStatus|| {}), [agentId]: undefined });
+    this.state.set('chat.memorySources',{ ...(curS.memorySources|| {}), [agentId]: [] });
   }
 
   handleExport() {

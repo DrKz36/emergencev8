@@ -146,3 +146,33 @@
 @media (max-width: 430px){
   .chat-container .chat-send-button{ width:44px; height:44px; }
 }
+
+/* ───────────────────── Mémoire : bandeau sticky ───────────────────── */
+.memory-banner{
+  position: sticky; top: 0; z-index: 5;
+  display: none; align-items: center; gap: .75rem;
+  padding: .5rem .75rem; margin: .75rem 1.25rem 0;
+  border-radius: 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border-color);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(8px);
+}
+.memory-banner .memory-dot{
+  width: .6rem; height: .6rem; border-radius: 50%;
+  background: #888;
+}
+.memory-banner.memory--searching .memory-dot{ background: #f5c542; }
+.memory-banner.memory--found     .memory-dot{ background: #2ecc71; }
+.memory-banner.memory--empty     .memory-dot{ background: #9aa0a6; }
+.memory-banner.memory--error     .memory-dot{ background: #e74c3c; }
+
+.memory-banner .memory-text{ color:#e6e6e6; font-size:.9rem; display:flex; gap:.25rem; align-items:center; }
+.memory-banner .memory-sources{ margin-left:auto; max-width:55%; }
+.memory-banner .memory-list{
+  display:flex; gap:.5rem; list-style:none; margin:0; padding:0; flex-wrap:wrap;
+}
+.memory-banner .memory-list li{
+  max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size:.78rem; color:#cfd3d7; opacity:.9;
+}
