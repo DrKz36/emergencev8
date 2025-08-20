@@ -1,5 +1,5 @@
 # src/backend/features/debate/service.py
-# V14.0 - DEBUG CONTEXT + OFF ISOLATION (full_transcript | round_local | stateless) + STRICT ROLE ISOLATION
+# V14.2 - DEBUG CONTEXT + OFF ISOLATION (full_transcript | round_local | stateless) + STRICT ROLE ISOLATION
 import os
 import re
 import asyncio
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class DebateService:
     """
-    DebateService V13.0
+    DebateService V14.2
     - DEBUG: envoie 'ws:debug_context' (scope='debate') avant/après chaque appel agent.
     - OFF ISOLATION: contrôle du transcript quand use_rag=False via EMERGENCE_DEBATE_OFF_POLICY.
         * full_transcript (défaut) : historique complet (comportement précédent).
@@ -55,7 +55,59 @@ class DebateService:
         except ValueError:
             self.round_local_n = 0
 
-        logger.info(f"DebateService V13.0 initialisé. OFF policy={self.off_policy}, round_local_n={self.round_local_n}")
+        logger.info(f"DebateService V14.2 initialisé. OFF policy={self.off_policy}, round_local_n={self.round_local_n}")
+
+    def _normalize_llm_result(self, result):
+        """
+        Normalise la sortie d'un appel LLM en (text, meta).
+        Accepte: (text, meta) | dict | str.
+        """
+        try:
+            if isinstance(result, tuple) and len(result) == 2:
+                text, meta = result
+                return (text or "", meta or {})
+            if isinstance(result, dict):
+                text = result.get("text") or result.get("content") or result.get("message") or result.get("output") or result.get("response") or ""
+                return (text, result)
+            if isinstance(result, str):
+                return (result, {})
+        except Exception:
+            pass
+        return (str(result), {})
+
+    async def _call_llm(self, *, agent_id: str, history: list, session_id: str):
+        """
+        Compatibilité ChatService:
+        - Essaie get_llm_response_for_debate(agent_id, history, session_id)
+        - Sinon get_llm_response(..., mode='debate') puis sans 'mode'
+        - Sinon méthodes alternatives ('chat', 'generate_response', 'generate', 'ask')
+        """
+        # 1) API dédiée débat
+        try:
+            method = getattr(self.chat_service, "get_llm_response_for_debate")
+            result = await method(agent_id=agent_id, history=history, session_id=session_id)
+            return self._normalize_llm_result(result)
+        except AttributeError:
+            pass
+        # 2) API générique
+        try:
+            method = getattr(self.chat_service, "get_llm_response")
+            try:
+                result = await method(agent_id=agent_id, history=history, session_id=session_id, mode="debate")
+            except TypeError:
+                result = await method(agent_id=agent_id, history=history, session_id=session_id)
+            return self._normalize_llm_result(result)
+        except AttributeError:
+            pass
+        # 3) Fallbacks connus
+        for alt in ("chat", "generate_response", "generate", "ask"):
+            try:
+                method = getattr(self.chat_service, alt)
+            except AttributeError:
+                continue
+            result = await method(agent_id=agent_id, history=history, session_id=session_id)
+            return self._normalize_llm_result(result)
+        raise AttributeError("ChatService: aucune méthode compatible trouvée (get_llm_response_for_debate / get_llm_response / chat / generate_response / generate / ask).")
 
     # ---------- utilitaires ----------
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
@@ -71,33 +123,28 @@ class DebateService:
         """
         if not text:
             return text
-
         known = {"anima", "neo", "nexus"}
         agent_id_l = (agent_id or "").lower()
         other_agents = [a for a in known if a != agent_id_l]
+
         cleaned = text
 
+        # En-têtes type "Intervention de XXX"
         for other in other_agents:
-            # Bloc du type: **neo a dit :** + blockquotes suivants
             cleaned = re.sub(
                 rf"(?mis)(^|\n)\s*\*\*\s*{other}\s+a dit\s*:?\s*\*\*\s*\n(?:\s*>.*\n?)+",
                 "\n",
                 cleaned
             )
-            # En-tête 'Intervention de other' + paragraphe/blockquote suivant
             cleaned = re.sub(
                 rf"(?mis)^\s*#{1,6}\s*Intervention\s+de\s+{other}\s*\n.*?(?=^\s*#{1,6}\s|\Z)",
                 "",
                 cleaned
             )
-            # Préfixe 'other:' en début de ligne
-            cleaned = re.sub(
-                rf"(?mi)^\s*{other}\s*:\s*",
-                "",
-                cleaned
-            )
+            # pattern simple "neo:" en début de ligne
+            cleaned = re.sub(rf"(?mi)^\s*{other}\s*:\s*", "", cleaned)
 
-        # Empêcher la "Synthèse" côté non-synthétiseur
+        # Supprimer une section "Synthèse" quand l'agent n'est pas le médiateur
         if agent_id_l != (synthesizer_id or "").lower():
             cleaned = re.sub(r"(?mi)^\s*#{1,6}\s*Synth[èe]se.*(?:\n.*)*", "", cleaned)
 
@@ -115,9 +162,9 @@ class DebateService:
     ) -> str:
         """
         Construit le transcript selon la policy.
-        - full_transcript : comportement historique (tous les tours).
-        - round_local : réponses déjà données dans le round en cours + N rounds complets précédents.
-        - stateless : aucun contenu d'historique.
+        - full_transcript : comportement historique (tous les tours)
+        - round_local : round en cours (+ N précédents)
+        - stateless : aucun historique (header éventuel seulement)
         """
         policy = policy or self._policy_for_session(session)
         parts: List[str] = []
@@ -127,13 +174,12 @@ class DebateService:
             if session.rag_context:
                 parts.append(f"\n--- CONTEXTE DOCUMENTAIRE ---\n{session.rag_context}\n---------------------------\n")
 
-        # STATLESS: pas d'historique
+        # Pas d'historique
         if policy == "stateless":
             return "\n".join(parts)
 
         history = session.history
 
-        # FULL TRANSCRIPT: tout l'historique
         if policy == "full_transcript":
             for turn in history:
                 parts.append(f"\n### TOUR DE TABLE N°{turn.round_number} ###")
@@ -141,11 +187,10 @@ class DebateService:
                     parts.append(f"\n**{agent_name} a dit :**\n> {response}")
             return "\n".join(parts)
 
-        # ROUND LOCAL: round courant + N rounds précédents
+        # round_local
         if not history:
             return "\n".join(parts)
 
-        # rounds précédents (complets), en conservant l'ordre
         if self.round_local_n > 0:
             prev_completed = [t for t in history if len(t.agent_responses) > 0][:-1]
             for t in prev_completed[-self.round_local_n:]:
@@ -153,7 +198,6 @@ class DebateService:
                 for agent_name, response in t.agent_responses.items():
                     parts.append(f"\n**{agent_name} a dit :**\n> {response}")
 
-        # round en cours (réponses déjà données)
         current = history[-1]
         if current.agent_responses:
             parts.append(f"\n### TOUR DE TABLE N°{current.round_number} (en cours) ###")
@@ -161,6 +205,19 @@ class DebateService:
                 parts.append(f"\n**{agent_name} a dit :**\n> {response}")
 
         return "\n".join(parts)
+
+    def _resolve_synthesizer(self, session: DebateSession) -> str:
+        """Choisit le médiateur réel: fallback si nexus (Gemini) est indisponible."""
+        proposed = (session.config.agent_order[-1] or "").lower()
+        if proposed != "nexus":
+            return proposed
+        gemini_key = (os.getenv("GEMINI_API_KEY", "") or "").strip().lower()
+        if gemini_key and gemini_key not in {"dummy", "test", "placeholder", "xxx"}:
+            return "nexus"
+        participants = [a.lower() for a in session.config.agent_order[:-1]]
+        fallback = "neo" if "neo" not in participants else "anima"
+        logger.warning(f"[Debate] GEMINI_API_KEY absente/invalide. Fallback synthèse: {fallback} au lieu de 'nexus'.")
+        return fallback
 
     # ---------- flux principal ----------
     async def create_debate(self, config: Dict[str, Any], session_id: str):
@@ -172,10 +229,8 @@ class DebateService:
                 config=debate_config, status=DebateStatus.PENDING
             )
             self.active_debates[debate_id] = debate_session
-            
             logger.info(f"Débat {debate_id} créé sur le sujet : '{debate_config.topic}'. RAG activé: {debate_config.use_rag}")
             asyncio.create_task(self._run_debate_flow(debate_id))
-
         except ValidationError as e:
             logger.error(f"Erreur de configuration du débat: {e}", exc_info=True)
             await self.connection_manager.send_personal_message({
@@ -204,6 +259,7 @@ class DebateService:
                 session.session_id
             )
 
+            # RAG facultatif
             if session.config.use_rag:
                 logger.info(f"Débat {debate_id}: Recherche RAG en cours pour le sujet.")
                 await self.connection_manager.send_personal_message(
@@ -220,7 +276,6 @@ class DebateService:
                 await self._run_debate_round(session, round_number)
 
             await self._generate_synthesis(session)
-
             session.status = DebateStatus.COMPLETED
             logger.info(f"Débat {debate_id} terminé avec succès.")
 
@@ -248,7 +303,7 @@ class DebateService:
             {"type": "ws:debate_status_update", "payload": {"debate_id": session.debate_id, "status": f"Tour {round_number} en cours..."}},
             session.session_id
         )
-        
+
         current_turn = DebateTurn(round_number=round_number)
         session.history.append(current_turn)
 
@@ -257,17 +312,16 @@ class DebateService:
 
         for agent_id in agents_in_round:
             logger.info(f"Tour {round_number}: Au tour de {agent_id} (policy={policy}).")
-            
             transcript = self._build_full_transcript(session, with_header=True, policy=policy)
             prompt_for_agent = (
                 f"{transcript}\n\n---\n"
                 f"**INSTRUCTION POUR {agent_id.upper()} :**\n"
-                f"C'est à ton tour de parler. En te basant sur l'intégralité des éléments ci-dessus (selon policy={policy}), "
+                f"C'est à ton tour de parler. En te basant sur l'intégralité des éléments ci-dessus (policy={policy}), "
                 f"apporte ta contribution au débat. Sois pertinent, concis et fais avancer la discussion.\n\n"
                 f"RÈGLES D'ISOLATION (OBLIGATOIRES) :\n"
-                f"- Tu parles uniquement au nom de {agent_id}. N'invente JAMAIS de répliques attribuées à d'autres agents (ex: \"**neo a dit :**\").\n"
-                f"- Tu peux faire référence aux idées DES AUTRES uniquement en style indirect (ex: \"Comme Neo le suggère...\").\n"
-                f"- N'écris pas d'en-têtes comme \"Intervention de ...\" ni de section \"Synthèse\".\n"
+                f"- Tu parles uniquement au nom de {agent_id}. N'invente JAMAIS de répliques attribuées à d'autres agents.\n"
+                f"- Référence aux autres en style indirect uniquement.\n"
+                f"- Pas d'en-têtes \"Intervention de ...\" ni de section \"Synthèse\".\n"
                 f"- Ne préfixe PAS ta sortie par ton nom/role. Réponds en un seul bloc de texte."
             )
             structured_history = [{"role": "user", "content": prompt_for_agent}]
@@ -290,12 +344,12 @@ class DebateService:
                 }
             }, session.session_id)
 
-            response_text, _ = await self.chat_service.get_llm_response_for_debate(
-                agent_id=agent_id,
-                history=structured_history,
-                session_id=session.session_id
-            )
-            
+            try:
+                response_text, _ = await self._call_llm(agent_id=agent_id, history=structured_history, session_id=session.session_id)
+            except Exception as e:
+                logger.error(f"[Debate] Tour {round_number} — échec appel LLM pour {agent_id}: {e}", exc_info=True)
+                response_text = "_(Réponse non disponible pour des raisons techniques.)_"
+
             response_text = self._sanitize_agent_output(agent_id, response_text, session.config.agent_order[-1])
             current_turn.agent_responses[agent_id] = response_text
 
@@ -328,9 +382,8 @@ class DebateService:
             {"type": "ws:debate_status_update", "payload": {"debate_id": session.debate_id, "status": "Génération de la synthèse..."}},
             session.session_id
         )
-        
-        synthesizer_id = session.config.agent_order[-1] 
-        # Pour la synthèse, on garde toujours le transcript complet.
+
+        synthesizer_id = self._resolve_synthesizer(session)
         final_transcript = self._build_full_transcript(session, with_header=False, policy="full_transcript")
 
         prompt_content = (
@@ -342,10 +395,10 @@ class DebateService:
         )
         structured_history = [{"role": "user", "content": prompt_content}]
         
-        response_text, _ = await self.chat_service.get_llm_response_for_debate(
-            agent_id=synthesizer_id,
-            history=structured_history,
-            session_id=session.session_id
-        )
-        session.synthesis = response_text
-        logger.info(f"Synthèse générée par {synthesizer_id}.")
+        try:
+            response_text, _ = await self._call_llm(agent_id=synthesizer_id, history=structured_history, session_id=session.session_id)
+            session.synthesis = response_text
+            logger.info(f"Synthèse générée par {synthesizer_id}.")
+        except Exception as e:
+            logger.error(f"[Debate] Échec synthèse via {synthesizer_id}: {e}", exc_info=True)
+            session.synthesis = "_Synthèse indisponible pour raisons techniques._"

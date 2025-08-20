@@ -1,5 +1,5 @@
 # src/backend/features/chat/service.py
-# V30.0 – Mémoire incrément 1 (P2): injection mémoire + WS memory_* ; RAG inchangé.
+# V30.1 – Ajout API non-stream pour Débat: get_llm_response_for_debate(...)
 # UTF-8 (CRLF conseillé sous Windows).
 
 import os
@@ -54,15 +54,12 @@ KNOWLEDGE_COLLECTION_NAME: str = getattr(config, "KNOWLEDGE_COLLECTION_NAME", "e
 
 class ChatService:
     """
-    ChatService V30.0
+    ChatService V30.1
     - Initialisation clients OpenAI / Anthropic / Google
     - Fallback dynamique
     - RAG inchangé (sources WS)
-    - NOUVEAU: Mémoire P2
-        * Requête mémoire (collection 'emergence_knowledge' par défaut)
-        * Injection [MEMORY] ... [/MEMORY] dans le dernier message user
-        * WS: ws:memory_status, ws:memory_sources
-        * Debug enrichi (mémoire)
+    - Mémoire P2 (bandeau & injection dans le chat)
+    - ✅ NOUVEAU (P1 Débat): get_llm_response_for_debate(...) non-stream, provider-agnostic
     """
 
     def __init__(
@@ -158,7 +155,7 @@ class ChatService:
         return provider, model, system_prompt
 
     # ──────────────────────────────────────────────────────────────────────
-    # API publique – traitement d'un message user pour N agents
+    # API publique – traitement d'un message user pour N agents (chat streaming)
     # ──────────────────────────────────────────────────────────────────────
     async def process_user_message_for_agents(
         self, session_id: str, message: ChatMessage, connection_manager: ConnectionManager
@@ -398,26 +395,6 @@ class ChatService:
                 fallback_candidates.append("google")
             if provider != "anthropic" and self.anthropic_client is not None:
                 fallback_candidates.append("anthropic")
-
-            for fb in fallback_candidates:
-                try:
-                    fb_model = SAFE_DEFAULTS[fb]
-                    gen = self._get_llm_response_stream(fb, fb_model, system_prompt, normalized_history, cost_info)
-                    async for chunk in gen:
-                        if not chunk:
-                            continue
-                        full_text += chunk
-                        await connection_manager.send_personal_message(
-                            {
-                                "type": "ws:chat_stream_chunk",
-                                "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk},
-                            },
-                            session_id,
-                        )
-                    provider, model = fb, fb_model
-                    break
-                except Exception as fb_err:
-                    logger.error("[FALLBACK STREAM FAIL] %s/%s: %s", fb, fb_model, fb_err, exc_info=True)
 
         # Single-shot si nécessaire (inchangé)
         if not full_text.strip():
@@ -681,3 +658,95 @@ class ChatService:
         out_tok = getattr(usage, "output_tokens", 0) if usage else 0
         cost = (in_tok * pricing["input"]) + (out_tok * pricing["output"])
         return content, {"input_tokens": in_tok, "output_tokens": out_tok, "total_cost": cost}
+
+    # ──────────────────────────────────────────────────────────────────────
+    # ✅ API non-stream pour le module Débat
+    # ──────────────────────────────────────────────────────────────────────
+    async def get_llm_response_for_debate(
+        self,
+        *,
+        agent_id: str,
+        history: List[Dict[str, Any]],
+        session_id: str
+    ) -> Tuple[str, Dict[str, Any]]:
+        """
+        Retourne (texte, coûts) pour un agent donné à partir d'un petit 'history' déjà construit
+        (ex: [{"role":"user","content":"<transcript+instruction>"}]).
+        - Sélectionne provider/model & prompt agent
+        - Normalise l'historique au format du provider
+        - Single-shot + fallback providers (OpenAI/Google/Anthropic)
+        - Enregistre le coût avec feature='debate'
+        """
+        provider, model, system_prompt = self._get_agent_config(agent_id)
+
+        def _ensure_openai_style(msgs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+            out: List[Dict[str, Any]] = []
+            for m in msgs or []:
+                role = m.get("role", "user")
+                if "content" in m and isinstance(m["content"], str):
+                    out.append({"role": role, "content": m["content"]})
+                elif "parts" in m:
+                    parts = m.get("parts") or []
+                    text = "".join(parts) if isinstance(parts, list) else str(parts or "")
+                    out.append({"role": role if role in ("user","assistant") else ("assistant" if role=="model" else "user"), "content": text})
+                else:
+                    out.append({"role": role, "content": str(m.get("content") or "")})
+            return out or [{"role": "user", "content": ""}]
+
+        async def _single(provider_name: str, model_name: str) -> Tuple[str, Dict[str, Any]]:
+            if provider_name == "openai":
+                norm = _ensure_openai_style(history)
+                return await self._get_openai_response_single(model_name, system_prompt, norm, False)
+            if provider_name == "google":
+                # Gemini attend {"role":"user"|"model","parts":[text]}
+                base = _ensure_openai_style(history)
+                gem = [{"role": ("user" if m["role"] == "user" else "model"), "parts": [m["content"]]} for m in base]
+                return await self._get_gemini_response_single(model_name, system_prompt, gem, False)
+            if provider_name == "anthropic":
+                base = _ensure_openai_style(history)
+                ant = self._to_anthropic_messages(base)
+                return await self._get_anthropic_response_single(model_name, system_prompt, ant, False)
+            raise ValueError(f"Provider non supporté: {provider_name}")
+
+        # tentative primaire
+        try:
+            text, cost = await _single(provider, model)
+            await self.cost_tracker.record_cost(
+                agent=agent_id,
+                model=model,
+                input_tokens=cost.get("input_tokens", 0),
+                output_tokens=cost.get("output_tokens", 0),
+                total_cost=cost.get("total_cost", 0.0),
+                feature="debate",
+            )
+            return text, cost
+        except Exception as e:
+            logger.error("[DEBATE SINGLE FAIL] %s/%s: %s", provider, model, e, exc_info=True)
+
+        # fallback providers (comme pour le chat)
+        fallback_candidates: List[str] = []
+        if provider != "openai" and self.openai_client is not None:
+            fallback_candidates.append("openai")
+        if provider != "google" and os.getenv("GOOGLE_API_KEY"):
+            fallback_candidates.append("google")
+        if provider != "anthropic" and self.anthropic_client is not None:
+            fallback_candidates.append("anthropic")
+
+        for fb in fallback_candidates:
+            try:
+                fb_model = SAFE_DEFAULTS[fb]
+                text, cost = await _single(fb, fb_model)
+                await self.cost_tracker.record_cost(
+                    agent=agent_id,
+                    model=fb_model,
+                    input_tokens=cost.get("input_tokens", 0),
+                    output_tokens=cost.get("output_tokens", 0),
+                    total_cost=cost.get("total_cost", 0.0),
+                    feature="debate",
+                )
+                return text, cost
+            except Exception as fb_err:
+                logger.error("[DEBATE FALLBACK FAIL] %s: %s", fb, fb_err, exc_info=True)
+
+        # si tout échoue
+        return "", {}

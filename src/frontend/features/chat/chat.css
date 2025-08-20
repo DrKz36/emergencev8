@@ -1,6 +1,5 @@
 /* src/frontend/features/chat/chat.css */
-/* V11.8 — Agent selector en header (gauche), bandeau RAG masqué,
-   composer dark lisible, bouton envoyer dark (override styles globaux). */
+/* V11.9 — Overflow-safe (word-wrap/hyphenation) + responsive conservé */
 
 :root{
   --glass-bg: rgba(22,22,26,.55);
@@ -72,6 +71,12 @@
   line-height:1.6; color:var(--color-text-primary);
   padding:.85rem 1rem; border-radius:14px; border:none; text-align:left;
   width:100% !important;
+
+  /* ✅ anti-overflow mobile/desktop */
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  hyphens:auto;
+
   -webkit-backdrop-filter:blur(6px) saturate(120%); backdrop-filter:blur(6px) saturate(120%);
   background: color-mix(in srgb, #8b5cff 80%, transparent);
 }
@@ -100,7 +105,7 @@
 .chat-container .chat-input::placeholder{ color:rgba(255,255,255,.6); }
 .chat-container .chat-input:focus{ border-color: var(--user-hex) !important; outline:none; }
 
-/* Bouton envoyer: dark (override styles "métal" globaux) */
+/* Bouton envoyer */
 .chat-container .chat-send-button{
   all: unset;
   display:inline-flex; align-items:center; justify-content:center;

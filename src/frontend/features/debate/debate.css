@@ -1,9 +1,5 @@
 ﻿/* src/frontend/features/debate/debate.css */
-/* V38.6 — Fix overflow mobile:
-   - Bulles clampées à la largeur disponible (no overflow X)
-   - Word-wrapping agressif (anywhere + hyphens)
-   - Card/timeline sans débordement horizontal
-   - Portrait encore un poil plus large mais borné par 100%    */
+/* V38.7 — Power button: stroke par défaut + width/height ; overflow mobile fixé */
 
 :root{
   --glass-bg: rgba(22,22,26,.55);
@@ -32,6 +28,22 @@
   --rag-on:  var(--color-nexus);
 }
 
+/* === Power On/Off (RAG) — rendu par défaut + état ON === */
+.rag-power .icon-power{ width:22px; height:22px; }
+.rag-power .power-line,
+.rag-power .power-circle{
+  stroke: var(--rag-off);
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.rag-power[aria-checked="true"] .power-line,
+.rag-power[aria-checked="true"] .power-circle{
+  stroke: var(--rag-on);
+  filter: drop-shadow(0 0 6px rgba(16,185,129,.65));
+}
+
 /* ===== Wrapper + Card ===== */
 .debate-view-wrapper{
   width:100%;
@@ -46,9 +58,9 @@
   backdrop-filter:blur(calc(var(--glass-blur)*1.25));
   -webkit-backdrop-filter:blur(calc(var(--glass-blur)*1.25));
   box-shadow:0 16px 40px rgba(0,0,0,.35), inset 0 0 32px rgba(255,255,255,.03);
-  width:100%;             /* ✅ plein conteneur (pas 95%) */
-  max-width:1200px;       /* borne desktop */
-  box-sizing:border-box;  /* padding/bord dans le calcul de largeur */
+  width:100%;
+  max-width:1200px;
+  box-sizing:border-box;
 }
 
 .card-header{ text-align:center; border-bottom:1px solid var(--glass-border-color); }
@@ -67,7 +79,7 @@
 .debate-create-body .form-topic .input-text,
 .debate-view-wrapper .card .input-text{
   width:100%; box-sizing:border-box;
-  overflow-wrap:anywhere; word-break:break-word; hyphens:auto; /* ✅ pas de débordement */
+  overflow-wrap:anywhere; word-break:break-word; hyphens:auto;
 }
 
 /* Cadre CONFIG (2x2) */
@@ -108,7 +120,7 @@
 .mediator-display.agent--neo{   color:var(--color-neo); }
 .mediator-display.agent--nexus{ color:var(--color-nexus); }
 
-/* RAG */
+/* RAG (ligne) */
 .debate-create-body .rag-row{ grid-area: rag; display:flex; align-items:center; gap:.75rem; }
 .debate-create-body .rag-label{ color:#fff; opacity:.9; font-size:.95rem; }
 .debate-create-body .rag-power{
@@ -116,10 +128,6 @@
   width:34px; height:34px; border-radius:50%;
   background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.25);
   cursor:pointer; transition:.15s transform,.2s box-shadow,.2s background;
-}
-.debate-create-body .rag-power[aria-checked="true"] .power-line,
-.debate-create-body .rag-power[aria-checked="true"] .power-circle{
-  stroke: var(--rag-on); filter: drop-shadow(0 0 6px rgba(16,185,129,.65));
 }
 
 /* ===== Vue Déroulé ===== */
@@ -133,7 +141,6 @@
 /* ✅ Bulles clampées à 100% du conteneur (pas de dépassement) */
 .debate-timeline .message{ display:flex; width:100%; margin:0; }
 .debate-timeline .message-content{
-  /* largeur préférée → ne dépassera JAMAIS 100% du conteneur */
   width: min(var(--debateBubbleW), 100%);
   max-width:100%;
   min-width:0;
@@ -145,7 +152,7 @@
   border:none; border-radius:14px; padding:.9rem 1rem; color:#fff;
   -webkit-backdrop-filter:blur(6px) saturate(120%); backdrop-filter:blur(6px) saturate(120%);
   box-shadow:0 10px 24px rgba(0,0,0,.25), 0 0 20px rgba(255,255,255,.07);
-  overflow-wrap:anywhere; word-break:break-word; hyphens:auto; /* ✅ casse les mots longs */
+  overflow-wrap:anywhere; word-break:break-word; hyphens:auto;
 }
 .message.assistant.agent--anima   .message-text{ background: color-mix(in srgb, var(--color-anima) 26%, transparent); }
 .message.assistant.agent--neo     .message-text{ background: color-mix(in srgb, var(--color-neo) 22%, transparent); }
@@ -166,7 +173,6 @@
 
 /* Portrait — marges réduites (préférence élargie) */
 @media (orientation: portrait){
-  /* largeur préférée de bulle en portrait ; restera ≤ 100% grâce au clamp ci-dessus */
   :root{ --debateBubbleW: calc(100vw - 6px); }
   .debate-view-wrapper{ padding: var(--space-3); }
   .debate-view-wrapper .card{ border-radius:16px; }
@@ -181,9 +187,8 @@
   .card-header, .card-body, .card-footer{ padding: 12px; }
 }
 
-/* Paysage faible hauteur (smartphones tournés) */
+/* Paysage faible hauteur */
 @media (orientation: landscape) and (max-height: 500px){
-  /* même si on garde une valeur en vw, la bulle est bornée par 100% → pas d’overflow */
   :root{ --debateBubbleW: calc(100vw - 24px); }
   .debate-view-wrapper{ padding: 8px; }
   .debate-view-wrapper .card{ border-radius:14px; }
