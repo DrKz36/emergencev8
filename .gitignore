@@ -71,3 +71,7 @@ arborescence_synchronisée_*.txt
 
 # --- OS Windows
 desktop.ini
+
+!assets/**
+!*.ico
+
