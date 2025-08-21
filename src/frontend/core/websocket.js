@@ -1,12 +1,12 @@
 /**
  * @module core/websocket
- * @description WebSocketClient V19.1 - STREAMING READY + user_id dynamique (Google ID token)
+ * @description WebSocketClient V19.2 - STREAMING READY + user_id dynamique + token en query
  */
 import { EVENTS, AUTH } from '../shared/constants.js';
 
 export class WebSocketClient {
     constructor(url, eventBus, stateManager) {
-        this.url = url; // ex: '/ws' (relatif, résout ws:// ou wss:// selon l'origine)
+        this.url = url; // ex: '/ws'
         this.eventBus = eventBus;
         this.state = stateManager;
         this.websocket = null;
@@ -15,7 +15,7 @@ export class WebSocketClient {
         this.reconnectInterval = 5000;
 
         this.registerEvents();
-        console.log("✅ WebSocketClient V19.1 (Streaming Ready + user_id dynamique) Initialisé.");
+        console.log("✅ WebSocketClient V19.2 (Streaming + user_id + token) Initialisé.");
     }
 
     registerEvents() {
@@ -30,36 +30,27 @@ export class WebSocketClient {
             const payload = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
             return JSON.parse(decodeURIComponent(escape(payload)));
         } catch {
-            try {
-                return JSON.parse(atob(parts[1]));
-            } catch {
-                return {};
-            }
+            try { return JSON.parse(atob(parts[1])); } catch { return {}; }
         }
     }
 
     _getUserId(sessionId) {
-        // 1) déjà en state ?
-        const fromState = this.state && this.state.get ? this.state.get('auth.user_id') : null;
+        const fromState = (this.state && this.state.get) ? this.state.get('auth.user_id') : null;
         if (fromState) return fromState;
 
-        // 2) localStorage cache ?
         try {
             const cached = localStorage.getItem('emergence_user_id');
             if (cached) return cached;
-        } catch { /* no-op */ }
+        } catch {}
 
-        // 3) depuis le token (Google ID token) — claims.sub prioritaire, sinon email
-        const token = AUTH.getToken() || AUTH.ensureDevToken();
+        const token = (AUTH && typeof AUTH.getToken === 'function') ? (AUTH.getToken() || AUTH.ensureDevToken()) : null;
         const claims = this._parseJwt(token);
         const sub = claims && (claims.sub || claims.user_id);
         const email = claims && claims.email;
         let uid = sub || email || `web-${(sessionId || '').slice(0, 8) || 'anon'}`;
 
-        // 4) cache
-        try { localStorage.setItem('emergence_user_id', uid); } catch { /* no-op */ }
+        try { localStorage.setItem('emergence_user_id', uid); } catch {}
         if (this.state && this.state.set) this.state.set('auth.user_id', uid);
-
         return uid;
     }
 
@@ -70,7 +61,13 @@ export class WebSocketClient {
         if (this.state && this.state.set) this.state.set('websocket.sessionId', sessionId);
 
         const userId = this._getUserId(sessionId);
-        const connectUrl = `${this.url}/${sessionId}?user_id=${encodeURIComponent(userId)}`;
+        // 🔑 Essaye de récupérer un ID token (si déjà dispo) pour le passer au serveur
+        let token = null;
+        try { token = (AUTH && typeof AUTH.getToken === 'function') ? AUTH.getToken() : null; } catch {}
+
+        // URL: /ws/<sessionId>?user_id=...&token=...  (token optionnel — le serveur gère les deux cas)
+        const qs = `?user_id=${encodeURIComponent(userId)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+        const connectUrl = `${this.url}/${sessionId}${qs}`;
 
         console.log(`%c[WebSocket] Connexion à : ${connectUrl}`, 'font-weight: bold;');
         this.websocket = new WebSocket(connectUrl);

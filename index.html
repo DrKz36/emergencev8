@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Émergence V8</title>
 
-  <!-- Favicon (on reste sur .ico present dans l'arbo) -->
-  <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+  <!-- Favicon : évite le 404 -->
+  <link rel="icon" type="image/png" href="assets/emergence_logo.png" />
 
   <!-- Preload du module principal -->
   <link rel="modulepreload" href="/src/frontend/main.js" />
@@ -14,9 +14,102 @@
   <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-  <!-- ⚠️ Remplace par TON Client ID Web OAuth Google (exact) -->
+  <!-- Client ID OAuth Google (Web) + options FedCM -->
   <script>
     window.EMERGENCE_GOOGLE_CLIENT_ID = "486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com";
+    window.EMERGENCE_GIS_OPTS = {
+      use_fedcm_for_prompt: true, // active FedCM en priorité
+      ux_mode: "popup",           // pas d’iframe one-tap intrusive
+      auto_select: false
+    };
+  </script>
+
+  <!-- MINI-BLOC GIS POPUP : stockage id_token + helpers (signIn / signOut / getIdToken) -->
+  <script>
+  (function () {
+    const TOKEN_KEY = 'emergence_bearer'; // doit rester aligné avec AUTH.TOKEN_KEY
+
+    function storeToken(idToken) {
+      if (!idToken || idToken.length < 100) { // filtre testtoken & erreurs
+        console.warn('[GIS] Token absent ou trop court — ignoré.');
+        return;
+      }
+      try {
+        sessionStorage.setItem(TOKEN_KEY, idToken);
+        localStorage.setItem(TOKEN_KEY, idToken);
+        console.log('[GIS] Token stocké. len =', idToken.length);
+        // Informe l'app (si elle veut rebrancher WS par ex.)
+        window.dispatchEvent(new CustomEvent('gis:token', { detail: { idToken } }));
+      } catch (e) {
+        console.warn('[GIS] Échec storeToken:', e);
+      }
+    }
+
+    // Callback officiel GIS
+    function onCredentialResponse(resp) {
+      const idToken = resp && (resp.credential || resp.id_token || resp._id_token);
+      storeToken(idToken);
+    }
+
+    // Initialisation GIS (FedCM + popup)
+    function initGIS() {
+      if (!window.google || !google.accounts || !google.accounts.id) {
+        console.warn('[GIS] SDK pas encore chargé — retry…');
+        return false;
+      }
+      const CLIENT_ID = window.EMERGENCE_GOOGLE_CLIENT_ID;
+      const OPTS = window.EMERGENCE_GIS_OPTS || {};
+      if (!CLIENT_ID) {
+        console.warn('[GIS] CLIENT_ID manquant.');
+        return false;
+      }
+
+      google.accounts.id.initialize({
+        client_id: CLIENT_ID,
+        callback: onCredentialResponse,
+        auto_select: !!OPTS.auto_select,
+        use_fedcm_for_prompt: OPTS.use_fedcm_for_prompt !== false,
+        ux_mode: OPTS.ux_mode || 'popup'
+      });
+
+      // One-tap/FedCM si possible (non bloquant). Le bouton n’est pas requis en popup.
+      try { google.accounts.id.prompt(); } catch (e) { /* no-op */ }
+
+      // Expose helpers globaux
+      window.signIn = function () {
+        // En FedCM, prompt() déclenche l’UI système.
+        try { google.accounts.id.prompt(); } catch (e) {
+          console.warn('[GIS] prompt() a échoué :', e);
+        }
+      };
+
+      window.signOut = function () {
+        try { google.accounts.id.disableAutoSelect(); } catch {}
+        try { sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); } catch {}
+        console.log('[GIS] Déconnecté (token nettoyé).');
+      };
+
+      window.getIdToken = function () {
+        try {
+          return Promise.resolve(
+            sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || null
+          );
+        } catch { return Promise.resolve(null); }
+      };
+
+      return true;
+    }
+
+    // Boot mini-bloc quand le SDK est prêt
+    (function waitForGis() {
+      if (initGIS()) return;
+      const iv = setInterval(() => {
+        if (initGIS()) clearInterval(iv);
+      }, 200);
+      // Hard stop au bout de 10s pour éviter boucles infinies
+      setTimeout(() => clearInterval(iv), 10000);
+    })();
+  })();
   </script>
 
   <style>
@@ -29,85 +122,50 @@
     }
     html,body{min-height:100%}
     body{
-      margin:0;
-      background:var(--bg);
-      color:var(--text);
-      font-family: var(--font-sans);
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
+      margin:0;background:var(--bg);color:var(--text);font-family:var(--font-sans);
+      -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
     }
     body.loading{overflow:hidden}
-
-    /* Loader */
     #app-loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background-color:var(--bg-2);z-index:9999;opacity:1;transition:opacity .5s ease-out;}
     #app-loader.fade-out{opacity:0}
     #app-loader img{width:128px;height:128px;animation:pulse 1.6s infinite ease-in-out;}
     @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}
 
-    /* Layout */
-    .app-container{
-      display:grid;
-      grid-template-rows: calc(var(--header-h) + var(--safe-top)) auto;
-      grid-template-columns: 1fr;
-      grid-template-areas: "header" "main";
-      min-height:100dvh; width:100vw;
-    }
-    .app-header{
-      grid-area:header; display:flex; align-items:center; padding:0 16px;
-      padding-top:var(--safe-top); border-bottom:1px solid var(--border);
-      position:sticky; top:0; z-index:10; backdrop-filter:saturate(1.2) blur(10px);
-      background:rgba(0,0,0,.35);
-    }
-    /* ✅ Titre +2 niveaux (de 20px → 24px) + logo ×1.5 */
+    .app-container{display:grid;grid-template-rows:calc(var(--header-h) + var(--safe-top)) auto;grid-template-columns:1fr;grid-template-areas:"header" "main";min-height:100dvh;width:100vw;}
+    .app-header{grid-area:header;display:flex;align-items:center;padding:0 16px;padding-top:var(--safe-top);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;backdrop-filter:saturate(1.2) blur(10px);background:rgba(0,0,0,.35);}
     .header-title{font-size:24px;margin:0;display:flex;align-items:center;gap:8px}
     .header-title img{width:36px;height:36px}
     .header-nav{display:flex;align-items:center;gap:.5rem;margin-left:auto}
 
     .app-sidebar{display:none}
-    .app-content{grid-area:main; padding:12px; padding-bottom:calc(12px + var(--safe-bottom)); overflow:visible;}
+    .app-content{grid-area:main;padding:12px;padding-bottom:calc(12px + var(--safe-bottom));overflow:visible;}
 
-    /* Sidebar branding (desktop) */
-    .sidebar-brand{
-      display:flex; align-items:center; gap:10px; padding:8px 4px 16px;
-      border-bottom:1px solid var(--border); margin-bottom:12px;
-    }
-    .sidebar-brand .sidebar-logo{width:48px;height:48px}
-    .brand-title{font-size:22px; font-weight:800; letter-spacing:.08em}
+    .sidebar-brand{display:flex;align-items:center;gap:10px;padding:8px 4px 16px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+    .sidebar-logo{width:48px;height:48px}
+    .brand-title{font-size:22px;font-weight:800;letter-spacing:.08em}
 
-    .skeleton{background:linear-gradient(90deg,rgba(255,255,255,.06),rgba(255,255,255,.12),rgba(255,255,255,.06)); background-size:200% 100%; animation:shimmer 1.1s infinite; border-radius:8px;}
+    .skeleton{background:linear-gradient(90deg,rgba(255,255,255,.06),rgba(255,255,255,.12),rgba(255,255,255,.06));background-size:200% 100%;animation:shimmer 1.1s infinite;border-radius:8px;}
     @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-    .chat-skel{height:calc(100dvh - var(--header-h) - 56px); border:1px solid var(--border)}
+    .chat-skel{height:calc(100dvh - var(--header-h) - 56px);border:1px solid var(--border)}
     .input-skel{margin-top:10px;height:44px}
 
     @media (min-width:768px){
-      .app-container{
-        grid-template-rows:auto;
-        grid-template-columns: var(--sidebar-w) 1fr;
-        grid-template-areas: "aside main";
-      }
+      .app-container{grid-template-rows:auto;grid-template-columns:var(--sidebar-w) 1fr;grid-template-areas:"aside main";}
       .app-header{display:none}
-      .app-sidebar{display:block; grid-area:aside; border-right:1px solid var(--border); padding:8px;}
-      .app-content{grid-area:main; padding:24px; overflow:visible}
+      .app-sidebar{display:block;grid-area:aside;border-right:1px solid var(--border);padding:8px;}
+      .app-content{grid-area:main;padding:24px;overflow:visible}
     }
-
-    /* ✅ Forcer le mode "header" sur mobile paysage faible hauteur (collapse sidebar) */
     @media (orientation: landscape) and (max-height: 500px){
-      .app-container{
-        grid-template-rows: calc(var(--header-h) + var(--safe-top)) auto;
-        grid-template-columns: 1fr;
-        grid-template-areas: "header" "main";
-      }
+      .app-container{grid-template-rows:calc(var(--header-h) + var(--safe-top)) auto;grid-template-columns:1fr;grid-template-areas:"header" "main";}
       .app-header{display:flex}
       .app-sidebar{display:none}
-      .app-content{padding:12px; overflow:visible}
+      .app-content{padding:12px;overflow:visible}
     }
-
-    /* ✅ Paysage “compact” avec sidebar visible : largeur/espacements réduits */
     @media (orientation: landscape) and (min-width:768px) and (max-height:700px){
       :root{ --sidebar-w:210px; }
       .app-sidebar{ padding:6px; }
       .sidebar-brand{ padding:6px 4px 10px; margin-bottom:8px; }
-      .sidebar-brand .sidebar-logo{ width:40px; height:40px; }
+      .sidebar-logo{ width:40px; height:40px; }
       .brand-title{ font-size:20px; }
       .app-content{ padding:12px; }
     }
@@ -129,7 +187,7 @@
 
     <aside id="app-sidebar" class="app-sidebar" role="complementary">
       <div class="sidebar-brand">
-        <img src="assets/emergence_logo.png" alt="Logo ÉMERGENCE" class="sidebar-logo" width="48" height="48" />
+        <img src="assets/emergence_logo.png" alt="Logo ÉMERGENCE" class="sidebar-logo" />
         <div class="brand-title">ÉMERGENCE</div>
       </div>
       <nav id="app-tabs" class="sidebar-nav" aria-label="Sections"></nav>
