@@ -1,15 +1,16 @@
 /**
  * @module core/main
- * @description Entrée client statique — V36.2
- *  - GIS exposé globalement (globalThis.*) immédiatement
+ * @description Entrée client statique — V36.3
+ *  - GIS exposé globalement (globalThis.*)
  *  - fetch patché: ajoute Authorization: Bearer <id_token> sur /api/*
+ *  - 🔧 Sync token vers localStorage(AUTH.TOKEN_KEY) pour WS/API (cohérence)
  */
 
 import { App } from './core/app.js';
 import { EventBus } from './core/event-bus.js';
 import { StateManager } from './core/state-manager.js';
 import { WebSocketClient } from './core/websocket.js';
-import { WS_CONFIG, EVENTS } from './shared/constants.js';
+import { WS_CONFIG, EVENTS, AUTH } from './shared/constants.js';
 import { loadCSSBatch } from './core/utils.js';
 
 const CSS_ORDERED = [
@@ -34,12 +35,30 @@ let _idToken = sessionStorage.getItem('emergence_id_token') || '';
 let _email = null;
 let _tokenExp = Number(sessionStorage.getItem('emergence_id_token_exp') || '0');
 
+// 🔁 Fallback: si un token existe déjà en localStorage(AUTH.TOKEN_KEY), on le reprend au boot
+try {
+  if (!_idToken) {
+    const t = localStorage.getItem(AUTH?.TOKEN_KEY);
+    if (t) {
+      // on passe par setToken pour bien hydrater exp/email + notifs
+      _idToken = t;
+      const seg = t.split('.')[1];
+      const p = seg ? JSON.parse(atob(seg.replace(/-/g, '+').replace(/_/g, '/'))) : {};
+      _email = p?.email || null;
+      _tokenExp = (p?.exp || 0) * 1000;
+      sessionStorage.setItem('emergence_id_token', _idToken);
+      sessionStorage.setItem('emergence_id_token_exp', String(_tokenExp));
+    }
+  }
+} catch { /* no-op */ }
+
 function decodeJwtPayload(token) {
   try {
     const seg = token.split('.')[1];
     return JSON.parse(atob(seg.replace(/-/g, '+').replace(/_/g, '/')));
   } catch { return {}; }
 }
+
 function setToken(token) {
   _idToken = token || '';
   let expMs = 0;
@@ -52,6 +71,7 @@ function setToken(token) {
   _email = email;
   _tokenExp = expMs;
 
+  // Session storage (historique)
   if (_idToken) {
     sessionStorage.setItem('emergence_id_token', _idToken);
     sessionStorage.setItem('emergence_id_token_exp', String(_tokenExp));
@@ -60,8 +80,18 @@ function setToken(token) {
     sessionStorage.removeItem('emergence_id_token_exp');
   }
 
+  // 🔧 Local storage pour WS/API (AUTH.TOKEN_KEY)
+  try {
+    if (_idToken) {
+      localStorage.setItem(AUTH?.TOKEN_KEY, _idToken);
+    } else {
+      localStorage.removeItem(AUTH?.TOKEN_KEY);
+    }
+  } catch { /* no-op */ }
+
   document.dispatchEvent(new CustomEvent('auth:changed', { detail: { signedIn: !!_idToken, email: _email } }));
 }
+
 function sdkReady() {
   return !!(window.google && window.google.accounts && window.google.accounts.id);
 }
@@ -117,6 +147,8 @@ function signOut() {
     console.warn('[auth] signOut error:', e);
     setToken(null);
   }
+  // 🔧 Nettoyage localStorage (redondance)
+  try { localStorage.removeItem(AUTH?.TOKEN_KEY); } catch {}
 }
 
 /* ✅ EXPOSITION IMMÉDIATE SUR LE GLOBAL (console/devtools) */

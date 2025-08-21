@@ -1,5 +1,7 @@
+# encoding: utf-8
 # src/backend/main.py
-# V7.1 — Startup robuste : DB + DI + injection tardive ChatService->MemoryAnalyzer + routers + statiques.
+# V7.2 — Health robuste (/api/health + /health) + migrations best‑effort même en FAST_BOOT.
+
 from __future__ import annotations
 
 import os
@@ -74,13 +76,18 @@ async def _startup(container: ServiceContainer):
     t = _BootTimer()
     logger.info("Démarrage backend Émergence…")
 
-    # 1) DB ready (fast boot option)
+    # 1) DB ready — FAST_BOOT: on connecte vite, puis on TENTE quand même la migration (best‑effort)
     fast_boot = os.getenv("EMERGENCE_FAST_BOOT") or os.getenv("EMERGENCE_SKIP_MIGRATIONS")
     try:
         db_manager = container.db_manager()
         if fast_boot:
             await db_manager.connect()
-            logger.info("DB connectée (FAST_BOOT=on). Migrations reportées au premier usage.")
+            logger.info("DB connectée (FAST_BOOT=on). Tentative de migrations best‑effort…")
+            try:
+                await initialize_database(db_manager, _migrations_dir())
+                logger.info("DB initialisée (migrations exécutées malgré FAST_BOOT).")
+            except Exception as me:
+                logger.warning(f"Migrations reportées (best‑effort a échoué) : {me}")
         else:
             await initialize_database(db_manager, _migrations_dir())
             logger.info("DB initialisée (migrations exécutées).")
@@ -94,7 +101,7 @@ async def _startup(container: ServiceContainer):
         import backend.features.debate.router as debate_router_module  # type: ignore
         import backend.features.memory.router as memory_router_module  # type: ignore
         container.wire(modules=[chat_router_module, debate_router_module, memory_router_module])
-        logger.info("DI wired (chat.router, debate.router).")
+        logger.info("DI wired (chat.router, debate.router, memory.router).")
     except Exception as e:
         logger.warning(f"Wire DI partiel: {e}")
     t.mark("di_wired")
@@ -130,7 +137,7 @@ def create_app() -> FastAPI:
     container = ServiceContainer()
     t.mark("container_ready")
 
-    app = FastAPI(title="Émergence API", version="7.1")
+    app = FastAPI(title="Émergence API", version="7.2")
     app.state.service_container = container
 
     app.add_middleware(
@@ -151,15 +158,20 @@ def create_app() -> FastAPI:
         await _shutdown(container)
 
     # --- PUBLIC: Healthcheck (exempt de toute auth applicative) ---------------
-    @app.get("/api/health", tags=["Public"])
-    async def health():
+    # Deux chemins pour absorber les variations proxy/root_path.
+    @app.get("/api/health", tags=["Public"], include_in_schema=False)
+    async def health_api():
+        return {"status": "ok", "message": "Emergence Backend is running."}
+
+    @app.get("/health", tags=["Public"], include_in_schema=False)
+    async def health_root():
         return {"status": "ok", "message": "Emergence Backend is running."}
 
     # --- Montage des routers REST --------------------------------------------
     def _mount_router(router_module: Any, prefix: str, name: str) -> None:
         if router_module and getattr(router_module, "router", None):
             app.include_router(router_module.router, prefix=prefix)
-            logger.info(f"Router monté: {router_module} (prefix effectif: {prefix})")
+            logger.info(f"Router monté: {name} @ {prefix}")
 
     _mount_router(DOCUMENTS_ROUTER, "/api/documents", "documents")
     _mount_router(DEBATE_ROUTER,    "/api/debate",    "debate")
