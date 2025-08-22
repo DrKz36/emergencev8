@@ -1,0 +1,183 @@
+/* ÉMERGENCE — Threads UI (V1) */
+/* S'appuie sur les fondations : variables, reset, layout, navigation, typo */
+
+#tab-threads {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-block: var(--space-6);
+  max-width: var(--max-content-width);
+  width: 100%;
+  margin-inline: auto;
+}
+
+.threads-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.threads-title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  margin-right: auto;
+}
+
+.threads-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem .75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--glass-bg);
+  color: var(--color-text-primary);
+  transition: background var(--duration-subtle), border-color var(--duration-subtle);
+}
+.button:hover { background: rgba(255,255,255,0.08); }
+.button.primary {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: rgba(0,170,255,.08);
+}
+
+.threads-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+.threads-toggle button {
+  padding: .4rem .8rem;
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+.threads-toggle button.active {
+  background: var(--color-primary);
+  color: var(--color-text-on-accent);
+}
+
+.threads-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+  min-height: 0;
+}
+
+/* Desktop split: liste | détail */
+@media (min-width: 992px) {
+  .threads-body {
+    grid-template-columns: 420px 1fr;
+  }
+}
+
+.threads-list {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.thread-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .5rem;
+  padding: .75rem;
+  border-radius: var(--radius-md);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border-color);
+  cursor: pointer;
+  transition: background .2s ease;
+}
+.thread-row:hover { background: rgba(255,255,255,0.08); }
+.thread-row.active { outline: 2px solid var(--color-primary-focus-ring); }
+
+.thread-meta {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+.thread-title {
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+}
+.thread-sub {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.thread-row .row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+}
+.icon-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+}
+.icon-button:hover { background: rgba(255,255,255,0.1); color: var(--color-text-primary); }
+
+.thread-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  min-height: 320px;
+}
+.thread-view-header {
+  display: flex; align-items: center; gap: .75rem;
+}
+.thread-view-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  margin-right: auto;
+}
+.thread-messages {
+  display: flex; flex-direction: column; gap: .5rem;
+  overflow: auto;
+  max-height: 50vh;
+  padding-right: .25rem;
+}
+.message-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: .5rem .75rem;
+  align-items: baseline;
+  padding: .5rem .75rem;
+  border-radius: var(--radius-md);
+  background: var(--color-background-secondary);
+}
+.message-item .who {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+.message-item .when {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  justify-self: end;
+}
+.message-item .text { grid-column: 1 / -1; }
+
+.thread-composer {
+  display: grid; grid-template-columns: 1fr auto; gap: .5rem;
+}
+.thread-composer textarea {
+  min-height: 60px; max-height: 160px; resize: vertical;
+  padding: .5rem .75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-background-tertiary);
+  color: var(--color-text-primary);
+}

@@ -11,106 +11,23 @@
   <!-- Preload du module principal -->
   <link rel="modulepreload" href="/src/frontend/main.js" />
 
-  <!-- Google Identity Services -->
+  <!-- Google Identity Services (SDK seulement) -->
+  <meta name="google-signin-client_id"
+        content="486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com" />
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-  <!-- Client ID OAuth Google (Web) + options FedCM -->
+  <!-- Configuration front accessible à /src/frontend/lib/gis.js -->
   <script>
-    window.EMERGENCE_GOOGLE_CLIENT_ID = "486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com";
-    window.EMERGENCE_GIS_OPTS = {
-      use_fedcm_for_prompt: true, // active FedCM en priorité
-      ux_mode: "popup",           // pas d’iframe one-tap intrusive
-      auto_select: false
+    window.__CONFIG = {
+      GOOGLE_CLIENT_ID: "486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com",
+      // En local, FedCM peut échouer selon Chrome/politiques. Le loader utilisera "popup".
+      GIS_OPTS: { use_fedcm_for_prompt: false, ux_mode: "popup", auto_select: false }
     };
   </script>
-
-  <!-- MINI-BLOC GIS POPUP : stockage id_token + helpers (signIn / signOut / getIdToken) -->
-  <script>
-  (function () {
-    const TOKEN_KEY = 'emergence_bearer'; // doit rester aligné avec AUTH.TOKEN_KEY
-
-    function storeToken(idToken) {
-      if (!idToken || idToken.length < 100) { // filtre testtoken & erreurs
-        console.warn('[GIS] Token absent ou trop court — ignoré.');
-        return;
-      }
-      try {
-        sessionStorage.setItem(TOKEN_KEY, idToken);
-        localStorage.setItem(TOKEN_KEY, idToken);
-        console.log('[GIS] Token stocké. len =', idToken.length);
-        // Informe l'app (si elle veut rebrancher WS par ex.)
-        window.dispatchEvent(new CustomEvent('gis:token', { detail: { idToken } }));
-      } catch (e) {
-        console.warn('[GIS] Échec storeToken:', e);
-      }
-    }
-
-    // Callback officiel GIS
-    function onCredentialResponse(resp) {
-      const idToken = resp && (resp.credential || resp.id_token || resp._id_token);
-      storeToken(idToken);
-    }
-
-    // Initialisation GIS (FedCM + popup)
-    function initGIS() {
-      if (!window.google || !google.accounts || !google.accounts.id) {
-        console.warn('[GIS] SDK pas encore chargé — retry…');
-        return false;
-      }
-      const CLIENT_ID = window.EMERGENCE_GOOGLE_CLIENT_ID;
-      const OPTS = window.EMERGENCE_GIS_OPTS || {};
-      if (!CLIENT_ID) {
-        console.warn('[GIS] CLIENT_ID manquant.');
-        return false;
-      }
-
-      google.accounts.id.initialize({
-        client_id: CLIENT_ID,
-        callback: onCredentialResponse,
-        auto_select: !!OPTS.auto_select,
-        use_fedcm_for_prompt: OPTS.use_fedcm_for_prompt !== false,
-        ux_mode: OPTS.ux_mode || 'popup'
-      });
-
-      // One-tap/FedCM si possible (non bloquant). Le bouton n’est pas requis en popup.
-      try { google.accounts.id.prompt(); } catch (e) { /* no-op */ }
-
-      // Expose helpers globaux
-      window.signIn = function () {
-        // En FedCM, prompt() déclenche l’UI système.
-        try { google.accounts.id.prompt(); } catch (e) {
-          console.warn('[GIS] prompt() a échoué :', e);
-        }
-      };
-
-      window.signOut = function () {
-        try { google.accounts.id.disableAutoSelect(); } catch {}
-        try { sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); } catch {}
-        console.log('[GIS] Déconnecté (token nettoyé).');
-      };
-
-      window.getIdToken = function () {
-        try {
-          return Promise.resolve(
-            sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || null
-          );
-        } catch { return Promise.resolve(null); }
-      };
-
-      return true;
-    }
-
-    // Boot mini-bloc quand le SDK est prêt
-    (function waitForGis() {
-      if (initGIS()) return;
-      const iv = setInterval(() => {
-        if (initGIS()) clearInterval(iv);
-      }, 200);
-      // Hard stop au bout de 10s pour éviter boucles infinies
-      setTimeout(() => clearInterval(iv), 10000);
-    })();
-  })();
-  </script>
+<script>
+  window.EMERGENCE_GOOGLE_CLIENT_ID =
+    "486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com";
+</script>
 
   <style>
     :root{
@@ -200,6 +117,7 @@
     </main>
   </div>
 
+  <!-- Entrée applicative -->
   <script type="module" src="/src/frontend/main.js" defer></script>
 </body>
 </html>

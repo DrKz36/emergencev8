@@ -1,81 +1,77 @@
-/**
- * @file /src/frontend/shared/api-client.js
- * @description Client API centralisé pour les requêtes HTTP (Fetch).
- * @version V3.1 - Priorise AUTH.getToken(); fallback localStorage(AUTH.TOKEN_KEY); FormData safe.
- */
+// src/frontend/shared/api-client.js
+// ÉMERGENCE — API Client (GIS Bearer + retry 401) v3
+import { ensureIdToken, getStoredIdToken, clearIdToken } from '../lib/gis.js';
 
-import { API_ENDPOINTS } from './config.js';
-import { AUTH } from './constants.js';
+const API_BASE = '/api';
 
-/**
- * Appel générique fetch avec:
- * - gestion FormData (ne JAMAIS fixer Content-Type)
- * - ajout auto de Authorization: Bearer <token> si présent
- * - normalisation des erreurs et des réponses JSON
- */
-async function fetchApi(endpoint, options = {}) {
-  const { method = 'GET', body = null, headers = {} } = options;
+function norm(path) {
+  if (!path) return API_BASE + '/';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  if (path.startsWith('/api/')) return path;
+  if (path.startsWith('/')) return '/api' + path;
+  return API_BASE + (path.startsWith('/') ? path : '/' + path);
+}
 
-  // 1) Base config
-  const config = { method, headers: { Accept: 'application/json', ...headers } };
-
-  // 2) Body & Content-Type
-  if (body) {
-    if (body instanceof FormData) {
-      // Laisser le navigateur poser le boundary
-      config.body = body;
-    } else {
-      config.body = JSON.stringify(body);
-      config.headers['Content-Type'] = 'application/json';
-    }
+async function withAuthHeaders(headers = {}) {
+  const h = new Headers(headers);
+  let token = getStoredIdToken();
+  if (!token) {
+    try { token = await ensureIdToken({ promptIfNeeded: true }); }
+    catch (e) { console.warn('[api-client] Pas de token GIS disponible:', e); }
   }
+  if (token) h.set('Authorization', 'Bearer ' + token);
+  return h;
+}
 
-  // 3) Auth header (token -> AUTH.getToken() puis localStorage fallback)
-  try {
-    let token = null;
-    try {
-      if (AUTH && typeof AUTH.getToken === 'function') token = AUTH.getToken();
-    } catch { /* no-op */ }
-    if (!token) {
-      try { token = localStorage.getItem(AUTH?.TOKEN_KEY); } catch { /* no-op */ }
-    }
-    if (token && !config.headers.Authorization) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  } catch { /* ignore */ }
+async function coreFetch(path, options = {}, _retry = false) {
+  const url = norm(path);
+  const headers = await withAuthHeaders(options.headers);
+  const res = await fetch(url, { ...options, headers, credentials: 'include' });
 
-  // 4) Appel réseau
-  let response;
-  try {
-    response = await fetch(endpoint, config); // NOTE: main.js patchera aussi fetch → double sécu
-  } catch (networkErr) {
-    console.error(`[API Client] Échec réseau vers ${endpoint}`, networkErr);
-    throw new Error('Erreur réseau — vérifie la connexion.');
+  // Token expiré → flush + retry 1x
+  if (res.status === 401 && !_retry) {
+    console.warn(`[api-client] 401 sur ${path} → flush token + retry`);
+    clearIdToken();
+    const headers2 = await withAuthHeaders(options.headers);
+    return fetch(url, { ...options, headers: headers2, credentials: 'include' });
   }
+  return res;
+}
 
-  // 5) Gestion d’erreurs HTTP
-  if (!response.ok) {
-    let errorPayload = {};
-    try { errorPayload = await response.json(); } catch { /* no-op */ }
-    const msg = errorPayload.detail || errorPayload.message || `${response.status} ${response.statusText}`;
-    console.error(`[API Client] Erreur sur l'endpoint ${endpoint}:`, msg);
+async function fetchApi(path, opts = {}) {
+  const res = await coreFetch(path, opts);
+  if (!res.ok) {
+    let detail = '';
+    try { detail = await res.text(); } catch {}
+    const msg = detail || res.statusText || 'Erreur API';
+    console.error(`[API Client] Erreur sur l'endpoint ${norm(path)}: ${msg}`);
     throw new Error(msg);
   }
+  const ct = res.headers.get('content-type') || '';
+  if (ct.includes('application/json')) return res.json();
+  return res.text();
+}
 
-  // 6) Normalisation de la réponse
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    try { return await response.json(); } catch { return {}; }
-  }
-  return {};
+/* === Documents =========================================================== */
+
+async function getDocuments() {
+  return fetchApi('/api/documents/', { method: 'GET', headers: { 'Accept': 'application/json' } });
+}
+
+async function uploadDocument(file, fields = {}) {
+  const fd = new FormData();
+  fd.append('file', file);
+  for (const [k, v] of Object.entries(fields)) fd.append(k, v);
+  return fetchApi('/api/documents/upload', { method: 'POST', body: fd });
+}
+
+async function deleteDocument(id) {
+  return fetchApi(`/api/documents/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
 export const api = {
-  getDocuments: () => fetchApi(`${API_ENDPOINTS.DOCUMENTS}/`),
-  uploadDocument: (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    return fetchApi(API_ENDPOINTS.DOCUMENTS_UPLOAD, { method: 'POST', body: formData });
-  },
-  deleteDocument: (docId) => fetchApi(`${API_ENDPOINTS.DOCUMENTS}/${docId}`, { method: 'DELETE' }),
+  fetchApi,
+  getDocuments,
+  uploadDocument,
+  deleteDocument,
 };
