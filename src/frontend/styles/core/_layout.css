@@ -49,9 +49,7 @@
 /* Zone contenu */
 .app-content {
     flex-grow: 1;
-    /* ⬇️ évite la double barre de scroll : le scroll se fait dans le contenu interne (chat/messages) */
-    overflow: hidden;
-    /* essentiel pour que les enfants flex puissent scroller correctement */
+    overflow: hidden; /* le scroll se fait dans l’enfant */
     min-height: 0;
 
     padding-inline: var(--content-inline);
@@ -60,15 +58,19 @@
     flex-direction: column;
 }
 
-/* Conteneurs d’onglets */
+/* Panneaux d’onglets */
 .tab-content {
     display: none;
     flex-grow: 1;
     flex-direction: column;
-    /* ⬇️ permet au conteneur interne (messages) d’utiliser overflow:auto sans créer de double scrollbar */
-    min-height: 0;
+    min-height: 0; /* indispensable pour autoriser le scroll enfant */
 }
-.tab-content.active { display: flex; }
+.tab-content.active {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;   /* ✅ expand */
+    min-height: 0;    /* ✅ scroll ok */
+}
 
 /* --- Tablette / Desktop --- */
 @media (min-width: 768px) {
@@ -109,26 +111,12 @@
     .app-content {
         grid-area: content;
         padding-inline: 24px;
-        /* ⬇️ idem desktop */
         overflow: hidden;
         min-height: 0;
     }
 }
- 
-/* === PATCH SCROLL EXTERNE � 2025-08-16 ===
-   Objectif : barre de scroll au bord droit de la page, pas dans la carte du chat. */
 
-html {
-  overflow-y: auto;
-  scrollbar-gutter: stable both-edges;
-}
-
-.app-content {
-  overflow: visible !important;
-  min-height: 0 !important;
-}
-
-.tab-content {
-  min-height: 0;
-}
-
+/* Scroll externe stable si nécessaire */
+html { overflow-y: auto; scrollbar-gutter: stable both-edges; }
+.app-content { overflow: visible !important; min-height: 0 !important; }
+.tab-content { min-height: 0; }

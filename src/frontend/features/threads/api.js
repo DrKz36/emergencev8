@@ -1,97 +1,189 @@
-// ÉMERGENCE — Threads API client (fetch only, Authorization déjà patché globalement par ton front)
-const API = '/api';
+/**
+ * @module features/threads/api
+ * Client REST Threads — V1.8 (aligné threads-list)
+ * - Exports Nommés attendus par threads-list:
+ *   listThreads, createThread, patchThread, exportThread, postMessage, listMessages
+ * - Auth: Bearer ID token (GIS) si dispo; sinon fallback dev via X-User-Id quand VITE_AUTH_DEV_MODE === '1'
+ * - Aucune dépendance externe; respecte l’arbo.
+ */
 
-async function parseError(res) {
-  let detail = '';
-  try { detail = await res.text(); } catch {}
-  const err = new Error(`HTTP ${res.status} ${res.statusText}` + (detail ? ` – ${detail}` : ''));
-  err.status = res.status;
-  err.body = detail;
-  return err;
+import { AUTH } from '../../shared/constants.js'; // présent dans l’arbo
+
+// ---- Base & helpers ---------------------------------------------------------------------------
+
+const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE)
+  ? String(import.meta.env.VITE_API_BASE).replace(/\/+$/, '')
+  : ''; // même origine → '' (les chemins commencent par /api)
+
+const DEV_MODE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_AUTH_DEV_MODE === '1');
+
+function getIdToken() {
+  try {
+    if (AUTH && typeof AUTH.getToken === 'function') {
+      const t = AUTH.getToken();
+      if (t) return t;
+    }
+  } catch { /* ignore */ }
+  try {
+    if (typeof window !== 'undefined') {
+      return window.__EMERGENCE_ID_TOKEN || localStorage.getItem('emergence.idToken') || null;
+    }
+  } catch { /* ignore */ }
+  return null;
 }
 
-export async function listThreads({ archived = false, limit = 50, cursor = '' } = {}) {
-  const url = new URL(`${API}/threads`, window.location.origin);
-  url.searchParams.set('archived', archived ? 'true' : 'false');
-  if (limit) url.searchParams.set('limit', String(limit));
-  if (cursor) url.searchParams.set('cursor', cursor);
-  const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
-  if (!res.ok) throw await parseError(res);
-  return res.json();
+function buildHeaders(isJson = true) {
+  const h = new Headers();
+  if (isJson) h.set('Content-Type', 'application/json');
+
+  const token = getIdToken();
+  if (token) h.set('Authorization', `Bearer ${token}`);
+  else if (DEV_MODE) h.set('X-User-Id', 'dev_alice');
+
+  return h;
 }
 
-export async function createThread({ title = '', doc_ids = [] } = {}) {
-  const res = await fetch(`${API}/threads`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({ title, doc_ids })
-  });
-  if (!res.ok) throw await parseError(res);
-  return res.json(); // { id, ... }
+async function req(path, { method = 'GET', body, headers, expect = 'json' } = {}) {
+  const url = `${API_BASE}/api${path}`;
+  const opts = {
+    method,
+    headers: headers instanceof Headers ? headers : buildHeaders(body != null),
+    credentials: 'include',
+    body: body == null ? undefined : (typeof body === 'string' ? body : JSON.stringify(body)),
+  };
+
+  const res = await fetch(url, opts);
+  const ctype = res.headers.get('content-type') || '';
+  const isJSON = ctype.includes('application/json');
+
+  if (!res.ok) {
+    let msg = `${res.status} ${res.statusText}`;
+    try {
+      if (isJSON) {
+        const err = await res.json();
+        if (err && (err.detail || err.message)) msg = `${msg} — ${err.detail || err.message}`;
+      } else {
+        const txt = await res.text();
+        if (txt) msg = `${msg} — ${txt.slice(0, 400)}`;
+      }
+    } catch { /* ignore */ }
+    const e = new Error(msg);
+    e.status = res.status;
+    throw e;
+  }
+
+  if (expect === 'text') return res.text();
+  if (expect === 'blob') return res.blob();
+  if (expect === 'json' || isJSON) return res.json();
+  return res.text();
 }
 
+function qs(params = {}) {
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== '') sp.append(k, String(v));
+  }
+  const s = sp.toString();
+  return s ? `?${s}` : '';
+}
+
+function download(filename, mime, data) {
+  try {
+    const blob = data instanceof Blob ? data : new Blob([data], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+  } catch (e) { console.error('download failed', e); }
+}
+
+// ---- Exports Nommés (API attendue par threads-list) -------------------------------------------
+
+/** Liste des threads (option: archived=true/false, limit, before) */
+export async function listThreads(opts = {}) {
+  const { archived = false, limit, before } = opts;
+  return req(`/threads${qs({ archived: archived ? 'true' : undefined, limit, before })}`, { method: 'GET' });
+}
+
+/** Création de thread: payload ex { title?: string, doc_ids?: string[] } */
+export async function createThread(payload = {}) {
+  return req(`/threads`, { method: 'POST', body: payload });
+}
+
+/** Patch (rename, archive…) : patchThread(id, { title } | { archived }) */
 export async function patchThread(threadId, patch) {
-  const res = await fetch(`${API}/threads/${encodeURIComponent(threadId)}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify(patch || {})
-  });
-  if (!res.ok) throw await parseError(res);
-  return res.json();
+  if (!threadId) throw new Error('patchThread: threadId manquant');
+  return req(`/threads/${encodeURIComponent(threadId)}`, { method: 'PATCH', body: patch });
 }
 
+/** Export (md|json) avec téléchargement client */
 export async function exportThread(threadId, format = 'md') {
-  const res = await fetch(`${API}/threads/${encodeURIComponent(threadId)}/export?format=${encodeURIComponent(format)}`, {
-    method: 'POST'
-  });
-  if (!res.ok) throw await parseError(res);
-  // Tente blob avec fallback texte
-  const contentType = res.headers.get('content-type') || '';
-  const isText = contentType.includes('text/');
-  const filename = `thread_${threadId}.${format === 'json' ? 'json' : 'md'}`;
-  if (isText) {
-    const text = await res.text();
-    downloadBlob(new Blob([text], { type: contentType || 'text/plain' }), filename);
-    return { ok: true };
+  if (!threadId) throw new Error('exportThread: threadId manquant');
+  const f = String(format || 'md').toLowerCase();
+  // Essai endpoint dédié
+  try {
+    if (f === 'md' || f === 'markdown') {
+      const text = await req(`/threads/${encodeURIComponent(threadId)}/export?format=markdown`, { method: 'GET', expect: 'text' });
+      download(`thread-${threadId}.md`, 'text/markdown;charset=utf-8', text);
+      return { ok: true, format: 'md' };
+    } else {
+      const json = await req(`/threads/${encodeURIComponent(threadId)}/export?format=json`, { method: 'GET', expect: 'json' });
+      const text = JSON.stringify(json, null, 2);
+      download(`thread-${threadId}.json`, 'application/json;charset=utf-8', text);
+      return { ok: true, format: 'json' };
+    }
+  } catch {
+    // Fallback: GET thread puis export local
+    const data = await req(`/threads/${encodeURIComponent(threadId)}`, { method: 'GET' });
+    if (f === 'md') {
+      const title = data?.title || `thread-${threadId}`;
+      const lines = [`# ${title}`, ''];
+      if (Array.isArray(data?.messages)) {
+        for (const m of data.messages) {
+          const who = (m.role || 'user').toUpperCase();
+          const ts = m.timestamp || m.created_at || '';
+          lines.push(`**${who}** ${ts ? `*(${ts})*` : ''}`);
+          lines.push(m.content || '');
+          lines.push('');
+        }
+      }
+      download(`thread-${threadId}.md`, 'text/markdown;charset=utf-8', lines.join('\n'));
+      return { ok: true, format: 'md', fallback: true };
+    } else {
+      const text = JSON.stringify(data || {}, null, 2);
+      download(`thread-${threadId}.json`, 'application/json;charset=utf-8', text);
+      return { ok: true, format: 'json', fallback: true };
+    }
   }
-  const blob = await res.blob();
-  downloadBlob(blob, filename);
-  return { ok: true };
 }
 
-export async function postMessage(threadId, { role = 'user', content = '' } = {}) {
-  const res = await fetch(`${API}/threads/${encodeURIComponent(threadId)}/messages`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({ role, content })
-  });
-  if (!res.ok) throw await parseError(res);
-  return res.json(); // { id, role, content, created_at, ... }
+/** Liste des messages d’un thread (opts: limit, before) */
+export async function listMessages(threadId, opts = {}) {
+  if (!threadId) throw new Error('listMessages: threadId manquant');
+  const { limit, before } = opts;
+  return req(`/threads/${encodeURIComponent(threadId)}/messages${qs({ limit, before })}`, { method: 'GET' });
 }
 
-/* listMessages : robustesse -> tente /messages ; fallback GET thread complet */
-export async function listMessages(threadId, { limit = 200, cursor = '' } = {}) {
-  // Option 1: /threads/{id}/messages
-  let url = `${API}/threads/${encodeURIComponent(threadId)}/messages`;
-  const u = new URL(url, window.location.origin);
-  if (limit) u.searchParams.set('limit', String(limit));
-  if (cursor) u.searchParams.set('cursor', cursor);
-  let res = await fetch(u.toString(), { headers: { 'Accept': 'application/json' } });
-  if (res.status === 404) {
-    // Option 2: GET /threads/{id}
-    res = await fetch(`${API}/threads/${encodeURIComponent(threadId)}`, { headers: { 'Accept': 'application/json' } });
-    if (!res.ok) throw await parseError(res);
-    const data = await res.json();
-    return Array.isArray(data?.messages) ? data.messages : [];
-  }
-  if (!res.ok) throw await parseError(res);
-  return res.json();
+/** Ajout d’un message { role, content, agent?, rag_sources?, ts? } */
+export async function postMessage(threadId, message) {
+  if (!threadId) throw new Error('postMessage: threadId manquant');
+  if (!message || typeof message !== 'object') throw new Error('postMessage: payload invalide');
+  return req(`/threads/${encodeURIComponent(threadId)}/messages`, { method: 'POST', body: message });
 }
 
-function downloadBlob(blob, filename) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-}
+// ---- Export par défaut (facultatif) ------------------------------------------------------------
+
+const ThreadsAPI = {
+  listThreads,
+  createThread,
+  patchThread,
+  exportThread,
+  listMessages,
+  postMessage,
+};
+
+export default ThreadsAPI;

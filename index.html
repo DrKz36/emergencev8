@@ -5,29 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Émergence V8</title>
 
-  <!-- Favicon : évite le 404 -->
   <link rel="icon" type="image/png" href="assets/emergence_logo.png" />
-
-  <!-- Preload du module principal -->
   <link rel="modulepreload" href="/src/frontend/main.js" />
 
-  <!-- Google Identity Services (SDK seulement) -->
-  <meta name="google-signin-client_id"
-        content="486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com" />
+  <!-- Google Identity Services -->
+  <meta name="google-signin-client_id" content="486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com" />
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-  <!-- Configuration front accessible à /src/frontend/lib/gis.js -->
+  <!-- Config front -->
   <script>
     window.__CONFIG = {
       GOOGLE_CLIENT_ID: "486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com",
-      // En local, FedCM peut échouer selon Chrome/politiques. Le loader utilisera "popup".
+      // En local: on laisse "popup". Quand l'origin sera autorisée, FedCM marchera.
       GIS_OPTS: { use_fedcm_for_prompt: false, ux_mode: "popup", auto_select: false }
     };
+    window.EMERGENCE_GOOGLE_CLIENT_ID = window.__CONFIG.GOOGLE_CLIENT_ID;
   </script>
-<script>
-  window.EMERGENCE_GOOGLE_CLIENT_ID =
-    "486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com";
-</script>
 
   <style>
     :root{
@@ -38,10 +31,7 @@
       --font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
     }
     html,body{min-height:100%}
-    body{
-      margin:0;background:var(--bg);color:var(--text);font-family:var(--font-sans);
-      -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
-    }
+    body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-sans);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
     body.loading{overflow:hidden}
     #app-loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background-color:var(--bg-2);z-index:9999;opacity:1;transition:opacity .5s ease-out;}
     #app-loader.fade-out{opacity:0}
@@ -117,7 +107,71 @@
     </main>
   </div>
 
-  <!-- Entrée applicative -->
-  <script type="module" src="/src/frontend/main.js" defer></script>
+  <!-- GIS bootloader + fetch/WS token injection — NON BLOQUANT -->
+  <script>
+  (function(){
+    const CLIENT_ID = (window.__CONFIG && window.__CONFIG.GOOGLE_CLIENT_ID) || window.EMERGENCE_GOOGLE_CLIENT_ID;
+    const GIS_OPTS = (window.__CONFIG && window.__CONFIG.GIS_OPTS) || { use_fedcm_for_prompt: false, ux_mode: "popup", auto_select: false };
+    const STORAGE_KEY = "EMERGENCE_ID_TOKEN";
+    let idToken = sessionStorage.getItem(STORAGE_KEY) || null;
+    const waiters = [];
+    function resolveAll(t){
+      if (!t) return;
+      idToken = t;
+      try { sessionStorage.setItem(STORAGE_KEY, t); } catch {}
+      while (waiters.length) { try { (waiters.shift())(t); } catch(e){} }
+    }
+    window.__getIdToken = () => idToken;
+    window.__onIdToken = (cb) => { if (idToken) cb(idToken); else waiters.push(cb); };
+
+    function initGIS(){
+      if (!(window.google && google.accounts && google.accounts.id)) {
+        return void setTimeout(initGIS, 50);
+      }
+      try {
+        google.accounts.id.initialize({
+          client_id: CLIENT_ID,
+          callback: (resp) => { if (resp && resp.credential) resolveAll(resp.credential); },
+          ...GIS_OPTS
+        });
+        try { google.accounts.id.prompt(); } catch {}
+      } catch(e){ console.warn("GIS init error", e); }
+    }
+    initGIS();
+
+    // fetch: si token dispo on le met, SINON on n'attend pas (fallback dev en local)
+    const __origFetch = window.fetch.bind(window);
+    window.fetch = async function(input, init){
+      init = init || {};
+      const headers = new Headers(init.headers || {});
+      try {
+        const t = idToken || sessionStorage.getItem(STORAGE_KEY);
+        if (t) headers.set("Authorization", "Bearer " + t);
+        else if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+          headers.set("X-User-Id", "dev_alice");
+        }
+      } catch {}
+      init.headers = headers;
+      return __origFetch(input, init);
+    };
+
+    // WS: ajoute ?token= si dispo, sinon rien (pas de blocage)
+    const __OrigWS = window.WebSocket;
+    window.WebSocket = function(url, protocols){
+      try {
+        const t = idToken || sessionStorage.getItem(STORAGE_KEY);
+        if (typeof url === "string") {
+          const u = new URL(url, window.location.href);
+          if (t && !u.searchParams.get("token")) u.searchParams.set("token", t);
+          url = u.toString();
+        }
+      } catch {}
+      return new __OrigWS(url, protocols);
+    };
+    window.WebSocket.prototype = __OrigWS.prototype;
+  })();
+  </script>
+
+  <script type="module" src="/src/frontend/main.js"></script>
 </body>
 </html>

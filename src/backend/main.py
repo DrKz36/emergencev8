@@ -1,6 +1,6 @@
 # encoding: utf-8
 # src/backend/main.py
-# V7.2 — Health robuste (/api/health + /health) + migrations best‑effort même en FAST_BOOT.
+# V7.2 — Health robuste (/api/health + /health) + init DB via schema.initialize_database
 
 from __future__ import annotations
 
@@ -15,27 +15,26 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
-from backend.core.database.schema import initialize_database
+# ⬇️ La bonne API de migrations/DDL est dans schema.py
+from backend.core.database.schema import initialize_database  # <-- clé du fix
 from backend.containers import ServiceContainer
 
 logger = logging.getLogger("emergence")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"),
+                    format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 
 
-# --- Mini timer de boot -------------------------------------------------------
 class _BootTimer:
     def __init__(self, label: str = "BOOT"):
         self.label = label
         self._t0 = time.perf_counter()
         self._marks = []
-
     def mark(self, name: str) -> None:
         t = time.perf_counter()
         dt = (t - (self._marks[-1][1] if self._marks else self._t0)) * 1000
         cum = (t - self._t0) * 1000
         logger.info(f"[{self.label}] {name}: +{dt:.1f} ms (cum {cum:.1f} ms)")
         self._marks.append((name, t))
-
     def dump_to_file(self, path: Optional[str]) -> None:
         if not path:
             return
@@ -47,15 +46,12 @@ class _BootTimer:
             pass
 
 
-# --- Helpers -----------------------------------------------------------------
 def _import_router(module_path: str):
     try:
-        module = importlib.import_module(module_path)
-        return module
+        return importlib.import_module(module_path)
     except Exception as e:
         logger.warning(f"Impossible d'importer {module_path}: {e}")
         return None
-
 
 DOCUMENTS_ROUTER = _import_router("backend.features.documents.router")
 DASHBOARD_ROUTER = _import_router("backend.features.dashboard.router")
@@ -63,39 +59,25 @@ DEBATE_ROUTER    = _import_router("backend.features.debate.router")
 CHAT_ROUTER      = _import_router("backend.features.chat.router")
 MEMORY_ROUTER    = _import_router("backend.features.memory.router")
 DEV_AUTH_ROUTER  = _import_router("backend.features.dev_auth.router")
-THREADS_ROUTER   = _import_router("backend.features.threads.router")  # <-- NOUVEAU
-
+THREADS_ROUTER   = _import_router("backend.features.threads.router")
 
 def _migrations_dir() -> str:
-    # Aligné sur l'arbo: src/backend/core/migrations
     return str(Path(__file__).resolve().parent / "core" / "migrations")
 
-
-# --- Startup / Shutdown -------------------------------------------------------
 async def _startup(container: ServiceContainer):
     t = _BootTimer()
     logger.info("Démarrage backend Émergence…")
 
-    # 1) DB ready — FAST_BOOT: on connecte vite, puis on TENTE quand même la migration (best‑effort)
-    fast_boot = os.getenv("EMERGENCE_FAST_BOOT") or os.getenv("EMERGENCE_SKIP_MIGRATIONS")
+    # 1) DB init via schema.initialize_database (crée tables + micro-upgrades + .sql)
     try:
         db_manager = container.db_manager()
-        if fast_boot:
-            await db_manager.connect()
-            logger.info("DB connectée (FAST_BOOT=on). Tentative de migrations best‑effort…")
-            try:
-                await initialize_database(db_manager, _migrations_dir())
-                logger.info("DB initialisée (migrations exécutées malgré FAST_BOOT).")
-            except Exception as me:
-                logger.warning(f"Migrations reportées (best‑effort a échoué) : {me}")
-        else:
-            await initialize_database(db_manager, _migrations_dir())
-            logger.info("DB initialisée (migrations exécutées).")
+        await initialize_database(db_manager, _migrations_dir())  # <-- fix
+        logger.info("DB initialisée (tables + migrations).")
     except Exception as e:
         logger.warning(f"Initialisation DB partielle/repoussée: {e}")
     t.mark("db_ready")
 
-    # 2) Wire DI (chat / debate / memory)
+    # 2) Wire DI (chat / debate / memory) – optionnel
     try:
         import backend.features.chat.router as chat_router_module      # type: ignore
         import backend.features.debate.router as debate_router_module  # type: ignore
@@ -114,15 +96,12 @@ async def _startup(container: ServiceContainer):
     except Exception as e:
         logger.warning(f"Injection tardive MemoryAnalyzer/ChatService: {e}")
 
-    # 4) Dump facultatif des métriques de boot
     t.dump_to_file(os.getenv("EMERGENCE_BOOT_LOG"))
     t.mark("startup_done")
 
-
 async def _shutdown(container: ServiceContainer):
     try:
-        db_manager = container.db_manager()
-        await db_manager.disconnect()
+        await container.db_manager().disconnect()
     except Exception as e:
         logger.warning(f"Arrêt DB: {e}")
     try:
@@ -130,7 +109,6 @@ async def _shutdown(container: ServiceContainer):
     except Exception as e:
         logger.warning(f"Unwire DI: {e}")
     logger.info("Arrêt backend Émergence terminé.")
-
 
 def create_app() -> FastAPI:
     t = _BootTimer("BOOT-APP")
@@ -140,6 +118,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Émergence API", version="7.2")
     app.state.service_container = container
 
+    # CORS simple (même origin en dev → OK)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -150,44 +129,38 @@ def create_app() -> FastAPI:
     t.mark("middleware_ready")
 
     @app.on_event("startup")
-    async def _on_startup():
-        await _startup(container)
-
+    async def _on_startup(): await _startup(container)
     @app.on_event("shutdown")
-    async def _on_shutdown():
-        await _shutdown(container)
+    async def _on_shutdown(): await _shutdown(container)
 
-    # --- PUBLIC: Healthcheck (exempt de toute auth applicative) ---------------
-    # Deux chemins pour absorber les variations proxy/root_path.
-    @app.get("/api/health", tags=["Public"], include_in_schema=False)
-    async def health_api():
-        return {"status": "ok", "message": "Emergence Backend is running."}
+    # Health publics
+    @app.get("/api/health", include_in_schema=False)
+    async def health_api():  return {"status":"ok","message":"Emergence Backend is running."}
+    @app.get("/health", include_in_schema=False)
+    async def health_root(): return {"status":"ok","message":"Emergence Backend is running."}
 
-    @app.get("/health", tags=["Public"], include_in_schema=False)
-    async def health_root():
-        return {"status": "ok", "message": "Emergence Backend is running."}
+    # Routers REST
+    def _mount(mod, prefix: str, name: str):
+        if mod and getattr(mod, "router", None):
+            app.include_router(mod.router, prefix=prefix)
+            logger.info(f"Router '{name}' monté sur {prefix}")
+    _mount(DOCUMENTS_ROUTER, "/api/documents", "documents")
+    _mount(DEBATE_ROUTER,    "/api/debate",    "debate")
+    _mount(DASHBOARD_ROUTER, "/api/dashboard", "dashboard")
+    _mount(MEMORY_ROUTER,    "/api/memory",    "memory")
+    _mount(THREADS_ROUTER,   "/api/threads",   "threads")
 
-    # --- Montage des routers REST --------------------------------------------
-    def _mount_router(router_module: Any, prefix: str, name: str) -> None:
-        if router_module and getattr(router_module, "router", None):
-            app.include_router(router_module.router, prefix=prefix)
-            logger.info(f"Router monté: {name} @ {prefix}")
-
-    _mount_router(DOCUMENTS_ROUTER, "/api/documents", "documents")
-    _mount_router(DEBATE_ROUTER,    "/api/debate",    "debate")
-    _mount_router(DASHBOARD_ROUTER, "/api/dashboard", "dashboard")
-    _mount_router(MEMORY_ROUTER,    "/api/memory",    "memory")
-    _mount_router(THREADS_ROUTER,   "/api/threads",   "threads")  # <-- NOUVEAU
-
-    # Router WebSocket « chat »
+    # WebSocket « chat »
     if CHAT_ROUTER and getattr(CHAT_ROUTER, "router", None):
         app.include_router(CHAT_ROUTER.router)
         logger.info("Router WebSocket 'chat' monté.")
 
-    # --- DEV: page de test GIS (ID token) ------------------------------------
-    _mount_router(DEV_AUTH_ROUTER, "", "dev_auth")
+    # Page /dev-auth.html (debug GIS)
+    if DEV_AUTH_ROUTER and getattr(DEV_AUTH_ROUTER, "router", None):
+        app.include_router(DEV_AUTH_ROUTER.router, include_in_schema=False)
+        logger.info("Router 'dev_auth' monté sur")
 
-    # --- Fichiers statiques ---------------------------------------------------
+    # Statiques (racine du repo)
     static_dir = Path(__file__).resolve().parents[2]
     if static_dir.exists():
         app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")

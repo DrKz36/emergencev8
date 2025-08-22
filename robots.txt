@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /api/
+Allow: /
+
+# Optionnel si tu as un sitemap
+# Sitemap: https://emergence-app.ch/sitemap.xml
