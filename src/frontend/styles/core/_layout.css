@@ -14,7 +14,7 @@
     height: 100vh;
     width: 100vw;
 
-    /* FIX: utiliser les vraies variables définies dans _variables.css */
+    /* Variables de _variables.css */
     background-color: var(--color-bg);
     background-image: var(--color-bg-gradient);
     background-attachment: fixed;
@@ -24,7 +24,7 @@
     overflow: hidden;
 }
 
-/* Header en verre, sans fond parasite */
+/* Header */
 .app-header {
     flex-shrink: 0;
     height: var(--header-height);
@@ -36,11 +36,7 @@
     z-index: 10;
     background-color: transparent !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-
-    /* Stabilise le rendu GPU (évite les scintillements avec blur) */
-    will-change: transform;
-    backface-visibility: hidden;
-    transform: translateZ(0);
+    will-change: transform; backface-visibility: hidden; transform: translateZ(0);
 }
 
 .header-logo-title { display: flex; align-items: center; gap: 12px; }
@@ -48,9 +44,9 @@
 .header-title { font-size: 16px; font-weight: 600; }
 
 .app-sidebar { display: none; }
-
 .header-nav { display: flex; }
 
+/* Contenu */
 .app-content {
     flex-grow: 1;
     overflow-y: auto;
@@ -66,7 +62,7 @@
 }
 .tab-content.active { display: flex; }
 
-/* --- Tablette / Desktop --- */
+/* --- ≥768px --- */
 @media (min-width: 768px) {
     .app-container {
         display: grid;
@@ -77,12 +73,7 @@
 
     .app-header { display: none; }
 
-    .header-logo {
-        display: flex;
-        font-size: 18px;
-        width: 32px;
-        height: 32px;
-    }
+    .header-logo { display: flex; font-size: 18px; width: 32px; height: 32px; }
 
     .app-sidebar {
         grid-area: sidebar;
@@ -94,7 +85,7 @@
         border-right: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    /* SUPPRIMÉ: doublon de branding (on garde le brand-block HTML dans index.html) */
+    /* ⛔ supprimé : pseudo-élément qui perturbait le flux/z-index */
     /* .app-sidebar::before { ... } */
 
     .app-content { grid-area: content; padding: 24px; }

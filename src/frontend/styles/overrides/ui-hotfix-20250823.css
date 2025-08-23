@@ -1,0 +1,131 @@
+/* ==== UI HOTFIX 2025-08-23 (chat, débats, documents) ==== */
+/* Objectifs :
+   - CHAT : réduire la zone de saisie (~40%), scroll intégré propre, police homogène
+   - DÉBATS : pas de scroll de page, module “remonté”, aucun débordement à droite
+   - DOCUMENTS : texte du bouton Uploader toujours blanc (même désactivé)
+*/
+
+:root{
+  --page-gap: 24px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+
+/* ---------- GÉNÉRAL ---------- */
+#app-sidebar { position: relative; z-index: 11; }
+#app-content { position: relative; z-index: 1; }
+.app-content { padding: var(--page-gap); }
+
+/* supprime tout watermark/pseudo parasite qui capterait les clics */
+body::before, body::after,
+#app-content::before, #app-content::after { content: none !important; display: none !important; }
+
+/* ---------- CHAT ---------- */
+/* Carte chat = plein viewport sans couper le bas */
+.chat-container.card{
+  height: calc(100vh - var(--page-gap) * 2);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Corps des messages : scroll vertical visible, jamais sous le footer */
+.chat-container .card-body{
+  flex: 1 1 auto;
+  min-height: 0;                 /* clé pour scroll dans flex */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+/* Footer collé bas, 40% plus compact */
+.chat-container .card-footer{
+  flex: 0 0 auto;
+  position: sticky;
+  bottom: 0;
+  background: var(--color-background-tertiary);
+  border-top: 1px solid var(--color-border);
+  /* ~40% de compaction vs padding par défaut */
+  padding: 6px 10px calc(6px + var(--safe-b)) 10px;
+}
+
+/* Zone de saisie compacte + police homogène */
+.chat-form{ display:grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+.chat-input{
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.35;
+  resize: none;
+  min-height: 46px;              /* base compacte */
+  max-height: 40vh;
+  padding: 8px 10px;
+}
+
+/* Scrollbar intégrée discrète (Chromium/WebKit) */
+.chat-container .card-body::-webkit-scrollbar{ width: 10px; }
+.chat-container .card-body::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,.1); border-radius: 8px;
+}
+
+/* ---------- DÉBATS ---------- */
+/* Wrapper sans scroll de page et sans débordement horizontal */
+.debate-view-wrapper{
+  padding-top: 12px;                                 /* remonté */
+  padding-bottom: max(12px, var(--safe-b));          /* bas réduit */
+  overflow-x: clip;                                   /* kill scroll droite */
+}
+
+/* Carte dimensionnée à la fenêtre */
+.debate-view-wrapper .card{
+  height: calc(100vh - var(--page-gap) * 2 - 2px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Corps scrollable interne, pas la page */
+.debate-view-wrapper .card-body{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Encadrer les groupes (Attaquant/Challenger/Tours/Médiateur) */
+.debate-view-wrapper .form-group{
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  margin-bottom: 12px;
+}
+.debate-view-wrapper .form-group label{
+  display:block; font-weight: 600; margin-bottom: 8px; color: var(--color-text-primary);
+}
+.debate-view-wrapper .form-group .tabs-container{
+  display:flex; flex-wrap:wrap; gap:8px;
+}
+.debate-view-wrapper .form-group .button-tab{ min-width: 64px; }
+
+/* Textarea sujet (mêmes codes visuels que le Chat) */
+#debate-topic.input-text{
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  background: var(--color-background-tertiary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
+/* ---------- DOCUMENTS ---------- */
+/* Bouton Uploader lisible (blanc), même désactivé */
+.documents-view-wrapper #upload-button{
+  color: #fff !important;
+}
+.documents-view-wrapper #upload-button[disabled]{
+  color: #fff !important;
+  opacity: .88;                 /* léger feedback désactivé */
+  cursor: not-allowed;
+}
+
+/* Scrollbar intégrée (cohérence visuelle modules) */
+.debate-view-wrapper .card-body::-webkit-scrollbar{ width: 10px; }
+.debate-view-wrapper .card-body::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,.1); border-radius: 8px;
+}

@@ -68,3 +68,7 @@ desktop.ini
 
 # Scripts locaux non requis en prod
 run-local.ps1
+# === Whitelist FRONT (ARBO-LOCK) ===
+!index.html
+!assets/**
+!src/frontend/**
