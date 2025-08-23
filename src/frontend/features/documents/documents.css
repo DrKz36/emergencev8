@@ -1,10 +1,10 @@
 ﻿/**
  * ===================================================================
- * DOCUMENTS CSS - V6.2 (aligné Chat/Débat + lisibilité + batch actions)
+ * DOCUMENTS CSS - V6.3 (pleine largeur colonne + boutons style Chat)
  * ===================================================================
- * - Wrapper + Card verre
+ * - Wrapper + Card verre (pleine largeur colonne centrale)
  * - Drop-zone lisible (icône stroke), hover propre
- * - Boutons métal : états désactivés lisibles
+ * - Boutons utilitaires alignés sur #chat-export / #chat-clear
  * - Liste : cases à cocher, toolbar (sélection/suppression)
  */
 
@@ -23,7 +23,8 @@
 /* --- Carte --- */
 .documents-view-wrapper .card {
     width: 100%;
-    max-width: 1000px;
+    /* Pleine largeur de la colonne centrale : suppression du max-width fixe */
+    max-width: none;
     min-height: auto;
     display: flex;
     flex-direction: column;
@@ -142,14 +143,20 @@
 }
 .select-all input { accent-color: var(--color-primary); }
 .toolbar-actions { display: flex; gap: var(--space-2); }
-.button-metal.button-danger { /* version "danger" locale */
-    box-shadow: 0 0 0 1px rgba(239, 68, 68, .35) inset, 0 2px 6px rgba(0,0,0,.35);
+
+/* === Alignement visuel des boutons sur le Chat (#chat-export / #chat-clear) === */
+#btn-delete-selected,
+#btn-delete-all{
+  display:inline-flex; align-items:center; justify-content:center;
+  height:32px; padding:0 .75rem;
+  border-radius:12px; color:#fff; background:transparent;
+  border:1px solid rgba(255,255,255,.18);
+  transition: background .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
 }
-.button-metal.button-danger-outline {
-    background: transparent !important;
-    border: 1px solid rgba(239, 68, 68, .5);
-    color: var(--color-text-primary);
-}
+#btn-delete-selected:hover,
+#btn-delete-all:hover{ background:rgba(255,255,255,.06); }
+#btn-delete-selected:disabled{ opacity:.5; cursor:not-allowed; }
+#btn-delete-all:active{ background:#b91c1c; border-color:#b91c1c; }
 
 /* --- Section Liste --- */
 .list-section { border-top: 1px solid var(--glass-border-color); padding-top: var(--space-6); }
@@ -193,6 +200,6 @@
 .status-processing { background-color: var(--color-warning); }
 .status-error { background-color: var(--color-error); }
 
-/* Bouton supprimer — métal unifié, bien visible */
+/* Bouton supprimer unitaire — métal unifié, bien visible */
 .btn-delete.button-metal { line-height: 1; padding: .35rem .6rem; }
 .btn-delete:hover { filter: brightness(1.05); }

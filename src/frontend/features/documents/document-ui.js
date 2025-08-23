@@ -53,8 +53,9 @@ export class DocumentsUI {
                                     <span>Tout sélectionner</span>
                                 </label>
                                 <div class="toolbar-actions">
-                                    <button id="btn-delete-selected" class="button button-metal button-danger" disabled>Supprimer la sélection</button>
-                                    <button id="btn-delete-all" class="button button-metal button-danger-outline">Tout effacer</button>
+                                    <!-- Alignés visuellement sur #chat-export / #chat-clear -->
+                                    <button id="btn-delete-selected" class="button" disabled>Supprimer la sélection</button>
+                                    <button id="btn-delete-all" class="button">Tout effacer</button>
                                 </div>
                             </div>
 
