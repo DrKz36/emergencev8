@@ -94,13 +94,8 @@
         border-right: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    .app-sidebar::before {
-        content: 'ÉMERGENCE';
-        font-size: 20px;
-        font-weight: 700;
-        padding: 8px 8px 24px 8px;
-        display: block;
-    }
+    /* SUPPRIMÉ: doublon de branding (on garde le brand-block HTML dans index.html) */
+    /* .app-sidebar::before { ... } */
 
     .app-content { grid-area: content; padding: 24px; }
 }
