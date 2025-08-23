@@ -175,7 +175,7 @@ def create_app() -> FastAPI:
     _mount_router(DASHBOARD_ROUTER, "/api/dashboard")
     t.mark("routers_mounted")
 
-    # WebSocket Chat — lazy container access (aucune instanciation au boot)
+    # WebSocket Chat — lazy container access
     if CHAT_ROUTER is not None:
         try:
             app.include_router(CHAT_ROUTER)
@@ -187,9 +187,14 @@ def create_app() -> FastAPI:
         _mount_local_ws(app, container)
     t.mark("ws_ready")
 
+    # --- Static: servir l'app web ---
     try:
-        app.mount("/", StaticFiles(directory=str(REPO_ROOT), html=True), name="static")
-        logger.info(f"Fichiers statiques montés depuis: {REPO_ROOT}")
+        # 1) /src → répertoire 'src' (pour /src/frontend/... dans index.html)
+        app.mount("/src", StaticFiles(directory=str(REPO_ROOT / "src")), name="src-static")
+
+        # 2) / → repo root, index.html livré (html=True)
+        app.mount("/", StaticFiles(directory=str(REPO_ROOT), html=True), name="root")
+        logger.info(f"Fichiers statiques montés depuis: {REPO_ROOT} (+ /src)")
     except Exception as e:
         logger.error(f"Impossible de monter les fichiers statiques: {e}")
     t.mark("static_mounted")
@@ -205,21 +210,20 @@ def _mount_local_ws(app: FastAPI, container: ServiceContainer) -> None:
 
     @app.websocket("/ws/{session_id}")
     async def websocket_endpoint(websocket: WebSocket, session_id: str, user_id: str = Depends(_get_user_id)):
-        # Lazy: on n’instancie le connection_manager qu’ici
         manager = container.connection_manager()
         await manager.connect(websocket, session_id=session_id, user_id=user_id)
         try:
             while True:
                 data = await websocket.receive_text()
                 try:
-                    chat_service = container.chat_service()  # aussi lazy
+                    chat_service = container.chat_service()
                     if hasattr(chat_service, "handle_ws_message"):
                         await chat_service.handle_ws_message(session_id, user_id, data, websocket)
                     elif hasattr(chat_service, "process_message"):
                         result = await chat_service.process_message(session_id=session_id, user_id=user_id, message=data)
                         await websocket.send_text(result if isinstance(result, str) else str(result))
                     else:
-                        await websocket.send_text(data)  # écho basique
+                        await websocket.send_text(data)  # écho
                 except Exception:
                     await websocket.send_text(data)
         except WebSocketDisconnect:
