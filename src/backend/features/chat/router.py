@@ -1,5 +1,5 @@
 # src/backend/features/chat/router.py
-# V22.0 - DEBATE WS HANDLER: prise en charge de `debate:create` + validations de base.
+# V22.1 - DEBATE WS HANDLER: normalisation des clés payload (camelCase/snake_case)
 import logging
 import asyncio
 from uuid import uuid4
@@ -20,6 +20,17 @@ router = APIRouter()
 
 # Suivi des tâches WS non bloquantes
 background_tasks = set()
+
+def _norm_bool(payload, snake_key, camel_key, default=False):
+    if snake_key in payload: return bool(payload.get(snake_key))
+    if camel_key in payload: return bool(payload.get(camel_key))
+    return default
+
+def _norm_list(payload, snake_key, camel_key):
+    val = payload.get(snake_key)
+    if val is None:
+        val = payload.get(camel_key)
+    return val
 
 @router.websocket("/ws/{session_id}")
 @inject
@@ -44,7 +55,6 @@ async def websocket_endpoint(
 
             if not message_type or payload is None:
                 logger.warning(f"Message WS malformé ou incomplet: {data}")
-                # On informe explicitement le client
                 try:
                     await connection_manager.send_personal_message(
                         {"type": "ws:error", "payload": {"message": "Message WebSocket incomplet (type/payload)."}},
@@ -60,11 +70,13 @@ async def websocket_endpoint(
             if message_type.startswith("debate:"):
                 try:
                     if message_type == "debate:create":
-                        # Validations minimales (le reste est géré par Pydantic dans DebateService)
-                        topic = payload.get("topic")
-                        agent_order = payload.get("agent_order")
-                        rounds = payload.get("rounds")
+                        # Normalisation camelCase/snake_case
+                        topic       = payload.get("topic")
+                        agent_order = _norm_list(payload, "agent_order", "agentOrder")
+                        rounds      = payload.get("rounds")
+                        use_rag     = _norm_bool(payload, "use_rag", "useRag", default=False)
 
+                        # Validations minimales (le reste côté Pydantic/service)
                         if not topic or not isinstance(topic, str):
                             await connection_manager.send_personal_message(
                                 {"type": "ws:error", "payload": {"message": "Débat: 'topic' manquant ou invalide."}},
@@ -91,8 +103,14 @@ async def websocket_endpoint(
                             session_id
                         )
 
-                        # Lancement via le service (il émettra ws:debate_started / ws:debate_turn_update / ws:debate_ended)
-                        await debate_service.create_debate(config=payload, session_id=session_id)
+                        # Lancement via le service avec une config NORMALISÉE
+                        normalized_config = {
+                            "topic": topic,
+                            "agent_order": agent_order,
+                            "rounds": rounds,
+                            "use_rag": use_rag
+                        }
+                        await debate_service.create_debate(config=normalized_config, session_id=session_id)
 
                     else:
                         logger.warning(f"Type de message DEBATE non géré: {message_type}")
