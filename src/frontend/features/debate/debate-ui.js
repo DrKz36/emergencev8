@@ -1,6 +1,7 @@
 /**
  * src/frontend/features/debate/debate-ui.js
- * V35 — Synthèse DANS la timeline (alignée, +3 espaces), Nexus VERT + halo, italique.
+ * V40 — Flux continu (tours → synthèse) sans cartes internes,
+ *        aucune scrollbar interne, synthèse centrée et alignée.
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
@@ -8,225 +9,307 @@ import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
 export class DebateUI {
   constructor(eventBus) {
     this.eventBus = eventBus;
-    this.localState = {};
-    console.log('✅ DebateUI V35 prêt.');
+    this._touched = { attacker:false, challenger:false, mediator:false, rounds:false };
+    console.log('✅ DebateUI V40 prêt.');
   }
 
   render(container, debateState) {
     if (!container) return;
 
-    const showHistory = Array.isArray(debateState?.history) && debateState.history.length > 0;
-    if (showHistory || debateState?.status) {
-      return this.renderDebateView(container, debateState);
+    const hasHistory = Array.isArray(debateState?.history) && debateState.history.length > 0;
+    const isActive   = !!debateState?.isActive;
+    const statusText = debateState?.statusText ?? 'Prêt à commencer.';
+
+    if (!hasHistory && !isActive) {
+      container.innerHTML = this._renderCreateView(statusText);
+      this._bindCreateEvents(container);
+      return;
     }
-    return this.renderCreationView(container);
+
+    container.innerHTML = this._renderTimelineView(debateState);
+    this._bindTimelineEvents(container, debateState);
   }
 
-  /* ──────────────── Vue Création ──────────────── */
-  renderCreationView(container) {
-    const defaultState = { topic:'', attacker:'anima', challenger:'neo', rounds:2, use_rag:false };
-    const agentOptions = Object.values(AGENTS).map(a => ({ value:a.id, label:a.name }));
+  /* ---------------------------- Vue Création ---------------------------- */
 
-    container.innerHTML = `
+  _renderCreateView(statusText) {
+    const defaultAttacker   = this._defaultFor('attacker');
+    const defaultChallenger = this._defaultFor('challenger');
+    const defaultMediator   = this._autoFrom(defaultAttacker, defaultChallenger);
+
+    const segAttacker   = this._segAgents('attacker',   defaultAttacker);
+    const segChallenger = this._segAgents('challenger', defaultChallenger);
+    const segMediator   = this._segAgents('mediator',   defaultMediator);
+    const roundsTabs    = this._segRounds(3);
+
+    return `
       <div class="debate-view-wrapper">
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">Nouveau Débat Autonome</h2>
-            <p class="card-subtitle">Configurez les participants et le sujet du débat.</p>
+            <h2 class="card-title">Débat</h2>
+            <div class="debate-status">${this._html(statusText)}</div>
           </div>
 
-          <div class="card-body debate-create-body">
-            <div class="form-group form-topic">
-              <label for="debate-topic">Sujet du Débat</label>
-              <textarea id="debate-topic" class="input-text" rows="3"
-                placeholder="Ex: L'IA peut-elle développer une conscience authentique ?"></textarea>
-            </div>
+          <div class="card-body">
+            <div class="debate-create-body">
+              <div class="form-group form-topic">
+                <label for="debate-topic">Sujet du Débat</label>
+                <textarea id="debate-topic" class="input-text" rows="4"
+                  placeholder="Ex: L’IA peut-elle développer une conscience authentique ?"></textarea>
+              </div>
 
-            <div class="form-group form-attacker">
-              <label>Attaquant</label>
-              ${this._seg('attacker-selector', agentOptions, defaultState.attacker, true)}
-            </div>
+              <div class="form-group form-attacker">
+                <label>Attaquant</label>
+                ${segAttacker}
+              </div>
 
-            <div class="form-group form-challenger">
-              <label>Challenger</label>
-              ${this._seg('challenger-selector', agentOptions, defaultState.challenger, true)}
-            </div>
+              <div class="form-group form-challenger">
+                <label>Challenger</label>
+                ${segChallenger}
+              </div>
 
-            <div class="form-group form-rounds">
-              <label>Nombre de Rounds</label>
-              ${this._seg('rounds-selector', [
-                  {value:1,label:'1 Round'},
-                  {value:2,label:'2 Rounds'},
-                  {value:3,label:'3 Rounds'}
-                ], defaultState.rounds, false)}
-            </div>
+              <div class="form-group form-rounds">
+                <label>Nombre de tours</label>
+                ${roundsTabs}
+              </div>
 
-            <div class="form-group form-mediator">
-              <label>Synthèse par</label>
-              <span id="mediator-info" class="mediator-display agent--nexus">Nexus</span>
+              <div class="form-group form-mediator">
+                <label>Médiateur</label>
+                ${segMediator}
+              </div>
             </div>
           </div>
 
           <div class="card-footer debate-create-footer">
-            <div class="footer-left">
-              <button type="button" class="toggle toggle-metal rag-toggle action-rag-toggle" role="switch" aria-checked="false" title="Activer/Désactiver RAG">
-                <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                <span class="toggle-label">RAG</span>
+            <div class="action-center">
+              <div class="rag-control">
+                <button
+                  type="button"
+                  id="rag-power"
+                  class="rag-power"
+                  role="switch"
+                  aria-checked="true"
+                  title="Activer/Désactiver RAG">
+                  <svg class="power-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                    <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                    <path d="M5.5 7a8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                  </svg>
+                </button>
+                <span id="rag-label" class="rag-label">RAG</span>
+              </div>
+
+              <button class="btn btn-primary button button-primary" id="debate-start">
+                Lancer le débat
               </button>
             </div>
-            <div class="footer-center">
-              <button id="create-debate-btn" class="button button-primary">Lancer le Débat</button>
-            </div>
-            <div class="footer-right"></div>
           </div>
         </div>
-      </div>
-    `;
-
-    this.localState = { ...defaultState };
-    this._bindCreationEvents(container);
-    this._updateAgentSelection(container);
-  }
-
-  _bindCreationEvents(container) {
-    const topicEl = container.querySelector('#debate-topic');
-    const ragBtn = container.querySelector('.rag-toggle');
-
-    this._bindSegClicks(container.querySelector('#attacker-selector'), v => {
-      this.localState.attacker = v; this._updateAgentSelection(container);
-    });
-    this._bindSegClicks(container.querySelector('#challenger-selector'), v => {
-      this.localState.challenger = v; this._updateAgentSelection(container);
-    });
-    this._bindSegClicks(container.querySelector('#rounds-selector'), v => {
-      this.localState.rounds = Number(v);
-    });
-
-    topicEl?.addEventListener('input', (e) => { this.localState.topic = e.target.value || ''; });
-
-    ragBtn?.addEventListener('click', () => {
-      const on = ragBtn.getAttribute('aria-checked') === 'true';
-      ragBtn.setAttribute('aria-checked', String(!on));
-      this.localState.use_rag = !on;
-      this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, { enabled: this.localState.use_rag });
-    });
-
-    container.querySelector('#create-debate-btn')?.addEventListener('click', () => {
-      const topic = (topicEl?.value || '').trim();
-      if (topic.length < 10) {
-        this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type:'warning', message:'Le sujet du débat est trop court.' });
-        return;
-      }
-      const config = {
-        topic,
-        rounds: this.localState.rounds,
-        agent_order: [this.localState.attacker, this.localState.challenger, 'nexus'],
-        use_rag: this.localState.use_rag
-      };
-      this.eventBus.emit(EVENTS.DEBATE_CREATE, config);
-      this.eventBus.emit('debate:create', config);
-    });
-  }
-
-  _seg(id, options, selected, colorByAgent=false) {
-    return `
-      <div id="${id}" class="segmented">
-        ${options.map(opt => `
-          <button class="button-tab ${colorByAgent ? `agent--${opt.value}` : ''} ${opt.value===selected ? 'active' : ''}" data-value="${opt.value}">
-            <span class="tab-label">${opt.label}</span>
-          </button>`).join('')}
       </div>`;
   }
 
-  _bindSegClicks(container, onChange){
-    if(!container) return;
-    container.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-value]'); if (!btn) return;
-      container.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  _bindCreateEvents(root) {
+    // Toggle RAG
+    const ragBtn = root.querySelector('#rag-power');
+    const ragLbl = root.querySelector('#rag-label');
+    const toggleRag = () => {
+      const on = ragBtn.getAttribute('aria-checked') === 'true';
+      ragBtn.setAttribute('aria-checked', String(!on));
+    };
+    ragBtn?.addEventListener('click', toggleRag);
+    ragLbl?.addEventListener('click', toggleRag);
+
+    // Pills (agents + rounds)
+    root.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.button-tab');
+      if (!btn) return;
+      const seg = btn.closest('[data-seg]');
+      if (!seg) return;
+
+      seg.querySelectorAll('.button-tab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      onChange?.(btn.dataset.value);
+
+      const segName = seg.getAttribute('data-seg');
+      if (segName === 'attacker')   this._touched.attacker = true;
+      if (segName === 'challenger') this._touched.challenger = true;
+      if (segName === 'mediator')   this._touched.mediator = true;
+      if (segName === 'rounds')     this._touched.rounds = true;
+
+      if ((segName === 'attacker' || segName === 'challenger') && !this._touched.mediator) {
+        this._autoSelectMediator(root);
+      }
+    });
+
+    // Lancer
+    root.querySelector('#debate-start')?.addEventListener('click', () => {
+      const topic = root.querySelector('#debate-topic')?.value?.trim() ?? '';
+      const attacker   = this._getSegValue(root, 'attacker');
+      const challenger = this._getSegValue(root, 'challenger');
+      const mediator   = this._getSegValue(root, 'mediator');
+      const rounds     = parseInt(this._getSegValue(root, 'rounds') || '3', 10) || 3;
+      const useRag     = (root.querySelector('#rag-power')?.getAttribute('aria-checked') === 'true');
+
+      if (!topic) { alert('Merci de renseigner un sujet de débat.'); return; }
+      if (!attacker || !challenger || !mediator) { alert('Merci de sélectionner Attaquant/Challenger/Médiateur.'); return; }
+
+      this.eventBus.emit('debate:create', {
+        topic,
+        rounds,
+        agentOrder: [attacker, challenger, mediator],
+        useRag
+      });
     });
   }
 
-  _updateAgentSelection(container) {
-    if (this.localState.attacker === this.localState.challenger) {
-      this.localState.challenger = Object.keys(AGENTS).find(k => k !== this.localState.attacker && k !== 'nexus') || 'neo';
-      this._setSeg(container.querySelector('#challenger-selector'), this.localState.challenger);
-    }
-    const el = container.querySelector('#mediator-info');
-    el?.classList.remove('agent--anima','agent--neo','agent--nexus');
-    el?.classList.add('agent--nexus');   // Nexus confirmé
-    if (el) el.textContent = AGENTS['nexus']?.name || 'Nexus';
-  }
+  /* ---------------------------- Vue Timeline (flux continu) ---------------------------- */
 
-  _setSeg(el, val){ el?.querySelectorAll('.button-tab').forEach(b => b.classList.toggle('active', b.dataset.value === val)); }
+  _renderTimelineView(state) {
+    const header = `
+      <div class="card-header">
+        <h2 class="card-title">Débat</h2>
+        <div class="debate-status">${this._html(state?.statusText ?? '')}</div>
+      </div>`;
 
-  /* ──────────────── Vue Déroulé ──────────────── */
-  renderDebateView(container, state) {
-    const order = state.config?.agentOrder || state.config?.agent_order || [];
-    const attackerId = order[0] || state.config?.attacker || 'anima';
-    const synthesizerId = order[order.length - 1] || 'nexus';
-    const synthesizerName = AGENTS[synthesizerId]?.name || 'Nexus';
+    // RAG masqué (données conservées dans le state)
+    const ragSection = '';
 
-    container.innerHTML = `
-      <div class="debate-view-wrapper">
-        <div class="card debate-in-progress">
-          <div class="card-header">
-            <h2 class="card-title">${state.config?.topic || 'Débat'}</h2>
-            <div class="debate-status">${state.statusText || ''}</div>
-          </div>
-          <div class="card-body">
-            <div class="debate-timeline">
-              ${this._buildTimeline(state, attackerId)}
-              ${state.synthesis ? this._buildSynthesis(state.synthesis, synthesizerId, synthesizerName) : ''}
-            </div>
-          </div>
-          <div class="card-footer" style="display:flex; justify-content:flex-end; gap:.5rem;">
-            <button id="debate-export-btn" class="button" title="Exporter">Exporter</button>
-            <button id="debate-reset-btn" class="button" title="Réinitialiser">Réinitialiser</button>
-          </div>
-        </div>
-      </div>
-    `;
+    // Tours → sections légères (plus de cartes internes)
+    const turns = (state?.history ?? []).map((turn, idx) => {
+      const order = Array.isArray(state?.config?.agentOrder) && state.config.agentOrder.length
+        ? state.config.agentOrder
+        : Object.keys(turn.agentResponses || {});
 
-    container.querySelector('#debate-reset-btn')?.addEventListener('click', () => this.eventBus.emit('debate:reset'));
-    container.querySelector('#debate-export-btn')?.addEventListener('click', () => this.eventBus.emit('debate:export', state));
-    container.querySelector('.debate-timeline')?.scrollTo(0, 1e9);
-  }
-
-  _buildTimeline(state, attackerId) {
-    if (!state.history || state.history.length === 0) {
-      return `<div class="placeholder">Le débat va bientôt commencer...</div>`;
-    }
-    return state.history.map((turn) => {
-      const header = `<div class="timeline-turn-separator turn--${attackerId}"><span>Tour ${turn.roundNumber}</span></div>`;
-      const messages = Object.entries(turn.agentResponses).map(([agentId, response]) => {
-        const agent = AGENTS[agentId] || { name: 'Inconnu', id: agentId };
+      const bubbles = order.map((agentId) => {
+        const txt = turn.agentResponses?.[agentId];
+        if (txt == null) return '';
+        const name = AGENTS?.[agentId]?.name || agentId;
         return `
-          <div class="message assistant agent--${agentId}">
+          <div class="message assistant ${agentId}">
             <div class="message-content">
-              <div class="message-text">
-                <div class="message-meta"><strong class="sender-name">${agent.name}</strong></div>
-                ${marked.parse(response)}
-              </div>
+              <div class="message-meta meta-inside"><strong class="sender-name">${this._html(name)}</strong></div>
+              <div class="message-text">${marked.parse(txt || '')}</div>
             </div>
           </div>`;
       }).join('');
-      return `${header}${messages}`;
+
+      return `
+        <section class="debate-turn">
+          <div class="turn-title">Tour ${Number(turn.roundNumber) || (idx + 1)}</div>
+          <div class="chat-messages">${bubbles}</div>
+        </section>`;
     }).join('');
+
+    // Synthèse finale → section du même flux, centrée
+    const synthesizerId = Array.isArray(state?.config?.agentOrder)
+      ? state.config.agentOrder[state.config.agentOrder.length - 1]
+      : 'nexus';
+    const synthesizerName = AGENTS?.[synthesizerId]?.name || 'Nexus';
+
+    const synthesis = state?.status === 'completed' && state?.synthesis
+      ? `
+        <section class="debate-synthesis">
+          <div class="turn-title synthesis-title">Synthèse finale — ${this._html(synthesizerName)}</div>
+          <div class="chat-messages">
+            <div class="message assistant ${synthesizerId} synthesis">
+              <div class="message-content">
+                <div class="message-meta meta-inside"><strong class="sender-name">${this._html(synthesizerName)}</strong></div>
+                <div class="message-text">${marked.parse(state.synthesis)}</div>
+              </div>
+            </div>
+          </div>
+        </section>`
+      : '';
+
+    // Actions (Exporter / Nouveau débat)
+    const footer = `
+      <div class="card-footer">
+        <div class="debate-actions">
+          <button id="debate-export" class="button button-metal" title="Exporter en Markdown">Exporter</button>
+          <button id="debate-new" class="button button-primary" title="Lancer un nouveau débat">Nouveau débat</button>
+        </div>
+      </div>`;
+
+    return `
+      <div class="debate-view-wrapper">
+        <div class="card">
+          ${header}
+          <div class="card-body">
+            <div class="debate-flow">
+              ${ragSection}
+              ${turns}
+              ${synthesis}
+            </div>
+          </div>
+          ${footer}
+        </div>
+      </div>`;
   }
 
-  /* Synthèse = bulle identique aux messages agents (alignée + italique du corps) */
-  _buildSynthesis(text, synthesizerId, synthesizerName) {
-    return `
-      <div class="message assistant agent--${synthesizerId} synthesis">
-        <div class="message-content">
-          <div class="message-text">
-            <div class="message-meta"><strong class="sender-name">Synthèse par ${synthesizerName}</strong></div>
-            <div class="synthesis-body">${marked.parse(text)}</div>
-          </div>
-        </div>
-      </div>
-    `;
+  _bindTimelineEvents(root, state) {
+    root.querySelector('#debate-export')
+      ?.addEventListener('click', () => this.eventBus.emit('debate:export', state));
+    root.querySelector('#debate-new')
+      ?.addEventListener('click', () => this.eventBus.emit('debate:reset'));
+    root.querySelector('#debate-reset')
+      ?.addEventListener('click', () => this.eventBus.emit('debate:reset'));
+  }
+
+  /* ---------------------------- Helpers ---------------------------- */
+
+  _defaultFor(role) {
+    const keys = Object.keys(AGENTS || {});
+    const has  = (k) => keys.includes(k);
+    if (role === 'attacker')   return has('anima') ? 'anima' : (keys[0] || '');
+    if (role === 'challenger') return has('neo')   ? 'neo'   : (keys[1] || keys[0] || '');
+    if (role === 'mediator')   return has('nexus') ? 'nexus' : (keys[2] || keys[0] || '');
+    return keys[0] || '';
+  }
+
+  _segAgents(role, defaultKey) {
+    const entries = Object.entries(AGENTS || {});
+    const safeDefault = defaultKey || (entries[0]?.[0] ?? '');
+
+    const buttons = entries.map(([id, meta]) => {
+      const active = id === safeDefault ? 'active' : '';
+      const name = meta?.name || id;
+      return `<button type="button" class="button-tab ${active}" data-value="${this._html(id)}">${this._html(name)}</button>`;
+    }).join('');
+
+    return `<div class="tabs-container" data-seg="${this._html(role)}">${buttons}</div>`;
+  }
+
+  _segRounds(defaultVal = 3){
+    const vals = [1,2,3,4,5];
+    const buttons = vals.map(v => {
+      const a = (v === defaultVal) ? 'active' : '';
+      return `<button type="button" class="button-tab ${a}" data-value="${v}">${v}</button>`;
+    }).join('');
+    return `<div class="tabs-container rounds-tabs" data-seg="rounds">${buttons}</div>`;
+  }
+
+  _autoFrom(a, c){
+    const tri = ['anima','neo','nexus'];
+    const s = new Set([a,c]);
+    return tri.find(x => !s.has(x)) || tri[0];
+  }
+
+  _autoSelectMediator(root){
+    const a = this._getSegValue(root, 'attacker');
+    const c = this._getSegValue(root, 'challenger');
+    const med = this._autoFrom(a,c);
+    const seg = root.querySelector('[data-seg="mediator"]');
+    if (!seg) return;
+    seg.querySelectorAll('.button-tab').forEach(b => b.classList.remove('active'));
+    seg.querySelector(`.button-tab[data-value="${med}"]`)?.classList.add('active');
+  }
+
+  _getSegValue(root, role) {
+    const seg = root.querySelector(`[data-seg="${role}"]`);
+    if (!seg) return '';
+    const active = seg.querySelector('.button-tab.active');
+    return active?.dataset?.value || seg.querySelector('.button-tab')?.dataset?.value || '';
+  }
+
+  _html(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 }
