@@ -30,19 +30,21 @@ dist/
 *.iml
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # --- Logs & temps
 logs/
 *.log
 *.tmp
 *.temp
+tmp/
+tmp_tests/
 
 # --- Data locales / caches app
 data/
 datasets/
 storage/
 cache/
-tmp/
 
 # --- Secrets (NE JAMAIS COMMIT)
 *.env
@@ -50,8 +52,9 @@ tmp/
 secrets/
 **/secrets.json
 **/config.local.json
+id_token.txt
 
-# --- Node / frontend (si présent)
+# --- Node / frontend
 node_modules/
 npm-debug.log*
 yarn.lock
@@ -66,8 +69,6 @@ pnpm-lock.yaml
 *.sqlite
 *.sqlite3
 
-# --- Snapshots arbo anciens (garder le plus récent)
-arborescence_synchronisée_*.txt
-
-# --- OS Windows
-desktop.ini
+# --- Exceptions utiles
+!assets/**
+!*.ico
