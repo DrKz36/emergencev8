@@ -3,93 +3,112 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Émergence V8</title>
+  <title>ÉMERGENCE V8</title>
   <link rel="icon" href="data:,">
   <link rel="modulepreload" href="/src/frontend/main.js" />
 
-  <!-- CSS critique (layout de base + loader) -->
+  <!-- ===== CSS CORE ===== -->
+  <link rel="stylesheet" href="/src/frontend/styles/core/reset.css">
+  <link rel="stylesheet" href="/src/frontend/styles/core/_variables.css">
+  <link rel="stylesheet" href="/src/frontend/styles/core/_typography.css">
+  <link rel="stylesheet" href="/src/frontend/styles/core/_layout.css">
+  <link rel="stylesheet" href="/src/frontend/styles/core/_navigation.css">
+
+  <!-- ===== CSS COMPONENTS ===== -->
+  <link rel="stylesheet" href="/src/frontend/styles/components/agent-buttons.css">
+  <link rel="stylesheet" href="/src/frontend/styles/components/agent-selector.css">
+  <link rel="stylesheet" href="/src/frontend/styles/components/buttons.css">
+  <link rel="stylesheet" href="/src/frontend/styles/components/cards.css">
+  <link rel="stylesheet" href="/src/frontend/styles/components/custom-select.css">
+  <link rel="stylesheet" href="/src/frontend/styles/components/custom-toggle.css">
+  <link rel="stylesheet" href="/src/frontend/styles/components/glassmorphism.css">
+  <link rel="stylesheet" href="/src/frontend/styles/components/header-nav.css">
+  <link rel="stylesheet" href="/src/frontend/styles/components/inputs.css">
+  <link rel="stylesheet" href="/src/frontend/styles/components/modals.css">
+  <link rel="stylesheet" href="/src/frontend/styles/components/tabs.css">
+
+  <!-- ===== CSS FEATURES ===== -->
+  <link rel="stylesheet" href="/src/frontend/features/chat/chat.css">
+  <link rel="stylesheet" href="/src/frontend/features/debate/debate.css">
+  <link rel="stylesheet" href="/src/frontend/features/documents/documents.css">
+  <link rel="stylesheet" href="/src/frontend/features/dashboard/dashboard.css">
+  <link rel="stylesheet" href="/src/frontend/features/threads/threads.css">
+  <link rel="stylesheet" href="/src/frontend/features/voice/voice.css">
+  <link rel="stylesheet" href="/src/frontend/features/timeline/timeline.css">
+  <link rel="stylesheet" href="/src/frontend/features/costs/costs.css">
+
+  <!-- ===== STYLES UNIFIÉS (custom) ===== -->
+  <link rel="stylesheet" href="/src/frontend/styles/main-styles.css">
+
+  <!-- CSS critique (layout de base + loader + brand sidebar) -->
   <style>
-    :root {
-      --bg: #0b0f1a;
-      --bg-2: #111827;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --border: #1f2937;
-      --sidebar-w: 260px;
-      --header-h: 56px;
-    }
+    :root { --bg:#0b0f1a; --bg-2:#111827; --text:#e5e7eb; --muted:#9ca3af; --border:#1f2937; --sidebar-w:260px; }
     html, body { height: 100%; }
-    body {
-      margin: 0; background: var(--bg); color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-sans, -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif); }
     body.loading { overflow: hidden; }
+
     #app-loader {
       position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-      background-color: var(--bg-2); color: var(--muted); z-index: 9999; opacity: 1;
-      transition: opacity .35s ease-out;
+      background-color: var(--bg-2); color: var(--muted); z-index: 9999; opacity: 1; transition: opacity .35s ease-out;
     }
     #app-loader.fade-out { opacity: 0; }
+
     .app-container {
       display: grid;
-      grid-template-rows: var(--header-h) 1fr;
       grid-template-columns: var(--sidebar-w) 1fr;
-      grid-template-areas:
-        "header header"
-        "aside  main";
+      grid-template-areas: "aside main";
       height: 100vh; width: 100vw;
     }
-    .app-header { grid-area: header; display:flex; align-items:center; padding: 0 16px; border-bottom:1px solid var(--border); }
-    .header-title { font-size: 16px; margin: 0; }
-    .app-sidebar { grid-area: aside; border-right: 1px solid var(--border); padding: 8px; }
-    .app-content { grid-area: main; padding: 12px; }
-    /* Skeleton simple */
-    .skeleton {
-      background: linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.12), rgba(255,255,255,.06));
-      background-size: 200% 100%; animation: shimmer 1.1s infinite;
-      border-radius: 8px;
+
+    .app-sidebar { grid-area: aside; border-right: 1px solid var(--border); padding: 12px 10px; display:flex; flex-direction:column; min-height:100vh; }
+    .brand-block {
+      display:flex; align-items:center; gap:12px; padding:6px 8px; margin-bottom:10px;
+      border-radius:10px; background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
     }
+    .brand-logo { width:44px; height:44px; opacity:.95; }
+    .brand-title { font-size: 24px; margin: 0; text-transform: uppercase; letter-spacing:.06em; }
+
+    .app-content { grid-area: main; padding: 12px; }
+
+    .skeleton { background: linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.12), rgba(255,255,255,.06)); background-size: 200% 100%; animation: shimmer 1.1s infinite; border-radius: 8px; }
+    @keyframes pulse {0%{transform:scale(1)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
     @keyframes shimmer { 0% {background-position: 200% 0} 100% {background-position: -200% 0} }
-    .chat-skel { height: calc(100vh - var(--header-h) - 56px); border: 1px solid var(--border); }
+    .chat-skel { height: calc(100vh - 56px); border: 1px solid var(--border); }
     .input-skel { margin-top: 10px; height: 44px; }
+
+    @media (max-width: 920px){ :root{ --sidebar-w: 220px; } .brand-logo{width:40px;height:40px;} .brand-title{font-size:22px;} }
+    @media (max-width: 760px){ :root{ --sidebar-w: 200px; } .brand-logo{width:36px;height:36px;} .brand-title{font-size:20px;} }
   </style>
 </head>
 <body class="loading">
-  <div id="app-loader">Émergence…</div>
+  <div id="app-loader"><img src="/Assets/emergence_logo.png" alt="ÉMERGENCE" style="width:56px;height:56px;opacity:.9;animation:pulse 1.2s ease-in-out infinite;margin-right:12px;"> ÉMERGENCE…</div>
 
   <div id="app-container" class="app-container">
-    <header id="app-header" class="app-header" role="banner">
-      <h1 class="header-title">Émergence</h1>
-      <nav id="app-header-nav" class="header-nav" aria-label="Navigation principale" style="margin-left:auto;"></nav>
-    </header>
-
     <aside id="app-sidebar" class="app-sidebar" role="complementary">
+      <div class="brand-block">
+        <img src="/Assets/emergence_logo.png" alt="ÉMERGENCE" class="brand-logo">
+        <h1 class="brand-title">ÉMERGENCE</h1>
+      </div>
       <nav id="app-tabs" class="sidebar-nav" aria-label="Sections"></nav>
       <div id="settings-container"></div>
     </aside>
 
     <main id="app-content" class="app-content" role="main">
-      <!-- SKELETON visible avant tout JS -->
       <div class="skeleton chat-skel"></div>
       <div class="skeleton input-skel"></div>
     </main>
   </div>
 
-  <!-- Perf markers + fade-out loader -->
   <script>
     (function () {
       performance.mark('html:begin');
       var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
       window.__EMERGENCE_BOOT__ = { ttfb_ms: nav ? Math.round(nav.responseStart) : undefined };
-
       document.addEventListener('DOMContentLoaded', function () {
         performance.mark('html:domcontentloaded');
         requestAnimationFrame(function () {
           var loader = document.getElementById('app-loader');
-          if (loader) {
-            loader.classList.add('fade-out');
-            setTimeout(function(){ loader.remove(); }, 250);
-          }
+          if (loader) { loader.classList.add('fade-out'); setTimeout(function(){ loader.remove(); }, 250); }
           document.body.classList.remove('loading');
           var paints = performance.getEntriesByType ? performance.getEntriesByType('paint') : [];
           var fcp = (paints || []).find(function(p){ return p.name === 'first-contentful-paint'; });
@@ -100,7 +119,6 @@
     })();
   </script>
 
-  <!-- JS app (module = defer natif) -->
   <script type="module" src="/src/frontend/main.js" defer></script>
 </body>
 </html>
