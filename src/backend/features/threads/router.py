@@ -1,5 +1,5 @@
 # src/backend/features/threads/router.py
-# V1.3 — Fallback by-id + normalisation user_id + endpoint debug caché
+# V1.4 — Ajout POST sans slash + fallback by-id (déjà présent) + normalisation user_id
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -50,7 +50,7 @@ async def list_threads(
     items = await queries.get_threads(db, user_id=user_id, type_=type, limit=limit, offset=offset)
     return {"items": items}
 
-# Miroir sans slash (évite 404 par oubli du '/')
+# Miroir sans slash (évite 404/405 par oubli du '/')
 @router.get("", include_in_schema=False)
 async def list_threads_no_slash(
     user_id: str = Depends(get_user_id),
@@ -64,6 +64,20 @@ async def list_threads_no_slash(
 
 @router.post("/", status_code=201)
 async def create_thread(
+    payload: ThreadCreate,
+    user_id: str = Depends(get_user_id),
+    db: DatabaseManager = Depends(get_db),
+):
+    tid = await queries.create_thread(
+        db, user_id=user_id, type_=payload.type, title=payload.title,
+        agent_id=payload.agent_id, meta=payload.meta
+    )
+    thread = await queries.get_thread(db, tid, user_id)
+    return {"id": tid, "thread": thread}
+
+# Miroir POST sans slash (corrige 405 quand le client poste sur /api/threads)
+@router.post("", status_code=201, include_in_schema=False)
+async def create_thread_no_slash(
     payload: ThreadCreate,
     user_id: str = Depends(get_user_id),
     db: DatabaseManager = Depends(get_db),

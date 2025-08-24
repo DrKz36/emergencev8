@@ -1,7 +1,8 @@
 /**
  * @file /src/frontend/shared/api-client.js
  * @description Client API centralisé pour les requêtes HTTP (Fetch).
- * @version V3.2 - DevAuth headers + normalisation getThreadById + mapping metadata->meta
+ * @version V3.3 - DevAuth headers + normalisation getThreadById + mapping metadata->meta
+ *             - FIX: createThread poste sur /api/threads/ (avec slash) pour éviter 405.
  */
 
 import { API_ENDPOINTS } from './config.js';
@@ -90,15 +91,16 @@ export const api = {
     fetchApi(`${THREADS_BASE}${buildQuery({ type, limit, offset })}`)
       .then((data) => Array.isArray(data?.items) ? data : { items: [] }),
 
+  // FIX: poster explicitement sur /api/threads/ (avec slash) pour éviter 405 côté FastAPI
   createThread: ({ type = 'chat', title, metadata, agent_id } = {}) =>
-    fetchApi(THREADS_BASE, { method: 'POST', body: { type, title, agent_id, meta: metadata } })
+    fetchApi(`${THREADS_BASE}/`, { method: 'POST', body: { type, title, agent_id, meta: metadata } })
       .then((data) => ({ id: data?.id, thread: data?.thread })),
 
-  // ⚠️ Normalisation: renvoie toujours un objet avec { id, thread, messages, docs }
+  // ⚠️ Normalisation: renvoie toujours { id, thread, messages, docs }
   getThreadById: (id, { messages_limit } = {}) =>
     fetchApi(`${THREADS_BASE}/${encodeURIComponent(id)}${buildQuery({ messages_limit })}`)
       .then((data) => {
-        const t = data?.thread || null;               // backend: {"thread": {...}, "messages": [...], "docs": [...]}
+        const t = data?.thread || null;
         const msgs = Array.isArray(data?.messages) ? data.messages : [];
         const docs = Array.isArray(data?.docs) ? data.docs : [];
         return { id: t?.id || id, thread: t, messages: msgs, docs };
