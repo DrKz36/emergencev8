@@ -1,0 +1,4 @@
+/* threads.css — stub minimal pour éviter 404 (ARBO-LOCK) */
+#tab-content-threads { padding: 12px; }
+.thread-list { display: grid; gap: 8px; }
+.thread-item { padding: 8px 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 8px; }

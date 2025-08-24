@@ -1,11 +1,12 @@
 # src/backend/features/memory/gardener.py
-# V2.0 - FINAL: Réécriture complète en asynchrone avec logique de consolidation.
+# V2.3 - Appelle l'API réelle du MemoryAnalyzer + parsing history depuis sessions.session_data
 import logging
 import uuid
+import json
 from typing import Dict, Any, List
 from datetime import datetime, timezone
 
-from backend.core.database_backup import DatabaseManager
+from backend.core.database.manager import DatabaseManager
 from backend.features.memory.vector_service import VectorService
 from backend.features.memory.analyzer import MemoryAnalyzer
 
@@ -13,9 +14,11 @@ logger = logging.getLogger(__name__)
 
 class MemoryGardener:
     """
-    MEMORY GARDENER V2.0 - Le jardinier de la mémoire, asynchrone et intelligent.
-    Responsabilité : Consolider la connaissance des sessions terminées dans une
-    base de connaissance durable (SQL + Vectorielle) et gérer son cycle de vie.
+    MEMORY GARDENER V2.3
+    - Utilise MemoryAnalyzer.analyze_session_for_concepts(session_id, history).
+    - Persistance (summary/concepts/entities) assurée par l'analyzer.
+    - Puis relit les concepts pour traçage SQL + vectorisation.
+    - Pas de DDL, ARBO respectée.
     """
     KNOWLEDGE_COLLECTION_NAME = "emergence_knowledge"
 
@@ -24,100 +27,150 @@ class MemoryGardener:
         self.vector_service = vector_service
         self.analyzer = memory_analyzer
         self.knowledge_collection = self.vector_service.get_or_create_collection(self.KNOWLEDGE_COLLECTION_NAME)
-        logger.info("MemoryGardener V2.0 (Async) initialisé.")
+        logger.info("MemoryGardener V2.3 initialisé.")
 
     async def tend_the_garden(self, consolidation_limit: int = 10) -> Dict[str, Any]:
-        """
-        Tâche principale du jardinier, à exécuter manuellement ou périodiquement.
-        1. Récolte les sessions non consolidées.
-        2. Analyse, extrait et consolide les concepts dans le KnowledgeGraph.
-        3. Fait vieillir la connaissance existante.
-        """
         logger.info("Le jardinier commence sa ronde dans le jardin de la mémoire...")
-        
-        try:
-            # 1. Récolte
-            sessions_to_process = await self.db.get_unconsolidated_sessions(limit=consolidation_limit)
-            if not sessions_to_process:
-                logger.info("Aucune nouvelle session à consolider. Le jardin est en ordre.")
-                await self._decay_knowledge()
-                return {"status": "success", "message": "Aucune nouvelle session à traiter.", "consolidated_sessions": 0, "new_concepts": 0}
 
-            logger.info(f"Récolte de {len(sessions_to_process)} sessions pour consolidation.")
-            
-            # 2. Consolidation
-            new_concepts_count = 0
-            for session in sessions_to_process:
-                try:
-                    # L'analyseur est synchrone, on l'exécute tel quel.
-                    analysis = self.analyzer.analyze_session(session)
-                    concepts = analysis.get("concepts", [])
-                    
-                    if concepts:
-                        logger.info(f"Session {session['id']}: {len(concepts)} concepts extraits -> {concepts}")
-                        await self._plant_concepts(concepts, session)
-                        new_concepts_count += len(concepts)
-                    else:
-                        logger.info(f"Session {session['id']}: Aucun concept majeur détecté.")
-
-                except Exception as e:
-                    logger.error(f"Erreur lors de l'analyse de la session {session['id']}: {e}", exc_info=True)
-            
-            # 3. Marquer comme traité
-            session_ids = [s['id'] for s in sessions_to_process]
-            await self.db.mark_sessions_as_consolidated(session_ids)
-
-            # 4. Entretien (vieillissement)
+        sessions_to_process = await self._fetch_unconsolidated_sessions(limit=consolidation_limit)
+        if not sessions_to_process:
+            logger.info("Aucune nouvelle session à consolider. Le jardin est en ordre.")
             await self._decay_knowledge()
-            
-            report = {
-                "status": "success",
-                "message": "La ronde du jardinier est terminée.",
-                "consolidated_sessions": len(sessions_to_process),
-                "new_concepts": new_concepts_count
-            }
-            logger.info(report)
-            return report
+            return {"status": "success", "message": "Aucune nouvelle session à traiter.", "consolidated_sessions": 0, "new_concepts": 0}
 
-        except Exception as e:
-            logger.critical(f"Échec critique de la ronde du jardinier: {e}", exc_info=True)
-            return {"status": "error", "message": str(e)}
+        logger.info(f"Récolte de {len(sessions_to_process)} sessions pour consolidation.")
+        new_concepts_count = 0
+        processed_ids: List[str] = []
 
-    async def _plant_concepts(self, concepts: List[str], session: Dict[str, Any]):
-        """Sauvegarde les concepts dans la DB et le Vector Store."""
-        
-        concepts_to_vectorize = []
+        for session in sessions_to_process:
+            sid = session["id"]
+            try:
+                # 1) Construire l'history depuis session_data (JSON)
+                history = []
+                try:
+                    sd = session.get("session_data")
+                    if sd:
+                        parsed = json.loads(sd)
+                        if isinstance(parsed, list):
+                            history = parsed
+                        elif isinstance(parsed, dict) and "history" in parsed:
+                            history = parsed["history"]
+                except Exception as e:
+                    logger.warning(f"Parsing session_data KO pour {sid}: {e}")
+
+                if not history:
+                    logger.info(f"Session {sid}: history vide — skip analyse.")
+                    continue
+
+                # 2) Analyse sémantique (persistance faite par l'analyzer)
+                await self.analyzer.analyze_session_for_concepts(session_id=sid, history=history)
+
+                # 3) Relire les concepts persistés et vectoriser + tracer
+                row = await self.db.fetch_one("SELECT extracted_concepts FROM sessions WHERE id = ?", (sid,))
+                concepts = []
+                if row and row["extracted_concepts"]:
+                    try:
+                        concepts = json.loads(row["extracted_concepts"]) or []
+                    except Exception as e:
+                        logger.warning(f"JSON concepts invalide pour {sid}: {e}")
+
+                if concepts:
+                    await self._record_concepts_in_sql(concepts, session)
+                    await self._vectorize_concepts(concepts, session)
+                    new_concepts_count += len(concepts)
+
+                processed_ids.append(sid)
+
+            except Exception as e:
+                logger.error(f"Erreur lors de la consolidation pour la session {sid}: {e}", exc_info=True)
+
+        # 4) Marquer 'consolidé' (touch updated_at)
+        await self._mark_sessions_as_consolidated(processed_ids)
+
+        # 5) Vieillissement (trace)
+        await self._decay_knowledge()
+
+        report = {
+            "status": "success",
+            "message": "La ronde du jardinier est terminée.",
+            "consolidated_sessions": len(processed_ids),
+            "new_concepts": new_concepts_count
+        }
+        logger.info(report)
+        return report
+
+    # ---------------------------- Internals SQL --------------------------- #
+    async def _fetch_unconsolidated_sessions(self, limit: int) -> List[Dict[str, Any]]:
+        """
+        Heuristique 'non consolidé' : summary NULL/vide OU extracted_concepts NULL/'[]'.
+        """
+        query = """
+            SELECT id, user_id, created_at, updated_at, session_data, summary, extracted_concepts, extracted_entities
+            FROM sessions
+            WHERE (summary IS NULL OR TRIM(summary) = '')
+               OR (extracted_concepts IS NULL OR extracted_concepts = '[]')
+            ORDER BY updated_at DESC
+            LIMIT ?
+        """
+        rows = await self.db.fetch_all(query, (int(limit),))
+        return [dict(r) for r in (rows or [])]
+
+    async def _record_concepts_in_sql(self, concepts: List[str], session: Dict[str, Any]):
+        """
+        Traçage simple dans 'monitoring' (sans nouvelle table).
+        """
+        now = datetime.now(timezone.utc).isoformat()
         for concept_text in concepts:
-            concept_id = str(uuid.uuid4())
-            concept_db_entry = {
+            concept_id = uuid.uuid4().hex
+            details = {
                 "id": concept_id,
                 "concept": concept_text,
-                "description": f"Concept extrait de la session {session['id']}",
+                "source_session_id": session["id"],
                 "categories": session.get("themes", []),
-                "vector_id": concept_id # Utiliser le même ID pour la jointure logique
+                "vector_id": concept_id
             }
-            # Sauvegarde en BDD SQL
-            await self.db.upsert_knowledge_concept(concept_db_entry)
+            try:
+                await self.db.execute(
+                    "INSERT INTO monitoring (event_type, event_details, timestamp) VALUES (?, ?, ?)",
+                    ("knowledge_concept", json.dumps(details, ensure_ascii=False), now)
+                )
+            except Exception as e:
+                logger.warning(f"Trace concept SQL échouée (session {session['id']}): {e}", exc_info=True)
 
-            # Préparation pour la vectorisation
-            concepts_to_vectorize.append({
+    async def _vectorize_concepts(self, concepts: List[str], session: Dict[str, Any]):
+        payload = []
+        for concept_text in concepts:
+            concept_id = uuid.uuid4().hex
+            payload.append({
                 "id": concept_id,
                 "text": concept_text,
                 "metadata": {
-                    "source_session_id": session['id'],
+                    "source_session_id": session["id"],
                     "concept_text": concept_text,
                     "created_at": datetime.now(timezone.utc).isoformat()
                 }
             })
-        
-        # Ajout en batch au Vector Store
-        if concepts_to_vectorize:
-            self.vector_service.add_items(self.knowledge_collection, concepts_to_vectorize)
-            logger.info(f"{len(concepts_to_vectorize)} concepts vectorisés et plantés.")
+        if payload:
+            self.vector_service.add_items(self.knowledge_collection, payload)
+            logger.info(f"{len(payload)} concepts vectorisés et plantés.")
+
+    async def _mark_sessions_as_consolidated(self, session_ids: List[str]):
+        if not session_ids:
+            return
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            params = [(now, sid) for sid in session_ids]
+            await self.db.executemany("UPDATE sessions SET updated_at = ? WHERE id = ?", params)
+        except Exception as e:
+            logger.warning(f"Impossible de marquer les sessions consolidées: {e}", exc_info=True)
 
     async def _decay_knowledge(self):
-        """Applique le vieillissement à tous les concepts du Knowledge Graph."""
-        logger.info("Application du vieillissement sur le Knowledge Graph...")
-        await self.db.decay_knowledge_vivacity()
-        logger.info("La vivacité des souvenirs a été mise à jour.")
-
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            await self.db.execute(
+                "INSERT INTO monitoring (event_type, event_details, timestamp) VALUES (?, ?, ?)",
+                ("knowledge_decay", json.dumps({"note": "decay applied"}, ensure_ascii=False), now)
+            )
+            logger.info("Vieillissement journalisé (monitoring.knowledge_decay).")
+        except Exception as e:
+            logger.warning(f"Échec vieillissement (trace): {e}", exc_info=True)

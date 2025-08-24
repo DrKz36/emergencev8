@@ -72,7 +72,8 @@ DOCUMENTS_ROUTER = _import_router("backend.features.documents.router")
 DASHBOARD_ROUTER = _import_router("backend.features.dashboard.router")
 DEBATE_ROUTER    = _import_router("backend.features.debate.router")
 CHAT_ROUTER      = _import_router("backend.features.chat.router")
-
+THREADS_ROUTER   = _import_router("backend.features.threads.router")  # NEW
+MEMORY_ROUTER    = _import_router("backend.features.memory.router")    # NEW
 
 def _migrations_dir() -> str:
     # Aligné sur l'arbo: src/backend/core/migrations
@@ -108,7 +109,30 @@ async def _startup(container: ServiceContainer):
         logger.warning(f"Wire DI partiel (chat.router): {e}")
     t.mark("di_wired")
 
-    # 3) Dump facultatif des métriques de boot (si EMERGENCE_BOOT_LOG défini)
+    # 3) Injection mémoire (casse dépendances circulaires proprement)
+    try:
+        chat_service = container.chat_service()
+        memory_analyzer = container.memory_analyzer()
+        # Le MemoryAnalyzer a besoin du ChatService pour ses appels LLM + WS.
+        if hasattr(memory_analyzer, "set_chat_service"):
+            memory_analyzer.set_chat_service(chat_service)
+            logger.info("MemoryAnalyzer ← ChatService injecté.")
+        # Bonus: si le SessionManager expose un setter, on le renseigne
+        try:
+            session_manager = container.session_manager()
+            if hasattr(session_manager, "set_memory_analyzer"):
+                session_manager.set_memory_analyzer(memory_analyzer)  # type: ignore
+                logger.info("SessionManager ← MemoryAnalyzer injecté (setter).")
+            else:
+                # attache gracieux si pas de setter formel
+                setattr(session_manager, "memory_analyzer", memory_analyzer)
+                logger.info("SessionManager ← MemoryAnalyzer attaché (attr).")
+        except Exception as e:
+            logger.warning(f"Injection MemoryAnalyzer dans SessionManager non effectuée: {e}")
+    except Exception as e:
+        logger.warning(f"Injection mémoire partielle: {e}")
+
+    # 4) Dump facultatif des métriques de boot (si EMERGENCE_BOOT_LOG défini)
     t.dump_to_file(os.getenv("EMERGENCE_BOOT_LOG"))
     t.mark("startup_done")
 
@@ -116,7 +140,6 @@ async def _startup(container: ServiceContainer):
 async def _shutdown(container: ServiceContainer):
     try:
         db_manager = container.db_manager()
-        # Correctif: le manager expose 'disconnect()'
         await db_manager.disconnect()
     except Exception as e:
         logger.warning(f"Arrêt DB: {e}")
@@ -172,6 +195,8 @@ def create_app() -> FastAPI:
     _mount_router(DOCUMENTS_ROUTER, "/api/documents")
     _mount_router(DEBATE_ROUTER,    "/api/debate")
     _mount_router(DASHBOARD_ROUTER, "/api/dashboard")
+    _mount_router(THREADS_ROUTER,   "/api/threads")   # threads
+    _mount_router(MEMORY_ROUTER,    "/api/memory")    # ✅ mémoire
     t.mark("routers_mounted")
 
     # WebSocket Chat — lazy container access
@@ -187,7 +212,6 @@ def create_app() -> FastAPI:
     t.mark("ws_ready")
 
     # --- Static: servir l'app web (robuste + diagnostique) ---
-    # Résolution robuste des chemins (par défaut /app dans le conteneur)
     BASE = Path(os.getenv("EMERGENCE_STATIC_ROOT") or REPO_ROOT).resolve()
     SRC_PATH = Path(os.getenv("EMERGENCE_STATIC_SRC") or (BASE / "src")).resolve()
     ASSETS_PATH = Path(os.getenv("EMERGENCE_STATIC_ASSETS") or (BASE / "assets")).resolve()
@@ -196,21 +220,18 @@ def create_app() -> FastAPI:
     try:
         mounts = []
 
-        # /src → /app/src (ou override via env)
         if SRC_PATH.exists():
             app.mount("/src", StaticFiles(directory=str(SRC_PATH), check_dir=False), name="src-static")
             mounts.append(f"/src->{SRC_PATH}")
         else:
             logger.warning(f"[static] Répertoire /src introuvable: {SRC_PATH}")
 
-        # /assets → /app/assets (ou override via env)
         if ASSETS_PATH.exists():
             app.mount("/assets", StaticFiles(directory=str(ASSETS_PATH), check_dir=False), name="assets-static")
             mounts.append(f"/assets->{ASSETS_PATH}")
         else:
             logger.warning(f"[static] Répertoire /assets introuvable: {ASSETS_PATH}")
 
-        # / → racine repo (sert index.html)
         if BASE.exists():
             app.mount("/", StaticFiles(directory=str(BASE), html=True, check_dir=False), name="root")
             mounts.append(f"/->{BASE} (html=True)")
@@ -222,7 +243,6 @@ def create_app() -> FastAPI:
         logger.error(f"Impossible de monter les fichiers statiques: {e}")
     t.mark("static_mounted")
 
-    # Endpoint de diagnostic simple
     @app.get("/api/_static-diag", tags=["Health"])
     async def _static_diag():
         return {

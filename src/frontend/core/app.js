@@ -1,11 +1,12 @@
 /**
  * @module core/app
- * @description Cœur de l'application ÉMERGENCE - V34.1 "Concordance/DelegatedNav"
- * - Écouteurs de navigation délégués uniquement sur la sidebar (header optionnel).
- * - Guards robustes sur le DOM (évite null.addEventListener).
- * - Rendu nav conservé (li.nav-item > a.nav-link[data-module-id]).
+ * @description Cœur de l'application ÉMERGENCE - V35.0 "ThreadBootstrap"
+ * - Bootstrap du thread courant au premier affichage (persist inter-sessions).
+ * - Navigation déléguée inchangée.
  */
+
 import { EVENTS } from '../shared/constants.js';
+import { api } from '../shared/api-client.js'; // + Threads API
 
 // [CORRECTION VITE]
 const moduleLoaders = {
@@ -23,8 +24,8 @@ export class App {
 
     this.dom = {
       appContainer: document.getElementById('app-container'),
-      header: document.getElementById('app-header'),         // peut être null
-      headerNav: document.getElementById('app-header-nav'),   // peut être null
+      header: document.getElementById('app-header'),
+      headerNav: document.getElementById('app-header-nav'),
       sidebar: document.getElementById('app-sidebar'),
       tabs: document.getElementById('app-tabs'),
       content: document.getElementById('app-content'),
@@ -43,7 +44,7 @@ export class App {
     ];
     this.activeModule = 'chat';
 
-    console.log('✅ App V34.1 (DelegatedNav) Initialisée.');
+    console.log('✅ App V35.0 (ThreadBootstrap) Initialisée.');
     this.init();
   }
 
@@ -76,9 +77,7 @@ export class App {
       e.preventDefault();
       this.showModule(link.dataset.moduleId);
     };
-    // Écoute déléguée (une seule fois) sur la sidebar
     root.addEventListener('click', handleNavClick);
-    // Si un header existe encore, on le supporte sans obligation
     this.dom.header?.addEventListener('click', handleNavClick);
   }
 
@@ -110,9 +109,51 @@ export class App {
     }
   }
 
+  /**
+   * Assure qu'un thread courant existe et charge son contenu.
+   * - Cherche le dernier thread type=chat (limit=1)
+   * - Sinon en crée un
+   * - Stocke l'id dans state.threads.currentId
+   * - Charge le thread (messages_limit=50) et le stocke dans state.threads.map.{id}
+   * - Emet 'threads:ready' puis 'threads:loaded'
+   */
+  async ensureCurrentThread() {
+    try {
+      let currentId = this.state.get('threads.currentId');
+      if (!currentId || typeof currentId !== 'string' || currentId.length < 8) {
+        const list = await api.listThreads({ type: 'chat', limit: 1 });
+        // tolère 'items' ou liste brute
+        const found = Array.isArray(list?.items) ? list.items[0] : Array.isArray(list) ? list[0] : null;
+        if (found?.id) {
+          currentId = found.id;
+        } else {
+          const created = await api.createThread({ type: 'chat', title: 'Conversation' });
+          currentId = created?.id;
+        }
+        if (currentId) this.state.set('threads.currentId', currentId);
+      }
+
+      if (currentId) {
+        this.eventBus.emit('threads:ready', { id: currentId });
+        const thread = await api.getThreadById(currentId, { messages_limit: 50 });
+        if (thread?.id) {
+          this.state.set(`threads.map.${thread.id}`, thread);
+          this.eventBus.emit('threads:loaded', thread);
+        }
+      }
+    } catch (error) {
+      console.error('[App] ensureCurrentThread() a échoué :', error);
+    }
+  }
+
   async showModule(moduleId, isInitialLoad = false) {
     if (!moduleId || !this.dom.content) return;
     this.clearSkeleton();
+
+    // Bootstrap thread AVANT le premier mount du module 'chat'
+    if (isInitialLoad) {
+      await this.ensureCurrentThread();
+    }
 
     this.activeModule = moduleId;
     this.renderNavigation();
