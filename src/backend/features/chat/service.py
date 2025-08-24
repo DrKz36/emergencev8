@@ -1,5 +1,9 @@
 # src/backend/features/chat/service.py
-# V29.2 - UNIFIED COSTING + DEBUG CONTEXT + OFF ISOLATION + FIX GEMINI STREAM + NORMALIZE HISTORY
+# V29.3 - STREAM GUARD + STRUCTURED LLM RESPONSE
+# - Guard robuste sur le stream OpenAI (boucle sur choices, skip deltas vides).
+# - Ajout get_structured_llm_response() pour l'analyse JSON (MemoryAnalyzer).
+# - Reste inchangé (coûts, normalisation historique, Gemini/Anthropic stream).
+
 import os
 import re
 import asyncio
@@ -38,12 +42,9 @@ MODEL_PRICING = {
 
 class ChatService:
     """
-    ChatService V29.2
-    - Grille tarifaire unifiée (identique V29.0).
-    - + Instrumentation WS: ws:debug_context par réponse d'agent.
-    - + OFF isolation: 'stateless' par défaut, 'agent_local' via EMERGENCE_RAG_OFF_POLICY.
-    - + FIX: _get_gemini_stream définit correctement `response` et renseigne le coût.
-    - + Implémentation propre de _normalize_history_for_llm.
+    ChatService V29.3
+    - Guard stream OpenAI + méthode d'analyse structurée.
+    - Grille tarifaire/cost tracking et normalisation historiques inchangées.
     """
     def __init__(
         self,
@@ -71,13 +72,9 @@ class ChatService:
             raise
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V29.2 initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V29.3 initialisé. Prompts chargés: {len(self.prompts)}")
 
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
-        """
-        Sélectionne un seul prompt par agent avec une priorité simple:
-        v3 > v2 > lite > (autres). Évite le double chargement (ex: neo_lite + neo_system_v3).
-        """
         def weight(name: str) -> int:
             name = name.lower()
             w = 0
@@ -94,7 +91,6 @@ class ChatService:
             if agent_id not in chosen or w > chosen[agent_id]["w"]:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     chosen[agent_id] = {"w": w, "text": f.read(), "file": p.name}
-        # Logs “dédup”
         for aid, meta in chosen.items():
             logger.info(f"Prompt retenu pour l'agent '{aid}': {meta['file']}")
         return {aid: meta["text"] for aid, meta in chosen.items()}
@@ -105,7 +101,6 @@ class ChatService:
         provider = agent_configs.get(clean_agent_id, {}).get("provider")
         model = agent_configs.get(clean_agent_id, {}).get("model")
 
-        # Remplacement stratégique du modèle
         if clean_agent_id == 'anima':
             model = 'gpt-4o-mini'
             logger.info("Remplacement du modèle pour 'anima' -> 'gpt-4o-mini' pour optimiser les coûts.")
@@ -158,7 +153,6 @@ class ChatService:
                     rag_context = "\n".join([result['text'] for result in search_results])
                     await connection_manager.send_personal_message({"type": "ws:rag_status", "payload": {"status": "found", "agent_id": agent_id}}, session_id)
 
-            # DEBUG pré-normalisation
             raw_concat = "\n".join([(m.get('content') or m.get('message', '')) for m in history])
             raw_tokens = self._extract_sensitive_tokens(raw_concat)
             await connection_manager.send_personal_message({
@@ -184,7 +178,6 @@ class ChatService:
                 agent_id=agent_id
             )
 
-            # DEBUG post-normalisation
             norm_concat = ""
             if provider == "google":
                 norm_concat = "\n".join(["".join(p.get("parts", [])) if isinstance(p.get("parts"), list) else p.get("parts", "") for p in normalized_history])
@@ -262,12 +255,6 @@ class ChatService:
         use_rag: bool = False,
         agent_id: Optional[str] = None
     ) -> List[Dict]:
-        """
-        Normalise l'historique pour chaque fournisseur :
-        - OpenAI/Anthropic : [{"role": "user"|"assistant", "content": "..."}]
-        - Google (Gemini)  : [{"role": "user"|"model", "parts": ["..."]}]
-        On injecte le RAG (si présent) comme *contexte utilisateur* au début.
-        """
         normalized: List[Dict[str, Any]] = []
 
         if use_rag and rag_context:
@@ -283,16 +270,13 @@ class ChatService:
                 continue
 
             if provider == "google":
-                # Gemini utilise "user" et "model"
                 if role == Role.USER or role == "user":
                     normalized.append({"role": "user", "parts": [text]})
                 elif role == Role.ASSISTANT or role == "assistant":
                     normalized.append({"role": "model", "parts": [text]})
                 else:
-                    # autres rôles -> user
                     normalized.append({"role": "user", "parts": [text]})
             else:
-                # OpenAI & Anthropic
                 if role == Role.USER or role == "user":
                     normalized.append({"role": "user", "content": text})
                 elif role == Role.ASSISTANT or role == "assistant":
@@ -305,7 +289,6 @@ class ChatService:
     async def _get_llm_response_stream(
         self, provider: str, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict
     ) -> AsyncGenerator[str, None]:
-        streamer = None
         if provider == "openai":
             streamer = self._get_openai_stream(model, system_prompt, history, cost_info_container)
         elif provider == "google":
@@ -315,9 +298,66 @@ class ChatService:
         else:
             raise ValueError(f"Fournisseur LLM non supporté pour le streaming: {provider}")
 
-        if streamer:
-            async for chunk in streamer:
-                yield chunk
+        async for chunk in streamer:
+            yield chunk
+
+    # ---------- NOUVEAU : réponse structurée (JSON) ----------
+    async def get_structured_llm_response(self, agent_id: str, prompt: str, json_schema: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Appel non-stream pour obtenir un JSON structuré (utilisé par MemoryAnalyzer).
+        Implémentation simple et robuste, avec fallback de parsing JSON.
+        """
+        provider, model, system_prompt = self._get_agent_config(agent_id)
+
+        if provider == "google":
+            model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
+            schema_hint = json.dumps(json_schema, ensure_ascii=False)
+            full_prompt = (
+                f"{prompt}\n\n"
+                f"IMPORTANT: Réponds EXCLUSIVEMENT en JSON valide correspondant strictement à ce SCHÉMA "
+                f"(clés exactes, types conformes) : {schema_hint}"
+            )
+            resp = await model_instance.generate_content_async([{"role": "user", "parts": [full_prompt]}])
+            text = getattr(resp, "text", "") or ""
+            try:
+                return json.loads(text) if text else {}
+            except Exception:
+                m = re.search(r"\{.*\}", text, re.S)
+                return json.loads(m.group(0)) if m else {}
+
+        elif provider == "openai":
+            resp = await self.openai_client.chat.completions.create(
+                model=model,
+                temperature=0,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+            )
+            content = (resp.choices[0].message.content or "").strip()
+            return json.loads(content) if content else {}
+
+        elif provider == "anthropic":
+            resp = await self.anthropic_client.messages.create(
+                model=model,
+                max_tokens=1500,
+                temperature=0,
+                system=system_prompt + "\n\nRéponds strictement en JSON valide.",
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text = ""
+            for block in getattr(resp, "content", []) or []:
+                t = getattr(block, "text", "") or ""
+                if t:
+                    text += t
+            try:
+                return json.loads(text)
+            except Exception:
+                m = re.search(r"\{.*\}", text, re.S)
+                return json.loads(m.group(0)) if m else {}
+
+        return {}
 
     async def _get_openai_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
         messages = [{"role": "system", "content": system_prompt}] + history
@@ -327,17 +367,31 @@ class ChatService:
             temperature=0.2,
             max_tokens=4000,
             stream=True,
-            # 👇 capture de l'usage sur le dernier chunk
             stream_options={"include_usage": True}
         )
-        
         final_chunk = None
         async for chunk in stream:
-            content = chunk.choices[0].delta.content or ""
+            # --- GUARD ROBUSTE SUR CHOICES ---
+            choices = getattr(chunk, "choices", None) or []
+            if not choices:
+                if getattr(chunk, "usage", None):
+                    final_chunk = chunk
+                continue
+
+            yielded = False
+            for ch in choices:
+                delta = getattr(ch, "delta", None)
+                piece = getattr(delta, "content", "") or ""
+                if piece:
+                    yielded = True
+                    yield piece
+
             if getattr(chunk, "usage", None):
                 final_chunk = chunk
-            yield content
-        
+            if not yielded:
+                # rien à émettre sur ce chunk (ex: tool/role/safety), on continue
+                pass
+
         if final_chunk and getattr(final_chunk, "usage", None):
             usage = final_chunk.usage
             pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
@@ -352,31 +406,23 @@ class ChatService:
             cost_info_container.update({"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0, "note": "Cost not available for OpenAI streams"})
 
     async def _get_gemini_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
-        """
-        Streaming Gemini (async) avec récupération des métriques d'usage.
-        """
         model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
-        # history est déjà normalisé au format Gemini (role + parts)
         response = await model_instance.generate_content_async(history, stream=True)
 
         async for chunk in response:
             try:
                 yield getattr(chunk, "text", "") or ""
             except Exception:
-                # Certains events ne portent pas .text (ex: safety, empty)
                 continue
 
-        # Résolution pour exposer usage_metadata sur le flux streamé
         try:
             await response.resolve()
         except Exception:
-            # Sur certaines versions du SDK, resolve n'est pas nécessaire
             pass
 
         usage = getattr(response, "usage_metadata", None)
         if usage:
             pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
-            # Gemini v1.5: prompt_token_count / candidates_token_count
             cost = (getattr(usage, "prompt_token_count", 0) * pricing["input"]) + \
                    (getattr(usage, "candidates_token_count", 0) * pricing["output"])
             cost_info_container.update({
@@ -388,12 +434,8 @@ class ChatService:
             cost_info_container.update({"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0, "note": "No usage metadata from Gemini"})
 
     async def _get_anthropic_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
-        """
-        Implémentation minimaliste non-streaming (on yield une fois).
-        Si tu veux du streaming natif Anthropic, on le fera dans un ticket dédié.
-        """
         try:
-            messages = history  # déjà normalisé pour "assistant"/"user"
+            messages = history
             resp = await self.anthropic_client.messages.create(
                 model=model,
                 max_tokens=4000,
@@ -403,7 +445,6 @@ class ChatService:
             )
             text = ""
             try:
-                # Claude renvoie une liste de "content" (blocks); on agrège le texte
                 for block in getattr(resp, "content", []) or []:
                     t = getattr(block, "text", "") or ""
                     if t:
@@ -431,4 +472,3 @@ class ChatService:
             logger.error(f"Erreur Anthropic (fallback non-stream): {e}", exc_info=True)
             yield ""
             cost_info_container.update({"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0, "note": "Anthropic error"})
-

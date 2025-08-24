@@ -1,9 +1,10 @@
 /**
  * @module features/chat/chat
- * @description Module Chat - V24.0 "StrictHydrate"
+ * @description Module Chat - V24.1 "StrictHydrate + Toast"
  * - Persistance inter-session (Threads API) côté front.
  * - Hydratation stricte par agent_id + idempotente (rebuild à blanc).
  * - Dédoublonnage agent_selected.
+ * - Toast léger sur ws:analysis_status.
  */
 
 import { ChatUI } from './chat-ui.js';
@@ -22,6 +23,9 @@ export default class ChatModule {
     // Threads
     this.threadId = null;
     this.loadedThreadId = null;
+
+    // Anti-dup toast
+    this._lastToastAt = 0;
   }
 
   /* ----------------------------- Lifecycle ----------------------------- */
@@ -33,7 +37,7 @@ export default class ChatModule {
     this.registerStateChanges();
     this.registerEvents();
     this.isInitialized = true;
-    console.log('✅ ChatModule V24.0 (StrictHydrate) initialisé.');
+    console.log('✅ ChatModule V24.1 (StrictHydrate + Toast) initialisé.');
   }
 
   mount(container) {
@@ -69,7 +73,7 @@ export default class ChatModule {
         ragEnabled: false,
         messages: {},        // { [agentId]: Message[] }
         threadId: null,
-        lastAnalysis: null,  // 👈 nouveau
+        lastAnalysis: null,  // 👈
       });
     } else {
       if (this.state.get('chat.threadId') == null) this.state.set('chat.threadId', null);
@@ -100,7 +104,7 @@ export default class ChatModule {
     this.listeners.push(this.eventBus.on('ws:chat_stream_start', this.handleStreamStart.bind(this)));
     this.listeners.push(this.eventBus.on('ws:chat_stream_chunk', this.handleStreamChunk.bind(this)));
     this.listeners.push(this.eventBus.on('ws:chat_stream_end', this.handleStreamEnd.bind(this)));
-    // 👇 état d'analyse (pour future bannière)
+    // 👇 état d'analyse (toast)
     this.listeners.push(this.eventBus.on('ws:analysis_status', this.handleAnalysisStatus.bind(this)));
 
     // Threads (depuis App)
@@ -296,7 +300,7 @@ export default class ChatModule {
     this.state.set('chat.ragEnabled', !current);
   }
 
-  // 👇 nouveau
+  // 👇 nouveau : toast mémoire
   handleAnalysisStatus({ session_id, status, error }) {
     this.state.set('chat.lastAnalysis', {
       session_id: session_id || null,
@@ -305,5 +309,43 @@ export default class ChatModule {
       at: Date.now()
     });
     console.log('[Chat] ws:analysis_status', { session_id, status, error });
+
+    const now = Date.now();
+    if (now - this._lastToastAt < 1000) return; // anti-spam
+    this._lastToastAt = now;
+
+    if (status === 'completed') {
+      this.showToast('Mémoire consolidée ✓');
+    } else if (status === 'failed') {
+      this.showToast('Analyse mémoire : échec');
+    }
+  }
+
+  // Petit toast DOM autonome (zéro dépendance)
+  showToast(message) {
+    try {
+      const el = document.createElement('div');
+      el.setAttribute('role', 'status');
+      el.style.position = 'fixed';
+      el.style.right = '20px';
+      el.style.bottom = '20px';
+      el.style.padding = '12px 14px';
+      el.style.borderRadius = '12px';
+      el.style.background = '#121212';
+      el.style.color = '#fff';
+      el.style.boxShadow = '0 6px 14px rgba(0,0,0,.3)';
+      el.style.font = '14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu';
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(6px)';
+      el.style.transition = 'opacity .15s ease, transform .15s ease';
+      el.textContent = message;
+      document.body.appendChild(el);
+      requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(6px)';
+        setTimeout(() => el.remove(), 180);
+      }, 2200);
+    } catch {}
   }
 }
