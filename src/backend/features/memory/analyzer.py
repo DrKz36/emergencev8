@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional, TYPE_CHECKING
 # --- GESTION DE LA DÉPENDANCE CIRCULAIRE ---
 if TYPE_CHECKING:
     from backend.features.chat.service import ChatService
-    from backend.core.database.manager import DatabaseManager # NOUVEAU
+    from backend.core.database.manager import DatabaseManager  # NOUVEAU
 
 # NOUVEAU: Import des requêtes pour la mise à jour
 from backend.core.database import queries
@@ -61,7 +61,7 @@ class MemoryAnalyzer:
         """
         MODIFIÉ V3.0: Ajout du db_manager pour sauvegarder les résultats de l'analyse.
         """
-        self.db_manager = db_manager # NOUVEAU
+        self.db_manager = db_manager  # NOUVEAU
         self.chat_service = chat_service
         self.is_ready = self.chat_service is not None
         logger.info(f"MemoryAnalyzer V3.0 initialisé. Prêt : {self.is_ready}")
@@ -92,7 +92,7 @@ class MemoryAnalyzer:
             conversation_text = "\n".join(
                 f"{msg.get('role')}: {msg.get('content') or msg.get('message', '')}" for msg in history
             )
-            
+
             if not conversation_text.strip():
                 logger.warning(f"Historique de la session {session_id} est vide. Analyse annulée.")
                 return
@@ -100,9 +100,8 @@ class MemoryAnalyzer:
             prompt = ANALYSIS_PROMPT_TEMPLATE.format(conversation_text=conversation_text)
 
             # 2. Appeler le LLM pour une réponse structurée
-            # On utilise un agent économique pour les tâches internes
             analysis_result = await self.chat_service.get_structured_llm_response(
-                agent_id='neo', # 'neo' (Gemini Flash) est un bon candidat pour ce genre de tâche
+                agent_id='neo',  # 'neo' (Gemini Flash) pour ce type de tâche
                 prompt=prompt,
                 json_schema=ANALYSIS_JSON_SCHEMA
             )
@@ -120,21 +119,29 @@ class MemoryAnalyzer:
                 concepts=analysis_result.get("concepts", []),
                 entities=analysis_result.get("entities", [])
             )
-            
-            # 4. Notifier le client du succès
-            await self.chat_service.connection_manager.send_personal_message(
-                 {"type": "ws:analysis_status", "payload": {"session_id": session_id, "status": "completed"}},
-                 session_id
-            )
+
+            # 4. Notifier le client du succès via SessionManager → ConnectionManager
+            conn = getattr(getattr(self.chat_service, "session_manager", None), "connection_manager", None)
+            if conn:
+                await conn.send_personal_message(
+                    {"type": "ws:analysis_status", "payload": {"session_id": session_id, "status": "completed"}},
+                    session_id
+                )
+            else:
+                logger.warning("ConnectionManager indisponible, skip notification ws:analysis_status (completed).")
+
             logger.info(f"Analyse sémantique et sauvegarde terminées pour la session {session_id}.")
 
         except Exception as e:
             logger.error(f"Erreur durant l'analyse de la session {session_id}: {e}", exc_info=True)
             try:
-                await self.chat_service.connection_manager.send_personal_message(
-                    {"type": "ws:analysis_status", "payload": {"session_id": session_id, "status": "failed", "error": str(e)}},
-                    session_id
-                )
+                conn = getattr(getattr(self.chat_service, "session_manager", None), "connection_manager", None)
+                if conn:
+                    await conn.send_personal_message(
+                        {"type": "ws:analysis_status", "payload": {"session_id": session_id, "status": "failed", "error": str(e)}},
+                        session_id
+                    )
+                else:
+                    logger.warning("ConnectionManager indisponible, skip notification ws:analysis_status (failed).")
             except Exception as send_error:
                 logger.error(f"Impossible de notifier le client de l'échec de l'analyse pour {session_id}: {send_error}")
-

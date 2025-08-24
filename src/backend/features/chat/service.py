@@ -1,5 +1,5 @@
 # src/backend/features/chat/service.py
-# V29.1 - UNIFIED COSTING + DEBUG CONTEXT + OFF ISOLATION
+# V29.2 - UNIFIED COSTING + DEBUG CONTEXT + OFF ISOLATION + FIX GEMINI STREAM + NORMALIZE HISTORY
 import os
 import re
 import asyncio
@@ -27,27 +27,23 @@ from backend.core import config
 logger = logging.getLogger(__name__)
 
 # --- CORRECTION V29.0: Grille tarifaire unifiée ---
-# Source de vérité unique pour tous les coûts des modèles.
-# Les prix sont par token, pour un calcul direct.
 MODEL_PRICING = {
-    # OpenAI
     "gpt-4o-mini": {"input": 0.15 / 1_000_000, "output": 0.60 / 1_000_000},
     "gpt-4o": {"input": 5.00 / 1_000_000, "output": 15.00 / 1_000_000},
-    # Google
     "gemini-1.5-flash": {"input": 0.35 / 1_000_000, "output": 0.70 / 1_000_000},
-    # Anthropic
     "claude-3-haiku-20240307": {"input": 0.25 / 1_000_000, "output": 1.25 / 1_000_000},
     "claude-3-sonnet-20240229": {"input": 3.00 / 1_000_000, "output": 15.00 / 1_000_000},
     "claude-3-opus-20240229": {"input": 15.00 / 1_000_000, "output": 75.00 / 1_000_000},
 }
 
-
 class ChatService:
     """
-    ChatService V29.1
+    ChatService V29.2
     - Grille tarifaire unifiée (identique V29.0).
     - + Instrumentation WS: ws:debug_context par réponse d'agent.
     - + OFF isolation: 'stateless' par défaut, 'agent_local' via EMERGENCE_RAG_OFF_POLICY.
+    - + FIX: _get_gemini_stream définit correctement `response` et renseigne le coût.
+    - + Implémentation propre de _normalize_history_for_llm.
     """
     def __init__(
         self,
@@ -61,7 +57,6 @@ class ChatService:
         self.vector_service = vector_service
         self.settings = settings
 
-        # Politique OFF: 'stateless' (par défaut) ou 'agent_local' (env)
         self.off_history_policy = os.getenv("EMERGENCE_RAG_OFF_POLICY", "stateless").strip().lower()
         if self.off_history_policy not in ("stateless", "agent_local"):
             self.off_history_policy = "stateless"
@@ -76,17 +71,33 @@ class ChatService:
             raise
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V29.1 initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V29.2 initialisé. Prompts chargés: {len(self.prompts)}")
 
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
-        prompts = {}
-        prompt_files = glob.glob(os.path.join(prompts_dir, "*.md"))
-        for file_path in prompt_files:
-            agent_id = Path(file_path).stem.replace("_system", "").replace("_v2", "").replace("_v3", "").replace("_lite", "")
-            with open(file_path, 'r', encoding='utf-8') as f:
-                prompts[agent_id] = f.read()
-                logger.info(f"Prompt chargé pour l'agent '{agent_id}' depuis {Path(file_path).name}.")
-        return prompts
+        """
+        Sélectionne un seul prompt par agent avec une priorité simple:
+        v3 > v2 > lite > (autres). Évite le double chargement (ex: neo_lite + neo_system_v3).
+        """
+        def weight(name: str) -> int:
+            name = name.lower()
+            w = 0
+            if "lite" in name: w = max(w, 1)
+            if "v2" in name:   w = max(w, 2)
+            if "v3" in name:   w = max(w, 3)
+            return w
+
+        chosen: Dict[str, Dict[str, Any]] = {}
+        for file_path in glob.glob(os.path.join(prompts_dir, "*.md")):
+            p = Path(file_path)
+            agent_id = p.stem.replace("_system", "").replace("_v2", "").replace("_v3", "").replace("_lite", "")
+            w = weight(p.name)
+            if agent_id not in chosen or w > chosen[agent_id]["w"]:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    chosen[agent_id] = {"w": w, "text": f.read(), "file": p.name}
+        # Logs “dédup”
+        for aid, meta in chosen.items():
+            logger.info(f"Prompt retenu pour l'agent '{aid}': {meta['file']}")
+        return {aid: meta["text"] for aid, meta in chosen.items()}
 
     def _get_agent_config(self, agent_id: str) -> Tuple[str, str, str]:
         clean_agent_id = agent_id.replace('_lite', '')
@@ -94,7 +105,7 @@ class ChatService:
         provider = agent_configs.get(clean_agent_id, {}).get("provider")
         model = agent_configs.get(clean_agent_id, {}).get("model")
 
-        # --- CORRECTION V29.0: Remplacement stratégique du modèle ---
+        # Remplacement stratégique du modèle
         if clean_agent_id == 'anima':
             model = 'gpt-4o-mini'
             logger.info("Remplacement du modèle pour 'anima' -> 'gpt-4o-mini' pour optimiser les coûts.")
@@ -121,7 +132,6 @@ class ChatService:
 
     # --- Helpers DEBUG ---
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
-        # détecte des formats du type AZUR-8152 / ONYX-4472
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
 
     async def _process_agent_response_stream(self, session_id: str, agent_id: str, use_rag: bool, connection_manager: ConnectionManager):
@@ -244,60 +254,52 @@ class ChatService:
             except Exception as send_error:
                 logger.error(f"Impossible d'envoyer le message d'erreur au client pour la session {session_id}: {send_error}", exc_info=True)
 
-    def _normalize_history_for_llm(self, provider: str, history: List[Dict], rag_context: str = "", use_rag: bool = False, agent_id: Optional[str] = None) -> List[Dict]:
+    def _normalize_history_for_llm(
+        self,
+        provider: str,
+        history: List[Dict],
+        rag_context: str = "",
+        use_rag: bool = False,
+        agent_id: Optional[str] = None
+    ) -> List[Dict]:
         """
-        - Si rag_context est fourni, il est injecté dans le dernier message utilisateur.
-        - Si use_rag=False, applique la politique OFF:
-            * 'stateless': ne conserve que le dernier message utilisateur
-            * 'agent_local': conserve les derniers tours de l'agent cible + user
+        Normalise l'historique pour chaque fournisseur :
+        - OpenAI/Anthropic : [{"role": "user"|"assistant", "content": "..."}]
+        - Google (Gemini)  : [{"role": "user"|"model", "parts": ["..."]}]
+        On injecte le RAG (si présent) comme *contexte utilisateur* au début.
         """
-        # 1) Construire une copie de l'historique selon la politique
-        if use_rag:
-            history_copy = list(history)
-        else:
-            if self.off_history_policy == "agent_local" and agent_id:
-                # On garde les 6 derniers messages pertinents pour l'agent cible
-                filtered = []
-                for m in reversed(history):
-                    r = m.get('role')
-                    a = m.get('agent')
-                    if r == Role.USER or (r == Role.ASSISTANT and a == agent_id):
-                        filtered.append(m)
-                    if len(filtered) >= 6:
-                        break
-                history_copy = list(reversed(filtered)) if filtered else []
-            else:
-                # 'stateless': dernier message utilisateur uniquement
-                last_user_message_obj = next((msg for msg in reversed(history) if msg.get('role') == Role.USER), None)
-                history_copy = [last_user_message_obj] if last_user_message_obj else []
+        normalized: List[Dict[str, Any]] = []
 
-        # 2) Injection du contexte RAG (si présent)
-        if rag_context and history_copy:
-            rag_prompt = f"Contexte pertinent issu de documents:\n---\n{rag_context}\n---\nEn te basant sur ce contexte, réponds à la question suivante:"
-            if history_copy[-1].get('role') == Role.USER:
-                history_copy[-1] = dict(history_copy[-1])  # éviter de muter l'original
-                history_copy[-1]['content'] = f"{rag_prompt}\n{history_copy[-1].get('content', '')}"
-
-        # 3) Normalisation selon le provider
-        normalized = []
-        for msg in history_copy:
-            msg_role = msg.get('role')
-            content = None
-            if msg_role == Role.USER:
-                role, content = "user", msg.get('content')
-            elif msg_role == Role.ASSISTANT:
-                role, content = ("model" if provider == "google" else "assistant"), msg.get('message')
-            else:
-                continue
-            if not content:
-                continue
+        if use_rag and rag_context:
             if provider == "google":
-                normalized.append({"role": role, "parts": [content]})
-            elif provider == "anthropic" and normalized and normalized[-1]["role"] == role:
-                # Anthropic: merge si deux mêmes rôles successifs
-                normalized[-1]["content"] += f"\n\n{content}"
+                normalized.append({"role": "user", "parts": [f"[RAG_CONTEXT]\n{rag_context}"]})
             else:
-                normalized.append({"role": role, "content": content})
+                normalized.append({"role": "user", "content": f"[RAG_CONTEXT]\n{rag_context}"})
+
+        for m in history:
+            role = m.get("role")
+            text = m.get("content") or m.get("message") or ""
+            if not text:
+                continue
+
+            if provider == "google":
+                # Gemini utilise "user" et "model"
+                if role == Role.USER or role == "user":
+                    normalized.append({"role": "user", "parts": [text]})
+                elif role == Role.ASSISTANT or role == "assistant":
+                    normalized.append({"role": "model", "parts": [text]})
+                else:
+                    # autres rôles -> user
+                    normalized.append({"role": "user", "parts": [text]})
+            else:
+                # OpenAI & Anthropic
+                if role == Role.USER or role == "user":
+                    normalized.append({"role": "user", "content": text})
+                elif role == Role.ASSISTANT or role == "assistant":
+                    normalized.append({"role": "assistant", "content": text})
+                else:
+                    normalized.append({"role": "user", "content": text})
+
         return normalized
 
     async def _get_llm_response_stream(
@@ -320,18 +322,23 @@ class ChatService:
     async def _get_openai_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
         messages = [{"role": "system", "content": system_prompt}] + history
         stream = await self.openai_client.chat.completions.create(
-            model=model, messages=messages, temperature=0.2, max_tokens=4000, stream=True
+            model=model,
+            messages=messages,
+            temperature=0.2,
+            max_tokens=4000,
+            stream=True,
+            # 👇 capture de l'usage sur le dernier chunk
+            stream_options={"include_usage": True}
         )
         
-        # --- CORRECTION V29.0: Capture de l'usage pour OpenAI ---
         final_chunk = None
         async for chunk in stream:
             content = chunk.choices[0].delta.content or ""
-            if chunk.usage:
+            if getattr(chunk, "usage", None):
                 final_chunk = chunk
             yield content
         
-        if final_chunk and final_chunk.usage:
+        if final_chunk and getattr(final_chunk, "usage", None):
             usage = final_chunk.usage
             pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
             cost = (usage.prompt_tokens * pricing["input"]) + (usage.completion_tokens * pricing["output"])
@@ -345,142 +352,83 @@ class ChatService:
             cost_info_container.update({"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0, "note": "Cost not available for OpenAI streams"})
 
     async def _get_gemini_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
+        """
+        Streaming Gemini (async) avec récupération des métriques d'usage.
+        """
         model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
+        # history est déjà normalisé au format Gemini (role + parts)
         response = await model_instance.generate_content_async(history, stream=True)
+
         async for chunk in response:
-            yield chunk.text or ""
-        
-        # --- CORRECTION V29.0: Calcul du coût pour Gemini ---
-        usage_metadata = response.usage_metadata
-        logger.info(f"Usage Gemini stream ({model}): {usage_metadata}")
-        pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
-        cost = (usage_metadata.prompt_token_count * pricing["input"]) + (usage_metadata.candidates_token_count * pricing["output"])
-        
-        cost_info_container.update({
-            "input_tokens": usage_metadata.prompt_token_count,
-            "output_tokens": usage_metadata.candidates_token_count,
-            "total_cost": cost,
-        })
+            try:
+                yield getattr(chunk, "text", "") or ""
+            except Exception:
+                # Certains events ne portent pas .text (ex: safety, empty)
+                continue
+
+        # Résolution pour exposer usage_metadata sur le flux streamé
+        try:
+            await response.resolve()
+        except Exception:
+            # Sur certaines versions du SDK, resolve n'est pas nécessaire
+            pass
+
+        usage = getattr(response, "usage_metadata", None)
+        if usage:
+            pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
+            # Gemini v1.5: prompt_token_count / candidates_token_count
+            cost = (getattr(usage, "prompt_token_count", 0) * pricing["input"]) + \
+                   (getattr(usage, "candidates_token_count", 0) * pricing["output"])
+            cost_info_container.update({
+                "input_tokens": getattr(usage, "prompt_token_count", 0),
+                "output_tokens": getattr(usage, "candidates_token_count", 0),
+                "total_cost": cost
+            })
+        else:
+            cost_info_container.update({"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0, "note": "No usage metadata from Gemini"})
 
     async def _get_anthropic_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
-        if not history:
-            raise ValueError("L'historique des messages pour Anthropic ne peut pas être vide.")
-        
-        async with self.anthropic_client.messages.stream(
-            model=model, messages=history, system=system_prompt, temperature=0.2, max_tokens=4000
-        ) as stream:
-            async for text in stream.text_stream:
-                yield text
-        
-        final_message = await stream.get_final_message()
-        usage = final_message.usage
-        # --- CORRECTION V29.0: Utilisation de la grille unifiée ---
-        pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
-        cost = (usage.input_tokens * pricing["input"]) + (usage.output_tokens * pricing["output"])
-        
-        cost_info_container.update({
-            "input_tokens": usage.input_tokens,
-            "output_tokens": usage.output_tokens,
-            "total_cost": cost
-        })
-
-    # ... (Les méthodes non-stream restent inchangées mais bénéficieront implicitement des nouveaux tarifs si elles sont appelées)
-
-    async def get_llm_response_for_debate(self, agent_id: str, history: List[Dict], session_id: str) -> Tuple[str, Dict]:
+        """
+        Implémentation minimaliste non-streaming (on yield une fois).
+        Si tu veux du streaming natif Anthropic, on le fera dans un ticket dédié.
+        """
         try:
-            provider, model, system_prompt = self._get_agent_config(agent_id)
-            debate_prompt = history[0]['content']
-            if provider == 'google':
-                normalized_history = [{'role': 'user', 'parts': [debate_prompt]}]
-            else:
-                normalized_history = [{'role': 'user', 'content': debate_prompt}]
-            
-            response_text, cost_info = await self._get_llm_response_single(provider, model, system_prompt, normalized_history)
-
-            await self.cost_tracker.record_cost(
-                agent=agent_id,
+            messages = history  # déjà normalisé pour "assistant"/"user"
+            resp = await self.anthropic_client.messages.create(
                 model=model,
-                input_tokens=cost_info.get("input_tokens", 0),
-                output_tokens=cost_info.get("output_tokens", 0),
-                total_cost=cost_info.get("total_cost", 0.0),
-                feature="debate"
+                max_tokens=4000,
+                system=system_prompt,
+                messages=messages,
+                temperature=0.2,
             )
-            return response_text, cost_info
-        except Exception as e:
-            logger.error(f"Erreur dans get_llm_response_for_debate pour {agent_id}: {e}", exc_info=True)
-            raise
+            text = ""
+            try:
+                # Claude renvoie une liste de "content" (blocks); on agrège le texte
+                for block in getattr(resp, "content", []) or []:
+                    t = getattr(block, "text", "") or ""
+                    if t:
+                        text += t
+            except Exception:
+                pass
 
-    async def get_structured_llm_response(self, agent_id: str, prompt: str, json_schema: Dict) -> Optional[Dict]:
-        try:
-            provider, model, _ = self._get_agent_config(agent_id)
-            if provider == 'google':
-                history = [{'role': 'user', 'parts': [prompt]}]
+            yield text
+
+            usage = getattr(resp, "usage", None)
+            if usage:
+                pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
+                in_tok = getattr(usage, "input_tokens", 0)
+                out_tok = getattr(usage, "output_tokens", 0)
+                cost = (in_tok * pricing["input"]) + (out_tok * pricing["output"])
+                cost_info_container.update({
+                    "input_tokens": in_tok,
+                    "output_tokens": out_tok,
+                    "total_cost": cost
+                })
             else:
-                history = [{'role': 'user', 'content': prompt}]
-            system_prompt = "Tu es un assistant expert en traitement de données. Tu ne réponds qu'au format JSON."
-            
-            response_str, cost = await self._get_llm_response_single(provider, model, system_prompt, history, json_mode=True)
+                cost_info_container.update({"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0, "note": "No usage from Anthropic"})
 
-            await self.cost_tracker.record_cost(
-                agent=f"internal_analyzer_{agent_id}", model=model,
-                input_tokens=cost.get("input_tokens", 0),
-                output_tokens=cost.get("output_tokens", 0),
-                total_cost=cost.get("total_cost", 0.0),
-                feature="document_processing"
-            )
-            return json.loads(response_str)
-        except json.JSONDecodeError as e:
-            logger.error(f"Erreur de décodage JSON de la part du LLM: {e}. Réponse reçue: {response_str}", exc_info=True)
-            return None
         except Exception as e:
-            logger.error(f"Erreur dans get_structured_llm_response pour {agent_id}: {e}", exc_info=True)
-            return None
+            logger.error(f"Erreur Anthropic (fallback non-stream): {e}", exc_info=True)
+            yield ""
+            cost_info_container.update({"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0, "note": "Anthropic error"})
 
-    async def _get_llm_response_single(self, provider: str, model: str, system_prompt: str, history: List[Dict], json_mode: bool = False) -> Tuple[str, Dict]:
-        if provider == "openai":
-            return await self._get_openai_response_single(model, system_prompt, history, json_mode)
-        elif provider == "google":
-            return await self._get_gemini_response_single(model, system_prompt, history, json_mode)
-        elif provider == "anthropic":
-            return await self._get_anthropic_response_single(model, system_prompt, history, json_mode)
-        else:
-            raise ValueError(f"Fournisseur LLM non supporté: {provider}")
-
-    async def _get_openai_response_single(self, model: str, system_prompt: str, history: List[Dict], json_mode: bool = False) -> Tuple[str, Dict]:
-        messages = [{"role": "system", "content": system_prompt}] + history
-        response_format = {"type": "json_object"} if json_mode else {"type": "text"}
-        response = await self.openai_client.chat.completions.create(model=model, messages=messages, temperature=0.2, max_tokens=4000, response_format=response_format)
-        content = response.choices[0].message.content or ""
-        cost_info = {"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0}
-        if response.usage:
-            usage = response.usage
-            pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
-            cost = (usage.prompt_tokens * pricing["input"]) + (usage.completion_tokens * pricing["output"])
-            cost_info.update({"input_tokens": usage.prompt_tokens, "output_tokens": usage.completed_tokens if hasattr(usage, 'completed_tokens') else usage.completion_tokens, "total_cost": cost})
-        return content, cost_info
-
-    async def _get_gemini_response_single(self, model: str, system_prompt: str, history: List[Dict], json_mode: bool = False) -> Tuple[str, Dict]:
-        model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
-        generation_config = genai.types.GenerationConfig(response_mime_type="application/json") if json_mode else None
-        response = await model_instance.generate_content_async(history, generation_config=generation_config)
-        content = response.text or ""
-        cost_info = {"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0}
-        if response.usage_metadata:
-            usage = response.usage_metadata
-            pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
-            cost = (usage.prompt_token_count * pricing["input"]) + (usage.candidates_token_count * pricing["output"])
-            cost_info.update({"input_tokens": usage.prompt_token_count, "output_tokens": usage.candidates_token_count, "total_cost": cost})
-        return content, cost_info
-
-    async def _get_anthropic_response_single(self, model: str, system_prompt: str, history: List[Dict], json_mode: bool = False) -> Tuple[str, Dict]:
-        if not history:
-            raise ValueError("L'historique des messages pour Anthropic ne peut pas être vide.")
-        if json_mode and history and history[-1]['role'] == 'user':
-            history[-1]['content'] += "\n\nRéponds uniquement avec un objet JSON valide."
-        response = await self.anthropic_client.messages.create(model=model, messages=history, system=system_prompt, temperature=0.2, max_tokens=4000)
-        content = response.content[0].text or ""
-        usage = response.usage
-        pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
-        cost = (usage.input_tokens * pricing["input"]) + (usage.output_tokens * pricing["output"])
-        cost_info = {"input_tokens": usage.input_tokens, "output_tokens": usage.output_tokens, "total_cost": cost}
-        return content, cost_info

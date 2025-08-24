@@ -8,7 +8,7 @@ from typing import Dict, Any, List, Optional
 # Imports corrigés pour refléter la structure réelle
 from backend.shared.models import Session, ChatMessage, AgentMessage
 from backend.core.database.manager import DatabaseManager
-from backend.core.database import queries # Import du module queries
+from backend.core.database import queries  # Import du module queries
 from backend.features.memory.analyzer import MemoryAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -23,6 +23,8 @@ class SessionManager:
         self.db_manager = db_manager
         self.memory_analyzer = memory_analyzer
         self.active_sessions: Dict[str, Session] = {}
+        # ConnectionManager sera injecté dynamiquement par websocket.ConnectionManager
+        self.connection_manager = None  # type: ignore[attr-defined]
         is_ready = self.memory_analyzer is not None
         logger.info(f"SessionManager V13.2 initialisé. MemoryAnalyzer prêt : {is_ready}")
 
@@ -86,7 +88,7 @@ class SessionManager:
                 }
             )
             
-            self.active_sessions[session_id] = session # On la met en cache actif
+            self.active_sessions[session_id] = session  # On la met en cache actif
             logger.info(f"Session {session_id} chargée et reconstruite depuis la BDD.")
             return session
         except Exception as e:
@@ -140,3 +142,11 @@ class SessionManager:
             await self.db_manager.save_session(session)
         except Exception as e:
             logger.error(f"Erreur lors de la mise à jour et sauvegarde de la session {session_id}: {e}", exc_info=True)
+
+    # --- Helper WS facultatif ---
+    async def publish_event(self, session_id: str, type_: str, payload: Dict[str, Any]):
+        cm = getattr(self, "connection_manager", None)
+        if cm:
+            await cm.send_personal_message({"type": type_, "payload": payload}, session_id)
+        else:
+            logger.warning("Aucun ConnectionManager attaché au SessionManager (publish_event ignoré).")

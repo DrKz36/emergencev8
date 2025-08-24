@@ -19,6 +19,11 @@ class ConnectionManager:
     def __init__(self, session_manager: SessionManager):
         self.active_connections: Dict[str, List[WebSocket]] = {}
         self.session_manager = session_manager
+        # ⇩⇩⇩ EXPOSE LE MANAGER DANS LA SESSION ⇩⇩⇩
+        try:
+            setattr(self.session_manager, "connection_manager", self)
+        except Exception as e:
+            logger.warning(f"Impossible d'exposer ConnectionManager dans SessionManager: {e}")
         logger.info("ConnectionManager V10.2 (Connexion Blindée) initialisé.")
 
     async def connect(self, websocket: WebSocket, session_id: str, user_id: str = "default_user"):
@@ -44,7 +49,6 @@ class ConnectionManager:
             logger.warning(f"Client déconnecté IMMÉDIATEMENT après la connexion (session {session_id}). Nettoyage... Erreur: {e}")
             # On nettoie immédiatement la connexion qui vient d'être ajoutée.
             await self.disconnect(session_id, websocket)
-
 
     async def disconnect(self, session_id: str, websocket: WebSocket):
         if session_id in self.active_connections and websocket in self.active_connections[session_id]:
