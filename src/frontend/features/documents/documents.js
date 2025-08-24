@@ -1,8 +1,12 @@
 /**
  * @module features/documents/documents
- * @description Logique du module Documents — liste stylée + drop-zone + multi-suppression
+ * @description Logique du module Documents — V7.0
+ * - Multi-fichiers (sélection + glisser/déposer)
+ * - Upload séquentiel avec notifications
+ * - Rafraîchissement intelligent (auto-refresh si 'processing')
+ * - Toolbar: Tout sélectionner / Supprimer sélection / Tout effacer / Rafraîchir
+ * - States et accessibilité soignés
  */
-
 import { api } from '../../shared/api-client.js';
 import { EVENTS } from '../../shared/constants.js';
 import { formatDate } from '../../shared/utils.js';
@@ -16,9 +20,10 @@ export default class DocumentsModule {
         this.container = null;
         this.dom = {};
         this.documents = [];
-        this.selectedFile = null;
+        this.selectedFiles = [];
         this.selectedIds = new Set();
         this.isInitialized = false;
+        this._autoRefreshTimer = null;
     }
 
     init() {
@@ -32,6 +37,17 @@ export default class DocumentsModule {
         this.cacheDOM();
         this.registerDOMListeners();
         this.fetchAndRenderDocuments();
+    }
+
+    destroy() {
+        if (this._autoRefreshTimer) {
+            clearTimeout(this._autoRefreshTimer);
+            this._autoRefreshTimer = null;
+        }
+        this.container = null;
+        this.dom = {};
+        this.selectedFiles = [];
+        this.selectedIds.clear();
     }
 
     cacheDOM() {
@@ -49,14 +65,15 @@ export default class DocumentsModule {
             selectAll: this.container.querySelector('#select-all'),
             deleteSelectedBtn: this.container.querySelector('#btn-delete-selected'),
             deleteAllBtn: this.container.querySelector('#btn-delete-all'),
+            refreshBtn: this.container.querySelector('#btn-refresh-list'),
         };
     }
 
     registerDOMListeners() {
         // Sélection fichier(s)
         this.dom.fileInput.addEventListener('change', (e) => {
-            const file = e.target.files && e.target.files[0];
-            this.setSelectedFile(file || null);
+            const files = Array.from(e.target.files || []);
+            this.setSelectedFiles(files);
         });
 
         // Drop-zone
@@ -74,27 +91,31 @@ export default class DocumentsModule {
             })
         );
         this.dom.dropZone.addEventListener('drop', (e) => {
-            const file = (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) || null;
-            this.setSelectedFile(file);
+            const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+            this.setSelectedFiles(files);
         });
 
-        // Ouverture du picker via la drop‑zone
+        // Ouverture du picker via la drop-zone
         const openPicker = () => this.dom.fileInput.click();
         this.dom.dropZone.addEventListener('click', openPicker);
         this.dom.dropZone.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') openPicker();
         });
 
-        // Effacer la sélection locale (fichier)
-        this.dom.clearSelectionBtn.addEventListener('click', () => this.setSelectedFile(null));
+        // Effacer la sélection locale (fichiers)
+        this.dom.clearSelectionBtn.addEventListener('click', () => this.setSelectedFiles([]));
 
         // Actions upload
-        this.dom.uploadButton.addEventListener('click', () => this.uploadFile());
+        this.dom.uploadButton.addEventListener('click', () => this.uploadSelectedFiles());
 
-        // Liste : délégation pour suppression unitaire
+        // Toolbar
+        this.dom.selectAll.addEventListener('change', (e) => this.toggleSelectAll(e.target.checked));
+        this.dom.deleteSelectedBtn.addEventListener('click', () => this.deleteSelected());
+        this.dom.deleteAllBtn.addEventListener('click', () => this.deleteAll());
+        this.dom.refreshBtn.addEventListener('click', () => this.fetchAndRenderDocuments(true));
+
+        // Liste : délégation pour suppression unitaire + cases à cocher
         this.dom.listContainer.addEventListener('click', (e) => this.handleDelete(e));
-
-        // Liste : délégation pour cases à cocher
         this.dom.listContainer.addEventListener('change', (e) => {
             const box = e.target.closest('.doc-select');
             if (!box) return;
@@ -105,17 +126,19 @@ export default class DocumentsModule {
             this.updateSelectionUI();
         });
 
-        // Toolbar
-        this.dom.selectAll.addEventListener('change', (e) => this.toggleSelectAll(e.target.checked));
-        this.dom.deleteSelectedBtn.addEventListener('click', () => this.deleteSelected());
-        this.dom.deleteAllBtn.addEventListener('click', () => this.deleteAll());
+        // Auto-refresh au retour d'onglet
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') this.fetchAndRenderDocuments(true);
+        });
     }
 
-    setSelectedFile(file) {
-        this.selectedFile = file || null;
+    /* ------------------------------- Sélection ------------------------------- */
 
-        if (this.selectedFile) {
-            this.dom.previewName.textContent = this.selectedFile.name;
+    setSelectedFiles(files) {
+        this.selectedFiles = Array.isArray(files) ? files.filter(Boolean) : [];
+        if (this.selectedFiles.length) {
+            const names = this.selectedFiles.map(f => f.name).join(', ');
+            this.dom.previewName.textContent = names;
             this.dom.dropZonePrompt.style.display = 'none';
             this.dom.dropZonePreview.style.display = 'flex';
             this.dom.uploadButton.disabled = false;
@@ -128,26 +151,49 @@ export default class DocumentsModule {
         }
     }
 
-    async uploadFile() {
-        if (!this.selectedFile) return;
-        this.dom.uploadButton.disabled = true;
-        this.dom.uploadStatus.textContent = `Upload de ${this.selectedFile.name}…`;
+    /* --------------------------------- Upload -------------------------------- */
 
-        try {
-            const response = await this.apiClient.uploadDocument(this.selectedFile);
-            this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: (response && response.message) || 'Fichier uploadé.' });
-            // Reset sélection
-            this.setSelectedFile(null);
-            this.dom.fileInput.value = '';
-            await this.fetchAndRenderDocuments();
-        } catch (error) {
-            this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'error', message: error.message || 'Erreur upload.' });
-        } finally {
-            this.dom.uploadStatus.textContent = '';
+    async uploadSelectedFiles() {
+        if (!this.selectedFiles.length) return;
+
+        this.dom.uploadButton.disabled = true;
+        this.dom.uploadStatus.textContent = `Upload de ${this.selectedFiles.length} fichier(s)…`;
+
+        const results = [];
+        for (const file of this.selectedFiles) {
+            try {
+                await this.apiClient.uploadDocument(file);
+                results.push({ ok: true, name: file.name });
+                this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: `Uploadé : ${file.name}` });
+            } catch (error) {
+                results.push({ ok: false, name: file.name, error });
+                this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'error', message: `Échec upload : ${file.name}` });
+            }
+        }
+
+        // Reset sélection
+        this.setSelectedFiles([]);
+        this.dom.fileInput.value = '';
+
+        // Refresh & statut
+        await this.fetchAndRenderDocuments(true);
+
+        const okCount = results.filter(r => r.ok).length;
+        const koCount = results.length - okCount;
+        this.dom.uploadStatus.textContent = '';
+        if (koCount === 0) {
+            this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: `Upload terminé (${okCount}/${results.length}).` });
+        } else {
+            this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'warning', message: `Upload partiel (${okCount}/${results.length}).` });
         }
     }
 
-    async fetchAndRenderDocuments() {
+    /* -------------------------------- Listing -------------------------------- */
+
+    async fetchAndRenderDocuments(force = false) {
+        // Empêche le spam d'appels si on a déjà un timer actif et pas de force
+        if (!force && this._autoRefreshTimer) return;
+
         this.dom.listContainer.innerHTML = '<div class="loader"></div>';
         this.selectedIds.clear();
 
@@ -157,15 +203,31 @@ export default class DocumentsModule {
                 this.dom.listContainer.innerHTML = '';
                 if (this.dom.emptyListMessage) this.dom.emptyListMessage.style.display = 'block';
                 this.updateSelectionUI();
+                this._scheduleAutoRefresh(false);
                 return;
             }
             if (this.dom.emptyListMessage) this.dom.emptyListMessage.style.display = 'none';
 
             this.dom.listContainer.innerHTML = this.documents.map((doc) => this.renderDocItem(doc)).join('');
             this.updateSelectionUI();
-        } catch {
+
+            // Auto-refresh si des items sont en 'processing'
+            const hasProcessing = this.documents.some(d => String(d.status || '').toLowerCase() === 'processing');
+            this._scheduleAutoRefresh(hasProcessing);
+        } catch (e) {
             this.dom.listContainer.innerHTML = '<p class="placeholder">Erreur de chargement des documents.</p>';
             this.updateSelectionUI();
+            this._scheduleAutoRefresh(false);
+        }
+    }
+
+    _scheduleAutoRefresh(enabled) {
+        if (this._autoRefreshTimer) {
+            clearTimeout(this._autoRefreshTimer);
+            this._autoRefreshTimer = null;
+        }
+        if (enabled) {
+            this._autoRefreshTimer = setTimeout(() => this.fetchAndRenderDocuments(true), 3000);
         }
     }
 
@@ -189,6 +251,8 @@ export default class DocumentsModule {
             </li>`;
     }
 
+    /* ------------------------------- Actions UI ------------------------------ */
+
     async handleDelete(e) {
         const btn = e.target.closest('.btn-delete');
         if (!btn) return;
@@ -200,7 +264,7 @@ export default class DocumentsModule {
                 await this.apiClient.deleteDocument(docId);
                 this.selectedIds.delete(docId);
                 this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: 'Document supprimé.' });
-                await this.fetchAndRenderDocuments();
+                await this.fetchAndRenderDocuments(true);
             } catch {
                 this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'error', message: 'Erreur lors de la suppression.' });
             }
@@ -244,7 +308,7 @@ export default class DocumentsModule {
         } catch {
             this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'error', message: 'Suppression partielle : vérifie les logs.' });
         } finally {
-            await this.fetchAndRenderDocuments();
+            await this.fetchAndRenderDocuments(true);
         }
     }
 
@@ -259,7 +323,7 @@ export default class DocumentsModule {
         } catch {
             this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'error', message: 'Suppression partielle : vérifie les logs.' });
         } finally {
-            await this.fetchAndRenderDocuments();
+            await this.fetchAndRenderDocuments(true);
         }
     }
 }

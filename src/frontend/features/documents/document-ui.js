@@ -1,11 +1,9 @@
 /**
  * @module features/documents/document-ui
- * @description UI du module Documents — alignée Chat/Débat (verre/halo/métal)
- * - Structure : .documents-view-wrapper > .card
- * - Upload : drop-zone + preview
- * - Liste : toolbar (sélection, suppression)
+ * @description UI du module Documents — V4.0 (verre/halo/métal)
+ * - Upload : drop-zone + preview multi-fichiers
+ * - Liste : toolbar (sélection, suppression, rafraîchir)
  */
-
 export class DocumentsUI {
     constructor(eventBus) {
         this.eventBus = eventBus;
@@ -26,13 +24,12 @@ export class DocumentsUI {
 
                             <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Choisir un fichier ou déposer ici">
                                 <div class="drop-zone-prompt">
-                                    <!-- Icône stroke correcte (plus de barre fantôme) -->
                                     <svg class="upload-icon" viewBox="0 0 24 24" aria-hidden="true">
                                         <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"
                                               fill="none" stroke="currentColor" stroke-width="2"
                                               stroke-linecap="round" stroke-linejoin="round"/>
                                     </svg>
-                                    <p><strong>Glisse-dépose</strong> ton fichier ici ou clique pour choisir.</p>
+                                    <p><strong>Glisse-dépose</strong> un ou plusieurs fichiers ici, ou clique pour choisir.</p>
                                 </div>
 
                                 <div class="drop-zone-preview" id="drop-zone-preview" aria-live="polite">
@@ -53,7 +50,7 @@ export class DocumentsUI {
                                     <span>Tout sélectionner</span>
                                 </label>
                                 <div class="toolbar-actions">
-                                    <!-- Alignés visuellement sur #chat-export / #chat-clear -->
+                                    <button id="btn-refresh-list" class="button" title="Rafraîchir la liste">Rafraîchir</button>
                                     <button id="btn-delete-selected" class="button" disabled>Supprimer la sélection</button>
                                     <button id="btn-delete-all" class="button">Tout effacer</button>
                                 </div>
