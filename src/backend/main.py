@@ -1,4 +1,3 @@
-# src/backend/main.py
 from __future__ import annotations
 
 import os
@@ -187,17 +186,51 @@ def create_app() -> FastAPI:
         _mount_local_ws(app, container)
     t.mark("ws_ready")
 
-    # --- Static: servir l'app web ---
-    try:
-        # 1) /src → répertoire 'src' (pour /src/frontend/... dans index.html)
-        app.mount("/src", StaticFiles(directory=str(REPO_ROOT / "src")), name="src-static")
+    # --- Static: servir l'app web (robuste + diagnostique) ---
+    # Résolution robuste des chemins (par défaut /app dans le conteneur)
+    BASE = Path(os.getenv("EMERGENCE_STATIC_ROOT") or REPO_ROOT).resolve()
+    SRC_PATH = Path(os.getenv("EMERGENCE_STATIC_SRC") or (BASE / "src")).resolve()
+    ASSETS_PATH = Path(os.getenv("EMERGENCE_STATIC_ASSETS") or (BASE / "assets")).resolve()
+    INDEX_PATH = BASE / "index.html"
 
-        # 2) / → repo root, index.html livré (html=True)
-        app.mount("/", StaticFiles(directory=str(REPO_ROOT), html=True), name="root")
-        logger.info(f"Fichiers statiques montés depuis: {REPO_ROOT} (+ /src)")
+    try:
+        mounts = []
+
+        # /src → /app/src (ou override via env)
+        if SRC_PATH.exists():
+            app.mount("/src", StaticFiles(directory=str(SRC_PATH), check_dir=False), name="src-static")
+            mounts.append(f"/src->{SRC_PATH}")
+        else:
+            logger.warning(f"[static] Répertoire /src introuvable: {SRC_PATH}")
+
+        # /assets → /app/assets (ou override via env)
+        if ASSETS_PATH.exists():
+            app.mount("/assets", StaticFiles(directory=str(ASSETS_PATH), check_dir=False), name="assets-static")
+            mounts.append(f"/assets->{ASSETS_PATH}")
+        else:
+            logger.warning(f"[static] Répertoire /assets introuvable: {ASSETS_PATH}")
+
+        # / → racine repo (sert index.html)
+        if BASE.exists():
+            app.mount("/", StaticFiles(directory=str(BASE), html=True, check_dir=False), name="root")
+            mounts.append(f"/->{BASE} (html=True)")
+        else:
+            logger.error(f"[static] Racine introuvable: {BASE}")
+
+        logger.info("Fichiers statiques montés: " + " | ".join(mounts) if mounts else "Aucun montage statique actif.")
     except Exception as e:
         logger.error(f"Impossible de monter les fichiers statiques: {e}")
     t.mark("static_mounted")
+
+    # Endpoint de diagnostic simple
+    @app.get("/api/_static-diag", tags=["Health"])
+    async def _static_diag():
+        return {
+            "base": str(BASE),
+            "src": {"path": str(SRC_PATH), "exists": SRC_PATH.exists()},
+            "assets": {"path": str(ASSETS_PATH), "exists": ASSETS_PATH.exists()},
+            "index_html": {"path": str(INDEX_PATH), "exists": INDEX_PATH.exists()},
+        }
 
     t.dump_to_file(os.getenv("EMERGENCE_BOOT_LOG"))
     return app

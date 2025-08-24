@@ -34,7 +34,6 @@ export class ChatUI {
         <div class="chat-input-area card-footer">
           <form id="chat-form" class="chat-form" autocomplete="off">
             <textarea id="chat-input" class="chat-input" rows="3" placeholder="Écrivez votre message..."></textarea>
-            <button type="submit" id="chat-send" class="chat-send-button" title="Envoyer">➤</button>
           </form>
 
           <div class="chat-actions">
@@ -56,6 +55,7 @@ export class ChatUI {
 
             <button type="button" id="chat-export" class="button">Exporter</button>
             <button type="button" id="chat-clear" class="button">Effacer</button>
+            <button type="button" id="chat-send" class="chat-send-button" title="Envoyer">➤</button>
           </div>
         </div>
       </div>
@@ -84,6 +84,7 @@ export class ChatUI {
     const input = container.querySelector('#chat-input');
     const ragBtn = container.querySelector('#rag-power');
     const ragLbl = container.querySelector('#rag-label');
+    const sendBtn = container.querySelector('#chat-send');
 
     /* Autosize — textarea s’adapte à la frappe (desktop & mobile) */
     const autosize = () => this._autoGrow(input);
@@ -107,6 +108,12 @@ export class ChatUI {
         if (typeof form.requestSubmit === 'function') form.requestSubmit();
         else form?.dispatchEvent(new Event('submit', { cancelable: true }));
       }
+    });
+
+    // Clic avion → submit du formulaire
+    sendBtn?.addEventListener('click', () => {
+      if (typeof form.requestSubmit === 'function') form.requestSubmit();
+      else form?.dispatchEvent(new Event('submit', { cancelable: true }));
     });
 
     container.querySelector('#chat-export')

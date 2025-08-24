@@ -167,3 +167,12 @@
     border: 1px solid var(--color-danger);
     backdrop-filter: blur(10px);
 }
+/* === Mobile Portrait adjustments (center dashboard cards) === */
+@media (max-width: 760px) and (orientation: portrait){
+  .dashboard-container .card,
+  .dashboard-grid    .card,
+  .dashboard-root    .card {
+    max-width: 96vw;
+    margin: 0 auto;
+  }
+}

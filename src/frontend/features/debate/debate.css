@@ -8,17 +8,21 @@
   min-height: 100%;
 }
 
-/* Carte racine = pleine zone centrale */
-.debate-view-wrapper .card{ width: 100%; max-width: none; margin: 0 auto; }
+/* Carte racine = pleine zone centrale centrée */
+.debate-view-wrapper .card{
+  width: 100%;
+  max-width: min(1200px, 96vw);
+  margin: 0 auto;
+}
 
-/* ⬇️ Aucune scrollbar interne dans le flux (laisse le hotfix décider si besoin) */
+/* Pas de scroll interne par défaut (l’override/hotfix peut reprendre la main) */
 .debate-view-wrapper .card-body{
   padding-top: 2rem;
   padding-bottom: 2rem;
   overflow: visible;
 }
 
-/* ========== Création (inchangé des dernières versions) ========== */
+/* ========== Création (formulaire) ========== */
 .debate-create-body{
   display: grid;
   column-gap: 3.25rem;
@@ -60,7 +64,7 @@
   margin: 0;
 }
 
-/* --------- UI finitions --------- */
+/* --------- Finitions UI --------- */
 /* Supprime le "double encadré" du topic : on garde uniquement le bord de l'input */
 .debate-view-wrapper .form-topic{
   padding: 0 !important;
@@ -70,7 +74,9 @@
 }
 
 /* Tabs */
-.debate-view-wrapper .tabs-container{ display:flex; flex-wrap:wrap; justify-content:center; gap:.5rem; }
+.debate-view-wrapper .tabs-container{
+  display:flex; flex-wrap:wrap; justify-content:center; gap:.5rem;
+}
 .debate-view-wrapper .button-tab{
   border:1px solid transparent; border-radius: var(--radius-md); background:transparent;
   transform: translateZ(0); font-size: clamp(1rem, 0.95rem + 0.35vw, 1.3rem);
@@ -84,13 +90,23 @@
 .rounds-tabs .button-tab{ min-width:2.25rem; justify-content:center; }
 
 /* Footer d'actions */
-.debate-create-footer{ display:flex; align-items:center; justify-content:center; gap:.75rem; }
-.debate-create-footer .action-center{ display:flex; align-items:center; justify-content:center; gap:.75rem; flex-wrap:wrap; }
+.debate-create-footer{
+  display:flex; align-items:center; justify-content:center; gap:.75rem;
+}
+.debate-create-footer .action-center{
+  display:flex; align-items:center; justify-content:center; gap:.75rem; flex-wrap:wrap;
+}
 
 /* ========== FLUX CONTINU (tours + synthèse) ========== */
-.debate-flow{ display: flex; flex-direction: column; gap: 1.25rem; }
 
-/* Titres de section légers */
+/* conteneur vertical simple */
+.debate-flow{
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* « Titre » léger de section (tour/synthèse) */
 .turn-title{
   color: var(--color-text-secondary);
   font-weight: 700;
@@ -99,16 +115,17 @@
 }
 .synthesis-title{ text-align: center; }
 
-/* Sections tours/synthèse sans carte interne */
-.debate-turn, .debate-synthesis{
-  padding: 0;
+/* sections tours/synthèse sans carte interne */
+.debate-turn,
+.debate-synthesis{
+  padding: 0;           /* pas de bordure, pas de fond distinct */
   background: transparent;
 }
 
-/* Alignement bulles (hérite des styles du Chat) */
+/* alignement bulles : on s’appuie sur .chat-messages (styles du Chat) */
 .debate-turn .chat-messages,
 .debate-synthesis .chat-messages{
-  overflow: visible;
+  overflow: visible;            /* jamais de scroll interne */
 }
 
 /* Synthèse : bulle centrée + italique */

@@ -97,7 +97,7 @@
 }
 
 .chat-form{
-  display:grid; grid-template-columns: 1fr auto; gap:.6rem; align-items:center;
+  display:grid; grid-template-columns: 1fr; gap:.6rem; align-items:center; /* <- 1 seule colonne (textarea) */
 }
 
 /* Textarea: plus haute, adaptative, autosize via JS */
@@ -119,7 +119,7 @@
 .chat-input::-webkit-scrollbar-thumb{ background: var(--scroll-thumb); border-radius: 10px; }
 .chat-input{ scrollbar-color: var(--scroll-thumb) transparent; scrollbar-width: thin; }
 
-/* Séparateur entre textarea et boutons */
+/* Séparateur + actions */
 .chat-actions{
   display:flex; align-items:center; gap:.6rem;
   margin-top:.8rem; padding-top:.8rem;
@@ -159,6 +159,13 @@
 }
 #chat-export:hover, #chat-clear:hover{ background:rgba(255,255,255,.06); }
 #chat-clear:active{ background:#b91c1c; border-color:#b91c1c; }
+
+/* Nouvel emplacement de l’avion : dans .chat-actions, +15% */
+.chat-actions .chat-send-button{
+  width: 37px; height: 37px;      /* ~ +15% vs 32px */
+  margin-left: auto;              /* pousse l’avion à droite de la rangée */
+  display:inline-flex; align-items:center; justify-content:center;
+}
 
 /* Responsif: un peu plus de hauteur initiale sur petits écrans */
 @media (max-width: 1024px){
