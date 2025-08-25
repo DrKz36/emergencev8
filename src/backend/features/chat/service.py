@@ -1,9 +1,9 @@
 # src/backend/features/chat/service.py
-# V29.6 - STREAM GUARD + STRUCTURED + DEBATE NON-STREAM (compat & fallback)
-# - get_llm_response_for_debate():
-#     * accepte prompt en positionnel OU via alias: text|content|message|prompt_text|input|summary|synthesis|instruction|instructions|transcript|context
-#     * si vide → compose un prompt de repli (topic + transcript/context si fournis)
-#     * si Anthropic renvoie 400/texte vide → fallback OpenAI (même prompt)
+# V29.6a - STREAM GUARD + STRUCTURED + DEBATE NON-STREAM (compat & fallback fix)
+# - Fix SyntaxError: pas de backslash dans l'expression d'un f-string (composition du prompt de repli).
+# - get_llm_response_for_debate(): compat prompt (positionnel/alias) + fallback OpenAI si Anthropic échoue/vide.
+# - Guard robuste du stream OpenAI + méthode JSON structurée inchangés.
+
 import os, re, asyncio, logging, glob, json
 from uuid import uuid4
 from typing import Dict, Any, List, Tuple, Optional, AsyncGenerator
@@ -55,7 +55,7 @@ class ChatService:
             raise
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V29.6 initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V29.6a initialisé. Prompts chargés: {len(self.prompts)}")
 
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
         def weight(name: str) -> int:
@@ -116,7 +116,7 @@ class ChatService:
         """
         Réponse non-stream pour le module Débat.
         - Accepte `prompt` en positionnel OU mot-clé.
-        - Alias tolérés: text|content|message|prompt_text|input|summary|synthesis|instruction|instructions|transcript|context
+        - Alias tolérés: text|content|message|prompt_text|input|summary|synthesis|instruction|instructions|transcript|context|topic
         - Si prompt vide → compose un prompt de repli (topic + transcript/context si fournis).
         - En cas d'erreur/texte vide avec Anthropic → fallback OpenAI.
         Retour: (texte, cost_info)
@@ -128,16 +128,19 @@ class ChatService:
                 if isinstance(val, str) and val.strip():
                     prompt = val
                     break
-        # 1) Si toujours vide, tenter de composer depuis transcript/context/topic
+
+        # 1) Si toujours vide, composer proprement depuis transcript/context/topic
         if prompt is None or not str(prompt).strip():
             transcript = kwargs.get("transcript") or kwargs.get("context") or ""
             topic = kwargs.get("topic") or ""
-            prompt = (
-                f"Tu es 'Nexus', chargé de CONCLURE un débat.\n"
-                f"Synthétise en 5 points clairs (faits, convergences, désaccords, angles aveugles, pistes) "
-                f"le débat sur: {topic or '—'}.\n"
-                f"{('Transcript ci-dessous:\\n'+transcript) if transcript else ''}"
-            )
+            lines = [
+                "Tu es 'Nexus', chargé de CONCLURE un débat.",
+                f"Synthétise en 5 points clairs (faits, convergences, désaccords, angles aveugles, pistes) le débat sur : {topic or '—'}."
+            ]
+            if isinstance(transcript, str) and transcript.strip():
+                lines.append("Transcript ci-dessous:")
+                lines.append(transcript)
+            prompt = "\n".join(lines)
 
         # 2) Normalisation
         prompt = str(prompt or "").strip()
@@ -146,7 +149,8 @@ class ChatService:
 
         async def _openai_call(p: str) -> Tuple[str, Dict[str, Any]]:
             resp = await self.openai_client.chat.completions.create(
-                model=model, messages=[{"role":"system","content":system_prompt},{"role":"user","content":p}],
+                model=model,
+                messages=[{"role":"system","content":system_prompt},{"role":"user","content":p}],
                 temperature=temperature, max_tokens=max_tokens
             )
             text = (resp.choices[0].message.content or "").strip()
@@ -181,11 +185,11 @@ class ChatService:
                 return text, dict(base_cost)
 
             elif provider == "anthropic":
-                content = [{"role":"user","content": (f"[RAG_CONTEXT]\n{rag_context}\n\n{prompt}" if use_rag and rag_context else prompt)}]
+                content_text = f"[RAG_CONTEXT]\n{rag_context}\n\n{prompt}" if use_rag and rag_context else prompt
                 try:
                     resp = await self.anthropic_client.messages.create(
                         model=model, max_tokens=max_tokens, temperature=temperature,
-                        system=system_prompt, messages=content
+                        system=system_prompt, messages=[{"role":"user","content": content_text}]
                     )
                     text = ""
                     for block in getattr(resp, "content", []) or []:
@@ -199,7 +203,6 @@ class ChatService:
                         cost_info = {"input_tokens":in_tok,"output_tokens":out_tok,"total_cost":cost}
                     else:
                         cost_info = dict(base_cost)
-                    # Fallback si texte vide
                     if not text.strip():
                         logger.warning("[DEBATE] Anthropic a renvoyé un texte vide — fallback OpenAI.")
                         return await _openai_call(prompt)
@@ -340,72 +343,3 @@ class ChatService:
             except Exception:
                 m = re.search(r"\{.*\}", text, re.S); return json.loads(m.group(0)) if m else {}
         return {}
-
-    async def _get_openai_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
-        messages = [{"role":"system","content":system_prompt}] + history
-        stream = await self.openai_client.chat.completions.create(
-            model=model, messages=messages, temperature=0.2, max_tokens=4000, stream=True, stream_options={"include_usage": True}
-        )
-        final_chunk = None
-        async for chunk in stream:
-            choices = getattr(chunk, "choices", None) or []
-            if not choices:
-                if getattr(chunk, "usage", None): final_chunk = chunk
-                continue
-            yielded = False
-            for ch in choices:
-                delta = getattr(ch, "delta", None)
-                piece = getattr(delta, "content", "") or ""
-                if piece:
-                    yielded = True; yield piece
-            if getattr(chunk, "usage", None): final_chunk = chunk
-        if final_chunk and getattr(final_chunk, "usage", None):
-            usage = final_chunk.usage
-            pricing = MODEL_PRICING.get(model, {"input":0,"output":0})
-            cost = (usage.prompt_tokens*pricing["input"])+(usage.completion_tokens*pricing["output"])
-            cost_info_container.update({"input_tokens":usage.prompt_tokens,"output_tokens":usage.completion_tokens,"total_cost":cost})
-        else:
-            logger.warning(f"Pas d'usage OpenAI (modèle {model}).")
-            cost_info_container.update({"input_tokens":0,"output_tokens":0,"total_cost":0.0,"note":"Cost not available for OpenAI streams"})
-
-    async def _get_gemini_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
-        model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
-        response = await model_instance.generate_content_async(history, stream=True)
-        async for chunk in response:
-            try: yield getattr(chunk, "text", "") or ""
-            except Exception: continue
-        try: await response.resolve()
-        except Exception: pass
-        usage = getattr(response, "usage_metadata", None)
-        if usage:
-            pricing = MODEL_PRICING.get(model, {"input":0,"output":0})
-            cost = (getattr(usage,"prompt_token_count",0)*pricing["input"]) + (getattr(usage,"candidates_token_count",0)*pricing["output"])
-            cost_info_container.update({"input_tokens":getattr(usage,"prompt_token_count",0),
-                                        "output_tokens":getattr(usage,"candidates_token_count",0),"total_cost":cost})
-        else:
-            cost_info_container.update({"input_tokens":0,"output_tokens":0,"total_cost":0.0,"note":"No usage metadata from Gemini"})
-
-    async def _get_anthropic_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
-        try:
-            resp = await self.anthropic_client.messages.create(
-                model=model, max_tokens=4000, system=system_prompt, messages=history, temperature=0.2,
-            )
-            text = ""
-            try:
-                for block in getattr(resp, "content", []) or []:
-                    t = getattr(block, "text", "") or ""
-                    if t: text += t
-            except Exception: pass
-            yield text
-            usage = getattr(resp, "usage", None)
-            if usage:
-                pricing = MODEL_PRICING.get(model, {"input":0,"output":0})
-                in_tok = getattr(usage,"input_tokens",0); out_tok = getattr(usage,"output_tokens",0)
-                cost = (in_tok*pricing["input"])+(out_tok*pricing["output"])
-                cost_info_container.update({"input_tokens":in_tok,"output_tokens":out_tok,"total_cost":cost})
-            else:
-                cost_info_container.update({"input_tokens":0,"output_tokens":0,"total_cost":0.0,"note":"No usage from Anthropic"})
-        except Exception as e:
-            logger.error(f"Anthropic error (fallback non-stream): {e}", exc_info=True)
-            yield ""
-            cost_info_container.update({"input_tokens":0,"output_tokens":0,"total_cost":0.0,"note":"Anthropic error"})
