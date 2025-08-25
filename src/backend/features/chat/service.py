@@ -1,8 +1,10 @@
 # src/backend/features/chat/service.py
-# V29.6a - STREAM GUARD + STRUCTURED + DEBATE NON-STREAM (compat & fallback fix)
-# - Fix SyntaxError: pas de backslash dans l'expression d'un f-string (composition du prompt de repli).
-# - get_llm_response_for_debate(): compat prompt (positionnel/alias) + fallback OpenAI si Anthropic échoue/vide.
-# - Guard robuste du stream OpenAI + méthode JSON structurée inchangés.
+# V29.7 - STREAMERS IMPLÉMENTÉS + STRUCTURED + DEBATE NON-STREAM (compat & fallback)
+# - Ajout des méthodes: _get_openai_stream / _get_gemini_stream / _get_anthropic_stream.
+# - OpenAI: stream_options.include_usage=True → récupération des tokens en fin de flux.
+# - Anthropic: usage via get_final_response() sur le stream.
+# - Gemini: stream simple (pas d'usage dispo → coûts à 0).
+# - Reste inchangé: guard stream, structured JSON, débat non-stream (fallback/compat).
 
 import os, re, asyncio, logging, glob, json
 from uuid import uuid4
@@ -311,6 +313,123 @@ class ChatService:
         else:
             raise ValueError(f"Fournisseur LLM non supporté: {provider}")
         async for chunk in streamer: yield chunk
+
+    # ----------------------- STREAMERS FOURNISSEURS -----------------------
+
+    async def _get_openai_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
+        """
+        Stream OpenAI Chat Completions.
+        - messages: [{"role": "system"|"user"|"assistant", "content": "..."}]
+        - usage via stream_options.include_usage=True sur le dernier chunk.
+        """
+        messages = [{"role": "system", "content": system_prompt}] + history
+        usage_seen = False
+        try:
+            stream = await self.openai_client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=0.4,
+                stream=True,
+                stream_options={"include_usage": True}
+            )
+            async for event in stream:
+                # chunk texte
+                try:
+                    delta = event.choices[0].delta
+                    text = getattr(delta, "content", None)
+                    if text:
+                        yield text
+                except Exception:
+                    pass
+                # usage final
+                usage = getattr(event, "usage", None)
+                if usage and not usage_seen:
+                    usage_seen = True
+                    pricing = MODEL_PRICING.get(model, {"input":0,"output":0})
+                    in_tok = getattr(usage, "prompt_tokens", 0)
+                    out_tok = getattr(usage, "completion_tokens", 0)
+                    cost_info_container.update({
+                        "input_tokens": in_tok,
+                        "output_tokens": out_tok,
+                        "total_cost": (in_tok*pricing["input"]) + (out_tok*pricing["output"])
+                    })
+        except Exception as e:
+            logger.error(f"OpenAI stream error: {e}", exc_info=True)
+            # on ne lève pas — l'appelant gère l’erreur globale
+
+    async def _get_gemini_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
+        """
+        Stream Google Gemini (google.generativeai).
+        - history attendu: [{"role": "user"|"model", "parts": ["..."]}, ...]
+        - system_prompt passé via system_instruction au modèle.
+        - Pas d'usage fiable en stream → coûts à 0.
+        """
+        try:
+            model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
+            # Le SDK accepte "contents" = history normalisé avec roles/parts.
+            resp = await model_instance.generate_content_async(history, stream=True, generation_config={"temperature": 0.4})
+            async for chunk in resp:
+                try:
+                    text = getattr(chunk, "text", None)
+                    if not text and getattr(chunk, "candidates", None):
+                        # fallback parts
+                        cand = chunk.candidates[0]
+                        if getattr(cand, "content", None) and getattr(cand.content, "parts", None):
+                            text = "".join([getattr(p, "text", "") or str(p) for p in cand.content.parts if p])
+                    if text:
+                        yield text
+                except Exception:
+                    pass
+            # usage indispo proprement en stream
+            cost_info_container.setdefault("input_tokens", 0)
+            cost_info_container.setdefault("output_tokens", 0)
+            cost_info_container.setdefault("total_cost", 0.0)
+        except Exception as e:
+            logger.error(f"Gemini stream error: {e}", exc_info=True)
+
+    async def _get_anthropic_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
+        """
+        Stream Anthropic Messages API.
+        - history attendu: [{"role": "user"|"assistant", "content": "..."}]
+        - usage récupéré via stream.get_final_response()
+        """
+        # Anthropic ne supporte pas un message "system" dans history → param dédié
+        try:
+            async with self.anthropic_client.messages.stream(
+                model=model,
+                max_tokens=1500,
+                temperature=0.4,
+                system=system_prompt,
+                messages=history
+            ) as stream:
+                async for event in stream:
+                    try:
+                        # texte incrémental
+                        if getattr(event, "type", "") == "content_block_delta":
+                            delta = getattr(event, "delta", None)
+                            if delta:
+                                text = getattr(delta, "text", "") or ""
+                                if text:
+                                    yield text
+                    except Exception:
+                        pass
+                # usage final
+                try:
+                    final = await stream.get_final_response()
+                    usage = getattr(final, "usage", None)
+                    if usage:
+                        pricing = MODEL_PRICING.get(model, {"input":0,"output":0})
+                        in_tok = getattr(usage, "input_tokens", 0)
+                        out_tok = getattr(usage, "output_tokens", 0)
+                        cost_info_container.update({
+                            "input_tokens": in_tok,
+                            "output_tokens": out_tok,
+                            "total_cost": (in_tok*pricing["input"]) + (out_tok*pricing["output"])
+                        })
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.error(f"Anthropic stream error: {e}", exc_info=True)
 
     async def get_structured_llm_response(self, agent_id: str, prompt: str, json_schema: Dict[str, Any]) -> Dict[str, Any]:
         provider, model, system_prompt = self._get_agent_config(agent_id)
