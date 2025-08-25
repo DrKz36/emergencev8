@@ -1,6 +1,6 @@
 /**
  * @module features/debate/debate
- * @description Orchestrateur du module Débat - V26.2 "Concordance + Validation + Synthèse UI"
+ * @description Orchestrateur du module Débat - V26.3 "Flux-only Synthèse"
  */
 import { DebateUI } from './debate-ui.js';
 import { EVENTS, AGENTS } from '../../shared/constants.js';
@@ -13,7 +13,11 @@ export default class DebateModule {
         this.container = null;
         this.listeners = [];
         this.isInitialized = false;
-        console.log("✅ DebateModule V26.2 (Concordance + Validation + Synthèse UI) Prêt.");
+
+        // ⚙️ Désactive la modale de synthèse : rendu "flux" uniquement (DebateUI)
+        this.SHOW_SYNTH_MODAL = false;
+
+        console.log("✅ DebateModule V26.3 (Flux-only Synthèse) Prêt.");
     }
     
     init() {
@@ -22,7 +26,7 @@ export default class DebateModule {
         this.registerEvents();
         this.registerStateChanges();
         this.isInitialized = true;
-        console.log("✅ DebateModule V26.2 (Concordance + Validation + Synthèse UI) Initialisé UNE SEULE FOIS.");
+        console.log("✅ DebateModule V26.3 (Flux-only Synthèse) Initialisé UNE SEULE FOIS.");
     }
 
     mount(container) {
@@ -181,7 +185,10 @@ export default class DebateModule {
             this._notify('warning', 'Synthèse indisponible (le moteur a renvoyé un contenu vide). Essaie “Exporter”.');
             return;
         }
-        this._showSynthesisModal(synth);
+        // ❌ Plus de modale : on s’appuie sur le rendu “flux” géré par DebateUI.
+        if (this.SHOW_SYNTH_MODAL === true) {
+            this._showSynthesisModal(synth); // optionnel (dev)
+        }
     }
 
     getHumanReadableStatus(state) {
@@ -247,8 +254,8 @@ export default class DebateModule {
         }
     }
 
+    // _showSynthesisModal(content) reste dispo mais n'est plus appelé en prod (voir flag SHOW_SYNTH_MODAL).
     _showSynthesisModal(content) {
-        // Modal autonome, sans dépendance au layout du DebateUI
         const root = document.createElement('div');
         root.setAttribute('role', 'dialog');
         root.ariaLabel = 'Synthèse du débat';

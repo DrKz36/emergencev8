@@ -1,5 +1,5 @@
-﻿/* Module Débats — V15 : flux continu sans cartes internes, pas de scrollbar interne,
-   synthèse centrée et alignée sur les bulles. */
+﻿/* Module Débats — V15.1 : flux continu sans cartes internes, pas de scrollbar interne,
+   synthèse centrée et alignée sur les bulles + fixes listes/wrap. */
 
 .debate-view-wrapper{
   font-size: clamp(1rem, 0.9rem + 0.35vw, 1.3rem);
@@ -13,13 +13,18 @@
   width: 100%;
   max-width: min(1200px, 96vw);
   margin: 0 auto;
+
+  /* ✅ Disable height-forced layouts qui créent un scroll interne (override hotfix) */
+  height: auto !important;
 }
 
 /* Pas de scroll interne par défaut (l’override/hotfix peut reprendre la main) */
 .debate-view-wrapper .card-body{
   padding-top: 2rem;
   padding-bottom: 2rem;
-  overflow: visible;
+
+  /* ✅ Scroll global (pas dans la carte) */
+  overflow: visible !important;
 }
 
 /* ========== Création (formulaire) ========== */
@@ -65,7 +70,6 @@
 }
 
 /* --------- Finitions UI --------- */
-/* Supprime le "double encadré" du topic : on garde uniquement le bord de l'input */
 .debate-view-wrapper .form-topic{
   padding: 0 !important;
   background: transparent !important;
@@ -118,7 +122,7 @@
 /* sections tours/synthèse sans carte interne */
 .debate-turn,
 .debate-synthesis{
-  padding: 0;           /* pas de bordure, pas de fond distinct */
+  padding: 0;
   background: transparent;
 }
 
@@ -128,9 +132,33 @@
   overflow: visible;            /* jamais de scroll interne */
 }
 
+/* ✅ Robustesse du texte des bulles (évite troncature/débordements) */
+.debate-view-wrapper .message-text{
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 /* Synthèse : bulle centrée + italique */
 .debate-synthesis .message{ margin-left: auto; margin-right: auto; }
 .debate-synthesis .message-text{ font-style: italic; }
+
+/* ✅ Listes Markdown propres dans la synthèse, sans pseudo-puces parasites */
+.debate-view-wrapper .message-text h1::before,
+.debate-view-wrapper .message-text h2::before,
+.debate-view-wrapper .message-text h3::before,
+.debate-view-wrapper .message-text h4::before,
+.debate-view-wrapper .message-text h5::before,
+.debate-view-wrapper .message-text h6::before { content: none !important; }
+
+.debate-view-wrapper .message-text ul,
+.debate-view-wrapper .message-text ol { margin: .5rem 0 .75rem; padding-left: 1.25rem; }
+.debate-view-wrapper .message-text ul { list-style: disc; }
+.debate-view-wrapper .message-text ol { list-style: decimal; }
+.debate-view-wrapper .message-text li { margin: .25rem 0; }
+
+/* Si des styles globaux ajoutent des puces via ::before, on les neutralise ici */
+.debate-view-wrapper .message-text li::before{ content:none !important; }
 
 /* Actions fin de débat */
 .debate-actions{
@@ -150,9 +178,6 @@
     max-width: 720px;
     justify-items: stretch;
   }
-  /* En mobile, blocs = pleine largeur */
-  .debate-create-body .form-group:not(.form-topic){
-    width: 100%;
-  }
+  .debate-create-body .form-group:not(.form-topic){ width: 100%; }
   #debate-topic.input-text{ width:100%; }
 }
