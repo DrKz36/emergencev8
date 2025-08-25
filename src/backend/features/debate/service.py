@@ -1,5 +1,5 @@
 # src/backend/features/debate/service.py
-# V13.0 - DEBUG CONTEXT + OFF ISOLATION (full_transcript | round_local | stateless)
+# V13.1 - PROMPT WIRING + 5-POINTS SYNTH + RAG PASSTHROUGH
 import os
 import re
 import asyncio
@@ -20,13 +20,15 @@ logger = logging.getLogger(__name__)
 
 class DebateService:
     """
-    DebateService V13.0
+    DebateService V13.1
     - DEBUG: envoie 'ws:debug_context' (scope='debate') avant/après chaque appel agent.
     - OFF ISOLATION: contrôle du transcript quand use_rag=False via EMERGENCE_DEBATE_OFF_POLICY.
-        * full_transcript (défaut) : historique complet (comportement précédent).
-        * round_local : uniquement le round courant (+ N rounds précédents optionnels).
-        * stateless : aucun transcript (isolation maximale).
+        * full_transcript (défaut) : historique complet.
+        * round_local : round courant (+ N précédents optionnels).
+        * stateless : aucun transcript.
     - RAG: si use_rag=True, rag_context est injecté et la policy est forcée à 'full_transcript'.
+    - FIX: passage explicite du 'prompt' au ChatService (au lieu de 'history').
+    - FIX: synthèse en 5 points (Faits, Convergences, Désaccords, Angles morts, Pistes) alignée avec l’UI.
     """
     def __init__(
         self,
@@ -43,27 +45,23 @@ class DebateService:
         self.vector_service = vector_service
         self.settings = settings
 
-        # Politique d'historique OFF (quand use_rag=False)
         policy = os.getenv("EMERGENCE_DEBATE_OFF_POLICY", "full_transcript").strip().lower()
         if policy not in ("full_transcript", "round_local", "stateless"):
             policy = "full_transcript"
         self.off_policy = policy
 
-        # Pour round_local: nombre de rounds complets précédents à inclure
         try:
             self.round_local_n = max(0, int(os.getenv("EMERGENCE_DEBATE_ROUND_LOCAL_N", "0")))
         except ValueError:
             self.round_local_n = 0
 
-        logger.info(f"DebateService V13.0 initialisé. OFF policy={self.off_policy}, round_local_n={self.round_local_n}")
+        logger.info(f"DebateService V13.1 initialisé. OFF policy={self.off_policy}, round_local_n={self.round_local_n}")
 
     # ---------- utilitaires ----------
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
-        """Détecte des patterns de type AZUR-8152 / ONYX-4472."""
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
 
     def _policy_for_session(self, session: DebateSession) -> str:
-        """Si RAG ON, on garde le transcript complet pour la cohérence du débat."""
         return "full_transcript" if session.config.use_rag else self.off_policy
 
     def _build_full_transcript(
@@ -72,12 +70,6 @@ class DebateService:
         with_header: bool = True,
         policy: Optional[str] = None
     ) -> str:
-        """
-        Construit le transcript selon la policy.
-        - full_transcript : comportement historique (tous les tours).
-        - round_local : réponses déjà données dans le round en cours + N rounds complets précédents.
-        - stateless : aucun contenu d'historique.
-        """
         policy = policy or self._policy_for_session(session)
         parts: List[str] = []
 
@@ -86,13 +78,11 @@ class DebateService:
             if session.rag_context:
                 parts.append(f"\n--- CONTEXTE DOCUMENTAIRE ---\n{session.rag_context}\n---------------------------\n")
 
-        # STATLESS: pas d'historique
         if policy == "stateless":
             return "\n".join(parts)
 
         history = session.history
 
-        # FULL TRANSCRIPT: tout l'historique
         if policy == "full_transcript":
             for turn in history:
                 parts.append(f"\n### TOUR DE TABLE N°{turn.round_number} ###")
@@ -100,11 +90,9 @@ class DebateService:
                     parts.append(f"\n**{agent_name} a dit :**\n> {response}")
             return "\n".join(parts)
 
-        # ROUND LOCAL: round courant + N rounds précédents
         if not history:
             return "\n".join(parts)
 
-        # rounds précédents (complets), en conservant l'ordre
         if self.round_local_n > 0:
             prev_completed = [t for t in history if len(t.agent_responses) > 0][:-1]
             for t in prev_completed[-self.round_local_n:]:
@@ -112,7 +100,6 @@ class DebateService:
                 for agent_name, response in t.agent_responses.items():
                     parts.append(f"\n**{agent_name} a dit :**\n> {response}")
 
-        # round en cours (réponses déjà données)
         current = history[-1]
         if current.agent_responses:
             parts.append(f"\n### TOUR DE TABLE N°{current.round_number} (en cours) ###")
@@ -131,7 +118,7 @@ class DebateService:
                 config=debate_config, status=DebateStatus.PENDING
             )
             self.active_debates[debate_id] = debate_session
-            
+
             logger.info(f"Débat {debate_id} créé sur le sujet : '{debate_config.topic}'. RAG activé: {debate_config.use_rag}")
             asyncio.create_task(self._run_debate_flow(debate_id))
 
@@ -207,7 +194,7 @@ class DebateService:
             {"type": "ws:debate_status_update", "payload": {"debate_id": session.debate_id, "status": f"Tour {round_number} en cours..."}},
             session.session_id
         )
-        
+
         current_turn = DebateTurn(round_number=round_number)
         session.history.append(current_turn)
 
@@ -216,15 +203,14 @@ class DebateService:
 
         for agent_id in agents_in_round:
             logger.info(f"Tour {round_number}: Au tour de {agent_id} (policy={policy}).")
-            
+
             transcript = self._build_full_transcript(session, with_header=True, policy=policy)
             prompt_for_agent = (
                 f"{transcript}\n\n---\n"
                 f"**INSTRUCTION POUR {agent_id.upper()} :**\n"
-                f"C'est à ton tour de parler. En te basant sur l'intégralité des éléments ci-dessus (selon policy={policy}), "
+                f"C'est à ton tour de parler. En te basant sur l'intégralité des éléments ci-dessus (policy={policy}), "
                 f"apporte ta contribution au débat. Sois pertinent, concis et fais avancer la discussion."
             )
-            structured_history = [{"role": "user", "content": prompt_for_agent}]
 
             # DEBUG (avant appel)
             sens_in_prompt = list(set(self._extract_sensitive_tokens(prompt_for_agent)))
@@ -244,12 +230,15 @@ class DebateService:
                 }
             }, session.session_id)
 
+            # ✅ FIX: passage explicite du prompt + RAG passthrough
             response_text, _ = await self.chat_service.get_llm_response_for_debate(
                 agent_id=agent_id,
-                history=structured_history,
-                session_id=session.session_id
+                prompt=prompt_for_agent,
+                rag_context=session.rag_context or "",
+                use_rag=session.config.use_rag,
+                session_id=session.session_id,
             )
-            
+
             current_turn.agent_responses[agent_id] = response_text
 
             # DEBUG (après appel)
@@ -281,24 +270,26 @@ class DebateService:
             {"type": "ws:debate_status_update", "payload": {"debate_id": session.debate_id, "status": "Génération de la synthèse..."}},
             session.session_id
         )
-        
-        synthesizer_id = session.config.agent_order[-1] 
-        # Pour la synthèse, on garde toujours le transcript complet.
+
+        synthesizer_id = session.config.agent_order[-1]
+        # Transcript complet pour la synthèse
         final_transcript = self._build_full_transcript(session, with_header=False, policy="full_transcript")
 
+        # ✅ Alignement 5 points (Faits/Convergences/Désaccords/Angles morts/Pistes)
         prompt_content = (
-            f"Le débat sur le sujet \"{session.config.topic}\" est terminé. Voici le transcript complet des échanges:\n\n"
+            f"Le débat sur \"{session.config.topic}\" est terminé. Transcript complet ci-dessous :\n\n"
             f"--- DÉBUT DU TRANSCRIPT ---\n{final_transcript}\n--- FIN DU TRANSCRIPT ---\n\n"
-            f"## Ta Mission de Synthèse ({synthesizer_id}):\n"
-            "1. **Points de Convergence**\n2. **Points de Divergence**\n3. **Idée Émergente**\n4. **Conclusion**\n"
-            "Structure ta réponse avec ces quatre points. Sois analytique, profond et concis."
+            f"## Mission ({synthesizer_id}) — Synthèse en 5 points :\n"
+            f"1) Faits clés documentés\n2) Convergences\n3) Désaccords\n4) Angles morts\n5) Pistes à explorer\n\n"
+            "Réponds de manière directe et compacte, en français, sans méta-commentaires."
         )
-        structured_history = [{"role": "user", "content": prompt_content}]
-        
+
         response_text, _ = await self.chat_service.get_llm_response_for_debate(
             agent_id=synthesizer_id,
-            history=structured_history,
-            session_id=session.session_id
+            prompt=prompt_content,                 # ✅ FIX: prompt explicite
+            rag_context=session.rag_context or "", # ✅ RAG passthrough
+            use_rag=session.config.use_rag,
+            session_id=session.session_id,
         )
         session.synthesis = response_text
         logger.info(f"Synthèse générée par {synthesizer_id}.")
