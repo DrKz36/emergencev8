@@ -1,5 +1,5 @@
 # src/backend/features/memory/gardener.py
-# V2.3 - Appelle l'API réelle du MemoryAnalyzer + parsing history depuis sessions.session_data
+# V2.4 - Ajoute user_id dans les métadonnées vectorisées + trace SQL enrichie
 import logging
 import uuid
 import json
@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 
 class MemoryGardener:
     """
-    MEMORY GARDENER V2.3
-    - Utilise MemoryAnalyzer.analyze_session_for_concepts(session_id, history).
-    - Persistance (summary/concepts/entities) assurée par l'analyzer.
-    - Puis relit les concepts pour traçage SQL + vectorisation.
-    - Pas de DDL, ARBO respectée.
+    MEMORY GARDENER V2.4
+    - Analyse via MemoryAnalyzer.
+    - Persistes summary/concepts/entities (fait par l'analyzer).
+    - Vectorise les concepts dans 'emergence_knowledge' avec metadata { user_id, source_session_id, ... }.
+    - Traçage simple dans 'monitoring'.
     """
     KNOWLEDGE_COLLECTION_NAME = "emergence_knowledge"
 
@@ -27,7 +27,7 @@ class MemoryGardener:
         self.vector_service = vector_service
         self.analyzer = memory_analyzer
         self.knowledge_collection = self.vector_service.get_or_create_collection(self.KNOWLEDGE_COLLECTION_NAME)
-        logger.info("MemoryGardener V2.3 initialisé.")
+        logger.info("MemoryGardener V2.4 initialisé.")
 
     async def tend_the_garden(self, consolidation_limit: int = 10) -> Dict[str, Any]:
         logger.info("Le jardinier commence sa ronde dans le jardin de la mémoire...")
@@ -45,7 +45,7 @@ class MemoryGardener:
         for session in sessions_to_process:
             sid = session["id"]
             try:
-                # 1) Construire l'history depuis session_data (JSON)
+                # 1) History depuis session_data
                 history = []
                 try:
                     sd = session.get("session_data")
@@ -62,21 +62,24 @@ class MemoryGardener:
                     logger.info(f"Session {sid}: history vide — skip analyse.")
                     continue
 
-                # 2) Analyse sémantique (persistance faite par l'analyzer)
+                # 2) Analyse sémantique (persistance DB par l'analyzer)
                 await self.analyzer.analyze_session_for_concepts(session_id=sid, history=history)
 
-                # 3) Relire les concepts persistés et vectoriser + tracer
-                row = await self.db.fetch_one("SELECT extracted_concepts FROM sessions WHERE id = ?", (sid,))
+                # 3) Relire concepts puis vectoriser + tracer
+                row = await self.db.fetch_one("SELECT user_id, extracted_concepts FROM sessions WHERE id = ?", (sid,))
                 concepts = []
-                if row and row["extracted_concepts"]:
-                    try:
-                        concepts = json.loads(row["extracted_concepts"]) or []
-                    except Exception as e:
-                        logger.warning(f"JSON concepts invalide pour {sid}: {e}")
+                uid = None
+                if row:
+                    uid = row.get("user_id")
+                    if row.get("extracted_concepts"):
+                        try:
+                            concepts = json.loads(row["extracted_concepts"]) or []
+                        except Exception as e:
+                            logger.warning(f"JSON concepts invalide pour {sid}: {e}")
 
                 if concepts:
-                    await self._record_concepts_in_sql(concepts, session)
-                    await self._vectorize_concepts(concepts, session)
+                    await self._record_concepts_in_sql(concepts, session, uid)
+                    await self._vectorize_concepts(concepts, session, uid)
                     new_concepts_count += len(concepts)
 
                 processed_ids.append(sid)
@@ -84,10 +87,10 @@ class MemoryGardener:
             except Exception as e:
                 logger.error(f"Erreur lors de la consolidation pour la session {sid}: {e}", exc_info=True)
 
-        # 4) Marquer 'consolidé' (touch updated_at)
+        # 4) Marquer consolidé
         await self._mark_sessions_as_consolidated(processed_ids)
 
-        # 5) Vieillissement (trace)
+        # 5) Vieillissement
         await self._decay_knowledge()
 
         report = {
@@ -99,11 +102,7 @@ class MemoryGardener:
         logger.info(report)
         return report
 
-    # ---------------------------- Internals SQL --------------------------- #
     async def _fetch_unconsolidated_sessions(self, limit: int) -> List[Dict[str, Any]]:
-        """
-        Heuristique 'non consolidé' : summary NULL/vide OU extracted_concepts NULL/'[]'.
-        """
         query = """
             SELECT id, user_id, created_at, updated_at, session_data, summary, extracted_concepts, extracted_entities
             FROM sessions
@@ -115,10 +114,7 @@ class MemoryGardener:
         rows = await self.db.fetch_all(query, (int(limit),))
         return [dict(r) for r in (rows or [])]
 
-    async def _record_concepts_in_sql(self, concepts: List[str], session: Dict[str, Any]):
-        """
-        Traçage simple dans 'monitoring' (sans nouvelle table).
-        """
+    async def _record_concepts_in_sql(self, concepts: List[str], session: Dict[str, Any], user_id: str | None):
         now = datetime.now(timezone.utc).isoformat()
         for concept_text in concepts:
             concept_id = uuid.uuid4().hex
@@ -126,6 +122,7 @@ class MemoryGardener:
                 "id": concept_id,
                 "concept": concept_text,
                 "source_session_id": session["id"],
+                "user_id": user_id,
                 "categories": session.get("themes", []),
                 "vector_id": concept_id
             }
@@ -137,7 +134,7 @@ class MemoryGardener:
             except Exception as e:
                 logger.warning(f"Trace concept SQL échouée (session {session['id']}): {e}", exc_info=True)
 
-    async def _vectorize_concepts(self, concepts: List[str], session: Dict[str, Any]):
+    async def _vectorize_concepts(self, concepts: List[str], session: Dict[str, Any], user_id: str | None):
         payload = []
         for concept_text in concepts:
             concept_id = uuid.uuid4().hex
@@ -145,6 +142,7 @@ class MemoryGardener:
                 "id": concept_id,
                 "text": concept_text,
                 "metadata": {
+                    "user_id": user_id,
                     "source_session_id": session["id"],
                     "concept_text": concept_text,
                     "created_at": datetime.now(timezone.utc).isoformat()

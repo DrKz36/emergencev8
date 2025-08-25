@@ -1,10 +1,10 @@
 # src/backend/features/chat/service.py
-# V29.7 - STREAMERS IMPLÉMENTÉS + STRUCTURED + DEBATE NON-STREAM (compat & fallback)
-# - Ajout des méthodes: _get_openai_stream / _get_gemini_stream / _get_anthropic_stream.
-# - OpenAI: stream_options.include_usage=True → récupération des tokens en fin de flux.
-# - Anthropic: usage via get_final_response() sur le stream.
-# - Gemini: stream simple (pas d'usage dispo → coûts à 0).
-# - Reste inchangé: guard stream, structured JSON, débat non-stream (fallback/compat).
+# V29.9 - MEMORY RAG (emergence_knowledge) + AUTO GARDEN (sur base locale V29.7)
+# - Ajout du RAG Mémoire (concepts consolidés) en plus des documents.
+# - Filtrage par user_id si disponible.
+# - Auto-consolidation asynchrone après réponse (opt-out via EMERGENCE_AUTO_TEND=0).
+# - AUCUNE suppression des fonctionnalités existantes : streamers OpenAI/Gemini/Anthropic,
+#   get_llm_response_for_debate (non-stream, fallback), structured JSON, etc.
 
 import os, re, asyncio, logging, glob, json
 from uuid import uuid4
@@ -23,6 +23,9 @@ from backend.shared.models import AgentMessage, Role, ChatMessage
 from backend.features.memory.vector_service import VectorService
 from backend.shared.config import Settings
 from backend.core import config
+
+# NEW: utilisé pour l’auto-consolidation mémoire
+from backend.features.memory.gardener import MemoryGardener
 
 logger = logging.getLogger(__name__)
 
@@ -220,10 +223,72 @@ class ChatService:
             logger.error(f"[DEBATE] get_llm_response_for_debate erreur (agent={agent_id}): {e}", exc_info=True)
             return "", {**base_cost, "note": f"error: {e}"}  # en dernier recours
 
-    # ------------------ (reste du service: streaming/chat) ------------------
+    # ------------------ utilitaires mémoire (NOUVEAU) ------------------
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
 
+    def _try_get_user_id(self, session_id: str) -> Optional[str]:
+        """Récupère user_id depuis le SessionManager si exposé, sinon None (gracieux)."""
+        for attr in ("get_user_id_for_session", "get_user", "get_owner", "get_session_owner"):
+            try:
+                fn = getattr(self.session_manager, attr, None)
+                if callable(fn):
+                    uid = fn(session_id)
+                    if uid:
+                        return str(uid)
+            except Exception:
+                pass
+        for attr in ("current_user_id", "user_id"):
+            try:
+                uid = getattr(self.session_manager, attr, None)
+                if uid:
+                    return str(uid)
+            except Exception:
+                pass
+        return None
+
+    def _merge_blocks(self, blocks: List[Tuple[str, str]]) -> str:
+        parts = []
+        for title, body in blocks:
+            if body and body.strip():
+                parts.append(f"### {title}\n{body.strip()}")
+        return "\n\n".join(parts)
+
+    async def _build_memory_context(self, session_id: str, last_user_message: str, top_k: int = 5) -> str:
+        """
+        Interroge la collection 'emergence_knowledge' (concepts consolidés) et
+        renvoie une courte liste à puces. Filtre par user_id quand dispo.
+        """
+        try:
+            if not last_user_message:
+                return ""
+            knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
+            knowledge_col = self.vector_service.get_or_create_collection(knowledge_name)
+
+            where_filter = None
+            uid = self._try_get_user_id(session_id)
+            if uid:
+                where_filter = {"user_id": uid}
+
+            results = self.vector_service.query(
+                collection=knowledge_col,
+                query_text=last_user_message,
+                n_results=top_k,
+                where_filter=where_filter
+            )
+            if not results:
+                return ""
+            lines = []
+            for r in results:
+                t = (r.get("text") or "").strip()
+                if t:
+                    lines.append(f"- {t}")
+            return "\n".join(lines[:top_k])
+        except Exception as e:
+            logger.warning(f"build_memory_context: {e}")
+            return ""
+
+    # ------------------ flux chat (stream) ------------------
     async def _process_agent_response_stream(self, session_id: str, agent_id: str, use_rag: bool, connection_manager: ConnectionManager):
         temp_message_id = str(uuid4())
         full_response_text = ""
@@ -235,12 +300,22 @@ class ChatService:
             rag_context = ""
             if use_rag:
                 last_user_message_obj = next((m for m in reversed(history) if m.get('role') == Role.USER), None)
-                if last_user_message_obj:
-                    last_user_message = last_user_message_obj.get('content','')
+                last_user_message = last_user_message_obj.get('content','') if last_user_message_obj else ""
+                if last_user_message:
                     await connection_manager.send_personal_message({"type":"ws:rag_status","payload":{"status":"searching","agent_id":agent_id}}, session_id)
+
+                    # RAG Documents (inchangé)
                     document_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
-                    search_results = self.vector_service.query(collection=document_collection, query_text=last_user_message)
-                    rag_context = "\n".join([r['text'] for r in search_results])
+                    doc_hits = self.vector_service.query(collection=document_collection, query_text=last_user_message)
+                    doc_block = "\n\n".join([f"- {h['text']}" for h in doc_hits]) if doc_hits else ""
+
+                    # RAG Mémoire (concepts consolidés) — NOUVEAU
+                    mem_block = await self._build_memory_context(session_id, last_user_message)
+
+                    rag_context = self._merge_blocks([
+                        ("Mémoire (concepts clés)", mem_block),
+                        ("Documents pertinents", doc_block),
+                    ])
                     await connection_manager.send_personal_message({"type":"ws:rag_status","payload":{"status":"found","agent_id":agent_id}}, session_id)
 
             raw_concat = "\n".join([(m.get('content') or m.get('message','')) for m in history])
@@ -280,6 +355,18 @@ class ChatService:
             if 'message' in payload: payload['content'] = payload.pop('message')
             await connection_manager.send_personal_message({"type":"ws:chat_stream_end","payload":payload}, session_id)
 
+            # Auto-consolidation mémoire (asynchrone, silencieuse)
+            if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
+                try:
+                    gardener = MemoryGardener(
+                        db_manager=getattr(self.session_manager, "db_manager", None),
+                        vector_service=self.vector_service,
+                        memory_analyzer=getattr(self.session_manager, "memory_analyzer", None)
+                    )
+                    asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3))
+                except Exception as e:
+                    logger.debug(f"Auto-tend_garden skip: {e}")
+
         except Exception as e:
             logger.error(f"Erreur streaming {agent_id}: {e}", exc_info=True)
             try:
@@ -314,14 +401,9 @@ class ChatService:
             raise ValueError(f"Fournisseur LLM non supporté: {provider}")
         async for chunk in streamer: yield chunk
 
-    # ----------------------- STREAMERS FOURNISSEURS -----------------------
+    # ----------------------- STREAMERS FOURNISSEURS (inchangés) -----------------------
 
     async def _get_openai_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
-        """
-        Stream OpenAI Chat Completions.
-        - messages: [{"role": "system"|"user"|"assistant", "content": "..."}]
-        - usage via stream_options.include_usage=True sur le dernier chunk.
-        """
         messages = [{"role": "system", "content": system_prompt}] + history
         usage_seen = False
         try:
@@ -333,7 +415,6 @@ class ChatService:
                 stream_options={"include_usage": True}
             )
             async for event in stream:
-                # chunk texte
                 try:
                     delta = event.choices[0].delta
                     text = getattr(delta, "content", None)
@@ -341,7 +422,6 @@ class ChatService:
                         yield text
                 except Exception:
                     pass
-                # usage final
                 usage = getattr(event, "usage", None)
                 if usage and not usage_seen:
                     usage_seen = True
@@ -355,24 +435,15 @@ class ChatService:
                     })
         except Exception as e:
             logger.error(f"OpenAI stream error: {e}", exc_info=True)
-            # on ne lève pas — l'appelant gère l’erreur globale
 
     async def _get_gemini_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
-        """
-        Stream Google Gemini (google.generativeai).
-        - history attendu: [{"role": "user"|"model", "parts": ["..."]}, ...]
-        - system_prompt passé via system_instruction au modèle.
-        - Pas d'usage fiable en stream → coûts à 0.
-        """
         try:
             model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
-            # Le SDK accepte "contents" = history normalisé avec roles/parts.
             resp = await model_instance.generate_content_async(history, stream=True, generation_config={"temperature": 0.4})
             async for chunk in resp:
                 try:
                     text = getattr(chunk, "text", None)
                     if not text and getattr(chunk, "candidates", None):
-                        # fallback parts
                         cand = chunk.candidates[0]
                         if getattr(cand, "content", None) and getattr(cand.content, "parts", None):
                             text = "".join([getattr(p, "text", "") or str(p) for p in cand.content.parts if p])
@@ -380,7 +451,6 @@ class ChatService:
                         yield text
                 except Exception:
                     pass
-            # usage indispo proprement en stream
             cost_info_container.setdefault("input_tokens", 0)
             cost_info_container.setdefault("output_tokens", 0)
             cost_info_container.setdefault("total_cost", 0.0)
@@ -388,12 +458,6 @@ class ChatService:
             logger.error(f"Gemini stream error: {e}", exc_info=True)
 
     async def _get_anthropic_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
-        """
-        Stream Anthropic Messages API.
-        - history attendu: [{"role": "user"|"assistant", "content": "..."}]
-        - usage récupéré via stream.get_final_response()
-        """
-        # Anthropic ne supporte pas un message "system" dans history → param dédié
         try:
             async with self.anthropic_client.messages.stream(
                 model=model,
@@ -404,7 +468,6 @@ class ChatService:
             ) as stream:
                 async for event in stream:
                     try:
-                        # texte incrémental
                         if getattr(event, "type", "") == "content_block_delta":
                             delta = getattr(event, "delta", None)
                             if delta:
@@ -413,7 +476,6 @@ class ChatService:
                                     yield text
                     except Exception:
                         pass
-                # usage final
                 try:
                     final = await stream.get_final_response()
                     usage = getattr(final, "usage", None)
@@ -456,7 +518,7 @@ class ChatService:
             )
             text = ""
             for block in getattr(resp,"content",[]) or []:
-                t = getattr(block,"text","") or ""; 
+                t = getattr(block,"text","") or ""
                 if t: text += t
             try: return json.loads(text)
             except Exception:
