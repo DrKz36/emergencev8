@@ -1,9 +1,9 @@
 # src/backend/features/memory/gardener.py
-# V2.4 - Ajoute user_id dans les métadonnées vectorisées + trace SQL enrichie
+# V2.5 - FAST-PATH concepts existants + récolte élargie + dédoublonnage vector store
 import logging
 import uuid
 import json
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 
 from backend.core.database.manager import DatabaseManager
@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 
 class MemoryGardener:
     """
-    MEMORY GARDENER V2.4
-    - Analyse via MemoryAnalyzer.
-    - Persistes summary/concepts/entities (fait par l'analyzer).
-    - Vectorise les concepts dans 'emergence_knowledge' avec metadata { user_id, source_session_id, ... }.
-    - Traçage simple dans 'monitoring'.
+    MEMORY GARDENER V2.5
+    - Si des 'extracted_concepts' existent déjà en BDD: vectorisation directe (FAST-PATH).
+    - Sinon: on tente l'analyse sémantique si un 'history' est présent.
+    - Récolte élargie: dernières sessions par updated_at (limite N), pas seulement "sans concepts".
+    - Dédoublonnage: on évite de replanter si des vecteurs existent déjà pour la session.
     """
     KNOWLEDGE_COLLECTION_NAME = "emergence_knowledge"
 
@@ -27,59 +27,55 @@ class MemoryGardener:
         self.vector_service = vector_service
         self.analyzer = memory_analyzer
         self.knowledge_collection = self.vector_service.get_or_create_collection(self.KNOWLEDGE_COLLECTION_NAME)
-        logger.info("MemoryGardener V2.4 initialisé.")
+        logger.info("MemoryGardener V2.5 initialisé.")
 
     async def tend_the_garden(self, consolidation_limit: int = 10) -> Dict[str, Any]:
         logger.info("Le jardinier commence sa ronde dans le jardin de la mémoire...")
 
-        sessions_to_process = await self._fetch_unconsolidated_sessions(limit=consolidation_limit)
+        sessions_to_process = await self._fetch_recent_sessions(limit=consolidation_limit)
         if not sessions_to_process:
-            logger.info("Aucune nouvelle session à consolider. Le jardin est en ordre.")
+            logger.info("Aucune session récente à traiter. Le jardin est en ordre.")
             await self._decay_knowledge()
-            return {"status": "success", "message": "Aucune nouvelle session à traiter.", "consolidated_sessions": 0, "new_concepts": 0}
+            return {"status": "success", "message": "Aucune session à traiter.", "consolidated_sessions": 0, "new_concepts": 0}
 
         logger.info(f"Récolte de {len(sessions_to_process)} sessions pour consolidation.")
         new_concepts_count = 0
         processed_ids: List[str] = []
 
         for session in sessions_to_process:
-            sid = session["id"]
-            try:
-                # 1) History depuis session_data
-                history = []
-                try:
-                    sd = session.get("session_data")
-                    if sd:
-                        parsed = json.loads(sd)
-                        if isinstance(parsed, list):
-                            history = parsed
-                        elif isinstance(parsed, dict) and "history" in parsed:
-                            history = parsed["history"]
-                except Exception as e:
-                    logger.warning(f"Parsing session_data KO pour {sid}: {e}")
+            sid: str = session["id"]
+            uid: Optional[str] = session.get("user_id")
 
-                if not history:
-                    logger.info(f"Session {sid}: history vide — skip analyse.")
+            try:
+                # 0) Dédup: si déjà vectorisé pour cette session -> skip
+                if await self._already_vectorized_for_session(sid):
+                    logger.info(f"Session {sid}: déjà vectorisée — skip.")
                     continue
 
-                # 2) Analyse sémantique (persistance DB par l'analyzer)
-                await self.analyzer.analyze_session_for_concepts(session_id=sid, history=history)
-
-                # 3) Relire concepts puis vectoriser + tracer
-                row = await self.db.fetch_one("SELECT user_id, extracted_concepts FROM sessions WHERE id = ?", (sid,))
-                concepts = []
-                uid = None
-                if row:
-                    uid = row.get("user_id")
-                    if row.get("extracted_concepts"):
-                        try:
-                            concepts = json.loads(row["extracted_concepts"]) or []
-                        except Exception as e:
-                            logger.warning(f"JSON concepts invalide pour {sid}: {e}")
-
+                # 1) FAST-PATH: si des concepts existent déjà en BDD, vectoriser sans ré-analyser
+                raw_concepts = session.get("extracted_concepts")
+                concepts = self._parse_concepts(raw_concepts)
                 if concepts:
                     await self._record_concepts_in_sql(concepts, session, uid)
                     await self._vectorize_concepts(concepts, session, uid)
+                    new_concepts_count += len(concepts)
+                    processed_ids.append(sid)
+                    continue
+
+                # 2) Sinon: tenter l'analyse sémantique si on trouve un history
+                history = self._extract_history(session.get("session_data"))
+                if not history:
+                    logger.info(f"Session {sid}: pas d'history ni de concepts — skip.")
+                    continue
+
+                await self.analyzer.analyze_session_for_concepts(session_id=sid, history=history)
+
+                # 3) Relire les concepts puis vectoriser
+                row = await self.db.fetch_one("SELECT extracted_concepts, user_id FROM sessions WHERE id = ?", (sid,))
+                concepts = self._parse_concepts(row.get("extracted_concepts") if row else None)
+                if concepts:
+                    await self._record_concepts_in_sql(concepts, session, uid or (row.get("user_id") if row else None))
+                    await self._vectorize_concepts(concepts, session, uid or (row.get("user_id") if row else None))
                     new_concepts_count += len(concepts)
 
                 processed_ids.append(sid)
@@ -87,7 +83,7 @@ class MemoryGardener:
             except Exception as e:
                 logger.error(f"Erreur lors de la consolidation pour la session {sid}: {e}", exc_info=True)
 
-        # 4) Marquer consolidé
+        # 4) Marquer consolidé (trace temporelle simple)
         await self._mark_sessions_as_consolidated(processed_ids)
 
         # 5) Vieillissement
@@ -102,19 +98,59 @@ class MemoryGardener:
         logger.info(report)
         return report
 
-    async def _fetch_unconsolidated_sessions(self, limit: int) -> List[Dict[str, Any]]:
+    # ---------- Helpers ----------
+
+    async def _fetch_recent_sessions(self, limit: int) -> List[Dict[str, Any]]:
+        # On ne filtre plus sur "summary/concepts vides" pour ne pas exclure
+        # les sessions déjà analysées mais pas encore vectorisées.
         query = """
             SELECT id, user_id, created_at, updated_at, session_data, summary, extracted_concepts, extracted_entities
             FROM sessions
-            WHERE (summary IS NULL OR TRIM(summary) = '')
-               OR (extracted_concepts IS NULL OR extracted_concepts = '[]')
             ORDER BY updated_at DESC
             LIMIT ?
         """
         rows = await self.db.fetch_all(query, (int(limit),))
         return [dict(r) for r in (rows or [])]
 
-    async def _record_concepts_in_sql(self, concepts: List[str], session: Dict[str, Any], user_id: str | None):
+    def _parse_concepts(self, raw: Any) -> List[str]:
+        try:
+            if raw is None:
+                return []
+            data = json.loads(raw) if isinstance(raw, str) else raw
+            if isinstance(data, list):
+                return [c for c in data if isinstance(c, str) and c.strip()]
+            return []
+        except Exception as e:
+            logger.warning(f"JSON concepts invalide: {e}")
+            return []
+
+    def _extract_history(self, session_data: Any) -> List[Dict[str, Any]]:
+        try:
+            if not session_data:
+                return []
+            parsed = json.loads(session_data) if isinstance(session_data, str) else session_data
+            if isinstance(parsed, list):
+                return parsed
+            if isinstance(parsed, dict) and "history" in parsed:
+                return parsed["history"]
+        except Exception as e:
+            logger.warning(f"Parsing session_data KO: {e}")
+        return []
+
+    async def _already_vectorized_for_session(self, session_id: str) -> bool:
+        try:
+            # On utilise un 'where' sur la metadata pour savoir si des vecteurs existent déjà
+            res = self.vector_service.query(
+                self.knowledge_collection,
+                query_text=session_id,  # n'importe quel texte pour satisfaire l'API
+                n_results=1,
+                where_filter={"source_session_id": session_id}
+            )
+            return bool(res)
+        except Exception:
+            return False
+
+    async def _record_concepts_in_sql(self, concepts: List[str], session: Dict[str, Any], user_id: Optional[str]):
         now = datetime.now(timezone.utc).isoformat()
         for concept_text in concepts:
             concept_id = uuid.uuid4().hex
@@ -134,7 +170,7 @@ class MemoryGardener:
             except Exception as e:
                 logger.warning(f"Trace concept SQL échouée (session {session['id']}): {e}", exc_info=True)
 
-    async def _vectorize_concepts(self, concepts: List[str], session: Dict[str, Any], user_id: str | None):
+    async def _vectorize_concepts(self, concepts: List[str], session: Dict[str, Any], user_id: Optional[str]):
         payload = []
         for concept_text in concepts:
             concept_id = uuid.uuid4().hex
