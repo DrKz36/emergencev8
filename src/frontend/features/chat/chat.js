@@ -1,10 +1,11 @@
 /**
  * @module features/chat/chat
- * @description Module Chat - V24.1 "StrictHydrate + Toast"
+ * @description Module Chat - V24.2 "StrictHydrate + Toast + Timestamps"
  * - Persistance inter-session (Threads API) côté front.
  * - Hydratation stricte par agent_id + idempotente (rebuild à blanc).
  * - Dédoublonnage agent_selected.
  * - Toast léger sur ws:analysis_status.
+ * - ✅ NEW: created_at set côté UI (user + stream start) pour affichage horodatage.
  */
 
 import { ChatUI } from './chat-ui.js';
@@ -37,7 +38,7 @@ export default class ChatModule {
     this.registerStateChanges();
     this.registerEvents();
     this.isInitialized = true;
-    console.log('✅ ChatModule V24.1 (StrictHydrate + Toast) initialisé.');
+    console.log('✅ ChatModule V24.2 (StrictHydrate + Toast + Timestamps) initialisé.');
   }
 
   mount(container) {
@@ -73,7 +74,7 @@ export default class ChatModule {
         ragEnabled: false,
         messages: {},        // { [agentId]: Message[] }
         threadId: null,
-        lastAnalysis: null,  // 👈
+        lastAnalysis: null,
       });
     } else {
       if (this.state.get('chat.threadId') == null) this.state.set('chat.threadId', null);
@@ -198,7 +199,8 @@ export default class ChatModule {
       id: `user-${Date.now()}`,
       role: 'user',
       content: trimmed,
-      agent_id: currentAgentId
+      agent_id: currentAgentId,
+      created_at: Date.now() /* ✅ pour affichage horodatage (T6) */
     };
 
     const currentMessages = this.state.get(`chat.messages.${currentAgentId}`) || [];
@@ -226,7 +228,14 @@ export default class ChatModule {
   }
 
   handleStreamStart({ agent_id, id }) {
-    const agentMessage = { id, role: 'assistant', content: '', agent_id, isStreaming: true };
+    const agentMessage = {
+      id,
+      role: 'assistant',
+      content: '',
+      agent_id,
+      isStreaming: true,
+      created_at: Date.now() /* ✅ pour affichage horodatage dès le flux (T6) */
+    };
     const currentMessages = this.state.get(`chat.messages.${agent_id}`) || [];
     this.state.set('chat.messages.${agent_id}'.replace('${agent_id}', agent_id), [...currentMessages, agentMessage]);
     this.state.set('chat.isLoading', true);

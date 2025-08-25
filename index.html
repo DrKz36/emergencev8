@@ -89,11 +89,13 @@
     }
 
     .brand-block {
-      display:flex; align-items:center; gap:12px; padding:6px 8px; margin-bottom:10px;
+      display:flex; align-items:center; gap:12px; padding:6px 8px; margin-bottom:14px;
       border-radius:10px; background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
     }
-    .brand-logo { width:44px; height:44px; opacity:.95; }
-    .brand-title { font-size: 24px; margin: 0; text-transform: uppercase; letter-spacing:.06em; }
+    /* ✅ Ratio logo + taille up */
+    .brand-logo { max-height:56px; height:auto; width:auto; object-fit:contain; aspect-ratio:auto; opacity:.95; }
+    /* ✅ Branding lisible */
+    .brand-title { font-size: clamp(20px, 2.6vw, 28px); margin: 0; text-transform: uppercase; letter-spacing:.06em; }
 
     .app-content {
       grid-area: main; padding: 12px;
@@ -116,11 +118,11 @@
     /* ===== Ajustements responsive ===== */
     @media (max-width: 920px){
       :root{ --sidebar-w: 220px; }
-      .brand-logo{width:40px;height:40px;}
-      .brand-title{font-size:22px;}
+      .brand-logo{ max-height:40px; }
+      .brand-title{ font-size: clamp(18px, 2.2vw, 24px); }
     }
 
-    /* Mode mobile : sidebar devient top‑bar compacte, contenu dessous et scrolle */
+    /* Mode mobile : sidebar devient top-bar compacte, contenu dessous et scrolle */
     @media (max-width: 760px){
       :root{ --sidebar-w: 100%; }
       .app-container{
@@ -133,10 +135,10 @@
       .app-sidebar{
         flex-direction: row; align-items: center; gap: 8px;
         border-right: none; border-bottom: 1px solid var(--border);
-        min-height: auto; padding: 8px 10px;
+        min-height: auto; padding: max(env(safe-area-inset-top),10px) 12px 8px;
       }
       .brand-title{ display: none; }
-      .brand-logo{ width: 32px; height: 32px; }
+      .brand-logo{ max-height:42px; }
       .sidebar-nav{
         display:flex; gap:8px; flex:1 1 auto; overflow-x:auto; -webkit-overflow-scrolling: touch;
       }
@@ -145,7 +147,8 @@
 </head>
 <body class="loading">
   <div id="app-loader">
-    <img src="/assets/emergence_logo.png" alt="ÉMERGENCE" style="width:56px;height:56px;opacity:.9;margin-right:12px;">
+    <!-- ✅ ratio préservé au loader -->
+    <img src="/assets/emergence_logo.png" alt="ÉMERGENCE" style="max-height:64px;height:auto;width:auto;opacity:.9;margin-right:12px;object-fit:contain;aspect-ratio:auto;">
     ÉMERGENCE…
   </div>
 
