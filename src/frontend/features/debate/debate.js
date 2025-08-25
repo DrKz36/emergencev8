@@ -1,9 +1,6 @@
 /**
  * @module features/debate/debate
- * @description Orchestrateur du module Débat - V26.1 "Concordance + Validation"
- * - Pattern init/mount découplé du DOM.
- * - Validation locale du sujet (topic.trim().length >= 10).
- * - Feedback utilisateur clair (toast + statusText) y.c. erreurs WS.
+ * @description Orchestrateur du module Débat - V26.2 "Concordance + Validation + Synthèse UI"
  */
 import { DebateUI } from './debate-ui.js';
 import { EVENTS, AGENTS } from '../../shared/constants.js';
@@ -16,7 +13,7 @@ export default class DebateModule {
         this.container = null;
         this.listeners = [];
         this.isInitialized = false;
-        console.log("✅ DebateModule V26.1 (Concordance + Validation) Prêt.");
+        console.log("✅ DebateModule V26.2 (Concordance + Validation + Synthèse UI) Prêt.");
     }
     
     init() {
@@ -25,7 +22,7 @@ export default class DebateModule {
         this.registerEvents();
         this.registerStateChanges();
         this.isInitialized = true;
-        console.log("✅ DebateModule V26.1 (Concordance + Validation) Initialisé UNE SEULE FOIS.");
+        console.log("✅ DebateModule V26.2 (Concordance + Validation + Synthèse UI) Initialisé UNE SEULE FOIS.");
     }
 
     mount(container) {
@@ -41,9 +38,7 @@ export default class DebateModule {
     
     registerStateChanges() {
         const unsubscribe = this.state.subscribe('debate', (debateState) => {
-            if (this.container) {
-                this.ui.render(this.container, debateState);
-            }
+            if (this.container) this.ui.render(this.container, debateState);
         });
         this.listeners.push(unsubscribe);
     }
@@ -92,7 +87,6 @@ export default class DebateModule {
     /* -------------------------------- Handlers -------------------------------- */
 
     handleCreateDebate(config) {
-        // 1) Validation locale (évite un aller/retour WS inutile + erreur Pydantic)
         const val = this._validateConfig(config);
         if (!val.ok) {
             this.state.set('debate.error', val.reason);
@@ -100,8 +94,6 @@ export default class DebateModule {
             this._notify('warning', val.message);
             return;
         }
-
-        // 2) Reset propre et démarrage
         this.reset();
         const sanitized = {
             topic: val.topic,
@@ -116,12 +108,13 @@ export default class DebateModule {
     handleServerUpdate(serverState) {
         const clientState = this._normalizeServerState(serverState);
         this.state.set('debate', clientState);
-        // Petits messages d’avancement
+
         if (clientState.status === 'in_progress') {
             const lastTurn = clientState.history[clientState.history.length - 1];
             if (lastTurn) this._notify('info', `Tour ${lastTurn.roundNumber} / ${clientState.config.rounds}`);
         } else if (clientState.status === 'completed') {
             this._notify('success', 'Débat terminé — synthèse disponible.');
+            this._maybeShowSynthesis(clientState);
         }
     }
 
@@ -151,14 +144,12 @@ export default class DebateModule {
     }
 
     onDebateStatusUpdate(payload) {
-        // Payload attendu: { status: 'pending'|'in_progress'|'completed'|'failed'|'error', reason?, message? }
         const status = payload?.status || 'unknown';
         let msg = payload?.message || '';
 
         if (status === 'error' || status === 'failed') {
             const reason = payload?.reason || 'unknown_error';
             if (!msg) {
-                // mapping minimal des raisons connues
                 msg = (reason === 'topic_too_short')
                     ? 'Sujet trop court (minimum 10 caractères).'
                     : 'Erreur lors du démarrage du débat.';
@@ -169,7 +160,6 @@ export default class DebateModule {
             return;
         }
 
-        // Statuts non erronés → mise à jour textuelle légère
         const text = (status === 'pending')
             ? 'En attente de démarrage…'
             : (status === 'in_progress')
@@ -178,7 +168,20 @@ export default class DebateModule {
                     ? 'Débat terminé. Synthèse disponible.'
                     : (msg || status);
         this.state.set('debate.statusText', text);
-        if (status === 'completed') this._notify('success', 'Débat terminé — synthèse disponible.');
+
+        if (status === 'completed') {
+            const st = this.state.get('debate');
+            this._maybeShowSynthesis(st);
+        }
+    }
+
+    _maybeShowSynthesis(state) {
+        const synth = (state && typeof state.synthesis === 'string') ? state.synthesis.trim() : '';
+        if (!synth) {
+            this._notify('warning', 'Synthèse indisponible (le moteur a renvoyé un contenu vide). Essaie “Exporter”.');
+            return;
+        }
+        this._showSynthesisModal(synth);
     }
 
     getHumanReadableStatus(state) {
@@ -240,8 +243,73 @@ export default class DebateModule {
         try {
             this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: type || 'info', message: message || '' });
         } catch (e) {
-            // fallback ultra-léger si le système de notif n'est pas monté
             try { console.log(`[${type?.toUpperCase() || 'INFO'}] ${message}`); } catch {}
         }
+    }
+
+    _showSynthesisModal(content) {
+        // Modal autonome, sans dépendance au layout du DebateUI
+        const root = document.createElement('div');
+        root.setAttribute('role', 'dialog');
+        root.ariaLabel = 'Synthèse du débat';
+        root.style.position = 'fixed';
+        root.style.inset = '0';
+        root.style.background = 'rgba(0,0,0,.5)';
+        root.style.display = 'flex';
+        root.style.alignItems = 'center';
+        root.style.justifyContent = 'center';
+        root.style.zIndex = '9999';
+
+        const card = document.createElement('div');
+        card.style.width = 'min(900px, 92vw)';
+        card.style.maxHeight = '80vh';
+        card.style.background = 'linear-gradient(180deg, rgba(20,20,24,.96), rgba(14,14,18,.96))';
+        card.style.border = '1px solid rgba(255,255,255,.08)';
+        card.style.borderRadius = '16px';
+        card.style.boxShadow = '0 12px 28px rgba(0,0,0,.35)';
+        card.style.padding = '18px 18px 14px';
+        card.style.color = '#fff';
+        card.style.display = 'flex';
+        card.style.flexDirection = 'column';
+        card.style.gap = '12px';
+
+        const title = document.createElement('div');
+        title.textContent = 'Synthèse du débat';
+        title.style.font = '600 18px/1.2 system-ui, -apple-system, Segoe UI, Roboto';
+        title.style.letterSpacing = '.2px';
+
+        const pre = document.createElement('pre');
+        pre.textContent = content;
+        pre.style.whiteSpace = 'pre-wrap';
+        pre.style.font = '13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas';
+        pre.style.margin = '0';
+        pre.style.padding = '12px';
+        pre.style.borderRadius = '12px';
+        pre.style.background = 'rgba(255,255,255,.04)';
+        pre.style.overflow = 'auto';
+        pre.style.flex = '1 1 auto';
+
+        const actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.gap = '8px';
+        actions.style.justifyContent = 'flex-end';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.textContent = 'Copier';
+        copyBtn.className = 'button';
+        copyBtn.onclick = async () => {
+            try { await navigator.clipboard.writeText(content); this._notify('success','Synthèse copiée.'); }
+            catch { this._notify('warning','Impossible de copier.'); }
+        };
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'Fermer';
+        closeBtn.className = 'button button-metal';
+        closeBtn.onclick = () => root.remove();
+
+        actions.append(copyBtn, closeBtn);
+        card.append(title, pre, actions);
+        root.append(card);
+        document.body.appendChild(root);
     }
 }
