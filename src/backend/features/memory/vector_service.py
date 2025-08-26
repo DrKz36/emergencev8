@@ -1,8 +1,6 @@
 # src/backend/features/memory/vector_service.py
-# V2.8 - Auto-reset Chroma avant instanciation (pré-check SQLite) + télémétrie désactivée.
-#        - Vérifie l'intégrité/entête SQLite AVANT de créer le PersistentClient.
-#        - Si corrompu -> backup horodaté du dossier + recréation clean, donc pas de lock Windows.
-#        - Garde le guard V2.7 (post-création) en filet de sécurité.
+# V2.9 - Normalisation des filtres Chroma (dict plat -> {$and:[{k:v},...]}) dans query/delete
+#       - Reste inchangé par rapport à V2.8 (auto-reset + télémétrie off).
 import logging
 import os
 import shutil
@@ -20,10 +18,11 @@ logger = logging.getLogger(__name__)
 
 class VectorService:
     """
-    VectorService V2.8
+    VectorService V2.9
     - API identique.
     - Auto-reset AVANT instanciation Chroma si DB corrompue (évite locks Windows).
     - Télémétrie Chroma désactivée.
+    - NEW: normalisation des filtres where pour compatibilité stricte Chroma.
     """
 
     def __init__(
@@ -135,8 +134,6 @@ class VectorService:
                     "Incompatibilité/corruption du store Chroma détectée durant init. "
                     "Auto-reset protégé (post-essai) en cours…"
                 )
-                # Même si on est post-essai, il NE DOIT pas y avoir de lock ici car
-                # aucune instance client n'a été retournée ; si libération lente -> on retente.
                 backup_path = self._backup_persist_dir(self.persist_directory)
                 logger.warning(f"Store existant déplacé en backup: {backup_path}")
 
@@ -180,6 +177,19 @@ class VectorService:
             )
             raise
         return backup_path
+
+    # ---------- Normalisation where ----------
+    def _normalize_where(self, where: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """
+        Chroma >=0.5 attend un unique opérateur racine ($and/$or/$not) ou un seul champ.
+        On convertit un dict plat en {$and:[{k:v},...]}.
+        """
+        if not where:
+            return None
+        if isinstance(where, dict) and any(str(k).startswith("$") for k in where.keys()):
+            return where  # déjà normalisé
+        clauses = [{k: v} for k, v in where.items()]
+        return {"$and": clauses} if clauses else None
 
     # ---------- API publique ----------
     def get_or_create_collection(self, name: str) -> Collection:
@@ -259,7 +269,7 @@ class VectorService:
             results = collection.query(
                 query_embeddings=embeddings_list,
                 n_results=n_results,
-                where=where_filter,
+                where=self._normalize_where(where_filter),
                 include=["documents", "metadatas", "distances"]
             )
 
@@ -294,7 +304,7 @@ class VectorService:
             )
             return
         try:
-            collection.delete(where=where_filter)
+            collection.delete(where=self._normalize_where(where_filter))
             logger.info(
                 f"Vecteurs supprimés de '{collection.name}' avec filtre {where_filter}."
             )

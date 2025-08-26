@@ -1,9 +1,10 @@
 # src/backend/features/memory/gardener.py
-# V2.6.1 — FIX sqlite3.Row.get (→ dict(row)) + extraction texte robuste (text|content|message)
+# V2.6.2 — FIX sqlite3.Row.get (→ dict(row)) + extraction texte robuste + ID déterministe pour facts (anti-doublon)
 import logging
 import uuid
 import json
 import re
+import hashlib
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 
@@ -41,12 +42,16 @@ def _agent_norm(name: Optional[str]) -> Optional[str]:
         return n
     return None
 
+def _fact_id(session_id: str, key: str, agent: Optional[str], value: str) -> str:
+    base = f"{session_id}:{key}:{agent or 'global'}:{value}"
+    return hashlib.sha1(base.encode("utf-8")).hexdigest()
+
 class MemoryGardener:
     """
-    MEMORY GARDENER V2.6.1
+    MEMORY GARDENER V2.6.2
     - FIX: accès aux colonnes sur aiosqlite.Row (dict(row) avant .get).
     - Vectorise concepts/entities + FAITS (mot-code/agent) avec dédup fine.
-    - Ne 'skip' pas si de nouveaux facts sont détectés.
+    - ID déterministe pour facts -> upsert strict, aucun doublon.
     """
     KNOWLEDGE_COLLECTION_NAME = "emergence_knowledge"
 
@@ -55,7 +60,7 @@ class MemoryGardener:
         self.vector_service = vector_service
         self.analyzer = memory_analyzer
         self.knowledge_collection = self.vector_service.get_or_create_collection(self.KNOWLEDGE_COLLECTION_NAME)
-        logger.info("MemoryGardener V2.6.1 initialisé.")
+        logger.info("MemoryGardener V2.6.2 initialisé.")
 
     async def tend_the_garden(self, consolidation_limit: int = 10) -> Dict[str, Any]:
         logger.info("Le jardinier commence sa ronde dans le jardin de la mémoire...")
@@ -321,7 +326,7 @@ class MemoryGardener:
     async def _vectorize_facts(self, facts: List[Dict[str, Any]], session: Dict[str, Any], user_id: Optional[str]):
         payload = []
         for f in facts:
-            vid = uuid.uuid4().hex
+            vid = _fact_id(session["id"], f["key"], f.get("agent"), f["value"])  # ← ID déterministe (anti-doublon)
             payload.append({
                 "id": vid,
                 "text": f["text"],
