@@ -1,5 +1,5 @@
 # src/backend/features/memory/gardener.py
-# V2.6 — FAST-PATH + Facts explicites (mot-code/agent) + dédup fine
+# V2.6.1 — FIX sqlite3.Row.get (→ dict(row)) + extraction texte robuste (text|content|message)
 import logging
 import uuid
 import json
@@ -43,11 +43,10 @@ def _agent_norm(name: Optional[str]) -> Optional[str]:
 
 class MemoryGardener:
     """
-    MEMORY GARDENER V2.6
-    - Vectorise les 'concepts' existants (extracted_concepts) + les 'entities' (en complément).
-    - Extrait et vectorise des FAITS explicites depuis l'history: mot-code/agent.
-    - Ne 'skip' plus une session si de nouveaux 'facts' sont détectés même si déjà vectorisée avant.
-    - Journalise dans 'monitoring' les events 'knowledge_concept' et 'knowledge_fact' + 'knowledge_decay'.
+    MEMORY GARDENER V2.6.1
+    - FIX: accès aux colonnes sur aiosqlite.Row (dict(row) avant .get).
+    - Vectorise concepts/entities + FAITS (mot-code/agent) avec dédup fine.
+    - Ne 'skip' pas si de nouveaux facts sont détectés.
     """
     KNOWLEDGE_COLLECTION_NAME = "emergence_knowledge"
 
@@ -56,7 +55,7 @@ class MemoryGardener:
         self.vector_service = vector_service
         self.analyzer = memory_analyzer
         self.knowledge_collection = self.vector_service.get_or_create_collection(self.KNOWLEDGE_COLLECTION_NAME)
-        logger.info("MemoryGardener V2.6 initialisé.")
+        logger.info("MemoryGardener V2.6.1 initialisé.")
 
     async def tend_the_garden(self, consolidation_limit: int = 10) -> Dict[str, Any]:
         logger.info("Le jardinier commence sa ronde dans le jardin de la mémoire...")
@@ -85,19 +84,22 @@ class MemoryGardener:
                 # 2) Extraire des FAITS (mot-code/agent) depuis l'history
                 facts = self._extract_facts_from_history(history)
 
-                # 3) Si rien en BDD (concepts vides) mais on a un history: tenter analyse sémantique
+                # 3) Si pas de concepts mais un history: lancer analyse sémantique puis recharger
                 if not concepts and history:
                     await self.analyzer.analyze_session_for_concepts(session_id=sid, history=history)
-                    row = await self.db.fetch_one("SELECT extracted_concepts, extracted_entities, user_id FROM sessions WHERE id = ?", (sid,))
+                    row = await self.db.fetch_one(
+                        "SELECT extracted_concepts, extracted_entities, user_id FROM sessions WHERE id = ?",
+                        (sid,)
+                    )
+                    row = dict(row) if row is not None else None
                     concepts = self._parse_concepts(row.get("extracted_concepts") if row else None)
                     entities = self._parse_entities(row.get("extracted_entities") if row else None)
                     all_concepts = _unique((concepts or []) + (entities or []))
 
-                # 4) Dédup fines: on peut avoir déjà vectorisé des items pour cette session
-                #    - Si des 'facts' nouveaux sont présents, on les ajoute même si la session a déjà des vecteurs.
+                # 4) Dédup fine & vectorisation
                 added_any = False
 
-                # 4a) Faits: filtrer ceux déjà présents (clé/agent) puis vectoriser les nouveaux
+                # 4a) FAITS: ajoute uniquement les nouveaux (clé/agent)
                 facts_to_add = []
                 for fact in facts:
                     if not await self._fact_already_vectorized(sid, fact["key"], fact.get("agent")):
@@ -109,7 +111,7 @@ class MemoryGardener:
                     new_items_count += len(facts_to_add)
                     added_any = True
 
-                # 4b) Concepts/entités: si aucun vecteur pour cette session OU si aucun concept n'a encore été planté
+                # 4b) CONCEPTS/ENTITIES: si aucun vecteur encore enregistré pour cette session
                 if all_concepts and not await self._any_vectors_for_session(sid):
                     await self._record_concepts_in_sql(all_concepts, s, uid)
                     await self._vectorize_concepts(all_concepts, s, uid)
@@ -117,16 +119,14 @@ class MemoryGardener:
                     added_any = True
 
                 if not added_any:
-                    # Rien à ajouter
                     logger.info(f"Session {sid}: déjà vectorisée ou aucun nouvel item — skip.")
                 processed_ids.append(sid)
 
             except Exception as e:
                 logger.error(f"Erreur lors de la consolidation pour la session {sid}: {e}", exc_info=True)
 
-        # 5) Marquer les sessions 'touchées' (trace simple)
+        # 5) Trace consolidation & 6) vieillissement
         await self._mark_sessions_as_consolidated(processed_ids)
-        # 6) Vieillissement (trace)
         await self._decay_knowledge()
 
         report = {
@@ -141,7 +141,6 @@ class MemoryGardener:
     # ---------- Helpers ----------
 
     async def _fetch_recent_sessions(self, limit: int) -> List[Dict[str, Any]]:
-        # Récolte élargie: dernières sessions par updated_at DESC (on ne filtre plus uniquement "vides")
         query = """
             SELECT id, user_id, created_at, updated_at, session_data, summary, extracted_concepts, extracted_entities
             FROM sessions
@@ -169,7 +168,6 @@ class MemoryGardener:
                 return []
             data = json.loads(raw) if isinstance(raw, str) else raw
             if isinstance(data, list):
-                # ne garder que des tokens textuels simples
                 out = []
                 for x in data:
                     if isinstance(x, str) and x.strip():
@@ -199,8 +197,9 @@ class MemoryGardener:
             return []
         facts: List[Dict[str, Any]] = []
         for msg in history:
-            text = (msg.get("text") or "").strip()
-            agent_hint = _agent_norm(msg.get("agent_id") or msg.get("agent"))  # selon structure
+            # Robustesse: accepter 'text' | 'content' | 'message'
+            text = (msg.get("text") or msg.get("content") or msg.get("message") or "").strip()
+            agent_hint = _agent_norm(msg.get("agent_id") or msg.get("agent"))
             if not text:
                 continue
 
@@ -208,7 +207,7 @@ class MemoryGardener:
                 m = re.search(pat, text, flags=re.IGNORECASE)
                 if m:
                     g1, g2 = (m.group(1), m.group(2)) if m.lastindex and m.lastindex >= 2 else (None, None)
-                    agent = _agent_norm(g1) or agent_hint  # 'pour Anima' > sinon agent_id du msg
+                    agent = _agent_norm(g1) or agent_hint
                     value = (g2 or "").strip()
                     if value:
                         display_agent = agent or "global"
@@ -219,6 +218,7 @@ class MemoryGardener:
                             "text": f"Mot-code ({display_agent})={value}"
                         })
                     break  # éviter doublons sur le même message
+
         # Unicité par (key, agent, value)
         seen = set()
         uniq: List[Dict[str, Any]] = []
