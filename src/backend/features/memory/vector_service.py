@@ -1,6 +1,8 @@
 # src/backend/features/memory/vector_service.py
-# V2.9 - Normalisation des filtres Chroma (dict plat -> {$and:[{k:v},...]}) dans query/delete
-#       - Reste inchangé par rapport à V2.8 (auto-reset + télémétrie off).
+# V2.9.1 — Normalisation where robuste :
+#          - 1 seule clause => dict simple (pas de $and)
+#          - ≥2 clauses     => {"$and":[{k:v}, ...]}
+#          - $and/$or unitaires aplatis
 import logging
 import os
 import shutil
@@ -18,11 +20,11 @@ logger = logging.getLogger(__name__)
 
 class VectorService:
     """
-    VectorService V2.9
+    VectorService V2.9.1
     - API identique.
     - Auto-reset AVANT instanciation Chroma si DB corrompue (évite locks Windows).
     - Télémétrie Chroma désactivée.
-    - NEW: normalisation des filtres where pour compatibilité stricte Chroma.
+    - FIX: normalisation des filtres where pour compat stricte Chroma (évite l'erreur $and avec 1 clause).
     """
 
     def __init__(
@@ -178,18 +180,48 @@ class VectorService:
             raise
         return backup_path
 
-    # ---------- Normalisation where ----------
+    # ---------- Normalisation where (FIX) ----------
     def _normalize_where(self, where: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """
-        Chroma >=0.5 attend un unique opérateur racine ($and/$or/$not) ou un seul champ.
-        On convertit un dict plat en {$and:[{k:v},...]}.
+        Règles Chroma:
+          - Un seul critère: passer tel quel, ex. {'source_session_id': '...'}
+          - Plusieurs critères: {'$and': [ {k1:v1}, {k2:v2}, ... ]}
+          - Si déjà opérateur ($and/$or/$not):
+              * si $and/$or liste de longueur 0 -> None
+              * si $and/$or liste de longueur 1 -> aplatir en dict simple
+              * sinon -> laisser tel quel
         """
         if not where:
             return None
-        if isinstance(where, dict) and any(str(k).startswith("$") for k in where.keys()):
-            return where  # déjà normalisé
-        clauses = [{k: v} for k, v in where.items()]
-        return {"$and": clauses} if clauses else None
+
+        # Si opérateur déjà présent
+        if any(str(k).startswith("$") for k in where.keys()):
+            # Aplatir $and/$or vides ou unitaires
+            if "$and" in where and isinstance(where["$and"], list):
+                lst = where["$and"]
+                if len(lst) == 0:
+                    return None
+                if len(lst) == 1 and isinstance(lst[0], dict):
+                    return lst[0]
+                return where
+            if "$or" in where and isinstance(where["$or"], list):
+                lst = where["$or"]
+                if len(lst) == 0:
+                    return None
+                if len(lst) == 1 and isinstance(lst[0], dict):
+                    return lst[0]
+                return where
+            # $not ou autres: laisser passer tel quel
+            return where
+
+        # Dict plat
+        items = list(where.items())
+        if len(items) <= 1:
+            # 1 seul critère -> dict simple (évite l’erreur "$and expects >=2")
+            return where
+
+        # ≥2 critères -> $and
+        return {"$and": [{k: v} for k, v in items]}
 
     # ---------- API publique ----------
     def get_or_create_collection(self, name: str) -> Collection:
