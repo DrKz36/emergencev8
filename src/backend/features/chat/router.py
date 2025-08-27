@@ -1,5 +1,6 @@
 # src/backend/features/chat/router.py
-# V22.1 - DEBATE WS HANDLER: normalisation des clés payload (camelCase/snake_case)
+# V22.3 - WS CHAT: accept legacy aliases ('chat:send', 'chat_message') by normalizing to 'chat.message'
+#            payload plat -> service, save user message, no create_task on sync call
 import logging
 import asyncio
 from uuid import uuid4
@@ -18,7 +19,7 @@ from backend.features.debate.service import DebateService
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Suivi des tâches WS non bloquantes
+# Suivi des tâches WS non bloquantes (utile pour d’autres branches)
 background_tasks = set()
 
 def _norm_bool(payload, snake_key, camel_key, default=False):
@@ -57,12 +58,17 @@ async def websocket_endpoint(
                 logger.warning(f"Message WS malformé ou incomplet: {data}")
                 try:
                     await connection_manager.send_personal_message(
-                        {"type": "ws:error", "payload": {"message": "Message WebSocket incomplet (type/payload)."}},
+                        {"type": "ws:error", "payload": {"message": "Message WebSocket incomplet (type/payload)."}} ,
                         session_id
                     )
                 except Exception:
                     pass
                 continue
+
+            # Normalisation des alias historiques pour compatibilité clients
+            if isinstance(message_type, str) and message_type in {"chat:send", "chat_message"}:
+                logger.info(f"[WS] Normalisation du type hérité '{message_type}' -> 'chat.message'")
+                message_type = "chat.message"
 
             # =========================
             #  BRANCHE DEBATE:* (WS)
@@ -96,7 +102,7 @@ async def websocket_endpoint(
                             )
                             continue
 
-                        # Feedback immédiat au client (statut "pending") avant lancement réel
+                        # Feedback immédiat
                         await connection_manager.send_personal_message(
                             {"type": "ws:debate_status_update",
                              "payload": {"status": "Initialisation du débat…", "topic": topic}},
@@ -136,8 +142,9 @@ async def websocket_endpoint(
             elif message_type == "chat.message":
                 logger.info(f"Message de chat '{message_type}' intercepté pour traitement.")
                 try:
-                    message_content = payload.get("text")
-                    if not message_content:
+                    # 1) Récupérer et valider le texte utilisateur
+                    message_content = payload.get("text") or payload.get("content") or payload.get("message")
+                    if not (isinstance(message_content, str) and message_content.strip()):
                         logger.warning(f"Message de chat reçu sans contenu textuel: {payload}")
                         await connection_manager.send_personal_message(
                             {"type": "ws:error", "payload": {"message": "Message de chat sans texte."}},
@@ -145,29 +152,32 @@ async def websocket_endpoint(
                         )
                         continue
 
-                    # Récupère l'agent cible éventuel et conforme l'API du ChatService
-                    target_agent = payload.get("agent_id")
-                    agents_list = [target_agent] if target_agent else []
+                    # 2) Écrire le message utilisateur dans l'historique (avant la réponse agent)
+                    target_agent = payload.get("agent_id") or payload.get("agentId")
+                    use_rag_flag = _norm_bool(payload, "use_rag", "useRag", default=False)
 
-                    chat_request = ChatMessage(
+                    user_msg = ChatMessage(
                         id=str(uuid4()),
                         session_id=session_id,
                         role=Role.USER,
                         agent="user",
                         content=message_content,
                         timestamp=datetime.now(timezone.utc).isoformat(),
-                        agents=agents_list,
-                        use_rag=payload.get("use_rag", False)
+                        agents=[target_agent] if target_agent else [],
+                        use_rag=use_rag_flag,
                     )
+                    await chat_service.session_manager.add_message_to_session(session_id, user_msg)
 
-                    task = asyncio.create_task(
-                        chat_service.process_user_message_for_agents(session_id, chat_request, connection_manager)
-                    )
-                    background_tasks.add(task)
-                    task.add_done_callback(background_tasks.discard)
+                    # 3) Appeler le service avec un payload PLAT attendu (snake_case), sans create_task ici
+                    normalized = {
+                        "agent_id": (target_agent or "").strip().lower(),
+                        "use_rag": bool(use_rag_flag),
+                        "text": message_content,
+                    }
+                    chat_service.process_user_message_for_agents(session_id, normalized, connection_manager)
 
                 except Exception as e:
-                    logger.error(f"Erreur lors de la création de la tâche de chat: {e}", exc_info=True)
+                    logger.error(f"Erreur lors du traitement du chat: {e}", exc_info=True)
                     try:
                         await connection_manager.send_personal_message(
                             {"type": "ws:error", "payload": {"message": f"Erreur interne chat: {str(e)}"}},

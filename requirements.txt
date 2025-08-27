@@ -1,56 +1,44 @@
-# ---------------------------------
-# CORE FRAMEWORK & SERVER
-# Dépendances essentielles pour faire tourner l'application web.
-# ---------------------------------
-fastapi>=0.104.0,<0.110.0
-uvicorn[standard]>=0.24.0
-websockets>=11.0.2          # Pour la communication temps réel
-python-multipart>=0.0.6     # Nécessaire pour le traitement des formulaires (uploads)
+# ==============================
+# ÉMERGENCE — Requirements (E2E)
+# Cibles : Windows dev + Cloud Run
+# ==============================
 
-# ---------------------------------
-# DEPENDENCY INJECTION & CONFIG
-# Outils pour une architecture propre.
-# ---------------------------------
-dependency-injector>=4.41.0
-pydantic>=2.5.0,<3.0.0
-pydantic-settings>=2.0.0
-python-dotenv>=1.0.0
+# --- Core serveur ---
+fastapi==0.109.2                 # match env stable
+uvicorn[standard]>=0.24,<0.31    # uvloop/httptools inclus pour perf
+websockets>=11.0.2
+python-multipart>=0.0.9
 
-# ---------------------------------
-# AI & LLM PROVIDERS
-# SDKs pour interagir avec les modèles de langage.
-# ---------------------------------
-openai>=1.35.0,<2.0.0
-google-generativeai>=0.7.0
-anthropic>=0.28.0,<1.0.0
-tiktoken>=0.5.2             # Pour le comptage de tokens (souvent utilisé par OpenAI)
+# --- DI & Config ---
+dependency-injector>=4.41,<5
+pydantic>=2.6,<3
+pydantic-settings>=2.2,<3
+python-dotenv>=1.0,<2
 
-# ---------------------------------
-# DATA, DATABASE & VECTOR STORES
-# Gestion de la persistance des données structurées et vectorielles.
-# ---------------------------------
-aiosqlite>=0.19.0           # Base de données SQL asynchrone
-chromadb==0.4.22            # Base de données vectorielle
+# --- LLM Providers ---
+openai>=1.35,<2
+google-generativeai==0.8.5       # match env, évite breaking changes
+anthropic==0.64.0                # match env stable
+tiktoken>=0.5.2,<0.8
 
-# ---------------------------------
-# SEMANTIC & ML LIBRARIES
-# Librairies pour le traitement sémantique et le machine learning.
-# ---------------------------------
-sentence-transformers>=2.7.0
-torch>=2.1.0
-numpy>=1.24.0,<2.0.0
+# --- Données & Vectors ---
+aiosqlite==0.21.0                # match env stable
+chromadb==0.4.22                 # version connue fiable
 
-# ---------------------------------
-# FILE PROCESSING & UTILITIES
-# Librairies pour l'extraction de texte et autres opérations.
-# ---------------------------------
-aiofiles>=23.2.0            # Pour la gestion de fichiers asynchrone
-PyMuPDF>=1.24.0             # Extraction depuis les PDF
-python-docx>=1.1.0          # Extraction depuis les .docx
+# --- Embeddings & NumPy/Torch ---
+sentence-transformers>=2.7,<3
+# Torch CPU par défaut ; override si CUDA requis dans ton environnement
+torch>=2.1,<3
+numpy==1.26.4                    # match env ; <2 pour compat torch
 
-# ⚠️ Spécifique OS : sur Windows on prend python-magic-bin, ailleurs python-magic
+# --- Fichiers & Utilitaires ---
+aiofiles==24.1.0                 # match env stable
+PyMuPDF>=1.24.10,<1.25           # fitz/PyMuPDF récent
+python-docx>=1.1.0,<1.2
+
+# Spécifique OS (magic/libmagic)
 python-magic>=0.4.27; platform_system!="Windows"
 python-magic-bin>=0.4.14; platform_system=="Windows"
 
-chardet>=5.2.0              # Détection de l'encodage des caractères
-psutil>=5.9.5               # Monitoring des ressources
+chardet==5.2.0
+psutil>=5.9,<6

@@ -1,10 +1,9 @@
 # src/backend/features/chat/service.py
-# V29.9 - MEMORY RAG (emergence_knowledge) + AUTO GARDEN (sur base locale V29.7)
-# - Ajout du RAG Mémoire (concepts consolidés) en plus des documents.
-# - Filtrage par user_id si disponible.
-# - Auto-consolidation asynchrone après réponse (opt-out via EMERGENCE_AUTO_TEND=0).
-# - AUCUNE suppression des fonctionnalités existantes : streamers OpenAI/Gemini/Anthropic,
-#   get_llm_response_for_debate (non-stream, fallback), structured JSON, etc.
+# V30.0 — MEMORY M1: Mémoire orthogonale au RAG + ws:memory_banner
+# - Injection STM/LTM en pré-contexte même si use_rag=False (RAG réservé aux documents).
+# - Ajout event WS 'ws:memory_banner' (has_stm, ltm_items, injected_into_prompt).
+# - Court-circuit "mot-code" conservé, avec banner envoyé.
+# - Provider-normalize, stream & coûts : inchangés.
 
 import os, re, asyncio, logging, glob, json
 from uuid import uuid4
@@ -24,7 +23,7 @@ from backend.features.memory.vector_service import VectorService
 from backend.shared.config import Settings
 from backend.core import config
 
-# NEW: utilisé pour l’auto-consolidation mémoire
+# Auto-consolidation mémoire
 from backend.features.memory.gardener import MemoryGardener
 
 logger = logging.getLogger(__name__)
@@ -37,6 +36,21 @@ MODEL_PRICING = {
     "claude-3-sonnet-20240229": {"input": 3.00 / 1_000_000, "output": 15.00 / 1_000_000},
     "claude-3-opus-20240229": {"input": 15.00 / 1_000_000, "output": 75.00 / 1_000_000},
 }
+
+# -------- helpers provider --------
+def _normalize_provider(p: Optional[str]) -> str:
+    """Normalise les alias provider pour l'aiguillage LLM."""
+    if not p:
+        return ""
+    p = p.strip().lower()
+    if p in ("gemini", "google", "googleai", "vertex"):
+        return "google"
+    if p in ("openai", "oai"):
+        return "openai"
+    if p in ("anthropic", "claude"):
+        return "anthropic"
+    return p
+
 
 class ChatService:
     def __init__(self, session_manager: SessionManager, cost_tracker: CostTracker,
@@ -60,8 +74,9 @@ class ChatService:
             raise
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V29.6a initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V30.0 initialisé. Prompts chargés: {len(self.prompts)}")
 
+    # ---------- prompts ----------
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
         def weight(name: str) -> int:
             name = name.lower(); w = 0
@@ -84,22 +99,29 @@ class ChatService:
     def _get_agent_config(self, agent_id: str) -> Tuple[str, str, str]:
         clean_agent_id = agent_id.replace('_lite', '')
         agent_configs = self.settings.agents
-        provider = agent_configs.get(clean_agent_id, {}).get("provider")
+        provider_raw = agent_configs.get(clean_agent_id, {}).get("provider")
         model = agent_configs.get(clean_agent_id, {}).get("model")
+        provider = _normalize_provider(provider_raw)
+
+        # défaut coût/latence pour 'anima'
         if clean_agent_id == 'anima':
             model = 'gpt-4o-mini'
-            logger.info("Remplacement du modèle pour 'anima' -> 'gpt-4o-mini' pour optimiser les coûts.")
+            logger.info("Remplacement du modèle pour 'anima' -> 'gpt-4o-mini' (coûts).")
+
         system_prompt = self.prompts.get(agent_id, self.prompts.get(clean_agent_id, ""))
-        if not all([provider, model, system_prompt]):
-            raise ValueError(f"Configuration incomplète pour l'agent '{agent_id}'.")
+
+        if not provider or not model or system_prompt is None:
+            raise ValueError(f"Configuration incomplète pour l'agent '{agent_id}' "
+                             f"(provider='{provider_raw}', normalisé='{provider}', model='{model}').")
+
         return provider, model, system_prompt
 
-    # ------------------ utilitaires mémoire (NOUVEAU) ------------------
+    # ---------- utilitaires mémoire ----------
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
+        # ex: AZUR-8152
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
 
     def _try_get_user_id(self, session_id: str) -> Optional[str]:
-        """Récupère user_id depuis le SessionManager si exposé, sinon None (gracieux)."""
         for attr in ("get_user_id_for_session", "get_user", "get_owner", "get_session_owner"):
             try:
                 fn = getattr(self.session_manager, attr, None)
@@ -121,21 +143,16 @@ class ChatService:
     def _merge_blocks(self, blocks: List[Tuple[str, str]]) -> str:
         parts = []
         for title, body in blocks:
-            if body and body.strip():
-                parts.append(f"### {title}\n{body.strip()}")
+            if body and str(body).strip():
+                parts.append(f"### {title}\n{str(body).strip()}")
         return "\n\n".join(parts)
 
-    # === (NOUVEAU) intention « mot-code » ===
     _MOT_CODE_RE = re.compile(r"\b(mot-?code|code)\b", re.IGNORECASE)
 
     def _is_mot_code_query(self, text: str) -> bool:
         return bool(self._MOT_CODE_RE.search(text or ""))
 
     def _fetch_mot_code_for_agent(self, agent_id: str, user_id: Optional[str]) -> Optional[str]:
-        """
-        Lit 'emergence_knowledge' pour {type=fact, key=mot-code, agent, user_id?}
-        et renvoie la valeur du mot-code, sinon None.
-        """
         knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
         col = self.vector_service.get_or_create_collection(knowledge_name)
         clauses = [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]
@@ -145,6 +162,7 @@ class ChatService:
         got = col.get(where=where, include=["documents", "metadatas"])
         ids = got.get("ids", []) or []
         if not ids:
+            # fallback sans filtrage user
             got = col.get(where={"$and": [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]},
                          include=["documents", "metadatas"])
             ids = got.get("ids", []) or []
@@ -163,6 +181,22 @@ class ChatService:
         if metas and isinstance(metas[0], dict) and metas[0].get("value"):
             return str(metas[0]["value"]).strip()
         return None
+
+    def _try_get_session_summary(self, session_id: str) -> str:
+        """STM : récupère le résumé de session s'il existe (Session.metadata.summary)."""
+        try:
+            sess = self.session_manager.get_session(session_id)
+            meta = getattr(sess, "metadata", None)
+            if isinstance(meta, dict):
+                s = meta.get("summary")
+                if isinstance(s, str) and s.strip():
+                    return s.strip()
+        except Exception:
+            pass
+        return ""
+
+    def _count_bullets(self, text: str) -> int:
+        return sum(1 for line in (text or "").splitlines() if line.strip().startswith("- "))
 
     async def _build_memory_context(self, session_id: str, last_user_message: str, top_k: int = 5) -> str:
         try:
@@ -194,243 +228,29 @@ class ChatService:
             logger.warning(f"build_memory_context: {e}")
             return ""
 
-    # ------------------ flux chat (stream) ------------------
-    async def _process_agent_response_stream(self, session_id: str, agent_id: str, use_rag: bool, connection_manager: ConnectionManager):
-        temp_message_id = str(uuid4())
-        full_response_text = ""
-        cost_info_container = {}
-        model_used = ""
-        try:
-            await connection_manager.send_personal_message(
-                {"type":"ws:chat_stream_start","payload":{"agent_id":agent_id,"id":temp_message_id}},
-                session_id
-            )
-
-            history = self.session_manager.get_full_history(session_id)
-            last_user_message_obj = next((m for m in reversed(history) if m.get('role') == Role.USER), None)
-            last_user_message = last_user_message_obj.get('content','') if last_user_message_obj else ""
-
-            # Court-circuit « mot-code »
-            if self._is_mot_code_query(last_user_message):
-                uid = self._try_get_user_id(session_id)
-                mot = self._fetch_mot_code_for_agent(agent_id, uid)
-                if mot:
-                    final_agent_message = AgentMessage(
-                        id=temp_message_id, session_id=session_id, role=Role.ASSISTANT, agent=agent_id,
-                        message=mot, timestamp=datetime.now(timezone.utc).isoformat(), cost_info={}
-                    )
-                    await self.session_manager.add_message_to_session(session_id, final_agent_message)
-                    payload = final_agent_message.model_dump(mode='json')
-                    if 'message' in payload: payload['content'] = payload.pop('message')
-                    await connection_manager.send_personal_message({"type":"ws:chat_stream_end","payload":payload}, session_id)
-
-                    if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
-                        try:
-                            gardener = MemoryGardener(
-                                db_manager=getattr(self.session_manager, "db_manager", None),
-                                vector_service=self.vector_service,
-                                memory_analyzer=getattr(self.session_manager, "memory_analyzer", None)
-                            )
-                            asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3))
-                        except Exception as e:
-                            logger.debug(f"Auto-tend_garden skip: {e}")
-                    return  # pas de LLM
-
-            rag_context = ""
-            if use_rag:
-                if last_user_message:
-                    await connection_manager.send_personal_message({"type":"ws:rag_status","payload":{"status":"searching","agent_id":agent_id}}, session_id)
-
-                    document_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
-                    doc_hits = self.vector_service.query(collection=document_collection, query_text=last_user_message)
-                    doc_block = "\n\n".join([f"- {h['text']}" for h in doc_hits]) if doc_hits else ""
-
-                    mem_block = await self._build_memory_context(session_id, last_user_message)
-
-                    rag_context = self._merge_blocks([
-                        ("Mémoire (concepts clés)", mem_block),
-                        ("Documents pertinents", doc_block),
-                    ])
-                    await connection_manager.send_personal_message({"type":"ws:rag_status","payload":{"status":"found","agent_id":agent_id}}, session_id)
-
-            raw_concat = "\n".join([(m.get('content') or m.get('message','')) for m in history])
-            raw_tokens = self._extract_sensitive_tokens(raw_concat)
-            await connection_manager.send_personal_message({
-                "type":"ws:debug_context",
-                "payload":{"phase":"before_normalize","agent_id":agent_id,"use_rag":use_rag,"history_total":len(history),
-                           "rag_context_chars":len(rag_context),"off_policy":self.off_history_policy,
-                           "sensitive_tokens_in_history":list(set(raw_tokens))}}, session_id)
-
-            provider, model, system_prompt = self._get_agent_config(agent_id)
-            model_used = model
-            normalized_history = self._normalize_history_for_llm(provider, history, rag_context, use_rag, agent_id)
-            norm_concat = "\n".join(["".join(p.get("parts", [])) if provider=="google" else p.get("content","") for p in normalized_history])
-            norm_tokens = self._extract_sensitive_tokens(norm_concat)
-            await connection_manager.send_personal_message({
-                "type":"ws:debug_context",
-                "payload":{"phase":"after_normalize","agent_id":agent_id,"use_rag":use_rag,"history_filtered":len(normalized_history),
-                           "rag_context_chars":len(rag_context),"off_policy":self.off_history_policy,
-                           "sensitive_tokens_in_prompt":list(set(norm_tokens))}}, session_id)
-
-            response_generator = self._get_llm_response_stream(provider, model, system_prompt, normalized_history, cost_info_container)
-            async for chunk in response_generator:
-                full_response_text += chunk
-                await connection_manager.send_personal_message({"type":"ws:chat_stream_chunk","payload":{"agent_id":agent_id,"id":temp_message_id,"chunk":chunk}}, session_id)
-
-            final_agent_message = AgentMessage(
-                id=temp_message_id, session_id=session_id, role=Role.ASSISTANT, agent=agent_id,
-                message=full_response_text, timestamp=datetime.now(timezone.utc).isoformat(), cost_info=cost_info_container
-            )
-            await self.session_manager.add_message_to_session(session_id, final_agent_message)
-            await self.cost_tracker.record_cost(agent=agent_id, model=model_used,
-                input_tokens=cost_info_container.get("input_tokens",0),
-                output_tokens=cost_info_container.get("output_tokens",0),
-                total_cost=cost_info_container.get("total_cost",0.0), feature="chat")
-            payload = final_agent_message.model_dump(mode='json')
-            if 'message' in payload: payload['content'] = payload.pop('message')
-            await connection_manager.send_personal_message({"type":"ws:chat_stream_end","payload":payload}, session_id)
-
-            if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
-                try:
-                    gardener = MemoryGardener(
-                        db_manager=getattr(self.session_manager, "db_manager", None),
-                        vector_service=self.vector_service,
-                        memory_analyzer=getattr(self.session_manager, "memory_analyzer", None)
-                    )
-                    asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3))
-                except Exception as e:
-                    logger.debug(f"Auto-tend_garden skip: {e}")
-
-        except Exception as e:
-            logger.error(f"Erreur streaming {agent_id}: {e}", exc_info=True)
-            try:
-                await connection_manager.send_personal_message({"type":"ws:error","payload":{"message":f"Erreur interne pour l'agent {agent_id}: {e}"}}, session_id)
-            except Exception as send_error:
-                logger.error(f"Impossible d'envoyer l'erreur au client (session {session_id}): {send_error}", exc_info=True)
-
-    # ------------------ DEBAT: appel non-stream (compat + fallback) ------------------
-    async def get_llm_response_for_debate(
-        self,
-        agent_id: str,
-        prompt: Optional[str] = None,
-        *,
-        rag_context: str = "",
-        use_rag: bool = False,
-        temperature: float = 0.3,
-        max_tokens: int = 1500,
-        **kwargs
-    ) -> Tuple[str, Dict[str, Any]]:
-        if prompt is None or (isinstance(prompt, str) and not prompt.strip()):
-            for key in ("text","content","message","prompt_text","input","summary","synthesis","instruction","instructions"):
-                val = kwargs.get(key)
-                if isinstance(val, str) and val.strip():
-                    prompt = val
-                    break
-
-        if prompt is None or not str(prompt).strip():
-            transcript = kwargs.get("transcript") or kwargs.get("context") or ""
-            topic = kwargs.get("topic") or ""
-            lines = [
-                "Tu es 'Nexus', chargé de CONCLURE un débat.",
-                f"Synthétise en 5 points clairs (faits, convergences, désaccords, angles aveugles, pistes) le débat sur : {topic or '—'}."
-            ]
-            if isinstance(transcript, str) and transcript.strip():
-                lines.append("Transcript ci-dessous:")
-                lines.append(transcript)
-            prompt = "\n".join(lines)
-
-        prompt = str(prompt or "").strip()
-        provider, model, system_prompt = self._get_agent_config(agent_id)
-        base_cost: Dict[str, Any] = {"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0}
-
-        async def _openai_call(p: str) -> Tuple[str, Dict[str, Any]]:
-            resp = await self.openai_client.chat.completions.create(
-                model=model,
-                messages=[{"role":"system","content":system_prompt},{"role":"user","content":p}],
-                temperature=temperature, max_tokens=max_tokens
-            )
-            text = (resp.choices[0].message.content or "").strip()
-            usage = getattr(resp, "usage", None)
-            if usage:
-                pricing = MODEL_PRICING.get(model, {"input":0,"output":0})
-                cost = (usage.prompt_tokens*pricing["input"])+(usage.completion_tokens*pricing["output"])
-                return text, {"input_tokens":usage.prompt_tokens,"output_tokens":usage.completion_tokens,"total_cost":cost}
-            return text, dict(base_cost)
-
-        try:
-            if provider == "openai":
-                return await _openai_call(prompt)
-
-            elif provider == "google":
-                model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
-                parts = []
-                if use_rag and rag_context:
-                    parts.append({"role":"user","parts":[f"[RAG_CONTEXT]\n{rag_context}"]})
-                parts.append({"role":"user","parts":[prompt]})
-                resp = await model_instance.generate_content_async(parts, generation_config={"temperature":temperature})
-                text = getattr(resp, "text", "") or ""
-                usage = getattr(resp, "usage_metadata", None)
-                if usage:
-                    pricing = MODEL_PRICING.get(model, {"input":0,"output":0})
-                    cost = (getattr(usage,"prompt_token_count",0)*pricing["input"]) + (getattr(usage,"candidates_token_count",0)*pricing["output"])
-                    return text, {
-                        "input_tokens": getattr(usage,"prompt_token_count",0),
-                        "output_tokens": getattr(usage,"candidates_token_count",0),
-                        "total_cost": cost
-                    }
-                return text, dict(base_cost)
-
-            elif provider == "anthropic":
-                content_text = f"[RAG_CONTEXT]\n{rag_context}\n\n{prompt}" if use_rag and rag_context else prompt
-                try:
-                    resp = await self.anthropic_client.messages.create(
-                        model=model, max_tokens=max_tokens, temperature=temperature,
-                        system=system_prompt, messages=[{"role":"user","content": content_text}]
-                    )
-                    text = ""
-                    for block in getattr(resp, "content", []) or []:
-                        t = getattr(block, "text", "") or ""
-                        if t: text += t
-                    usage = getattr(resp, "usage", None)
-                    if usage:
-                        pricing = MODEL_PRICING.get(model, {"input":0,"output":0})
-                        in_tok = getattr(usage,"input_tokens",0); out_tok = getattr(usage,"output_tokens",0)
-                        cost = (in_tok*pricing["input"])+(out_tok*pricing["output"])
-                        cost_info = {"input_tokens":in_tok,"output_tokens":out_tok,"total_cost":cost}
-                    else:
-                        cost_info = dict(base_cost)
-                    if not text.strip():
-                        logger.warning("[DEBATE] Anthropic a renvoyé un texte vide — fallback OpenAI.")
-                        return await _openai_call(prompt)
-                    return text.strip(), cost_info
-                except Exception as e:
-                    logger.error(f"[DEBATE] Anthropic erreur, fallback OpenAI (agent={agent_id}): {e}")
-                    return await _openai_call(prompt)
-
-            else:
-                raise ValueError(f"Fournisseur non supporté: {provider}")
-
-        except Exception as e:
-            logger.error(f"[DEBATE] get_llm_response_for_debate erreur (agent={agent_id}): {e}", exc_info=True)
-            return "", {**base_cost, "note": f"error: {e}"}
-
-    def _normalize_history_for_llm(self, provider: str, history: List[Dict], rag_context: str="", use_rag: bool=False, agent_id: Optional[str]=None) -> List[Dict]:
+    # ---------- normalisation prompts pour providers ----------
+    def _normalize_history_for_llm(self, provider: str, history: List[Dict],
+                                   rag_context: str = "", use_rag: bool = False,
+                                   agent_id: Optional[str] = None) -> List[Dict]:
         normalized: List[Dict[str, Any]] = []
         if use_rag and rag_context:
             if provider == "google":
-                normalized.append({"role":"user","parts":[f"[RAG_CONTEXT]\n{rag_context}"]})
+                normalized.append({"role": "user", "parts": [f"[RAG_CONTEXT]\n{rag_context}"]})
             else:
-                normalized.append({"role":"user","content":f"[RAG_CONTEXT]\n{rag_context}"})
+                normalized.append({"role": "user", "content": f"[RAG_CONTEXT]\n{rag_context}"})
         for m in history:
             role = m.get("role"); text = m.get("content") or m.get("message") or ""
-            if not text: continue
+            if not text:
+                continue
             if provider == "google":
-                normalized.append({"role":"user" if role in (Role.USER,"user") else "model","parts":[text]})
+                normalized.append({"role": "user" if role in (Role.USER, "user") else "model", "parts": [text]})
             else:
-                normalized.append({"role":"user" if role in (Role.USER,"user") else "assistant","content":text})
+                normalized.append({"role": "user" if role in (Role.USER, "user") else "assistant", "content": text})
         return normalized
 
-    async def _get_llm_response_stream(self, provider: str, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
+    # ---------- stream providers ----------
+    async def _get_llm_response_stream(self, provider: str, model: str, system_prompt: str,
+                                       history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
         if provider == "openai":
             streamer = self._get_openai_stream(model, system_prompt, history, cost_info_container)
         elif provider == "google":
@@ -439,7 +259,8 @@ class ChatService:
             streamer = self._get_anthropic_stream(model, system_prompt, history, cost_info_container)
         else:
             raise ValueError(f"Fournisseur LLM non supporté: {provider}")
-        async for chunk in streamer: yield chunk
+        async for chunk in streamer:
+            yield chunk
 
     async def _get_openai_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
         messages = [{"role": "system", "content": system_prompt}] + history
@@ -463,13 +284,13 @@ class ChatService:
                 usage = getattr(event, "usage", None)
                 if usage and not usage_seen:
                     usage_seen = True
-                    pricing = MODEL_PRICING.get(model, {"input":0,"output":0})
+                    pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
                     in_tok = getattr(usage, "prompt_tokens", 0)
                     out_tok = getattr(usage, "completion_tokens", 0)
                     cost_info_container.update({
                         "input_tokens": in_tok,
                         "output_tokens": out_tok,
-                        "total_cost": (in_tok*pricing["input"]) + (out_tok*pricing["output"])
+                        "total_cost": (in_tok * pricing["input"]) + (out_tok * pricing["output"])
                     })
         except Exception as e:
             logger.error(f"OpenAI stream error: {e}", exc_info=True)
@@ -489,6 +310,7 @@ class ChatService:
                         yield text
                 except Exception:
                     pass
+            # usage metadata non standard en stream -> placeholders à 0 si absent
             cost_info_container.setdefault("input_tokens", 0)
             cost_info_container.setdefault("output_tokens", 0)
             cost_info_container.setdefault("total_cost", 0.0)
@@ -518,58 +340,360 @@ class ChatService:
                     final = await stream.get_final_response()
                     usage = getattr(final, "usage", None)
                     if usage:
-                        pricing = MODEL_PRICING.get(model, {"input":0,"output":0})
+                        pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
                         in_tok = getattr(usage, "input_tokens", 0)
                         out_tok = getattr(usage, "output_tokens", 0)
                         cost_info_container.update({
                             "input_tokens": in_tok,
                             "output_tokens": out_tok,
-                            "total_cost": (in_tok*pricing["input"]) + (out_tok*pricing["output"])
+                            "total_cost": (in_tok * pricing["input"]) + (out_tok * pricing["output"])
                         })
                 except Exception:
                     pass
         except Exception as e:
             logger.error(f"Anthropic stream error: {e}", exc_info=True)
 
+    # ---------- structured JSON ----------
     async def get_structured_llm_response(self, agent_id: str, prompt: str, json_schema: Dict[str, Any]) -> Dict[str, Any]:
         provider, model, system_prompt = self._get_agent_config(agent_id)
         if provider == "google":
             model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
             schema_hint = json.dumps(json_schema, ensure_ascii=False)
             full_prompt = f"{prompt}\n\nIMPORTANT: Réponds EXCLUSIVEMENT en JSON valide correspondant strictement à ce SCHÉMA : {schema_hint}"
-            resp = await model_instance.generate_content_async([{"role":"user","parts":[full_prompt]}])
+            resp = await model_instance.generate_content_async([{"role": "user", "parts": [full_prompt]}])
             text = getattr(resp, "text", "") or ""
-            try: return json.loads(text) if text else {}
+            try:
+                return json.loads(text) if text else {}
             except Exception:
-                m = re.search(r"\{.*\}", text, re.S); return json.loads(m.group(0)) if m else {}
+                m = re.search(r"\{.*\}", text, re.S)
+                return json.loads(m.group(0)) if m else {}
         elif provider == "openai":
             resp = await self.openai_client.chat.completions.create(
-                model=model, temperature=0, response_format={"type":"json_object"},
-                messages=[{"role":"system","content":system_prompt},{"role":"user","content":prompt}]
+                model=model, temperature=0, response_format={"type": "json_object"},
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
             )
             content = (resp.choices[0].message.content or "").strip()
             return json.loads(content) if content else {}
         elif provider == "anthropic":
             resp = await self.anthropic_client.messages.create(
-                model=model, max_tokens=1500, temperature=0, system=system_prompt+"\n\nRéponds strictement en JSON valide.",
-                messages=[{"role":"user","content":prompt}]
+                model=model, max_tokens=1500, temperature=0, system=system_prompt + "\n\nRéponds strictement en JSON valide.",
+                messages=[{"role": "user", "content": prompt}]
             )
             text = ""
-            for block in getattr(resp,"content",[]) or []:
-                t = getattr(block,"text","") or ""
-                if t: text += t
-            try: return json.loads(text)
+            for block in getattr(resp, "content", []) or []:
+                t = getattr(block, "text", "") or ""
+                if t:
+                    text += t
+            try:
+                return json.loads(text)
             except Exception:
-                m = re.search(r"\{.*\}", text, re.S); return json.loads(m.group(0)) if m else {}
+                m = re.search(r"\{.*\}", text, re.S)
+                return json.loads(m.group(0)) if m else {}
         return {}
 
-    # ------------------ (NOUVEAU) wrapper attendu par le router ------------------
+    # ---------- flux chat (stream) ----------
+    async def _process_agent_response_stream(self, session_id: str, agent_id: str, use_rag: bool,
+                                             connection_manager: ConnectionManager):
+        temp_message_id = str(uuid4())
+        full_response_text = ""
+        cost_info_container: Dict[str, Any] = {}
+        model_used = ""
+
+        try:
+            # Start du stream côté client
+            await connection_manager.send_personal_message(
+                {"type": "ws:chat_stream_start", "payload": {"agent_id": agent_id, "id": temp_message_id}},
+                session_id
+            )
+
+            # Historique & dernier message user
+            history = self.session_manager.get_full_history(session_id)
+            last_user_message_obj = next((m for m in reversed(history) if m.get("role") == Role.USER), None)
+            last_user_message = last_user_message_obj.get("content", "") if last_user_message_obj else ""
+
+            # Court-circuit "mot-code" (réponse directe) — on envoie aussi un banner mémoire minimal
+            if self._is_mot_code_query(last_user_message):
+                uid = self._try_get_user_id(session_id)
+                mot = self._fetch_mot_code_for_agent(agent_id, uid)
+                # Banner (aucune injection de prompt dans ce chemin)
+                try:
+                    stm_here = self._try_get_session_summary(session_id)
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:memory_banner",
+                         "payload": {"agent_id": agent_id, "has_stm": bool(stm_here),
+                                     "ltm_items": 0, "injected_into_prompt": False}},
+                        session_id
+                    )
+                except Exception:
+                    pass
+
+                if mot:
+                    final_agent_message = AgentMessage(
+                        id=temp_message_id, session_id=session_id, role=Role.ASSISTANT, agent=agent_id,
+                        message=mot, timestamp=datetime.now(timezone.utc).isoformat(), cost_info={}
+                    )
+                    await self.session_manager.add_message_to_session(session_id, final_agent_message)
+                    payload = final_agent_message.model_dump(mode="json")
+                    if "message" in payload:
+                        payload["content"] = payload.pop("message")
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:chat_stream_end", "payload": payload}, session_id
+                    )
+                    # Auto-consolidation non bloquante
+                    if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
+                        try:
+                            gardener = MemoryGardener(
+                                db_manager=getattr(self.session_manager, "db_manager", None),
+                                vector_service=self.vector_service,
+                                memory_analyzer=getattr(self.session_manager, "memory_analyzer", None),
+                            )
+                            asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3))
+                        except Exception:
+                            pass
+                    return  # pas d'appel LLM
+
+            # Construction du contexte mémoire (orthogonal à RAG)
+            stm = self._try_get_session_summary(session_id)
+            ltm_block = await self._build_memory_context(session_id, last_user_message, top_k=5) if last_user_message else ""
+
+            # Si RAG ON: injection STM uniquement (LTM part dans rag_context). Si RAG OFF: STM + LTM injectés.
+            if use_rag:
+                memory_context = self._merge_blocks([("Résumé de session", stm)]) if stm else ""
+                ltm_count_for_banner = self._count_bullets(ltm_block)
+            else:
+                memory_context = self._merge_blocks([("Résumé de session", stm), ("Faits & souvenirs", ltm_block)])
+                ltm_count_for_banner = self._count_bullets(ltm_block)
+
+            injected = bool(memory_context and memory_context.strip())
+            if injected:
+                # Pré-injecter le bloc mémoire en tête d'historique (pré-contexte)
+                history = [{"role": Role.USER, "content": f"[MEMORY_CONTEXT]\n{memory_context}"}] + history
+
+            # Banner mémoire pour l'UI
+            try:
+                await connection_manager.send_personal_message(
+                    {"type": "ws:memory_banner",
+                     "payload": {"agent_id": agent_id, "has_stm": bool(stm),
+                                 "ltm_items": int(ltm_count_for_banner), "injected_into_prompt": bool(injected)}},
+                    session_id
+                )
+            except Exception:
+                pass
+
+            # (Optionnel) RAG: documents pertinents (+ mémoire concepts clés affichée dans le bandeau RAG)
+            rag_context = ""
+            if use_rag and last_user_message:
+                await connection_manager.send_personal_message(
+                    {"type": "ws:rag_status", "payload": {"status": "searching", "agent_id": agent_id}},
+                    session_id
+                )
+                document_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
+                doc_hits = self.vector_service.query(collection=document_collection, query_text=last_user_message)
+                doc_block = "\n\n".join([f"- {h['text']}" for h in doc_hits]) if doc_hits else ""
+                mem_block = await self._build_memory_context(session_id, last_user_message)
+                rag_context = self._merge_blocks([("Mémoire (concepts clés)", mem_block),
+                                                  ("Documents pertinents", doc_block)])
+                await connection_manager.send_personal_message(
+                    {"type": "ws:rag_status", "payload": {"status": "found", "agent_id": agent_id}}, session_id
+                )
+
+            # Debug contexte
+            raw_concat = "\n".join([(m.get("content") or m.get("message", "")) for m in history])
+            raw_tokens = self._extract_sensitive_tokens(raw_concat)
+            await connection_manager.send_personal_message(
+                {"type": "ws:debug_context",
+                 "payload": {"phase": "before_normalize", "agent_id": agent_id, "use_rag": use_rag,
+                             "history_total": len(history), "rag_context_chars": len(rag_context),
+                             "off_policy": self.off_history_policy,
+                             "sensitive_tokens_in_history": list(set(raw_tokens))}},
+                session_id
+            )
+
+            provider, model, system_prompt = self._get_agent_config(agent_id)
+            model_used = model
+            normalized_history = self._normalize_history_for_llm(provider, history, rag_context, use_rag, agent_id)
+
+            norm_concat = "\n".join(["".join(p.get("parts", [])) if provider == "google" else p.get("content", "")
+                                     for p in normalized_history])
+            norm_tokens = self._extract_sensitive_tokens(norm_concat)
+            await connection_manager.send_personal_message(
+                {"type": "ws:debug_context",
+                 "payload": {"phase": "after_normalize", "agent_id": agent_id, "use_rag": use_rag,
+                             "history_filtered": len(normalized_history), "rag_context_chars": len(rag_context),
+                             "off_policy": self.off_history_policy,
+                             "sensitive_tokens_in_prompt": list(set(norm_tokens))}},
+                session_id
+            )
+
+            # Appel LLM en stream
+            response_generator = self._get_llm_response_stream(provider, model, system_prompt,
+                                                               normalized_history, cost_info_container)
+            async for chunk in response_generator:
+                if chunk:
+                    full_response_text += chunk
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:chat_stream_chunk",
+                         "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}},
+                        session_id
+                    )
+
+            # Finalisation + coûts
+            final_agent_message = AgentMessage(
+                id=temp_message_id, session_id=session_id, role=Role.ASSISTANT, agent=agent_id,
+                message=full_response_text, timestamp=datetime.now(timezone.utc).isoformat(),
+                cost_info=cost_info_container
+            )
+            await self.session_manager.add_message_to_session(session_id, final_agent_message)
+            await self.cost_tracker.record_cost(
+                agent=agent_id, model=model_used,
+                input_tokens=cost_info_container.get("input_tokens", 0),
+                output_tokens=cost_info_container.get("output_tokens", 0),
+                total_cost=cost_info_container.get("total_cost", 0.0),
+                feature="chat",
+            )
+            payload = final_agent_message.model_dump(mode="json")
+            if "message" in payload:
+                payload["content"] = payload.pop("message")
+            await connection_manager.send_personal_message(
+                {"type": "ws:chat_stream_end", "payload": payload}, session_id
+            )
+
+            # Auto-tend du jardin (non bloquant)
+            if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
+                try:
+                    gardener = MemoryGardener(
+                        db_manager=getattr(self.session_manager, "db_manager", None),
+                        vector_service=self.vector_service,
+                        memory_analyzer=getattr(self.session_manager, "memory_analyzer", None),
+                    )
+                    asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3))
+                except Exception:
+                    pass
+
+        except Exception as e:
+            logger.error(f"Erreur streaming {agent_id}: {e}", exc_info=True)
+            try:
+                await connection_manager.send_personal_message(
+                    {"type": "ws:error", "payload": {"message": f"Erreur interne pour l'agent {agent_id}: {e}"}},
+                    session_id,
+                )
+            except Exception as send_error:
+                logger.error(f"Impossible d'envoyer l'erreur au client (session {session_id}): {send_error}", exc_info=True)
+
+    # ---------- DEBAT: non-stream (fallback inclus) ----------
+    async def get_llm_response_for_debate(
+        self,
+        agent_id: str,
+        prompt: Optional[str] = None,
+        *,
+        rag_context: str = "",
+        use_rag: bool = False,
+        temperature: float = 0.3,
+        max_tokens: int = 1500,
+        **kwargs
+    ) -> Tuple[str, Dict[str, Any]]:
+        if prompt is None or (isinstance(prompt, str) and not prompt.strip()):
+            for key in ("text", "content", "message", "prompt_text", "input", "summary",
+                        "synthesis", "instruction", "instructions"):
+                val = kwargs.get(key)
+                if isinstance(val, str) and val.strip():
+                    prompt = val
+                    break
+
+        if prompt is None or not str(prompt).strip():
+            transcript = kwargs.get("transcript") or kwargs.get("context") or ""
+            topic = kwargs.get("topic") or ""
+            lines = [
+                "Tu es 'Nexus', chargé de CONCLURE un débat.",
+                f"Synthétise en 5 points clairs (faits, convergences, désaccords, angles aveugles, pistes) le débat sur : {topic or '—'}.",
+            ]
+            if isinstance(transcript, str) and transcript.strip():
+                lines.append("Transcript ci-dessous:")
+                lines.append(transcript)
+            prompt = "\n".join(lines)
+
+        prompt = str(prompt or "").strip()
+        provider, model, system_prompt = self._get_agent_config(agent_id)
+        base_cost: Dict[str, Any] = {"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0}
+
+        async def _openai_call(p: str) -> Tuple[str, Dict[str, Any]]:
+            resp = await self.openai_client.chat.completions.create(
+                model=model,
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": p}],
+                temperature=temperature, max_tokens=max_tokens
+            )
+            text = (resp.choices[0].message.content or "").strip()
+            usage = getattr(resp, "usage", None)
+            if usage:
+                pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
+                cost = (usage.prompt_tokens * pricing["input"]) + (usage.completion_tokens * pricing["output"])
+                return text, {"input_tokens": usage.prompt_tokens, "output_tokens": usage.completion_tokens, "total_cost": cost}
+            return text, dict(base_cost)
+
+        try:
+            if provider == "openai":
+                return await _openai_call(prompt)
+
+            elif provider == "google":
+                model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
+                parts = []
+                if use_rag and rag_context:
+                    parts.append({"role": "user", "parts": [f"[RAG_CONTEXT]\n{rag_context}"]})
+                parts.append({"role": "user", "parts": [prompt]})
+                resp = await model_instance.generate_content_async(parts, generation_config={"temperature": temperature})
+                text = getattr(resp, "text", "") or ""
+                usage = getattr(resp, "usage_metadata", None)
+                if usage:
+                    pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
+                    cost = (getattr(usage, "prompt_token_count", 0) * pricing["input"]) + (getattr(usage, "candidates_token_count", 0) * pricing["output"])
+                    return text, {
+                        "input_tokens": getattr(usage, "prompt_token_count", 0),
+                        "output_tokens": getattr(usage, "candidates_token_count", 0),
+                        "total_cost": cost
+                    }
+                return text, dict(base_cost)
+
+            elif provider == "anthropic":
+                content_text = f"[RAG_CONTEXT]\n{rag_context}\n\n{prompt}" if use_rag and rag_context else prompt
+                try:
+                    resp = await self.anthropic_client.messages.create(
+                        model=model, max_tokens=max_tokens, temperature=temperature,
+                        system=system_prompt, messages=[{"role": "user", "content": content_text}]
+                    )
+                    text = ""
+                    for block in getattr(resp, "content", []) or []:
+                        t = getattr(block, "text", "") or ""
+                        if t:
+                            text += t
+                    usage = getattr(resp, "usage", None)
+                    if usage:
+                        pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
+                        in_tok = getattr(usage, "input_tokens", 0); out_tok = getattr(usage, "output_tokens", 0)
+                        cost = (in_tok * pricing["input"]) + (out_tok * pricing["output"])
+                        cost_info = {"input_tokens": in_tok, "output_tokens": out_tok, "total_cost": cost}
+                    else:
+                        cost_info = dict(base_cost)
+                    if not text.strip():
+                        logger.warning("[DEBATE] Anthropic a renvoyé un texte vide — fallback OpenAI.")
+                        return await _openai_call(prompt)
+                    return text.strip(), cost_info
+                except Exception as e:
+                    logger.error(f"[DEBATE] Anthropic erreur, fallback OpenAI (agent={agent_id}): {e}")
+                    return await _openai_call(prompt)
+
+            else:
+                raise ValueError(f"Fournisseur non supporté: {provider}")
+
+        except Exception as e:
+            logger.error(f"[DEBATE] get_llm_response_for_debate erreur (agent={agent_id}): {e}", exc_info=True)
+            return "", {**base_cost, "note": f"error: {e}"}
+
+    # ---------- entrée router ----------
     def process_user_message_for_agents(self, session_id: str, chat_request: Any, connection_manager: ConnectionManager) -> None:
         """
         Compat router: lance la tâche de réponse pour l'agent demandé.
         `chat_request` peut être un dict OU un objet (Pydantic) avec .agent_id / .use_rag.
         """
-        # extraction résiliente
         get = (lambda k: (chat_request.get(k) if isinstance(chat_request, dict) else getattr(chat_request, k, None)))
         agent_id = (get("agent_id") or "").strip().lower()
         use_rag  = bool(get("use_rag"))
