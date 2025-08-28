@@ -1,30 +1,40 @@
 # src/backend/features/documents/router.py
-# V2.1 - Ajout alias de route sans slash pour /api/documents (évite 404)
+# V2.2 - Safe resolver for get_document_service + alias sans slash
 import logging
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Callable
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
 
 from .service import DocumentService
-from backend.shared import dependencies
+from backend.shared import dependencies as deps  # <- module, pas l’attribut direct
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter(tags=["Documents"])
 
+def _resolve_get_document_service() -> Callable[[], DocumentService]:
+    try:
+        return getattr(deps, "get_document_service")
+    except Exception:
+        async def _placeholder() -> DocumentService:  # type: ignore
+            raise HTTPException(status_code=503, detail="Document service unavailable.")
+        return _placeholder
+
 @router.get("/", response_model=List[Dict[str, Any]])
-async def list_documents(service: DocumentService = Depends(dependencies.get_document_service)):
+async def list_documents(service: DocumentService = Depends(_resolve_get_document_service())):
     """Retourne la liste de tous les documents uploadés."""
     return await service.get_all_documents()
 
 # ✅ Alias sans slash: /api/documents (en plus de /api/documents/)
 @router.get("", response_model=List[Dict[str, Any]])
-async def list_documents_alias(service: DocumentService = Depends(dependencies.get_document_service)):
+async def list_documents_alias(service: DocumentService = Depends(_resolve_get_document_service())):
     """Alias sans slash final pour éviter 404."""
     return await service.get_all_documents()
 
 @router.post("/upload", status_code=201)
-async def upload_document(file: UploadFile = File(...), service: DocumentService = Depends(dependencies.get_document_service)):
+async def upload_document(
+    file: UploadFile = File(...),
+    service: DocumentService = Depends(_resolve_get_document_service())
+):
     supported_types = [".pdf", ".txt", ".docx"]
     file_extension = Path(file.filename).suffix.lower()
     if file_extension not in supported_types:
@@ -36,9 +46,8 @@ async def upload_document(file: UploadFile = File(...), service: DocumentService
         logger.error(f"Erreur critique lors de l'upload: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Erreur interne lors du traitement du fichier.")
 
-# ✅ URL standard REST: /api/documents/{document_id}
 @router.delete("/{document_id}", status_code=200)
-async def delete_document(document_id: str, service: DocumentService = Depends(dependencies.get_document_service)):
+async def delete_document(document_id: str, service: DocumentService = Depends(_resolve_get_document_service())):
     """Supprime un document, ses chunks et ses vecteurs."""
     success = await service.delete_document(document_id)
     if success:

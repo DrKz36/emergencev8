@@ -1,15 +1,22 @@
 # src/backend/features/dashboard/router.py
-# V3.0 - FIX: Added the '/api/dashboard' prefix to align with frontend calls.
+# V3.1 - Safe resolver for get_dashboard_service (éteint les erreurs d'import si non câblé)
 import logging
-from fastapi import APIRouter, Depends
-from typing import Dict, Any
+from fastapi import APIRouter, Depends, HTTPException
+from typing import Dict, Any, Callable
 
 from backend.features.dashboard.service import DashboardService
-from backend.shared.dependencies import get_dashboard_service
+from backend.shared import dependencies as deps  # <- module, pas l’attribut direct
 
-# --- CORRECTION : Ajout du préfixe d'API ---
 router = APIRouter(prefix="/api/dashboard")
 logger = logging.getLogger(__name__)
+
+def _resolve_get_dashboard_service() -> Callable[[], DashboardService]:
+    try:
+        return getattr(deps, "get_dashboard_service")
+    except Exception:
+        async def _placeholder() -> DashboardService:  # type: ignore
+            raise HTTPException(status_code=503, detail="Dashboard service unavailable.")
+        return _placeholder
 
 @router.get(
     "/costs/summary",
@@ -19,15 +26,9 @@ logger = logging.getLogger(__name__)
     description="Fournit un résumé des coûts, des métriques de monitoring et les seuils d'alerte."
 )
 async def get_dashboard_summary(
-    dashboard_service: DashboardService = Depends(get_dashboard_service)
+    dashboard_service: DashboardService = Depends(_resolve_get_dashboard_service())
 ) -> Dict[str, Any]:
-    """
-    Endpoint V9.1 pour récupérer toutes les données du cockpit.
-    L'URL est maintenant correctement préfixée par /api/dashboard.
-    """
-    logger.info("Récupération du résumé des données pour le dashboard...")
-    
-    summary_data = await dashboard_service.get_dashboard_data()
-    
+    logger.info("Récupération du résumé des données pour le dashboard…")
+    data = await dashboard_service.get_dashboard_data()
     logger.info("Résumé des données du cockpit envoyé.")
-    return summary_data
+    return data

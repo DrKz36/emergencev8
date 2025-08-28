@@ -1,11 +1,12 @@
 /**
  * @module features/chat/chat
- * @description Module Chat - V24.2 "StrictHydrate + Toast + Timestamps"
+ * @description Module Chat - V24.3 "Single-Emit + ActiveAgent"
  * - Persistance inter-session (Threads API) côté front.
  * - Hydratation stricte par agent_id + idempotente (rebuild à blanc).
  * - Dédoublonnage agent_selected.
  * - Toast léger sur ws:analysis_status.
- * - ✅ NEW: created_at set côté UI (user + stream start) pour affichage horodatage.
+ * - ✅ created_at côté UI (user + stream start) pour affichage horodatage.
+ * - ✅ NEW: plus d’émission WS_SEND (single-emit via ui:chat:send) + state.chat.activeAgent publié.
  */
 
 import { ChatUI } from './chat-ui.js';
@@ -38,7 +39,7 @@ export default class ChatModule {
     this.registerStateChanges();
     this.registerEvents();
     this.isInitialized = true;
-    console.log('✅ ChatModule V24.2 (StrictHydrate + Toast + Timestamps) initialisé.');
+    console.log('✅ ChatModule V24.3 (Single-Emit + ActiveAgent) initialisé.');
   }
 
   mount(container) {
@@ -75,10 +76,12 @@ export default class ChatModule {
         messages: {},        // { [agentId]: Message[] }
         threadId: null,
         lastAnalysis: null,
+        activeAgent: 'anima', /* ✅ NEW */
       });
     } else {
       if (this.state.get('chat.threadId') == null) this.state.set('chat.threadId', null);
       if (this.state.get('chat.lastAnalysis') == null) this.state.set('chat.lastAnalysis', null);
+      if (!this.state.get('chat.activeAgent')) this.state.set('chat.activeAgent', this.state.get('chat.currentAgentId') || 'anima');
     }
   }
 
@@ -105,7 +108,7 @@ export default class ChatModule {
     this.listeners.push(this.eventBus.on('ws:chat_stream_start', this.handleStreamStart.bind(this)));
     this.listeners.push(this.eventBus.on('ws:chat_stream_chunk', this.handleStreamChunk.bind(this)));
     this.listeners.push(this.eventBus.on('ws:chat_stream_end', this.handleStreamEnd.bind(this)));
-    // 👇 état d'analyse (toast)
+    // état d'analyse (toast)
     this.listeners.push(this.eventBus.on('ws:analysis_status', this.handleAnalysisStatus.bind(this)));
 
     // Threads (depuis App)
@@ -195,19 +198,22 @@ export default class ChatModule {
 
     const { currentAgentId, ragEnabled } = this.state.get('chat');
 
+    // ✅ publier l'agent actif pour le WS (fallback fiable)
+    this.state.set('chat.activeAgent', currentAgentId);
+
     const userMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       content: trimmed,
       agent_id: currentAgentId,
-      created_at: Date.now() /* ✅ pour affichage horodatage (T6) */
+      created_at: Date.now()
     };
 
     const currentMessages = this.state.get(`chat.messages.${currentAgentId}`) || [];
     this.state.set(`chat.messages.${currentAgentId}`, [...currentMessages, userMessage]);
     this.state.set('chat.isLoading', true);
 
-    // 1) Persistance immédiate côté backend (user)
+    // Persistance immédiate côté backend (user)
     const threadId = this.getCurrentThreadId();
     if (!threadId) {
       console.warn('[Chat] Aucun threadId disponible — message non persisté côté backend.');
@@ -220,11 +226,8 @@ export default class ChatModule {
       }).catch(err => console.error('[Chat] Échec appendMessage(user):', err));
     }
 
-    // 2) Déclenche le streaming via WebSocket
-    this.eventBus.emit(EVENTS.WS_SEND, {
-      type: 'chat.message',
-      payload: { text: trimmed, agent_id: currentAgentId, use_rag: !!ragEnabled }
-    });
+    // ❌ [SUPPRIMÉ] : double émission. Le WS écoute déjà 'ui:chat:send'.
+    // this.eventBus.emit(EVENTS.WS_SEND, { type: 'chat.message', payload: { text: trimmed, agent_id: currentAgentId, use_rag: !!ragEnabled } });
   }
 
   handleStreamStart({ agent_id, id }) {
@@ -234,7 +237,7 @@ export default class ChatModule {
       content: '',
       agent_id,
       isStreaming: true,
-      created_at: Date.now() /* ✅ pour affichage horodatage dès le flux (T6) */
+      created_at: Date.now()
     };
     const currentMessages = this.state.get(`chat.messages.${agent_id}`) || [];
     this.state.set('chat.messages.${agent_id}'.replace('${agent_id}', agent_id), [...currentMessages, agentMessage]);
@@ -283,6 +286,7 @@ export default class ChatModule {
     const prev = this.state.get('chat.currentAgentId');
     if (prev === agentId) return;
     this.state.set('chat.currentAgentId', agentId);
+    this.state.set('chat.activeAgent', agentId); // ✅ publier l’agent actif pour le WS
   }
 
   handleClearChat() {
@@ -309,7 +313,7 @@ export default class ChatModule {
     this.state.set('chat.ragEnabled', !current);
   }
 
-  // 👇 nouveau : toast mémoire
+  // toast mémoire
   handleAnalysisStatus({ session_id, status, error }) {
     this.state.set('chat.lastAnalysis', {
       session_id: session_id || null,
@@ -330,7 +334,7 @@ export default class ChatModule {
     }
   }
 
-  // Petit toast DOM autonome (zéro dépendance)
+  // Petit toast DOM autonome
   showToast(message) {
     try {
       const el = document.createElement('div');
