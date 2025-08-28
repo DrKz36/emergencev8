@@ -74,6 +74,7 @@ DEBATE_ROUTER    = _import_router("backend.features.debate.router")
 CHAT_ROUTER      = _import_router("backend.features.chat.router")
 THREADS_ROUTER   = _import_router("backend.features.threads.router")  # NEW
 MEMORY_ROUTER    = _import_router("backend.features.memory.router")    # NEW
+DEV_AUTH_ROUTER  = _import_router("backend.features.dev_auth.router")  # NEW (sert /dev-auth.html)
 
 def _migrations_dir() -> str:
     # Aligné sur l'arbo: src/backend/core/migrations
@@ -197,6 +198,15 @@ def create_app() -> FastAPI:
     _mount_router(DASHBOARD_ROUTER, "/api/dashboard")
     _mount_router(THREADS_ROUTER,   "/api/threads")   # threads
     _mount_router(MEMORY_ROUTER,    "/api/memory")    # ✅ mémoire
+
+    # --- Dev auth: /dev-auth.html (pas de préfixe) ---
+    if DEV_AUTH_ROUTER is not None:
+        try:
+            app.include_router(DEV_AUTH_ROUTER)  # route exacte définie dans le router
+            logger.info("Router dev-auth monté: /dev-auth.html")
+        except Exception as e:
+            logger.error(f"Échec du montage du router dev-auth: {e}")
+
     t.mark("routers_mounted")
 
     # WebSocket Chat — lazy container access

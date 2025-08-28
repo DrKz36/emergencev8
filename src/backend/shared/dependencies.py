@@ -1,80 +1,128 @@
 # src/backend/shared/dependencies.py
-# V5.0 - Refonte de la base de données
+# V6.1 – Allowlist GIS (Cloud Run) + extraction user_id GIS-only (sub)
+# ARBO-LOCK: ce fichier doit vivre à ce chemin. Aucune importation hors plan.
+from __future__ import annotations
+
+import os
+import json
+import base64
 import logging
 from typing import Optional
 
-from fastapi import Request, WebSocket, HTTPException, status, Query
+from fastapi import Request, HTTPException, Query
 
-# MODIFICATION: Import du nouveau DatabaseManager
-from backend.core.database.manager import DatabaseManager
-from backend.core.session_manager import SessionManager
-from backend.core.cost_tracker import CostTracker
-from backend.core.websocket import ConnectionManager
-from backend.features.chat.service import ChatService
-from backend.features.documents.service import DocumentService
-from backend.features.dashboard.service import DashboardService
+logger = logging.getLogger("emergence.allowlist")
 
-logger = logging.getLogger(__name__)
+# -----------------------------
+# Helpers JWT (GIS ID token)
+# -----------------------------
 
-class WebSocketException(HTTPException):
-    def __init__(self, status_code: int, detail: str):
-        super().__init__(status_code=status_code, detail=detail)
+def _decode_jwt_segment(segment: str) -> dict:
+    """Décodage base64url sans vérification de signature (suffisant pour lire les claims)."""
+    padding = '=' * ((4 - len(segment) % 4) % 4)
+    data = segment + padding
+    try:
+        decoded = base64.urlsafe_b64decode(data.encode("utf-8")).decode("utf-8")
+        return json.loads(decoded)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"ID token illisible ({e}).")
 
-def get_service_container_from_request(request: Request):
-    container = getattr(request.app.state, 'service_container', None)
-    if not container:
-        logger.critical("FATAL: ServiceContainer non trouvé dans l'état de l'application (depuis Request).")
-        raise HTTPException(status_code=500, detail="Configuration critique manquante: ServiceContainer.")
-    return container
+def _read_bearer_claims(request: Request) -> dict:
+    """Récupère les claims du JWT 'Authorization: Bearer …' (sans vérifier la signature)."""
+    auth = request.headers.get("Authorization") or request.headers.get("authorization")
+    if not auth or not auth.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Authorization Bearer manquant.")
+    token = auth.split(" ", 1)[1].strip()
+    parts = token.split(".")
+    if len(parts) < 2:
+        raise HTTPException(status_code=401, detail="Format JWT invalide.")
+    _ = _decode_jwt_segment(parts[0])  # header non utilisé ici
+    claims = _decode_jwt_segment(parts[1])
+    return claims
 
-def get_service_container_from_websocket(websocket: WebSocket):
-    container = getattr(websocket.app.state, 'service_container', None)
-    if not container:
-        logger.critical("FATAL: ServiceContainer non trouvé dans l'état de l'application (depuis WebSocket).")
-        raise RuntimeError("ServiceContainer non trouvé.")
-    return container
+# -----------------------------
+# Allowlist (emails / domaine)
+# -----------------------------
 
-# --- Dépendances pour les services (Pattern unifié pour HTTP) ---
+def _get_cfg():
+    mode = (os.getenv("GOOGLE_ALLOWLIST_MODE") or "").strip().lower()  # "email" | "domain" | ""
+    allowed_emails = [e.strip().lower() for e in (os.getenv("GOOGLE_ALLOWED_EMAILS") or "").split(",") if e.strip()]
+    allowed_hd = [d.strip().lower() for d in (os.getenv("GOOGLE_ALLOWED_HD") or "").split(",") if d.strip()]
+    client_id = (os.getenv("GOOGLE_OAUTH_CLIENT_ID") or "").strip()
+    dev = (os.getenv("AUTH_DEV_MODE") or "0").strip() in {"1", "true", "yes"}
+    return mode, allowed_emails, allowed_hd, client_id, dev
 
-def get_db(request: Request) -> DatabaseManager:
-    return get_service_container_from_request(request).db_manager()
+async def enforce_allowlist(request: Request):
+    """
+    Dépendance FastAPI à appliquer sur les routes /api/* (sauf /api/health).
+    Règle: si aucune var d'env d'allowlist n'est définie → no-op.
+    """
+    mode, allowed_emails, allowed_hd, client_id, _dev = _get_cfg()
+    if not mode:  # allowlist inactif → exit
+        return
 
-def get_session_manager(request: Request) -> SessionManager:
-    return get_service_container_from_request(request).session_manager()
+    # Lecture des claims du token GIS
+    claims = _read_bearer_claims(request)
+    iss = (claims.get("iss") or "").lower()
+    aud = (claims.get("aud") or "").strip()
+    email = (claims.get("email") or "").lower()
+    hd = (claims.get("hd") or "").lower()
+    sub = claims.get("sub")  # pour logs
 
-def get_cost_tracker(request: Request) -> CostTracker:
-    return get_service_container_from_request(request).cost_tracker()
+    # Vérifs minimales
+    if client_id and aud != client_id:
+        logger.warning(f"ID token aud≠client_id (aud={aud}, cfg={client_id}, sub={sub}).")
+        raise HTTPException(status_code=401, detail="aud non reconnu.")
+    if not (iss.endswith("accounts.google.com")):
+        raise HTTPException(status_code=401, detail="iss invalide.")
 
-def get_document_service(request: Request) -> DocumentService:
-    return get_service_container_from_request(request).document_service()
+    # Règles allowlist
+    if mode == "email":
+        if email not in allowed_emails:
+            logger.info(f"Refus allowlist (email='{email}', sub={sub}).")
+            raise HTTPException(status_code=401, detail="Email non autorisé.")
+    elif mode in {"domain", "hd"}:
+        if not hd or hd not in allowed_hd:
+            logger.info(f"Refus allowlist (hd='{hd}', sub={sub}).")
+            raise HTTPException(status_code=401, detail="Domaine non autorisé.")
+    else:
+        # Mode inconnu → bloquant par prudence
+        raise HTTPException(status_code=401, detail="Allowlist mal configurée.")
 
-def get_dashboard_service(request: Request) -> DashboardService:
-    return get_service_container_from_request(request).dashboard_service()
+    # OK
+    logger.debug(f"Allowlist OK pour sub={sub}, email={email}, hd={hd}.")
+    return
 
-
-# --- Dépendances pour les services (Pattern unifié pour WebSocket) ---
-
-def get_connection_manager(websocket: WebSocket) -> ConnectionManager:
-    return get_service_container_from_websocket(websocket).connection_manager()
-
-def get_chat_service(websocket: WebSocket) -> ChatService:
-    return get_service_container_from_websocket(websocket).chat_service()
-
-
-# --- Dépendances pour les routes spécifiques ---
+# -----------------------------
+# Extraction User ID (REST)
+# -----------------------------
 
 async def get_user_id(request: Request) -> str:
-    user_id = request.headers.get("X-User-ID")
-    if not user_id:
-        raise HTTPException(status_code=400, detail="En-tête X-User-ID manquant.")
-    return user_id
+    """
+    GIS-only: l'identité REST provient du token Google (claim 'sub').
+    - En prod: ignore 'X-User-ID'.
+    - En dev (AUTH_DEV_MODE=1): tolère 'X-User-ID' en dernier recours si le token n'a pas de 'sub'.
+    """
+    claims = _read_bearer_claims(request)  # 401 si absent/invalide
+    sub = claims.get("sub")
+    if sub:
+        return str(sub)
+
+    # Fallback strictement DEV si nécessaire
+    _mode, _emails, _hd, _client_id, dev = _get_cfg()
+    if dev:
+        hdr = request.headers.get("X-User-ID")
+        if hdr:
+            logger.warning("DevMode: fallback X-User-ID utilisé car le JWT ne porte pas de 'sub'.")
+            return hdr
+
+    raise HTTPException(status_code=401, detail="ID token invalide ou sans 'sub'.")
+
+# -----------------------------
+# Extraction User ID (WebSockets)
+# -----------------------------
 
 async def get_user_id_from_websocket(user_id: Optional[str] = Query(None, alias="user_id")) -> str:
     if not user_id:
-        logger.warning("Connexion WebSocket rejetée. Raison: Paramètre 'user_id' manquant.")
-        raise WebSocketException(
-            status_code=status.WS_1008_POLICY_VIOLATION,
-            detail="Paramètre 'user_id' manquant dans l'URL de connexion WebSocket."
-        )
-    logger.info(f"ID utilisateur '{user_id}' extrait avec succès des query params WebSocket.")
+        raise HTTPException(status_code=400, detail="Paramètre 'user_id' manquant.")
     return user_id

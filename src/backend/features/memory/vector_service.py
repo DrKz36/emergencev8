@@ -1,15 +1,62 @@
 # src/backend/features/memory/vector_service.py
-# V2.9.1 — Normalisation where robuste :
-#          - 1 seule clause => dict simple (pas de $and)
-#          - ≥2 clauses     => {"$and":[{k:v}, ...]}
-#          - $and/$or unitaires aplatis
+# V2.9.2 — Telemetry hard-OFF & import-order guard :
+#          - Force CHROMA_DISABLE_TELEMETRY/ANONYMIZED_TELEMETRY env before any Chroma import
+#          - Safe no-op shim for posthog (if imported by Chroma)
+#          - Keep API/behavior identical otherwise
 import logging
 import os
 import shutil
 import sqlite3
+import sys
+import types
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
+# ---- Force disable telemetry as early as possible (before importing chromadb) ----
+def _force_disable_telemetry_env() -> None:
+    try:
+        # Chroma honors this flag; keep it explicit.
+        os.environ.setdefault("CHROMA_DISABLE_TELEMETRY", "1")
+        # “Anonymized telemetry” off, even if lib inspects this flag.
+        os.environ.setdefault("ANONYMIZED_TELEMETRY", "0")
+        # Defensive: do not persist any telemetry locally.
+        os.environ.setdefault("PERSIST_TELEMETRY", "0")
+    except Exception:
+        pass
+
+def _monkeypatch_posthog_noop() -> None:
+    """
+    Some Chroma builds may import `posthog`. We neutralize it safely:
+    - If `posthog` is available, overwrite Posthog client with a no-op class.
+    - If it is missing, inject a tiny shim into sys.modules so downstream imports are harmless.
+    This is process-local and does not touch site-packages.
+    """
+    try:
+        import posthog  # type: ignore
+        class _NoopPosthog:
+            def __init__(self, *a, **k): pass
+            def capture(self, *a, **k): pass
+            def identify(self, *a, **k): pass
+            def flush(self, *a, **k): pass
+            def shutdown(self, *a, **k): pass
+        # Replace constructor
+        posthog.Posthog = _NoopPosthog  # type: ignore[attr-defined]
+    except Exception:
+        # Create a minimal shim so `import posthog` works later with no effects.
+        shim = types.SimpleNamespace(
+            Posthog=lambda *a, **k: types.SimpleNamespace(
+                capture=lambda *a, **k: None,
+                identify=lambda *a, **k: None,
+                flush=lambda *a, **k: None,
+                shutdown=lambda *a, **k: None,
+            )
+        )
+        sys.modules.setdefault("posthog", shim)
+
+_force_disable_telemetry_env()
+_monkeypatch_posthog_noop()
+
+# Only now import chromadb (after telemetry is hard-disabled)
 import chromadb
 from chromadb.config import Settings
 from chromadb.types import Collection
@@ -20,11 +67,11 @@ logger = logging.getLogger(__name__)
 
 class VectorService:
     """
-    VectorService V2.9.1
+    VectorService V2.9.2
     - API identique.
     - Auto-reset AVANT instanciation Chroma si DB corrompue (évite locks Windows).
-    - Télémétrie Chroma désactivée.
-    - FIX: normalisation des filtres where pour compat stricte Chroma (évite l'erreur $and avec 1 clause).
+    - Télémétrie Chroma/PostHog durcie : env forcé + client PostHog no-op.
+    - FIX existant conservé : normalisation des filtres where.
     """
 
     def __init__(
@@ -77,13 +124,10 @@ class VectorService:
         """
         db_path = os.path.join(path, "chroma.sqlite3")
         if not os.path.exists(db_path):
-            # Pas de DB = pas de corruption (Chroma créera au premier run).
             return False
-
         try:
             con = sqlite3.connect(db_path)
             try:
-                # integrity_check retourne 'ok' si tout va bien
                 cur = con.execute("PRAGMA integrity_check;")
                 row = cur.fetchone()
                 ok = (row and isinstance(row[0], str) and row[0].lower() == "ok")
@@ -91,10 +135,8 @@ class VectorService:
             finally:
                 con.close()
         except sqlite3.DatabaseError:
-            # entête invalide / image malformée
             return True
         except Exception:
-            # tout autre cas: ne pas bloquer -> considérer sain
             return False
 
     # ---------- Initialisation protégée du client ----------
@@ -104,28 +146,21 @@ class VectorService:
                 path=path,
                 settings=Settings(anonymized_telemetry=False)  # Télémétrie désactivée
             )
-            # Appel de validation (déclenche migrations/erreurs si souci)
             _ = client.list_collections()
             logger.info(f"Client ChromaDB connecté au répertoire: {path}")
             return client
 
         except Exception as e:
-            # Normaliser le message pour l'analyse.
             msg = str(e).lower()
-
-            # Signatures d'erreurs nécessitant un reset:
             schema_signatures = (
-                # schémas/champs manquants
                 "no such column",
                 "schema mismatch",
                 "wrong number of columns",
                 "has no column named",
                 "operationalerror",
-                # DB SQLite corrompue / en-tête invalide
                 "file is not a database",
                 "not a database",
                 "database disk image is malformed",
-                # état interne Chroma cassé par DB invalide
                 "could not connect to tenant",
                 "default_tenant"
             )
@@ -138,7 +173,6 @@ class VectorService:
                 )
                 backup_path = self._backup_persist_dir(self.persist_directory)
                 logger.warning(f"Store existant déplacé en backup: {backup_path}")
-
                 try:
                     client = chromadb.PersistentClient(
                         path=path,
@@ -194,9 +228,7 @@ class VectorService:
         if not where:
             return None
 
-        # Si opérateur déjà présent
         if any(str(k).startswith("$") for k in where.keys()):
-            # Aplatir $and/$or vides ou unitaires
             if "$and" in where and isinstance(where["$and"], list):
                 lst = where["$and"]
                 if len(lst) == 0:
@@ -211,16 +243,11 @@ class VectorService:
                 if len(lst) == 1 and isinstance(lst[0], dict):
                     return lst[0]
                 return where
-            # $not ou autres: laisser passer tel quel
             return where
 
-        # Dict plat
         items = list(where.items())
         if len(items) <= 1:
-            # 1 seul critère -> dict simple (évite l’erreur "$and expects >=2")
             return where
-
-        # ≥2 critères -> $and
         return {"$and": [{k: v} for k, v in items]}
 
     # ---------- API publique ----------
@@ -252,6 +279,7 @@ class VectorService:
             documents_text = [item[item_text_key] for item in items]
             metadatas = [item.get('metadata', {}) for item in items]
 
+            from sentence_transformers import SentenceTransformer as _ST  # lazy safety
             embeddings = self.model.encode(
                 documents_text,
                 show_progress_bar=False

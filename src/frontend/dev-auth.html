@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <title>ÉMERGENCE — dev-auth (GIS)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    :root { --bg:#0b0f17; --card:#111726; --ink:#e7eaf3; --muted:#9aa4b2; --accent:#5eead4; }
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Roboto,Arial;}
+    .wrap{max-width:920px;margin:32px auto;padding:0 16px;}
+    .card{background:var(--card);border-radius:16px;padding:20px;box-shadow:0 6px 28px rgba(0,0,0,.35)}
+    h1{margin:0 0 12px;font-size:20px}
+    label{display:block;margin:12px 0 6px;color:var(--muted)}
+    input,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #1f2937;background:#0e1422;color:var(--ink)}
+    textarea{min-height:120px;resize:vertical}
+    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .btn{border:0;border-radius:10px;padding:10px 14px;background:#1f2937;color:var(--ink);cursor:pointer}
+    .btn.primary{background:var(--accent);color:#05221c;font-weight:600}
+    .muted{color:var(--muted)}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+    .mt12{margin-top:12px} .mt20{margin-top:20px} .mt28{margin-top:28px}
+    .gutter{height:12px}
+    .token{word-break:break-all}
+    .badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#0e1422;color:var(--muted);font-size:12px}
+  </style>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>ÉMERGENCE — <span class="badge">/dev-auth.html</span></h1>
+      <p class="muted">Génère un <strong>ID token Google</strong> (JWT) via Google Identity Services et copie-le pour tester <code>/api/*</code> avec <code>Authorization: Bearer</code>.</p>
+
+      <label for="client_id">Google OAuth Client ID</label>
+      <input id="client_id" class="mono" placeholder="xxx.apps.googleusercontent.com"/>
+
+      <div class="row mt12">
+        <button class="btn primary" onclick="initGIS()">Init GIS</button>
+        <span id="status" class="muted">en attente…</span>
+      </div>
+
+      <div class="mt20" id="gsi_btn"></div>
+      <div class="gutter"></div>
+
+      <label for="token">ID token (JWT)</label>
+      <textarea id="token" class="mono token" placeholder="— vide —"></textarea>
+      <div class="row mt12">
+        <button class="btn" onclick="copyToken()">Copy ID token</button>
+        <button class="btn" onclick="decode()">Décoder (payload)</button>
+      </div>
+
+      <label for="curl" class="mt28">Exemple curl (M2)</label>
+      <textarea id="curl" class="mono" placeholder='curl -s -H "Authorization: Bearer ${ID_TOKEN}" -H "Content-Type: application/json" -d "{\"agent\":\"anima\",\"text\":\"Quel était le mot-code ?\",\"use_rag\": false}" "https://<cloud-run-url>/api/chat"'></textarea>
+      <div class="row mt12">
+        <button class="btn" onclick="fillCurl()">Générer la commande</button>
+      </div>
+
+      <pre id="payload" class="mono mt20 muted"></pre>
+    </div>
+  </div>
+
+<script>
+let idToken = "";
+const $ = (id) => document.getElementById(id);
+
+function initGIS(){
+  const clientId = $('client_id').value.trim();
+  if(!clientId){ $('status').textContent = '⛔ Client ID requis'; return; }
+  $('status').textContent = 'GIS initialisé — clique sur “Sign in with Google”.';
+
+  google.accounts.id.initialize({
+    client_id: clientId,
+    callback: (resp) => {
+      idToken = resp.credential || "";
+      $('token').value = idToken;
+      $('status').textContent = idToken ? '✅ ID token reçu' : '❌ aucun token';
+    }
+  });
+  google.accounts.id.renderButton($('gsi_btn'), { theme: "outline", size: "large", text: "signin_with" });
+}
+
+async function copyToken(){
+  try { await navigator.clipboard.writeText($('token').value.trim()); $('status').textContent = '📋 token copié'; }
+  catch { $('status').textContent = '⚠️ copie impossible'; }
+}
+
+function fillCurl(){
+  const BASE = prompt("URL Cloud Run (ex: https://emergence-app-xxxx-uc.a.run.app)", "");
+  const tok = $('token').value.trim();
+  if(!BASE || !tok){ $('status').textContent = '⚠️ BASE ou token manquant'; return; }
+  const body = JSON.stringify({agent:"anima", text:"Quel était le mot-code ?", use_rag:false}).replace(/"/g,'\\"');
+  const cmd = `curl -s -H "Authorization: Bearer ${tok}" -H "Content-Type: application/json" -d "${body}" "${BASE}/api/chat"`;
+  $('curl').value = cmd;
+}
+
+function decode(){
+  const t = $('token').value.trim();
+  const p = $('payload');
+  if(!t || t.split('.').length !== 3){ p.textContent = '— token invalide —'; return; }
+  try{
+    const payload = JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+    p.textContent = JSON.stringify(payload, null, 2);
+  }catch(e){ p.textContent = '— erreur de décodage —'; }
+}
+</script>
+</body>
+</html>

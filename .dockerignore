@@ -46,3 +46,6 @@ cache/
 .env*
 secrets/
 **/secrets.json
+# --- ÉMERGENCE (ne pas exclure la page GIS /dev-auth.html) ---
+!src/frontend/dev-auth.html
+!src/backend/features/dev_auth/**
