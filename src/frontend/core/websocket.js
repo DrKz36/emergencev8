@@ -1,8 +1,9 @@
 /**
  * @module core/websocket
- * @description WebSocketClient V20.4 - STREAMING READY + JWT subprotocol + bridge 'ui:chat:send' -> 'chat.message'
- * - Fallback agent_id depuis State/Storage (défaut 'anima') pour éviter l'envoi vide au premier message.
- * - Aliases console exposés inconditionnellement: window.wsClient et window.bus.
+ * @description WebSocketClient V20.5 - STREAMING READY + JWT subprotocol + bridge + idempotence
+ * - Bridge 'ui:chat:send' -> 'chat.message'
+ * - Aliases console inconditionnels (window.wsClient, window.bus)
+ * - Déduplication client (fenêtre 1.2s) + msg_uid
  */
 import { EVENTS } from '../shared/constants.js';
 
@@ -16,8 +17,12 @@ export class WebSocketClient {
         this.maxReconnectAttempts = 5;
         this.reconnectInterval = 5000;
 
+        // Déduplication des envois de chat côté client
+        this._dedupeWindowMs = 1200;
+        this._recentChatSends = new Map(); // key -> timestamp
+
         this.registerEvents();
-        console.log("✅ WebSocketClient V20.4 (Streaming + JWT subprotocol + UI bridge + console aliases) Initialisé.");
+        console.log("✅ WebSocketClient V20.5 (Streaming + JWT + UI bridge + idempotence) Initialisé.");
     }
 
     registerEvents() {
@@ -34,7 +39,30 @@ export class WebSocketClient {
                 const rawAgent = (payload.agent_id ?? payload.agentId ?? '').trim();
                 const agent_id = rawAgent || this._getActiveAgentIdFromState();
                 const use_rag = Boolean(payload.use_rag ?? payload.useRag);
-                this.send({ type: 'chat.message', payload: { text, agent_id, use_rag } });
+
+                const msg = {
+                    type: 'chat.message',
+                    payload: {
+                        text,
+                        agent_id,
+                        use_rag,
+                        // idempotence
+                        msg_uid: payload.msg_uid || (crypto?.randomUUID?.() || this._generateUUID()),
+                        ts: Date.now()
+                    }
+                };
+
+                // Déduplication client (même agent + même texte, fenêtre courte)
+                const key = `${(agent_id || '').toLowerCase()}|${(text || '').trim().toLowerCase()}`;
+                const now = Date.now();
+                const last = this._recentChatSends.get(key) || 0;
+                if (now - last < this._dedupeWindowMs) {
+                    console.warn('[WebSocket] chat.message dédoublonné côté client.', { key, delta: now - last });
+                    return;
+                }
+                this._recentChatSends.set(key, now);
+
+                this.send(msg);
             } catch (e) {
                 console.error('[WebSocket] Bridge ui:chat:send -> chat.message a échoué.', e);
             }
@@ -111,6 +139,24 @@ export class WebSocketClient {
             console.error('[WebSocket] Connexion non ouverte.', messageObject);
             return;
         }
+
+        // Garde idempotence générique côté client pour chat.message si un code externe appelle send()
+        if (messageObject.type === 'chat.message') {
+            try {
+                const p = messageObject.payload || {};
+                const key = `${(p.agent_id || '').toLowerCase()}|${(p.text || '').trim().toLowerCase()}`;
+                const now = Date.now();
+                const last = this._recentChatSends.get(key) || 0;
+                if (now - last < this._dedupeWindowMs) {
+                    console.warn('[WebSocket] chat.message dédoublonné (send direct).', { key, delta: now - last });
+                    return;
+                }
+                this._recentChatSends.set(key, now);
+                p.msg_uid = p.msg_uid || (crypto?.randomUUID?.() || this._generateUUID());
+                p.ts = p.ts || now;
+            } catch (_) {}
+        }
+
         this.websocket.send(JSON.stringify(messageObject));
     }
 
@@ -148,7 +194,7 @@ export class WebSocketClient {
                 }
             } catch (_) {}
         } catch (_) {}
-        return 'anima'; // défaut sûr
+        return 'anima';
     }
 
     async _getIdToken() {

@@ -1,14 +1,11 @@
 # src/backend/features/chat/service.py
-# V30.1 — MEMORY M1: policy=agent_local (stateful), analyse avant close, mute chroma telemetry
-# - Injection STM/LTM en pré-contexte inchangée.
-# - ws:analysis_status envoyé AVANT ws:chat_stream_end (started), puis completed en tâche de fond si possible.
-# - chromadb.telemetry -> CRITICAL.
-
-import os, re, asyncio, logging, glob, json
+# V30.2 — MEMORY M1: policy=agent_local (stateful), analyse avant close (avec history), mute chroma telemetry
+# + Anti-dup in-flight: supprime les 2e streams pour le même (session, agent, dernier message)
+import os, re, asyncio, logging, glob, json, inspect
 from uuid import uuid4
 from typing import Dict, Any, List, Tuple, Optional, AsyncGenerator
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import google.generativeai as genai
 from openai import AsyncOpenAI
@@ -43,20 +40,13 @@ MODEL_PRICING = {
     "claude-3-opus-20240229": {"input": 15.00 / 1_000_000, "output": 75.00 / 1_000_000},
 }
 
-# -------- helpers provider --------
 def _normalize_provider(p: Optional[str]) -> str:
-    """Normalise les alias provider pour l'aiguillage LLM."""
-    if not p:
-        return ""
+    if not p: return ""
     p = p.strip().lower()
-    if p in ("gemini", "google", "googleai", "vertex"):
-        return "google"
-    if p in ("openai", "oai"):
-        return "openai"
-    if p in ("anthropic", "claude"):
-        return "anthropic"
+    if p in ("gemini", "google", "googleai", "vertex"): return "google"
+    if p in ("openai", "oai"): return "openai"
+    if p in ("anthropic", "claude"): return "anthropic"
     return p
-
 
 class ChatService:
     def __init__(self, session_manager: SessionManager, cost_tracker: CostTracker,
@@ -66,7 +56,7 @@ class ChatService:
         self.vector_service = vector_service
         self.settings = settings
 
-        # Policy: défaut = agent_local (stateful) au lieu de stateless
+        # Policy par défaut = agent_local (stateful)
         self.off_history_policy = os.getenv("EMERGENCE_RAG_OFF_POLICY", "agent_local").strip().lower()
         if self.off_history_policy not in ("stateless", "agent_local"):
             self.off_history_policy = "agent_local"
@@ -81,7 +71,10 @@ class ChatService:
             raise
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V30.1 initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V30.2 initialisé. Prompts chargés: {len(self.prompts)}")
+
+        # Garde anti-dup in-flight: (session_id, agent_id) -> {"text": str, "since": datetime}
+        self._inflight: Dict[str, Dict[str, Any]] = {}
 
     # ---------- prompts ----------
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
@@ -110,7 +103,6 @@ class ChatService:
         model = agent_configs.get(clean_agent_id, {}).get("model")
         provider = _normalize_provider(provider_raw)
 
-        # défaut coût/latence pour 'anima'
         if clean_agent_id == 'anima':
             model = 'gpt-4o-mini'
             logger.info("Remplacement du modèle pour 'anima' -> 'gpt-4o-mini' (coûts).")
@@ -120,12 +112,10 @@ class ChatService:
         if not provider or not model or system_prompt is None:
             raise ValueError(f"Configuration incomplète pour l'agent '{agent_id}' "
                              f"(provider='{provider_raw}', normalisé='{provider}', model='{model}').")
-
         return provider, model, system_prompt
 
-    # ---------- utilitaires mémoire ----------
+    # ---------- utils mémoire ----------
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
-        # ex: AZUR-8152
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
 
     def _try_get_user_id(self, session_id: str) -> Optional[str]:
@@ -134,15 +124,13 @@ class ChatService:
                 fn = getattr(self.session_manager, attr, None)
                 if callable(fn):
                     uid = fn(session_id)
-                    if uid:
-                        return str(uid)
+                    if uid: return str(uid)
             except Exception:
                 pass
         for attr in ("current_user_id", "user_id"):
             try:
                 uid = getattr(self.session_manager, attr, None)
-                if uid:
-                    return str(uid)
+                if uid: return str(uid)
             except Exception:
                 pass
         return None
@@ -155,12 +143,11 @@ class ChatService:
         return "\n\n".join(parts)
 
     _MOT_CODE_RE = re.compile(r"\b(mot-?code|code)\b", re.IGNORECASE)
-
     def _is_mot_code_query(self, text: str) -> bool:
         return bool(self._MOT_CODE_RE.search(text or ""))
 
     def _fetch_mot_code_for_agent(self, agent_id: str, user_id: Optional[str]) -> Optional[str]:
-        knowledge_name = os.getenv("EMERGENCE_KOWLEDGE_COLLECTION", "") or os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
+        knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
         col = self.vector_service.get_or_create_collection(knowledge_name)
         clauses = [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]
         if user_id:
@@ -169,35 +156,28 @@ class ChatService:
         got = col.get(where=where, include=["documents", "metadatas"])
         ids = got.get("ids", []) or []
         if not ids:
-            # fallback sans filtrage user
             got = col.get(where={"$and": [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]},
                          include=["documents", "metadatas"])
             ids = got.get("ids", []) or []
-            if not ids:
-                return None
+            if not ids: return None
         docs = got.get("documents", []) or []
-        if not docs:
-            return None
+        if not docs: return None
         line = docs[0] or ""
         if ":" in line:
-            try:
-                return line.split(":", 1)[1].strip()
-            except Exception:
-                pass
+            try: return line.split(":", 1)[1].strip()
+            except Exception: pass
         metas = got.get("metadatas", []) or []
         if metas and isinstance(metas[0], dict) and metas[0].get("value"):
             return str(metas[0]["value"]).strip()
         return None
 
     def _try_get_session_summary(self, session_id: str) -> str:
-        """STM : récupère le résumé de session s'il existe (Session.metadata.summary)."""
         try:
             sess = self.session_manager.get_session(session_id)
             meta = getattr(sess, "metadata", None)
             if isinstance(meta, dict):
                 s = meta.get("summary")
-                if isinstance(s, str) and s.strip():
-                    return s.strip()
+                if isinstance(s, str) and s.strip(): return s.strip()
         except Exception:
             pass
         return ""
@@ -207,15 +187,13 @@ class ChatService:
 
     async def _build_memory_context(self, session_id: str, last_user_message: str, top_k: int = 5) -> str:
         try:
-            if not last_user_message:
-                return ""
+            if not last_user_message: return ""
             knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
             knowledge_col = self.vector_service.get_or_create_collection(knowledge_name)
 
             where_filter = None
             uid = self._try_get_user_id(session_id)
-            if uid:
-                where_filter = {"user_id": uid}
+            if uid: where_filter = {"user_id": uid}
 
             results = self.vector_service.query(
                 collection=knowledge_col,
@@ -223,19 +201,16 @@ class ChatService:
                 n_results=top_k,
                 where_filter=where_filter
             )
-            if not results:
-                return ""
+            if not results: return ""
             lines = []
             for r in results:
                 t = (r.get("text") or "").strip()
-                if t:
-                    lines.append(f"- {t}")
+                if t: lines.append(f"- {t}")
             return "\n".join(lines[:top_k])
         except Exception as e:
             logger.warning(f"build_memory_context: {e}")
             return ""
 
-    # ---------- normalisation prompts pour providers ----------
     def _normalize_history_for_llm(self, provider: str, history: List[Dict],
                                    rag_context: str = "", use_rag: bool = False,
                                    agent_id: Optional[str] = None) -> List[Dict]:
@@ -247,8 +222,7 @@ class ChatService:
                 normalized.append({"role": "user", "content": f"[RAG_CONTEXT]\n{rag_context}"})
         for m in history:
             role = m.get("role"); text = m.get("content") or m.get("message") or ""
-            if not text:
-                continue
+            if not text: continue
             if provider == "google":
                 normalized.append({"role": "user" if role in (Role.USER, "user") else "model", "parts": [text]})
             else:
@@ -284,8 +258,7 @@ class ChatService:
                 try:
                     delta = event.choices[0].delta
                     text = getattr(delta, "content", None)
-                    if text:
-                        yield text
+                    if text: yield text
                 except Exception:
                     pass
                 usage = getattr(event, "usage", None)
@@ -313,11 +286,9 @@ class ChatService:
                         cand = chunk.candidates[0]
                         if getattr(cand, "content", None) and getattr(cand.content, "parts", None):
                             text = "".join([getattr(p, "text", "") or str(p) for p in cand.content.parts if p])
-                    if text:
-                        yield text
+                    if text: yield text
                 except Exception:
                     pass
-            # usage metadata non standard en stream -> placeholders à 0 si absent
             cost_info_container.setdefault("input_tokens", 0)
             cost_info_container.setdefault("output_tokens", 0)
             cost_info_container.setdefault("total_cost", 0.0)
@@ -327,11 +298,8 @@ class ChatService:
     async def _get_anthropic_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
         try:
             async with self.anthropic_client.messages.stream(
-                model=model,
-                max_tokens=1500,
-                temperature=0.4,
-                system=system_prompt,
-                messages=history
+                model=model, max_tokens=1500, temperature=0.4,
+                system=system_prompt, messages=history
             ) as stream:
                 async for event in stream:
                     try:
@@ -339,8 +307,7 @@ class ChatService:
                             delta = getattr(event, "delta", None)
                             if delta:
                                 text = getattr(delta, "text", "") or ""
-                                if text:
-                                    yield text
+                                if text: yield text
                     except Exception:
                         pass
                 try:
@@ -389,8 +356,7 @@ class ChatService:
             text = ""
             for block in getattr(resp, "content", []) or []:
                 t = getattr(block, "text", "") or ""
-                if t:
-                    text += t
+                if t: text += t
             try:
                 return json.loads(text)
             except Exception:
@@ -403,8 +369,17 @@ class ChatService:
         """Exécute l'analyse post-session et notifie le client (completed/error) sur la même WS."""
         try:
             analyzer = getattr(self.session_manager, "memory_analyzer", None)
+            history = self.session_manager.get_full_history(session_id) or []
             if analyzer and hasattr(analyzer, "analyze_session_for_concepts"):
-                await analyzer.analyze_session_for_concepts(session_id)
+                try:
+                    sig = inspect.signature(analyzer.analyze_session_for_concepts)
+                    if "history" in sig.parameters:
+                        await analyzer.analyze_session_for_concepts(session_id, history)
+                    else:
+                        await analyzer.analyze_session_for_concepts(session_id)
+                except TypeError:
+                    # rétro-compat si signature ancienne
+                    await analyzer.analyze_session_for_concepts(session_id)
                 try:
                     await connection_manager.send_personal_message(
                         {"type": "ws:analysis_status", "payload": {"status": "completed", "agent_id": agent_id}},
@@ -440,6 +415,10 @@ class ChatService:
         cost_info_container: Dict[str, Any] = {}
         model_used = ""
 
+        # Anti-dup in-flight: clé session/agent
+        inflight_key = f"{session_id}::{agent_id}"
+        last_user_message = ""
+
         try:
             # Start du stream côté client
             await connection_manager.send_personal_message(
@@ -452,11 +431,23 @@ class ChatService:
             last_user_message_obj = next((m for m in reversed(history) if m.get("role") == Role.USER), None)
             last_user_message = last_user_message_obj.get("content", "") if last_user_message_obj else ""
 
-            # Court-circuit "mot-code" (réponse directe) — on envoie aussi un banner mémoire minimal
+            # Garde anti-dup: si un stream est déjà parti pour ce même texte tout de suite avant → on abandonne
+            try:
+                info = self._inflight.get(inflight_key)
+                if info and info.get("text", "") == (last_user_message or ""):
+                    since = info.get("since")
+                    if isinstance(since, datetime) and (datetime.now(timezone.utc) - since) < timedelta(seconds=3):
+                        logger.warning(f"[dedupe] Stream doublon ignoré pour agent={agent_id} (texte identique dans fenêtre courte).")
+                        return
+            except Exception:
+                pass
+            # On enregistre ce stream comme actif
+            self._inflight[inflight_key] = {"text": last_user_message or "", "since": datetime.now(timezone.utc)}
+
+            # Court-circuit "mot-code"
             if self._is_mot_code_query(last_user_message):
                 uid = self._try_get_user_id(session_id)
                 mot = self._fetch_mot_code_for_agent(agent_id, uid)
-                # Banner (aucune injection de prompt dans ce chemin)
                 try:
                     stm_here = self._try_get_session_summary(session_id)
                     await connection_manager.send_personal_message(
@@ -467,7 +458,6 @@ class ChatService:
                     )
                 except Exception:
                     pass
-
                 if mot:
                     final_agent_message = AgentMessage(
                         id=temp_message_id, session_id=session_id, role=Role.ASSISTANT, agent=agent_id,
@@ -475,10 +465,8 @@ class ChatService:
                     )
                     await self.session_manager.add_message_to_session(session_id, final_agent_message)
                     payload = final_agent_message.model_dump(mode="json")
-                    if "message" in payload:
-                        payload["content"] = payload.pop("message")
+                    if "message" in payload: payload["content"] = payload.pop("message")
 
-                    # Analyse (started + bg) AVANT la fin de stream
                     try:
                         await connection_manager.send_personal_message(
                             {"type": "ws:analysis_status", "payload": {"status": "started", "agent_id": agent_id}},
@@ -491,7 +479,6 @@ class ChatService:
                     await connection_manager.send_personal_message(
                         {"type": "ws:chat_stream_end", "payload": payload}, session_id
                     )
-                    # Auto-consolidation non bloquante
                     if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
                         try:
                             gardener = MemoryGardener(
@@ -502,13 +489,11 @@ class ChatService:
                             asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3))
                         except Exception:
                             pass
-                    return  # pas d'appel LLM
+                    return
 
-            # Construction du contexte mémoire (orthogonal à RAG)
             stm = self._try_get_session_summary(session_id)
             ltm_block = await self._build_memory_context(session_id, last_user_message, top_k=5) if last_user_message else ""
 
-            # Si RAG ON: injection STM uniquement (LTM part dans rag_context). Si RAG OFF: STM + LTM injectés.
             if use_rag:
                 memory_context = self._merge_blocks([("Résumé de session", stm)]) if stm else ""
                 ltm_count_for_banner = self._count_bullets(ltm_block)
@@ -518,10 +503,8 @@ class ChatService:
 
             injected = bool(memory_context and memory_context.strip())
             if injected:
-                # Pré-injecter le bloc mémoire en tête d'historique (pré-contexte)
                 history = [{"role": Role.USER, "content": f"[MEMORY_CONTEXT]\n{memory_context}"}] + history
 
-            # Banner mémoire pour l'UI
             try:
                 await connection_manager.send_personal_message(
                     {"type": "ws:memory_banner",
@@ -532,7 +515,6 @@ class ChatService:
             except Exception:
                 pass
 
-            # (Optionnel) RAG: documents pertinents (+ mémoire concepts clés affichée dans le bandeau RAG)
             rag_context = ""
             if use_rag and last_user_message:
                 await connection_manager.send_personal_message(
@@ -549,7 +531,6 @@ class ChatService:
                     {"type": "ws:rag_status", "payload": {"status": "found", "agent_id": agent_id}}, session_id
                 )
 
-            # Debug contexte
             raw_concat = "\n".join([(m.get("content") or m.get("message", "")) for m in history])
             raw_tokens = self._extract_sensitive_tokens(raw_concat)
             await connection_manager.send_personal_message(
@@ -577,7 +558,6 @@ class ChatService:
                 session_id
             )
 
-            # Appel LLM en stream
             response_generator = self._get_llm_response_stream(provider, model, system_prompt,
                                                                normalized_history, cost_info_container)
             async for chunk in response_generator:
@@ -589,7 +569,6 @@ class ChatService:
                         session_id
                     )
 
-            # Finalisation + coûts
             final_agent_message = AgentMessage(
                 id=temp_message_id, session_id=session_id, role=Role.ASSISTANT, agent=agent_id,
                 message=full_response_text, timestamp=datetime.now(timezone.utc).isoformat(),
@@ -604,10 +583,8 @@ class ChatService:
                 feature="chat",
             )
             payload = final_agent_message.model_dump(mode="json")
-            if "message" in payload:
-                payload["content"] = payload.pop("message")
+            if "message" in payload: payload["content"] = payload.pop("message")
 
-            # --- Analyse: notifier AVANT ws:chat_stream_end puis exécuter en bg ----
             try:
                 await connection_manager.send_personal_message(
                     {"type": "ws:analysis_status", "payload": {"status": "started", "agent_id": agent_id}},
@@ -617,12 +594,10 @@ class ChatService:
             except Exception:
                 pass
 
-            # Fin du stream (le client est encore connecté -> reçoit 'started')
             await connection_manager.send_personal_message(
                 {"type": "ws:chat_stream_end", "payload": payload}, session_id
             )
 
-            # Auto-tend du jardin (non bloquante)
             if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
                 try:
                     gardener = MemoryGardener(
@@ -643,8 +618,16 @@ class ChatService:
                 )
             except Exception as send_error:
                 logger.error(f"Impossible d'envoyer l'erreur au client (session {session_id}): {send_error}", exc_info=True)
+        finally:
+            # Libère le lock in-flight si on l'avait posé
+            try:
+                info = self._inflight.get(inflight_key)
+                if info and info.get("text", "") == (last_user_message or ""):
+                    self._inflight.pop(inflight_key, None)
+            except Exception:
+                pass
 
-    # ---------- DEBAT: non-stream (fallback inclus) ----------
+    # ---------- débat (inchangé) ----------
     async def get_llm_response_for_debate(
         self,
         agent_id: str,
@@ -727,8 +710,7 @@ class ChatService:
                     text = ""
                     for block in getattr(resp, "content", []) or []:
                         t = getattr(block, "text", "") or ""
-                        if t:
-                            text += t
+                        if t: text += t
                     usage = getattr(resp, "usage", None)
                     if usage:
                         pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
@@ -754,10 +736,6 @@ class ChatService:
 
     # ---------- entrée router ----------
     def process_user_message_for_agents(self, session_id: str, chat_request: Any, connection_manager: ConnectionManager) -> None:
-        """
-        Compat router: lance la tâche de réponse pour l'agent demandé.
-        `chat_request` peut être un dict OU un objet (Pydantic) avec .agent_id / .use_rag.
-        """
         get = (lambda k: (chat_request.get(k) if isinstance(chat_request, dict) else getattr(chat_request, k, None)))
         agent_id = (get("agent_id") or "").strip().lower()
         use_rag  = bool(get("use_rag"))
