@@ -1,7 +1,19 @@
 # src/backend/features/chat/service.py
-# V30.2 — MEMORY M1: policy=agent_local (stateful), analyse avant close (avec history), mute chroma telemetry
-# + Anti-dup in-flight: supprime les 2e streams pour le même (session, agent, dernier message)
-import os, re, asyncio, logging, glob, json, inspect
+# V30.3-LTS “Citadelle” — durci contre freezes/429, analyse post-session sous garde env,
+# backoff + limitation de concurrence, trimming d’historique, logs WS réduits.
+#
+# Env clés:
+#   EMERGENCE_ANALYSIS_ENABLED=0/1           # OFF par défaut (stoppe l’analyse post-session et le spam 429)
+#   EMERGENCE_AUTO_TEND=0/1                  # garde existante pour le MemoryGardener (défaut = 1)
+#   EMERGENCE_STREAM_MAX_HISTORY=40          # borne msg d’historique pour limiter les tokens
+#   EMERGENCE_SEND_DEBUG_CONTEXT=0/1         # logs ws:debug_context (défaut OFF)
+#   EMERGENCE_RATE_LIMIT_MAX_RETRIES=2       # retries anti-429
+#   EMERGENCE_RATE_LIMIT_BASE_DELAY=2.0      # base (s) pour backoff
+#   EMERGENCE_CONCURRENCY_OPENAI=3
+#   EMERGENCE_CONCURRENCY_GOOGLE=3
+#   EMERGENCE_CONCURRENCY_ANTHROPIC=1
+
+import os, re, asyncio, logging, glob, json, inspect, random
 from uuid import uuid4
 from typing import Dict, Any, List, Tuple, Optional, AsyncGenerator
 from pathlib import Path
@@ -10,6 +22,12 @@ from datetime import datetime, timezone, timedelta
 import google.generativeai as genai
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
+# Option: accès aux classes d’erreurs spécifiques si dispo
+try:
+    import anthropic as _anth_pkg
+    _AnthropicRateLimit = getattr(_anth_pkg, "RateLimitError", Exception)
+except Exception:  # pragma: no cover
+    _AnthropicRateLimit = Exception
 
 from backend.core.session_manager import SessionManager
 from backend.core.cost_tracker import CostTracker
@@ -48,6 +66,7 @@ def _normalize_provider(p: Optional[str]) -> str:
     if p in ("anthropic", "claude"): return "anthropic"
     return p
 
+
 class ChatService:
     def __init__(self, session_manager: SessionManager, cost_tracker: CostTracker,
                  vector_service: VectorService, settings: Settings):
@@ -56,25 +75,41 @@ class ChatService:
         self.vector_service = vector_service
         self.settings = settings
 
-        # Policy par défaut = agent_local (stateful)
+        # Policy OFF-history
         self.off_history_policy = os.getenv("EMERGENCE_RAG_OFF_POLICY", "agent_local").strip().lower()
         if self.off_history_policy not in ("stateless", "agent_local"):
             self.off_history_policy = "agent_local"
         logger.info(f"ChatService OFF policy: {self.off_history_policy}")
 
+        # Clients
         try:
             self.openai_client = AsyncOpenAI(api_key=self.settings.openai_api_key)
             genai.configure(api_key=self.settings.google_api_key)
             self.anthropic_client = AsyncAnthropic(api_key=self.settings.anthropic_api_key)
         except Exception as e:
-            logger.error(f"Erreur lors de l'initialisation des clients API: {e}", exc_info=True)
+            logger.error(f"Erreur init clients API: {e}", exc_info=True)
             raise
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V30.2 initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V30.3-LTS initialisé. Prompts: {len(self.prompts)}")
 
-        # Garde anti-dup in-flight: (session_id, agent_id) -> {"text": str, "since": datetime}
+        # In-flight dedupe
         self._inflight: Dict[str, Dict[str, Any]] = {}
+
+        # --- Durcisseurs/paramètres runtime ---
+        self.enable_analysis = os.getenv("EMERGENCE_ANALYSIS_ENABLED", "0") != "0"   # OFF par défaut (anti spam 429)
+        self.send_debug_ctx = os.getenv("EMERGENCE_SEND_DEBUG_CONTEXT", "0") != "0"  # OFF par défaut
+        self.stream_max_history = int(os.getenv("EMERGENCE_STREAM_MAX_HISTORY", "40"))
+
+        self._rate_max_retries = int(os.getenv("EMERGENCE_RATE_LIMIT_MAX_RETRIES", "2"))
+        self._rate_base_delay = float(os.getenv("EMERGENCE_RATE_LIMIT_BASE_DELAY", "2.0"))
+
+        # Limitation de concurrence par provider
+        self._rl = {
+            "openai": asyncio.Semaphore(int(os.getenv("EMERGENCE_CONCURRENCY_OPENAI", "3"))),
+            "google": asyncio.Semaphore(int(os.getenv("EMERGENCE_CONCURRENCY_GOOGLE", "3"))),
+            "anthropic": asyncio.Semaphore(int(os.getenv("EMERGENCE_CONCURRENCY_ANTHROPIC", "1"))),
+        }
 
     # ---------- prompts ----------
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
@@ -229,6 +264,36 @@ class ChatService:
                 normalized.append({"role": "user" if role in (Role.USER, "user") else "assistant", "content": text})
         return normalized
 
+    # ---------- helpers anti-429 ----------
+    async def _with_rate_limit_retries(self, provider: str, op_coro_factory):
+        """
+        Exécute op_coro_factory() avec retries exponentiels si 429. Retourne le résultat ou relance l’exception.
+        """
+        max_tries = max(1, self._rate_max_retries + 1)
+        for attempt in range(max_tries):
+            try:
+                sem = self._rl.get(provider)
+                if sem is not None:
+                    async with sem:
+                        return await op_coro_factory()
+                else:
+                    return await op_coro_factory()
+            except Exception as e:
+                is_429 = False
+                try:
+                    # Anthropics
+                    if isinstance(e, _AnthropicRateLimit): is_429 = True
+                except Exception:
+                    pass
+                # Heuristique générique
+                if getattr(e, "status_code", None) == 429 or "429" in str(getattr(e, "status", "")) or "429" in str(e):
+                    is_429 = True
+                if not is_429 or attempt == max_tries - 1:
+                    raise
+                delay = self._rate_base_delay * (2 ** attempt) + random.random() * 0.5
+                logger.warning(f"[rate-limit] {provider} retry in {delay:.1f}s (attempt {attempt+1}/{max_tries})")
+                await asyncio.sleep(delay)
+
     # ---------- stream providers ----------
     async def _get_llm_response_stream(self, provider: str, model: str, system_prompt: str,
                                        history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
@@ -247,13 +312,12 @@ class ChatService:
         messages = [{"role": "system", "content": system_prompt}] + history
         usage_seen = False
         try:
-            stream = await self.openai_client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=0.4,
-                stream=True,
-                stream_options={"include_usage": True}
-            )
+            async def _op():
+                return await self.openai_client.chat.completions.create(
+                    model=model, messages=messages, temperature=0.4,
+                    stream=True, stream_options={"include_usage": True}
+                )
+            stream = await self._with_rate_limit_retries("openai", _op)
             async for event in stream:
                 try:
                     delta = event.choices[0].delta
@@ -274,11 +338,17 @@ class ChatService:
                     })
         except Exception as e:
             logger.error(f"OpenAI stream error: {e}", exc_info=True)
+            cost_info_container["__error__"] = "provider_error"
 
     async def _get_gemini_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
         try:
-            model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
-            resp = await model_instance.generate_content_async(history, stream=True, generation_config={"temperature": 0.4})
+            def _mk_model():
+                return genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
+            async def _op():
+                return (_mk_model(), )
+            # Crée le modèle sous sémaphore; l’appel stream réel est ensuite itéré
+            (_model,) = await self._with_rate_limit_retries("google", _op)
+            resp = await _model.generate_content_async(history, stream=True, generation_config={"temperature": 0.4})
             async for chunk in resp:
                 try:
                     text = getattr(chunk, "text", None)
@@ -294,13 +364,19 @@ class ChatService:
             cost_info_container.setdefault("total_cost", 0.0)
         except Exception as e:
             logger.error(f"Gemini stream error: {e}", exc_info=True)
+            cost_info_container["__error__"] = "provider_error"
 
     async def _get_anthropic_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
         try:
-            async with self.anthropic_client.messages.stream(
-                model=model, max_tokens=1500, temperature=0.4,
-                system=system_prompt, messages=history
-            ) as stream:
+            async def _op():
+                return self.anthropic_client.messages.stream(
+                    model=model, max_tokens=1500, temperature=0.4,
+                    system=system_prompt, messages=history
+                )
+            # NB: le context manager se crée ici; si 429, _with_rate_limit_retries relance avec backoff
+            # On ne peut pas "async with" à l’intérieur; on ouvre après obtention.
+            stream_cm = await self._with_rate_limit_retries("anthropic", _op)
+            async with stream_cm as stream:
                 async for event in stream:
                     try:
                         if getattr(event, "type", "") == "content_block_delta":
@@ -325,32 +401,21 @@ class ChatService:
                 except Exception:
                     pass
         except Exception as e:
+            # Marque explicitement rate_limit si applicable (déclenche le fallback plus loin)
+            if isinstance(e, _AnthropicRateLimit) or "429" in str(e):
+                cost_info_container["__error__"] = "rate_limit"
+            else:
+                cost_info_container["__error__"] = "provider_error"
             logger.error(f"Anthropic stream error: {e}", exc_info=True)
 
     # ---------- structured JSON ----------
     async def get_structured_llm_response(self, agent_id: str, prompt: str, json_schema: Dict[str, Any]) -> Dict[str, Any]:
         provider, model, system_prompt = self._get_agent_config(agent_id)
-        if provider == "google":
-            model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
-            schema_hint = json.dumps(json_schema, ensure_ascii=False)
-            full_prompt = f"{prompt}\n\nIMPORTANT: Réponds EXCLUSIVEMENT en JSON valide correspondant strictement à ce SCHÉMA : {schema_hint}"
-            resp = await model_instance.generate_content_async([{"role": "user", "parts": [full_prompt]}])
-            text = getattr(resp, "text", "") or ""
-            try:
-                return json.loads(text) if text else {}
-            except Exception:
-                m = re.search(r"\{.*\}", text, re.S)
-                return json.loads(m.group(0)) if m else {}
-        elif provider == "openai":
-            resp = await self.openai_client.chat.completions.create(
-                model=model, temperature=0, response_format={"type": "json_object"},
-                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
-            )
-            content = (resp.choices[0].message.content or "").strip()
-            return json.loads(content) if content else {}
-        elif provider == "anthropic":
+
+        async def _anthropic_call() -> Dict[str, Any]:
             resp = await self.anthropic_client.messages.create(
-                model=model, max_tokens=1500, temperature=0, system=system_prompt + "\n\nRéponds strictement en JSON valide.",
+                model=model, max_tokens=1500, temperature=0,
+                system=system_prompt + "\n\nRéponds strictement en JSON valide.",
                 messages=[{"role": "user", "content": prompt}]
             )
             text = ""
@@ -362,11 +427,74 @@ class ChatService:
             except Exception:
                 m = re.search(r"\{.*\}", text, re.S)
                 return json.loads(m.group(0)) if m else {}
-        return {}
+
+        async def _openai_call() -> Dict[str, Any]:
+            resp = await self.openai_client.chat.completions.create(
+                model=model, temperature=0, response_format={"type": "json_object"},
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
+            )
+            content = (resp.choices[0].message.content or "").strip()
+            return json.loads(content) if content else {}
+
+        async def _google_call() -> Dict[str, Any]:
+            model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
+            schema_hint = json.dumps(json_schema, ensure_ascii=False)
+            full_prompt = f"{prompt}\n\nIMPORTANT: Réponds EXCLUSIVEMENT en JSON valide correspondant strictement à ce SCHÉMA : {schema_hint}"
+            resp = await model_instance.generate_content_async([{"role": "user", "parts": [full_prompt]}])
+            text = getattr(resp, "text", "") or ""
+            try:
+                return json.loads(text) if text else {}
+            except Exception:
+                m = re.search(r"\{.*\}", text, re.S)
+                return json.loads(m.group(0)) if m else {}
+
+        # Exécute avec retries + fallback en cas de 429/provider_error
+        try:
+            if provider == "anthropic":
+                try:
+                    return await self._with_rate_limit_retries("anthropic", _anthropic_call)
+                except Exception as e:
+                    if isinstance(e, _AnthropicRateLimit) or "429" in str(e):
+                        logger.warning("[structured] Anthropic 429 — fallback OpenAI.")
+                        return await self._with_rate_limit_retries("openai", _openai_call)
+                    logger.error(f"[structured] Anthropic error, fallback Google: {e}")
+                    return await self._with_rate_limit_retries("google", _google_call)
+
+            elif provider == "openai":
+                try:
+                    return await self._with_rate_limit_retries("openai", _openai_call)
+                except Exception as e:
+                    logger.error(f"[structured] OpenAI error, fallback Google: {e}")
+                    return await self._with_rate_limit_retries("google", _google_call)
+
+            elif provider == "google":
+                try:
+                    return await self._with_rate_limit_retries("google", _google_call)
+                except Exception as e:
+                    logger.error(f"[structured] Google error, fallback OpenAI: {e}")
+                    return await self._with_rate_limit_retries("openai", _openai_call)
+
+            else:
+                raise ValueError(f"Fournisseur LLM non supporté: {provider}")
+
+        except Exception as e:
+            logger.error(f"[structured] All providers failed: {e}", exc_info=True)
+            return {}
 
     # ---------- analyse & notifications ---------------------------------------
     async def _run_analysis_and_notify(self, session_id: str, agent_id: str, connection_manager: ConnectionManager) -> None:
         """Exécute l'analyse post-session et notifie le client (completed/error) sur la même WS."""
+        if not self.enable_analysis:
+            try:
+                await connection_manager.send_personal_message(
+                    {"type": "ws:analysis_status",
+                     "payload": {"status": "skipped", "reason": "disabled", "agent_id": agent_id}},
+                    session_id
+                )
+            except Exception:
+                pass
+            return
+
         try:
             analyzer = getattr(self.session_manager, "memory_analyzer", None)
             history = self.session_manager.get_full_history(session_id) or []
@@ -378,10 +506,7 @@ class ChatService:
                     else:
                         await analyzer.analyze_session_for_concepts(session_id)
                 except TypeError:
-                    # rétro-compat si signature ancienne
                     await analyzer.analyze_session_for_concepts(session_id)
-                # (patch) Analyzer will emit its own ws:analysis_status events; skip duplicated "completed".
-
             else:
                 try:
                     await connection_manager.send_personal_message(
@@ -405,39 +530,44 @@ class ChatService:
     # ---------- flux chat (stream) ----------
     async def _process_agent_response_stream(self, session_id: str, agent_id: str, use_rag: bool,
                                              connection_manager: ConnectionManager):
+        """
+        Stream de réponse agent:
+        - CHECK anti-doublon AVANT d'envoyer ws:chat_stream_start (évite UI bloquée sur doublon).
+        - Pose du lock in-flight, puis seulement ws:chat_stream_start.
+        """
         temp_message_id = str(uuid4())
         full_response_text = ""
         cost_info_container: Dict[str, Any] = {}
         model_used = ""
 
-        # Anti-dup in-flight: clé session/agent
         inflight_key = f"{session_id}::{agent_id}"
         last_user_message = ""
 
         try:
-            # Start du stream côté client
-            await connection_manager.send_personal_message(
-                {"type": "ws:chat_stream_start", "payload": {"agent_id": agent_id, "id": temp_message_id}},
-                session_id
-            )
-
             # Historique & dernier message user
-            history = self.session_manager.get_full_history(session_id)
+            history = self.session_manager.get_full_history(session_id) or []
+            if self.stream_max_history and len(history) > self.stream_max_history:
+                history = history[-self.stream_max_history:]
             last_user_message_obj = next((m for m in reversed(history) if m.get("role") == Role.USER), None)
             last_user_message = last_user_message_obj.get("content", "") if last_user_message_obj else ""
 
-            # Garde anti-dup: si un stream est déjà parti pour ce même texte tout de suite avant → on abandonne
+            # Anti-dup court
             try:
                 info = self._inflight.get(inflight_key)
                 if info and info.get("text", "") == (last_user_message or ""):
                     since = info.get("since")
                     if isinstance(since, datetime) and (datetime.now(timezone.utc) - since) < timedelta(seconds=3):
-                        logger.warning(f"[dedupe] Stream doublon ignoré pour agent={agent_id} (texte identique dans fenêtre courte).")
+                        logger.warning(f"[dedupe] Stream doublon ignoré pour agent={agent_id} (texte identique < 3s).")
                         return
             except Exception:
                 pass
-            # On enregistre ce stream comme actif
+
+            # Lock in-flight puis START
             self._inflight[inflight_key] = {"text": last_user_message or "", "since": datetime.now(timezone.utc)}
+            await connection_manager.send_personal_message(
+                {"type": "ws:chat_stream_start", "payload": {"agent_id": agent_id, "id": temp_message_id}},
+                session_id
+            )
 
             # Court-circuit "mot-code"
             if self._is_mot_code_query(last_user_message):
@@ -460,16 +590,19 @@ class ChatService:
                     )
                     await self.session_manager.add_message_to_session(session_id, final_agent_message)
                     payload = final_agent_message.model_dump(mode="json")
-                    if "message" in payload: payload["content"] = payload.pop("message")
+                    if "message" in payload:
+                        payload["content"] = payload.pop("message")
 
-                    try:
-                        await connection_manager.send_personal_message(
-                            {"type": "ws:analysis_status", "payload": {"status": "started", "agent_id": agent_id, "session_id": session_id}},
-                            session_id
-                        )
-                        asyncio.create_task(self._run_analysis_and_notify(session_id, agent_id, connection_manager))
-                    except Exception:
-                        pass
+                    # Analyse post-session (gardée par env)
+                    if self.enable_analysis:
+                        try:
+                            await connection_manager.send_personal_message(
+                                {"type": "ws:analysis_status", "payload": {"status": "started", "agent_id": agent_id, "session_id": session_id}},
+                                session_id
+                            )
+                            asyncio.create_task(self._run_analysis_and_notify(session_id, agent_id, connection_manager))
+                        except Exception:
+                            pass
 
                     await connection_manager.send_personal_message(
                         {"type": "ws:chat_stream_end", "payload": payload}, session_id
@@ -486,6 +619,7 @@ class ChatService:
                             pass
                     return
 
+            # Mémoire (STM/LTM)
             stm = self._try_get_session_summary(session_id)
             ltm_block = await self._build_memory_context(session_id, last_user_message, top_k=5) if last_user_message else ""
 
@@ -512,46 +646,62 @@ class ChatService:
 
             rag_context = ""
             if use_rag and last_user_message:
-                await connection_manager.send_personal_message(
-                    {"type": "ws:rag_status", "payload": {"status": "searching", "agent_id": agent_id}},
-                    session_id
-                )
+                try:
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:rag_status", "payload": {"status": "searching", "agent_id": agent_id}},
+                        session_id
+                    )
+                except Exception:
+                    pass
                 document_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
                 doc_hits = self.vector_service.query(collection=document_collection, query_text=last_user_message)
                 doc_block = "\n\n".join([f"- {h['text']}" for h in doc_hits]) if doc_hits else ""
                 mem_block = await self._build_memory_context(session_id, last_user_message)
                 rag_context = self._merge_blocks([("Mémoire (concepts clés)", mem_block),
                                                   ("Documents pertinents", doc_block)])
-                await connection_manager.send_personal_message(
-                    {"type": "ws:rag_status", "payload": {"status": "found", "agent_id": agent_id}}, session_id
-                )
+                try:
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:rag_status", "payload": {"status": "found", "agent_id": agent_id}}, session_id
+                    )
+                except Exception:
+                    pass
 
             raw_concat = "\n".join([(m.get("content") or m.get("message", "")) for m in history])
             raw_tokens = self._extract_sensitive_tokens(raw_concat)
-            await connection_manager.send_personal_message(
-                {"type": "ws:debug_context",
-                 "payload": {"phase": "before_normalize", "agent_id": agent_id, "use_rag": use_rag,
-                             "history_total": len(history), "rag_context_chars": len(rag_context),
-                             "off_policy": self.off_history_policy,
-                             "sensitive_tokens_in_history": list(set(raw_tokens))}},
-                session_id
-            )
+            if self.send_debug_ctx:
+                try:
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:debug_context",
+                         "payload": {"phase": "before_normalize", "agent_id": agent_id, "use_rag": use_rag,
+                                     "history_total": len(history), "rag_context_chars": len(rag_context),
+                                     "off_policy": self.off_history_policy,
+                                     "sensitive_tokens_in_history": list(set(raw_tokens))}},
+                        session_id
+                    )
+                except Exception:
+                    pass
 
             provider, model, system_prompt = self._get_agent_config(agent_id)
             model_used = model
             normalized_history = self._normalize_history_for_llm(provider, history, rag_context, use_rag, agent_id)
 
-            norm_concat = "\n".join(["".join(p.get("parts", [])) if provider == "google" else p.get("content", "")
-                                     for p in normalized_history])
+            if provider == "google":
+                norm_concat = "\n".join(["".join(p.get("parts", [])) for p in normalized_history])
+            else:
+                norm_concat = "\n".join([p.get("content", "") for p in normalized_history])
             norm_tokens = self._extract_sensitive_tokens(norm_concat)
-            await connection_manager.send_personal_message(
-                {"type": "ws:debug_context",
-                 "payload": {"phase": "after_normalize", "agent_id": agent_id, "use_rag": use_rag,
-                             "history_filtered": len(normalized_history), "rag_context_chars": len(rag_context),
-                             "off_policy": self.off_history_policy,
-                             "sensitive_tokens_in_prompt": list(set(norm_tokens))}},
-                session_id
-            )
+            if self.send_debug_ctx:
+                try:
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:debug_context",
+                         "payload": {"phase": "after_normalize", "agent_id": agent_id, "use_rag": use_rag,
+                                     "history_filtered": len(normalized_history), "rag_context_chars": len(rag_context),
+                                     "off_policy": self.off_history_policy,
+                                     "sensitive_tokens_in_prompt": list(set(norm_tokens))}},
+                        session_id
+                    )
+                except Exception:
+                    pass
 
             response_generator = self._get_llm_response_stream(provider, model, system_prompt,
                                                                normalized_history, cost_info_container)
@@ -563,12 +713,10 @@ class ChatService:
                          "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}},
                         session_id
                     )
-            # (patch) Provider fallback on empty response / rate-limit
+
+            # Fallback provider si rate-limit/provider_error (signalé par les streamers)
             try:
-                if not full_response_text and cost_info_container.get("__error__") in ("rate_limit","provider_error"):
-                    # default retry-after info for UI
-                    retry_after = cost_info_container.get("__retry_after__")
-                    # Fallback only for Gemini -> Claude Haiku on 'neo'
+                if not full_response_text and cost_info_container.get("__error__") in ("rate_limit", "provider_error"):
                     if agent_id == "neo":
                         try:
                             await connection_manager.send_personal_message(
@@ -578,9 +726,9 @@ class ChatService:
                             )
                         except Exception:
                             pass
-                        # Reuse same history/system prompt
                         fallback_cost: Dict[str, Any] = {}
-                        alt_stream = self._get_llm_response_stream("anthropic", "claude-3-haiku-20240307", system_prompt, normalized_history, fallback_cost)
+                        alt_stream = self._get_llm_response_stream("anthropic", "claude-3-haiku-20240307",
+                                                                   system_prompt, normalized_history, fallback_cost)
                         async for chunk in alt_stream:
                             if chunk:
                                 full_response_text += chunk
@@ -589,21 +737,19 @@ class ChatService:
                                      "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}},
                                     session_id
                                 )
-                        # Merge cost info
                         try:
-                            for k,v in fallback_cost.items():
-                                if isinstance(v, (int,float)) and isinstance(cost_info_container.get(k), (int,float)):
+                            for k, v in fallback_cost.items():
+                                if isinstance(v, (int, float)) and isinstance(cost_info_container.get(k), (int, float)):
                                     cost_info_container[k] += v
                                 else:
                                     cost_info_container[k] = v
                         except Exception:
                             pass
-                    # If still nothing, notify error and abort gracefully
                     if not full_response_text:
                         try:
                             await connection_manager.send_personal_message(
                                 {"type": "ws:error",
-                                 "payload": {"message": "rate_limited", "agent_id": agent_id, "retry_after": retry_after}},
+                                 "payload": {"message": "rate_limited", "agent_id": agent_id}},
                                 session_id
                             )
                         except Exception:
@@ -611,8 +757,6 @@ class ChatService:
                         return
             except Exception:
                 pass
-
-
 
             final_agent_message = AgentMessage(
                 id=temp_message_id, session_id=session_id, role=Role.ASSISTANT, agent=agent_id,
@@ -628,16 +772,28 @@ class ChatService:
                 feature="chat",
             )
             payload = final_agent_message.model_dump(mode="json")
-            if "message" in payload: payload["content"] = payload.pop("message")
+            if "message" in payload:
+                payload["content"] = payload.pop("message")
 
-            try:
-                await connection_manager.send_personal_message(
-                    {"type": "ws:analysis_status", "payload": {"status": "started", "agent_id": agent_id, "session_id": session_id}},
-                    session_id
-                )
-                asyncio.create_task(self._run_analysis_and_notify(session_id, agent_id, connection_manager))
-            except Exception:
-                pass
+            # Analyse post-session: protégée par env (OFF par défaut)
+            if self.enable_analysis:
+                try:
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:analysis_status", "payload": {"status": "started", "agent_id": agent_id, "session_id": session_id}},
+                        session_id
+                    )
+                    asyncio.create_task(self._run_analysis_and_notify(session_id, agent_id, connection_manager))
+                except Exception:
+                    pass
+            else:
+                try:
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:analysis_status",
+                         "payload": {"status": "skipped", "reason": "disabled", "agent_id": agent_id}},
+                        session_id
+                    )
+                except Exception:
+                    pass
 
             await connection_manager.send_personal_message(
                 {"type": "ws:chat_stream_end", "payload": payload}, session_id
@@ -672,7 +828,6 @@ class ChatService:
             except Exception:
                 pass
 
-    # ---------- débat (inchangé) ----------
     async def get_llm_response_for_debate(
         self,
         agent_id: str,
@@ -765,7 +920,7 @@ class ChatService:
                     else:
                         cost_info = dict(base_cost)
                     if not text.strip():
-                        logger.warning("[DEBATE] Anthropic a renvoyé un texte vide — fallback OpenAI.")
+                        logger.warning("[DEBATE] Anthrop ic a renvoyé un texte vide — fallback OpenAI.")
                         return await _openai_call(prompt)
                     return text.strip(), cost_info
                 except Exception as e:
