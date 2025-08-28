@@ -1,9 +1,10 @@
 /**
  * @module core/websocket
- * @description WebSocketClient V20.5 - STREAMING READY + JWT subprotocol + bridge + idempotence
+ * @description WebSocketClient V20.7 - STREAMING READY + JWT subprotocol + bridge (legacy-safe) + UID idempotence (send-only)
  * - Bridge 'ui:chat:send' -> 'chat.message'
- * - Aliases console inconditionnels (window.wsClient, window.bus)
- * - Déduplication client (fenêtre 1.2s) + msg_uid
+ * - Aliases console inconditionnels (window.wsClient, window.bus, window.wsClient.ws)
+ * - Idempotence par msg_uid UNIQUEMENT dans send() (plus AUCUN check dans le bridge)
+ * - Legacy-safe: ignore les payloads 'ui:chat:send' sans msg_uid (évite double-émission depuis chat-ui.js)
  */
 import { EVENTS } from '../shared/constants.js';
 
@@ -17,12 +18,36 @@ export class WebSocketClient {
         this.maxReconnectAttempts = 5;
         this.reconnectInterval = 5000;
 
-        // Déduplication des envois de chat côté client
+        // Dédup générique existante (non utilisée pour chat.message)
         this._dedupeWindowMs = 1200;
         this._recentChatSends = new Map(); // key -> timestamp
 
+        // 🔧 Idempotence par UID (utilisée désormais SEULEMENT dans send())
+        this._recentMsgUids = new Map(); // uid -> ts
+        this._msgUidTtlMs = 5 * 60 * 1000;
+
         this.registerEvents();
-        console.log("✅ WebSocketClient V20.5 (Streaming + JWT + UI bridge + idempotence) Initialisé.");
+        console.log("✅ WebSocketClient V20.7 (Streaming + JWT + UI bridge legacy-safe + UID idempotence en send) Initialisé.");
+    }
+
+    get ws() {
+        return this.websocket;
+    }
+
+    _evictOldUids(now = Date.now()) {
+        try {
+            for (const [uid, ts] of this._recentMsgUids.entries()) {
+                if (now - ts > this._msgUidTtlMs) this._recentMsgUids.delete(uid);
+            }
+        } catch (_) {}
+    }
+    _seenUid(uid) {
+        if (!uid) return false;
+        const now = Date.now();
+        this._evictOldUids(now);
+        if (this._recentMsgUids.has(uid)) return true;
+        this._recentMsgUids.set(uid, now);
+        return false;
     }
 
     registerEvents() {
@@ -36,32 +61,28 @@ export class WebSocketClient {
                     console.warn('[WebSocket] ui:chat:send sans texte, ignoré.', payload);
                     return;
                 }
+
+                // 🔒 Legacy-safe: on NE traite PAS les payloads sans msg_uid
+                // (ex: émission héritée depuis chat-ui.js). Ainsi, seule l’émission
+                // moderne (chat.js) avec msg_uid passera.
+                const msg_uid = payload.msg_uid;
+                if (!msg_uid || typeof msg_uid !== 'string') {
+                    console.warn('[WebSocket] ui:chat:send ignoré (payload legacy sans msg_uid).', payload);
+                    return;
+                }
+
                 const rawAgent = (payload.agent_id ?? payload.agentId ?? '').trim();
                 const agent_id = rawAgent || this._getActiveAgentIdFromState();
                 const use_rag = Boolean(payload.use_rag ?? payload.useRag);
+                const ts = Date.now();
 
                 const msg = {
                     type: 'chat.message',
-                    payload: {
-                        text,
-                        agent_id,
-                        use_rag,
-                        // idempotence
-                        msg_uid: payload.msg_uid || (crypto?.randomUUID?.() || this._generateUUID()),
-                        ts: Date.now()
-                    }
+                    payload: { text, agent_id, use_rag, msg_uid, ts }
                 };
 
-                // Déduplication client (même agent + même texte, fenêtre courte)
-                const key = `${(agent_id || '').toLowerCase()}|${(text || '').trim().toLowerCase()}`;
-                const now = Date.now();
-                const last = this._recentChatSends.get(key) || 0;
-                if (now - last < this._dedupeWindowMs) {
-                    console.warn('[WebSocket] chat.message dédoublonné côté client.', { key, delta: now - last });
-                    return;
-                }
-                this._recentChatSends.set(key, now);
-
+                // ❌ Retrait du check _seenUid ici (idempotence gérée UNIQUEMENT dans send()).
+                console.log('[WebSocket] ws:send(chat.message)', { agent_id, use_rag, msg_uid });
                 this.send(msg);
             } catch (e) {
                 console.error('[WebSocket] Bridge ui:chat:send -> chat.message a échoué.', e);
@@ -104,7 +125,7 @@ export class WebSocketClient {
             if (typeof window !== 'undefined') {
                 window.wsClient = this;
                 window.bus = this.eventBus;
-                console.log('[WebSocket] Aliases console exposés: window.wsClient, window.bus');
+                console.log('[WebSocket] Aliases console exposés: window.wsClient, window.bus, window.wsClient.ws');
             }
         } catch (_) {}
     }
@@ -140,20 +161,17 @@ export class WebSocketClient {
             return;
         }
 
-        // Garde idempotence générique côté client pour chat.message si un code externe appelle send()
+        // 🔧 Idempotence par UID pour chat.message uniquement (UN SEUL GARDE)
         if (messageObject.type === 'chat.message') {
             try {
                 const p = messageObject.payload || {};
-                const key = `${(p.agent_id || '').toLowerCase()}|${(p.text || '').trim().toLowerCase()}`;
-                const now = Date.now();
-                const last = this._recentChatSends.get(key) || 0;
-                if (now - last < this._dedupeWindowMs) {
-                    console.warn('[WebSocket] chat.message dédoublonné (send direct).', { key, delta: now - last });
+                p.msg_uid = p.msg_uid || (crypto?.randomUUID?.() || this._generateUUID());
+                p.ts = p.ts || Date.now();
+
+                if (this._seenUid(p.msg_uid)) {
+                    console.warn('[WebSocket] chat.message ignoré (msg_uid déjà vu — send).', { msg_uid: p.msg_uid });
                     return;
                 }
-                this._recentChatSends.set(key, now);
-                p.msg_uid = p.msg_uid || (crypto?.randomUUID?.() || this._generateUUID());
-                p.ts = p.ts || now;
             } catch (_) {}
         }
 

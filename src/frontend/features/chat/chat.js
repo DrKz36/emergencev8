@@ -1,12 +1,13 @@
 /**
  * @module features/chat/chat
- * @description Module Chat - V24.3 "Single-Emit + ActiveAgent"
+ * @description Module Chat - V24.5 "Single-Emit + ActiveAgent + Watchdog"
  * - Persistance inter-session (Threads API) côté front.
  * - Hydratation stricte par agent_id + idempotente (rebuild à blanc).
  * - Dédoublonnage agent_selected.
  * - Toast léger sur ws:analysis_status.
  * - ✅ created_at côté UI (user + stream start) pour affichage horodatage.
- * - ✅ NEW: plus d’émission WS_SEND (single-emit via ui:chat:send) + state.chat.activeAgent publié.
+ * - ✅ Unique emit via 'ui:chat:send' (plus d'EVT WS_SEND).
+ * - ✅ Watchdog stream-start (1.5s) pour défiger l'UI si le backend ne répond pas.
  */
 
 import { ChatUI } from './chat-ui.js';
@@ -28,6 +29,10 @@ export default class ChatModule {
 
     // Anti-dup toast
     this._lastToastAt = 0;
+
+    // Watchdog stream-start
+    this._streamStartTimer = null;
+    this._streamStartTimeoutMs = 1500;
   }
 
   /* ----------------------------- Lifecycle ----------------------------- */
@@ -39,7 +44,7 @@ export default class ChatModule {
     this.registerStateChanges();
     this.registerEvents();
     this.isInitialized = true;
-    console.log('✅ ChatModule V24.3 (Single-Emit + ActiveAgent) initialisé.');
+    console.log('✅ ChatModule V24.5 (Single-Emit + ActiveAgent + Watchdog) initialisé.');
   }
 
   mount(container) {
@@ -63,6 +68,7 @@ export default class ChatModule {
     this.listeners.forEach(unsub => { if (typeof unsub === 'function') try { unsub(); } catch {} });
     this.listeners = [];
     this.container = null;
+    this._clearStreamWatchdog();
   }
 
   /* ------------------------------ State -------------------------------- */
@@ -76,7 +82,7 @@ export default class ChatModule {
         messages: {},        // { [agentId]: Message[] }
         threadId: null,
         lastAnalysis: null,
-        activeAgent: 'anima', /* ✅ NEW */
+        activeAgent: 'anima',
       });
     } else {
       if (this.state.get('chat.threadId') == null) this.state.set('chat.threadId', null);
@@ -226,8 +232,22 @@ export default class ChatModule {
       }).catch(err => console.error('[Chat] Échec appendMessage(user):', err));
     }
 
-    // ❌ [SUPPRIMÉ] : double émission. Le WS écoute déjà 'ui:chat:send'.
-    // this.eventBus.emit(EVENTS.WS_SEND, { type: 'chat.message', payload: { text: trimmed, agent_id: currentAgentId, use_rag: !!ragEnabled } });
+    // ✅ Émission unique vers WS via 'ui:chat:send' (idempotence par msg_uid)
+    try {
+      this.eventBus.emit('ui:chat:send', {
+        text: trimmed,
+        agent_id: currentAgentId,
+        use_rag: !!ragEnabled,
+        msg_uid: userMessage.id
+      });
+      // ⏱️ Armement du watchdog si aucun stream-start n'arrive
+      this._startStreamWatchdog();
+    } catch (e) {
+      console.error('[Chat] Emission ui:chat:send a échoué', e);
+      this._clearStreamWatchdog();
+      this.state.set('chat.isLoading', false);
+      this.showToast('Envoi impossible (WS).');
+    }
   }
 
   handleStreamStart({ agent_id, id }) {
@@ -241,6 +261,7 @@ export default class ChatModule {
     };
     const currentMessages = this.state.get(`chat.messages.${agent_id}`) || [];
     this.state.set('chat.messages.${agent_id}'.replace('${agent_id}', agent_id), [...currentMessages, agentMessage]);
+    this._clearStreamWatchdog();
     this.state.set('chat.isLoading', true);
   }
 
@@ -258,12 +279,13 @@ export default class ChatModule {
 
   handleStreamEnd({ id, agent_id }) {
     const messages = this.state.get('chat.messages');
-    for (const agentId in messages) {
-      const idx = messages[agentId].findIndex(m => m.id === id);
+    for (const aid in messages) {
+      const idx = messages[aid].findIndex(m => m.id === id);
       if (idx !== -1) {
-        const finalMsg = { ...messages[agentId][idx], isStreaming: false };
-        messages[agentId][idx] = finalMsg;
+        const finalMsg = { ...messages[aid][idx], isStreaming: false };
+        messages[aid][idx] = finalMsg;
         this.state.set('chat.messages', { ...messages });
+        this._clearStreamWatchdog();
         this.state.set('chat.isLoading', false);
 
         // Persistance backend (assistant)
@@ -274,7 +296,7 @@ export default class ChatModule {
           api.appendMessage(threadId, {
             role: 'assistant',
             content: typeof finalMsg.content === 'string' ? finalMsg.content : String(finalMsg.content ?? ''),
-            agent_id: finalMsg.agent_id || agent_id || agentId
+            agent_id: finalMsg.agent_id || agent_id || aid
           }).catch(err => console.error('[Chat] Échec appendMessage(assistant):', err));
         }
         return;
@@ -332,6 +354,30 @@ export default class ChatModule {
     } else if (status === 'failed') {
       this.showToast('Analyse mémoire : échec');
     }
+  }
+
+  /* ---------------------------- Watchdog ------------------------------- */
+
+  _startStreamWatchdog() {
+    this._clearStreamWatchdog();
+    try {
+      this._streamStartTimer = setTimeout(() => {
+        // Si aucun stream-start n'arrive, on défige l'UI proprement
+        if (this.state.get('chat.isLoading')) {
+          this.state.set('chat.isLoading', false);
+          this.showToast('Envoi bloqué (aucun flux démarré).');
+        }
+      }, this._streamStartTimeoutMs);
+    } catch {}
+  }
+
+  _clearStreamWatchdog() {
+    try {
+      if (this._streamStartTimer) {
+        clearTimeout(this._streamStartTimer);
+        this._streamStartTimer = null;
+      }
+    } catch {}
   }
 
   // Petit toast DOM autonome
