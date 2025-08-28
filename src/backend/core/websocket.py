@@ -1,5 +1,5 @@
 # src/backend/core/websocket.py
-# V10.2 - FIX: Gestion robuste des déconnexions pendant la phase de connexion.
+# V10.3 - FIX: Echo du sous-protocole lors de l'accept WebSocket + gestion robuste des déconnexions.
 import logging
 import asyncio
 from fastapi import WebSocket
@@ -13,8 +13,9 @@ logger = logging.getLogger(__name__)
 class ConnectionManager:
     """
     Gère les connexions WebSocket actives.
-    V10.2: Ajout d'un bloc try/except dans la méthode connect pour gérer
-    les déconnexions immédiates et éviter les connexions zombies.
+    V10.3:
+      - Echo du sous-protocole ('jwt' ou 'bearer') si demandé par le client.
+      - Bloc try/except pour gérer les déconnexions instantanées et éviter les connexions zombies.
     """
     def __init__(self, session_manager: SessionManager):
         self.active_connections: Dict[str, List[WebSocket]] = {}
@@ -24,11 +25,33 @@ class ConnectionManager:
             setattr(self.session_manager, "connection_manager", self)
         except Exception as e:
             logger.warning(f"Impossible d'exposer ConnectionManager dans SessionManager: {e}")
-        logger.info("ConnectionManager V10.2 (Connexion Blindée) initialisé.")
+        logger.info("ConnectionManager V10.3 (Connexion Blindée + Subprotocol Echo) initialisé.")
 
     async def connect(self, websocket: WebSocket, session_id: str, user_id: str = "default_user"):
-        await websocket.accept()
-        
+        # Echo du sous-protocole si présent dans la demande (ex: "jwt,<JWT>")
+        requested = None
+        try:
+            requested = websocket.headers.get("sec-websocket-protocol")
+        except Exception:
+            requested = None
+
+        selected = None
+        if requested:
+            # Le client envoie typiquement: "jwt,<JWT>" (sans espaces). On renvoie "jwt".
+            try:
+                for p in [s.strip().lower() for s in requested.split(",") if s.strip()]:
+                    if p in {"jwt", "bearer"}:
+                        selected = p  # on renvoie exactement un sous-protocole proposé
+                        break
+            except Exception as e:
+                logger.warning(f"Parsing sec-websocket-protocol échoué: {e}")
+
+        await websocket.accept(subprotocol=selected)
+        if selected:
+            logger.info(f"WebSocket accepté avec sous-protocole: {selected}")
+        else:
+            logger.info("WebSocket accepté sans sous-protocole (aucune proposition compatible).")
+
         is_new_session = session_id not in self.active_connections
         if is_new_session:
             self.active_connections[session_id] = []
@@ -39,7 +62,7 @@ class ConnectionManager:
 
         self.active_connections[session_id].append(websocket)
 
-        # MODIFIÉ V10.2: Bloc try/except pour gérer les déconnexions instantanées.
+        # Gestion des déconnexions immédiates
         try:
             await websocket.send_json({
                 "type": "ws:session_established",
@@ -47,13 +70,11 @@ class ConnectionManager:
             })
         except (WebSocketDisconnect, RuntimeError) as e:
             logger.warning(f"Client déconnecté IMMÉDIATEMENT après la connexion (session {session_id}). Nettoyage... Erreur: {e}")
-            # On nettoie immédiatement la connexion qui vient d'être ajoutée.
             await self.disconnect(session_id, websocket)
 
     async def disconnect(self, session_id: str, websocket: WebSocket):
         if session_id in self.active_connections and websocket in self.active_connections[session_id]:
             self.active_connections[session_id].remove(websocket)
-            
             if not self.active_connections[session_id]:
                 del self.active_connections[session_id]
                 await self.session_manager.finalize_session(session_id)
@@ -69,7 +90,6 @@ class ConnectionManager:
             logger.warning(f"Aucune connexion active trouvée pour la session {session_id} pour envoyer le message.")
             return
 
-        # On fait une copie de la liste pour pouvoir la modifier pendant l'itération
         for ws in list(connections):
             try:
                 await ws.send_json(message)
