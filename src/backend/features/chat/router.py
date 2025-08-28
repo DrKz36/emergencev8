@@ -1,6 +1,5 @@
 # src/backend/features/chat/router.py
-# V22.3 - WS CHAT: accept legacy aliases ('chat:send', 'chat_message') by normalizing to 'chat.message'
-#            payload plat -> service, save user message, no create_task on sync call
+# V22.4 - WS CHAT: fix appel send_personal_message (virgule), compat aliases, écriture user msg + dispatch service.
 import logging
 import asyncio
 from uuid import uuid4
@@ -19,7 +18,7 @@ from backend.features.debate.service import DebateService
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Suivi des tâches WS non bloquantes (utile pour d’autres branches)
+# Suivi des tâches WS non bloquantes
 background_tasks = set()
 
 def _norm_bool(payload, snake_key, camel_key, default=False):
@@ -58,8 +57,8 @@ async def websocket_endpoint(
                 logger.warning(f"Message WS malformé ou incomplet: {data}")
                 try:
                     await connection_manager.send_personal_message(
-                        {"type": "ws:error", "payload": {"message": "Message WebSocket incomplet (type/payload)."}} ,
-                        session_id
+                        {"type": "ws:error", "payload": {"message": "Message WebSocket incomplet (type/payload)."}},
+                        session_id,
                     )
                 except Exception:
                     pass
@@ -82,30 +81,26 @@ async def websocket_endpoint(
                         rounds      = payload.get("rounds")
                         use_rag     = _norm_bool(payload, "use_rag", "useRag", default=False)
 
-                        # Validations minimales (le reste côté Pydantic/service)
+                        # Validations minimales
                         if not topic or not isinstance(topic, str):
                             await connection_manager.send_personal_message(
                                 {"type": "ws:error", "payload": {"message": "Débat: 'topic' manquant ou invalide."}},
                                 session_id
-                            )
-                            continue
+                            ); continue
                         if not agent_order or not isinstance(agent_order, list) or len(agent_order) < 2:
                             await connection_manager.send_personal_message(
                                 {"type": "ws:error", "payload": {"message": "Débat: 'agent_order' doit contenir au moins 2 agents (dernier = synthèse)."}},
                                 session_id
-                            )
-                            continue
+                            ); continue
                         if rounds is None or not isinstance(rounds, int) or rounds < 1:
                             await connection_manager.send_personal_message(
                                 {"type": "ws:error", "payload": {"message": "Débat: 'rounds' doit être un entier ≥ 1."}},
                                 session_id
-                            )
-                            continue
+                            ); continue
 
                         # Feedback immédiat
                         await connection_manager.send_personal_message(
-                            {"type": "ws:debate_status_update",
-                             "payload": {"status": "Initialisation du débat…", "topic": topic}},
+                            {"type": "ws:debate_status_update", "payload": {"status": "Initialisation du débat…", "topic": topic}},
                             session_id
                         )
 
@@ -121,7 +116,7 @@ async def websocket_endpoint(
                     else:
                         logger.warning(f"Type de message DEBATE non géré: {message_type}")
                         await connection_manager.send_personal_message(
-                            {"type": "ws:error", "payload": {"message": f"Type de débat non pris en charge: {message_type}"}},
+                            {"type": "ws:error", "payload": {"message": f"Type de débat non pris en charge: {message_type}" }},
                             session_id
                         )
 
@@ -168,7 +163,7 @@ async def websocket_endpoint(
                     )
                     await chat_service.session_manager.add_message_to_session(session_id, user_msg)
 
-                    # 3) Appeler le service avec un payload PLAT attendu (snake_case), sans create_task ici
+                    # 3) Appeler le service (payload plat)
                     normalized = {
                         "agent_id": (target_agent or "").strip().lower(),
                         "use_rag": bool(use_rag_flag),

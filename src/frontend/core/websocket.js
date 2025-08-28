@@ -1,7 +1,8 @@
 /**
  * @module core/websocket
- * @description WebSocketClient V20.1 - STREAMING READY + Bearer au handshake (subprotocols sans espace).
- * Envoie l'ID token via Sec-WebSocket-Protocol: ["jwt", "<JWT>"].
+ * @description WebSocketClient V20.3 - STREAMING READY + JWT subprotocol + bridge 'ui:chat:send' -> 'chat.message'
+ * - Fallback agent_id depuis State/Storage (défaut 'anima') pour éviter l'envoi vide au premier message.
+ * - Alias DEV: window.wsClient et window.bus pour tests console (dev only).
  */
 import { EVENTS } from '../shared/constants.js';
 
@@ -16,11 +17,28 @@ export class WebSocketClient {
         this.reconnectInterval = 5000;
 
         this.registerEvents();
-        console.log("✅ WebSocketClient V20.1 (Streaming + JWT subprotocol) Initialisé.");
+        console.log("✅ WebSocketClient V20.3 (Streaming + JWT subprotocol + UI bridge + DEV aliases) Initialisé.");
     }
 
     registerEvents() {
         this.eventBus.on(EVENTS.WS_SEND, this.send.bind(this));
+
+        // Bridge UI -> WS chat
+        this.eventBus.on('ui:chat:send', (payload = {}) => {
+            try {
+                const text = payload.text ?? payload.content ?? payload.message;
+                if (typeof text !== 'string' || !text.trim()) {
+                    console.warn('[WebSocket] ui:chat:send sans texte, ignoré.', payload);
+                    return;
+                }
+                const rawAgent = (payload.agent_id ?? payload.agentId ?? '').trim();
+                const agent_id = rawAgent || this._getActiveAgentIdFromState();
+                const use_rag = Boolean(payload.use_rag ?? payload.useRag);
+                this.send({ type: 'chat.message', payload: { text, agent_id, use_rag } });
+            } catch (e) {
+                console.error('[WebSocket] Bridge ui:chat:send -> chat.message a échoué.', e);
+            }
+        });
     }
 
     async connect() {
@@ -32,12 +50,11 @@ export class WebSocketClient {
         const connectUrl = `${this.url}/${sessionId}`;
         const token = await this._getIdToken();
 
-        // ⚠️ IMPORTANT: pas d’espace dans les sous-protocoles → ["jwt", "<JWT>"]
         const protocols = [];
         if (token) {
-            protocols.push("jwt", token);
+            protocols.push('jwt', token);
         } else {
-            console.error("[WebSocket] ID token manquant — ouvre /dev-auth.html puis réessaie.");
+            console.error('[WebSocket] ID token manquant — ouvre /dev-auth.html puis réessaie.');
         }
 
         console.log(`%c[WebSocket] Connexion à : ${connectUrl}`, 'font-weight: bold;');
@@ -50,9 +67,18 @@ export class WebSocketClient {
     }
 
     onOpen() {
-        console.log("%c[WebSocket] Connexion établie.", "color: #22c55e;");
+        console.log('%c[WebSocket] Connexion établie.', 'color: #22c55e;');
         this.eventBus.emit(EVENTS.WS_CONNECTED);
         this.reconnectAttempts = 0;
+
+        // Aliases DEV pour tests console (Vite: import.meta.env.DEV)
+        try {
+            if (typeof window !== 'undefined' && (import.meta?.env?.DEV ?? false)) {
+                window.wsClient = this;
+                window.bus = this.eventBus;
+                console.log('[WebSocket] Aliases DEV exposés: window.wsClient, window.bus');
+            }
+        } catch (_) {}
     }
 
     onMessage(event) {
@@ -72,13 +98,19 @@ export class WebSocketClient {
                 console.warn(`[WebSocket] Type non géré/mal préfixé: '${receivedType}'`);
             }
         } catch (e) {
-            console.error("[WebSocket] Erreur de parsing JSON.", e);
+            console.error('[WebSocket] Erreur de parsing JSON.', e);
         }
     }
 
     send(messageObject) {
-        if (!messageObject || typeof messageObject !== 'object' || !messageObject.type) { console.error('%c[WebSocket] Message invalide.', 'color: red; font-weight: bold;', messageObject); return; }
-        if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) { console.error('[WebSocket] Connexion non ouverte.', messageObject); return; }
+        if (!messageObject || typeof messageObject !== 'object' || !messageObject.type) {
+            console.error('%c[WebSocket] Message invalide.', 'color: red; font-weight: bold;', messageObject);
+            return;
+        }
+        if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
+            console.error('[WebSocket] Connexion non ouverte.', messageObject);
+            return;
+        }
         this.websocket.send(JSON.stringify(messageObject));
     }
 
@@ -89,28 +121,39 @@ export class WebSocketClient {
             console.log(`Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`);
             setTimeout(() => this.connect(), this.reconnectInterval);
         } else {
-            console.error("[WebSocket] Reconnexion impossible après plusieurs tentatives.");
+            console.error('[WebSocket] Reconnexion impossible après plusieurs tentatives.');
         }
     }
 
-    onError(error) {
-        console.error("[WebSocket] Erreur détectée.", error);
-    }
+    onError(error) { console.error('[WebSocket] Erreur détectée.', error); }
 
     _generateUUID() {
-        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
+    }
+
+    _getActiveAgentIdFromState() {
+        try {
+            const keys = ['chat.activeAgent', 'ui.activeAgent', 'agent.selected', 'activeAgent', 'chat.selectedAgent'];
+            for (const k of keys) {
+                const v = this.state?.get?.(k);
+                if (typeof v === 'string' && v.trim()) return v.trim().toLowerCase();
+            }
+            try {
+                const lsKeys = ['emergence.activeAgent', 'chat.activeAgent'];
+                for (const k of lsKeys) {
+                    const v = localStorage.getItem(k);
+                    if (v && v.trim()) return v.trim().toLowerCase();
+                }
+            } catch (_) {}
+        } catch (_) {}
+        return 'anima'; // défaut sûr
     }
 
     async _getIdToken() {
-        try {
-            if (window.gis?.getIdToken) {
-                const t = await window.gis.getIdToken();
-                if (t) return t;
-            }
-        } catch (_) {}
-        try {
-            return sessionStorage.getItem('emergence.id_token') || localStorage.getItem('emergence.id_token');
-        } catch (_) {}
+        try { if (window.gis?.getIdToken) { const t = await window.gis.getIdToken(); if (t) return t; } } catch (_) {}
+        try { return sessionStorage.getItem('emergence.id_token') || localStorage.getItem('emergence.id_token'); } catch (_) {}
         return null;
     }
 }
