@@ -380,13 +380,8 @@ class ChatService:
                 except TypeError:
                     # rétro-compat si signature ancienne
                     await analyzer.analyze_session_for_concepts(session_id)
-                try:
-                    await connection_manager.send_personal_message(
-                        {"type": "ws:analysis_status", "payload": {"status": "completed", "agent_id": agent_id}},
-                        session_id
-                    )
-                except Exception:
-                    pass
+                # (patch) Analyzer will emit its own ws:analysis_status events; skip duplicated "completed".
+
             else:
                 try:
                     await connection_manager.send_personal_message(
@@ -469,7 +464,7 @@ class ChatService:
 
                     try:
                         await connection_manager.send_personal_message(
-                            {"type": "ws:analysis_status", "payload": {"status": "started", "agent_id": agent_id}},
+                            {"type": "ws:analysis_status", "payload": {"status": "started", "agent_id": agent_id, "session_id": session_id}},
                             session_id
                         )
                         asyncio.create_task(self._run_analysis_and_notify(session_id, agent_id, connection_manager))
@@ -568,6 +563,56 @@ class ChatService:
                          "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}},
                         session_id
                     )
+            # (patch) Provider fallback on empty response / rate-limit
+            try:
+                if not full_response_text and cost_info_container.get("__error__") in ("rate_limit","provider_error"):
+                    # default retry-after info for UI
+                    retry_after = cost_info_container.get("__retry_after__")
+                    # Fallback only for Gemini -> Claude Haiku on 'neo'
+                    if agent_id == "neo":
+                        try:
+                            await connection_manager.send_personal_message(
+                                {"type": "ws:debug_context",
+                                 "payload": {"phase": "model_fallback", "from": model_used, "to": "claude-3-haiku-20240307"}},
+                                session_id
+                            )
+                        except Exception:
+                            pass
+                        # Reuse same history/system prompt
+                        fallback_cost: Dict[str, Any] = {}
+                        alt_stream = self._get_llm_response_stream("anthropic", "claude-3-haiku-20240307", system_prompt, normalized_history, fallback_cost)
+                        async for chunk in alt_stream:
+                            if chunk:
+                                full_response_text += chunk
+                                await connection_manager.send_personal_message(
+                                    {"type": "ws:chat_stream_chunk",
+                                     "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}},
+                                    session_id
+                                )
+                        # Merge cost info
+                        try:
+                            for k,v in fallback_cost.items():
+                                if isinstance(v, (int,float)) and isinstance(cost_info_container.get(k), (int,float)):
+                                    cost_info_container[k] += v
+                                else:
+                                    cost_info_container[k] = v
+                        except Exception:
+                            pass
+                    # If still nothing, notify error and abort gracefully
+                    if not full_response_text:
+                        try:
+                            await connection_manager.send_personal_message(
+                                {"type": "ws:error",
+                                 "payload": {"message": "rate_limited", "agent_id": agent_id, "retry_after": retry_after}},
+                                session_id
+                            )
+                        except Exception:
+                            pass
+                        return
+            except Exception:
+                pass
+
+
 
             final_agent_message = AgentMessage(
                 id=temp_message_id, session_id=session_id, role=Role.ASSISTANT, agent=agent_id,
@@ -587,7 +632,7 @@ class ChatService:
 
             try:
                 await connection_manager.send_personal_message(
-                    {"type": "ws:analysis_status", "payload": {"status": "started", "agent_id": agent_id}},
+                    {"type": "ws:analysis_status", "payload": {"status": "started", "agent_id": agent_id, "session_id": session_id}},
                     session_id
                 )
                 asyncio.create_task(self._run_analysis_and_notify(session_id, agent_id, connection_manager))

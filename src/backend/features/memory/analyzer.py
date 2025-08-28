@@ -1,20 +1,17 @@
 # src/backend/features/memory/analyzer.py
-# V3.0 - Implémentation de la logique d'analyse sémantique réelle.
+# V3.1 - Idempotence + 429-aware fallback (neo -> nexus) + clean WS events
 import logging
 import json
 from typing import Dict, Any, List, Optional, TYPE_CHECKING
 
-# --- GESTION DE LA DÉPENDANCE CIRCULAIRE ---
 if TYPE_CHECKING:
     from backend.features.chat.service import ChatService
-    from backend.core.database.manager import DatabaseManager  # NOUVEAU
+    from backend.core.database.manager import DatabaseManager
 
-# NOUVEAU: Import des requêtes pour la mise à jour
 from backend.core.database import queries
 
 logger = logging.getLogger(__name__)
 
-# NOUVEAU: Prompt et Schéma pour l'analyse structurée
 ANALYSIS_PROMPT_TEMPLATE = """
 Analyse la conversation suivante et extrais les informations clés.
 La conversation est un dialogue entre un utilisateur ("user") et un ou plusieurs assistants IA ("assistant").
@@ -33,115 +30,106 @@ En te basant sur cette conversation, fournis les éléments suivants :
 ANALYSIS_JSON_SCHEMA = {
     "type": "object",
     "properties": {
-        "summary": {
-            "type": "string",
-            "description": "Résumé concis de la conversation (2-3 phrases)."
-        },
-        "concepts": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Liste de 3 à 5 concepts ou thèmes clés."
-        },
-        "entities": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Liste des entités nommées (personnes, lieux, œuvres)."
-        }
+        "summary": {"type": "string", "description": "Résumé concis de la conversation (2-3 phrases)."},
+        "concepts": {"type": "array", "items": {"type": "string"}, "description": "3 à 5 concepts clés."},
+        "entities": {"type": "array", "items": {"type": "string"}, "description": "Entités nommées."},
     },
-    "required": ["summary", "concepts", "entities"]
+    "required": ["summary", "concepts", "entities"],
 }
 
-
 class MemoryAnalyzer:
-    """
-    Analyse les conversations pour en extraire les concepts clés et les entités.
-    V3.0 : Implémente l'appel réel au LLM pour l'analyse sémantique.
-    """
+    """Analyse sémantique de session: summary + concepts + entities (STM)"""
+
     def __init__(self, db_manager: 'DatabaseManager', chat_service: Optional['ChatService'] = None):
-        """
-        MODIFIÉ V3.0: Ajout du db_manager pour sauvegarder les résultats de l'analyse.
-        """
-        self.db_manager = db_manager  # NOUVEAU
+        self.db_manager = db_manager
         self.chat_service = chat_service
         self.is_ready = self.chat_service is not None
-        logger.info(f"MemoryAnalyzer V3.0 initialisé. Prêt : {self.is_ready}")
+        logger.info(f"MemoryAnalyzer V3.1 initialisé. Prêt: {self.is_ready}")
 
     def set_chat_service(self, chat_service: 'ChatService'):
-        """Méthode pour injecter le ChatService et casser la dépendance circulaire."""
         self.chat_service = chat_service
         self.is_ready = True
         logger.info("ChatService injecté dans MemoryAnalyzer. L'analyseur est prêt.")
 
     def _ensure_ready(self):
-        """Vérifie que le service dépendant est bien injecté avant utilisation."""
         if not self.chat_service:
             self.is_ready = False
             logger.error("Dépendance 'chat_service' non injectée. L'analyse est impossible.")
             raise ReferenceError("MemoryAnalyzer n'est pas prêt : chat_service manquant.")
         self.is_ready = True
 
+    async def _notify(self, session_id: str, payload: Dict[str, Any]) -> None:
+        conn = getattr(getattr(self.chat_service, "session_manager", None), "connection_manager", None)
+        if conn:
+            try:
+                await conn.send_personal_message({"type": "ws:analysis_status", "payload": payload}, session_id)
+            except Exception:
+                # client possiblement déconnecté : on n'insiste pas
+                pass
+
+    def _already_analyzed(self, session_id: str) -> bool:
+        try:
+            sess = self.chat_service.session_manager.get_session(session_id)
+            meta = getattr(sess, "metadata", None) or {}
+            s = meta.get("summary")
+            return isinstance(s, str) and bool(s.strip())
+        except Exception:
+            return False
+
     async def analyze_session_for_concepts(self, session_id: str, history: List[Dict[str, Any]]):
-        """
-        MODIFIÉ V3.0: Tâche principale d'analyse réelle de la session.
-        """
         self._ensure_ready()
         logger.info(f"Lancement de l'analyse sémantique pour la session {session_id}")
 
+        # Idempotence: ne pas retraiter si déjà résumé
+        if self._already_analyzed(session_id):
+            logger.info(f"Session {session_id} déjà analysée — skip.")
+            await self._notify(session_id, {"session_id": session_id, "status": "skipped", "reason": "already_analyzed"})
+            return
+
+        # Concatène l'historique
+        conversation_text = "\n".join(f"{m.get('role')}: {m.get('content') or m.get('message','')}" for m in (history or []))
+        if not conversation_text.strip():
+            logger.warning(f"Historique vide pour {session_id}. Analyse annulée.")
+            await self._notify(session_id, {"session_id": session_id, "status": "skipped", "reason": "no_history"})
+            return
+
+        prompt = ANALYSIS_PROMPT_TEMPLATE.format(conversation_text=conversation_text)
+
+        # 1ère tentative: agent 'neo' (Gemini)
+        analysis_result: Dict[str, Any] = {}
+        primary_error: Optional[Exception] = None
         try:
-            # 1. Préparer le contenu pour l'analyse
-            conversation_text = "\n".join(
-                f"{msg.get('role')}: {msg.get('content') or msg.get('message', '')}" for msg in history
-            )
-
-            if not conversation_text.strip():
-                logger.warning(f"Historique de la session {session_id} est vide. Analyse annulée.")
-                return
-
-            prompt = ANALYSIS_PROMPT_TEMPLATE.format(conversation_text=conversation_text)
-
-            # 2. Appeler le LLM pour une réponse structurée
-            analysis_result = await self.chat_service.get_structured_llm_response(
-                agent_id='neo',  # 'neo' (Gemini Flash) pour ce type de tâche
-                prompt=prompt,
-                json_schema=ANALYSIS_JSON_SCHEMA
-            )
-
-            if not analysis_result:
-                raise ValueError("La réponse du LLM pour l'analyse était vide ou invalide.")
-
-            logger.info(f"Analyse reçue pour la session {session_id}: {analysis_result}")
-
-            # 3. Sauvegarder les résultats dans la base de données
-            await queries.update_session_analysis_data(
-                db=self.db_manager,
-                session_id=session_id,
-                summary=analysis_result.get("summary"),
-                concepts=analysis_result.get("concepts", []),
-                entities=analysis_result.get("entities", [])
-            )
-
-            # 4. Notifier le client du succès via SessionManager → ConnectionManager
-            conn = getattr(getattr(self.chat_service, "session_manager", None), "connection_manager", None)
-            if conn:
-                await conn.send_personal_message(
-                    {"type": "ws:analysis_status", "payload": {"session_id": session_id, "status": "completed"}},
-                    session_id
-                )
-            else:
-                logger.warning("ConnectionManager indisponible, skip notification ws:analysis_status (completed).")
-
-            logger.info(f"Analyse sémantique et sauvegarde terminées pour la session {session_id}.")
-
+            analysis_result = await self.chat_service.get_structured_llm_response(agent_id='neo', prompt=prompt, json_schema=ANALYSIS_JSON_SCHEMA)
         except Exception as e:
-            logger.error(f"Erreur durant l'analyse de la session {session_id}: {e}", exc_info=True)
+            primary_error = e
+            logger.warning(f"Analyse (neo) a échoué — tentative fallback nexus. err={e}", exc_info=True)
+
+        # Fallback 'nexus' (Claude) si vide/erreur
+        if not analysis_result:
             try:
-                conn = getattr(getattr(self.chat_service, "session_manager", None), "connection_manager", None)
-                if conn:
-                    await conn.send_personal_message(
-                        {"type": "ws:analysis_status", "payload": {"session_id": session_id, "status": "failed", "error": str(e)}},
-                        session_id
-                    )
-                else:
-                    logger.warning("ConnectionManager indisponible, skip notification ws:analysis_status (failed).")
-            except Exception as send_error:
-                logger.error(f"Impossible de notifier le client de l'échec de l'analyse pour {session_id}: {send_error}")
+                analysis_result = await self.chat_service.get_structured_llm_response(agent_id='nexus', prompt=prompt, json_schema=ANALYSIS_JSON_SCHEMA)
+            except Exception as e:
+                # échec final -> on remonte
+                logger.error(f"Analyse (fallback nexus) a échoué: {e}", exc_info=True)
+                # Essaye d'extraire retry_after secondes si dispo (Google API)
+                retry_after = None
+                try:
+                    rd = getattr(primary_error or e, 'retry_delay', None)
+                    retry_after = getattr(rd, 'seconds', None)
+                except Exception:
+                    pass
+                await self._notify(session_id, {"session_id": session_id, "status": "failed", "error": str(e), "retry_after": retry_after})
+                raise
+
+        # Sauvegarde DB
+        await queries.update_session_analysis_data(
+            db=self.db_manager,
+            session_id=session_id,
+            summary=analysis_result.get("summary"),
+            concepts=analysis_result.get("concepts", []) or [],
+            entities=analysis_result.get("entities", []) or [],
+        )
+
+        # Succès WS
+        await self._notify(session_id, {"session_id": session_id, "status": "completed"})
+        logger.info(f"Analyse sémantique terminée et sauvegardée pour la session {session_id}.")
