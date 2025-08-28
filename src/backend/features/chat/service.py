@@ -1,9 +1,8 @@
 # src/backend/features/chat/service.py
-# V30.0 — MEMORY M1: Mémoire orthogonale au RAG + ws:memory_banner
-# - Injection STM/LTM en pré-contexte même si use_rag=False (RAG réservé aux documents).
-# - Ajout event WS 'ws:memory_banner' (has_stm, ltm_items, injected_into_prompt).
-# - Court-circuit "mot-code" conservé, avec banner envoyé.
-# - Provider-normalize, stream & coûts : inchangés.
+# V30.1 — MEMORY M1: policy=agent_local (stateful), analyse avant close, mute chroma telemetry
+# - Injection STM/LTM en pré-contexte inchangée.
+# - ws:analysis_status envoyé AVANT ws:chat_stream_end (started), puis completed en tâche de fond si possible.
+# - chromadb.telemetry -> CRITICAL.
 
 import os, re, asyncio, logging, glob, json
 from uuid import uuid4
@@ -27,6 +26,13 @@ from backend.core import config
 from backend.features.memory.gardener import MemoryGardener
 
 logger = logging.getLogger(__name__)
+
+# --- Mute chroma telemetry (P1.5) -------------------------------------------
+try:
+    logging.getLogger("chromadb.telemetry").setLevel(logging.CRITICAL)
+    logging.getLogger("chromadb.telemetry.product.posthog").setLevel(logging.CRITICAL)
+except Exception:
+    pass
 
 MODEL_PRICING = {
     "gpt-4o-mini": {"input": 0.15 / 1_000_000, "output": 0.60 / 1_000_000},
@@ -60,9 +66,10 @@ class ChatService:
         self.vector_service = vector_service
         self.settings = settings
 
-        self.off_history_policy = os.getenv("EMERGENCE_RAG_OFF_POLICY", "stateless").strip().lower()
+        # Policy: défaut = agent_local (stateful) au lieu de stateless
+        self.off_history_policy = os.getenv("EMERGENCE_RAG_OFF_POLICY", "agent_local").strip().lower()
         if self.off_history_policy not in ("stateless", "agent_local"):
-            self.off_history_policy = "stateless"
+            self.off_history_policy = "agent_local"
         logger.info(f"ChatService OFF policy: {self.off_history_policy}")
 
         try:
@@ -74,7 +81,7 @@ class ChatService:
             raise
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V30.0 initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V30.1 initialisé. Prompts chargés: {len(self.prompts)}")
 
     # ---------- prompts ----------
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
@@ -153,7 +160,7 @@ class ChatService:
         return bool(self._MOT_CODE_RE.search(text or ""))
 
     def _fetch_mot_code_for_agent(self, agent_id: str, user_id: Optional[str]) -> Optional[str]:
-        knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
+        knowledge_name = os.getenv("EMERGENCE_KOWLEDGE_COLLECTION", "") or os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
         col = self.vector_service.get_or_create_collection(knowledge_name)
         clauses = [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]
         if user_id:
@@ -391,6 +398,40 @@ class ChatService:
                 return json.loads(m.group(0)) if m else {}
         return {}
 
+    # ---------- analyse & notifications ---------------------------------------
+    async def _run_analysis_and_notify(self, session_id: str, agent_id: str, connection_manager: ConnectionManager) -> None:
+        """Exécute l'analyse post-session et notifie le client (completed/error) sur la même WS."""
+        try:
+            analyzer = getattr(self.session_manager, "memory_analyzer", None)
+            if analyzer and hasattr(analyzer, "analyze_session_for_concepts"):
+                await analyzer.analyze_session_for_concepts(session_id)
+                try:
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:analysis_status", "payload": {"status": "completed", "agent_id": agent_id}},
+                        session_id
+                    )
+                except Exception:
+                    pass
+            else:
+                try:
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:analysis_status",
+                         "payload": {"status": "skipped", "reason": "analyzer_unavailable", "agent_id": agent_id}},
+                        session_id
+                    )
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.warning(f"Memory analysis error: {e}")
+            try:
+                await connection_manager.send_personal_message(
+                    {"type": "ws:analysis_status",
+                     "payload": {"status": "error", "agent_id": agent_id, "error": str(e)}},
+                    session_id
+                )
+            except Exception:
+                pass
+
     # ---------- flux chat (stream) ----------
     async def _process_agent_response_stream(self, session_id: str, agent_id: str, use_rag: bool,
                                              connection_manager: ConnectionManager):
@@ -436,6 +477,17 @@ class ChatService:
                     payload = final_agent_message.model_dump(mode="json")
                     if "message" in payload:
                         payload["content"] = payload.pop("message")
+
+                    # Analyse (started + bg) AVANT la fin de stream
+                    try:
+                        await connection_manager.send_personal_message(
+                            {"type": "ws:analysis_status", "payload": {"status": "started", "agent_id": agent_id}},
+                            session_id
+                        )
+                        asyncio.create_task(self._run_analysis_and_notify(session_id, agent_id, connection_manager))
+                    except Exception:
+                        pass
+
                     await connection_manager.send_personal_message(
                         {"type": "ws:chat_stream_end", "payload": payload}, session_id
                     )
@@ -554,11 +606,23 @@ class ChatService:
             payload = final_agent_message.model_dump(mode="json")
             if "message" in payload:
                 payload["content"] = payload.pop("message")
+
+            # --- Analyse: notifier AVANT ws:chat_stream_end puis exécuter en bg ----
+            try:
+                await connection_manager.send_personal_message(
+                    {"type": "ws:analysis_status", "payload": {"status": "started", "agent_id": agent_id}},
+                    session_id
+                )
+                asyncio.create_task(self._run_analysis_and_notify(session_id, agent_id, connection_manager))
+            except Exception:
+                pass
+
+            # Fin du stream (le client est encore connecté -> reçoit 'started')
             await connection_manager.send_personal_message(
                 {"type": "ws:chat_stream_end", "payload": payload}, session_id
             )
 
-            # Auto-tend du jardin (non bloquant)
+            # Auto-tend du jardin (non bloquante)
             if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
                 try:
                     gardener = MemoryGardener(

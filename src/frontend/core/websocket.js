@@ -1,8 +1,8 @@
 /**
  * @module core/websocket
- * @description WebSocketClient V20.3 - STREAMING READY + JWT subprotocol + bridge 'ui:chat:send' -> 'chat.message'
+ * @description WebSocketClient V20.4 - STREAMING READY + JWT subprotocol + bridge 'ui:chat:send' -> 'chat.message'
  * - Fallback agent_id depuis State/Storage (défaut 'anima') pour éviter l'envoi vide au premier message.
- * - Alias DEV: window.wsClient et window.bus pour tests console (dev only).
+ * - Aliases console exposés inconditionnellement: window.wsClient et window.bus.
  */
 import { EVENTS } from '../shared/constants.js';
 
@@ -17,7 +17,7 @@ export class WebSocketClient {
         this.reconnectInterval = 5000;
 
         this.registerEvents();
-        console.log("✅ WebSocketClient V20.3 (Streaming + JWT subprotocol + UI bridge + DEV aliases) Initialisé.");
+        console.log("✅ WebSocketClient V20.4 (Streaming + JWT subprotocol + UI bridge + console aliases) Initialisé.");
     }
 
     registerEvents() {
@@ -71,12 +71,12 @@ export class WebSocketClient {
         this.eventBus.emit(EVENTS.WS_CONNECTED);
         this.reconnectAttempts = 0;
 
-        // Aliases DEV pour tests console (Vite: import.meta.env.DEV)
+        // Aliases console exposés inconditionnellement
         try {
-            if (typeof window !== 'undefined' && (import.meta?.env?.DEV ?? false)) {
+            if (typeof window !== 'undefined') {
                 window.wsClient = this;
                 window.bus = this.eventBus;
-                console.log('[WebSocket] Aliases DEV exposés: window.wsClient, window.bus');
+                console.log('[WebSocket] Aliases console exposés: window.wsClient, window.bus');
             }
         } catch (_) {}
     }
