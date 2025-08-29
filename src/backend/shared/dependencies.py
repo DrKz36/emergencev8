@@ -1,6 +1,5 @@
 # src/backend/shared/dependencies.py
-# V7.1 – Allowlist GIS + WS token handshake
-# Lit le token via: Authorization: Bearer <JWT> | Sec-WebSocket-... item "qui ressemble à un JWT" | Cookie id_token | ?access_token
+# V7.2 – Allowlist GIS + WS token handshake + compat alias (from_websocket)
 from __future__ import annotations
 
 import os
@@ -50,7 +49,6 @@ def _looks_like_jwt(s: str) -> bool:
 # -----------------------------
 # Allowlist (emails / domaine)
 # -----------------------------
-
 def _get_cfg():
     mode = (os.getenv("GOOGLE_ALLOWLIST_MODE") or "").strip().lower()  # "email" | "domain" | ""
     allowed_emails = [e.strip().lower() for e in (os.getenv("GOOGLE_ALLOWED_EMAILS") or "").split(",") if e.strip()]
@@ -68,7 +66,6 @@ def _enforce_allowlist_claims(claims: dict):
     aud = (claims.get("aud") or "").strip()
     email = (claims.get("email") or "").lower()
     hd = (claims.get("hd") or "").lower()
-    sub = claims.get("sub")
 
     if client_id:
         if aud != client_id or "accounts.google.com" not in iss:
@@ -92,7 +89,6 @@ def _enforce_allowlist_claims(claims: dict):
 # -----------------------------
 # REST
 # -----------------------------
-
 async def enforce_allowlist(request: Request):
     mode, _emails, _hd, client_id, _dev = _get_cfg()
     if not mode and not client_id:
@@ -117,7 +113,6 @@ async def get_user_id(request: Request) -> str:
 # -----------------------------
 # WebSocket (ID token depuis sous-protocoles / cookies)
 # -----------------------------
-
 def _get_ws_token_from_headers(ws: WebSocket) -> Optional[str]:
     proto = ws.headers.get("sec-websocket-protocol") or ""
     # ex: "jwt,<token>" ou "jwt <token>"
@@ -155,10 +150,14 @@ async def get_user_id_for_ws(ws: WebSocket, user_id: Optional[str] = Query(defau
         raise HTTPException(status_code=401, detail="WS: token sans 'sub'.")
     return str(sub)
 
+# --- Compat pour les modules qui importent l'ancien nom ---
+# Certains modules historiques attendent 'get_user_id_from_websocket'
+async def get_user_id_from_websocket(ws: WebSocket, user_id: Optional[str] = Query(default=None)) -> str:
+    return await get_user_id_for_ws(ws, user_id)
+
 # -----------------------------
 # DI getters (Dashboard & Documents)
 # -----------------------------
-from fastapi import Request
 from backend.containers import ServiceContainer  # type: ignore
 from backend.features.dashboard.service import DashboardService  # type: ignore
 from backend.features.documents.service import DocumentService  # type: ignore
