@@ -1,5 +1,5 @@
 # src/backend/shared/dependencies.py
-# V7.2 – Allowlist GIS + WS token handshake + compat alias (from_websocket)
+# V7.3 – Allowlist GIS + WS token handshake + compat alias (from_websocket) + DI getters sans import container
 from __future__ import annotations
 
 import os
@@ -7,7 +7,7 @@ import json
 import base64
 import logging
 import re
-from typing import Optional, List
+from typing import Optional
 
 from fastapi import Request, HTTPException, Query
 from fastapi import WebSocket
@@ -151,21 +151,23 @@ async def get_user_id_for_ws(ws: WebSocket, user_id: Optional[str] = Query(defau
     return str(sub)
 
 # --- Compat pour les modules qui importent l'ancien nom ---
-# Certains modules historiques attendent 'get_user_id_from_websocket'
 async def get_user_id_from_websocket(ws: WebSocket, user_id: Optional[str] = Query(default=None)) -> str:
     return await get_user_id_for_ws(ws, user_id)
 
 # -----------------------------
-# DI getters (Dashboard & Documents)
+# DI getters (Dashboard & Documents) — sans import containers
 # -----------------------------
-from backend.containers import ServiceContainer  # type: ignore
-from backend.features.dashboard.service import DashboardService  # type: ignore
-from backend.features.documents.service import DocumentService  # type: ignore
+# NB: pas d'import de ServiceContainer ici (évite les cycles).
+# On récupère le conteneur déjà instancié via request.app.state.service_container
 
-async def get_dashboard_service(request: Request) -> DashboardService:
-    container: ServiceContainer = request.app.state.service_container  # type: ignore
+async def get_dashboard_service(request: Request):
+    container = getattr(request.app.state, "service_container", None)  # type: ignore
+    if container is None:
+        raise HTTPException(status_code=503, detail="Service container indisponible.")
     return container.dashboard_service()
 
-async def get_document_service(request: Request) -> DocumentService:
-    container: ServiceContainer = request.app.state.service_container  # type: ignore
+async def get_document_service(request: Request):
+    container = getattr(request.app.state, "service_container", None)  # type: ignore
+    if container is None:
+        raise HTTPException(status_code=503, detail="Service container indisponible.")
     return container.document_service()

@@ -1,22 +1,25 @@
 # src/backend/core/websocket.py
-# V11.0 – Router WS complet (echo sous-protocole, auth WS via GIS, tolérance SessionManager)
+# V11.1 – Router WS complet (echo sous-protocole, auth WS via GIS, tolérance SessionManager)
 import logging
 import asyncio
-from typing import Dict, Any, List, Optional, Callable
+from typing import Dict, Any, List, Optional, Callable, TYPE_CHECKING
 
 from fastapi import APIRouter, WebSocket
 from starlette.websockets import WebSocketDisconnect
 
 from .session_manager import SessionManager
 from backend.shared import dependencies  # auth WS (allowlist + sub=uid)
-from backend.containers import ServiceContainer  # DI container
+
+if TYPE_CHECKING:
+    # uniquement pour l'édition/typage — pas exécuté → pas de cycle
+    from backend.containers import ServiceContainer  # pragma: no cover
 
 logger = logging.getLogger(__name__)
 
 class ConnectionManager:
     """
     Gère les connexions WebSocket actives.
-    V10.3+:
+    V11.1:
       - Echo du sous-protocole ('jwt' ou 'bearer') si demandé par le client.
       - Gestion robuste des déconnexions (zombies évités).
     """
@@ -66,7 +69,6 @@ class ConnectionManager:
 
         self.active_connections[session_id].append(websocket)
 
-        # Annonce session établie
         try:
             await websocket.send_json({
                 "type": "ws:session_established",
@@ -101,16 +103,14 @@ class ConnectionManager:
                 await self.disconnect(session_id, ws)
 
 def _find_handler(sm: SessionManager) -> Optional[Callable[..., Any]]:
-    """
-    Tolérance : on tente plusieurs conventions d'API côté SessionManager.
-    """
+    """Tolérance : on tente plusieurs conventions d'API côté SessionManager."""
     for name in ("on_client_message", "ingest_ws_message", "handle_client_message", "dispatch"):
         fn = getattr(sm, name, None)
         if callable(fn):
             return fn
     return None
 
-def get_websocket_router(container: ServiceContainer) -> APIRouter:
+def get_websocket_router(container) -> APIRouter:
     """
     Retourne un APIRouter montant l'endpoint WS officiel:
     - GET /ws/{session_id} (upgrade)
@@ -120,15 +120,13 @@ def get_websocket_router(container: ServiceContainer) -> APIRouter:
 
     @router.websocket("/ws/{session_id}")
     async def websocket_endpoint(websocket: WebSocket, session_id: str):
-        # 1) Auth WS (GIS ID token, allowlist, DEV fallback user_id=?)
+        # 1) Auth WS
         user_id_hint = websocket.query_params.get("user_id")
         try:
             user_id = await dependencies.get_user_id_for_ws(websocket, user_id=user_id_hint)
         except Exception as e:
-            # Refus propre (aucun accept() préalable)
             logger.warning(f"Refus WS (auth échouée) : {e}")
-            # Starlette/fastapi exige accept() avant close() parfois; mais on évite pour 401 handshake
-            return
+            return  # pas d'accept préalable → handshake refusé
 
         # 2) Managers
         session_manager: SessionManager = container.session_manager()
@@ -144,14 +142,12 @@ def get_websocket_router(container: ServiceContainer) -> APIRouter:
         try:
             while True:
                 data = await websocket.receive_json()
-                # Acheminer si un handler existe, sinon echo ack
                 if handler:
                     try:
                         res = handler(session_id, data)  # sync ?
                         if asyncio.iscoroutine(res):
                             await res
                     except TypeError:
-                        # Certaines signatures attendent (data, session_id)
                         res = handler(data, session_id)
                         if asyncio.iscoroutine(res):
                             await res

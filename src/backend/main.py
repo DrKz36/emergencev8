@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
+# --- PYTHONPATH ---
 SRC_DIR = Path(__file__).resolve().parent.parent
 REPO_ROOT = SRC_DIR.parent
 sys.path.append(str(REPO_ROOT))
@@ -51,7 +52,6 @@ async def _startup(container: ServiceContainer):
     bt = _BootTimer("BOOT")
     logger.info("Démarrage backend Émergence…")
 
-    # DB ready (fast boot option)
     fast_boot = os.getenv("EMERGENCE_FAST_BOOT") or os.getenv("EMERGENCE_SKIP_MIGRATIONS")
     try:
         db_manager = container.db_manager()
@@ -65,17 +65,17 @@ async def _startup(container: ServiceContainer):
         logger.warning(f"Initialisation DB partielle/repoussée: {e}")
     bt.mark("db_ready")
 
-    # Wire DI
+    # Wire DI (inclut maintenant debate.router)
     try:
-        import backend.features.chat.router as chat_router_module  # type: ignore
-        import backend.features.dashboard.router as dashboard_router_module  # type: ignore
-        import backend.features.documents.router as documents_router_module  # type: ignore
-        import backend.features.debate.router as debate_router_module  # <-- ajouté
+        import backend.features.chat.router as chat_router_module      # type: ignore
+        import backend.features.dashboard.router as dashboard_module   # type: ignore
+        import backend.features.documents.router as documents_module   # type: ignore
+        import backend.features.debate.router as debate_module         # type: ignore
         container.wire(modules=[
             chat_router_module,
-            dashboard_router_module,
-            documents_router_module,
-            debate_router_module,  # <-- ajouté
+            dashboard_module,
+            documents_module,
+            debate_module,   # <-- ajouté
         ])
         logger.info("DI wired (chat|dashboard|documents|debate.router).")
     except Exception as e:
@@ -84,7 +84,7 @@ async def _startup(container: ServiceContainer):
 
 def create_app() -> FastAPI:
     container = ServiceContainer()
-    app = FastAPI(title="Émergence API", version="7.0")
+    app = FastAPI(title="Émergence API", version="7.1")
     app.state.service_container = container
 
     app.add_middleware(
