@@ -2,7 +2,6 @@
  * @module core/main
  * Point d'entrée universel — PROD sans bundler : aucun import CSS ici.
  */
-
 import { App } from './core/app.js';
 import { EventBus } from './core/event-bus.js';
 import { StateManager } from './core/state-manager.js';
@@ -23,7 +22,10 @@ class EmergenceClient {
     eventBus.on(EVENTS.APP_READY, () => this.hideLoader());
 
     const app = new App(eventBus, stateManager);
-    websocket.connect();
+
+    const authed = await stateManager.ensureAuth();
+    if (authed) { websocket.connect(); }
+    else { try { eventBus.emit('auth:missing'); } catch (_) {} }
 
     console.log("✅ Client ÉMERGENCE prêt. En attente du signal APP_READY...");
   }

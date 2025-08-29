@@ -1,10 +1,7 @@
 /**
  * @module core/state-manager
- * @description Gestionnaire d'état V15.0 "Threads Aware"
- * - Ajout d'un espace 'threads' (currentId + map) pour la persistance inter-sessions.
- * - Validation d'entrée inchangée.
+ * @description Gestionnaire d'état V15.1 "Threads Aware" + ensureAuth()
  */
-
 import { AGENTS } from '../shared/constants.js';
 
 export class StateManager {
@@ -52,12 +49,10 @@ export class StateManager {
   }
 
   set(key, value) {
-    // ACTION 2.2: Validation d'entrée pour empêcher les données corrompues.
     if (value === undefined) {
       console.warn(`[StateManager] Tentative de 'set' avec une valeur 'undefined' pour la clé '${key}'. Opération bloquée.`);
       return;
     }
-
     const keys = key.split('.');
     const lastKey = keys.pop();
     let target = this.state;
@@ -123,5 +118,22 @@ export class StateManager {
       }
     }
     return output;
+  }
+
+  // NEW: gating auth (GIS) — TRUE si un token a pu être obtenu/stocké.
+  async ensureAuth() {
+    try {
+      if (window.gis?.getIdToken) {
+        const tok = await window.gis.getIdToken();
+        if (tok) {
+          try { sessionStorage.setItem('emergence.id_token', tok); } catch (_) {}
+          try { localStorage.setItem('emergence.id_token', tok); } catch (_) {}
+          this.set('auth.hasToken', true);
+          return true;
+        }
+      }
+    } catch (_) {}
+    this.set('auth.hasToken', false);
+    return false;
   }
 }

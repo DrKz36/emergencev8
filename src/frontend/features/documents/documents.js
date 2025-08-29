@@ -1,11 +1,6 @@
 /**
  * @module features/documents/documents
- * @description Logique du module Documents — V7.2
- * - Multi-fichiers (sélection + glisser/déposer)
- * - Upload séquentiel avec notifications
- * - Rafraîchissement intelligent (auto-refresh si 'processing')
- * - Toolbar: Tout sélectionner / Supprimer sélection / Tout effacer / Rafraîchir
- * - States et accessibilité soignés
+ * @description Logique du module Documents — V7.1 (events { total, items } + retick)
  */
 import { api } from '../../shared/api-client.js';
 import { EVENTS } from '../../shared/constants.js';
@@ -95,41 +90,20 @@ export default class DocumentsModule {
             this.setSelectedFiles(files);
         });
 
-        // Ouverture du picker via la drop-zone
-        const openPicker = () => this.dom.fileInput.click();
-        this.dom.dropZone.addEventListener('click', openPicker);
-        this.dom.dropZone.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') openPicker();
-        });
-
-        // Effacer la sélection locale (fichiers)
+        // Clear selection
         this.dom.clearSelectionBtn.addEventListener('click', () => this.setSelectedFiles([]));
 
-        // Actions upload
+        // Upload
         this.dom.uploadButton.addEventListener('click', () => this.uploadSelectedFiles());
 
-        // Toolbar
+        // Toolbar list
         this.dom.selectAll.addEventListener('change', (e) => this.toggleSelectAll(e.target.checked));
         this.dom.deleteSelectedBtn.addEventListener('click', () => this.deleteSelected());
         this.dom.deleteAllBtn.addEventListener('click', () => this.deleteAll());
         this.dom.refreshBtn.addEventListener('click', () => this.fetchAndRenderDocuments(true));
 
-        // Liste : délégation pour suppression unitaire + cases à cocher
+        // Délégation suppression par ligne
         this.dom.listContainer.addEventListener('click', (e) => this.handleDelete(e));
-        this.dom.listContainer.addEventListener('change', (e) => {
-            const box = e.target.closest('.doc-select');
-            if (!box) return;
-            const id = box.dataset.id;
-            if (!id) return;
-            if (box.checked) this.selectedIds.add(id);
-            else this.selectedIds.delete(id);
-            this.updateSelectionUI();
-        });
-
-        // Auto-refresh au retour d'onglet
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') this.fetchAndRenderDocuments(true);
-        });
     }
 
     /* ------------------------------- Sélection ------------------------------- */
@@ -199,32 +173,40 @@ export default class DocumentsModule {
 
         try {
             this.documents = await this.apiClient.getDocuments();
-
             if (!Array.isArray(this.documents) || this.documents.length === 0) {
                 this.dom.listContainer.innerHTML = '';
                 if (this.dom.emptyListMessage) this.dom.emptyListMessage.style.display = 'block';
                 this.updateSelectionUI();
-                // ➜ notifier les stats avec items vides
-                this.eventBus.emit('documents:list:refreshed', { total: 0, items: [] });
+                // Emission events (données complètes + total)
+                const payload = { total: 0, items: [] };
+                try { this.eventBus.emit('documents:list:refreshed', payload); } catch (_) {}
+                try { if (EVENTS && EVENTS.DOCUMENTS_LIST_REFRESHED) this.eventBus.emit(EVENTS.DOCUMENTS_LIST_REFRESHED, payload); } catch (_) {}
+                // Retick pour les consommateurs (charts/layout) après layout pass
+                setTimeout(() => { try { this.eventBus.emit('documents:list:retick', payload); } catch (_) {} }, 0);
                 this._scheduleAutoRefresh(false);
                 return;
             }
-
             if (this.dom.emptyListMessage) this.dom.emptyListMessage.style.display = 'none';
 
             this.dom.listContainer.innerHTML = this.documents.map((doc) => this.renderDocItem(doc)).join('');
             this.updateSelectionUI();
 
-            // ➜ notifier l’UI stats avec les items réels (clé 'items' ajoutée)
-            this.eventBus.emit('documents:list:refreshed', { total: this.documents.length, items: this.documents });
+            // Emission events pour stats
+            const payload = { total: this.documents.length, items: this.documents };
+            try { this.eventBus.emit('documents:list:refreshed', payload); } catch (_) {}
+            try { if (EVENTS && EVENTS.DOCUMENTS_LIST_REFRESHED) this.eventBus.emit(EVENTS.DOCUMENTS_LIST_REFRESHED, payload); } catch (_) {}
+            setTimeout(() => { try { this.eventBus.emit('documents:list:retick', payload); } catch (_) {} }, 0);
 
             // Auto-refresh si des items sont en 'processing'
-            const hasProcessing = this.documents.some(d => String((d.status || d.state || '')).toLowerCase() === 'processing');
+            const hasProcessing = this.documents.some(d => String(d.status || '').toLowerCase() === 'processing');
             this._scheduleAutoRefresh(hasProcessing);
         } catch (e) {
             this.dom.listContainer.innerHTML = '<p class="placeholder">Erreur de chargement des documents.</p>';
             this.updateSelectionUI();
-            this.eventBus.emit('documents:list:refreshed', { total: Array.isArray(this.documents) ? this.documents.length : 0, items: this.documents || [] });
+            const payload = { total: 0, items: [] };
+            try { this.eventBus.emit('documents:list:refreshed', payload); } catch (_) {}
+            try { if (EVENTS && EVENTS.DOCUMENTS_LIST_REFRESHED) this.eventBus.emit(EVENTS.DOCUMENTS_LIST_REFRESHED, payload); } catch (_) {}
+            setTimeout(() => { try { this.eventBus.emit('documents:list:retick', payload); } catch (_) {} }, 0);
             this._scheduleAutoRefresh(false);
         }
     }
@@ -239,41 +221,23 @@ export default class DocumentsModule {
         }
     }
 
-    _escapeHTML(s) {
-        return String(s ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-    }
-
-    _escapeAttr(s) {
-        return String(s ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/"/g, '&quot;')
-            .replace(/</g, '&lt;');
-    }
-
     renderDocItem(doc) {
         const id = doc.id;
-        const rawName = doc.filename || doc.original_filename || doc.name || doc.title || 'Fichier';
-        const name = this._escapeHTML(rawName);
-        const nameAttr = this._escapeAttr(rawName);
-        const uploaded = doc.uploaded_at || doc.created_at || doc.createdAt || '';
-        const date = uploaded ? formatDate(uploaded) : '';
-        const rawStatus = (doc.status ?? doc.state ?? 'ready');
-        const status = String(rawStatus).toLowerCase(); // ready | processing | error
+        const name = doc.filename || 'Fichier';
+        const date = doc.uploaded_at ? formatDate(doc.uploaded_at) : '';
+        const status = (doc.status || 'ready').toLowerCase(); // ready | processing | error
         const statusClass = status === 'processing' ? 'status-processing'
                           : status === 'error' ? 'status-error'
                           : 'status-ready';
 
         return `
-            <li class="document-item" data-id="${id}" data-name="${nameAttr}">
-                <input type="checkbox" class="doc-select" data-id="${id}" aria-label="Sélectionner ${nameAttr}">
+            <li class="document-item" data-id="${id}">
+                <input type="checkbox" class="doc-select" data-id="${id}" aria-label="Sélectionner ${name}">
                 <span class="doc-icon" aria-hidden="true">📄</span>
                 <span class="doc-name">${name}</span>
                 <span class="doc-date">${date}</span>
                 <span class="doc-status ${statusClass}">${status}</span>
-                <button class="button button-metal btn-delete" data-id="${id}" title="Supprimer ${nameAttr}" aria-label="Supprimer ${nameAttr}">✕</button>
+                <button class="button button-metal btn-delete" data-id="${id}" title="Supprimer ${name}" aria-label="Supprimer ${name}">✕</button>
             </li>`;
     }
 
@@ -315,7 +279,6 @@ export default class DocumentsModule {
         if (checked) {
             for (const d of this.documents) this.selectedIds.add(String(d.id));
         }
-        // Refléter dans l’UI
         this.container.querySelectorAll('.doc-select').forEach(input => {
             input.checked = checked;
         });

@@ -1,5 +1,5 @@
 # src/backend/features/chat/router.py
-# V22.4 - WS CHAT: fix appel send_personal_message (virgule), compat aliases, écriture user msg + dispatch service.
+# V22.5 - WS CHAT: accept-first + message 'ws:auth_required' puis close 4401 si token absent/invalid
 import logging
 import asyncio
 from uuid import uuid4
@@ -8,7 +8,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from dependency_injector.wiring import inject, Provide
 
 from backend.shared.models import ChatMessage, Role
-from backend.shared.dependencies import get_user_id_from_websocket
+from backend.shared import dependencies as deps
 from backend.core.websocket import ConnectionManager
 from backend.containers import ServiceContainer
 
@@ -37,13 +37,37 @@ def _norm_list(payload, snake_key, camel_key):
 async def websocket_endpoint(
     websocket: WebSocket,
     session_id: str,
-    user_id: str = Depends(get_user_id_from_websocket),
     connection_manager: ConnectionManager = Depends(Provide[ServiceContainer.connection_manager]),
     chat_service: ChatService = Depends(Provide[ServiceContainer.chat_service]),
     debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service])
 ):
     # Connexion WS + création/chargement session
-    await connection_manager.connect(websocket, session_id, user_id)
+    # Accept-first auth check (gracieux): tente d'extraire le JWT depuis headers/subprotocol/cookie
+    _uid = None
+    try:
+        tok = deps._extract_ws_bearer_token(websocket)
+        if tok:
+            claims = deps._read_bearer_claims_from_token(tok)
+            deps._enforce_allowlist_claims(claims)
+            _uid = str(claims.get("sub") or "")
+    except Exception as e:
+        logger.info(f"WS auth tentative échouée: {e}")
+
+    await connection_manager.connect(websocket, session_id, _uid or f"guest:{session_id}")
+    if not _uid:
+        # Informe le client puis ferme proprement avec un code explicite (4401 = Unauthorized)
+        try:
+            await connection_manager.send_personal_message(
+                {"type": "ws:auth_required", "payload": {"message": "Authentication required", "reason": "missing_or_invalid_token"}},
+                session_id
+            )
+        except Exception:
+            pass
+        try:
+            await websocket.close(code=4401)
+        finally:
+            await connection_manager.disconnect(session_id, websocket)
+        return
 
     try:
         while True:
