@@ -1,5 +1,5 @@
 ﻿# src/backend/features/chat/service.py
-# V31.0 “Citadelle-slim” — façade propre + délégation (providers/mémoire/analyse/pricing externalisés)
+# V31.1 “Citadelle-slim+fallbacks” — façade propre + délégation + correctifs fallback (structured + debate)
 
 import os, re, asyncio, logging, glob, json
 from uuid import uuid4
@@ -25,7 +25,7 @@ from backend.shared.config import Settings
 from backend.core import config
 from backend.features.memory.gardener import MemoryGardener
 
-# ⬇️ Nouveaux modules (extraits depuis l'ancien service.py)
+# ⬇️ Modules délégués
 from .pricing import MODEL_PRICING
 from .llm_stream import LLMStreamer
 from .memory_ctx import MemoryContextBuilder
@@ -79,7 +79,7 @@ class ChatService:
 
         # Prompts
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V31.0 initialisé. Prompts: {len(self.prompts)}")
+        logger.info(f"ChatService V31.1 initialisé. Prompts: {len(self.prompts)}")
 
         # In-flight dedupe (anti rafales WS client)
         self._inflight: Dict[str, Dict[str, Any]] = {}
@@ -573,6 +573,17 @@ class ChatService:
             content = (resp.choices[0].message.content or "").strip()
             return json.loads(content) if content else {}
 
+        # ✅ version forcée OpenAI (pour fallback depuis Google)
+        async def _openai_call_forced() -> Dict[str, Any]:
+            resp = await self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                temperature=0,
+                response_format={"type": "json_object"},
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
+            )
+            content = (resp.choices[0].message.content or "").strip()
+            return json.loads(content) if content else {}
+
         async def _google_call() -> Dict[str, Any]:
             model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
             schema_hint = json.dumps(json_schema, ensure_ascii=False)
@@ -607,14 +618,15 @@ class ChatService:
                     return await self.streamer.with_rate_limit_retries("google", _google_call)
                 except Exception as e:
                     logger.error(f"[structured] Google error, fallback OpenAI: {e}")
-                    return await self.streamer.with_rate_limit_retries("openai", _openai_call)
+                    # ✅ éviter 404 "model not found" en gardant le nom Google chez OpenAI
+                    return await self.streamer.with_rate_limit_retries("openai", _openai_call_forced)
             else:
                 raise ValueError(f"Fournisseur LLM non supporté: {provider}")
         except Exception as e:
             logger.error(f"[structured] All providers failed: {e}", exc_info=True)
             return {}
 
-    # ---------- Débat / synthèse (facultatif, inchangé) ----------
+    # ---------- Débat / synthèse ----------
     async def get_llm_response_for_debate(
         self,
         agent_id: str,
@@ -626,7 +638,7 @@ class ChatService:
         max_tokens: int = 1500,
         **kwargs,
     ) -> Tuple[str, Dict[str, Any]]:
-        # (implémentation existante conservée ; ce chemin n’utilise pas le streaming)
+        # Prépare prompt si manquant
         if prompt is None or (isinstance(prompt, str) and not prompt.strip()):
             for key in ("text", "content", "message", "prompt_text", "input", "summary", "synthesis", "instruction", "instructions"):
                 val = kwargs.get(key)
@@ -649,16 +661,17 @@ class ChatService:
         provider, model, system_prompt = self._get_agent_config(agent_id)
         base_cost: Dict[str, Any] = {"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0}
 
-        async def _openai_call(p: str) -> Tuple[str, Dict[str, Any]]:
+        async def _openai_call(p: str, forced_model: Optional[str] = None) -> Tuple[str, Dict[str, Any]]:
+            mdl = forced_model or model
             resp = await self.openai_client.chat.completions.create(
-                model=model,
+                model=mdl,
                 temperature=temperature,
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": p}],
             )
             content = (resp.choices[0].message.content or "").strip()
             usage = getattr(resp, "usage", None)
             if usage:
-                pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
+                pricing = MODEL_PRICING.get(mdl, {"input": 0, "output": 0})
                 in_tok = getattr(usage, "prompt_tokens", 0)
                 out_tok = getattr(usage, "completion_tokens", 0)
                 cost = (in_tok * pricing["input"]) + (out_tok * pricing["output"])
@@ -668,26 +681,39 @@ class ChatService:
         try:
             if provider == "openai":
                 return await _openai_call(prompt)
+
             elif provider == "google":
-                model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
-                parts = []
-                if use_rag and rag_context:
-                    parts.append({"role": "user", "parts": [f"[RAG_CONTEXT]\n{rag_context}"]})
-                parts.append({"role": "user", "parts": [prompt]})
-                resp = await model_instance.generate_content_async(parts, generation_config={"temperature": temperature})
-                text = getattr(resp, "text", "") or ""
-                usage = getattr(resp, "usage_metadata", None)
-                if usage:
-                    pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
-                    cost = (getattr(usage, "prompt_token_count", 0) * pricing["input"]) + (
-                        getattr(usage, "candidates_token_count", 0) * pricing["output"]
+                # ✅ retry anti-429 + fallback OpenAI forcé si erreur provider/quota
+                try:
+                    model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
+                    parts = []
+                    if use_rag and rag_context:
+                        parts.append({"role": "user", "parts": [f"[RAG_CONTEXT]\n{rag_context}"]})
+                    parts.append({"role": "user", "parts": [prompt]})
+
+                    resp = await self.streamer.with_rate_limit_retries(
+                        "google",
+                        lambda: model_instance.generate_content_async(parts, generation_config={"temperature": temperature}),
                     )
-                    return text, {
-                        "input_tokens": getattr(usage, "prompt_token_count", 0),
-                        "output_tokens": getattr(usage, "candidates_token_count", 0),
-                        "total_cost": cost,
-                    }
-                return text, dict(base_cost)
+                    text = getattr(resp, "text", "") or ""
+                    usage = getattr(resp, "usage_metadata", None)
+                    if usage:
+                        pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
+                        cost = (getattr(usage, "prompt_token_count", 0) * pricing["input"]) + (
+                            getattr(usage, "candidates_token_count", 0) * pricing["output"]
+                        )
+                        return text, {
+                            "input_tokens": getattr(usage, "prompt_token_count", 0),
+                            "output_tokens": getattr(usage, "candidates_token_count", 0),
+                            "total_cost": cost,
+                        }
+                    return text, dict(base_cost)
+
+                except Exception as e:
+                    logger.error(f"[DEBATE] Google erreur/quota, fallback OpenAI (agent={agent_id}): {e}")
+                    # ✅ modèle OpenAI sûr (évite 404 si le nom Google fuit)
+                    return await _openai_call(prompt, forced_model="gpt-4o-mini")
+
             elif provider == "anthropic":
                 content_text = f"[RAG_CONTEXT]\n{rag_context}\n\n{prompt}" if use_rag and rag_context else prompt
                 try:
@@ -714,13 +740,15 @@ class ChatService:
                         cost_info = dict(base_cost)
                     if not text.strip():
                         logger.warning("[DEBATE] Anthropic a renvoyé un texte vide — fallback OpenAI.")
-                        return await _openai_call(prompt)
+                        return await _openai_call(prompt, forced_model="gpt-4o-mini")
                     return text.strip(), cost_info
                 except Exception as e:
                     logger.error(f"[DEBATE] Anthropic erreur, fallback OpenAI (agent={agent_id}): {e}")
-                    return await _openai_call(prompt)
+                    return await _openai_call(prompt, forced_model="gpt-4o-mini")
+
             else:
                 raise ValueError(f"Fournisseur non supporté: {provider}")
+
         except Exception as e:
             logger.error(f"[DEBATE] get_llm_response_for_debate erreur (agent={agent_id}): {e}", exc_info=True)
             return "", {**base_cost, "note": f"error: {e}"}
