@@ -1,15 +1,7 @@
 /**
  * @module features/chat/chat
- * @description Module Chat - V24.5 "Single-Emit + ActiveAgent + Watchdog"
- * - Persistance inter-session (Threads API) côté front.
- * - Hydratation stricte par agent_id + idempotente (rebuild à blanc).
- * - Dédoublonnage agent_selected.
- * - Toast léger sur ws:analysis_status.
- * - ✅ created_at côté UI (user + stream start) pour affichage horodatage.
- * - ✅ Unique emit via 'ui:chat:send' (plus d'EVT WS_SEND).
- * - ✅ Watchdog stream-start (1.5s) pour défiger l'UI si le backend ne répond pas.
+ * @description Module Chat - V24.6 "Single-Emit + ActiveAgent + Watchdog + SendGate"
  */
-
 import { ChatUI } from './chat-ui.js';
 import { EVENTS } from '../../shared/constants.js';
 import { api } from '../../shared/api-client.js';
@@ -22,20 +14,18 @@ export default class ChatModule {
     this.container = null;
     this.listeners = [];
     this.isInitialized = false;
-
-    // Threads
     this.threadId = null;
     this.loadedThreadId = null;
-
-    // Anti-dup toast
     this._lastToastAt = 0;
 
-    // Watchdog stream-start
+    // ⏱️ Watchdog stream-start
     this._streamStartTimer = null;
     this._streamStartTimeoutMs = 1500;
-  }
 
-  /* ----------------------------- Lifecycle ----------------------------- */
+    // 🚦 Gate anti double-clic / multi-émission
+    this._sendLock = false;
+    this._sendGateMs = 400; // 300–500ms recommandé
+  }
 
   init() {
     if (this.isInitialized) return;
@@ -44,13 +34,12 @@ export default class ChatModule {
     this.registerStateChanges();
     this.registerEvents();
     this.isInitialized = true;
-    console.log('✅ ChatModule V24.5 (Single-Emit + ActiveAgent + Watchdog) initialisé.');
+    console.log('✅ ChatModule V24.6 (Single-Emit + ActiveAgent + Watchdog + SendGate) initialisé.');
   }
 
   mount(container) {
     this.container = container;
     this.ui.render(this.container, this.state.get('chat'));
-
     const currentId = this.getCurrentThreadId();
     if (currentId) {
       const cached = this.state.get(`threads.map.${currentId}`);
@@ -65,13 +54,11 @@ export default class ChatModule {
   }
 
   destroy() {
-    this.listeners.forEach(unsub => { if (typeof unsub === 'function') try { unsub(); } catch {} });
+    this.listeners.forEach(u => { if (typeof u === 'function') { try { u(); } catch {} } });
     this.listeners = [];
     this.container = null;
     this._clearStreamWatchdog();
   }
-
-  /* ------------------------------ State -------------------------------- */
 
   initializeState() {
     if (!this.state.get('chat')) {
@@ -79,109 +66,54 @@ export default class ChatModule {
         isLoading: false,
         currentAgentId: 'anima',
         ragEnabled: false,
-        messages: {},        // { [agentId]: Message[] }
+        messages: {},
         threadId: null,
         lastAnalysis: null,
-        activeAgent: 'anima',
+        activeAgent: 'anima'
       });
     } else {
       if (this.state.get('chat.threadId') == null) this.state.set('chat.threadId', null);
       if (this.state.get('chat.lastAnalysis') == null) this.state.set('chat.lastAnalysis', null);
-      if (!this.state.get('chat.activeAgent')) this.state.set('chat.activeAgent', this.state.get('chat.currentAgentId') || 'anima');
+      if (!this.state.get('chat.activeAgent'))
+        this.state.set('chat.activeAgent', this.state.get('chat.currentAgentId') || 'anima');
     }
   }
 
   registerStateChanges() {
-    const unsubscribe = this.state.subscribe('chat', (chatState) => {
-      if (this.ui && this.container) {
-        this.ui.update(this.container, chatState);
-      }
+    const unsub = this.state.subscribe('chat', (chatState) => {
+      if (this.ui && this.container) this.ui.update(this.container, chatState);
     });
-    if (typeof unsubscribe === 'function') this.listeners.push(unsubscribe);
+    if (typeof unsub === 'function') this.listeners.push(unsub);
   }
 
-  /* ------------------------------ Events ------------------------------- */
-
   registerEvents() {
-    // UI
     this.listeners.push(this.eventBus.on(EVENTS.CHAT_SEND, this.handleSendMessage.bind(this)));
     this.listeners.push(this.eventBus.on(EVENTS.CHAT_AGENT_SELECTED, this.handleAgentSelected.bind(this)));
     this.listeners.push(this.eventBus.on(EVENTS.CHAT_CLEAR, this.handleClearChat.bind(this)));
     this.listeners.push(this.eventBus.on(EVENTS.CHAT_EXPORT, this.handleExport.bind(this)));
     this.listeners.push(this.eventBus.on(EVENTS.CHAT_RAG_TOGGLED, this.handleRagToggle.bind(this)));
 
-    // WebSocket streaming
     this.listeners.push(this.eventBus.on('ws:chat_stream_start', this.handleStreamStart.bind(this)));
     this.listeners.push(this.eventBus.on('ws:chat_stream_chunk', this.handleStreamChunk.bind(this)));
     this.listeners.push(this.eventBus.on('ws:chat_stream_end', this.handleStreamEnd.bind(this)));
-    // état d'analyse (toast)
     this.listeners.push(this.eventBus.on('ws:analysis_status', this.handleAnalysisStatus.bind(this)));
-
-    // Threads (depuis App)
-    this.listeners.push(this.eventBus.on('threads:ready', ({ id }) => {
-      if (id && typeof id === 'string') {
-        this.threadId = id;
-        this.state.set('threads.currentId', id);
-        this.state.set('chat.threadId', id);
-        console.log('[Chat] threads:ready → threadId =', id);
-
-        const cached = this.state.get(`threads.map.${id}`);
-        if (cached && cached.messages && this.loadedThreadId !== id) {
-          this.loadedThreadId = id;
-          this.hydrateFromThread(cached);
-          console.log('[Chat] threads:ready → hydratation immédiate depuis state pour', id);
-        }
-      }
-    }));
-
-    this.listeners.push(this.eventBus.on('threads:loaded', (thread) => {
-      try {
-        if (!thread || !thread.id) return;
-        if (this.loadedThreadId === thread.id) return;
-        this.loadedThreadId = thread.id;
-        this.threadId = thread.id;
-        this.state.set('chat.threadId', thread.id);
-        this.hydrateFromThread(thread);
-        console.log('[Chat] threads:loaded → hydratation terminée pour', thread.id);
-      } catch (e) {
-        console.error('[Chat] Erreur hydratation threads:loaded', e);
-      }
-    }));
   }
 
-  /* --------------------------- Thread helpers -------------------------- */
-
-  getCurrentThreadId() {
-    return this.threadId || this.state.get('threads.currentId') || null;
-  }
+  getCurrentThreadId() { return this.threadId || this.state.get('threads.currentId') || null; }
 
   hydrateFromThread(thread) {
     const msgsRaw = Array.isArray(thread?.messages) ? [...thread.messages] : [];
-    const msgs = msgsRaw.sort((a, b) => {
-      const ta = (a?.created_at ?? 0); const tb = (b?.created_at ?? 0);
-      return ta - tb;
-    });
-
-    const buckets = {};
-    let lastAssistantAgent = null;
-
+    const msgs = msgsRaw.sort((a, b) => (a?.created_at ?? 0) - (b?.created_at ?? 0));
+    const buckets = {}; let lastAssistantAgent = null;
     for (const m of msgs) {
       const role = m.role || 'assistant';
       let agentId = m.agent_id || null;
-
-      if (!agentId) {
-        if (role === 'assistant') {
-          agentId = lastAssistantAgent || (this.state.get('chat.currentAgentId') || 'anima');
-        } else {
-          agentId = lastAssistantAgent || null;
-        }
-      }
-
+      if (!agentId) agentId = (role === 'assistant')
+        ? (lastAssistantAgent || (this.state.get('chat.currentAgentId') || 'anima'))
+        : (lastAssistantAgent || null);
       if (!agentId) agentId = 'global';
       if (role === 'assistant' && agentId) lastAssistantAgent = agentId;
-
-      if (!buckets[agentId]) buckets[agentId] = [];
-      buckets[agentId].push({
+      (buckets[agentId] ||= []).push({
         id: m.id || `${role}-${m.created_at || Date.now()}`,
         role,
         content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content ?? ''),
@@ -189,22 +121,22 @@ export default class ChatModule {
         created_at: m.created_at
       });
     }
-
     this.state.set('chat.messages', buckets);
-    const dist = Object.fromEntries(Object.entries(buckets).map(([k, v]) => [k, v.length]));
-    console.debug('[Chat] Répartition messages par agent', dist);
+    console.debug('[Chat] Répartition messages par agent',
+      Object.fromEntries(Object.entries(buckets).map(([k, v]) => [k, v.length])));
   }
 
-  /* ----------------------------- Handlers ------------------------------ */
-
   handleSendMessage(payload) {
+    // 🚦 Gate anti double-clic
+    if (this._sendLock) return;
+    this._sendLock = true;
+    setTimeout(() => { this._sendLock = false; }, this._sendGateMs);
+
     const text = typeof payload === 'string' ? payload : (payload && payload.text) || '';
     const trimmed = (text || '').trim();
-    if (!trimmed) return;
+    if (!trimmed) { this._sendLock = false; return; }
 
     const { currentAgentId, ragEnabled } = this.state.get('chat');
-
-    // ✅ publier l'agent actif pour le WS (fallback fiable)
     this.state.set('chat.activeAgent', currentAgentId);
 
     const userMessage = {
@@ -214,38 +146,36 @@ export default class ChatModule {
       agent_id: currentAgentId,
       created_at: Date.now()
     };
-
-    const currentMessages = this.state.get(`chat.messages.${currentAgentId}`) || [];
-    this.state.set(`chat.messages.${currentAgentId}`, [...currentMessages, userMessage]);
+    const curr = this.state.get(`chat.messages.${currentAgentId}`) || [];
+    this.state.set(`chat.messages.${currentAgentId}`, [...curr, userMessage]);
     this.state.set('chat.isLoading', true);
 
-    // Persistance immédiate côté backend (user)
     const threadId = this.getCurrentThreadId();
-    if (!threadId) {
-      console.warn('[Chat] Aucun threadId disponible — message non persisté côté backend.');
-    } else {
+    if (threadId) {
       api.appendMessage(threadId, {
         role: 'user',
         content: trimmed,
         agent_id: currentAgentId,
         metadata: { rag: !!ragEnabled }
       }).catch(err => console.error('[Chat] Échec appendMessage(user):', err));
+    } else {
+      console.warn('[Chat] Aucun threadId disponible — message non persisté côté backend.');
     }
 
-    // ✅ Émission unique vers WS via 'ui:chat:send' (idempotence par msg_uid)
     try {
+      // ⚠️ Le bridge WS exige un msg_uid — OK
       this.eventBus.emit('ui:chat:send', {
         text: trimmed,
         agent_id: currentAgentId,
         use_rag: !!ragEnabled,
         msg_uid: userMessage.id
       });
-      // ⏱️ Armement du watchdog si aucun stream-start n'arrive
       this._startStreamWatchdog();
     } catch (e) {
       console.error('[Chat] Emission ui:chat:send a échoué', e);
       this._clearStreamWatchdog();
       this.state.set('chat.isLoading', false);
+      this._sendLock = false; // libérer en cas d’échec d’émission
       this.showToast('Envoi impossible (WS).');
     }
   }
@@ -259,18 +189,20 @@ export default class ChatModule {
       isStreaming: true,
       created_at: Date.now()
     };
-    const currentMessages = this.state.get(`chat.messages.${agent_id}`) || [];
-    this.state.set('chat.messages.${agent_id}'.replace('${agent_id}', agent_id), [...currentMessages, agentMessage]);
+    const curr = this.state.get(`chat.messages.${agent_id}`) || [];
+    this.state.set('chat.messages.${agent_id}'.replace('${agent_id}', agent_id), [...curr, agentMessage]);
     this._clearStreamWatchdog();
     this.state.set('chat.isLoading', true);
+    // ✅ Reset gate dès que le flux démarre
+    this._sendLock = false;
   }
 
   handleStreamChunk({ id, chunk }) {
     const messages = this.state.get('chat.messages');
-    for (const agentId in messages) {
-      const idx = messages[agentId].findIndex(m => m.id === id);
-      if (idx !== -1) {
-        messages[agentId][idx].content = (messages[agentId][idx].content || '') + (chunk || '');
+    for (const aid in messages) {
+      const i = messages[aid].findIndex(m => m.id === id);
+      if (i !== -1) {
+        messages[aid][i].content = (messages[aid][i].content || '') + (chunk || '');
         this.state.set('chat.messages', { ...messages });
         return;
       }
@@ -280,24 +212,23 @@ export default class ChatModule {
   handleStreamEnd({ id, agent_id }) {
     const messages = this.state.get('chat.messages');
     for (const aid in messages) {
-      const idx = messages[aid].findIndex(m => m.id === id);
-      if (idx !== -1) {
-        const finalMsg = { ...messages[aid][idx], isStreaming: false };
-        messages[aid][idx] = finalMsg;
+      const i = messages[aid].findIndex(m => m.id === id);
+      if (i !== -1) {
+        messages[aid][i] = { ...messages[aid][i], isStreaming: false };
         this.state.set('chat.messages', { ...messages });
         this._clearStreamWatchdog();
         this.state.set('chat.isLoading', false);
 
-        // Persistance backend (assistant)
         const threadId = this.getCurrentThreadId();
-        if (!threadId) {
-          console.warn('[Chat] Aucun threadId — assistant non persisté.');
-        } else {
+        if (threadId) {
+          const finalMsg = messages[aid][i];
           api.appendMessage(threadId, {
             role: 'assistant',
             content: typeof finalMsg.content === 'string' ? finalMsg.content : String(finalMsg.content ?? ''),
             agent_id: finalMsg.agent_id || agent_id || aid
           }).catch(err => console.error('[Chat] Échec appendMessage(assistant):', err));
+        } else {
+          console.warn('[Chat] Aucun threadId — assistant non persisté.');
         }
         return;
       }
@@ -308,7 +239,7 @@ export default class ChatModule {
     const prev = this.state.get('chat.currentAgentId');
     if (prev === agentId) return;
     this.state.set('chat.currentAgentId', agentId);
-    this.state.set('chat.activeAgent', agentId); // ✅ publier l’agent actif pour le WS
+    this.state.set('chat.activeAgent', agentId);
   }
 
   handleClearChat() {
@@ -320,13 +251,14 @@ export default class ChatModule {
     const { currentAgentId, messages } = this.state.get('chat');
     const conv = messages[currentAgentId] || [];
     const you = this.state.get('user.id') || 'Vous';
-    const text = conv
-      .map(m => `${m.role === 'user' ? you : (m.agent_id || 'Assistant')}: ${typeof m.content === 'string' ? m.content : JSON.stringify(m.content || '')}`)
-      .join('\n\n');
+    const text = conv.map(m =>
+      `${m.role === 'user' ? you : (m.agent_id || 'Assistant')}: ${
+        typeof m.content === 'string' ? m.content : JSON.stringify(m.content || '')
+      }`
+    ).join('\n\n');
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `chat_${currentAgentId}_${Date.now()}.txt`;
+    const a = document.createElement('a'); a.href = url; a.download = `chat_${currentAgentId}_${Date.now()}.txt`;
     document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   }
 
@@ -335,7 +267,6 @@ export default class ChatModule {
     this.state.set('chat.ragEnabled', !current);
   }
 
-  // toast mémoire
   handleAnalysisStatus({ session_id, status, error }) {
     this.state.set('chat.lastAnalysis', {
       session_id: session_id || null,
@@ -344,27 +275,21 @@ export default class ChatModule {
       at: Date.now()
     });
     console.log('[Chat] ws:analysis_status', { session_id, status, error });
-
     const now = Date.now();
-    if (now - this._lastToastAt < 1000) return; // anti-spam
+    if (now - this._lastToastAt < 1000) return;
     this._lastToastAt = now;
-
-    if (status === 'completed') {
-      this.showToast('Mémoire consolidée ✓');
-    } else if (status === 'failed') {
-      this.showToast('Analyse mémoire : échec');
-    }
+    if (status === 'completed') this.showToast('Mémoire consolidée ✓');
+    else if (status === 'failed') this.showToast('Analyse mémoire : échec');
   }
-
-  /* ---------------------------- Watchdog ------------------------------- */
 
   _startStreamWatchdog() {
     this._clearStreamWatchdog();
     try {
       this._streamStartTimer = setTimeout(() => {
-        // Si aucun stream-start n'arrive, on défige l'UI proprement
         if (this.state.get('chat.isLoading')) {
+          // Flux jamais démarré : on libère l’UI et le gate
           this.state.set('chat.isLoading', false);
+          this._sendLock = false;
           this.showToast('Envoi bloqué (aucun flux démarré).');
         }
       }, this._streamStartTimeoutMs);
@@ -373,38 +298,20 @@ export default class ChatModule {
 
   _clearStreamWatchdog() {
     try {
-      if (this._streamStartTimer) {
-        clearTimeout(this._streamStartTimer);
-        this._streamStartTimer = null;
-      }
+      if (this._streamStartTimer) { clearTimeout(this._streamStartTimer); this._streamStartTimer = null; }
     } catch {}
   }
 
-  // Petit toast DOM autonome
   showToast(message) {
     try {
-      const el = document.createElement('div');
-      el.setAttribute('role', 'status');
-      el.style.position = 'fixed';
-      el.style.right = '20px';
-      el.style.bottom = '20px';
-      el.style.padding = '12px 14px';
-      el.style.borderRadius = '12px';
-      el.style.background = '#121212';
-      el.style.color = '#fff';
-      el.style.boxShadow = '0 6px 14px rgba(0,0,0,.3)';
-      el.style.font = '14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu';
-      el.style.opacity = '0';
-      el.style.transform = 'translateY(6px)';
-      el.style.transition = 'opacity .15s ease, transform .15s ease';
-      el.textContent = message;
-      document.body.appendChild(el);
+      const el = document.createElement('div'); el.setAttribute('role', 'status');
+      el.style.position = 'fixed'; el.style.right = '20px'; el.style.bottom = '20px';
+      el.style.padding = '12px 14px'; el.style.borderRadius = '12px';
+      el.style.background = '#121212'; el.style.color = '#fff'; el.style.boxShadow = '0 6px 14px rgba(0,0,0,.3)';
+      el.style.font = '14px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu'; el.style.opacity = '0'; el.style.transform = 'translateY(6px)'; el.style.transition = 'opacity .15s, transform .15s';
+      el.textContent = message; document.body.appendChild(el);
       requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
-      setTimeout(() => {
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(6px)';
-        setTimeout(() => el.remove(), 180);
-      }, 2200);
+      setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(6px)'; setTimeout(() => el.remove(), 180); }, 2200);
     } catch {}
   }
 }
