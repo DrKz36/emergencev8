@@ -1,15 +1,20 @@
 /**
  * @module features/documents/document-ui
- * @description UI du module Documents — V4.0 (verre/halo/métal)
+ * @description UI du module Documents — V5.0 (verre/halo/métal + stats canvas)
  * - Upload : drop-zone + preview multi-fichiers
  * - Liste : toolbar (sélection, suppression, rafraîchir)
+ * - Stats : canvas responsive (répartition par extension) + total
  */
 export class DocumentsUI {
     constructor(eventBus) {
         this.eventBus = eventBus;
+        this._resizeObserver = null;
+        this._mo = null;
+        this._cleanupFns = [];
     }
 
     render(container) {
+        // ----- UI de base -----
         container.innerHTML = `
             <div class="documents-view-wrapper">
                 <div class="card">
@@ -60,8 +65,206 @@ export class DocumentsUI {
                             <ul id="document-list-container" class="document-list"></ul>
                             <p class="empty-list-message" style="display:none;">Aucun document indexé.</p>
                         </section>
+
+                        <!-- === NOUVEAU: section Statistiques === -->
+                        <section class="stats-section" aria-label="Statistiques des documents" style="margin-top: 24px;">
+                            <h3 class="list-title">Statistiques</h3>
+                            <div id="doc-stats-summary" class="doc-stats-summary" aria-live="polite" style="margin: 6px 0 10px;">
+                                Total : 0 · (aucune extension)
+                            </div>
+                            <div class="doc-stats-canvas-wrap" style="width:100%;max-width:100%;overflow:hidden;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));box-shadow:0 10px 30px rgba(0,0,0,.25) inset;">
+                                <canvas id="doc-stats-canvas" width="640" height="220" role="img" aria-label="Répartition des documents par extension"></canvas>
+                            </div>
+                            <p id="doc-stats-empty" style="display:none;margin-top:8px;opacity:.8;">Aucune donnée à afficher.</p>
+                        </section>
                     </div>
                 </div>
             </div>`;
+
+        // ----- Wiring Stats (chart) : auto à partir de la liste DOM -----
+        const listEl = container.querySelector('#document-list-container');
+        const canvas = container.querySelector('#doc-stats-canvas');
+        const ctx = canvas.getContext('2d');
+        const summaryEl = container.querySelector('#doc-stats-summary');
+        const emptyStatsEl = container.querySelector('#doc-stats-empty');
+        const wrap = container.querySelector('.doc-stats-canvas-wrap');
+
+        const pickColor = (i) => {
+            // Palette douce (dark mode friendly)
+            const palette = [
+                '#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#a78bfa', '#38bdf8',
+                '#f87171', '#22c55e', '#eab308', '#f97316', '#10b981', '#c084fc'
+            ];
+            return palette[i % palette.length];
+        };
+
+        const getItemNameFromLI = (li) => {
+            // Cherche un attribut ou sous-élément dédié, sinon le texte
+            const attr = li.getAttribute('data-name') || li.getAttribute('data-filename');
+            if (attr && attr.trim()) return attr.trim();
+            const nameNode = li.querySelector?.('.doc-name, [data-role="doc-name"]');
+            const txt = (nameNode?.textContent ?? li.textContent ?? '').trim();
+            return txt;
+        };
+
+        const computeStatsFromDOM = () => {
+            const items = Array.from(listEl?.children || []);
+            const exts = new Map(); // ext -> count
+            let total = 0;
+            for (const li of items) {
+                const name = getItemNameFromLI(li);
+                if (!name) continue;
+                total += 1;
+                const idx = name.lastIndexOf('.');
+                let ext = (idx > 0 ? name.slice(idx + 1) : '').toLowerCase();
+                if (!ext) ext = 'sans_ext';
+                exts.set(ext, (exts.get(ext) || 0) + 1);
+            }
+            return { total, exts }; // Map
+        };
+
+        const measure = () => {
+            // Adapte le canvas à la largeur dispo
+            const w = Math.max(320, Math.floor(wrap.clientWidth || canvas.width));
+            const h = 220;
+            if (canvas.width !== w || canvas.height !== h) {
+                canvas.width = w;
+                canvas.height = h;
+            }
+            return { w, h };
+        };
+
+        const drawChart = ({ total, exts }) => {
+            const { w, h } = measure();
+            ctx.clearRect(0, 0, w, h);
+
+            // Pas de données ?
+            if (!total || exts.size === 0) {
+                emptyStatsEl.style.display = '';
+                return;
+            }
+            emptyStatsEl.style.display = 'none';
+
+            // Tri décroissant par valeur + top 8
+            const pairs = Array.from(exts.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8);
+
+            // Marges et échelle
+            const pad = 28;
+            const axisY = h - pad;
+            const axisX = pad + 10;
+            const innerW = w - axisX - pad;
+            const barCount = pairs.length;
+            const gap = 10;
+            const barW = Math.max(16, Math.floor((innerW - (gap * (barCount - 1))) / Math.max(1, barCount)));
+            const maxV = Math.max(1, pairs.reduce((m, [, v]) => Math.max(m, v), 0));
+            const scale = (axisY - pad) / maxV;
+
+            // Axes
+            ctx.save();
+            ctx.globalAlpha = 0.8;
+            ctx.strokeStyle = 'rgba(255,255,255,.25)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(axisX, axisY + 0.5);
+            ctx.lineTo(w - pad, axisY + 0.5);
+            ctx.stroke();
+            ctx.restore();
+
+            // Barres
+            let x = axisX;
+            pairs.forEach(([ext, value], i) => {
+                const hBar = Math.max(2, value * scale);
+                const y = axisY - hBar;
+
+                // Fond de barre
+                ctx.fillStyle = pickColor(i);
+                ctx.globalAlpha = 0.85;
+                ctx.fillRect(x, y, barW, hBar);
+
+                // Val (au-dessus)
+                ctx.globalAlpha = 1;
+                ctx.fillStyle = '#e5e7eb';
+                ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu';
+                ctx.textAlign = 'center';
+                ctx.fillText(String(value), x + barW / 2, y - 6);
+
+                // Label (ext)
+                ctx.globalAlpha = 0.9;
+                ctx.fillStyle = '#cbd5e1';
+                ctx.textAlign = 'center';
+                // Rotation si trop serré
+                const labelY = axisY + 14;
+                if (barW < 28) {
+                    ctx.save();
+                    ctx.translate(x + barW / 2, labelY + 8);
+                    ctx.rotate(-Math.PI / 4);
+                    ctx.fillText(ext, 0, 0);
+                    ctx.restore();
+                } else {
+                    ctx.fillText(ext, x + barW / 2, labelY);
+                }
+
+                x += barW + gap;
+            });
+        };
+
+        const updateSummary = ({ total, exts }) => {
+            if (!summaryEl) return;
+            if (!total || exts.size === 0) {
+                summaryEl.textContent = 'Total : 0 · (aucune extension)';
+                return;
+            }
+            const top = Array.from(exts.entries()).sort((a,b) => b[1]-a[1]).slice(0, 3);
+            const topStr = top.map(([k,v]) => `${k}: ${v}`).join(' · ');
+            summaryEl.textContent = `Total : ${total} · ${topStr}${exts.size > 3 ? ' · …' : ''}`;
+        };
+
+        const refreshStats = () => {
+            try {
+                const stats = computeStatsFromDOM();
+                updateSummary(stats);
+                drawChart(stats);
+            } catch (e) {
+                console.error('[DocumentsUI] refreshStats failed:', e);
+            }
+        };
+
+        // MutationObserver : quand la liste change (ajout/suppression), on redessine
+        if (listEl) {
+            this._mo?.disconnect?.();
+            this._mo = new MutationObserver(() => refreshStats());
+            this._mo.observe(listEl, { childList: true, subtree: true, characterData: true });
+            this._cleanupFns.push(() => this._mo?.disconnect?.());
+        }
+
+        // Resize responsive
+        this._resizeObserver?.disconnect?.();
+        if (window && 'ResizeObserver' in window) {
+            this._resizeObserver = new ResizeObserver(() => refreshStats());
+            this._resizeObserver.observe(wrap);
+            this._cleanupFns.push(() => this._resizeObserver?.disconnect?.());
+        } else {
+            const onResize = () => refreshStats();
+            window.addEventListener('resize', onResize);
+            this._cleanupFns.push(() => window.removeEventListener('resize', onResize));
+        }
+
+        // Premier rendu
+        refreshStats();
+
+        // Optionnel : si le module documents émet un évènement “list:refreshed”
+        try {
+            const off = this.eventBus?.on?.('documents:list:refreshed', () => refreshStats());
+            if (typeof off === 'function') this._cleanupFns.push(off);
+        } catch {}
+    }
+
+    destroy() {
+        try { this._cleanupFns.forEach(fn => { try { fn(); } catch {} }); } catch {}
+        this._cleanupFns = [];
+        try { this._mo?.disconnect?.(); } catch {}
+        try { this._resizeObserver?.disconnect?.(); } catch {}
     }
 }
