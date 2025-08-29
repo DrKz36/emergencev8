@@ -1,9 +1,8 @@
 /**
  * @module core/websocket
- * @description WebSocketClient V21.0 — Streaming + JWT + Bridge singleton + Dédup UID GLOBALE
- * - Bridge 'ui:chat:send' -> 'chat.message' lié UNE SEULE FOIS
- * - Déduplication par msg_uid dans send() partagée cross-instances (window.__wsSeenUids__)
- * - Legacy-safe: ignore les payloads ui:chat:send sans msg_uid
+ * @description WebSocketClient V21.1 — Streaming + JWT + Bridge singleton + Dédup UID GLOBALE
+ * - Early return si pas d'ID token et pas de fallback DEV
+ * - Fallback DEV: ?user_id=... si localStorage/session/state le fournit
  */
 import { EVENTS } from '../shared/constants.js';
 
@@ -18,13 +17,12 @@ export class WebSocketClient {
     this.reconnectInterval = 5000;
 
     this.registerEvents();
-    console.log('✅ WebSocketClient V21.0 (Streaming + JWT + Bridge singleton + Global UID dedup) Initialisé.');
+    console.log('✅ WebSocketClient V21.1 (Streaming + JWT + Bridge singleton + Global UID dedup) Initialisé.');
   }
 
   get ws() { return this.websocket; }
 
   registerEvents() {
-    // 🧷 Bridge singleton — évite multi-abonnements lors de remounts
     if (this.eventBus.__wsBridgeBound) return;
     this.eventBus.__wsBridgeBound = true;
 
@@ -38,7 +36,6 @@ export class WebSocketClient {
           console.warn('[WebSocket] ui:chat:send sans texte, ignoré.', payload);
           return;
         }
-        // ⛔ Legacy sans uid => ignoré (chat.js émet la version moderne)
         const msg_uid = payload.msg_uid;
         if (!msg_uid || typeof msg_uid !== 'string') {
           console.warn('[WebSocket] ui:chat:send ignoré (payload legacy sans msg_uid).', payload);
@@ -51,7 +48,6 @@ export class WebSocketClient {
         const ts = Date.now();
 
         const msg = { type: 'chat.message', payload: { text, agent_id, use_rag, msg_uid, ts } };
-        // ❌ Pas de dédup ici — elle est centralisée dans send()
         console.log('[WebSocket] ws:send(chat.message)', { agent_id, use_rag, msg_uid });
         this.send(msg);
       } catch (e) {
@@ -66,12 +62,30 @@ export class WebSocketClient {
     let sessionId = this.state.get('websocket.sessionId') || this._generateUUID();
     this.state.set('websocket.sessionId', sessionId);
 
-    const connectUrl = `${this.url}/${sessionId}`;
+    // Cherche token
     const token = await this._getIdToken();
+
+    // Dev fallback (si AUTH_DEV_MODE côté back): on ajoute ?user_id=...
+    let devUserId = null;
+    try {
+      devUserId =
+        this.state.get?.('user.id') ||
+        sessionStorage.getItem('emergence.dev_user_id') ||
+        localStorage.getItem('emergence.dev_user_id') ||
+        null;
+    } catch {}
+
+    // Si ni token ni devUserId → on ne tente pas une connexion inutile
+    if (!token && !devUserId) {
+      console.error('[WebSocket] ID token manquant — ouvre /dev-auth.html ou configure emergence.dev_user_id en DEV.');
+      return;
+    }
+
+    const urlParams = devUserId ? `?user_id=${encodeURIComponent(String(devUserId))}` : '';
+    const connectUrl = `${this.url}/${sessionId}${urlParams}`;
 
     const protocols = [];
     if (token) protocols.push('jwt', token);
-    else console.error('[WebSocket] ID token manquant — ouvre /dev-auth.html puis réessaie.');
 
     console.log(`%c[WebSocket] Connexion à : ${connectUrl}`, 'font-weight: bold;');
     this.websocket = new WebSocket(connectUrl, protocols.length ? protocols : undefined);
@@ -121,7 +135,7 @@ export class WebSocketClient {
       return;
     }
 
-    // ✅ Dédup GLOBALE des chat.message par msg_uid (cross-instances)
+    // Dédup GLOBALE des chat.message par msg_uid (cross-instances)
     if (messageObject.type === 'chat.message') {
       try {
         const p = messageObject.payload || {};
@@ -130,7 +144,6 @@ export class WebSocketClient {
 
         const g = (window.__wsSeenUids__ ||= new Map());
         const now = Date.now();
-        // éviction TTL 5 min
         try { for (const [uid, ts] of g.entries()) if (now - ts > 5 * 60 * 1000) g.delete(uid); } catch {}
         if (g.has(p.msg_uid)) {
           console.warn('[WebSocket] chat.message ignoré (msg_uid déjà vu — global).', { msg_uid: p.msg_uid });

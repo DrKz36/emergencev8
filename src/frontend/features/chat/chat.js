@@ -1,6 +1,6 @@
 /**
  * @module features/chat/chat
- * @description Module Chat - V24.6 "Single-Emit + ActiveAgent + Watchdog + SendGate"
+ * @description Module Chat - V24.7 "Single-Emit + ActiveAgent + Watchdog + SendGate"
  */
 import { ChatUI } from './chat-ui.js';
 import { EVENTS } from '../../shared/constants.js';
@@ -18,13 +18,11 @@ export default class ChatModule {
     this.loadedThreadId = null;
     this._lastToastAt = 0;
 
-    // ⏱️ Watchdog stream-start
     this._streamStartTimer = null;
     this._streamStartTimeoutMs = 1500;
 
-    // 🚦 Gate anti double-clic / multi-émission
     this._sendLock = false;
-    this._sendGateMs = 400; // 300–500ms recommandé
+    this._sendGateMs = 400;
   }
 
   init() {
@@ -34,7 +32,7 @@ export default class ChatModule {
     this.registerStateChanges();
     this.registerEvents();
     this.isInitialized = true;
-    console.log('✅ ChatModule V24.6 (Single-Emit + ActiveAgent + Watchdog + SendGate) initialisé.');
+    console.log('✅ ChatModule V24.7 (Single-Emit + ActiveAgent + Watchdog + SendGate) initialisé.');
   }
 
   mount(container) {
@@ -127,7 +125,6 @@ export default class ChatModule {
   }
 
   handleSendMessage(payload) {
-    // 🚦 Gate anti double-clic
     if (this._sendLock) return;
     this._sendLock = true;
     setTimeout(() => { this._sendLock = false; }, this._sendGateMs);
@@ -163,7 +160,6 @@ export default class ChatModule {
     }
 
     try {
-      // ⚠️ Le bridge WS exige un msg_uid — OK
       this.eventBus.emit('ui:chat:send', {
         text: trimmed,
         agent_id: currentAgentId,
@@ -175,7 +171,7 @@ export default class ChatModule {
       console.error('[Chat] Emission ui:chat:send a échoué', e);
       this._clearStreamWatchdog();
       this.state.set('chat.isLoading', false);
-      this._sendLock = false; // libérer en cas d’échec d’émission
+      this._sendLock = false;
       this.showToast('Envoi impossible (WS).');
     }
   }
@@ -190,10 +186,9 @@ export default class ChatModule {
       created_at: Date.now()
     };
     const curr = this.state.get(`chat.messages.${agent_id}`) || [];
-    this.state.set('chat.messages.${agent_id}'.replace('${agent_id}', agent_id), [...curr, agentMessage]);
+    this.state.set(`chat.messages.${agent_id}`, [...curr, agentMessage]);
     this._clearStreamWatchdog();
     this.state.set('chat.isLoading', true);
-    // ✅ Reset gate dès que le flux démarre
     this._sendLock = false;
   }
 
@@ -287,7 +282,6 @@ export default class ChatModule {
     try {
       this._streamStartTimer = setTimeout(() => {
         if (this.state.get('chat.isLoading')) {
-          // Flux jamais démarré : on libère l’UI et le gate
           this.state.set('chat.isLoading', false);
           this._sendLock = false;
           this.showToast('Envoi bloqué (aucun flux démarré).');
