@@ -1,6 +1,6 @@
 /**
  * @module features/documents/documents
- * @description Logique du module Documents — V7.0
+ * @description Logique du module Documents — V7.1
  * - Multi-fichiers (sélection + glisser/déposer)
  * - Upload séquentiel avec notifications
  * - Rafraîchissement intelligent (auto-refresh si 'processing')
@@ -199,17 +199,24 @@ export default class DocumentsModule {
 
         try {
             this.documents = await this.apiClient.getDocuments();
+
             if (!Array.isArray(this.documents) || this.documents.length === 0) {
                 this.dom.listContainer.innerHTML = '';
                 if (this.dom.emptyListMessage) this.dom.emptyListMessage.style.display = 'block';
                 this.updateSelectionUI();
+                // ➜ notifier l’UI stats
+                this.eventBus.emit('documents:list:refreshed', { total: 0 });
                 this._scheduleAutoRefresh(false);
                 return;
             }
+
             if (this.dom.emptyListMessage) this.dom.emptyListMessage.style.display = 'none';
 
             this.dom.listContainer.innerHTML = this.documents.map((doc) => this.renderDocItem(doc)).join('');
             this.updateSelectionUI();
+
+            // ➜ notifier l’UI stats
+            this.eventBus.emit('documents:list:refreshed', { total: this.documents.length });
 
             // Auto-refresh si des items sont en 'processing'
             const hasProcessing = this.documents.some(d => String(d.status || '').toLowerCase() === 'processing');
@@ -217,6 +224,8 @@ export default class DocumentsModule {
         } catch (e) {
             this.dom.listContainer.innerHTML = '<p class="placeholder">Erreur de chargement des documents.</p>';
             this.updateSelectionUI();
+            // Émettre quand même un refresh (total inconnu → 0 si la liste est vide localement)
+            this.eventBus.emit('documents:list:refreshed', { total: Array.isArray(this.documents) ? this.documents.length : 0 });
             this._scheduleAutoRefresh(false);
         }
     }
@@ -231,9 +240,25 @@ export default class DocumentsModule {
         }
     }
 
+    _escapeHTML(s) {
+        return String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    _escapeAttr(s) {
+        return String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;');
+    }
+
     renderDocItem(doc) {
         const id = doc.id;
-        const name = doc.filename || 'Fichier';
+        const rawName = doc.filename || 'Fichier';
+        const name = this._escapeHTML(rawName);
+        const nameAttr = this._escapeAttr(rawName);
         const date = doc.uploaded_at ? formatDate(doc.uploaded_at) : '';
         const status = (doc.status || 'ready').toLowerCase(); // ready | processing | error
         const statusClass = status === 'processing' ? 'status-processing'
@@ -241,13 +266,13 @@ export default class DocumentsModule {
                           : 'status-ready';
 
         return `
-            <li class="document-item" data-id="${id}">
-                <input type="checkbox" class="doc-select" data-id="${id}" aria-label="Sélectionner ${name}">
+            <li class="document-item" data-id="${id}" data-name="${nameAttr}">
+                <input type="checkbox" class="doc-select" data-id="${id}" aria-label="Sélectionner ${nameAttr}">
                 <span class="doc-icon" aria-hidden="true">📄</span>
                 <span class="doc-name">${name}</span>
                 <span class="doc-date">${date}</span>
                 <span class="doc-status ${statusClass}">${status}</span>
-                <button class="button button-metal btn-delete" data-id="${id}" title="Supprimer ${name}" aria-label="Supprimer ${name}">✕</button>
+                <button class="button button-metal btn-delete" data-id="${id}" title="Supprimer ${nameAttr}" aria-label="Supprimer ${nameAttr}">✕</button>
             </li>`;
     }
 
