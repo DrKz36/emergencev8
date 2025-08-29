@@ -1,6 +1,6 @@
 /**
  * @module features/debate/debate
- * @description Orchestrateur du module Débat - V26.3 "Flux-only Synthèse"
+ * @description Orchestrateur du module Débat - V26.4 "Flux-only Synthèse + Fallback"
  */
 import { DebateUI } from './debate-ui.js';
 import { EVENTS, AGENTS } from '../../shared/constants.js';
@@ -14,10 +14,10 @@ export default class DebateModule {
         this.listeners = [];
         this.isInitialized = false;
 
-        // ⚙️ Désactive la modale de synthèse : rendu "flux" uniquement (DebateUI)
+        // ⚙️ Pas de modale : rendu "flux" uniquement (DebateUI)
         this.SHOW_SYNTH_MODAL = false;
 
-        console.log("✅ DebateModule V26.3 (Flux-only Synthèse) Prêt.");
+        console.log("✅ DebateModule V26.4 (Flux-only Synthèse + Fallback) Prêt.");
     }
     
     init() {
@@ -26,7 +26,7 @@ export default class DebateModule {
         this.registerEvents();
         this.registerStateChanges();
         this.isInitialized = true;
-        console.log("✅ DebateModule V26.3 (Flux-only Synthèse) Initialisé UNE SEULE FOIS.");
+        console.log("✅ DebateModule V26.4 (Flux-only Synthèse + Fallback) Initialisé UNE SEULE FOIS.");
     }
 
     mount(container) {
@@ -75,7 +75,6 @@ export default class DebateModule {
     }
 
     /* ------------------------------- Validation ------------------------------ */
-
     _validateConfig(config) {
         const topic = (config?.topic ?? '').trim();
         if (topic.length < 10) {
@@ -122,29 +121,78 @@ export default class DebateModule {
         }
     }
 
-    _normalizeServerState(serverData) {
-        const history = (serverData.history || []).map(turn => ({
-            roundNumber: turn.round_number,
-            agentResponses: turn.agent_responses
+    _normalizeServerState(serverData = {}) {
+        // Historique (tolère plusieurs schémas snake/camel)
+        const turnsRaw = serverData.history || serverData.turns || serverData.rounds_history || [];
+        const history = (Array.isArray(turnsRaw) ? turnsRaw : []).map((turn, idx) => ({
+            roundNumber: turn?.round_number ?? turn?.round ?? turn?.idx ?? (idx + 1),
+            agentResponses: turn?.agent_responses ?? turn?.responses ?? turn?.agents ?? {}
         }));
-        const config = serverData.config ? {
-            topic: serverData.config.topic,
-            rounds: serverData.config.rounds,
-            agentOrder: serverData.config.agent_order,
-            useRag: serverData.config.use_rag
-        } : null;
+
+        // Config (tolère variantes)
+        const cfg = serverData.config || {};
+        const config = {
+            topic: cfg.topic ?? cfg.subject ?? '',
+            rounds: cfg.rounds ?? cfg.n_rounds ?? cfg.round_count ?? Math.max(1, history.length),
+            agentOrder: cfg.agent_order ?? cfg.agentOrder ?? cfg.agents ?? [],
+            useRag: (cfg.use_rag ?? cfg.useRag) === true
+        };
+
+        // Synthèse (tolère variantes + fallback client si trop courte)
+        let synthesis =
+            serverData.synthesis ??
+            serverData.final_synthesis ??
+            serverData.summary ??
+            serverData.finalSummary ??
+            serverData.synthese ??
+            '';
+
+        // Fallback si vide ou trop courte (ex: "Méditation")
+        const isPoor = (s) => !s || s.trim().length < 20 || ((s.match(/\n/g) || []).length < 2);
+        if (isPoor(synthesis)) {
+            synthesis = this._buildFallbackSynthesis({ config, history }) || synthesis;
+        }
+
+        const ragContext = serverData.rag_context ?? serverData.ragContext ?? serverData.context ?? null;
+
         const normalized = {
-            debateId: serverData.debate_id,
-            status: serverData.status,
-            config: config,
-            history: history,
-            synthesis: serverData.synthesis,
-            ragContext: serverData.rag_context,
-            isActive: serverData.status === 'in_progress' || serverData.status === 'pending',
+            debateId: serverData.debate_id ?? serverData.id ?? null,
+            status: serverData.status ?? serverData.state ?? 'unknown',
+            config,
+            history,
+            synthesis,
+            ragContext,
+            isActive: ['in_progress', 'pending'].includes(serverData.status),
             error: null
         };
         normalized.statusText = this.getHumanReadableStatus(normalized);
         return normalized;
+    }
+
+    // Synthèse de secours très simple (heuristique locale)
+    _buildFallbackSynthesis({ config, history } = {}) {
+        try {
+            if (!Array.isArray(history) || history.length === 0) return '';
+            const last = history[history.length - 1] || {};
+            const order = Array.isArray(config?.agentOrder) && config.agentOrder.length
+                ? config.agentOrder
+                : Object.keys(last.agentResponses || {});
+            const pick = (txt) => {
+                if (!txt) return '';
+                const s = String(txt).trim().split(/(?<=[.!?])\s+/)[0] || String(txt).trim().slice(0, 160);
+                return s.length > 200 ? (s.slice(0, 200) + '…') : s;
+            };
+            const sampleA = pick(last.agentResponses?.[order[0]]);
+            const sampleB = pick(last.agentResponses?.[order[1]]);
+            const lines = [
+                `- **Faits** — ${sampleA || 'non déterminés.'}`,
+                `- **Convergences** — ${sampleB || 'à préciser.'}`,
+                `- **Désaccords** — ${sampleA && sampleB ? 'persistants sur la méthodologie.' : 'non établis.'}`,
+                `- **Angles morts** — sources, biais et hypothèses implicites à clarifier.`,
+                `- **Pistes** — étendre le RAG et formaliser des critères d’évaluation au prochain round.`
+            ];
+            return lines.join('\n');
+        } catch { return ''; }
     }
 
     onDebateStatusUpdate(payload) {
@@ -182,13 +230,11 @@ export default class DebateModule {
     _maybeShowSynthesis(state) {
         const synth = (state && typeof state.synthesis === 'string') ? state.synthesis.trim() : '';
         if (!synth) {
-            this._notify('warning', 'Synthèse indisponible (le moteur a renvoyé un contenu vide). Essaie “Exporter”.');
+            this._notify('warning', 'Synthèse indisponible (vide). Essaie “Exporter”.');
             return;
         }
-        // ❌ Plus de modale : on s’appuie sur le rendu “flux” géré par DebateUI.
-        if (this.SHOW_SYNTH_MODAL === true) {
-            this._showSynthesisModal(synth); // optionnel (dev)
-        }
+        // ❌ Pas de modale : rendu flux via DebateUI
+        if (this.SHOW_SYNTH_MODAL === true) this._showSynthesisModal(synth);
     }
 
     getHumanReadableStatus(state) {
@@ -244,8 +290,6 @@ export default class DebateModule {
         return md.trim();
     }
 
-    /* ------------------------------ Helpers UI ------------------------------ */
-
     _notify(type, message) {
         try {
             this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: type || 'info', message: message || '' });
@@ -254,8 +298,8 @@ export default class DebateModule {
         }
     }
 
-    // _showSynthesisModal(content) reste dispo mais n'est plus appelé en prod (voir flag SHOW_SYNTH_MODAL).
     _showSynthesisModal(content) {
+        /* (conserve la modale en dev si SHOW_SYNTH_MODAL=true) */
         const root = document.createElement('div');
         root.setAttribute('role', 'dialog');
         root.ariaLabel = 'Synthèse du débat';

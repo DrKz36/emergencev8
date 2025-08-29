@@ -1,6 +1,6 @@
 /**
  * @module features/documents/documents
- * @description Logique du module Documents — V7.1
+ * @description Logique du module Documents — V7.2
  * - Multi-fichiers (sélection + glisser/déposer)
  * - Upload séquentiel avec notifications
  * - Rafraîchissement intelligent (auto-refresh si 'processing')
@@ -204,8 +204,8 @@ export default class DocumentsModule {
                 this.dom.listContainer.innerHTML = '';
                 if (this.dom.emptyListMessage) this.dom.emptyListMessage.style.display = 'block';
                 this.updateSelectionUI();
-                // ➜ notifier l’UI stats
-                this.eventBus.emit('documents:list:refreshed', { total: 0 });
+                // ➜ notifier les stats avec items vides
+                this.eventBus.emit('documents:list:refreshed', { total: 0, items: [] });
                 this._scheduleAutoRefresh(false);
                 return;
             }
@@ -215,17 +215,16 @@ export default class DocumentsModule {
             this.dom.listContainer.innerHTML = this.documents.map((doc) => this.renderDocItem(doc)).join('');
             this.updateSelectionUI();
 
-            // ➜ notifier l’UI stats
-            this.eventBus.emit('documents:list:refreshed', { total: this.documents.length });
+            // ➜ notifier l’UI stats avec les items réels (clé 'items' ajoutée)
+            this.eventBus.emit('documents:list:refreshed', { total: this.documents.length, items: this.documents });
 
             // Auto-refresh si des items sont en 'processing'
-            const hasProcessing = this.documents.some(d => String(d.status || '').toLowerCase() === 'processing');
+            const hasProcessing = this.documents.some(d => String((d.status || d.state || '')).toLowerCase() === 'processing');
             this._scheduleAutoRefresh(hasProcessing);
         } catch (e) {
             this.dom.listContainer.innerHTML = '<p class="placeholder">Erreur de chargement des documents.</p>';
             this.updateSelectionUI();
-            // Émettre quand même un refresh (total inconnu → 0 si la liste est vide localement)
-            this.eventBus.emit('documents:list:refreshed', { total: Array.isArray(this.documents) ? this.documents.length : 0 });
+            this.eventBus.emit('documents:list:refreshed', { total: Array.isArray(this.documents) ? this.documents.length : 0, items: this.documents || [] });
             this._scheduleAutoRefresh(false);
         }
     }
@@ -256,11 +255,13 @@ export default class DocumentsModule {
 
     renderDocItem(doc) {
         const id = doc.id;
-        const rawName = doc.filename || 'Fichier';
+        const rawName = doc.filename || doc.original_filename || doc.name || doc.title || 'Fichier';
         const name = this._escapeHTML(rawName);
         const nameAttr = this._escapeAttr(rawName);
-        const date = doc.uploaded_at ? formatDate(doc.uploaded_at) : '';
-        const status = (doc.status || 'ready').toLowerCase(); // ready | processing | error
+        const uploaded = doc.uploaded_at || doc.created_at || doc.createdAt || '';
+        const date = uploaded ? formatDate(uploaded) : '';
+        const rawStatus = (doc.status ?? doc.state ?? 'ready');
+        const status = String(rawStatus).toLowerCase(); // ready | processing | error
         const statusClass = status === 'processing' ? 'status-processing'
                           : status === 'error' ? 'status-error'
                           : 'status-ready';

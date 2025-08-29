@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 import sys
@@ -27,7 +27,7 @@ def _import_router(dotted: str):
         module = __import__(dotted, fromlist=["router"])
         return getattr(module, "router", None)
     except Exception as e:
-        logger.warning(f"Router non trouvé: {dotted} — {e}")
+        logger.warning(f"Router non trouvÃ©: {dotted} â€” {e}")
         return None
 
 DOCUMENTS_ROUTER = _import_router("backend.features.documents.router")
@@ -50,19 +50,19 @@ class _BootTimer:
 
 async def _startup(container: ServiceContainer):
     bt = _BootTimer("BOOT")
-    logger.info("Démarrage backend Émergence…")
+    logger.info("DÃ©marrage backend Ã‰mergenceâ€¦")
 
     fast_boot = os.getenv("EMERGENCE_FAST_BOOT") or os.getenv("EMERGENCE_SKIP_MIGRATIONS")
     try:
         db_manager = container.db_manager()
         if fast_boot:
             await db_manager.connect()
-            logger.info("DB connectée (FAST_BOOT=on).")
+            logger.info("DB connectÃ©e (FAST_BOOT=on).")
         else:
             await initialize_database(db_manager, _migrations_dir())
-            logger.info("DB initialisée (migrations exécutées).")
+            logger.info("DB initialisÃ©e (migrations exÃ©cutÃ©es).")
     except Exception as e:
-        logger.warning(f"Initialisation DB partielle/repoussée: {e}")
+        logger.warning(f"Initialisation DB partielle/repoussÃ©e: {e}")
     bt.mark("db_ready")
 
     # Wire DI (inclut maintenant debate.router)
@@ -75,7 +75,7 @@ async def _startup(container: ServiceContainer):
             chat_router_module,
             dashboard_module,
             documents_module,
-            debate_module,   # <-- ajouté
+            debate_module,   # <-- ajoutÃ©
         ])
         logger.info("DI wired (chat|dashboard|documents|debate.router).")
     except Exception as e:
@@ -84,7 +84,7 @@ async def _startup(container: ServiceContainer):
 
 def create_app() -> FastAPI:
     container = ServiceContainer()
-    app = FastAPI(title="Émergence API", version="7.1")
+    app = FastAPI(title="Ã‰mergence API", version="7.1")
     app.state.service_container = container
 
     app.add_middleware(
@@ -106,7 +106,7 @@ def create_app() -> FastAPI:
             container.unwire()
         except Exception:
             pass
-        logger.info("Arrêt backend Émergence terminé.")
+        logger.info("ArrÃªt backend Ã‰mergence terminÃ©.")
 
     @app.get("/api/health", tags=["Health"])
     async def health():
@@ -121,9 +121,9 @@ def create_app() -> FastAPI:
                 app.include_router(router, tags=getattr(router, "tags", None))
             else:
                 app.include_router(router, prefix=desired_prefix, tags=getattr(router, "tags", None))
-            logger.info(f"Router monté: {desired_prefix}")
+            logger.info(f"Router montÃ©: {desired_prefix}")
         except Exception as e:
-            logger.error(f"Échec du montage du router {desired_prefix}: {e}")
+            logger.error(f"Ã‰chec du montage du router {desired_prefix}: {e}")
 
     _mount_router(DOCUMENTS_ROUTER, "/api/documents")
     _mount_router(DEBATE_ROUTER,    "/api/debate")
@@ -133,9 +133,9 @@ def create_app() -> FastAPI:
 
     # WebSocket
     try:
-        from backend.core.websocket import get_websocket_router  # type: ignore
-        app.include_router(get_websocket_router(container))
-        logger.info("Router WebSocket 'chat' monté.")
+        from backend.features.chat.router import router as CHAT_WS_ROUTER  # type: ignore
+        app.include_router(CHAT_WS_ROUTER)
+        logger.info("Router WebSocket 'chat' montÃ©.")
     except Exception as e:
         logger.error(f"Impossible de monter le router WebSocket: {e}")
 
