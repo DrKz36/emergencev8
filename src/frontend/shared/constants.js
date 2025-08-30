@@ -1,30 +1,37 @@
 ﻿/**
  * @file /src/frontend/shared/constants.js
- * @description Fichier de constantes V24.0 - "Opération Vélocité"
- * - Réintégration de TOUS les événements pour assurer la communication inter-modules.
+ * @description V24.2 — Unification WS-Config : réexport depuis shared/config.js + compat RECONNECT_DELAY
+ * - Maintient tous les EVENTS
+ * - Conserve les AGENTS et ICONS
  */
 
-const wsUrl = '/ws';
-console.log(`%c[Config] URL WebSocket configurée pour : ${wsUrl}`, 'color: #4ade80;');
+import { WS_CONFIG as _WS_CONFIG } from './config.js'; // source canonique
 
+// Log de config (URL résolue dynamiquement par config.js)
+console.log(`%c[Config] URL WebSocket configurée pour : ${_WS_CONFIG.URL}`, 'color: #4ade80;');
+
+// --- Icônes agents (inline SVG) ---
 const ICONS = {
     ANIMA: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="vertical-align: middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-12h2v2h-2zm0 4h2v6h-2z"></path></svg>`,
     NEO: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="vertical-align: middle;"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>`,
     NEXUS: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="vertical-align: middle;"><path d="M20.5 10H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-2 .9-2 2v3H1.5C.67 10 0 10.67 0 11.5v1C0 13.33.67 14 1.5 14H3v3c0 1.1.9 2 2 2h4v1.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V19h4c1.1 0 2-.9 2-2v-3h1.5c.83 0 1.5-.67 1.5-1.5v-1c0-.83-.67-1.5-1.5-1.5z"></path></svg>`
 };
 
+// --- Agents (métadonnées d’affichage) ---
 export const AGENTS = {
     anima: { id: 'anima', name: 'Anima', icon: ICONS.ANIMA, color: 'var(--color-anima)', cssClass: 'anima', description: 'L\'exploratrice des profondeurs émotionnelles' },
-    neo: { id: 'neo', name: 'Neo', icon: ICONS.NEO, color: 'var(--color-neo)', cssClass: 'neo', description: 'Le challenger logique et provocateur' },
+    neo:   { id: 'neo',   name: 'Neo',   icon: ICONS.NEO,   color: 'var(--color-neo)',   cssClass: 'neo',   description: 'Le challenger logique et provocateur' },
     nexus: { id: 'nexus', name: 'Nexus', icon: ICONS.NEXUS, color: 'var(--color-nexus)', cssClass: 'nexus', description: 'Le tisseur de liens et synthétiseur' },
 };
 
+// --- WS config (réexport + alias compat) ---
 export const WS_CONFIG = {
-    URL: wsUrl,
-    RECONNECT_DELAY: 5000,
+    ..._WS_CONFIG,
+    // Alias rétro‑compat si certains modules utilisent encore RECONNECT_DELAY
+    RECONNECT_DELAY: _WS_CONFIG.RECONNECT_INTERVAL ?? 5000,
 };
 
-// ✅ CORRECTION : Tous les événements sont présents.
+// ✅ Tous les événements inter‑modules (bus)
 export const EVENTS = {
     // --- Core & App Lifecycle ---
     APP_READY: 'app:ready',

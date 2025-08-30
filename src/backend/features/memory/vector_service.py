@@ -1,8 +1,9 @@
 # src/backend/features/memory/vector_service.py
-# V2.9.2 — Telemetry hard-OFF & import-order guard :
-#          - Force CHROMA_DISABLE_TELEMETRY/ANONYMIZED_TELEMETRY env before any Chroma import
-#          - Safe no-op shim for posthog (if imported by Chroma)
-#          - Keep API/behavior identical otherwise
+# V2.9.3 — Telemetry ultra-OFF & import-order guard :
+#          - Force CHROMA_* env OFF avant tout import Chroma
+#          - Monkeypatch complet de posthog (classe + fonctions module-level)
+#          - API identique ; messages Chroma/PostHog supprimés des logs
+
 import logging
 import os
 import shutil
@@ -15,42 +16,57 @@ from typing import List, Dict, Any, Optional
 # ---- Force disable telemetry as early as possible (before importing chromadb) ----
 def _force_disable_telemetry_env() -> None:
     try:
-        # Chroma honors this flag; keep it explicit.
         os.environ.setdefault("CHROMA_DISABLE_TELEMETRY", "1")
-        # “Anonymized telemetry” off, even if lib inspects this flag.
         os.environ.setdefault("ANONYMIZED_TELEMETRY", "0")
-        # Defensive: do not persist any telemetry locally.
         os.environ.setdefault("PERSIST_TELEMETRY", "0")
+        # Défensif : variantes lues par certaines builds
+        os.environ.setdefault("CHROMA_TELEMETRY_ENABLED", "0")
+        os.environ.setdefault("DO_NOT_TRACK", "1")
+        os.environ.setdefault("POSTHOG_DISABLED", "1")
     except Exception:
         pass
 
 def _monkeypatch_posthog_noop() -> None:
     """
-    Some Chroma builds may import `posthog`. We neutralize it safely:
-    - If `posthog` is available, overwrite Posthog client with a no-op class.
-    - If it is missing, inject a tiny shim into sys.modules so downstream imports are harmless.
-    This is process-local and does not touch site-packages.
+    Neutralise entièrement 'posthog' quel que soit le mode d'import utilisé par Chroma :
+      - Fournit une classe Posthog no-op.
+      - Fournit les fonctions module-level capture/identify/flush/shutdown no-op.
     """
+    def _noop(*a, **k): return None
+
     try:
         import posthog  # type: ignore
+
         class _NoopPosthog:
             def __init__(self, *a, **k): pass
-            def capture(self, *a, **k): pass
-            def identify(self, *a, **k): pass
-            def flush(self, *a, **k): pass
-            def shutdown(self, *a, **k): pass
-        # Replace constructor
-        posthog.Posthog = _NoopPosthog  # type: ignore[attr-defined]
+            def capture(self, *a, **k): return None
+            def identify(self, *a, **k): return None
+            def flush(self, *a, **k): return None
+            def shutdown(self, *a, **k): return None
+
+        try:
+            posthog.Posthog = _NoopPosthog          # classe no-op
+            posthog.capture = _noop                 # fonctions module-level no-op
+            posthog.identify = _noop
+            posthog.flush = _noop
+            posthog.shutdown = _noop
+        except Exception:
+            pass
+
     except Exception:
-        # Create a minimal shim so `import posthog` works later with no effects.
-        shim = types.SimpleNamespace(
-            Posthog=lambda *a, **k: types.SimpleNamespace(
-                capture=lambda *a, **k: None,
-                identify=lambda *a, **k: None,
-                flush=lambda *a, **k: None,
-                shutdown=lambda *a, **k: None,
-            )
-        )
+        # Module absent → on injecte un shim complet
+        shim = types.ModuleType("posthog")
+        class _NoopPosthog:
+            def __init__(self, *a, **k): pass
+            def capture(self, *a, **k): return None
+            def identify(self, *a, **k): return None
+            def flush(self, *a, **k): return None
+            def shutdown(self, *a, **k): return None
+        shim.Posthog = _NoopPosthog
+        shim.capture = lambda *a, **k: None
+        shim.identify = lambda *a, **k: None
+        shim.flush = lambda *a, **k: None
+        shim.shutdown = lambda *a, **k: None
         sys.modules.setdefault("posthog", shim)
 
 _force_disable_telemetry_env()
@@ -67,10 +83,10 @@ logger = logging.getLogger(__name__)
 
 class VectorService:
     """
-    VectorService V2.9.2
+    VectorService V2.9.3
     - API identique.
     - Auto-reset AVANT instanciation Chroma si DB corrompue (évite locks Windows).
-    - Télémétrie Chroma/PostHog durcie : env forcé + client PostHog no-op.
+    - Télémétrie Chroma/PostHog durcie : env forcé + module posthog neutralisé (classe + fonctions).
     - FIX existant conservé : normalisation des filtres where.
     """
 

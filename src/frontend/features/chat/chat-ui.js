@@ -1,8 +1,8 @@
+// src/frontend/features/chat/chat-ui.js
 /**
- * src/frontend/features/chat/chat-ui.js
- * V27 — Input auto-extend + safe-area + POWER seul coloré + label RAG séparé
- *     + Panneau Mémoire (statut + bouton Analyser)
- *     + Affichage métriques Chat (TTFB, Fallbacks)
+ * V27.2 — + Badge modèle/fallback (lecture chat.modelInfo + chat.lastMessageMeta)
+ *        + Bouton "Clear" mémoire
+ *        + Compteurs STM/LTM + TTFB déjà affichés
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
@@ -15,11 +15,15 @@ export class ChatUI {
       currentAgentId: 'anima',
       ragEnabled: false,
       messages: {},
-      // champs supplémentaires lus depuis chat.state
+      // champs depuis chat.state
       memoryBannerAt: null,
       lastAnalysis: null,
-      metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null }
+      metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null },
+      memoryStats: { has_stm: false, ltm_items: 0, injected: false },
+      modelInfo: null,
+      lastMessageMeta: null
     };
+    console.log('✅ ChatUI V27.2 (badge modèle + clear mémoire) chargé.');
   }
 
   render(container, chatState = {}) {
@@ -30,9 +34,15 @@ export class ChatUI {
 
     container.innerHTML = `
       <div class="chat-container card">
-        <div class="chat-header card-header">
+        <div class="chat-header card-header" style="display:flex;align-items:center;gap:.75rem;">
           <div class="chat-title">Dialogue</div>
           <div class="agent-selector">${agentTabs}</div>
+          <div id="model-badge"
+               class="model-badge"
+               style="margin-left:auto;padding:2px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);
+                      font:12px/1.2 system-ui,Segoe UI,Roboto,Arial;opacity:.9;background:linear-gradient(135deg,#1a1a1a,#0f172a);color:#e5e7eb">
+            —
+          </div>
         </div>
 
         <div class="chat-messages card-body" id="chat-messages"></div>
@@ -42,7 +52,7 @@ export class ChatUI {
             <textarea id="chat-input" class="chat-input" rows="3" placeholder="Écrivez votre message..."></textarea>
           </form>
 
-          <div class="chat-actions">
+          <div class="chat-actions" style="display:flex;align-items:center;flex-wrap:wrap;gap:.5rem">
             <div class="rag-control">
               <button
                 type="button"
@@ -53,7 +63,7 @@ export class ChatUI {
                 title="Activer/Désactiver RAG">
                 <svg class="power-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                   <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-                  <path d="M5.5 7a8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                  <path d="M5.5 7a 8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
                 </svg>
               </button>
               <span id="rag-label" class="rag-label">RAG</span>
@@ -63,7 +73,9 @@ export class ChatUI {
             <div class="memory-control" style="display:flex;align-items:center;gap:.5rem;margin-left:.6rem">
               <span id="memory-dot" aria-hidden="true" style="width:10px;height:10px;border-radius:50%;background:#6b7280;display:inline-block"></span>
               <span id="memory-label" class="memory-label" title="Statut mémoire">Mémoire OFF</span>
+              <span id="memory-counters" class="memory-counters" style="font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.85"></span>
               <button type="button" id="memory-analyze" class="button" title="Analyser / consolider la mémoire">Analyser</button>
+              <button type="button" id="memory-clear" class="button" title="Effacer la mémoire de session">Clear</button>
             </div>
 
             <!-- === Outils === -->
@@ -91,21 +103,48 @@ export class ChatUI {
     if (!container) return;
     this.state = { ...this.state, ...chatState };
 
+    // Tabs / agent courant
     container.querySelector('#rag-power')
       ?.setAttribute('aria-checked', String(!!this.state.ragEnabled));
-
     this._setActiveAgentTab(container, this.state.currentAgentId);
 
+    // Messages
     const raw = this.state.messages?.[this.state.currentAgentId];
     const list = this._asArray(raw).map((m) => this._normalizeMessage(m));
     this._renderMessages(container.querySelector('#chat-messages'), list);
 
-    // Mémoire (statut + libellé)
+    // --- Mémoire (statut + libellé + **compteurs**) ---
     const memoryOn = !!(this.state.memoryBannerAt || (this.state.lastAnalysis && this.state.lastAnalysis.status === 'completed'));
     const dot = container.querySelector('#memory-dot');
     const lbl = container.querySelector('#memory-label');
     if (dot) dot.style.background = memoryOn ? '#22c55e' : '#6b7280';
     if (lbl) lbl.textContent = memoryOn ? 'Mémoire ON' : 'Mémoire OFF';
+
+    const mem = this.state.memoryStats || {};
+    const cnt = container.querySelector('#memory-counters');
+    if (cnt) {
+      const stmTxt = mem.has_stm ? 'STM ✓' : 'STM 0';
+      const ltmTxt = `LTM ${Number(mem.ltm_items || 0)}`;
+      const inj = mem.injected ? '• inj' : '';
+      cnt.textContent = `${stmTxt} • ${ltmTxt}${inj ? ' ' + inj : ''}`;
+    }
+
+    // --- Badge modèle / fallback ---
+    const badge = container.querySelector('#model-badge');
+    if (badge) {
+      const mi = this.state.modelInfo || {};
+      const lm = this.state.lastMessageMeta || {};
+      const usedProvider = (lm.provider || mi.provider || '').toString();
+      const usedModel = (lm.model || mi.model || '').toString();
+      const planned = (mi.provider || '?') + ':' + (mi.model || '?');
+      const used = (usedProvider || '?') + ':' + (usedModel || '?');
+      const fallback = !!(mi.provider && mi.model && (mi.provider !== usedProvider || mi.model !== usedModel));
+      badge.textContent = usedProvider || usedModel ? (fallback ? `Fallback → ${used}` : used) : '—';
+      const ttfb = (this.state.metrics && Number.isFinite(this.state.metrics.last_ttfb_ms)) ? `${this.state.metrics.last_ttfb_ms} ms` : '—';
+      badge.title = `Modèle prévu: ${planned} • Utilisé: ${used} • TTFB: ${ttfb}`;
+      badge.style.borderColor = fallback ? '#f59e0b' : 'rgba(255,255,255,.12)';
+      badge.style.color = fallback ? '#fde68a' : '#e5e7eb';
+    }
 
     // Métriques
     const met = this.state.metrics || {};
@@ -122,6 +161,7 @@ export class ChatUI {
     const ragLbl = container.querySelector('#rag-label');
     const sendBtn = container.querySelector('#chat-send');
     const memBtn  = container.querySelector('#memory-analyze');
+    const memClr  = container.querySelector('#memory-clear');
 
     /* Autosize — textarea s’adapte à la frappe (desktop & mobile) */
     const autosize = () => this._autoGrow(input);
@@ -166,8 +206,9 @@ export class ChatUI {
     ragBtn?.addEventListener('click', toggleRag);
     ragLbl?.addEventListener('click', toggleRag);
 
-    // Mémoire — lance l’analyse
+    // Mémoire — actions
     memBtn?.addEventListener('click', () => this.eventBus.emit('memory:tend'));
+    memClr?.addEventListener('click', () => this.eventBus.emit('memory:clear'));
 
     container.querySelector('.agent-selector')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-agent-id]');
@@ -261,6 +302,6 @@ export class ChatUI {
   }
 
   _escapeHTML(s){
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
   }
 }

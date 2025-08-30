@@ -1,5 +1,8 @@
 # src/backend/features/memory/gardener.py
-# V2.6.2 — FIX sqlite3.Row.get (→ dict(row)) + extraction texte robuste + ID déterministe pour facts (anti-doublon)
+# V2.7.0 — Patterns “mot‑code” élargis (+ valeurs multi‑mots) + vectorisation des CONCEPTS même s’il existe déjà des FACTS
+#           - Reconnaît: (mon|ton|ce|le) mot[- ]code (est|:|=) <valeur> [pour (anima|neo|nexus)] (+ variantes)
+#           - Garde-fou corrigé: on teste la présence de vecteurs par TYPE (“concept”/“fact”), pas globalement par session.
+
 import logging
 import uuid
 import json
@@ -14,11 +17,17 @@ from backend.features.memory.analyzer import MemoryAnalyzer
 
 logger = logging.getLogger(__name__)
 
+# Nouvelles règles: nommage des groupes pour robustesse (agent/value) + valeurs multi-mots.
 _CODE_PATTERNS = [
-    # “Pour Anima, mon mot-code est ‘nexus’.” / “Pour neo, mon mot code: vlad”
-    r"(?:pour\s+(anima|neo|nexus)\s*,?\s*)?mon\s*mot[-\s]?code\s*(?:est|:)\s*[«\"'’]?\s*([A-Za-zÀ-ÖØ-öø-ÿ0-9_\-]+)\s*[»\"'’]?",
-    # “Mon mot-code pour Anima est nexus”
-    r"mon\s*mot[-\s]?code\s*pour\s+(anima|neo|nexus)\s*(?:est|:)\s*[«\"'’]?\s*([A-Za-zÀ-ÖØ-öø-ÿ0-9_\-]+)\s*[»\"'’]?"
+    # ex: “Pour Anima, ce mot code est Nexus”, “Pour neo mon mot-code: vlad”, “pour nexus mot‑code = bagit ag”
+    r"(?:pour\s+(?P<agent>anima|neo|nexus)\s*,?\s*)?(?:mon|ton|ce|le)\s*mot[-\s]?code\s*(?:est|:|=)\s*[«\"'’]?\s*(?P<value>[A-Za-zÀ-ÖØ-öø-ÿ0-9_\- ]+?)\s*[»\"'’]?(?:[.!?,;:\)]|$)",
+    # ex: “mon mot-code pour Anima est nexus”
+    r"(?:mon|ton|ce|le)\s*mot[-\s]?code\s*pour\s+(?P<agent>anima|neo|nexus)\s*(?:est|:|=)\s*[«\"'’]?\s*(?P<value>[A-Za-zÀ-ÖØ-öø-ÿ0-9_\- ]+?)\s*[»\"'’]?(?:[.!?,;:\)]|$)",
+    # compat historiques (back-compat exactes)
+    r"(?:pour\s+(?P<agent>anima|neo|nexus)\s*,?\s*)?mon\s*mot[-\s]?code\s*(?:est|:)\s*[«\"'’]?\s*(?P<value>[A-Za-zÀ-ÖØ-öø-ÿ0-9_\-]+)\s*[»\"'’]?",
+    r"mon\s*mot[-\s]?code\s*pour\s+(?P<agent>anima|neo|nexus)\s*(?:est|:)\s*[«\"'’]?\s*(?P<value>[A-Za-zÀ-ÖØ-öø-ÿ0-9_\-]+)\s*[»\"'’]?",
+    # très permissif (dernier recours) : “mot code = xxx”
+    r"mot[-\s]?code\s*(?:est|:|=)\s*[«\"'’]?\s*(?P<value>[A-Za-zÀ-ÖØ-öø-ÿ0-9_\- ]+?)\s*[»\"'’]?(?:[.!?,;:\)]|$)"
 ]
 
 def _now_iso() -> str:
@@ -46,11 +55,19 @@ def _fact_id(session_id: str, key: str, agent: Optional[str], value: str) -> str
     base = f"{session_id}:{key}:{agent or 'global'}:{value}"
     return hashlib.sha1(base.encode("utf-8")).hexdigest()
 
+# Nettoyage de la valeur (trim, ponctuation fin, espaces multiples)
+_VALUE_TRAIL_RE = re.compile(r"[\s\.\,\;\:\!\?]+$")
+def _clean_value(v: str) -> str:
+    v = (v or "").strip()
+    v = _VALUE_TRAIL_RE.sub("", v)
+    v = re.sub(r"\s{2,}", " ", v)
+    return v
+
 class MemoryGardener:
     """
-    MEMORY GARDENER V2.6.2
-    - FIX: accès aux colonnes sur aiosqlite.Row (dict(row) avant .get).
-    - Vectorise concepts/entities + FAITS (mot-code/agent) avec dédup fine.
+    MEMORY GARDENER V2.7.0
+    - Extraction robuste des FAITS “mot-code”.
+    - Vectorise concepts/entities + FAITS avec dédup fine.
     - ID déterministe pour facts -> upsert strict, aucun doublon.
     """
     KNOWLEDGE_COLLECTION_NAME = "emergence_knowledge"
@@ -60,7 +77,7 @@ class MemoryGardener:
         self.vector_service = vector_service
         self.analyzer = memory_analyzer
         self.knowledge_collection = self.vector_service.get_or_create_collection(self.KNOWLEDGE_COLLECTION_NAME)
-        logger.info("MemoryGardener V2.6.2 initialisé.")
+        logger.info("MemoryGardener V2.7.0 initialisé.")
 
     async def tend_the_garden(self, consolidation_limit: int = 10) -> Dict[str, Any]:
         logger.info("Le jardinier commence sa ronde dans le jardin de la mémoire...")
@@ -116,8 +133,8 @@ class MemoryGardener:
                     new_items_count += len(facts_to_add)
                     added_any = True
 
-                # 4b) CONCEPTS/ENTITIES: si aucun vecteur encore enregistré pour cette session
-                if all_concepts and not await self._any_vectors_for_session(sid):
+                # 4b) CONCEPTS/ENTITIES: ne pas bloquer par la présence d'un FACT
+                if all_concepts and not await self._any_vectors_for_session_type(sid, "concept"):
                     await self._record_concepts_in_sql(all_concepts, s, uid)
                     await self._vectorize_concepts(all_concepts, s, uid)
                     new_items_count += len(all_concepts)
@@ -143,7 +160,7 @@ class MemoryGardener:
         logger.info(report)
         return report
 
-    # ---------- Helpers ----------
+    # ---------- Helpers SQL ----------
 
     async def _fetch_recent_sessions(self, limit: int) -> List[Dict[str, Any]]:
         query = """
@@ -183,6 +200,8 @@ class MemoryGardener:
             logger.warning(f"JSON entities invalide: {e}")
             return []
 
+    # ---------- Helpers extraction ----------
+
     def _extract_history(self, session_data: Any) -> List[Dict[str, Any]]:
         try:
             if not session_data:
@@ -208,21 +227,27 @@ class MemoryGardener:
             if not text:
                 continue
 
+            # recherche multi-patterns avec groupes nommés
+            found = False
             for pat in _CODE_PATTERNS:
                 m = re.search(pat, text, flags=re.IGNORECASE)
-                if m:
-                    g1, g2 = (m.group(1), m.group(2)) if m.lastindex and m.lastindex >= 2 else (None, None)
-                    agent = _agent_norm(g1) or agent_hint
-                    value = (g2 or "").strip()
-                    if value:
-                        display_agent = agent or "global"
-                        facts.append({
-                            "key": "mot-code",
-                            "agent": agent,
-                            "value": value,
-                            "text": f"Mot-code ({display_agent})={value}"
-                        })
+                if not m:
+                    continue
+                gd = m.groupdict() if m else {}
+                agent = _agent_norm(gd.get("agent")) or agent_hint
+                value = _clean_value(gd.get("value") or "")
+                if value:
+                    display_agent = agent or "global"
+                    facts.append({
+                        "key": "mot-code",
+                        "agent": agent,
+                        "value": value,
+                        "text": f"Mot-code ({display_agent})={value}"
+                    })
+                    found = True
                     break  # éviter doublons sur le même message
+            if found:
+                continue
 
         # Unicité par (key, agent, value)
         seen = set()
@@ -234,13 +259,16 @@ class MemoryGardener:
                 seen.add(t)
         return uniq
 
-    async def _any_vectors_for_session(self, session_id: str) -> bool:
+    # ---------- Helpers vecteurs ----------
+
+    async def _any_vectors_for_session_type(self, session_id: str, type_name: str) -> bool:
+        """True s'il existe déjà AU MOINS 1 vecteur de ce type pour la session."""
         try:
             res = self.vector_service.query(
                 self.knowledge_collection,
                 query_text=session_id,
                 n_results=1,
-                where_filter={"source_session_id": session_id}
+                where_filter={"source_session_id": session_id, "type": type_name}
             )
             return bool(res)
         except Exception:

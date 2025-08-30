@@ -185,6 +185,20 @@ export class WebSocketClient {
               this.eventBus.emit?.('chat:last_message_meta', meta);
             }
           }
+
+          // ✅ NEW: persister les compteurs STM/LTM du banner mémoire
+          if (msg.type === 'ws:memory_banner') {
+            const p = msg.payload || {};
+            try {
+              this.state?.set?.('chat.memoryStats', {
+                has_stm: !!p.has_stm,
+                ltm_items: Number.isFinite(p.ltm_items) ? p.ltm_items : 0,
+                injected: !!p.injected_into_prompt
+              });
+              this.state?.set?.('chat.memoryBannerAt', Date.now());
+            } catch {}
+          }
+
           this.eventBus.emit?.(msg.type, msg.payload);
         }
       } catch { console.warn('[WebSocket] Message non JSON', ev.data); }

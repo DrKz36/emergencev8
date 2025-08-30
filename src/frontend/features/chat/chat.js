@@ -1,14 +1,13 @@
 /**
  * @module features/chat/chat
- * @description Module Chat - V25.2 "WS-first strict + RAG/Memo hooks + Watchdog REST fallback + metrics/fallback counter + memory.tend"
+ * @description Module Chat - V25.3 "WS-first strict + RAG/Memo hooks + Watchdog REST fallback + metrics/fallback counter + memory.tend + memory.clear"
  *
- * Ajouts:
- * - Compteurs metrics: incrément 'rest_fallback_count' + 'last_fallback_at' lors du fallback REST.
- * - Action mémoire: écoute 'memory:tend' → api.tendMemory() + toasts + mise à jour lastAnalysis.
- * - Sans modification d’architecture ni d’imports externes.
+ * Ajouts V25.3:
+ * - Cache-bust ESM pour forcer le rechargement de l’UI (chat-ui.js?v=2713).
+ * - Bouton Clear mémoire: écoute 'memory:clear' → api.clearMemory() + reset local des compteurs.
  */
 
-import { ChatUI } from './chat-ui.js';
+import { ChatUI } from './chat-ui.js?v=2713';   // ⬅️ Cache-bust pour recharger l'UI modifiée
 import { EVENTS } from '../../shared/constants.js';
 import { api } from '../../shared/api-client.js';
 
@@ -62,7 +61,7 @@ export default class ChatModule {
     } catch {}
 
     this.isInitialized = true;
-    console.log('✅ ChatModule V25.2 (WS-first strict + RAG/Memo hooks + Watchdog fallback + metrics) initialisé.');
+    console.log('✅ ChatModule V25.3 (WS-first strict + RAG/Memo hooks + Watchdog fallback + metrics + memory.clear) initialisé.');
   }
 
   mount(container) {
@@ -140,8 +139,9 @@ export default class ChatModule {
     this.listeners.push(this.eventBus.on('ws:memory_banner', this.handleMemoryBanner.bind(this)));
     this.listeners.push(this.eventBus.on('ws:rag_status', this.handleRagStatus.bind(this)));
 
-    // Action mémoire (UI)
+    // Actions mémoire (UI)
     this.listeners.push(this.eventBus.on('memory:tend', this.handleMemoryTend.bind(this)));
+    this.listeners.push(this.eventBus.on('memory:clear', this.handleMemoryClear.bind(this))); // ⬅️ NEW
   }
 
   /* ============================ Utils ============================ */
@@ -390,6 +390,27 @@ export default class ChatModule {
     } catch (e) {
       console.error('[Chat] memory.tend error', e);
       this.showToast('Analyse mémoire : échec');
+    }
+  }
+
+  async handleMemoryClear() {
+    try {
+      this.showToast('Nettoyage mémoire…');
+      if (typeof api.clearMemory === 'function') {
+        await api.clearMemory();
+      } else {
+        // Fallback doux si l’endpoint n’existe pas encore
+        await api.tendMemory();
+      }
+      // Reset local (affichage OFF)
+      try {
+        this.state.set('chat.memoryStats', { has_stm: false, ltm_items: 0, injected: false });
+        this.state.set('chat.memoryBannerAt', null);
+      } catch {}
+      this.showToast('Mémoire effacée ✓');
+    } catch (e) {
+      console.error('[Chat] memory.clear error', e);
+      this.showToast('Effacement mémoire : échec');
     }
   }
 

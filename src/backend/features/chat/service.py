@@ -1,9 +1,9 @@
 ﻿# src/backend/features/chat/service.py
-# V31.2 — P0.2: Signals UI + logs fallback
-# - NEW frames: ws:model_info, ws:model_fallback
-# - meta injected in ws:chat_stream_end (provider, model, fallback)
-# - Structured logs on fallback
-# Base: V31.0 local fournie (fallback cross-provider + mémoire orthogonale + bannières ws:*) :contentReference[oaicite:4]{index=4}
+# V31.3 — P0.3: Mémoire agent-aware + fallback doux, contrats WS inchangés
+# - _build_memory_context(..., agent_id): filtre LTM par user_id + agent ({"$and":[...]}), fallback user-only si vide
+# - Appels mis à jour pour passer agent_id (injection mémoire + RAG)
+# - Frames conservées: ws:model_info, ws:model_fallback, ws:chat_stream_*, ws:memory_banner, ws:rag_status
+# Base V31.2 locale (Signals UI + logs fallback) :contentReference[oaicite:4]{index=4}
 
 import os, re, asyncio, logging, glob, json
 from uuid import uuid4
@@ -74,7 +74,7 @@ class ChatService:
             raise
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V31.2 initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V31.3 initialisé. Prompts chargés: {len(self.prompts)}")
 
     # ---------- prompts ----------
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
@@ -196,25 +196,51 @@ class ChatService:
             pass
         return ""
 
-    async def _build_memory_context(self, session_id: str, last_user_message: str, top_k: int = 5) -> str:
-        """Construit un bloc mémoire (LTM) en fonction du dernier message utilisateur."""
+    async def _build_memory_context(self, session_id: str, last_user_message: str,
+                                    top_k: int = 5, agent_id: Optional[str] = None) -> str:
+        """Construit un bloc mémoire (LTM) en fonction du dernier message utilisateur.
+        Agent-aware: filtre sur (user_id [+ agent]) avec fallback user-only si aucun résultat.
+        """
         try:
             if not last_user_message:
                 return ""
             knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
             knowledge_col = self.vector_service.get_or_create_collection(knowledge_name)
 
+            # where_filter: user_id [+ agent] si dispo
             where_filter = None
             uid = self._try_get_user_id(session_id)
+            clauses: List[Dict[str, Any]] = []
             if uid:
-                where_filter = {"user_id": uid}
+                clauses.append({"user_id": uid})
+            ag = (agent_id or "").strip().lower() if agent_id else ""
+            if ag:
+                clauses.append({"agent": ag})
+            if len(clauses) == 1:
+                where_filter = clauses[0]
+            elif len(clauses) >= 2:
+                where_filter = {"$and": clauses}
 
+            # 1) Requête principale (user+agent si possible)
             results = self.vector_service.query(
                 collection=knowledge_col,
                 query_text=last_user_message,
                 n_results=top_k,
                 where_filter=where_filter
             )
+
+            # 2) Fallback doux: si on a tenté (user+agent) et qu'il n'y a rien → user-only
+            if (not results) and ag and uid:
+                try:
+                    results = self.vector_service.query(
+                        collection=knowledge_col,
+                        query_text=last_user_message,
+                        n_results=top_k,
+                        where_filter={"user_id": uid}
+                    )
+                except Exception:
+                    pass
+
             if not results:
                 return ""
             lines = []
@@ -456,9 +482,9 @@ class ChatService:
                             pass
                     return  # pas d'appel LLM
 
-            # Construction du contexte mémoire (orthogonal à RAG)
+            # Construction du contexte mémoire (orthogonal à RAG) — agent-aware
             stm = self._try_get_session_summary(session_id)
-            ltm_block = await self._build_memory_context(session_id, last_user_message, top_k=5) if last_user_message else ""
+            ltm_block = await self._build_memory_context(session_id, last_user_message, top_k=5, agent_id=agent_id) if last_user_message else ""
 
             # Si RAG ON: injection STM uniquement (LTM part dans rag_context). Si RAG OFF: STM + LTM injectés.
             if use_rag:
@@ -494,7 +520,7 @@ class ChatService:
                 document_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
                 doc_hits = self.vector_service.query(collection=document_collection, query_text=last_user_message)
                 doc_block = "\n\n".join([f"- {h['text']}" for h in doc_hits]) if doc_hits else ""
-                mem_block = await self._build_memory_context(session_id, last_user_message)
+                mem_block = await self._build_memory_context(session_id, last_user_message, agent_id=agent_id)
                 rag_context = self._merge_blocks([("Mémoire (concepts clés)", mem_block),
                                                   ("Documents pertinents", doc_block)])
                 await connection_manager.send_personal_message(

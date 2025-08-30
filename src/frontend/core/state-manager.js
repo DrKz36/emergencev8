@@ -1,3 +1,4 @@
+// src/frontend/core/state-manager.js
 /**
  * @module core/state-manager
  * @description Gestionnaire d'état V15.3 "Threads Aware" + ensureAuth() + chat meta + metrics
@@ -58,6 +59,11 @@ export class StateManager {
     if (cleanState.chat.ragEnabled === undefined) cleanState.chat.ragEnabled = false;
     if (cleanState.chat.ragStatus === undefined) cleanState.chat.ragStatus = 'idle';
     if (cleanState.chat.memoryBannerAt === undefined) cleanState.chat.memoryBannerAt = null;
+
+    // ✅ NEW: stats mémoire pour l'UI (alimentées par ws:memory_banner)
+    if (cleanState.chat.memoryStats === undefined) {
+      cleanState.chat.memoryStats = { has_stm: false, ltm_items: 0, injected: false };
+    }
 
     return cleanState;
   }
@@ -154,7 +160,7 @@ export class StateManager {
   async ensureAuth() {
     try {
       if (window.gis?.getIdToken) {
-        const tok = await window.gis.getIdToken();
+        const tok = await window.gis.getIdToken()
         if (tok) {
           try { sessionStorage.setItem('emergence.id_token', tok); } catch (_) {}
           try { localStorage.setItem('emergence.id_token', tok); } catch (_) {}
