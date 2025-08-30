@@ -1,13 +1,12 @@
 /**
  * @module features/chat/chat
- * @description Module Chat - V25.3 "WS-first strict + RAG/Memo hooks + Watchdog REST fallback + metrics/fallback counter + memory.tend + memory.clear"
+ * @description Module Chat - V25.4 "WS-first strict + RAG/Memo hooks + Watchdog REST fallback + metrics + memory.clear + listeners idempotents"
  *
- * Ajouts V25.3:
- * - Cache-bust ESM pour forcer le rechargement de l’UI (chat-ui.js?v=2713).
- * - Bouton Clear mémoire: écoute 'memory:clear' → api.clearMemory() + reset local des compteurs.
+ * Ajouts V25.4:
+ * - Dédoublon robuste des listeners WS/UI (pré-bind + _onOnce) pour éviter toute double subscription au hot-reload / réinit.
  */
 
-import { ChatUI } from './chat-ui.js?v=2713';   // ⬅️ Cache-bust pour recharger l'UI modifiée
+import { ChatUI } from './chat-ui.js?v=2713';   // cache-bust UI présent
 import { EVENTS } from '../../shared/constants.js';
 import { api } from '../../shared/api-client.js';
 
@@ -27,10 +26,10 @@ export default class ChatModule {
 
     // Connexion & flux
     this._wsConnected = false;
-    this._wsConnectWaitMs = 700;       // ⏳ anti-course avant d'émettre
+    this._wsConnectWaitMs = 700;
     this._streamStartTimer = null;
-    this._streamStartTimeoutMs = 1500; // ⏱️ Watchdog
-    this._pendingMsg = null;           // { id, agent_id, text, triedRest }
+    this._streamStartTimeoutMs = 1500;
+    this._pendingMsg = null;
 
     // Anti double actions
     this._sendLock = false;
@@ -43,6 +42,43 @@ export default class ChatModule {
     // Mémoire
     this._lastMemoryTendAt = 0;
     this._memoryTendThrottleMs = 2000;
+
+    // Idempotence abonnements
+    this._subs = Object.create(null);   // event -> off()
+    this._H = Object.create(null);      // handlers pré-bindés
+    this._bindHandlers();
+  }
+
+  _bindHandlers() {
+    // UI
+    this._H.CHAT_SEND          = this.handleSendMessage.bind(this);
+    this._H.CHAT_AGENT_SELECTED= this.handleAgentSelected.bind(this);
+    this._H.CHAT_CLEAR         = this.handleClearChat.bind(this);
+    this._H.CHAT_EXPORT        = this.handleExport.bind(this);
+    this._H.CHAT_RAG_TOGGLED   = this.handleRagToggle.bind(this);
+
+    // WS flux
+    this._H.WS_START           = this.handleStreamStart.bind(this);
+    this._H.WS_CHUNK           = this.handleStreamChunk.bind(this);
+    this._H.WS_END             = this.handleStreamEnd.bind(this);
+    this._H.WS_ANALYSIS        = this.handleAnalysisStatus.bind(this);
+
+    // WS état
+    this._H.WS_CONNECTED       = () => { this._wsConnected = true;  try { this.state.set('connection.status', 'connected'); } catch {} };
+    this._H.WS_CLOSE           = () => { this._wsConnected = false; try { this.state.set('connection.status', 'disconnected'); } catch {} };
+
+    // Hooks RAG/Mémoire
+    this._H.MEM_BANNER         = this.handleMemoryBanner.bind(this);
+    this._H.RAG_STATUS         = this.handleRagStatus.bind(this);
+    this._H.MEM_TEND           = this.handleMemoryTend.bind(this);
+    this._H.MEM_CLEAR          = this.handleMemoryClear.bind(this);
+  }
+
+  _onOnce(eventName, handler) {
+    if (this._subs[eventName]) return;                // déjà abonné
+    const off = this.eventBus.on(eventName, handler); // EventBus renvoie bien une fonction off()
+    this._subs[eventName] = off;
+    if (typeof off === 'function') this.listeners.push(off);
   }
 
   /* ============================ Cycle de vie ============================ */
@@ -61,7 +97,7 @@ export default class ChatModule {
     } catch {}
 
     this.isInitialized = true;
-    console.log('✅ ChatModule V25.3 (WS-first strict + RAG/Memo hooks + Watchdog fallback + metrics + memory.clear) initialisé.');
+    console.log('✅ ChatModule V25.4 initialisé (listeners idempotents).');
   }
 
   mount(container) {
@@ -112,36 +148,28 @@ export default class ChatModule {
   }
 
   registerEvents() {
-    // UI
-    this.listeners.push(this.eventBus.on(EVENTS.CHAT_SEND, this.handleSendMessage.bind(this)));
-    this.listeners.push(this.eventBus.on(EVENTS.CHAT_AGENT_SELECTED, this.handleAgentSelected.bind(this)));
-    this.listeners.push(this.eventBus.on(EVENTS.CHAT_CLEAR, this.handleClearChat.bind(this)));
-    this.listeners.push(this.eventBus.on(EVENTS.CHAT_EXPORT, this.handleExport.bind(this)));
-    this.listeners.push(this.eventBus.on(EVENTS.CHAT_RAG_TOGGLED, this.handleRagToggle.bind(this)));
+    // UI (idempotent)
+    this._onOnce(EVENTS.CHAT_SEND,          this._H.CHAT_SEND);
+    this._onOnce(EVENTS.CHAT_AGENT_SELECTED,this._H.CHAT_AGENT_SELECTED);
+    this._onOnce(EVENTS.CHAT_CLEAR,         this._H.CHAT_CLEAR);
+    this._onOnce(EVENTS.CHAT_EXPORT,        this._H.CHAT_EXPORT);
+    this._onOnce(EVENTS.CHAT_RAG_TOGGLED,   this._H.CHAT_RAG_TOGGLED);
 
-    // Flux WS
-    this.listeners.push(this.eventBus.on('ws:chat_stream_start', this.handleStreamStart.bind(this)));
-    this.listeners.push(this.eventBus.on('ws:chat_stream_chunk', this.handleStreamChunk.bind(this)));
-    this.listeners.push(this.eventBus.on('ws:chat_stream_end', this.handleStreamEnd.bind(this)));
-    this.listeners.push(this.eventBus.on('ws:analysis_status', this.handleAnalysisStatus.bind(this)));
+    // Flux WS (idempotent)
+    this._onOnce('ws:chat_stream_start',    this._H.WS_START);
+    this._onOnce('ws:chat_stream_chunk',    this._H.WS_CHUNK);
+    this._onOnce('ws:chat_stream_end',      this._H.WS_END);
+    this._onOnce('ws:analysis_status',      this._H.WS_ANALYSIS);
 
-    // Connexion WS → pilote WS-first
-    this.listeners.push(this.eventBus.on('ws:connected', () => {
-      this._wsConnected = true;
-      try { this.state.set('connection.status', 'connected'); } catch {}
-    }));
-    this.listeners.push(this.eventBus.on('ws:close', () => {
-      this._wsConnected = false;
-      try { this.state.set('connection.status', 'disconnected'); } catch {}
-    }));
+    // Connexion WS (idempotent)
+    this._onOnce('ws:connected',            this._H.WS_CONNECTED);
+    this._onOnce('ws:close',                this._H.WS_CLOSE);
 
-    // Hooks RAG/Mémoire
-    this.listeners.push(this.eventBus.on('ws:memory_banner', this.handleMemoryBanner.bind(this)));
-    this.listeners.push(this.eventBus.on('ws:rag_status', this.handleRagStatus.bind(this)));
-
-    // Actions mémoire (UI)
-    this.listeners.push(this.eventBus.on('memory:tend', this.handleMemoryTend.bind(this)));
-    this.listeners.push(this.eventBus.on('memory:clear', this.handleMemoryClear.bind(this))); // ⬅️ NEW
+    // Hooks RAG/Mémoire (idempotent)
+    this._onOnce('ws:memory_banner',        this._H.MEM_BANNER);
+    this._onOnce('ws:rag_status',           this._H.RAG_STATUS);
+    this._onOnce('memory:tend',             this._H.MEM_TEND);
+    this._onOnce('memory:clear',            this._H.MEM_CLEAR);
   }
 
   /* ============================ Utils ============================ */
