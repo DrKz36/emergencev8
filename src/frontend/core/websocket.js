@@ -1,5 +1,6 @@
 // src/frontend/core/websocket.js
-// WebSocketClient V21.7 — JWT gating + no-retry 4401/1008 + token in query + DE-DUP chat.message
+// WebSocketClient V21.8 — JWT gating + no-retry 4401/1008 + token in query + DE-DUP chat.message
+// + UI hooks: ws:model_info / ws:model_fallback / ws:chat_stream_end(meta)
 
 import { EVENTS } from '../shared/constants.js';
 import { ensureAuth, getIdToken, clearAuth } from './auth.js';
@@ -22,7 +23,7 @@ export class WebSocketClient {
 
     this._bindEventBus();
     this._bindStorageListener();
-    console.log("✅ WebSocketClient V21.7 (JWT gating + de-dup chat.message) prêt.");
+    console.log("✅ WebSocketClient V21.8 (JWT gating + de-dup + fallback UI) prêt.");
   }
 
   _bindEventBus() {
@@ -131,7 +132,28 @@ export class WebSocketClient {
       try {
         const msg = JSON.parse(ev.data);
         if (msg?.type === 'ws:auth_required') { this.eventBus.emit?.('auth:missing', msg?.payload || null); return; }
-        if (msg?.type) this.eventBus.emit?.(msg.type, msg.payload);
+        if (msg?.type) {
+          // Hooks UI pour model info / fallback + meta fin de stream
+          if (msg.type === 'ws:model_info') {
+            try {
+              this.state?.set?.('chat.modelInfo', msg.payload || {});
+            } catch {}
+            this.eventBus.emit?.('chat:model_info', msg.payload || null);
+          }
+          if (msg.type === 'ws:model_fallback') {
+            const p = msg.payload || {};
+            this.eventBus.emit?.('ui:toast', { kind: 'warning', text: `Fallback modèle → ${p.to_provider || '?'} / ${p.to_model || '?'}` });
+            this.eventBus.emit?.('chat:model_fallback', p);
+          }
+          if (msg.type === 'ws:chat_stream_end') {
+            const meta = (msg.payload && msg.payload.meta) || null;
+            if (meta) {
+              try { this.state?.set?.('chat.lastMessageMeta', meta); } catch {}
+              this.eventBus.emit?.('chat:last_message_meta', meta);
+            }
+          }
+          this.eventBus.emit?.(msg.type, msg.payload);
+        }
       } catch { console.warn('[WebSocket] Message non JSON', ev.data); }
     };
 

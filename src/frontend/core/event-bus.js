@@ -4,7 +4,6 @@
  * - Logique de 'off' confirmée et utilisée pour le nettoyage de la mémoire.
  * - Ajout de logs pour le désabonnement.
  */
-
 export class EventBus {
   constructor() {
     this.events = new Map();
@@ -28,14 +27,10 @@ export class EventBus {
       const eventHandlers = this.events.get(event);
       if (eventHandlers.has(handler)) {
         eventHandlers.delete(handler);
-        if (this.debug) {
-            console.log(`[EventBus] Unsubscribed from: ${event}`);
-        }
+        if (this.debug) console.log(`[EventBus] Unsubscribed from: ${event}`);
         if (eventHandlers.size === 0) {
           this.events.delete(event);
-          if (this.debug) {
-            console.log(`[EventBus] No more listeners for: ${event}. Event removed.`);
-          }
+          if (this.debug) console.log(`[EventBus] No more listeners for: ${event}. Event removed.`);
         }
       }
     }
@@ -43,21 +38,13 @@ export class EventBus {
 
   emit(event, data = null) {
     if (event === undefined || event === 'undefined') {
-        console.trace('%c[EventBus] ALERTE: Tentative d\'émission d\'un événement UNDEFINED.', 'color: red; font-weight: bold;', data);
-        return;
+      console.trace('%c[EventBus] ALERTE: Tentative d\'émission d\'un événement UNDEFINED.', 'color: red; font-weight: bold;', data);
+      return;
     }
-
-    if (this.debug) {
-      console.log(`%c[EventBus] Emitting: ${event}`, 'color: #84cc16;', data);
-    }
-
+    if (this.debug) console.log(`%c[EventBus] Emitting: ${event}`, 'color: #84cc16;', data);
     if (this.events.has(event)) {
       this.events.get(event).forEach(handler => {
-        try {
-          handler(data);
-        } catch (error) {
-          console.error(`[EventBus] Error in handler for event ${event}:`, error);
-        }
+        try { handler(data); } catch (error) { console.error(`[EventBus] Error in handler for event ${event}:`, error); }
       });
     }
   }

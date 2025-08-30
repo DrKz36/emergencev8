@@ -1,6 +1,6 @@
 /**
  * @module core/state-manager
- * @description Gestionnaire d'état V15.1 "Threads Aware" + ensureAuth()
+ * @description Gestionnaire d'état V15.2 "Threads Aware" + ensureAuth() + chat meta
  */
 import { AGENTS } from '../shared/constants.js';
 
@@ -34,8 +34,16 @@ export class StateManager {
     cleanState.debate = cleanState.debate || { status: 'idle', topic: null, history: [] };
     cleanState.user = cleanState.user || { id: 'FG', name: 'Fernando' };
 
-    // ➕ Nouvel espace pour la persistance des threads
+    // Threads
     cleanState.threads = cleanState.threads || { currentId: null, map: {} };
+
+    // Auth
+    cleanState.auth = cleanState.auth || { hasToken: false };
+
+    // Chat meta (nouveau)
+    cleanState.chat = cleanState.chat || {};
+    cleanState.chat.lastMessageMeta = cleanState.chat.lastMessageMeta || null;
+    cleanState.chat.modelInfo = cleanState.chat.modelInfo || null;
 
     return cleanState;
   }
@@ -120,7 +128,7 @@ export class StateManager {
     return output;
   }
 
-  // NEW: gating auth (GIS) — TRUE si un token a pu être obtenu/stocké.
+  // TRUE si un token GIS a pu être obtenu/stocké
   async ensureAuth() {
     try {
       if (window.gis?.getIdToken) {

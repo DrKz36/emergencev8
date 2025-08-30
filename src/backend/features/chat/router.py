@@ -1,10 +1,7 @@
 # src/backend/features/chat/router.py
-# V22.5 - WS CHAT: accept-first + message 'ws:auth_required' puis close 4401 si token absent/invalid
+# V22.7 — WS CHAT: accept-first + 'ws:auth_required' + normalisation + branche débat
 import logging
-import asyncio
-from uuid import uuid4
-from datetime import datetime, timezone
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, WebSocket, Depends
 from dependency_injector.wiring import inject, Provide
 
 from backend.shared.models import ChatMessage, Role
@@ -17,9 +14,6 @@ from backend.features.debate.service import DebateService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-# Suivi des tâches WS non bloquantes
-background_tasks = set()
 
 def _norm_bool(payload, snake_key, camel_key, default=False):
     if snake_key in payload: return bool(payload.get(snake_key))
@@ -37,12 +31,11 @@ def _norm_list(payload, snake_key, camel_key):
 async def websocket_endpoint(
     websocket: WebSocket,
     session_id: str,
-    connection_manager: ConnectionManager = Depends(Provide[ServiceContainer.connection_manager]),
+    connection_manager: ConnectionManager = Depends(Provide[ServiceContainer.connection_manager] ),
     chat_service: ChatService = Depends(Provide[ServiceContainer.chat_service]),
-    debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service])
+    debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service]),
 ):
-    # Connexion WS + création/chargement session
-    # Accept-first auth check (gracieux): tente d'extraire le JWT depuis headers/subprotocol/cookie
+    # Auth 'accept-first' tolérante
     _uid = None
     try:
         tok = deps._extract_ws_bearer_token(websocket)
@@ -55,7 +48,7 @@ async def websocket_endpoint(
 
     await connection_manager.connect(websocket, session_id, _uid or f"guest:{session_id}")
     if not _uid:
-        # Informe le client puis ferme proprement avec un code explicite (4401 = Unauthorized)
+        # Informe puis ferme proprement (4401)
         try:
             await connection_manager.send_personal_message(
                 {"type": "ws:auth_required", "payload": {"message": "Authentication required", "reason": "missing_or_invalid_token"}},
@@ -78,7 +71,7 @@ async def websocket_endpoint(
             payload = data.get("payload")
 
             if not message_type or payload is None:
-                logger.warning(f"Message WS malformé ou incomplet: {data}")
+                logger.warning(f"Message WS incomplet: {data}")
                 try:
                     await connection_manager.send_personal_message(
                         {"type": "ws:error", "payload": {"message": "Message WebSocket incomplet (type/payload)."}},
@@ -88,136 +81,89 @@ async def websocket_endpoint(
                     pass
                 continue
 
-            # Normalisation des alias historiques pour compatibilité clients
+            # Compat legacy
             if isinstance(message_type, str) and message_type in {"chat:send", "chat_message"}:
                 logger.info(f"[WS] Normalisation du type hérité '{message_type}' -> 'chat.message'")
                 message_type = "chat.message"
 
-            # =========================
-            #  BRANCHE DEBATE:* (WS)
-            # =========================
+            # ======================
+            # DEBATE (optionnel)
+            # ======================
             if message_type.startswith("debate:"):
                 try:
                     if message_type == "debate:create":
-                        # Normalisation camelCase/snake_case
                         topic       = payload.get("topic")
                         agent_order = _norm_list(payload, "agent_order", "agentOrder")
                         rounds      = payload.get("rounds")
                         use_rag     = _norm_bool(payload, "use_rag", "useRag", default=False)
-
-                        # Validations minimales
                         if not topic or not isinstance(topic, str):
                             await connection_manager.send_personal_message(
-                                {"type": "ws:error", "payload": {"message": "Débat: 'topic' manquant ou invalide."}},
-                                session_id
+                                {"type": "ws:error", "payload": {"message": "Débat: 'topic' manquant ou invalide."}}, session_id
                             ); continue
                         if not agent_order or not isinstance(agent_order, list) or len(agent_order) < 2:
                             await connection_manager.send_personal_message(
-                                {"type": "ws:error", "payload": {"message": "Débat: 'agent_order' doit contenir au moins 2 agents (dernier = synthèse)."}},
-                                session_id
+                                {"type": "ws:error", "payload": {"message": "Débat: 'agent_order' ≥ 2 agents requis."}}, session_id
                             ); continue
                         if rounds is None or not isinstance(rounds, int) or rounds < 1:
                             await connection_manager.send_personal_message(
-                                {"type": "ws:error", "payload": {"message": "Débat: 'rounds' doit être un entier ≥ 1."}},
-                                session_id
+                                {"type": "ws:error", "payload": {"message": "Débat: 'rounds' doit être un entier ≥ 1."}}, session_id
                             ); continue
 
-                        # Feedback immédiat
                         await connection_manager.send_personal_message(
                             {"type": "ws:debate_status_update", "payload": {"status": "Initialisation du débat…", "topic": topic}},
                             session_id
                         )
-
-                        # Lancement via le service avec une config NORMALISÉE
-                        normalized_config = {
-                            "topic": topic,
-                            "agent_order": agent_order,
-                            "rounds": rounds,
-                            "use_rag": use_rag
-                        }
-                        await debate_service.create_debate(config=normalized_config, session_id=session_id)
-
-                    else:
-                        logger.warning(f"Type de message DEBATE non géré: {message_type}")
+                        # Lancement (non stream dans ce flux)
+                        text, cost = await debate_service.run(topic=topic, agent_order=agent_order, rounds=rounds, use_rag=use_rag)
                         await connection_manager.send_personal_message(
-                            {"type": "ws:error", "payload": {"message": f"Type de débat non pris en charge: {message_type}" }},
-                            session_id
-                        )
-
-                except Exception as e:
-                    logger.error(f"Erreur lors du traitement WS débat ({message_type}): {e}", exc_info=True)
-                    try:
-                        await connection_manager.send_personal_message(
-                            {"type": "ws:error", "payload": {"message": f"Erreur interne débat: {str(e)}"}},
-                            session_id
-                        )
-                    except Exception:
-                        pass
-                continue  # on repart écouter la boucle
-
-            # =========================
-            #  BRANCHE CHAT
-            # =========================
-            elif message_type == "chat.message":
-                logger.info(f"Message de chat '{message_type}' intercepté pour traitement.")
-                try:
-                    # 1) Récupérer et valider le texte utilisateur
-                    message_content = payload.get("text") or payload.get("content") or payload.get("message")
-                    if not (isinstance(message_content, str) and message_content.strip()):
-                        logger.warning(f"Message de chat reçu sans contenu textuel: {payload}")
-                        await connection_manager.send_personal_message(
-                            {"type": "ws:error", "payload": {"message": "Message de chat sans texte."}},
+                            {"type": "ws:debate_result", "payload": {"topic": topic, "summary": text, "cost": cost}},
                             session_id
                         )
                         continue
 
-                    # 2) Écrire le message utilisateur dans l'historique (avant la réponse agent)
-                    target_agent = payload.get("agent_id") or payload.get("agentId")
-                    use_rag_flag = _norm_bool(payload, "use_rag", "useRag", default=False)
-
-                    user_msg = ChatMessage(
-                        id=str(uuid4()),
-                        session_id=session_id,
-                        role=Role.USER,
-                        agent="user",
-                        content=message_content,
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                        agents=[target_agent] if target_agent else [],
-                        use_rag=use_rag_flag,
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:error", "payload": {"message": f"Type débat inconnu: {message_type}"}} , session_id
                     )
-                    await chat_service.session_manager.add_message_to_session(session_id, user_msg)
-
-                    # 3) Appeler le service (payload plat)
-                    normalized = {
-                        "agent_id": (target_agent or "").strip().lower(),
-                        "use_rag": bool(use_rag_flag),
-                        "text": message_content,
-                    }
-                    chat_service.process_user_message_for_agents(session_id, normalized, connection_manager)
-
                 except Exception as e:
-                    logger.error(f"Erreur lors du traitement du chat: {e}", exc_info=True)
-                    try:
+                    logger.error(f"[WS] Erreur débat: {e}", exc_info=True)
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:error", "payload": {"message": f"Erreur débat: {e}"}}, session_id
+                    )
+                continue
+
+            # ======================
+            # CHAT (stream)
+            # ======================
+            if message_type == "chat.message":
+                # payload attendu: {text, agent_id, use_rag?}
+                try:
+                    txt = (payload.get("text") or "").strip()
+                    ag  = (payload.get("agent_id") or "").strip().lower()
+                    use_rag = _norm_bool(payload, "use_rag", "useRag", default=False)
+                    if not txt or not ag:
                         await connection_manager.send_personal_message(
-                            {"type": "ws:error", "payload": {"message": f"Erreur interne chat: {str(e)}"}},
+                            {"type": "ws:error", "payload": {"message": "chat.message: 'text' et 'agent_id' requis."}},
                             session_id
                         )
-                    except Exception:
-                        pass
+                        continue
+                    # Enregistre le message user côté session + lance la tâche stream agent
+                    user_msg = ChatMessage(role=Role.USER, agent=ag, message=txt)
+                    await connection_manager.session_manager.add_message_to_session(session_id, user_msg)
+                    chat_service.process_user_message_for_agents(session_id, {"agent_id": ag, "use_rag": use_rag}, connection_manager)
+                except Exception as e:
+                    logger.error(f"[WS] chat.message erreur: {e}", exc_info=True)
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:error", "payload": {"message": f"chat.message erreur: {e}"}}, session_id
+                    )
+                continue
 
-            else:
-                logger.warning(f"Type de message WS non géré: {message_type}")
-                await connection_manager.send_personal_message(
-                    {"type": "ws:error", "payload": {"message": f"Type non géré: {message_type}"}},
-                    session_id
-                )
+            # Inconnu → erreur douce
+            await connection_manager.send_personal_message(
+                {"type": "ws:error", "payload": {"message": f"Type inconnu: {message_type}"}}, session_id
+            )
 
-    except WebSocketDisconnect:
-        await connection_manager.disconnect(session_id, websocket)
-        logger.info(f"Client déconnecté. Session {session_id} marquée pour finalisation.")
     except Exception as e:
-        logger.error(f"Erreur inattendue dans le WebSocket pour la session {session_id}: {e}", exc_info=True)
-        try:
-            await connection_manager.disconnect(session_id, websocket)
-        except Exception:
-            pass
+        logger.info(f"Fermeture WS session={session_id}: {e}")
+    finally:
+        try: await connection_manager.disconnect(session_id, websocket)
+        except Exception: pass
