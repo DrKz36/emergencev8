@@ -1,6 +1,6 @@
 /**
  * @module features/documents/documents
- * @description Logique du module Documents — V7.1 (events { total, items } + retick)
+ * @description Logique du module Documents — V7.3 (normalize {items}, id/name helpers, events { total, items } + retick)
  */
 import { api } from '../../shared/api-client.js';
 import { EVENTS } from '../../shared/constants.js';
@@ -19,6 +19,7 @@ export default class DocumentsModule {
         this.selectedIds = new Set();
         this.isInitialized = false;
         this._autoRefreshTimer = null;
+        this._autoRefreshIntervalMs = 45000;
     }
 
     init() {
@@ -71,7 +72,7 @@ export default class DocumentsModule {
             this.setSelectedFiles(files);
         });
 
-        // Drop-zone
+        // Drop-zone : DnD
         const prevent = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
         ['dragenter', 'dragover'].forEach(evt =>
             this.dom.dropZone.addEventListener(evt, (e) => {
@@ -90,6 +91,12 @@ export default class DocumentsModule {
             this.setSelectedFiles(files);
         });
 
+        // Drop-zone : click + clavier → ouvre le picker (accessibilité)
+        this.dom.dropZone.addEventListener('click', () => { try { this.dom.fileInput?.click(); } catch {} });
+        this.dom.dropZone.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); try { this.dom.fileInput?.click(); } catch {} }
+        });
+
         // Clear selection
         this.dom.clearSelectionBtn.addEventListener('click', () => this.setSelectedFiles([]));
 
@@ -104,6 +111,45 @@ export default class DocumentsModule {
 
         // Délégation suppression par ligne
         this.dom.listContainer.addEventListener('click', (e) => this.handleDelete(e));
+    }
+
+    /* ------------------------------- Helpers -------------------------------- */
+
+    _getId(doc) {
+        return String(
+            doc?.id ??
+            doc?.document_id ??
+            doc?._id ??
+            doc?.uuid ??
+            doc?.documentId ??
+            ''
+        );
+    }
+
+    _getName(doc) {
+        return (
+            doc?.filename ||
+            doc?.original_filename ||
+            doc?.name ||
+            doc?.title ||
+            doc?.path ||
+            doc?.stored_name ||
+            this._getId(doc) ||
+            '—'
+        );
+    }
+
+    _normalizeDocumentsResponse(resp) {
+        // Accepte tableau direct ou enveloppes communes {items}, {documents}, {data}, {results}
+        if (Array.isArray(resp)) return resp;
+        if (!resp || typeof resp !== 'object') return [];
+        if (Array.isArray(resp.items)) return resp.items;
+        if (Array.isArray(resp.documents)) return resp.documents;
+        if (Array.isArray(resp.data)) return resp.data;
+        if (Array.isArray(resp.results)) return resp.results;
+        // Dernier recours: essayer de détecter un unique item
+        const maybe = Object.values(resp).find(v => Array.isArray(v));
+        return Array.isArray(maybe) ? maybe : [];
     }
 
     /* ------------------------------- Sélection ------------------------------- */
@@ -131,6 +177,8 @@ export default class DocumentsModule {
         if (!this.selectedFiles.length) return;
 
         this.dom.uploadButton.disabled = true;
+        this.dom.uploadStatus.classList.remove('error', 'success', 'info');
+        this.dom.uploadStatus.classList.add('info');
         this.dom.uploadStatus.textContent = `Upload de ${this.selectedFiles.length} fichier(s)…`;
 
         const results = [];
@@ -160,85 +208,86 @@ export default class DocumentsModule {
         } else {
             this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'warning', message: `Upload partiel (${okCount}/${results.length}).` });
         }
+        this.dom.uploadButton.disabled = false;
     }
 
     /* -------------------------------- Listing -------------------------------- */
 
     async fetchAndRenderDocuments(force = false) {
-        // Empêche le spam d'appels si on a déjà un timer actif et pas de force
         if (!force && this._autoRefreshTimer) return;
 
         this.dom.listContainer.innerHTML = '<div class="loader"></div>';
         this.selectedIds.clear();
 
         try {
-            this.documents = await this.apiClient.getDocuments();
+            const resp = await this.apiClient.getDocuments();
+            this.documents = this._normalizeDocumentsResponse(resp);
+
             if (!Array.isArray(this.documents) || this.documents.length === 0) {
                 this.dom.listContainer.innerHTML = '';
                 if (this.dom.emptyListMessage) this.dom.emptyListMessage.style.display = 'block';
                 this.updateSelectionUI();
-                // Emission events (données complètes + total)
+
                 const payload = { total: 0, items: [] };
-                try { this.eventBus.emit('documents:list:refreshed', payload); } catch (_) {}
-                try { if (EVENTS && EVENTS.DOCUMENTS_LIST_REFRESHED) this.eventBus.emit(EVENTS.DOCUMENTS_LIST_REFRESHED, payload); } catch (_) {}
-                // Retick pour les consommateurs (charts/layout) après layout pass
-                setTimeout(() => { try { this.eventBus.emit('documents:list:retick', payload); } catch (_) {} }, 0);
+                try { this.eventBus.emit('documents:list:refreshed', payload); } catch {}
+                try { if (EVENTS?.DOCUMENTS_LIST_REFRESHED) this.eventBus.emit(EVENTS.DOCUMENTS_LIST_REFRESHED, payload); } catch {}
+                setTimeout(() => { try { this.eventBus.emit('documents:list:retick', payload); } catch {} }, 0);
+
                 this._scheduleAutoRefresh(false);
                 return;
             }
-            if (this.dom.emptyListMessage) this.dom.emptyListMessage.style.display = 'none';
 
+            if (this.dom.emptyListMessage) this.dom.emptyListMessage.style.display = 'none';
             this.dom.listContainer.innerHTML = this.documents.map((doc) => this.renderDocItem(doc)).join('');
             this.updateSelectionUI();
 
-            // Emission events pour stats
-            const payload = { total: this.documents.length, items: this.documents };
-            try { this.eventBus.emit('documents:list:refreshed', payload); } catch (_) {}
-            try { if (EVENTS && EVENTS.DOCUMENTS_LIST_REFRESHED) this.eventBus.emit(EVENTS.DOCUMENTS_LIST_REFRESHED, payload); } catch (_) {}
-            setTimeout(() => { try { this.eventBus.emit('documents:list:retick', payload); } catch (_) {} }, 0);
+            const payload = { total: this.documents.length, items: this.documents.slice() };
+            try { this.eventBus.emit('documents:list:refreshed', payload); } catch {}
+            try { if (EVENTS?.DOCUMENTS_LIST_REFRESHED) this.eventBus.emit(EVENTS.DOCUMENTS_LIST_REFRESHED, payload); } catch {}
+            setTimeout(() => { try { this.eventBus.emit('documents:list:retick', payload); } catch {} }, 0);
 
-            // Auto-refresh si des items sont en 'processing'
             const hasProcessing = this.documents.some(d => String(d.status || '').toLowerCase() === 'processing');
             this._scheduleAutoRefresh(hasProcessing);
         } catch (e) {
-            this.dom.listContainer.innerHTML = '<p class="placeholder">Erreur de chargement des documents.</p>';
+            console.error('[Documents] Échec de récupération de la liste', e);
+            this.dom.listContainer.innerHTML = '<p class="error">Erreur lors du chargement des documents.</p>';
             this.updateSelectionUI();
+
             const payload = { total: 0, items: [] };
-            try { this.eventBus.emit('documents:list:refreshed', payload); } catch (_) {}
-            try { if (EVENTS && EVENTS.DOCUMENTS_LIST_REFRESHED) this.eventBus.emit(EVENTS.DOCUMENTS_LIST_REFRESHED, payload); } catch (_) {}
-            setTimeout(() => { try { this.eventBus.emit('documents:list:retick', payload); } catch (_) {} }, 0);
+            try { this.eventBus.emit('documents:list:refreshed', payload); } catch {}
+            try { if (EVENTS?.DOCUMENTS_LIST_REFRESHED) this.eventBus.emit(EVENTS.DOCUMENTS_LIST_REFRESHED, payload); } catch {}
+            setTimeout(() => { try { this.eventBus.emit('documents:list:retick', payload); } catch {} }, 0);
+
             this._scheduleAutoRefresh(false);
         }
     }
 
-    _scheduleAutoRefresh(enabled) {
-        if (this._autoRefreshTimer) {
-            clearTimeout(this._autoRefreshTimer);
-            this._autoRefreshTimer = null;
-        }
-        if (enabled) {
-            this._autoRefreshTimer = setTimeout(() => this.fetchAndRenderDocuments(true), 3000);
-        }
+    _scheduleAutoRefresh(enable) {
+        if (this._autoRefreshTimer) { clearTimeout(this._autoRefreshTimer); this._autoRefreshTimer = null; }
+        if (!enable) return;
+        this._autoRefreshTimer = setTimeout(() => this.fetchAndRenderDocuments(true), 3000);
     }
 
     renderDocItem(doc) {
-        const id = doc.id;
-        const name = doc.filename || 'Fichier';
-        const date = doc.uploaded_at ? formatDate(doc.uploaded_at) : '';
-        const status = (doc.status || 'ready').toLowerCase(); // ready | processing | error
+        const id = this._getId(doc);
+        const name = this._getName(doc);
+        const dateIso = doc?.uploaded_at || doc?.created_at || doc?.createdAt || doc?.timestamp || null;
+        const when = dateIso ? formatDate(dateIso) : '';
+        const status = (doc?.status || 'ready').toLowerCase(); // ready | processing | error
         const statusClass = status === 'processing' ? 'status-processing'
                           : status === 'error' ? 'status-error'
                           : 'status-ready';
 
         return `
-            <li class="document-item" data-id="${id}">
+            <li class="document-item" data-id="${id}" data-name="${name}">
                 <input type="checkbox" class="doc-select" data-id="${id}" aria-label="Sélectionner ${name}">
                 <span class="doc-icon" aria-hidden="true">📄</span>
-                <span class="doc-name">${name}</span>
-                <span class="doc-date">${date}</span>
+                <span class="doc-name" data-role="doc-name">${name}</span>
+                <span class="doc-date">${when}</span>
                 <span class="doc-status ${statusClass}">${status}</span>
                 <button class="button button-metal btn-delete" data-id="${id}" title="Supprimer ${name}" aria-label="Supprimer ${name}">✕</button>
-            </li>`;
+            </li>
+        `;
     }
 
     /* ------------------------------- Actions UI ------------------------------ */
@@ -277,11 +326,9 @@ export default class DocumentsModule {
     toggleSelectAll(checked) {
         this.selectedIds.clear();
         if (checked) {
-            for (const d of this.documents) this.selectedIds.add(String(d.id));
+            for (const d of this.documents) this.selectedIds.add(this._getId(d));
         }
-        this.container.querySelectorAll('.doc-select').forEach(input => {
-            input.checked = checked;
-        });
+        this.container.querySelectorAll('.doc-select').forEach(input => { input.checked = checked; });
         this.updateSelectionUI();
     }
 
@@ -305,7 +352,7 @@ export default class DocumentsModule {
         if (!Array.isArray(this.documents) || this.documents.length === 0) return;
         if (!confirm(`Tout effacer ? (${this.documents.length} document(s))`)) return;
 
-        const ids = this.documents.map(d => d.id);
+        const ids = this.documents.map(d => this._getId(d)).filter(Boolean);
         try {
             await Promise.allSettled(ids.map(id => this.apiClient.deleteDocument(id)));
             this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: 'Tous les documents ont été supprimés.' });

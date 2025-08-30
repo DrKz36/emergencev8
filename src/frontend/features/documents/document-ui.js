@@ -1,9 +1,6 @@
 /**
  * @module features/documents/document-ui
- * @description UI du module Documents — V5.2 (verre/halo/métal + stats canvas, data-first, 2e tick)
- * - Upload : drop-zone + preview multi-fichiers
- * - Liste : toolbar (sélection, suppression, rafraîchir)
- * - Stats : canvas responsive (répartition par extension) + total
+ * @description UI du module Documents — V5.3 (verre/halo/métal + stats canvas, data-first, 2e tick)
  */
 export class DocumentsUI {
     constructor(eventBus) {
@@ -26,7 +23,8 @@ export class DocumentsUI {
 
                     <div class="card-body">
                         <section class="upload-section" aria-label="Upload de documents">
-                            <input type="file" id="file-input" multiple accept=".pdf,txt,docx,md" />
+                            <!-- Types alignés backend -->
+                            <input type="file" id="file-input" multiple accept=".pdf,.txt,.docx" />
 
                             <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Choisir un fichier ou déposer ici">
                                 <div class="drop-zone-prompt">
@@ -152,18 +150,19 @@ export class DocumentsUI {
                 const axisX = pad, axisY = h - 32;
                 const scale = (axisY - 24) / maxVal;
 
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const ctx2 = ctx;
+                ctx2.clearRect(0, 0, canvas.width, canvas.height);
                 emptyStatsEl.style.display = (total === 0) ? '' : 'none';
 
-                // Axes
-                ctx.save();
-                ctx.strokeStyle = 'rgba(255,255,255,.15)';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(axisX, axisY + 0.5);
-                ctx.lineTo(canvas.width - pad, axisY + 0.5);
-                ctx.stroke();
-                ctx.restore();
+                // Axe X
+                ctx2.save();
+                ctx2.strokeStyle = 'rgba(255,255,255,.15)';
+                ctx2.lineWidth = 1;
+                ctx2.beginPath();
+                ctx2.moveTo(axisX, axisY + 0.5);
+                ctx2.lineTo(canvas.width - pad, axisY + 0.5);
+                ctx2.stroke();
+                ctx2.restore();
 
                 // Barres
                 let x = axisX;
@@ -171,27 +170,27 @@ export class DocumentsUI {
                     const hBar = Math.max(2, value * scale);
                     const y = axisY - hBar;
 
-                    ctx.fillStyle = pickColor(i);
-                    ctx.globalAlpha = 0.85;
-                    ctx.fillRect(x, y, barW, hBar);
+                    ctx2.fillStyle = pickColor(i);
+                    ctx2.globalAlpha = 0.85;
+                    ctx2.fillRect(x, y, barW, hBar);
 
-                    ctx.globalAlpha = 1;
-                    ctx.fillStyle = '#e5e7eb';
-                    ctx.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(String(value), x + barW / 2, y - 6);
+                    ctx2.globalAlpha = 1;
+                    ctx2.fillStyle = '#e5e7eb';
+                    ctx2.font = '12px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu';
+                    ctx2.textAlign = 'center';
+                    ctx2.fillText(String(value), x + barW / 2, y - 6);
 
-                    ctx.globalAlpha = 0.9;
-                    ctx.fillStyle = '#cbd5e1';
+                    ctx2.globalAlpha = 0.9;
+                    ctx2.fillStyle = '#cbd5e1';
                     const labelY = axisY + 14;
                     if (barW < 28) {
-                        ctx.save();
-                        ctx.translate(x + barW / 2, labelY + 8);
-                        ctx.rotate(-Math.PI / 4);
-                        ctx.fillText(ext, 0, 0);
-                        ctx.restore();
+                        ctx2.save();
+                        ctx2.translate(x + barW / 2, labelY + 8);
+                        ctx2.rotate(-Math.PI / 4);
+                        ctx2.fillText(ext, 0, 0);
+                        ctx2.restore();
                     } else {
-                        ctx.fillText(ext, x + barW / 2, labelY);
+                        ctx2.fillText(ext, x + barW / 2, labelY);
                     }
                     x += barW + gap;
                 });
