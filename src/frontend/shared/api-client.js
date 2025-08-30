@@ -1,13 +1,18 @@
 /**
  * @file /src/frontend/shared/api-client.js
  * @description Client API centralisé pour les requêtes HTTP (Fetch).
- * @version V4.4 - 404 auto-recovery threads (create on not found) + logs doux
+ * @version V4.5 - + memory.tendGarden (POST) + 404 auto-recovery threads
  */
 
 import { API_ENDPOINTS } from './config.js';
 
 const THREADS_BASE =
   (API_ENDPOINTS && API_ENDPOINTS.THREADS) ? API_ENDPOINTS.THREADS : '/api/threads';
+
+const MEMORY_TEND =
+  (API_ENDPOINTS && (API_ENDPOINTS.MEMORY_TEND || API_ENDPOINTS.MEMORY_TEND_GARDEN))
+    ? (API_ENDPOINTS.MEMORY_TEND || API_ENDPOINTS.MEMORY_TEND_GARDEN)
+    : '/api/memory/tend-garden';
 
 const DEFAULT_TIMEOUT_MS = 15000;
 
@@ -188,12 +193,10 @@ export const api = {
     fetchApi(`${THREADS_BASE}${buildQuery({ type, limit, offset })}`)
       .then((data) => (Array.isArray(data?.items) ? data : { items: Array.isArray(data) ? data : [] })),
 
-  // POST sur /api/threads/ (avec slash) pour éviter 405.
   createThread: ({ type = 'chat', title, metadata, agent_id } = {}) =>
     fetchApi(`${THREADS_BASE}/`, { method: 'POST', body: { type, title, agent_id, meta: metadata } })
       .then((data) => ({ id: data?.id, thread: data?.thread })),
 
-  // 🔧 PATCH: auto-recovery si le thread n’existe plus (404 après reset DB)
   getThreadById: async (id, { messages_limit } = {}) => {
     const url = `${THREADS_BASE}/${encodeURIComponent(id)}${buildQuery({ messages_limit })}`;
     try {
@@ -216,6 +219,10 @@ export const api = {
     const body = { role, content, agent_id, meta: meta ?? metadata ?? {} };
     return fetchApi(`${THREADS_BASE}/${encodeURIComponent(threadId)}/messages`, { method: 'POST', body });
   },
+
+  /* ------------------------ MEMORY ----------------------- */
+  // Lance l’analyse/compactage mémoire (non bloquant). Endpoint par défaut /api/memory/tend-garden.
+  tendMemory: () => fetchApi(MEMORY_TEND, { method: 'POST', body: {} }),
 };
 
 // Qualité de vie: accès console en dev

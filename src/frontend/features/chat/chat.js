@@ -1,13 +1,13 @@
 /**
  * @module features/chat/chat
- * @description Module Chat - V25.0 "WS-first + RAG/Memo hooks + Watchdog REST fallback"
+ * @description Module Chat - V25.2 "WS-first strict + RAG/Memo hooks + Watchdog REST fallback + metrics/fallback counter + memory.tend"
  *
- * Changements clés:
- * - WS-first: si WebSocket connecté → n’APPELLE PAS le POST REST pour le message USER (anti double 201).
- * - Watchdog: si le flux ne démarre pas, fallback REST unique pour persister le USER.
- * - Assistant: à ws:chat_stream_end, on persiste l’assistant UNE FOIS, sauf si meta indique persistence back.
- * - Hooks RAG/Mémoire: toasts pour ws:memory_banner + ws:rag_status; suivi connexion WS pour l’état.
+ * Ajouts:
+ * - Compteurs metrics: incrément 'rest_fallback_count' + 'last_fallback_at' lors du fallback REST.
+ * - Action mémoire: écoute 'memory:tend' → api.tendMemory() + toasts + mise à jour lastAnalysis.
+ * - Sans modification d’architecture ni d’imports externes.
  */
+
 import { ChatUI } from './chat-ui.js';
 import { EVENTS } from '../../shared/constants.js';
 import { api } from '../../shared/api-client.js';
@@ -16,41 +16,59 @@ export default class ChatModule {
   constructor(eventBus, state) {
     this.eventBus = eventBus;
     this.state = state;
+
     this.ui = null;
     this.container = null;
     this.listeners = [];
     this.isInitialized = false;
+
+    // Threads / convo
     this.threadId = null;
     this.loadedThreadId = null;
-    this._lastToastAt = 0;
 
-    // Watchdog: délai avant de considérer que le flux n'a pas démarré
+    // Connexion & flux
+    this._wsConnected = false;
+    this._wsConnectWaitMs = 700;       // ⏳ anti-course avant d'émettre
     this._streamStartTimer = null;
-    this._streamStartTimeoutMs = 1500;
+    this._streamStartTimeoutMs = 1500; // ⏱️ Watchdog
+    this._pendingMsg = null;           // { id, agent_id, text, triedRest }
 
-    // Anti-double envoi côté UI
+    // Anti double actions
     this._sendLock = false;
     this._sendGateMs = 400;
+    this._assistantPersistedIds = new Set();
 
-    // --- Nouveaux états internes ---
-    this._wsConnected = false;
-    this._pendingMsg = null;                // { id, agent_id, text, triedRest }
-    this._assistantPersistedIds = new Set(); // garde locale anti-double POST assistant
+    // UX
+    this._lastToastAt = 0;
+
+    // Mémoire
+    this._lastMemoryTendAt = 0;
+    this._memoryTendThrottleMs = 2000;
   }
 
+  /* ============================ Cycle de vie ============================ */
   init() {
     if (this.isInitialized) return;
+
     this.ui = new ChatUI(this.eventBus, this.state);
     this.initializeState();
     this.registerStateChanges();
     this.registerEvents();
+
+    // 🔄 Sync état WS au boot pour WS-first strict
+    try {
+      const conn = this.state.get('connection.status');
+      this._wsConnected = (conn === 'connected');
+    } catch {}
+
     this.isInitialized = true;
-    console.log('✅ ChatModule V25.0 (WS-first + RAG/Memo hooks + Watchdog fallback) initialisé.');
+    console.log('✅ ChatModule V25.2 (WS-first strict + RAG/Memo hooks + Watchdog fallback + metrics) initialisé.');
   }
 
   mount(container) {
     this.container = container;
     this.ui.render(this.container, this.state.get('chat'));
+
     const currentId = this.getCurrentThreadId();
     if (currentId) {
       const cached = this.state.get(`threads.map.${currentId}`);
@@ -64,33 +82,26 @@ export default class ChatModule {
     }
   }
 
-  destroy() {
-    this.listeners.forEach(u => { if (typeof u === 'function') { try { u(); } catch {} } });
-    this.listeners = [];
-    this.container = null;
-    this._clearStreamWatchdog();
-  }
-
+  /* ============================ State init ============================ */
   initializeState() {
     if (!this.state.get('chat')) {
       this.state.set('chat', {
-        isLoading: false,
         currentAgentId: 'anima',
-        ragEnabled: false,
-        messages: {},
-        threadId: null,
-        lastAnalysis: null,
         activeAgent: 'anima',
-        ragStatus: 'idle',            // nouveau (searching|found|idle)
-        memoryBannerAt: null          // nouveau (timestamp)
+        ragEnabled: false,
+        ragStatus: 'idle',
+        lastAnalysis: null,
+        memoryBannerAt: null,
+        isLoading: false,
+        messages: {},
+        metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null }
       });
     } else {
-      if (this.state.get('chat.threadId') == null) this.state.set('chat.threadId', null);
-      if (this.state.get('chat.lastAnalysis') == null) this.state.set('chat.lastAnalysis', null);
-      if (!this.state.get('chat.activeAgent'))
-        this.state.set('chat.activeAgent', this.state.get('chat.currentAgentId') || 'anima');
+      if (this.state.get('chat.ragEnabled') === undefined) this.state.set('chat.ragEnabled', false);
+      if (!this.state.get('chat.messages')) this.state.set('chat.messages', {});
       if (!this.state.get('chat.ragStatus')) this.state.set('chat.ragStatus', 'idle');
       if (!this.state.get('chat.memoryBannerAt')) this.state.set('chat.memoryBannerAt', null);
+      if (!this.state.get('chat.metrics')) this.state.set('chat.metrics', { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null });
     }
   }
 
@@ -102,6 +113,7 @@ export default class ChatModule {
   }
 
   registerEvents() {
+    // UI
     this.listeners.push(this.eventBus.on(EVENTS.CHAT_SEND, this.handleSendMessage.bind(this)));
     this.listeners.push(this.eventBus.on(EVENTS.CHAT_AGENT_SELECTED, this.handleAgentSelected.bind(this)));
     this.listeners.push(this.eventBus.on(EVENTS.CHAT_CLEAR, this.handleClearChat.bind(this)));
@@ -114,7 +126,7 @@ export default class ChatModule {
     this.listeners.push(this.eventBus.on('ws:chat_stream_end', this.handleStreamEnd.bind(this)));
     this.listeners.push(this.eventBus.on('ws:analysis_status', this.handleAnalysisStatus.bind(this)));
 
-    // Connexion WS (pilotage "WS-first")
+    // Connexion WS → pilote WS-first
     this.listeners.push(this.eventBus.on('ws:connected', () => {
       this._wsConnected = true;
       try { this.state.set('connection.status', 'connected'); } catch {}
@@ -124,25 +136,58 @@ export default class ChatModule {
       try { this.state.set('connection.status', 'disconnected'); } catch {}
     }));
 
-    // Hooks RAG/Mémoire (toasts + état léger)
+    // Hooks RAG/Mémoire
     this.listeners.push(this.eventBus.on('ws:memory_banner', this.handleMemoryBanner.bind(this)));
     this.listeners.push(this.eventBus.on('ws:rag_status', this.handleRagStatus.bind(this)));
+
+    // Action mémoire (UI)
+    this.listeners.push(this.eventBus.on('memory:tend', this.handleMemoryTend.bind(this)));
   }
 
-  getCurrentThreadId() { return this.threadId || this.state.get('threads.currentId') || null; }
+  /* ============================ Utils ============================ */
+  getCurrentThreadId() {
+    return this.threadId || this.state.get('threads.currentId') || null;
+  }
+
+  async _waitForWS(timeoutMs = 0) {
+    if (this._wsConnected || timeoutMs <= 0) return this._wsConnected;
+    return await new Promise((resolve) => {
+      let done = false;
+      const off = this.eventBus.on('ws:connected', () => {
+        if (done) return;
+        done = true;
+        try { if (typeof off === 'function') off(); } catch {}
+        this._wsConnected = true;
+        resolve(true);
+      });
+      setTimeout(() => {
+        if (done) return;
+        done = true;
+        try { if (typeof off === 'function') off(); } catch {}
+        resolve(this._wsConnected === true);
+      }, timeoutMs);
+    });
+  }
 
   hydrateFromThread(thread) {
     const msgsRaw = Array.isArray(thread?.messages) ? [...thread.messages] : [];
     const msgs = msgsRaw.sort((a, b) => (a?.created_at ?? 0) - (b?.created_at ?? 0));
-    const buckets = {}; let lastAssistantAgent = null;
+
+    const buckets = {};
+    let lastAssistantAgent = null;
+
     for (const m of msgs) {
       const role = m.role || 'assistant';
       let agentId = m.agent_id || null;
-      if (!agentId) agentId = (role === 'assistant')
-        ? (lastAssistantAgent || (this.state.get('chat.currentAgentId') || 'anima'))
-        : (lastAssistantAgent || null);
+
+      if (!agentId) {
+        agentId = (role === 'assistant')
+          ? (lastAssistantAgent || (this.state.get('chat.currentAgentId') || 'anima'))
+          : (lastAssistantAgent || null);
+      }
       if (!agentId) agentId = 'global';
       if (role === 'assistant' && agentId) lastAssistantAgent = agentId;
+
       (buckets[agentId] ||= []).push({
         id: m.id || `${role}-${m.created_at || Date.now()}`,
         role,
@@ -151,13 +196,14 @@ export default class ChatModule {
         created_at: m.created_at
       });
     }
+
     this.state.set('chat.messages', buckets);
     console.debug('[Chat] Répartition messages par agent',
       Object.fromEntries(Object.entries(buckets).map(([k, v]) => [k, v.length])));
   }
 
-  /* ============================ Envoi USER (WS-first) ============================ */
-  handleSendMessage(payload) {
+  /* ============================ Envoi USER (WS-first strict) ============================ */
+  async handleSendMessage(payload) {
     if (this._sendLock) return;
     this._sendLock = true;
     setTimeout(() => { this._sendLock = false; }, this._sendGateMs);
@@ -169,6 +215,7 @@ export default class ChatModule {
     const { currentAgentId, ragEnabled } = this.state.get('chat');
     this.state.set('chat.activeAgent', currentAgentId);
 
+    // Ajoute localement le message USER
     const userMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -180,30 +227,20 @@ export default class ChatModule {
     this.state.set(`chat.messages.${currentAgentId}`, [...curr, userMessage]);
     this.state.set('chat.isLoading', true);
 
-    const threadId = this.getCurrentThreadId();
+    // 🛡️ Anti-course: attends brièvement WS avant d'émettre
+    await this._waitForWS(this._wsConnectWaitMs);
 
-    // --- WS-first: si WS connecté, ne pas POST le USER via REST (anti double 201) ---
-    if (!this._wsConnected && threadId) {
-      api.appendMessage(threadId, {
-        role: 'user',
-        content: trimmed,
-        agent_id: currentAgentId,
-        metadata: { rag: !!ragEnabled }
-      }).catch(err => console.error('[Chat] Échec appendMessage(user):', err));
-    } else if (!this._wsConnected) {
-      console.warn('[Chat] Aucun threadId disponible — message non persisté côté backend.');
-    }
-
-    // Émission UI → WS
+    // Émission enrichie UI→WS (prise en charge par WebSocketClient)
     try {
       this.eventBus.emit('ui:chat:send', {
         text: trimmed,
         agent_id: currentAgentId,
         use_rag: !!ragEnabled,
-        msg_uid: userMessage.id
+        msg_uid: userMessage.id,
+        __enriched: true
       });
-      // Garder sous la main en cas de fallback (si flux ne démarre pas)
-      this._pendingMsg = { id: userMessage.id, agent_id: currentAgentId, text: trimmed, triedRest: !this._wsConnected };
+      // Pour watchdog (fallback REST si flux ne démarre pas)
+      this._pendingMsg = { id: userMessage.id, agent_id: currentAgentId, text: trimmed, triedRest: false };
       this._startStreamWatchdog();
     } catch (e) {
       console.error('[Chat] Emission ui:chat:send a échoué', e);
@@ -214,7 +251,7 @@ export default class ChatModule {
     }
   }
 
-  /* ============================ Flux assistant ============================ */
+  /* ============================ Flux assistant (WS) ============================ */
   handleStreamStart({ agent_id, id }) {
     const agentMessage = {
       id,
@@ -226,55 +263,55 @@ export default class ChatModule {
     };
     const curr = this.state.get(`chat.messages.${agent_id}`) || [];
     this.state.set(`chat.messages.${agent_id}`, [...curr, agentMessage]);
-    this._clearStreamWatchdog();
-    this.state.set('chat.isLoading', true);
-    this._sendLock = false;
-    // Plus de pending: le flux a bien démarré
-    this._pendingMsg = null;
+    this._clearStreamWatchdog(); // le flux a bien démarré
   }
 
-  handleStreamChunk({ id, chunk }) {
-    const messages = this.state.get('chat.messages');
-    for (const aid in messages) {
-      const i = messages[aid].findIndex(m => m.id === id);
-      if (i !== -1) {
-        messages[aid][i].content = (messages[aid][i].content || '') + (chunk || '');
-        this.state.set('chat.messages', { ...messages });
-        return;
-      }
+  handleStreamChunk({ agent_id, id, chunk }) {
+    const list = this.state.get(`chat.messages.${agent_id}`) || [];
+    const idx = list.findIndex((m) => m.id === id);
+    if (idx >= 0) {
+      const msg = { ...list[idx] };
+      msg.content = (msg.content || '') + String(chunk || '');
+      list[idx] = msg;
+      this.state.set(`chat.messages.${agent_id}`, [...list]);
     }
   }
 
-  handleStreamEnd({ id, agent_id, meta }) {
-    const messages = this.state.get('chat.messages');
-    for (const aid in messages) {
-      const i = messages[aid].findIndex(m => m.id === id);
-      if (i !== -1) {
-        const finalMsg = { ...messages[aid][i], isStreaming: false };
-        messages[aid][i] = finalMsg;
-        this.state.set('chat.messages', { ...messages });
-        this._clearStreamWatchdog();
-        this.state.set('chat.isLoading', false);
+  handleStreamEnd({ agent_id, id, meta }) {
+    // finalise le message assistant
+    const list = this.state.get(`chat.messages.${agent_id}`) || [];
+    const idx = list.findIndex((m) => m.id === id);
+    if (idx >= 0) {
+      const msg = { ...list[idx], isStreaming: false };
+      list[idx] = msg;
+      this.state.set(`chat.messages.${agent_id}`, [...list]);
+    }
 
-        // Garde anti-double POST assistant (locale)
-        if (this._assistantPersistedIds.has(id)) return;
+    // Terminer l’état de chargement
+    this.state.set('chat.isLoading', false);
+    this._clearStreamWatchdog();
 
-        // Heuristique: si meta indique une persistence back, on ne POST pas côté front
-        const backendPersisted =
-          !!(meta && (meta.persisted === true || meta.persisted_by === 'backend' || meta.persisted_by_ws === true));
+    // Persistence assistant : une seule fois si non géré par le back
+    try {
+      if (this._assistantPersistedIds.has(id)) return;
 
-        const threadId = this.getCurrentThreadId();
-        if (!backendPersisted && threadId) {
-          api.appendMessage(threadId, {
-            role: 'assistant',
-            content: typeof finalMsg.content === 'string' ? finalMsg.content : String(finalMsg.content ?? ''),
-            agent_id: finalMsg.agent_id || agent_id || aid
-          })
-            .then(() => this._assistantPersistedIds.add(id))
-            .catch(err => console.error('[Chat] Échec appendMessage(assistant):', err));
-        }
-        return;
+      const backendPersisted =
+        !!(meta && (meta.persisted === true || meta.persisted_by === 'backend' || meta.persisted_by_ws === true));
+
+      const threadId = this.getCurrentThreadId();
+      const finalMsg = (this.state.get(`chat.messages.${agent_id}`) || []).find(m => m.id === id);
+
+      if (!backendPersisted && threadId && finalMsg) {
+        api.appendMessage(threadId, {
+          role: 'assistant',
+          content: typeof finalMsg.content === 'string' ? finalMsg.content : String(finalMsg.content ?? ''),
+          agent_id: finalMsg.agent_id || agent_id
+        })
+          .then(() => this._assistantPersistedIds.add(id))
+          .catch(err => console.error('[Chat] Échec appendMessage(assistant):', err));
       }
+    } catch (e) {
+      console.error('[Chat] handleStreamEnd persist error', e);
     }
   }
 
@@ -311,7 +348,7 @@ export default class ChatModule {
     this.state.set('chat.ragEnabled', !current);
   }
 
-  handleAnalysisStatus({ session_id, status, error }) {
+  handleAnalysisStatus({ session_id, status, error } = {}) {
     this.state.set('chat.lastAnalysis', {
       session_id: session_id || null,
       status: status || 'unknown',
@@ -319,15 +356,17 @@ export default class ChatModule {
       at: Date.now()
     });
     console.log('[Chat] ws:analysis_status', { session_id, status, error });
+
     const now = Date.now();
     if (now - this._lastToastAt < 1000) return;
     this._lastToastAt = now;
+
     if (status === 'completed') this.showToast('Mémoire consolidée ✓');
     else if (status === 'failed') this.showToast('Analyse mémoire : échec');
   }
 
   /* ============================ Hooks RAG/Mémoire ============================ */
-  handleMemoryBanner(payload) {
+  handleMemoryBanner() {
     try { this.state.set('chat.memoryBannerAt', Date.now()); } catch {}
     this.showToast('Mémoire chargée ✓');
   }
@@ -339,61 +378,103 @@ export default class ChatModule {
     if (st === 'found') this.showToast('RAG : sources trouvées ✓');
   }
 
+  async handleMemoryTend() {
+    const now = Date.now();
+    if (now - this._lastMemoryTendAt < this._memoryTendThrottleMs) return;
+    this._lastMemoryTendAt = now;
+
+    try {
+      this.showToast('Analyse mémoire démarrée…');
+      await api.tendMemory();
+      // Le backend émettra ensuite ws:analysis_status → géré dans handleAnalysisStatus()
+    } catch (e) {
+      console.error('[Chat] memory.tend error', e);
+      this.showToast('Analyse mémoire : échec');
+    }
+  }
+
   /* ============================ Watchdog / Fallback ============================ */
   _startStreamWatchdog() {
     this._clearStreamWatchdog();
     try {
       this._streamStartTimer = setTimeout(async () => {
+        // Si toujours en attente → fallback REST pour le USER (une seule fois)
         if (!this.state.get('chat.isLoading')) return;
+        const p = this._pendingMsg;
+        if (!p || p.triedRest) return;
 
-        // Si le flux n’a pas démarré, on désactive le "chargement"
-        this.state.set('chat.isLoading', false);
-        this._sendLock = false;
+        const threadId = this.getCurrentThreadId();
+        if (!threadId) {
+          this.showToast('Flux indisponible — aucun thread actif (fallback annulé).');
+          return;
+        }
+        try {
+          await api.appendMessage(threadId, {
+            role: 'user',
+            content: p.text,
+            agent_id: p.agent_id,
+            meta: { watchdog_fallback: true }
+          });
 
-        // Fallback REST: si on n’a pas déjà persisté le USER et qu’on a un thread
-        if (this._pendingMsg && !this._pendingMsg.triedRest) {
-          const threadId = this.getCurrentThreadId();
-          if (threadId) {
-            try {
-              await api.appendMessage(threadId, {
-                role: 'user',
-                content: this._pendingMsg.text,
-                agent_id: this._pendingMsg.agent_id,
-                metadata: { watchdog_fallback: true }
-              });
-              this._pendingMsg.triedRest = true;
-              this.showToast('Flux indisponible — fallback REST effectué.');
-            } catch (e) {
-              console.error('[Chat] Fallback REST (user) a échoué', e);
-              this.showToast('Envoi bloqué (aucun flux).');
-            }
-          } else {
-            this.showToast('Envoi bloqué (aucun flux démarré).');
-          }
-        } else {
-          this.showToast('Envoi bloqué (aucun flux démarré).');
+          // ✅ Metrics: fallback REST
+          try {
+            const m = this.state.get('chat.metrics') || {};
+            const next = {
+              ...m,
+              rest_fallback_count: (m.rest_fallback_count || 0) + 1,
+              last_fallback_at: Date.now()
+            };
+            this.state.set('chat.metrics', next);
+          } catch {}
+
+          p.triedRest = true;
+          this._pendingMsg = p;
+          this.showToast('Flux indisponible — fallback REST effectué.');
+        } catch (e) {
+          console.error('[Chat] Watchdog fallback REST a échoué', e);
+          this.showToast('Fallback REST impossible.');
         }
       }, this._streamStartTimeoutMs);
-    } catch {}
+    } catch (e) {
+      console.warn('[Chat] Watchdog non initialisé', e);
+    }
   }
 
   _clearStreamWatchdog() {
-    try {
-      if (this._streamStartTimer) { clearTimeout(this._streamStartTimer); this._streamStartTimer = null; }
-    } catch {}
+    if (this._streamStartTimer) {
+      clearTimeout(this._streamStartTimer);
+      this._streamStartTimer = null;
+    }
   }
 
   /* ============================ UI toast ============================ */
   showToast(message) {
     try {
-      const el = document.createElement('div'); el.setAttribute('role', 'status');
-      el.style.position = 'fixed'; el.style.right = '20px'; el.style.bottom = '20px';
-      el.style.padding = '12px 14px'; el.style.borderRadius = '12px';
-      el.style.background = '#121212'; el.style.color = '#fff'; el.style.boxShadow = '0 6px 14px rgba(0,0,0,.3)';
-      el.style.font = '14px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu'; el.style.opacity = '0'; el.style.transform = 'translateY(6px)'; el.style.transition = 'opacity .15s, transform .15s';
-      el.textContent = message; document.body.appendChild(el);
-      requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
-      setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(6px)'; setTimeout(() => el.remove(), 180); }, 2200);
+      const el = document.createElement('div');
+      el.setAttribute('role', 'status');
+      el.style.position = 'fixed';
+      el.style.right = '20px';
+      el.style.bottom = '20px';
+      el.style.padding = '12px 14px';
+      el.style.borderRadius = '12px';
+      el.style.background = '#121212';
+      el.style.color = '#fff';
+      el.style.boxShadow = '0 6px 14px rgba(0,0,0,.3)';
+      el.style.font = '14px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Arial';
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(6px)';
+      el.style.transition = 'opacity .15s, transform .15s';
+      el.textContent = message;
+      document.body.appendChild(el);
+      requestAnimationFrame(() => {
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+      });
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(6px)';
+        setTimeout(() => { try { el.remove(); } catch {} }, 180);
+      }, 2200);
     } catch {}
   }
 }

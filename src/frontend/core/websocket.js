@@ -1,6 +1,6 @@
 // src/frontend/core/websocket.js
-// WebSocketClient V21.8 — JWT gating + no-retry 4401/1008 + token in query + DE-DUP chat.message
-// + UI hooks: ws:model_info / ws:model_fallback / ws:chat_stream_end(meta)
+// WebSocketClient V22.0 — JWT gating + no-retry 4401/1008 + token in query + DE-DUP chat.message
+// + UI hooks: ws:model_info / ws:model_fallback / ws:chat_stream_start(ttfb) / ws:chat_stream_end(meta)
 
 import { EVENTS } from '../shared/constants.js';
 import { ensureAuth, getIdToken, clearAuth } from './auth.js';
@@ -21,9 +21,12 @@ export class WebSocketClient {
     this._lastChatTs = 0;
     this._dedupMs = 1200;
 
+    // Metrics
+    this._lastSendAt = 0;
+
     this._bindEventBus();
     this._bindStorageListener();
-    console.log("✅ WebSocketClient V21.8 (JWT gating + de-dup + fallback UI) prêt.");
+    console.log("✅ WebSocketClient V22.0 (JWT gating + de-dup + metrics TTFB) prêt.");
   }
 
   _bindEventBus() {
@@ -32,9 +35,27 @@ export class WebSocketClient {
       try {
         const text = String(payload.text ?? '').trim();
         if (!text) return;
+
+        // 🔒 Filtre legacy
         const rawAgent = (payload.agent_id ?? payload.agentId ?? '');
-        const agent_id = (rawAgent && rawAgent.trim()) || this._getActiveAgentIdFromState();
-        const use_rag = Boolean(payload.use_rag ?? payload.useRag);
+        const isLegacy = (!rawAgent || !String(rawAgent).trim()) && !payload.msg_uid;
+        if (isLegacy) return;
+
+        const agent_id = (String(rawAgent || '').trim()) || this._getActiveAgentIdFromState();
+        const use_rag = (payload.use_rag ?? payload.useRag ?? this.state?.get?.('chat.ragEnabled')) === true;
+
+        // t0 pour TTFB + compteur d'envoi
+        this._lastSendAt = Date.now();
+        try {
+          const m = this.state?.get?.('chat.metrics') || {};
+          const next = { ...m, send_count: (m.send_count || 0) + 1 };
+          this.state?.set?.('chat.metrics', next);
+        } catch {}
+
+        // Debug optionnel
+        if (localStorage.getItem('debug.ws') === '1') {
+          try { console.debug('[WS] ui:chat:send → chat.message', { use_rag }); } catch {}
+        }
         this.send({ type: 'chat.message', payload: { text, agent_id, use_rag } });
       } catch (e) { console.error('[WebSocket] ui:chat:send → chat.message a échoué', e); }
     });
@@ -132,12 +153,24 @@ export class WebSocketClient {
       try {
         const msg = JSON.parse(ev.data);
         if (msg?.type === 'ws:auth_required') { this.eventBus.emit?.('auth:missing', msg?.payload || null); return; }
+
+        // --- Metrics: TTFB (ws:chat_stream_start) ---
+        if (msg?.type === 'ws:chat_stream_start') {
+          const ttfb = Math.max(0, Date.now() - (this._lastSendAt || 0));
+          try {
+            const m = this.state?.get?.('chat.metrics') || {};
+            const next = {
+              ...m,
+              ws_start_count: (m.ws_start_count || 0) + 1,
+              last_ttfb_ms: ttfb
+            };
+            this.state?.set?.('chat.metrics', next);
+          } catch {}
+        }
+
         if (msg?.type) {
-          // Hooks UI pour model info / fallback + meta fin de stream
           if (msg.type === 'ws:model_info') {
-            try {
-              this.state?.set?.('chat.modelInfo', msg.payload || {});
-            } catch {}
+            try { this.state?.set?.('chat.modelInfo', msg.payload || {}); } catch {}
             this.eventBus.emit?.('chat:model_info', msg.payload || null);
           }
           if (msg.type === 'ws:model_fallback') {

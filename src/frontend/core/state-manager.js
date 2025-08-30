@@ -1,6 +1,6 @@
 /**
  * @module core/state-manager
- * @description Gestionnaire d'état V15.2 "Threads Aware" + ensureAuth() + chat meta
+ * @description Gestionnaire d'état V15.3 "Threads Aware" + ensureAuth() + chat meta + metrics
  */
 import { AGENTS } from '../shared/constants.js';
 
@@ -10,14 +10,14 @@ export class StateManager {
     this.state = this.DEFAULT_STATE;
 
     this.subscribers = new Map();
-    console.log("✅ StateManager V15 (Threads Aware) Constructor: Default state is set.");
+    console.log("✅ StateManager V15.3 (Threads Aware + metrics) Constructor: Default state is set.");
   }
 
   async init() {
     const savedState = this.loadFromStorage();
     let mergedState = this._deepMerge(this.DEFAULT_STATE, savedState);
     this.state = this.sanitize(mergedState);
-    console.log("[StateManager] V15 Initialized: State loaded from localStorage and sanitized.");
+    console.log("[StateManager] V15.3 Initialized: State loaded from localStorage and sanitized.");
     this.persist();
   }
 
@@ -40,10 +40,24 @@ export class StateManager {
     // Auth
     cleanState.auth = cleanState.auth || { hasToken: false };
 
-    // Chat meta (nouveau)
+    // Chat meta
     cleanState.chat = cleanState.chat || {};
     cleanState.chat.lastMessageMeta = cleanState.chat.lastMessageMeta || null;
     cleanState.chat.modelInfo = cleanState.chat.modelInfo || null;
+
+    // Chat metrics (watchdog/WS)
+    cleanState.chat.metrics = cleanState.chat.metrics || {
+      send_count: 0,
+      ws_start_count: 0,
+      last_ttfb_ms: 0,
+      rest_fallback_count: 0,
+      last_fallback_at: null
+    };
+
+    // Optional flags already used by ChatModule
+    if (cleanState.chat.ragEnabled === undefined) cleanState.chat.ragEnabled = false;
+    if (cleanState.chat.ragStatus === undefined) cleanState.chat.ragStatus = 'idle';
+    if (cleanState.chat.memoryBannerAt === undefined) cleanState.chat.memoryBannerAt = null;
 
     return cleanState;
   }
@@ -83,6 +97,14 @@ export class StateManager {
       this.subscribers.set(key, []);
     }
     this.subscribers.get(key).push(callback);
+    // Unsubscribe propre
+    return () => {
+      try {
+        const arr = this.subscribers.get(key) || [];
+        const i = arr.indexOf(callback);
+        if (i >= 0) arr.splice(i, 1);
+      } catch {}
+    };
   }
 
   notify(changedKey) {

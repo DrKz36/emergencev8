@@ -1,6 +1,8 @@
 /**
  * src/frontend/features/chat/chat-ui.js
- * V26 — Input auto-extend + safe-area + POWER seul coloré + label RAG séparé
+ * V27 — Input auto-extend + safe-area + POWER seul coloré + label RAG séparé
+ *     + Panneau Mémoire (statut + bouton Analyser)
+ *     + Affichage métriques Chat (TTFB, Fallbacks)
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
@@ -12,7 +14,11 @@ export class ChatUI {
       isLoading: false,
       currentAgentId: 'anima',
       ragEnabled: false,
-      messages: {}
+      messages: {},
+      // champs supplémentaires lus depuis chat.state
+      memoryBannerAt: null,
+      lastAnalysis: null,
+      metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null }
     };
   }
 
@@ -53,9 +59,25 @@ export class ChatUI {
               <span id="rag-label" class="rag-label">RAG</span>
             </div>
 
+            <!-- === Mémoire === -->
+            <div class="memory-control" style="display:flex;align-items:center;gap:.5rem;margin-left:.6rem">
+              <span id="memory-dot" aria-hidden="true" style="width:10px;height:10px;border-radius:50%;background:#6b7280;display:inline-block"></span>
+              <span id="memory-label" class="memory-label" title="Statut mémoire">Mémoire OFF</span>
+              <button type="button" id="memory-analyze" class="button" title="Analyser / consolider la mémoire">Analyser</button>
+            </div>
+
+            <!-- === Outils === -->
             <button type="button" id="chat-export" class="button">Exporter</button>
             <button type="button" id="chat-clear" class="button">Effacer</button>
+
             <button type="button" id="chat-send" class="chat-send-button" title="Envoyer">➤</button>
+          </div>
+
+          <!-- === Métriques Chat === -->
+          <div id="chat-metrics" class="chat-metrics" style="margin-top:6px;font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.85">
+            <span id="metric-ttfb">TTFB: — ms</span>
+            <span aria-hidden="true">•</span>
+            <span id="metric-fallbacks">Fallback REST: 0</span>
           </div>
         </div>
       </div>
@@ -77,6 +99,20 @@ export class ChatUI {
     const raw = this.state.messages?.[this.state.currentAgentId];
     const list = this._asArray(raw).map((m) => this._normalizeMessage(m));
     this._renderMessages(container.querySelector('#chat-messages'), list);
+
+    // Mémoire (statut + libellé)
+    const memoryOn = !!(this.state.memoryBannerAt || (this.state.lastAnalysis && this.state.lastAnalysis.status === 'completed'));
+    const dot = container.querySelector('#memory-dot');
+    const lbl = container.querySelector('#memory-label');
+    if (dot) dot.style.background = memoryOn ? '#22c55e' : '#6b7280';
+    if (lbl) lbl.textContent = memoryOn ? 'Mémoire ON' : 'Mémoire OFF';
+
+    // Métriques
+    const met = this.state.metrics || {};
+    const ttfbEl = container.querySelector('#metric-ttfb');
+    const fbEl = container.querySelector('#metric-fallbacks');
+    if (ttfbEl) ttfbEl.textContent = `TTFB: ${Number.isFinite(met.last_ttfb_ms) ? met.last_ttfb_ms : 0} ms`;
+    if (fbEl) fbEl.textContent = `Fallback REST: ${met.rest_fallback_count || 0}`;
   }
 
   _bindEvents(container) {
@@ -85,6 +121,7 @@ export class ChatUI {
     const ragBtn = container.querySelector('#rag-power');
     const ragLbl = container.querySelector('#rag-label');
     const sendBtn = container.querySelector('#chat-send');
+    const memBtn  = container.querySelector('#memory-analyze');
 
     /* Autosize — textarea s’adapte à la frappe (desktop & mobile) */
     const autosize = () => this._autoGrow(input);
@@ -128,6 +165,9 @@ export class ChatUI {
     };
     ragBtn?.addEventListener('click', toggleRag);
     ragLbl?.addEventListener('click', toggleRag);
+
+    // Mémoire — lance l’analyse
+    memBtn?.addEventListener('click', () => this.eventBus.emit('memory:tend'));
 
     container.querySelector('.agent-selector')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-agent-id]');
