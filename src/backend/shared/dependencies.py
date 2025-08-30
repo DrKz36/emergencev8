@@ -1,5 +1,5 @@
 # src/backend/shared/dependencies.py
-# V7.3 – Allowlist GIS + WS token handshake + compat alias (from_websocket) + DI getters sans import container
+# V7.4 – Allowlist GIS + WS token handshake + compat alias (_extract_ws_bearer_token) + DI getters sans import container
 from __future__ import annotations
 
 import os
@@ -111,28 +111,68 @@ async def get_user_id(request: Request) -> str:
     raise HTTPException(status_code=401, detail="ID token invalide ou sans 'sub'.")
 
 # -----------------------------
-# WebSocket (ID token depuis sous-protocoles / cookies)
+# WebSocket — extraction du JWT
 # -----------------------------
 def _get_ws_token_from_headers(ws: WebSocket) -> Optional[str]:
-    proto = ws.headers.get("sec-websocket-protocol") or ""
-    # ex: "jwt,<token>" ou "jwt <token>"
-    if proto.lower().startswith("jwt"):
-        rest = proto[3:].strip(" ,")
-        if rest:
-            return rest
-    # cookie id_token
+    """
+    Stratégie tolérante :
+      1) Sec-WebSocket-Protocol : "jwt,<token>" | "jwt <token>" | "jwt",<token>
+      2) Query params : token | id_token | access_token
+      3) Cookie : id_token
+      4) Header Authorization: Bearer <token> (rare en browser)
+    """
+    # 1) Sous-protocoles
+    proto_raw = ws.headers.get("sec-websocket-protocol") or ""
+    if proto_raw:
+        try:
+            parts = [p.strip() for p in proto_raw.split(",") if p.strip()]
+            if parts:
+                first = parts[0]
+                if first.lower().startswith("jwt"):
+                    rest = first[3:].strip(" ,")
+                    if rest and _looks_like_jwt(rest):
+                        return rest
+                    # second élément possible: token brut
+                    if len(parts) >= 2 and _looks_like_jwt(parts[1]):
+                        return parts[1]
+        except Exception as e:
+            logger.debug(f"Parsing sec-websocket-protocol échoué: {e}")
+
+    # 2) Query
+    for key in ("token", "id_token", "access_token"):
+        val = ws.query_params.get(key)
+        if val and _looks_like_jwt(val):
+            return val
+
+    # 3) Cookie
     cookie = ws.headers.get("cookie") or ""
-    for part in cookie.split(";"):
-        k, _, v = part.strip().partition("=")
-        if k == "id_token" and v:
-            return v.strip()
-    # query ?access_token=...
-    access_token = ws.query_params.get("access_token")
-    if access_token:
-        return access_token
+    if cookie:
+        for part in cookie.split(";"):
+            k, _, v = part.strip().partition("=")
+            if k == "id_token" and v:
+                v = v.strip()
+                if _looks_like_jwt(v):
+                    return v
+
+    # 4) Authorization (rare)
+    auth = ws.headers.get("authorization") or ws.headers.get("Authorization") or ""
+    if auth.startswith("Bearer "):
+        maybe = auth.split(" ", 1)[1].strip()
+        if _looks_like_jwt(maybe):
+            return maybe
+
     return None
 
+# --- Compat : nom attendu par le router WS actuel ---
+def _extract_ws_bearer_token(ws: WebSocket) -> Optional[str]:
+    """Alias compat utilisé par le router WS (accept-first)."""
+    return _get_ws_token_from_headers(ws)
+
 async def get_user_id_for_ws(ws: WebSocket, user_id: Optional[str] = Query(default=None)) -> str:
+    """
+    Retourne l'user_id à partir d'un JWT trouvé dans le handshake WS.
+    En DEV (AUTH_DEV_MODE=1) peut accepter user_id explicite si aucun token.
+    """
     mode, _emails, _hd, client_id, dev = _get_cfg()
     token = _get_ws_token_from_headers(ws)
 
@@ -140,7 +180,7 @@ async def get_user_id_for_ws(ws: WebSocket, user_id: Optional[str] = Query(defau
         if dev and user_id:
             logger.warning("DevMode WS: fallback user_id accepté (pas de token).")
             return str(user_id)
-        raise HTTPException(status_code=401, detail="WS: token absent (Authorization/subprotocol/cookie/access_token).")
+        raise HTTPException(status_code=401, detail="WS: token absent (Authorization/subprotocol/cookie/query).")
 
     claims = _read_bearer_claims_from_token(token)
     _enforce_allowlist_claims(claims)
