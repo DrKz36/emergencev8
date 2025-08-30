@@ -1,170 +1,147 @@
 /**
  * @module core/websocket
- * @description WebSocketClient V20.4 - STREAMING READY + JWT subprotocol + gating 'auth:missing'
- * - N’ouvre PAS le WS si aucun token GIS n’est disponible (émission 'auth:missing').
- * - Réagit à 'ws:auth_required' et aux codes de fermeture 4401/1008 (émission 'auth:missing').
+ * @description WebSocketClient V21.2 — JWT gating + auto-reconnect + auth events
+ * - N’ouvre PAS le WS sans token (émission 'auth:missing'); tente reconnect quand 'auth:token'
+ * - Subprotocols: ['jwt', <id_token>] si dispo (fallback ['jwt'])
+ * - Bridge EventBus: 'ws:send' (raw) + 'ui:chat:send' → {type:'chat.message', payload:{text,agent_id,use_rag}}
  */
 import { EVENTS } from '../shared/constants.js';
+import { ensureAuth, getIdToken, clearAuth } from './auth.js';
 
 export class WebSocketClient {
-    constructor(url, eventBus, stateManager) {
-        this.url = url;
-        this.eventBus = eventBus;
-        this.state = stateManager;
-        this.websocket = null;
-        this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 5;
-        this.reconnectInterval = 5000;
+  constructor(url, eventBus, stateManager) {
+    this.url = url;
+    this.eventBus = eventBus;
+    this.state = stateManager;
+    this.websocket = null;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.reconnectDelayMs = 1000;
+    this._bindEventBus();
+  }
 
-        this.registerEvents();
-        console.log("✅ WebSocketClient V20.4 (Streaming + JWT subprotocol + gating) Initialisé.");
-    }
+  _bindEventBus() {
+    // UI chat → message agent
+    this.eventBus.on?.('ui:chat:send', (payload = {}) => {
+      try {
+        const text = String(payload.text ?? '').trim();
+        if (!text) return;
+        const rawAgent = (payload.agent_id ?? payload.agentId ?? '').trim();
+        const agent_id = rawAgent || this._getActiveAgentIdFromState();
+        const use_rag = Boolean(payload.use_rag ?? payload.useRag);
+        this.send({ type: 'chat.message', payload: { text, agent_id, use_rag } });
+      } catch (e) { console.error('[WebSocket] ui:chat:send → chat.message a échoué', e); }
+    });
 
-    registerEvents() {
-        this.eventBus.on(EVENTS.WS_SEND, this.send.bind(this));
+    // Frames brutes
+    this.eventBus.on?.('ws:send', (frame) => this.send(frame));
 
-        // Bridge UI -> WS chat
-        this.eventBus.on('ui:chat:send', (payload = {}) => {
-            try {
-                const text = payload.text ?? payload.content ?? payload.message;
-                if (typeof text !== 'string' || !text.trim()) {
-                    console.warn('[WebSocket] ui:chat:send sans texte, ignoré.', payload);
-                    return;
-                }
-                const rawAgent = (payload.agent_id ?? payload.agentId ?? '').trim();
-                const agent_id = rawAgent || this._getActiveAgentIdFromState();
-                const use_rag = Boolean(payload.use_rag ?? payload.useRag);
-                this.send({ type: 'chat.message', payload: { text, agent_id, use_rag } });
-            } catch (e) {
-                console.error('[WebSocket] Bridge ui:chat:send -> chat.message a échoué.', e);
-            }
-        });
-    }
+    // Auth workflow
+    this.eventBus.on?.('auth:login', async (opts = {}) => {
+      const token = await ensureAuth({ interactive: true, clientId: opts.client_id || null });
+      if (token) this.eventBus.emit(EVENTS.AUTH_TOKEN ?? 'auth:token', token);
+      this.connect();
+    });
+    this.eventBus.on?.(EVENTS.AUTH_TOKEN ?? 'auth:token', () => this.connect());
+    this.eventBus.on?.('auth:logout', () => { try { clearAuth(); } catch {} this.close(4001, 'logout'); });
+  }
 
-    async connect() {
-        if (this.websocket && this.websocket.readyState !== WebSocket.CLOSED) return;
-
-        let sessionId = this.state.get('websocket.sessionId') || this._generateUUID();
-        this.state.set('websocket.sessionId', sessionId);
-
-        const connectUrl = `${this.url}/${sessionId}`;
-        const token = await this._getIdToken();
-
-        const protocols = [];
-        if (token) {
-            protocols.push('jwt', token);
-        } else {
-            console.warn('[WebSocket] ID token manquant — connexion WS non ouverte.');
-            try { this.eventBus.emit('auth:missing'); } catch (_) {}
-            return; // on attend l’auth pour ouvrir le WS
+  _getActiveAgentIdFromState() {
+    try {
+      const v = this.state?.get?.('chat.active_agent');
+      if (v) return String(v).trim();
+      try {
+        for (const k of ['chat.active_agent','emergence.active_agent']) {
+          const vv = localStorage.getItem(k);
+          if (vv && vv.trim()) return vv.trim().toLowerCase();
         }
+      } catch {}
+    } catch {}
+    return 'anima';
+  }
 
-        console.log(`%c[WebSocket] Connexion à : ${connectUrl}`, 'font-weight: bold;');
-        this.websocket = new WebSocket(connectUrl, protocols);
+  async connect() {
+    if (this.websocket && this.websocket.readyState !== WebSocket.CLOSED) return;
 
-        this.websocket.onopen = () => this.onOpen();
-        this.websocket.onmessage = (event) => this.onMessage(event);
-        this.websocket.onclose = (event) => this.onClose(event);
-        this.websocket.onerror = (error) => this.onError(error);
+    // Gating
+    const token = getIdToken() || await ensureAuth({ interactive: false });
+    if (!token) {
+      this.eventBus.emit('auth:missing', null);
+      console.warn('[WebSocket] Aucun ID token — connexion WS annulée.');
+      return;
     }
 
-    onOpen() {
-        console.log('%c[WebSocket] Connexion établie.', 'color: #22c55e;');
-        this.eventBus.emit(EVENTS.WS_CONNECTED);
-        this.reconnectAttempts = 0;
-
-        // Aliases DEV (si dispo)
-        try {
-            if (typeof window !== 'undefined' && (import.meta?.env?.DEV ?? false)) {
-                window.wsClient = this;
-                window.bus = this.eventBus;
-                console.log('[WebSocket] Aliases DEV exposés: window.wsClient, window.bus');
-            }
-        } catch (_) {}
+    // Session ID stable
+    let sessionId = this.state?.get?.('websocket.sessionId');
+    if (!sessionId) {
+      sessionId = crypto?.randomUUID?.() || (Math.random().toString(16).slice(2) + Date.now());
+      this.state?.set?.('websocket.sessionId', sessionId);
     }
 
-    onMessage(event) {
-        try {
-            const data = JSON.parse(event.data);
-            const receivedType = data.type;
-            const payload = data.payload;
+    const url = this._buildWsUrl(sessionId);
+    const protocols = token ? ['jwt', token] : ['jwt'];
 
-            if (receivedType === 'ws:auth_required') {
-                try { this.eventBus.emit('auth:missing'); } catch (_) {}
-                return;
-            }
+    try {
+      this.websocket = new WebSocket(url, protocols);
+    } catch (e) {
+      console.error('[WebSocket] new WebSocket() a échoué', e);
+      this._scheduleReconnect();
+      return;
+    }
 
-            if (!receivedType) {
-                console.warn('[WebSocket] Message reçu sans type, ignoré.', data);
-                return;
-            }
-            if (receivedType.startsWith('ws:')) {
-                console.log(`%c[WebSocket] Message Reçu & Routé: ${receivedType}`, 'color: #16a34a;', payload);
-                this.eventBus.emit(receivedType, payload);
-            } else {
-                console.warn(`[WebSocket] Type non géré/mal préfixé: '${receivedType}'`);
-            }
-        } catch (e) {
-            console.error('[WebSocket] Erreur de parsing JSON.', e);
+    this.websocket.onopen = () => {
+      this.reconnectAttempts = 0;
+      this.eventBus.emit('ws:open', { url });
+    };
+
+    this.websocket.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg?.type === 'ws:auth_required') {
+          this.eventBus.emit('auth:missing', msg?.payload || null);
+          return;
         }
-    }
+        this.eventBus.emit(msg.type, msg.payload);
+      } catch {
+        console.warn('[WebSocket] Message non JSON', ev.data);
+      }
+    };
 
-    send(messageObject) {
-        if (!messageObject || typeof messageObject !== 'object' || !messageObject.type) {
-            console.error('%c[WebSocket] Message invalide.', 'color: red; font-weight: bold;', messageObject);
-            return;
-        }
-        if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
-            console.error('[WebSocket] Connexion non ouverte.', messageObject);
-            return;
-        }
-        this.websocket.send(JSON.stringify(messageObject));
-    }
+    this.websocket.onclose = (ev) => {
+      const code = ev?.code || 1006;
+      if (code === 4401 || code === 1008) this.eventBus.emit('auth:missing', { reason: code });
+      this._scheduleReconnect();
+      this.eventBus.emit('ws:close', { code, reason: ev?.reason || '' });
+    };
 
-    onClose(event) {
-        console.warn(`[WebSocket] Connexion fermée. Code: ${event.code}`);
-        if (event && (event.code === 4401 || event.code === 1008)) {
-            try { this.eventBus.emit('auth:missing'); } catch (_) {}
-            return; // pas de reconnexion sans auth
-        }
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            this.reconnectAttempts++;
-            console.log(`Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`);
-            setTimeout(() => this.connect(), this.reconnectInterval);
-        } else {
-            console.error('[WebSocket] Reconnexion impossible après plusieurs tentatives.');
-        }
-    }
+    this.websocket.onerror = (e) => { console.error('[WebSocket] error', e); };
+  }
 
-    onError(error) { console.error('[WebSocket] Erreur détectée.', error); }
+  close(code = 1000, reason = 'normal') {
+    try { this.websocket?.close(code, reason); } catch {} finally { this.websocket = null; }
+  }
 
-    _generateUUID() {
-        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-        );
-    }
+  send(frame) {
+    try {
+      if (!frame || typeof frame !== 'object') return;
+      if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
+        console.warn('[WebSocket] Connexion non ouverte, tentative de connect()', frame?.type);
+        this.connect();
+        return;
+      }
+      this.websocket.send(JSON.stringify(frame));
+    } catch (e) { console.error('[WebSocket] send failed', e); }
+  }
 
-    _getActiveAgentIdFromState() {
-        try {
-            const keys = ['chat.activeAgent', 'ui.activeAgent', 'agent.selected', 'activeAgent', 'chat.selectedAgent'];
-            for (const k of keys) {
-                const v = this.state?.get?.(k);
-                if (typeof v === 'string' && v.trim()) return v.trim().toLowerCase();
-            }
-            try {
-                const lsKeys = ['emergence.activeAgent', 'chat.activeAgent'];
-                for (const k of lsKeys) {
-                    const v = localStorage.getItem(k);
-                    if (v && v.trim()) return v.trim().toLowerCase();
-                }
-            } catch (_) {}
-        } catch (_) {}
-        return 'anima';
-    }
+  _buildWsUrl(sessionId) {
+    const loc = window.location;
+    const scheme = (loc.protocol === 'https:') ? 'wss' : 'ws';
+    return `${scheme}://${loc.host}/ws/${sessionId}`;
+  }
 
-    async _getIdToken() {
-        try { if (window.gis?.getIdToken) { const t = await window.gis.getIdToken(); if (t) return t; } } catch (_) {}
-        try { return sessionStorage.getItem('emergence.id_token') || localStorage.getItem('emergence.id_token'); } catch (_) {}
-        return null;
-    }
+  _scheduleReconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) return;
+    const delay = Math.min(8000, this.reconnectDelayMs * Math.pow(2, this.reconnectAttempts++));
+    setTimeout(() => this.connect(), delay);
+  }
 }
