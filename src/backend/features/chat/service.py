@@ -1,7 +1,9 @@
 ﻿# src/backend/features/chat/service.py
-# V31.0 — Fallback cross-provider (Google → Anthropic → OpenAI) avec renormalisation d’historique
-# + Mémoire orthogonale au RAG + bannières ws:* (identique V30) + corrections Pylance (corps complets)
-# NOTE: basé sur la V30.0 fournie et intégrée à l’arbo actuelle.
+# V31.2 — P0.2: Signals UI + logs fallback
+# - NEW frames: ws:model_info, ws:model_fallback
+# - meta injected in ws:chat_stream_end (provider, model, fallback)
+# - Structured logs on fallback
+# Base: V31.0 local fournie (fallback cross-provider + mémoire orthogonale + bannières ws:*) :contentReference[oaicite:4]{index=4}
 
 import os, re, asyncio, logging, glob, json
 from uuid import uuid4
@@ -72,7 +74,7 @@ class ChatService:
             raise
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V31.0 initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V31.2 initialisé. Prompts chargés: {len(self.prompts)}")
 
     # ---------- prompts ----------
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
@@ -400,7 +402,7 @@ class ChatService:
         model_used = ""
 
         try:
-            # Start du stream côté client
+            # Start du stream côté client (id de suivi)
             await connection_manager.send_personal_message(
                 {"type": "ws:chat_stream_start", "payload": {"agent_id": agent_id, "id": temp_message_id}},
                 session_id
@@ -436,6 +438,8 @@ class ChatService:
                     payload = final_agent_message.model_dump(mode="json")
                     if "message" in payload:
                         payload["content"] = payload.pop("message")
+                    # Tag meta minimal pour cohérence d’UI
+                    payload.setdefault("meta", {"provider": "memory", "model": "mot-code", "fallback": False})
                     await connection_manager.send_personal_message(
                         {"type": "ws:chat_stream_end", "payload": payload}, session_id
                     )
@@ -510,7 +514,27 @@ class ChatService:
             )
 
             provider, model, system_prompt = self._get_agent_config(agent_id)
-            model_used = model
+            primary_provider, primary_model = provider, model
+            model_used = primary_model
+
+            # Informer l’UI du provider choisi (avant premier chunk)
+            try:
+                await connection_manager.send_personal_message(
+                    {"type": "ws:model_info",
+                     "payload": {"agent_id": agent_id, "id": temp_message_id,
+                                 "provider": primary_provider, "model": primary_model}},
+                    session_id
+                )
+            except Exception:
+                pass
+            logger.info(json.dumps({
+                "event": "model_info",
+                "agent_id": agent_id,
+                "session_id": session_id,
+                "provider": primary_provider,
+                "model": primary_model
+            }))
+
             normalized_history = self._normalize_history_for_llm(provider, history, rag_context, use_rag, agent_id)
 
             norm_concat = "\n".join(["".join(p.get("parts", [])) if provider == "google" else p.get("content", "")
@@ -530,8 +554,6 @@ class ChatService:
                 return self._get_llm_response_stream(provider_name, model_name, system_prompt, hist, cost_info_container)
 
             success = False
-            primary_provider = provider
-            primary_model = model
             try:
                 async for chunk in (await _stream_with(primary_provider, primary_model, normalized_history)):
                     if chunk:
@@ -555,15 +577,29 @@ class ChatService:
 
                 last_error = e_primary
                 for prov2, model2 in fallbacks:
+                    # Info UI + logs — tentative de fallback
                     try:
                         await connection_manager.send_personal_message(
-                            {"type": "ws:debug_context",
-                             "payload": {"phase": "model_fallback", "from": primary_provider, "to": prov2,
-                                         "agent_id": agent_id, "note": str(e_primary)}},
+                            {"type": "ws:model_fallback",
+                             "payload": {"agent_id": agent_id, "id": temp_message_id,
+                                         "from_provider": primary_provider, "from_model": primary_model,
+                                         "to_provider": prov2, "to_model": model2,
+                                         "reason": str(e_primary)}},
                             session_id
                         )
                     except Exception:
                         pass
+                    logger.warning(json.dumps({
+                        "event": "model_fallback",
+                        "agent_id": agent_id,
+                        "session_id": session_id,
+                        "from_provider": primary_provider,
+                        "from_model": primary_model,
+                        "to_provider": prov2,
+                        "to_model": model2,
+                        "reason": str(e_primary)
+                    }))
+
                     # Re-normaliser l'historique pour le provider de fallback
                     norm2 = self._normalize_history_for_llm(prov2, history, rag_context, use_rag, agent_id)
                     try:
@@ -603,6 +639,12 @@ class ChatService:
             payload = final_agent_message.model_dump(mode="json")
             if "message" in payload:
                 payload["content"] = payload.pop("message")
+            # Inject meta → visible par l'UI (badge bulle + éventuelle persistance)
+            payload["meta"] = {
+                "provider": provider,
+                "model": model_used,
+                "fallback": bool(provider != primary_provider)
+            }
             await connection_manager.send_personal_message(
                 {"type": "ws:chat_stream_end", "payload": payload}, session_id
             )
