@@ -1,7 +1,8 @@
+// src/frontend/shared/api-client.js
 /**
  * @file /src/frontend/shared/api-client.js
  * @description Client API centralisé pour les requêtes HTTP (Fetch).
- * @version V4.5 - + memory.tendGarden (POST) + 404 auto-recovery threads
+ * @version V4.7 - fix fallback purge mémoire: POST /api/memory/clear (plus de tend-garden{clear:true})
  */
 
 import { API_ENDPOINTS } from './config.js';
@@ -13,6 +14,11 @@ const MEMORY_TEND =
   (API_ENDPOINTS && (API_ENDPOINTS.MEMORY_TEND || API_ENDPOINTS.MEMORY_TEND_GARDEN))
     ? (API_ENDPOINTS.MEMORY_TEND || API_ENDPOINTS.MEMORY_TEND_GARDEN)
     : '/api/memory/tend-garden';
+
+const MEMORY_CLEAR =
+  (API_ENDPOINTS && (API_ENDPOINTS.MEMORY_CLEAR || API_ENDPOINTS.MEMORY_DELETE))
+    ? (API_ENDPOINTS.MEMORY_CLEAR || API_ENDPOINTS.MEMORY_DELETE)
+    : '/api/memory/clear';
 
 const DEFAULT_TIMEOUT_MS = 15000;
 
@@ -90,9 +96,7 @@ async function getAuthHeaders() {
   return headers;
 }
 
-/**
- * Fetch avec timeout + gestion d’erreurs homogène.
- */
+/* ------------------------------ Fetch core ---------------------------- */
 async function doFetch(endpoint, config, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -221,8 +225,20 @@ export const api = {
   },
 
   /* ------------------------ MEMORY ----------------------- */
-  // Lance l’analyse/compactage mémoire (non bloquant). Endpoint par défaut /api/memory/tend-garden.
+  // Lance l’analyse/compactage mémoire (non bloquant).
   tendMemory: () => fetchApi(MEMORY_TEND, { method: 'POST', body: {} }),
+
+  // Efface la mémoire de session. Essaie DELETE /api/memory/clear ; si non supporté → POST /api/memory/clear
+  clearMemory: async () => {
+    try {
+      return await fetchApi(MEMORY_CLEAR, { method: 'DELETE' });
+    } catch (err) {
+      if (err?.status === 404 || err?.status === 405) {
+        return await fetchApi(MEMORY_CLEAR, { method: 'POST', body: {} });
+      }
+      throw err;
+    }
+  },
 };
 
 // Qualité de vie: accès console en dev
