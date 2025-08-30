@@ -1,6 +1,12 @@
 /**
  * @module features/chat/chat
- * @description Module Chat - V24.7 "Single-Emit + ActiveAgent + Watchdog + SendGate"
+ * @description Module Chat - V25.0 "WS-first + RAG/Memo hooks + Watchdog REST fallback"
+ *
+ * Changements clés:
+ * - WS-first: si WebSocket connecté → n’APPELLE PAS le POST REST pour le message USER (anti double 201).
+ * - Watchdog: si le flux ne démarre pas, fallback REST unique pour persister le USER.
+ * - Assistant: à ws:chat_stream_end, on persiste l’assistant UNE FOIS, sauf si meta indique persistence back.
+ * - Hooks RAG/Mémoire: toasts pour ws:memory_banner + ws:rag_status; suivi connexion WS pour l’état.
  */
 import { ChatUI } from './chat-ui.js';
 import { EVENTS } from '../../shared/constants.js';
@@ -18,11 +24,18 @@ export default class ChatModule {
     this.loadedThreadId = null;
     this._lastToastAt = 0;
 
+    // Watchdog: délai avant de considérer que le flux n'a pas démarré
     this._streamStartTimer = null;
     this._streamStartTimeoutMs = 1500;
 
+    // Anti-double envoi côté UI
     this._sendLock = false;
     this._sendGateMs = 400;
+
+    // --- Nouveaux états internes ---
+    this._wsConnected = false;
+    this._pendingMsg = null;                // { id, agent_id, text, triedRest }
+    this._assistantPersistedIds = new Set(); // garde locale anti-double POST assistant
   }
 
   init() {
@@ -32,7 +45,7 @@ export default class ChatModule {
     this.registerStateChanges();
     this.registerEvents();
     this.isInitialized = true;
-    console.log('✅ ChatModule V24.7 (Single-Emit + ActiveAgent + Watchdog + SendGate) initialisé.');
+    console.log('✅ ChatModule V25.0 (WS-first + RAG/Memo hooks + Watchdog fallback) initialisé.');
   }
 
   mount(container) {
@@ -67,13 +80,17 @@ export default class ChatModule {
         messages: {},
         threadId: null,
         lastAnalysis: null,
-        activeAgent: 'anima'
+        activeAgent: 'anima',
+        ragStatus: 'idle',            // nouveau (searching|found|idle)
+        memoryBannerAt: null          // nouveau (timestamp)
       });
     } else {
       if (this.state.get('chat.threadId') == null) this.state.set('chat.threadId', null);
       if (this.state.get('chat.lastAnalysis') == null) this.state.set('chat.lastAnalysis', null);
       if (!this.state.get('chat.activeAgent'))
         this.state.set('chat.activeAgent', this.state.get('chat.currentAgentId') || 'anima');
+      if (!this.state.get('chat.ragStatus')) this.state.set('chat.ragStatus', 'idle');
+      if (!this.state.get('chat.memoryBannerAt')) this.state.set('chat.memoryBannerAt', null);
     }
   }
 
@@ -91,10 +108,25 @@ export default class ChatModule {
     this.listeners.push(this.eventBus.on(EVENTS.CHAT_EXPORT, this.handleExport.bind(this)));
     this.listeners.push(this.eventBus.on(EVENTS.CHAT_RAG_TOGGLED, this.handleRagToggle.bind(this)));
 
+    // Flux WS
     this.listeners.push(this.eventBus.on('ws:chat_stream_start', this.handleStreamStart.bind(this)));
     this.listeners.push(this.eventBus.on('ws:chat_stream_chunk', this.handleStreamChunk.bind(this)));
     this.listeners.push(this.eventBus.on('ws:chat_stream_end', this.handleStreamEnd.bind(this)));
     this.listeners.push(this.eventBus.on('ws:analysis_status', this.handleAnalysisStatus.bind(this)));
+
+    // Connexion WS (pilotage "WS-first")
+    this.listeners.push(this.eventBus.on('ws:connected', () => {
+      this._wsConnected = true;
+      try { this.state.set('connection.status', 'connected'); } catch {}
+    }));
+    this.listeners.push(this.eventBus.on('ws:close', () => {
+      this._wsConnected = false;
+      try { this.state.set('connection.status', 'disconnected'); } catch {}
+    }));
+
+    // Hooks RAG/Mémoire (toasts + état léger)
+    this.listeners.push(this.eventBus.on('ws:memory_banner', this.handleMemoryBanner.bind(this)));
+    this.listeners.push(this.eventBus.on('ws:rag_status', this.handleRagStatus.bind(this)));
   }
 
   getCurrentThreadId() { return this.threadId || this.state.get('threads.currentId') || null; }
@@ -124,6 +156,7 @@ export default class ChatModule {
       Object.fromEntries(Object.entries(buckets).map(([k, v]) => [k, v.length])));
   }
 
+  /* ============================ Envoi USER (WS-first) ============================ */
   handleSendMessage(payload) {
     if (this._sendLock) return;
     this._sendLock = true;
@@ -148,17 +181,20 @@ export default class ChatModule {
     this.state.set('chat.isLoading', true);
 
     const threadId = this.getCurrentThreadId();
-    if (threadId) {
+
+    // --- WS-first: si WS connecté, ne pas POST le USER via REST (anti double 201) ---
+    if (!this._wsConnected && threadId) {
       api.appendMessage(threadId, {
         role: 'user',
         content: trimmed,
         agent_id: currentAgentId,
         metadata: { rag: !!ragEnabled }
       }).catch(err => console.error('[Chat] Échec appendMessage(user):', err));
-    } else {
+    } else if (!this._wsConnected) {
       console.warn('[Chat] Aucun threadId disponible — message non persisté côté backend.');
     }
 
+    // Émission UI → WS
     try {
       this.eventBus.emit('ui:chat:send', {
         text: trimmed,
@@ -166,6 +202,8 @@ export default class ChatModule {
         use_rag: !!ragEnabled,
         msg_uid: userMessage.id
       });
+      // Garder sous la main en cas de fallback (si flux ne démarre pas)
+      this._pendingMsg = { id: userMessage.id, agent_id: currentAgentId, text: trimmed, triedRest: !this._wsConnected };
       this._startStreamWatchdog();
     } catch (e) {
       console.error('[Chat] Emission ui:chat:send a échoué', e);
@@ -176,6 +214,7 @@ export default class ChatModule {
     }
   }
 
+  /* ============================ Flux assistant ============================ */
   handleStreamStart({ agent_id, id }) {
     const agentMessage = {
       id,
@@ -190,6 +229,8 @@ export default class ChatModule {
     this._clearStreamWatchdog();
     this.state.set('chat.isLoading', true);
     this._sendLock = false;
+    // Plus de pending: le flux a bien démarré
+    this._pendingMsg = null;
   }
 
   handleStreamChunk({ id, chunk }) {
@@ -204,32 +245,40 @@ export default class ChatModule {
     }
   }
 
-  handleStreamEnd({ id, agent_id }) {
+  handleStreamEnd({ id, agent_id, meta }) {
     const messages = this.state.get('chat.messages');
     for (const aid in messages) {
       const i = messages[aid].findIndex(m => m.id === id);
       if (i !== -1) {
-        messages[aid][i] = { ...messages[aid][i], isStreaming: false };
+        const finalMsg = { ...messages[aid][i], isStreaming: false };
+        messages[aid][i] = finalMsg;
         this.state.set('chat.messages', { ...messages });
         this._clearStreamWatchdog();
         this.state.set('chat.isLoading', false);
 
+        // Garde anti-double POST assistant (locale)
+        if (this._assistantPersistedIds.has(id)) return;
+
+        // Heuristique: si meta indique une persistence back, on ne POST pas côté front
+        const backendPersisted =
+          !!(meta && (meta.persisted === true || meta.persisted_by === 'backend' || meta.persisted_by_ws === true));
+
         const threadId = this.getCurrentThreadId();
-        if (threadId) {
-          const finalMsg = messages[aid][i];
+        if (!backendPersisted && threadId) {
           api.appendMessage(threadId, {
             role: 'assistant',
             content: typeof finalMsg.content === 'string' ? finalMsg.content : String(finalMsg.content ?? ''),
             agent_id: finalMsg.agent_id || agent_id || aid
-          }).catch(err => console.error('[Chat] Échec appendMessage(assistant):', err));
-        } else {
-          console.warn('[Chat] Aucun threadId — assistant non persisté.');
+          })
+            .then(() => this._assistantPersistedIds.add(id))
+            .catch(err => console.error('[Chat] Échec appendMessage(assistant):', err));
         }
         return;
       }
     }
   }
 
+  /* ============================ UI actions ============================ */
   handleAgentSelected(agentId) {
     const prev = this.state.get('chat.currentAgentId');
     if (prev === agentId) return;
@@ -277,13 +326,51 @@ export default class ChatModule {
     else if (status === 'failed') this.showToast('Analyse mémoire : échec');
   }
 
+  /* ============================ Hooks RAG/Mémoire ============================ */
+  handleMemoryBanner(payload) {
+    try { this.state.set('chat.memoryBannerAt', Date.now()); } catch {}
+    this.showToast('Mémoire chargée ✓');
+  }
+
+  handleRagStatus(payload = {}) {
+    const st = String(payload.status || '').toLowerCase();
+    this.state.set('chat.ragStatus', st || 'idle');
+    if (st === 'searching') this.showToast('RAG : recherche en cours…');
+    if (st === 'found') this.showToast('RAG : sources trouvées ✓');
+  }
+
+  /* ============================ Watchdog / Fallback ============================ */
   _startStreamWatchdog() {
     this._clearStreamWatchdog();
     try {
-      this._streamStartTimer = setTimeout(() => {
-        if (this.state.get('chat.isLoading')) {
-          this.state.set('chat.isLoading', false);
-          this._sendLock = false;
+      this._streamStartTimer = setTimeout(async () => {
+        if (!this.state.get('chat.isLoading')) return;
+
+        // Si le flux n’a pas démarré, on désactive le "chargement"
+        this.state.set('chat.isLoading', false);
+        this._sendLock = false;
+
+        // Fallback REST: si on n’a pas déjà persisté le USER et qu’on a un thread
+        if (this._pendingMsg && !this._pendingMsg.triedRest) {
+          const threadId = this.getCurrentThreadId();
+          if (threadId) {
+            try {
+              await api.appendMessage(threadId, {
+                role: 'user',
+                content: this._pendingMsg.text,
+                agent_id: this._pendingMsg.agent_id,
+                metadata: { watchdog_fallback: true }
+              });
+              this._pendingMsg.triedRest = true;
+              this.showToast('Flux indisponible — fallback REST effectué.');
+            } catch (e) {
+              console.error('[Chat] Fallback REST (user) a échoué', e);
+              this.showToast('Envoi bloqué (aucun flux).');
+            }
+          } else {
+            this.showToast('Envoi bloqué (aucun flux démarré).');
+          }
+        } else {
           this.showToast('Envoi bloqué (aucun flux démarré).');
         }
       }, this._streamStartTimeoutMs);
@@ -296,6 +383,7 @@ export default class ChatModule {
     } catch {}
   }
 
+  /* ============================ UI toast ============================ */
   showToast(message) {
     try {
       const el = document.createElement('div'); el.setAttribute('role', 'status');
