@@ -1,9 +1,6 @@
 /**
  * @module core/websocket
- * @description WebSocketClient V21.2 — JWT gating + auto-reconnect + auth events
- * - N’ouvre PAS le WS sans token (émission 'auth:missing'); tente reconnect quand 'auth:token'
- * - Subprotocols: ['jwt', <id_token>] si dispo (fallback ['jwt'])
- * - Bridge EventBus: 'ws:send' (raw) + 'ui:chat:send' → {type:'chat.message', payload:{text,agent_id,use_rag}}
+ * @description WebSocketClient V21.3 — JWT gating + auto-login (dev-auth) + storage-listener
  */
 import { EVENTS } from '../shared/constants.js';
 import { ensureAuth, getIdToken, clearAuth } from './auth.js';
@@ -17,11 +14,15 @@ export class WebSocketClient {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelayMs = 1000;
+    this._authPromptedAt = 0;
+
     this._bindEventBus();
+    this._bindStorageListener();
+    console.log("✅ WebSocketClient V21.3 (JWT gating + auto-login) prêt.");
   }
 
   _bindEventBus() {
-    // UI chat → message agent
+    // UI → chat
     this.eventBus.on?.('ui:chat:send', (payload = {}) => {
       try {
         const text = String(payload.text ?? '').trim();
@@ -34,28 +35,45 @@ export class WebSocketClient {
     });
 
     // Frames brutes
-    this.eventBus.on?.('ws:send', (frame) => this.send(frame));
+    this.eventBus.on?.(EVENTS.WS_SEND, (frame) => this.send(frame));
 
-    // Auth workflow
+    // Auth events
     this.eventBus.on?.('auth:login', async (opts = {}) => {
-      const token = await ensureAuth({ interactive: true, clientId: opts.client_id || null });
-      if (token) this.eventBus.emit(EVENTS.AUTH_TOKEN ?? 'auth:token', token);
+      await ensureAuth({ interactive: true, clientId: opts.client_id || null });
       this.connect();
     });
-    this.eventBus.on?.(EVENTS.AUTH_TOKEN ?? 'auth:token', () => this.connect());
     this.eventBus.on?.('auth:logout', () => { try { clearAuth(); } catch {} this.close(4001, 'logout'); });
+
+    // Si le serveur réclame l'auth
+    this.eventBus.on?.('auth:missing', async () => {
+      const now = Date.now();
+      if (now - this._authPromptedAt > 4000) {
+        this._authPromptedAt = now;
+        await ensureAuth({ interactive: true });
+        this.connect();
+      }
+    });
+  }
+
+  _bindStorageListener() {
+    try {
+      window.addEventListener('storage', (ev) => {
+        if (ev.key === 'emergence.id_token' && ev.newValue && ev.newValue.trim()) {
+          console.log('[WebSocket] Token détecté via storage — reconnexion…');
+          this.connect();
+        }
+      });
+    } catch {}
   }
 
   _getActiveAgentIdFromState() {
     try {
-      const v = this.state?.get?.('chat.active_agent');
-      if (v) return String(v).trim();
-      try {
-        for (const k of ['chat.active_agent','emergence.active_agent']) {
-          const vv = localStorage.getItem(k);
-          if (vv && vv.trim()) return vv.trim().toLowerCase();
-        }
-      } catch {}
+      const v = this.state?.get?.('chat.activeAgent') || this.state?.get?.('chat.currentAgentId');
+      if (v) return String(v).trim().toLowerCase();
+      for (const k of ['emergence.activeAgent','chat.activeAgent']) {
+        const vv = localStorage.getItem(k);
+        if (vv && vv.trim()) return vv.trim().toLowerCase();
+      }
     } catch {}
     return 'anima';
   }
@@ -63,7 +81,6 @@ export class WebSocketClient {
   async connect() {
     if (this.websocket && this.websocket.readyState !== WebSocket.CLOSED) return;
 
-    // Gating
     const token = getIdToken() || await ensureAuth({ interactive: false });
     if (!token) {
       this.eventBus.emit('auth:missing', null);
@@ -71,15 +88,16 @@ export class WebSocketClient {
       return;
     }
 
-    // Session ID stable
     let sessionId = this.state?.get?.('websocket.sessionId');
     if (!sessionId) {
       sessionId = crypto?.randomUUID?.() || (Math.random().toString(16).slice(2) + Date.now());
       this.state?.set?.('websocket.sessionId', sessionId);
     }
 
-    const url = this._buildWsUrl(sessionId);
-    const protocols = token ? ['jwt', token] : ['jwt'];
+    const loc = window.location;
+    const scheme = (loc.protocol === 'https:') ? 'wss' : 'ws';
+    const url = `${scheme}://${loc.host}/ws/${sessionId}`;
+    const protocols = ['jwt', token];
 
     try {
       this.websocket = new WebSocket(url, protocols);
@@ -91,20 +109,15 @@ export class WebSocketClient {
 
     this.websocket.onopen = () => {
       this.reconnectAttempts = 0;
-      this.eventBus.emit('ws:open', { url });
+      this.eventBus.emit(EVENTS.WS_CONNECTED || 'ws:open', { url });
     };
 
     this.websocket.onmessage = (ev) => {
       try {
         const msg = JSON.parse(ev.data);
-        if (msg?.type === 'ws:auth_required') {
-          this.eventBus.emit('auth:missing', msg?.payload || null);
-          return;
-        }
-        this.eventBus.emit(msg.type, msg.payload);
-      } catch {
-        console.warn('[WebSocket] Message non JSON', ev.data);
-      }
+        if (msg?.type === 'ws:auth_required') { this.eventBus.emit('auth:missing', msg?.payload || null); return; }
+        if (msg?.type) this.eventBus.emit(msg.type, msg.payload);
+      } catch { console.warn('[WebSocket] Message non JSON', ev.data); }
     };
 
     this.websocket.onclose = (ev) => {
@@ -125,18 +138,12 @@ export class WebSocketClient {
     try {
       if (!frame || typeof frame !== 'object') return;
       if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
-        console.warn('[WebSocket] Connexion non ouverte, tentative de connect()', frame?.type);
+        console.warn('[WebSocket] Connexion non ouverte, tentative connect()', frame?.type);
         this.connect();
         return;
       }
       this.websocket.send(JSON.stringify(frame));
     } catch (e) { console.error('[WebSocket] send failed', e); }
-  }
-
-  _buildWsUrl(sessionId) {
-    const loc = window.location;
-    const scheme = (loc.protocol === 'https:') ? 'wss' : 'ws';
-    return `${scheme}://${loc.host}/ws/${sessionId}`;
   }
 
   _scheduleReconnect() {

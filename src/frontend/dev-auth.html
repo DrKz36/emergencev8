@@ -7,7 +7,7 @@
   <style>
     :root { --bg:#0b0f17; --card:#111726; --ink:#e7eaf3; --muted:#9aa4b2; --accent:#5eead4; }
     html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Roboto,Arial;}
-    .wrap{max-width:920px;margin:32px auto;padding:0 16px;}
+    .wrap{max-width:940px;margin:32px auto;padding:0 16px;}
     .card{background:var(--card);border-radius:16px;padding:20px;box-shadow:0 6px 28px rgba(0,0,0,.35)}
     h1{margin:0 0 12px;font-size:20px}
     label{display:block;margin:12px 0 6px;color:var(--muted)}
@@ -18,10 +18,12 @@
     .btn.primary{background:var(--accent);color:#05221c;font-weight:600}
     .muted{color:var(--muted)}
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
-    .mt12{margin-top:12px} .mt20{margin-top:20px} .mt28{margin-top:28px}
+    .mt8{margin-top:8px} .mt12{margin-top:12px} .mt20{margin-top:20px} .mt28{margin-top:28px}
     .gutter{height:12px}
     .token{word-break:break-all}
     .badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#0e1422;color:var(--muted);font-size:12px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width: 800px){ .grid{grid-template-columns:1fr;} }
   </style>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -29,13 +31,18 @@
   <div class="wrap">
     <div class="card">
       <h1>ÉMERGENCE — <span class="badge">/dev-auth.html</span></h1>
-      <p class="muted">Génère un <strong>ID token Google</strong> (JWT) via Google Identity Services et copie-le pour tester <code>/api/*</code> avec <code>Authorization: Bearer</code>.</p>
+      <p class="muted">Génère un <strong>ID token Google</strong> (JWT) via Google Identity Services, l’enregistre pour l’app (storage + cookie), puis teste des appels <code>/api/*</code>.</p>
 
       <label for="client_id">Google OAuth Client ID</label>
       <input id="client_id" class="mono" placeholder="xxx.apps.googleusercontent.com"/>
 
-      <div class="row mt12">
+      <div class="row mt8">
+        <label style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="auto_init"/> Auto-init GIS au chargement
+        </label>
         <button class="btn primary" onclick="initGIS()">Init GIS</button>
+        <button class="btn" onclick="openApp()">Ouvrir l’app</button>
+        <button class="btn" onclick="clearStored()">Effacer token</button>
         <span id="status" class="muted">en attente…</span>
       </div>
 
@@ -44,14 +51,16 @@
 
       <label for="token">ID token (JWT)</label>
       <textarea id="token" class="mono token" placeholder="— vide —"></textarea>
-      <div class="row mt12">
-        <button class="btn" onclick="copyToken()">Copy ID token</button>
+      <div class="row mt8">
+        <button class="btn" onclick="storeToken()">Enregistrer pour l’app</button>
+        <button class="btn" onclick="copyToken()">Copier</button>
         <button class="btn" onclick="decode()">Décoder (payload)</button>
+        <button class="btn" onclick="testHealth()">Tester /api/health</button>
       </div>
 
       <label for="curl" class="mt28">Exemple curl (M2)</label>
       <textarea id="curl" class="mono" placeholder='curl -s -H "Authorization: Bearer ${ID_TOKEN}" -H "Content-Type: application/json" -d "{\"agent\":\"anima\",\"text\":\"Quel était le mot-code ?\",\"use_rag\": false}" "https://<cloud-run-url>/api/chat"'></textarea>
-      <div class="row mt12">
+      <div class="row mt8">
         <button class="btn" onclick="fillCurl()">Générer la commande</button>
       </div>
 
@@ -60,33 +69,76 @@
   </div>
 
 <script>
-let idToken = "";
+/* ----------------------- Config & Helpers ----------------------- */
+const TOKEN_KEY = 'emergence.id_token';
+const COOKIE_NAME = 'id_token';
 const $ = (id) => document.getElementById(id);
+const qs = (k) => new URLSearchParams(location.search).get(k);
 
+/** Écrit le token dans sessionStorage, localStorage et cookie non-HTTPOnly */
+function writeTokenEverywhere(tok) {
+  if (!tok || !tok.trim()) return null;
+  const t = tok.trim();
+  try { sessionStorage.setItem(TOKEN_KEY, t); } catch {}
+  try { localStorage.setItem(TOKEN_KEY, t); } catch {}
+  try {
+    // Cookie lisible par le serveur (fallback côté WS allowlist)
+    document.cookie = `${COOKIE_NAME}=${encodeURIComponent(t)}; Path=/; Max-Age=7200; SameSite=Lax${location.protocol==='https:'?'; Secure':''}`;
+  } catch {}
+  // Notifie l’onglet/app qui t’a ouvert (au cas où)
+  try { if (window.opener) window.opener.postMessage({ type:'emergence:id_token', token:t }, '*'); } catch {}
+  return t;
+}
+
+function readStoredToken() {
+  try { return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; }
+}
+
+function clearStored() {
+  try { sessionStorage.removeItem(TOKEN_KEY); } catch {}
+  try { localStorage.removeItem(TOKEN_KEY); } catch {}
+  try { document.cookie = `${COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`; } catch {}
+  $('status').textContent = '🧹 token effacé';
+}
+
+/* ----------------------- GIS / One Tap -------------------------- */
 function initGIS(){
-  const clientId = $('client_id').value.trim();
+  const clientId = ($('client_id').value || '').trim();
   if(!clientId){ $('status').textContent = '⛔ Client ID requis'; return; }
   $('status').textContent = 'GIS initialisé — clique sur “Sign in with Google”.';
 
   google.accounts.id.initialize({
     client_id: clientId,
     callback: (resp) => {
-      idToken = resp.credential || "";
-      $('token').value = idToken;
-      $('status').textContent = idToken ? '✅ ID token reçu' : '❌ aucun token';
+      const tok = resp?.credential || '';
+      $('token').value = tok;
+      if (tok) {
+        writeTokenEverywhere(tok);
+        $('status').textContent = '✅ ID token reçu (stocké pour l’app)';
+      } else {
+        $('status').textContent = '❌ aucun token';
+      }
     }
   });
   google.accounts.id.renderButton($('gsi_btn'), { theme: "outline", size: "large", text: "signin_with" });
 }
 
+/* ----------------------- UI actions ----------------------------- */
 async function copyToken(){
-  try { await navigator.clipboard.writeText($('token').value.trim()); $('status').textContent = '📋 token copié'; }
+  try { await navigator.clipboard.writeText(($('token').value || '').trim()); $('status').textContent = '📋 token copié'; }
   catch { $('status').textContent = '⚠️ copie impossible'; }
+}
+
+function storeToken(){
+  const tok = ($('token').value || '').trim();
+  if (!tok) { $('status').textContent = '⚠️ aucun token à enregistrer'; return; }
+  writeTokenEverywhere(tok);
+  $('status').textContent = '✅ token enregistré pour l’app';
 }
 
 function fillCurl(){
   const BASE = prompt("URL Cloud Run (ex: https://emergence-app-xxxx-uc.a.run.app)", "");
-  const tok = $('token').value.trim();
+  const tok = ($('token').value || '').trim();
   if(!BASE || !tok){ $('status').textContent = '⚠️ BASE ou token manquant'; return; }
   const body = JSON.stringify({agent:"anima", text:"Quel était le mot-code ?", use_rag:false}).replace(/"/g,'\\"');
   const cmd = `curl -s -H "Authorization: Bearer ${tok}" -H "Content-Type: application/json" -d "${body}" "${BASE}/api/chat"`;
@@ -94,7 +146,7 @@ function fillCurl(){
 }
 
 function decode(){
-  const t = $('token').value.trim();
+  const t = ($('token').value || '').trim();
   const p = $('payload');
   if(!t || t.split('.').length !== 3){ p.textContent = '— token invalide —'; return; }
   try{
@@ -102,6 +154,45 @@ function decode(){
     p.textContent = JSON.stringify(payload, null, 2);
   }catch(e){ p.textContent = '— erreur de décodage —'; }
 }
+
+async function testHealth(){
+  const tok = ($('token').value || '').trim();
+  if (!tok) { $('status').textContent = '⚠️ pas de token'; return; }
+  try{
+    const r = await fetch('/api/health', { headers: { 'Authorization': `Bearer ${tok}` } });
+    const j = await r.json();
+    $('status').textContent = `🩺 /api/health → ${r.status} ${j?.status||''} ${j?.message||''}`;
+  }catch(e){
+    $('status').textContent = '❌ /api/health KO (voir console)';
+    console.error(e);
+  }
+}
+
+function openApp(){ try { window.open('/', '_blank'); } catch {} }
+
+/* ----------------------- Boot UX -------------------------------- */
+(function boot(){
+  // Préremplis le client_id : query ?client_id=... sinon valeur connue du projet
+  const fromQS = qs('client_id');
+  $('client_id').value = (fromQS && fromQS.trim()) || '486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com';
+
+  // Récupère un token déjà stocké, s’il existe
+  const existing = readStoredToken();
+  if (existing) $('token').value = existing;
+
+  // Auto-init si demandé (?autoinit=1) ou si la case est cochée
+  const auto = qs('autoinit');
+  if (auto === '1') { $('auto_init').checked = true; }
+  if ($('auto_init').checked) {
+    // attends que GIS soit chargé
+    const t0 = Date.now();
+    (function waitGIS(){
+      if (window.google && window.google.accounts && window.google.accounts.id) { initGIS(); }
+      else if (Date.now() - t0 < 8000) { setTimeout(waitGIS, 100); }
+      else { $('status').textContent = '⚠️ GIS non chargé (réessaie init manuellement)'; }
+    })();
+  }
+})();
 </script>
 </body>
 </html>
