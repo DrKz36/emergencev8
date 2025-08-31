@@ -1,295 +1,137 @@
 # src/backend/features/debate/service.py
-# V13.1 - PROMPT WIRING + 5-POINTS SYNTH + RAG PASSTHROUGH
-import os
-import re
-import asyncio
+# V16.0 — History agrégée par tour + frames statutées + résultat final renvoyé (WS final émis par le chat.router)
+from __future__ import annotations
+
 import logging
-from typing import Dict, Any, List, Optional
-from uuid import uuid4
-from pydantic import ValidationError
+from typing import Any, Dict, List, Optional
 
-from backend.core.session_manager import SessionManager
-from backend.core.websocket import ConnectionManager
-from backend.features.chat.service import ChatService
-from backend.features.memory.vector_service import VectorService
-from backend.shared.config import Settings
-from backend.core import config as core_config
-from .models import DebateConfig, DebateSession, DebateTurn, DebateStatus
-
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("backend.features.debate.service")
 
 class DebateService:
-    """
-    DebateService V13.1
-    - DEBUG: envoie 'ws:debug_context' (scope='debate') avant/après chaque appel agent.
-    - OFF ISOLATION: contrôle du transcript quand use_rag=False via EMERGENCE_DEBATE_OFF_POLICY.
-        * full_transcript (défaut) : historique complet.
-        * round_local : round courant (+ N précédents optionnels).
-        * stateless : aucun transcript.
-    - RAG: si use_rag=True, rag_context est injecté et la policy est forcée à 'full_transcript'.
-    - FIX: passage explicite du 'prompt' au ChatService (au lieu de 'history').
-    - FIX: synthèse en 5 points (Faits, Convergences, Désaccords, Angles morts, Pistes) alignée avec l’UI.
-    """
     def __init__(
         self,
-        chat_service: ChatService,
-        connection_manager: ConnectionManager,
-        session_manager: SessionManager,
-        vector_service: VectorService,
-        settings: Settings
-    ):
-        self.active_debates: Dict[str, DebateSession] = {}
+        settings: Any,
+        chat_service: Any,
+        session_manager: Any,
+        vector_service: Optional[Any] = None,
+        connection_manager: Optional[Any] = None,
+        cost_tracker: Optional[Any] = None,
+    ) -> None:
+        self.settings = settings
         self.chat_service = chat_service
-        self.connection_manager = connection_manager
         self.session_manager = session_manager
         self.vector_service = vector_service
-        self.settings = settings
+        self.connection_manager = connection_manager
+        self.cost_tracker = cost_tracker
 
-        policy = os.getenv("EMERGENCE_DEBATE_OFF_POLICY", "full_transcript").strip().lower()
-        if policy not in ("full_transcript", "round_local", "stateless"):
-            policy = "full_transcript"
-        self.off_policy = policy
-
-        try:
-            self.round_local_n = max(0, int(os.getenv("EMERGENCE_DEBATE_ROUND_LOCAL_N", "0")))
-        except ValueError:
-            self.round_local_n = 0
-
-        logger.info(f"DebateService V13.1 initialisé. OFF policy={self.off_policy}, round_local_n={self.round_local_n}")
-
-    # ---------- utilitaires ----------
-    def _extract_sensitive_tokens(self, text: str) -> List[str]:
-        return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
-
-    def _policy_for_session(self, session: DebateSession) -> str:
-        return "full_transcript" if session.config.use_rag else self.off_policy
-
-    def _build_full_transcript(
+    async def run(
         self,
-        session: DebateSession,
-        with_header: bool = True,
-        policy: Optional[str] = None
-    ) -> str:
-        policy = policy or self._policy_for_session(session)
-        parts: List[str] = []
+        *,
+        session_id: str,
+        topic: str,
+        agent_order: List[str],
+        rounds: int,
+        use_rag: bool = False,
+    ) -> Dict[str, Any]:
+        """Appelée par WS (features/chat/router.py). Renvoie un dict 'riche' prêt à être envoyé au client."""
+        agent_order = [str(a).strip().lower() for a in (agent_order or []) if a]
+        rounds = max(1, int(rounds) if isinstance(rounds, int) else 1)
 
-        if with_header:
-            parts.append(f"Le sujet du débat est : \"{session.config.topic}\"")
-            if session.rag_context:
-                parts.append(f"\n--- CONTEXTE DOCUMENTAIRE ---\n{session.rag_context}\n---------------------------\n")
+        # Config normalisée (compatible front)
+        config = {"topic": topic, "rounds": rounds, "agentOrder": agent_order, "useRag": use_rag}
 
-        if policy == "stateless":
-            return "\n".join(parts)
+        # Ping UI (préparation)
+        await self._send_ws(session_id, "ws:debate_started", {
+            "status": "pending",
+            "topic": topic,
+            "rounds": rounds,
+            "agent_order": agent_order,
+            "use_rag": use_rag,
+            "config": config,
+            "history": [],
+        })
 
-        history = session.history
+        # Agrégation par tours
+        turns_maps: List[Dict[str, str]] = []  # ex: [{ "anima": "...", "neo": "..." }, { ... }, ...]
+        total_cost = 0.0
 
-        if policy == "full_transcript":
-            for turn in history:
-                parts.append(f"\n### TOUR DE TABLE N°{turn.round_number} ###")
-                for agent_name, response in turn.agent_responses.items():
-                    parts.append(f"\n**{agent_name} a dit :**\n> {response}")
-            return "\n".join(parts)
+        for r in range(rounds):
+            round_map: Dict[str, str] = {}
+            for agent_id in agent_order:
+                # Prompt contextuel (dernier état connu)
+                if turns_maps or round_map:
+                    tail = []
+                    for i, tmap in enumerate(turns_maps + [round_map]):
+                        for a, txt in (tmap or {}).items():
+                            tail.append(f"{a.upper()}: {txt}")
+                    prompt = f"Sujet: {topic}\n\nDéroulé précédent:\n" + "\n".join(tail[-6:])
+                else:
+                    prompt = f"Sujet: {topic}"
 
-        if not history:
-            return "\n".join(parts)
-
-        if self.round_local_n > 0:
-            prev_completed = [t for t in history if len(t.agent_responses) > 0][:-1]
-            for t in prev_completed[-self.round_local_n:]:
-                parts.append(f"\n### TOUR DE TABLE N°{t.round_number} (récap) ###")
-                for agent_name, response in t.agent_responses.items():
-                    parts.append(f"\n**{agent_name} a dit :**\n> {response}")
-
-        current = history[-1]
-        if current.agent_responses:
-            parts.append(f"\n### TOUR DE TABLE N°{current.round_number} (en cours) ###")
-            for agent_name, response in current.agent_responses.items():
-                parts.append(f"\n**{agent_name} a dit :**\n> {response}")
-
-        return "\n".join(parts)
-
-    # ---------- flux principal ----------
-    async def create_debate(self, config: Dict[str, Any], session_id: str):
-        debate_id = f"debate_{uuid4().hex[:8]}"
-        try:
-            debate_config = DebateConfig(**config)
-            debate_session = DebateSession(
-                debate_id=debate_id, session_id=session_id,
-                config=debate_config, status=DebateStatus.PENDING
-            )
-            self.active_debates[debate_id] = debate_session
-
-            logger.info(f"Débat {debate_id} créé sur le sujet : '{debate_config.topic}'. RAG activé: {debate_config.use_rag}")
-            asyncio.create_task(self._run_debate_flow(debate_id))
-
-        except ValidationError as e:
-            logger.error(f"Erreur de configuration du débat: {e}", exc_info=True)
-            await self.connection_manager.send_personal_message({
-                "type": "ws:error",
-                "payload": {"message": f"Configuration du débat invalide: {e}"}
-            }, session_id)
-        except Exception as e:
-            logger.error(f"Erreur inattendue lors de la création du débat {debate_id}: {e}", exc_info=True)
-            if debate_id in self.active_debates:
-                del self.active_debates[debate_id]
-            await self.connection_manager.send_personal_message({
-                "type": "ws:error",
-                "payload": {"message": "Erreur serveur interne lors de la création du débat."}
-            }, session_id)
-
-    async def _run_debate_flow(self, debate_id: str):
-        session = self.active_debates.get(debate_id)
-        if not session:
-            logger.error(f"Tentative de lancement d'un débat inexistant: {debate_id}")
-            return
-
-        try:
-            session.status = DebateStatus.IN_PROGRESS
-            await self.connection_manager.send_personal_message(
-                {"type": "ws:debate_started", "payload": session.model_dump(mode='json')},
-                session.session_id
-            )
-
-            if session.config.use_rag:
-                logger.info(f"Débat {debate_id}: Recherche RAG en cours pour le sujet.")
-                await self.connection_manager.send_personal_message(
-                    {"type": "ws:debate_status_update", "payload": {"debate_id": debate_id, "status": "Recherche RAG..."}},
-                    session.session_id
+                text, cost_info = await self.chat_service.get_llm_response_for_debate(
+                    agent_id=agent_id, prompt=prompt, use_rag=use_rag
                 )
-                document_collection = self.vector_service.get_or_create_collection(core_config.DOCUMENT_COLLECTION_NAME)
-                search_results = self.vector_service.query(collection=document_collection, query_text=session.config.topic)
-                session.rag_context = "\n\n".join([f"Source {i+1}:\n{result['text']}" for i, result in enumerate(search_results)])
-                logger.info(f"Débat {debate_id}: {len(search_results)} fragments de contexte trouvés.")
+                cost = float(cost_info.get("total_cost", 0.0)) if isinstance(cost_info, dict) else 0.0
+                total_cost += cost
+                round_map[agent_id] = text or ""
 
-            for i in range(session.config.rounds):
-                round_number = i + 1
-                await self._run_debate_round(session, round_number)
+                # État agrégé courant (tours complets + tour en cours)
+                partial_turns = turns_maps + [round_map]
+                history_payload = self._format_turns_history(partial_turns)
 
-            await self._generate_synthesis(session)
+                await self._send_ws(session_id, "ws:debate_turn_update", {
+                    "status": "in_progress",
+                    "round": r + 1,
+                    "agent": agent_id,
+                    "text": text or "",
+                    "cost": cost,
+                    "config": config,
+                    "history": history_payload,
+                })
 
-            session.status = DebateStatus.COMPLETED
-            logger.info(f"Débat {debate_id} terminé avec succès.")
+            turns_maps.append(round_map)
 
+        # Synthèse finale par 'anima' par défaut
+        summarizer = self._pick_summarizer(agent_order)
+        transcript = "\n\n".join(
+            f"{a.upper()}: {txt}"
+            for tmap in turns_maps for a, txt in (tmap or {}).items()
+        )
+        synth_prompt = (
+            "Synthétise le débat en 5–8 phrases (faits, convergences, divergences, angles aveugles, pistes). "
+            "Ne pas inventer de faits nouveaux."
+        )
+        synthesis, synth_cost_info = await self.chat_service.get_llm_response_for_debate(
+            agent_id=summarizer, prompt=f"{synth_prompt}\n\nSujet: {topic}\n\n{transcript}", use_rag=use_rag
+        )
+        total_cost += float(synth_cost_info.get("total_cost", 0.0)) if isinstance(synth_cost_info, dict) else 0.0
+
+        # Résultat final (le WS final sera envoyé par chat.router)
+        result = {
+            "status": "completed",
+            "config": config,
+            "history": self._format_turns_history(turns_maps),
+            "synthesis": synthesis,
+            "cost": total_cost,
+        }
+        return result
+
+    def _pick_summarizer(self, order: List[str]) -> str:
+        return "anima" if "anima" in (order or []) else (order[0] if order else "anima")
+
+    def _format_turns_history(self, turns_maps: List[Dict[str, str]]) -> List[Dict[str, Any]]:
+        """Convertit [{agent->text}, ...] -> [{round, agent_responses}, ...] (compat front)."""
+        out: List[Dict[str, Any]] = []
+        for idx, amap in enumerate(turns_maps):
+            out.append({"round": idx + 1, "agent_responses": dict(amap or {})})
+        return out
+
+    async def _send_ws(self, session_id: str, event: str, payload: Dict[str, Any]) -> None:
+        if not self.connection_manager:
+            return
+        try:
+            await self.connection_manager.send_personal_message(
+                {"type": event, "payload": payload}, session_id
+            )
         except Exception as e:
-            session.status = DebateStatus.FAILED
-            logger.error(f"Le déroulement du débat {debate_id} a échoué: {e}", exc_info=True)
-            await self.connection_manager.send_personal_message({
-                "type": "ws:error",
-                "payload": {"message": f"Le débat '{session.config.topic}' a rencontré une erreur et a été interrompu."}
-            }, session.session_id)
-        finally:
-            await self.connection_manager.send_personal_message(
-                {"type": "ws:debate_ended", "payload": session.model_dump(mode='json')},
-                session.session_id
-            )
-            update_data = {"metadata": {"debate": session.model_dump(mode='json')}}
-            await self.session_manager.update_and_save_session(session.session_id, update_data)
-            if debate_id in self.active_debates:
-                del self.active_debates[debate_id]
-            logger.info(f"Débat {debate_id} archivé et nettoyé de la mémoire active.")
-
-    async def _run_debate_round(self, session: DebateSession, round_number: int):
-        logger.info(f"Débat {session.debate_id}: Démarrage du Tour {round_number}.")
-        await self.connection_manager.send_personal_message(
-            {"type": "ws:debate_status_update", "payload": {"debate_id": session.debate_id, "status": f"Tour {round_number} en cours..."}},
-            session.session_id
-        )
-
-        current_turn = DebateTurn(round_number=round_number)
-        session.history.append(current_turn)
-
-        agents_in_round = session.config.agent_order[:-1]
-        policy = self._policy_for_session(session)
-
-        for agent_id in agents_in_round:
-            logger.info(f"Tour {round_number}: Au tour de {agent_id} (policy={policy}).")
-
-            transcript = self._build_full_transcript(session, with_header=True, policy=policy)
-            prompt_for_agent = (
-                f"{transcript}\n\n---\n"
-                f"**INSTRUCTION POUR {agent_id.upper()} :**\n"
-                f"C'est à ton tour de parler. En te basant sur l'intégralité des éléments ci-dessus (policy={policy}), "
-                f"apporte ta contribution au débat. Sois pertinent, concis et fais avancer la discussion."
-            )
-
-            # DEBUG (avant appel)
-            sens_in_prompt = list(set(self._extract_sensitive_tokens(prompt_for_agent)))
-            await self.connection_manager.send_personal_message({
-                "type": "ws:debug_context",
-                "payload": {
-                    "scope": "debate",
-                    "phase": "before_agent_call",
-                    "debate_id": session.debate_id,
-                    "round_number": round_number,
-                    "agent_id": agent_id,
-                    "use_rag": session.config.use_rag,
-                    "policy": policy,
-                    "transcript_chars": len(transcript),
-                    "rag_context_chars": len(session.rag_context or ""),
-                    "sensitive_tokens_in_prompt": sens_in_prompt,
-                }
-            }, session.session_id)
-
-            # ✅ FIX: passage explicite du prompt + RAG passthrough
-            response_text, _ = await self.chat_service.get_llm_response_for_debate(
-                agent_id=agent_id,
-                prompt=prompt_for_agent,
-                rag_context=session.rag_context or "",
-                use_rag=session.config.use_rag,
-                session_id=session.session_id,
-            )
-
-            current_turn.agent_responses[agent_id] = response_text
-
-            # DEBUG (après appel)
-            sens_in_resp = list(set(self._extract_sensitive_tokens(response_text)))
-            await self.connection_manager.send_personal_message({
-                "type": "ws:debug_context",
-                "payload": {
-                    "scope": "debate",
-                    "phase": "after_agent_call",
-                    "debate_id": session.debate_id,
-                    "round_number": round_number,
-                    "agent_id": agent_id,
-                    "use_rag": session.config.use_rag,
-                    "policy": policy,
-                    "response_chars": len(response_text or ""),
-                    "sensitive_tokens_in_response": sens_in_resp,
-                }
-            }, session.session_id)
-
-            await self.connection_manager.send_personal_message(
-                {"type": "ws:debate_turn_update", "payload": session.model_dump(mode='json')},
-                session.session_id
-            )
-            await asyncio.sleep(1)
-
-    async def _generate_synthesis(self, session: DebateSession):
-        logger.info(f"Génération de la synthèse pour le débat {session.debate_id}...")
-        await self.connection_manager.send_personal_message(
-            {"type": "ws:debate_status_update", "payload": {"debate_id": session.debate_id, "status": "Génération de la synthèse..."}},
-            session.session_id
-        )
-
-        synthesizer_id = session.config.agent_order[-1]
-        # Transcript complet pour la synthèse
-        final_transcript = self._build_full_transcript(session, with_header=False, policy="full_transcript")
-
-        # ✅ Alignement 5 points (Faits/Convergences/Désaccords/Angles morts/Pistes)
-        prompt_content = (
-            f"Le débat sur \"{session.config.topic}\" est terminé. Transcript complet ci-dessous :\n\n"
-            f"--- DÉBUT DU TRANSCRIPT ---\n{final_transcript}\n--- FIN DU TRANSCRIPT ---\n\n"
-            f"## Mission ({synthesizer_id}) — Synthèse en 5 points :\n"
-            f"1) Faits clés documentés\n2) Convergences\n3) Désaccords\n4) Angles morts\n5) Pistes à explorer\n\n"
-            "Réponds de manière directe et compacte, en français, sans méta-commentaires."
-        )
-
-        response_text, _ = await self.chat_service.get_llm_response_for_debate(
-            agent_id=synthesizer_id,
-            prompt=prompt_content,                 # ✅ FIX: prompt explicite
-            rag_context=session.rag_context or "", # ✅ RAG passthrough
-            use_rag=session.config.use_rag,
-            session_id=session.session_id,
-        )
-        session.synthesis = response_text
-        logger.info(f"Synthèse générée par {synthesizer_id}.")
+            logger.warning(f"[debate.ws] envoi ws échoué (session={session_id}): {e}")

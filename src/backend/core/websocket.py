@@ -11,18 +11,11 @@ from .session_manager import SessionManager
 from backend.shared import dependencies  # auth WS (allowlist + sub=uid)
 
 if TYPE_CHECKING:
-    # uniquement pour l'édition/typage — pas exécuté → pas de cycle
     from backend.containers import ServiceContainer  # pragma: no cover
 
 logger = logging.getLogger(__name__)
 
 class ConnectionManager:
-    """
-    Gère les connexions WebSocket actives.
-    V11.1:
-      - Echo du sous-protocole ('jwt' ou 'bearer') si demandé par le client.
-      - Gestion robuste des déconnexions (zombies évités).
-    """
     def __init__(self, session_manager: SessionManager):
         self.active_connections: Dict[str, List[WebSocket]] = {}
         self.session_manager = session_manager
@@ -103,7 +96,6 @@ class ConnectionManager:
                 await self.disconnect(session_id, ws)
 
 def _find_handler(sm: SessionManager) -> Optional[Callable[..., Any]]:
-    """Tolérance : on tente plusieurs conventions d'API côté SessionManager."""
     for name in ("on_client_message", "ingest_ws_message", "handle_client_message", "dispatch"):
         fn = getattr(sm, name, None)
         if callable(fn):
@@ -111,40 +103,31 @@ def _find_handler(sm: SessionManager) -> Optional[Callable[..., Any]]:
     return None
 
 def get_websocket_router(container) -> APIRouter:
-    """
-    Retourne un APIRouter montant l'endpoint WS officiel:
-    - GET /ws/{session_id} (upgrade)
-    - Auth: Google ID token via sous-protocole 'jwt' (ou cookie/query) → user_id = 'sub'
-    """
     router = APIRouter()
 
     @router.websocket("/ws/{session_id}")
     async def websocket_endpoint(websocket: WebSocket, session_id: str):
-        # 1) Auth WS
         user_id_hint = websocket.query_params.get("user_id")
         try:
             user_id = await dependencies.get_user_id_for_ws(websocket, user_id=user_id_hint)
         except Exception as e:
             logger.warning(f"Refus WS (auth échouée) : {e}")
-            return  # pas d'accept préalable → handshake refusé
+            return  # handshake refusé
 
-        # 2) Managers
         session_manager: SessionManager = container.session_manager()
         conn_manager = getattr(session_manager, "connection_manager", None)
         if conn_manager is None:
             conn_manager = ConnectionManager(session_manager)
 
-        # 3) Ouverture
         await conn_manager.connect(websocket, session_id, user_id=user_id)
 
-        # 4) Boucle de réception
         handler = _find_handler(session_manager)
         try:
             while True:
                 data = await websocket.receive_json()
                 if handler:
                     try:
-                        res = handler(session_id, data)  # sync ?
+                        res = handler(session_id, data)
                         if asyncio.iscoroutine(res):
                             await res
                     except TypeError:

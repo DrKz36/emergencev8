@@ -1,51 +1,70 @@
 /**
  * @module core/event-bus
- * @description Système d'événements V9.0 - "Béton Armé"
- * - Logique de 'off' confirmée et utilisée pour le nettoyage de la mémoire.
- * - Ajout de logs pour le désabonnement.
+ * EventBus V3.1 (ESM) — singleton + class + import styles multiples
+ *
+ * ✅ Utilisations possibles :
+ *   import EventBus from '../../core/event-bus.js'
+ *   const bus = EventBus.getInstance()
+ *
+ *   import { EventBus, eventBus } from '../../core/event-bus.js'
+ *   eventBus.emit('event', payload)
  */
-export class EventBus {
+class EventBus {
   constructor() {
-    this.events = new Map();
-    this.debug = true;
+    this.listeners = new Map(); // Map<string, Set<Function>>
+    this._debug = false;
   }
 
-  on(event, handler) {
-    if (!this.events.has(event)) {
-      this.events.set(event, new Set());
+  /** Retourne l'instance globale (idempotent) */
+  static getInstance() {
+    const g = (typeof globalThis !== 'undefined') ? globalThis : window;
+    if (!g.__EMERGENCE_EVENT_BUS__) {
+      g.__EMERGENCE_EVENT_BUS__ = new EventBus();
     }
-    this.events.get(event).add(handler);
-    if (this.debug) {
-      if (event) console.log(`[EventBus] Subscribed to: ${event}`);
-    }
-    // Retourne une fonction de désinscription pour un usage facile
-    return () => this.off(event, handler);
+    return g.__EMERGENCE_EVENT_BUS__;
   }
 
-  off(event, handler) {
-    if (this.events.has(event)) {
-      const eventHandlers = this.events.get(event);
-      if (eventHandlers.has(handler)) {
-        eventHandlers.delete(handler);
-        if (this.debug) console.log(`[EventBus] Unsubscribed from: ${event}`);
-        if (eventHandlers.size === 0) {
-          this.events.delete(event);
-          if (this.debug) console.log(`[EventBus] No more listeners for: ${event}. Event removed.`);
-        }
-      }
+  /** Subscribe; retourne une fonction d’unsubscribe */
+  on(event, fn) {
+    if (!event || typeof fn !== 'function') return () => {};
+    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
+    this.listeners.get(event).add(fn);
+    return () => this.off(event, fn);
+  }
+
+  /** Subscribe once (corrigé) */
+  once(event, fn) {
+    const off = this.on(event, (...args) => {
+      try { fn(...args); } finally { off(); }
+    });
+    return off;
+  }
+
+  /** Unsubscribe */
+  off(event, fn) {
+    if (!this.listeners.has(event)) return;
+    if (!fn) this.listeners.get(event).clear();
+    else this.listeners.get(event).delete(fn);
+  }
+
+  /** Emit */
+  emit(event, payload) {
+    if (this._debug) console.log(`[EventBus] Emitting: ${event}`, payload);
+    const fns = Array.from(this.listeners.get(event) ?? []);
+    for (const fn of fns) {
+      try { fn(payload); } catch (err) { console.error(`[EventBus] listener error for ${event}`, err); }
     }
   }
 
-  emit(event, data = null) {
-    if (event === undefined || event === 'undefined') {
-      console.trace('%c[EventBus] ALERTE: Tentative d\'émission d\'un événement UNDEFINED.', 'color: red; font-weight: bold;', data);
-      return;
-    }
-    if (this.debug) console.log(`%c[EventBus] Emitting: ${event}`, 'color: #84cc16;', data);
-    if (this.events.has(event)) {
-      this.events.get(event).forEach(handler => {
-        try { handler(data); } catch (error) { console.error(`[EventBus] Error in handler for event ${event}:`, error); }
-      });
-    }
-  }
+  /** Aliases */
+  subscribe(event, fn) { return this.on(event, fn); }
+  unsubscribe(event, fn) { this.off(event, fn); }
+
+  /** Misc */
+  enableDebug(v = true) { this._debug = !!v; }
+  removeAllListeners() { this.listeners.clear(); }
 }
+
+const eventBus = EventBus.getInstance();
+export { EventBus, eventBus };
+export default EventBus;

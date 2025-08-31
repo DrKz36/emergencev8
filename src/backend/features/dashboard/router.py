@@ -1,13 +1,14 @@
 # src/backend/features/dashboard/router.py
-# V3.1 - Safe resolver for get_dashboard_service (éteint les erreurs d'import si non câblé)
+# V3.2 - Prefix retiré (évite double /api/dashboard) + safe resolver
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any, Callable
 
 from backend.features.dashboard.service import DashboardService
-from backend.shared import dependencies as deps  # <- module, pas l’attribut direct
+from backend.shared import dependencies as deps  # module, pas l’attribut direct
 
-router = APIRouter(prefix="/api/dashboard")
+# ⚠️ Pas de prefix ici : main.py montera le router avec "/api/dashboard"
+router = APIRouter(tags=["Dashboard"])
 logger = logging.getLogger(__name__)
 
 def _resolve_get_dashboard_service() -> Callable[[], DashboardService]:

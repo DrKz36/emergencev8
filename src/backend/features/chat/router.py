@@ -1,5 +1,5 @@
 # src/backend/features/chat/router.py
-# V22.8 — Fix ChatMessage (id/session_id/content/timestamp) + dédoublon doux si POST REST déjà passé
+# V23.1 — Débat via WS: normalisation dot/colon + session_id transmis
 
 import logging
 from uuid import uuid4
@@ -30,6 +30,11 @@ def _norm_list(payload, snake_key, camel_key):
         val = payload.get(camel_key)
     return val
 
+def _norm_type(t: str) -> str:
+    t = (t or "").strip()
+    # tolère "debate.create" en le convertissant en "debate:create"
+    return t.replace(".", ":", 1) if t.startswith("debate.") else t
+
 @router.websocket("/ws/{session_id}")
 @inject
 async def websocket_endpoint(
@@ -39,7 +44,7 @@ async def websocket_endpoint(
     chat_service: ChatService = Depends(Provide[ServiceContainer.chat_service]),
     debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service]),
 ):
-    # Auth 'accept-first' tolérante
+    # Auth 'accept-first' tolérante + fermeture douce si token absent
     _uid = None
     try:
         tok = deps._extract_ws_bearer_token(websocket)
@@ -70,18 +75,14 @@ async def websocket_endpoint(
             data = await websocket.receive_json()
             logger.info(f"---[RAW WS MSG RECEIVED]---: {data}")
 
-            message_type = data.get("type")
+            message_type = _norm_type(data.get("type"))
             payload = data.get("payload")
 
             if not message_type or payload is None:
-                logger.warning(f"Message WS incomplet: {data}")
-                try:
-                    await connection_manager.send_personal_message(
-                        {"type": "ws:error", "payload": {"message": "Message WebSocket incomplet (type/payload)."}},
-                        session_id,
-                    )
-                except Exception:
-                    pass
+                await connection_manager.send_personal_message(
+                    {"type": "ws:error", "payload": {"message": "Message WebSocket incomplet (type/payload)."}} ,
+                    session_id
+                )
                 continue
 
             # Compat legacy
@@ -99,6 +100,7 @@ async def websocket_endpoint(
                         agent_order = _norm_list(payload, "agent_order", "agentOrder")
                         rounds      = payload.get("rounds")
                         use_rag     = _norm_bool(payload, "use_rag", "useRag", default=False)
+
                         if not topic or not isinstance(topic, str):
                             await connection_manager.send_personal_message(
                                 {"type": "ws:error", "payload": {"message": "Débat: 'topic' manquant ou invalide."}}, session_id
@@ -116,15 +118,34 @@ async def websocket_endpoint(
                             {"type": "ws:debate_status_update", "payload": {"status": "Initialisation du débat…", "topic": topic}},
                             session_id
                         )
-                        text, cost = await debate_service.run(topic=topic, agent_order=agent_order, rounds=rounds, use_rag=use_rag)
+
+                        # ✅ session_id transmis au service (signature obligatoire)
+                        result = await debate_service.run(
+                            session_id=session_id,
+                            topic=topic, agent_order=agent_order, rounds=rounds, use_rag=use_rag
+                        )
+
+                        # Accepte dict “riche” OU tuple legacy
+                        if isinstance(result, dict):
+                            out_payload = result
+                        else:
+                            text, cost = result
+                            out_payload = {
+                                "status": "completed",
+                                "config": {"topic": topic, "rounds": rounds, "agentOrder": agent_order, "useRag": use_rag},
+                                "history": [],
+                                "synthesis": text,
+                                "cost": cost
+                            }
+
                         await connection_manager.send_personal_message(
-                            {"type": "ws:debate_result", "payload": {"topic": topic, "summary": text, "cost": cost}},
-                            session_id
+                            {"type": "ws:debate_result", "payload": out_payload}, session_id
                         )
                         continue
 
                     await connection_manager.send_personal_message(
-                        {"type": "ws:error", "payload": {"message": f"Type débat inconnu: {message_type}"}}, session_id
+                        {"type": "ws:error", "payload": {"message": f"Type débat inconnu: {message_type}"}} ,
+                        session_id
                     )
                 except Exception as e:
                     logger.error(f"[WS] Erreur débat: {e}", exc_info=True)
@@ -148,7 +169,7 @@ async def websocket_endpoint(
                         )
                         continue
 
-                    # Dédoublon doux: si le dernier message USER est identique, on ne réinsère pas
+                    # Dédoublon doux
                     try:
                         history = connection_manager.session_manager.get_full_history(session_id) or []
                         last = history[-1] if history else None
@@ -163,7 +184,6 @@ async def websocket_endpoint(
                         already_there = False
 
                     if not already_there:
-                        # Crée un ChatMessage COMPLET (sinon Pydantic râle)
                         umsg = ChatMessage(
                             id=str(uuid4()),
                             session_id=session_id,
@@ -174,8 +194,9 @@ async def websocket_endpoint(
                         )
                         await connection_manager.session_manager.add_message_to_session(session_id, umsg)
 
-                    # Lance la réponse agent (stream WS)
-                    chat_service.process_user_message_for_agents(session_id, {"agent_id": ag, "use_rag": use_rag}, connection_manager)
+                    chat_service.process_user_message_for_agents(
+                        session_id, {"agent_id": ag, "use_rag": use_rag}, connection_manager
+                    )
 
                 except Exception as e:
                     logger.error(f"[WS] chat.message erreur: {e}", exc_info=True)
@@ -184,7 +205,7 @@ async def websocket_endpoint(
                     )
                 continue
 
-            # Inconnu → erreur douce
+            # Inconnu
             await connection_manager.send_personal_message(
                 {"type": "ws:error", "payload": {"message": f"Type inconnu: {message_type}"}}, session_id
             )

@@ -1,7 +1,6 @@
 /**
  * src/frontend/features/debate/debate-ui.js
- * V40 — Flux continu (tours → synthèse) sans cartes internes,
- *        aucune scrollbar interne, synthèse centrée et alignée.
+ * V41 — Titre + sujet centrés, actions bas, RAG chat-like, auto‑médiateur Neo→Nexus→Anima
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
@@ -10,7 +9,7 @@ export class DebateUI {
   constructor(eventBus) {
     this.eventBus = eventBus;
     this._touched = { attacker:false, challenger:false, mediator:false, rounds:false };
-    console.log('✅ DebateUI V40 prêt.');
+    console.log('✅ DebateUI V41 prêt.');
   }
 
   render(container, debateState) {
@@ -45,8 +44,13 @@ export class DebateUI {
     return `
       <div class="debate-view-wrapper">
         <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Débat</h2>
+
+          <!-- Header centré -->
+          <div class="card-header timeline-header">
+            <div class="title-center">
+              <div class="debate-title">Sujet du Débat</div>
+              <div class="debate-topic muted">—</div>
+            </div>
             <div class="debate-status">${this._html(statusText)}</div>
           </div>
 
@@ -81,23 +85,23 @@ export class DebateUI {
           </div>
 
           <div class="card-footer debate-create-footer">
-            <div class="action-center">
-              <div class="rag-control">
-                <button
-                  type="button"
-                  id="rag-power"
-                  class="rag-power"
-                  role="switch"
-                  aria-checked="true"
-                  title="Activer/Désactiver RAG">
-                  <svg class="power-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                    <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-                    <path d="M5.5 7a8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-                  </svg>
-                </button>
-                <span id="rag-label" class="rag-label">RAG</span>
-              </div>
+            <div class="rag-control">
+              <button
+                type="button"
+                id="rag-power"
+                class="rag-power"
+                role="switch"
+                aria-checked="true"
+                title="Activer/Désactiver RAG">
+                <svg class="power-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                  <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                  <path d="M5.5 7a8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                </svg>
+              </button>
+              <span id="rag-label" class="rag-label">RAG</span>
+            </div>
 
+            <div class="action-center">
               <button class="btn btn-primary button button-primary" id="debate-start">
                 Lancer le débat
               </button>
@@ -108,7 +112,13 @@ export class DebateUI {
   }
 
   _bindCreateEvents(root) {
-    // Toggle RAG
+    // Reflect topic in header
+    const topicEl = root.querySelector('#debate-topic');
+    const headerTopic = root.querySelector('.debate-topic');
+    const syncTopic = () => { headerTopic.textContent = topicEl.value.trim() || '—'; };
+    topicEl?.addEventListener('input', syncTopic);
+
+    // Toggle RAG (chat‑like)
     const ragBtn = root.querySelector('#rag-power');
     const ragLbl = root.querySelector('#rag-label');
     const toggleRag = () => {
@@ -144,12 +154,17 @@ export class DebateUI {
       const topic = root.querySelector('#debate-topic')?.value?.trim() ?? '';
       const attacker   = this._getSegValue(root, 'attacker');
       const challenger = this._getSegValue(root, 'challenger');
-      const mediator   = this._getSegValue(root, 'mediator');
+      let   mediator   = this._getSegValue(root, 'mediator');
       const rounds     = parseInt(this._getSegValue(root, 'rounds') || '3', 10) || 3;
       const useRag     = (root.querySelector('#rag-power')?.getAttribute('aria-checked') === 'true');
 
       if (!topic) { alert('Merci de renseigner un sujet de débat.'); return; }
-      if (!attacker || !challenger || !mediator) { alert('Merci de sélectionner Attaquant/Challenger/Médiateur.'); return; }
+      if (!attacker || !challenger) { alert('Merci de sélectionner Attaquant/Challenger.'); return; }
+
+      // Règle demandée : Neo (A) + Nexus (C) => Médiateur forcé Anima
+      if (attacker === 'neo' && challenger === 'nexus') mediator = 'anima';
+
+      if (!mediator) { alert('Merci de sélectionner le Médiateur.'); return; }
 
       this.eventBus.emit('debate:create', {
         topic,
@@ -164,15 +179,14 @@ export class DebateUI {
 
   _renderTimelineView(state) {
     const header = `
-      <div class="card-header">
-        <h2 class="card-title">Débat</h2>
+      <div class="card-header timeline-header">
+        <div class="title-center">
+          <div class="debate-title">Sujet du Débat</div>
+          <div class="debate-topic muted">${this._html(state?.config?.topic || state?.topic || '—')}</div>
+        </div>
         <div class="debate-status">${this._html(state?.statusText ?? '')}</div>
       </div>`;
 
-    // RAG masqué (données conservées dans le state)
-    const ragSection = '';
-
-    // Tours → sections légères (plus de cartes internes)
     const turns = (state?.history ?? []).map((turn, idx) => {
       const order = Array.isArray(state?.config?.agentOrder) && state.config.agentOrder.length
         ? state.config.agentOrder
@@ -198,28 +212,28 @@ export class DebateUI {
         </section>`;
     }).join('');
 
-    // Synthèse finale → section du même flux, centrée
+    // Synthèse
     const synthesizerId = Array.isArray(state?.config?.agentOrder)
       ? state.config.agentOrder[state.config.agentOrder.length - 1]
       : 'nexus';
     const synthesizerName = AGENTS?.[synthesizerId]?.name || 'Nexus';
 
-    const synthesis = state?.status === 'completed' && state?.synthesis
+    const synthesis = (state?.status === 'completed' && state?.synthesis)
       ? `
         <section class="debate-synthesis">
-          <div class="turn-title synthesis-title">Synthèse finale — ${this._html(synthesizerName)}</div>
+          <div class="synthesis-title">Synthèse — ${this._html(synthesizerName)}</div>
           <div class="chat-messages">
-            <div class="message assistant ${synthesizerId} synthesis">
+            <div class="message assistant ${this._html(synthesizerId)}">
               <div class="message-content">
-                <div class="message-meta meta-inside"><strong class="sender-name">${this._html(synthesizerName)}</strong></div>
-                <div class="message-text">${marked.parse(state.synthesis)}</div>
+                <div class="message-meta meta-inside">
+                  <strong class="sender-name">${this._html(synthesizerName)}</strong>
+                </div>
+                <div class="message-text"><em>${marked.parse(state.synthesis)}</em></div>
               </div>
             </div>
           </div>
-        </section>`
-      : '';
+        </section>` : '';
 
-    // Actions (Exporter / Nouveau débat)
     const footer = `
       <div class="card-footer">
         <div class="debate-actions">
@@ -234,7 +248,6 @@ export class DebateUI {
           ${header}
           <div class="card-body">
             <div class="debate-flow">
-              ${ragSection}
               ${turns}
               ${synthesis}
             </div>
@@ -249,8 +262,6 @@ export class DebateUI {
       ?.addEventListener('click', () => this.eventBus.emit('debate:export', state));
     root.querySelector('#debate-new')
       ?.addEventListener('click', () => this.eventBus.emit('debate:reset'));
-    root.querySelector('#debate-reset')
-      ?.addEventListener('click', () => this.eventBus.emit('debate:reset'));
   }
 
   /* ---------------------------- Helpers ---------------------------- */
@@ -264,52 +275,24 @@ export class DebateUI {
     return keys[0] || '';
   }
 
-  _segAgents(role, defaultKey) {
+  _segAgents(role, def) {
     const entries = Object.entries(AGENTS || {});
-    const safeDefault = defaultKey || (entries[0]?.[0] ?? '');
-
+    const d = def || (entries[0]?.[0] ?? '');
     const buttons = entries.map(([id, meta]) => {
-      const active = id === safeDefault ? 'active' : '';
+      const active = id === d ? 'active' : '';
       const name = meta?.name || id;
       return `<button type="button" class="button-tab ${active}" data-value="${this._html(id)}">${this._html(name)}</button>`;
     }).join('');
-
     return `<div class="tabs-container" data-seg="${this._html(role)}">${buttons}</div>`;
   }
 
-  _segRounds(defaultVal = 3){
-    const vals = [1,2,3,4,5];
-    const buttons = vals.map(v => {
-      const a = (v === defaultVal) ? 'active' : '';
-      return `<button type="button" class="button-tab ${a}" data-value="${v}">${v}</button>`;
-    }).join('');
-    return `<div class="tabs-container rounds-tabs" data-seg="rounds">${buttons}</div>`;
-  }
+  _segRounds(d=3){ return `<div class="tabs-container rounds-tabs" data-seg="rounds">
+    ${[1,2,3,4,5].map(v => `<button type="button" class="button-tab ${v===d?'active':''}" data-value="${v}">${v}</button>`).join('')}
+  </div>`; }
 
-  _autoFrom(a, c){
-    const tri = ['anima','neo','nexus'];
-    const s = new Set([a,c]);
-    return tri.find(x => !s.has(x)) || tri[0];
-  }
+  _autoFrom(a,c){ const tri=['anima','neo','nexus']; const s=new Set([a,c]); return tri.find(x=>!s.has(x))||tri[0]; }
 
-  _autoSelectMediator(root){
-    const a = this._getSegValue(root, 'attacker');
-    const c = this._getSegValue(root, 'challenger');
-    const med = this._autoFrom(a,c);
-    const seg = root.querySelector('[data-seg="mediator"]');
-    if (!seg) return;
-    seg.querySelectorAll('.button-tab').forEach(b => b.classList.remove('active'));
-    seg.querySelector(`.button-tab[data-value="${med}"]`)?.classList.add('active');
-  }
+  _getSegValue(root, seg){ return root.querySelector(`[data-seg="${seg}"] .button-tab.active`)?.getAttribute('data-value') || ''; }
 
-  _getSegValue(root, role) {
-    const seg = root.querySelector(`[data-seg="${role}"]`);
-    if (!seg) return '';
-    const active = seg.querySelector('.button-tab.active');
-    return active?.dataset?.value || seg.querySelector('.button-tab')?.dataset?.value || '';
-  }
-
-  _html(s) {
-    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
+  _html(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 }
