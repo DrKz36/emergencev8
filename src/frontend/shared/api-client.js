@@ -2,7 +2,7 @@
 /**
  * @file /src/frontend/shared/api-client.js
  * @description Client API centralisé pour les requêtes HTTP (Fetch).
- * @version V4.7 - fix fallback purge mémoire: POST /api/memory/clear (plus de tend-garden{clear:true})
+ * @version V4.8 - durcissement threadId: sanitize + fallback (getThreadById) + garde (appendMessage)
  */
 
 import { API_ENDPOINTS } from './config.js';
@@ -60,6 +60,15 @@ function resolveDevHeaders() {
   if (userEmail) headers['X-User-Email'] = userEmail;
   if (sessionId) headers['X-Session-Id'] = sessionId;
   return headers;
+}
+
+/** ----------------------- Sanitisation threadId ----------------------- **/
+const HEX32  = /^[0-9a-f]{32}$/i;
+const UUID36 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function normalizeThreadId(val) {
+  const s = String(val ?? '').trim().replace(/^[?=\/]+/, '');
+  if (HEX32.test(s) || UUID36.test(s)) return s;
+  return null;
 }
 
 /**
@@ -202,16 +211,22 @@ export const api = {
       .then((data) => ({ id: data?.id, thread: data?.thread })),
 
   getThreadById: async (id, { messages_limit } = {}) => {
-    const url = `${THREADS_BASE}/${encodeURIComponent(id)}${buildQuery({ messages_limit })}`;
+    const safeId = normalizeThreadId(id);
+    if (!safeId) {
+      console.warn('[API Client] threadId invalide → création d’un nouveau thread (fallback).');
+      const created = await api.createThread({ type: 'chat' });
+      return { id: created?.id ?? null, thread: created?.thread ?? null, messages: [], docs: [] };
+    }
+    const url = `${THREADS_BASE}/${encodeURIComponent(safeId)}${buildQuery({ messages_limit })}`;
     try {
       const data = await fetchApi(url);
       const t = data?.thread || null;
       const msgs = Array.isArray(data?.messages) ? data.messages : [];
       const docs = Array.isArray(data?.docs) ? data.docs : [];
-      return { id: t?.id || id, thread: t, messages: msgs, docs };
+      return { id: t?.id || safeId, thread: t, messages: msgs, docs };
     } catch (err) {
       if (err?.status === 404) {
-        console.warn(`[API Client] Thread ${id} introuvable (404). Création d’un nouveau thread…`);
+        console.warn(`[API Client] Thread ${safeId} introuvable (404). Création d’un nouveau thread…`);
         const created = await api.createThread({ type: 'chat' });
         return { id: created?.id, thread: created?.thread ?? null, messages: [], docs: [] };
       }
@@ -220,8 +235,14 @@ export const api = {
   },
 
   appendMessage: (threadId, { role = 'user', content, agent_id, meta, metadata } = {}) => {
+    const safeId = normalizeThreadId(threadId);
+    if (!safeId) {
+      const err = new Error('Thread ID invalide');
+      err.status = 400;
+      return Promise.reject(err);
+    }
     const body = { role, content, agent_id, meta: meta ?? metadata ?? {} };
-    return fetchApi(`${THREADS_BASE}/${encodeURIComponent(threadId)}/messages`, { method: 'POST', body });
+    return fetchApi(`${THREADS_BASE}/${encodeURIComponent(safeId)}/messages`, { method: 'POST', body });
   },
 
   /* ------------------------ MEMORY ----------------------- */

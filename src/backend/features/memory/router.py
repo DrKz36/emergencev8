@@ -1,8 +1,8 @@
 # src/backend/features/memory/router.py
-# V2.3 — /api/memory/clear (DELETE & POST) : purge STM (DB) + LTM (vecteurs)
-#        — FIX confirmé: plus de include=["ids"] sur Collection.get()
-#        — Normalisation agent_id (lower), where robuste, logs clairs
-#        — Contrats REST inchangés (tend-garden, clear)
+# V2.4 — Hotfix prod:
+#   - Retire le prefix local (laisse main.py monter /api/memory) → supprime le double préfixe en prod
+#   - Ajoute GET alias pour /tend-garden (compat front GET/POST)
+#   - Contrats REST sinon inchangés (clear: DELETE & POST)
 
 import os
 import logging
@@ -12,7 +12,8 @@ from fastapi import APIRouter, HTTPException, Request, Body, Query
 
 from backend.features.memory.gardener import MemoryGardener
 
-router = APIRouter(prefix="/api/memory", tags=["Memory & Knowledge"])
+# ❗️Pas de prefix ici : main.py inclut ce router avec prefix="/api/memory"
+router = APIRouter(tags=["Memory & Knowledge"])
 logger = logging.getLogger(__name__)
 
 _KNOWLEDGE_COLLECTION_ENV = "EMERGENCE_KNOWLEDGE_COLLECTION"
@@ -183,6 +184,17 @@ async def tend_garden_endpoint(request: Request) -> Dict[str, Any]:
     except Exception as e:
         logger.critical(f"Erreur non gérée dans tend_garden: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Erreur interne critique.")
+
+
+# Alias GET (compat) → même logique que POST
+@router.get(
+    "/tend-garden",
+    response_model=Dict[str, Any],
+    summary="(Alias) Déclenche la consolidation de la mémoire (gardener).",
+    description="Alias GET pour compatibilité UI (équivalent au POST)."
+)
+async def tend_garden_get(request: Request) -> Dict[str, Any]:
+    return await tend_garden_endpoint(request)
 
 
 async def _handle_clear(request: Request, session_id: Optional[str], agent_id: Optional[str]) -> Dict[str, Any]:

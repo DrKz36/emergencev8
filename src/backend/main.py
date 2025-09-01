@@ -63,10 +63,22 @@ async def _startup(container: ServiceContainer):
     except Exception as e:
         logger.warning(f"Wire DI partiel: {e}")
 
+    # 🔗 MemoryAnalyzer ← ChatService (hook P0)
+    try:
+        analyzer = container.memory_analyzer()
+        chat_svc = container.chat_service()
+        analyzer.set_chat_service(chat_svc)
+        logger.info("MemoryAnalyzer hook: ChatService injecté (ready=True).")
+    except Exception as e:
+        logger.warning(f"MemoryAnalyzer hook non appliqué: {e}")
+
 def create_app() -> FastAPI:
     container = ServiceContainer()
     app = FastAPI(title="Émergence API", version="7.2")
     app.state.service_container = container
+
+    # 🔒 Redirige automatiquement /route ↔ /route/
+    app.router.redirect_slashes = True
 
     app.add_middleware(
         CORSMiddleware,
