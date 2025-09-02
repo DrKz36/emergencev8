@@ -1,10 +1,12 @@
 # src/backend/features/memory/router.py
-# V3.3 — P1.5 mémoire : body optionnel sur /tend-garden (évite 422),
-#        /status conservé, /clear non destructif (journalisation decay).
-# Aucune modif d'architecture ; DI via app.state.service_container.
+# V3.4 — P1.5 mémoire : tolérance totale au body malformé sur /tend-garden.
+#         On lit le body brut (sans Pydantic préalable), on tente json.loads,
+#         et on retombe sur des defaults en cas d'échec. /status et /clear inchangés.
+#         Aucune modif d’architecture.
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
@@ -40,32 +42,12 @@ def _container(request: Request):
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
-def _safe_payload(payload_in: Optional[dict | TendGardenPayload]) -> TendGardenPayload:
-    """
-    Rend l'endpoint tolérant :
-    - Aucun body -> defaults
-    - Body non typé -> coerce via Pydantic
-    - consolidation_limit string -> convertie si possible
-    """
-    if payload_in is None:
-        return TendGardenPayload()
-
-    if isinstance(payload_in, TendGardenPayload):
-        # normalize string -> int si besoin (déjà validé normalement)
-        try:
-            payload_in.consolidation_limit = int(payload_in.consolidation_limit)
-        except Exception:
-            pass
-        return payload_in
-
-    # dict brut
-    data = dict(payload_in)
-    # coercion manuelle légère
+def _coerce_payload_dict(data: Dict[str, Any]) -> TendGardenPayload:
+    # coercion douce (ex: "10" -> 10)
     if "consolidation_limit" in data and isinstance(data["consolidation_limit"], str):
         try:
             data["consolidation_limit"] = int(data["consolidation_limit"])
         except Exception:
-            # on laisse Pydantic décider
             pass
     try:
         return TendGardenPayload(**data)
@@ -77,15 +59,11 @@ def _safe_payload(payload_in: Optional[dict | TendGardenPayload]) -> TendGardenP
 # --------- Routes ---------
 
 @router.post("/tend-garden")
-async def tend_garden(
-    request: Request,
-    # Body optionnel : certains clients enverront POST sans body -> plus de 422
-    payload: Optional[TendGardenPayload | dict] = Body(default=None),
-):
+async def tend_garden(request: Request):
     """
     Lance la consolidation mémoire.
-    - Sans body : defaults (limit=10, pas de thread ciblé).
-    - Avec thread_id : consolidation ciblée sur ce thread.
+    - Aucun body ou body invalide -> defaults (limit=10, pas de thread ciblé).
+    - Body JSON valide pouvant contenir: { "consolidation_limit": int, "thread_id": "..." }.
     """
     container = _container(request)
     try:
@@ -96,15 +74,29 @@ async def tend_garden(
         logger.error(f"[tend-garden] DI KO: {e}", exc_info=True)
         raise HTTPException(status_code=503, detail="Dépendances mémoire indisponibles")
 
-    from backend.features.memory.gardener import MemoryGardener  # import tardif
+    # Lecture du body BRUT pour éviter le 422 avant d'entrer ici
+    raw = await request.body()
+    payload_obj: TendGardenPayload
+    if not raw:
+        payload_obj = TendGardenPayload()
+    else:
+        try:
+            # Tente un JSON ; si malformé -> defaults
+            parsed = json.loads(raw.decode("utf-8") or "{}")
+            if not isinstance(parsed, dict):
+                parsed = {}
+            payload_obj = _coerce_payload_dict(parsed)
+        except Exception as e:
+            logger.info(f"[tend-garden] Body non JSON ou invalide, defaults utilisés: {e}")
+            payload_obj = TendGardenPayload()
 
-    p = _safe_payload(payload)
+    from backend.features.memory.gardener import MemoryGardener  # import tardif pour éviter cycles
+
     gardener = MemoryGardener(db_manager=db, vector_service=vec, memory_analyzer=analyzer)
-
     try:
         report = await gardener.tend_the_garden(
-            consolidation_limit=int(p.consolidation_limit or 10),
-            thread_id=(p.thread_id or None),
+            consolidation_limit=int(payload_obj.consolidation_limit or 10),
+            thread_id=(payload_obj.thread_id or None),
         )
     except Exception as e:
         logger.error(f"[tend-garden] Erreur: {e}", exc_info=True)
@@ -116,7 +108,7 @@ async def tend_garden(
     return {
         "status": "success",
         "run_at": _LAST_REPORT["ts"],
-        "thread_id": p.thread_id or None,
+        "thread_id": payload_obj.thread_id or None,
         "report": report,
     }
 
