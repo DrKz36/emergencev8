@@ -1,5 +1,5 @@
 # src/backend/features/threads/router.py
-# V1.4 — Ajout POST sans slash + fallback by-id (déjà présent) + normalisation user_id
+# V1.5 — Retrait du prefix interne (montage géré par main.py) + alias GET/POST sans slash conservés
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -8,7 +8,7 @@ from backend.core.database.manager import DatabaseManager
 from backend.core.database import queries
 from backend.shared.dependencies import get_user_id  # lit "X-User-Id"
 
-router = APIRouter(prefix="/api/threads", tags=["Threads"])
+router = APIRouter(tags=["Threads"])  # ← plus de prefix ici (monté par main.py)
 
 def get_db(request: Request) -> DatabaseManager:
     return request.app.state.service_container.db_manager()
@@ -89,10 +89,9 @@ async def create_thread_no_slash(
     thread = await queries.get_thread(db, tid, user_id)
     return {"id": tid, "thread": thread}
 
-# ---- DEBUG caché (aide diag legacy) ----
+# ---- DEBUG caché ----
 @router.get("/_debug/{thread_id}", include_in_schema=False)
 async def _debug_get_raw(thread_id: str, db: DatabaseManager = Depends(get_db)):
-    """Retourne le thread brut par id, sans filtrer le user (diag seulement)."""
     row = await queries.get_thread_any(db, thread_id)
     return {"raw": row}
 
@@ -103,9 +102,7 @@ async def get_thread(
     db: DatabaseManager = Depends(get_db),
     messages_limit: int = Query(default=50, ge=1, le=200),
 ):
-    # 1) accès strict (id + user)
     thread = await queries.get_thread(db, thread_id, user_id)
-    # 2) fallback by-id: rattrape casse/espaces/variantes d'user_id historiques
     if not thread:
         alt = await queries.get_thread_any(db, thread_id)
         if not alt:
@@ -144,7 +141,6 @@ async def add_message(
     user_id: str = Depends(get_user_id),
     db: DatabaseManager = Depends(get_db),
 ):
-    # autorise fallback (évite faux négatifs si user_id a varié)
     if not await queries.get_thread(db, thread_id, user_id):
         alt = await queries.get_thread_any(db, thread_id)
         if not alt:

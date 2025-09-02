@@ -1,8 +1,5 @@
 # src/backend/features/memory/gardener.py
-# V2.7.0 — Patterns “mot‑code” élargis (+ valeurs multi‑mots) + vectorisation des CONCEPTS même s’il existe déjà des FACTS
-#           - Reconnaît: (mon|ton|ce|le) mot[- ]code (est|:|=) <valeur> [pour (anima|neo|nexus)] (+ variantes)
-#           - Garde-fou corrigé: on teste la présence de vecteurs par TYPE (“concept”/“fact”), pas globalement par session.
-
+# V2.8.0 — + consolidation ciblée d’un thread (sans passer par 'sessions')
 import logging
 import uuid
 import json
@@ -14,48 +11,38 @@ from datetime import datetime, timezone
 from backend.core.database.manager import DatabaseManager
 from backend.features.memory.vector_service import VectorService
 from backend.features.memory.analyzer import MemoryAnalyzer
+from backend.core.database import queries  # ← NEW: accès threads/messages
 
 logger = logging.getLogger(__name__)
 
-# Nouvelles règles: nommage des groupes pour robustesse (agent/value) + valeurs multi-mots.
 _CODE_PATTERNS = [
-    # ex: “Pour Anima, ce mot code est Nexus”, “Pour neo mon mot-code: vlad”, “pour nexus mot‑code = bagit ag”
     r"(?:pour\s+(?P<agent>anima|neo|nexus)\s*,?\s*)?(?:mon|ton|ce|le)\s*mot[-\s]?code\s*(?:est|:|=)\s*[«\"'’]?\s*(?P<value>[A-Za-zÀ-ÖØ-öø-ÿ0-9_\- ]+?)\s*[»\"'’]?(?:[.!?,;:\)]|$)",
-    # ex: “mon mot-code pour Anima est nexus”
     r"(?:mon|ton|ce|le)\s*mot[-\s]?code\s*pour\s+(?P<agent>anima|neo|nexus)\s*(?:est|:|=)\s*[«\"'’]?\s*(?P<value>[A-Za-zÀ-ÖØ-öø-ÿ0-9_\- ]+?)\s*[»\"'’]?(?:[.!?,;:\)]|$)",
-    # compat historiques (back-compat exactes)
     r"(?:pour\s+(?P<agent>anima|neo|nexus)\s*,?\s*)?mon\s*mot[-\s]?code\s*(?:est|:)\s*[«\"'’]?\s*(?P<value>[A-Za-zÀ-ÖØ-öø-ÿ0-9_\-]+)\s*[»\"'’]?",
     r"mon\s*mot[-\s]?code\s*pour\s+(?P<agent>anima|neo|nexus)\s*(?:est|:)\s*[«\"'’]?\s*(?P<value>[A-Za-zÀ-ÖØ-öø-ÿ0-9_\-]+)\s*[»\"'’]?",
-    # très permissif (dernier recours) : “mot code = xxx”
     r"mot[-\s]?code\s*(?:est|:|=)\s*[«\"'’]?\s*(?P<value>[A-Za-zÀ-ÖØ-öø-ÿ0-9_\- ]+?)\s*[»\"'’]?(?:[.!?,;:\)]|$)"
 ]
 
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _now_iso() -> str: return datetime.now(timezone.utc).isoformat()
 
 def _unique(seq: List[str]) -> List[str]:
-    seen = set()
-    out = []
+    seen, out = set(), []
     for s in seq or []:
         key = s.strip().lower()
         if key and key not in seen:
-            out.append(s.strip())
-            seen.add(key)
+            out.append(s.strip()); seen.add(key)
     return out
 
 def _agent_norm(name: Optional[str]) -> Optional[str]:
-    if not name:
-        return None
+    if not name: return None
     n = name.strip().lower()
-    if n in {"anima", "neo", "nexus"}:
-        return n
-    return None
+    return n if n in {"anima","neo","nexus"} else None
 
 def _fact_id(session_id: str, key: str, agent: Optional[str], value: str) -> str:
+    import hashlib
     base = f"{session_id}:{key}:{agent or 'global'}:{value}"
     return hashlib.sha1(base.encode("utf-8")).hexdigest()
 
-# Nettoyage de la valeur (trim, ponctuation fin, espaces multiples)
 _VALUE_TRAIL_RE = re.compile(r"[\s\.\,\;\:\!\?]+$")
 def _clean_value(v: str) -> str:
     v = (v or "").strip()
@@ -65,10 +52,9 @@ def _clean_value(v: str) -> str:
 
 class MemoryGardener:
     """
-    MEMORY GARDENER V2.7.0
-    - Extraction robuste des FAITS “mot-code”.
-    - Vectorise concepts/entities + FAITS avec dédup fine.
-    - ID déterministe pour facts -> upsert strict, aucun doublon.
+    MEMORY GARDENER V2.8.0
+    - Mode historique (sessions) inchangé.
+    - NEW: consolidation ciblée d’un THREAD via thread_id (analyse no-persist + vectorisation).
     """
     KNOWLEDGE_COLLECTION_NAME = "emergence_knowledge"
 
@@ -77,36 +63,30 @@ class MemoryGardener:
         self.vector_service = vector_service
         self.analyzer = memory_analyzer
         self.knowledge_collection = self.vector_service.get_or_create_collection(self.KNOWLEDGE_COLLECTION_NAME)
-        logger.info("MemoryGardener V2.7.0 initialisé.")
+        logger.info("MemoryGardener V2.8.0 initialisé.")
 
-    async def tend_the_garden(self, consolidation_limit: int = 10) -> Dict[str, Any]:
-        logger.info("Le jardinier commence sa ronde dans le jardin de la mémoire...")
+    async def tend_the_garden(self, consolidation_limit: int = 10, thread_id: Optional[str] = None) -> Dict[str, Any]:
+        if thread_id:
+            return await self._tend_single_thread(thread_id)
 
+        logger.info("Le jardinier commence sa ronde dans le jardin de la mémoire (mode sessions)…")
         sessions = await self._fetch_recent_sessions(limit=consolidation_limit)
         if not sessions:
             logger.info("Aucune session récente à traiter. Le jardin est en ordre.")
             await self._decay_knowledge()
             return {"status": "success", "message": "Aucune session à traiter.", "consolidated_sessions": 0, "new_concepts": 0}
 
-        logger.info(f"Récolte de {len(sessions)} sessions pour consolidation.")
-        processed_ids: List[str] = []
-        new_items_count = 0
-
+        processed_ids: List[str] = []; new_items_count = 0
         for s in sessions:
-            sid: str = s["id"]
-            uid: Optional[str] = s.get("user_id")
-
+            sid: str = s["id"]; uid: Optional[str] = s.get("user_id")
             try:
                 history = self._extract_history(s.get("session_data"))
-                # 1) Préparer concepts/entités existants
                 concepts = self._parse_concepts(s.get("extracted_concepts"))
                 entities = self._parse_entities(s.get("extracted_entities"))
                 all_concepts = _unique((concepts or []) + (entities or []))
 
-                # 2) Extraire des FAITS (mot-code/agent) depuis l'history
                 facts = self._extract_facts_from_history(history)
 
-                # 3) Si pas de concepts mais un history: lancer analyse sémantique puis recharger
                 if not concepts and history:
                     await self.analyzer.analyze_session_for_concepts(session_id=sid, history=history)
                     row = await self.db.fetch_one(
@@ -118,27 +98,20 @@ class MemoryGardener:
                     entities = self._parse_entities(row.get("extracted_entities") if row else None)
                     all_concepts = _unique((concepts or []) + (entities or []))
 
-                # 4) Dédup fine & vectorisation
                 added_any = False
-
-                # 4a) FAITS: ajoute uniquement les nouveaux (clé/agent)
                 facts_to_add = []
                 for fact in facts:
                     if not await self._fact_already_vectorized(sid, fact["key"], fact.get("agent")):
                         facts_to_add.append(fact)
-
                 if facts_to_add:
                     await self._record_facts_in_sql(facts_to_add, s, uid)
                     await self._vectorize_facts(facts_to_add, s, uid)
-                    new_items_count += len(facts_to_add)
-                    added_any = True
+                    new_items_count += len(facts_to_add); added_any = True
 
-                # 4b) CONCEPTS/ENTITIES: ne pas bloquer par la présence d'un FACT
                 if all_concepts and not await self._any_vectors_for_session_type(sid, "concept"):
                     await self._record_concepts_in_sql(all_concepts, s, uid)
                     await self._vectorize_concepts(all_concepts, s, uid)
-                    new_items_count += len(all_concepts)
-                    added_any = True
+                    new_items_count += len(all_concepts); added_any = True
 
                 if not added_any:
                     logger.info(f"Session {sid}: déjà vectorisée ou aucun nouvel item — skip.")
@@ -147,18 +120,73 @@ class MemoryGardener:
             except Exception as e:
                 logger.error(f"Erreur lors de la consolidation pour la session {sid}: {e}", exc_info=True)
 
-        # 5) Trace consolidation & 6) vieillissement
         await self._mark_sessions_as_consolidated(processed_ids)
         await self._decay_knowledge()
 
-        report = {
-            "status": "success",
-            "message": "La ronde du jardinier est terminée.",
-            "consolidated_sessions": len(processed_ids),
-            "new_concepts": new_items_count
-        }
-        logger.info(report)
-        return report
+        report = {"status": "success", "message": "La ronde du jardinier est terminée.", "consolidated_sessions": len(processed_ids), "new_concepts": new_items_count}
+        logger.info(report); return report
+
+    # ---------- NEW: consolidation d’un thread ----------
+    async def _tend_single_thread(self, thread_id: str) -> Dict[str, Any]:
+        tid = (thread_id or "").strip()
+        if not tid:
+            return {"status": "success", "message": "thread_id vide.", "consolidated_sessions": 0, "new_concepts": 0}
+
+        try:
+            thr = await queries.get_thread_any(self.db, tid)
+            if not thr:
+                logger.warning(f"Thread {tid} introuvable.")
+                return {"status": "success", "message": "Thread introuvable.", "consolidated_sessions": 0, "new_concepts": 0}
+
+            uid = thr.get("user_id")
+            msgs = await queries.get_messages(self.db, tid, limit=1000)
+            history = []
+            for m in (msgs or []):
+                history.append({
+                    "role": m.get("role") or "user",
+                    "content": m.get("content") if isinstance(m.get("content"), str) else json.dumps(m.get("content") or ""),
+                    "agent_id": m.get("agent_id")
+                })
+
+            facts = self._extract_facts_from_history(history)
+
+            # Analyse sémantique sans persistance en table sessions
+            analysis = await self.analyzer.analyze_history(session_id=tid, history=history) if history else {}
+            concepts = self._parse_concepts(analysis.get("concepts")) if analysis else []
+            entities = self._parse_entities(analysis.get("entities")) if analysis else []
+            all_concepts = _unique((concepts or []) + (entities or []))
+
+            new_items_count = 0
+            added_any = False
+
+            if facts:
+                facts_to_add = []
+                for f in facts:
+                    if not await self._fact_already_vectorized(tid, f["key"], f.get("agent")):
+                        facts_to_add.append(f)
+                if facts_to_add:
+                    s_like = {"id": tid, "user_id": uid, "themes": []}
+                    await self._record_facts_in_sql(facts_to_add, s_like, uid)
+                    await self._vectorize_facts(facts_to_add, s_like, uid)
+                    new_items_count += len(facts_to_add); added_any = True
+
+            if all_concepts and not await self._any_vectors_for_session_type(tid, "concept"):
+                s_like = {"id": tid, "user_id": uid, "themes": []}
+                await self._record_concepts_in_sql(all_concepts, s_like, uid)
+                await self._vectorize_concepts(all_concepts, s_like, uid)
+                new_items_count += len(all_concepts); added_any = True
+
+            await self._decay_knowledge()
+            msg = "Consolidation thread OK." if added_any else "Aucun nouvel item pour ce thread."
+            return {"status": "success", "message": msg, "consolidated_sessions": 1 if added_any else 0, "new_concepts": new_items_count}
+
+        except Exception as e:
+            logger.error(f"Erreur consolidation thread {thread_id}: {e}", exc_info=True)
+            return {"status": "error", "message": str(e), "consolidated_sessions": 0, "new_concepts": 0}
+
+    # ---------- Helpers SQL / parse / vectors (inchangés) ----------
+    # … (le reste du fichier est inchangé par rapport à ta version V2.7.0) …
+
 
     # ---------- Helpers SQL ----------
 

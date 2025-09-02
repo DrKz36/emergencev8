@@ -1,5 +1,5 @@
 # src/backend/features/memory/analyzer.py
-# V3.1 - Idempotence + 429-aware fallback (neo -> nexus) + clean WS events
+# V3.2 - + analyze_history(no-persist) ; refactor _analyze(..., persist)
 import logging
 import json
 from typing import Dict, Any, List, Optional, TYPE_CHECKING
@@ -44,7 +44,7 @@ class MemoryAnalyzer:
         self.db_manager = db_manager
         self.chat_service = chat_service
         self.is_ready = self.chat_service is not None
-        logger.info(f"MemoryAnalyzer V3.1 initialisé. Prêt: {self.is_ready}")
+        logger.info(f"MemoryAnalyzer V3.2 initialisé. Prêt: {self.is_ready}")
 
     def set_chat_service(self, chat_service: 'ChatService'):
         self.chat_service = chat_service
@@ -64,7 +64,6 @@ class MemoryAnalyzer:
             try:
                 await conn.send_personal_message({"type": "ws:analysis_status", "payload": payload}, session_id)
             except Exception:
-                # client possiblement déconnecté : on n'insiste pas
                 pass
 
     def _already_analyzed(self, session_id: str) -> bool:
@@ -76,26 +75,24 @@ class MemoryAnalyzer:
         except Exception:
             return False
 
-    async def analyze_session_for_concepts(self, session_id: str, history: List[Dict[str, Any]]):
+    async def _analyze(self, session_id: str, history: List[Dict[str, Any]], persist: bool = True) -> Dict[str, Any]:
         self._ensure_ready()
-        logger.info(f"Lancement de l'analyse sémantique pour la session {session_id}")
+        logger.info(f"Lancement de l'analyse sémantique (persist={persist}) pour {session_id}")
 
-        # Idempotence: ne pas retraiter si déjà résumé
-        if self._already_analyzed(session_id):
+        # Idempotence seulement si on persiste (session réelle)
+        if persist and self._already_analyzed(session_id):
             logger.info(f"Session {session_id} déjà analysée — skip.")
             await self._notify(session_id, {"session_id": session_id, "status": "skipped", "reason": "already_analyzed"})
-            return
+            return {}
 
-        # Concatène l'historique
         conversation_text = "\n".join(f"{m.get('role')}: {m.get('content') or m.get('message','')}" for m in (history or []))
         if not conversation_text.strip():
             logger.warning(f"Historique vide pour {session_id}. Analyse annulée.")
             await self._notify(session_id, {"session_id": session_id, "status": "skipped", "reason": "no_history"})
-            return
+            return {}
 
         prompt = ANALYSIS_PROMPT_TEMPLATE.format(conversation_text=conversation_text)
 
-        # 1ère tentative: agent 'neo' (Gemini)
         analysis_result: Dict[str, Any] = {}
         primary_error: Optional[Exception] = None
         try:
@@ -104,14 +101,11 @@ class MemoryAnalyzer:
             primary_error = e
             logger.warning(f"Analyse (neo) a échoué — tentative fallback nexus. err={e}", exc_info=True)
 
-        # Fallback 'nexus' (Claude) si vide/erreur
         if not analysis_result:
             try:
                 analysis_result = await self.chat_service.get_structured_llm_response(agent_id='nexus', prompt=prompt, json_schema=ANALYSIS_JSON_SCHEMA)
             except Exception as e:
-                # échec final -> on remonte
                 logger.error(f"Analyse (fallback nexus) a échoué: {e}", exc_info=True)
-                # Essaye d'extraire retry_after secondes si dispo (Google API)
                 retry_after = None
                 try:
                     rd = getattr(primary_error or e, 'retry_delay', None)
@@ -121,15 +115,23 @@ class MemoryAnalyzer:
                 await self._notify(session_id, {"session_id": session_id, "status": "failed", "error": str(e), "retry_after": retry_after})
                 raise
 
-        # Sauvegarde DB
-        await queries.update_session_analysis_data(
-            db=self.db_manager,
-            session_id=session_id,
-            summary=analysis_result.get("summary"),
-            concepts=analysis_result.get("concepts", []) or [],
-            entities=analysis_result.get("entities", []) or [],
-        )
+        if persist:
+            await queries.update_session_analysis_data(
+                db=self.db_manager,
+                session_id=session_id,
+                summary=analysis_result.get("summary"),
+                concepts=analysis_result.get("concepts", []) or [],
+                entities=analysis_result.get("entities", []) or [],
+            )
 
-        # Succès WS
         await self._notify(session_id, {"session_id": session_id, "status": "completed"})
-        logger.info(f"Analyse sémantique terminée et sauvegardée pour la session {session_id}.")
+        logger.info(f"Analyse sémantique terminée (persist={persist}) pour {session_id}.")
+        return analysis_result
+
+    async def analyze_session_for_concepts(self, session_id: str, history: List[Dict[str, Any]]):
+        """Mode historique (sessions) : persiste dans la table sessions."""
+        return await self._analyze(session_id, history, persist=True)
+
+    async def analyze_history(self, session_id: str, history: List[Dict[str, Any]]):
+        """Mode “thread-only” : renvoie le résultat sans écrire dans la table sessions."""
+        return await self._analyze(session_id, history, persist=False)

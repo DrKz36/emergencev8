@@ -62,7 +62,6 @@ import { WS_CONFIG, EVENTS } from './shared/constants.js';
   }
 })();
 
-
 /* ---------------- Helpers token ---------------- */
 function getCookie(name) {
   const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
@@ -80,6 +79,22 @@ function getAnyToken() {
 function hasToken() { return !!getAnyToken(); }
 function openDevAuth() {
   try { window.open('/dev-auth.html', '_blank', 'noopener,noreferrer'); } catch {}
+}
+
+/* === Nouveaux helpers (auto-auth) === */
+function pickTokenFromLocation() {
+  const blob = (window.location.hash || '') + '&' + (window.location.search || '');
+  const m = blob.match(/(?:^|[?#&])(id_token|token)=([^&#]+)/i);
+  return m ? decodeURIComponent(m[2]) : '';
+}
+function saveToken(tok) {
+  if (!tok) return;
+  try { localStorage.setItem('emergence.id_token', tok); } catch {}
+  try { localStorage.setItem('id_token', tok); } catch {}
+}
+function isLocalHost() {
+  const h = (window.location && window.location.hostname || '').toLowerCase();
+  return h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0';
 }
 
 /* ---------------------- Dédup/normalisation texte ---------------------- */
@@ -315,12 +330,35 @@ class EmergenceClient {
 
     const app = new App(eventBus, stateManager);
 
-    // Auth initiale
+    /* ====== Auto-auth & auto-connect WS ====== */
+    const tokenFromUrl = pickTokenFromLocation();
+    if (tokenFromUrl) saveToken(tokenFromUrl);
+
+    const connectWs = () => {
+      try { websocket.connect(); }
+      catch (e) { console.error('[WS] connect error', e); }
+    };
+
     if (hasToken()) {
       badge.setLogged(true);
-      websocket.connect();
+      connectWs();
     } else {
       try { eventBus.emit('auth:missing'); } catch (_) {}
+      // En local : ouvre la page d'auth si aucun token
+      if (isLocalHost()) {
+        setTimeout(() => { if (!hasToken()) openDevAuth(); }, 250);
+      }
+      // Quand le token arrive (dev-auth ou autre), on connecte automatiquement
+      const onStorage = (ev) => {
+        if (ev.key === 'emergence.id_token' || ev.key === 'id_token') {
+          if (ev.newValue && ev.newValue.trim()) {
+            window.removeEventListener('storage', onStorage);
+            badge.setLogged(true);
+            connectWs();
+          }
+        }
+      };
+      window.addEventListener('storage', onStorage);
     }
 
     console.log("✅ Client ÉMERGENCE prêt. En attente du signal APP_READY...");
@@ -336,7 +374,7 @@ class EmergenceClient {
 
 /* ---------- Boot guard : éviter tout second bootstrap involontaire ---------- */
 (function bootOnce() {
-  const FLAG = '__emergence_boot_v25_1__';
+  const FLAG = '__emergence_boot_v25_3__';
   if (window[FLAG]) {
     console.warn('[Boot] Client déjà initialisé — second bootstrap ignoré.');
     return;

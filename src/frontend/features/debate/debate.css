@@ -1,32 +1,49 @@
-﻿/* Module Débats — V15.2 : flux continu sans cartes internes, pas de scrollbar interne,
-   synthèse centrée et alignée sur les bulles + compaction mobile/lists/wrap. */
+﻿/* Module Débats — V15.3 : header centré, gaps agents/synthèse, RAG chat-like, footer responsive */
 
-/* ===== Wrapper principal ===== */
+/* ===== Wrapper ===== */
 .debate-view-wrapper{
   font-size: clamp(1rem, 0.9rem + 0.35vw, 1.3rem);
   padding-top: 32px;
-  /* ↓ un peu moins pour remonter le contenu (composer déjà réduit côté Chat) */
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
   min-height: 100%;
 }
-
-/* Carte racine = pleine zone centrale centrée */
 .debate-view-wrapper .card{
   width: 100%;
   max-width: min(1200px, 96vw);
   margin: 0 auto;
-
-  /* ✅ Disable height-forced layouts qui créent un scroll interne (override hotfix) */
   height: auto !important;
 }
-
-/* Pas de scroll interne par défaut (l’override/hotfix peut reprendre la main) */
 .debate-view-wrapper .card-body{
   padding-top: 2rem;
   padding-bottom: 2rem;
-
-  /* ✅ Scroll global (pas dans la carte) */
   overflow: visible !important;
+}
+
+/* ---------- Header centré (form + timeline) ---------- */
+.timeline-header{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding-top: .75rem;
+  padding-bottom: .5rem;
+}
+.timeline-header .title-center{
+  justify-self: center;
+  text-align: center;
+}
+.timeline-header .debate-title{
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+.timeline-header .debate-topic{
+  font-style: italic;
+  opacity: .85;
+}
+.timeline-header .debate-status{
+  justify-self: end;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
 }
 
 /* ========== Création (formulaire) ========== */
@@ -44,165 +61,87 @@
   margin: 0 auto;
   justify-items: center;
 }
-
-/* Groupe générique */
 .form-group{ display:flex; flex-direction:column; align-items:center; gap:.65rem; }
 .form-group label{ color: var(--color-text-primary); font-weight:600; text-align:center; }
-
-/* Topic = plein large */
 .form-topic{ grid-area: topic; width:100%; align-items:stretch; justify-self:stretch; }
-
-/* ⬇️ Uniformise la largeur visuelle des blocs (sauf topic) */
-.debate-create-body .form-group:not(.form-topic){
-  width: clamp(320px, 34vw, 460px);
-}
-
-/* Cadres de sélection */
+.debate-create-body .form-group:not(.form-topic){ width: clamp(320px, 34vw, 460px); }
 .form-attacker{ grid-area: attacker; }
 .form-challenger{ grid-area: challenger; }
 .form-rounds{ grid-area: rounds; }
 .form-mediator{ grid-area: mediator; }
+#debate-topic.input-text{ min-height: 6.5rem; width: 100%; max-width: none; margin: 0; }
 
-/* Textarea sujet */
-#debate-topic.input-text{
-  min-height: 6.5rem;
-  width: 100%;
-  max-width: none;
-  margin: 0;
-}
-
-/* --------- Finitions UI --------- */
-.debate-view-wrapper .form-topic{
-  padding: 0 !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-/* Tabs */
-.debate-view-wrapper .tabs-container{
-  display:flex; flex-wrap:wrap; justify-content:center; gap:.5rem;
-}
-.debate-view-wrapper .button-tab{
-  border:1px solid transparent; border-radius: var(--radius-md); background:transparent;
-  transform: translateZ(0); font-size: clamp(1rem, 0.95rem + 0.35vw, 1.3rem);
-}
-.debate-view-wrapper .button-tab.active{
-  background-color: var(--color-background-tertiary);
-  border: 1px solid var(--color-primary);
-  box-shadow: 0 0 0 1px rgba(37,99,235,.25);
-  color: var(--color-text-primary);
-}
-.rounds-tabs .button-tab{ min-width:2.25rem; justify-content:center; }
-
-/* Footer d'actions */
+/* Footer d'actions (RAG chat-like + CTA centré, pas de chevauchement) */
 .debate-create-footer{
-  display:flex; align-items:center; justify-content:center; gap:.75rem;
+  display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
+  padding: .5rem 1rem 1rem;
 }
 .debate-create-footer .action-center{
-  display:flex; align-items:center; justify-content:center; gap:.75rem; flex-wrap:wrap;
+  display:flex; align-items:center; justify-content:center;
 }
+
+/* ----- RAG toggle (mêmes codes visuels que le Chat) ----- */
+.rag-control{ display:flex; align-items:center; gap:.6rem; }
+.rag-label{ font-weight:700; letter-spacing:.2px; }
+.rag-power{
+  --on: #27ae60;
+  --off:#d9534f;
+  width: 34px; height: 34px; border-radius: 999px; border: 1px solid rgba(255,255,255,.12);
+  display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+  background: radial-gradient( circle at 30% 30%, rgba(255,255,255,.15), transparent 60% ),
+              linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), 0 6px 18px rgba(0,0,0,.35);
+  color:#111;
+  transition: transform .06s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.rag-power[aria-checked="true"] { background-color: var(--on); color:#083; }
+.rag-power[aria-checked="false"]{ background-color: var(--off); color:#300; }
+.rag-power:active{ transform: scale(.97); }
 
 /* ========== FLUX CONTINU (tours + synthèse) ========== */
+.debate-flow{ display:flex; flex-direction:column; gap: 1.25rem; }
 
-/* conteneur vertical simple */
-.debate-flow{
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
+/* Titres */
+.turn-title{ color: var(--color-text-secondary); font-weight:700; margin:0 0 .5rem 0; text-align:left; }
+.synthesis-title{ text-align:center; }
 
-/* « Titre » léger de section (tour/synthèse) */
-.turn-title{
-  color: var(--color-text-secondary);
-  font-weight: 700;
-  margin: 0 0 .5rem 0;
-  text-align: left;
-}
-.synthesis-title{ text-align: center; }
+/* Sections sans carte interne */
+.debate-turn, .debate-synthesis{ padding:0; background:transparent; }
 
-/* sections tours/synthèse sans carte interne */
-.debate-turn,
-.debate-synthesis{
-  padding: 0;
-  background: transparent;
-}
+/* Gaps bulles agents (=2 espaces) */
+.debate-turn .chat-messages .message + .message{ margin-top: 1.1rem; }
 
-/* alignement bulles : on s’appuie sur .chat-messages (styles du Chat) */
-.debate-turn .chat-messages,
-.debate-synthesis .chat-messages{
-  overflow: visible;            /* jamais de scroll interne */
-}
-
-/* ✅ Robustesse du texte des bulles (évite troncature/débordements) + compaction légère */
-.debate-view-wrapper .message-text{
-  white-space: pre-wrap;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-  line-height: 1.35;            /* ↓ resserré pour la Synthèse */
-}
-
-/* Synthèse : bulle centrée + italique */
-.debate-synthesis .message{ margin-left: auto; margin-right: auto; }
+/* Synthèse centrée + italique + gap (≈3 espaces) */
+.debate-synthesis{ margin-top: 1.8rem; }
+.debate-synthesis .message{ margin-left:auto; margin-right:auto; }
 .debate-synthesis .message-text{ font-style: italic; }
 
-/* ✅ Listes Markdown propres dans la synthèse, sans pseudo-puces parasites */
-.debate-view-wrapper .message-text h1::before,
-.debate-view-wrapper .message-text h2::before,
-.debate-view-wrapper .message-text h3::before,
-.debate-view-wrapper .message-text h4::before,
-.debate-view-wrapper .message-text h5::before,
-.debate-view-wrapper .message-text h6::before { content: none !important; }
-
-/* Marges/indentation plus compactes pour réduire les “trous” en Synthèse */
+/* Typo Markdown propre */
+.debate-view-wrapper .message-text{ white-space: pre-wrap; word-break: break-word; overflow-wrap:anywhere; line-height:1.35; }
 .debate-view-wrapper .message-text ul,
-.debate-view-wrapper .message-text ol { margin: .35rem 0 .6rem; padding-left: 1.1rem; }
-.debate-view-wrapper .message-text ul { list-style: disc; }
-.debate-view-wrapper .message-text ol { list-style: decimal; }
-.debate-view-wrapper .message-text p{ margin:.35rem 0; }
-.debate-view-wrapper .message-text li { margin: .2rem 0; }
-
-/* Si des styles globaux ajoutent des puces via ::before, on les neutralise ici */
+.debate-view-wrapper .message-text ol { margin:.35rem 0 .6rem; padding-left:1.1rem; }
 .debate-view-wrapper .message-text li::before{ content:none !important; }
 
-/* Actions fin de débat */
-.debate-actions{
-  display:flex; align-items:center; justify-content:center; gap: 1rem;
-}
+/* Actions bas (centrées) */
+.debate-actions{ display:flex; align-items:center; justify-content:center; gap:1rem; }
 
-/* ========== Responsive ========== */
-@media (max-width: 980px){
+/* Responsive */
+@media (max-width:980px){
   .debate-create-body{
-    grid-template-columns: 1fr;
+    grid-template-columns:1fr;
     grid-template-areas:
       "topic"
       "attacker"
       "challenger"
       "rounds"
       "mediator";
-    max-width: 720px;
-    justify-items: stretch;
+    max-width:720px; justify-items:stretch;
   }
-  .debate-create-body .form-group:not(.form-topic){ width: 100%; }
-  #debate-topic.input-text{ width:100%; }
+  .debate-create-body .form-group:not(.form-topic){ width:100%; }
 }
-
-/* ✅ Full-width doux en mobile (moins de marge latérale) */
-@media (max-width: 760px){
-  .debate-view-wrapper .card{
-    max-width: 100vw;
-    padding-left: 6px;
-    padding-right: 6px;
-  }
-  /* s’aligne sur les options du Chat pour les bulles en mobile */
-  .debate-view-wrapper .message{ width: 100%; }
-  .debate-view-wrapper .message .message-text{
-    margin-left: 0;
-    margin-right: 0;
-  }
-  /* on resserre un peu l’air vertical interne */
-  .debate-view-wrapper .card-body{
-    padding-top: 1.25rem;
-    padding-bottom: 1.25rem;
-  }
+@media (max-width:760px){
+  .debate-view-wrapper .card{ max-width:100vw; padding-left:6px; padding-right:6px; }
+  .debate-view-wrapper .message{ width:100%; }
+  .debate-view-wrapper .message .message-text{ margin-left:0; margin-right:0; }
+  .debate-view-wrapper .card-body{ padding-top:1.25rem; padding-bottom:1.25rem; }
 }
