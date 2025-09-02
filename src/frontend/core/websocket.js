@@ -1,22 +1,27 @@
 // src/frontend/core/websocket.js
-// WebSocketClient V22.0 — JWT gating + no-retry 4401/1008 + token in query + DE-DUP chat.message
+// WebSocketClient V22.1 — Handshake JWT via sub-protocol (no query token) + de-dup chat.message
 // + UI hooks: ws:model_info / ws:model_fallback / ws:chat_stream_start(ttfb) / ws:chat_stream_end(meta)
+// NOTE: remplace la V22.0 qui mettait le token en querystring (provoquait un échec WS côté serveur).  ✅
 
 import { EVENTS } from '../shared/constants.js';
 import { ensureAuth, getIdToken, clearAuth } from './auth.js';
 
 export class WebSocketClient {
   constructor(url, eventBus, stateManager) {
-    this.url = url;
+    this.url = url;                    // ex: '/ws' ou 'wss://host/ws'
     this.eventBus = eventBus;
     this.state = stateManager;
     this.websocket = null;
+
+    // Reconnect
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelayMs = 1000;
+
+    // Auth prompt throttle
     this._authPromptedAt = 0;
 
-    // Anti-doublon (fenêtre courte)
+    // Anti-doublon chat
     this._lastChatSig = null;
     this._lastChatTs = 0;
     this._dedupMs = 1200;
@@ -26,7 +31,7 @@ export class WebSocketClient {
 
     this._bindEventBus();
     this._bindStorageListener();
-    console.log("✅ WebSocketClient V22.0 (JWT gating + de-dup + metrics TTFB) prêt.");
+    console.log('✅ WebSocketClient V22.1 (JWT sub-protocol + de-dup + TTFB) prêt.');
   }
 
   _bindEventBus() {
@@ -36,7 +41,7 @@ export class WebSocketClient {
         const text = String(payload.text ?? '').trim();
         if (!text) return;
 
-        // 🔒 Filtre legacy
+        // garde-fou legacy
         const rawAgent = (payload.agent_id ?? payload.agentId ?? '');
         const isLegacy = (!rawAgent || !String(rawAgent).trim()) && !payload.msg_uid;
         if (isLegacy) return;
@@ -44,18 +49,14 @@ export class WebSocketClient {
         const agent_id = (String(rawAgent || '').trim()) || this._getActiveAgentIdFromState();
         const use_rag = (payload.use_rag ?? payload.useRag ?? this.state?.get?.('chat.ragEnabled')) === true;
 
-        // t0 pour TTFB + compteur d'envoi
+        // Metrics
         this._lastSendAt = Date.now();
         try {
           const m = this.state?.get?.('chat.metrics') || {};
-          const next = { ...m, send_count: (m.send_count || 0) + 1 };
-          this.state?.set?.('chat.metrics', next);
+          this.state?.set?.('chat.metrics', { ...m, send_count: (m.send_count || 0) + 1 });
         } catch {}
 
-        // Debug optionnel
-        if (localStorage.getItem('debug.ws') === '1') {
-          try { console.debug('[WS] ui:chat:send → chat.message', { use_rag }); } catch {}
-        }
+        // Départ
         this.send({ type: 'chat.message', payload: { text, agent_id, use_rag } });
       } catch (e) { console.error('[WebSocket] ui:chat:send → chat.message a échoué', e); }
     });
@@ -105,16 +106,19 @@ export class WebSocketClient {
     return 'anima';
   }
 
-  _buildUrl(sessionId, token) {
+  _buildUrl(sessionId) {
     const loc = window.location;
     const scheme = (loc.protocol === 'https:') ? 'wss' : 'ws';
 
+    // URL de base: pas de token en querystring
     if (this.url && typeof this.url === 'string') {
       const hasProto = /^wss?:\/\//i.test(this.url);
-      const path = hasProto ? this.url.replace(/\/+$/, '') : `${scheme}://${loc.host}/${this.url.replace(/^\/+/, '')}`.replace(/\/+$/, '');
-      return `${path}/${sessionId}?token=${encodeURIComponent(token)}&id_token=${encodeURIComponent(token)}`;
+      const base = hasProto
+        ? this.url.replace(/\/+$/, '')
+        : `${scheme}://${loc.host}/${this.url.replace(/^\/+/, '')}`.replace(/\/+$/, '');
+      return `${base}/${sessionId}`;
     }
-    return `${scheme}://${loc.host}/ws/${sessionId}?token=${encodeURIComponent(token)}&id_token=${encodeURIComponent(token)}`;
+    return `${scheme}://${loc.host}/ws/${sessionId}`;
   }
 
   async connect() {
@@ -133,8 +137,11 @@ export class WebSocketClient {
       this.state?.set?.('websocket.sessionId', sessionId);
     }
 
-    const url = this._buildUrl(sessionId, token);
-    const protocols = ['jwt']; // token en query
+    const url = this._buildUrl(sessionId);
+
+    // ✅ Passer le token dans le **sub-protocol** (exigé par le back) :
+    // `Sec-WebSocket-Protocol: jwt, <ID_TOKEN>`
+    const protocols = token ? ['jwt', token] : [];
 
     try {
       this.websocket = new WebSocket(url, protocols);
@@ -152,19 +159,21 @@ export class WebSocketClient {
     this.websocket.onmessage = (ev) => {
       try {
         const msg = JSON.parse(ev.data);
-        if (msg?.type === 'ws:auth_required') { this.eventBus.emit?.('auth:missing', msg?.payload || null); return; }
+        if (msg?.type === 'ws:auth_required') {
+          this.eventBus.emit?.('auth:missing', msg?.payload || null);
+          return;
+        }
 
-        // --- Metrics: TTFB (ws:chat_stream_start) ---
+        // Metrics: TTFB (ws:chat_stream_start)
         if (msg?.type === 'ws:chat_stream_start') {
           const ttfb = Math.max(0, Date.now() - (this._lastSendAt || 0));
           try {
             const m = this.state?.get?.('chat.metrics') || {};
-            const next = {
+            this.state?.set?.('chat.metrics', {
               ...m,
               ws_start_count: (m.ws_start_count || 0) + 1,
               last_ttfb_ms: ttfb
-            };
-            this.state?.set?.('chat.metrics', next);
+            });
           } catch {}
         }
 
@@ -185,8 +194,6 @@ export class WebSocketClient {
               this.eventBus.emit?.('chat:last_message_meta', meta);
             }
           }
-
-          // ✅ NEW: persister les compteurs STM/LTM du banner mémoire
           if (msg.type === 'ws:memory_banner') {
             const p = msg.payload || {};
             try {
@@ -199,6 +206,7 @@ export class WebSocketClient {
             } catch {}
           }
 
+          // Dispatch générique
           this.eventBus.emit?.(msg.type, msg.payload);
         }
       } catch { console.warn('[WebSocket] Message non JSON', ev.data); }
@@ -207,6 +215,7 @@ export class WebSocketClient {
     this.websocket.onclose = (ev) => {
       const code = ev?.code || 1006;
       if (code === 4401 || code === 1008) {
+        // Auth manquante/invalidée → demander login puis stop auto-retry
         this.eventBus.emit?.('auth:missing', { reason: code });
         this.websocket = null;
         return;
@@ -226,7 +235,7 @@ export class WebSocketClient {
     try {
       if (!frame || typeof frame !== 'object') return;
 
-      // 🔒 Pare-feu anti-doublon seulement pour chat.message
+      // Pare-feu anti-doublon pour chat.message
       if (frame.type === 'chat.message') {
         const txt = String(frame?.payload?.text ?? '').trim();
         const ag  = String(frame?.payload?.agent_id ?? '').trim().toLowerCase();
