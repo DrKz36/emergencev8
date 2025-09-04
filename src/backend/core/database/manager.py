@@ -1,5 +1,5 @@
 # src/backend/core/database/manager.py
-# V23.1 - Ajout search_messages() + V23.0 (save_session alignée)
+# V23.2 - Fix search_messages: tri ISO-8601 lexicographique (ORDER BY created_at DESC)
 import aiosqlite
 import logging
 import json
@@ -19,7 +19,7 @@ class DatabaseManager:
         self.connection: Optional[aiosqlite.Connection] = None
         self.db_dir = Path(self.db_path).parent
         self.db_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"DatabaseManager (Async) V23.1 initialisé pour : {self.db_path}")
+        logger.info(f"DatabaseManager (Async) V23.2 initialisé pour : {self.db_path}")
 
     async def connect(self):
         if self.connection is None or self.connection._conn is None:
@@ -65,11 +65,11 @@ class DatabaseManager:
             await cursor.execute(query, params or ())
             return await cursor.fetchall()
 
-    # --------- AJOUT POUR TemporalSearch ---------
+    # --------- Recherche messages (compat sans FTS) ---------
     async def search_messages(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
         """
-        Recherche simple (LIKE) dans messages.content, du plus récent au plus ancien.
-        Compat sans FTS (FTS5 non requis par le schéma actuel).
+        Recherche simple (LIKE) dans messages.content, tri du plus récent au plus ancien.
+        Remarque: created_at est stocké en ISO-8601 → tri lexicographique fiable.
         """
         if not self.connection:
             await self.connect()
@@ -78,7 +78,7 @@ class DatabaseManager:
             SELECT id, thread_id, role, agent_id, content, tokens, meta, created_at
             FROM messages
             WHERE content LIKE ?
-            ORDER BY datetime(created_at) DESC
+            ORDER BY created_at DESC
             LIMIT ?
         """
         rows = await self.fetch_all(sql, (like, int(limit)))
@@ -93,7 +93,6 @@ class DatabaseManager:
                 pass
             out.append(d)
         return out
-    # --------------------------------------------
 
     async def save_session(self, session_data: 'Session'):
         history_json = json.dumps(getattr(session_data, 'history', []))
