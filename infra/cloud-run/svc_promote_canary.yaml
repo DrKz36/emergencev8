@@ -1,0 +1,33 @@
+﻿apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: emergence-app
+spec:
+  template:
+    spec:
+      timeoutSeconds: 900
+      containers:
+        - image: europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:6b91f6a419b85b56b753d6826e215db5e95bbf17695e5393dda729cef21a9fdb
+          env:
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: MEMORY_ENABLED
+              value: "true"
+            - name: CHROMA_DISABLE_TELEMETRY
+              value: "true"
+            - name: EMERGENCE_VECTOR_DIR
+              value: "/app/.chroma"
+            - name: EMERGENCE_UPLOADS_DIR
+              value: "/app/data/uploads"
+            - name: EMERGENCE_DB_PATH
+              value: "/app/data/emergence.db"
+            - name: OPENAI_API_KEY
+              valueFrom: { secretKeyRef: { name: "OPENAI_API_KEY", key: "latest" } }
+            - name: GOOGLE_API_KEY
+              valueFrom: { secretKeyRef: { name: "GOOGLE_API_KEY", key: "latest" } }
+            - name: ANTHROPIC_API_KEY
+              valueFrom: { secretKeyRef: { name: "ANTHROPIC_API_KEY", key: "latest" } }
+            - name: GEMINI_API_KEY
+              valueFrom: { secretKeyRef: { name: "GEMINI_API_KEY", key: "latest" } }
+            - name: GOOGLE_OAUTH_CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: "GOOGLE_OAUTH_CLIENT_SECRET", key: "latest" } }

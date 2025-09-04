@@ -1,0 +1,65 @@
+﻿apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+    run.googleapis.com/urls: '["https://emergence-app-canary-486095406755.europe-west1.run.app","https://emergence-app-canary-47nct44nma-ew.a.run.app"]'
+  labels:
+    cloud.googleapis.com/location: europe-west1
+  name: emergence-app
+  namespace: '486095406755'
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: '5'
+        run.googleapis.com/client-name: gcloud
+        run.googleapis.com/client-version: 523.0.1
+        run.googleapis.com/startup-cpu-boost: 'true'
+      labels:
+        client.knative.dev/nonce: trvsrzcntv
+        run.googleapis.com/startupProbeType: Default
+    spec:
+      containerConcurrency: 320
+      containers:
+      - env:
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: OPENAI_API_KEY
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: GOOGLE_API_KEY
+        - name: LOG_LEVEL
+          value: DEBUG SETTINGS_VERBOSE=1 MEMORY_ENABLED=true EMBED_MODEL_NAME=all-MiniLM-L6-v2
+            EMERGENCE_VECTOR_DIR=/app/.chroma EMERGENCE_UPLOADS_DIR=/app/data/uploads
+            EMERGENCE_DB_PATH=/app/data/emergence.db
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: ANTHROPIC_API_KEY
+        image: europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:fix-dockerfile-20250903051437
+        ports:
+        - containerPort: 8080
+          name: http1
+        resources:
+          limits:
+            cpu: '4'
+            memory: 4Gi
+        startupProbe:
+          failureThreshold: 1
+          periodSeconds: 240
+          tcpSocket:
+            port: 8080
+          timeoutSeconds: 240
+      serviceAccountName: 486095406755-compute@developer.gserviceaccount.com
+      timeoutSeconds: 900
+  traffic:
+  - latestRevision: true
+    percent: 100
+
