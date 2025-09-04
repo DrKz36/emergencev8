@@ -1,21 +1,55 @@
 # src/backend/features/threads/router.py
-# V1.5 — Retrait du prefix interne (montage géré par main.py) + alias GET/POST sans slash conservés
+# V1.7 — Auth dev-friendly: fallback X-User-Id (localhost / AUTH_DEV_MODE=1) + defaults anti-422
 from typing import List, Optional, Dict, Any
+import os
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from backend.core.database.manager import DatabaseManager
 from backend.core.database import queries
-from backend.shared.dependencies import get_user_id  # lit "X-User-Id"
+from backend.shared.dependencies import get_user_id as _strict_get_user_id  # garde prod stricte
 
-router = APIRouter(tags=["Threads"])  # ← plus de prefix ici (monté par main.py)
+router = APIRouter(tags=["Threads"])  # monté par main.py avec prefix /api/threads
 
 def get_db(request: Request) -> DatabaseManager:
     return request.app.state.service_container.db_manager()
 
+# --------- Auth relaxed (dev/local) ---------
+_LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
+
+def _is_dev_request(request: Request) -> bool:
+    if os.getenv("AUTH_DEV_MODE") == "1":
+        return True
+    try:
+        host = (request.client.host or "").strip().lower()
+        return host in _LOCAL_HOSTS
+    except Exception:
+        return False
+
+async def get_user_id_relaxed(request: Request) -> str:
+    """
+    Prod: utilise la dépendance stricte (Bearer obligatoire).
+    Dev/local: accepte aussi X-User-Id si pas de Bearer.
+    """
+    # 1) Essaie le mode strict (Bearer)
+    try:
+        return await _strict_get_user_id(request)
+    except Exception:
+        pass
+
+    # 2) Fallback dev/local : X-User-Id
+    if _is_dev_request(request):
+        for k in ("X-User-Id", "x-user-id", "X-USER-ID"):
+            uid = request.headers.get(k)
+            if uid and str(uid).strip():
+                return str(uid).strip()
+
+    # 3) Toujours échec → 401
+    raise HTTPException(status_code=401, detail="Authorization Bearer requis.")
+
 # ---------- Schemas ----------
 class ThreadCreate(BaseModel):
-    type: str = Field(pattern="^(chat|debate)$")
+    type: str = Field(default="chat", pattern="^(chat|debate)$")
     title: Optional[str] = None
     agent_id: Optional[str] = None
     meta: Optional[Dict[str, Any]] = None
@@ -27,7 +61,7 @@ class ThreadUpdate(BaseModel):
     meta: Optional[Dict[str, Any]] = None
 
 class MessageCreate(BaseModel):
-    role: str = Field(pattern="^(user|assistant|system|note)$")
+    role: str = Field(default="user", pattern="^(user|assistant|system|note)$")
     content: str
     agent_id: Optional[str] = None
     tokens: Optional[int] = None
@@ -41,7 +75,7 @@ class DocsSet(BaseModel):
 # ---------- Routes ----------
 @router.get("/")
 async def list_threads(
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_user_id_relaxed),
     db: DatabaseManager = Depends(get_db),
     type: Optional[str] = Query(default=None, pattern="^(chat|debate)$"),
     limit: int = Query(default=20, ge=1, le=100),
@@ -50,10 +84,9 @@ async def list_threads(
     items = await queries.get_threads(db, user_id=user_id, type_=type, limit=limit, offset=offset)
     return {"items": items}
 
-# Miroir sans slash (évite 404/405 par oubli du '/')
 @router.get("", include_in_schema=False)
 async def list_threads_no_slash(
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_user_id_relaxed),
     db: DatabaseManager = Depends(get_db),
     type: Optional[str] = Query(default=None, pattern="^(chat|debate)$"),
     limit: int = Query(default=20, ge=1, le=100),
@@ -65,7 +98,7 @@ async def list_threads_no_slash(
 @router.post("/", status_code=201)
 async def create_thread(
     payload: ThreadCreate,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_user_id_relaxed),
     db: DatabaseManager = Depends(get_db),
 ):
     tid = await queries.create_thread(
@@ -75,11 +108,10 @@ async def create_thread(
     thread = await queries.get_thread(db, tid, user_id)
     return {"id": tid, "thread": thread}
 
-# Miroir POST sans slash (corrige 405 quand le client poste sur /api/threads)
 @router.post("", status_code=201, include_in_schema=False)
 async def create_thread_no_slash(
     payload: ThreadCreate,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_user_id_relaxed),
     db: DatabaseManager = Depends(get_db),
 ):
     tid = await queries.create_thread(
@@ -89,7 +121,6 @@ async def create_thread_no_slash(
     thread = await queries.get_thread(db, tid, user_id)
     return {"id": tid, "thread": thread}
 
-# ---- DEBUG caché ----
 @router.get("/_debug/{thread_id}", include_in_schema=False)
 async def _debug_get_raw(thread_id: str, db: DatabaseManager = Depends(get_db)):
     row = await queries.get_thread_any(db, thread_id)
@@ -98,7 +129,7 @@ async def _debug_get_raw(thread_id: str, db: DatabaseManager = Depends(get_db)):
 @router.get("/{thread_id}")
 async def get_thread(
     thread_id: str,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_user_id_relaxed),
     db: DatabaseManager = Depends(get_db),
     messages_limit: int = Query(default=50, ge=1, le=200),
 ):
@@ -121,7 +152,7 @@ async def get_thread(
 async def update_thread(
     thread_id: str,
     payload: ThreadUpdate,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_user_id_relaxed),
     db: DatabaseManager = Depends(get_db),
 ):
     if not await queries.get_thread(db, thread_id, user_id):
@@ -138,7 +169,7 @@ async def update_thread(
 async def add_message(
     thread_id: str,
     payload: MessageCreate,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_user_id_relaxed),
     db: DatabaseManager = Depends(get_db),
 ):
     if not await queries.get_thread(db, thread_id, user_id):
@@ -159,7 +190,7 @@ async def add_message(
 @router.get("/{thread_id}/messages")
 async def list_messages(
     thread_id: str,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_user_id_relaxed),
     db: DatabaseManager = Depends(get_db),
     limit: int = Query(default=50, ge=1, le=200),
     before: Optional[str] = Query(default=None),
@@ -179,7 +210,7 @@ async def list_messages(
 async def set_docs(
     thread_id: str,
     payload: DocsSet,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_user_id_relaxed),
     db: DatabaseManager = Depends(get_db),
 ):
     if not await queries.get_thread(db, thread_id, user_id):
@@ -194,7 +225,7 @@ async def set_docs(
 @router.get("/{thread_id}/docs")
 async def get_docs(
     thread_id: str,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_user_id_relaxed),
     db: DatabaseManager = Depends(get_db),
 ):
     if not await queries.get_thread(db, thread_id, user_id):
@@ -205,7 +236,7 @@ async def get_docs(
 @router.post("/{thread_id}/export")
 async def export_thread(
     thread_id: str,
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_user_id_relaxed),
     db: DatabaseManager = Depends(get_db),
 ):
     thread = await queries.get_thread(db, thread_id, user_id)
