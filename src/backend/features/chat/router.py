@@ -1,5 +1,6 @@
 # src/backend/features/chat/router.py
-# V23.1 — Débat via WS: normalisation dot/colon + session_id transmis
+# V23.2 — + Heartbeat WS: répond à ws:ping par ws:pong (horodaté)
+#         + Débat/chat inchangés. Aucune modif d’architecture.
 
 import logging
 from uuid import uuid4
@@ -89,6 +90,19 @@ async def websocket_endpoint(
             if isinstance(message_type, str) and message_type in {"chat:send", "chat_message"}:
                 logger.info(f"[WS] Normalisation du type hérité '{message_type}' -> 'chat.message'")
                 message_type = "chat.message"
+
+            # ======================
+            # HEARTBEAT (ping/pong)
+            # ======================
+            if message_type in {"ws:ping", "ping"}:
+                try:
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:pong", "payload": {"ts": datetime.now(timezone.utc).isoformat()}},
+                        session_id
+                    )
+                except Exception as e:
+                    logger.warning(f"[WS] envoi pong impossible: {e}")
+                continue
 
             # ======================
             # DEBATE (non-stream)

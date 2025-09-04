@@ -1,9 +1,7 @@
 // src/frontend/core/websocket.js
-// WebSocketClient V22.1 — Handshake JWT via sub-protocol (no query token) + de-dup chat.message
-// + UI hooks: ws:model_info / ws:model_fallback / ws:chat_stream_start(ttfb) / ws:chat_stream_end(meta)
-// NOTE: remplace la V22.0 qui mettait le token en querystring (provoquait un échec WS côté serveur).  ✅
+// WebSocketClient V23.0 — JWT sub-protocol + de-dup + TTFB + ✅ Heartbeat (ws:ping/pong)
 
-import { EVENTS } from '../shared/constants.js';
+import { EVENTS, WS_CONFIG } from '../shared/constants.js';
 import { ensureAuth, getIdToken, clearAuth } from './auth.js';
 
 export class WebSocketClient {
@@ -29,9 +27,14 @@ export class WebSocketClient {
     // Metrics
     this._lastSendAt = 0;
 
+    // Heartbeat
+    this._hbTimer = null;
+    this._hbLastPongAt = 0;
+    this._hbIntervalMs = (WS_CONFIG && WS_CONFIG.HEARTBEAT_INTERVAL) ? WS_CONFIG.HEARTBEAT_INTERVAL : 30000;
+
     this._bindEventBus();
     this._bindStorageListener();
-    console.log('✅ WebSocketClient V22.1 (JWT sub-protocol + de-dup + TTFB) prêt.');
+    console.log('✅ WebSocketClient V23.0 (JWT + de-dup + TTFB + heartbeat) prêt.');
   }
 
   _bindEventBus() {
@@ -110,7 +113,6 @@ export class WebSocketClient {
     const loc = window.location;
     const scheme = (loc.protocol === 'https:') ? 'wss' : 'ws';
 
-    // URL de base: pas de token en querystring
     if (this.url && typeof this.url === 'string') {
       const hasProto = /^wss?:\/\//i.test(this.url);
       const base = hasProto
@@ -139,8 +141,7 @@ export class WebSocketClient {
 
     const url = this._buildUrl(sessionId);
 
-    // ✅ Passer le token dans le **sub-protocol** (exigé par le back) :
-    // `Sec-WebSocket-Protocol: jwt, <ID_TOKEN>`
+    // ✅ Sub-protocol exigé par le back : "jwt, <ID_TOKEN>"
     const protocols = token ? ['jwt', token] : [];
 
     try {
@@ -153,12 +154,21 @@ export class WebSocketClient {
 
     this.websocket.onopen = () => {
       this.reconnectAttempts = 0;
+      this._hbLastPongAt = Date.now();
+      this._startHeartbeat();
       this.eventBus.emit?.(EVENTS.WS_CONNECTED || 'ws:connected', { url });
     };
 
     this.websocket.onmessage = (ev) => {
       try {
         const msg = JSON.parse(ev.data);
+
+        // Heartbeat
+        if (msg?.type === 'ws:pong') {
+          this._hbLastPongAt = Date.now();
+          return;
+        }
+
         if (msg?.type === 'ws:auth_required') {
           this.eventBus.emit?.('auth:missing', msg?.payload || null);
           return;
@@ -213,6 +223,7 @@ export class WebSocketClient {
     };
 
     this.websocket.onclose = (ev) => {
+      this._stopHeartbeat();
       const code = ev?.code || 1006;
       if (code === 4401 || code === 1008) {
         // Auth manquante/invalidée → demander login puis stop auto-retry
@@ -227,8 +238,33 @@ export class WebSocketClient {
     this.websocket.onerror = (e) => { console.error('[WebSocket] error', e); };
   }
 
+  _startHeartbeat() {
+    this._stopHeartbeat();
+    this._hbLastPongAt = Date.now();
+    this._hbTimer = setInterval(() => {
+      try {
+        if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) return;
+        this.send({ type: 'ws:ping' });
+        // Si aucun pong ou aucun message depuis > 2 intervalles → reconnect soft
+        const now = Date.now();
+        if (now - this._hbLastPongAt > this._hbIntervalMs * 2) {
+          console.warn('[WebSocket] Heartbeat manqué → reconnect…');
+          this.close(4000, 'heartbeat-missed');
+          this._scheduleReconnect();
+        }
+      } catch (e) { console.warn('[WebSocket] heartbeat error', e); }
+    }, this._hbIntervalMs);
+  }
+
+  _stopHeartbeat() {
+    if (this._hbTimer) {
+      clearInterval(this._hbTimer);
+      this._hbTimer = null;
+    }
+  }
+
   close(code = 1000, reason = 'normal') {
-    try { this.websocket?.close(code, reason); } catch {} finally { this.websocket = null; }
+    try { this.websocket?.close(code, reason); } catch {} finally { this.websocket = null; this._stopHeartbeat(); }
   }
 
   send(frame) {

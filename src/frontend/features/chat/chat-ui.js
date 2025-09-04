@@ -1,9 +1,11 @@
 // src/frontend/features/chat/chat-ui.js
 /**
- * V27.2 — + Badge modèle/fallback (lecture chat.modelInfo + chat.lastMessageMeta)
- *        + Bouton "Clear" mémoire
- *        + Compteurs STM/LTM + TTFB déjà affichés
+ * V27.5 — Header Memory Banner + Clear (sans inline), synchro haut/bas, badge modèle conservé
+ * - Ajoute une bannière mémoire compacte dans le header, voisine du model-badge
+ * - Conserve les contrôles mémoire existants dans la toolbar basse (Analyze/Clear)
+ * - Met à jour STM/LTM/injected en haut ET en bas via update()
  */
+
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
 export class ChatUI {
@@ -18,12 +20,18 @@ export class ChatUI {
       // champs depuis chat.state
       memoryBannerAt: null,
       lastAnalysis: null,
-      metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null },
+      metrics: {
+        send_count: 0,
+        ws_start_count: 0,
+        last_ttfb_ms: 0,
+        rest_fallback_count: 0,
+        last_fallback_at: null
+      },
       memoryStats: { has_stm: false, ltm_items: 0, injected: false },
       modelInfo: null,
       lastMessageMeta: null
     };
-    console.log('✅ ChatUI V27.2 (badge modèle + clear mémoire) chargé.');
+    console.log('✅ ChatUI V27.5 (header memory banner + clear) chargé.');
   }
 
   render(container, chatState = {}) {
@@ -34,15 +42,19 @@ export class ChatUI {
 
     container.innerHTML = `
       <div class="chat-container card">
-        <div class="chat-header card-header" style="display:flex;align-items:center;gap:.75rem;">
+        <div class="chat-header card-header">
           <div class="chat-title">Dialogue</div>
           <div class="agent-selector">${agentTabs}</div>
-          <div id="model-badge"
-               class="model-badge"
-               style="margin-left:auto;padding:2px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);
-                      font:12px/1.2 system-ui,Segoe UI,Roboto,Arial;opacity:.9;background:linear-gradient(135deg,#1a1a1a,#0f172a);color:#e5e7eb">
-            —
+
+          <!-- === Header memory banner (compact) === -->
+          <div id="header-memory" class="memory-banner">
+            <span id="hmem-dot" class="dot" aria-hidden="true"></span>
+            <span id="hmem-counters" class="memory-counters">STM 0 • LTM 0</span>
+            <button type="button" id="hmem-clear" class="button mem-clear" title="Effacer la mémoire de session">Effacer</button>
           </div>
+
+          <!-- === Model badge (prévu/utilisé + TTFB) === -->
+          <div id="model-badge" class="model-badge">—</div>
         </div>
 
         <div class="chat-messages card-body" id="chat-messages"></div>
@@ -52,7 +64,7 @@ export class ChatUI {
             <textarea id="chat-input" class="chat-input" rows="3" placeholder="Écrivez votre message..."></textarea>
           </form>
 
-          <div class="chat-actions" style="display:flex;align-items:center;flex-wrap:wrap;gap:.5rem">
+          <div class="chat-actions">
             <div class="rag-control">
               <button
                 type="button"
@@ -69,11 +81,11 @@ export class ChatUI {
               <span id="rag-label" class="rag-label">RAG</span>
             </div>
 
-            <!-- === Mémoire === -->
-            <div class="memory-control" style="display:flex;align-items:center;gap:.5rem;margin-left:.6rem">
-              <span id="memory-dot" aria-hidden="true" style="width:10px;height:10px;border-radius:50%;background:#6b7280;display:inline-block"></span>
+            <!-- === Mémoire (toolbar basse) === -->
+            <div class="memory-control">
+              <span id="memory-dot" class="dot" aria-hidden="true"></span>
               <span id="memory-label" class="memory-label" title="Statut mémoire">Mémoire OFF</span>
-              <span id="memory-counters" class="memory-counters" style="font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.85"></span>
+              <span id="memory-counters" class="memory-counters"></span>
               <button type="button" id="memory-analyze" class="button" title="Analyser / consolider la mémoire">Analyser</button>
               <button type="button" id="memory-clear" class="button" title="Effacer la mémoire de session">Clear</button>
             </div>
@@ -86,7 +98,7 @@ export class ChatUI {
           </div>
 
           <!-- === Métriques Chat === -->
-          <div id="chat-metrics" class="chat-metrics" style="margin-top:6px;font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.85">
+          <div id="chat-metrics" class="chat-metrics">
             <span id="metric-ttfb">TTFB: — ms</span>
             <span aria-hidden="true">•</span>
             <span id="metric-fallbacks">Fallback REST: 0</span>
@@ -113,7 +125,7 @@ export class ChatUI {
     const list = this._asArray(raw).map((m) => this._normalizeMessage(m));
     this._renderMessages(container.querySelector('#chat-messages'), list);
 
-    // --- Mémoire (statut + libellé + **compteurs**) ---
+    // --- Mémoire (ON/OFF + compteurs) bas
     const memoryOn = !!(this.state.memoryBannerAt || (this.state.lastAnalysis && this.state.lastAnalysis.status === 'completed'));
     const dot = container.querySelector('#memory-dot');
     const lbl = container.querySelector('#memory-label');
@@ -129,7 +141,18 @@ export class ChatUI {
       cnt.textContent = `${stmTxt} • ${ltmTxt}${inj ? ' ' + inj : ''}`;
     }
 
-    // --- Badge modèle / fallback ---
+    // --- Mémoire (header compact)
+    const hdot = container.querySelector('#hmem-dot');
+    const hcnt = container.querySelector('#hmem-counters');
+    if (hdot) hdot.style.background = memoryOn ? '#22c55e' : '#6b7280';
+    if (hcnt) {
+      const stmTxtH = mem.has_stm ? 'STM ✓' : 'STM 0';
+      const ltmTxtH = `LTM ${Number(mem.ltm_items || 0)}`;
+      const injH = mem.injected ? '• inj' : '';
+      hcnt.textContent = `${stmTxtH} • ${ltmTxtH}${injH ? ' ' + injH : ''}`;
+    }
+
+    // --- Badge modèle / fallback
     const badge = container.querySelector('#model-badge');
     if (badge) {
       const mi = this.state.modelInfo || {};
@@ -162,8 +185,9 @@ export class ChatUI {
     const sendBtn = container.querySelector('#chat-send');
     const memBtn  = container.querySelector('#memory-analyze');
     const memClr  = container.querySelector('#memory-clear');
+    const hmemClr = container.querySelector('#hmem-clear');
 
-    /* Autosize — textarea s’adapte à la frappe (desktop & mobile) */
+    /* Autosize */
     const autosize = () => this._autoGrow(input);
     setTimeout(autosize, 0);
     input?.addEventListener('input', autosize);
@@ -178,7 +202,6 @@ export class ChatUI {
       autosize();
     });
 
-    // ENTER → envoi | Shift+Enter → saut de ligne
     input?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -187,7 +210,7 @@ export class ChatUI {
       }
     });
 
-    // Clic avion → submit du formulaire
+    // Clic avion → submit
     sendBtn?.addEventListener('click', () => {
       if (typeof form.requestSubmit === 'function') form.requestSubmit();
       else form?.dispatchEvent(new Event('submit', { cancelable: true }));
@@ -209,6 +232,7 @@ export class ChatUI {
     // Mémoire — actions
     memBtn?.addEventListener('click', () => this.eventBus.emit('memory:tend'));
     memClr?.addEventListener('click', () => this.eventBus.emit('memory:clear'));
+    hmemClr?.addEventListener('click', () => this.eventBus.emit('memory:clear'));
 
     container.querySelector('.agent-selector')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-agent-id]');
@@ -219,7 +243,7 @@ export class ChatUI {
     });
   }
 
-  /* ----- Helpers UI ------------------------------------------------------ */
+  /* ----- Helpers UI ----- */
 
   _autoGrow(el){
     if (!el) return;
@@ -232,7 +256,7 @@ export class ChatUI {
   _renderMessages(host, messages) {
     if (!host) return;
     const html = (messages || []).map(m => this._messageHTML(m)).join('');
-    host.innerHTML = html || `<div class="placeholder" style="opacity:.6;padding:1rem;">Commence à discuter…</div>`;
+    host.innerHTML = html || `<div class="placeholder">Commence à discuter…</div>`;
     host.scrollTo(0, 1e9);
   }
 
