@@ -1,20 +1,23 @@
 /**
  * @module core/app
- * @description Cœur de l'application ÉMERGENCE - V35.0 "ThreadBootstrap"
- * - Bootstrap du thread courant au premier affichage (persist inter-sessions).
- * - Navigation déléguée inchangée.
+ * @description Cœur de l'application ÉMERGENCE - V35.2 "ThreadBootstrap + Memory Preload + persist localStorage"
+ * - Purge 404 (ré-alignement threads.currentId si getThreadById() renvoie un ID différent)
+ * - Pré-charge bannière mémoire via GET /api/memory/status au APP_READY
+ * - ✅ Persist de l’ID de thread dans localStorage pour éviter tout 404 parasite au reboot
  */
 
 import { EVENTS } from '../shared/constants.js';
-import { api } from '../shared/api-client.js'; // + Threads API
+import { api } from '../shared/api-client.js';
 
-// [CORRECTION VITE]
+// [CORRECTION VITE] : mapping dynamique des features
 const moduleLoaders = {
   chat: () => import('../features/chat/chat.js'),
   debate: () => import('../features/debate/debate.js'),
   documents: () => import('../features/documents/documents.js'),
   dashboard: () => import('../features/dashboard/dashboard.js'),
 };
+
+const LS_THREAD_KEY = 'currentThreadId';
 
 export class App {
   constructor(eventBus, state) {
@@ -44,7 +47,7 @@ export class App {
     ];
     this.activeModule = 'chat';
 
-    console.log('✅ App V35.0 (ThreadBootstrap) Initialisée.');
+    console.log('✅ App V35.2 (ThreadBootstrap + Memory Preload + persist localStorage) Initialisée.');
     this.init();
   }
 
@@ -111,18 +114,23 @@ export class App {
 
   /**
    * Assure qu'un thread courant existe et charge son contenu.
-   * - Cherche le dernier thread type=chat (limit=1)
-   * - Sinon en crée un
-   * - Stocke l'id dans state.threads.currentId
-   * - Charge le thread (messages_limit=50) et le stocke dans state.threads.map.{id}
+   * - Cherche le dernier thread type=chat (limit=1) ; sinon en crée un
+   * - Stocke l'id dans state.threads.currentId (+ localStorage)
+   * - Charge le thread et le stocke dans state.threads.map.{id}
    * - Emet 'threads:ready' puis 'threads:loaded'
+   * - ✅ Si getThreadById() renvoie un ID différent (fallback 404->création), on ré-aligne threads.currentId + localStorage
    */
   async ensureCurrentThread() {
     try {
       let currentId = this.state.get('threads.currentId');
+
+      // Fallback localStorage si state vide
+      if (!currentId || typeof currentId !== 'string' || currentId.length < 8) {
+        try { const ls = localStorage.getItem(LS_THREAD_KEY); if (ls && ls.length > 8) currentId = ls; } catch {}
+      }
+
       if (!currentId || typeof currentId !== 'string' || currentId.length < 8) {
         const list = await api.listThreads({ type: 'chat', limit: 1 });
-        // tolère 'items' ou liste brute
         const found = Array.isArray(list?.items) ? list.items[0] : Array.isArray(list) ? list[0] : null;
         if (found?.id) {
           currentId = found.id;
@@ -130,13 +138,20 @@ export class App {
           const created = await api.createThread({ type: 'chat', title: 'Conversation' });
           currentId = created?.id;
         }
-        if (currentId) this.state.set('threads.currentId', currentId);
+        if (currentId) {
+          this.state.set('threads.currentId', currentId);
+          try { localStorage.setItem(LS_THREAD_KEY, currentId); } catch {}
+        }
       }
 
       if (currentId) {
         this.eventBus.emit('threads:ready', { id: currentId });
         const thread = await api.getThreadById(currentId, { messages_limit: 50 });
         if (thread?.id) {
+          if (thread.id !== currentId) {
+            this.state.set('threads.currentId', thread.id); // réalignement
+            try { localStorage.setItem(LS_THREAD_KEY, String(thread.id)); } catch {}
+          }
           this.state.set(`threads.map.${thread.id}`, thread);
           this.eventBus.emit('threads:loaded', thread);
         }
@@ -150,7 +165,6 @@ export class App {
     if (!moduleId || !this.dom.content) return;
     this.clearSkeleton();
 
-    // Bootstrap thread AVANT le premier mount du module 'chat'
     if (isInitialLoad) {
       await this.ensureCurrentThread();
     }
@@ -171,6 +185,26 @@ export class App {
 
     if (isInitialLoad) {
       this.eventBus.emit(EVENTS.APP_READY);
+
+      // ✅ Pré-charge bannière mémoire (affiche STM/LTM/Injecté même avant le 1er ws:memory_banner)
+      try {
+        const s = await api.getMemoryStatus();
+        const payload = {
+          has_stm: !!(s?.report?.stm?.has || s?.report?.has_stm || s?.has_stm),
+          ltm_items: Number(s?.report?.ltm?.count ?? s?.report?.ltm_items ?? s?.ltm_items ?? 0),
+          injected_into_prompt: !!(s?.report?.injected ?? s?.injected_into_prompt ?? false)
+        };
+        this.state.set('chat.memoryStats', {
+          has_stm: !!payload.has_stm,
+          ltm_items: Number.isFinite(payload.ltm_items) ? payload.ltm_items : 0,
+          injected: !!payload.injected_into_prompt
+        });
+        this.state.set('chat.memoryBannerAt', Date.now());
+        this.eventBus.emit('ws:memory_banner', payload);
+      } catch (e) {
+        console.warn('[App] Pré-charge mémoire non disponible.', e?.message || e);
+      }
+
       this.preloadOtherModules();
     }
   }

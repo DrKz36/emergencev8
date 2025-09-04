@@ -2,7 +2,7 @@
 /**
  * @file /src/frontend/shared/api-client.js
  * @description Client API centralisé pour les requêtes HTTP (Fetch).
- * @version V4.8 - durcissement threadId: sanitize + fallback (getThreadById) + garde (appendMessage)
+ * @version V4.9 - + getMemoryStatus() ; durcissement threadId & fallbacks
  */
 
 import { API_ENDPOINTS } from './config.js';
@@ -19,6 +19,11 @@ const MEMORY_CLEAR =
   (API_ENDPOINTS && (API_ENDPOINTS.MEMORY_CLEAR || API_ENDPOINTS.MEMORY_DELETE))
     ? (API_ENDPOINTS.MEMORY_CLEAR || API_ENDPOINTS.MEMORY_DELETE)
     : '/api/memory/clear';
+
+const MEMORY_STATUS =
+  (API_ENDPOINTS && (API_ENDPOINTS.MEMORY_STATUS))
+    ? API_ENDPOINTS.MEMORY_STATUS
+    : '/api/memory/status';
 
 const DEFAULT_TIMEOUT_MS = 15000;
 
@@ -73,9 +78,9 @@ function normalizeThreadId(val) {
 
 /**
  * Auth headers:
- * - Tente TOUJOURS d’abord un ID token GIS (y compris en localhost).
- * - Si aucun token et qu’on est en localhost → fallback entêtes de dev.
- * - Ajoute TOUJOURS X-Session-Id si disponible (corrélation REST/WS).
+ * - Tente TOUJOURS un ID token GIS (y compris en localhost).
+ * - Si aucun token et en localhost → fallback entêtes de dev.
+ * - Ajoute TOUJOURS X-Session-Id si dispo (corrélation REST/WS).
  */
 async function getAuthHeaders() {
   let token = null;
@@ -246,10 +251,10 @@ export const api = {
   },
 
   /* ------------------------ MEMORY ----------------------- */
-  // Lance l’analyse/compactage mémoire (non bloquant).
+  // Analyse/compactage (non bloquant)
   tendMemory: () => fetchApi(MEMORY_TEND, { method: 'POST', body: {} }),
 
-  // Efface la mémoire de session. Essaie DELETE /api/memory/clear ; si non supporté → POST /api/memory/clear
+  // Effacement mémoire (DELETE puis fallback POST)
   clearMemory: async () => {
     try {
       return await fetchApi(MEMORY_CLEAR, { method: 'DELETE' });
@@ -260,9 +265,19 @@ export const api = {
       throw err;
     }
   },
+
+  // ✅ Nouveau : statut mémoire (pré-charge bannière)
+  getMemoryStatus: async () => {
+    try {
+      return await fetchApi(MEMORY_STATUS, { method: 'GET' });
+    } catch (err) {
+      console.warn('[API Client] /api/memory/status indisponible.', err);
+      throw err;
+    }
+  },
 };
 
-// Qualité de vie: accès console en dev
+// Accès console en dev
 try {
   if (isLocalhost() && typeof window !== 'undefined') {
     // @ts-ignore
