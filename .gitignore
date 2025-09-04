@@ -72,3 +72,9 @@ pnpm-lock.yaml
 # --- Exceptions utiles
 !assets/**
 !*.ico
+
+# Local ops dumps
+openapi_canary.json
+Cloud_deploy_*.txt
+svc_from_canary.yaml
+
