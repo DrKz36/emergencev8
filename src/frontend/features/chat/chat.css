@@ -1,5 +1,6 @@
-/* src/frontend/features/chat/chat.css — V11.6 (Send button fixed, RAG styles, mobile ergonomics++) */
+/* src/frontend/features/chat/chat.css — V11.7 (Memory banner + keep V11.6) */
 
+/* ====== (contenu existant V11.6) ====== */
 :root{
   --glass-bg: rgba(22,22,26,.55);
   --glass-blur: 18px;
@@ -175,12 +176,11 @@
 .chat-actions #chat-clear:active{ background:#b91c1c !important; border-color:#b91c1c !important; }
 
 /* ===================== SEND (flèche) — FIX ===================== */
-/* Cible large pour capter toutes les variantes communes */
 .chat-actions .chat-send-button,
 .chat-actions button#chat-send,
 .chat-actions button.send,
 .chat-actions button[type="submit"]{
-  order: 999;                 /* toujours en fin de ligne */
+  order: 999;
   margin-left: auto !important;
   display:inline-flex !important; align-items:center !important; justify-content:center !important;
   width:36px !important; height:36px !important;
@@ -190,14 +190,14 @@
   -webkit-backdrop-filter: blur(8px) saturate(125%) !important;
   backdrop-filter: blur(8px) saturate(125%) !important;
   box-shadow: 0 8px 20px rgba(0,0,0,.28) !important;
-  position: relative; z-index: 3;  /* au-dessus de tout */
+  position: relative; z-index: 3;
   padding: 0 !important;
   line-height: 1 !important;
 }
 .chat-actions .chat-send-button:hover,
 .chat-actions button#chat-send:hover,
 .chat-actions button.send:hover,
-.chat-actions button[type="submit"]:hover{
+.chat-actions button[type="submit"]{
   filter: brightness(1.06);
 }
 .chat-actions .chat-send-button:active,
@@ -207,12 +207,11 @@
   transform: translateY(1px);
 }
 
-/* Icône interne (SVG / pseudo-texte) */
 .chat-actions .chat-send-button > *,
 .chat-actions button#chat-send > *,
 .chat-actions button.send > *,
 .chat-actions button[type="submit"] > *{
-  pointer-events: none;      /* assure le clic sur le bouton, pas sur l’icône */
+  pointer-events: none;
 }
 .chat-actions .chat-send-button svg,
 .chat-actions button#chat-send svg,
@@ -230,3 +229,30 @@
   .message{ width: 100%; }
   .chat-input{ min-height: clamp(52px, 8.8vh, 92px); }
 }
+
+/* ===================== MÉMOIRE — BANNIÈRE ===================== */
+.memory-banner{
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.35rem .5rem; border-radius:10px;
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+  border:1px solid rgba(255,255,255,.14);
+  -webkit-backdrop-filter: blur(6px) saturate(120%); backdrop-filter: blur(6px) saturate(120%);
+  color:#fff; font-size:.82rem; box-shadow:0 6px 16px rgba(0,0,0,.22);
+}
+.memory-banner .pill{
+  display:inline-flex; align-items:center; gap:.35rem;
+  height:22px; padding:0 .55rem; border-radius:999px; font-weight:700; letter-spacing:.02em;
+  border:1px solid rgba(255,255,255,.18);
+  background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.05));
+}
+.memory-banner .pill .dot{
+  width:8px; height:8px; border-radius:999px; display:inline-block; background:#9ca3af;
+}
+.memory-banner .pill.ok .dot{ background:#16a34a; }     /* vert  */
+.memory-banner .pill.ko .dot{ background:#dc2626; }     /* rouge */
+.memory-banner .sep{
+  width:1px; height:18px; background:rgba(255,255,255,.15); margin:0 .2rem;
+}
+
+/* Placement à droite du header */
+.chat-header .memory-banner{ margin-left:auto; }
