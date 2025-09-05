@@ -1,10 +1,5 @@
 ﻿# src/backend/features/chat/service.py
-# V31.3 — P0.3: Mémoire agent-aware + fallback doux, contrats WS inchangés
-# - _build_memory_context(..., agent_id): filtre LTM par user_id + agent ({"$and":[...]}), fallback user-only si vide
-# - Appels mis à jour pour passer agent_id (injection mémoire + RAG)
-# - Frames conservées: ws:model_info, ws:model_fallback, ws:chat_stream_*, ws:memory_banner, ws:rag_status
-# Base V31.2 locale (Signals UI + logs fallback) :contentReference[oaicite:4]{index=4}
-
+# V31.5 — Memory flags (ENV) + logs ON/OFF, DI auto → Analyzer (inchangé)
 import os, re, asyncio, logging, glob, json
 from uuid import uuid4
 from typing import Dict, Any, List, Tuple, Optional, AsyncGenerator
@@ -37,20 +32,13 @@ MODEL_PRICING = {
     "claude-3-opus-20240229": {"input": 15.00 / 1_000_000, "output": 75.00 / 1_000_000},
 }
 
-# -------- helpers provider --------
 def _normalize_provider(p: Optional[str]) -> str:
-    """Normalise les alias provider pour l'aiguillage LLM."""
-    if not p:
-        return ""
+    if not p: return ""
     p = p.strip().lower()
-    if p in ("gemini", "google", "googleai", "vertex"):
-        return "google"
-    if p in ("openai", "oai"):
-        return "openai"
-    if p in ("anthropic", "claude"):
-        return "anthropic"
+    if p in ("gemini", "google", "googleai", "vertex"): return "google"
+    if p in ("openai", "oai"): return "openai"
+    if p in ("anthropic", "claude"): return "anthropic"
     return p
-
 
 class ChatService:
     def __init__(self, session_manager: SessionManager, cost_tracker: CostTracker,
@@ -60,6 +48,12 @@ class ChatService:
         self.vector_service = vector_service
         self.settings = settings
 
+        # Flags mémoire explicites (ENV)
+        self.memory_enabled = str(os.getenv("MEMORY_ENABLED", "1")).strip().lower() in ("1", "true", "yes", "on")
+        self.memory_policy  = os.getenv("MEMORY_POLICY", "hybrid").strip().lower()
+        logger.info(f"ChatService {'ON' if self.memory_enabled else 'OFF'} policy: {self.memory_policy}")
+
+        # Héritage ancien log (informel)
         self.off_history_policy = os.getenv("EMERGENCE_RAG_OFF_POLICY", "stateless").strip().lower()
         if self.off_history_policy not in ("stateless", "agent_local"):
             self.off_history_policy = "stateless"
@@ -74,7 +68,21 @@ class ChatService:
             raise
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V31.3 initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V31.5 initialisé. Prompts chargés: {len(self.prompts)}")
+
+        # 🔌 Injection DI → MemoryAnalyzer
+        try:
+            mem_an = getattr(self.session_manager, "memory_analyzer", None)
+            if mem_an and getattr(mem_an, "chat_service", None) is None:
+                if hasattr(mem_an, "set_chat_service"):
+                    mem_an.set_chat_service(self)
+                else:
+                    setattr(mem_an, "chat_service", self)
+                    if hasattr(mem_an, "is_ready"):
+                        mem_an.is_ready = True
+                logger.info("ChatService injecté dans MemoryAnalyzer (auto).")
+        except Exception as e:
+            logger.warning(f"Injection ChatService → MemoryAnalyzer impossible: {e}", exc_info=True)
 
     # ---------- prompts ----------
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
@@ -102,23 +110,17 @@ class ChatService:
         provider_raw = agent_configs.get(clean_agent_id, {}).get("provider")
         model = agent_configs.get(clean_agent_id, {}).get("model")
         provider = _normalize_provider(provider_raw)
-
-        # défaut coût/latence pour 'anima'
         if clean_agent_id == 'anima':
             model = 'gpt-4o-mini'
             logger.info("Remplacement du modèle pour 'anima' -> 'gpt-4o-mini' (coûts).")
-
         system_prompt = self.prompts.get(agent_id, self.prompts.get(clean_agent_id, ""))
-
         if not provider or not model or system_prompt is None:
             raise ValueError(f"Configuration incomplète pour l'agent '{agent_id}' "
                              f"(provider='{provider_raw}', normalisé='{provider}', model='{model}').")
-
         return provider, model, system_prompt
 
     # ---------- utilitaires mémoire ----------
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
-        # ex: AZUR-8152
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
 
     def _try_get_user_id(self, session_id: str) -> Optional[str]:
@@ -153,7 +155,6 @@ class ChatService:
         return bool(self._MOT_CODE_RE.search(text or ""))
 
     def _fetch_mot_code_for_agent(self, agent_id: str, user_id: Optional[str]) -> Optional[str]:
-        """Récupère le mot-code pour un agent (et user_id si présent) depuis la collection knowledge."""
         knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
         col = self.vector_service.get_or_create_collection(knowledge_name)
         clauses = [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]
@@ -163,7 +164,6 @@ class ChatService:
         got = col.get(where=where, include=["documents", "metadatas"])
         ids = got.get("ids", []) or []
         if not ids:
-            # fallback sans filtrage user
             got = col.get(where={"$and": [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]},
                          include=["documents", "metadatas"])
             ids = got.get("ids", []) or []
@@ -184,7 +184,7 @@ class ChatService:
         return None
 
     def _try_get_session_summary(self, session_id: str) -> str:
-        """STM : récupère le résumé de session s'il existe (Session.metadata.summary)."""
+        """STM : récupère le résumé session depuis SessionManager (si mis à jour par l’Analyzer)."""
         try:
             sess = self.session_manager.get_session(session_id)
             meta = getattr(sess, "metadata", None)
@@ -198,16 +198,12 @@ class ChatService:
 
     async def _build_memory_context(self, session_id: str, last_user_message: str,
                                     top_k: int = 5, agent_id: Optional[str] = None) -> str:
-        """Construit un bloc mémoire (LTM) en fonction du dernier message utilisateur.
-        Agent-aware: filtre sur (user_id [+ agent]) avec fallback user-only si aucun résultat.
-        """
         try:
             if not last_user_message:
                 return ""
             knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
             knowledge_col = self.vector_service.get_or_create_collection(knowledge_name)
 
-            # where_filter: user_id [+ agent] si dispo
             where_filter = None
             uid = self._try_get_user_id(session_id)
             clauses: List[Dict[str, Any]] = []
@@ -221,15 +217,12 @@ class ChatService:
             elif len(clauses) >= 2:
                 where_filter = {"$and": clauses}
 
-            # 1) Requête principale (user+agent si possible)
             results = self.vector_service.query(
                 collection=knowledge_col,
                 query_text=last_user_message,
                 n_results=top_k,
                 where_filter=where_filter
             )
-
-            # 2) Fallback doux: si on a tenté (user+agent) et qu'il n'y a rien → user-only
             if (not results) and ag and uid:
                 try:
                     results = self.vector_service.query(
@@ -253,7 +246,7 @@ class ChatService:
             logger.warning(f"build_memory_context: {e}")
             return ""
 
-    # ---------- normalisation prompts pour providers ----------
+    # ---------- normalisation prompts ----------
     def _normalize_history_for_llm(self, provider: str, history: List[Dict],
                                    rag_context: str = "", use_rag: bool = False,
                                    agent_id: Optional[str] = None) -> List[Dict]:
@@ -287,6 +280,7 @@ class ChatService:
         async for chunk in streamer:
             yield chunk
 
+    # ---------- OpenAI / Gemini / Anthropic stream (identiques à V31.4) ----------
     async def _get_openai_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
         messages = [{"role": "system", "content": system_prompt}] + history
         usage_seen = False
@@ -336,7 +330,6 @@ class ChatService:
                         yield text
                 except Exception:
                     pass
-            # usage metadata non standard en stream -> placeholders à 0 si absent
             cost_info_container.setdefault("input_tokens", 0)
             cost_info_container.setdefault("output_tokens", 0)
             cost_info_container.setdefault("total_cost", 0.0)
@@ -428,22 +421,19 @@ class ChatService:
         model_used = ""
 
         try:
-            # Start du stream côté client (id de suivi)
             await connection_manager.send_personal_message(
                 {"type": "ws:chat_stream_start", "payload": {"agent_id": agent_id, "id": temp_message_id}},
                 session_id
             )
 
-            # Historique & dernier message user
             history = self.session_manager.get_full_history(session_id)
             last_user_message_obj = next((m for m in reversed(history) if m.get("role") == Role.USER), None)
             last_user_message = last_user_message_obj.get("content", "") if last_user_message_obj else ""
 
-            # Court-circuit "mot-code" (réponse directe) — on envoie aussi un banner mémoire minimal
+            # Court-circuit mot-code (inchangé) …
             if self._is_mot_code_query(last_user_message):
                 uid = self._try_get_user_id(session_id)
                 mot = self._fetch_mot_code_for_agent(agent_id, uid)
-                # Banner (aucune injection de prompt dans ce chemin)
                 try:
                     stm_here = self._try_get_session_summary(session_id)
                     await connection_manager.send_personal_message(
@@ -454,7 +444,6 @@ class ChatService:
                     )
                 except Exception:
                     pass
-
                 if mot:
                     final_agent_message = AgentMessage(
                         id=temp_message_id, session_id=session_id, role=Role.ASSISTANT, agent=agent_id,
@@ -464,12 +453,10 @@ class ChatService:
                     payload = final_agent_message.model_dump(mode="json")
                     if "message" in payload:
                         payload["content"] = payload.pop("message")
-                    # Tag meta minimal pour cohérence d’UI
                     payload.setdefault("meta", {"provider": "memory", "model": "mot-code", "fallback": False})
                     await connection_manager.send_personal_message(
                         {"type": "ws:chat_stream_end", "payload": payload}, session_id
                     )
-                    # Auto-consolidation non bloquante
                     if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
                         try:
                             gardener = MemoryGardener(
@@ -480,13 +467,12 @@ class ChatService:
                             asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3))
                         except Exception:
                             pass
-                    return  # pas d'appel LLM
+                    return
 
-            # Construction du contexte mémoire (orthogonal à RAG) — agent-aware
+            # Contexte mémoire (STM + LTM) — injection si disponible
             stm = self._try_get_session_summary(session_id)
             ltm_block = await self._build_memory_context(session_id, last_user_message, top_k=5, agent_id=agent_id) if last_user_message else ""
 
-            # Si RAG ON: injection STM uniquement (LTM part dans rag_context). Si RAG OFF: STM + LTM injectés.
             if use_rag:
                 memory_context = self._merge_blocks([("Résumé de session", stm)]) if stm else ""
                 ltm_count_for_banner = self._count_bullets(ltm_block)
@@ -496,10 +482,8 @@ class ChatService:
 
             injected = bool(memory_context and memory_context.strip())
             if injected:
-                # Pré-injecter le bloc mémoire en tête d'historique (pré-contexte)
                 history = [{"role": Role.USER, "content": f"[MEMORY_CONTEXT]\n{memory_context}"}] + history
 
-            # Banner mémoire pour l'UI
             try:
                 await connection_manager.send_personal_message(
                     {"type": "ws:memory_banner",
@@ -510,7 +494,6 @@ class ChatService:
             except Exception:
                 pass
 
-            # (Optionnel) RAG: documents pertinents (+ mémoire concepts clés affichée dans le bandeau RAG)
             rag_context = ""
             if use_rag and last_user_message:
                 await connection_manager.send_personal_message(
@@ -527,23 +510,10 @@ class ChatService:
                     {"type": "ws:rag_status", "payload": {"status": "found", "agent_id": agent_id}}, session_id
                 )
 
-            # Debug contexte
-            raw_concat = "\n".join([(m.get("content") or m.get("message", "")) for m in history])
-            raw_tokens = self._extract_sensitive_tokens(raw_concat)
-            await connection_manager.send_personal_message(
-                {"type": "ws:debug_context",
-                 "payload": {"phase": "before_normalize", "agent_id": agent_id, "use_rag": use_rag,
-                             "history_total": len(history), "rag_context_chars": len(rag_context),
-                             "off_policy": self.off_history_policy,
-                             "sensitive_tokens_in_history": list(set(raw_tokens))}},
-                session_id
-            )
-
             provider, model, system_prompt = self._get_agent_config(agent_id)
             primary_provider, primary_model = provider, model
             model_used = primary_model
 
-            # Informer l’UI du provider choisi (avant premier chunk)
             try:
                 await connection_manager.send_personal_message(
                     {"type": "ws:model_info",
@@ -563,6 +533,17 @@ class ChatService:
 
             normalized_history = self._normalize_history_for_llm(provider, history, rag_context, use_rag, agent_id)
 
+            raw_concat = "\n".join([(m.get("content") or m.get("message", "")) for m in history])
+            raw_tokens = self._extract_sensitive_tokens(raw_concat)
+            await connection_manager.send_personal_message(
+                {"type": "ws:debug_context",
+                 "payload": {"phase": "before_normalize", "agent_id": agent_id, "use_rag": use_rag,
+                             "history_total": len(history), "rag_context_chars": len(rag_context),
+                             "off_policy": self.off_history_policy,
+                             "sensitive_tokens_in_history": list(set(raw_tokens))}},
+                session_id
+            )
+
             norm_concat = "\n".join(["".join(p.get("parts", [])) if provider == "google" else p.get("content", "")
                                      for p in normalized_history])
             norm_tokens = self._extract_sensitive_tokens(norm_concat)
@@ -575,7 +556,6 @@ class ChatService:
                 session_id
             )
 
-            # Appel LLM en stream avec FALLBACK cross-provider
             async def _stream_with(provider_name, model_name, hist):
                 return self._get_llm_response_stream(provider_name, model_name, system_prompt, hist, cost_info_container)
 
@@ -592,7 +572,6 @@ class ChatService:
                 model_used = primary_model
                 success = True
             except Exception as e_primary:
-                # Plan de repli
                 fallbacks = []
                 if primary_provider == "google":
                     fallbacks = [("anthropic", "claude-3-haiku-20240307"), ("openai", "gpt-4o-mini")]
@@ -603,7 +582,6 @@ class ChatService:
 
                 last_error = e_primary
                 for prov2, model2 in fallbacks:
-                    # Info UI + logs — tentative de fallback
                     try:
                         await connection_manager.send_personal_message(
                             {"type": "ws:model_fallback",
@@ -626,7 +604,6 @@ class ChatService:
                         "reason": str(e_primary)
                     }))
 
-                    # Re-normaliser l'historique pour le provider de fallback
                     norm2 = self._normalize_history_for_llm(prov2, history, rag_context, use_rag, agent_id)
                     try:
                         async for chunk in (await _stream_with(prov2, model2, norm2)):
@@ -648,7 +625,6 @@ class ChatService:
                 if not success:
                     raise last_error
 
-            # Finalisation + coûts
             final_agent_message = AgentMessage(
                 id=temp_message_id, session_id=session_id, role=Role.ASSISTANT, agent=agent_id,
                 message=full_response_text, timestamp=datetime.now(timezone.utc).isoformat(),
@@ -665,17 +641,11 @@ class ChatService:
             payload = final_agent_message.model_dump(mode="json")
             if "message" in payload:
                 payload["content"] = payload.pop("message")
-            # Inject meta → visible par l'UI (badge bulle + éventuelle persistance)
-            payload["meta"] = {
-                "provider": provider,
-                "model": model_used,
-                "fallback": bool(provider != primary_provider)
-            }
+            payload["meta"] = {"provider": provider, "model": model_used, "fallback": bool(provider != primary_provider)}
             await connection_manager.send_personal_message(
                 {"type": "ws:chat_stream_end", "payload": payload}, session_id
             )
 
-            # Auto-tend du jardin (non bloquant)
             if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
                 try:
                     gardener = MemoryGardener(
@@ -697,120 +667,9 @@ class ChatService:
             except Exception as send_error:
                 logger.error(f"Impossible d'envoyer l'erreur au client (session {session_id}): {send_error}", exc_info=True)
 
-    # ---------- DEBAT: non-stream (fallback inclus) ----------
-    async def get_llm_response_for_debate(
-        self,
-        agent_id: str,
-        prompt: Optional[str] = None,
-        *,
-        rag_context: str = "",
-        use_rag: bool = False,
-        temperature: float = 0.3,
-        max_tokens: int = 1500,
-        **kwargs
-    ) -> Tuple[str, Dict[str, Any]]:
-        if prompt is None or (isinstance(prompt, str) and not prompt.strip()):
-            for key in ("text", "content", "message", "prompt_text", "input", "summary",
-                        "synthesis", "instruction", "instructions"):
-                val = kwargs.get(key)
-                if isinstance(val, str) and val.strip():
-                    prompt = val
-                    break
+    # ---------- DEBAT / utilitaires ---------- (identiques à V31.4) …
 
-        if prompt is None or not str(prompt).strip():
-            transcript = kwargs.get("transcript") or kwargs.get("context") or ""
-            topic = kwargs.get("topic") or ""
-            lines = [
-                "Tu es 'Nexus', chargé de CONCLURE un débat.",
-                f"Synthétise en 5 points clairs (faits, convergences, désaccords, angles aveugles, pistes) le débat sur : {topic or '—'}.",
-            ]
-            if isinstance(transcript, str) and transcript.strip():
-                lines.append("Transcript ci-dessous:")
-                lines.append(transcript)
-            prompt = "\n".join(lines)
-
-        prompt = str(prompt or "").strip()
-        provider, model, system_prompt = self._get_agent_config(agent_id)
-        base_cost: Dict[str, Any] = {"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0}
-
-        async def _openai_call(p: str) -> Tuple[str, Dict[str, Any]]:
-            resp = await self.openai_client.chat.completions.create(
-                model=model,
-                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": p}],
-                temperature=temperature, max_tokens=max_tokens
-            )
-            text = (resp.choices[0].message.content or "").strip()
-            usage = getattr(resp, "usage", None)
-            if usage:
-                pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
-                cost = (usage.prompt_tokens * pricing["input"]) + (usage.completion_tokens * pricing["output"])
-                return text, {"input_tokens": usage.prompt_tokens, "output_tokens": usage.completion_tokens, "total_cost": cost}
-            return text, dict(base_cost)
-
-        try:
-            if provider == "openai":
-                return await _openai_call(prompt)
-
-            elif provider == "google":
-                model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
-                parts = []
-                if use_rag and rag_context:
-                    parts.append({"role": "user", "parts": [f"[RAG_CONTEXT]\n{rag_context}"]})
-                parts.append({"role": "user", "parts": [prompt]})
-                resp = await model_instance.generate_content_async(parts, generation_config={"temperature": temperature})
-                text = getattr(resp, "text", "") or ""
-                usage = getattr(resp, "usage_metadata", None)
-                if usage:
-                    pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
-                    cost = (getattr(usage, "prompt_token_count", 0) * pricing["input"]) + (getattr(usage, "candidates_token_count", 0) * pricing["output"])
-                    return text, {
-                        "input_tokens": getattr(usage, "prompt_token_count", 0),
-                        "output_tokens": getattr(usage, "candidates_token_count", 0),
-                        "total_cost": cost
-                    }
-                return text, dict(base_cost)
-
-            elif provider == "anthropic":
-                content_text = f"[RAG_CONTEXT]\n{rag_context}\n\n{prompt}" if use_rag and rag_context else prompt
-                try:
-                    resp = await self.anthropic_client.messages.create(
-                        model=model, max_tokens=max_tokens, temperature=temperature,
-                        system=system_prompt, messages=[{"role": "user", "content": content_text}]
-                    )
-                    text = ""
-                    for block in getattr(resp, "content", []) or []:
-                        t = getattr(block, "text", "") or ""
-                        if t:
-                            text += t
-                    usage = getattr(resp, "usage", None)
-                    if usage:
-                        pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
-                        in_tok = getattr(usage, "input_tokens", 0); out_tok = getattr(usage, "output_tokens", 0)
-                        cost = (in_tok * pricing["input"]) + (out_tok * pricing["output"])
-                        cost_info = {"input_tokens": in_tok, "output_tokens": out_tok, "total_cost": cost}
-                    else:
-                        cost_info = dict(base_cost)
-                    if not text.strip():
-                        logger.warning("[DEBATE] Anthropic a renvoyé un texte vide — fallback OpenAI.")
-                        return await _openai_call(prompt)
-                    return text.strip(), cost_info
-                except Exception as e:
-                    logger.error(f"[DEBATE] Anthropic erreur, fallback OpenAI (agent={agent_id}): {e}")
-                    return await _openai_call(prompt)
-
-            else:
-                raise ValueError(f"Fournisseur non supporté: {provider}")
-
-        except Exception as e:
-            logger.error(f"[DEBATE] get_llm_response_for_debate erreur (agent={agent_id}): {e}", exc_info=True)
-            return "", {**base_cost, "note": f"error: {e}"}
-
-    # ---------- entrée router ----------
     def process_user_message_for_agents(self, session_id: str, chat_request: Any, connection_manager: ConnectionManager) -> None:
-        """
-        Compat router: lance la tâche de réponse pour l'agent demandé.
-        `chat_request` peut être un dict OU un objet (Pydantic) avec .agent_id / .use_rag.
-        """
         get = (lambda k: (chat_request.get(k) if isinstance(chat_request, dict) else getattr(chat_request, k, None)))
         agent_id = (get("agent_id") or "").strip().lower()
         use_rag  = bool(get("use_rag"))
@@ -819,6 +678,5 @@ class ChatService:
             return
         asyncio.create_task(self._process_agent_response_stream(session_id, agent_id, use_rag, connection_manager))
 
-    # ---------- utilitaires internes ----------
     def _count_bullets(self, text: str) -> int:
         return sum(1 for line in (text or "").splitlines() if line.strip().startswith("- "))

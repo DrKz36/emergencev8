@@ -1,7 +1,5 @@
 # src/backend/features/chat/router.py
-# V23.2 — + Heartbeat WS: répond à ws:ping par ws:pong (horodaté)
-#         + Débat/chat inchangés. Aucune modif d’architecture.
-
+# V23.3 — Ping/pong déjà implémenté ; léger nettoyage commentaires/logs
 import logging
 from uuid import uuid4
 from datetime import datetime, timezone

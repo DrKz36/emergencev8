@@ -1,9 +1,5 @@
 # src/backend/features/memory/router.py
-# V3.4 — P1.5 mémoire : tolérance totale au body malformé sur /tend-garden.
-#         On lit le body brut (sans Pydantic préalable), on tente json.loads,
-#         et on retombe sur des defaults en cas d'échec. /status et /clear inchangés.
-#         Aucune modif d’architecture.
-
+# V3.7 — /status renvoie {has_stm, ltm_count/ltm_items, injected} sans include=ids (compat Chroma)
 from __future__ import annotations
 
 import json
@@ -11,28 +7,19 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
-from fastapi import APIRouter, Request, Body, HTTPException
+from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel, Field, ValidationError
 
 logger = logging.getLogger("memory.router")
 
 router = APIRouter(tags=["Memory"])
 
-# Mémoire éphémère (dernier rapport pour GET /status)
 _LAST_REPORT: Dict[str, Any] = {"ts": None, "report": None}
 
-
-# --------- Schemas ---------
 class TendGardenPayload(BaseModel):
-    consolidation_limit: int = Field(
-        10, ge=1, le=100, description="Nombre max de sessions/threads à traiter"
-    )
-    thread_id: Optional[str] = Field(
-        None, description="Si fourni, consolidation ciblée sur ce thread"
-    )
+    consolidation_limit: int = Field(10, ge=1, le=100)
+    thread_id: Optional[str] = Field(None)
 
-
-# --------- Helpers (DI & time) ---------
 def _container(request: Request):
     c = getattr(request.app.state, "service_container", None)
     if c is None:
@@ -43,7 +30,6 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 def _coerce_payload_dict(data: Dict[str, Any]) -> TendGardenPayload:
-    # coercion douce (ex: "10" -> 10)
     if "consolidation_limit" in data and isinstance(data["consolidation_limit"], str):
         try:
             data["consolidation_limit"] = int(data["consolidation_limit"])
@@ -55,16 +41,18 @@ def _coerce_payload_dict(data: Dict[str, Any]) -> TendGardenPayload:
         logger.warning(f"[tend-garden] Payload invalide, defaults utilisés: {ve}")
         return TendGardenPayload()
 
-
-# --------- Routes ---------
+def _detect_user_id(request: Request) -> Optional[str]:
+    # Heuristique : entêtes dev-auth / Google
+    for k in ("x-user-id", "x-auth-sub", "x-goog-authenticated-user-id", "x-goog-user-id"):
+        v = request.headers.get(k) or request.headers.get(k.upper())
+        if v:
+            if ":" in v:  # ex: accounts.google.com:123456789
+                v = v.split(":", 1)[-1]
+            return v.strip()
+    return None
 
 @router.post("/tend-garden")
 async def tend_garden(request: Request):
-    """
-    Lance la consolidation mémoire.
-    - Aucun body ou body invalide -> defaults (limit=10, pas de thread ciblé).
-    - Body JSON valide pouvant contenir: { "consolidation_limit": int, "thread_id": "..." }.
-    """
     container = _container(request)
     try:
         db = container.db_manager()
@@ -74,14 +62,11 @@ async def tend_garden(request: Request):
         logger.error(f"[tend-garden] DI KO: {e}", exc_info=True)
         raise HTTPException(status_code=503, detail="Dépendances mémoire indisponibles")
 
-    # Lecture du body BRUT pour éviter le 422 avant d'entrer ici
     raw = await request.body()
-    payload_obj: TendGardenPayload
     if not raw:
         payload_obj = TendGardenPayload()
     else:
         try:
-            # Tente un JSON ; si malformé -> defaults
             parsed = json.loads(raw.decode("utf-8") or "{}")
             if not isinstance(parsed, dict):
                 parsed = {}
@@ -90,8 +75,7 @@ async def tend_garden(request: Request):
             logger.info(f"[tend-garden] Body non JSON ou invalide, defaults utilisés: {e}")
             payload_obj = TendGardenPayload()
 
-    from backend.features.memory.gardener import MemoryGardener  # import tardif pour éviter cycles
-
+    from backend.features.memory.gardener import MemoryGardener
     gardener = MemoryGardener(db_manager=db, vector_service=vec, memory_analyzer=analyzer)
     try:
         report = await gardener.tend_the_garden(
@@ -105,38 +89,74 @@ async def tend_garden(request: Request):
     _LAST_REPORT["ts"] = _now_iso()
     _LAST_REPORT["report"] = report
 
-    return {
-        "status": "success",
-        "run_at": _LAST_REPORT["ts"],
-        "thread_id": payload_obj.thread_id or None,
-        "report": report,
-    }
-
+    return {"status": "success", "run_at": _LAST_REPORT["ts"], "thread_id": payload_obj.thread_id or None, "report": report}
 
 @router.get("/status")
-async def memory_status():
+async def memory_status(request: Request):
     """
-    Retourne le dernier rapport tend-garden en mémoire (léger, non persistant).
+    Statut mémoire user-aware + compat:
+    - has_stm: bool(summary) sur la dernière session de l’utilisateur (fallback globale)
+    - ltm_count / ltm_items: nb d’items dans emergence_knowledge(user_id), sans include=["ids"]
+    - injected: has_stm or ltm_count>0
+    - Compat: retourne aussi le dernier rapport /tend-garden (_LAST_REPORT)
     """
-    if not _LAST_REPORT["ts"] or not _LAST_REPORT["report"]:
-        return {
-            "status": "idle",
-            "message": "Aucun rapport en mémoire. Lance POST /api/memory/tend-garden.",
-        }
+    container = _container(request)
+    try:
+        db = container.db_manager()
+        vec = container.vector_service()
+    except Exception as e:
+        logger.error(f"[status] DI KO: {e}", exc_info=True)
+        raise HTTPException(status_code=503, detail="Dépendances mémoire indisponibles")
+
+    uid = _detect_user_id(request)
+
+    # 1) has_stm
+    has_stm = False
+    try:
+        if uid:
+            row = await db.fetch_one("SELECT summary FROM sessions WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1", (uid,))
+        else:
+            row = await db.fetch_one("SELECT summary FROM sessions ORDER BY updated_at DESC LIMIT 1", ())
+        if row:
+            summary = (row["summary"] if isinstance(row, dict) else row[0]) or ""
+            has_stm = bool(isinstance(summary, str) and summary.strip())
+    except Exception as e:
+        logger.warning(f"[status] Lecture summary KO: {e}")
+
+    # 2) ltm_count (vector store, sans include)
+    ltm_count = 0
+    try:
+        knowledge_col = vec.get_or_create_collection("emergence_knowledge")
+        where = {"user_id": uid} if uid else None
+        got = knowledge_col.get(where=where)  # ne pas passer include=["ids"] (non supporté)
+        ids = got.get("ids") or []
+        # Chroma peut renvoyer une liste de listes selon la version
+        if ids and isinstance(ids, list) and len(ids) > 0 and isinstance(ids[0], list):
+            flat = []
+            for sub in ids:
+                if isinstance(sub, list):
+                    flat.extend(sub)
+            ids = flat
+        ltm_count = len(ids or [])
+    except Exception as e:
+        logger.warning(f"[status] Lecture LTM KO: {e}")
+
+    injected = bool(has_stm or ltm_count > 0)
+
     return {
         "status": "ok",
+        "has_stm": has_stm,
+        "ltm_count": int(ltm_count),
+        "ltm_items": int(ltm_count),   # compat front
+        "injected": injected,
         "last_run": _LAST_REPORT["ts"],
         "report": _LAST_REPORT["report"],
+        "user_id": uid,
     }
-
 
 @router.delete("/clear")
 @router.post("/clear")
 async def clear_memory(request: Request):
-    """
-    Compat API client (DELETE puis fallback POST).
-    Non destructif par défaut : journalise un aging (decay).
-    """
     container = _container(request)
     try:
         db = container.db_manager()
@@ -146,11 +166,10 @@ async def clear_memory(request: Request):
         logger.error(f"[clear] DI KO: {e}", exc_info=True)
         raise HTTPException(status_code=503, detail="Dépendances mémoire indisponibles")
 
-    from backend.features.memory.gardener import MemoryGardener  # import tardif
-
+    from backend.features.memory.gardener import MemoryGardener
     gardener = MemoryGardener(db_manager=db, vector_service=vec, memory_analyzer=analyzer)
     try:
-        await gardener._decay_knowledge()  # trace l’intention d’effacement
+        await gardener._decay_knowledge()
     except Exception as e:
         logger.warning(f"[clear] Décay non journalisé: {e}")
 

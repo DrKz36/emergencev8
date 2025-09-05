@@ -1,5 +1,5 @@
 # src/backend/features/memory/analyzer.py
-# V3.2 - + analyze_history(no-persist) ; refactor _analyze(..., persist)
+# V3.4 — Persistance + MAJ session.metadata (STM) + notifications stables
 import logging
 import json
 from typing import Dict, Any, List, Optional, TYPE_CHECKING
@@ -44,19 +44,12 @@ class MemoryAnalyzer:
         self.db_manager = db_manager
         self.chat_service = chat_service
         self.is_ready = self.chat_service is not None
-        logger.info(f"MemoryAnalyzer V3.2 initialisé. Prêt: {self.is_ready}")
+        logger.info(f"MemoryAnalyzer V3.4 initialisé. Prêt: {self.is_ready}")
 
     def set_chat_service(self, chat_service: 'ChatService'):
         self.chat_service = chat_service
         self.is_ready = True
         logger.info("ChatService injecté dans MemoryAnalyzer. L'analyseur est prêt.")
-
-    def _ensure_ready(self):
-        if not self.chat_service:
-            self.is_ready = False
-            logger.error("Dépendance 'chat_service' non injectée. L'analyse est impossible.")
-            raise ReferenceError("MemoryAnalyzer n'est pas prêt : chat_service manquant.")
-        self.is_ready = True
 
     async def _notify(self, session_id: str, payload: Dict[str, Any]) -> None:
         conn = getattr(getattr(self.chat_service, "session_manager", None), "connection_manager", None)
@@ -65,6 +58,14 @@ class MemoryAnalyzer:
                 await conn.send_personal_message({"type": "ws:analysis_status", "payload": payload}, session_id)
             except Exception:
                 pass
+
+    def _ensure_ready(self) -> bool:
+        if not self.chat_service:
+            self.is_ready = False
+            logger.warning("Dépendance 'chat_service' non injectée. Analyse impossible (fail-soft).")
+            return False
+        self.is_ready = True
+        return True
 
     def _already_analyzed(self, session_id: str) -> bool:
         try:
@@ -76,10 +77,12 @@ class MemoryAnalyzer:
             return False
 
     async def _analyze(self, session_id: str, history: List[Dict[str, Any]], persist: bool = True) -> Dict[str, Any]:
-        self._ensure_ready()
+        if not self._ensure_ready():
+            await self._notify(session_id, {"session_id": session_id, "status": "failed", "error": "not_ready"})
+            return {}
+
         logger.info(f"Lancement de l'analyse sémantique (persist={persist}) pour {session_id}")
 
-        # Idempotence seulement si on persiste (session réelle)
         if persist and self._already_analyzed(session_id):
             logger.info(f"Session {session_id} déjà analysée — skip.")
             await self._notify(session_id, {"session_id": session_id, "status": "skipped", "reason": "already_analyzed"})
@@ -113,7 +116,7 @@ class MemoryAnalyzer:
                 except Exception:
                     pass
                 await self._notify(session_id, {"session_id": session_id, "status": "failed", "error": str(e), "retry_after": retry_after})
-                raise
+                return {}
 
         if persist:
             await queries.update_session_analysis_data(
@@ -124,14 +127,32 @@ class MemoryAnalyzer:
                 entities=analysis_result.get("entities", []) or [],
             )
 
+        # ➕ MAJ en RAM (SessionManager) pour lecture immédiate par ChatService
+        try:
+            sm = getattr(self.chat_service, "session_manager", None)
+            if sm:
+                sess = sm.get_session(session_id)
+                meta = getattr(sess, "metadata", None) or {}
+                meta.update({
+                    "summary": analysis_result.get("summary") or "",
+                    "concepts": analysis_result.get("concepts", []) or [],
+                    "entities": analysis_result.get("entities", []) or [],
+                })
+                setattr(sess, "metadata", meta)
+                if hasattr(sm, "set_session_metadata") and callable(getattr(sm, "set_session_metadata")):
+                    try:
+                        sm.set_session_metadata(session_id, meta)  # best effort
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.warning(f"Maj session.metadata échouée pour {session_id}: {e}")
+
         await self._notify(session_id, {"session_id": session_id, "status": "completed"})
         logger.info(f"Analyse sémantique terminée (persist={persist}) pour {session_id}.")
         return analysis_result
 
     async def analyze_session_for_concepts(self, session_id: str, history: List[Dict[str, Any]]):
-        """Mode historique (sessions) : persiste dans la table sessions."""
         return await self._analyze(session_id, history, persist=True)
 
     async def analyze_history(self, session_id: str, history: List[Dict[str, Any]]):
-        """Mode “thread-only” : renvoie le résultat sans écrire dans la table sessions."""
         return await self._analyze(session_id, history, persist=False)

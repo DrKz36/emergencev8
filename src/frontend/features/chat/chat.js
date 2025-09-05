@@ -1,12 +1,10 @@
 /**
  * @module features/chat/chat
- * @description Module Chat - V25.5 "Memory banner render + idempotent listeners"
+ * @description Module Chat - V25.8 "Memory banner: robust REST mapping + auto-refresh on analysis + ws compat"
  *
- * V25.5:
- * - Rendu DOM non intrusif d'une bannière mémoire dans .chat-header
- * - Re-rendu sur ws:memory_banner et sur changement de state.chat.memoryStats / memoryBannerAt
- *
- * Base V25.4: WS-first strict + RAG/Memo hooks + watchdog (préservation) :contentReference[oaicite:8]{index=8}
+ * Diff vs V25.7:
+ * - Mapping REST robuste (STM via summary|stm.summary; LTM via ltm_items|ltm_count|facts+episodes)
+ * - Le reste inchangé (eventBus/state, WS-first, watchdog REST, UI, etc.)
  */
 
 import { ChatUI } from './chat-ui.js?v=2713';
@@ -45,6 +43,7 @@ export default class ChatModule {
     // Mémoire
     this._lastMemoryTendAt = 0;
     this._memoryTendThrottleMs = 2000;
+    this._memPreloadDone = false;
 
     // Idempotence abonnements
     this._subs = Object.create(null);
@@ -71,7 +70,8 @@ export default class ChatModule {
     this._H.WS_CLOSE            = () => { this._wsConnected = false; try { this.state.set('connection.status', 'disconnected'); } catch {} };
 
     // Hooks RAG/Mémoire
-    this._H.MEM_BANNER          = this.handleMemoryBanner.bind(this);
+    this._H.MEM_BANNER          = this.handleMemoryBanner.bind(this);   // ws:memory_banner (compat)
+    this._H.MEM_STATUS          = this.handleMemoryStatus.bind(this);   // memory:status (broadcast local éventuel)
     this._H.RAG_STATUS          = this.handleRagStatus.bind(this);
     this._H.MEM_TEND            = this.handleMemoryTend.bind(this);
     this._H.MEM_CLEAR           = this.handleMemoryClear.bind(this);
@@ -98,8 +98,11 @@ export default class ChatModule {
       this._wsConnected = (conn === 'connected');
     } catch {}
 
+    // Précharge mémoire au boot (REST)
+    this._refreshMemoryStatsFromServer();
+
     this.isInitialized = true;
-    console.log('✅ ChatModule V25.5 initialisé (banner mémoire + listeners idempotents).');
+    console.log('✅ ChatModule V25.8 initialisé (bannière mémoire: preload & auto-refresh).');
   }
 
   mount(container) {
@@ -120,6 +123,9 @@ export default class ChatModule {
 
     // Premier rendu de la bannière si stats déjà présentes
     this._renderMemoryBannerFromState();
+
+    // Sécurité: si pas encore préchargé
+    if (!this._memPreloadDone) this._refreshMemoryStatsFromServer();
   }
 
   /* ============================ State init ============================ */
@@ -133,7 +139,8 @@ export default class ChatModule {
         lastAnalysis: null,
         memoryBannerAt: null,
         messages: {},
-        metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null }
+        metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null },
+        memoryStats: { has_stm: false, ltm_items: 0, injected: false }
       });
     } else {
       if (this.state.get('chat.ragEnabled') === undefined) this.state.set('chat.ragEnabled', false);
@@ -141,39 +148,36 @@ export default class ChatModule {
       if (!this.state.get('chat.ragStatus')) this.state.set('chat.ragStatus', 'idle');
       if (!this.state.get('chat.memoryBannerAt')) this.state.set('chat.memoryBannerAt', null);
       if (!this.state.get('chat.metrics')) this.state.set('chat.metrics', { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null });
+      if (!this.state.get('chat.memoryStats')) this.state.set('chat.memoryStats', { has_stm: false, ltm_items: 0, injected: false });
     }
   }
 
   registerStateChanges() {
     const unsub = this.state.subscribe('chat', (chatState) => {
       if (this.ui && this.container) this.ui.update(this.container, chatState);
-      // Rendu bannière à chaque update pertinente
       this._renderMemoryBannerFromState();
     });
     if (typeof unsub === 'function') this.listeners.push(unsub);
   }
 
   registerEvents() {
-    // UI (idempotent)
     this._onOnce(EVENTS.CHAT_SEND,           this._H.CHAT_SEND);
     this._onOnce(EVENTS.CHAT_AGENT_SELECTED, this._H.CHAT_AGENT_SELECTED);
     this._onOnce(EVENTS.CHAT_CLEAR,          this._H.CHAT_CLEAR);
     this._onOnce(EVENTS.CHAT_EXPORT,         this._H.CHAT_EXPORT);
     this._onOnce(EVENTS.CHAT_RAG_TOGGLED,    this._H.CHAT_RAG_TOGGLED);
 
-    // Flux WS (idempotent)
     this._onOnce('ws:chat_stream_start',     this._H.WS_START);
     this._onOnce('ws:chat_stream_chunk',     this._H.WS_CHUNK);
     this._onOnce('ws:chat_stream_end',       this._H.WS_END);
     this._onOnce('ws:analysis_status',       this._H.WS_ANALYSIS);
 
-    // Connexion WS (idempotent)
     this._onOnce('ws:connected',             this._H.WS_CONNECTED);
     this._onOnce('ws:close',                 this._H.WS_CLOSE);
 
-    // Hooks RAG/Mémoire (idempotent)
-    this._onOnce('ws:memory_banner',         this._H.MEM_BANNER);
-    this._onOnce('ws:rag_status',            this._H.RAG_STATUS);
+    // Mémoire
+    this._onOnce('ws:memory_banner',         this._H.MEM_BANNER);  // compat
+    this._onOnce('memory:status',            this._H.MEM_STATUS);  // broadcast local éventuel
     this._onOnce('memory:tend',              this._H.MEM_TEND);
     this._onOnce('memory:clear',             this._H.MEM_CLEAR);
   }
@@ -210,19 +214,15 @@ export default class ChatModule {
     const header = this._ensureHeaderEl();
     if (!header) return;
     const { has_stm, ltm_items, injected } = (stats || {});
-
-    // Création / update idempotente
     let el = header.querySelector('.memory-banner');
     if (!el) {
       el = document.createElement('div');
       el.className = 'memory-banner';
       header.appendChild(el);
     }
-
     const stmClass = has_stm ? 'ok' : 'ko';
     const injClass = injected ? 'ok' : 'ko';
     const ltm = Number.isFinite(ltm_items) ? ltm_items : 0;
-
     el.innerHTML = `
       <span class="pill ${stmClass}" title="Résumé de session (STM)">
         <span class="dot" aria-hidden="true"></span> STM
@@ -258,6 +258,53 @@ export default class ChatModule {
     });
   }
 
+  /* ============================ PATCH: mapping REST robuste ============================ */
+  async _refreshMemoryStatsFromServer() {
+    try {
+      let data = null;
+
+      // 1) API client si présent
+      if (api && typeof api.getMemoryStatus === 'function') {
+        data = await api.getMemoryStatus();
+      }
+
+      // 2) Fallback direct
+      if (!data) {
+        const res = await fetch('/api/memory/status', { headers: { 'Accept': 'application/json' } });
+        if (res.ok) data = await res.json();
+      }
+
+      if (!data || typeof data !== 'object') return;
+
+      const injected = !!(data.injected ?? data.injected_into_prompt);
+
+      // STM: accepte plusieurs formes (bools + présence de résumé)
+      const hasSTM =
+        !!(data.has_stm ||
+           data.summary_available ||
+           data.stm_ready ||
+           (typeof data.summary === 'string' && data.summary.trim()) ||
+           (data.stm && typeof data.stm.summary === 'string' && data.stm.summary.trim()));
+
+      // LTM: compte intelligent (ltm_items|ltm_count|facts+episodes)
+      const ltmCount =
+        Number.isFinite(data.ltm_items) ? data.ltm_items :
+        Number.isFinite(data.ltm_count) ? data.ltm_count :
+        ((data.ltm && Array.isArray(data.ltm.facts) ? data.ltm.facts.length : 0) +
+         (data.ltm && Array.isArray(data.ltm.episodes) ? data.ltm.episodes.length : 0));
+
+      const stats = { has_stm: hasSTM, ltm_items: ltmCount || 0, injected };
+
+      this.state.set('chat.memoryStats', stats);
+      this.state.set('chat.memoryBannerAt', Date.now());
+      this._memPreloadDone = true;
+      this._renderMemoryBannerFromState();
+      console.log('[Chat] Mémoire (REST) préchargée', stats);
+    } catch (e) {
+      console.warn('[Chat] Impossible de précharger la mémoire', e);
+    }
+  }
+
   hydrateFromThread(thread) {
     const msgsRaw = Array.isArray(thread?.messages) ? [...thread.messages] : [];
     const msgs = msgsRaw.sort((a, b) => (a?.created_at ?? 0) - (b?.created_at ?? 0));
@@ -287,8 +334,7 @@ export default class ChatModule {
     }
 
     this.state.set('chat.messages', buckets);
-    console.debug('[Chat] Répartition messages par agent',
-      Object.fromEntries(Object.entries(buckets).map(([k, v]) => [k, v.length])));
+    console.debug('[Chat] Répartition messages par agent', Object.fromEntries(Object.entries(buckets).map(([k, v]) => [k, v.length])));
   }
 
   /* ============================ Envoi USER (WS-first strict) ============================ */
@@ -328,7 +374,7 @@ export default class ChatModule {
       this._clearStreamWatchdog();
       this.state.set('chat.isLoading', false);
       this._sendLock = false;
-      this.showToast('Envoi impossible (WS).');
+      this.showToast('Envoi impossible via WebSocket');
     }
   }
 
@@ -380,7 +426,7 @@ export default class ChatModule {
           agent_id: finalMsg.agent_id || agent_id
         })
           .then(() => this._assistantPersistedIds.add(id))
-          .catch(err => console.error('[Chat] Échec appendMessage(assistant):', err));
+          .catch(err => console.error('[Chat] Échec appendMessage assistant', err));
       }
     } catch (e) {
       console.error('[Chat] handleStreamEnd persist error', e);
@@ -429,26 +475,41 @@ export default class ChatModule {
     });
     console.log('[Chat] ws:analysis_status', { session_id, status, error });
 
-    const now = Date.now();
-    if (now - this._lastToastAt < 1000) return;
-    this._lastToastAt = now;
-
-    if (status === 'completed') this.showToast('Mémoire consolidée ✓');
-    else if (status === 'failed') this.showToast('Analyse mémoire : échec');
+    if (status === 'completed') {
+      // 🔄 Tire l’état mémoire depuis le serveur pour mettre à jour la bannière
+      this._refreshMemoryStatsFromServer();
+      this.showToast('Mémoire consolidée');
+    } else if (status === 'failed') {
+      this.showToast('Analyse mémoire: échec');
+    }
   }
 
   /* ============================ Hooks RAG/Mémoire ============================ */
-  handleMemoryBanner() {
-    try { this.state.set('chat.memoryBannerAt', Date.now()); } catch {}
-    this._renderMemoryBannerFromState();    // ← affichage immédiat
+  handleMemoryBanner(payload = {}) {
+    try {
+      const injected = !!(payload.injected ?? payload.injected_into_prompt);
+      const stats = {
+        has_stm: !!payload.has_stm,
+        ltm_items: Number.isFinite(payload.ltm_items) ? payload.ltm_items : 0,
+        injected
+      };
+      this.state.set('chat.memoryStats', stats);
+      this.state.set('chat.memoryBannerAt', Date.now());
+    } catch {}
+    this._renderMemoryBannerFromState();
     this.showToast('Mémoire chargée ✓');
+  }
+
+  handleMemoryStatus(payload = {}) {
+    // même forme que handleMemoryBanner (broadcast local depuis app.js le cas échéant)
+    this.handleMemoryBanner(payload);
   }
 
   handleRagStatus(payload = {}) {
     const st = String(payload.status || '').toLowerCase();
     this.state.set('chat.ragStatus', st || 'idle');
-    if (st === 'searching') this.showToast('RAG : recherche en cours…');
-    if (st === 'found')     this.showToast('RAG : sources trouvées ✓');
+    if (st === 'searching') this.showToast('RAG: recherche en cours');
+    if (st === 'found')     this.showToast('RAG: sources trouvées');
   }
 
   async handleMemoryTend() {
@@ -457,20 +518,22 @@ export default class ChatModule {
     this._lastMemoryTendAt = now;
 
     try {
-      this.showToast('Analyse mémoire démarrée…');
+      this.showToast('Analyse mémoire démarrée');
       await api.tendMemory(); // le back émettra ws:analysis_status
+      // on laisse handleAnalysisStatus tirer l'état quand c'est "completed"
     } catch (e) {
       console.error('[Chat] memory.tend error', e);
-      this.showToast('Analyse mémoire : échec');
+      this.showToast('Analyse mémoire: échec');
     }
   }
 
   async handleMemoryClear() {
     try {
-      this.showToast('Nettoyage mémoire…');
+      this.showToast('Nettoyage mémoire');
       if (typeof api.clearMemory === 'function') {
         await api.clearMemory();
       } else {
+        // fallback: on relance un tend-garden, puis on réinitialise côté UI
         await api.tendMemory();
       }
       try {
@@ -478,10 +541,10 @@ export default class ChatModule {
         this.state.set('chat.memoryBannerAt', null);
       } catch {}
       this._renderMemoryBannerFromState();
-      this.showToast('Mémoire effacée ✓');
+      this.showToast('Mémoire effacée');
     } catch (e) {
       console.error('[Chat] memory.clear error', e);
-      this.showToast('Effacement mémoire : échec');
+      this.showToast('Effacement mémoire: échec');
     }
   }
 
@@ -496,7 +559,7 @@ export default class ChatModule {
 
         const threadId = this.getCurrentThreadId();
         if (!threadId) {
-          this.showToast('Flux indisponible — aucun thread actif (fallback annulé).');
+          this.showToast('Flux indisponible. Aucun thread actif.');
           return;
         }
         try {
@@ -511,10 +574,10 @@ export default class ChatModule {
 
           p.triedRest = true;
           this._pendingMsg = p;
-          this.showToast('Flux indisponible — fallback REST effectué.');
+          this.showToast('Flux indisponible. Fallback REST effectué.');
         } catch (e) {
           console.error('[Chat] Watchdog fallback REST a échoué', e);
-          this.showToast('Fallback REST impossible.');
+          this.showToast('Fallback REST impossible');
         }
       }, this._streamStartTimeoutMs);
     } catch (e) {
@@ -558,5 +621,68 @@ export default class ChatModule {
         setTimeout(() => { try { el.remove(); } catch {} }, 180);
       }, 2200);
     } catch {}
+  }
+
+  /* ============================ Rendu messages ============================ */
+  get _AGENTS(){ try { return (window.AGENTS || {}).AGENTS || {}; } catch { return {}; } }
+
+  _renderMessages(host, messages) {
+    if (!host) return;
+    const html = (messages || []).map(m => this._messageHTML(m)).join('');
+    host.innerHTML = html || `<div class="placeholder">Commence à discuter</div>`;
+    host.scrollTo(0, 1000000000);
+  }
+
+  _messageHTML(m) {
+    const side = m.role === 'user' ? 'user' : 'assistant';
+    const agentId = m.agent_id || m.agent || 'nexus';
+    const AGENTS = this._AGENTS;
+    const you = 'FG';
+    const name = side === 'user' ? you : (AGENTS[agentId]?.name || 'Agent');
+    const raw = this._toPlainText(m.content);
+    const content = this._escapeHTML(raw).replace(/\n/g, '<br/>');
+    const cursor = m.isStreaming ? `<span class="blinking-cursor">▍</span>` : '';
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    return `
+      <div class="message ${side} ${side === 'assistant' ? agentId : ''}">
+        <div class="message-content">
+          <div class="message-meta meta-inside">
+            <strong class="sender-name">${name}</strong>
+            <span class="message-time">${time}</span>
+          </div>
+          <div class="message-text">${content}${cursor}</div>
+        </div>
+      </div>`;
+  }
+
+  _asArray(x){ return Array.isArray(x) ? x : (x ? [x] : []); }
+
+  _normalizeMessage(m){
+    if (!m) return { role:'assistant', content:'' };
+    if (typeof m === 'string') return { role:'assistant', content:m };
+    return {
+      role: m.role || 'assistant',
+      content: m.content ?? m.text ?? '',
+      isStreaming: !!m.isStreaming,
+      agent_id: m.agent_id || m.agent
+    };
+  }
+
+  _toPlainText(val){
+    if (val == null) return '';
+    if (typeof val === 'string') return val;
+    if (Array.isArray(val)) return val.map(v => this._toPlainText(v)).join('');
+    if (typeof val === 'object') {
+      if ('text' in val) return this._toPlainText(val.text);
+      if ('content' in val) return this._toPlainText(val.content);
+      if ('message' in val) return this._toPlainText(val.message);
+      try { return JSON.stringify(val); } catch { return String(val); }
+    }
+    return String(val);
+  }
+
+  _escapeHTML(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
   }
 }
