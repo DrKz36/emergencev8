@@ -1,5 +1,5 @@
 // src/frontend/core/websocket.js
-// WebSocketClient V23.0 — JWT sub-protocol + de-dup + TTFB + ✅ Heartbeat (ws:ping/pong)
+// WebSocketClient V24.1 — JWT sub-protocol + de-dup + TTFB + ✅ Heartbeat + ✅ Memory Prime + ✅ Tolerance
 
 import { EVENTS, WS_CONFIG } from '../shared/constants.js';
 import { ensureAuth, getIdToken, clearAuth } from './auth.js';
@@ -31,10 +31,11 @@ export class WebSocketClient {
     this._hbTimer = null;
     this._hbLastPongAt = 0;
     this._hbIntervalMs = (WS_CONFIG && WS_CONFIG.HEARTBEAT_INTERVAL) ? WS_CONFIG.HEARTBEAT_INTERVAL : 30000;
+    this._hbMissTolerance = 3; // ← tolère 3 intervalles sans activité
 
     this._bindEventBus();
     this._bindStorageListener();
-    console.log('✅ WebSocketClient V23.0 (JWT + de-dup + TTFB + heartbeat) prêt.');
+    console.log('✅ WebSocketClient V24.1 (JWT + de-dup + TTFB + heartbeat + memory-prime + tolerance) prêt.');
   }
 
   _bindEventBus() {
@@ -44,7 +45,6 @@ export class WebSocketClient {
         const text = String(payload.text ?? '').trim();
         if (!text) return;
 
-        // garde-fou legacy
         const rawAgent = (payload.agent_id ?? payload.agentId ?? '');
         const isLegacy = (!rawAgent || !String(rawAgent).trim()) && !payload.msg_uid;
         if (isLegacy) return;
@@ -52,14 +52,12 @@ export class WebSocketClient {
         const agent_id = (String(rawAgent || '').trim()) || this._getActiveAgentIdFromState();
         const use_rag = (payload.use_rag ?? payload.useRag ?? this.state?.get?.('chat.ragEnabled')) === true;
 
-        // Metrics
         this._lastSendAt = Date.now();
         try {
           const m = this.state?.get?.('chat.metrics') || {};
           this.state?.set?.('chat.metrics', { ...m, send_count: (m.send_count || 0) + 1 });
         } catch {}
 
-        // Départ
         this.send({ type: 'chat.message', payload: { text, agent_id, use_rag } });
       } catch (e) { console.error('[WebSocket] ui:chat:send → chat.message a échoué', e); }
     });
@@ -73,7 +71,11 @@ export class WebSocketClient {
       await ensureAuth({ interactive: true, clientId });
       this.connect();
     });
-    this.eventBus.on?.('auth:logout', () => { try { clearAuth(); } catch {} this.close(4001, 'logout'); });
+    this.eventBus.on?.('auth:logout', () => {
+      try { clearAuth(); } catch {}
+      try { this.state?.set?.('chat.memoryStats', { has_stm: false, ltm_items: 0, injected: false }); } catch {}
+      this.close(4001, 'logout');
+    });
 
     // Si le serveur réclame l’auth
     this.eventBus.on?.('auth:missing', async () => {
@@ -84,6 +86,9 @@ export class WebSocketClient {
         this.connect();
       }
     });
+
+    // Prime mémoire à la demande
+    this.eventBus.on?.('memory:prime', () => this._primeMemoryStatus());
   }
 
   _bindStorageListener() {
@@ -140,8 +145,6 @@ export class WebSocketClient {
     }
 
     const url = this._buildUrl(sessionId);
-
-    // ✅ Sub-protocol exigé par le back : "jwt, <ID_TOKEN>"
     const protocols = token ? ['jwt', token] : [];
 
     try {
@@ -157,16 +160,21 @@ export class WebSocketClient {
       this._hbLastPongAt = Date.now();
       this._startHeartbeat();
       this.eventBus.emit?.(EVENTS.WS_CONNECTED || 'ws:connected', { url });
+
+      // Prime mémoire immédiat pour bandeau sans latence
+      this._primeMemoryStatus();
     };
 
     this.websocket.onmessage = (ev) => {
+      // ✅ Toute activité WS = activité “vivante” → rafraîchit le watchdog
+      this._hbLastPongAt = Date.now();
+
       try {
         const msg = JSON.parse(ev.data);
 
         // Heartbeat
         if (msg?.type === 'ws:pong') {
-          this._hbLastPongAt = Date.now();
-          return;
+          return; // rien d'autre à faire
         }
 
         if (msg?.type === 'ws:auth_required') {
@@ -215,18 +223,23 @@ export class WebSocketClient {
               this.state?.set?.('chat.memoryBannerAt', Date.now());
             } catch {}
           }
+          if (msg.type === 'ws:analysis_status') {
+            try { this.state?.set?.('chat.analysisStatus', msg.payload || null); } catch {}
+            this.eventBus.emit?.('chat:analysis_status', msg.payload || null);
+          }
 
           // Dispatch générique
           this.eventBus.emit?.(msg.type, msg.payload);
         }
-      } catch { console.warn('[WebSocket] Message non JSON', ev.data); }
+      } catch {
+        console.warn('[WebSocket] Message non JSON', ev.data);
+      }
     };
 
     this.websocket.onclose = (ev) => {
       this._stopHeartbeat();
       const code = ev?.code || 1006;
       if (code === 4401 || code === 1008) {
-        // Auth manquante/invalidée → demander login puis stop auto-retry
         this.eventBus.emit?.('auth:missing', { reason: code });
         this.websocket = null;
         return;
@@ -245,9 +258,9 @@ export class WebSocketClient {
       try {
         if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) return;
         this.send({ type: 'ws:ping' });
-        // Si aucun pong ou aucun message depuis > 2 intervalles → reconnect soft
+        // ✅ Tolérance: pas de reconnect si on a eu une activité **récente** (même autre que pong)
         const now = Date.now();
-        if (now - this._hbLastPongAt > this._hbIntervalMs * 2) {
+        if (now - this._hbLastPongAt > this._hbIntervalMs * this._hbMissTolerance) {
           console.warn('[WebSocket] Heartbeat manqué → reconnect…');
           this.close(4000, 'heartbeat-missed');
           this._scheduleReconnect();
@@ -264,7 +277,8 @@ export class WebSocketClient {
   }
 
   close(code = 1000, reason = 'normal') {
-    try { this.websocket?.close(code, reason); } catch {} finally { this.websocket = null; this._stopHeartbeat(); }
+    try { this.websocket?.close(code, reason); } catch {} 
+    finally { this.websocket = null; this._stopHeartbeat(); }
   }
 
   send(frame) {
@@ -298,5 +312,42 @@ export class WebSocketClient {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) return;
     const delay = Math.min(8000, this.reconnectDelayMs * Math.pow(2, this.reconnectAttempts++));
     setTimeout(() => this.connect(), delay);
+  }
+
+  async _primeMemoryStatus() {
+    try {
+      const token = getIdToken();
+      if (!token) {
+        this.eventBus.emit?.('auth:missing', { reason: 'no-token-for-memory-prime' });
+        return;
+      }
+      const res = await fetch('/api/memory/status', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        this.eventBus.emit?.('auth:missing', { reason: res.status });
+        return;
+      }
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const stats = {
+        has_stm: !!data?.has_stm,
+        ltm_items: Number.isFinite(data?.ltm_items) ? data.ltm_items : (Number.isFinite(data?.ltm_count) ? data.ltm_count : 0),
+        injected: !!(data?.injected ?? data?.injected_into_prompt)
+      };
+
+      try {
+        this.state?.set?.('chat.memoryStats', stats);
+        this.state?.set?.('chat.memoryBannerAt', Date.now());
+      } catch {}
+
+      // Re-émet comme une bannière WS pour unifier l’UI
+      this.eventBus.emit?.('ws:memory_banner', stats);
+    } catch (e) {
+      console.warn('[WebSocket] _primeMemoryStatus failed', e);
+    }
   }
 }

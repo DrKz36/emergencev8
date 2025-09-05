@@ -1,11 +1,12 @@
 # src/backend/core/websocket.py
-# V11.1 – Router WS complet (echo sous-protocole, auth WS via GIS, tolérance SessionManager)
+# V11.3 – Heartbeat (ws:pong) + Guard client_state + imports datetime/timezone
 import logging
 import asyncio
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Callable, TYPE_CHECKING
 
 from fastapi import APIRouter, WebSocket
-from starlette.websockets import WebSocketDisconnect
+from starlette.websockets import WebSocketDisconnect, WebSocketState
 
 from .session_manager import SessionManager
 from backend.shared import dependencies  # auth WS (allowlist + sub=uid)
@@ -62,11 +63,13 @@ class ConnectionManager:
 
         self.active_connections[session_id].append(websocket)
 
+        # Guard: si le client ferme immédiatement, éviter l’exception
         try:
-            await websocket.send_json({
-                "type": "ws:session_established",
-                "payload": {"session_id": session_id}
-            })
+            if websocket.client_state == WebSocketState.CONNECTED:
+                await websocket.send_json({
+                    "type": "ws:session_established",
+                    "payload": {"session_id": session_id}
+                })
         except (WebSocketDisconnect, RuntimeError) as e:
             logger.warning(f"Client déconnecté immédiatement (session {session_id}). Nettoyage... Erreur: {e}")
             await self.disconnect(session_id, websocket)
@@ -90,6 +93,9 @@ class ConnectionManager:
         connections = self.active_connections.get(session_id, [])
         for ws in list(connections):
             try:
+                # ✅ Guard : n'envoie que si CONNECTED
+                if getattr(ws, "client_state", None) != WebSocketState.CONNECTED:
+                    continue
                 await ws.send_json(message)
             except (WebSocketDisconnect, RuntimeError) as e:
                 logger.error(f"Erreur d'envoi (session {session_id}) → cleanup: {e}")
@@ -125,6 +131,21 @@ def get_websocket_router(container) -> APIRouter:
         try:
             while True:
                 data = await websocket.receive_json()
+
+                # ======================
+                # HEARTBEAT (ping/pong)
+                # ======================
+                try:
+                    msg_type = (data.get("type") or "").strip().lower()
+                    if msg_type in {"ws:ping", "ping"}:
+                        await conn_manager.send_personal_message(
+                            {"type": "ws:pong", "payload": {"ts": datetime.now(timezone.utc).isoformat()}},
+                            session_id,
+                        )
+                        continue
+                except Exception as e:
+                    logger.warning(f"WS ping/pong échec: {e}")
+
                 if handler:
                     try:
                         res = handler(session_id, data)
