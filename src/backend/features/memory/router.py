@@ -1,5 +1,5 @@
 # src/backend/features/memory/router.py
-# V3.7 — /status renvoie {has_stm, ltm_count/ltm_items, injected} sans include=ids (compat Chroma)
+# V3.9 — tend-garden: POST+GET ; instanciation MemoryGardener positionnelle ; /status where $eq (compat Chroma)
 from __future__ import annotations
 
 import json
@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Query
 from pydantic import BaseModel, Field, ValidationError
 
 logger = logging.getLogger("memory.router")
@@ -51,9 +51,7 @@ def _detect_user_id(request: Request) -> Optional[str]:
             return v.strip()
     return None
 
-@router.post("/tend-garden")
-async def tend_garden(request: Request):
-    container = _container(request)
+async def _run_tend_garden(container, consolidation_limit: int, thread_id: Optional[str]) -> Dict[str, Any]:
     try:
         db = container.db_manager()
         vec = container.vector_service()
@@ -62,6 +60,25 @@ async def tend_garden(request: Request):
         logger.error(f"[tend-garden] DI KO: {e}", exc_info=True)
         raise HTTPException(status_code=503, detail="Dépendances mémoire indisponibles")
 
+    # ⚠️ Instanciation positionnelle (signature-agnostique)
+    from backend.features.memory.gardener import MemoryGardener
+    gardener = MemoryGardener(db, vec, analyzer)
+
+    try:
+        report = await gardener.tend_the_garden(
+            consolidation_limit=int(consolidation_limit or 10),
+            thread_id=(thread_id or None),
+        )
+    except Exception as e:
+        logger.error(f"[tend-garden] Erreur: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erreur tend-garden: {e}")
+
+    _LAST_REPORT["ts"] = _now_iso()
+    _LAST_REPORT["report"] = report
+    return {"status": "success", "run_at": _LAST_REPORT["ts"], "thread_id": thread_id or None, "report": report}
+
+@router.post("/tend-garden")
+async def tend_garden_post(request: Request):
     raw = await request.body()
     if not raw:
         payload_obj = TendGardenPayload()
@@ -74,31 +91,24 @@ async def tend_garden(request: Request):
         except Exception as e:
             logger.info(f"[tend-garden] Body non JSON ou invalide, defaults utilisés: {e}")
             payload_obj = TendGardenPayload()
+    return await _run_tend_garden(_container(request), payload_obj.consolidation_limit, payload_obj.thread_id)
 
-    from backend.features.memory.gardener import MemoryGardener
-    gardener = MemoryGardener(db_manager=db, vector_service=vec, memory_analyzer=analyzer)
-    try:
-        report = await gardener.tend_the_garden(
-            consolidation_limit=int(payload_obj.consolidation_limit or 10),
-            thread_id=(payload_obj.thread_id or None),
-        )
-    except Exception as e:
-        logger.error(f"[tend-garden] Erreur: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Erreur tend-garden: {e}")
-
-    _LAST_REPORT["ts"] = _now_iso()
-    _LAST_REPORT["report"] = report
-
-    return {"status": "success", "run_at": _LAST_REPORT["ts"], "thread_id": payload_obj.thread_id or None, "report": report}
+@router.get("/tend-garden")
+async def tend_garden_get(
+    request: Request,
+    consolidation_limit: int = Query(10, ge=1, le=100),
+    thread_id: Optional[str] = Query(None),
+):
+    return await _run_tend_garden(_container(request), consolidation_limit, thread_id)
 
 @router.get("/status")
 async def memory_status(request: Request):
     """
     Statut mémoire user-aware + compat:
     - has_stm: bool(summary) sur la dernière session de l’utilisateur (fallback globale)
-    - ltm_count / ltm_items: nb d’items dans emergence_knowledge(user_id), sans include=["ids"]
+    - ltm_count / ltm_items: nb d’items dans emergence_knowledge(user_id)
     - injected: has_stm or ltm_count>0
-    - Compat: retourne aussi le dernier rapport /tend-garden (_LAST_REPORT)
+    - Compat: renvoie aussi le dernier rapport /tend-garden (_LAST_REPORT)
     """
     container = _container(request)
     try:
@@ -123,20 +133,15 @@ async def memory_status(request: Request):
     except Exception as e:
         logger.warning(f"[status] Lecture summary KO: {e}")
 
-    # 2) ltm_count (vector store, sans include)
+    # 2) ltm_count (vector store)
     ltm_count = 0
     try:
         knowledge_col = vec.get_or_create_collection("emergence_knowledge")
-        where = {"user_id": uid} if uid else None
-        got = knowledge_col.get(where=where)  # ne pas passer include=["ids"] (non supporté)
+        where = {"user_id": {"$eq": uid}} if uid else None
+        got = knowledge_col.get(where=where)  # pas d'include=ids (builds variables)
         ids = got.get("ids") or []
-        # Chroma peut renvoyer une liste de listes selon la version
         if ids and isinstance(ids, list) and len(ids) > 0 and isinstance(ids[0], list):
-            flat = []
-            for sub in ids:
-                if isinstance(sub, list):
-                    flat.extend(sub)
-            ids = flat
+            ids = [x for sub in ids for x in (sub or [])]
         ltm_count = len(ids or [])
     except Exception as e:
         logger.warning(f"[status] Lecture LTM KO: {e}")
@@ -167,7 +172,7 @@ async def clear_memory(request: Request):
         raise HTTPException(status_code=503, detail="Dépendances mémoire indisponibles")
 
     from backend.features.memory.gardener import MemoryGardener
-    gardener = MemoryGardener(db_manager=db, vector_service=vec, memory_analyzer=analyzer)
+    gardener = MemoryGardener(db, vec, analyzer)
     try:
         await gardener._decay_knowledge()
     except Exception as e:
