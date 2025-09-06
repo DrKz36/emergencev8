@@ -1,11 +1,12 @@
 # src/backend/features/memory/gardener.py
-# V2.10.1 — __init__ tolérant (positional + kwargs), where Chroma ($and/$eq), méta user_id en LTM
+# V2.10.2 — fix awaitable: _tend_single_thread ne 'await' plus un dict (inspect.isawaitable)
 from __future__ import annotations
 
 import logging
 import json
 import re
 import hashlib
+import inspect
 from typing import Dict, Any, List, Optional, Iterable
 
 from backend.core.database.manager import DatabaseManager
@@ -78,7 +79,7 @@ class MemoryGardener:
             raise ValueError("MemoryGardener: db_manager et vector_service requis.")
 
         self.knowledge_collection = self.vector_service.get_or_create_collection(self.KNOWLEDGE)
-        logger.info("MemoryGardener V2.10.1 initialisé.")
+        logger.info("MemoryGardener V2.10.2 initialisé.")
 
     # --------- API publique ---------
     async def tend_the_garden(self, consolidation_limit: int = 10, thread_id: Optional[str] = None) -> Dict[str, Any]:
@@ -107,7 +108,9 @@ class MemoryGardener:
                 # Relance d’analyse si nécessaire
                 if not all_concepts and history and self.analyzer:
                     await self.analyzer.analyze_session_for_concepts(session_id=sid, history=history)
-                    row = await self.db.fetch_one("SELECT extracted_concepts, extracted_entities FROM sessions WHERE id = ?", (sid,))
+                    row = await self.db.fetch_one(
+                        "SELECT extracted_concepts, extracted_entities FROM sessions WHERE id = ?", (sid,)
+                    )
                     conc = self._parse_concepts(_row_get(row, "extracted_concepts"))
                     ent  = self._parse_entities(_row_get(row, "extracted_entities"))
                     all_concepts = _unique((conc or []) + (ent or []))
@@ -141,7 +144,10 @@ class MemoryGardener:
             text = raw if isinstance(raw, str) else json.dumps(raw or "", ensure_ascii=False)
             history.append({"role": role, "content": text})
 
-        analysis = await (self.analyzer.analyze_history(tid, history) if (self.analyzer and history) else self._fallback_analysis(history))
+        # ⛑️ fix awaitable: ne pas 'await' un dict retourné par _fallback_analysis
+        res = self.analyzer.analyze_history(tid, history) if (self.analyzer and history) else self._fallback_analysis(history)
+        analysis = await res if inspect.isawaitable(res) else res
+
         all_concepts = _unique((analysis.get("concepts") or []) + (analysis.get("entities") or []))
         created = 0
         if all_concepts and not await self._any_vectors_for_session_type(tid, "concept"):
