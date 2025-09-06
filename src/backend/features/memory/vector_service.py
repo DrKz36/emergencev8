@@ -1,8 +1,12 @@
 # src/backend/features/memory/vector_service.py
-# V2.9.3 — Telemetry ultra-OFF & import-order guard :
-#          - Force CHROMA_* env OFF avant tout import Chroma
-#          - Monkeypatch complet de posthog (classe + fonctions module-level)
-#          - API identique ; messages Chroma/PostHog supprimés des logs
+# V2.11 — Lazy-imports + API parity avec V2.9.3
+# - Conserve exactement l’API de V2.9.3: get_or_create_collection, add_items, query, delete_vectors
+# - Déplace les imports lourds (chromadb, sentence_transformers) dans __init__
+# - Télémétrie ultra-OFF (env + posthog no-op) AVANT tout import Chroma
+# - Auto-reset protégé si schéma/DB Chroma cassé
+# - Normalisation where conservée
+
+from __future__ import annotations
 
 import logging
 import os
@@ -11,15 +15,17 @@ import sqlite3
 import sys
 import types
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, TYPE_CHECKING
 
-# ---- Force disable telemetry as early as possible (before importing chromadb) ----
+logger = logging.getLogger(__name__)
+
+# ---- Helpers télémétrie (appelés dans __init__ AVANT import Chroma) ----------
 def _force_disable_telemetry_env() -> None:
     try:
         os.environ.setdefault("CHROMA_DISABLE_TELEMETRY", "1")
         os.environ.setdefault("ANONYMIZED_TELEMETRY", "0")
         os.environ.setdefault("PERSIST_TELEMETRY", "0")
-        # Défensif : variantes lues par certaines builds
+        # variantes défensives
         os.environ.setdefault("CHROMA_TELEMETRY_ENABLED", "0")
         os.environ.setdefault("DO_NOT_TRACK", "1")
         os.environ.setdefault("POSTHOG_DISABLED", "1")
@@ -27,34 +33,25 @@ def _force_disable_telemetry_env() -> None:
         pass
 
 def _monkeypatch_posthog_noop() -> None:
-    """
-    Neutralise entièrement 'posthog' quel que soit le mode d'import utilisé par Chroma :
-      - Fournit une classe Posthog no-op.
-      - Fournit les fonctions module-level capture/identify/flush/shutdown no-op.
-    """
+    """Neutralise complètement 'posthog' (classe + fonctions module-level)."""
     def _noop(*a, **k): return None
-
     try:
         import posthog  # type: ignore
-
         class _NoopPosthog:
             def __init__(self, *a, **k): pass
             def capture(self, *a, **k): return None
             def identify(self, *a, **k): return None
             def flush(self, *a, **k): return None
             def shutdown(self, *a, **k): return None
-
         try:
-            posthog.Posthog = _NoopPosthog          # classe no-op
-            posthog.capture = _noop                 # fonctions module-level no-op
+            posthog.Posthog = _NoopPosthog
+            posthog.capture = _noop
             posthog.identify = _noop
             posthog.flush = _noop
             posthog.shutdown = _noop
         except Exception:
             pass
-
     except Exception:
-        # Module absent → on injecte un shim complet
         shim = types.ModuleType("posthog")
         class _NoopPosthog:
             def __init__(self, *a, **k): pass
@@ -69,25 +66,18 @@ def _monkeypatch_posthog_noop() -> None:
         shim.shutdown = lambda *a, **k: None
         sys.modules.setdefault("posthog", shim)
 
-_force_disable_telemetry_env()
-_monkeypatch_posthog_noop()
-
-# Only now import chromadb (after telemetry is hard-disabled)
-import chromadb
-from chromadb.config import Settings
-from chromadb.types import Collection
-from sentence_transformers import SentenceTransformer
-
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from chromadb.types import Collection  # hints only
+else:
+    Collection = Any  # runtime-friendly
 
 
 class VectorService:
     """
-    VectorService V2.9.3
-    - API identique.
-    - Auto-reset AVANT instanciation Chroma si DB corrompue (évite locks Windows).
-    - Télémétrie Chroma/PostHog durcie : env forcé + module posthog neutralisé (classe + fonctions).
-    - FIX existant conservé : normalisation des filtres where.
+    VectorService V2.11 — Lazy-import + API parity
+    - API identique à V2.9.3 (add_items/query/delete_vectors)
+    - Import Chroma/SentenceTransformer déplacé dans __init__ (cold start Cloud Run)
+    - Auto-reset si schéma cassé (backup + re-init)
     """
 
     def __init__(
@@ -97,9 +87,9 @@ class VectorService:
         auto_reset_on_schema_error: bool = True
     ):
         """
-        :param persist_directory: Répertoire de persistance Chroma (ex: 'src/backend/data/vector_store').
-        :param embed_model_name: Modèle SentenceTransformer (ex: 'all-MiniLM-L6-v2').
-        :param auto_reset_on_schema_error: True -> backup + reset si schéma/DB cassée.
+        :param persist_directory: Répertoire de persistance (ex: '/app/data/vector_store').
+        :param embed_model_name:  Modèle SentenceTransformer (ex: 'all-MiniLM-L6-v2').
+        :param auto_reset_on_schema_error: True → backup + reset si schéma/DB cassée.
         """
         self.persist_directory = os.path.abspath(persist_directory)
         self.embed_model_name = embed_model_name
@@ -107,23 +97,30 @@ class VectorService:
 
         os.makedirs(self.persist_directory, exist_ok=True)
 
-        # 0) Pré-check : si DB corrompue -> backup + reset AVANT d'instancier Chroma (évite WinError 32)
+        # IMPORTANT: neutraliser télémétrie AVANT import Chroma
+        _force_disable_telemetry_env()
+        _monkeypatch_posthog_noop()
+
+        # Imports lourds → maintenant (lazy)
+        from sentence_transformers import SentenceTransformer  # type: ignore
+        import chromadb  # type: ignore
+        from chromadb.config import Settings  # type: ignore
+
+        self._chromadb = chromadb
+        self._ChromaSettings = Settings
+
+        # 0) Pré-check corruption SQLite AVANT instanciation client
         if self.auto_reset_on_schema_error and self._is_sqlite_corrupted(self.persist_directory):
-            logger.warning("Pré-check: DB Chroma corrompue détectée. Auto-reset protégé AVANT initialisation…")
+            logger.warning("Pré-check: DB Chroma corrompue. Auto-reset protégé AVANT initialisation…")
             backup_path = self._backup_persist_dir(self.persist_directory)
             logger.warning(f"Store existant déplacé en backup: {backup_path}")
 
         # 1) Charger le modèle d'embedding
         try:
             self.model = SentenceTransformer(self.embed_model_name)
-            logger.info(
-                f"Modèle SentenceTransformer '{self.embed_model_name}' chargé avec succès."
-            )
+            logger.info(f"Modèle SentenceTransformer '{self.embed_model_name}' chargé.")
         except Exception as e:
-            logger.error(
-                f"Échec du chargement du modèle '{self.embed_model_name}': {e}",
-                exc_info=True
-            )
+            logger.error(f"Échec chargement modèle '{self.embed_model_name}': {e}", exc_info=True)
             raise
 
         # 2) Initialiser Chroma PersistentClient (télémétrie désactivée)
@@ -135,8 +132,7 @@ class VectorService:
     # ---------- Pré-check SQLite ----------
     def _is_sqlite_corrupted(self, path: str) -> bool:
         """
-        Retourne True si chroma.sqlite3 est inexistant mais avec artefacts incohérents,
-        ou existant mais non lisible / entête invalide / integrity_check != 'ok'.
+        True si chroma.sqlite3 est illisible / entête invalide / integrity_check != 'ok'.
         """
         db_path = os.path.join(path, "chroma.sqlite3")
         if not os.path.exists(db_path):
@@ -156,66 +152,46 @@ class VectorService:
             return False
 
     # ---------- Initialisation protégée du client ----------
-    def _init_client_with_guard(self, path: str, allow_auto_reset: bool) -> chromadb.PersistentClient:
+    def _init_client_with_guard(self, path: str, allow_auto_reset: bool):
         try:
-            client = chromadb.PersistentClient(
+            client = self._chromadb.PersistentClient(
                 path=path,
-                settings=Settings(anonymized_telemetry=False)  # Télémétrie désactivée
+                settings=self._ChromaSettings(anonymized_telemetry=False)
             )
             _ = client.list_collections()
-            logger.info(f"Client ChromaDB connecté au répertoire: {path}")
+            logger.info(f"Client ChromaDB connecté: {path}")
             return client
 
         except Exception as e:
             msg = str(e).lower()
             schema_signatures = (
-                "no such column",
-                "schema mismatch",
-                "wrong number of columns",
-                "has no column named",
-                "operationalerror",
-                "file is not a database",
-                "not a database",
-                "database disk image is malformed",
-                "could not connect to tenant",
-                "default_tenant"
+                "no such column", "schema mismatch", "wrong number of columns",
+                "has no column named", "operationalerror", "file is not a database",
+                "not a database", "database disk image is malformed",
+                "could not connect to tenant", "default_tenant"
             )
             is_schema_issue = any(sig in msg for sig in schema_signatures)
-
             if is_schema_issue and allow_auto_reset:
-                logger.warning(
-                    "Incompatibilité/corruption du store Chroma détectée durant init. "
-                    "Auto-reset protégé (post-essai) en cours…"
-                )
+                logger.warning("Incompatibilité/corruption du store Chroma détectée. Auto-reset protégé…")
                 backup_path = self._backup_persist_dir(self.persist_directory)
                 logger.warning(f"Store existant déplacé en backup: {backup_path}")
                 try:
-                    client = chromadb.PersistentClient(
+                    client = self._chromadb.PersistentClient(
                         path=path,
-                        settings=Settings(anonymized_telemetry=False)
+                        settings=self._ChromaSettings(anonymized_telemetry=False)
                     )
                     _ = client.list_collections()
-                    logger.info(f"Nouveau store ChromaDB initialisé avec succès dans: {path}")
+                    logger.info(f"Nouveau store ChromaDB initialisé: {path}")
                     return client
                 except Exception as e2:
-                    logger.error(
-                        f"Échec de la réinitialisation du store Chroma: {e2}",
-                        exc_info=True
-                    )
+                    logger.error(f"Réinitialisation store Chroma échouée: {e2}", exc_info=True)
                     raise
             else:
-                logger.error(
-                    f"Échec de l'initialisation du client Chroma (auto-reset={allow_auto_reset}). "
-                    f"Message: {e}",
-                    exc_info=True
-                )
+                logger.error(f"Init Chroma échouée (auto-reset={allow_auto_reset}). Message: {e}", exc_info=True)
                 raise
 
     def _backup_persist_dir(self, path: str) -> str:
-        """
-        Déplace le dossier 'path' en 'path_backup_YYYYMMDD_HHMMSS' et recrée 'path'.
-        Conçu pour être appelé AVANT toute instanciation Chroma (donc sans lock).
-        """
+        """Déplace 'path' vers 'path_backup_YYYYMMDD_HHMMSS' puis recrée 'path'."""
         ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         backup_path = f"{path}_backup_{ts}"
         try:
@@ -223,44 +199,32 @@ class VectorService:
                 shutil.move(path, backup_path)
             os.makedirs(path, exist_ok=True)
         except Exception as e:
-            logger.error(
-                f"Échec du backup '{path}' vers '{backup_path}': {e}",
-                exc_info=True
-            )
+            logger.error(f"Backup '{path}' → '{backup_path}' KO: {e}", exc_info=True)
             raise
         return backup_path
 
-    # ---------- Normalisation where (FIX) ----------
+    # ---------- Normalisation where ----------
     def _normalize_where(self, where: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """
         Règles Chroma:
-          - Un seul critère: passer tel quel, ex. {'source_session_id': '...'}
-          - Plusieurs critères: {'$and': [ {k1:v1}, {k2:v2}, ... ]}
-          - Si déjà opérateur ($and/$or/$not):
-              * si $and/$or liste de longueur 0 -> None
-              * si $and/$or liste de longueur 1 -> aplatir en dict simple
-              * sinon -> laisser tel quel
+          - 1 critère -> dict tel quel
+          - >1 critère -> {'$and': [ {k1:v1}, {k2:v2}, ... ]}
+          - Opérateurs $and/$or : nettoyer listes vides / singleton
         """
         if not where:
             return None
-
         if any(str(k).startswith("$") for k in where.keys()):
             if "$and" in where and isinstance(where["$and"], list):
                 lst = where["$and"]
-                if len(lst) == 0:
-                    return None
-                if len(lst) == 1 and isinstance(lst[0], dict):
-                    return lst[0]
+                if len(lst) == 0: return None
+                if len(lst) == 1 and isinstance(lst[0], dict): return lst[0]
                 return where
             if "$or" in where and isinstance(where["$or"], list):
                 lst = where["$or"]
-                if len(lst) == 0:
-                    return None
-                if len(lst) == 1 and isinstance(lst[0], dict):
-                    return lst[0]
+                if len(lst) == 0: return None
+                if len(lst) == 1 and isinstance(lst[0], dict): return lst[0]
                 return where
             return where
-
         items = list(where.items())
         if len(items) <= 1:
             return where
@@ -268,43 +232,27 @@ class VectorService:
 
     # ---------- API publique ----------
     def get_or_create_collection(self, name: str) -> Collection:
-        try:
-            collection = self.client.get_or_create_collection(name=name)
-            logger.info(f"Collection '{name}' chargée/créée avec succès.")
-            return collection
-        except Exception as e:
-            logger.error(
-                f"Impossible de get/create la collection '{name}': {e}",
-                exc_info=True
-            )
-            raise
+        collection = self.client.get_or_create_collection(name=name)
+        logger.info(f"Collection '{name}' chargée/créée.")
+        return collection  # type: ignore[return-value]
 
     def add_items(
         self,
         collection: Collection,
         items: List[Dict[str, Any]],
-        item_text_key: str = 'text'
+        item_text_key: str = "text"
     ) -> None:
         if not items:
-            logger.warning(
-                f"Tentative d'ajout d'items vides à '{collection.name}'."
-            )
+            logger.warning(f"Tentative d'ajout d'items vides à '{getattr(collection, 'name', '?')}'.")
             return
         try:
-            ids = [item['id'] for item in items]
+            ids = [item["id"] for item in items]
             documents_text = [item[item_text_key] for item in items]
-            metadatas = [item.get('metadata', {}) for item in items]
+            metadatas = [item.get("metadata", {}) for item in items]
 
-            from sentence_transformers import SentenceTransformer as _ST  # lazy safety
-            embeddings = self.model.encode(
-                documents_text,
-                show_progress_bar=False
-            )
-            embeddings_list = (
-                embeddings.tolist()
-                if hasattr(embeddings, "tolist")
-                else embeddings
-            )
+            # Encodage embeddings
+            embeddings = self.model.encode(documents_text, show_progress_bar=False)
+            embeddings_list = embeddings.tolist() if hasattr(embeddings, "tolist") else embeddings
 
             collection.upsert(
                 embeddings=embeddings_list,
@@ -312,14 +260,9 @@ class VectorService:
                 metadatas=metadatas,
                 ids=ids
             )
-            logger.info(
-                f"{len(ids)} items ajoutés/mis à jour dans '{collection.name}'."
-            )
+            logger.info(f"{len(ids)} items ajoutés/mis à jour dans '{getattr(collection, 'name', '?')}'.")
         except Exception as e:
-            logger.error(
-                f"Échec de l'ajout d'items à '{collection.name}': {e}",
-                exc_info=True
-            )
+            logger.error(f"Échec add_items sur '{getattr(collection, 'name', '?')}': {e}", exc_info=True)
             raise
 
     def query(
@@ -332,15 +275,8 @@ class VectorService:
         if not query_text:
             return []
         try:
-            embeddings = self.model.encode(
-                [query_text],
-                show_progress_bar=False
-            )
-            embeddings_list = (
-                embeddings.tolist()
-                if hasattr(embeddings, "tolist")
-                else embeddings
-            )
+            embeddings = self.model.encode([query_text], show_progress_bar=False)
+            embeddings_list = embeddings.tolist() if hasattr(embeddings, "tolist") else embeddings
 
             results = collection.query(
                 query_embeddings=embeddings_list,
@@ -349,44 +285,33 @@ class VectorService:
                 include=["documents", "metadatas", "distances"]
             )
 
-            formatted_results: List[Dict[str, Any]] = []
-            if results and results.get('ids') and results['ids'][0]:
-                ids = results['ids'][0]
-                docs = results.get('documents', [[]])[0]
-                metas = results.get('metadatas', [[]])[0]
-                dists = results.get('distances', [[]])[0]
+            formatted: List[Dict[str, Any]] = []
+            if results and results.get("ids") and results["ids"][0]:
+                ids = results["ids"][0]
+                docs = results.get("documents", [[]])[0]
+                metas = results.get("metadatas", [[]])[0]
+                dists = results.get("distances", [[]])[0]
 
                 for i, doc_id in enumerate(ids):
-                    formatted_results.append({
+                    formatted.append({
                         "id": doc_id,
                         "text": docs[i] if i < len(docs) else None,
                         "metadata": metas[i] if i < len(metas) else None,
                         "distance": dists[i] if i < len(dists) else None
                     })
-
-            return formatted_results
+            return formatted
         except Exception as e:
             safe_q = (query_text or "")[:50]
-            logger.error(
-                f"Échec de la recherche '{safe_q}…' dans '{collection.name}': {e}",
-                exc_info=True
-            )
+            logger.error(f"Échec query '{safe_q}…' dans '{getattr(collection, 'name', '?')}': {e}", exc_info=True)
             return []
 
     def delete_vectors(self, collection: Collection, where_filter: Dict[str, Any]) -> None:
         if not where_filter:
-            logger.warning(
-                f"Suppression annulée sur '{collection.name}' (pas de filtre)."
-            )
+            logger.warning(f"Suppression annulée sur '{getattr(collection, 'name', '?')}' (pas de filtre).")
             return
         try:
             collection.delete(where=self._normalize_where(where_filter))
-            logger.info(
-                f"Vecteurs supprimés de '{collection.name}' avec filtre {where_filter}."
-            )
+            logger.info(f"Vecteurs supprimés de '{getattr(collection, 'name', '?')}' avec filtre {where_filter}.")
         except Exception as e:
-            logger.error(
-                f"Échec suppression vecteurs dans '{collection.name}': {e}",
-                exc_info=True
-            )
+            logger.error(f"Échec suppression vecteurs dans '{getattr(collection, 'name', '?')}': {e}", exc_info=True)
             raise
