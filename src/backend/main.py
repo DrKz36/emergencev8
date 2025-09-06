@@ -1,9 +1,10 @@
-﻿# src/backend/main.py
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os, sys, logging, time
 from pathlib import Path
-from fastapi import FastAPI
+from typing import Optional
+
+from fastapi import FastAPI, APIRouter, Query
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
@@ -11,9 +12,11 @@ logger = logging.getLogger("emergence")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 
 # --- PYTHONPATH ---
-SRC_DIR = Path(__file__).resolve().parent.parent
-REPO_ROOT = SRC_DIR.parent
-sys.path.append(str(REPO_ROOT))
+SRC_DIR = Path(__file__).resolve().parent.parent  # -> /app/src
+REPO_ROOT = SRC_DIR.parent                        # -> /app
+# 🔧 Fix: garantir /app/src en priorité (évite dépendance exclusive à l'ENV)
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 from backend.containers import ServiceContainer
 from backend.core.database.schema import initialize_database
@@ -127,6 +130,31 @@ def create_app() -> FastAPI:
 
     # ⚠️ WS: **uniquement** features.chat.router (déclare /ws/{session_id})
     _mount_router(CHAT_ROUTER)  # pas de prefix → garde /ws/{session_id}
+
+    # ---------- AJOUT : /api/memory/tend-garden (GET & POST) ----------
+    memory_ext = APIRouter(tags=["Memory"])
+
+    @memory_ext.api_route("/tend-garden", methods=["GET", "POST"])
+    async def tend_garden(thread_id: Optional[str] = Query(default=None, description="Optionnel: traiter un thread précis")):
+        """
+        Déclenche la consolidation STM→LTM et la vectorisation (Chroma).
+        Renvoie le rapport du jardinier.
+        """
+        try:
+            from backend.features.memory.gardener import MemoryGardener
+            db  = app.state.service_container.db_manager()
+            vec = app.state.service_container.vector_service()
+            anl = app.state.service_container.memory_analyzer()
+
+            gardener = MemoryGardener(db_manager=db, vector_service=vec, analyzer=anl)
+            report = await gardener.tend_the_garden(thread_id=thread_id)
+            return {"status": "success", "report": report}
+        except Exception as e:
+            logger.error(f"tend-garden failed: {e}", exc_info=True)
+            return {"status": "error", "message": str(e)}
+
+    # Monte l’extension sous /api/memory
+    app.include_router(memory_ext, prefix="/api/memory")
 
     # Static (best-effort)
     try:

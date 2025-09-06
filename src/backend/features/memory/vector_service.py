@@ -1,6 +1,7 @@
 # src/backend/features/memory/vector_service.py
-# V2.11 — Lazy-imports + API parity avec V2.9.3
+# V2.11.1 — Lazy-imports + API parity (add_items/query/delete_vectors) + **embed_texts public**
 # - Conserve exactement l’API de V2.9.3: get_or_create_collection, add_items, query, delete_vectors
+# - Ajoute embed_texts(texts) attendu par MemoryGardener._vectorize_concepts
 # - Déplace les imports lourds (chromadb, sentence_transformers) dans __init__
 # - Télémétrie ultra-OFF (env + posthog no-op) AVANT tout import Chroma
 # - Auto-reset protégé si schéma/DB Chroma cassé
@@ -74,8 +75,9 @@ else:
 
 class VectorService:
     """
-    VectorService V2.11 — Lazy-import + API parity
+    VectorService V2.11.1 — Lazy-import + API parity
     - API identique à V2.9.3 (add_items/query/delete_vectors)
+    - Ajoute embed_texts(texts) pour consommation externe (Gardener)
     - Import Chroma/SentenceTransformer déplacé dans __init__ (cold start Cloud Run)
     - Auto-reset si schéma cassé (backup + re-init)
     """
@@ -231,6 +233,20 @@ class VectorService:
         return {"$and": [{k: v} for k, v in items]}
 
     # ---------- API publique ----------
+
+    def embed_texts(self, texts: List[str]) -> List[List[float]]:
+        """
+        Encode une liste de textes en embeddings (liste de listes de floats) via SentenceTransformer.
+        """
+        if not texts:
+            return []
+        try:
+            emb = self.model.encode(texts, show_progress_bar=False)
+            return emb.tolist() if hasattr(emb, "tolist") else emb  # type: ignore[return-value]
+        except Exception as e:
+            logger.error(f"Échec embed_texts sur {len(texts)} textes: {e}", exc_info=True)
+            raise
+
     def get_or_create_collection(self, name: str) -> Collection:
         collection = self.client.get_or_create_collection(name=name)
         logger.info(f"Collection '{name}' chargée/créée.")
