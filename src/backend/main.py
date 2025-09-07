@@ -6,41 +6,31 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, APIRouter, Query, HTTPException, Request
+from fastapi import FastAPI, APIRouter, Query, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 
 # ---------------------------------------------------------------------
-# Logger
+# Version banner (visible dans /api/health)
+APP_VERSION = "7.4.1"
 # ---------------------------------------------------------------------
+
 logger = logging.getLogger("emergence")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 
-# ---------------------------------------------------------------------
-# Paths (ARBO)
-# /app              -> REPO_ROOT
-# /app/src          -> SRC_DIR
-# /app/src/frontend -> FRONTEND_DIR (exposé)
-# /app/assets       -> ASSETS_DIR  (exposé si présent)
-# ---------------------------------------------------------------------
-SRC_DIR = Path(__file__).resolve().parent.parent   # /app/src
-REPO_ROOT = SRC_DIR.parent                         # /app
-FRONTEND_DIR = SRC_DIR / "frontend"                # /app/src/frontend
-ASSETS_DIR = REPO_ROOT / "assets"                  # /app/assets
-INDEX_HTML = REPO_ROOT / "index.html"
+# Paths
+SRC_DIR     = Path(__file__).resolve().parent.parent  # /app/src
+REPO_ROOT   = SRC_DIR.parent                          # /app
+FRONTEND_DIR= SRC_DIR / "frontend"                    # /app/src/frontend
+ASSETS_DIR  = REPO_ROOT / "assets"                    # /app/assets
+INDEX_HTML  = REPO_ROOT / "index.html"
 
-# Assure import backend.*
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-# DI / DB imports
 from backend.containers import ServiceContainer
 from backend.core.database.schema import initialize_database
-
 
 def _import_router(dotted: str):
     try:
@@ -50,8 +40,6 @@ def _import_router(dotted: str):
         logger.warning(f"Router non trouvé: {dotted} — {e}")
         return None
 
-
-# Routers REST/WS
 DOCUMENTS_ROUTER = _import_router("backend.features.documents.router")
 DASHBOARD_ROUTER = _import_router("backend.features.dashboard.router")
 DEBATE_ROUTER    = _import_router("backend.features.debate.router")
@@ -60,14 +48,11 @@ THREADS_ROUTER   = _import_router("backend.features.threads.router")
 MEMORY_ROUTER    = _import_router("backend.features.memory.router")
 DEV_AUTH_ROUTER  = _import_router("backend.features.dev_auth.router")  # optionnel
 
-
 def _migrations_dir() -> str:
     return str(Path(__file__).resolve().parent / "core" / "migrations")
 
-
 async def _startup(container: ServiceContainer):
     logger.info("Démarrage backend Émergence…")
-    # DB init (safe-boot)
     try:
         db_manager = container.db_manager()
         fast_boot = os.getenv("EMERGENCE_FAST_BOOT") or os.getenv("EMERGENCE_SKIP_MIGRATIONS")
@@ -80,7 +65,7 @@ async def _startup(container: ServiceContainer):
     except Exception as e:
         logger.warning(f"Initialisation DB partielle: {e}")
 
-    # Wire DI
+    # DI wiring minimal
     try:
         import backend.features.chat.router as chat_router_module
         import backend.features.dashboard.router as dashboard_module
@@ -91,19 +76,13 @@ async def _startup(container: ServiceContainer):
     except Exception as e:
         logger.warning(f"Wire DI partiel: {e}")
 
-    # MemoryAnalyzer hook
-    try:
-        analyzer = container.memory_analyzer()
-        chat_svc = container.chat_service()
-        analyzer.set_chat_service(chat_svc)
-        logger.info("MemoryAnalyzer hook: ChatService injecté (ready=True).")
-    except Exception as e:
-        logger.warning(f"MemoryAnalyzer hook non appliqué: {e}")
-
+    # Version + statics presence
+    logger.info("Static mounts v%s: FRONTEND=%s | ASSETS=%s | INDEX=%s",
+                APP_VERSION, FRONTEND_DIR.exists(), ASSETS_DIR.exists(), INDEX_HTML.exists())
 
 def create_app() -> FastAPI:
     container = ServiceContainer()
-    app = FastAPI(title="Émergence API", version="7.4")
+    app = FastAPI(title="Émergence API", version=APP_VERSION)
     app.state.service_container = container
     app.router.redirect_slashes = True
 
@@ -115,8 +94,6 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def _on_startup():
         await _startup(container)
-        logger.info("Static mounts v7.4: FRONTEND=%s | ASSETS=%s | INDEX=%s",
-                    FRONTEND_DIR.exists(), ASSETS_DIR.exists(), INDEX_HTML.exists())
 
     @app.on_event("shutdown")
     async def _on_shutdown():
@@ -132,8 +109,10 @@ def create_app() -> FastAPI:
 
     # -------------------------- Health --------------------------
     @app.get("/api/health", tags=["Health"])
-    async def health():
-        return {"status": "ok", "message": "Emergence Backend is running."}
+    async def health(response: Response):
+        # Ajout d’un header et de la version pour suivre le déploiement effectif
+        response.headers["X-App-Version"] = APP_VERSION
+        return {"status": "ok", "message": "Emergence Backend is running.", "version": APP_VERSION}
 
     # ----------------------- REST / WS --------------------------
     def _mount_router(router, prefix: str | None = None):
@@ -154,7 +133,7 @@ def create_app() -> FastAPI:
     _mount_router(THREADS_ROUTER,   "/api/threads")
     _mount_router(MEMORY_ROUTER,    "/api/memory")
     _mount_router(DEV_AUTH_ROUTER)  # éventuel
-    _mount_router(CHAT_ROUTER)      # WS (ex: /ws/{session_id})
+    _mount_router(CHAT_ROUTER)      # WS
 
     # -------- Extension mémoire: /api/memory/tend-garden -------
     memory_ext = APIRouter(tags=["Memory"])
@@ -180,7 +159,7 @@ def create_app() -> FastAPI:
     #   - On N'EXPOSE PAS /app ni /app/src complet.
     #   - /src = UNIQUEMENT /app/src/frontend
     #   - /assets = /app/assets (si présent)
-    #   - "/" : on renvoie index.html explicitement (pas de StaticFiles sur /)
+    #   - "/" : renvoie index.html explicitement (pas de StaticFiles sur /)
     if FRONTEND_DIR.exists():
         app.mount("/src", StaticFiles(directory=str(FRONTEND_DIR), html=False), name="src")
         logger.info("Static mount: /src -> /app/src/frontend")
@@ -203,7 +182,6 @@ def create_app() -> FastAPI:
     # SPA fallback : toute route non /api/* ni /ws* renvoie index.html
     @app.get("/{path:path}", include_in_schema=False)
     async def spa_fallback(path: str, request: Request):
-        # Ne pas intercepter /api/* ni /ws*
         if path.startswith("api") or path.startswith("ws"):
             raise HTTPException(status_code=404, detail="Not Found")
         if INDEX_HTML.exists():
@@ -211,6 +189,5 @@ def create_app() -> FastAPI:
         raise HTTPException(status_code=404, detail="Not Found")
 
     return app
-
 
 app = create_app()
