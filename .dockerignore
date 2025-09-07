@@ -1,51 +1,66 @@
-.venv/
-env/
-venv/
+# ==== VCS / Secrets ====
+.git
+.gitignore
+.gitattributes
+.github/
+.env
+**/*.env
+*.pem
+*.key
+*.crt
+*.pfx
+
+# ==== Python ====
 __pycache__/
 *.pyc
 *.pyo
-*.pytest_cache/
-.pytest_cache/
-.cache/
-.mypy_cache/
+*.pyd
+*.pkl
+.venv/
+venv/
+.envrc
 .dmypy.json
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
 
-.vscode/
-.idea/
+# ==== Node / Front ====
+node_modules/
+pnpm-lock.yaml
+.yarn/
+.yarnrc*
+.npmrc
+dist/
+build/
+.cache/
+*.log
+
+# ==== OS / IDE ====
 .DS_Store
 Thumbs.db
+desktop.ini
+.idea/
+.vscode/
 
-build/
-dist/
-*.egg-info/
-.eggs/
+# ==== Tests / Docs / Assets volumineux ====
+tests/
+docs/
+*.md
+*.pdf
+*.ai
+*.psd
+*.xcf
+*.svg
+*.zip
+*.tar
+*.tar.gz
 
-logs/
-*.log
-tmp/
-tmp_tests/
+# ==== Déploiement source local gcloud ====
+cloud-run-source-deploy/
 
-node_modules/
-npm-debug.log*
-yarn.lock
-pnpm-lock.yaml
+# ==== Snapshots ARBO ====
+arborescence_synchronisée_*.txt
 
-# Données locales lourdes
-data/
-datasets/
-storage/
-cache/
-
-# DB locales (on génère en runtime)
-*.db
-*.sqlite
-*.sqlite3
-
-# Secrets
-*.env
-.env*
-secrets/
-**/secrets.json
-# --- ÉMERGENCE (ne pas exclure la page GIS /dev-auth.html) ---
-!src/frontend/dev-auth.html
-!src/backend/features/dev_auth/**
+# ==== Scripts purement locaux ====
+run-local.ps1

@@ -2,10 +2,10 @@
 /**
  * @file /src/frontend/shared/api-client.js
  * @description Client API centralisé pour les requêtes HTTP (Fetch).
- * @version V4.9 - + getMemoryStatus() ; durcissement threadId & fallbacks
+ * @version V5.0 — pivot fetchWithAuth (GIS) + compat timeouts/retries
  */
-
 import { API_ENDPOINTS } from './config.js';
+import { fetchWithAuth } from '../core/auth.js';
 
 const THREADS_BASE =
   (API_ENDPOINTS && API_ENDPOINTS.THREADS) ? API_ENDPOINTS.THREADS : '/api/threads';
@@ -33,104 +33,35 @@ function buildQuery(params = {}) {
   return entries.length ? `?${new URLSearchParams(entries).toString()}` : '';
 }
 
-function getStateFromStorage() {
-  try {
-    const raw = localStorage.getItem('emergenceState-V14');
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function getSessionIdFromStorage() {
-  try {
-    return getStateFromStorage()?.websocket?.sessionId || null;
-  } catch {
-    return null;
-  }
-}
-
-function isLocalhost() {
-  const h = window.location?.hostname || '';
-  return h === 'localhost' || h === '127.0.0.1' || h === '::1';
-}
-
-/** Entêtes de dev (compat backend local si pas de GIS) */
-function resolveDevHeaders() {
-  const st = getStateFromStorage();
-  const userId = st?.user?.id || 'FG';
-  const userEmail = st?.user?.email;
-  const sessionId = st?.websocket?.sessionId;
-  const headers = { 'X-User-Id': userId };
-  if (userEmail) headers['X-User-Email'] = userEmail;
-  if (sessionId) headers['X-Session-Id'] = sessionId;
-  return headers;
-}
-
-/** ----------------------- Sanitisation threadId ----------------------- **/
-const HEX32  = /^[0-9a-f]{32}$/i;
-const UUID36 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-function normalizeThreadId(val) {
-  const s = String(val ?? '').trim().replace(/^[?=\/]+/, '');
-  if (HEX32.test(s) || UUID36.test(s)) return s;
-  return null;
-}
-
-/**
- * Auth headers:
- * - Tente TOUJOURS un ID token GIS (y compris en localhost).
- * - Si aucun token et en localhost → fallback entêtes de dev.
- * - Ajoute TOUJOURS X-Session-Id si dispo (corrélation REST/WS).
- */
-async function getAuthHeaders() {
-  let token = null;
-
-  try {
-    if (window.gis?.getIdToken) {
-      token = await window.gis.getIdToken();
-      if (token) {
-        try { sessionStorage.setItem('emergence.id_token', token); } catch (_) {}
-      }
-    }
-  } catch (_) {}
-
-  if (!token) {
-    try {
-      token = sessionStorage.getItem('emergence.id_token') || localStorage.getItem('emergence.id_token');
-    } catch (_) {}
-  }
-
-  const headers = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  const sid = getSessionIdFromStorage();
-  if (sid) headers['X-Session-Id'] = sid;
-
-  if (!token && isLocalhost()) return { ...headers, ...resolveDevHeaders() };
-  return headers;
+function withTimeout(controller, ms = DEFAULT_TIMEOUT_MS) {
+  return setTimeout(() => controller.abort(), ms);
 }
 
 /* ------------------------------ Fetch core ---------------------------- */
 async function doFetch(endpoint, config, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = withTimeout(controller, timeoutMs);
   const finalConfig = { ...config, signal: controller.signal };
 
   try {
-    const response = await fetch(endpoint, finalConfig);
-    if (!response.ok) {
-      const contentType = response.headers.get('content-type') || '';
+    const response = await fetchWithAuth(endpoint, finalConfig, { ensure: true });
+    if (!response || typeof response.json !== 'function') {
+      // fetchWithAuth renvoie Response → on laisse faire ci-dessous
+    }
+    const res = response;
+    if (!res.ok) {
+      const contentType = res.headers.get('content-type') || '';
       let errorData = null;
-      try { errorData = contentType.includes('application/json') ? await response.json() : null; } catch (_) {}
+      try { errorData = contentType.includes('application/json') ? await res.json() : null; } catch {}
       const detail = (errorData && (errorData.detail || errorData.message))
-        || (response.status === 503 ? 'Service Unavailable' : response.statusText)
-        || `Erreur HTTP : ${response.status}`;
+        || (res.status === 503 ? 'Service Unavailable' : res.statusText)
+        || `Erreur HTTP : ${res.status}`;
       const err = new Error(detail);
-      err.status = response.status;
+      err.status = res.status;
       throw err;
     }
-    const ct = response.headers.get('content-type') || '';
-    return ct.includes('application/json') ? response.json() : {};
+    const ct = res.headers.get('content-type') || '';
+    return ct.includes('application/json') ? res.json() : {};
   } catch (e) {
     if (e?.name === 'AbortError') {
       const err = new Error('Requête expirée (timeout)');
@@ -143,47 +74,13 @@ async function doFetch(endpoint, config, timeoutMs = DEFAULT_TIMEOUT_MS) {
   }
 }
 
-/* ------------------------------ Core ---------------------------------- */
-async function fetchApi(endpoint, options = {}) {
-  const { method = 'GET', body = null, headers = {}, timeoutMs } = options;
-  const authHeaders = await getAuthHeaders();
-  const finalHeaders = { Accept: 'application/json', ...authHeaders, ...headers };
-  const config = { method, headers: finalHeaders };
-
-  if (body) {
-    if (body instanceof FormData) {
-      config.body = body;
-    } else {
-      config.body = JSON.stringify(body);
-      config.headers['Content-Type'] = 'application/json';
-    }
-  }
-
-  try {
-    return await doFetch(endpoint, config, timeoutMs);
-  } catch (err) {
-    // Retry unique sur 401: refresh GIS si possible
-    if (err?.status === 401 && window.gis?.getIdToken) {
-      try {
-        const fresh = await window.gis.getIdToken();
-        if (fresh) {
-          config.headers['Authorization'] = `Bearer ${fresh}`;
-          try { sessionStorage.setItem('emergence.id_token', fresh); } catch (_) {}
-          return await doFetch(endpoint, config, timeoutMs);
-        }
-      } catch (_) {}
-    }
-    throw err;
-  }
-}
-
 /* ------------------------------ API ----------------------------------- */
 export const api = {
   /* ---------------------- DOCUMENTS ---------------------- */
   async getDocuments() {
     const url = `${API_ENDPOINTS.DOCUMENTS}/`;
     try {
-      const data = await fetchApi(url);
+      const data = await doFetch(url, { method: 'GET' });
       if (Array.isArray(data?.items)) return data;
       if (Array.isArray(data)) return { items: data };
       return { items: [] };
@@ -200,87 +97,71 @@ export const api = {
   uploadDocument: (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    return fetchApi(API_ENDPOINTS.DOCUMENTS_UPLOAD, { method: 'POST', body: formData });
+    return doFetch(API_ENDPOINTS.DOCUMENTS_UPLOAD, { method: 'POST', body: formData });
   },
 
   deleteDocument: (docId) =>
-    fetchApi(`${API_ENDPOINTS.DOCUMENTS}/${docId}`, { method: 'DELETE' }),
+    doFetch(`${API_ENDPOINTS.DOCUMENTS}/${encodeURIComponent(docId)}`, { method: 'DELETE' }),
 
   /* ------------------------ THREADS ---------------------- */
   listThreads: ({ type, limit = 20, offset } = {}) =>
-    fetchApi(`${THREADS_BASE}${buildQuery({ type, limit, offset })}`)
+    doFetch(`${THREADS_BASE}${buildQuery({ type, limit, offset })}`, { method: 'GET' })
       .then((data) => (Array.isArray(data?.items) ? data : { items: Array.isArray(data) ? data : [] })),
 
   createThread: ({ type = 'chat', title, metadata, agent_id } = {}) =>
-    fetchApi(`${THREADS_BASE}/`, { method: 'POST', body: { type, title, agent_id, meta: metadata } })
-      .then((data) => ({ id: data?.id, thread: data?.thread })),
+    doFetch(`${THREADS_BASE}/`, { method: 'POST', body: JSON.stringify({ type, title, agent_id, meta: metadata }) })
+      .then(async (res) => res),
 
   getThreadById: async (id, { messages_limit } = {}) => {
-    const safeId = normalizeThreadId(id);
-    if (!safeId) {
-      console.warn('[API Client] threadId invalide → création d’un nouveau thread (fallback).');
-      const created = await api.createThread({ type: 'chat' });
-      return { id: created?.id ?? null, thread: created?.thread ?? null, messages: [], docs: [] };
-    }
+    const safeId = String(id || '').trim();
     const url = `${THREADS_BASE}/${encodeURIComponent(safeId)}${buildQuery({ messages_limit })}`;
     try {
-      const data = await fetchApi(url);
+      const data = await doFetch(url, { method: 'GET' });
       const t = data?.thread || null;
       const msgs = Array.isArray(data?.messages) ? data.messages : [];
       const docs = Array.isArray(data?.docs) ? data.docs : [];
       return { id: t?.id || safeId, thread: t, messages: msgs, docs };
     } catch (err) {
       if (err?.status === 404) {
-        console.warn(`[API Client] Thread ${safeId} introuvable (404). Création d’un nouveau thread…`);
-        const created = await api.createThread({ type: 'chat' });
-        return { id: created?.id, thread: created?.thread ?? null, messages: [], docs: [] };
+        console.warn(`[API Client] Thread ${safeId} introuvable (404) — création d’un nouveau thread.`);
+        const created = await doFetch(`${THREADS_BASE}/`, { method: 'POST', body: JSON.stringify({ type: 'chat' }) });
+        return { id: created?.id ?? null, thread: created?.thread ?? null, messages: [], docs: [] };
       }
       throw err;
     }
   },
 
   appendMessage: (threadId, { role = 'user', content, agent_id, meta, metadata } = {}) => {
-    const safeId = normalizeThreadId(threadId);
+    const safeId = String(threadId || '').trim();
     if (!safeId) {
       const err = new Error('Thread ID invalide');
       err.status = 400;
       return Promise.reject(err);
     }
     const body = { role, content, agent_id, meta: meta ?? metadata ?? {} };
-    return fetchApi(`${THREADS_BASE}/${encodeURIComponent(safeId)}/messages`, { method: 'POST', body });
+    return doFetch(`${THREADS_BASE}/${encodeURIComponent(safeId)}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
   },
 
   /* ------------------------ MEMORY ----------------------- */
-  // Analyse/compactage (non bloquant)
-  tendMemory: () => fetchApi(MEMORY_TEND, { method: 'POST', body: {} }),
-
-  // Effacement mémoire (DELETE puis fallback POST)
+  tendMemory: () => doFetch(MEMORY_TEND, { method: 'POST', body: JSON.stringify({}) }),
   clearMemory: async () => {
     try {
-      return await fetchApi(MEMORY_CLEAR, { method: 'DELETE' });
+      return await doFetch(MEMORY_CLEAR, { method: 'DELETE' });
     } catch (err) {
       if (err?.status === 404 || err?.status === 405) {
-        return await fetchApi(MEMORY_CLEAR, { method: 'POST', body: {} });
+        return await doFetch(MEMORY_CLEAR, { method: 'POST', body: JSON.stringify({}) });
       }
       throw err;
     }
   },
-
-  // ✅ Nouveau : statut mémoire (pré-charge bannière)
   getMemoryStatus: async () => {
-    try {
-      return await fetchApi(MEMORY_STATUS, { method: 'GET' });
-    } catch (err) {
-      console.warn('[API Client] /api/memory/status indisponible.', err);
-      throw err;
-    }
+    try { return await doFetch(MEMORY_STATUS, { method: 'GET' }); }
+    catch (err) { console.warn('[API Client] /api/memory/status indisponible.', err); throw err; }
   },
 };
 
-// Accès console en dev
-try {
-  if (isLocalhost() && typeof window !== 'undefined') {
-    // @ts-ignore
-    window.api = api;
-  }
-} catch (_) {}
+// Dev: accès console
+try { if (typeof window !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) window.api = api; } catch {}

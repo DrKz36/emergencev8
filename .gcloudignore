@@ -1,74 +1,69 @@
-﻿# Hérite des règles Gitignore usuelles
-.git/
-.github/
+﻿# gcloud deploy: exclure ce qui est inutile au build distant
+
+# ==== VCS ====
+.git
 .gitignore
 .gitattributes
+.github/
 
-# Python / venv / caches
-.venv/
-env/
-venv/
+# ==== Secrets ====
+.env
+**/*.env
+*.pem
+*.key
+*.crt
+*.pfx
+
+# ==== Python ====
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.pytest_cache/
+*.pkl
+.venv/
+venv/
+.dmypy.json
+.mypy_cache/
 .pytest_cache/
 .coverage
 htmlcov/
-.cache/
-.mypy_cache/
-.dmypy.json
-.pyre/
 
-# Node / frontend lourds
+# ==== Node / Front ====
 node_modules/
-npm-debug.log*
-yarn.lock
 pnpm-lock.yaml
-.svelte-kit/
-.streamlit/
-
-# Logs / temporaires / datasets locaux
-logs/
+.yarn/
+.yarnrc*
+.npmrc
+dist/
+build/
+.cache/
 *.log
-*.tmp
-*.temp
-tmp/
-tmp_tests/
-data/
-datasets/
-storage/
-cache/
 
-# DB / vecteurs / uploads locaux (runtime only)
-*.db
-*.sqlite
-*.sqlite3
-src/backend/data/uploads/**
-src/backend/data/vector_store/**
-src/backend/data/vectors/**
-src/backend/data/db/**
-
-# Secrets & configs locales
-*.env
-.env*
-secrets/
-**/secrets.json
-**/config.local.json
-id_token.txt
-
-# Snapshots arbo (pas nécessaires au déploiement)
-arborescence_synchronisée_*.txt
-
-# OS / IDE
+# ==== OS / IDE ====
 .DS_Store
 Thumbs.db
 desktop.ini
+.idea/
+.vscode/
 
-# Scripts locaux non requis en prod
+# ==== Tests / Docs / Assets volumineux ====
+tests/
+docs/
+*.md
+*.pdf
+*.ai
+*.psd
+*.xcf
+*.svg
+*.zip
+*.tar
+*.tar.gz
+
+# ==== Artefacts gcloud ====
+cloud-run-source-deploy/
+
+# ==== Snapshots ARBO ====
+arborescence_synchronisée_*.txt
+
+# ==== Scripts purement locaux ====
 run-local.ps1
-# === Whitelist FRONT (ARBO-LOCK) ===
-!index.html
-!assets/**
-!src/frontend/**

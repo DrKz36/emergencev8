@@ -1,24 +1,43 @@
 // src/frontend/core/state-manager.js
 /**
  * @module core/state-manager
- * @description Gestionnaire d'état V15.3 "Threads Aware" + ensureAuth() + chat meta + metrics
+ * @description Gestionnaire d'état V15.4 "Threads Aware" + GIS ensureAuth + chat meta + metrics
  */
 import { AGENTS } from '../shared/constants.js';
+import { ensureAuth as ensureAuthCore, getIdToken, setGisClientId } from './auth.js';
 
 export class StateManager {
   constructor() {
     this.DEFAULT_STATE = this.getInitialState();
     this.state = this.DEFAULT_STATE;
-
     this.subscribers = new Map();
-    console.log("✅ StateManager V15.3 (Threads Aware + metrics) Constructor: Default state is set.");
+    console.log("✅ StateManager V15.4 (Threads Aware + GIS ensureAuth).");
   }
 
   async init() {
+    // Optionnel: si le clientId est posé dans une meta, on le passe au bridge
+    try {
+      const meta = document.querySelector('meta[name="google-signin-client_id"]');
+      if (meta && meta.content) setGisClientId(meta.content.trim());
+    } catch {}
+
     const savedState = this.loadFromStorage();
     let mergedState = this._deepMerge(this.DEFAULT_STATE, savedState);
     this.state = this.sanitize(mergedState);
-    console.log("[StateManager] V15.3 Initialized: State loaded from localStorage and sanitized.");
+
+    // Auto-auth douce (non bloquante) pour positionner l’indicateur UI
+    try {
+      const tokBefore = getIdToken();
+      if (!tokBefore) {
+        await ensureAuthCore({ interactive: false });
+      }
+      const has = !!getIdToken();
+      this.set('auth.hasToken', has);
+    } catch {
+      this.set('auth.hasToken', false);
+    }
+
+    console.log("[StateManager] Initialized: state sanitized & persisted.");
     this.persist();
   }
 
@@ -41,12 +60,10 @@ export class StateManager {
     // Auth
     cleanState.auth = cleanState.auth || { hasToken: false };
 
-    // Chat meta
+    // Chat meta & metrics
     cleanState.chat = cleanState.chat || {};
     cleanState.chat.lastMessageMeta = cleanState.chat.lastMessageMeta || null;
     cleanState.chat.modelInfo = cleanState.chat.modelInfo || null;
-
-    // Chat metrics (watchdog/WS)
     cleanState.chat.metrics = cleanState.chat.metrics || {
       send_count: 0,
       ws_start_count: 0,
@@ -55,12 +72,9 @@ export class StateManager {
       last_fallback_at: null
     };
 
-    // Optional flags already used by ChatModule
     if (cleanState.chat.ragEnabled === undefined) cleanState.chat.ragEnabled = false;
     if (cleanState.chat.ragStatus === undefined) cleanState.chat.ragStatus = 'idle';
     if (cleanState.chat.memoryBannerAt === undefined) cleanState.chat.memoryBannerAt = null;
-
-    // ✅ NEW: stats mémoire pour l'UI (alimentées par ws:memory_banner)
     if (cleanState.chat.memoryStats === undefined) {
       cleanState.chat.memoryStats = { has_stm: false, ltm_items: 0, injected: false };
     }
@@ -68,42 +82,30 @@ export class StateManager {
     return cleanState;
   }
 
-  getInitialState() {
-    return this.sanitize({});
-  }
+  getInitialState() { return this.sanitize({}); }
 
-  get(key) {
-    return key.split('.').reduce((acc, part) => acc && acc[part], this.state);
-  }
+  get(key) { return key.split('.').reduce((acc, part) => acc && acc[part], this.state); }
 
   set(key, value) {
     if (value === undefined) {
-      console.warn(`[StateManager] Tentative de 'set' avec une valeur 'undefined' pour la clé '${key}'. Opération bloquée.`);
+      console.warn(`[StateManager] Tentative de 'set' undefined pour '${key}' — ignoré.`);
       return;
     }
     const keys = key.split('.');
     const lastKey = keys.pop();
     let target = this.state;
-
     for (let part of keys) {
-      if (!target[part] || typeof target[part] !== 'object') {
-        target[part] = {};
-      }
+      if (!target[part] || typeof target[part] !== 'object') target[part] = {};
       target = target[part];
     }
-
     target[lastKey] = value;
-
     this.notify(key);
     this.persist();
   }
 
   subscribe(key, callback) {
-    if (!this.subscribers.has(key)) {
-      this.subscribers.set(key, []);
-    }
+    if (!this.subscribers.has(key)) this.subscribers.set(key, []);
     this.subscribers.get(key).push(callback);
-    // Unsubscribe propre
     return () => {
       try {
         const arr = this.subscribers.get(key) || [];
@@ -123,19 +125,16 @@ export class StateManager {
   }
 
   persist() {
-    try {
-      localStorage.setItem('emergenceState-V14', JSON.stringify(this.state));
-    } catch (error) {
-      console.error('[StateManager] Error persisting state:', error);
-    }
+    try { localStorage.setItem('emergenceState-V14', JSON.stringify(this.state)); }
+    catch (error) { console.error('[StateManager] Persist error:', error); }
   }
 
   loadFromStorage() {
     try {
-      const savedState = localStorage.getItem('emergenceState-V14');
-      return savedState ? JSON.parse(savedState) : {};
+      const saved = localStorage.getItem('emergenceState-V14');
+      return saved ? JSON.parse(saved) : {};
     } catch (error) {
-      console.error('[StateManager] Error loading state, returning empty object.', error);
+      console.error('[StateManager] Load error — retour {}', error);
       return {};
     }
   }
@@ -156,20 +155,18 @@ export class StateManager {
     return output;
   }
 
-  // TRUE si un token GIS a pu être obtenu/stocké
+  // Back-compat: expose ensureAuth() via core/auth (utilisé par certains modules)
   async ensureAuth() {
     try {
-      if (window.gis?.getIdToken) {
-        const tok = await window.gis.getIdToken()
-        if (tok) {
-          try { sessionStorage.setItem('emergence.id_token', tok); } catch (_) {}
-          try { localStorage.setItem('emergence.id_token', tok); } catch (_) {}
-          this.set('auth.hasToken', true);
-          return true;
-        }
-      }
-    } catch (_) {}
-    this.set('auth.hasToken', false);
-    return false;
+      const tok = getIdToken();
+      if (tok) { this.set('auth.hasToken', true); return true; }
+      const maybe = await ensureAuthCore({ interactive: false });
+      const has = !!(maybe || getIdToken());
+      this.set('auth.hasToken', has);
+      return has;
+    } catch {
+      this.set('auth.hasToken', false);
+      return false;
+    }
   }
 }
