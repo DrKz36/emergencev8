@@ -1,56 +1,51 @@
-# syntax=docker/dockerfile:1
-FROM python:3.11-slim
+# =========================
+#   ÉMERGENCE – Dockerfile
+#   Hotfix static v7.4
+# =========================
 
-# --- Base env ---
+# ---- Base ----
+FROM python:3.11-slim AS base
+
+# Hygiene Python
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=on \
-    PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_DEFAULT_TIMEOUT=100 \
-    # Vector store/transformers caches si besoin
-    HF_HOME=/app/.cache/hf \
-    # Cloud Run fournit PORT, on garde un défaut local
-    PORT=8080 \
-    # Pour imports "backend.*" sans --app-dir (belt & suspenders)
-    PYTHONPATH=/app/src
+    PIP_NO_CACHE_DIR=1
 
-# --- OS deps ---
-# curl pour HEALTHCHECK ; tini pour reap PID1 ; build-essential pour roues natives courantes
+# Paquets système minimaux
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      build-essential curl ca-certificates git tini \
-    && rm -rf /var/lib/apt/lists/*
+    build-essential curl && \
+    rm -rf /var/lib/apt/lists/*
 
-# --- Workdir ---
 WORKDIR /app
 
-# --- Python deps ---
-# Astuce: couche stable requirements pour cacher au max
-COPY requirements.txt /app/requirements.txt
-RUN python -m pip install --upgrade pip \
- && python -m pip install -r /app/requirements.txt
+# ---- Dépendances Python (cache efficace) ----
+COPY requirements.txt ./requirements.txt
+RUN python -m pip install --upgrade pip && \
+    pip install -r requirements.txt
 
-# --- Code ---
-# On copie explicitement src/ ; .dockerignore DOIT exclure .git, .venv, node_modules, etc.
-COPY src/ /app/src/
-# (facultatif) si tu as des assets publics à servir (sinon commente)
-# COPY public/ /app/public/
+# ---- Cache-bust pour s'assurer que les modifications code/statics prennent ----
+ARG BUILDSTAMP
+ENV BUILDSTAMP=${BUILDSTAMP}
 
-# --- Sécurité runtime (non-root) ---
-# On crée un user "app" et on s’assure que /app est writable (ex: /app/data pour Chroma etc.)
-RUN useradd -r -u 10001 -g root app \
- && mkdir -p /app/data /app/.cache \
- && chown -R app:root /app
-USER app
+# ---- Statiques + Code (ordre de COPY calibré) ----
+# 1) Fichiers front à la racine (servis par main.py)
+COPY index.html ./index.html
+# 2) Assets (si présent dans le repo). Ne casse pas si absent (COPY échouera si inexistant, donc laisse le dossier au repo).
+#    Si tu n'as pas de dossier assets, commente la ligne suivante.
+COPY assets ./assets
+# 3) Code applicatif complet (backend + frontend)
+COPY src ./src
 
-# --- Réseau & health ---
+# ---- Env runtime utiles ----
+ENV CHROMA_DISABLE_TELEMETRY=1 \
+    HF_HOME=/app/.cache/hf \
+    VECTOR_STORE_DIR=/app/data/vector_store
+
+RUN mkdir -p /app/data/vector_store
+
+# ---- Exposition Cloud Run ----
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:${PORT}/api/health || exit 1
 
-# --- Entry & CMD ---
-# tini comme PID1 pour un shutdown propre
-ENTRYPOINT ["tini","--"]
-
-# ⚠️ LANCE LE WRAPPER SÉCURISÉ (bloque .git/.env etc.)
-# On passe par sh -c pour l’expansion ${PORT} de Cloud Run
-CMD ["sh","-c","uvicorn --app-dir src backend.asgi_secure:app --host 0.0.0.0 --port ${PORT}"]
+# ---- Commande (alignée Cloud Run) ----
+# Uvicorn doit écouter 0.0.0.0:8080
+CMD ["uvicorn", "--app-dir", "src", "backend.main:app", "--host", "0.0.0.0", "--port", "8080"]
