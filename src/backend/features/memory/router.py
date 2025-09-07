@@ -1,5 +1,4 @@
-# src/backend/features/memory/router.py
-# V3.9 — tend-garden: POST+GET ; instanciation MemoryGardener positionnelle ; /status where $eq (compat Chroma)
+# V4.0 — /status tolérant : n’échoue pas si vector_service KO ; lecture DB et LTM en best-effort.
 from __future__ import annotations
 
 import json
@@ -42,11 +41,10 @@ def _coerce_payload_dict(data: Dict[str, Any]) -> TendGardenPayload:
         return TendGardenPayload()
 
 def _detect_user_id(request: Request) -> Optional[str]:
-    # Heuristique : entêtes dev-auth / Google
     for k in ("x-user-id", "x-auth-sub", "x-goog-authenticated-user-id", "x-goog-user-id"):
         v = request.headers.get(k) or request.headers.get(k.upper())
         if v:
-            if ":" in v:  # ex: accounts.google.com:123456789
+            if ":" in v:
                 v = v.split(":", 1)[-1]
             return v.strip()
     return None
@@ -60,7 +58,6 @@ async def _run_tend_garden(container, consolidation_limit: int, thread_id: Optio
         logger.error(f"[tend-garden] DI KO: {e}", exc_info=True)
         raise HTTPException(status_code=503, detail="Dépendances mémoire indisponibles")
 
-    # ⚠️ Instanciation positionnelle (signature-agnostique)
     from backend.features.memory.gardener import MemoryGardener
     gardener = MemoryGardener(db, vec, analyzer)
 
@@ -104,47 +101,60 @@ async def tend_garden_get(
 @router.get("/status")
 async def memory_status(request: Request):
     """
-    Statut mémoire user-aware + compat:
-    - has_stm: bool(summary) sur la dernière session de l’utilisateur (fallback globale)
-    - ltm_count / ltm_items: nb d’items dans emergence_knowledge(user_id)
-    - injected: has_stm or ltm_count>0
-    - Compat: renvoie aussi le dernier rapport /tend-garden (_LAST_REPORT)
+    Statut mémoire user-aware + compat. Tolérant aux défaillances de la mémoire vectorielle :
+    - has_stm basé DB si possible, sinon False
+    - ltm_count basé vector store si dispo, sinon 0
+    - injected = has_stm or ltm_count>0
+    - Renvoie toujours 200 (sauf container manquant)
     """
     container = _container(request)
-    try:
-        db = container.db_manager()
-        vec = container.vector_service()
-    except Exception as e:
-        logger.error(f"[status] DI KO: {e}", exc_info=True)
-        raise HTTPException(status_code=503, detail="Dépendances mémoire indisponibles")
 
     uid = _detect_user_id(request)
 
-    # 1) has_stm
+    # 1) has_stm (best-effort DB)
     has_stm = False
     try:
-        if uid:
-            row = await db.fetch_one("SELECT summary FROM sessions WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1", (uid,))
-        else:
-            row = await db.fetch_one("SELECT summary FROM sessions ORDER BY updated_at DESC LIMIT 1", ())
-        if row:
-            summary = (row["summary"] if isinstance(row, dict) else row[0]) or ""
-            has_stm = bool(isinstance(summary, str) and summary.strip())
+        db = container.db_manager()
+        try:
+            if uid:
+                row = await db.fetch_one(
+                    "SELECT summary FROM sessions WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1",
+                    (uid,),
+                )
+            else:
+                row = await db.fetch_one(
+                    "SELECT summary FROM sessions ORDER BY updated_at DESC LIMIT 1",
+                    (),
+                )
+            if row:
+                summary = (row["summary"] if isinstance(row, dict) else row[0]) or ""
+                has_stm = bool(isinstance(summary, str) and summary.strip())
+        except Exception as e:
+            logger.warning(f"[status] Lecture summary KO: {e}")
     except Exception as e:
-        logger.warning(f"[status] Lecture summary KO: {e}")
+        logger.warning(f"[status] DB indisponible: {e}")
 
-    # 2) ltm_count (vector store)
+    # 2) ltm_count (best-effort VectorService)
     ltm_count = 0
     try:
-        knowledge_col = vec.get_or_create_collection("emergence_knowledge")
-        where = {"user_id": {"$eq": uid}} if uid else None
-        got = knowledge_col.get(where=where)  # pas d'include=ids (builds variables)
-        ids = got.get("ids") or []
-        if ids and isinstance(ids, list) and len(ids) > 0 and isinstance(ids[0], list):
-            ids = [x for sub in ids for x in (sub or [])]
-        ltm_count = len(ids or [])
+        try:
+            vec = container.vector_service()
+        except Exception as e:
+            logger.info(f"[status] VectorService indisponible: {e}")
+            vec = None
+        if vec is not None:
+            try:
+                knowledge_col = vec.get_or_create_collection("emergence_knowledge")
+                where = {"user_id": {"$eq": uid}} if uid else None
+                got = knowledge_col.get(where=where)
+                ids = got.get("ids") or []
+                if ids and isinstance(ids, list) and len(ids) > 0 and isinstance(ids[0], list):
+                    ids = [x for sub in ids for x in (sub or [])]
+                ltm_count = len(ids or [])
+            except Exception as e:
+                logger.warning(f"[status] Lecture LTM KO: {e}")
     except Exception as e:
-        logger.warning(f"[status] Lecture LTM KO: {e}")
+        logger.warning(f"[status] Bloc vec KO: {e}")
 
     injected = bool(has_stm or ltm_count > 0)
 
@@ -152,7 +162,7 @@ async def memory_status(request: Request):
         "status": "ok",
         "has_stm": has_stm,
         "ltm_count": int(ltm_count),
-        "ltm_items": int(ltm_count),   # compat front
+        "ltm_items": int(ltm_count),
         "injected": injected,
         "last_run": _LAST_REPORT["ts"],
         "report": _LAST_REPORT["report"],

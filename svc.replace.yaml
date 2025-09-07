@@ -1,0 +1,18 @@
+﻿apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: emergence-app
+  namespace: emergence-469005
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/launch-stage: GA
+    spec:
+      containers:
+      - image: europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:bd383e158353b0d29a6e9c01100371166c77db8b57dd34f5614b6594cab498d3
+        command: ["uvicorn"]
+        args: ["--app-dir","src","backend.asgi_secure:app","--host","0.0.0.0","--port","8080"]
+        ports:
+        - name: http1
+          containerPort: 8080
