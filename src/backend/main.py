@@ -1,22 +1,43 @@
 ﻿from __future__ import annotations
 
-import os, sys, logging
+import os
+import sys
+import logging
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, APIRouter, Query
+from fastapi import FastAPI, APIRouter, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 
+# ---------------------------------------------------------------------
+# Logger
+# ---------------------------------------------------------------------
 logger = logging.getLogger("emergence")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
 
-# --- PYTHONPATH / ARBO ---
-SRC_DIR = Path(__file__).resolve().parent.parent   # -> /app/src
-REPO_ROOT = SRC_DIR.parent                         # -> /app
+# ---------------------------------------------------------------------
+# Paths (ARBO)
+# /app              -> REPO_ROOT
+# /app/src          -> SRC_DIR
+# /app/src/frontend -> FRONTEND_DIR (exposé)
+# /app/assets       -> ASSETS_DIR  (exposé)
+# ---------------------------------------------------------------------
+SRC_DIR = Path(__file__).resolve().parent.parent   # /app/src
+REPO_ROOT = SRC_DIR.parent                         # /app
+FRONTEND_DIR = SRC_DIR / "frontend"                # /app/src/frontend
+ASSETS_DIR = REPO_ROOT / "assets"                  # /app/assets
+INDEX_HTML = REPO_ROOT / "index.html"
+
+# Assure import backend.*
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+# DI / DB imports
 from backend.containers import ServiceContainer
 from backend.core.database.schema import initialize_database
 
@@ -34,7 +55,7 @@ def _import_router(dotted: str):
 DOCUMENTS_ROUTER = _import_router("backend.features.documents.router")
 DASHBOARD_ROUTER = _import_router("backend.features.dashboard.router")
 DEBATE_ROUTER    = _import_router("backend.features.debate.router")
-CHAT_ROUTER      = _import_router("backend.features.chat.router")  # ← WS
+CHAT_ROUTER      = _import_router("backend.features.chat.router")      # WS
 THREADS_ROUTER   = _import_router("backend.features.threads.router")
 MEMORY_ROUTER    = _import_router("backend.features.memory.router")
 DEV_AUTH_ROUTER  = _import_router("backend.features.dev_auth.router")  # optionnel
@@ -82,10 +103,8 @@ async def _startup(container: ServiceContainer):
 
 def create_app() -> FastAPI:
     container = ServiceContainer()
-    app = FastAPI(title="Émergence API", version="7.2")
+    app = FastAPI(title="Émergence API", version="7.3")
     app.state.service_container = container
-
-    # Redirect /route -> /route/
     app.router.redirect_slashes = True
 
     app.add_middleware(
@@ -109,22 +128,23 @@ def create_app() -> FastAPI:
             pass
         logger.info("Arrêt backend Émergence terminé.")
 
+    # -------------------------- Health --------------------------
     @app.get("/api/health", tags=["Health"])
     async def health():
         return {"status": "ok", "message": "Emergence Backend is running."}
 
-    # --- Mount REST routers ---
-    def _mount_router(router, desired_prefix: str = ""):
-        if router is None:
+    # ----------------------- REST / WS --------------------------
+    def _mount_router(router, prefix: str | None = None):
+        if not router:
             return
         try:
-            if desired_prefix:
-                app.include_router(router, prefix=desired_prefix, tags=getattr(router, "tags", None))
+            if prefix:
+                app.include_router(router, prefix=prefix, tags=getattr(router, "tags", None))
             else:
                 app.include_router(router, tags=getattr(router, "tags", None))
-            logger.info(f"Router monté: {desired_prefix or '(no-prefix)'}")
+            logger.info(f"Router monté: {prefix or '(no-prefix)'}")
         except Exception as e:
-            logger.error(f"Échec du montage router {desired_prefix}: {e}")
+            logger.error(f"Échec montage router {prefix}: {e}")
 
     _mount_router(DOCUMENTS_ROUTER, "/api/documents")
     _mount_router(DEBATE_ROUTER,    "/api/debate")
@@ -132,18 +152,13 @@ def create_app() -> FastAPI:
     _mount_router(THREADS_ROUTER,   "/api/threads")
     _mount_router(MEMORY_ROUTER,    "/api/memory")
     _mount_router(DEV_AUTH_ROUTER)  # éventuel
+    _mount_router(CHAT_ROUTER)      # WS (ex: /ws/{session_id})
 
-    # WS (chat)
-    _mount_router(CHAT_ROUTER)  # pas de prefix → /ws/{session_id}
-
-    # ---------- Extension: /api/memory/tend-garden ----------
+    # -------- Extension mémoire: /api/memory/tend-garden -------
     memory_ext = APIRouter(tags=["Memory"])
 
     @memory_ext.api_route("/tend-garden", methods=["GET", "POST"])
     async def tend_garden(thread_id: Optional[str] = Query(default=None, description="Optionnel: traiter un thread précis")):
-        """
-        Déclenche la consolidation STM→LTM + vectorisation. Renvoie le rapport du jardinier.
-        """
         try:
             from backend.features.memory.gardener import MemoryGardener
             db  = app.state.service_container.db_manager()
@@ -158,43 +173,40 @@ def create_app() -> FastAPI:
 
     app.include_router(memory_ext, prefix="/api/memory")
 
-    # ---------- Static mounts (frontend) ----------
-    # Buts:
-    #  - /src/frontend/*  : JS/CSS front (sans exposer /src/backend)
-    #  - /assets/*        : images, styles
-    #  - /                : sert /app/index.html (html=True) + fallback SPA
-    try:
-        BASE = REPO_ROOT                   # /app
-        SRC_PATH = SRC_DIR                 # /app/src
-        FRONTEND_PATH = SRC_PATH / "frontend"
-        ASSETS_PATH = BASE / "assets"
-        INDEX_PATH = BASE / "index.html"
+    # --------------------- Static front -------------------------
+    # ⚠ Sécurité :
+    #   - On N'EXPOSE PAS /app ni /app/src complet.
+    #   - /src = UNIQUEMENT /app/src/frontend
+    #   - /assets = /app/assets (si présent)
+    #   - "/" : on renvoie index.html explicitement (pas de StaticFiles sur /)
+    if FRONTEND_DIR.exists():
+        app.mount("/src", StaticFiles(directory=str(FRONTEND_DIR), html=False), name="src")
+        logger.info("Static mount: /src -> /app/src/frontend")
+    else:
+        logger.warning("Static mount ignoré: /app/src/frontend introuvable.")
 
-        # 1) /src → cible prioritaire sur /app/src/frontend ; fallback /app/src si besoin
-        if FRONTEND_PATH.exists():
-            app.mount("/src", StaticFiles(directory=str(FRONTEND_PATH), html=False), name="src")
-            logger.info("Static mount: /src -> /app/src/frontend")
-        elif SRC_PATH.exists():
-            # Fallback (peut exposer backend ; déconseillé mais garde compat)
-            app.mount("/src", StaticFiles(directory=str(SRC_PATH), html=False), name="src")
-            logger.warning("Static mount: /src -> /app/src (fallback). Vérifie que /src/backend n'est pas référencé côté UI.")
+    if ASSETS_DIR.exists():
+        app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR), html=False), name="assets")
+        logger.info("Static mount: /assets -> /app/assets")
+    else:
+        logger.warning("Static mount ignoré: /app/assets introuvable.")
 
-        # 2) /assets
-        if ASSETS_PATH.exists():
-            app.mount("/assets", StaticFiles(directory=str(ASSETS_PATH), html=False), name="assets")
-            logger.info("Static mount: /assets -> /app/assets")
-        else:
-            logger.warning("Static mount ignoré : /app/assets introuvable.")
+    # Root file server — rendu index.html, SANS exposer l'arbo
+    @app.get("/", include_in_schema=False)
+    async def serve_root():
+        if INDEX_HTML.exists():
+            return FileResponse(str(INDEX_HTML))
+        raise HTTPException(status_code=404, detail="Not Found")
 
-        # 3) / (SPA root) — monter en DERNIER pour ne pas intercepter /api/* ni /ws*
-        if INDEX_PATH.exists():
-            app.mount("/", StaticFiles(directory=str(BASE), html=True), name="spa-root")
-            logger.info("Static mount: / -> /app (html=True, sert index.html)")
-        else:
-            logger.warning("index.html manquant : / renverra 404.")
-
-    except Exception as e:
-        logger.error(f"Impossible de monter les fichiers statiques: {e}")
+    # SPA fallback : toute route non /api/* ni /ws* renvoie index.html
+    @app.get("/{path:path}", include_in_schema=False)
+    async def spa_fallback(path: str, request: Request):
+        # Ne pas intercepter /api/* ni /ws*
+        if path.startswith("api") or path.startswith("ws"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        if INDEX_HTML.exists():
+            return FileResponse(str(INDEX_HTML))
+        raise HTTPException(status_code=404, detail="Not Found")
 
     return app
 
