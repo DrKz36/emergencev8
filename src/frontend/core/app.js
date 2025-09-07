@@ -1,6 +1,7 @@
 /**
  * @module core/app
- * @description Cœur de l'application ÉMERGENCE - V35.2 "ThreadBootstrap + Memory Preload + persist localStorage"
+ * @description Cœur de l'application ÉMERGENCE - V36.0
+ * - Loader features via import.meta.glob (compatible Vite prod /assets/*.js)
  * - Purge 404 (ré-alignement threads.currentId si getThreadById() renvoie un ID différent)
  * - Pré-charge bannière mémoire via GET /api/memory/status au APP_READY
  * - ✅ Persist de l’ID de thread dans localStorage pour éviter tout 404 parasite au reboot
@@ -9,13 +10,26 @@
 import { EVENTS } from '../shared/constants.js';
 import { api } from '../shared/api-client.js';
 
-// [CORRECTION VITE] : mapping dynamique des features
-const moduleLoaders = {
-  chat: () => import('../features/chat/chat.js'),
-  debate: () => import('../features/debate/debate.js'),
-  documents: () => import('../features/documents/documents.js'),
-  dashboard: () => import('../features/dashboard/dashboard.js'),
+// --- Mapping dynamique robuste (Vite) ---
+// Le glob est évalué au build ; Vite réécrit vers /assets/* en prod.
+const FEATURE_MODULES = import.meta.glob('../features/**/!(*.test).js', { eager: false });
+
+// Table de résolution canonique -> chemin relatif (depuis ce fichier)
+const FEATURE_PATHS = {
+  chat:       '../features/chat/chat.js',
+  debate:     '../features/debate/debate.js',
+  documents:  '../features/documents/documents.js',
+  dashboard:  '../features/dashboard/dashboard.js',
 };
+
+async function loadFeatureModule(name) {
+  const path = FEATURE_PATHS[name];
+  if (!path || !FEATURE_MODULES[path]) {
+    throw new Error(`Unknown or unmapped feature "${name}"`);
+  }
+  const mod = await FEATURE_MODULES[path](); // ← Vite réécrit vers /assets/*.js en prod
+  return mod.default || mod[Object.keys(mod)[0]];
+}
 
 const LS_THREAD_KEY = 'currentThreadId';
 
@@ -47,7 +61,7 @@ export class App {
     ];
     this.activeModule = 'chat';
 
-    console.log('✅ App V35.2 (ThreadBootstrap + Memory Preload + persist localStorage) Initialisée.');
+    console.log('✅ App V36.0 (glob-loader) initialisée.');
     this.init();
   }
 
@@ -61,14 +75,15 @@ export class App {
 
   renderNavigation() {
     if (!this.dom.tabs) return;
-    const navItemsHTML = this.moduleConfig.map(m => `
+    const navItemsHTML = this.moduleConfig
+      .map(m => `
       <li class="nav-item">
         <a href="#" class="nav-link ${this.activeModule === m.id ? 'active' : ''}" data-module-id="${m.id}">
           <span class="nav-icon">${m.icon}</span>
           <span class="nav-text">${m.name}</span>
         </a>
-      </li>
-    `).join('');
+      </li>`)
+      .join('');
     this.dom.tabs.innerHTML = navItemsHTML;
   }
 
@@ -96,11 +111,8 @@ export class App {
 
   async loadModule(moduleId) {
     if (this.modules[moduleId]) return this.modules[moduleId];
-    const moduleLoader = moduleLoaders[moduleId];
-    if (!moduleLoader) { console.error(`❌ CRITICAL: Aucun chargeur de module pour "${moduleId}".`); return null; }
     try {
-      const module = await moduleLoader();
-      const ModuleClass = module.default || module[Object.keys(module)[0]];
+      const ModuleClass = await loadFeatureModule(moduleId);
       const moduleInstance = new ModuleClass(this.eventBus, this.state);
       moduleInstance.init?.();
       this.modules[moduleId] = moduleInstance;
@@ -211,7 +223,11 @@ export class App {
 
   preloadOtherModules() {
     console.log('⚡️ Pré-chargement des autres modules…');
-    this.moduleConfig.forEach(m => { if (m.id !== this.activeModule) this.loadModule(m.id); });
+    this.moduleConfig.forEach(async (m) => {
+      if (m.id !== this.activeModule) {
+        try { await this.loadModule(m.id); } catch (e) { console.warn(`[Preload] ${m.id} ignoré.`, e?.message || e); }
+      }
+    });
   }
 
   createModuleContainer(moduleId) {
