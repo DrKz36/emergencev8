@@ -20,11 +20,13 @@ logger = logging.getLogger("emergence")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 
 # Paths
-SRC_DIR     = Path(__file__).resolve().parent.parent  # /app/src
-REPO_ROOT   = SRC_DIR.parent                          # /app
-FRONTEND_DIR= SRC_DIR / "frontend"                    # /app/src/frontend
-ASSETS_DIR  = REPO_ROOT / "assets"                    # /app/assets
-INDEX_HTML  = REPO_ROOT / "index.html"
+SRC_DIR      = Path(__file__).resolve().parent.parent  # /app/src
+REPO_ROOT    = SRC_DIR.parent                          # /app
+FRONTEND_SRC = SRC_DIR / "frontend"                    # /app/src/frontend (dev only)
+ASSETS_DIR   = REPO_ROOT / "assets"                    # /app/assets
+INDEX_DEV    = REPO_ROOT / "index.html"                # dev index
+STATIC_DIR   = Path(os.environ.get("STATIC_DIR", "/app/static"))  # dist/ en prod
+INDEX_DIST   = STATIC_DIR / "index.html"               # index de build
 
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
@@ -77,8 +79,11 @@ async def _startup(container: ServiceContainer):
         logger.warning(f"Wire DI partiel: {e}")
 
     # Version + statics presence
-    logger.info("Static mounts v%s: FRONTEND=%s | ASSETS=%s | INDEX=%s",
-                APP_VERSION, FRONTEND_DIR.exists(), ASSETS_DIR.exists(), INDEX_HTML.exists())
+    logger.info(
+        "Static mounts v%s: STATIC_DIR=%s(exists=%s) | ASSETS=%s(exists=%s) | FRONTEND_SRC=%s(exists=%s) | INDEX_DEV=%s(exists=%s)",
+        APP_VERSION, STATIC_DIR, STATIC_DIR.exists(), ASSETS_DIR, ASSETS_DIR.exists(),
+        FRONTEND_SRC, FRONTEND_SRC.exists(), INDEX_DEV, INDEX_DEV.exists()
+    )
 
 def create_app() -> FastAPI:
     container = ServiceContainer()
@@ -110,7 +115,6 @@ def create_app() -> FastAPI:
     # -------------------------- Health --------------------------
     @app.get("/api/health", tags=["Health"])
     async def health(response: Response):
-        # Ajout d’un header et de la version pour suivre le déploiement effectif
         response.headers["X-App-Version"] = APP_VERSION
         return {"status": "ok", "message": "Emergence Backend is running.", "version": APP_VERSION}
 
@@ -139,7 +143,7 @@ def create_app() -> FastAPI:
     memory_ext = APIRouter(tags=["Memory"])
 
     @memory_ext.api_route("/tend-garden", methods=["GET", "POST"])
-    async def tend_garden(thread_id: Optional[str] = Query(default=None, description="Optionnel: traiter un thread précis")):
+    async def tend_garden(thread_id: Optional[str] = Query(default=None, description="Optionnel: thread ciblé")):
         try:
             from backend.features.memory.gardener import MemoryGardener
             db  = app.state.service_container.db_manager()
@@ -155,38 +159,34 @@ def create_app() -> FastAPI:
     app.include_router(memory_ext, prefix="/api/memory")
 
     # --------------------- Static front -------------------------
-    # ⚠ Sécurité :
-    #   - On N'EXPOSE PAS /app ni /app/src complet.
-    #   - /src = UNIQUEMENT /app/src/frontend
-    #   - /assets = /app/assets (si présent)
-    #   - "/" : renvoie index.html explicitement (pas de StaticFiles sur /)
-    if FRONTEND_DIR.exists():
-        app.mount("/src", StaticFiles(directory=str(FRONTEND_DIR), html=False), name="src")
-        logger.info("Static mount: /src -> /app/src/frontend")
+    # PROD (dist) prioritaire : sert / -> STATIC_DIR (index dist)
+    if STATIC_DIR.exists() and (INDEX_DIST.exists()):
+        app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static-root")
+        # /assets static externes (logos, favicons) éventuels
+        if ASSETS_DIR.exists():
+            app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR), html=False), name="assets")
+        logger.info("Static root: %s", STATIC_DIR)
     else:
-        logger.warning("Static mount ignoré: /app/src/frontend introuvable.")
-
-    if ASSETS_DIR.exists():
-        app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR), html=False), name="assets")
-        logger.info("Static mount: /assets -> /app/assets")
-    else:
-        logger.warning("Static mount ignoré: /app/assets introuvable.")
-
-    # Root file server — rendu index.html, SANS exposer l'arbo
-    @app.get("/", include_in_schema=False)
-    async def serve_root():
-        if INDEX_HTML.exists():
-            return FileResponse(str(INDEX_HTML))
-        raise HTTPException(status_code=404, detail="Not Found")
-
-    # SPA fallback : toute route non /api/* ni /ws* renvoie index.html
-    @app.get("/{path:path}", include_in_schema=False)
-    async def spa_fallback(path: str, request: Request):
-        if path.startswith("api") or path.startswith("ws"):
+        # DEV fallback (éviter d'exposer tout /src ; on sert seulement si nécessaire)
+        if FRONTEND_SRC.exists():
+            app.mount("/src", StaticFiles(directory=str(FRONTEND_SRC), html=False), name="src-dev")
+            logger.info("Dev static mount: /src -> %s", FRONTEND_SRC)
+        if ASSETS_DIR.exists():
+            app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR), html=False), name="assets")
+        # Routes de secours vers index dev
+        @app.get("/", include_in_schema=False)
+        async def _index_dev():
+            if INDEX_DEV.exists():
+                return FileResponse(str(INDEX_DEV))
             raise HTTPException(status_code=404, detail="Not Found")
-        if INDEX_HTML.exists():
-            return FileResponse(str(INDEX_HTML))
-        raise HTTPException(status_code=404, detail="Not Found")
+
+        @app.get("/{path:path}", include_in_schema=False)
+        async def _spa_dev(path: str, request: Request):
+            if path.startswith("api") or path.startswith("ws"):
+                raise HTTPException(status_code=404, detail="Not Found")
+            if INDEX_DEV.exists():
+                return FileResponse(str(INDEX_DEV))
+            raise HTTPException(status_code=404, detail="Not Found")
 
     return app
 
