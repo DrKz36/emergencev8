@@ -1,11 +1,19 @@
 // src/frontend/shared/api-client.js
 /**
  * @file /src/frontend/shared/api-client.js
- * @description Client API centralisé pour les requêtes HTTP (Fetch).
- * @version V5.0 — pivot fetchWithAuth (GIS) + compat timeouts/retries
+ * @description Client API centralisé (Fetch) avec injection GIS (ID token) intégrée.
+ * @version V6.2 — inline fetchWithAuth (GIS) + headers sûrs + timeouts + 401 events
+ *
+ * Invariants:
+ * - Ajoute automatiquement `Authorization: Bearer <ID token>` si disponible.
+ * - N'impose pas Content-Type quand body est un FormData.
+ * - 401/403 -> lève une erreur explicite et émet un event 'auth:missing'.
+ * - Timeout par AbortController (par défaut 15s).
  */
-import { API_ENDPOINTS } from './config.js';
-import { fetchWithAuth } from '../core/auth.js';
+
+import { API_ENDPOINTS } from './config.js'; // respecte l'arbo
+
+/* ------------------------------ Constantes ----------------------------- */
 
 const THREADS_BASE =
   (API_ENDPOINTS && API_ENDPOINTS.THREADS) ? API_ENDPOINTS.THREADS : '/api/threads';
@@ -28,6 +36,7 @@ const MEMORY_STATUS =
 const DEFAULT_TIMEOUT_MS = 15000;
 
 /* ------------------------------ Utils --------------------------------- */
+
 function buildQuery(params = {}) {
   const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '');
   return entries.length ? `?${new URLSearchParams(entries).toString()}` : '';
@@ -37,29 +46,106 @@ function withTimeout(controller, ms = DEFAULT_TIMEOUT_MS) {
   return setTimeout(() => controller.abort(), ms);
 }
 
+function getIdToken() {
+  try {
+    // Clés tolérées (StateManager V15.x + GIS)
+    const keys = [
+      'id_token',
+      'google_id_token',
+      'emergence_id_token',
+      'GIS_ID_TOKEN'
+    ];
+    for (const k of keys) {
+      const v = sessionStorage.getItem(k) || localStorage.getItem(k);
+      if (v && typeof v === 'string') return v.trim();
+    }
+    // Exposition éventuelle par bootstrap
+    // eslint-disable-next-line no-underscore-dangle
+    const fromWindow = (typeof window !== 'undefined' && window.__EMERGENCE && window.__EMERGENCE.auth && window.__EMERGENCE.auth.id_token) || null;
+    if (fromWindow) return String(fromWindow).trim();
+  } catch {}
+  return null;
+}
+
+/**
+ * fetchWithAuth (inline)
+ * - Ajoute l'ID token si disponible (ou lève une 401 si ensure === true).
+ * - Définit Accept / Cache-Control / X-Requested-With.
+ * - N'ajoute pas Content-Type si body est FormData.
+ */
+async function fetchWithAuth(input, init = {}, { ensure = true } = {}) {
+  const headers = new Headers(init.headers || {});
+  headers.set('Accept', 'application/json');
+  headers.set('Cache-Control', 'no-store');
+  headers.set('X-Requested-With', 'XMLHttpRequest');
+
+  const isForm = typeof FormData !== 'undefined' && init.body instanceof FormData;
+  const hasBody = !!init.body && !isForm;
+
+  if (hasBody && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json; charset=utf-8');
+  }
+
+  const token = getIdToken();
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  } else if (ensure) {
+    // Signale à l'UI qu'un login est requis.
+    try { window.dispatchEvent(new CustomEvent('auth:missing')); } catch {}
+    const err = new Error('Authentication required');
+    err.status = 401;
+    throw err;
+  }
+
+  const finalInit = {
+    method: init.method || 'GET',
+    mode: 'cors',
+    cache: 'no-store',
+    redirect: 'follow',
+    credentials: 'same-origin',
+    ...init,
+    headers
+  };
+
+  return fetch(input, finalInit);
+}
+
 /* ------------------------------ Fetch core ---------------------------- */
+
 async function doFetch(endpoint, config, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const controller = new AbortController();
   const timer = withTimeout(controller, timeoutMs);
   const finalConfig = { ...config, signal: controller.signal };
 
   try {
-    const response = await fetchWithAuth(endpoint, finalConfig, { ensure: true });
-    if (!response || typeof response.json !== 'function') {
-      // fetchWithAuth renvoie Response → on laisse faire ci-dessous
-    }
-    const res = response;
+    const res = await fetchWithAuth(endpoint, finalConfig, { ensure: true });
+
+    // Gestion des statuts non OK
     if (!res.ok) {
       const contentType = res.headers.get('content-type') || '';
       let errorData = null;
-      try { errorData = contentType.includes('application/json') ? await res.json() : null; } catch {}
-      const detail = (errorData && (errorData.detail || errorData.message))
-        || (res.status === 503 ? 'Service Unavailable' : res.statusText)
-        || `Erreur HTTP : ${res.status}`;
+      try {
+        errorData = contentType.includes('application/json') ? await res.json() : null;
+      } catch {}
+
+      const detail =
+        (errorData && (errorData.detail || errorData.message)) ||
+        (res.status === 503 ? 'Service Unavailable' : res.statusText) ||
+        `Erreur HTTP : ${res.status}`;
+
       const err = new Error(detail);
       err.status = res.status;
+
+      // Événement dédié pour 401/403 (UI peut afficher un CTA login)
+      if (err.status === 401 || err.status === 403) {
+        try { window.dispatchEvent(new CustomEvent('auth:missing', { detail: { status: err.status } })); } catch {}
+      }
       throw err;
     }
+
+    // 204 No Content
+    if (res.status === 204) return {};
+
     const ct = res.headers.get('content-type') || '';
     return ct.includes('application/json') ? res.json() : {};
   } catch (e) {
@@ -75,6 +161,7 @@ async function doFetch(endpoint, config, timeoutMs = DEFAULT_TIMEOUT_MS) {
 }
 
 /* ------------------------------ API ----------------------------------- */
+
 export const api = {
   /* ---------------------- DOCUMENTS ---------------------- */
   async getDocuments() {
@@ -89,7 +176,7 @@ export const api = {
         console.warn('[API Client] Service Documents indisponible (503) → retour {items: []}.');
         return { items: [] };
       }
-      console.error(`[API Client] Erreur sur l'endpoint ${url}:`, err);
+      console.error(`[API Client] Erreur sur l\'endpoint ${url}:`, err);
       throw err;
     }
   },
@@ -97,6 +184,7 @@ export const api = {
   uploadDocument: (file) => {
     const formData = new FormData();
     formData.append('file', file);
+    // Pas de Content-Type explicite (FormData)
     return doFetch(API_ENDPOINTS.DOCUMENTS_UPLOAD, { method: 'POST', body: formData });
   },
 
@@ -109,8 +197,10 @@ export const api = {
       .then((data) => (Array.isArray(data?.items) ? data : { items: Array.isArray(data) ? data : [] })),
 
   createThread: ({ type = 'chat', title, metadata, agent_id } = {}) =>
-    doFetch(`${THREADS_BASE}/`, { method: 'POST', body: JSON.stringify({ type, title, agent_id, meta: metadata }) })
-      .then(async (res) => res),
+    doFetch(`${THREADS_BASE}/`, {
+      method: 'POST',
+      body: JSON.stringify({ type, title, agent_id, meta: metadata })
+    }),
 
   getThreadById: async (id, { messages_limit } = {}) => {
     const safeId = String(id || '').trim();
@@ -147,6 +237,7 @@ export const api = {
 
   /* ------------------------ MEMORY ----------------------- */
   tendMemory: () => doFetch(MEMORY_TEND, { method: 'POST', body: JSON.stringify({}) }),
+
   clearMemory: async () => {
     try {
       return await doFetch(MEMORY_CLEAR, { method: 'DELETE' });
@@ -157,11 +248,16 @@ export const api = {
       throw err;
     }
   },
+
   getMemoryStatus: async () => {
     try { return await doFetch(MEMORY_STATUS, { method: 'GET' }); }
     catch (err) { console.warn('[API Client] /api/memory/status indisponible.', err); throw err; }
   },
 };
 
-// Dev: accès console
-try { if (typeof window !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) window.api = api; } catch {}
+// Dev: exposer l'API en local uniquement
+try {
+  if (typeof window !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    window.api = api;
+  }
+} catch {}
