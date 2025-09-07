@@ -25,7 +25,7 @@ logging.basicConfig(
 # /app              -> REPO_ROOT
 # /app/src          -> SRC_DIR
 # /app/src/frontend -> FRONTEND_DIR (exposé)
-# /app/assets       -> ASSETS_DIR  (exposé)
+# /app/assets       -> ASSETS_DIR  (exposé si présent)
 # ---------------------------------------------------------------------
 SRC_DIR = Path(__file__).resolve().parent.parent   # /app/src
 REPO_ROOT = SRC_DIR.parent                         # /app
@@ -103,7 +103,7 @@ async def _startup(container: ServiceContainer):
 
 def create_app() -> FastAPI:
     container = ServiceContainer()
-    app = FastAPI(title="Émergence API", version="7.3")
+    app = FastAPI(title="Émergence API", version="7.4")
     app.state.service_container = container
     app.router.redirect_slashes = True
 
@@ -115,6 +115,8 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def _on_startup():
         await _startup(container)
+        logger.info("Static mounts v7.4: FRONTEND=%s | ASSETS=%s | INDEX=%s",
+                    FRONTEND_DIR.exists(), ASSETS_DIR.exists(), INDEX_HTML.exists())
 
     @app.on_event("shutdown")
     async def _on_shutdown():
