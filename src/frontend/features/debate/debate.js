@@ -1,6 +1,9 @@
 /**
  * @module features/debate/debate
- * Orchestrateur du module Débat - V26.6 "Flux-only Synth + ws:debate_result"
+ * Orchestrateur du module Débat - V26.8
+ * - Anti-dup WS (throttle)
+ * - Gestion 401/WS error -> statusText explicite
+ * - Validation agentOrder (AGENTS)
  */
 import { DebateUI } from './debate-ui.js';
 import { EVENTS, AGENTS } from '../../shared/constants.js';
@@ -14,7 +17,13 @@ export default class DebateModule {
     this.listeners = [];
     this.isInitialized = false;
     this.SHOW_SYNTH_MODAL = false;
-    console.log('✅ DebateModule V26.6 (Flux-only + ws:debate_result) prêt.');
+
+    // Anti-dup WS
+    this._lastSig = null;
+    this._lastSigAt = 0;
+    this._dupWindowMs = 250;
+
+    console.log('✅ DebateModule V26.8 (robust WS + auth) prêt.');
   }
 
   init() {
@@ -23,7 +32,7 @@ export default class DebateModule {
     this.registerEvents();
     this.registerStateChanges();
     this.isInitialized = true;
-    console.log('✅ DebateModule V26.6 initialisé.');
+    console.log('✅ DebateModule V26.8 initialisé.');
   }
 
   mount(container) {
@@ -49,11 +58,29 @@ export default class DebateModule {
     this.listeners.push(this.eventBus.on('debate:reset', this.reset.bind(this)));
     this.listeners.push(this.eventBus.on('debate:export', this.handleExportDebate.bind(this)));
 
-    this.listeners.push(this.eventBus.on('ws:debate_started', this.handleServerUpdate.bind(this)));
-    this.listeners.push(this.eventBus.on('ws:debate_turn_update', this.handleServerUpdate.bind(this)));
-    this.listeners.push(this.eventBus.on('ws:debate_result', this.handleServerUpdate.bind(this))); // ← ajouté
-    this.listeners.push(this.eventBus.on('ws:debate_ended', this.handleServerUpdate.bind(this)));
+    // Flux serveur
+    const onUpdate = this.handleServerUpdate.bind(this);
+    this.listeners.push(this.eventBus.on('ws:debate_started', onUpdate));
+    this.listeners.push(this.eventBus.on('ws:debate_turn_update', onUpdate));
+    this.listeners.push(this.eventBus.on('ws:debate_result', onUpdate));
+    this.listeners.push(this.eventBus.on('ws:debate_ended', onUpdate));
     this.listeners.push(this.eventBus.on('ws:debate_status_update', this.onDebateStatusUpdate.bind(this)));
+
+    // Gestion erreurs/auth
+    this.listeners.push(this.eventBus.on('ws:error', (payload) => {
+      const msg = payload?.message || 'Erreur temps réel.';
+      const st = this.state.get('debate') || {};
+      st.status = 'error';
+      st.statusText = msg;
+      st.error = payload || { message: msg };
+      this.state.set('debate', st);
+    }));
+    this.listeners.push(this.eventBus.on('auth:missing', () => {
+      const st = this.state.get('debate') || {};
+      st.status = 'pending';
+      st.statusText = 'Authentification requise pour lancer un débat.';
+      this.state.set('debate', st);
+    }));
   }
 
   /* ------------------------------- State ------------------------------- */
@@ -81,7 +108,14 @@ export default class DebateModule {
     if (!Number.isFinite(rounds) || rounds < 1) {
       return { ok: false, reason: 'invalid_rounds', message: 'Nombre de tours invalide (≥ 1 requis).' };
     }
-    return { ok: true, topic, rounds };
+
+    // Sanitize agentOrder contre AGENTS
+    let order = Array.isArray(config?.agentOrder) ? config.agentOrder.filter(Boolean) : [];
+    if (order.length) {
+      order = order.filter(a => Object.prototype.hasOwnProperty.call(AGENTS || {}, a));
+    }
+
+    return { ok: true, topic, rounds, order };
   }
 
   /* ------------------------------- Handlers ---------------------------- */
@@ -97,7 +131,7 @@ export default class DebateModule {
     const sanitized = {
       topic: val.topic,
       rounds: val.rounds,
-      agentOrder: Array.isArray(config?.agentOrder) ? config.agentOrder : [],
+      agentOrder: val.order,
       useRag: !!config?.useRag,
     };
     this.state.set('debate.statusText', 'Création du débat en cours…');
@@ -105,6 +139,15 @@ export default class DebateModule {
   }
 
   handleServerUpdate(serverState) {
+    // Anti-dup: signature légère (status + tour le plus récent)
+    try {
+      const now = Date.now();
+      const lastTurn = (serverState?.history || [])[serverState?.history?.length - 1] || {};
+      const sig = `${serverState?.status}|${lastTurn?.round_number ?? lastTurn?.round ?? ''}|${serverState?.synthesis ? 1 : 0}`;
+      if (sig === this._lastSig && (now - this._lastSigAt) < this._dupWindowMs) return;
+      this._lastSig = sig; this._lastSigAt = now;
+    } catch {}
+
     const clientState = this._normalizeServerState(serverState);
     this.state.set('debate', clientState);
 
@@ -126,14 +169,12 @@ export default class DebateModule {
 
   /* ----------------------------- Normalisation ------------------------- */
   _normalizeServerState(serverData = {}) {
-    // Historique (agrégé par tour fourni par le backend)
     const turnsRaw = serverData.history || serverData.turns || serverData.rounds_history || [];
     const history = (Array.isArray(turnsRaw) ? turnsRaw : []).map((turn, idx) => ({
       roundNumber: turn?.round_number ?? turn?.round ?? turn?.idx ?? (idx + 1),
       agentResponses: turn?.agent_responses ?? turn?.responses ?? turn?.agents ?? {}
     }));
 
-    // Config
     const cfg = serverData.config || {};
     const config = {
       topic: cfg.topic ?? cfg.subject ?? '',
@@ -142,7 +183,6 @@ export default class DebateModule {
       useRag: (cfg.use_rag ?? cfg.useRag) === true
     };
 
-    // Synthèse — accepte string ou { text }
     const pickSynth = (s) => {
       if (!s) return '';
       if (typeof s === 'string') return s;
@@ -157,7 +197,6 @@ export default class DebateModule {
       serverData.synthese
     );
 
-    // Fallback si vide ou trop courte
     const isPoor = (s) => (typeof s !== 'string') || s.trim().length < 20 || ((s.match(/\n/g) || []).length < 2);
     if (isPoor(synthesis)) synthesis = this._buildFallbackSynthesis({ config, history }) || synthesis;
 
@@ -181,7 +220,7 @@ export default class DebateModule {
         const ord = Array.isArray(config?.agentOrder) && config.agentOrder.length
           ? config.agentOrder : Object.keys(t.agentResponses || {});
         const parts = ord.map(a => t.agentResponses?.[a]).filter(Boolean);
-        return [`• Tour ${Number(t.roundNumber) || i + 1} :`, ...parts.map(p => `  – ${String(p).slice(0, 160)}…`)];
+        return [`• Tour ${Number(t.roundNumber) || i + 1} :`, ...parts.map(p => `  – ${String(p).slice(0, 160)}…`)];
       });
       return lines.join('\n');
     } catch { return ''; }
