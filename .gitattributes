@@ -1,17 +1,7 @@
-﻿# EOL normalization
-*.ps1          text eol=crlf
-*.bat          text eol=crlf
-
-*.sh           text eol=lf
-*.yml          text eol=lf
-*.yaml         text eol=lf
-*.json         text eol=lf
-*.md           text eol=lf
-*.py           text eol=lf
-*.js           text eol=lf
-*.ts           text eol=lf
-*.css          text eol=lf
-*.html         text eol=lf
-*.toml         text eol=lf
-*.cfg          text eol=lf
-*.ini          text eol=lf
+* text=auto
+*.ps1 text eol=crlf
+*.sh  text eol=lf
+*.py  text eol=lf
+*.js  text eol=lf
+*.css text eol=lf
+*.md  text eol=lf
