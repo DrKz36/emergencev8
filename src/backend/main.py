@@ -3,26 +3,27 @@
 import os, sys, logging, re
 from pathlib import Path
 from typing import Optional
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse
 from starlette.staticfiles import StaticFiles
 
-APP_VERSION = "7.5.0"
+APP_VERSION = "7.5.1"
 logger = logging.getLogger("emergence")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 
 SRC_DIR      = Path(__file__).resolve().parent.parent           # /app/src
 REPO_ROOT    = SRC_DIR.parent                                   # /app
 FRONTEND_SRC = SRC_DIR / "frontend"                             # /app/src/frontend
-ASSETS_DIR   = REPO_ROOT / "assets"                             # /app/assets
-STATIC_DIR   = Path(os.environ.get("STATIC_DIR", "/app/static"))# /app/static (build dist)
+ASSETS_DIR   = REPO_ROOT / "assets"                             # /app/assets  (repo)
+STATIC_DIR   = Path(os.environ.get("STATIC_DIR", "/app/static"))# /app/static  (build Vite)
 INDEX_DEV    = REPO_ROOT / "index.html"
 INDEX_DIST   = STATIC_DIR / "index.html"
 
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+# --- Routers import (conservé) ---
 from backend.containers import ServiceContainer
 from backend.core.database.schema import initialize_database
 
@@ -58,7 +59,7 @@ async def _startup(container: ServiceContainer):
     except Exception as e:
         logger.warning(f"Init DB partielle: {e}")
 
-    # DI wire (meilleurs logs si modules absents)
+    # DI wire (logs si modules absents)
     try:
         import backend.features.chat.router as chat_router_module
         import backend.features.dashboard.router as dashboard_module
@@ -118,32 +119,37 @@ def create_app() -> FastAPI:
     _mount_router(THREADS_ROUTER,   "/api/threads")
     _mount_router(MEMORY_ROUTER,    "/api/memory")
     _mount_router(DEV_AUTH_ROUTER)
-    _mount_router(CHAT_ROUTER)  # <-- contient WS: /ws/{session_id} (doit rester accessible). :contentReference[oaicite:5]{index=5}
+    _mount_router(CHAT_ROUTER)  # contient WS: /ws/{session_id}
 
     # ---------- Statics ----------
-    # 1) /assets (logos, favicons)
-    if ASSETS_DIR.exists():
-        app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR), html=False), name="assets")
+    # 0) Assets Vite en priorité sur /assets (résout les 404)
+    vite_assets = STATIC_DIR / "assets"
+    if vite_assets.exists():
+        app.mount("/assets", StaticFiles(directory=str(vite_assets), html=False), name="vite-assets")
+        logger.info("Mount /assets -> %s (vite build)", vite_assets)
+    elif ASSETS_DIR.exists():
+        app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR), html=False), name="repo-assets")
+        logger.info("Mount /assets -> %s (repo assets)", ASSETS_DIR)
 
-    # 2) Compat immédiate: /src -> /app/src/frontend (uniquement FE, pas le backend)
+    # 1) Compat immédiate: /src -> /app/src/frontend (uniquement FE)
     if FRONTEND_SRC.exists():
         app.mount("/src", StaticFiles(directory=str(FRONTEND_SRC), html=False), name="src-frontend")
+        logger.info("Compat: /src -> %s", FRONTEND_SRC)
 
-    # 3) Build Vite sous /static (PAS sur "/")
+    # 2) Build Vite complète exposée sous /static (html=True pour servir index directement si besoin)
     if STATIC_DIR.exists():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR), html=True), name="static-dist")
+        logger.info("Mount /static -> %s", STATIC_DIR)
 
-    # 4) Catch-all GET pour le SPA, sans casser /api ni /ws
+    # 3) SPA catch-all GET, sans casser /api|/ws|/assets|/src
     @app.get("/", include_in_schema=False)
     async def _root():
-        # sert index de build si présent, sinon index dev
         if INDEX_DIST.exists(): return FileResponse(str(INDEX_DIST))
         if INDEX_DEV.exists():  return FileResponse(str(INDEX_DEV))
         return PlainTextResponse("UI unavailable", status_code=503)
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def _spa(full_path: str):
-        # Ne pas intercepter API/WS/statics
         if re.match(r"^(api|ws|assets|src)(/|$)", full_path):
             raise HTTPException(status_code=404, detail="Not Found")
         if INDEX_DIST.exists(): return FileResponse(str(INDEX_DIST))
