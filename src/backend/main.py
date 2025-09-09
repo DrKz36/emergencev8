@@ -3,12 +3,16 @@
 import os, sys, logging, re
 from pathlib import Path
 from typing import Optional
+
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse
 from starlette.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
 
-APP_VERSION = "7.5.1"
+APP_VERSION = "7.5.2"  # +patch denylist
 logger = logging.getLogger("emergence")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 
@@ -46,6 +50,22 @@ DEV_AUTH_ROUTER  = _import_router("backend.features.dev_auth.router")
 def _migrations_dir() -> str:
     return str(Path(__file__).resolve().parent / "core" / "migrations")
 
+# ---------------------- Security: Denylist Middleware ----------------------
+_DENY_PATTERNS = [
+    re.compile(r"^/\.git(?:/|$)"),  # enforce 403 for any /.git path
+    # NOTE: ajouter d’autres patterns si nécessaire (ex: r"^/\.env$")
+]
+
+class DenylistMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+        path = request.scope.get("path", "")
+        for pat in _DENY_PATTERNS:
+            if pat.match(path):
+                # Short-circuit BEFORE any static mount or SPA fallback
+                return PlainTextResponse("Forbidden", status_code=403)
+        return await call_next(request)
+# ---------------------------------------------------------------------------
+
 async def _startup(container: ServiceContainer):
     logger.info("Démarrage backend Émergence…")
     try:
@@ -80,6 +100,9 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Émergence API", version=APP_VERSION)
     app.state.service_container = container
     app.router.redirect_slashes = True
+
+    # Security first: deny sensitive paths BEFORE anything else
+    app.add_middleware(DenylistMiddleware)
 
     app.add_middleware(
         CORSMiddleware,
@@ -150,6 +173,7 @@ def create_app() -> FastAPI:
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def _spa(full_path: str):
+        # La denylist est déjà appliquée par le middleware. On protège ici les prefixes API/WS/STATIQUES.
         if re.match(r"^(api|ws|assets|src)(/|$)", full_path):
             raise HTTPException(status_code=404, detail="Not Found")
         if INDEX_DIST.exists(): return FileResponse(str(INDEX_DIST))

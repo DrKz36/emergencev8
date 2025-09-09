@@ -1,0 +1,72 @@
+﻿apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+    run.googleapis.com/urls: '["https://emergence-app-486095406755.europe-west1.run.app","https://emergence-app-47nct44nma-ew.a.run.app"]'
+  labels:
+    cloud.googleapis.com/location: europe-west1
+  name: emergence-app
+  namespace: '486095406755'
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: '20'
+        run.googleapis.com/client-name: gcloud
+        run.googleapis.com/client-version: 523.0.1
+        run.googleapis.com/launch-stage: GA
+      labels:
+        run.googleapis.com/startupProbeType: Default
+      name: emergence-app-00248-hep
+    spec:
+      containerConcurrency: 80
+      containers:
+      - args:
+        - /app/entrypoint.py
+        command:
+        - python
+        env:
+        - name: EMERGENCE_FAST_BOOT
+        - name: HF_HUB_DISABLE_TELEMETRY
+          value: '1'
+        - name: TRANSFORMERS_VERBOSITY
+          value: error
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: '5'
+              name: OPENAI_API_KEY
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: '5'
+              name: GOOGLE_API_KEY
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: '5'
+              name: ANTHROPIC_API_KEY
+        - name: EMERGENCE_SKIP_MIGRATIONS
+        image: europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:secfix-denylist-20250909045505
+        ports:
+        - containerPort: 8080
+          name: http1
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        startupProbe:
+          failureThreshold: 1
+          periodSeconds: 240
+          tcpSocket:
+            port: 8080
+          timeoutSeconds: 240
+      serviceAccountName: 486095406755-compute@developer.gserviceaccount.com
+      timeoutSeconds: 180
+  traffic:
+  - percent: 100
+    revisionName: emergence-app-00248-hep
+  - revisionName: emergence-app-00248-hep
+    tag: canary

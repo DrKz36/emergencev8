@@ -1,39 +1,26 @@
-# ---------- 1) FRONTEND BUILD (Vite) ----------
-FROM node:20-alpine AS frontend
-WORKDIR /app
-
-# Install deps (verrouillé par package-lock)
-COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
-
-# Copie du code (index.html + src/** + assets/** + vite.config.js)
-COPY . .
-
-# Build production -> dist/
-RUN npm run build
-
-# ---------- 2) BACKEND RUNTIME ----------
-FROM python:3.11-slim AS runtime
-WORKDIR /app
+# syntax=docker/dockerfile:1
+FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    STATIC_DIR=/app/static
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_NO_CACHE_DIR=off \
+    EMERGENCE_FAST_BOOT= \
+    EMERGENCE_SKIP_MIGRATIONS=
 
-# Dépendances Python
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR /app
 
-# Backend
-COPY src ./src
-COPY entrypoint.sh .
+# Déps système minimales
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
+ && rm -rf /var/lib/apt/lists/*
 
-# Front build + assets statiques
-COPY --from=frontend /app/dist   ./static
-COPY --from=frontend /app/assets ./assets
+# Déps Python
+COPY requirements.txt ./requirements.txt
+RUN python -m pip install --upgrade pip && pip install -r requirements.txt
 
-# Port Cloud Run
+# Code + entrypoint
+COPY . /app
+COPY entrypoint.py /app/entrypoint.py
+
 EXPOSE 8080
-
-# Uvicorn (CMD figée)
-CMD ["uvicorn", "--app-dir", "src", "backend.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["python", "/app/entrypoint.py"]
