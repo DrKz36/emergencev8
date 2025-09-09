@@ -1,0 +1,4 @@
+﻿Front P0:
+- Intercepter init app -> ensureAuth obligatoire avant ouverture WS
+- Badge état WS (Up/Down) près du logo
+- CTA Login visible si JWT absent/expiré
