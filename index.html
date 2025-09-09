@@ -5,40 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>ÉMERGENCE V8</title>
 
+  <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <meta name="google-signin-client_id" content="486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com" />
 
+  <!-- Icônes -->
   <link rel="icon" type="image/png" href="/assets/emergence_logo.png" />
   <link rel="apple-touch-icon" href="/assets/emergence_logo.png" />
-
-  <link rel="modulepreload" href="/src/main.js" />
-
-  <!-- ===== CSS (dev/compat) ===== -->
-  <link rel="stylesheet" href="/src/styles/core/reset.css">
-  <link rel="stylesheet" href="/src/styles/core/_variables.css">
-  <link rel="stylesheet" href="/src/styles/core/_typography.css">
-  <link rel="stylesheet" href="/src/styles/core/_layout.css">
-  <link rel="stylesheet" href="/src/styles/core/_navigation.css">
-  <link rel="stylesheet" href="/src/styles/components/agent-buttons.css">
-  <link rel="stylesheet" href="/src/styles/components/agent-selector.css">
-  <link rel="stylesheet" href="/src/styles/components/buttons.css">
-  <link rel="stylesheet" href="/src/styles/components/custom-select.css">
-  <link rel="stylesheet" href="/src/styles/components/custom-toggle.css">
-  <link rel="stylesheet" href="/src/styles/components/glassmorphism.css">
-  <link rel="stylesheet" href="/src/styles/components/header-nav.css">
-  <link rel="stylesheet" href="/src/styles/components/inputs.css">
-  <link rel="stylesheet" href="/src/styles/components/modals.css">
-  <link rel="stylesheet" href="/src/styles/components/tabs.css">
-  <link rel="stylesheet" href="/src/features/chat/chat.css">
-  <link rel="stylesheet" href="/src/features/debate/debate.css">
-  <link rel="stylesheet" href="/src/features/documents/documents.css">
-  <link rel="stylesheet" href="/src/features/dashboard/dashboard.css">
-  <link rel="stylesheet" href="/src/features/threads/threads.css">
-  <link rel="stylesheet" href="/src/features/voice/voice.css">
-  <link rel="stylesheet" href="/src/features/timeline/timeline.css">
-  <link rel="stylesheet" href="/src/features/costs/costs.css">
-  <link rel="stylesheet" href="/src/styles/main-styles.css">
-  <link rel="stylesheet" href="/src/styles/overrides/ui-hotfix-20250823.css">
 
   <style>
     :root { --bg:#0b0f1a; --bg-2:#111827; --text:#e5e7eb; --muted:#9ca3af; --border:#1f2937; --sidebar-w:260px; }
@@ -92,7 +65,7 @@
     })();
   </script>
 
-  <!-- Entrée : en dev/compat=/src/main.js ; en prod build, Vite réécrira vers /assets/*.js -->
-  <script type="module" src="/src/main.js"></script>
+  <!-- Entrée Vite : en dev, /src/frontend/main.js ; en prod, Vite réécrit vers /assets/*.js -->
+  <script type="module" src="/src/frontend/main.js"></script>
 </body>
 </html>
