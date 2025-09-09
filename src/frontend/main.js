@@ -4,7 +4,6 @@
  */
 
 /* ===== CSS bundle (Vite) ===== */
-/* utilise l'alias '@' pointant sur 'src/frontend' (ou remplace par chemins relatifs si besoin) */
 import '@/styles/core/reset.css';
 import '@/styles/core/_variables.css';
 import '@/styles/core/_typography.css';
@@ -42,7 +41,7 @@ import { WebSocketClient } from './core/websocket.js';
 import { WS_CONFIG } from './shared/constants.js';
 import { setGisClientId, ensureAuth, getIdToken } from './core/auth.js';
 
-/* ---------------- WS-first Chat dedupe & reroute (main.js patch V1) ---------------- */
+/* ---------------- WS-first Chat dedupe & reroute (main.js patch) ---------------- */
 (function () {
   try {
     if (!EventBus || !EventBus.prototype) return;
@@ -76,23 +75,26 @@ import { setGisClientId, ensureAuth, getIdToken } from './core/auth.js';
 (async function bootstrap() {
   console.log('🚀 ÉMERGENCE - Lancement du client.');
 
-  // GIS client id (meta tag)
+  // 1) GIS client id (depuis <meta>) — si présent, One-Tap pourra fournir un token automatiquement.
   setGisClientId();
 
-  // Auth stricte avant tout (P0)
-  await ensureAuth();
+  // 2) Auth stricte : force le mode interactif (ouvre /dev-auth.html si besoin et attend le token)
+  let token = await ensureAuth({ interactive: true }); // ← clé pour éviter "Authentication required"
+  if (!token) {
+    // Attente active courte (bridge storage) au cas où le token arrive juste après
+    for (let i = 0; i < 10 && !token; i++) {
+      await new Promise(r => setTimeout(r, 200));
+      token = getIdToken();
+    }
+  }
 
-  // Token + clients
-  const token = await getIdToken();
-  const ws = new WebSocketClient(WS_CONFIG, token);
+  // 3) Initialisation des clients et de l'app — avec EventBus unique
   const state = new StateManager();
-
-  // ✅ Bus d'événements : instanciation + injection dans l'App
   const eventBus = new EventBus();
+  const ws = new WebSocketClient(WS_CONFIG, eventBus, state);
 
-  // Lancement App (injecte explicitement le bus)
-  const app = new App({ ws, state, eventBus });
+  const app = new App(eventBus, state);
+  if (typeof app.init === 'function') await app.init();
 
-  await app.init();
   console.log('✅ Client ÉMERGENCE prêt. En attente du signal APP_READY...');
 })();
