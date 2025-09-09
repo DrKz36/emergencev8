@@ -65,7 +65,16 @@
     })();
   </script>
 
-  <!-- Entrée Vite : en dev, /src/frontend/main.js ; en prod, Vite réécrit vers /assets/*.js -->
-  <script type="module" src="/src/frontend/main.js"></script>
+  <!-- Import map pour résoudre l'alias "@/..." en mode INDEX_DEV -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@/": "/src/"
+    }
+  }
+  </script>
+
+  <!-- Entrée dev servie par le backend (Compat: /src -> src/frontend) -->
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>
