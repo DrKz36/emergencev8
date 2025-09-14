@@ -1,7 +1,7 @@
 /**
  * @module core/auth
- * @description AuthManager V5.0 — GIS One-Tap + storage + fetchWithAuth
- * Aligné Roadmap P0/P1 : GIS natif, plus de dev-auth manuel:contentReference[oaicite:4]{index=4}.
+ * AuthManager V5.1 — GIS One-Tap + storage + fetchWithAuth + ensureAuth + setGisClientId + renderGoogleButton
+ * Motif : build Vite cassé car state-manager attend { setGisClientId }. On expose aussi ensureAuth & renderGoogleButton.
  */
 
 const TOKEN_KEY = "emergence.id_token";
@@ -26,19 +26,21 @@ export function clearAuth() {
   try { localStorage.removeItem(TOKEN_KEY); } catch {}
 }
 
-/* ------------------------- GIS One Tap ------------------------- */
+/* ------------------------- GIS loader -------------------------- */
 function ensureGisLoaded() {
   return new Promise((resolve, reject) => {
     if (window.google?.accounts?.id) return resolve();
     const s = document.createElement("script");
     s.src = "https://accounts.google.com/gsi/client";
-    s.async = true;
-    s.defer = true;
+    s.async = true; s.defer = true;
     s.onload = () => resolve();
     s.onerror = () => reject(new Error("GIS load error"));
     document.head.appendChild(s);
   });
 }
+
+/* ----------------------- Public API GIS ------------------------ */
+let _inited = false;
 
 export async function initGIS({ clientId = _gisClientId, oneTap = true } = {}) {
   _gisClientId = clientId;
@@ -51,18 +53,38 @@ export async function initGIS({ clientId = _gisClientId, oneTap = true } = {}) {
   if (oneTap) {
     try { window.google.accounts.id.prompt(); } catch {}
   }
+  _inited = true;
+}
+
+/** Compat pour anciens imports (state-manager) */
+export function setGisClientId(nextId) {
+  if (nextId && typeof nextId === "string") _gisClientId = nextId.trim();
+  return _gisClientId;
 }
 
 export async function signOut() {
   clearAuth();
-  try { window.google.accounts.id.disableAutoSelect(); } catch {}
+  try { window.google?.accounts?.id?.disableAutoSelect(); } catch {}
 }
 
-/* ---------------------- fetchWithAuth -------------------------- */
+/** Bouton Google (optionnel) */
+export async function renderGoogleButton(containerSelector = "#gsi-btn", options = {}) {
+  await ensureGisLoaded();
+  const el = document.querySelector(containerSelector);
+  if (!el) return;
+  const opts = {
+    type: "standard", theme: "outline", size: "large",
+    text: "signin_with", shape: "rectangular", logo_alignment: "left", width: 260,
+    ...options
+  };
+  window.google.accounts.id.renderButton(el, opts);
+}
+
+/* ---------------------- fetch / ensure ------------------------- */
 export async function fetchWithAuth(input, init = {}, { ensure = true } = {}) {
   let token = getIdToken();
   if (!token && ensure) {
-    await initGIS({ oneTap: false });
+    await initGIS({ clientId: _gisClientId, oneTap: false });
     token = getIdToken();
   }
   const headers = new Headers(init.headers || {});
@@ -70,9 +92,26 @@ export async function fetchWithAuth(input, init = {}, { ensure = true } = {}) {
   return fetch(input, { ...init, headers });
 }
 
+/** Garde simple côté front : exige un token sinon redirige vers /auth.html */
+export async function ensureAuth({ redirectTo = "/auth.html", required = true } = {}) {
+  const tok = getIdToken();
+  if (tok) return tok;
+  // tente une init silencieuse si GIS déjà prêt
+  try {
+    if (!_inited) await initGIS({ clientId: _gisClientId, oneTap: false });
+  } catch {}
+  const again = getIdToken();
+  if (again) return again;
+  if (required) {
+    try { window.location.replace(redirectTo); } catch {}
+    throw new Error("auth_required");
+  }
+  return null;
+}
+
 /* ---------------------- Global bridge -------------------------- */
 (function bootstrapBridge() {
   if (!window.gis) {
-    window.gis = { getIdToken: () => getIdToken() };
+    window.gis = { getIdToken: () => getIdToken(), setGisClientId: (v) => setGisClientId(v) };
   }
 })();
