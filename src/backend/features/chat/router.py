@@ -1,12 +1,14 @@
 # src/backend/features/chat/router.py
-# V23.1 — Débat via WS: normalisation dot/colon + session_id transmis
+# V23.2 — Guard JSON/WSDisconnect sur receive_json() + log propre à la fermeture
 
 import logging
 from uuid import uuid4
 from datetime import datetime, timezone
+from json import JSONDecodeError
 
 from fastapi import APIRouter, WebSocket, Depends
 from dependency_injector.wiring import inject, Provide
+from starlette.websockets import WebSocketDisconnect
 
 from backend.shared.models import ChatMessage, Role
 from backend.shared import dependencies as deps
@@ -32,7 +34,6 @@ def _norm_list(payload, snake_key, camel_key):
 
 def _norm_type(t: str) -> str:
     t = (t or "").strip()
-    # tolère "debate.create" en le convertissant en "debate:create"
     return t.replace(".", ":", 1) if t.startswith("debate.") else t
 
 @router.websocket("/ws/{session_id}")
@@ -44,7 +45,6 @@ async def websocket_endpoint(
     chat_service: ChatService = Depends(Provide[ServiceContainer.chat_service]),
     debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service]),
 ):
-    # Auth 'accept-first' tolérante + fermeture douce si token absent
     _uid = None
     try:
         tok = deps._extract_ws_bearer_token(websocket)
@@ -72,7 +72,12 @@ async def websocket_endpoint(
 
     try:
         while True:
-            data = await websocket.receive_json()
+            try:
+                data = await websocket.receive_json()
+            except (JSONDecodeError, WebSocketDisconnect):
+                logger.info(f"[WS] JSON/Disconnect lors de receive_json() — fermeture propre (session={session_id})")
+                break
+
             logger.info(f"---[RAW WS MSG RECEIVED]---: {data}")
 
             message_type = _norm_type(data.get("type"))
@@ -85,14 +90,10 @@ async def websocket_endpoint(
                 )
                 continue
 
-            # Compat legacy
             if isinstance(message_type, str) and message_type in {"chat:send", "chat_message"}:
                 logger.info(f"[WS] Normalisation du type hérité '{message_type}' -> 'chat.message'")
                 message_type = "chat.message"
 
-            # ======================
-            # DEBATE (non-stream)
-            # ======================
             if message_type.startswith("debate:"):
                 try:
                     if message_type == "debate:create":
@@ -119,24 +120,18 @@ async def websocket_endpoint(
                             session_id
                         )
 
-                        # ✅ session_id transmis au service (signature obligatoire)
                         result = await debate_service.run(
                             session_id=session_id,
                             topic=topic, agent_order=agent_order, rounds=rounds, use_rag=use_rag
                         )
 
-                        # Accepte dict “riche” OU tuple legacy
-                        if isinstance(result, dict):
-                            out_payload = result
-                        else:
-                            text, cost = result
-                            out_payload = {
-                                "status": "completed",
-                                "config": {"topic": topic, "rounds": rounds, "agentOrder": agent_order, "useRag": use_rag},
-                                "history": [],
-                                "synthesis": text,
-                                "cost": cost
-                            }
+                        out_payload = result if isinstance(result, dict) else {
+                            "status": "completed",
+                            "config": {"topic": topic, "rounds": rounds, "agentOrder": agent_order, "useRag": use_rag},
+                            "history": [],
+                            "synthesis": result[0],
+                            "cost": result[1]
+                        }
 
                         await connection_manager.send_personal_message(
                             {"type": "ws:debate_result", "payload": out_payload}, session_id
@@ -154,9 +149,6 @@ async def websocket_endpoint(
                     )
                 continue
 
-            # ======================
-            # CHAT (stream)
-            # ======================
             if message_type == "chat.message":
                 try:
                     txt = (payload.get("text") or "").strip()
@@ -169,7 +161,6 @@ async def websocket_endpoint(
                         )
                         continue
 
-                    # Dédoublon doux
                     try:
                         history = connection_manager.session_manager.get_full_history(session_id) or []
                         last = history[-1] if history else None
@@ -205,7 +196,6 @@ async def websocket_endpoint(
                     )
                 continue
 
-            # Inconnu
             await connection_manager.send_personal_message(
                 {"type": "ws:error", "payload": {"message": f"Type inconnu: {message_type}"}}, session_id
             )

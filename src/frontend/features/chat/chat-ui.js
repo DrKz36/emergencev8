@@ -1,8 +1,10 @@
-// src/frontend/features/chat/chat-ui.js
 /**
- * V27.2 — + Badge modèle/fallback (lecture chat.modelInfo + chat.lastMessageMeta)
- *        + Bouton "Clear" mémoire
- *        + Compteurs STM/LTM + TTFB déjà affichés
+ * V28.0 — + Chips “Sources RAG” (lecture lastMessageMeta.sources)
+ *        + Badge modèle/fallback (chat.modelInfo + chat.lastMessageMeta)
+ *        + Bouton "Clear" mémoire, compteurs STM/LTM, TTFB
+ *
+ * Basé sur V27.2 reçu ; ajout non-cassant pour afficher les sources RAG lorsque
+ * le backend émet `ws:chat_stream_end.payload.meta.sources`.
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
@@ -21,9 +23,9 @@ export class ChatUI {
       metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null },
       memoryStats: { has_stm: false, ltm_items: 0, injected: false },
       modelInfo: null,
-      lastMessageMeta: null
+      lastMessageMeta: null // ← attendu: { provider, model, ... , sources?: [{document_id, filename, page?, excerpt?}] }
     };
-    console.log('✅ ChatUI V27.2 (badge modèle + clear mémoire) chargé.');
+    console.log('✅ ChatUI V28.0 (chips sources RAG + badge modèle) chargé.');
   }
 
   render(container, chatState = {}) {
@@ -46,6 +48,12 @@ export class ChatUI {
         </div>
 
         <div class="chat-messages card-body" id="chat-messages"></div>
+
+        <!-- Bandeau chips Sources RAG (affiché si meta.sources existe) -->
+        <div id="rag-sources"
+             class="rag-sources"
+             style="display:none;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.5rem .75rem;border-top:1px solid rgba(255,255,255,.08)">
+        </div>
 
         <div class="chat-input-area card-footer">
           <form id="chat-form" class="chat-form" autocomplete="off">
@@ -112,6 +120,9 @@ export class ChatUI {
     const raw = this.state.messages?.[this.state.currentAgentId];
     const list = this._asArray(raw).map((m) => this._normalizeMessage(m));
     this._renderMessages(container.querySelector('#chat-messages'), list);
+
+    // Sources RAG (bandeau de chips sous les messages)
+    this._renderSources(container.querySelector('#rag-sources'), this.state.lastMessageMeta?.sources);
 
     // --- Mémoire (statut + libellé + **compteurs**) ---
     const memoryOn = !!(this.state.memoryBannerAt || (this.state.lastAnalysis && this.state.lastAnalysis.status === 'completed'));
@@ -210,12 +221,27 @@ export class ChatUI {
     memBtn?.addEventListener('click', () => this.eventBus.emit('memory:tend'));
     memClr?.addEventListener('click', () => this.eventBus.emit('memory:clear'));
 
+    // Tabs agents
     container.querySelector('.agent-selector')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-agent-id]');
       if (!btn) return;
       const agentId = btn.getAttribute('data-agent-id');
       this.eventBus.emit(EVENTS.CHAT_AGENT_SELECTED, agentId);
       this._setActiveAgentTab(container, agentId);
+    });
+
+    // Clic sur une chip “source”
+    container.querySelector('#rag-sources')?.addEventListener('click', (e) => {
+      const chip = e.target.closest('button[data-doc-id]');
+      if (!chip) return;
+      const info = {
+        document_id: chip.getAttribute('data-doc-id'),
+        filename: chip.getAttribute('data-filename'),
+        page: Number(chip.getAttribute('data-page') || '0') || null,
+        excerpt: chip.getAttribute('data-excerpt') || ''
+      };
+      // Évènement UI libre ; branchable dans le panneau Documents
+      this.eventBus.emit('rag:source:click', info);
     });
   }
 
@@ -234,6 +260,54 @@ export class ChatUI {
     const html = (messages || []).map(m => this._messageHTML(m)).join('');
     host.innerHTML = html || `<div class="placeholder" style="opacity:.6;padding:1rem;">Commence à discuter…</div>`;
     host.scrollTo(0, 1e9);
+  }
+
+  _renderSources(host, sources) {
+    if (!host) return;
+    const items = Array.isArray(sources) ? sources : [];
+    if (!items.length) {
+      host.style.display = 'none';
+      host.innerHTML = '';
+      return;
+    }
+
+    const chips = items.map((s, i) => {
+      const filename = (s.filename || 'Document').toString();
+      const page = (Number(s.page) || 0) > 0 ? ` • p.${Number(s.page)}` : '';
+      const label = `${filename}${page}`;
+      // Tooltip = excerpt si dispo
+      const tip = (s.excerpt || '').toString().slice(0, 300);
+      const safeTip = this._escapeHTML(tip).replace(/\n/g, ' ');
+      const docId = (s.document_id || `doc-${i}`).toString();
+      const fnAttr = this._escapeHTML(filename);
+      const exAttr = this._escapeHTML(tip);
+
+      return `
+        <button
+          type="button"
+          class="chip chip-source"
+          data-doc-id="${docId}"
+          data-filename="${fnAttr}"
+          data-page="${Number(s.page) || ''}"
+          data-excerpt="${exAttr}"
+          title="${safeTip}"
+          style="display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .6rem;border:1px solid rgba(255,255,255,.12);
+                 border-radius:999px;background:rgba(2,6,23,.5);font:12px/1 system-ui,Segoe UI,Roboto,Arial;color:#e5e7eb;cursor:pointer;">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="opacity:.85">
+            <path d="M4 4h10l6 6v10H4z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M14 4v6h6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <span>${this._escapeHTML(label)}</span>
+        </button>`;
+    }).join('');
+
+    host.innerHTML = `
+      <div class="rag-sources-wrap" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+        <span style="font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.75">Sources :</span>
+        ${chips}
+      </div>
+    `;
+    host.style.display = 'flex';
   }
 
   _messageHTML(m) {
@@ -286,6 +360,7 @@ export class ChatUI {
       isStreaming: !!m.isStreaming,
       agent_id: m.agent_id || m.agent
     };
+    // NOTE: L’assoc meta→message n’est pas requise ici ; on consomme lastMessageMeta global.
   }
 
   _toPlainText(val){
