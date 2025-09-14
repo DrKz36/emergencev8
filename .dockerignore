@@ -1,66 +1,43 @@
-# ==== VCS / Secrets ====
+# VCS & IDE
 .git
+.github
 .gitignore
 .gitattributes
-.github/
-.env
-**/*.env
-*.pem
-*.key
-*.crt
-*.pfx
+.vscode
+.idea
 
-# ==== Python ====
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
-*.pyd
-*.pkl
+.pytest_cache/
+.mypy_cache/
 .venv/
 venv/
-.envrc
-.dmypy.json
-.mypy_cache/
-.pytest_cache/
-.coverage
-htmlcov/
+env/
 
-# ==== Node / Front ====
+# Node / Front
 node_modules/
-pnpm-lock.yaml
-.yarn/
-.yarnrc*
-.npmrc
 dist/
-build/
-.cache/
-*.log
+npm-debug.log*
+yarn.lock # (garde seulement si tu builds avec yarn; sinon inutile)
+pnpm-lock.yaml # idem
 
-# ==== OS / IDE ====
+# OS cruft
 .DS_Store
 Thumbs.db
-desktop.ini
-.idea/
-.vscode/
 
-# ==== Tests / Docs / Assets volumineux ====
-tests/
-docs/
-*.md
-*.pdf
-*.ai
-*.psd
-*.xcf
-*.svg
-*.zip
-*.tar
-*.tar.gz
-
-# ==== Déploiement source local gcloud ====
+# Cloud / build temp
 cloud-run-source-deploy/
+**/*.log
 
-# ==== Snapshots ARBO ====
-arborescence_synchronisée_*.txt
+# Données locales lourdes (si présentes)
+data/*
+!data/.gitkeep
 
-# ==== Scripts purement locaux ====
-run-local.ps1
+# Images/artefacts non nécessaires
+*.tar
+*.zip
+
+# IMPORTANT : on NE filtre PAS src/** (on copie le code à runtime)
+# (Le bundle front vient du stage de build, pas du contexte)

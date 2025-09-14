@@ -18,8 +18,8 @@ spec:
         run.googleapis.com/client-version: 523.0.1
         run.googleapis.com/launch-stage: GA
       labels:
+        client.knative.dev/nonce: yvkzjndmgw
         run.googleapis.com/startupProbeType: Default
-      name: emergence-app-00248-hep
     spec:
       containerConcurrency: 80
       containers:
@@ -49,6 +49,13 @@ spec:
               key: '5'
               name: ANTHROPIC_API_KEY
         - name: EMERGENCE_SKIP_MIGRATIONS
+        - name: GOOGLE_ALLOWED_EMAILS
+          value: gonzalefernando@gmail.com
+        - name: GOOGLE_ALLOWED_HD
+        - name: GOOGLE_ALLOWLIST_MODE
+          value: email
+        - name: GOOGLE_OAUTH_CLIENT_ID
+          value: 486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com
         image: europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:secfix-denylist-20250909045505
         ports:
         - containerPort: 8080
