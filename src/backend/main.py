@@ -10,9 +10,9 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from starlette.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
-from starlette.responses import PlainTextResponse
 
-APP_VERSION = "7.5.2"  # +patch denylist
+APP_VERSION = "7.5.3"  # +auth.html route + denylist
+
 logger = logging.getLogger("emergence")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 
@@ -20,9 +20,10 @@ SRC_DIR      = Path(__file__).resolve().parent.parent           # /app/src
 REPO_ROOT    = SRC_DIR.parent                                   # /app
 FRONTEND_SRC = SRC_DIR / "frontend"                             # /app/src/frontend
 ASSETS_DIR   = REPO_ROOT / "assets"                             # /app/assets  (repo)
-STATIC_DIR   = Path(os.environ.get("STATIC_DIR", "/app/static"))# /app/static  (build Vite)
+STATIC_DIR   = Path(os.environ.get("STATIC_DIR", "/app/static"))# /app/static  (vite build)
 INDEX_DEV    = REPO_ROOT / "index.html"
 INDEX_DIST   = STATIC_DIR / "index.html"
+AUTH_DIST    = STATIC_DIR / "auth.html"                         # ← ajouté
 
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
@@ -53,7 +54,6 @@ def _migrations_dir() -> str:
 # ---------------------- Security: Denylist Middleware ----------------------
 _DENY_PATTERNS = [
     re.compile(r"^/\.git(?:/|$)"),  # enforce 403 for any /.git path
-    # NOTE: ajouter d’autres patterns si nécessaire (ex: r"^/\.env$")
 ]
 
 class DenylistMiddleware(BaseHTTPMiddleware):
@@ -61,7 +61,6 @@ class DenylistMiddleware(BaseHTTPMiddleware):
         path = request.scope.get("path", "")
         for pat in _DENY_PATTERNS:
             if pat.match(path):
-                # Short-circuit BEFORE any static mount or SPA fallback
                 return PlainTextResponse("Forbidden", status_code=403)
         return await call_next(request)
 # ---------------------------------------------------------------------------
@@ -90,9 +89,9 @@ async def _startup(container: ServiceContainer):
         logger.warning(f"Wire DI partiel: {e}")
 
     logger.info(
-        "Static mounts v%s: STATIC_DIR=%s(exists=%s) | ASSETS=%s(exists=%s) | FRONTEND_SRC=%s(exists=%s) | INDEX_DEV=%s(exists=%s)",
+        "Static mounts v%s: STATIC_DIR=%s(exists=%s) | ASSETS=%s(exists=%s) | FRONTEND_SRC=%s(exists=%s) | INDEX_DEV=%s(exists=%s) | AUTH_DIST=%s(exists=%s)",
         APP_VERSION, STATIC_DIR, STATIC_DIR.exists(), ASSETS_DIR, ASSETS_DIR.exists(),
-        FRONTEND_SRC, FRONTEND_SRC.exists(), INDEX_DEV, INDEX_DEV.exists()
+        FRONTEND_SRC, FRONTEND_SRC.exists(), INDEX_DEV, INDEX_DEV.exists(), AUTH_DIST, AUTH_DIST.exists()
     )
 
 def create_app() -> FastAPI:
@@ -101,7 +100,7 @@ def create_app() -> FastAPI:
     app.state.service_container = container
     app.router.redirect_slashes = True
 
-    # Security first: deny sensitive paths BEFORE anything else
+    # Security first
     app.add_middleware(DenylistMiddleware)
 
     app.add_middleware(
@@ -145,7 +144,7 @@ def create_app() -> FastAPI:
     _mount_router(CHAT_ROUTER)  # contient WS: /ws/{session_id}
 
     # ---------- Statics ----------
-    # 0) Assets Vite en priorité sur /assets (résout les 404)
+    # 0) Assets Vite
     vite_assets = STATIC_DIR / "assets"
     if vite_assets.exists():
         app.mount("/assets", StaticFiles(directory=str(vite_assets), html=False), name="vite-assets")
@@ -154,27 +153,40 @@ def create_app() -> FastAPI:
         app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR), html=False), name="repo-assets")
         logger.info("Mount /assets -> %s (repo assets)", ASSETS_DIR)
 
-    # 1) Compat immédiate: /src -> /app/src/frontend (uniquement FE)
+    # 1) Compat /src -> frontend
     if FRONTEND_SRC.exists():
         app.mount("/src", StaticFiles(directory=str(FRONTEND_SRC), html=False), name="src-frontend")
         logger.info("Compat: /src -> %s", FRONTEND_SRC)
 
-    # 2) Build Vite complète exposée sous /static (html=True pour servir index directement si besoin)
+    # 2) Expose /static
     if STATIC_DIR.exists():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR), html=True), name="static-dist")
         logger.info("Mount /static -> %s", STATIC_DIR)
 
-    # 3) SPA catch-all GET, sans casser /api|/ws|/assets|/src
+    # 2.5) **Serveur explicite /auth.html** AVANT fallback SPA
+    @app.get("/auth.html", include_in_schema=False)
+    async def _auth_html():
+        if AUTH_DIST.exists():
+            return FileResponse(str(AUTH_DIST))
+        # Secours: si pas trouvé, 404 (évite d’envoyer l’index SPA qui casse l’auth)
+        logger.warning("auth.html introuvable dans STATIC_DIR")
+        raise HTTPException(status_code=404, detail="auth.html not found")
+
+    # 3) SPA root
     @app.get("/", include_in_schema=False)
     async def _root():
         if INDEX_DIST.exists(): return FileResponse(str(INDEX_DIST))
         if INDEX_DEV.exists():  return FileResponse(str(INDEX_DEV))
         return PlainTextResponse("UI unavailable", status_code=503)
 
+    # 4) SPA catch-all
     @app.get("/{full_path:path}", include_in_schema=False)
     async def _spa(full_path: str):
-        # La denylist est déjà appliquée par le middleware. On protège ici les prefixes API/WS/STATIQUES.
+        # Protéger /api|/ws|/assets|/src — et NE PAS intercepter /auth.html (route dédiée)
         if re.match(r"^(api|ws|assets|src)(/|$)", full_path):
+            raise HTTPException(status_code=404, detail="Not Found")
+        if full_path.strip().lower() == "auth.html":
+            # si quelqu'un atteint ici, on redirige vers la route explicite
             raise HTTPException(status_code=404, detail="Not Found")
         if INDEX_DIST.exists(): return FileResponse(str(INDEX_DIST))
         if INDEX_DEV.exists():  return FileResponse(str(INDEX_DEV))

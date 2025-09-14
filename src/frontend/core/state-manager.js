@@ -1,7 +1,7 @@
 // src/frontend/core/state-manager.js
 /**
  * @module core/state-manager
- * @description Gestionnaire d'état V15.4 "Threads Aware" + GIS ensureAuth + chat meta + metrics
+ * @description Gestionnaire d'état V15.5 — Threads Aware + GIS ensureAuth + auth required @ boot
  */
 import { AGENTS } from '../shared/constants.js';
 import { ensureAuth as ensureAuthCore, getIdToken, setGisClientId } from './auth.js';
@@ -11,11 +11,13 @@ export class StateManager {
     this.DEFAULT_STATE = this.getInitialState();
     this.state = this.DEFAULT_STATE;
     this.subscribers = new Map();
-    console.log("✅ StateManager V15.4 (Threads Aware + GIS ensureAuth).");
+    console.log("✅ StateManager V15.5 (Threads Aware + GIS ensureAuth + auth-required@boot).");
   }
 
-  async init() {
-    // Optionnel: si le clientId est posé dans une meta, on le passe au bridge
+  async init(opts = {}) {
+    const { requireAuth = true } = opts;
+
+    // Passer le clientId GIS si présent en meta
     try {
       const meta = document.querySelector('meta[name="google-signin-client_id"]');
       if (meta && meta.content) setGisClientId(meta.content.trim());
@@ -25,17 +27,24 @@ export class StateManager {
     let mergedState = this._deepMerge(this.DEFAULT_STATE, savedState);
     this.state = this.sanitize(mergedState);
 
-    // Auto-auth douce (non bloquante) pour positionner l’indicateur UI
+    // 1) tentative douce
     try {
       const tokBefore = getIdToken();
       if (!tokBefore) {
         await ensureAuthCore({ interactive: false });
       }
-      const has = !!getIdToken();
-      this.set('auth.hasToken', has);
-    } catch {
-      this.set('auth.hasToken', false);
+    } catch {}
+
+    // 2) exigence éventuelle d'auth
+    let has = !!getIdToken();
+    if (requireAuth && !has && location.pathname !== '/auth.html') {
+      try { await ensureAuthCore({ interactive: true }); } catch {}
+      has = !!getIdToken();
+      if (!has) {
+        try { location.assign('/auth.html'); } catch {}
+      }
     }
+    this.set('auth.hasToken', !!getIdToken());
 
     console.log("[StateManager] Initialized: state sanitized & persisted.");
     this.persist();
@@ -53,14 +62,9 @@ export class StateManager {
     cleanState.costs = cleanState.costs || { total: 0, last_session: 0 };
     cleanState.debate = cleanState.debate || { status: 'idle', topic: null, history: [] };
     cleanState.user = cleanState.user || { id: 'FG', name: 'Fernando' };
-
-    // Threads
     cleanState.threads = cleanState.threads || { currentId: null, map: {} };
-
-    // Auth
     cleanState.auth = cleanState.auth || { hasToken: false };
 
-    // Chat meta & metrics
     cleanState.chat = cleanState.chat || {};
     cleanState.chat.lastMessageMeta = cleanState.chat.lastMessageMeta || null;
     cleanState.chat.modelInfo = cleanState.chat.modelInfo || null;
@@ -71,7 +75,6 @@ export class StateManager {
       rest_fallback_count: 0,
       last_fallback_at: null
     };
-
     if (cleanState.chat.ragEnabled === undefined) cleanState.chat.ragEnabled = false;
     if (cleanState.chat.ragStatus === undefined) cleanState.chat.ragStatus = 'idle';
     if (cleanState.chat.memoryBannerAt === undefined) cleanState.chat.memoryBannerAt = null;
@@ -155,7 +158,7 @@ export class StateManager {
     return output;
   }
 
-  // Back-compat: expose ensureAuth() via core/auth (utilisé par certains modules)
+  // Back-compat
   async ensureAuth() {
     try {
       const tok = getIdToken();

@@ -1,45 +1,37 @@
 // src/frontend/core/websocket.js
-// WebSocketClient V24.1 — JWT sub-protocol + de-dup + TTFB + ✅ Heartbeat + ✅ Memory Prime + ✅ Tolerance
+// WebSocketClient V24.2 — JWT sub-protocol + de-dup + TTFB + Heartbeat + Memory Prime + Tolerance + 4401→redirect
 
 import { EVENTS, WS_CONFIG } from '../shared/constants.js';
 import { ensureAuth, getIdToken, clearAuth } from './auth.js';
 
 export class WebSocketClient {
   constructor(url, eventBus, stateManager) {
-    this.url = url;                    // ex: '/ws' ou 'wss://host/ws'
+    this.url = url;
     this.eventBus = eventBus;
     this.state = stateManager;
     this.websocket = null;
 
-    // Reconnect
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelayMs = 1000;
 
-    // Auth prompt throttle
     this._authPromptedAt = 0;
-
-    // Anti-doublon chat
     this._lastChatSig = null;
     this._lastChatTs = 0;
     this._dedupMs = 1200;
-
-    // Metrics
     this._lastSendAt = 0;
 
-    // Heartbeat
     this._hbTimer = null;
     this._hbLastPongAt = 0;
     this._hbIntervalMs = (WS_CONFIG && WS_CONFIG.HEARTBEAT_INTERVAL) ? WS_CONFIG.HEARTBEAT_INTERVAL : 30000;
-    this._hbMissTolerance = 3; // ← tolère 3 intervalles sans activité
+    this._hbMissTolerance = 3;
 
     this._bindEventBus();
     this._bindStorageListener();
-    console.log('✅ WebSocketClient V24.1 (JWT + de-dup + TTFB + heartbeat + memory-prime + tolerance) prêt.');
+    console.log('✅ WebSocketClient V24.2 prêt.');
   }
 
   _bindEventBus() {
-    // UI → chat
     this.eventBus.on?.('ui:chat:send', (payload = {}) => {
       try {
         const text = String(payload.text ?? '').trim();
@@ -62,10 +54,8 @@ export class WebSocketClient {
       } catch (e) { console.error('[WebSocket] ui:chat:send → chat.message a échoué', e); }
     });
 
-    // Frames brutes éventuelles
     this.eventBus.on?.(EVENTS.WS_SEND || 'ws:send', (frame) => this.send(frame));
 
-    // Auth events
     this.eventBus.on?.('auth:login', async (opts) => {
       const clientId = (opts && typeof opts === 'object') ? (opts.client_id ?? opts.clientId ?? null) : null;
       await ensureAuth({ interactive: true, clientId });
@@ -77,7 +67,6 @@ export class WebSocketClient {
       this.close(4001, 'logout');
     });
 
-    // Si le serveur réclame l’auth
     this.eventBus.on?.('auth:missing', async () => {
       const now = Date.now();
       if (now - this._authPromptedAt > 4000) {
@@ -87,7 +76,6 @@ export class WebSocketClient {
       }
     });
 
-    // Prime mémoire à la demande
     this.eventBus.on?.('memory:prime', () => this._primeMemoryStatus());
   }
 
@@ -160,29 +148,21 @@ export class WebSocketClient {
       this._hbLastPongAt = Date.now();
       this._startHeartbeat();
       this.eventBus.emit?.(EVENTS.WS_CONNECTED || 'ws:connected', { url });
-
-      // Prime mémoire immédiat pour bandeau sans latence
       this._primeMemoryStatus();
     };
 
     this.websocket.onmessage = (ev) => {
-      // ✅ Toute activité WS = activité “vivante” → rafraîchit le watchdog
       this._hbLastPongAt = Date.now();
-
       try {
         const msg = JSON.parse(ev.data);
 
-        // Heartbeat
-        if (msg?.type === 'ws:pong') {
-          return; // rien d'autre à faire
-        }
+        if (msg?.type === 'ws:pong') return;
 
         if (msg?.type === 'ws:auth_required') {
           this.eventBus.emit?.('auth:missing', msg?.payload || null);
           return;
         }
 
-        // Metrics: TTFB (ws:chat_stream_start)
         if (msg?.type === 'ws:chat_stream_start') {
           const ttfb = Math.max(0, Date.now() - (this._lastSendAt || 0));
           try {
@@ -228,7 +208,6 @@ export class WebSocketClient {
             this.eventBus.emit?.('chat:analysis_status', msg.payload || null);
           }
 
-          // Dispatch générique
           this.eventBus.emit?.(msg.type, msg.payload);
         }
       } catch {
@@ -240,7 +219,11 @@ export class WebSocketClient {
       this._stopHeartbeat();
       const code = ev?.code || 1006;
       if (code === 4401 || code === 1008) {
+        try { clearAuth(); } catch {}
         this.eventBus.emit?.('auth:missing', { reason: code });
+        try {
+          if (location.pathname !== '/auth.html') location.assign('/auth.html');
+        } catch {}
         this.websocket = null;
         return;
       }
@@ -258,7 +241,6 @@ export class WebSocketClient {
       try {
         if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) return;
         this.send({ type: 'ws:ping' });
-        // ✅ Tolérance: pas de reconnect si on a eu une activité **récente** (même autre que pong)
         const now = Date.now();
         if (now - this._hbLastPongAt > this._hbIntervalMs * this._hbMissTolerance) {
           console.warn('[WebSocket] Heartbeat manqué → reconnect…');
@@ -277,7 +259,7 @@ export class WebSocketClient {
   }
 
   close(code = 1000, reason = 'normal') {
-    try { this.websocket?.close(code, reason); } catch {} 
+    try { this.websocket?.close(code, reason); } catch {}
     finally { this.websocket = null; this._stopHeartbeat(); }
   }
 
@@ -285,7 +267,6 @@ export class WebSocketClient {
     try {
       if (!frame || typeof frame !== 'object') return;
 
-      // Pare-feu anti-doublon pour chat.message
       if (frame.type === 'chat.message') {
         const txt = String(frame?.payload?.text ?? '').trim();
         const ag  = String(frame?.payload?.agent_id ?? '').trim().toLowerCase();
@@ -344,7 +325,6 @@ export class WebSocketClient {
         this.state?.set?.('chat.memoryBannerAt', Date.now());
       } catch {}
 
-      // Re-émet comme une bannière WS pour unifier l’UI
       this.eventBus.emit?.('ws:memory_banner', stats);
     } catch (e) {
       console.warn('[WebSocket] _primeMemoryStatus failed', e);

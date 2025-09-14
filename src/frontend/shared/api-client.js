@@ -2,18 +2,10 @@
 /**
  * @file /src/frontend/shared/api-client.js
  * @description Client API centralisé (Fetch) avec injection GIS (ID token) intégrée.
- * @version V6.2 — inline fetchWithAuth (GIS) + headers sûrs + timeouts + 401 events
- *
- * Invariants:
- * - Ajoute automatiquement `Authorization: Bearer <ID token>` si disponible.
- * - N'impose pas Content-Type quand body est un FormData.
- * - 401/403 -> lève une erreur explicite et émet un event 'auth:missing'.
- * - Timeout par AbortController (par défaut 15s).
+ * @version V6.3 — ensure=true → redirect /auth.html si token absent
  */
 
-import { API_ENDPOINTS } from './config.js'; // respecte l'arbo
-
-/* ------------------------------ Constantes ----------------------------- */
+import { API_ENDPOINTS } from './config.js';
 
 const THREADS_BASE =
   (API_ENDPOINTS && API_ENDPOINTS.THREADS) ? API_ENDPOINTS.THREADS : '/api/threads';
@@ -48,23 +40,23 @@ function withTimeout(controller, ms = DEFAULT_TIMEOUT_MS) {
 
 function getIdToken() {
   try {
-    // Clés tolérées (StateManager V15.x + GIS)
-    const keys = [
-      'id_token',
-      'google_id_token',
-      'emergence_id_token',
-      'GIS_ID_TOKEN'
-    ];
+    const keys = ['id_token','google_id_token','emergence_id_token','GIS_ID_TOKEN'];
     for (const k of keys) {
       const v = sessionStorage.getItem(k) || localStorage.getItem(k);
       if (v && typeof v === 'string') return v.trim();
     }
-    // Exposition éventuelle par bootstrap
     // eslint-disable-next-line no-underscore-dangle
-    const fromWindow = (typeof window !== 'undefined' && window.__EMERGENCE && window.__EMERGENCE.auth && window.__EMERGENCE.auth.id_token) || null;
+    const fromWindow =
+      (typeof window !== 'undefined' && window.__EMERGENCE && window.__EMERGENCE.auth && window.__EMERGENCE.auth.id_token) || null;
     if (fromWindow) return String(fromWindow).trim();
   } catch {}
   return null;
+}
+
+function redirectToAuthOnce() {
+  try {
+    if (location.pathname !== '/auth.html') location.assign('/auth.html');
+  } catch {}
 }
 
 /**
@@ -90,8 +82,8 @@ async function fetchWithAuth(input, init = {}, { ensure = true } = {}) {
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   } else if (ensure) {
-    // Signale à l'UI qu'un login est requis.
     try { window.dispatchEvent(new CustomEvent('auth:missing')); } catch {}
+    redirectToAuthOnce();
     const err = new Error('Authentication required');
     err.status = 401;
     throw err;
@@ -120,7 +112,6 @@ async function doFetch(endpoint, config, timeoutMs = DEFAULT_TIMEOUT_MS) {
   try {
     const res = await fetchWithAuth(endpoint, finalConfig, { ensure: true });
 
-    // Gestion des statuts non OK
     if (!res.ok) {
       const contentType = res.headers.get('content-type') || '';
       let errorData = null;
@@ -136,14 +127,13 @@ async function doFetch(endpoint, config, timeoutMs = DEFAULT_TIMEOUT_MS) {
       const err = new Error(detail);
       err.status = res.status;
 
-      // Événement dédié pour 401/403 (UI peut afficher un CTA login)
       if (err.status === 401 || err.status === 403) {
         try { window.dispatchEvent(new CustomEvent('auth:missing', { detail: { status: err.status } })); } catch {}
+        redirectToAuthOnce();
       }
       throw err;
     }
 
-    // 204 No Content
     if (res.status === 204) return {};
 
     const ct = res.headers.get('content-type') || '';
@@ -176,7 +166,7 @@ export const api = {
         console.warn('[API Client] Service Documents indisponible (503) → retour {items: []}.');
         return { items: [] };
       }
-      console.error(`[API Client] Erreur sur l\'endpoint ${url}:`, err);
+      console.error(`[API Client] Erreur sur l'endpoint ${url}:`, err);
       throw err;
     }
   },
@@ -184,7 +174,6 @@ export const api = {
   uploadDocument: (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    // Pas de Content-Type explicite (FormData)
     return doFetch(API_ENDPOINTS.DOCUMENTS_UPLOAD, { method: 'POST', body: formData });
   },
 
@@ -255,7 +244,6 @@ export const api = {
   },
 };
 
-// Dev: exposer l'API en local uniquement
 try {
   if (typeof window !== 'undefined' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.api = api;
