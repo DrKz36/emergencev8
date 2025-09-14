@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>ÉMERGENCE – Connexion</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: #0b0f14;
+        color: #dfe7ef;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+      }
+      .card {
+        width: min(92vw, 480px);
+        background: #121923;
+        border: 1px solid #263142;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      }
+      .title { font-size: 1.25rem; margin: 0 0 8px; }
+      .muted { color: #93a6bf; font-size: .95rem; margin: 0 0 16px; }
+      #gsi-btn { display: flex; justify-content: center; margin: 16px 0 8px; }
+      .hint { color: #8196b3; font-size: .85rem; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1 class="title">Connexion à ÉMERGENCE</h1>
+      <p class="muted">Authentifie-toi avec Google pour accéder à l’application.</p>
+      <div id="gsi-btn"></div>
+      <p class="hint">Ton compte doit être autorisé.</p>
+    </div>
+
+    <script type="module">
+      import { initGIS, renderGoogleButton, getIdToken } from "/src/frontend/core/auth.js";
+
+      const CLIENT_ID = "486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com";
+
+      (async () => {
+        await initGIS({ clientId: CLIENT_ID, oneTap: false });
+        await renderGoogleButton("#gsi-btn");
+        try {
+          const tok = await getIdToken();
+          if (tok) window.location.href = "/";
+        } catch {
+          // reste sur la page
+        }
+      })();
+    </script>
+  </body>
+</html>
