@@ -1,5 +1,5 @@
 # src/backend/core/websocket.py
-# V11.1 – Router WS complet (echo sous-protocole, auth WS via GIS, tolérance SessionManager)
+# V11.2 – Handshake gracieux: accept → ws:auth_required → close(4401) si auth KO
 import logging
 import asyncio
 from typing import Dict, Any, List, Optional, Callable, TYPE_CHECKING
@@ -111,8 +111,27 @@ def get_websocket_router(container) -> APIRouter:
         try:
             user_id = await dependencies.get_user_id_for_ws(websocket, user_id=user_id_hint)
         except Exception as e:
-            logger.warning(f"Refus WS (auth échouée) : {e}")
-            return  # handshake refusé
+            # 🔁 Handshake gracieux: accept → notifier → close(4401)
+            try:
+                requested = websocket.headers.get("sec-websocket-protocol") or ""
+                selected = None
+                for p in [s.strip().lower() for s in requested.split(",") if s.strip()]:
+                    if p in {"jwt", "bearer"}:
+                        selected = p
+                        break
+                await websocket.accept(subprotocol=selected)
+            except Exception as ae:
+                logger.warning(f"WS accept() avant close a échoué: {ae}")
+            try:
+                await websocket.send_json({"type": "ws:auth_required", "payload": {"reason": "invalid_or_missing_token"}})
+            except Exception:
+                pass
+            logger.warning(f"WS auth échouée → close 4401 : {e}")
+            try:
+                await websocket.close(code=4401)
+            except Exception:
+                pass
+            return
 
         session_manager: SessionManager = container.session_manager()
         conn_manager = getattr(session_manager, "connection_manager", None)

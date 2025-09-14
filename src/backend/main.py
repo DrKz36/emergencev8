@@ -5,6 +5,7 @@ import os, sys, logging, time
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from starlette.staticfiles import StaticFiles
 
 logger = logging.getLogger("emergence")
@@ -127,6 +128,15 @@ def create_app() -> FastAPI:
 
     # ⚠️ WS: **uniquement** features.chat.router (déclare /ws/{session_id})
     _mount_router(CHAT_ROUTER)  # pas de prefix → garde /ws/{session_id}
+
+    # 🔁 Redirect dev-only : /auth.html → /dev-auth.html si AUTH_DEV_MODE actif
+    try:
+        if str(os.getenv("AUTH_DEV_MODE", "0")).lower() in {"1", "true", "yes", "on"}:
+            @app.get("/auth.html", include_in_schema=False)
+            async def _auth_redirect():
+                return RedirectResponse(url="/dev-auth.html", status_code=302)
+    except Exception as e:
+        logger.warning(f"Redirect /auth.html non installé: {e}")
 
     # Static (best-effort)
     try:
