@@ -1,12 +1,13 @@
 ﻿# src/backend/main.py
 from __future__ import annotations
 
-import os, sys, logging, time
+import os, sys, logging, time, re
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, PlainTextResponse
 from starlette.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger("emergence")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
@@ -18,6 +19,7 @@ sys.path.append(str(REPO_ROOT))
 
 from backend.containers import ServiceContainer
 from backend.core.database.schema import initialize_database
+from backend.core.config import DENYLIST_ENABLED, DENYLIST_PATTERNS  # ← ajout
 
 def _import_router(dotted: str):
     try:
@@ -73,6 +75,22 @@ async def _startup(container: ServiceContainer):
     except Exception as e:
         logger.warning(f"MemoryAnalyzer hook non appliqué: {e}")
 
+# --- Middleware Deny-list (404 early) ---
+class DenyListMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, enabled: bool, patterns: list[str]):
+        super().__init__(app)
+        self.enabled = enabled
+        self.patterns = [(p, re.compile(p, re.IGNORECASE)) for p in patterns]
+
+    async def dispatch(self, request: Request, call_next):
+        if self.enabled and request.scope.get("type") == "http":
+            path = request.url.path
+            for raw, rx in self.patterns:
+                if rx.search(path):
+                    logger.info(f"DenyList: 404 bloqué path={path} (pattern={raw})")
+                    return PlainTextResponse("Not Found", status_code=404)
+        return await call_next(request)
+
 def create_app() -> FastAPI:
     container = ServiceContainer()
     app = FastAPI(title="Émergence API", version="7.2")
@@ -81,10 +99,14 @@ def create_app() -> FastAPI:
     # 🔒 Redirige automatiquement /route ↔ /route/
     app.router.redirect_slashes = True
 
+    # CORS d'abord...
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
     )
+    # ...puis DenyList en dernier pour être outermost (court-circuit rapide)
+    app.add_mmiddleware = app.add_middleware  # alias lisible
+    app.add_mmiddleware(DenyListMiddleware, enabled=DENYLIST_ENABLED, patterns=DENYLIST_PATTERNS)
 
     @app.on_event("startup")
     async def _on_startup():

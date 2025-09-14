@@ -2,6 +2,7 @@
 # Configuration centrale ÉMERGENCE — modèles & constantes.
 
 import os
+import json
 
 # --- Fallback global (héritage) ---
 # Utilisé si un agent ne trouve ni son provider ni son model.
@@ -46,3 +47,34 @@ FEATURE_DOCUMENT_PROCESSING = "document_processing"
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 150
 DOCUMENT_COLLECTION_NAME = "emergence_documents"
+
+# --- Sécurité HTTP : Deny-list simple (404 early) ---
+# Activable par env: DENYLIST_ENABLED=1|true|on
+DENYLIST_ENABLED = str(os.getenv("DENYLIST_ENABLED", "1")).lower() in {"1", "true", "yes", "on"}
+
+# Liste de patterns (regex) — surcharge possible via env DENYLIST_PATTERNS (JSON array)
+_DEFAULT_DENYLIST = [
+    r"/(wp-admin|wp-login|wp-content|wp-includes)(/|$)",
+    r"\.php(\?.*)?$",
+    r"^/pearcmd",
+    r"^/vendor/.*",
+    r"^/\.git",
+    r"^/\.env",
+    r"^/server-status$",
+    r"^/owa(/|$)",
+    r"^/phpmyadmin(/|$)",
+]
+
+def _load_env_patterns() -> list[str]:
+    raw = os.getenv("DENYLIST_PATTERNS")
+    if not raw:
+        return _DEFAULT_DENYLIST
+    try:
+        data = json.loads(raw)
+        if isinstance(data, list) and all(isinstance(x, str) for x in data):
+            return data
+    except Exception:
+        pass
+    return _DEFAULT_DENYLIST
+
+DENYLIST_PATTERNS: list[str] = _load_env_patterns()
