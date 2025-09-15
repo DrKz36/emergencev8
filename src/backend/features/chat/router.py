@@ -1,6 +1,5 @@
 # src/backend/features/chat/router.py
-# V23.2 — Guard JSON/WSDisconnect sur receive_json() + log propre à la fermeture
-
+# V23.4 — Fix DI: _ws_core sans Depends/@inject + compat /ws (sans param)
 import logging
 from uuid import uuid4
 from datetime import datetime, timezone
@@ -21,9 +20,14 @@ from backend.features.debate.service import DebateService
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# ---------------------------
+# Helpers normalisation
+# ---------------------------
 def _norm_bool(payload, snake_key, camel_key, default=False):
-    if snake_key in payload: return bool(payload.get(snake_key))
-    if camel_key in payload: return bool(payload.get(camel_key))
+    if snake_key in payload:
+        return bool(payload.get(snake_key))
+    if camel_key in payload:
+        return bool(payload.get(camel_key))
     return default
 
 def _norm_list(payload, snake_key, camel_key):
@@ -36,15 +40,18 @@ def _norm_type(t: str) -> str:
     t = (t or "").strip()
     return t.replace(".", ":", 1) if t.startswith("debate.") else t
 
-@router.websocket("/ws/{session_id}")
-@inject
-async def websocket_endpoint(
+# ---------------------------
+# Core WS — SANS Depends / SANS @inject
+# (les endpoints résolvent les deps et les passent ici)
+# ---------------------------
+async def _ws_core(
     websocket: WebSocket,
     session_id: str,
-    connection_manager: ConnectionManager = Depends(Provide[ServiceContainer.connection_manager]),
-    chat_service: ChatService = Depends(Provide[ServiceContainer.chat_service]),
-    debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service]),
+    connection_manager: ConnectionManager,
+    chat_service: ChatService,
+    debate_service: DebateService,
 ):
+    """Boucle WS commune. Les deps sont déjà résolues par les endpoints."""
     _uid = None
     try:
         tok = deps._extract_ws_bearer_token(websocket)
@@ -85,15 +92,17 @@ async def websocket_endpoint(
 
             if not message_type or payload is None:
                 await connection_manager.send_personal_message(
-                    {"type": "ws:error", "payload": {"message": "Message WebSocket incomplet (type/payload)."}} ,
+                    {"type": "ws:error", "payload": {"message": "Message WebSocket incomplet (type/payload)."}},
                     session_id
                 )
                 continue
 
+            # Compat anciens noms
             if isinstance(message_type, str) and message_type in {"chat:send", "chat_message"}:
                 logger.info(f"[WS] Normalisation du type hérité '{message_type}' -> 'chat.message'")
                 message_type = "chat.message"
 
+            # -------- Débat
             if message_type.startswith("debate:"):
                 try:
                     if message_type == "debate:create":
@@ -139,7 +148,7 @@ async def websocket_endpoint(
                         continue
 
                     await connection_manager.send_personal_message(
-                        {"type": "ws:error", "payload": {"message": f"Type débat inconnu: {message_type}"}} ,
+                        {"type": "ws:error", "payload": {"message": f"Type débat inconnu: {message_type}"}},
                         session_id
                     )
                 except Exception as e:
@@ -149,11 +158,13 @@ async def websocket_endpoint(
                     )
                 continue
 
+            # -------- Chat
             if message_type == "chat.message":
                 try:
                     txt = (payload.get("text") or "").strip()
                     ag  = (payload.get("agent_id") or "").strip().lower()
                     use_rag = _norm_bool(payload, "use_rag", "useRag", default=False)
+
                     if not txt or not ag:
                         await connection_manager.send_personal_message(
                             {"type": "ws:error", "payload": {"message": "chat.message: 'text' et 'agent_id' requis."}},
@@ -161,11 +172,11 @@ async def websocket_endpoint(
                         )
                         continue
 
+                    # Anti-duplicate (si dernier message user == txt)
                     try:
                         history = connection_manager.session_manager.get_full_history(session_id) or []
                         last = history[-1] if history else None
                         last_role = (last.get("role") if isinstance(last, dict) else getattr(last, "role", None)) if last else None
-                        last_text = None
                         if isinstance(last, dict):
                             last_text = last.get("content") or last.get("message")
                         else:
@@ -196,8 +207,10 @@ async def websocket_endpoint(
                     )
                 continue
 
+            # -------- Inconnu
             await connection_manager.send_personal_message(
-                {"type": "ws:error", "payload": {"message": f"Type inconnu: {message_type}"}}, session_id
+                {"type": "ws:error", "payload": {"message": f"Type inconnu: {message_type}"}},
+                session_id
             )
 
     except Exception as e:
@@ -207,3 +220,39 @@ async def websocket_endpoint(
             await connection_manager.disconnect(session_id, websocket)
         except Exception:
             pass
+
+# ---------------------------
+# Endpoints WS (DI ici UNIQUEMENT)
+# ---------------------------
+@router.websocket("/ws/{session_id}")
+@inject
+async def websocket_with_session(
+    websocket: WebSocket,
+    session_id: str,
+    connection_manager: ConnectionManager = Depends(Provide[ServiceContainer.connection_manager]),
+    chat_service: ChatService = Depends(Provide[ServiceContainer.chat_service]),
+    debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service]),
+):
+    await _ws_core(
+        websocket=websocket,
+        session_id=session_id,
+        connection_manager=connection_manager,
+        chat_service=chat_service,
+        debate_service=debate_service,
+    )
+
+@router.websocket("/ws")
+@inject
+async def websocket_without_session(
+    websocket: WebSocket,
+    connection_manager: ConnectionManager = Depends(Provide[ServiceContainer.connection_manager]),
+    chat_service: ChatService = Depends(Provide[ServiceContainer.chat_service]),
+    debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service]),
+):
+    await _ws_core(
+        websocket=websocket,
+        session_id=uuid4().hex,
+        connection_manager=connection_manager,
+        chat_service=chat_service,
+        debate_service=debate_service,
+    )
