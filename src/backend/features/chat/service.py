@@ -1,6 +1,7 @@
 ﻿# src/backend/features/chat/service.py
-# V31.4 — + meta.sources (RAG) dans ws:chat_stream_end  |  + logs inchangés
-# Cf. V31.3: mémoire agent-aware, frames WS stables (model_info/fallback/memory_banner/rag_status)
+# V31.5 — FIX debate: implémentation locale de get_llm_response_for_debate (sync, provider-agnostic)
+#          + Forçage FR + tutoiement pour Nexus (Anthropic)
+#          + V31.4 conservé: meta.sources (RAG) dans ws:chat_stream_end
 
 import os, re, asyncio, logging, glob, json
 from uuid import uuid4
@@ -9,8 +10,8 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 import google.generativeai as genai
-from openai import AsyncOpenAI
-from anthropic import AsyncAnthropic
+from openai import AsyncOpenAI, OpenAI
+from anthropic import AsyncAnthropic, Anthropic
 
 from backend.core.session_manager import SessionManager
 from backend.core.cost_tracker import CostTracker
@@ -55,15 +56,19 @@ class ChatService:
         logger.info(f"ChatService OFF policy: {self.off_history_policy}")
 
         try:
+            # Clients async (chat streaming)
             self.openai_client = AsyncOpenAI(api_key=self.settings.openai_api_key)
             genai.configure(api_key=self.settings.google_api_key)
             self.anthropic_client = AsyncAnthropic(api_key=self.settings.anthropic_api_key)
+            # Clients sync (débat — non stream)
+            self.openai_sync = OpenAI(api_key=self.settings.openai_api_key)
+            self.anthropic_sync = Anthropic(api_key=self.settings.anthropic_api_key)
         except Exception as e:
             logger.error(f"Erreur lors de l'initialisation des clients API: {e}", exc_info=True)
             raise
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V31.4 initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V31.5 initialisé. Prompts chargés: {len(self.prompts)}")
 
     # ---------- prompts ----------
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
@@ -103,6 +108,18 @@ class ChatService:
                              f"(provider='{provider_raw}', normalisé='{provider}', model='{model}').")
 
         return provider, model, system_prompt
+
+    def _ensure_fr_tutoiement(self, agent_id: str, provider: str, system_prompt: str) -> str:
+        """Durcit le style FR + tutoiement pour Nexus (surtout Anthropic)."""
+        if agent_id.strip().lower() == "nexus" and provider == "anthropic":
+            prelude = (
+                "Règles de style (prioritaires) :\n"
+                "1) Tu tutoies l’utilisateur.\n"
+                "2) Tu réponds en FR, clair et direct, phrases courtes.\n"
+                "3) Pas de vouvoiement. Si l’utilisateur vouvoie, tu restes en tutoiement.\n"
+            )
+            return f"{prelude}\n{system_prompt}".strip()
+        return system_prompt
 
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
@@ -517,6 +534,9 @@ class ChatService:
 
             provider, model, system_prompt = self._get_agent_config(agent_id)
             primary_provider, primary_model = provider, model
+            # IMPORTANT: Nexus/Anthropic -> FR + tutoiement
+            system_prompt = self._ensure_fr_tutoiement(agent_id, provider, system_prompt)
+
             model_used = primary_model
 
             try:
@@ -672,8 +692,89 @@ class ChatService:
             except Exception as send_error:
                 logger.error(f"Impossible d'envoyer l'erreur au client (session {session_id}): {send_error}", exc_info=True)
 
-    def get_llm_response_for_debate(self, *a, **k):  # unchanged below
-        return super().get_llm_response_for_debate(*a, **k)  # type: ignore[misc]
+    # ===========================
+    # FIX: Débat (non-stream, sync)
+    # ===========================
+    def get_llm_response_for_debate(
+        self,
+        agent_id: str,
+        prompt: str,
+        *,
+        system_override: Optional[str] = None,
+        use_rag: bool = False,
+        session_id: Optional[str] = None,
+        max_tokens: int = 1200,
+        temperature: float = 0.4,
+    ) -> Dict[str, Any]:
+        """
+        Réponse unique pour le pipeline Débat (non-stream).
+        Retourne: {"text": str, "provider": str, "model": str, "cost_info": {...}}
+        """
+        provider, model, system_prompt = self._get_agent_config(agent_id)
+        # Forcer style FR + tutoiement pour Nexus/Anthropic
+        system_prompt = self._ensure_fr_tutoiement(agent_id, provider, system_override or system_prompt)
+
+        # RAG minimal (optionnel) : on injecte en tête du prompt utilisateur
+        if use_rag and session_id and prompt:
+            try:
+                document_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
+                doc_hits = self.vector_service.query(collection=document_collection, query_text=prompt)
+                doc_block = "\n".join([f"- {h.get('text','').strip()}" for h in (doc_hits or []) if h.get("text")])
+                if doc_block.strip():
+                    prompt = f"[DOCUMENTS PERTINENTS]\n{doc_block}\n\n[QUESTION]\n{prompt}"
+            except Exception:
+                pass
+
+        text = ""
+        cost_info: Dict[str, Any] = {}
+
+        try:
+            if provider == "openai":
+                resp = self.openai_sync.chat.completions.create(
+                    model=model,
+                    temperature=temperature,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=max_tokens,
+                )
+                text = (resp.choices[0].message.content or "").strip()
+
+            elif provider == "google":
+                model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
+                resp = model_instance.generate_content([{"role": "user", "parts": [prompt]}])
+                text = (getattr(resp, "text", "") or "").strip()
+
+            elif provider == "anthropic":
+                resp = self.anthropic_sync.messages.create(
+                    model=model,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                # Concat blocks
+                tmp = []
+                for block in getattr(resp, "content", []) or []:
+                    t = getattr(block, "text", "") or ""
+                    if t:
+                        tmp.append(t)
+                text = "".join(tmp).strip()
+
+            else:
+                raise ValueError(f"Fournisseur LLM non supporté pour débat: {provider}")
+
+        except Exception as e:
+            logger.error(f"get_llm_response_for_debate error (agent={agent_id}, provider={provider}): {e}", exc_info=True)
+            raise
+
+        return {
+            "text": text,
+            "provider": provider,
+            "model": model,
+            "cost_info": cost_info,
+        }
 
     def process_user_message_for_agents(self, session_id: str, chat_request: Any, connection_manager: ConnectionManager) -> None:
         get = (lambda k: (chat_request.get(k) if isinstance(chat_request, dict) else getattr(chat_request, k, None)))

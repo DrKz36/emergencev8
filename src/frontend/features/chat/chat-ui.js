@@ -1,10 +1,7 @@
 /**
- * V28.0 — + Chips “Sources RAG” (lecture lastMessageMeta.sources)
- *        + Badge modèle/fallback (chat.modelInfo + chat.lastMessageMeta)
- *        + Bouton "Clear" mémoire, compteurs STM/LTM, TTFB
- *
- * Basé sur V27.2 reçu ; ajout non-cassant pour afficher les sources RAG lorsque
- * le backend émet `ws:chat_stream_end.payload.meta.sources`.
+ * V28.1 — + Refresh chips “Sources RAG” quand documents changent
+ *        (écoute 'documents:changed' + re-fetch /api/documents + filtrage/clear)
+ *        + Badge modèle/fallback, mémoire, métriques (hérités V28.0)
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
@@ -23,9 +20,9 @@ export class ChatUI {
       metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null },
       memoryStats: { has_stm: false, ltm_items: 0, injected: false },
       modelInfo: null,
-      lastMessageMeta: null // ← attendu: { provider, model, ... , sources?: [{document_id, filename, page?, excerpt?}] }
+      lastMessageMeta: null // ← { provider, model, ... , sources?: [{document_id, filename, page?, excerpt?}] }
     };
-    console.log('✅ ChatUI V28.0 (chips sources RAG + badge modèle) chargé.');
+    console.log('✅ ChatUI V28.1 (chips sources RAG auto-refresh) chargé.');
   }
 
   render(container, chatState = {}) {
@@ -124,7 +121,7 @@ export class ChatUI {
     // Sources RAG (bandeau de chips sous les messages)
     this._renderSources(container.querySelector('#rag-sources'), this.state.lastMessageMeta?.sources);
 
-    // --- Mémoire (statut + libellé + **compteurs**) ---
+    // --- Mémoire (statut + libellé + compteurs) ---
     const memoryOn = !!(this.state.memoryBannerAt || (this.state.lastAnalysis && this.state.lastAnalysis.status === 'completed'));
     const dot = container.querySelector('#memory-dot');
     const lbl = container.querySelector('#memory-label');
@@ -240,9 +237,79 @@ export class ChatUI {
         page: Number(chip.getAttribute('data-page') || '0') || null,
         excerpt: chip.getAttribute('data-excerpt') || ''
       };
-      // Évènement UI libre ; branchable dans le panneau Documents
       this.eventBus.emit('rag:source:click', info);
     });
+
+    // NEW — écouter 'documents:changed' pour garder les chips à jour
+    try {
+      const off = this.eventBus?.on?.('documents:changed', async (payload = {}) => {
+        await this._onDocumentsChanged(container, payload);
+      });
+      if (typeof off === 'function') {
+        // Optionnel: conserver pour un futur destroy()
+        this._offDocumentsChanged = off;
+      }
+    } catch {}
+  }
+
+  /* ----- NEW: gestion du refresh Sources RAG -------------------------------- */
+
+  async _onDocumentsChanged(container, payload) {
+    try {
+      // Si le module Documents fournit déjà items, on les consomme.
+      let docs = Array.isArray(payload.items) ? payload.items : null;
+      if (!docs) {
+        docs = await this._refetchDocuments(); // tentatives côté chat
+      }
+      if (!Array.isArray(docs)) {
+        // Pas de visibilité sur les docs → on masque les chips pour éviter l’incohérence.
+        this._renderSources(container.querySelector('#rag-sources'), []);
+        return;
+      }
+
+      // Construire un set d’IDs et un set de filenames pour tolérance.
+      const ids = new Set(docs.map(d => d?.id || d?.document_id || d?._id).filter(Boolean));
+      const names = new Set(docs.map(d => (d?.filename || d?.original_filename || d?.name || '').toString()).filter(Boolean));
+
+      const meta = this.state.lastMessageMeta || {};
+      const src = Array.isArray(meta.sources) ? meta.sources : [];
+      const filtered = src.filter(s => {
+        const sid = (s.document_id || '').toString();
+        const sname = (s.filename || '').toString();
+        return (sid && ids.has(sid)) || (sname && names.has(sname));
+      });
+
+      // Appliquer: MAJ état + re-render bandeau
+      if (filtered.length !== src.length) {
+        this.state.lastMessageMeta = { ...meta, sources: filtered };
+      }
+      this._renderSources(container.querySelector('#rag-sources'), filtered);
+    } catch (e) {
+      console.error('[ChatUI] _onDocumentsChanged failed:', e);
+      this._renderSources(container.querySelector('#rag-sources'), []);
+    }
+  }
+
+  async _refetchDocuments() {
+    try {
+      const headers = {};
+      // Id token si exposé par l’app (GIS ou stateManager)
+      const tokenGetter =
+        (window?.EmergenceAuth && typeof window.EmergenceAuth.getToken === 'function' && window.EmergenceAuth.getToken) ||
+        (this.stateManager && typeof this.stateManager.getAuthToken === 'function' && this.stateManager.getAuthToken) ||
+        null;
+
+      if (tokenGetter) {
+        const t = await tokenGetter();
+        if (t) headers['Authorization'] = `Bearer ${t}`;
+      }
+      const res = await fetch('/api/documents', { headers });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : null);
+    } catch {
+      return null;
+    }
   }
 
   /* ----- Helpers UI ------------------------------------------------------ */
@@ -360,7 +427,6 @@ export class ChatUI {
       isStreaming: !!m.isStreaming,
       agent_id: m.agent_id || m.agent
     };
-    // NOTE: L’assoc meta→message n’est pas requise ici ; on consomme lastMessageMeta global.
   }
 
   _toPlainText(val){
