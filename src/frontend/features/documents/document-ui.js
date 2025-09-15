@@ -1,6 +1,6 @@
 /**
  * @module features/documents/document-ui
- * @description UI du module Documents — V5.3 (verre/halo/métal + stats canvas, data-first, 2e tick)
+ * @description UI du module Documents — V5.4 (verre/halo/métal + stats canvas, data-first, 2e tick)
  */
 export class DocumentsUI {
     constructor(eventBus) {
@@ -246,11 +246,13 @@ export class DocumentsUI {
         refreshStats();
         setTimeout(() => refreshStats(), 0);
 
-        // Rafraîchissement sur évènement module (données brutes)
+        // Rafraîchissement sur évènement module (données brutes) + ré-émission globale
         try {
             const off = this.eventBus?.on?.('documents:list:refreshed', (payload = {}) => {
                 if (Array.isArray(payload.items)) this._lastItems = payload.items;
                 refreshStats();
+                // NEW: informer le reste de l’app (chat, etc.)
+                try { this.eventBus.emit('documents:changed', { items: this._lastItems || [] }); } catch {}
             });
             if (typeof off === 'function') this._cleanupFns.push(off);
         } catch {}
