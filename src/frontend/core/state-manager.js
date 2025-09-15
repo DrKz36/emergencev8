@@ -1,7 +1,7 @@
 // src/frontend/core/state-manager.js
 /**
  * @module core/state-manager
- * @description Gestionnaire d'état V15.3 "Threads Aware" + ensureAuth() + chat meta + metrics
+ * @description Gestionnaire d'état V15.4 "Threads Aware" + ensureAuth() + chat meta + metrics
  */
 import { AGENTS } from '../shared/constants.js';
 
@@ -11,14 +11,14 @@ export class StateManager {
     this.state = this.DEFAULT_STATE;
 
     this.subscribers = new Map();
-    console.log("✅ StateManager V15.3 (Threads Aware + metrics) Constructor: Default state is set.");
+    console.log("✅ StateManager V15.4 (Threads Aware + metrics) Constructor: Default state is set.");
   }
 
   async init() {
     const savedState = this.loadFromStorage();
     let mergedState = this._deepMerge(this.DEFAULT_STATE, savedState);
     this.state = this.sanitize(mergedState);
-    console.log("[StateManager] V15.3 Initialized: State loaded from localStorage and sanitized.");
+    console.log("[StateManager] V15.4 Initialized: State loaded from localStorage and sanitized.");
     this.persist();
   }
 
@@ -46,7 +46,7 @@ export class StateManager {
     cleanState.chat.lastMessageMeta = cleanState.chat.lastMessageMeta || null;
     cleanState.chat.modelInfo = cleanState.chat.modelInfo || null;
 
-    // Chat metrics (watchdog/WS)
+    // Chat metrics
     cleanState.chat.metrics = cleanState.chat.metrics || {
       send_count: 0,
       ws_start_count: 0,
@@ -55,26 +55,25 @@ export class StateManager {
       last_fallback_at: null
     };
 
-    // Optional flags already used by ChatModule
+    // Flags
     if (cleanState.chat.ragEnabled === undefined) cleanState.chat.ragEnabled = false;
     if (cleanState.chat.ragStatus === undefined) cleanState.chat.ragStatus = 'idle';
     if (cleanState.chat.memoryBannerAt === undefined) cleanState.chat.memoryBannerAt = null;
 
-    // ✅ NEW: stats mémoire pour l'UI (alimentées par ws:memory_banner)
     if (cleanState.chat.memoryStats === undefined) {
       cleanState.chat.memoryStats = { has_stm: false, ltm_items: 0, injected: false };
+    }
+
+    // ✅ NEW: agent actif par défaut
+    if (!cleanState.chat.activeAgent || typeof cleanState.chat.activeAgent !== 'string') {
+      cleanState.chat.activeAgent = 'anima';
     }
 
     return cleanState;
   }
 
-  getInitialState() {
-    return this.sanitize({});
-  }
-
-  get(key) {
-    return key.split('.').reduce((acc, part) => acc && acc[part], this.state);
-  }
+  getInitialState() { return this.sanitize({}); }
+  get(key) { return key.split('.').reduce((acc, part) => acc && acc[part], this.state); }
 
   set(key, value) {
     if (value === undefined) {
@@ -93,17 +92,13 @@ export class StateManager {
     }
 
     target[lastKey] = value;
-
     this.notify(key);
     this.persist();
   }
 
   subscribe(key, callback) {
-    if (!this.subscribers.has(key)) {
-      this.subscribers.set(key, []);
-    }
+    if (!this.subscribers.has(key)) this.subscribers.set(key, []);
     this.subscribers.get(key).push(callback);
-    // Unsubscribe propre
     return () => {
       try {
         const arr = this.subscribers.get(key) || [];
@@ -123,9 +118,7 @@ export class StateManager {
   }
 
   persist() {
-    try {
-      localStorage.setItem('emergenceState-V14', JSON.stringify(this.state));
-    } catch (error) {
+    try { localStorage.setItem('emergenceState-V14', JSON.stringify(this.state)); } catch (error) {
       console.error('[StateManager] Error persisting state:', error);
     }
   }
@@ -156,7 +149,6 @@ export class StateManager {
     return output;
   }
 
-  // TRUE si un token GIS a pu être obtenu/stocké
   async ensureAuth() {
     try {
       if (window.gis?.getIdToken) {
