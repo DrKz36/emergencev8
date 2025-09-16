@@ -1,5 +1,5 @@
 // src/frontend/core/websocket.js
-// WebSocketClient V22.2 — JWT sub-protocol + de-dup + agent default fallback
+// WebSocketClient V22.3 — JWT sub-protocol + de-dup + agent default fallback + queued send
 
 import { EVENTS } from '../shared/constants.js';
 import { ensureAuth, getIdToken, clearAuth } from './auth.js';
@@ -23,9 +23,12 @@ export class WebSocketClient {
 
     this._lastSendAt = 0;
 
+    // NEW — queue d’envoi (frames avant OPEN)
+    this._sendQueue = [];
+
     this._bindEventBus();
     this._bindStorageListener();
-    console.log('✅ WebSocketClient V22.2 (JWT sub-protocol + de-dup + agent fallback) prêt.');
+    console.log('✅ WebSocketClient V22.3 (queued send) prêt.');
   }
 
   _bindEventBus() {
@@ -34,7 +37,7 @@ export class WebSocketClient {
         const text = String(payload.text ?? '').trim();
         if (!text) return;
 
-        // 🔧 NEW: toujours résoudre un agent_id
+        // Toujours résoudre un agent_id
         const rawAgent = (payload.agent_id ?? payload.agentId ?? '').trim().toLowerCase();
         const agent_id = rawAgent || this._getActiveAgentIdFromState();
 
@@ -45,7 +48,14 @@ export class WebSocketClient {
           this.state?.set?.('chat.metrics', { ...m, send_count: (m.send_count || 0) + 1 });
         } catch {}
 
-        this.send({ type: 'chat.message', payload: { text, agent_id, use_rag: !!(payload.use_rag ?? payload.useRag ?? this.state?.get?.('chat.ragEnabled')) } });
+        this.send({
+          type: 'chat.message',
+          payload: {
+            text,
+            agent_id,
+            use_rag: !!(payload.use_rag ?? payload.useRag ?? this.state?.get?.('chat.ragEnabled'))
+          }
+        });
       } catch (e) {
         console.error('[WebSocket] ui:chat:send → chat.message a échoué', e);
       }
@@ -85,7 +95,7 @@ export class WebSocketClient {
     try {
       const v = this.state?.get?.('chat.activeAgent') || this.state?.get?.('chat.currentAgentId');
       if (v) return String(v).trim().toLowerCase();
-      for (const k of ['emergence.activeAgent','chat.activeAgent']) {
+      for (const k of ['emergence.activeAgent', 'chat.activeAgent']) {
         const vv = localStorage.getItem(k);
         if (vv && vv.trim()) return vv.trim().toLowerCase();
       }
@@ -125,12 +135,28 @@ export class WebSocketClient {
     const url = this._buildUrl(sessionId);
     const protocols = token ? ['jwt', token] : [];
 
-    try { this.websocket = new WebSocket(url, protocols); }
-    catch (e) { console.error('[WebSocket] new WebSocket() a échoué', e); this._scheduleReconnect(); return; }
+    try {
+      this.websocket = new WebSocket(url, protocols);
+    } catch (e) {
+      console.error('[WebSocket] new WebSocket() a échoué', e);
+      this._scheduleReconnect();
+      return;
+    }
 
     this.websocket.onopen = () => {
       this.reconnectAttempts = 0;
       this.eventBus.emit?.(EVENTS.WS_CONNECTED || 'ws:connected', { url });
+
+      // NEW — flush de la file d’attente
+      try {
+        const q = this._sendQueue.splice(0); // snapshot
+        for (const frame of q) {
+          try { this.websocket.send(JSON.stringify(frame)); }
+          catch (e) { console.warn('[WebSocket] flush item failed', e); }
+        }
+      } catch (e) {
+        console.warn('[WebSocket] flush queue failed', e);
+      }
     };
 
     this.websocket.onmessage = (ev) => {
@@ -147,9 +173,13 @@ export class WebSocketClient {
           } catch {}
         }
 
-        // model info/fallback + memory banner
+        // Model info/fallback + memory banner
         if (msg?.type === 'ws:model_info')  { try { this.state?.set?.('chat.modelInfo', msg.payload || {}); } catch {} this.eventBus.emit?.('chat:model_info', msg.payload || null); }
-        if (msg?.type === 'ws:model_fallback') { const p = msg.payload || {}; this.eventBus.emit?.('ui:toast', { kind: 'warning', text: `Fallback modèle → ${p.to_provider || '?'} / ${p.to_model || '?'}` }); this.eventBus.emit?.('chat:model_fallback', p); }
+        if (msg?.type === 'ws:model_fallback') {
+          const p = msg.payload || {};
+          this.eventBus.emit?.('ui:toast', { kind: 'warning', text: `Fallback modèle → ${p.to_provider || '?'} / ${p.to_model || '?'}` });
+          this.eventBus.emit?.('chat:model_fallback', p);
+        }
         if (msg?.type === 'ws:chat_stream_end') {
           const meta = (msg.payload && msg.payload.meta) || null;
           if (meta) { try { this.state?.set?.('chat.lastMessageMeta', meta); } catch {} this.eventBus.emit?.('chat:last_message_meta', meta); }
@@ -157,14 +187,20 @@ export class WebSocketClient {
         if (msg?.type === 'ws:memory_banner') {
           const p = msg.payload || {};
           try {
-            this.state?.set?.('chat.memoryStats', { has_stm: !!p.has_stm, ltm_items: Number.isFinite(p.ltm_items) ? p.ltm_items : 0, injected: !!p.injected_into_prompt });
+            this.state?.set?.('chat.memoryStats', {
+              has_stm: !!p.has_stm,
+              ltm_items: Number.isFinite(p.ltm_items) ? p.ltm_items : 0,
+              injected: !!p.injected_into_prompt
+            });
             this.state?.set?.('chat.memoryBannerAt', Date.now());
           } catch {}
         }
 
         // Dispatch générique
         if (msg?.type) this.eventBus.emit?.(msg.type, msg.payload);
-      } catch { console.warn('[WebSocket] Message non JSON', ev.data); }
+      } catch {
+        console.warn('[WebSocket] Message non JSON', ev.data);
+      }
     };
 
     this.websocket.onclose = (ev) => {
@@ -177,12 +213,17 @@ export class WebSocketClient {
     this.websocket.onerror = (e) => { console.error('[WebSocket] error', e); };
   }
 
-  close(code = 1000, reason = 'normal') { try { this.websocket?.close(code, reason); } catch {} finally { this.websocket = null; } }
+  close(code = 1000, reason = 'normal') {
+    try { this.websocket?.close(code, reason); }
+    catch {}
+    finally { this.websocket = null; }
+  }
 
   send(frame) {
     try {
       if (!frame || typeof frame !== 'object') return;
 
+      // Dé-dup strict chat.message
       if (frame.type === 'chat.message') {
         const txt = String(frame?.payload?.text ?? '').trim();
         const ag  = String(frame?.payload?.agent_id ?? '').trim().toLowerCase();
@@ -196,13 +237,18 @@ export class WebSocketClient {
         this._lastChatTs = now;
       }
 
+      // NEW — buffer si non OPEN
       if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
-        console.warn('[WebSocket] Connexion non ouverte, tentative connect()', frame?.type);
+        console.warn('[WebSocket] Connexion non ouverte → queue', frame?.type);
+        this._sendQueue.push(frame);
         this.connect();
         return;
       }
+
       this.websocket.send(JSON.stringify(frame));
-    } catch (e) { console.error('[WebSocket] send failed', e); }
+    } catch (e) {
+      console.error('[WebSocket] send failed', e);
+    }
   }
 
   _scheduleReconnect() {

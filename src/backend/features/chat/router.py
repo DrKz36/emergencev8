@@ -1,5 +1,6 @@
 # src/backend/features/chat/router.py
-# V23.4 — Fix DI: _ws_core sans Depends/@inject + compat /ws (sans param)
+# V23.5 — Remove duplicate ws:debate_result (service emits) + minor cleanup
+
 import logging
 from uuid import uuid4
 from datetime import datetime, timezone
@@ -124,27 +125,19 @@ async def _ws_core(
                                 {"type": "ws:error", "payload": {"message": "Débat: 'rounds' doit être un entier ≥ 1."}}, session_id
                             ); continue
 
+                        # Info statut initial
                         await connection_manager.send_personal_message(
                             {"type": "ws:debate_status_update", "payload": {"status": "Initialisation du débat…", "topic": topic}},
                             session_id
                         )
 
-                        result = await debate_service.run(
+                        # Orchestration — le service émet déjà ws:debate_started/turn_update/result/ended
+                        await debate_service.run(
                             session_id=session_id,
                             topic=topic, agent_order=agent_order, rounds=rounds, use_rag=use_rag
                         )
 
-                        out_payload = result if isinstance(result, dict) else {
-                            "status": "completed",
-                            "config": {"topic": topic, "rounds": rounds, "agentOrder": agent_order, "useRag": use_rag},
-                            "history": [],
-                            "synthesis": result[0],
-                            "cost": result[1]
-                        }
-
-                        await connection_manager.send_personal_message(
-                            {"type": "ws:debate_result", "payload": out_payload}, session_id
-                        )
+                        # Pas de ré-émission ici (évite les doublons ws:debate_result).
                         continue
 
                     await connection_manager.send_personal_message(
