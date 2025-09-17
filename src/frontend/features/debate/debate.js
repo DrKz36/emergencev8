@@ -1,9 +1,5 @@
 // src/frontend/features/debate/debate.js
 // DebateModule V27.8 — HOLD sticky + anti-recreate global
-// - Persiste hold (state.debate.holdUntil) + garde _completedAt (volatile).
-// - Bloque tout reset ET tout create pendant la fenêtre HOLD.
-// - Conserve l’écran final même sans synthesis (ws:debate_ended sans payload utile).
-// - Compat EVENTS/AGENTS (objet ou tableau).
 
 import { DebateUI } from './debate-ui.js';
 import { EVENTS, AGENTS, AGENT_IDS as _AGENT_IDS } from '../../shared/constants.js';
@@ -23,7 +19,6 @@ export default class DebateModule {
     console.log('✅ DebateModule V27.8 (sticky HOLD + anti-recreate) prêt.');
   }
 
-  /* ------------------------------ Lifecycle ------------------------------ */
   init() {
     if (this.isInitialized) return;
     this.ui = new DebateUI(this.eventBus);
@@ -38,14 +33,12 @@ export default class DebateModule {
     this.container = container;
     this.ui.render(this.container, this.state.get('debate') || this._blank());
   }
-
   destroy() {
     this.listeners.forEach(off => { try { off(); } catch {} });
     this.listeners = [];
     this.container = null;
   }
 
-  /* -------------------------------- State -------------------------------- */
   _blank() {
     return {
       isActive: false,
@@ -59,7 +52,7 @@ export default class DebateModule {
       synthesis: null,
       ragContext: null,
       error: null,
-      holdUntil: 0             // ← sticky HOLD (ms epoch)
+      holdUntil: 0           // ← sticky HOLD (ms epoch)
     };
   }
 
@@ -81,7 +74,6 @@ export default class DebateModule {
     this.listeners.push(off);
   }
 
-  /* ------------------------------- Events -------------------------------- */
   registerEvents() {
     // UI → Module
     this.listeners.push(this.eventBus.on(EVENTS.DEBATE_CREATE, (cfg) => this.handleCreateDebate(cfg)));
@@ -114,9 +106,8 @@ export default class DebateModule {
     this.reset();
   }
 
-  /* ----------------------------- Validation ------------------------------ */
   _normalizeAgentIds(){
-    if (Array.isArray(AGENTS)) return AGENTS.map(String); // legacy
+    if (Array.isArray(AGENTS)) return AGENTS.map(String);
     const ids = _AGENT_IDS && Array.isArray(_AGENT_IDS) ? _AGENT_IDS : Object.keys(AGENTS||{});
     return ids.map(String);
   }
@@ -137,9 +128,8 @@ export default class DebateModule {
     return { ok:true, topic, rounds, order, useRag: !!config?.useRag };
   }
 
-  /* ------------------------------- Handlers ------------------------------ */
   handleCreateDebate(config) {
-    // 🚫 Anti-recreate global pendant HOLD (même si un autre module émet un create)
+    // 🚫 Anti-recreate global pendant HOLD
     if (this._inHold()) {
       const until = Number(this.state.get('debate')?.holdUntil || 0);
       const left = Math.max(0, Math.ceil((until - this._now())/1000));
@@ -157,7 +147,6 @@ export default class DebateModule {
       return;
     }
 
-    // Pré-état optimiste
     this._completedAt = 0;
     const st = this._blank();
     st.isActive = false;
@@ -169,7 +158,6 @@ export default class DebateModule {
 
     try { this.eventBus.emit(EVENTS.MODULE_SHOW || 'module:show', 'debate'); } catch {}
 
-    // Envoi WS
     this.eventBus.emit(EVENTS.WS_SEND || 'ws:send', {
       type: 'debate:create',
       payload: {
@@ -188,7 +176,6 @@ export default class DebateModule {
     this.state.set('debate', st);
   }
 
-  /* -------------------------- Server state mapping ------------------------- */
   _applyStarted(payload = {}) {
     const st = this.state.get('debate') || this._blank();
     st.isActive = true;
@@ -221,8 +208,8 @@ export default class DebateModule {
     next.isActive = false;
     next.status = 'completed';
     next.statusText = next.synthesis ? 'Débat terminé — synthèse disponible.' : 'Débat terminé.';
-    this._completedAt = this._now();
-    next.holdUntil = this._completedAt + this.HOLD_MS;     // ← sticky HOLD
+    this._completedAt = Date.now();
+    next.holdUntil = this._completedAt + this.HOLD_MS;   // ← sticky HOLD
     this.state.set('debate', next);
     if (next.synthesis) this._notify('success', 'Débat terminé — synthèse disponible.');
   }
@@ -240,12 +227,11 @@ export default class DebateModule {
     st.isActive = false;
     st.status = 'completed';
     st.statusText = st.statusText || 'Débat terminé.';
-    this._completedAt = this._now();
-    st.holdUntil = this._completedAt + this.HOLD_MS;       // ← sticky HOLD aussi sans synthèse
+    this._completedAt = Date.now();
+    st.holdUntil = this._completedAt + this.HOLD_MS;     // ← HOLD même sans synthèse
     this.state.set('debate', st);
   }
 
-  /* ----------------------------- Normalisation ---------------------------- */
   _normalizeServerState(serverData = {}) {
     const prev = this.state.get('debate') || this._blank();
     const cfg = serverData.config || {};
@@ -271,7 +257,6 @@ export default class DebateModule {
     return { ...prev, topic: config.topic, config, turns, synthesis };
   }
 
-  /* ------------------------------ Utilities ------------------------------ */
   _notify(kind, message) {
     try { this.eventBus.emit(EVENTS.SHOW_NOTIFICATION || 'ui:show_notification', { type: kind, message }); } catch {}
   }
