@@ -1,9 +1,9 @@
 // src/frontend/features/debate/debate.js
-// DebateModule V27.6 — complet
-// - Anti-auto-reset: ignore 'debate:new' / 'debate:reset' pendant un HOLD après completion.
-// - "Result hold": garde l'écran résultat visible durant HOLD_MS (par défaut 30 s) sans rien remettre à zéro.
-// - Validation agents robuste (AGENTS en objet OU tableau) + mêmes écoutes 'ws:*'.
-// - Aucun reset implicite à la fin; reset uniquement à l'action explicite de l'utilisateur (après hold).
+// DebateModule V27.8 — HOLD sticky + anti-recreate global
+// - Persiste hold (state.debate.holdUntil) + garde _completedAt (volatile).
+// - Bloque tout reset ET tout create pendant la fenêtre HOLD.
+// - Conserve l’écran final même sans synthesis (ws:debate_ended sans payload utile).
+// - Compat EVENTS/AGENTS (objet ou tableau).
 
 import { DebateUI } from './debate-ui.js';
 import { EVENTS, AGENTS, AGENT_IDS as _AGENT_IDS } from '../../shared/constants.js';
@@ -17,11 +17,10 @@ export default class DebateModule {
     this.listeners = [];
     this.isInitialized = false;
 
-    // Anti-reset window (ms)
-    this.HOLD_MS = 30000;
-    this._completedAt = 0;
+    this.HOLD_MS = 30000;    // 30s
+    this._completedAt = 0;   // volatile
 
-    console.log('✅ DebateModule V27.6 prêt.');
+    console.log('✅ DebateModule V27.8 (sticky HOLD + anti-recreate) prêt.');
   }
 
   /* ------------------------------ Lifecycle ------------------------------ */
@@ -30,10 +29,9 @@ export default class DebateModule {
     this.ui = new DebateUI(this.eventBus);
     this.registerEvents();
     this.registerStateChanges();
-
-    if (!this.state.get('debate')) this.reset(); // aucune remise à zéro ensuite
+    if (!this.state.get('debate')) this.reset();
     this.isInitialized = true;
-    console.log('✅ DebateModule V27.6 initialisé.');
+    console.log('✅ DebateModule V27.8 initialisé.');
   }
 
   mount(container) {
@@ -54,24 +52,24 @@ export default class DebateModule {
       debateId: null,
       status: 'idle',
       statusText: 'Prêt à commencer.',
+      topic: '',
       config: { topic:'', rounds:3, agentOrder:['neo','nexus','anima'], useRag:true },
-      turns: [],           // [{agent,text}]
-      history: [],         // compat rounds
+      turns: [],
+      history: [],
       synthesis: null,
       ragContext: null,
-      error: null
+      error: null,
+      holdUntil: 0             // ← sticky HOLD (ms epoch)
     };
   }
 
   _now(){ return Date.now(); }
-  _inHoldWindow(){ return (this._completedAt > 0) && ((this._now() - this._completedAt) < this.HOLD_MS); }
+  _inHoldVolatile(){ return (this._completedAt > 0) && ((this._now() - this._completedAt) < this.HOLD_MS); }
+  _inHoldSticky(){ const u = Number(this.state.get('debate')?.holdUntil || 0); return u > this._now(); }
+  _inHold(){ return this._inHoldVolatile() || this._inHoldSticky(); }
 
   reset() {
-    // Ne pas reset si on est dans la fenêtre de HOLD (empêche l'écran de disparaître)
-    if (this._inHoldWindow()) {
-      console.warn('[Debate] reset() ignoré (résultats protégés pendant le hold).');
-      return;
-    }
+    if (this._inHold()) { console.warn('[Debate] reset() ignoré (hold actif).'); return; }
     this._completedAt = 0;
     this.state.set('debate', this._blank());
   }
@@ -88,20 +86,18 @@ export default class DebateModule {
     // UI → Module
     this.listeners.push(this.eventBus.on(EVENTS.DEBATE_CREATE, (cfg) => this.handleCreateDebate(cfg)));
     this.listeners.push(this.eventBus.on(EVENTS.DEBATE_RESET,   ()   => this._guardedReset('debate:reset')));
-    // compat avec DebateUI (bouton "Nouveau débat")
     this.listeners.push(this.eventBus.on('debate:new',          ()   => this._guardedReset('debate:new')));
 
-    // WS → Module (littéraux → robustesse si la constante manque)
+    // WS → Module
     this.listeners.push(this.eventBus.on('ws:debate_started',       (p) => this._applyStarted(p)));
     this.listeners.push(this.eventBus.on('ws:debate_turn_update',   (p) => this._applyTurnUpdate(p)));
     this.listeners.push(this.eventBus.on('ws:debate_result',        (p) => this._applyResult(p)));
     this.listeners.push(this.eventBus.on('ws:debate_ended',         (p) => this._applyEnded(p)));
     this.listeners.push(this.eventBus.on('ws:debate_status_update', (p) => this.onDebateStatusUpdate(p)));
 
-    // Sécurité supplémentaire : empêcher un reset si un module externe renvoie au "départ"
-    this.listeners.push(this.eventBus.on('module:show', (mod) => {
-      if (mod === 'debate' && this._inHoldWindow()) {
-        // Forcer re-render de l'état complété si on revient pendant le hold
+    // Si on revient sur l’onglet Débat pendant HOLD, forcer re-render de l’état complété
+    this.listeners.push(this.eventBus.on(EVENTS.MODULE_SHOW || 'module:show', (mod) => {
+      if (mod === 'debate' && this._inHold()) {
         const st = this.state.get('debate');
         if (st && st.status === 'completed') this.state.set('debate', { ...st });
       }
@@ -109,8 +105,10 @@ export default class DebateModule {
   }
 
   _guardedReset(source) {
-    if (this._inHoldWindow()) {
-      console.warn(`[Debate] ${source} ignoré (résultats protégés ${Math.ceil((this.HOLD_MS - (this._now() - this._completedAt))/1000)}s).`);
+    if (this._inHold()) {
+      const until = Number(this.state.get('debate')?.holdUntil || 0);
+      const left = Math.max(0, Math.ceil((until - this._now())/1000));
+      console.warn(`[Debate] ${source} ignoré (hold ${left || 1}s).`);
       return;
     }
     this.reset();
@@ -127,8 +125,7 @@ export default class DebateModule {
     const topic = (config?.topic ?? '').trim();
     if (topic.length < 10) return { ok:false, reason:'topic_too_short',  message:'Sujet trop court (minimum 10 caractères).' };
     const rounds = Number(config?.rounds ?? 3);
-    if (!Number.isFinite(rounds) || rounds < 1)
-      return { ok:false, reason:'invalid_rounds', message:'Nombre de tours invalide (≥ 1 requis).' };
+    if (!Number.isFinite(rounds) || rounds < 1) return { ok:false, reason:'invalid_rounds', message:'Nombre de tours invalide (≥ 1 requis).' };
 
     const agentIds = this._normalizeAgentIds();
     const order = Array.isArray(config?.agentOrder) && config.agentOrder.length >= 2
@@ -142,11 +139,19 @@ export default class DebateModule {
 
   /* ------------------------------- Handlers ------------------------------ */
   handleCreateDebate(config) {
+    // 🚫 Anti-recreate global pendant HOLD (même si un autre module émet un create)
+    if (this._inHold()) {
+      const until = Number(this.state.get('debate')?.holdUntil || 0);
+      const left = Math.max(0, Math.ceil((until - this._now())/1000));
+      this._notify('warning', `Résultats verrouillés ${left || 1}s — patiente avant un nouveau débat.`);
+      console.warn('[Debate] debate:create ignoré (hold actif).');
+      return;
+    }
+
     const val = this._validateConfig(config);
     if (!val.ok) {
       const st = this.state.get('debate') || this._blank();
-      st.statusText = val.message;
-      st.error = val.reason;
+      st.statusText = val.message; st.error = val.reason;
       this.state.set('debate', st);
       this._notify('warning', val.message);
       return;
@@ -158,6 +163,7 @@ export default class DebateModule {
     st.isActive = false;
     st.status = 'starting';
     st.statusText = 'Création du débat en cours…';
+    st.topic = val.topic;
     st.config = { topic: val.topic, rounds: val.rounds, agentOrder: val.order, useRag: val.useRag };
     this.state.set('debate', st);
 
@@ -189,8 +195,9 @@ export default class DebateModule {
     st.status = 'in_progress';
     st.statusText = 'Débat lancé…';
     const cfg = payload?.config || {};
+    st.topic = payload?.topic ?? st.topic;
     st.config = {
-      topic: payload?.topic ?? st.config.topic,
+      topic: st.topic,
       rounds: Number.isFinite(cfg.rounds) ? Math.max(1, cfg.rounds) : st.config.rounds,
       agentOrder: Array.isArray(cfg.agentOrder) && cfg.agentOrder.length ? cfg.agentOrder.slice(0,3) : st.config.agentOrder,
       useRag: !!(cfg.useRag ?? st.config.useRag)
@@ -214,12 +221,12 @@ export default class DebateModule {
     next.isActive = false;
     next.status = 'completed';
     next.statusText = next.synthesis ? 'Débat terminé — synthèse disponible.' : 'Débat terminé.';
-    this._completedAt = Date.now();                         // ← active la fenêtre HOLD
+    this._completedAt = this._now();
+    next.holdUntil = this._completedAt + this.HOLD_MS;     // ← sticky HOLD
     this.state.set('debate', next);
     if (next.synthesis) this._notify('success', 'Débat terminé — synthèse disponible.');
   }
 
-  // Si le serveur ne publie pas ws:debate_result mais met tout dans ws:debate_ended
   _applyEnded(serverData = {}) {
     const hasUseful =
       (Array.isArray(serverData.turns) && serverData.turns.length) ||
@@ -227,26 +234,26 @@ export default class DebateModule {
       (Array.isArray(serverData.rounds_history) && serverData.rounds_history.length) ||
       (typeof serverData.synthesis === 'string' && serverData.synthesis.trim()) ||
       !!(serverData.synthesis && (serverData.synthesis.text || serverData.synthesis.content));
-
     if (hasUseful) return this._applyResult(serverData);
 
-    // Pas de contenu utile ? On marque terminé mais on garde l'écran pendant HOLD_MS
     const st = this.state.get('debate') || this._blank();
     st.isActive = false;
     st.status = 'completed';
     st.statusText = st.statusText || 'Débat terminé.';
-    this._completedAt = Date.now();                         // ← HOLD même sans synthèse
+    this._completedAt = this._now();
+    st.holdUntil = this._completedAt + this.HOLD_MS;       // ← sticky HOLD aussi sans synthèse
     this.state.set('debate', st);
   }
 
   /* ----------------------------- Normalisation ---------------------------- */
   _normalizeServerState(serverData = {}) {
+    const prev = this.state.get('debate') || this._blank();
     const cfg = serverData.config || {};
     const config = {
-      topic: cfg.topic ?? serverData.topic ?? '',
-      rounds: Number.isFinite(cfg.rounds) ? Math.max(1, cfg.rounds) : 1,
-      agentOrder: Array.isArray(cfg.agentOrder) && cfg.agentOrder.length ? cfg.agentOrder.slice(0,3) : ['neo','nexus','anima'],
-      useRag: !!(cfg.useRag ?? true)
+      topic: cfg.topic ?? serverData.topic ?? prev.topic ?? '',
+      rounds: Number.isFinite(cfg.rounds) ? Math.max(1, cfg.rounds) : (prev.config?.rounds || 1),
+      agentOrder: Array.isArray(cfg.agentOrder) && cfg.agentOrder.length ? cfg.agentOrder.slice(0,3) : (prev.config?.agentOrder || ['neo','nexus','anima']),
+      useRag: !!(cfg.useRag ?? (prev.config?.useRag ?? true))
     };
 
     const raw = Array.isArray(serverData.turns) ? serverData.turns
@@ -261,8 +268,7 @@ export default class DebateModule {
       : (serverData.synthesis?.text || serverData.synthesis?.content || '');
     const synthesis = (syn && syn.trim()) ? syn : null;
 
-    const st = this.state.get('debate') || this._blank();
-    return { ...st, config, turns, synthesis };
+    return { ...prev, topic: config.topic, config, turns, synthesis };
   }
 
   /* ------------------------------ Utilities ------------------------------ */
