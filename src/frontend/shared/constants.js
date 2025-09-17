@@ -1,72 +1,84 @@
-﻿/**
- * @file /src/frontend/shared/constants.js
- * @description V24.2 — Unification WS-Config : réexport depuis shared/config.js + compat RECONNECT_DELAY
- * - Maintient tous les EVENTS
- * - Conserve les AGENTS et ICONS
- */
+﻿// src/frontend/shared/constants.js
+// V5.3 — Exporte WS_CONFIG (attendu par main.js) + EVENTS + AGENTS(mapping) + AGENT_IDS
+// - URL WS auto-déduite (overrides supportés): localStorage 'em.ws_url', window.EMERGENCE_WS_URL
+// - wss:// forcé si page en https:// ; sinon ws://
+// - Aucun impact d'architecture : fichier autonome, aucun import externe
 
-import { WS_CONFIG as _WS_CONFIG } from './config.js'; // source canonique
+/* ------------------- WS URL Resolver ------------------- */
+function resolveWsUrl() {
+  try {
+    // 1) Overrides (dev/ops)
+    const ls = (typeof localStorage !== 'undefined') ? localStorage.getItem('em.ws_url') : null;
+    if (ls && typeof ls === 'string' && ls.trim()) return ls.trim();
 
-// Log de config (URL résolue dynamiquement par config.js)
-console.log(`%c[Config] URL WebSocket configurée pour : ${_WS_CONFIG.URL}`, 'color: #4ade80;');
+    const win = (typeof window !== 'undefined') ? window : {};
+    const ov = (win && win.EMERGENCE_WS_URL) ? String(win.EMERGENCE_WS_URL) : '';
+    if (ov && ov.trim()) return ov.trim();
 
-// --- Icônes agents (inline SVG) ---
-const ICONS = {
-    ANIMA: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="vertical-align: middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-12h2v2h-2zm0 4h2v6h-2z"></path></svg>`,
-    NEO: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="vertical-align: middle;"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>`,
-    NEXUS: `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style="vertical-align: middle;"><path d="M20.5 10H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-2 .9-2 2v3H1.5C.67 10 0 10.67 0 11.5v1C0 13.33.67 14 1.5 14H3v3c0 1.1.9 2 2 2h4v1.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V19h4c1.1 0 2-.9 2-2v-3h1.5c.83 0 1.5-.67 1.5-1.5v-1c0-.83-.67-1.5-1.5-1.5z"></path></svg>`
-};
+    // 2) Auto-déduction
+    const loc = win.location || { protocol: 'http:', host: '127.0.0.1:8000' };
+    const isHttps = String(loc.protocol || '').toLowerCase().startsWith('https');
+    const scheme = isHttps ? 'wss' : 'ws';
 
-// --- Agents (métadonnées d’affichage) ---
-export const AGENTS = {
-    anima: { id: 'anima', name: 'Anima', icon: ICONS.ANIMA, color: 'var(--color-anima)', cssClass: 'anima', description: 'L\'exploratrice des profondeurs émotionnelles' },
-    neo:   { id: 'neo',   name: 'Neo',   icon: ICONS.NEO,   color: 'var(--color-neo)',   cssClass: 'neo',   description: 'Le challenger logique et provocateur' },
-    nexus: { id: 'nexus', name: 'Nexus', icon: ICONS.NEXUS, color: 'var(--color-nexus)', cssClass: 'nexus', description: 'Le tisseur de liens et synthétiseur' },
-};
+    // Si on tourne en local sans port précisé, garder 8000
+    let host = String(loc.host || '').trim() || '127.0.0.1:8000';
+    if (!host.includes(':') && !isHttps) host = `${host}:8000`;
 
-// --- WS config (réexport + alias compat) ---
-export const WS_CONFIG = {
-    ..._WS_CONFIG,
-    // Alias rétro‑compat si certains modules utilisent encore RECONNECT_DELAY
-    RECONNECT_DELAY: _WS_CONFIG.RECONNECT_INTERVAL ?? 5000,
-};
+    return `${scheme}://${host}/ws`;
+  } catch {
+    // Fallback raisonnable
+    return 'ws://127.0.0.1:8000/ws';
+  }
+}
 
-// ✅ Tous les événements inter‑modules (bus)
+/* ------------------- Exports attendus ------------------- */
+export const WS_CONFIG = Object.freeze({
+  URL: resolveWsUrl(),
+});
+
 export const EVENTS = {
-    // --- Core & App Lifecycle ---
-    APP_READY: 'app:ready',
-    MODULE_SHOW: 'module:show',
+  // Core
+  APP_READY: 'app:ready',
+  MODULE_SHOW: 'module:show',
 
-    // --- WebSocket ---
-    WS_CONNECTED: 'ws:connected',
-    WS_SEND: 'ws:send',
-    WS_ERROR: 'ws:error',
-    SERVER_NOTIFICATION: 'notification',
-    
-    // --- Server Events (préfixe 'ws:') ---
-    WS_SESSION_ESTABLISHED: 'ws:session_established',
-    WS_CHAT_STREAM_START: 'ws:chat_stream_start',
-    WS_CHAT_STREAM_CHUNK: 'ws:chat_stream_chunk',
-    WS_CHAT_STREAM_END: 'ws:chat_stream_end',
-    WS_RAG_STATUS: 'ws:rag_status',
-    WS_DEBATE_STARTED: 'ws:debate_started',
-    WS_DEBATE_TURN_UPDATE: 'ws:debate_turn_update',
-    WS_DEBATE_ENDED: 'ws:debate_ended',
-    WS_DEBATE_STATUS_UPDATE: 'ws:debate_status_update',
+  // WebSocket (client)
+  WS_CONNECTED: 'ws:connected',
+  WS_SEND: 'ws:send',
+  WS_ERROR: 'ws:error',
+  SERVER_NOTIFICATION: 'notification',
 
-    // --- UI/Module Events (préfixe 'ui:') ---
-    CHAT_SEND: 'ui:chat:send',
-    CHAT_CLEAR: 'ui:chat:clear',
-    CHAT_EXPORT: 'ui:chat:export',
-    CHAT_MODE_TOGGLED: 'ui:chat:mode_toggled',
-    CHAT_AGENT_SELECTED: 'ui:chat:agent_selected',
-    CHAT_PARALLEL_AGENTS_CHANGED: 'ui:chat:parallel_agents_changed',
-    CHAT_RAG_TOGGLED: 'ui:chat:rag_toggled',
-    
-    DEBATE_CREATE: 'debate:create',
-    DEBATE_RESET: 'debate:reset',
-    DEBATE_EXPORT: 'debate:export',
+  // Server push (chat)
+  WS_CHAT_STREAM_START: 'ws:chat_stream_start',
+  WS_CHAT_STREAM_CHUNK: 'ws:chat_stream_chunk',
+  WS_CHAT_STREAM_END: 'ws:chat_stream_end',
 
-    SHOW_MODAL: 'ui:show_modal',
-    SHOW_NOTIFICATION: 'ui:show_notification',
+  // Server push (debate)
+  WS_DEBATE_STARTED: 'ws:debate_started',
+  WS_DEBATE_TURN_UPDATE: 'ws:debate_turn_update',
+  WS_DEBATE_RESULT: 'ws:debate_result',
+  WS_DEBATE_ENDED: 'ws:debate_ended',
+  WS_DEBATE_STATUS_UPDATE: 'ws:debate_status_update',
+
+  // UI (chat)
+  CHAT_SEND: 'ui:chat:send',
+  CHAT_CLEAR: 'ui:chat:clear',
+  CHAT_EXPORT: 'ui:chat:export',
+  CHAT_MODE_TOGGLED: 'ui:chat:mode_toggled',
+  CHAT_AGENT_SELECTED: 'ui:chat:agent_selected',
+  CHAT_PARALLEL_AGENTS_CHANGED: 'ui:chat:parallel_agents_changed',
+  CHAT_RAG_TOGGLED: 'ui:chat:rag_toggled',
+
+  // UI (debate)
+  DEBATE_CREATE: 'debate:create',
+  DEBATE_RESET: 'debate:reset',
+  DEBATE_EXPORT: 'debate:export',
 };
+
+export const AGENTS = {
+  anima: { id: 'anima', label: 'Anima', color: '#7c3aed' },
+  neo:   { id: 'neo',   label: 'Neo',   color: '#06b6d4' },
+  nexus: { id: 'nexus', label: 'Nexus', color: '#22c55e' },
+};
+
+// Liste d’IDs utilisable partout (legacy friendly)
+export const AGENT_IDS = Object.keys(AGENTS);
