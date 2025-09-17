@@ -1,7 +1,12 @@
 ﻿# src/backend/features/chat/service.py
-# V31.5 — FIX debate: implémentation locale de get_llm_response_for_debate (sync, provider-agnostic)
-#          + Forçage FR + tutoiement pour Nexus (Anthropic)
-#          + V31.4 conservé: meta.sources (RAG) dans ws:chat_stream_end
+# V32.0 — Routing fidèle aux settings (plus de forçage AnimA, override optionnel via ENV) +
+#          Personas FR (tutoiement/ton) pour Anima/Neo/Nexus +
+#          Meta RAG conservée, micro-optimisations (cache collections), logs robustes.
+#
+# Historique:
+# - V31.5: Débat sync provider-agnostic + meta.sources RAG + style FR pour Nexus/Anthropic
+# - V32.0: retire le forçage dur d'AnimA -> gpt-4o-mini (désormais pilotable par ENV),
+#          étend le préambule de style FR aux 3 agents, petits nettoyages.
 
 import os, re, asyncio, logging, glob, json
 from uuid import uuid4
@@ -25,6 +30,7 @@ from backend.features.memory.gardener import MemoryGardener
 
 logger = logging.getLogger(__name__)
 
+# Prix indicatifs (USD / token) — vérifier périodiquement en session connectée.
 MODEL_PRICING = {
     "gpt-4o-mini": {"input": 0.15 / 1_000_000, "output": 0.60 / 1_000_000},
     "gpt-4o": {"input": 5.00 / 1_000_000, "output": 15.00 / 1_000_000},
@@ -34,22 +40,36 @@ MODEL_PRICING = {
     "claude-3-opus-20240229": {"input": 15.00 / 1_000_000, "output": 75.00 / 1_000_000},
 }
 
+DEFAULT_TEMPERATURE = float(os.getenv("EMERGENCE_TEMP_DEFAULT", "0.4"))
+
+
 def _normalize_provider(p: Optional[str]) -> str:
-    if not p: return ""
+    if not p:
+        return ""
     p = p.strip().lower()
-    if p in ("gemini", "google", "googleai", "vertex"): return "google"
-    if p in ("openai", "oai"): return "openai"
-    if p in ("anthropic", "claude"): return "anthropic"
+    if p in ("gemini", "google", "googleai", "vertex"):
+        return "google"
+    if p in ("openai", "oai"):
+        return "openai"
+    if p in ("anthropic", "claude"):
+        return "anthropic"
     return p
 
+
 class ChatService:
-    def __init__(self, session_manager: SessionManager, cost_tracker: CostTracker,
-                 vector_service: VectorService, settings: Settings):
+    def __init__(
+        self,
+        session_manager: SessionManager,
+        cost_tracker: CostTracker,
+        vector_service: VectorService,
+        settings: Settings,
+    ):
         self.session_manager = session_manager
         self.cost_tracker = cost_tracker
         self.vector_service = vector_service
         self.settings = settings
 
+        # Politique hors historique (quand RAG OFF)
         self.off_history_policy = os.getenv("EMERGENCE_RAG_OFF_POLICY", "stateless").strip().lower()
         if self.off_history_policy not in ("stateless", "agent_local"):
             self.off_history_policy = "stateless"
@@ -67,60 +87,96 @@ class ChatService:
             logger.error(f"Erreur lors de l'initialisation des clients API: {e}", exc_info=True)
             raise
 
+        # Cache paresseux des collections
+        self._doc_collection = None
+        self._knowledge_collection = None
+
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V31.5 initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V32.0 initialisé. Prompts chargés: {len(self.prompts)}")
 
     # ---------- prompts ----------
     def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
         def weight(name: str) -> int:
-            name = name.lower(); w = 0
-            if "lite" in name: w = max(w, 1)
-            if "v2"   in name: w = max(w, 2)
-            if "v3"   in name: w = max(w, 3)
+            name = name.lower()
+            w = 0
+            if "lite" in name:
+                w = max(w, 1)
+            if "v2" in name:
+                w = max(w, 2)
+            if "v3" in name:
+                w = max(w, 3)
             return w
+
         chosen: Dict[str, Dict[str, Any]] = {}
         for file_path in glob.glob(os.path.join(prompts_dir, "*.md")):
             p = Path(file_path)
-            agent_id = p.stem.replace("_system","").replace("_v2","").replace("_v3","").replace("_lite","")
+            agent_id = (
+                p.stem.replace("_system", "")
+                .replace("_v2", "")
+                .replace("_v3", "")
+                .replace("_lite", "")
+            )
             w = weight(p.name)
             if agent_id not in chosen or w > chosen[agent_id]["w"]:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     chosen[agent_id] = {"w": w, "text": f.read(), "file": p.name}
         for aid, meta in chosen.items():
             logger.info(f"Prompt retenu pour l'agent '{aid}': {meta['file']}")
         return {aid: meta["text"] for aid, meta in chosen.items()}
 
+    # ---------- config agent / system prompt ----------
     def _get_agent_config(self, agent_id: str) -> Tuple[str, str, str]:
-        clean_agent_id = agent_id.replace('_lite', '')
+        """
+        Retourne (provider, model, system_prompt) en respectant settings.agents.
+        Possibilité d'override économique pour AnimA via ENV:
+          - EMERGENCE_FORCE_CHEAP_ANIMA=1  -> force openai:gpt-4o-mini
+        """
+        clean_agent_id = agent_id.replace("_lite", "")
         agent_configs = self.settings.agents
         provider_raw = agent_configs.get(clean_agent_id, {}).get("provider")
         model = agent_configs.get(clean_agent_id, {}).get("model")
         provider = _normalize_provider(provider_raw)
 
-        if clean_agent_id == 'anima':
-            model = 'gpt-4o-mini'
-            logger.info("Remplacement du modèle pour 'anima' -> 'gpt-4o-mini' (coûts).")
+        # (V31.5) Ancien forçage AnimA → gpt-4o-mini supprimé (source). Désormais optionnel via ENV.
+        # ENV toggle pour protéger les coûts quand souhaité.
+        if clean_agent_id == "anima" and os.getenv("EMERGENCE_FORCE_CHEAP_ANIMA", "0").strip() == "1":
+            provider = "openai"
+            model = "gpt-4o-mini"
+            logger.info("Override coût activé (ENV): anima → openai:gpt-4o-mini")
 
         system_prompt = self.prompts.get(agent_id, self.prompts.get(clean_agent_id, ""))
 
         if not provider or not model or system_prompt is None:
-            raise ValueError(f"Configuration incomplète pour l'agent '{agent_id}' "
-                             f"(provider='{provider_raw}', normalisé='{provider}', model='{model}').")
+            raise ValueError(
+                f"Configuration incomplète pour l'agent '{agent_id}' "
+                f"(provider='{provider_raw}', normalisé='{provider}', model='{model}')."
+            )
 
         return provider, model, system_prompt
 
     def _ensure_fr_tutoiement(self, agent_id: str, provider: str, system_prompt: str) -> str:
-        """Durcit le style FR + tutoiement pour Nexus (surtout Anthropic)."""
-        if agent_id.strip().lower() == "nexus" and provider == "anthropic":
-            prelude = (
-                "Règles de style (prioritaires) :\n"
-                "1) Tu tutoies l’utilisateur.\n"
-                "2) Tu réponds en FR, clair et direct, phrases courtes.\n"
-                "3) Pas de vouvoiement. Si l’utilisateur vouvoie, tu restes en tutoiement.\n"
-            )
-            return f"{prelude}\n{system_prompt}".strip()
-        return system_prompt
+        """
+        Préfixe de style pour ancrer les personas en FR (tutoiement/ton),
+        homogène quel que soit le provider (OpenAI/Gemini/Anthropic).
+        """
+        aid = (agent_id or "").strip().lower()
+        prelude_common = (
+            "Règles de style (prioritaires):\n"
+            "1) Tu tutoies l’utilisateur.\n"
+            "2) Réponds en français, clair et direct, phrases courtes.\n"
+            "3) Jamais de vouvoiement (même si l’utilisateur vouvoie).\n"
+        )
+        if aid == "anima":
+            tone = "Tonalité: créative, imagée, sensible mais précise.\n"
+        elif aid == "neo":
+            tone = "Tonalité: analytique, mordante, factuelle, anti-bullshit.\n"
+        elif aid == "nexus":
+            tone = "Tonalité: médiatrice, structurée, synthétique.\n"
+        else:
+            tone = ""
+        return f"{prelude_common}{tone}\n{system_prompt}".strip()
 
+    # ---------- utilitaires mémoire / RAG ----------
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
 
@@ -151,21 +207,26 @@ class ChatService:
         return "\n\n".join(parts)
 
     _MOT_CODE_RE = re.compile(r"\b(mot-?code|code)\b", re.IGNORECASE)
+
     def _is_mot_code_query(self, text: str) -> bool:
         return bool(self._MOT_CODE_RE.search(text or ""))
 
     def _fetch_mot_code_for_agent(self, agent_id: str, user_id: Optional[str]) -> Optional[str]:
-        knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
-        col = self.vector_service.get_or_create_collection(knowledge_name)
+        if self._knowledge_collection is None:
+            knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
+            self._knowledge_collection = self.vector_service.get_or_create_collection(knowledge_name)
+
         clauses = [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]
         if user_id:
             clauses.append({"user_id": user_id})
         where = {"$and": clauses}
-        got = col.get(where=where, include=["documents", "metadatas"])
+        got = self._knowledge_collection.get(where=where, include=["documents", "metadatas"])
         ids = got.get("ids", []) or []
         if not ids:
-            got = col.get(where={"$and": [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]},
-                         include=["documents", "metadatas"])
+            got = self._knowledge_collection.get(
+                where={"$and": [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]},
+                include=["documents", "metadatas"],
+            )
             ids = got.get("ids", []) or []
             if not ids:
                 return None
@@ -195,13 +256,15 @@ class ChatService:
             pass
         return ""
 
-    async def _build_memory_context(self, session_id: str, last_user_message: str,
-                                    top_k: int = 5, agent_id: Optional[str] = None) -> str:
+    async def _build_memory_context(
+        self, session_id: str, last_user_message: str, top_k: int = 5, agent_id: Optional[str] = None
+    ) -> str:
         try:
             if not last_user_message:
                 return ""
-            knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
-            knowledge_col = self.vector_service.get_or_create_collection(knowledge_name)
+            if self._knowledge_collection is None:
+                knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
+                self._knowledge_collection = self.vector_service.get_or_create_collection(knowledge_name)
 
             where_filter = None
             uid = self._try_get_user_id(session_id)
@@ -217,19 +280,19 @@ class ChatService:
                 where_filter = {"$and": clauses}
 
             results = self.vector_service.query(
-                collection=knowledge_col,
+                collection=self._knowledge_collection,
                 query_text=last_user_message,
                 n_results=top_k,
-                where_filter=where_filter
+                where_filter=where_filter,
             )
 
             if (not results) and ag and uid:
                 try:
                     results = self.vector_service.query(
-                        collection=knowledge_col,
+                        collection=self._knowledge_collection,
                         query_text=last_user_message,
                         n_results=top_k,
-                        where_filter={"user_id": uid}
+                        where_filter={"user_id": uid},
                     )
                 except Exception:
                     pass
@@ -246,9 +309,15 @@ class ChatService:
             logger.warning(f"build_memory_context: {e}")
             return ""
 
-    def _normalize_history_for_llm(self, provider: str, history: List[Dict],
-                                   rag_context: str = "", use_rag: bool = False,
-                                   agent_id: Optional[str] = None) -> List[Dict]:
+    # ---------- normalisation historique ----------
+    def _normalize_history_for_llm(
+        self,
+        provider: str,
+        history: List[Dict],
+        rag_context: str = "",
+        use_rag: bool = False,
+        agent_id: Optional[str] = None,
+    ) -> List[Dict]:
         normalized: List[Dict[str, Any]] = []
         if use_rag and rag_context:
             if provider == "google":
@@ -256,7 +325,8 @@ class ChatService:
             else:
                 normalized.append({"role": "user", "content": f"[RAG_CONTEXT]\n{rag_context}"})
         for m in history:
-            role = m.get("role"); text = m.get("content") or m.get("message") or ""
+            role = m.get("role")
+            text = m.get("content") or m.get("message") or ""
             if not text:
                 continue
             if provider == "google":
@@ -265,8 +335,10 @@ class ChatService:
                 normalized.append({"role": "user" if role in (Role.USER, "user") else "assistant", "content": text})
         return normalized
 
-    async def _get_llm_response_stream(self, provider: str, model: str, system_prompt: str,
-                                       history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
+    # ---------- providers (stream) ----------
+    async def _get_llm_response_stream(
+        self, provider: str, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict
+    ) -> AsyncGenerator[str, None]:
         if provider == "openai":
             streamer = self._get_openai_stream(model, system_prompt, history, cost_info_container)
         elif provider == "google":
@@ -278,16 +350,18 @@ class ChatService:
         async for chunk in streamer:
             yield chunk
 
-    async def _get_openai_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
+    async def _get_openai_stream(
+        self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict
+    ) -> AsyncGenerator[str, None]:
         messages = [{"role": "system", "content": system_prompt}] + history
         usage_seen = False
         try:
             stream = await self.openai_client.chat.completions.create(
                 model=model,
                 messages=messages,
-                temperature=0.4,
+                temperature=DEFAULT_TEMPERATURE,
                 stream=True,
-                stream_options={"include_usage": True}
+                stream_options={"include_usage": True},
             )
             async for event in stream:
                 try:
@@ -303,19 +377,25 @@ class ChatService:
                     pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
                     in_tok = getattr(usage, "prompt_tokens", 0)
                     out_tok = getattr(usage, "completion_tokens", 0)
-                    cost_info_container.update({
-                        "input_tokens": in_tok,
-                        "output_tokens": out_tok,
-                        "total_cost": (in_tok * pricing["input"]) + (out_tok * pricing["output"])
-                    })
+                    cost_info_container.update(
+                        {
+                            "input_tokens": in_tok,
+                            "output_tokens": out_tok,
+                            "total_cost": (in_tok * pricing["input"]) + (out_tok * pricing["output"]),
+                        }
+                    )
         except Exception as e:
             logger.error(f"OpenAI stream error: {e}", exc_info=True)
             raise
 
-    async def _get_gemini_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
+    async def _get_gemini_stream(
+        self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict
+    ) -> AsyncGenerator[str, None]:
         try:
             model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
-            resp = await model_instance.generate_content_async(history, stream=True, generation_config={"temperature": 0.4})
+            resp = await model_instance.generate_content_async(
+                history, stream=True, generation_config={"temperature": DEFAULT_TEMPERATURE}
+            )
             async for chunk in resp:
                 try:
                     text = getattr(chunk, "text", None)
@@ -327,6 +407,7 @@ class ChatService:
                         yield text
                 except Exception:
                     pass
+            # Gemini: coût non renvoyé en stream → placeholders
             cost_info_container.setdefault("input_tokens", 0)
             cost_info_container.setdefault("output_tokens", 0)
             cost_info_container.setdefault("total_cost", 0.0)
@@ -334,14 +415,16 @@ class ChatService:
             logger.error(f"Gemini stream error: {e}", exc_info=True)
             raise
 
-    async def _get_anthropic_stream(self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict) -> AsyncGenerator[str, None]:
+    async def _get_anthropic_stream(
+        self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict
+    ) -> AsyncGenerator[str, None]:
         try:
             async with self.anthropic_client.messages.stream(
                 model=model,
                 max_tokens=1500,
-                temperature=0.4,
+                temperature=DEFAULT_TEMPERATURE,
                 system=system_prompt,
-                messages=history
+                messages=history,
             ) as stream:
                 async for event in stream:
                     try:
@@ -360,23 +443,29 @@ class ChatService:
                         pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
                         in_tok = getattr(usage, "input_tokens", 0)
                         out_tok = getattr(usage, "output_tokens", 0)
-                        cost_info_container.update({
-                            "input_tokens": in_tok,
-                            "output_tokens": out_tok,
-                            "total_cost": (in_tok * pricing["input"]) + (out_tok * pricing["output"])
-                        })
+                        cost_info_container.update(
+                            {
+                                "input_tokens": in_tok,
+                                "output_tokens": out_tok,
+                                "total_cost": (in_tok * pricing["input"]) + (out_tok * pricing["output"]),
+                            }
+                        )
                 except Exception:
                     pass
         except Exception as e:
             logger.error(f"Anthropic stream error: {e}", exc_info=True)
             raise
 
+    # ---------- réponses structurées ----------
     async def get_structured_llm_response(self, agent_id: str, prompt: str, json_schema: Dict[str, Any]) -> Dict[str, Any]:
         provider, model, system_prompt = self._get_agent_config(agent_id)
+        system_prompt = self._ensure_fr_tutoiement(agent_id, provider, system_prompt)
         if provider == "google":
             model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
             schema_hint = json.dumps(json_schema, ensure_ascii=False)
-            full_prompt = f"{prompt}\n\nIMPORTANT: Réponds EXCLUSIVEMENT en JSON valide correspondant strictement à ce SCHÉMA : {schema_hint}"
+            full_prompt = (
+                f"{prompt}\n\nIMPORTANT: Réponds EXCLUSIVEMENT en JSON valide correspondant strictement à ce SCHÉMA : {schema_hint}"
+            )
             resp = await model_instance.generate_content_async([{"role": "user", "parts": [full_prompt]}])
             text = getattr(resp, "text", "") or ""
             try:
@@ -386,15 +475,20 @@ class ChatService:
                 return json.loads(m.group(0)) if m else {}
         elif provider == "openai":
             resp = await self.openai_client.chat.completions.create(
-                model=model, temperature=0, response_format={"type": "json_object"},
-                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
+                model=model,
+                temperature=0,
+                response_format={"type": "json_object"},
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
             )
             content = (resp.choices[0].message.content or "").strip()
             return json.loads(content) if content else {}
         elif provider == "anthropic":
             resp = await self.anthropic_client.messages.create(
-                model=model, max_tokens=1500, temperature=0, system=system_prompt + "\n\nRéponds strictement en JSON valide.",
-                messages=[{"role": "user", "content": prompt}]
+                model=model,
+                max_tokens=1500,
+                temperature=0,
+                system=system_prompt + "\n\nRéponds strictement en JSON valide.",
+                messages=[{"role": "user", "content": prompt}],
             )
             text = ""
             for block in getattr(resp, "content", []) or []:
@@ -408,43 +502,55 @@ class ChatService:
                 return json.loads(m.group(0)) if m else {}
         return {}
 
-    async def _process_agent_response_stream(self, session_id: str, agent_id: str, use_rag: bool,
-                                             connection_manager: ConnectionManager):
+    # ---------- pipeline chat (stream) ----------
+    async def _process_agent_response_stream(
+        self, session_id: str, agent_id: str, use_rag: bool, connection_manager: ConnectionManager
+    ):
         temp_message_id = str(uuid4())
         full_response_text = ""
         cost_info_container: Dict[str, Any] = {}
         model_used = ""
-        # ---- NEW: capturer les sources RAG pour meta ----
         rag_sources: List[Dict[str, Any]] = []
 
         try:
             await connection_manager.send_personal_message(
-                {"type": "ws:chat_stream_start", "payload": {"agent_id": agent_id, "id": temp_message_id}},
-                session_id
+                {"type": "ws:chat_stream_start", "payload": {"agent_id": agent_id, "id": temp_message_id}}, session_id
             )
 
             history = self.session_manager.get_full_history(session_id)
             last_user_message_obj = next((m for m in reversed(history) if m.get("role") == Role.USER), None)
             last_user_message = last_user_message_obj.get("content", "") if last_user_message_obj else ""
 
+            # Mot-code court-circuit
             if self._is_mot_code_query(last_user_message):
                 uid = self._try_get_user_id(session_id)
                 mot = self._fetch_mot_code_for_agent(agent_id, uid)
                 try:
                     stm_here = self._try_get_session_summary(session_id)
                     await connection_manager.send_personal_message(
-                        {"type": "ws:memory_banner",
-                         "payload": {"agent_id": agent_id, "has_stm": bool(stm_here),
-                                     "ltm_items": 0, "injected_into_prompt": False}},
-                        session_id
+                        {
+                            "type": "ws:memory_banner",
+                            "payload": {
+                                "agent_id": agent_id,
+                                "has_stm": bool(stm_here),
+                                "ltm_items": 0,
+                                "injected_into_prompt": False,
+                            },
+                        },
+                        session_id,
                     )
                 except Exception:
                     pass
 
                 if mot:
                     final_agent_message = AgentMessage(
-                        id=temp_message_id, session_id=session_id, role=Role.ASSISTANT, agent=agent_id,
-                        message=mot, timestamp=datetime.now(timezone.utc).isoformat(), cost_info={}
+                        id=temp_message_id,
+                        session_id=session_id,
+                        role=Role.ASSISTANT,
+                        agent=agent_id,
+                        message=mot,
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                        cost_info={},
                     )
                     await self.session_manager.add_message_to_session(session_id, final_agent_message)
                     payload = final_agent_message.model_dump(mode="json")
@@ -466,8 +572,13 @@ class ChatService:
                             pass
                     return
 
+            # Mémoire (STM/LTM)
             stm = self._try_get_session_summary(session_id)
-            ltm_block = await self._build_memory_context(session_id, last_user_message, top_k=5, agent_id=agent_id) if last_user_message else ""
+            ltm_block = (
+                await self._build_memory_context(session_id, last_user_message, top_k=5, agent_id=agent_id)
+                if last_user_message
+                else ""
+            )
 
             if use_rag:
                 memory_context = self._merge_blocks([("Résumé de session", stm)]) if stm else ""
@@ -482,41 +593,55 @@ class ChatService:
 
             try:
                 await connection_manager.send_personal_message(
-                    {"type": "ws:memory_banner",
-                     "payload": {"agent_id": agent_id, "has_stm": bool(stm),
-                                 "ltm_items": int(ltm_count_for_banner), "injected_into_prompt": bool(injected)}},
-                    session_id
+                    {
+                        "type": "ws:memory_banner",
+                        "payload": {
+                            "agent_id": agent_id,
+                            "has_stm": bool(stm),
+                            "ltm_items": int(ltm_count_for_banner),
+                            "injected_into_prompt": bool(injected),
+                        },
+                    },
+                    session_id,
                 )
             except Exception:
                 pass
 
+            # RAG documents
             rag_context = ""
             if use_rag and last_user_message:
                 await connection_manager.send_personal_message(
-                    {"type": "ws:rag_status", "payload": {"status": "searching", "agent_id": agent_id}},
-                    session_id
+                    {"type": "ws:rag_status", "payload": {"status": "searching", "agent_id": agent_id}}, session_id
                 )
-                document_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
-                doc_hits = self.vector_service.query(collection=document_collection, query_text=last_user_message)
+                if self._doc_collection is None:
+                    self._doc_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
 
-                # ---- NEW: préparer sources pour meta ----
+                doc_hits = self.vector_service.query(
+                    collection=self._doc_collection, query_text=last_user_message
+                )
+
                 rag_sources = []
                 for h in (doc_hits or []):
                     md = h.get("metadata") or {}
                     excerpt = (h.get("text") or "").strip()
                     if excerpt:
                         excerpt = excerpt[:220].rstrip()
-                    rag_sources.append({
-                        "document_id": md.get("document_id"),
-                        "filename": md.get("filename"),
-                        "page": md.get("page"),  # peut être None si non géré au parsing
-                        "excerpt": excerpt
-                    })
+                    rag_sources.append(
+                        {
+                            "document_id": md.get("document_id"),
+                            "filename": md.get("filename"),
+                            "page": md.get("page"),
+                            "excerpt": excerpt,
+                        }
+                    )
 
-                doc_block = "\n\n".join([f"- {h['text']}" for h in (doc_hits or []) if h.get("text")]) if doc_hits else ""
+                doc_block = (
+                    "\n\n".join([f"- {h['text']}" for h in (doc_hits or []) if h.get("text")]) if doc_hits else ""
+                )
                 mem_block = await self._build_memory_context(session_id, last_user_message, agent_id=agent_id)
-                rag_context = self._merge_blocks([("Mémoire (concepts clés)", mem_block),
-                                                  ("Documents pertinents", doc_block)])
+                rag_context = self._merge_blocks(
+                    [("Mémoire (concepts clés)", mem_block), ("Documents pertinents", doc_block)]
+                )
                 await connection_manager.send_personal_message(
                     {"type": "ws:rag_status", "payload": {"status": "found", "agent_id": agent_id}}, session_id
                 )
@@ -524,54 +649,81 @@ class ChatService:
             raw_concat = "\n".join([(m.get("content") or m.get("message", "")) for m in history])
             raw_tokens = self._extract_sensitive_tokens(raw_concat)
             await connection_manager.send_personal_message(
-                {"type": "ws:debug_context",
-                 "payload": {"phase": "before_normalize", "agent_id": agent_id, "use_rag": use_rag,
-                             "history_total": len(history), "rag_context_chars": len(rag_context),
-                             "off_policy": self.off_history_policy,
-                             "sensitive_tokens_in_history": list(set(raw_tokens))}},
-                session_id
+                {
+                    "type": "ws:debug_context",
+                    "payload": {
+                        "phase": "before_normalize",
+                        "agent_id": agent_id,
+                        "use_rag": use_rag,
+                        "history_total": len(history),
+                        "rag_context_chars": len(rag_context),
+                        "off_policy": self.off_history_policy,
+                        "sensitive_tokens_in_history": list(set(raw_tokens)),
+                    },
+                },
+                session_id,
             )
 
             provider, model, system_prompt = self._get_agent_config(agent_id)
             primary_provider, primary_model = provider, model
-            # IMPORTANT: Nexus/Anthropic -> FR + tutoiement
             system_prompt = self._ensure_fr_tutoiement(agent_id, provider, system_prompt)
-
             model_used = primary_model
 
             try:
                 await connection_manager.send_personal_message(
-                    {"type": "ws:model_info",
-                     "payload": {"agent_id": agent_id, "id": temp_message_id,
-                                 "provider": primary_provider, "model": primary_model}},
-                    session_id
+                    {
+                        "type": "ws:model_info",
+                        "payload": {
+                            "agent_id": agent_id,
+                            "id": temp_message_id,
+                            "provider": primary_provider,
+                            "model": primary_model,
+                        },
+                    },
+                    session_id,
                 )
             except Exception:
                 pass
-            logger.info(json.dumps({
-                "event": "model_info",
-                "agent_id": agent_id,
-                "session_id": session_id,
-                "provider": primary_provider,
-                "model": primary_model
-            }))
+            logger.info(
+                json.dumps(
+                    {
+                        "event": "model_info",
+                        "agent_id": agent_id,
+                        "session_id": session_id,
+                        "provider": primary_provider,
+                        "model": primary_model,
+                    }
+                )
+            )
 
-            normalized_history = self._normalize_history_for_llm(provider, history, rag_context, use_rag, agent_id)
+            normalized_history = self._normalize_history_for_llm(
+                provider, history, rag_context, use_rag, agent_id
+            )
 
-            norm_concat = "\n".join(["".join(p.get("parts", [])) if provider == "google" else p.get("content", "")
-                                     for p in normalized_history])
+            norm_concat = "\n".join(
+                ["".join(p.get("parts", [])) if provider == "google" else p.get("content", "") for p in normalized_history]
+            )
             norm_tokens = self._extract_sensitive_tokens(norm_concat)
             await connection_manager.send_personal_message(
-                {"type": "ws:debug_context",
-                 "payload": {"phase": "after_normalize", "agent_id": agent_id, "use_rag": use_rag,
-                             "history_filtered": len(normalized_history), "rag_context_chars": len(rag_context),
-                             "off_policy": self.off_history_policy,
-                             "sensitive_tokens_in_prompt": list(set(norm_tokens))}},
-                session_id
+                {
+                    "type": "ws:debug_context",
+                    "payload": {
+                        "phase": "after_normalize",
+                        "agent_id": agent_id,
+                        "use_rag": use_rag,
+                        "history_filtered": len(normalized_history),
+                        "rag_context_chars": len(rag_context),
+                        "off_policy": self.off_history_policy,
+                        "sensitive_tokens_in_prompt": list(set(norm_tokens)),
+                    },
+                },
+                session_id,
             )
 
             async def _stream_with(provider_name, model_name, hist):
-                return self._get_llm_response_stream(provider_name, model_name, system_prompt, hist, cost_info_container)
+                return self._get_llm_response_stream(
+                    provider_name, model_name, system_prompt, hist, cost_info_container
+                )
 
             success = False
             try:
@@ -579,9 +731,11 @@ class ChatService:
                     if chunk:
                         full_response_text += chunk
                         await connection_manager.send_personal_message(
-                            {"type": "ws:chat_stream_chunk",
-                             "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}},
-                            session_id
+                            {
+                                "type": "ws:chat_stream_chunk",
+                                "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk},
+                            },
+                            session_id,
                         )
                 model_used = primary_model
                 success = True
@@ -598,25 +752,36 @@ class ChatService:
                 for prov2, model2 in fallbacks:
                     try:
                         await connection_manager.send_personal_message(
-                            {"type": "ws:model_fallback",
-                             "payload": {"agent_id": agent_id, "id": temp_message_id,
-                                         "from_provider": primary_provider, "from_model": primary_model,
-                                         "to_provider": prov2, "to_model": model2,
-                                         "reason": str(e_primary)}},
-                            session_id
+                            {
+                                "type": "ws:model_fallback",
+                                "payload": {
+                                    "agent_id": agent_id,
+                                    "id": temp_message_id,
+                                    "from_provider": primary_provider,
+                                    "from_model": primary_model,
+                                    "to_provider": prov2,
+                                    "to_model": model2,
+                                    "reason": str(e_primary),
+                                },
+                            },
+                            session_id,
                         )
                     except Exception:
                         pass
-                    logger.warning(json.dumps({
-                        "event": "model_fallback",
-                        "agent_id": agent_id,
-                        "session_id": session_id,
-                        "from_provider": primary_provider,
-                        "from_model": primary_model,
-                        "to_provider": prov2,
-                        "to_model": model2,
-                        "reason": str(e_primary)
-                    }))
+                    logger.warning(
+                        json.dumps(
+                            {
+                                "event": "model_fallback",
+                                "agent_id": agent_id,
+                                "session_id": session_id,
+                                "from_provider": primary_provider,
+                                "from_model": primary_model,
+                                "to_provider": prov2,
+                                "to_model": model2,
+                                "reason": str(e_primary),
+                            }
+                        )
+                    )
 
                     norm2 = self._normalize_history_for_llm(prov2, history, rag_context, use_rag, agent_id)
                     try:
@@ -624,9 +789,11 @@ class ChatService:
                             if chunk:
                                 full_response_text += chunk
                                 await connection_manager.send_personal_message(
-                                    {"type": "ws:chat_stream_chunk",
-                                     "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}},
-                                    session_id
+                                    {
+                                        "type": "ws:chat_stream_chunk",
+                                        "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk},
+                                    },
+                                    session_id,
                                 )
                         provider = prov2
                         model_used = model2
@@ -640,13 +807,18 @@ class ChatService:
                     raise last_error
 
             final_agent_message = AgentMessage(
-                id=temp_message_id, session_id=session_id, role=Role.ASSISTANT, agent=agent_id,
-                message=full_response_text, timestamp=datetime.now(timezone.utc).isoformat(),
-                cost_info=cost_info_container
+                id=temp_message_id,
+                session_id=session_id,
+                role=Role.ASSISTANT,
+                agent=agent_id,
+                message=full_response_text,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                cost_info=cost_info_container,
             )
             await self.session_manager.add_message_to_session(session_id, final_agent_message)
             await self.cost_tracker.record_cost(
-                agent=agent_id, model=model_used,
+                agent=agent_id,
+                model=model_used,
                 input_tokens=cost_info_container.get("input_tokens", 0),
                 output_tokens=cost_info_container.get("output_tokens", 0),
                 total_cost=cost_info_container.get("total_cost", 0.0),
@@ -655,12 +827,7 @@ class ChatService:
             payload = final_agent_message.model_dump(mode="json")
             if "message" in payload:
                 payload["content"] = payload.pop("message")
-            payload["meta"] = {
-                "provider": provider,
-                "model": model_used,
-                "fallback": bool(provider != primary_provider)
-            }
-            # ---- NEW: injecter les sources RAG si dispo ----
+            payload["meta"] = {"provider": provider, "model": model_used, "fallback": bool(provider != primary_provider)}
             try:
                 if use_rag and rag_sources:
                     payload["meta"]["sources"] = rag_sources
@@ -690,10 +857,12 @@ class ChatService:
                     session_id,
                 )
             except Exception as send_error:
-                logger.error(f"Impossible d'envoyer l'erreur au client (session {session_id}): {send_error}", exc_info=True)
+                logger.error(
+                    f"Impossible d'envoyer l'erreur au client (session {session_id}): {send_error}", exc_info=True
+                )
 
     # ===========================
-    # FIX: Débat (non-stream, sync)
+    # Débat (non-stream, sync)
     # ===========================
     def get_llm_response_for_debate(
         self,
@@ -704,21 +873,21 @@ class ChatService:
         use_rag: bool = False,
         session_id: Optional[str] = None,
         max_tokens: int = 1200,
-        temperature: float = 0.4,
+        temperature: float = DEFAULT_TEMPERATURE,
     ) -> Dict[str, Any]:
         """
         Réponse unique pour le pipeline Débat (non-stream).
         Retourne: {"text": str, "provider": str, "model": str, "cost_info": {...}}
         """
         provider, model, system_prompt = self._get_agent_config(agent_id)
-        # Forcer style FR + tutoiement pour Nexus/Anthropic
         system_prompt = self._ensure_fr_tutoiement(agent_id, provider, system_override or system_prompt)
 
         # RAG minimal (optionnel) : on injecte en tête du prompt utilisateur
         if use_rag and session_id and prompt:
             try:
-                document_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
-                doc_hits = self.vector_service.query(collection=document_collection, query_text=prompt)
+                if self._doc_collection is None:
+                    self._doc_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
+                doc_hits = self.vector_service.query(collection=self._doc_collection, query_text=prompt)
                 doc_block = "\n".join([f"- {h.get('text','').strip()}" for h in (doc_hits or []) if h.get("text")])
                 if doc_block.strip():
                     prompt = f"[DOCUMENTS PERTINENTS]\n{doc_block}\n\n[QUESTION]\n{prompt}"
@@ -754,7 +923,6 @@ class ChatService:
                     system=system_prompt,
                     messages=[{"role": "user", "content": prompt}],
                 )
-                # Concat blocks
                 tmp = []
                 for block in getattr(resp, "content", []) or []:
                     t = getattr(block, "text", "") or ""
@@ -769,21 +937,20 @@ class ChatService:
             logger.error(f"get_llm_response_for_debate error (agent={agent_id}, provider={provider}): {e}", exc_info=True)
             raise
 
-        return {
-            "text": text,
-            "provider": provider,
-            "model": model,
-            "cost_info": cost_info,
-        }
+        return {"text": text, "provider": provider, "model": model, "cost_info": cost_info}
 
-    def process_user_message_for_agents(self, session_id: str, chat_request: Any, connection_manager: ConnectionManager) -> None:
-        get = (lambda k: (chat_request.get(k) if isinstance(chat_request, dict) else getattr(chat_request, k, None)))
+    # ---------- entrypoint WS ----------
+    def process_user_message_for_agents(
+        self, session_id: str, chat_request: Any, connection_manager: ConnectionManager
+    ) -> None:
+        get = lambda k: (chat_request.get(k) if isinstance(chat_request, dict) else getattr(chat_request, k, None))
         agent_id = (get("agent_id") or "").strip().lower()
-        use_rag  = bool(get("use_rag"))
+        use_rag = bool(get("use_rag"))
         if not agent_id:
             logger.error("process_user_message_for_agents: agent_id manquant")
             return
         asyncio.create_task(self._process_agent_response_stream(session_id, agent_id, use_rag, connection_manager))
 
+    # ---------- diverses ----------
     def _count_bullets(self, text: str) -> int:
         return sum(1 for line in (text or "").splitlines() if line.strip().startswith("- "))
