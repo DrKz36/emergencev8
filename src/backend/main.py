@@ -15,7 +15,15 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(nam
 # --- PYTHONPATH ---
 SRC_DIR = Path(__file__).resolve().parent.parent
 REPO_ROOT = SRC_DIR.parent
-sys.path.append(str(REPO_ROOT))
+
+# Ajoute explicitement le dossier `src/` pour que les imports `backend.*` fonctionnent
+# même lorsque le fichier est lancé directement (`python src/backend/main.py`).
+# L'ancien comportement n'ajoutait que la racine du dépôt, ce qui laissait le
+# package `backend` introuvable et empêchait le démarrage du serveur.
+for path in (SRC_DIR, REPO_ROOT):
+    path_str = str(path)
+    if path_str not in sys.path:
+        sys.path.append(path_str)
 
 from backend.containers import ServiceContainer
 from backend.core.database.schema import initialize_database
