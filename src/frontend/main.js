@@ -309,16 +309,22 @@ function mountAuthBadge(eventBus) {
 
 /* -------------------- App bootstrap -------------------- */
 class EmergenceClient {
-  constructor() { this.initialize(); }
+  constructor() { this.__readyFired=false; this.initialize(); }
 
   async initialize() {
     console.log("🚀 ÉMERGENCE - Lancement du client.");
 
-    const eventBus = new EventBus();
+    // 🔧 Unifier sur le singleton
+    const eventBus = EventBus.getInstance();
     installEventBusGuards(eventBus);
 
     const stateManager = new StateManager();
     await stateManager.init();
+
+    // Exposition (debug/devtools)
+    try {
+      window.App = Object.assign(window.App || {}, { eventBus, state: stateManager });
+    } catch {}
 
     // Toasts
     eventBus.on('ui:toast', (p) => { if (p?.text) showToast(p); });
@@ -326,9 +332,20 @@ class EmergenceClient {
     const badge = mountAuthBadge(eventBus);
 
     const websocket = new WebSocketClient(WS_CONFIG.URL, eventBus, stateManager);
-    eventBus.on(EVENTS.APP_READY, () => this.hideLoader());
+    eventBus.on(EVENTS.APP_READY, () => { this.__readyFired=true; this.hideLoader(); });
 
     const app = new App(eventBus, stateManager);
+
+    // Sélection initiale du module (débloque mount & APP_READY)
+    try { eventBus.emit && eventBus.emit('module:show','chat'); } catch {}
+
+    // Watchdog APP_READY
+    setTimeout(() => {
+      if (!this.__readyFired) {
+        console.warn('[Watchdog] APP_READY manquant → re-module:show(chat)');
+        try { eventBus.emit && eventBus.emit('module:show','chat'); } catch {}
+      }
+    }, 1200);
 
     /* ====== Auto-auth & auto-connect WS ====== */
     const tokenFromUrl = pickTokenFromLocation();
