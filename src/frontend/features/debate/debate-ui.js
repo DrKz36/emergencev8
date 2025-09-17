@@ -1,20 +1,23 @@
 /**
  * src/frontend/features/debate/debate-ui.js
- * V42 — FIX: implémentation _autoSelectMediator + guards + binding propre.
- * - Auto-médiateur déterministe: {attacker,challenger} -> le 3e agent disponible.
- * - Règle spéciale: si attacker='neo' ET challenger='nexus' => mediator='anima'.
- * - Sélecteurs d’onglets robustes (active toggling + touched-state).
- * - Pas d’impact sur le reste de l’API (events émis, DOM structure conservée).
+ * V42.1 — "Nouveau débat" désactivé pendant HOLD + compte à rebours ; labels agents robustes.
+ * - Auto-médiateur déterministe + règle (neo,nexus → anima).
+ * - Tabs robustes ; binding propre ; export MD.
  */
 
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
 
+function agentLabel(id) {
+  const a = AGENTS?.[id];
+  return (a?.label || a?.name || id);
+}
+
 export class DebateUI {
   constructor(eventBus) {
     this.eventBus = eventBus;
     this._touched = { attacker:false, challenger:false, mediator:false, rounds:false };
-    console.log('✅ DebateUI V42 prêt.');
+    console.log('✅ DebateUI V42.1 prêt.');
   }
 
   render(container, debateState) {
@@ -49,8 +52,6 @@ export class DebateUI {
     return `
       <div class="debate-view-wrapper">
         <div class="card">
-
-          <!-- Header centré -->
           <div class="card-header timeline-header">
             <div class="title-center">
               <div class="debate-title">Sujet du Débat</div>
@@ -135,10 +136,8 @@ export class DebateUI {
     this._bindTabs(root, 'mediator');
     this._bindTabs(root, 'rounds');
 
-    // Auto-médiateur initial (au cas où)
+    // Auto-médiateur initial + lorsqu’on change Attacker/Challenger
     this._autoSelectMediator(root);
-
-    // Raccrocher l’auto-médiateur si Attacker/Challenger changent
     root.querySelector('[data-seg="attacker"]')?.addEventListener('click', () => this._autoSelectMediator(root));
     root.querySelector('[data-seg="challenger"]')?.addEventListener('click', () => this._autoSelectMediator(root));
 
@@ -156,10 +155,9 @@ export class DebateUI {
 
       // Règle spéciale: Neo + Nexus => Médiateur Anima
       if (attacker === 'neo' && challenger === 'nexus') mediator = 'anima';
-
       if (!mediator) { alert('Merci de sélectionner le Médiateur.'); return; }
 
-      this.eventBus.emit('debate:create', {
+      this.eventBus.emit(EVENTS.DEBATE_CREATE || 'debate:create', {
         topic,
         rounds,
         agentOrder: [attacker, challenger, mediator],
@@ -168,50 +166,15 @@ export class DebateUI {
     });
   }
 
-  /**
-   * Auto-sélection du médiateur en fonction d’Attacker/Challenger, sauf si l’utilisateur a déjà choisi.
-   * - Si l’utilisateur n’a pas touché au segment 'mediator', on calcule le 3e agent disponible.
-   * - Règle spéciale: attacker='neo' && challenger='nexus' => mediator='anima'.
-   * - Met à jour l’onglet actif dans le segment 'mediator'.
-   */
-  _autoSelectMediator(root) {
-    try {
-      if (this._touched?.mediator) return; // l’utilisateur a choisi manuellement => ne pas écraser
-
-      const attacker   = this._getSegValue(root, 'attacker');
-      const challenger = this._getSegValue(root, 'challenger');
-
-      if (!attacker || !challenger) return;
-
-      // Règle spéciale prioritaire
-      let mediator = (attacker === 'neo' && challenger === 'nexus') ? 'anima' : this._autoFrom(attacker, challenger);
-
-      const seg = root.querySelector('[data-seg="mediator"]');
-      if (!seg) return;
-
-      // Activer le bon bouton si présent
-      const btns = seg.querySelectorAll('.button-tab[data-value]');
-      let found = false;
-      btns.forEach(btn => {
-        const val = btn.getAttribute('data-value');
-        const is = (val === mediator);
-        btn.classList.toggle('active', is);
-        btn.setAttribute('aria-pressed', is ? 'true' : 'false');
-        if (is) found = true;
-      });
-
-      // Si l’agent médiateur n’existait pas (ne devrait pas arriver), on n’écrase rien
-      if (!found) return;
-
-      // Ne pas marquer "touched" — on laisse la possibilité à l’utilisateur de cliquer ensuite
-    } catch (e) {
-      console.warn('[DebateUI] _autoSelectMediator():', e);
-    }
-  }
-
-  /* ---------------------------- Vue Timeline (flux continu) ---------------------------- */
+  /* ---------------------------- Vue Timeline ---------------------------- */
 
   _renderTimelineView(state) {
+    const now = Date.now();
+    const holdUntil = Number(state?.holdUntil || 0);
+    const holdLeftMs = Math.max(0, holdUntil - now);
+    const holdLeftS = Math.ceil(holdLeftMs / 1000);
+    const isHold = holdLeftMs > 0;
+
     const topic = (state?.topic || '').trim();
     const header = `
       <div class="card-header timeline-header">
@@ -228,7 +191,7 @@ export class DebateUI {
         <div class="chat-messages">
           ${turns.map(t => {
             const agentId = t.agent || 'anima';
-            const name = AGENTS?.[agentId]?.name || agentId;
+            const name = agentLabel(agentId);
             const text = marked.parse(t.text || '');
             return `
               <div class="message assistant ${this._html(agentId)}">
@@ -244,7 +207,7 @@ export class DebateUI {
     const synthesizerId = Array.isArray(state?.config?.agentOrder)
       ? state.config.agentOrder[state.config.agentOrder.length - 1]
       : 'nexus';
-    const synthesizerName = AGENTS?.[synthesizerId]?.name || 'Nexus';
+    const synthesizerName = agentLabel(synthesizerId);
 
     const synthesis = (state?.status === 'completed' && state?.synthesis)
       ? `
@@ -266,7 +229,10 @@ export class DebateUI {
       <div class="card-footer">
         <div class="debate-actions">
           <button id="debate-export" class="button button-metal" title="Exporter en Markdown">Exporter</button>
-          <button id="debate-new" class="button button-primary" title="Lancer un nouveau débat">Nouveau débat</button>
+          <button id="debate-new" class="button button-primary" title="Lancer un nouveau débat"
+                  ${isHold ? 'disabled aria-disabled="true"' : ''} data-hold-left="${holdLeftS}">
+            ${isHold ? `Nouveau débat (disponible dans ${holdLeftS}s)` : 'Nouveau débat'}
+          </button>
         </div>
       </div>`;
 
@@ -282,17 +248,19 @@ export class DebateUI {
   }
 
   _bindTimelineEvents(root, state) {
+    // Export MD
     root.querySelector('#debate-export')?.addEventListener('click', () => {
       const topic = (state?.topic || '').trim();
       const lines = [];
       lines.push(`# Débat — ${topic || 'Sans titre'}`);
       (state?.turns || []).forEach(t => {
         const agentId = t.agent || 'anima';
-        const name = AGENTS?.[agentId]?.name || agentId;
+        const name = agentLabel(agentId);
         lines.push(`\n## ${name}\n\n${t.text || ''}`);
       });
       if (state?.synthesis) {
-        lines.push(`\n---\n\n### Synthèse (${AGENTS?.[state.config?.agentOrder?.slice(-1)[0]]?.name || 'Nexus'})\n\n${state.synthesis}`);
+        const synName = agentLabel(state.config?.agentOrder?.slice(-1)[0] || 'nexus');
+        lines.push(`\n---\n\n### Synthèse (${synName})\n\n${state.synthesis}`);
       }
       const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
       const url  = URL.createObjectURL(blob);
@@ -302,9 +270,29 @@ export class DebateUI {
       URL.revokeObjectURL(url);
     });
 
-    root.querySelector('#debate-new')?.addEventListener('click', () => {
-      this.eventBus.emit('debate:new');
-    });
+    // "Nouveau débat" — verrou + timer
+    const btnNew = root.querySelector('#debate-new');
+    if (btnNew) {
+      const tick = () => {
+        const left = parseInt(btnNew.getAttribute('data-hold-left') || '0', 10);
+        if (!btnNew.disabled || !left) return;
+        const next = Math.max(0, left - 1);
+        btnNew.setAttribute('data-hold-left', String(next));
+        btnNew.textContent = next > 0 ? `Nouveau débat (disponible dans ${next}s)` : 'Nouveau débat';
+        if (next === 0) {
+          btnNew.disabled = false;
+          btnNew.removeAttribute('aria-disabled');
+        } else {
+          setTimeout(tick, 1000);
+        }
+      };
+      if (btnNew.disabled) setTimeout(tick, 1000);
+
+      btnNew.addEventListener('click', () => {
+        if (btnNew.disabled) return;
+        this.eventBus.emit('debate:new');
+      });
+    }
   }
 
   /* ---------------------------- Helpers UI ---------------------------- */
@@ -325,7 +313,6 @@ export class DebateUI {
   }
 
   _defaultFor(role){
-    // Valeurs par défaut simples, arbitraires mais stables
     if (role === 'attacker')   return 'neo';
     if (role === 'challenger') return 'nexus';
     if (role === 'mediator')   return 'anima';
@@ -335,7 +322,7 @@ export class DebateUI {
   _segAgents(role, def='anima') {
     const agents = ['anima','neo','nexus'];
     const buttons = agents.map(a => {
-      const label = AGENTS?.[a]?.name || a;
+      const label = agentLabel(a);
       const is = a === def;
       return `<button type="button" class="button-tab ${is?'active':''}" data-value="${a}" aria-pressed="${is?'true':'false'}">${this._html(label)}</button>`;
     }).join('');
@@ -356,9 +343,37 @@ export class DebateUI {
 
   _getSegValue(root, seg){
     return root.querySelector(`[data-seg="${seg}"] .button-tab.active`)?.getAttribute('data-value') || '';
-    }
+  }
 
   _html(s){
     return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  /** Auto-sélection du médiateur si non touché */
+  _autoSelectMediator(root) {
+    try {
+      if (this._touched?.mediator) return;
+      const attacker   = this._getSegValue(root, 'attacker');
+      const challenger = this._getSegValue(root, 'challenger');
+      if (!attacker || !challenger) return;
+
+      let mediator = (attacker === 'neo' && challenger === 'nexus') ? 'anima' : this._autoFrom(attacker, challenger);
+      const seg = root.querySelector('[data-seg="mediator"]');
+      if (!seg) return;
+
+      const btns = seg.querySelectorAll('.button-tab[data-value]');
+      let found = false;
+      btns.forEach(btn => {
+        const val = btn.getAttribute('data-value');
+        const is = (val === mediator);
+        btn.classList.toggle('active', is);
+        btn.setAttribute('aria-pressed', is ? 'true' : 'false');
+        if (is) found = true;
+      });
+
+      if (!found) return;
+    } catch (e) {
+      console.warn('[DebateUI] _autoSelectMediator():', e);
+    }
   }
 }
