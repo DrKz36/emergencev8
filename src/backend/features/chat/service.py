@@ -1,12 +1,12 @@
 ﻿# src/backend/features/chat/service.py
-# V32.0 — Routing fidèle aux settings (plus de forçage AnimA, override optionnel via ENV) +
-#          Personas FR (tutoiement/ton) pour Anima/Neo/Nexus +
-#          Meta RAG conservée, micro-optimisations (cache collections), logs robustes.
+# V32.1 — Style prelude balisé + anti-vouvoiement (+ tonalités par agent) en priorité system,
+#          ws:model_info expose prompt_file, logs enrichis ; prompts conservent texte+nom de fichier.
 #
 # Historique:
 # - V31.5: Débat sync provider-agnostic + meta.sources RAG + style FR pour Nexus/Anthropic
 # - V32.0: retire le forçage dur d'AnimA -> gpt-4o-mini (désormais pilotable par ENV),
 #          étend le préambule de style FR aux 3 agents, petits nettoyages.
+# - V32.1: STYLE_RULES balisés + anti-vouvoiement explicite, prompt_file exposé, _load_prompts -> bundles.
 
 import os, re, asyncio, logging, glob, json
 from uuid import uuid4
@@ -30,7 +30,7 @@ from backend.features.memory.gardener import MemoryGardener
 
 logger = logging.getLogger(__name__)
 
-# Prix indicatifs (USD / token) — vérifier périodiquement en session connectée.
+# Prix indicatifs (USD / token) — à vérifier en session connectée.
 MODEL_PRICING = {
     "gpt-4o-mini": {"input": 0.15 / 1_000_000, "output": 0.60 / 1_000_000},
     "gpt-4o": {"input": 5.00 / 1_000_000, "output": 15.00 / 1_000_000},
@@ -92,10 +92,14 @@ class ChatService:
         self._knowledge_collection = None
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
-        logger.info(f"ChatService V32.0 initialisé. Prompts chargés: {len(self.prompts)}")
+        logger.info(f"ChatService V32.1 initialisé. Prompts chargés: {len(self.prompts)}")
 
     # ---------- prompts ----------
-    def _load_prompts(self, prompts_dir: str) -> Dict[str, str]:
+    def _load_prompts(self, prompts_dir: str) -> Dict[str, Dict[str, str]]:
+        """
+        Retourne un mapping agent_id -> {"text": <prompt>, "file": <nom_fichier>} en choisissant
+        la variante de poids maximum (v3 > v2 > lite par nom).
+        """
         def weight(name: str) -> int:
             name = name.lower()
             w = 0
@@ -122,7 +126,8 @@ class ChatService:
                     chosen[agent_id] = {"w": w, "text": f.read(), "file": p.name}
         for aid, meta in chosen.items():
             logger.info(f"Prompt retenu pour l'agent '{aid}': {meta['file']}")
-        return {aid: meta["text"] for aid, meta in chosen.items()}
+        # Conserver texte + nom de fichier pour l'UI / debug
+        return {aid: {"text": meta["text"], "file": meta["file"]} for aid, meta in chosen.items()}
 
     # ---------- config agent / system prompt ----------
     def _get_agent_config(self, agent_id: str) -> Tuple[str, str, str]:
@@ -137,14 +142,14 @@ class ChatService:
         model = agent_configs.get(clean_agent_id, {}).get("model")
         provider = _normalize_provider(provider_raw)
 
-        # (V31.5) Ancien forçage AnimA → gpt-4o-mini supprimé (source). Désormais optionnel via ENV.
         # ENV toggle pour protéger les coûts quand souhaité.
         if clean_agent_id == "anima" and os.getenv("EMERGENCE_FORCE_CHEAP_ANIMA", "0").strip() == "1":
             provider = "openai"
             model = "gpt-4o-mini"
             logger.info("Override coût activé (ENV): anima → openai:gpt-4o-mini")
 
-        system_prompt = self.prompts.get(agent_id, self.prompts.get(clean_agent_id, ""))
+        bundle = self.prompts.get(agent_id) or self.prompts.get(clean_agent_id) or {"text": ""}
+        system_prompt = bundle.get("text", "")
 
         if not provider or not model or system_prompt is None:
             raise ValueError(
@@ -156,25 +161,41 @@ class ChatService:
 
     def _ensure_fr_tutoiement(self, agent_id: str, provider: str, system_prompt: str) -> str:
         """
-        Préfixe de style pour ancrer les personas en FR (tutoiement/ton),
-        homogène quel que soit le provider (OpenAI/Gemini/Anthropic).
+        Préambule de style prioritaire, cross-provider.
+        - Tutoiement OBLIGATOIRE, auto-correction si 'vous' utilisé.
+        - Tonalité par agent plus saillante.
+        - Balises [STYLE_RULES] pour surpondération attentionnelle.
         """
         aid = (agent_id or "").strip().lower()
-        prelude_common = (
-            "Règles de style (prioritaires):\n"
-            "1) Tu tutoies l’utilisateur.\n"
-            "2) Réponds en français, clair et direct, phrases courtes.\n"
-            "3) Jamais de vouvoiement (même si l’utilisateur vouvoie).\n"
+
+        persona = {
+            "anima": (
+                "Tonalité: créative, imagée, sensible mais précise. "
+                "Tu peux employer des métaphores courtes, jamais de pathos."
+            ),
+            "neo": (
+                "Tonalité: analytique, mordante, factuelle, anti-bullshit. "
+                "Tu privilégies la concision et les listes."
+            ),
+            "nexus": (
+                "Tonalité: médiatrice, calme, structurée, synthétique. "
+                "Tu fais émerger les points d'accord et les divergences."
+            ),
+        }.get(aid, "")
+
+        style_rules = (
+            "[STYLE_RULES]\n"
+            "1) Tu tutoies l'utilisateur, sans exception. Si tu écris 'vous', "
+            "   corrige-toi immédiatement et reformule en 'tu'.\n"
+            "2) Tu réponds en français, clair, direct, phrases courtes.\n"
+            f"3) {persona}\n"
+            "4) Pas de précautions inutiles ni de disclaimers hors sujet.\n"
+            "[/STYLE_RULES]\n"
         )
-        if aid == "anima":
-            tone = "Tonalité: créative, imagée, sensible mais précise.\n"
-        elif aid == "neo":
-            tone = "Tonalité: analytique, mordante, factuelle, anti-bullshit.\n"
-        elif aid == "nexus":
-            tone = "Tonalité: médiatrice, structurée, synthétique.\n"
-        else:
-            tone = ""
-        return f"{prelude_common}{tone}\n{system_prompt}".strip()
+
+        # On place les règles AVANT le prompt agent pour maximiser l'effet.
+        return f"""{style_rules}
+{system_prompt}""".strip()
 
     # ---------- utilitaires mémoire / RAG ----------
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
@@ -669,6 +690,10 @@ class ChatService:
             system_prompt = self._ensure_fr_tutoiement(agent_id, provider, system_prompt)
             model_used = primary_model
 
+            # Récupération du nom de fichier du prompt pour debug UI
+            bundle = self.prompts.get(agent_id) or self.prompts.get(agent_id.replace("_lite", "")) or {}
+            prompt_file = bundle.get("file", "")
+
             try:
                 await connection_manager.send_personal_message(
                     {
@@ -678,6 +703,7 @@ class ChatService:
                             "id": temp_message_id,
                             "provider": primary_provider,
                             "model": primary_model,
+                            "prompt_file": prompt_file,
                         },
                     },
                     session_id,
@@ -692,6 +718,7 @@ class ChatService:
                         "session_id": session_id,
                         "provider": primary_provider,
                         "model": primary_model,
+                        "prompt_file": prompt_file,
                     }
                 )
             )
