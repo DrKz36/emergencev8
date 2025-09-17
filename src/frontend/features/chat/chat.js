@@ -1,45 +1,82 @@
 // src/frontend/features/chat/chat.js
-// ChatModule V25.5 — guard agent + attente WS courte + watchdog stream
-// Aligne les clés d'état sur StateManager V15.4 (chat.*) et consomme les événements WS V22.3.
-// Dépendances de fait : state-manager (get/set), eventBus, websocket client global (optionnel).
+// ChatModule V26.0 — mount() + écoute EVENTS.CHAT_SEND → handleSendMessage()
+// + subscribe live au state pour rafraîchir ChatUI
+// Dépendances: state-manager (get/set), eventBus, websocket client global (optionnel).
 
-import { EVENTS, AGENTS } from '../../shared/constants.js'; // icônes/meta agents + noms d'événements
+import { EVENTS, AGENTS } from '../../shared/constants.js';
+import { ChatUI } from './chat-ui.js';
 
 export default class ChatModule {
   constructor(eventBus, state) {
     this.eventBus = eventBus;
     this.state = state;
 
+    // UI
+    this.container = null;
+    this.ui = null;
+
     // Locks & temporaires
     this._sendLock = false;
-    this._pendingMsg = null;
     this._assistantPersistedIds = new Set();
 
-    // Attente courte avant émission (laisser le temps au WS de s'ouvrir si nécessaire)
+    // Attente courte pour laisser s’ouvrir le WS si nécessaire
     this._wsConnectWaitMs = 900;
 
-    // Watchdog flux (ex: si aucun ws:chat_stream_start reçu)
+    // Watchdog flux
     this._watchdog = null;
     this._watchdogMs = 25000;
 
-    // Bind
+    // Binders
     this._unbinders = [];
+    this._offState = null;
 
-    console.log('✅ ChatModule V25.5 initialisé (guards + watchdog).');
+    console.log('✅ ChatModule V26.0 initialisé (mount + bindings).');
   }
 
   async init() {
     this._bindEventBus();
+
     // Agent actif par défaut si absent (cohérent avec StateManager V15.4)
-    const active = this.state.get('chat.activeAgent') || 'anima';
-    this.state.set('chat.activeAgent', String(active).toLowerCase());
+    const active = (this.state.get('chat.activeAgent') || 'anima').toLowerCase();
+    this.state.set('chat.activeAgent', active);
     return this;
+  }
+
+  /** Appelé par App.showModule(moduleId) */
+  mount(container) {
+    if (!container) return;
+    this.container = container;
+
+    if (!this.ui) {
+      this.ui = new ChatUI(this.eventBus, this.state);
+    }
+    // premier render
+    this.ui.render(container, this._collectChatState());
+
+    // subscribe aux changements du sous-état chat.*
+    if (typeof this.state.subscribe === 'function') {
+      this._offState = this.state.subscribe('chat', () => {
+        try {
+          this.ui.update(this.container, this._collectChatState());
+        } catch (e) {
+          console.warn('[ChatModule] update UI failed:', e);
+        }
+      });
+    }
+
+    // Optionnel: s’assurer que le WS est prêt
+    try { window?.wsClient?.connect?.(); } catch {}
   }
 
   destroy() {
     try { this._unbinders.forEach(u => u && u()); } catch {}
     this._unbinders = [];
+    if (typeof this._offState === 'function') {
+      try { this._offState(); } catch {}
+      this._offState = null;
+    }
     this._clearStreamWatchdog();
+    this.container = null;
   }
 
   /* ------------------------------------------------------------------ */
@@ -52,15 +89,15 @@ export default class ChatModule {
     if (this._sendLock) return;
     this._sendLock = true;
 
-    // Récupère l’agent courant depuis l’état, garde une valeur valide
+    // Récupère l’agent courant depuis l’état
     const chatState = this.state.get('chat') || {};
-    const currentAgentId = (chatState.currentAgentId || chatState.activeAgent || 'anima').toLowerCase();
+    const currentAgentId = (chatState.activeAgent || 'anima').toLowerCase();
     const ragEnabled = !!chatState.ragEnabled;
 
-    // ✅ Sécurise l’agent actif (source de vérité côté StateManager)
+    // Source de vérité
     this.state.set('chat.activeAgent', currentAgentId);
 
-    // Ajoute localement le message USER
+    // Ajout local du message USER
     const userMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -72,11 +109,11 @@ export default class ChatModule {
     this.state.set(`chat.messages.${currentAgentId}`, [...curr, userMessage]);
     this.state.set('chat.isLoading', true);
 
-    // Attends brièvement l’OPEN (WebSocket V22.3 a une queue, mais on réduit les races) :contentReference[oaicite:5]{index=5}
+    // Laisse au WS le temps de s’ouvrir (le client a une queue, mais on réduit les races)
     await this._waitForWS(this._wsConnectWaitMs);
 
     try {
-      // Passe par l’EventBus → WebSocketClient V22.3 (convertit en frame {type:'chat.message', payload:{...}})
+      // Passe par l’EventBus → WebSocketClient V22.3 (frame {type:'chat.message', payload:{...}})
       this.eventBus.emit(EVENTS.CHAT_SEND || 'ui:chat:send', {
         text: trimmed,
         agent_id: currentAgentId,
@@ -93,9 +130,8 @@ export default class ChatModule {
       this._clearStreamWatchdog();
       this.state.set('chat.isLoading', false);
       this._sendLock = false;
-      this.showToast('Envoi impossible (WS).');
+      this._toast('Envoi impossible (WS).');
     } finally {
-      // On libère tôt pour permettre un envoi rapproché ; la dé-dup est gérée côté WebSocket V22.3 :contentReference[oaicite:6]{index=6}
       this._sendLock = false;
     }
   }
@@ -124,6 +160,13 @@ export default class ChatModule {
       } catch {}
     };
 
+    // ⬅️ (NOUVEAU) l’UI émet EVENTS.CHAT_SEND → on relaie via handleSendMessage()
+    on(EVENTS.CHAT_SEND || 'ui:chat:send', (payload = {}) => {
+      // Si ChatUI a émis {text, agent:'user'}, on traite ici.
+      const txt = (payload && payload.text) ? String(payload.text).trim() : '';
+      if (txt) this.handleSendMessage(txt);
+    });
+
     // Sélection d’agent via UI
     on(EVENTS.CHAT_AGENT_SELECTED || 'ui:chat:agent_selected', (agentId) => {
       const ag = String(agentId || 'anima').toLowerCase();
@@ -131,24 +174,21 @@ export default class ChatModule {
       this.state.set('chat.activeAgent', ag);
     });
 
-    // RAG toggle
-    on(EVENTS.CHAT_RAG_TOGGLED || 'ui:chat:rag_toggled', (on) => this.toggleRag(!!on));
+    // RAG toggle depuis l’UI
+    on(EVENTS.CHAT_RAG_TOGGLED || 'ui:chat:rag_toggled', (v = {}) => this.toggleRag(!!(v.enabled ?? v)));
 
-    // --- WS events (depuis WebSocketClient V22.3) ---
+    // --- WS events (provenant de WebSocketClient V22.3) ---
     on('ws:model_info', (payload = {}) => {
-      // Stocke la meta modèle (pour affichage) :contentReference[oaicite:7]{index=7}
       try { this.state.set('chat.modelInfo', payload || {}); } catch {}
       this.eventBus.emit?.('chat:model_info', payload);
     });
 
     on('ws:model_fallback', (p = {}) => {
-      // Feedback discret lors d’un fallback (chaîne de secours) :contentReference[oaicite:8]{index=8}
       this.eventBus.emit?.('ui:toast', { kind: 'warning', text: `Fallback modèle → ${p.to_provider || '?'} / ${p.to_model || '?'}` });
       this.eventBus.emit?.('chat:model_fallback', p);
     });
 
     on('ws:memory_banner', (p = {}) => {
-      // Mémoire STM/LTM banner (stats côté back) :contentReference[oaicite:9]{index=9}
       try {
         this.state.set('chat.memoryStats', {
           has_stm: !!p.has_stm,
@@ -160,14 +200,12 @@ export default class ChatModule {
     });
 
     on('ws:chat_stream_start', (payload = {}) => {
-      // Démarre un message assistant temporaire pour l’agent concerné
       const agent_id = (payload.agent_id || this.state.get('chat.activeAgent') || 'anima').toLowerCase();
       const tempId = payload.id || `asst-${Date.now()}`;
       const messages = this.state.get(`chat.messages.${agent_id}`) || [];
-      // Pousse un conteneur assistant vide (sera rempli par les chunks)
       const newAsst = { id: tempId, role: 'assistant', agent_id, content: '', created_at: Date.now(), _streaming: true };
       this.state.set(`chat.messages.${agent_id}`, [...messages, newAsst]);
-      this._clearStreamWatchdog(); // on a bien démarré le flux
+      this._clearStreamWatchdog();
     });
 
     on('ws:chat_stream_chunk', (payload = {}) => {
@@ -191,7 +229,6 @@ export default class ChatModule {
       const agent_id = (payload.agent_id || this.state.get('chat.activeAgent') || 'anima').toLowerCase();
       const id = payload.id || null;
 
-      // Évite doubles finalisations (certains backends peuvent renvoyer deux fois en edge-cases)
       if (id && this._assistantPersistedIds.has(id)) return;
 
       const meta = payload.meta || null;
@@ -202,40 +239,26 @@ export default class ChatModule {
         const idx = messages.findIndex(m => m.id === id);
         if (idx >= 0) {
           const finalized = { ...messages[idx], _streaming: false };
-          // Si le back a renvoyé "content" définitif, privilégie-le
-          if (typeof payload.content === 'string' && payload.content.trim()) {
-            finalized.content = payload.content;
-          }
+          if (typeof payload.content === 'string' && payload.content.trim()) finalized.content = payload.content;
           const next = messages.slice(); next[idx] = finalized;
           this.state.set(`chat.messages.${agent_id}`, next);
           this._assistantPersistedIds.add(id);
         } else {
-          // Si on ne retrouve pas l’ID, on append quand même
           const fallback = {
-            id: id,
-            role: 'assistant',
-            agent_id,
-            content: String(payload.content || ''),
-            created_at: Date.now(),
-            _streaming: false
+            id, role: 'assistant', agent_id,
+            content: String(payload.content || ''), created_at: Date.now(), _streaming: false
           };
           this.state.set(`chat.messages.${agent_id}`, [...messages, fallback]);
           this._assistantPersistedIds.add(id);
         }
       } else {
-        // Cas sans id → push simple
         const push = {
-          id: `asst-${Date.now()}`,
-          role: 'assistant',
-          agent_id,
-          content: String(payload.content || ''),
-          created_at: Date.now(),
-          _streaming: false
+          id: `asst-${Date.now()}`, role: 'assistant', agent_id,
+          content: String(payload.content || ''), created_at: Date.now(), _streaming: false
         };
         this.state.set(`chat.messages.${agent_id}`, [...messages, push]);
       }
 
-      // Fin du chargement pour ce tour
       this.state.set('chat.isLoading', false);
       this._clearStreamWatchdog();
     });
@@ -244,11 +267,10 @@ export default class ChatModule {
       this._clearStreamWatchdog();
       this.state.set('chat.isLoading', false);
       const msg = (err && (err.message || err.error)) || 'Erreur WebSocket.';
-      this.showToast(msg, 'error');
+      this._toast(msg, 'error');
       console.warn('[WS:error]', err);
     });
 
-    // Optionnel : statut RAG (pour chips/badges UI)
     on('ws:rag_status', (p = {}) => {
       const status = (p.status || 'idle');
       try { this.state.set('chat.ragStatus', status); } catch {}
@@ -259,18 +281,28 @@ export default class ChatModule {
   /* Helpers                                                             */
   /* ------------------------------------------------------------------ */
 
+  _collectChatState() {
+    const st = this.state.get('chat') || {};
+    return {
+      currentAgentId: (st.activeAgent || 'anima').toLowerCase(),
+      ragEnabled: !!st.ragEnabled,
+      messages: st.messages || {},
+      memoryBannerAt: st.memoryBannerAt || null,
+      metrics: st.metrics || { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null },
+      memoryStats: st.memoryStats || { has_stm: false, ltm_items: 0, injected: false },
+      modelInfo: st.modelInfo || null,
+      lastMessageMeta: st.lastMessageMeta || null
+    };
+  }
+
   async _waitForWS(maxWaitMs = 800) {
     const t0 = Date.now();
     const ready = () => {
-      try {
-        const ws = window?.wsClient?.websocket || null;
-        return !!ws && ws.readyState === 1; // OPEN
-      } catch { return false; }
+      try { const ws = window?.wsClient?.websocket || null; return !!ws && ws.readyState === 1; }
+      catch { return false; }
     };
     if (ready()) return;
-    // Déclenche la connexion si nécessaire
     try { window?.wsClient?.connect?.(); } catch {}
-    // Attente courte (boucle)
     while ((Date.now() - t0) < maxWaitMs) {
       if (ready()) break;
       await new Promise(r => setTimeout(r, 60));
@@ -282,9 +314,9 @@ export default class ChatModule {
     this._watchdog = setTimeout(() => {
       try {
         const ag = this.state.get('chat.activeAgent') || 'anima';
-        console.warn('[Chat] Watchdog: aucun flux reçu dans le délai.', this._pendingMsg);
+        console.warn('[Chat] Watchdog: aucun flux reçu dans le délai.');
         this.state.set('chat.isLoading', false);
-        this.showToast(`Temps d'attente dépassé (agent ${ag}). Réessaie.`);
+        this._toast(`Temps d'attente dépassé (agent ${ag}). Réessaie.`);
       } catch {}
     }, this._watchdogMs);
   }
@@ -293,7 +325,7 @@ export default class ChatModule {
     if (this._watchdog) { clearTimeout(this._watchdog); this._watchdog = null; }
   }
 
-  showToast(text, kind = 'error') {
+  _toast(text, kind = 'error') {
     try { this.eventBus.emit?.('ui:toast', { kind, text }); } catch {}
   }
 }
