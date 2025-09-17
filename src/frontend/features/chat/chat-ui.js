@@ -1,7 +1,8 @@
 /**
- * V28.1 — + Refresh chips “Sources RAG” quand documents changent
- *        (écoute 'documents:changed' + re-fetch /api/documents + filtrage/clear)
- *        + Badge modèle/fallback, mémoire, métriques (hérités V28.0)
+ * ChatUI — V28.3.1 (mount-safe, fix styles)
+ * - Fix: restore CSS hook by using class "messages" (was "chat-messages" in V28.3)
+ * - Mount-safe render in provided container (no global #chat-root dependency)
+ * - Keeps: RAG chips refresh, model/fallback badge, memory, metrics, export/clear
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
@@ -9,30 +10,31 @@ export class ChatUI {
   constructor(eventBus, stateManager) {
     this.eventBus = eventBus;
     this.stateManager = stateManager;
+    this.root = null;
     this.state = {
       isLoading: false,
       currentAgentId: 'anima',
       ragEnabled: false,
       messages: {},
-      // champs depuis chat.state
       memoryBannerAt: null,
       lastAnalysis: null,
       metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null },
       memoryStats: { has_stm: false, ltm_items: 0, injected: false },
       modelInfo: null,
-      lastMessageMeta: null // ← { provider, model, ... , sources?: [{document_id, filename, page?, excerpt?}] }
+      lastMessageMeta: null
     };
-    console.log('✅ ChatUI V28.1 (chips sources RAG auto-refresh) chargé.');
+    console.log('✅ ChatUI V28.3.1 (mount-safe + fix .messages) instancié.');
   }
 
   render(container, chatState = {}) {
     if (!container) return;
+    this.root = container;
     this.state = { ...this.state, ...chatState };
 
     const agentTabs = this._agentTabsHTML(this.state.currentAgentId);
 
-    container.innerHTML = `
-      <div class="chat-container card">
+    this.root.innerHTML = `
+      <div id="chat-root" class="chat-container card">
         <div class="chat-header card-header" style="display:flex;align-items:center;gap:.75rem;">
           <div class="chat-title">Dialogue</div>
           <div class="agent-selector">${agentTabs}</div>
@@ -44,9 +46,9 @@ export class ChatUI {
           </div>
         </div>
 
-        <div class="chat-messages card-body" id="chat-messages"></div>
+        <!-- FIX: class="messages" (CSS hook) -->
+        <div class="messages card-body" id="chat-messages"></div>
 
-        <!-- Bandeau chips Sources RAG (affiché si meta.sources existe) -->
         <div id="rag-sources"
              class="rag-sources"
              style="display:none;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.5rem .75rem;border-top:1px solid rgba(255,255,255,.08)">
@@ -74,7 +76,6 @@ export class ChatUI {
               <span id="rag-label" class="rag-label">RAG</span>
             </div>
 
-            <!-- === Mémoire === -->
             <div class="memory-control" style="display:flex;align-items:center;gap:.5rem;margin-left:.6rem">
               <span id="memory-dot" aria-hidden="true" style="width:10px;height:10px;border-radius:50%;background:#6b7280;display:inline-block"></span>
               <span id="memory-label" class="memory-label" title="Statut mémoire">Mémoire OFF</span>
@@ -83,14 +84,11 @@ export class ChatUI {
               <button type="button" id="memory-clear" class="button" title="Effacer la mémoire de session">Clear</button>
             </div>
 
-            <!-- === Outils === -->
             <button type="button" id="chat-export" class="button">Exporter</button>
             <button type="button" id="chat-clear" class="button">Effacer</button>
-
             <button type="button" id="chat-send" class="chat-send-button" title="Envoyer">➤</button>
           </div>
 
-          <!-- === Métriques Chat === -->
           <div id="chat-metrics" class="chat-metrics" style="margin-top:6px;font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.85">
             <span id="metric-ttfb">TTFB: — ms</span>
             <span aria-hidden="true">•</span>
@@ -100,28 +98,25 @@ export class ChatUI {
       </div>
     `;
 
-    this._bindEvents(container);
-    this.update(container, this.state);
+    this._bindEvents(this.root);
+    this.update(this.root, this.state);
+    console.log('[BOOT][chat] ChatUI mounted → container.id =', container.id || '(no-id)');
   }
 
   update(container, chatState = {}) {
     if (!container) return;
     this.state = { ...this.state, ...chatState };
 
-    // Tabs / agent courant
     container.querySelector('#rag-power')
       ?.setAttribute('aria-checked', String(!!this.state.ragEnabled));
     this._setActiveAgentTab(container, this.state.currentAgentId);
 
-    // Messages
     const raw = this.state.messages?.[this.state.currentAgentId];
     const list = this._asArray(raw).map((m) => this._normalizeMessage(m));
     this._renderMessages(container.querySelector('#chat-messages'), list);
 
-    // Sources RAG (bandeau de chips sous les messages)
     this._renderSources(container.querySelector('#rag-sources'), this.state.lastMessageMeta?.sources);
 
-    // --- Mémoire (statut + libellé + compteurs) ---
     const memoryOn = !!(this.state.memoryBannerAt || (this.state.lastAnalysis && this.state.lastAnalysis.status === 'completed'));
     const dot = container.querySelector('#memory-dot');
     const lbl = container.querySelector('#memory-label');
@@ -137,7 +132,6 @@ export class ChatUI {
       cnt.textContent = `${stmTxt} • ${ltmTxt}${inj ? ' ' + inj : ''}`;
     }
 
-    // --- Badge modèle / fallback ---
     const badge = container.querySelector('#model-badge');
     if (badge) {
       const mi = this.state.modelInfo || {};
@@ -154,7 +148,6 @@ export class ChatUI {
       badge.style.color = fallback ? '#fde68a' : '#e5e7eb';
     }
 
-    // Métriques
     const met = this.state.metrics || {};
     const ttfbEl = container.querySelector('#metric-ttfb');
     const fbEl = container.querySelector('#metric-fallbacks');
@@ -171,7 +164,6 @@ export class ChatUI {
     const memBtn  = container.querySelector('#memory-analyze');
     const memClr  = container.querySelector('#memory-clear');
 
-    /* Autosize — textarea s’adapte à la frappe (desktop & mobile) */
     const autosize = () => this._autoGrow(input);
     setTimeout(autosize, 0);
     input?.addEventListener('input', autosize);
@@ -186,7 +178,6 @@ export class ChatUI {
       autosize();
     });
 
-    // ENTER → envoi | Shift+Enter → saut de ligne
     input?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -195,7 +186,6 @@ export class ChatUI {
       }
     });
 
-    // Clic avion → submit du formulaire
     sendBtn?.addEventListener('click', () => {
       if (typeof form.requestSubmit === 'function') form.requestSubmit();
       else form?.dispatchEvent(new Event('submit', { cancelable: true }));
@@ -214,11 +204,9 @@ export class ChatUI {
     ragBtn?.addEventListener('click', toggleRag);
     ragLbl?.addEventListener('click', toggleRag);
 
-    // Mémoire — actions
     memBtn?.addEventListener('click', () => this.eventBus.emit('memory:tend'));
     memClr?.addEventListener('click', () => this.eventBus.emit('memory:clear'));
 
-    // Tabs agents
     container.querySelector('.agent-selector')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-agent-id]');
       if (!btn) return;
@@ -227,7 +215,6 @@ export class ChatUI {
       this._setActiveAgentTab(container, agentId);
     });
 
-    // Clic sur une chip “source”
     container.querySelector('#rag-sources')?.addEventListener('click', (e) => {
       const chip = e.target.closest('button[data-doc-id]');
       if (!chip) return;
@@ -240,34 +227,22 @@ export class ChatUI {
       this.eventBus.emit('rag:source:click', info);
     });
 
-    // NEW — écouter 'documents:changed' pour garder les chips à jour
     try {
       const off = this.eventBus?.on?.('documents:changed', async (payload = {}) => {
         await this._onDocumentsChanged(container, payload);
       });
-      if (typeof off === 'function') {
-        // Optionnel: conserver pour un futur destroy()
-        this._offDocumentsChanged = off;
-      }
+      if (typeof off === 'function') this._offDocumentsChanged = off;
     } catch {}
   }
 
-  /* ----- NEW: gestion du refresh Sources RAG -------------------------------- */
-
   async _onDocumentsChanged(container, payload) {
     try {
-      // Si le module Documents fournit déjà items, on les consomme.
       let docs = Array.isArray(payload.items) ? payload.items : null;
-      if (!docs) {
-        docs = await this._refetchDocuments(); // tentatives côté chat
-      }
+      if (!docs) { docs = await this._refetchDocuments(); }
       if (!Array.isArray(docs)) {
-        // Pas de visibilité sur les docs → on masque les chips pour éviter l’incohérence.
         this._renderSources(container.querySelector('#rag-sources'), []);
         return;
       }
-
-      // Construire un set d’IDs et un set de filenames pour tolérance.
       const ids = new Set(docs.map(d => d?.id || d?.document_id || d?._id).filter(Boolean));
       const names = new Set(docs.map(d => (d?.filename || d?.original_filename || d?.name || '').toString()).filter(Boolean));
 
@@ -279,7 +254,6 @@ export class ChatUI {
         return (sid && ids.has(sid)) || (sname && names.has(sname));
       });
 
-      // Appliquer: MAJ état + re-render bandeau
       if (filtered.length !== src.length) {
         this.state.lastMessageMeta = { ...meta, sources: filtered };
       }
@@ -293,7 +267,6 @@ export class ChatUI {
   async _refetchDocuments() {
     try {
       const headers = {};
-      // Id token si exposé par l’app (GIS ou stateManager)
       const tokenGetter =
         (window?.EmergenceAuth && typeof window.EmergenceAuth.getToken === 'function' && window.EmergenceAuth.getToken) ||
         (this.stateManager && typeof this.stateManager.getAuthToken === 'function' && this.stateManager.getAuthToken) ||
@@ -312,11 +285,9 @@ export class ChatUI {
     }
   }
 
-  /* ----- Helpers UI ------------------------------------------------------ */
-
   _autoGrow(el){
     if (!el) return;
-    const MAX_PX = Math.floor(window.innerHeight * 0.40); // 40% d’écran
+    const MAX_PX = Math.floor(window.innerHeight * 0.40);
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, MAX_PX) + 'px';
     el.style.overflowY = (el.scrollHeight > MAX_PX) ? 'auto' : 'hidden';
@@ -342,7 +313,6 @@ export class ChatUI {
       const filename = (s.filename || 'Document').toString();
       const page = (Number(s.page) || 0) > 0 ? ` • p.${Number(s.page)}` : '';
       const label = `${filename}${page}`;
-      // Tooltip = excerpt si dispo
       const tip = (s.excerpt || '').toString().slice(0, 300);
       const safeTip = this._escapeHTML(tip).replace(/\n/g, ' ');
       const docId = (s.document_id || `doc-${i}`).toString();
@@ -443,6 +413,6 @@ export class ChatUI {
   }
 
   _escapeHTML(s){
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
   }
 }

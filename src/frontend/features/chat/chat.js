@@ -1,331 +1,492 @@
 // src/frontend/features/chat/chat.js
-// ChatModule V26.0 — mount() + écoute EVENTS.CHAT_SEND → handleSendMessage()
-// + subscribe live au state pour rafraîchir ChatUI
-// Dépendances: state-manager (get/set), eventBus, websocket client global (optionnel).
+// Chat Module + UI — V28.3.2
+// - Restaure l’affichage du module Dialogues avec logs détaillés
+// - CSS hook correct: <div class="messages" id="chat-messages"> (aligne chat.css)
+// - Mount-safe: rend dans le container fourni par App.showModule()
+// - Aucune dépendance globale à #chat-root
 
 import { EVENTS, AGENTS } from '../../shared/constants.js';
-import { ChatUI } from './chat-ui.js';
 
-export default class ChatModule {
-  constructor(eventBus, state) {
+/* ------------------------- ChatUI ------------------------- */
+class ChatUI {
+  constructor(eventBus, stateManager) {
     this.eventBus = eventBus;
-    this.state = state;
-
-    // UI
-    this.container = null;
-    this.ui = null;
-
-    // Locks & temporaires
-    this._sendLock = false;
-    this._assistantPersistedIds = new Set();
-
-    // Attente courte pour laisser s’ouvrir le WS si nécessaire
-    this._wsConnectWaitMs = 900;
-
-    // Watchdog flux
-    this._watchdog = null;
-    this._watchdogMs = 25000;
-
-    // Binders
-    this._unbinders = [];
-    this._offState = null;
-
-    console.log('✅ ChatModule V26.0 initialisé (mount + bindings).');
+    this.stateManager = stateManager;
+    this.root = null;
+    this.state = {
+      isLoading: false,
+      currentAgentId: 'anima',
+      ragEnabled: false,
+      messages: {},                       // { agentId: [ {role, content, ...}, ... ] }
+      memoryBannerAt: null,
+      lastAnalysis: null,
+      metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null },
+      memoryStats: { has_stm: false, ltm_items: 0, injected: false },
+      modelInfo: null,
+      lastMessageMeta: null               // { provider, model, fallback?, sources?: [...] }
+    };
+    console.log('✅ ChatUI V28.3.2 instancié.');
   }
 
-  async init() {
-    this._bindEventBus();
+  render(container, chatState = {}) {
+    if (!container) {
+      console.error('[ChatUI] render() sans container.');
+      return;
+    }
+    this.root = container;
+    this.state = { ...this.state, ...chatState };
 
-    // Agent actif par défaut si absent (cohérent avec StateManager V15.4)
-    const active = (this.state.get('chat.activeAgent') || 'anima').toLowerCase();
-    this.state.set('chat.activeAgent', active);
-    return this;
+    const agentTabs = this._agentTabsHTML(this.state.currentAgentId);
+
+    // Markup aligné au CSS (classe ".messages" requise par chat.css)
+    // Voir chat.css → .messages { flex:1; overflow:auto; ... } pour la zone scrollable.
+    this.root.innerHTML = `
+      <div id="chat-root" class="chat-container card" data-version="28.3.2">
+        <div class="chat-header card-header" style="display:flex;align-items:center;gap:.75rem;">
+          <div class="chat-title">Dialogue</div>
+          <div class="agent-selector">${agentTabs}</div>
+          <div id="model-badge" class="model-badge"
+               style="margin-left:auto;padding:2px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);
+                      font:12px/1.2 system-ui,Segoe UI,Roboto,Arial;opacity:.9;background:linear-gradient(135deg,#1a1a1a,#0f172a);color:#e5e7eb">—</div>
+        </div>
+
+        <!-- IMPORTANT: hook CSS .messages (pas .chat-messages) -->
+        <div class="messages card-body" id="chat-messages"></div>
+
+        <div id="rag-sources" class="rag-sources"
+             style="display:none;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.5rem .75rem;border-top:1px solid rgba(255,255,255,.08)"></div>
+
+        <div class="chat-input-area card-footer">
+          <form id="chat-form" class="chat-form" autocomplete="off">
+            <textarea id="chat-input" class="chat-input" rows="3" placeholder="Écrivez votre message..."></textarea>
+          </form>
+
+          <div class="chat-actions" style="display:flex;align-items:center;flex-wrap:wrap;gap:.5rem">
+            <div class="rag-control">
+              <button type="button" id="rag-power" class="rag-power" role="switch"
+                      aria-checked="${String(!!this.state.ragEnabled)}" title="Activer/Désactiver RAG">
+                <svg class="power-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                  <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                  <path d="M5.5 7a 8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                </svg>
+              </button>
+              <span id="rag-label" class="rag-label">RAG</span>
+            </div>
+
+            <div class="memory-control" style="display:flex;align-items:center;gap:.5rem;margin-left:.6rem">
+              <span id="memory-dot" aria-hidden="true" style="width:10px;height:10px;border-radius:50%;background:#6b7280;display:inline-block"></span>
+              <span id="memory-label" class="memory-label" title="Statut mémoire">Mémoire OFF</span>
+              <span id="memory-counters" class="memory-counters" style="font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.85"></span>
+              <button type="button" id="memory-analyze" class="button" title="Analyser / consolider la mémoire">Analyser</button>
+              <button type="button" id="memory-clear" class="button" title="Effacer la mémoire de session">Clear</button>
+            </div>
+
+            <button type="button" id="chat-export" class="button">Exporter</button>
+            <button type="button" id="chat-clear" class="button">Effacer</button>
+            <button type="button" id="chat-send" class="chat-send-button" title="Envoyer">➤</button>
+          </div>
+
+          <div id="chat-metrics" class="chat-metrics" style="margin-top:6px;font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.85">
+            <span id="metric-ttfb">TTFB: — ms</span>
+            <span aria-hidden="true">•</span>
+            <span id="metric-fallbacks">Fallback REST: 0</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this._bindEvents(this.root);
+    this.update(this.root, this.state);
+
+    const host = this.root.querySelector('#chat-messages');
+    const dbg = {
+      container_id: container.id || '(no-id)',
+      has_active_class: container.classList.contains('active'),
+      host_exists: !!host,
+      host_class: host ? host.className : '(none)',
+      clientHeight: this.root.clientHeight,
+      offsetHeight: this.root.offsetHeight
+    };
+    console.log('[BOOT][chat] ChatUI mounted', dbg);
   }
 
-  /** Appelé par App.showModule(moduleId) */
-  mount(container) {
+  update(container, chatState = {}) {
     if (!container) return;
-    this.container = container;
+    this.state = { ...this.state, ...chatState };
 
-    if (!this.ui) {
-      this.ui = new ChatUI(this.eventBus, this.state);
+    // RAG toggle + agent tab
+    container.querySelector('#rag-power')?.setAttribute('aria-checked', String(!!this.state.ragEnabled));
+    this._setActiveAgentTab(container, this.state.currentAgentId);
+
+    // Messages
+    const raw = this.state.messages?.[this.state.currentAgentId];
+    const list = this._asArray(raw).map((m) => this._normalizeMessage(m));
+    this._renderMessages(container.querySelector('#chat-messages'), list);
+
+    // Sources (chips)
+    this._renderSources(container.querySelector('#rag-sources'), this.state.lastMessageMeta?.sources);
+
+    // Mémoire: dot + label + compteurs
+    const memoryOn = !!(this.state.memoryBannerAt || (this.state.lastAnalysis && this.state.lastAnalysis.status === 'completed'));
+    const dot = container.querySelector('#memory-dot');
+    const lbl = container.querySelector('#memory-label');
+    if (dot) dot.style.background = memoryOn ? '#22c55e' : '#6b7280';
+    if (lbl) lbl.textContent = memoryOn ? 'Mémoire ON' : 'Mémoire OFF';
+
+    const mem = this.state.memoryStats || {};
+    const cnt = container.querySelector('#memory-counters');
+    if (cnt) {
+      const stmTxt = mem.has_stm ? 'STM ✓' : 'STM 0';
+      const ltmTxt = `LTM ${Number(mem.ltm_items || 0)}`;
+      const inj = mem.injected ? '• inj' : '';
+      cnt.textContent = `${stmTxt} • ${ltmTxt}${inj ? ' ' + inj : ''}`;
     }
-    // premier render
-    this.ui.render(container, this._collectChatState());
 
-    // subscribe aux changements du sous-état chat.*
-    if (typeof this.state.subscribe === 'function') {
-      this._offState = this.state.subscribe('chat', () => {
-        try {
-          this.ui.update(this.container, this._collectChatState());
-        } catch (e) {
-          console.warn('[ChatModule] update UI failed:', e);
-        }
-      });
+    // Badge modèle / fallback
+    const badge = container.querySelector('#model-badge');
+    if (badge) {
+      const mi = this.state.modelInfo || {};
+      const lm = this.state.lastMessageMeta || {};
+      const usedProvider = (lm.provider || mi.provider || '').toString();
+      const usedModel = (lm.model || mi.model || '').toString();
+      const planned = (mi.provider || '?') + ':' + (mi.model || '?');
+      const used = (usedProvider || '?') + ':' + (usedModel || '?');
+      const fallback = !!(mi.provider && mi.model && (mi.provider !== usedProvider || mi.model !== usedModel));
+      badge.textContent = usedProvider || usedModel ? (fallback ? `Fallback → ${used}` : used) : '—';
+      const ttfb = (this.state.metrics && Number.isFinite(this.state.metrics.last_ttfb_ms)) ? `${this.state.metrics.last_ttfb_ms} ms` : '—';
+      badge.title = `Modèle prévu: ${planned} • Utilisé: ${used} • TTFB: ${ttfb}`;
+      badge.style.borderColor = fallback ? '#f59e0b' : 'rgba(255,255,255,.12)';
+      badge.style.color = fallback ? '#fde68a' : '#e5e7eb';
     }
 
-    // Optionnel: s’assurer que le WS est prêt
-    try { window?.wsClient?.connect?.(); } catch {}
+    // Log court d'update (utile pour tracer un render sans contenu)
+    console.log('[chat] update → msgs:',
+      Array.isArray(list) ? list.length : 0,
+      '| rag:', !!this.state.ragEnabled,
+      '| agent:', this.state.currentAgentId);
   }
 
-  destroy() {
-    try { this._unbinders.forEach(u => u && u()); } catch {}
-    this._unbinders = [];
-    if (typeof this._offState === 'function') {
-      try { this._offState(); } catch {}
-      this._offState = null;
-    }
-    this._clearStreamWatchdog();
-    this.container = null;
-  }
+  /* ------------------------- Events & helpers ------------------------- */
 
-  /* ------------------------------------------------------------------ */
-  /* UI/API                                                              */
-  /* ------------------------------------------------------------------ */
+  _bindEvents(container) {
+    const form   = container.querySelector('#chat-form');
+    const input  = container.querySelector('#chat-input');
+    const ragBtn = container.querySelector('#rag-power');
+    const ragLbl = container.querySelector('#rag-label');
+    const sendBtn= container.querySelector('#chat-send');
+    const memBtn = container.querySelector('#memory-analyze');
+    const memClr = container.querySelector('#memory-clear');
 
-  async handleSendMessage(textRaw) {
-    const trimmed = String(textRaw ?? '').trim();
-    if (!trimmed) return;
-    if (this._sendLock) return;
-    this._sendLock = true;
+    const autosize = () => this._autoGrow(input);
+    setTimeout(autosize, 0);
+    input?.addEventListener('input', autosize);
+    window.addEventListener('resize', autosize);
 
-    // Récupère l’agent courant depuis l’état
-    const chatState = this.state.get('chat') || {};
-    const currentAgentId = (chatState.activeAgent || 'anima').toLowerCase();
-    const ragEnabled = !!chatState.ragEnabled;
+    form?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = (input?.value || '').trim();
+      if (!text) return;
+      this.eventBus.emit(EVENTS.CHAT_SEND, { text, agent: 'user' });
+      input.value = '';
+      autosize();
+    });
 
-    // Source de vérité
-    this.state.set('chat.activeAgent', currentAgentId);
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (typeof form.requestSubmit === 'function') form.requestSubmit();
+        else form?.dispatchEvent(new Event('submit', { cancelable: true }));
+      }
+    });
+    sendBtn?.addEventListener('click', () => {
+      if (typeof form.requestSubmit === 'function') form.requestSubmit();
+      else form?.dispatchEvent(new Event('submit', { cancelable: true }));
+    });
 
-    // Ajout local du message USER
-    const userMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: trimmed,
-      agent_id: currentAgentId,
-      created_at: Date.now()
+    container.querySelector('#chat-export')?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_EXPORT, null));
+    container.querySelector('#chat-clear') ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_CLEAR, null));
+
+    const toggleRag = () => {
+      const on = ragBtn.getAttribute('aria-checked') === 'true';
+      ragBtn.setAttribute('aria-checked', String(!on));
+      this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, { enabled: !on });
     };
-    const curr = this.state.get(`chat.messages.${currentAgentId}`) || [];
-    this.state.set(`chat.messages.${currentAgentId}`, [...curr, userMessage]);
-    this.state.set('chat.isLoading', true);
+    ragBtn?.addEventListener('click', toggleRag);
+    ragLbl?.addEventListener('click', toggleRag);
 
-    // Laisse au WS le temps de s’ouvrir (le client a une queue, mais on réduit les races)
-    await this._waitForWS(this._wsConnectWaitMs);
+    memBtn?.addEventListener('click', () => this.eventBus.emit('memory:tend'));
+    memClr?.addEventListener('click', () => this.eventBus.emit('memory:clear'));
 
-    try {
-      // Passe par l’EventBus → WebSocketClient V22.3 (frame {type:'chat.message', payload:{...}})
-      this.eventBus.emit(EVENTS.CHAT_SEND || 'ui:chat:send', {
-        text: trimmed,
-        agent_id: currentAgentId,
-        use_rag: ragEnabled,
-        msg_uid: userMessage.id,
-        __enriched: true
+    container.querySelector('.agent-selector')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-agent-id]');
+      if (!btn) return;
+      const agentId = btn.getAttribute('data-agent-id');
+      this.eventBus.emit(EVENTS.CHAT_AGENT_SELECTED, agentId);
+      this._setActiveAgentTab(container, agentId);
+    });
+
+    container.querySelector('#rag-sources')?.addEventListener('click', (e) => {
+      const chip = e.target.closest('button[data-doc-id]');
+      if (!chip) return;
+      const info = {
+        document_id: chip.getAttribute('data-doc-id'),
+        filename: chip.getAttribute('data-filename'),
+        page: Number(chip.getAttribute('data-page') || '0') || null,
+        excerpt: chip.getAttribute('data-excerpt') || ''
+      };
+      this.eventBus.emit('rag:source:click', info);
+    });
+
+    // Micro-isomorphisme (hover subtil sur les bulles)
+    const host = container.querySelector('#chat-messages');
+    if (host) {
+      host.addEventListener('mousemove', (e) => {
+        const t = e.target.closest('.message');
+        if (!t) return;
+        const r = t.getBoundingClientRect();
+        const mx = ((e.clientX - r.left) / Math.max(r.width, 1) - 0.5) * 4;
+        const my = ((e.clientY - r.top ) / Math.max(r.height,1) - 0.5) * 4;
+        t.style.setProperty('--mx', `${mx}px`);
+        t.style.setProperty('--my', `${my}px`);
       });
-
-      // Armement watchdog (si aucun ws:chat_stream_start ne survient)
-      this._pendingMsg = { id: userMessage.id, agent_id: currentAgentId, text: trimmed, triedRest: false };
-      this._startStreamWatchdog();
-    } catch (e) {
-      console.error('[Chat] Emission ui:chat:send a échoué', e);
-      this._clearStreamWatchdog();
-      this.state.set('chat.isLoading', false);
-      this._sendLock = false;
-      this._toast('Envoi impossible (WS).');
-    } finally {
-      this._sendLock = false;
-    }
-  }
-
-  clearConversation(agentId = null) {
-    const ag = (agentId || this.state.get('chat.activeAgent') || 'anima').toLowerCase();
-    this.state.set(`chat.messages.${ag}`, []);
-  }
-
-  toggleRag(on) {
-    const curr = !!this.state.get('chat.ragEnabled');
-    const next = (typeof on === 'boolean') ? !!on : !curr;
-    this.state.set('chat.ragEnabled', next);
-    this.eventBus.emit?.('ui:toast', { kind: next ? 'success' : 'info', text: next ? 'RAG: ON' : 'RAG: OFF' });
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* EventBus bindings                                                   */
-  /* ------------------------------------------------------------------ */
-
-  _bindEventBus() {
-    const on = (evt, fn) => {
-      try {
-        this.eventBus.on(evt, fn);
-        this._unbinders.push(() => this.eventBus.off?.(evt, fn));
-      } catch {}
-    };
-
-    // ⬅️ (NOUVEAU) l’UI émet EVENTS.CHAT_SEND → on relaie via handleSendMessage()
-    on(EVENTS.CHAT_SEND || 'ui:chat:send', (payload = {}) => {
-      // Si ChatUI a émis {text, agent:'user'}, on traite ici.
-      const txt = (payload && payload.text) ? String(payload.text).trim() : '';
-      if (txt) this.handleSendMessage(txt);
-    });
-
-    // Sélection d’agent via UI
-    on(EVENTS.CHAT_AGENT_SELECTED || 'ui:chat:agent_selected', (agentId) => {
-      const ag = String(agentId || 'anima').toLowerCase();
-      if (!AGENTS[ag]) return;
-      this.state.set('chat.activeAgent', ag);
-    });
-
-    // RAG toggle depuis l’UI
-    on(EVENTS.CHAT_RAG_TOGGLED || 'ui:chat:rag_toggled', (v = {}) => this.toggleRag(!!(v.enabled ?? v)));
-
-    // --- WS events (provenant de WebSocketClient V22.3) ---
-    on('ws:model_info', (payload = {}) => {
-      try { this.state.set('chat.modelInfo', payload || {}); } catch {}
-      this.eventBus.emit?.('chat:model_info', payload);
-    });
-
-    on('ws:model_fallback', (p = {}) => {
-      this.eventBus.emit?.('ui:toast', { kind: 'warning', text: `Fallback modèle → ${p.to_provider || '?'} / ${p.to_model || '?'}` });
-      this.eventBus.emit?.('chat:model_fallback', p);
-    });
-
-    on('ws:memory_banner', (p = {}) => {
-      try {
-        this.state.set('chat.memoryStats', {
-          has_stm: !!p.has_stm,
-          ltm_items: Number.isFinite(p.ltm_items) ? p.ltm_items : 0,
-          injected: !!p.injected_into_prompt
+      host.addEventListener('mouseleave', () => {
+        host.querySelectorAll('.message').forEach(m => {
+          m.style.removeProperty('--mx'); m.style.removeProperty('--my');
         });
-        this.state.set('chat.memoryBannerAt', Date.now());
-      } catch {}
-    });
-
-    on('ws:chat_stream_start', (payload = {}) => {
-      const agent_id = (payload.agent_id || this.state.get('chat.activeAgent') || 'anima').toLowerCase();
-      const tempId = payload.id || `asst-${Date.now()}`;
-      const messages = this.state.get(`chat.messages.${agent_id}`) || [];
-      const newAsst = { id: tempId, role: 'assistant', agent_id, content: '', created_at: Date.now(), _streaming: true };
-      this.state.set(`chat.messages.${agent_id}`, [...messages, newAsst]);
-      this._clearStreamWatchdog();
-    });
-
-    on('ws:chat_stream_chunk', (payload = {}) => {
-      const agent_id = (payload.agent_id || this.state.get('chat.activeAgent') || 'anima').toLowerCase();
-      const id = payload.id;
-      const chunk = String(payload.chunk || '');
-      if (!id || !chunk) return;
-
-      const arr = this.state.get(`chat.messages.${agent_id}`) || [];
-      const idx = arr.findIndex(m => m.id === id);
-      if (idx >= 0) {
-        const m = { ...arr[idx] };
-        m.content = (m.content || '') + chunk;
-        m._streaming = true;
-        const next = arr.slice(); next[idx] = m;
-        this.state.set(`chat.messages.${agent_id}`, next);
-      }
-    });
-
-    on('ws:chat_stream_end', (payload = {}) => {
-      const agent_id = (payload.agent_id || this.state.get('chat.activeAgent') || 'anima').toLowerCase();
-      const id = payload.id || null;
-
-      if (id && this._assistantPersistedIds.has(id)) return;
-
-      const meta = payload.meta || null;
-      try { if (meta) this.state.set('chat.lastMessageMeta', meta); } catch {}
-      const messages = this.state.get(`chat.messages.${agent_id}`) || [];
-
-      if (id) {
-        const idx = messages.findIndex(m => m.id === id);
-        if (idx >= 0) {
-          const finalized = { ...messages[idx], _streaming: false };
-          if (typeof payload.content === 'string' && payload.content.trim()) finalized.content = payload.content;
-          const next = messages.slice(); next[idx] = finalized;
-          this.state.set(`chat.messages.${agent_id}`, next);
-          this._assistantPersistedIds.add(id);
-        } else {
-          const fallback = {
-            id, role: 'assistant', agent_id,
-            content: String(payload.content || ''), created_at: Date.now(), _streaming: false
-          };
-          this.state.set(`chat.messages.${agent_id}`, [...messages, fallback]);
-          this._assistantPersistedIds.add(id);
-        }
-      } else {
-        const push = {
-          id: `asst-${Date.now()}`, role: 'assistant', agent_id,
-          content: String(payload.content || ''), created_at: Date.now(), _streaming: false
-        };
-        this.state.set(`chat.messages.${agent_id}`, [...messages, push]);
-      }
-
-      this.state.set('chat.isLoading', false);
-      this._clearStreamWatchdog();
-    });
-
-    on('ws:error', (err = {}) => {
-      this._clearStreamWatchdog();
-      this.state.set('chat.isLoading', false);
-      const msg = (err && (err.message || err.error)) || 'Erreur WebSocket.';
-      this._toast(msg, 'error');
-      console.warn('[WS:error]', err);
-    });
-
-    on('ws:rag_status', (p = {}) => {
-      const status = (p.status || 'idle');
-      try { this.state.set('chat.ragStatus', status); } catch {}
-    });
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* Helpers                                                             */
-  /* ------------------------------------------------------------------ */
-
-  _collectChatState() {
-    const st = this.state.get('chat') || {};
-    return {
-      currentAgentId: (st.activeAgent || 'anima').toLowerCase(),
-      ragEnabled: !!st.ragEnabled,
-      messages: st.messages || {},
-      memoryBannerAt: st.memoryBannerAt || null,
-      metrics: st.metrics || { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null },
-      memoryStats: st.memoryStats || { has_stm: false, ltm_items: 0, injected: false },
-      modelInfo: st.modelInfo || null,
-      lastMessageMeta: st.lastMessageMeta || null
-    };
-  }
-
-  async _waitForWS(maxWaitMs = 800) {
-    const t0 = Date.now();
-    const ready = () => {
-      try { const ws = window?.wsClient?.websocket || null; return !!ws && ws.readyState === 1; }
-      catch { return false; }
-    };
-    if (ready()) return;
-    try { window?.wsClient?.connect?.(); } catch {}
-    while ((Date.now() - t0) < maxWaitMs) {
-      if (ready()) break;
-      await new Promise(r => setTimeout(r, 60));
+      });
     }
   }
 
-  _startStreamWatchdog() {
-    this._clearStreamWatchdog();
-    this._watchdog = setTimeout(() => {
+  _autoGrow(el){
+    if (!el) return;
+    const MAX_PX = Math.floor(window.innerHeight * 0.40);
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, MAX_PX) + 'px';
+    el.style.overflowY = (el.scrollHeight > MAX_PX) ? 'auto' : 'hidden';
+  }
+
+  _renderMessages(host, messages){
+    if (!host) return;
+    const html = (messages || []).map(m => this._messageHTML(m)).join('');
+    host.innerHTML = html || `<div class="placeholder" style="opacity:.6;padding:1rem;">Commence à discuter…</div>`;
+    host.scrollTo(0, 1e9);
+  }
+
+  _renderSources(host, sources){
+    if (!host) return;
+    const items = Array.isArray(sources) ? sources : [];
+    if (!items.length) {
+      host.style.display = 'none';
+      host.innerHTML = '';
+      return;
+    }
+    const chips = items.map((s, i) => {
+      const filename = (s.filename || 'Document').toString();
+      const page = (Number(s.page) || 0) > 0 ? ` • p.${Number(s.page)}` : '';
+      const label = `${filename}${page}`;
+      const tip = (s.excerpt || '').toString().slice(0, 300);
+      const safeTip = this._escapeHTML(tip).replace(/\n/g, ' ');
+      const docId = (s.document_id || `doc-${i}`).toString();
+      const fnAttr = this._escapeHTML(filename);
+      const exAttr = this._escapeHTML(tip);
+      return `
+        <button type="button" class="chip chip-source"
+          data-doc-id="${docId}" data-filename="${fnAttr}" data-page="${Number(s.page) || ''}" data-excerpt="${exAttr}"
+          title="${safeTip}"
+          style="display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .6rem;border:1px solid rgba(255,255,255,.12);
+                 border-radius:999px;background:rgba(2,6,23,.5);font:12px/1 system-ui,Segoe UI,Roboto,Arial;color:#e5e7eb;cursor:pointer;">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="opacity:.85">
+            <path d="M4 4h10l6 6v10H4z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M14 4v6h6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <span>${this._escapeHTML(label)}</span>
+        </button>`;
+    }).join('');
+
+    host.innerHTML = `<div class="rag-sources-wrap" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+        <span style="font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.75">Sources :</span>${chips}
+      </div>`;
+    host.style.display = 'flex';
+  }
+
+  _messageHTML(m){
+    const side = m.role === 'user' ? 'user' : 'assistant';
+    const agentId = m.agent_id || m.agent || 'nexus';
+    const name = side === 'user' ? 'FG' : (AGENTS[agentId]?.name || 'Agent');
+    const raw = this._toPlainText(m.content);
+    const content = this._escapeHTML(raw).replace(/\n/g, '<br/>');
+    const cursor = m.isStreaming ? `<span class="blinking-cursor">▍</span>` : '';
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `
+      <div class="message ${side} ${side === 'assistant' ? agentId : ''}">
+        <div class="message-content">
+          <div class="message-meta meta-inside">
+            <strong class="sender-name">${name}</strong><span class="message-time">${time}</span>
+          </div>
+          <div class="message-text">${content}${cursor}</div>
+        </div>
+      </div>`;
+  }
+
+  _agentTabsHTML(activeId){
+    const ids = Object.keys(AGENTS);
+    return `
+      <div class="tabs-container">
+        ${ids.map(id => {
+          const a = AGENTS[id]; const act = id === activeId ? 'active' : '';
+          return `<button class="button-tab agent--${id} ${act}" data-agent-id="${id}">${a?.emoji || ''} ${a?.name || id}</button>`;
+        }).join('')}
+      </div>`;
+  }
+
+  _setActiveAgentTab(container, agentId){
+    container.querySelectorAll('.button-tab').forEach(b => b.classList.remove('active'));
+    container.querySelector(`.button-tab[data-agent-id="${agentId}"]`)?.classList.add('active');
+  }
+
+  _asArray(x){ return Array.isArray(x) ? x : (x ? [x] : []); }
+
+  _normalizeMessage(m){
+    if (!m) return { role:'assistant', content:'' };
+    if (typeof m === 'string') return { role:'assistant', content:m };
+    return {
+      role: m.role || 'assistant',
+      content: m.content ?? m.text ?? '',
+      isStreaming: !!m.isStreaming,
+      agent_id: m.agent_id || m.agent
+    };
+  }
+
+  _toPlainText(val){
+    if (val == null) return '';
+    if (typeof val === 'string') return val;
+    if (Array.isArray(val)) return val.map(v => this._toPlainText(v)).join('');
+    if (typeof val === 'object') {
+      if ('text' in val) return this._toPlainText(val.text);
+      if ('content' in val) return this._toPlainText(val.content);
+      if ('message' in val) return this._toPlainText(val.message);
+      try { return JSON.stringify(val); } catch { return String(val); }
+    }
+    return String(val);
+  }
+
+  _escapeHTML(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+}
+
+/* ------------------------- ChatModule ------------------------- */
+export default class ChatModule {
+  constructor(eventBus, stateManager) {
+    this.eventBus = eventBus;
+    this.state = stateManager;
+    this.ui = new ChatUI(eventBus, stateManager);
+    this.container = null;
+    this.inited = false;
+  }
+
+  init() {
+    if (this.inited) return;
+    this._wireState();
+    this._wireWS();
+    this.inited = true;
+    console.log('✅ ChatModule V28.3.2 initialisé (handlers & state).');
+  }
+
+  mount(container) {
+    this.container = container;
+    if (!container) {
+      console.error('[ChatModule] mount() sans container.');
+      return;
+    }
+    // Sélection de l’agent par défaut si vide
+    const agentId = this.state.get('chat.currentAgentId') || 'anima';
+    const chatState = this.state.get('chat') || { currentAgentId: agentId, messages: {} };
+
+    // Rendu UI
+    this.ui.render(container, chatState);
+
+    // Stats container (debug DOM)
+    const rect = container.getBoundingClientRect?.() || {};
+    console.log('[BOOT][chat] mount(container) OK →', {
+      id: container.id || '(no-id)',
+      class: container.className || '',
+      size: { w: Math.round(rect.width || 0), h: Math.round(rect.height || 0) }
+    });
+  }
+
+  /* ----------------- State & Events wiring ----------------- */
+
+  _wireState() {
+    // Threads chargés → hydrate l’état chat
+    this.eventBus.on?.('threads:loaded', (thread) => {
       try {
-        const ag = this.state.get('chat.activeAgent') || 'anima';
-        console.warn('[Chat] Watchdog: aucun flux reçu dans le délai.');
-        this.state.set('chat.isLoading', false);
-        this._toast(`Temps d'attente dépassé (agent ${ag}). Réessaie.`);
-      } catch {}
-    }, this._watchdogMs);
+        const msgs = (thread?.messages || []).map(m => ({
+          role: m.role || (m.is_user ? 'user' : 'assistant'),
+          content: m.content || m.text || '',
+          agent_id: m.agent_id || m.agent
+        }));
+        const curAgent = this.state.get('chat.currentAgentId') || 'anima';
+        const map = { ...(this.state.get('chat.messages') || {}) };
+        map[curAgent] = msgs;
+        this.state.set('chat.messages', map);
+        this.ui.update(this.container, { messages: map, currentAgentId: curAgent });
+      } catch (e) {
+        console.error('[ChatModule] threads:loaded hydration failed', e);
+      }
+    });
+
+    // Sélection d’agent
+    this.eventBus.on?.(EVENTS.CHAT_AGENT_SELECTED, (agentId) => {
+      this.state.set('chat.currentAgentId', agentId);
+      this.ui.update(this.container, { currentAgentId: agentId });
+    });
+
+    // Toggle RAG
+    this.eventBus.on?.(EVENTS.CHAT_RAG_TOGGLED, ({ enabled }) => {
+      this.state.set('chat.ragEnabled', !!enabled);
+      this.ui.update(this.container, { ragEnabled: !!enabled });
+    });
+
+    // Export / Clear (propagés au back ou à d’autres modules selon implémentation)
+    this.eventBus.on?.(EVENTS.CHAT_EXPORT, () => console.log('[chat] export requested'));
+    this.eventBus.on?.(EVENTS.CHAT_CLEAR,  () => {
+      const curAgent = this.state.get('chat.currentAgentId') || 'anima';
+      const map = { ...(this.state.get('chat.messages') || {}) };
+      map[curAgent] = [];
+      this.state.set('chat.messages', map);
+      this.ui.update(this.container, { messages: map });
+    });
   }
 
-  _clearStreamWatchdog() {
-    if (this._watchdog) { clearTimeout(this._watchdog); this._watchdog = null; }
-  }
+  _wireWS() {
+    // Flux modèle/metadata → badge
+    this.eventBus.on?.('chat:model_info', (p) => this.ui.update(this.container, { modelInfo: p || null }));
+    this.eventBus.on?.('chat:last_message_meta', (meta) => {
+      this.ui.update(this.container, { lastMessageMeta: meta || null });
+    });
 
-  _toast(text, kind = 'error') {
-    try { this.eventBus.emit?.('ui:toast', { kind, text }); } catch {}
+    // Envoi (UI → WS) — laissé au WebSocketClient via guards main.js
+    this.eventBus.on?.(EVENTS.CHAT_SEND, (payload) => {
+      // L’UI envoie un événement simple ; le patch main.js route vers ws:send si enrichi
+      this.eventBus.emit?.('ui:chat:send', { text: payload?.text || '', agent_id: this.state.get('chat.currentAgentId') || 'anima' });
+      // Affichage optimiste du message utilisateur
+      const curAgent = this.state.get('chat.currentAgentId') || 'anima';
+      const map = { ...(this.state.get('chat.messages') || {}) };
+      const arr = Array.isArray(map[curAgent]) ? map[curAgent].slice() : [];
+      arr.push({ role: 'user', content: String(payload?.text || '') });
+      map[curAgent] = arr;
+      this.state.set('chat.messages', map);
+      this.ui.update(this.container, { messages: map });
+    });
+
+    // Réception stream/chunks — selon votre implémentation ws (non modifiée ici)
+    // Exemples d’événements: 'ws:chat_stream_start' / 'ws:chat_stream_chunk' / 'ws:chat_stream_end'
+    // On se contente de rafraîchir la vue si vous hydratez state.chat.messages côté WS.
+    this.eventBus.on?.('ws:chat_stream_end', () => {
+      const curAgent = this.state.get('chat.currentAgentId') || 'anima';
+      this.ui.update(this.container, {
+        messages: this.state.get('chat.messages') || {},
+        currentAgentId: curAgent
+      });
+    });
   }
 }
