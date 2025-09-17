@@ -1,4 +1,6 @@
-/* src/frontend/features/chat/chat.css — V11.6 (Send button fixed, RAG styles, mobile ergonomics++) */
+/* src/frontend/features/chat/chat.css */
+/* V11.7 — largeur utile accrue + micro-isomorphisme (hover),
+   bulles par agent conservées (border-left), compat V11.x */
 
 :root{
   --glass-bg: rgba(22,22,26,.55);
@@ -9,8 +11,9 @@
 
   --color-text-primary:#e9e9ef;
 
-  --chat-bubble-width: 900px;
-  --bubbleW: min(var(--chat-bubble-width), 90%);
+  /* ↑ largeur utile (auparavant 900 / 90%) */
+  --chat-bubble-width: 1100px;
+  --bubbleW: min(var(--chat-bubble-width), 92%);
 
   --color-anima:#e11d48;
   --color-neo:#2563eb;
@@ -31,6 +34,7 @@
   --badge-radius: 999px;
 
   --shadow-soft: 0 8px 20px rgba(0,0,0,.25);
+  --shadow-hover: 0 14px 34px rgba(0,0,0,.35);
 
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
   --ui: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol", "Noto Color Emoji", sans-serif;
@@ -45,7 +49,7 @@
   box-shadow: var(--glass-shadow);
   display:flex; flex-direction:column; height:100%;
   min-height:0;
-  overflow: visible !important;   /* ne pas clipper le footer sticky */
+  overflow: visible !important;
 }
 
 .chat-header{
@@ -54,13 +58,8 @@
   border-bottom:1px solid rgba(255,255,255,.06);
 }
 
-.chat-header .left{
-  display:flex; align-items:center; gap:10px;
-}
-
-.chat-header .right{
-  display:flex; align-items:center; gap:8px;
-}
+.chat-header .left{ display:flex; align-items:center; gap:10px; }
+.chat-header .right{ display:flex; align-items:center; gap:8px; }
 
 .agent-badge{
   display:inline-flex; align-items:center; gap:8px;
@@ -69,7 +68,6 @@
   background: linear-gradient(135deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
   border:1px solid rgba(255,255,255,.12);
 }
-
 .agent-badge.anima{ box-shadow: 0 0 0 2px rgba(225,29,72,.35) inset; }
 .agent-badge.neo{   box-shadow: 0 0 0 2px rgba(37,99,235,.35) inset; }
 .agent-badge.nexus{ box-shadow: 0 0 0 2px rgba(16,185,129,.35) inset; }
@@ -84,7 +82,7 @@
 /* === Zone messages === */
 .messages{
   flex:1 1 auto; min-height:0; overflow:auto;
-  padding: 8px 10px 90px 10px; /* garde pour footer sticky */
+  padding: 8px 10px 90px 10px;
   scroll-behavior:smooth;
 }
 
@@ -92,8 +90,13 @@
   display:flex; gap:12px;
   margin: var(--chat-gap) auto;
   width: var(--bubbleW);
+  will-change: transform, box-shadow;
+  transition: transform .18s ease, box-shadow .18s ease;
 }
-
+.message:hover{
+  transform: translate3d(var(--mx, 0), var(--my, 0), 0);
+  box-shadow: var(--shadow-hover);
+}
 .message .avatar{
   width:32px; height:32px; border-radius:50%;
   display:flex; align-items:center; justify-content:center;
@@ -102,7 +105,6 @@
   box-shadow: var(--shadow-soft);
   flex:0 0 auto;
 }
-
 .message .bubble{
   flex:1 1 auto;
   background: rgba(255,255,255,.06);
@@ -113,14 +115,13 @@
   line-height:1.55;
   box-shadow: var(--shadow-soft);
 }
-
 .message.user .bubble{
   background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
   border-color: rgba(255,255,255,.16);
 }
-
+/* Bulles par agent (bordure gauche colorée) */
 .message.anima .bubble{ border-left:3px solid var(--color-anima); }
-.message.neo .bubble{   border-left:3px solid var(--color-neo); }
+.message.neo   .bubble{ border-left:3px solid var(--color-neo); }
 .message.nexus .bubble{ border-left:3px solid var(--color-nexus); }
 
 .message .meta{
@@ -139,7 +140,7 @@
   overflow:auto;
 }
 
-/* Citations / sources (RAG) */
+/* Sources (RAG) */
 .message .sources{
   margin-top:10px; font-size:12px; opacity:.95;
   display:flex; flex-wrap:wrap; gap:6px;
@@ -152,11 +153,9 @@
   color:#fff;
   text-decoration:none;
 }
-.message .source-chip:hover{
-  background: rgba(255,255,255,.14);
-}
+.message .source-chip:hover{ background: rgba(255,255,255,.14); }
 
-/* Loader dans la zone messages */
+/* Loader */
 .loader{
   width:20px; height:20px; border-radius:50%;
   border:2px solid rgba(255,255,255,.25);
@@ -166,7 +165,7 @@
 }
 @keyframes spin{ to{ transform: rotate(360deg); } }
 
-/* === Footer (input + actions) === */
+/* Footer */
 .chat-footer{
   position: sticky; bottom: 0; left: 0; right: 0;
   margin-top:auto;
@@ -175,12 +174,10 @@
   backdrop-filter: blur(16px);
   border-top:1px solid rgba(255,255,255,.08);
 }
-
 .input-row{
   display:flex; gap:10px; align-items:flex-end;
   width: var(--bubbleW); margin: 0 auto;
 }
-
 .chat-input{
   flex:1 1 auto;
   min-height: var(--input-height);
@@ -190,16 +187,10 @@
   background: rgba(255,255,255,.06);
   color: #fff; font-size:15px; line-height:1.45;
   padding: 10px 12px;
-  resize: vertical;
-  outline: none;
+  resize: vertical; outline: none;
 }
 .chat-input::placeholder{ color: rgba(255,255,255,.45); }
-
-.actions{
-  display:flex; gap:10px; align-items:center; flex-wrap:wrap;
-}
-
-/* Buttons */
+.actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 .button{
   height: var(--btn-height);
   padding: 0 12px; border-radius: var(--btn-radius);
@@ -213,11 +204,7 @@
 .button:hover{
   background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.10));
 }
-.button:disabled{
-  opacity:.55; cursor:not-allowed; filter:grayscale(.35);
-}
-
-/* Actions spécifiques */
+.button:disabled{ opacity:.55; cursor:not-allowed; filter:grayscale(.35); }
 .button-send{
   border-color: rgba(74,163,255,.45);
   box-shadow: 0 8px 18px rgba(74,163,255,.25);
@@ -227,63 +214,11 @@
   box-shadow: 0 10px 24px rgba(74,163,255,.35);
 }
 
-.button-rag{
-  border-color: rgba(234,179,8,.45);
-  box-shadow: 0 8px 18px rgba(234,179,8,.25);
-}
-.button-rag.active{
-  border-color: rgba(250,204,21,.75);
-  box-shadow: 0 10px 24px rgba(250,204,21,.35);
-  background: linear-gradient(180deg, rgba(250,204,21,.28), rgba(250,204,21,.12));
-  color:#fff4cc;
-}
-
-/* Barre options (agent, RAG, etc.) */
+/* Options */
 .options-row{
   display:flex; align-items:center; justify-content:space-between;
   width: var(--bubbleW); margin: 8px auto 0 auto;
   gap:10px; color:#d1d5db; font-size:12px;
-}
-
-.options-row .left, .options-row .right{
-  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-}
-
-.toggle{
-  display:inline-flex; align-items:center; gap:8px;
-  padding:6px 10px; border-radius: 999px;
-  background: rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.12);
-  cursor:pointer; user-select:none;
-}
-.toggle input[type="checkbox"]{ display:none; }
-
-.agent-select{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:6px 10px; border-radius: 999px;
-  background: rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.12);
-}
-
-/* Multi-agents (parallèle) */
-.parallel-agents{
-  display:flex; flex-wrap:wrap; gap:6px;
-}
-.parallel-agents .pill{
-  padding:6px 10px; border-radius: 999px; font-size:12px;
-  border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06);
-}
-.parallel-agents .pill.anima{ color:#fff; box-shadow: inset 0 0 0 2px rgba(225,29,72,.45); }
-.parallel-agents .pill.neo{   color:#fff; box-shadow: inset 0 0 0 2px rgba(37,99,235,.45); }
-.parallel-agents .pill.nexus{ color:#fff; box-shadow: inset 0 0 0 2px rgba(16,185,129,.45); }
-
-/* Notifications toast (optionnel) */
-.toast{
-  position:fixed; right:12px; bottom:12px; z-index:9999;
-  background: rgba(0,0,0,.7);
-  color:#fff; padding:10px 12px; border-radius:10px;
-  border:1px solid rgba(255,255,255,.12);
-  box-shadow: var(--shadow-soft);
 }
 
 /* Petits écrans */
