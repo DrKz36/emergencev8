@@ -6,6 +6,7 @@
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
 export class ChatUI {
+
   constructor(eventBus, stateManager) {
     this.eventBus = eventBus;
     this.stateManager = stateManager;
@@ -29,9 +30,7 @@ export class ChatUI {
     if (!container) return;
     this.root = container;
     this.state = { ...this.state, ...chatState };
-
     const agentTabs = this._agentTabsHTML(this.state.currentAgentId);
-
     container.innerHTML = `
       <div class="chat-container card">
         <div class="chat-header">
@@ -44,25 +43,25 @@ export class ChatUI {
             <div id="chat-auth-host" class="chat-auth-host" data-auth-host></div>
           </div>
         </div>
-
         <div class="chat-body">
           <div class="messages" id="chat-messages"></div>
           <div id="rag-sources" class="rag-sources"></div>
         </div>
-
         <div class="chat-footer">
           <form id="chat-form" class="chat-form" autocomplete="off">
-            <div class="input-row">
+            <div class="chat-composer">
               <textarea
                 id="chat-input"
                 class="chat-input"
-                rows="2"
-                placeholder="Écrivez votre message..."></textarea>
+                rows="3"
+                placeholder="Ecrivez votre message..."></textarea>
               <button type="submit" id="chat-send" class="chat-send-button" title="Envoyer" aria-label="Envoyer">
-                <span class="chat-send-icon" aria-hidden="true">✈</span>
+                <span class="sr-only">Envoyer</span>
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+                  <path d="M3 3l18 9-18 9 4-9-4-9z" fill="currentColor"></path>
+                </svg>
               </button>
             </div>
-
             <div class="input-actions">
               <div class="action-group rag-control">
                 <button
@@ -79,7 +78,6 @@ export class ChatUI {
                 </button>
                 <span id="rag-label" class="rag-label">RAG</span>
               </div>
-
               <div class="action-group memory-control">
                 <span id="memory-dot" class="memory-dot" aria-hidden="true"></span>
                 <span id="memory-label" class="memory-label" title="Statut mémoire">Mémoire OFF</span>
@@ -89,14 +87,12 @@ export class ChatUI {
                   <button type="button" id="memory-clear" class="button" title="Effacer la mémoire de session">Effacer</button>
                 </div>
               </div>
-
               <div class="action-group utility-control">
                 <button type="button" id="chat-export" class="button">Exporter</button>
                 <button type="button" id="chat-clear" class="button">Effacer</button>
               </div>
             </div>
           </form>
-
           <div id="chat-metrics" class="chat-metrics">
             <span id="metric-ttfb">TTFB: — ms</span>
             <span aria-hidden="true" class="dot">•</span>
@@ -105,9 +101,7 @@ export class ChatUI {
         </div>
       </div>
     `;
-
     this.eventBus.emit?.('ui:auth:host-changed');
-
     this._bindEvents(container);
     this.update(container, this.state);
     console.log('[CHAT] ChatUI rendu → container.id =', container.id || '(anonyme)');
@@ -116,23 +110,18 @@ export class ChatUI {
   update(container, chatState = {}) {
     if (!container) return;
     this.state = { ...this.state, ...chatState };
-
     container.querySelector('#rag-power')
       ?.setAttribute('aria-checked', String(!!this.state.ragEnabled));
     this._setActiveAgentTab(container, this.state.currentAgentId);
-
     const raw = this.state.messages?.[this.state.currentAgentId];
     const list = this._asArray(raw).map((m) => this._normalizeMessage(m));
     this._renderMessages(container.querySelector('#chat-messages'), list);
-
     this._renderSources(container.querySelector('#rag-sources'), this.state.lastMessageMeta?.sources);
-
     const memoryOn = !!(this.state.memoryBannerAt || (this.state.lastAnalysis && this.state.lastAnalysis.status === 'completed'));
     const dot = container.querySelector('#memory-dot');
     const lbl = container.querySelector('#memory-label');
     if (dot) dot.classList.toggle('is-on', memoryOn);
     if (lbl) lbl.textContent = memoryOn ? 'Mémoire ON' : 'Mémoire OFF';
-
     const mem = this.state.memoryStats || {};
     const cnt = container.querySelector('#memory-counters');
     if (cnt) {
@@ -141,7 +130,6 @@ export class ChatUI {
       const inj = mem.injected ? '• inj' : '';
       cnt.textContent = `${stmTxt} • ${ltmTxt}${inj ? ' ' + inj : ''}`;
     }
-
     const badge = container.querySelector('#model-badge');
     if (badge) {
       const mi = this.state.modelInfo || {};
@@ -156,7 +144,6 @@ export class ChatUI {
       badge.title = `Modèle planifié: ${planned} • Utilisé: ${used} • TTFB: ${ttfb}`;
       badge.classList.toggle('is-fallback', fallback);
     }
-
     const met = this.state.metrics || {};
     const ttfbEl = container.querySelector('#metric-ttfb');
     const fbEl = container.querySelector('#metric-fallbacks');
@@ -172,12 +159,10 @@ export class ChatUI {
     const sendBtn = container.querySelector('#chat-send');
     const memBtn  = container.querySelector('#memory-analyze');
     const memClr  = container.querySelector('#memory-clear');
-
     const autosize = () => this._autoGrow(input);
     setTimeout(autosize, 0);
     input?.addEventListener('input', autosize);
     window.addEventListener('resize', autosize);
-
     form?.addEventListener('submit', (e) => {
       e.preventDefault();
       const text = (input?.value || '').trim();
@@ -186,7 +171,6 @@ export class ChatUI {
       input.value = '';
       autosize();
     });
-
     input?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -194,17 +178,14 @@ export class ChatUI {
         else form?.dispatchEvent(new Event('submit', { cancelable: true }));
       }
     });
-
     sendBtn?.addEventListener('click', () => {
       if (typeof form?.requestSubmit === 'function') form.requestSubmit();
       else form?.dispatchEvent(new Event('submit', { cancelable: true }));
     });
-
     container.querySelector('#chat-export')
       ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_EXPORT, null));
     container.querySelector('#chat-clear')
       ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_CLEAR, null));
-
     const toggleRag = () => {
       if (!ragBtn) return;
       const on = ragBtn.getAttribute('aria-checked') === 'true';
@@ -213,10 +194,8 @@ export class ChatUI {
     };
     ragBtn?.addEventListener('click', toggleRag);
     ragLbl?.addEventListener('click', toggleRag);
-
     memBtn?.addEventListener('click', () => this.eventBus.emit('memory:tend'));
     memClr?.addEventListener('click', () => this.eventBus.emit('memory:clear'));
-
     container.querySelector('.agent-selector')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-agent-id]');
       if (!btn) return;
@@ -224,7 +203,6 @@ export class ChatUI {
       this.eventBus.emit(EVENTS.CHAT_AGENT_SELECTED, agentId);
       this._setActiveAgentTab(container, agentId);
     });
-
     container.querySelector('#rag-sources')?.addEventListener('click', (e) => {
       const chip = e.target.closest('button[data-doc-id]');
       if (!chip) return;
@@ -236,7 +214,6 @@ export class ChatUI {
       };
       this.eventBus.emit('rag:source:click', info);
     });
-
     try {
       const off = this.eventBus?.on?.('documents:changed', async (payload = {}) => {
         await this._onDocumentsChanged(container, payload);
@@ -244,7 +221,6 @@ export class ChatUI {
       if (typeof off === 'function') this._offDocumentsChanged = off;
     } catch {}
   }
-
   async _onDocumentsChanged(container, payload) {
     try {
       let docs = Array.isArray(payload.items) ? payload.items : null;
@@ -255,7 +231,6 @@ export class ChatUI {
       }
       const ids = new Set(docs.map(d => d?.id || d?.document_id || d?._id).filter(Boolean));
       const names = new Set(docs.map(d => (d?.filename || d?.original_filename || d?.name || '').toString()).filter(Boolean));
-
       const meta = this.state.lastMessageMeta || {};
       const src = Array.isArray(meta.sources) ? meta.sources : [];
       const filtered = src.filter(s => {
@@ -263,7 +238,6 @@ export class ChatUI {
         const sname = (s.filename || '').toString();
         return (sid && ids.has(sid)) || (sname && names.has(sname));
       });
-
       if (filtered.length !== src.length) {
         this.state.lastMessageMeta = { ...meta, sources: filtered };
       }
@@ -273,7 +247,6 @@ export class ChatUI {
       this._renderSources(container.querySelector('#rag-sources'), []);
     }
   }
-
   async _refetchDocuments() {
     try {
       const headers = {};
@@ -281,7 +254,6 @@ export class ChatUI {
         (window?.EmergenceAuth && typeof window.EmergenceAuth.getToken === 'function' && window.EmergenceAuth.getToken) ||
         (this.stateManager && typeof this.stateManager.getAuthToken === 'function' && this.stateManager.getAuthToken) ||
         null;
-
       if (tokenGetter) {
         const t = await tokenGetter();
         if (t) headers['Authorization'] = `Bearer ${t}`;
@@ -318,14 +290,12 @@ export class ChatUI {
       host.innerHTML = '';
       return;
     }
-
     const chips = items.map((s, i) => {
       const filename = (s.filename || 'Document').toString();
       const page = (Number(s.page) || 0) > 0 ? ` • p.${Number(s.page)}` : '';
       const label = `${filename}${page}`;
       const tip = (s.excerpt || '').toString().slice(0, 300);
       const docId = (s.document_id || `doc-${i}`).toString();
-
       return `
         <button
           type="button"
@@ -343,7 +313,6 @@ export class ChatUI {
           <span>${this._escapeHTML(label)}</span>
         </button>`;
     }).join('');
-
     host.innerHTML = `
       <div class="rag-sources-wrap">
         <span class="rag-sources-label">Sources :</span>
@@ -355,35 +324,33 @@ export class ChatUI {
 
   _messageHTML(m) {
     const side = m.role === 'user' ? 'user' : 'assistant';
-    const rawAgentId = m.agent_id || m.agent || null;
+    const rawAgentId = side === 'assistant' ? (m.agent_id || m.agent || null) : null;
     const agentInfo = side === 'assistant' ? (AGENTS[rawAgentId] || null) : null;
     const normalizedAgentId = side === 'assistant'
       ? (agentInfo?.id || rawAgentId || 'assistant')
       : 'user';
-    const you = 'FG';
-    const name = side === 'user'
-      ? you
+    const displayName = side === 'user'
+      ? 'FG'
       : (agentInfo?.label || agentInfo?.name || this._humanizeAgentId(rawAgentId) || 'Assistant');
+    const label = (displayName || '').toUpperCase();
     const raw = this._toPlainText(m.content);
     const content = this._escapeHTML(raw).replace(/\n/g, '<br/>');
     const cursor = m.isStreaming ? `<span class="blinking-cursor">▍</span>` : '';
-    const stamp = this._coerceDate(m.created_at ?? m.timestamp ?? m.time) || new Date();
-    const time = stamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const datetime = stamp.toISOString();
+    const timestamp = this._formatTimestamp(m.created_at ?? m.timestamp ?? m.time);
     const roleClass = side === 'assistant' ? `message--${normalizedAgentId}` : 'message--user';
-
     return `
       <div class="message ${roleClass}">
         <div class="message-header">
-          <span class="message-name">${this._escapeHTML(name)}</span>
-          <span aria-hidden="true" class="message-separator">•</span>
-          <time class="message-time" datetime="${datetime}">${time}</time>
+          <span class="message-name">${this._escapeHTML(label)}</span>
+          <span aria-hidden="true" class="message-separator">-</span>
+          <time class="message-time" datetime="${timestamp.iso}">${timestamp.display}</time>
         </div>
         <div class="message-bubble">
           <div class="message-text">${content}${cursor}</div>
         </div>
       </div>`;
   }
+
   _agentTabsHTML(activeId) {
     const ids = Object.keys(AGENTS);
     return `
@@ -423,8 +390,8 @@ export class ChatUI {
       content: m.content ?? m.text ?? '',
       isStreaming: !!m.isStreaming,
       agent_id: m.agent_id || m.agent,
-      created_at: m.created_at ?? m.timestamp ?? m.time ?? null,
-      id: m.id || null
+      created_at: m.created_at ?? m.timestamp ?? m.time ?? m.createdAt ?? null,
+      id: m.id ?? null
     };
   }
 
@@ -470,7 +437,6 @@ export class ChatUI {
   _coerceDate(input) {
     if (!input) return null;
     if (input instanceof Date && !Number.isNaN(input.getTime())) return input;
-
     if (typeof input === 'string') {
       const trimmed = input.trim();
       if (!trimmed) return null;
@@ -480,7 +446,6 @@ export class ChatUI {
         if (!Number.isNaN(d.getTime())) return d;
       }
     }
-
     const num = Number(input);
     if (!Number.isFinite(num)) return null;
     const ms = num > 1e12 ? num : (num > 1e9 ? num * 1000 : num);
@@ -488,6 +453,11 @@ export class ChatUI {
     const d = new Date(ms);
     return Number.isNaN(d.getTime()) ? null : d;
   }
+
+  _formatTimestamp(input) {
+    const date = this._coerceDate(input) || new Date();
+    const time = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const day = date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return { display: `${time} ${day}`, iso: date.toISOString() };
+  }
 }
-
-
