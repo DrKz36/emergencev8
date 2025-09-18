@@ -23,7 +23,9 @@ class ChatUI {
       metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null },
       memoryStats: { has_stm: false, ltm_items: 0, injected: false },
       modelInfo: null,
-      lastMessageMeta: null               // { provider, model, fallback?, sources?: [...] }
+      lastMessageMeta: null,              // { provider, model, fallback?, sources?: [...] }
+      userName: 'Vous',
+      userInitials: 'VO'
     };
     console.log('✅ ChatUI V28.3.2 instancié.');
   }
@@ -42,53 +44,54 @@ class ChatUI {
     // Voir chat.css → .messages { flex:1; overflow:auto; ... } pour la zone scrollable.
     this.root.innerHTML = `
       <div id="chat-root" class="chat-container card" data-version="28.3.2">
-        <div class="chat-header card-header" style="display:flex;align-items:center;gap:.75rem;">
+        <div class="chat-header card-header">
           <div class="chat-title">Dialogue</div>
           <div class="agent-selector">${agentTabs}</div>
-          <div id="model-badge" class="model-badge"
-               style="margin-left:auto;padding:2px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);
-                      font:12px/1.2 system-ui,Segoe UI,Roboto,Arial;opacity:.9;background:linear-gradient(135deg,#1a1a1a,#0f172a);color:#e5e7eb">—</div>
+          <div id="model-badge" class="model-badge">--</div>
         </div>
 
-        <!-- IMPORTANT: hook CSS .messages (pas .chat-messages) -->
         <div class="messages card-body" id="chat-messages"></div>
 
-        <div id="rag-sources" class="rag-sources"
-             style="display:none;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.5rem .75rem;border-top:1px solid rgba(255,255,255,.08)"></div>
+        <div id="rag-sources" class="rag-sources"></div>
 
         <div class="chat-input-area card-footer">
           <form id="chat-form" class="chat-form" autocomplete="off">
-            <textarea id="chat-input" class="chat-input" rows="3" placeholder="Écrivez votre message..."></textarea>
+            <textarea id="chat-input" class="chat-input" rows="3" placeholder="Ecrivez votre message..."></textarea>
           </form>
 
-          <div class="chat-actions" style="display:flex;align-items:center;flex-wrap:wrap;gap:.5rem">
+          <div class="chat-actions">
             <div class="rag-control">
-              <button type="button" id="rag-power" class="rag-power" role="switch"
-                      aria-checked="${String(!!this.state.ragEnabled)}" title="Activer/Désactiver RAG">
+              <button
+                type="button"
+                id="rag-power"
+                class="rag-power"
+                role="switch"
+                aria-checked="${String(!!this.state.ragEnabled)}"
+                title="Activer/Desactiver RAG">
                 <svg class="power-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                  <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-                  <path d="M5.5 7a 8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                  <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
+                  <path d="M5.5 7a 8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
                 </svg>
               </button>
               <span id="rag-label" class="rag-label">RAG</span>
             </div>
 
-            <div class="memory-control" style="display:flex;align-items:center;gap:.5rem;margin-left:.6rem">
-              <span id="memory-dot" aria-hidden="true" style="width:10px;height:10px;border-radius:50%;background:#6b7280;display:inline-block"></span>
-              <span id="memory-label" class="memory-label" title="Statut mémoire">Mémoire OFF</span>
-              <span id="memory-counters" class="memory-counters" style="font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.85"></span>
-              <button type="button" id="memory-analyze" class="button" title="Analyser / consolider la mémoire">Analyser</button>
-              <button type="button" id="memory-clear" class="button" title="Effacer la mémoire de session">Clear</button>
+            <div class="memory-control">
+              <span id="memory-dot" class="memory-dot" aria-hidden="true"></span>
+              <span id="memory-label" class="memory-label" title="Statut memoire">Memoire OFF</span>
+              <span id="memory-counters" class="memory-counters"></span>
+              <button type="button" id="memory-analyze" class="button memory-action" title="Analyser / consolider la memoire">Analyser</button>
+              <button type="button" id="memory-clear" class="button memory-action" title="Effacer la memoire de session">Clear</button>
             </div>
 
             <button type="button" id="chat-export" class="button">Exporter</button>
             <button type="button" id="chat-clear" class="button">Effacer</button>
-            <button type="button" id="chat-send" class="chat-send-button" title="Envoyer">➤</button>
+            <button type="button" id="chat-send" class="chat-send-button" title="Envoyer">Envoyer</button>
           </div>
 
-          <div id="chat-metrics" class="chat-metrics" style="margin-top:6px;font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.85">
-            <span id="metric-ttfb">TTFB: — ms</span>
-            <span aria-hidden="true">•</span>
+          <div id="chat-metrics" class="chat-metrics">
+            <span id="metric-ttfb">TTFB: -- ms</span>
+            <span class="chat-metrics-separator" aria-hidden="true">&#8226;</span>
             <span id="metric-fallbacks">Fallback REST: 0</span>
           </div>
         </div>
@@ -265,37 +268,43 @@ class ChatUI {
     el.style.overflowY = (el.scrollHeight > MAX_PX) ? 'auto' : 'hidden';
   }
 
-  _renderMessages(host, messages){
+  _renderMessages(host, messages) {
     if (!host) return;
-    const html = (messages || []).map(m => this._messageHTML(m)).join('');
-    host.innerHTML = html || `<div class="placeholder" style="opacity:.6;padding:1rem;">Commence à discuter…</div>`;
+    const html = (messages || []).map((entry) => this._messageHTML(entry)).join('');
+    host.innerHTML = html || '<div class="messages-placeholder placeholder">Commencez a discuter...</div>';
     host.scrollTo(0, 1e9);
   }
 
-  _renderSources(host, sources){
+  _renderSources(host, sources) {
     if (!host) return;
     const items = Array.isArray(sources) ? sources : [];
     if (!items.length) {
-      host.style.display = 'none';
+      host.classList.remove('rag-sources--visible');
+      host.classList.add('rag-sources--hidden');
       host.innerHTML = '';
       return;
     }
+
     const chips = items.map((s, i) => {
       const filename = (s.filename || 'Document').toString();
-      const page = (Number(s.page) || 0) > 0 ? ` • p.${Number(s.page)}` : '';
+      const page = (Number(s.page) || 0) > 0 ? ` &#183; p.${Number(s.page)}` : '';
       const label = `${filename}${page}`;
       const tip = (s.excerpt || '').toString().slice(0, 300);
       const safeTip = this._escapeHTML(tip).replace(/\n/g, ' ');
       const docId = (s.document_id || `doc-${i}`).toString();
       const fnAttr = this._escapeHTML(filename);
       const exAttr = this._escapeHTML(tip);
+
       return `
-        <button type="button" class="chip chip-source"
-          data-doc-id="${docId}" data-filename="${fnAttr}" data-page="${Number(s.page) || ''}" data-excerpt="${exAttr}"
-          title="${safeTip}"
-          style="display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .6rem;border:1px solid rgba(255,255,255,.12);
-                 border-radius:999px;background:rgba(2,6,23,.5);font:12px/1 system-ui,Segoe UI,Roboto,Arial;color:#e5e7eb;cursor:pointer;">
-          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="opacity:.85">
+        <button
+          type="button"
+          class="rag-source-chip"
+          data-doc-id="${docId}"
+          data-filename="${fnAttr}"
+          data-page="${Number(s.page) || ''}"
+          data-excerpt="${exAttr}"
+          title="${safeTip}">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
             <path d="M4 4h10l6 6v10H4z" fill="none" stroke="currentColor" stroke-width="1.5"/>
             <path d="M14 4v6h6" fill="none" stroke="currentColor" stroke-width="1.5"/>
           </svg>
@@ -303,29 +312,100 @@ class ChatUI {
         </button>`;
     }).join('');
 
-    host.innerHTML = `<div class="rag-sources-wrap" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-        <span style="font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.75">Sources :</span>${chips}
-      </div>`;
-    host.style.display = 'flex';
+    host.innerHTML = `
+      <div class="rag-sources-wrap">
+        <span class="rag-sources-title">Sources :</span>
+        ${chips}
+      </div>
+    `;
+    host.classList.add('rag-sources--visible');
+    host.classList.remove('rag-sources--hidden');
   }
 
-  _messageHTML(m){
-    const side = m.role === 'user' ? 'user' : 'assistant';
-    const agentId = m.agent_id || m.agent || 'nexus';
-    const name = side === 'user' ? 'FG' : (AGENTS[agentId]?.name || 'Agent');
-    const raw = this._toPlainText(m.content);
-    const content = this._escapeHTML(raw).replace(/\n/g, '<br/>');
-    const cursor = m.isStreaming ? `<span class="blinking-cursor">▍</span>` : '';
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  _messageHTML(m) {
+    const normalized = this._normalizeMessage(m);
+    const side = normalized.role === 'user' ? 'user' : 'assistant';
+    const agentKey = side === 'assistant'
+      ? this._sanitizeAgentId(normalized.agent_id || normalized.agent || this.state.currentAgentId || 'nexus')
+      : 'user';
+    const agent = side === 'assistant' ? (AGENTS[agentKey] || {}) : null;
+    const senderName = side === 'user'
+      ? (this.state.userName || 'Vous')
+      : this._formatAgentLabel(agentKey);
+    const avatarLabel = side === 'user'
+      ? (this.state.userInitials || this._computeInitials(senderName))
+      : this._computeInitials(agent?.label || agent?.name || agentKey);
+    const rawContent = this._toPlainText(normalized.content);
+    const content = this._escapeHTML(rawContent).replace(/\n/g, '<br/>');
+    const cursor = normalized.isStreaming ? '<span class="message-cursor blinking-cursor"></span>' : '';
+    const timestamp = this._formatTimestamp(m?.created_at || m?.timestamp || m?.time || m?.ts || Date.now());
+
+    const wrapperClasses = ['message-wrapper', `message-wrapper--${side}`];
+    if (side === 'assistant') wrapperClasses.push(`message-wrapper--${agentKey}`);
+
+    const avatarClasses = ['message-avatar', `message-avatar--${side}`];
+    if (side === 'assistant') avatarClasses.push(`message-avatar--${agentKey}`);
+
+    const cardClasses = ['message-card'];
+    if (side === 'assistant') {
+      cardClasses.push('message-card--assistant');
+      cardClasses.push(`message-card--${agentKey}`);
+    } else {
+      cardClasses.push('message-card--user');
+    }
+    if (normalized.isStreaming) cardClasses.push('message-card--streaming');
+
+    const metaParts = [`<span class="message-sender">${this._escapeHTML(senderName)}</span>`];
+    if (timestamp) {
+      metaParts.push(`<time class="message-time">${this._escapeHTML(timestamp)}</time>`);
+    }
+    const meta = `<div class="message-meta">${metaParts.join('')}</div>`;
+
+    const dataAgentAttr = side === 'assistant' ? ` data-agent="${this._escapeHTML(agentKey)}"` : '';
+
     return `
-      <div class="message ${side} ${side === 'assistant' ? agentId : ''}">
-        <div class="message-content">
-          <div class="message-meta meta-inside">
-            <strong class="sender-name">${name}</strong><span class="message-time">${time}</span>
-          </div>
-          <div class="message-text">${content}${cursor}</div>
+      <div class="${wrapperClasses.join(' ')}" data-role="${side}"${dataAgentAttr}>
+        <div class="${avatarClasses.join(' ')}" aria-hidden="true">${this._escapeHTML(avatarLabel)}</div>
+        <div class="${cardClasses.join(' ')}">
+          ${meta}
+          <div class="message-content">${content}${cursor}</div>
         </div>
       </div>`;
+  }
+
+  _sanitizeAgentId(value, fallback = 'nexus') {
+    const base = String(value || '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    return base || fallback;
+  }
+
+  _formatAgentLabel(agentId) {
+    const agent = AGENTS[agentId] || {};
+    const raw = agent.label || agent.name || agentId || 'agent';
+    const label = String(raw);
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+
+  _computeInitials(label) {
+    if (!label) return 'AI';
+    const parts = String(label).trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return 'AI';
+    let raw = parts.length === 1 ? parts[0].slice(0, 2) : `${parts[0][0]}${parts[parts.length - 1][0]}`;
+    if (!raw) raw = parts[0].slice(0, 2);
+    if (raw && typeof raw.normalize === 'function') {
+      raw = raw.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+    const clean = (raw || '').replace(/[^A-Za-z0-9]/g, '');
+    return clean ? clean.toUpperCase() : 'AI';
+  }
+
+  _formatTimestamp(value) {
+    try {
+      const date = value instanceof Date ? value : new Date(value || Date.now());
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (_) {
+      return '';
+    }
   }
 
   _agentTabsHTML(activeId){
@@ -349,11 +429,13 @@ class ChatUI {
   _normalizeMessage(m){
     if (!m) return { role:'assistant', content:'' };
     if (typeof m === 'string') return { role:'assistant', content:m };
+    const agentCandidate = typeof m.agent_id === 'string' ? m.agent_id : (typeof m.agent === 'string' ? m.agent : '');
+    const safeAgent = agentCandidate ? this._sanitizeAgentId(agentCandidate) : '';
     return {
       role: m.role || 'assistant',
       content: m.content ?? m.text ?? '',
       isStreaming: !!m.isStreaming,
-      agent_id: m.agent_id || m.agent
+      agent_id: safeAgent
     };
   }
 

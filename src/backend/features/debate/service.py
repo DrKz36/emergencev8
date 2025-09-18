@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from dataclasses import dataclass
@@ -63,8 +62,7 @@ class DebateService:
         use_rag: bool,
     ) -> Tuple[str, Dict]:
         try:
-            res: Dict = await asyncio.to_thread(
-                self.chat_service.get_llm_response_for_debate,
+            res: Dict = await self.chat_service.get_llm_response_for_debate(
                 agent_id,
                 prompt,
                 system_override=None,
