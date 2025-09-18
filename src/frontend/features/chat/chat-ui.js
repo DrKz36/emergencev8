@@ -1,8 +1,7 @@
-/**
- * ChatUI — V28.3.1 (mount-safe, fix styles)
- * - Fix: restore CSS hook by using class "messages" (was "chat-messages" in V28.3)
- * - Mount-safe render in provided container (no global #chat-root dependency)
- * - Keeps: RAG chips refresh, model/fallback badge, memory, metrics, export/clear
+﻿/**
+ * ChatUI — V28.3.2 (glass layout merge)
+ * - Adopt glassmorphic layout with header/footer zones and auth host badge.
+ * - Keeps mount-safe render, RAG sources, metrics, memory controls, and WS guards.
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
@@ -23,7 +22,7 @@ export class ChatUI {
       modelInfo: null,
       lastMessageMeta: null
     };
-    console.log('✅ ChatUI V28.3.1 (mount-safe + fix .messages) instancié.');
+    console.log('✅ ChatUI V28.3.2 (glass-layout) initialisée.');
   }
 
   render(container, chatState = {}) {
@@ -33,74 +32,85 @@ export class ChatUI {
 
     const agentTabs = this._agentTabsHTML(this.state.currentAgentId);
 
-    this.root.innerHTML = `
-      <div id="chat-root" class="chat-container card">
-        <div class="chat-header card-header" style="display:flex;align-items:center;gap:.75rem;">
-          <div class="chat-title">Dialogue</div>
-          <div class="agent-selector">${agentTabs}</div>
-          <div id="model-badge"
-               class="model-badge"
-               style="margin-left:auto;padding:2px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);
-                      font:12px/1.2 system-ui,Segoe UI,Roboto,Arial;opacity:.9;background:linear-gradient(135deg,#1a1a1a,#0f172a);color:#e5e7eb">
-            —
+    container.innerHTML = `
+      <div class="chat-container card">
+        <div class="chat-header">
+          <div class="chat-header-left">
+            <div class="chat-title">Dialogue</div>
+            <div class="agent-selector">${agentTabs}</div>
+          </div>
+          <div class="chat-header-right">
+            <div id="model-badge" class="model-badge">—</div>
+            <div id="chat-auth-host" class="chat-auth-host" data-auth-host></div>
           </div>
         </div>
 
-        <!-- FIX: class="messages" (CSS hook) -->
-        <div class="messages card-body" id="chat-messages"></div>
-
-        <div id="rag-sources"
-             class="rag-sources"
-             style="display:none;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.5rem .75rem;border-top:1px solid rgba(255,255,255,.08)">
+        <div class="chat-body">
+          <div class="messages" id="chat-messages"></div>
+          <div id="rag-sources" class="rag-sources"></div>
         </div>
 
-        <div class="chat-input-area card-footer">
+        <div class="chat-footer">
           <form id="chat-form" class="chat-form" autocomplete="off">
-            <textarea id="chat-input" class="chat-input" rows="3" placeholder="Écrivez votre message..."></textarea>
+            <div class="input-row">
+              <textarea
+                id="chat-input"
+                class="chat-input"
+                rows="2"
+                placeholder="Écrivez votre message..."></textarea>
+              <button type="submit" id="chat-send" class="chat-send-button" title="Envoyer" aria-label="Envoyer">
+                <span class="chat-send-icon" aria-hidden="true">✈</span>
+              </button>
+            </div>
+
+            <div class="input-actions">
+              <div class="action-group rag-control">
+                <button
+                  type="button"
+                  id="rag-power"
+                  class="rag-power"
+                  role="switch"
+                  aria-checked="${String(!!this.state.ragEnabled)}"
+                  title="Activer/Désactiver RAG">
+                  <svg class="power-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                    <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                    <path d="M5.5 7a 8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                  </svg>
+                </button>
+                <span id="rag-label" class="rag-label">RAG</span>
+              </div>
+
+              <div class="action-group memory-control">
+                <span id="memory-dot" class="memory-dot" aria-hidden="true"></span>
+                <span id="memory-label" class="memory-label" title="Statut mémoire">Mémoire OFF</span>
+                <span id="memory-counters" class="memory-counters"></span>
+                <div class="memory-actions">
+                  <button type="button" id="memory-analyze" class="button" title="Analyser / consolider la mémoire">Analyser</button>
+                  <button type="button" id="memory-clear" class="button" title="Effacer la mémoire de session">Effacer</button>
+                </div>
+              </div>
+
+              <div class="action-group utility-control">
+                <button type="button" id="chat-export" class="button">Exporter</button>
+                <button type="button" id="chat-clear" class="button">Effacer</button>
+              </div>
+            </div>
           </form>
 
-          <div class="chat-actions" style="display:flex;align-items:center;flex-wrap:wrap;gap:.5rem">
-            <div class="rag-control">
-              <button
-                type="button"
-                id="rag-power"
-                class="rag-power"
-                role="switch"
-                aria-checked="${String(!!this.state.ragEnabled)}"
-                title="Activer/Désactiver RAG">
-                <svg class="power-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                  <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-                  <path d="M5.5 7a 8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-                </svg>
-              </button>
-              <span id="rag-label" class="rag-label">RAG</span>
-            </div>
-
-            <div class="memory-control" style="display:flex;align-items:center;gap:.5rem;margin-left:.6rem">
-              <span id="memory-dot" aria-hidden="true" style="width:10px;height:10px;border-radius:50%;background:#6b7280;display:inline-block"></span>
-              <span id="memory-label" class="memory-label" title="Statut mémoire">Mémoire OFF</span>
-              <span id="memory-counters" class="memory-counters" style="font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.85"></span>
-              <button type="button" id="memory-analyze" class="button" title="Analyser / consolider la mémoire">Analyser</button>
-              <button type="button" id="memory-clear" class="button" title="Effacer la mémoire de session">Clear</button>
-            </div>
-
-            <button type="button" id="chat-export" class="button">Exporter</button>
-            <button type="button" id="chat-clear" class="button">Effacer</button>
-            <button type="button" id="chat-send" class="chat-send-button" title="Envoyer">➤</button>
-          </div>
-
-          <div id="chat-metrics" class="chat-metrics" style="margin-top:6px;font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.85">
+          <div id="chat-metrics" class="chat-metrics">
             <span id="metric-ttfb">TTFB: — ms</span>
-            <span aria-hidden="true">•</span>
+            <span aria-hidden="true" class="dot">•</span>
             <span id="metric-fallbacks">Fallback REST: 0</span>
           </div>
         </div>
       </div>
     `;
 
-    this._bindEvents(this.root);
-    this.update(this.root, this.state);
-    console.log('[BOOT][chat] ChatUI mounted → container.id =', container.id || '(no-id)');
+    this.eventBus.emit?.('ui:auth:host-changed');
+
+    this._bindEvents(container);
+    this.update(container, this.state);
+    console.log('[CHAT] ChatUI rendu → container.id =', container.id || '(anonyme)');
   }
 
   update(container, chatState = {}) {
@@ -120,13 +130,13 @@ export class ChatUI {
     const memoryOn = !!(this.state.memoryBannerAt || (this.state.lastAnalysis && this.state.lastAnalysis.status === 'completed'));
     const dot = container.querySelector('#memory-dot');
     const lbl = container.querySelector('#memory-label');
-    if (dot) dot.style.background = memoryOn ? '#22c55e' : '#6b7280';
+    if (dot) dot.classList.toggle('is-on', memoryOn);
     if (lbl) lbl.textContent = memoryOn ? 'Mémoire ON' : 'Mémoire OFF';
 
     const mem = this.state.memoryStats || {};
     const cnt = container.querySelector('#memory-counters');
     if (cnt) {
-      const stmTxt = mem.has_stm ? 'STM ✓' : 'STM 0';
+      const stmTxt = mem.has_stm ? 'STM ●' : 'STM 0';
       const ltmTxt = `LTM ${Number(mem.ltm_items || 0)}`;
       const inj = mem.injected ? '• inj' : '';
       cnt.textContent = `${stmTxt} • ${ltmTxt}${inj ? ' ' + inj : ''}`;
@@ -143,9 +153,8 @@ export class ChatUI {
       const fallback = !!(mi.provider && mi.model && (mi.provider !== usedProvider || mi.model !== usedModel));
       badge.textContent = usedProvider || usedModel ? (fallback ? `Fallback → ${used}` : used) : '—';
       const ttfb = (this.state.metrics && Number.isFinite(this.state.metrics.last_ttfb_ms)) ? `${this.state.metrics.last_ttfb_ms} ms` : '—';
-      badge.title = `Modèle prévu: ${planned} • Utilisé: ${used} • TTFB: ${ttfb}`;
-      badge.style.borderColor = fallback ? '#f59e0b' : 'rgba(255,255,255,.12)';
-      badge.style.color = fallback ? '#fde68a' : '#e5e7eb';
+      badge.title = `Modèle planifié: ${planned} • Utilisé: ${used} • TTFB: ${ttfb}`;
+      badge.classList.toggle('is-fallback', fallback);
     }
 
     const met = this.state.metrics || {};
@@ -181,13 +190,13 @@ export class ChatUI {
     input?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        if (typeof form.requestSubmit === 'function') form.requestSubmit();
+        if (typeof form?.requestSubmit === 'function') form.requestSubmit();
         else form?.dispatchEvent(new Event('submit', { cancelable: true }));
       }
     });
 
     sendBtn?.addEventListener('click', () => {
-      if (typeof form.requestSubmit === 'function') form.requestSubmit();
+      if (typeof form?.requestSubmit === 'function') form.requestSubmit();
       else form?.dispatchEvent(new Event('submit', { cancelable: true }));
     });
 
@@ -197,6 +206,7 @@ export class ChatUI {
       ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_CLEAR, null));
 
     const toggleRag = () => {
+      if (!ragBtn) return;
       const on = ragBtn.getAttribute('aria-checked') === 'true';
       ragBtn.setAttribute('aria-checked', String(!on));
       this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, { enabled: !on });
@@ -296,7 +306,7 @@ export class ChatUI {
   _renderMessages(host, messages) {
     if (!host) return;
     const html = (messages || []).map(m => this._messageHTML(m)).join('');
-    host.innerHTML = html || `<div class="placeholder" style="opacity:.6;padding:1rem;">Commence à discuter…</div>`;
+    host.innerHTML = html || `<div class="placeholder">Commencez à discuter…</div>`;
     host.scrollTo(0, 1e9);
   }
 
@@ -314,23 +324,19 @@ export class ChatUI {
       const page = (Number(s.page) || 0) > 0 ? ` • p.${Number(s.page)}` : '';
       const label = `${filename}${page}`;
       const tip = (s.excerpt || '').toString().slice(0, 300);
-      const safeTip = this._escapeHTML(tip).replace(/\n/g, ' ');
       const docId = (s.document_id || `doc-${i}`).toString();
-      const fnAttr = this._escapeHTML(filename);
-      const exAttr = this._escapeHTML(tip);
 
       return `
         <button
           type="button"
-          class="chip chip-source"
-          data-doc-id="${docId}"
-          data-filename="${fnAttr}"
+          class="chip chip-source rag-source-chip"
+          data-doc-id="${this._escapeHTML(docId)}"
+          data-filename="${this._escapeHTML(filename)}"
           data-page="${Number(s.page) || ''}"
-          data-excerpt="${exAttr}"
-          title="${safeTip}"
-          style="display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .6rem;border:1px solid rgba(255,255,255,.12);
-                 border-radius:999px;background:rgba(2,6,23,.5);font:12px/1 system-ui,Segoe UI,Roboto,Arial;color:#e5e7eb;cursor:pointer;">
-          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="opacity:.85">
+          data-excerpt="${this._escapeHTML(tip)}"
+          title="${this._escapeHTML(tip.replace(/\n/g, ' '))}"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
             <path d="M4 4h10l6 6v10H4z" fill="none" stroke="currentColor" stroke-width="1.5"/>
             <path d="M14 4v6h6" fill="none" stroke="currentColor" stroke-width="1.5"/>
           </svg>
@@ -339,44 +345,65 @@ export class ChatUI {
     }).join('');
 
     host.innerHTML = `
-      <div class="rag-sources-wrap" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-        <span style="font:12px system-ui,Segoe UI,Roboto,Arial;opacity:.75">Sources :</span>
+      <div class="rag-sources-wrap">
+        <span class="rag-sources-label">Sources :</span>
         ${chips}
       </div>
     `;
-    host.style.display = 'flex';
+    host.style.display = 'block';
   }
 
   _messageHTML(m) {
     const side = m.role === 'user' ? 'user' : 'assistant';
-    const agentId = m.agent_id || m.agent || 'nexus';
+    const rawAgentId = m.agent_id || m.agent || null;
+    const agentInfo = side === 'assistant' ? (AGENTS[rawAgentId] || null) : null;
+    const normalizedAgentId = side === 'assistant'
+      ? (agentInfo?.id || rawAgentId || 'assistant')
+      : 'user';
     const you = 'FG';
-    const name = side === 'user' ? you : (AGENTS[agentId]?.name || 'Agent');
+    const name = side === 'user'
+      ? you
+      : (agentInfo?.label || agentInfo?.name || this._humanizeAgentId(rawAgentId) || 'Assistant');
     const raw = this._toPlainText(m.content);
     const content = this._escapeHTML(raw).replace(/\n/g, '<br/>');
     const cursor = m.isStreaming ? `<span class="blinking-cursor">▍</span>` : '';
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const stamp = this._coerceDate(m.created_at ?? m.timestamp ?? m.time) || new Date();
+    const time = stamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const datetime = stamp.toISOString();
+    const roleClass = side === 'assistant' ? `message--${normalizedAgentId}` : 'message--user';
 
     return `
-      <div class="message ${side} ${side === 'assistant' ? agentId : ''}">
-        <div class="message-content">
-          <div class="message-meta meta-inside">
-            <strong class="sender-name">${name}</strong>
-            <span class="message-time">${time}</span>
-          </div>
+      <div class="message ${roleClass}">
+        <div class="message-header">
+          <span class="message-name">${this._escapeHTML(name)}</span>
+          <span aria-hidden="true" class="message-separator">•</span>
+          <time class="message-time" datetime="${datetime}">${time}</time>
+        </div>
+        <div class="message-bubble">
           <div class="message-text">${content}${cursor}</div>
         </div>
       </div>`;
   }
-
   _agentTabsHTML(activeId) {
     const ids = Object.keys(AGENTS);
     return `
       <div class="tabs-container">
-        ${ids.map(id => {
-          const a = AGENTS[id];
-          const act = id === activeId ? 'active' : '';
-          return `<button class="button-tab agent--${id} ${act}" data-agent-id="${id}">${a?.emoji || ''} ${a?.name || id}</button>`;
+        ${ids.map((id) => {
+          const agent = AGENTS[id] || {};
+          const isActive = id === activeId;
+          const icon = agent.icon ? `<span class="tab-icon" aria-hidden="true">${this._escapeHTML(agent.icon)}</span>` : '';
+          const label = agent.label || agent.name || this._humanizeAgentId(id) || id;
+          return `
+            <button
+              type="button"
+              class="button-tab agent--${id} ${isActive ? 'active' : ''}"
+              data-agent-id="${id}"
+              aria-pressed="${isActive}"
+            >
+              ${icon}
+              <span class="tab-label">${this._escapeHTML(label)}</span>
+            </button>
+          `;
         }).join('')}
       </div>`;
   }
@@ -395,7 +422,9 @@ export class ChatUI {
       role: m.role || 'assistant',
       content: m.content ?? m.text ?? '',
       isStreaming: !!m.isStreaming,
-      agent_id: m.agent_id || m.agent
+      agent_id: m.agent_id || m.agent,
+      created_at: m.created_at ?? m.timestamp ?? m.time ?? null,
+      id: m.id || null
     };
   }
 
@@ -413,6 +442,52 @@ export class ChatUI {
   }
 
   _escapeHTML(s){
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+  }
+
+  _initials(name = '') {
+    const parts = String(name).trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return 'AI';
+    const first = parts[0][0] || '';
+    const last = parts.length > 1 ? parts[parts.length - 1][0] || '' : '';
+    const combo = (first + last).toUpperCase();
+    return combo || first.toUpperCase();
+  }
+
+  _humanizeAgentId(id) {
+    if (!id) return '';
+    const base = String(id)
+      .replace(/[_-]+/g, ' ')
+      .trim();
+    if (!base) return '';
+    return base
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(' ');
+  }
+
+  _coerceDate(input) {
+    if (!input) return null;
+    if (input instanceof Date && !Number.isNaN(input.getTime())) return input;
+
+    if (typeof input === 'string') {
+      const trimmed = input.trim();
+      if (!trimmed) return null;
+      const parsed = Date.parse(trimmed);
+      if (!Number.isNaN(parsed)) {
+        const d = new Date(parsed);
+        if (!Number.isNaN(d.getTime())) return d;
+      }
+    }
+
+    const num = Number(input);
+    if (!Number.isFinite(num)) return null;
+    const ms = num > 1e12 ? num : (num > 1e9 ? num * 1000 : num);
+    if (!Number.isFinite(ms)) return null;
+    const d = new Date(ms);
+    return Number.isNaN(d.getTime()) ? null : d;
   }
 }
+
+
