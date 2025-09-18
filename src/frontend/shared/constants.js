@@ -75,9 +75,9 @@ export const EVENTS = {
 };
 
 export const AGENTS = {
-  anima: { id: 'anima', label: 'Anima', color: '#7c3aed' },
-  neo:   { id: 'neo',   label: 'Neo',   color: '#06b6d4' },
-  nexus: { id: 'nexus', label: 'Nexus', color: '#22c55e' },
+  anima: { id: 'anima', label: 'Anima', color: '#fb7185', cssClass: 'message--anima' },
+  neo:   { id: 'neo',   label: 'Neo',   color: '#38bdf8', cssClass: 'message--neo' },
+  nexus: { id: 'nexus', label: 'Nexus', color: '#34d399', cssClass: 'message--nexus' },
 };
 
 // Liste d’IDs utilisable partout (legacy friendly)

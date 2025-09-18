@@ -93,17 +93,17 @@ export class DebateUI {
 
               <div class="form-group form-rag">
                 <label>RAG</label>
-                <button type="button" id="rag-power" class="rag-power" role="switch" aria-checked="true" title="Activer/Désactiver RAG">
+                <button type="button" id="rag-power" class="rag-power toggle-metal" role="switch" aria-checked="true" aria-label="Activer ou desactiver le RAG" title="Activer/Desactiver RAG">
                   <svg class="power-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                     <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
                     <path d="M5.5 7a8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
                   </svg>
                 </button>
-                <span id="rag-label" class="rag-label">RAG</span>
+                <span id="rag-label" class="rag-label">RAG actif</span>
               </div>
 
               <div class="action-center">
-                <button class="btn btn-primary button button-primary" id="debate-start">Lancer le débat</button>
+                <button class="button button-primary" id="debate-start">Lancer le débat</button>
               </div>
             </div>
           </div>
@@ -116,12 +116,25 @@ export class DebateUI {
     const headerTopic = root.querySelector('.debate-topic');
     topicEl?.addEventListener('input', () => { headerTopic.textContent = topicEl.value.trim() || '—'; });
 
-    root.querySelector('#rag-power')?.addEventListener('click', (e) => {
-      const btn = e.currentTarget;
-      const on  = btn.getAttribute('aria-checked') === 'true';
-      btn.setAttribute('aria-checked', on ? 'false' : 'true');
-      root.querySelector('#rag-label')?.classList.toggle('muted', !on);
-    });
+    const ragBtn = root.querySelector('#rag-power');
+    const ragLabel = root.querySelector('#rag-label');
+    const setRagState = (isOn) => {
+      const next = !!isOn;
+      ragBtn?.setAttribute('aria-checked', next ? 'true' : 'false');
+      if (ragLabel) {
+        ragLabel.textContent = next ? 'RAG actif' : 'RAG inactif';
+        ragLabel.classList.toggle('muted', !next);
+      }
+    };
+    if (ragBtn) {
+      setRagState(ragBtn.getAttribute('aria-checked') === 'true');
+      const toggleRag = () => {
+        const current = ragBtn.getAttribute('aria-checked') === 'true';
+        setRagState(!current);
+      };
+      ragBtn.addEventListener('click', toggleRag);
+      ragLabel?.addEventListener('click', toggleRag);
+    }
 
     this._bindTabs(root, 'attacker');
     this._bindTabs(root, 'challenger');
