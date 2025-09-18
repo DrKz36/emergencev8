@@ -234,22 +234,45 @@ function installEventBusGuards(eventBus) {
 
 /* --------------- Badge Login (CTA + voyant) --------------- */
 function mountAuthBadge(eventBus) {
-  const host = document.body;
-  let box = document.getElementById('auth-badge');
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'auth-badge';
-    box.style.cssText = 'position:fixed;top:12px;right:12px;z-index:2147483647;display:flex;gap:.5rem;align-items:center;font-family:system-ui,Segoe UI,Roboto,Arial;color:#eee;pointer-events:auto;';
-    box.innerHTML = `
-      <span id="auth-dot" style="width:10px;height:10px;border-radius:50%;background:#f97316;display:inline-block"></span>
-      <button id="auth-btn" type="button" style="padding:.35rem .75rem;border-radius:999px;border:1px solid #666;background:#111;color:#eee;cursor:pointer;pointer-events:auto">Se connecter</button>
-      <span id="model-chip" style="display:none;padding:.2rem .5rem;border-radius:999px;border:1px solid #555;background:#0b0b0b;color:#ddd;font-size:.8rem"></span>
-    `;
-    host.appendChild(box);
-  }
+  const ensureBox = () => {
+    let node = document.getElementById('auth-badge');
+    if (!node) {
+      node = document.createElement('div');
+      node.id = 'auth-badge';
+      node.className = 'auth-badge is-floating';
+      node.innerHTML = `
+        <span id="auth-dot" class="auth-dot" aria-hidden="true"></span>
+        <button id="auth-btn" type="button" class="auth-button">Se connecter</button>
+        <span id="model-chip" class="auth-model-chip" role="status" aria-live="polite" style="display:none"></span>
+      `;
+      document.body.appendChild(node);
+    }
+    return node;
+  };
+
+  const box = ensureBox();
   const dot = box.querySelector('#auth-dot');
   const btn = box.querySelector('#auth-btn');
   const chip = box.querySelector('#model-chip');
+
+  const updateChipVisibility = () => {
+    if (!chip) return;
+    const floating = box.classList.contains('is-floating');
+    const hasText = (chip.textContent || '').trim().length > 0;
+    chip.style.display = floating && hasText ? 'inline-flex' : 'none';
+  };
+
+  const attach = () => {
+    const target = document.querySelector('[data-auth-host]');
+    if (target) {
+      target.appendChild(box);
+      box.classList.remove('is-floating');
+    } else {
+      if (!box.classList.contains('is-floating')) document.body.appendChild(box);
+      box.classList.add('is-floating');
+    }
+    updateChipVisibility();
+  };
 
   const setConnected = (ok) => { if (dot) dot.style.background = ok ? '#22c55e' : '#f97316'; };
   const setLogged = (logged) => {
@@ -266,7 +289,7 @@ function mountAuthBadge(eventBus) {
     if (!chip) return;
     const txt = provider && model ? `${provider} • ${model}${fallback ? ' (fallback)' : ''}` : '';
     chip.textContent = txt;
-    chip.style.display = txt ? 'inline-block' : 'none';
+    updateChipVisibility();
   };
 
   // Abonnements d’état
@@ -278,6 +301,8 @@ function mountAuthBadge(eventBus) {
   // Hooks model/meta (affiche le modèle utilisé)
   eventBus.on?.('chat:model_info', (p) => { if (p) setModel(p.provider, p.model, false); });
   eventBus.on?.('chat:last_message_meta', (meta) => { if (meta) setModel(meta.provider, meta.model, !!meta.fallback); });
+  eventBus.on?.(EVENTS.MODULE_SHOW, () => setTimeout(attach, 0));
+  eventBus.on?.('ui:auth:host-changed', () => setTimeout(attach, 0));
 
   // Sync multi-onglets (une seule fois)
   try {
@@ -304,7 +329,8 @@ function mountAuthBadge(eventBus) {
   } catch {}
 
   setLogged(hasToken()); setConnected(false);
-  return { setLogged, setConnected };
+  attach();
+  return { setLogged, setConnected, attach };
 }
 
 /* -------------------- App bootstrap -------------------- */
