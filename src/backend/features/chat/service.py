@@ -889,9 +889,9 @@ class ChatService:
                 )
 
     # ===========================
-    # Débat (non-stream, sync)
+    # Débat (non-stream, async)
     # ===========================
-    def get_llm_response_for_debate(
+    async def get_llm_response_for_debate(
         self,
         agent_id: str,
         prompt: str,
@@ -899,72 +899,146 @@ class ChatService:
         system_override: Optional[str] = None,
         use_rag: bool = False,
         session_id: Optional[str] = None,
-        max_tokens: int = 1200,
-        temperature: float = DEFAULT_TEMPERATURE,
+        history: Optional[List[Any]] = None,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
     ) -> Dict[str, Any]:
         """
         Réponse unique pour le pipeline Débat (non-stream).
-        Retourne: {"text": str, "provider": str, "model": str, "cost_info": {...}}
+        Retourne: {"text": str, "provider": str, "model": str, "fallback": bool, "cost_info": {...}}
         """
         provider, model, system_prompt = self._get_agent_config(agent_id)
         system_prompt = self._ensure_fr_tutoiement(agent_id, provider, system_override or system_prompt)
 
-        # RAG minimal (optionnel) : on injecte en tête du prompt utilisateur
-        if use_rag and session_id and prompt:
+        rag_context = ""
+        base_prompt = prompt or ""
+        if use_rag and session_id and base_prompt:
             try:
                 if self._doc_collection is None:
-                    self._doc_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
-                doc_hits = self.vector_service.query(collection=self._doc_collection, query_text=prompt)
-                doc_block = "\n".join([f"- {h.get('text','').strip()}" for h in (doc_hits or []) if h.get("text")])
+                    self._doc_collection = self.vector_service.get_or_create_collection(
+                        config.DOCUMENT_COLLECTION_NAME
+                    )
+                doc_hits = self.vector_service.query(collection=self._doc_collection, query_text=base_prompt)
+                doc_block = "\n".join(
+                    [f"- {h.get('text', '').strip()}" for h in (doc_hits or []) if h.get("text")]
+                )
                 if doc_block.strip():
-                    prompt = f"[DOCUMENTS PERTINENTS]\n{doc_block}\n\n[QUESTION]\n{prompt}"
+                    rag_context = self._merge_blocks([("Documents pertinents", doc_block)])
             except Exception:
                 pass
 
+        raw_history: List[Dict[str, Any]] = []
+        if history:
+            for item in history:
+                try:
+                    if isinstance(item, ChatMessage):
+                        raw_history.append({"role": item.role, "content": item.content})
+                    elif isinstance(item, dict):
+                        role = item.get("role")
+                        content = item.get("content") or item.get("message")
+                        if role and content:
+                            raw_history.append({"role": role, "content": content})
+                except Exception:
+                    continue
+        raw_history.append({"role": Role.USER, "content": base_prompt})
+
+        async def run_once(provider_name: str, model_name: str) -> Tuple[str, Dict[str, Any]]:
+            normalized = self._normalize_history_for_llm(
+                provider_name,
+                raw_history,
+                rag_context,
+                use_rag,
+                agent_id,
+            )
+            local_cost: Dict[str, Any] = {}
+            chunks: List[str] = []
+            async for chunk in self._get_llm_response_stream(
+                provider_name,
+                model_name,
+                system_prompt,
+                normalized,
+                local_cost,
+            ):
+                if chunk:
+                    chunks.append(chunk)
+            return ''.join(chunks), local_cost
+
+        primary_provider, primary_model = provider, model
+        provider_used = primary_provider
+        model_used = primary_model
+        fallback_used = False
         text = ""
         cost_info: Dict[str, Any] = {}
 
+        fallback_candidates = {
+            "google": [("anthropic", "claude-3-haiku-20240307"), ("openai", "gpt-4o-mini")],
+            "anthropic": [("openai", "gpt-4o-mini"), ("google", "gemini-1.5-flash")],
+            "openai": [("anthropic", "claude-3-haiku-20240307"), ("google", "gemini-1.5-flash")],
+        }
+
         try:
-            if provider == "openai":
-                resp = self.openai_sync.chat.completions.create(
-                    model=model,
-                    temperature=temperature,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": prompt},
-                    ],
-                    max_tokens=max_tokens,
-                )
-                text = (resp.choices[0].message.content or "").strip()
-
-            elif provider == "google":
-                model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
-                resp = model_instance.generate_content([{"role": "user", "parts": [prompt]}])
-                text = (getattr(resp, "text", "") or "").strip()
-
-            elif provider == "anthropic":
-                resp = self.anthropic_sync.messages.create(
-                    model=model,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    system=system_prompt,
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                tmp = []
-                for block in getattr(resp, "content", []) or []:
-                    t = getattr(block, "text", "") or ""
-                    if t:
-                        tmp.append(t)
-                text = "".join(tmp).strip()
-
+            text, cost_info = await run_once(primary_provider, primary_model)
+        except Exception as e_primary:
+            fallbacks = fallback_candidates.get(primary_provider, [])
+            last_error: Exception = e_primary
+            for prov2, model2 in fallbacks:
+                try:
+                    text, cost_info = await run_once(prov2, model2)
+                    provider_used = prov2
+                    model_used = model2
+                    fallback_used = True
+                    logger.warning(
+                        json.dumps(
+                            {
+                                "event": "model_fallback",
+                                "agent_id": agent_id,
+                                "session_id": session_id,
+                                "from_provider": primary_provider,
+                                "from_model": primary_model,
+                                "to_provider": prov2,
+                                "to_model": model2,
+                                "reason": str(e_primary),
+                            }
+                        )
+                    )
+                    break
+                except Exception as e2:
+                    last_error = e2
+                    continue
             else:
-                raise ValueError(f"Fournisseur LLM non supporté pour débat: {provider}")
+                logger.error(
+                    f"get_llm_response_for_debate error (agent={agent_id}, provider={primary_provider}): {last_error}",
+                    exc_info=True,
+                )
+                raise last_error
 
-        except Exception as e:
-            logger.error(f"get_llm_response_for_debate error (agent={agent_id}, provider={provider}): {e}", exc_info=True)
-            raise
+        if not isinstance(cost_info, dict):
+            cost_info = {}
+        cost_info.setdefault("input_tokens", 0)
+        cost_info.setdefault("output_tokens", 0)
+        cost_info.setdefault("total_cost", 0.0)
 
-        return {"text": text, "provider": provider, "model": model, "cost_info": cost_info}
+        try:
+            if self.cost_tracker:
+                await self.cost_tracker.record_cost(
+                    agent=agent_id,
+                    model=model_used,
+                    input_tokens=int(cost_info.get("input_tokens", 0) or 0),
+                    output_tokens=int(cost_info.get("output_tokens", 0) or 0),
+                    total_cost=float(cost_info.get("total_cost", 0.0) or 0.0),
+                    feature="debate",
+                )
+        except Exception:
+            logger.debug("Impossible d'enregistrer le coût du débat", exc_info=True)
+
+        return {
+            "text": text.strip(),
+            "provider": provider_used,
+            "model": model_used,
+            "fallback": fallback_used,
+            "cost_info": cost_info,
+        }
+
 
     # ---------- entrypoint WS ----------
     def process_user_message_for_agents(
