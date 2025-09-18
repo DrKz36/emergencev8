@@ -1,12 +1,12 @@
 ﻿/**
- * ChatUI — V28.3.2 (glass layout merge)
+ * ChatUI - V28.3.2 (glass layout merge)
  * - Adopt glassmorphic layout with header/footer zones and auth host badge.
  * - Keeps mount-safe render, RAG sources, metrics, memory controls, and WS guards.
+ * - Merges composer toolbar refinements and message bubble metadata.
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
 export class ChatUI {
-
   constructor(eventBus, stateManager) {
     this.eventBus = eventBus;
     this.stateManager = stateManager;
@@ -23,7 +23,7 @@ export class ChatUI {
       modelInfo: null,
       lastMessageMeta: null
     };
-    console.log('✅ ChatUI V28.3.2 (glass-layout) initialisée.');
+    console.log('[ChatUI] V28.3.2 (glass-layout) initialisee.');
   }
 
   render(container, chatState = {}) {
@@ -31,6 +31,7 @@ export class ChatUI {
     this.root = container;
     this.state = { ...this.state, ...chatState };
     const agentTabs = this._agentTabsHTML(this.state.currentAgentId);
+
     container.innerHTML = `
       <div class="chat-container card">
         <div class="chat-header">
@@ -39,7 +40,7 @@ export class ChatUI {
             <div class="agent-selector">${agentTabs}</div>
           </div>
           <div class="chat-header-right">
-            <div id="model-badge" class="model-badge">—</div>
+            <div id="model-badge" class="model-badge">-</div>
             <div id="chat-auth-host" class="chat-auth-host" data-auth-host></div>
           </div>
         </div>
@@ -49,120 +50,143 @@ export class ChatUI {
         </div>
         <div class="chat-footer">
           <form id="chat-form" class="chat-form" autocomplete="off">
-            <div class="chat-composer">
-              <textarea
-                id="chat-input"
-                class="chat-input"
-                rows="3"
-                placeholder="Écrivez votre message..."></textarea>
-              <button type="submit" id="chat-send" class="chat-send-button" title="Envoyer" aria-label="Envoyer">
-                <span class="sr-only">Envoyer</span>
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
-                  <path d="M3 3l18 9-18 9 4-9-4-9z" fill="currentColor"></path>
-                </svg>
-              </button>
-            </div>
-            <div class="input-actions">
-              <div class="action-group rag-control">
+            <div class="chat-entry-row">
+              <div class="rag-toggle" data-role="rag-toggle">
                 <button
                   type="button"
                   id="rag-power"
-                  class="rag-power"
+                  class="rag-power toggle-metal"
                   role="switch"
                   aria-checked="${String(!!this.state.ragEnabled)}"
                   title="Activer/Désactiver RAG">
-                  <svg class="power-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                    <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-                    <path d="M5.5 7a 8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                  <svg class="power-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                    <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
+                    <path d="M5.5 7a 8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
                   </svg>
                 </button>
-                <span id="rag-label" class="rag-label">RAG</span>
+                <span id="rag-label" class="rag-label">${this.state.ragEnabled ? 'RAG activé' : 'RAG désactivé'}</span>
               </div>
-              <div class="action-group memory-control">
-                <span id="memory-dot" class="memory-dot" aria-hidden="true"></span>
-                <span id="memory-label" class="memory-label" title="Statut mémoire">Mémoire OFF</span>
-                <span id="memory-counters" class="memory-counters"></span>
+
+              <div class="input-wrapper chat-input-shell">
+                <textarea id="chat-input" class="chat-input" rows="3" placeholder="Écrivez votre message..."></textarea>
+              </div>
+
+              <button type="submit" id="chat-send" class="chat-send-button" title="Envoyer" aria-label="Envoyer">
+                <span class="sr-only">Envoyer</span>
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"></path>
+                </svg>
+              </button>
+            </div>
+
+            <div class="chat-toolbar">
+              <div class="memory-control toolbar-group">
+                <div class="memory-status">
+                  <span id="memory-dot" aria-hidden="true"></span>
+                  <div class="memory-status-text">
+                    <span id="memory-label" class="memory-label" title="Statut mémoire">Mémoire OFF</span>
+                    <span id="memory-counters" class="memory-counters"></span>
+                  </div>
+                </div>
                 <div class="memory-actions">
                   <button type="button" id="memory-analyze" class="button" title="Analyser / consolider la mémoire">Analyser</button>
-                  <button type="button" id="memory-clear" class="button" title="Effacer la mémoire de session">Effacer</button>
+                  <button type="button" id="memory-clear" class="button" title="Effacer la mémoire de session">Clear</button>
                 </div>
               </div>
-              <div class="action-group utility-control">
+
+              <div class="chat-secondary-actions toolbar-group">
                 <button type="button" id="chat-export" class="button">Exporter</button>
                 <button type="button" id="chat-clear" class="button">Effacer</button>
               </div>
+
+              <div id="chat-metrics" class="chat-metrics toolbar-group">
+                <span id="metric-ttfb">TTFB: - ms</span>
+                <span aria-hidden="true">-</span>
+                <span id="metric-fallbacks">Fallback REST: 0</span>
+              </div>
             </div>
           </form>
-          <div id="chat-metrics" class="chat-metrics">
-            <span id="metric-ttfb">TTFB: — ms</span>
-            <span aria-hidden="true" class="dot">•</span>
-            <span id="metric-fallbacks">Fallback REST: 0</span>
-          </div>
         </div>
       </div>
     `;
+
     this.eventBus.emit?.('ui:auth:host-changed');
     this._bindEvents(container);
     this.update(container, this.state);
-    console.log('[CHAT] ChatUI rendu → container.id =', container.id || '(anonyme)');
+    console.log('[CHAT] ChatUI rendu -> container.id =', container.id || '(anonyme)');
   }
 
   update(container, chatState = {}) {
     if (!container) return;
     this.state = { ...this.state, ...chatState };
-    container.querySelector('#rag-power')
-      ?.setAttribute('aria-checked', String(!!this.state.ragEnabled));
+
+    const ragBtn = container.querySelector('#rag-power');
+    ragBtn?.setAttribute('aria-checked', String(!!this.state.ragEnabled));
+    const ragLabel = container.querySelector('#rag-label');
+    if (ragLabel) ragLabel.textContent = this.state.ragEnabled ? 'RAG activé' : 'RAG désactivé';
+    const ragToggle = container.querySelector('[data-role="rag-toggle"]');
+    if (ragToggle) ragToggle.classList.toggle('is-on', !!this.state.ragEnabled);
+
     this._setActiveAgentTab(container, this.state.currentAgentId);
-    const raw = this.state.messages?.[this.state.currentAgentId];
-    const list = this._asArray(raw).map((m) => this._normalizeMessage(m));
+
+    const rawMessages = this.state.messages?.[this.state.currentAgentId];
+    const list = this._asArray(rawMessages).map((m) => this._normalizeMessage(m));
     this._renderMessages(container.querySelector('#chat-messages'), list);
     this._renderSources(container.querySelector('#rag-sources'), this.state.lastMessageMeta?.sources);
+
     const memoryOn = !!(this.state.memoryBannerAt || (this.state.lastAnalysis && this.state.lastAnalysis.status === 'completed'));
     const dot = container.querySelector('#memory-dot');
+    if (dot) dot.style.background = memoryOn ? '#22c55e' : '#6b7280';
     const lbl = container.querySelector('#memory-label');
-    if (dot) dot.classList.toggle('is-on', memoryOn);
     if (lbl) lbl.textContent = memoryOn ? 'Mémoire ON' : 'Mémoire OFF';
+
     const mem = this.state.memoryStats || {};
     const cnt = container.querySelector('#memory-counters');
     if (cnt) {
-      const stmTxt = mem.has_stm ? 'STM ●' : 'STM 0';
+      const stmTxt = mem.has_stm ? 'STM ✓' : 'STM 0';
       const ltmTxt = `LTM ${Number(mem.ltm_items || 0)}`;
-      const inj = mem.injected ? '• inj' : '';
-      cnt.textContent = `${stmTxt} • ${ltmTxt}${inj ? ' ' + inj : ''}`;
+      const inj = mem.injected ? '| inj' : '';
+      cnt.textContent = `${stmTxt} | ${ltmTxt}${inj ? ' ' + inj : ''}`;
     }
+
     const badge = container.querySelector('#model-badge');
     if (badge) {
       const mi = this.state.modelInfo || {};
       const lm = this.state.lastMessageMeta || {};
       const usedProvider = (lm.provider || mi.provider || '').toString();
       const usedModel = (lm.model || mi.model || '').toString();
-      const planned = (mi.provider || '?') + ':' + (mi.model || '?');
-      const used = (usedProvider || '?') + ':' + (usedModel || '?');
+      const planned = `${mi.provider || '?'}:${mi.model || '?'}`;
+      const used = `${usedProvider || '?'}:${usedModel || '?'}`;
       const fallback = !!(mi.provider && mi.model && (mi.provider !== usedProvider || mi.model !== usedModel));
-      badge.textContent = usedProvider || usedModel ? (fallback ? `Fallback → ${used}` : used) : '—';
-      const ttfb = (this.state.metrics && Number.isFinite(this.state.metrics.last_ttfb_ms)) ? `${this.state.metrics.last_ttfb_ms} ms` : '—';
-      badge.title = `Modèle planifié: ${planned} • Utilisé: ${used} • TTFB: ${ttfb}`;
+      badge.textContent = usedProvider || usedModel ? (fallback ? `Fallback -> ${used}` : used) : '-';
+      const ttfb = (this.state.metrics && Number.isFinite(this.state.metrics.last_ttfb_ms))
+        ? `${this.state.metrics.last_ttfb_ms} ms`
+        : '-';
+      badge.title = `Modèle planifié: ${planned} - Utilisé: ${used} - TTFB: ${ttfb}`;
       badge.classList.toggle('is-fallback', fallback);
     }
+
     const met = this.state.metrics || {};
     const ttfbEl = container.querySelector('#metric-ttfb');
-    const fbEl = container.querySelector('#metric-fallbacks');
     if (ttfbEl) ttfbEl.textContent = `TTFB: ${Number.isFinite(met.last_ttfb_ms) ? met.last_ttfb_ms : 0} ms`;
+    const fbEl = container.querySelector('#metric-fallbacks');
     if (fbEl) fbEl.textContent = `Fallback REST: ${met.rest_fallback_count || 0}`;
   }
 
   _bindEvents(container) {
-    const form  = container.querySelector('#chat-form');
+    const form = container.querySelector('#chat-form');
     const input = container.querySelector('#chat-input');
     const ragBtn = container.querySelector('#rag-power');
     const ragLbl = container.querySelector('#rag-label');
     const sendBtn = container.querySelector('#chat-send');
-    const memBtn  = container.querySelector('#memory-analyze');
-    const memClr  = container.querySelector('#memory-clear');
+    const memBtn = container.querySelector('#memory-analyze');
+    const memClr = container.querySelector('#memory-clear');
+
     const autosize = () => this._autoGrow(input);
     setTimeout(autosize, 0);
     input?.addEventListener('input', autosize);
     window.addEventListener('resize', autosize);
+
     form?.addEventListener('submit', (e) => {
       e.preventDefault();
       const text = (input?.value || '').trim();
@@ -171,6 +195,7 @@ export class ChatUI {
       input.value = '';
       autosize();
     });
+
     input?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -178,14 +203,12 @@ export class ChatUI {
         else form?.dispatchEvent(new Event('submit', { cancelable: true }));
       }
     });
+
     sendBtn?.addEventListener('click', () => {
       if (typeof form?.requestSubmit === 'function') form.requestSubmit();
       else form?.dispatchEvent(new Event('submit', { cancelable: true }));
     });
-    container.querySelector('#chat-export')
-      ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_EXPORT, null));
-    container.querySelector('#chat-clear')
-      ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_CLEAR, null));
+
     const toggleRag = () => {
       if (!ragBtn) return;
       const on = ragBtn.getAttribute('aria-checked') === 'true';
@@ -194,8 +217,15 @@ export class ChatUI {
     };
     ragBtn?.addEventListener('click', toggleRag);
     ragLbl?.addEventListener('click', toggleRag);
+
+    container.querySelector('#chat-export')
+      ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_EXPORT, null));
+    container.querySelector('#chat-clear')
+      ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_CLEAR, null));
+
     memBtn?.addEventListener('click', () => this.eventBus.emit('memory:tend'));
     memClr?.addEventListener('click', () => this.eventBus.emit('memory:clear'));
+
     container.querySelector('.agent-selector')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-agent-id]');
       if (!btn) return;
@@ -203,6 +233,7 @@ export class ChatUI {
       this.eventBus.emit(EVENTS.CHAT_AGENT_SELECTED, agentId);
       this._setActiveAgentTab(container, agentId);
     });
+
     container.querySelector('#rag-sources')?.addEventListener('click', (e) => {
       const chip = e.target.closest('button[data-doc-id]');
       if (!chip) return;
@@ -214,6 +245,7 @@ export class ChatUI {
       };
       this.eventBus.emit('rag:source:click', info);
     });
+
     try {
       const off = this.eventBus?.on?.('documents:changed', async (payload = {}) => {
         await this._onDocumentsChanged(container, payload);
@@ -221,19 +253,20 @@ export class ChatUI {
       if (typeof off === 'function') this._offDocumentsChanged = off;
     } catch {}
   }
+
   async _onDocumentsChanged(container, payload) {
     try {
       let docs = Array.isArray(payload.items) ? payload.items : null;
-      if (!docs) { docs = await this._refetchDocuments(); }
+      if (!docs) docs = await this._refetchDocuments();
       if (!Array.isArray(docs)) {
         this._renderSources(container.querySelector('#rag-sources'), []);
         return;
       }
-      const ids = new Set(docs.map(d => d?.id || d?.document_id || d?._id).filter(Boolean));
-      const names = new Set(docs.map(d => (d?.filename || d?.original_filename || d?.name || '').toString()).filter(Boolean));
+      const ids = new Set(docs.map((d) => d?.id || d?.document_id || d?._id).filter(Boolean));
+      const names = new Set(docs.map((d) => (d?.filename || d?.original_filename || d?.name || '').toString()).filter(Boolean));
       const meta = this.state.lastMessageMeta || {};
       const src = Array.isArray(meta.sources) ? meta.sources : [];
-      const filtered = src.filter(s => {
+      const filtered = src.filter((s) => {
         const sid = (s.document_id || '').toString();
         const sname = (s.filename || '').toString();
         return (sid && ids.has(sid)) || (sname && names.has(sname));
@@ -247,6 +280,7 @@ export class ChatUI {
       this._renderSources(container.querySelector('#rag-sources'), []);
     }
   }
+
   async _refetchDocuments() {
     try {
       const headers = {};
@@ -255,8 +289,8 @@ export class ChatUI {
         (this.stateManager && typeof this.stateManager.getAuthToken === 'function' && this.stateManager.getAuthToken) ||
         null;
       if (tokenGetter) {
-        const t = await tokenGetter();
-        if (t) headers['Authorization'] = `Bearer ${t}`;
+        const token = await tokenGetter();
+        if (token) headers.Authorization = `Bearer ${token}`;
       }
       const res = await fetch('/api/documents', { headers });
       if (!res.ok) return null;
@@ -267,18 +301,18 @@ export class ChatUI {
     }
   }
 
-  _autoGrow(el){
+  _autoGrow(el) {
     if (!el) return;
-    const MAX_PX = Math.floor(window.innerHeight * 0.40);
+    const max = Math.floor(window.innerHeight * 0.40);
     el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, MAX_PX) + 'px';
-    el.style.overflowY = (el.scrollHeight > MAX_PX) ? 'auto' : 'hidden';
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+    el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden';
   }
 
   _renderMessages(host, messages) {
     if (!host) return;
-    const html = (messages || []).map(m => this._messageHTML(m)).join('');
-    host.innerHTML = html || `<div class="placeholder">Commencez à discuter…</div>`;
+    const html = (messages || []).map((m) => this._messageHTML(m)).join('');
+    host.innerHTML = html || '<div class="placeholder">Commencez à discuter.</div>';
     host.scrollTo(0, 1e9);
   }
 
@@ -290,9 +324,10 @@ export class ChatUI {
       host.innerHTML = '';
       return;
     }
+
     const chips = items.map((s, i) => {
       const filename = (s.filename || 'Document').toString();
-      const page = (Number(s.page) || 0) > 0 ? ` • p.${Number(s.page)}` : '';
+      const page = (Number(s.page) || 0) > 0 ? ` - p.${Number(s.page)}` : '';
       const label = `${filename}${page}`;
       const tip = (s.excerpt || '').toString().slice(0, 300);
       const docId = (s.document_id || `doc-${i}`).toString();
@@ -307,12 +342,13 @@ export class ChatUI {
           title="${this._escapeHTML(tip.replace(/\n/g, ' '))}"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-            <path d="M4 4h10l6 6v10H4z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M14 4v6h6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M4 4h10l6 6v10H4z" fill="none" stroke="currentColor" stroke-width="1.5"></path>
+            <path d="M14 4v6h6" fill="none" stroke="currentColor" stroke-width="1.5"></path>
           </svg>
           <span>${this._escapeHTML(label)}</span>
         </button>`;
     }).join('');
+
     host.innerHTML = `
       <div class="rag-sources-wrap">
         <span class="rag-sources-label">Sources :</span>
@@ -324,28 +360,26 @@ export class ChatUI {
 
   _messageHTML(m) {
     const side = m.role === 'user' ? 'user' : 'assistant';
-    const rawAgentId = side === 'assistant' ? (m.agent_id || m.agent || null) : null;
-    const agentInfo = side === 'assistant' ? (AGENTS[rawAgentId] || null) : null;
-    const normalizedAgentId = side === 'assistant'
-      ? (agentInfo?.id || rawAgentId || 'assistant')
-      : 'user';
+    const agentId = side === 'assistant' ? (m.agent_id || m.agent || 'nexus') : '';
+    const agentInfo = side === 'assistant' ? (AGENTS[agentId] || {}) : {};
     const displayName = side === 'user'
       ? 'FG'
-      : (agentInfo?.label || agentInfo?.name || this._humanizeAgentId(rawAgentId) || 'Assistant');
-    const label = (displayName || '').toUpperCase();
+      : (agentInfo.label || agentInfo.name || this._humanizeAgentId(agentId) || 'Assistant');
+
     const raw = this._toPlainText(m.content);
     const content = this._escapeHTML(raw).replace(/\n/g, '<br/>');
-    const cursor = m.isStreaming ? `<span class="blinking-cursor">▍</span>` : '';
-    const timestamp = this._formatTimestamp(m.created_at ?? m.timestamp ?? m.time);
-    const roleClass = side === 'assistant' ? `message--${normalizedAgentId}` : 'message--user';
+    const cursor = m.isStreaming ? '<span class="blinking-cursor">▍</span>' : '';
+    const timestamp = this._formatTimestamp(m.created_at ?? m.timestamp ?? m.time ?? m.datetime ?? m.date);
+    const classes = ['message', side];
+    if (side === 'assistant' && agentId) classes.push(agentId);
+
     return `
-      <div class="message ${roleClass}">
-        <div class="message-header">
-          <span class="message-name">${this._escapeHTML(label)}</span>
-          <span aria-hidden="true" class="message-separator">-</span>
-          <time class="message-time" datetime="${timestamp.iso}">${timestamp.display}</time>
-        </div>
+      <div class="${classes.join(' ')}">
         <div class="message-bubble">
+          <div class="message-meta">
+            <span class="sender-name">${this._escapeHTML(displayName)}</span>
+            <time class="message-time" datetime="${timestamp.iso}">${timestamp.display}</time>
+          </div>
           <div class="message-text">${content}${cursor}</div>
         </div>
       </div>`;
@@ -375,30 +409,35 @@ export class ChatUI {
       </div>`;
   }
 
-  _setActiveAgentTab(container, agentId){
-    container.querySelectorAll('.button-tab').forEach(b=>b.classList.remove('active'));
+  _setActiveAgentTab(container, agentId) {
+    container.querySelectorAll('.button-tab').forEach((b) => b.classList.remove('active'));
     container.querySelector(`.button-tab[data-agent-id="${agentId}"]`)?.classList.add('active');
   }
 
-  _asArray(x){ return Array.isArray(x) ? x : (x ? [x] : []); }
+  _asArray(x) {
+    return Array.isArray(x) ? x : (x ? [x] : []);
+  }
 
-  _normalizeMessage(m){
-    if (!m) return { role:'assistant', content:'' };
-    if (typeof m === 'string') return { role:'assistant', content:m };
+  _normalizeMessage(m) {
+    if (!m) return { role: 'assistant', content: '' };
+    if (typeof m === 'string') return { role: 'assistant', content: m };
+    const timestamp =
+      m.created_at ?? m.timestamp ?? m.time ?? m.datetime ?? m.date ?? m.createdAt ?? (m.meta && m.meta.timestamp) ?? null;
     return {
       role: m.role || 'assistant',
       content: m.content ?? m.text ?? '',
       isStreaming: !!m.isStreaming,
       agent_id: m.agent_id || m.agent,
-      created_at: m.created_at ?? m.timestamp ?? m.time ?? m.createdAt ?? null,
-      id: m.id ?? null
+      id: m.id ?? null,
+      created_at: timestamp,
+      timestamp
     };
   }
 
-  _toPlainText(val){
+  _toPlainText(val) {
     if (val == null) return '';
     if (typeof val === 'string') return val;
-    if (Array.isArray(val)) return val.map(v => this._toPlainText(v)).join('');
+    if (Array.isArray(val)) return val.map((v) => this._toPlainText(v)).join('');
     if (typeof val === 'object') {
       if ('text' in val) return this._toPlainText(val.text);
       if ('content' in val) return this._toPlainText(val.content);
@@ -408,24 +447,21 @@ export class ChatUI {
     return String(val);
   }
 
-  _escapeHTML(s){
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
-  }
-
-  _initials(name = '') {
-    const parts = String(name).trim().split(/\s+/).filter(Boolean);
-    if (!parts.length) return 'AI';
-    const first = parts[0][0] || '';
-    const last = parts.length > 1 ? parts[parts.length - 1][0] || '' : '';
-    const combo = (first + last).toUpperCase();
-    return combo || first.toUpperCase();
+  _escapeHTML(s) {
+    return String(s).replace(/[&<>"']/g, (c) => {
+      switch (c) {
+        case '&': return '&amp;';
+        case '<': return '&lt;';
+        case '>': return '&gt;';
+        case '"': return '&quot;';
+        default: return '&#39;';
+      }
+    });
   }
 
   _humanizeAgentId(id) {
     if (!id) return '';
-    const base = String(id)
-      .replace(/[_-]+/g, ' ')
-      .trim();
+    const base = String(id).replace(/[_-]+/g, ' ').trim();
     if (!base) return '';
     return base
       .split(/\s+/)
@@ -456,8 +492,8 @@ export class ChatUI {
 
   _formatTimestamp(input) {
     const date = this._coerceDate(input) || new Date();
-    const time = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    const day = date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    return { display: `${time} - ${day}`, iso: date.toISOString() };
+    const datePart = date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timePart = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    return { display: `${datePart} - ${timePart}`, iso: date.toISOString() };
   }
 }
