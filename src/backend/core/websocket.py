@@ -4,7 +4,7 @@ import logging
 import asyncio
 from typing import Dict, Any, List, Optional, Callable, TYPE_CHECKING
 
-from fastapi import APIRouter, WebSocket
+from fastapi import APIRouter, WebSocket, HTTPException
 from starlette.websockets import WebSocketDisconnect
 
 from .session_manager import SessionManager
@@ -108,10 +108,8 @@ def get_websocket_router(container) -> APIRouter:
     @router.websocket("/ws/{session_id}")
     async def websocket_endpoint(websocket: WebSocket, session_id: str):
         user_id_hint = websocket.query_params.get("user_id")
-        try:
-            user_id = await dependencies.get_user_id_for_ws(websocket, user_id=user_id_hint)
-        except Exception as e:
-            # 🔁 Handshake gracieux: accept → notifier → close(4401)
+
+        async def _reject_ws(reason: str, close_code: int = 4401):
             try:
                 requested = websocket.headers.get("sec-websocket-protocol") or ""
                 selected = None
@@ -121,16 +119,30 @@ def get_websocket_router(container) -> APIRouter:
                         break
                 await websocket.accept(subprotocol=selected)
             except Exception as ae:
-                logger.warning(f"WS accept() avant close a échoué: {ae}")
+                logger.warning("WS accept() avant close a echoue: %s", ae)
             try:
-                await websocket.send_json({"type": "ws:auth_required", "payload": {"reason": "invalid_or_missing_token"}})
+                await websocket.send_json({
+                    "type": "ws:auth_required",
+                    "payload": {"reason": reason, "code": close_code},
+                })
             except Exception:
                 pass
-            logger.warning(f"WS auth échouée → close 4401 : {e}")
             try:
-                await websocket.close(code=4401)
+                await websocket.close(code=close_code)
             except Exception:
                 pass
+
+        try:
+            user_id = await dependencies.get_user_id_for_ws(websocket, user_id=user_id_hint)
+        except HTTPException as exc:
+            reason = exc.detail if isinstance(exc.detail, str) else "invalid_or_missing_token"
+            close_code = 4401 if exc.status_code in (401, 403) else 1008
+            logger.warning("WS auth echouee -> close %s : %s", close_code, exc)
+            await _reject_ws(reason, close_code)
+            return
+        except Exception as e:
+            logger.error("WS auth unexpected error -> close 1008 : %s", e)
+            await _reject_ws("unexpected_error", 1008)
             return
 
         session_manager: SessionManager = container.session_manager()

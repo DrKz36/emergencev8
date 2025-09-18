@@ -42,6 +42,12 @@ MODEL_PRICING = {
 
 DEFAULT_TEMPERATURE = float(os.getenv("EMERGENCE_TEMP_DEFAULT", "0.4"))
 
+CHAT_PROVIDER_FALLBACKS = {
+    "google": [("anthropic", "claude-3-haiku-20240307"), ("openai", "gpt-4o-mini")],
+    "anthropic": [("openai", "gpt-4o-mini"), ("google", "gemini-1.5-flash")],
+    "openai": [("anthropic", "claude-3-haiku-20240307"), ("google", "gemini-1.5-flash")],
+}
+
 
 def _normalize_provider(p: Optional[str]) -> str:
     if not p:
@@ -767,16 +773,11 @@ class ChatService:
                 model_used = primary_model
                 success = True
             except Exception as e_primary:
-                fallbacks = []
-                if primary_provider == "google":
-                    fallbacks = [("anthropic", "claude-3-haiku-20240307"), ("openai", "gpt-4o-mini")]
-                elif primary_provider == "anthropic":
-                    fallbacks = [("openai", "gpt-4o-mini")]
-                elif primary_provider == "openai":
-                    fallbacks = [("anthropic", "claude-3-haiku-20240307")]
-
+                fallback_sequence = CHAT_PROVIDER_FALLBACKS.get(primary_provider, [])
                 last_error = e_primary
-                for prov2, model2 in fallbacks:
+                for prov2, model2 in fallback_sequence:
+                    if prov2 == primary_provider:
+                        continue
                     try:
                         await connection_manager.send_personal_message(
                             {
@@ -970,18 +971,14 @@ class ChatService:
         text = ""
         cost_info: Dict[str, Any] = {}
 
-        fallback_candidates = {
-            "google": [("anthropic", "claude-3-haiku-20240307"), ("openai", "gpt-4o-mini")],
-            "anthropic": [("openai", "gpt-4o-mini"), ("google", "gemini-1.5-flash")],
-            "openai": [("anthropic", "claude-3-haiku-20240307"), ("google", "gemini-1.5-flash")],
-        }
-
         try:
             text, cost_info = await run_once(primary_provider, primary_model)
         except Exception as e_primary:
-            fallbacks = fallback_candidates.get(primary_provider, [])
+            fallback_sequence = CHAT_PROVIDER_FALLBACKS.get(primary_provider, [])
             last_error: Exception = e_primary
-            for prov2, model2 in fallbacks:
+            for prov2, model2 in fallback_sequence:
+                if prov2 == primary_provider:
+                    continue
                 try:
                     text, cost_info = await run_once(prov2, model2)
                     provider_used = prov2

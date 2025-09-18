@@ -80,23 +80,27 @@
   display:flex; align-items:center; justify-content:center;
 }
 
-/* ----- RAG toggle (mêmes codes visuels que le Chat) ----- */
-.rag-control{ display:flex; align-items:center; gap:.6rem; }
-.rag-label{ font-weight:700; letter-spacing:.2px; }
-.rag-power{
-  --on: #27ae60;
-  --off:#d9534f;
-  width: 34px; height: 34px; border-radius: 999px; border: 1px solid rgba(255,255,255,.12);
-  display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
-  background: radial-gradient( circle at 30% 30%, rgba(255,255,255,.15), transparent 60% ),
-              linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), 0 6px 18px rgba(0,0,0,.35);
-  color:#111;
-  transition: transform .06s ease, box-shadow .15s ease, background-color .15s ease;
+/* ----- RAG toggle (aligné sur le Chat) ----- */
+.debate-view-wrapper .rag-control{ display:flex; align-items:center; gap:10px; }
+.debate-view-wrapper .rag-label{ font-weight:600; letter-spacing:.08em; text-transform:uppercase; font-size:13px; color:#fde68a; cursor:pointer; }
+.debate-view-wrapper .rag-power{
+  width:44px; height:44px; border-radius:14px; border:1px solid rgba(250,204,21,.4);
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  background: linear-gradient(140deg, rgba(250,204,21,.23), rgba(250,204,21,.06));
+  color:#facc15;
+  box-shadow:0 10px 22px rgba(250,204,21,.18);
+  transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
 }
-.rag-power[aria-checked="true"] { background-color: var(--on); color:#083; }
-.rag-power[aria-checked="false"]{ background-color: var(--off); color:#300; }
-.rag-power:active{ transform: scale(.97); }
+.debate-view-wrapper .rag-power[aria-checked="true"]{
+  background: linear-gradient(140deg, rgba(234,179,8,.48), rgba(250,204,21,.32));
+  box-shadow:0 14px 28px rgba(234,179,8,.28);
+  filter:none;
+}
+.debate-view-wrapper .rag-power[aria-checked="false"]{
+  filter: grayscale(.35);
+  box-shadow:0 8px 18px rgba(148,163,184,.18);
+}
+.debate-view-wrapper .rag-power:active{ transform: scale(.97); }
 
 /* ========== FLUX CONTINU (tours + synthèse) ========== */
 .debate-flow{ display:flex; flex-direction:column; gap: 1.25rem; }
