@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ChatUI - V28.3.2 (glass layout merge)
  * - Adopt glassmorphic layout with header/footer zones and auth host badge.
  * - Keeps mount-safe render, RAG sources, metrics, memory controls, and WS guards.
@@ -50,7 +50,7 @@ export class ChatUI {
         </div>
         <div class="chat-footer">
           <form id="chat-form" class="chat-form" autocomplete="off">
-            <div class="chat-entry-row">
+            <div class="chat-composer" data-role="chat-composer">
               <div class="rag-toggle" data-role="rag-toggle">
                 <button
                   type="button"
@@ -58,19 +58,18 @@ export class ChatUI {
                   class="rag-power toggle-metal"
                   role="switch"
                   aria-checked="${String(!!this.state.ragEnabled)}"
-                  title="Activer/Désactiver RAG">
+                  aria-label="Activer ou desactiver le RAG"
+                  title="Activer/Desactiver RAG">
                   <svg class="power-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                     <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
                     <path d="M5.5 7a 8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
                   </svg>
                 </button>
-                <span id="rag-label" class="rag-label">${this.state.ragEnabled ? 'RAG activé' : 'RAG désactivé'}</span>
+                <span id="rag-label" class="rag-label">${this.state.ragEnabled ? 'RAG actif' : 'RAG inactif'}</span>
               </div>
-
-              <div class="input-wrapper chat-input-shell">
-                <textarea id="chat-input" class="chat-input" rows="3" placeholder="Écrivez votre message..."></textarea>
+              <div class="chat-input-shell">
+                <textarea id="chat-input" class="chat-input" rows="1" placeholder="Ecris ton message..." aria-label="Message"></textarea>
               </div>
-
               <button type="submit" id="chat-send" class="chat-send-button" title="Envoyer" aria-label="Envoyer">
                 <span class="sr-only">Envoyer</span>
                 <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
@@ -78,52 +77,26 @@ export class ChatUI {
                 </svg>
               </button>
             </div>
-
-            <div class="chat-toolbar">
-              <div class="memory-control toolbar-group">
-                <div class="memory-status">
-                  <span id="memory-dot" aria-hidden="true"></span>
-                  <div class="memory-status-text">
-                    <span id="memory-label" class="memory-label" title="Statut mémoire">Mémoire OFF</span>
-                    <span id="memory-counters" class="memory-counters"></span>
-                  </div>
-                </div>
-                <div class="memory-actions">
-                  <button type="button" id="memory-analyze" class="button" title="Analyser / consolider la mémoire">Analyser</button>
-                  <button type="button" id="memory-clear" class="button" title="Effacer la mémoire de session">Clear</button>
-                </div>
-              </div>
-
-              <div class="chat-secondary-actions toolbar-group">
-                <button type="button" id="chat-export" class="button">Exporter</button>
-                <button type="button" id="chat-clear" class="button">Effacer</button>
-              </div>
-
-              <div id="chat-metrics" class="chat-metrics toolbar-group">
-                <span id="metric-ttfb">TTFB: - ms</span>
-                <span aria-hidden="true">-</span>
-                <span id="metric-fallbacks">Fallback REST: 0</span>
-              </div>
-            </div>
           </form>
         </div>
       </div>
     `;
 
     this.eventBus.emit?.('ui:auth:host-changed');
+    this._ensureControlPanel();
     this._bindEvents(container);
     this.update(container, this.state);
     console.log('[CHAT] ChatUI rendu -> container.id =', container.id || '(anonyme)');
   }
-
   update(container, chatState = {}) {
     if (!container) return;
     this.state = { ...this.state, ...chatState };
+    this._ensureControlPanel();
 
     const ragBtn = container.querySelector('#rag-power');
     ragBtn?.setAttribute('aria-checked', String(!!this.state.ragEnabled));
     const ragLabel = container.querySelector('#rag-label');
-    if (ragLabel) ragLabel.textContent = this.state.ragEnabled ? 'RAG activé' : 'RAG désactivé';
+    if (ragLabel) ragLabel.textContent = this.state.ragEnabled ? 'RAG actif' : 'RAG inactif';
     const ragToggle = container.querySelector('[data-role="rag-toggle"]');
     if (ragToggle) ragToggle.classList.toggle('is-on', !!this.state.ragEnabled);
 
@@ -134,21 +107,9 @@ export class ChatUI {
     this._renderMessages(container.querySelector('#chat-messages'), list);
     this._renderSources(container.querySelector('#rag-sources'), this.state.lastMessageMeta?.sources);
 
-    const memoryOn = !!(this.state.memoryBannerAt || (this.state.lastAnalysis && this.state.lastAnalysis.status === 'completed'));
-    const dot = container.querySelector('#memory-dot');
-    if (dot) dot.style.background = memoryOn ? '#22c55e' : '#6b7280';
-    const lbl = container.querySelector('#memory-label');
-    if (lbl) lbl.textContent = memoryOn ? 'Mémoire ON' : 'Mémoire OFF';
+    this._updateControlPanelState();
 
-    const mem = this.state.memoryStats || {};
-    const cnt = container.querySelector('#memory-counters');
-    if (cnt) {
-      const stmTxt = mem.has_stm ? 'STM ✓' : 'STM 0';
-      const ltmTxt = `LTM ${Number(mem.ltm_items || 0)}`;
-      const inj = mem.injected ? '| inj' : '';
-      cnt.textContent = `${stmTxt} | ${ltmTxt}${inj ? ' ' + inj : ''}`;
-    }
-
+    const met = this.state.metrics || {};
     const badge = container.querySelector('#model-badge');
     if (badge) {
       const mi = this.state.modelInfo || {};
@@ -159,28 +120,19 @@ export class ChatUI {
       const used = `${usedProvider || '?'}:${usedModel || '?'}`;
       const fallback = !!(mi.provider && mi.model && (mi.provider !== usedProvider || mi.model !== usedModel));
       badge.textContent = usedProvider || usedModel ? (fallback ? `Fallback -> ${used}` : used) : '-';
-      const ttfb = (this.state.metrics && Number.isFinite(this.state.metrics.last_ttfb_ms))
-        ? `${this.state.metrics.last_ttfb_ms} ms`
-        : '-';
-      badge.title = `Modèle planifié: ${planned} - Utilisé: ${used} - TTFB: ${ttfb}`;
+      const ttfb = Number.isFinite(met.last_ttfb_ms) ? `${met.last_ttfb_ms} ms` : '-';
+      badge.title = `Modele planifie: ${planned} - Utilise: ${used} - TTFB: ${ttfb}`;
       badge.classList.toggle('is-fallback', fallback);
     }
-
-    const met = this.state.metrics || {};
-    const ttfbEl = container.querySelector('#metric-ttfb');
-    if (ttfbEl) ttfbEl.textContent = `TTFB: ${Number.isFinite(met.last_ttfb_ms) ? met.last_ttfb_ms : 0} ms`;
-    const fbEl = container.querySelector('#metric-fallbacks');
-    if (fbEl) fbEl.textContent = `Fallback REST: ${met.rest_fallback_count || 0}`;
   }
-
   _bindEvents(container) {
     const form = container.querySelector('#chat-form');
     const input = container.querySelector('#chat-input');
     const ragBtn = container.querySelector('#rag-power');
     const ragLbl = container.querySelector('#rag-label');
     const sendBtn = container.querySelector('#chat-send');
-    const memBtn = container.querySelector('#memory-analyze');
-    const memClr = container.querySelector('#memory-clear');
+    this._ensureControlPanel();
+    this._updateControlPanelState();
 
     const autosize = () => this._autoGrow(input);
     setTimeout(autosize, 0);
@@ -218,14 +170,6 @@ export class ChatUI {
     ragBtn?.addEventListener('click', toggleRag);
     ragLbl?.addEventListener('click', toggleRag);
 
-    container.querySelector('#chat-export')
-      ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_EXPORT, null));
-    container.querySelector('#chat-clear')
-      ?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_CLEAR, null));
-
-    memBtn?.addEventListener('click', () => this.eventBus.emit('memory:tend'));
-    memClr?.addEventListener('click', () => this.eventBus.emit('memory:clear'));
-
     container.querySelector('.agent-selector')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-agent-id]');
       if (!btn) return;
@@ -252,6 +196,101 @@ export class ChatUI {
       });
       if (typeof off === 'function') this._offDocumentsChanged = off;
     } catch {}
+  }
+  _ensureControlPanel() {
+    try {
+      const host = document.getElementById('settings-container');
+      if (!host) return null;
+      let panel = host.querySelector('[data-role="chat-control-panel"]');
+      if (!panel) {
+        panel = document.createElement('section');
+        panel.dataset.role = 'chat-control-panel';
+        panel.className = 'chat-controls-panel';
+        panel.innerHTML = this._controlPanelMarkup();
+        host.appendChild(panel);
+      }
+      panel.classList.remove('is-hidden');
+      this._controlPanel = panel;
+      if (!this._panelHandlersBound) {
+        this._bindControlPanelEvents(panel);
+        this._panelHandlersBound = true;
+      }
+      return panel;
+    } catch (err) {
+      console.error('[ChatUI] ensure control panel failed', err);
+      return null;
+    }
+  }
+
+  _controlPanelMarkup() {
+    return `
+      <div class="chat-controls-card">
+        <div class="chat-controls-header">
+          <span class="chat-controls-title">Memoire</span>
+          <span id="memory-dot" class="chat-controls-dot" aria-hidden="true"></span>
+        </div>
+        <div class="chat-controls-status">
+          <span id="memory-label" class="memory-label" title="Statut memoire">Memoire OFF</span>
+          <span id="memory-counters" class="memory-counters">STM 0 | LTM 0</span>
+        </div>
+        <div class="chat-controls-actions">
+          <button type="button" id="memory-analyze" class="button" title="Analyser / consolider la memoire">Analyser</button>
+          <button type="button" id="memory-clear" class="button" title="Effacer la memoire de session">Clear</button>
+        </div>
+      </div>
+      <div class="chat-controls-card">
+        <div class="chat-controls-actions">
+          <button type="button" id="chat-export" class="button">Exporter</button>
+          <button type="button" id="chat-clear" class="button">Effacer</button>
+        </div>
+        <div id="chat-metrics" class="chat-metrics">
+          <span id="metric-ttfb">TTFB: - ms</span>
+          <span id="metric-fallbacks">Fallback REST: 0</span>
+        </div>
+      </div>
+    `;
+  }
+
+  _bindControlPanelEvents(panel) {
+    panel.querySelector('#memory-analyze')?.addEventListener('click', () => this.eventBus.emit('memory:tend'));
+    panel.querySelector('#memory-clear')?.addEventListener('click', () => this.eventBus.emit('memory:clear'));
+    panel.querySelector('#chat-export')?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_EXPORT, null));
+    panel.querySelector('#chat-clear')?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_CLEAR, null));
+  }
+
+  _updateControlPanelState() {
+    const panel = this._ensureControlPanel();
+    if (!panel) return;
+
+    const memoryOn = !!(this.state.memoryBannerAt || (this.state.lastAnalysis && this.state.lastAnalysis.status === 'completed'));
+    const dot = panel.querySelector('#memory-dot');
+    const lbl = panel.querySelector('#memory-label');
+    const cnt = panel.querySelector('#memory-counters');
+
+    if (dot) {
+      dot.classList.toggle('is-on', memoryOn);
+      dot.style.background = '';
+      dot.style.boxShadow = '';
+    }
+    if (lbl) {
+      lbl.textContent = memoryOn ? 'Memoire ON' : 'Memoire OFF';
+      lbl.classList.toggle('is-off', !memoryOn);
+    }
+
+    const mem = this.state.memoryStats || {};
+    if (cnt) {
+      const stmTxt = mem.has_stm ? 'STM V' : 'STM 0';
+      const ltmTxt = `LTM ${Number(mem.ltm_items || 0)}`;
+      const inj = mem.injected ? ' | inj' : '';
+      cnt.textContent = `${stmTxt} | ${ltmTxt}${inj}`;
+    }
+
+    const met = this.state.metrics || {};
+    const metricsHost = panel.querySelector('#chat-metrics');
+    const ttfbEl = metricsHost?.querySelector('#metric-ttfb');
+    const fbEl = metricsHost?.querySelector('#metric-fallbacks');
+    if (ttfbEl) ttfbEl.textContent = `TTFB: ${Number.isFinite(met.last_ttfb_ms) ? met.last_ttfb_ms : 0} ms`;
+    if (fbEl) fbEl.textContent = `Fallback REST: ${met.rest_fallback_count || 0}`;
   }
 
   async _onDocumentsChanged(container, payload) {
@@ -303,16 +342,18 @@ export class ChatUI {
 
   _autoGrow(el) {
     if (!el) return;
-    const max = Math.floor(window.innerHeight * 0.40);
+    const max = Math.floor(window.innerHeight * 0.45);
+    const min = 52;
     el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+    const next = Math.min(Math.max(el.scrollHeight, min), max);
+    el.style.height = `${next}px`;
     el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden';
   }
 
   _renderMessages(host, messages) {
     if (!host) return;
     const html = (messages || []).map((m) => this._messageHTML(m)).join('');
-    host.innerHTML = html || '<div class="placeholder">Commencez à discuter.</div>';
+    host.innerHTML = html || '<div class="placeholder">Commencez � discuter.</div>';
     host.scrollTo(0, 1e9);
   }
 
@@ -368,7 +409,7 @@ export class ChatUI {
 
     const raw = this._toPlainText(m.content);
     const content = this._escapeHTML(raw).replace(/\n/g, '<br/>');
-    const cursor = m.isStreaming ? '<span class="blinking-cursor">▍</span>' : '';
+    const cursor = m.isStreaming ? '<span class="blinking-cursor">?</span>' : '';
     const timestamp = this._formatTimestamp(m.created_at ?? m.timestamp ?? m.time ?? m.datetime ?? m.date);
 
     const classes = ['message', side, `message--${side}`];
@@ -508,3 +549,4 @@ export class ChatUI {
     return { display: `${datePart} - ${timePart}`, iso: date.toISOString() };
   }
 }
+
