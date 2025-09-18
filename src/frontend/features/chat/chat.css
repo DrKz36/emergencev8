@@ -90,6 +90,7 @@
   cursor:pointer;
   transition: color .2s ease, background .2s ease, box-shadow .2s ease, border-color .2s ease, transform .2s ease;
   white-space:nowrap;
+}
 .chat-header .agent-selector .button-tab:hover{
   transform: translateY(-1px);
   box-shadow: 0 10px 25px rgba(15,23,42,.35);
@@ -97,7 +98,6 @@
 .chat-header .agent-selector .button-tab.active{
   color:#fff;
   box-shadow: 0 12px 30px rgba(15,23,42,.45);
-}
 }
 .button-tab .tab-icon{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }
 .button-tab .tab-icon svg{ width:16px; height:16px; display:block; }
@@ -432,7 +432,6 @@
   transform: translateY(2px) scale(.97);
 }
 .chat-send-button svg{ width:22px; height:22px; }
-}
 .chat-input::placeholder{ color: rgba(226,232,240,.55); }
 .chat-send-button{
   width:48px;

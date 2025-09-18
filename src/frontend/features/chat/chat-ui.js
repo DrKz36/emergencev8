@@ -54,7 +54,7 @@ export class ChatUI {
                 id="chat-input"
                 class="chat-input"
                 rows="3"
-                placeholder="Ecrivez votre message..."></textarea>
+                placeholder="Écrivez votre message..."></textarea>
               <button type="submit" id="chat-send" class="chat-send-button" title="Envoyer" aria-label="Envoyer">
                 <span class="sr-only">Envoyer</span>
                 <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
@@ -458,6 +458,6 @@ export class ChatUI {
     const date = this._coerceDate(input) || new Date();
     const time = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     const day = date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    return { display: `${time} ${day}`, iso: date.toISOString() };
+    return { display: `${time} - ${day}`, iso: date.toISOString() };
   }
 }
