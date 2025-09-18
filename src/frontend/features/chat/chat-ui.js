@@ -370,21 +370,32 @@ export class ChatUI {
     const content = this._escapeHTML(raw).replace(/\n/g, '<br/>');
     const cursor = m.isStreaming ? '<span class="blinking-cursor">▍</span>' : '';
     const timestamp = this._formatTimestamp(m.created_at ?? m.timestamp ?? m.time ?? m.datetime ?? m.date);
-    const classes = ['message', side];
-    if (side === 'assistant' && agentId) classes.push(agentId);
+
+    const classes = ['message', side, `message--${side}`];
+    if (side === 'assistant') {
+      if (agentId) {
+        classes.push(agentId);
+        classes.push(`message--${agentId}`);
+      }
+      if (agentInfo.cssClass) classes.push(agentInfo.cssClass);
+    }
+
+    const className = classes
+      .filter(Boolean)
+      .filter((value, index, arr) => arr.indexOf(value) === index)
+      .join(' ');
 
     return `
-      <div class="${classes.join(' ')}">
+      <div class="${className}">
         <div class="message-bubble">
           <div class="message-meta">
             <span class="sender-name">${this._escapeHTML(displayName)}</span>
-            <time class="message-time" datetime="${timestamp.iso}">${timestamp.display}</time>
+            <time class="message-time" datetime="${timestamp.iso}">${this._escapeHTML(timestamp.display)}</time>
           </div>
           <div class="message-text">${content}${cursor}</div>
         </div>
       </div>`;
   }
-
   _agentTabsHTML(activeId) {
     const ids = Object.keys(AGENTS);
     return `
