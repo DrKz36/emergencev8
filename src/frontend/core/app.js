@@ -46,7 +46,7 @@ export class App {
       {
         id: 'memory',
         name: 'Mémoire',
-        icon: '<svg class="nav-icon-brain" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><path d="M9.1 3.5c-2.1 0-3.8 1.66-3.8 3.7v1.08A3.6 3.6 0 0 0 3 11.9a3.55 3.55 0 0 0 2.08 3.2c.19.86.19 1.78 0 2.64A3.05 3.05 0 0 0 8 21h3V3.5H9.1z"></path><path d="M14.9 3.5c2.1 0 3.8 1.66 3.8 3.7v1.08A3.6 3.6 0 0 1 21 11.9a3.55 3.55 0 0 1-2.08 3.2c-.19.86-.19 1.78 0 2.64A3.05 3.05 0 0 1 16 21h-3V3.5h1.9z"></path><path d="M11 7.5h-1"></path><path d="M14 7.5h-1"></path><path d="M11 11.5h-1"></path><path d="M14 11.5h-1"></path><path d="M11 15.5h-1"></path><path d="M14 15.5h-1"></path></svg><span class="nav-icon-badge nav-icon-badge--csv" aria-hidden="true">CSV</span>'
+        icon: '<svg class="nav-icon-brain" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><path d="M9.1 3.5c-2.1 0-3.8 1.66-3.8 3.7v1.08A3.6 3.6 0 0 0 3 11.9a3.55 3.55 0 0 0 2.08 3.2c.19.86.19 1.78 0 2.64A3.05 3.05 0 0 0 8 21h3V3.5H9.1z"></path><path d="M14.9 3.5c2.1 0 3.8 1.66 3.8 3.7v1.08A3.6 3.6 0 0 1 21 11.9a3.55 3.55 0 0 1-2.08 3.2c-.19.86-.19 1.78 0 2.64A3.05 3.05 0 0 1 16 21h-3V3.5h1.9z"></path><path d="M11 7.5h-1"></path><path d="M14 7.5h-1"></path><path d="M11 11.5h-1"></path><path d="M14 11.5h-1"></path><path d="M11 15.5h-1"></path><path d="M14 15.5h-1"></path></svg>'
       },
     ];
     this.activeModule = 'chat';
@@ -173,10 +173,14 @@ export class App {
           const created = await api.createThread({ type: 'chat', title: 'Conversation' });
           currentId = created?.id;
         }
-        if (currentId) this.state.set('threads.currentId', currentId);
+        if (currentId) {
+          this.state.set('threads.currentId', currentId);
+          try { localStorage.setItem('emergence.threadId', currentId); } catch (_) {}
+        }
       }
 
       if (currentId) {
+        try { localStorage.setItem('emergence.threadId', currentId); } catch (_) {}
         this.eventBus.emit('threads:ready', { id: currentId });
         const thread = await api.getThreadById(currentId, { messages_limit: 50 });
         if (thread?.id) {
@@ -232,5 +236,3 @@ export class App {
     return container;
   }
 }
-
-
