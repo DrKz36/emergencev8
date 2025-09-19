@@ -14,6 +14,7 @@ const moduleLoaders = {
   debate: () => import('../features/debate/debate.js'),
   documents: () => import('../features/documents/documents.js'),
   dashboard: () => import('../features/dashboard/dashboard.js'),
+  memory: () => import('../features/memory/memory.js'),
 };
 
 export class App {
@@ -42,6 +43,11 @@ export class App {
       { id: 'debate', name: 'Débats', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" /></svg>' },
       { id: 'documents', name: 'Documents', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>' },
       { id: 'dashboard', name: 'Cockpit', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 100 15 7.5 7.5 0 000-15z" /><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 10.5c0 .678-.291 1.32-.782 1.752L6 15.252M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' },
+      {
+        id: 'memory',
+        name: 'Mémoire',
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor" aria-hidden="true" focusable="false"><path d="M9.2 3.5c-2.05 0-3.7 1.64-3.7 3.66v1.08A3.52 3.52 0 0 0 3 11.8a3.5 3.5 0 0 0 2.05 3.16c.2.93.2 1.92 0 2.85A2.97 2.97 0 0 0 7.9 21H11V3.5H9.2z"></path><path d="M14.8 3.5c2.05 0 3.7 1.64 3.7 3.66v1.08A3.52 3.52 0 0 1 21 11.8a3.5 3.5 0 0 1-2.05 3.16c-.2.93-.2 1.92 0 2.85A2.97 2.97 0 0 1 16.1 21H13V3.5h1.8z"></path><path d="M13 7.5h-2"></path><path d="M13 11.5h-2"></path><path d="M13 15.5h-2"></path></svg>'
+      },
     ];
     this.activeModule = 'chat';
 
@@ -68,37 +74,14 @@ export class App {
         '</a>' +
       '</li>';
     }).join('');
-    const memoryActive = this.isMemoryMenuOpen() ? 'active' : '';
-    const memoryNav = '<li class="nav-item nav-item--memory">' +
-      '<a href="#" class="nav-link nav-link--memory ' + memoryActive + '" data-memory="menu" role="button" aria-expanded="' + (memoryActive ? 'true' : 'false') + '">' +
-        '<span class="nav-icon">' +
-          '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor" aria-hidden="true" focusable="false">' +
-            '<path d="M9.2 3.5c-2.05 0-3.7 1.64-3.7 3.66v1.08A3.52 3.52 0 0 0 3 11.8a3.5 3.5 0 0 0 2.05 3.16c.2.93.2 1.92 0 2.85A2.97 2.97 0 0 0 7.9 21H11V3.5H9.2z"></path>' +
-            '<path d="M14.8 3.5c2.05 0 3.7 1.64 3.7 3.66v1.08A3.52 3.52 0 0 1 21 11.8a3.5 3.5 0 0 1-2.05 3.16c-.2.93-.2 1.92 0 2.85A2.97 2.97 0 0 1 16.1 21H13V3.5h1.8z"></path>' +
-            '<path d="M13 7.5h-2"></path>' +
-            '<path d="M13 11.5h-2"></path>' +
-            '<path d="M13 15.5h-2"></path>' +
-          '</svg>' +
-        '</span>' +
-        '<span class="nav-text">Mémoire</span>' +
-      '</a>' +
-    '</li>';
-    this.dom.tabs.innerHTML = navItemsHTML + memoryNav;
+    this.dom.tabs.innerHTML = navItemsHTML;
   }
 
   isMemoryMenuOpen() {
     return typeof document !== 'undefined' && document.body.classList.contains('brain-panel-open');
   }
 
-  openMemoryMenu() {
-    const handle = typeof window !== 'undefined' ? window.__EMERGENCE_MEMORY__ : null;
-    if (handle && typeof handle.open === 'function') {
-      handle.open();
-    } else if (typeof document !== 'undefined') {
-      document.body.classList.add('brain-panel-open');
-    }
-    this.renderNavigation();
-  }
+
 
   closeMemoryMenu() {
     const handle = typeof window !== 'undefined' ? window.__EMERGENCE_MEMORY__ : null;
@@ -110,43 +93,26 @@ export class App {
     this.renderNavigation();
   }
 
-  toggleMemoryMenu(forceOpen) {
-    if (forceOpen === true) {
-      this.openMemoryMenu();
-      return;
-    }
-    if (forceOpen === false) {
-      this.closeMemoryMenu();
-      return;
-    }
-    if (this.isMemoryMenuOpen()) {
-      this.closeMemoryMenu();
-    } else {
-      this.openMemoryMenu();
-    }
-  }
+
 
   listenToNavEvents() {
     const root = this.dom.sidebar || document;
     const handleNavClick = (e) => {
       const link = e.target.closest('.nav-link');
-      if (!link) return;
-      if (link.dataset.memory === 'menu') {
-        e.preventDefault();
-        this.toggleMemoryMenu();
-        return;
-      }
-      if (!link.dataset.moduleId) return;
+      if (!link || !link.dataset.moduleId) return;
       e.preventDefault();
       this.showModule(link.dataset.moduleId);
     };
     root.addEventListener('click', handleNavClick);
     this.dom.header?.addEventListener('click', handleNavClick);
-    if (typeof window !== 'undefined') {
-      window.addEventListener('emergence:memory:open', () => this.renderNavigation());
-      window.addEventListener('emergence:memory:close', () => this.renderNavigation());
-    }
+
+    const navigateEvent = (EVENTS && EVENTS.MODULE_NAVIGATE) ? EVENTS.MODULE_NAVIGATE : 'app:navigate';
+    this.eventBus.on?.(navigateEvent, (payload) => {
+      const target = typeof payload === 'string' ? payload : payload && payload.moduleId;
+      if (target) this.showModule(target);
+    });
   }
+
 
   bootstrapFeatures() { this.showModule(this.activeModule, true); }
 

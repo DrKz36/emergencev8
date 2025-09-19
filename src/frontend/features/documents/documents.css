@@ -177,15 +177,17 @@
 .btn-delete:hover { filter: brightness(1.05); }
 
 /* ===== Mobile Portrait : centrage garanti ===== */
-@media (max-width: 760px) and (orientation: portrait){
-  .documents-view-wrapper{ padding-left: 12px; padding-right: 12px; }
-  .documents-view-wrapper .card{
-    width: auto;                 /* ⬅️ pas 100% */
-    max-width: 96vw;
-    margin-left: auto; margin-right: auto;
-    align-self: center;          /* ⬅️ centre même si le parent est en flex */
+@media (max-width: 760px){
+  .documents-view-wrapper{
+    padding: 16px;
+    justify-content: stretch;
   }
-
+  .documents-view-wrapper .card{
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 18px 16px;
+  }
   .list-toolbar{ flex-direction: column; align-items: stretch; gap: .75rem; }
   .select-all{ justify-content: center; }
   .toolbar-actions{ justify-content: center; flex-wrap: wrap; gap: .5rem; }

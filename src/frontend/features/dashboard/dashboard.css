@@ -168,11 +168,24 @@
     backdrop-filter: blur(10px);
 }
 /* === Mobile Portrait adjustments (center dashboard cards) === */
-@media (max-width: 760px) and (orientation: portrait){
-  .dashboard-container .card,
-  .dashboard-grid    .card,
-  .dashboard-root    .card {
-    max-width: 96vw;
-    margin: 0 auto;
+@media (max-width: 760px){
+  .dashboard-container{
+    padding: 16px;
   }
-}
+  .dashboard-header{
+    position: static;
+    margin-bottom: 18px;
+  }
+  .dashboard-section-title{
+    margin-bottom: 16px;
+  }
+  .dashboard-grid{
+    grid-template-columns: min(calc(100vw - 32px), 1fr);
+    gap: 16px;
+  }
+  .summary-card{
+    max-width: 100%;
+    margin: 0;
+    padding: 18px 16px;
+  }
+}\r\n

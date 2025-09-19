@@ -53,31 +53,27 @@ export class ChatUI {
         <div class="chat-footer">
           <form id="chat-form" class="chat-form" autocomplete="off">
             <div class="chat-composer" data-role="chat-composer">
-              <div class="rag-toggle" data-role="rag-toggle">
+              <div class="chat-input-shell" data-role="chat-input-shell">
                 <button
                   type="button"
                   id="rag-power"
-                  class="rag-power toggle-metal"
+                  class="rag-switch${this.state.ragEnabled ? ' is-on' : ''}"
                   role="switch"
                   aria-checked="${String(!!this.state.ragEnabled)}"
-                  aria-label="Activer ou desactiver le RAG"
-                  title="Activer/Desactiver RAG">
-                  <svg class="power-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                    <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
-                    <path d="M5.5 7a 8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"></path>
+                  aria-label="${this.state.ragEnabled ? 'RAG activé' : 'RAG désactivé'}"
+                  title="Basculer le RAG">
+                  <span class="rag-switch__label" aria-hidden="true">RAG</span>
+                  <span id="rag-status" class="rag-switch__state" aria-hidden="true">${this.state.ragEnabled ? 'ON' : 'OFF'}</span>
+                  <span class="sr-only" id="rag-status-text">${this.state.ragEnabled ? 'RAG actif' : 'RAG inactif'}</span>
+                </button>
+                <textarea id="chat-input" class="chat-input" rows="1" placeholder="Ecris ton message..." aria-label="Message"></textarea>
+                <button type="submit" id="chat-send" class="chat-send-button" title="Envoyer" aria-label="Envoyer">
+                  <span class="sr-only">Envoyer</span>
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"></path>
                   </svg>
                 </button>
-                <span id="rag-label" class="rag-label">${this.state.ragEnabled ? 'RAG actif' : 'RAG inactif'}</span>
               </div>
-              <div class="chat-input-shell">
-                <textarea id="chat-input" class="chat-input" rows="1" placeholder="Ecris ton message..." aria-label="Message"></textarea>
-              </div>
-              <button type="submit" id="chat-send" class="chat-send-button" title="Envoyer" aria-label="Envoyer">
-                <span class="sr-only">Envoyer</span>
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"></path>
-                </svg>
-              </button>
             </div>
           </form>
         </div>
@@ -96,11 +92,17 @@ export class ChatUI {
     this._ensureControlPanel();
 
     const ragBtn = container.querySelector('#rag-power');
-    ragBtn?.setAttribute('aria-checked', String(!!this.state.ragEnabled));
-    const ragLabel = container.querySelector('#rag-label');
-    if (ragLabel) ragLabel.textContent = this.state.ragEnabled ? 'RAG actif' : 'RAG inactif';
-    const ragToggle = container.querySelector('[data-role="rag-toggle"]');
-    if (ragToggle) ragToggle.classList.toggle('is-on', !!this.state.ragEnabled);
+    const ragEnabled = !!this.state.ragEnabled;
+    if (ragBtn) {
+      ragBtn.setAttribute('aria-checked', String(ragEnabled));
+      ragBtn.setAttribute('aria-label', ragEnabled ? 'RAG activé' : 'RAG désactivé');
+      ragBtn.title = ragEnabled ? 'Désactiver le RAG' : 'Activer le RAG';
+      ragBtn.classList.toggle('is-on', ragEnabled);
+    }
+    const ragStatus = container.querySelector('#rag-status');
+    if (ragStatus) ragStatus.textContent = ragEnabled ? 'ON' : 'OFF';
+    const ragStatusText = container.querySelector('#rag-status-text');
+    if (ragStatusText) ragStatusText.textContent = ragEnabled ? 'RAG actif' : 'RAG inactif';
 
     this._setActiveAgentTab(container, this.state.currentAgentId);
 
@@ -131,7 +133,6 @@ export class ChatUI {
     const form = container.querySelector('#chat-form');
     const input = container.querySelector('#chat-input');
     const ragBtn = container.querySelector('#rag-power');
-    const ragLbl = container.querySelector('#rag-label');
     const sendBtn = container.querySelector('#chat-send');
     this._ensureControlPanel();
     this._updateControlPanelState();
@@ -166,11 +167,18 @@ export class ChatUI {
     const toggleRag = () => {
       if (!ragBtn) return;
       const on = ragBtn.getAttribute('aria-checked') === 'true';
-      ragBtn.setAttribute('aria-checked', String(!on));
-      this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, { enabled: !on });
+      const next = !on;
+      ragBtn.setAttribute('aria-checked', String(next));
+      ragBtn.setAttribute('aria-label', next ? 'RAG activé' : 'RAG désactivé');
+      ragBtn.title = next ? 'Désactiver le RAG' : 'Activer le RAG';
+      ragBtn.classList.toggle('is-on', next);
+      const ragStatus = container.querySelector('#rag-status');
+      if (ragStatus) ragStatus.textContent = next ? 'ON' : 'OFF';
+      const ragStatusText = container.querySelector('#rag-status-text');
+      if (ragStatusText) ragStatusText.textContent = next ? 'RAG actif' : 'RAG inactif';
+      this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, { enabled: next });
     };
     ragBtn?.addEventListener('click', toggleRag);
-    ragLbl?.addEventListener('click', toggleRag);
 
     container.querySelector('.agent-selector')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-agent-id]');

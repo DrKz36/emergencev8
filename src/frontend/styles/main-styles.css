@@ -200,12 +200,12 @@
 }
 
 /* ========================= */
-/* Mobile : icônes seules    */
+/* Mobile adjustments        */
 /* ========================= */
 @media (max-width: 760px){
   .sidebar-nav{ max-width: 100%; width: 100%; }
   .sidebar-nav a,
-  .sidebar-nav button{ font-size: 0; } /* libellés masqués */
+  .sidebar-nav button{ font-size: .72rem; letter-spacing: .08em; }
   .sidebar-nav a svg,
   .sidebar-nav button svg{ width: 22px; height: 22px; }
 }
