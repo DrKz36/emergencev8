@@ -22,7 +22,7 @@ class RagSettings(BaseSettings):
     EMBED_MODEL_NAME: str = "all-MiniLM-L6-v2" 
     PROMPT_TEMPLATE: str = (
         "Contexte pertinent:\n---\n{context}\n---\nEn te basant UNIQUEMENT sur ce contexte, "
-        "réponds à la question suivante: {question}"
+        "rÃ©ponds Ã  la question suivante: {question}"
     )
 
 class DbSettings(BaseSettings):
@@ -37,7 +37,7 @@ class PathSettings(BaseSettings):
     prompts: str = str(PROMPTS_DIR)
 
 class Settings(BaseSettings):
-    # Clés API et configurations diverses
+    # ClÃ©s API et configurations diverses
     openai_api_key: str
     google_api_key: str
     anthropic_api_key: str
@@ -51,11 +51,11 @@ class Settings(BaseSettings):
     agents: Dict[str, Any] = {
         "default": {"provider": "google", "model": "gemini-1.5-flash"},
         "neo": {"provider": "google", "model": "gemini-1.5-flash"},
-        "nexus": {"provider": "anthropic", "model": "claude-3-haiku-20240307"},
-        "anima": {"provider": "openai", "model": "gpt-4o"},
+        "nexus": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+        "anima": {"provider": "openai", "model": "gpt-4o-mini"},
     }
     
-    # Configurations imbriquées
+    # Configurations imbriquÃ©es
     rag: RagSettings = RagSettings()
     db: DbSettings = DbSettings()
     paths: PathSettings = PathSettings()
@@ -65,3 +65,5 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"
+
+

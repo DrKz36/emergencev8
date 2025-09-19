@@ -29,6 +29,7 @@ export class App {
       sidebar: document.getElementById('app-sidebar'),
       tabs: document.getElementById('app-tabs'),
       content: document.getElementById('app-content'),
+      memoryOverlay: document.getElementById('memory-overlay'),
     };
 
     this.modules = {};
@@ -58,27 +59,93 @@ export class App {
 
   renderNavigation() {
     if (!this.dom.tabs) return;
-    const navItemsHTML = this.moduleConfig.map(m => `
-      <li class="nav-item">
-        <a href="#" class="nav-link ${this.activeModule === m.id ? 'active' : ''}" data-module-id="${m.id}">
-          <span class="nav-icon">${m.icon}</span>
-          <span class="nav-text">${m.name}</span>
-        </a>
-      </li>
-    `).join('');
-    this.dom.tabs.innerHTML = navItemsHTML;
+    const navItemsHTML = this.moduleConfig.map((m) => {
+      const isActive = this.activeModule === m.id ? 'active' : '';
+      return '<li class="nav-item">' +
+        '<a href="#" class="nav-link ' + isActive + '" data-module-id="' + m.id + '">' +
+          '<span class="nav-icon">' + m.icon + '</span>' +
+          '<span class="nav-text">' + m.name + '</span>' +
+        '</a>' +
+      '</li>';
+    }).join('');
+    const memoryActive = this.isMemoryMenuOpen() ? 'active' : '';
+    const memoryNav = '<li class="nav-item nav-item--memory">' +
+      '<a href="#" class="nav-link nav-link--memory ' + memoryActive + '" data-memory="menu" role="button" aria-expanded="' + (memoryActive ? 'true' : 'false') + '">' +
+        '<span class="nav-icon">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor" aria-hidden="true" focusable="false">' +
+            '<path d="M9.2 3.5c-2.05 0-3.7 1.64-3.7 3.66v1.08A3.52 3.52 0 0 0 3 11.8a3.5 3.5 0 0 0 2.05 3.16c.2.93.2 1.92 0 2.85A2.97 2.97 0 0 0 7.9 21H11V3.5H9.2z"></path>' +
+            '<path d="M14.8 3.5c2.05 0 3.7 1.64 3.7 3.66v1.08A3.52 3.52 0 0 1 21 11.8a3.5 3.5 0 0 1-2.05 3.16c-.2.93-.2 1.92 0 2.85A2.97 2.97 0 0 1 16.1 21H13V3.5h1.8z"></path>' +
+            '<path d="M13 7.5h-2"></path>' +
+            '<path d="M13 11.5h-2"></path>' +
+            '<path d="M13 15.5h-2"></path>' +
+          '</svg>' +
+        '</span>' +
+        '<span class="nav-text">Mémoire</span>' +
+      '</a>' +
+    '</li>';
+    this.dom.tabs.innerHTML = navItemsHTML + memoryNav;
+  }
+
+  isMemoryMenuOpen() {
+    return typeof document !== 'undefined' && document.body.classList.contains('brain-panel-open');
+  }
+
+  openMemoryMenu() {
+    const handle = typeof window !== 'undefined' ? window.__EMERGENCE_MEMORY__ : null;
+    if (handle && typeof handle.open === 'function') {
+      handle.open();
+    } else if (typeof document !== 'undefined') {
+      document.body.classList.add('brain-panel-open');
+    }
+    this.renderNavigation();
+  }
+
+  closeMemoryMenu() {
+    const handle = typeof window !== 'undefined' ? window.__EMERGENCE_MEMORY__ : null;
+    if (handle && typeof handle.close === 'function') {
+      handle.close();
+    } else if (typeof document !== 'undefined') {
+      document.body.classList.remove('brain-panel-open');
+    }
+    this.renderNavigation();
+  }
+
+  toggleMemoryMenu(forceOpen) {
+    if (forceOpen === true) {
+      this.openMemoryMenu();
+      return;
+    }
+    if (forceOpen === false) {
+      this.closeMemoryMenu();
+      return;
+    }
+    if (this.isMemoryMenuOpen()) {
+      this.closeMemoryMenu();
+    } else {
+      this.openMemoryMenu();
+    }
   }
 
   listenToNavEvents() {
     const root = this.dom.sidebar || document;
     const handleNavClick = (e) => {
       const link = e.target.closest('.nav-link');
-      if (!link || !link.dataset.moduleId) return;
+      if (!link) return;
+      if (link.dataset.memory === 'menu') {
+        e.preventDefault();
+        this.toggleMemoryMenu();
+        return;
+      }
+      if (!link.dataset.moduleId) return;
       e.preventDefault();
       this.showModule(link.dataset.moduleId);
     };
     root.addEventListener('click', handleNavClick);
     this.dom.header?.addEventListener('click', handleNavClick);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('emergence:memory:open', () => this.renderNavigation());
+      window.addEventListener('emergence:memory:close', () => this.renderNavigation());
+    }
   }
 
   bootstrapFeatures() { this.showModule(this.activeModule, true); }
@@ -148,6 +215,7 @@ export class App {
 
   async showModule(moduleId, isInitialLoad = false) {
     if (!moduleId || !this.dom.content) return;
+    if (this.isMemoryMenuOpen()) this.closeMemoryMenu();
     this.clearSkeleton();
 
     // Bootstrap thread AVANT le premier mount du module 'chat'
@@ -188,3 +256,5 @@ export class App {
     return container;
   }
 }
+
+

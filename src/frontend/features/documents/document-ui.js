@@ -1,6 +1,6 @@
 /**
  * @module features/documents/document-ui
- * @description UI du module Documents — V5.4 (verre/halo/métal + stats canvas, data-first, 2e tick)
+ * @description UI du module Documents  V5.4 (verre/halo/m&#233;tal + stats canvas, data-first, 2e tick)
  */
 export class DocumentsUI {
     constructor(eventBus) {
@@ -8,7 +8,7 @@ export class DocumentsUI {
         this._resizeObserver = null;
         this._mo = null;
         this._cleanupFns = [];
-        this._lastItems = null; // données brutes pour stats (source > DOM)
+        this._lastItems = null; // donn&#233;es brutes pour stats (source > DOM)
     }
 
     render(container) {
@@ -17,29 +17,29 @@ export class DocumentsUI {
             <div class="documents-view-wrapper">
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title">Gérer les documents</h2>
+                        <h2 class="card-title">G&#233;rer les documents</h2>
                         <p class="card-subtitle">Ajoute des fichiers pour les rendre accessibles via RAG.</p>
                     </div>
 
                     <div class="card-body">
-                        <section class="upload-section" aria-label="Upload de documents">
-                            <!-- Types alignés backend -->
+                        <section class="upload-section" aria-label="T&#233;l&#233;verser des documents">
+                            <!-- Types align&#233;s backend -->
                             <input type="file" id="file-input" multiple accept=".pdf,.txt,.docx" />
 
-                            <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Choisir un fichier ou déposer ici">
+                            <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Choisir un fichier ou d&#233;poser ici">
                                 <div class="drop-zone-prompt">
                                     <svg class="upload-icon" viewBox="0 0 24 24" aria-hidden="true">
                                         <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"
                                               fill="none" stroke="currentColor" stroke-width="2"
                                               stroke-linecap="round" stroke-linejoin="round"/>
                                     </svg>
-                                    <p><strong>Glisse-dépose</strong> un ou plusieurs fichiers ici, ou clique pour choisir.</p>
+                                    <p><strong>Glisse-d&#233;pose</strong> un ou plusieurs fichiers ici, ou clique pour choisir.</p>
                                 </div>
 
                                 <div class="drop-zone-preview" id="drop-zone-preview" aria-live="polite">
-                                    <div class="preview-icon">📄</div>
+                                    <div class="preview-icon"></div>
                                     <div class="preview-name" id="preview-name"></div>
-                                    <button type="button" id="btn-clear-selection" class="btn-clear-selection" title="Effacer la sélection" aria-label="Effacer la sélection">×</button>
+                                    <button type="button" id="btn-clear-selection" class="btn-clear-selection" title="Effacer la s&#233;lection" aria-label="Effacer la s&#233;lection"></button>
                                 </div>
                             </div>
 
@@ -49,34 +49,34 @@ export class DocumentsUI {
                             </div>
                         </section>
 
-                        <section class="list-section" aria-label="Documents indexés">
+                        <section class="list-section" aria-label="Documents index&#233;s">
                             <div class="list-toolbar">
                                 <label class="select-all">
                                     <input type="checkbox" id="select-all" />
-                                    <span>Tout sélectionner</span>
+                                    <span>Tout s&#233;lectionner</span>
                                 </label>
                                 <div class="toolbar-actions">
-                                    <button id="btn-refresh-list" class="button" title="Rafraîchir la liste">Rafraîchir</button>
-                                    <button id="btn-delete-selected" class="button" disabled>Supprimer la sélection</button>
+                                    <button id="btn-refresh-list" class="button" title="Rafra&#238;chir la liste">Rafra&#238;chir</button>
+                                    <button id="btn-delete-selected" class="button" disabled>Supprimer la s&#233;lection</button>
                                     <button id="btn-delete-all" class="button">Tout effacer</button>
                                 </div>
                             </div>
 
-                            <h3 class="list-title">Documents indexés</h3>
+                            <h3 class="list-title">Documents index&#233;s</h3>
                             <ul id="document-list-container" class="document-list"></ul>
-                            <p class="empty-list-message" style="display:none;">Aucun document indexé.</p>
+                            <p class="empty-list-message" style="display:none;">Aucun document index&#233;.</p>
                         </section>
 
                         <!-- === Statistiques === -->
                         <section class="stats-section" aria-label="Statistiques des documents" style="margin-top: 24px;">
                             <h3 class="list-title">Statistiques</h3>
                             <div id="doc-stats-summary" class="doc-stats-summary" aria-live="polite" style="margin: 6px 0 10px;">
-                                Total : 0 · (aucune extension)
+                                Total : 0 &#8212; (aucune extension)
                             </div>
                             <div class="doc-stats-canvas-wrap" style="width:100%;max-width:100%;overflow:hidden;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));box-shadow:0 10px 30px rgba(0,0,0,.25) inset;">
-                                <canvas id="doc-stats-canvas" width="640" height="220" role="img" aria-label="Répartition des documents par extension"></canvas>
+                                <canvas id="doc-stats-canvas" width="640" height="220" role="img" aria-label="R&#233;partition des documents par extension"></canvas>
                             </div>
-                            <p id="doc-stats-empty" style="display:none;margin-top:8px;opacity:.8;">Aucune donnée à afficher.</p>
+                            <p id="doc-stats-empty" style="display:none;margin-top:8px;opacity:.8;">Aucune donn&#233;e &#224; afficher.</p>
                         </section>
                     </div>
                 </div>
@@ -202,12 +202,12 @@ export class DocumentsUI {
         const updateSummary = ({ total, exts }) => {
             if (!summaryEl) return;
             if (!total || exts.size === 0) {
-                summaryEl.textContent = 'Total : 0 · (aucune extension)';
+                summaryEl.textContent = 'Total : 0 &#8212; (aucune extension)';
                 return;
             }
             const top = Array.from(exts.entries()).sort((a,b) => b[1]-a[1]).slice(0, 3);
-            const topStr = top.map(([k,v]) => `${k}: ${v}`).join(' · ');
-            summaryEl.textContent = `Total : ${total} · ${topStr}${exts.size > 3 ? ' · …' : ''}`;
+            const topStr = top.map(([k,v]) => `${k}: ${v}`).join('  ');
+            summaryEl.textContent = `Total : ${total}  ${topStr}${exts.size > 3 ? '  ' : ''}`;
         };
 
         const refreshStats = () => {
@@ -242,16 +242,16 @@ export class DocumentsUI {
             this._cleanupFns.push(() => window.removeEventListener('resize', onResize));
         }
 
-        // Premier rendu + 2e tick après layout
+        // Premier rendu + 2e tick aprs layout
         refreshStats();
         setTimeout(() => refreshStats(), 0);
 
-        // Rafraîchissement sur évènement module (données brutes) + ré-émission globale
+        // Rafrachissement sur vnement module (donn&#233;es brutes) + r-mission globale
         try {
             const off = this.eventBus?.on?.('documents:list:refreshed', (payload = {}) => {
                 if (Array.isArray(payload.items)) this._lastItems = payload.items;
                 refreshStats();
-                // NEW: informer le reste de l’app (chat, etc.)
+                // NEW: informer le reste de lapp (chat, etc.)
                 try { this.eventBus.emit('documents:changed', { items: this._lastItems || [] }); } catch {}
             });
             if (typeof off === 'function') this._cleanupFns.push(off);
@@ -265,3 +265,5 @@ export class DocumentsUI {
         try { this._resizeObserver?.disconnect?.(); } catch {}
     }
 }
+
+

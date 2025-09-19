@@ -1,4 +1,4 @@
-/**
+ï»¿/**
  * ChatUI - V28.3.2 (glass layout merge)
  * - Adopt glassmorphic layout with header/footer zones and auth host badge.
  * - Keeps mount-safe render, RAG sources, metrics, memory controls, and WS guards.
@@ -20,6 +20,8 @@ export class ChatUI {
       lastAnalysis: null,
       metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null },
       memoryStats: { has_stm: false, ltm_items: 0, injected: false },
+      exportAgents: Object.keys(AGENTS),
+      exportFormat: 'markdown',
       modelInfo: null,
       lastMessageMeta: null
     };
@@ -237,12 +239,11 @@ export class ChatUI {
           <button type="button" id="memory-analyze" class="button" title="Analyser / consolider la memoire">Analyser</button>
           <button type="button" id="memory-clear" class="button" title="Effacer la memoire de session">Clear</button>
         </div>
+        <div class="chat-controls-actions">
+          <button type="button" id="memory-open-center" class="button button-primary" title="Ouvrir le centre memoire">Centre memoire</button>
+        </div>
       </div>
       <div class="chat-controls-card">
-        <div class="chat-controls-actions">
-          <button type="button" id="chat-export" class="button">Exporter</button>
-          <button type="button" id="chat-clear" class="button">Effacer</button>
-        </div>
         <div id="chat-metrics" class="chat-metrics">
           <span id="metric-ttfb">TTFB: - ms</span>
           <span id="metric-fallbacks">Fallback REST: 0</span>
@@ -254,15 +255,16 @@ export class ChatUI {
   _bindControlPanelEvents(panel) {
     panel.querySelector('#memory-analyze')?.addEventListener('click', () => this.eventBus.emit('memory:tend'));
     panel.querySelector('#memory-clear')?.addEventListener('click', () => this.eventBus.emit('memory:clear'));
-    panel.querySelector('#chat-export')?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_EXPORT, null));
-    panel.querySelector('#chat-clear')?.addEventListener('click', () => this.eventBus.emit(EVENTS.CHAT_CLEAR, null));
+    panel.querySelector('#memory-open-center')?.addEventListener('click', () => this.eventBus.emit('memory:center:open'));
   }
 
   _updateControlPanelState() {
     const panel = this._ensureControlPanel();
     if (!panel) return;
 
-    const memoryOn = !!(this.state.memoryBannerAt || (this.state.lastAnalysis && this.state.lastAnalysis.status === 'completed'));
+    const lastAnalysis = this.state.lastAnalysis || {};
+    const memoryOn = !!(this.state.memoryBannerAt || lastAnalysis.status === 'completed');
+    const running = lastAnalysis.status === 'running';
     const dot = panel.querySelector('#memory-dot');
     const lbl = panel.querySelector('#memory-label');
     const cnt = panel.querySelector('#memory-counters');
@@ -291,6 +293,12 @@ export class ChatUI {
     const fbEl = metricsHost?.querySelector('#metric-fallbacks');
     if (ttfbEl) ttfbEl.textContent = `TTFB: ${Number.isFinite(met.last_ttfb_ms) ? met.last_ttfb_ms : 0} ms`;
     if (fbEl) fbEl.textContent = `Fallback REST: ${met.rest_fallback_count || 0}`;
+    this.eventBus.emit?.('memory:center:state', {
+      memoryOn,
+      memoryStats: mem,
+      exportAgents: this.state.exportAgents,
+      exportFormat: this.state.exportFormat
+    });
   }
 
   async _onDocumentsChanged(container, payload) {
@@ -353,7 +361,7 @@ export class ChatUI {
   _renderMessages(host, messages) {
     if (!host) return;
     const html = (messages || []).map((m) => this._messageHTML(m)).join('');
-    host.innerHTML = html || '<div class="placeholder">Commencez à discuter.</div>';
+    host.innerHTML = html || '<div class="placeholder">Commencez ï¿½ discuter.</div>';
     host.scrollTo(0, 1e9);
   }
 
@@ -549,4 +557,8 @@ export class ChatUI {
     return { display: `${datePart} - ${timePart}`, iso: date.toISOString() };
   }
 }
+
+
+
+
 

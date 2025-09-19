@@ -35,7 +35,7 @@ MODEL_PRICING = {
     "gpt-4o-mini": {"input": 0.15 / 1_000_000, "output": 0.60 / 1_000_000},
     "gpt-4o": {"input": 5.00 / 1_000_000, "output": 15.00 / 1_000_000},
     "gemini-1.5-flash": {"input": 0.35 / 1_000_000, "output": 0.70 / 1_000_000},
-    "claude-3-haiku-20240307": {"input": 0.25 / 1_000_000, "output": 1.25 / 1_000_000},
+    "claude-3-5-haiku-20241022": {"input": 0.25 / 1_000_000, "output": 1.25 / 1_000_000},
     "claude-3-sonnet-20240229": {"input": 3.00 / 1_000_000, "output": 15.00 / 1_000_000},
     "claude-3-opus-20240229": {"input": 15.00 / 1_000_000, "output": 75.00 / 1_000_000},
 }
@@ -43,9 +43,9 @@ MODEL_PRICING = {
 DEFAULT_TEMPERATURE = float(os.getenv("EMERGENCE_TEMP_DEFAULT", "0.4"))
 
 CHAT_PROVIDER_FALLBACKS = {
-    "google": [("anthropic", "claude-3-haiku-20240307"), ("openai", "gpt-4o-mini")],
+    "google": [("anthropic", "claude-3-5-haiku-20241022"), ("openai", "gpt-4o-mini")],
     "anthropic": [("openai", "gpt-4o-mini"), ("google", "gemini-1.5-flash")],
-    "openai": [("anthropic", "claude-3-haiku-20240307"), ("google", "gemini-1.5-flash")],
+    "openai": [("anthropic", "claude-3-5-haiku-20241022"), ("google", "gemini-1.5-flash")],
 }
 
 
@@ -531,7 +531,12 @@ class ChatService:
 
     # ---------- pipeline chat (stream) ----------
     async def _process_agent_response_stream(
-        self, session_id: str, agent_id: str, use_rag: bool, connection_manager: ConnectionManager
+        self,
+        session_id: str,
+        agent_id: str,
+        use_rag: bool,
+        connection_manager: ConnectionManager,
+        doc_ids: Optional[List[int]] = None,
     ):
         temp_message_id = str(uuid4())
         full_response_text = ""
@@ -547,6 +552,10 @@ class ChatService:
             history = self.session_manager.get_full_history(session_id)
             last_user_message_obj = next((m for m in reversed(history) if m.get("role") == Role.USER), None)
             last_user_message = last_user_message_obj.get("content", "") if last_user_message_obj else ""
+
+            selected_doc_ids = self._sanitize_doc_ids(doc_ids)
+            if not selected_doc_ids and isinstance(last_user_message_obj, dict):
+                selected_doc_ids = self._sanitize_doc_ids(last_user_message_obj.get("doc_ids"))
 
             # Mot-code court-circuit
             if self._is_mot_code_query(last_user_message):
@@ -581,6 +590,7 @@ class ChatService:
                     )
                     await self.session_manager.add_message_to_session(session_id, final_agent_message)
                     payload = final_agent_message.model_dump(mode="json")
+                    payload["agent_id"] = agent_id
                     if "message" in payload:
                         payload["content"] = payload.pop("message")
                     payload.setdefault("meta", {"provider": "memory", "model": "mot-code", "fallback": False})
@@ -643,8 +653,17 @@ class ChatService:
                 if self._doc_collection is None:
                     self._doc_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
 
+                where_filter = None
+                if selected_doc_ids:
+                    if len(selected_doc_ids) == 1:
+                        where_filter = {"document_id": selected_doc_ids[0]}
+                    else:
+                        where_filter = {"$or": [{"document_id": did} for did in selected_doc_ids]}
+
                 doc_hits = self.vector_service.query(
-                    collection=self._doc_collection, query_text=last_user_message
+                    collection=self._doc_collection,
+                    query_text=last_user_message,
+                    where_filter=where_filter,
                 )
 
                 rag_sources = []
@@ -853,9 +872,19 @@ class ChatService:
                 feature="chat",
             )
             payload = final_agent_message.model_dump(mode="json")
+            payload["agent_id"] = agent_id
             if "message" in payload:
                 payload["content"] = payload.pop("message")
-            payload["meta"] = {"provider": provider, "model": model_used, "fallback": bool(provider != primary_provider)}
+            payload["meta"] = {
+                "provider": provider,
+                "model": model_used,
+                "fallback": bool(provider != primary_provider),
+            }
+            if selected_doc_ids:
+                try:
+                    payload["meta"]["selected_doc_ids"] = selected_doc_ids
+                except Exception:
+                    pass
             try:
                 if use_rag and rag_sources:
                     payload["meta"]["sources"] = rag_sources
@@ -903,6 +932,7 @@ class ChatService:
         history: Optional[List[Any]] = None,
         max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
+        doc_ids: Optional[List[int]] = None,
     ) -> Dict[str, Any]:
         """
         Réponse unique pour le pipeline Débat (non-stream).
@@ -913,13 +943,26 @@ class ChatService:
 
         rag_context = ""
         base_prompt = prompt or ""
+        selected_doc_ids = self._sanitize_doc_ids(doc_ids)
+
         if use_rag and session_id and base_prompt:
             try:
                 if self._doc_collection is None:
                     self._doc_collection = self.vector_service.get_or_create_collection(
                         config.DOCUMENT_COLLECTION_NAME
                     )
-                doc_hits = self.vector_service.query(collection=self._doc_collection, query_text=base_prompt)
+                where_filter = None
+                if selected_doc_ids:
+                    if len(selected_doc_ids) == 1:
+                        where_filter = {"document_id": selected_doc_ids[0]}
+                    else:
+                        where_filter = {"$or": [{"document_id": did} for did in selected_doc_ids]}
+
+                doc_hits = self.vector_service.query(
+                    collection=self._doc_collection,
+                    query_text=base_prompt,
+                    where_filter=where_filter,
+                )
                 doc_block = "\n".join(
                     [f"- {h.get('text', '').strip()}" for h in (doc_hits or []) if h.get("text")]
                 )
@@ -1039,16 +1082,61 @@ class ChatService:
 
     # ---------- entrypoint WS ----------
     def process_user_message_for_agents(
-        self, session_id: str, chat_request: Any, connection_manager: ConnectionManager
+        self,
+        session_id: str,
+        chat_request: Any,
+        connection_manager: Optional[ConnectionManager] = None,
     ) -> None:
         get = lambda k: (chat_request.get(k) if isinstance(chat_request, dict) else getattr(chat_request, k, None))
         agent_id = (get("agent_id") or "").strip().lower()
         use_rag = bool(get("use_rag"))
+        doc_ids = self._sanitize_doc_ids(get("doc_ids"))
+        cm = connection_manager or getattr(self.session_manager, "connection_manager", None)
         if not agent_id:
             logger.error("process_user_message_for_agents: agent_id manquant")
             return
-        asyncio.create_task(self._process_agent_response_stream(session_id, agent_id, use_rag, connection_manager))
+        if cm is None:
+            logger.error("process_user_message_for_agents: connection_manager manquant")
+            return
+        asyncio.create_task(
+            self._process_agent_response_stream(
+                session_id,
+                agent_id,
+                use_rag,
+                cm,
+                doc_ids=doc_ids,
+            )
+        )
+
+    @staticmethod
+    def _sanitize_doc_ids(raw_doc_ids: Any) -> List[int]:
+        if raw_doc_ids is None:
+            return []
+        if isinstance(raw_doc_ids, (set, tuple)):
+            raw_doc_ids = list(raw_doc_ids)
+        elif not isinstance(raw_doc_ids, list):
+            raw_doc_ids = [raw_doc_ids]
+
+        sanitized: List[int] = []
+        for item in raw_doc_ids:
+            if item in (None, ""):
+                continue
+            try:
+                value = int(str(item).strip())
+            except (ValueError, TypeError):
+                continue
+            sanitized.append(value)
+
+        unique: List[int] = []
+        seen = set()
+        for value in sanitized:
+            if value in seen:
+                continue
+            seen.add(value)
+            unique.append(value)
+        return unique
 
     # ---------- diverses ----------
     def _count_bullets(self, text: str) -> int:
         return sum(1 for line in (text or "").splitlines() if line.strip().startswith("- "))
+

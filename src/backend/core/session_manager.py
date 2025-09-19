@@ -23,6 +23,7 @@ class SessionManager:
         self.db_manager = db_manager
         self.memory_analyzer = memory_analyzer
         self.active_sessions: Dict[str, Session] = {}
+        self._session_user_cache: Dict[str, str] = {}
         # ConnectionManager sera injecté dynamiquement par websocket.ConnectionManager
         self.connection_manager = None  # type: ignore[attr-defined]
         is_ready = self.memory_analyzer is not None
@@ -38,10 +39,59 @@ class SessionManager:
         """Crée une session et la garde active en mémoire."""
         if session_id not in self.active_sessions:
             new_session = Session(id=session_id, user_id=user_id, start_time=datetime.now(timezone.utc))
+            try:
+                new_session.metadata = {}  # type: ignore[attr-defined]
+            except Exception:
+                pass
             self.active_sessions[session_id] = new_session
+            if user_id:
+                self._session_user_cache[session_id] = str(user_id)
             logger.info(f"Session active créée : {session_id} pour l'utilisateur {user_id}")
         else:
             logger.warning(f"Tentative de création d'une session déjà existante: {session_id}")
+
+    def get_user_id_for_session(self, session_id: str) -> Optional[str]:
+        """Retourne l'identifiant utilisateur associé à la session (cache + fallback)."""
+        session = self.active_sessions.get(session_id)
+        if session and getattr(session, 'user_id', None):
+            uid = session.user_id  # type: ignore[attr-defined]
+            if uid:
+                uid_str = str(uid)
+                self._session_user_cache.setdefault(session_id, uid_str)
+                return uid_str
+        uid = self._session_user_cache.get(session_id)
+        return str(uid) if uid else None
+
+    def get_session_metadata(self, session_id: str) -> Dict[str, Any]:
+        """Garantit la présence d'un dictionnaire de métadonnées pour la session active."""
+        session = self.active_sessions.get(session_id)
+        if not session:
+            return {}
+        meta = getattr(session, 'metadata', None)
+        if not isinstance(meta, dict):
+            meta = {}
+            try:
+                session.metadata = meta  # type: ignore[attr-defined]
+            except Exception:
+                pass
+        return meta
+
+    def update_session_metadata(self, session_id: str, *, summary: Optional[str] = None, concepts: Optional[List[str]] = None, entities: Optional[List[str]] = None) -> None:
+        session = self.active_sessions.get(session_id)
+        if not session:
+            logger.debug(f"update_session_metadata ignoré: session {session_id} introuvable")
+            return
+        meta = self.get_session_metadata(session_id)
+        if summary is not None:
+            meta['summary'] = summary
+        if concepts is not None:
+            meta['concepts'] = concepts
+        if entities is not None:
+            meta['entities'] = entities
+        try:
+            session.metadata = meta  # type: ignore[attr-defined]
+        except Exception:
+            pass
 
     def get_session(self, session_id: str) -> Optional[Session]:
         """Récupère une session depuis le cache mémoire actif."""
@@ -70,10 +120,20 @@ class SessionManager:
             
             # Reconstruction de l'historique avec les bons modèles Pydantic
             history_list = json.loads(history_json)
-            reconstructed_history = [
-                AgentMessage(**msg) if msg.get('role') == 'assistant' else ChatMessage(**msg)
-                for msg in history_list
-            ]
+            reconstructed_history = []
+            for msg in history_list:
+                if not isinstance(msg, dict):
+                    try:
+                        msg = msg.model_dump(mode='json')  # type: ignore[attr-defined]
+                    except Exception:
+                        msg = dict(msg) if hasattr(msg, 'items') else {}
+                try:
+                    if (msg.get('role') or '').lower() == 'assistant':
+                        reconstructed_history.append(AgentMessage(**msg).model_dump(mode='json'))
+                    else:
+                        reconstructed_history.append(ChatMessage(**msg).model_dump(mode='json'))
+                except Exception:
+                    reconstructed_history.append(msg)
 
             session = Session(
                 id=session_dict['id'],
@@ -89,6 +149,8 @@ class SessionManager:
             )
             
             self.active_sessions[session_id] = session  # On la met en cache actif
+            if session.user_id:
+                self._session_user_cache[session_id] = str(session.user_id)
             logger.info(f"Session {session_id} chargée et reconstruite depuis la BDD.")
             return session
         except Exception as e:
@@ -105,11 +167,29 @@ class SessionManager:
 
     def get_full_history(self, session_id: str) -> List[Dict[str, Any]]:
         session = self.get_session(session_id)
-        return session.history if session else []
+        if not session:
+            return []
+        normalized: List[Dict[str, Any]] = []
+        for item in getattr(session, 'history', []) or []:
+            if isinstance(item, dict):
+                normalized.append(item)
+                continue
+            try:
+                if hasattr(item, 'model_dump'):
+                    normalized.append(item.model_dump(mode='json'))  # type: ignore[attr-defined]
+                elif hasattr(item, 'dict'):
+                    normalized.append(item.dict())  # type: ignore[attr-defined]
+                else:
+                    normalized.append(dict(item))  # type: ignore[arg-type]
+            except Exception:
+                normalized.append({})
+        return normalized
     
     async def finalize_session(self, session_id: str):
         session = self.active_sessions.pop(session_id, None)
         if session:
+            if getattr(session, 'user_id', None):
+                self._session_user_cache.setdefault(session_id, str(session.user_id))
             session.end_time = datetime.now(timezone.utc)
             duration = (session.end_time - session.start_time).total_seconds()
             logger.info(f"Finalisation de la session {session_id}. Durée: {duration:.2f}s.")

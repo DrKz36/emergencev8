@@ -63,6 +63,7 @@ export const EVENTS = {
   CHAT_SEND: 'ui:chat:send',
   CHAT_CLEAR: 'ui:chat:clear',
   CHAT_EXPORT: 'ui:chat:export',
+  CHAT_EXPORT_SELECTION_CHANGED: 'ui:chat:export_selection_changed',
   CHAT_MODE_TOGGLED: 'ui:chat:mode_toggled',
   CHAT_AGENT_SELECTED: 'ui:chat:agent_selected',
   CHAT_PARALLEL_AGENTS_CHANGED: 'ui:chat:parallel_agents_changed',
@@ -72,6 +73,10 @@ export const EVENTS = {
   DEBATE_CREATE: 'debate:create',
   DEBATE_RESET: 'debate:reset',
   DEBATE_EXPORT: 'debate:export',
+
+  // Documents
+  DOCUMENTS_SELECTION_CHANGED: 'documents:selection_changed',
+  DOCUMENTS_CMD_DESELECT: 'documents:cmd:deselect',
 };
 
 export const AGENTS = {

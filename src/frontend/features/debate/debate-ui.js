@@ -173,67 +173,102 @@ export class DebateUI {
     const holdLeftS = Math.ceil(holdLeftMs / 1000);
 
     const topic = (state?.topic || state?.config?.topic || '').trim();
-
-    const header = `
-      <div class="card-header timeline-header">
-        <div class="title-center">
-          <div class="debate-title">Sujet du Débat</div>
-          <div class="debate-topic">${this._html(topic || '—')}</div>
-        </div>
-        <div class="debate-status">${this._html(state?.statusText ?? '')}</div>
-      </div>`;
+    const statusText = (state?.statusText ?? '').trim();
+    const statusClass = state?.status ? ' debate-status--' + this._html(state.status) : '';
+    const statusPieces = [];
+    if (statusText) {
+      statusPieces.push('<span class="debate-status-chip' + statusClass + '">' + this._html(statusText) + '</span>');
+    }
+    if (isHold) {
+      statusPieces.push('<span class="debate-status-note" id="debate-hold-note">Nouveau débat disponible dans ' + holdLeftS + 's</span>');
+    }
+    const statusBlock = statusPieces.length ? '<div class="debate-header__status">' + statusPieces.join('') + '</div>' : '';
 
     const turns = Array.isArray(state?.turns) ? state.turns : [];
-    const body = `
-      <div class="card-body">
-        <div class="chat-messages">
-          ${turns.map(t => {
-            const agentId = t.agent || 'anima';
-            const name = agentLabel(agentId);
-            const text = marked.parse(t.text || '');
-            return `
-              <div class="message assistant ${this._html(agentId)}">
-                <div class="message-content">
-                  <div class="message-meta meta-inside"><strong class="sender-name">${this._html(name)}</strong></div>
-                  <div class="message-text">${text}</div>
-                </div>
-              </div>`;
-          }).join('')}
-        </div>
-      </div>`;
+    const turnCount = turns.length;
+    const rounds = Number.isFinite(state?.config?.rounds) ? Math.max(1, state.config.rounds) : 1;
+    const participants = Array.isArray(state?.config?.agentOrder) ? Math.max(1, state.config.agentOrder.length - 1) : 2;
+    const expectedTurns = Math.max(1, rounds * Math.max(1, participants));
+    const clampedTurns = Math.min(turnCount, expectedTurns);
+    const ratio = expectedTurns ? Math.min(1, clampedTurns / expectedTurns) : 0;
+    const progressPercent = Math.round(ratio * 100);
+    const progressInfo = '<div class="debate-progress" role="status" aria-live="polite">' +
+      '<div class="debate-progress__label">' + clampedTurns + ' / ' + expectedTurns + ' interventions</div>' +
+      '<div class="debate-progress__bar"><span style="width:' + progressPercent + '%;"></span></div>' +
+    '</div>';
+
+    const header = '<div class="card-header debate-header">' +
+      '<div class="debate-header__topic">' +
+        '<h2 class="debate-title">Sujet du débat</h2>' +
+        '<p class="debate-topic">' + this._html(topic || '—') + '</p>' +
+      '</div>' +
+      statusBlock +
+      progressInfo +
+    '</div>';
+
+    const turnsHtml = turnCount
+      ? turns.map((turn, index) => this._renderTurn(turn, index)).join('')
+      : '<div class="debate-empty">Aucune intervention pour le moment.</div>';
+    const body = '<div class="card-body debate-body">' + turnsHtml + '</div>';
 
     const synthesizerId = Array.isArray(state?.config?.agentOrder)
       ? state.config.agentOrder[state.config.agentOrder.length - 1] : 'nexus';
     const synthesizerName = agentLabel(synthesizerId);
 
     const synthesis = (state?.status === 'completed' && state?.synthesis)
-      ? `
-        <section class="debate-synthesis">
-          <div class="synthesis-title">Synthèse — ${this._html(synthesizerName)}</div>
-          <div class="chat-messages">
-            <div class="message assistant ${this._html(synthesizerId)}">
-              <div class="message-content">
-                <div class="message-meta meta-inside"><strong class="sender-name">${this._html(synthesizerName)}</strong></div>
-                <div class="message-text"><em>${marked.parse(state.synthesis)}</em></div>
-              </div>
-            </div>
-          </div>
-        </section>` : '';
+      ? this._renderSynthesis(synthesizerId, synthesizerName, state.synthesis)
+      : '';
 
-    const footer = `
-      <div class="card-footer">
-        <div class="debate-actions">
-          <button id="debate-export" class="button button-metal" title="Exporter en Markdown">Exporter</button>
-          <button id="debate-new" class="button button-primary" title="Lancer un nouveau débat"
-                  ${isHold ? 'disabled aria-disabled="true"' : ''} data-hold-left="${holdLeftS}">
-            ${isHold ? `Nouveau débat (disponible dans ${holdLeftS}s)` : 'Nouveau débat'}
-          </button>
-        </div>
-      </div>`;
+    const footer = '<div class="card-footer debate-footer">' +
+        '<div class="debate-actions">' +
+          '<button id="debate-export" class="button button-metal" title="Exporter en Markdown">Exporter</button>' +
+          '<button id="debate-new" class="button button-primary" title="Lancer un nouveau débat"' +
+            (isHold ? ' disabled aria-disabled="true"' : '') + ' data-hold-left="' + holdLeftS + '">' +
+            'Nouveau débat' +
+          '</button>' +
+        '</div>' +
+      '</div>';
 
-    return `<div class="debate-view-wrapper"><div class="card">${header}${body}${synthesis}${footer}</div></div>`;
+    return '<div class="debate-view-wrapper"><div class="card">' + header + body + synthesis + footer + '</div></div>';
   }
 
+
+  _renderTurn(turn, index) {
+    if (!turn) return '';
+    const agentId = (turn.agent || 'anima').toLowerCase();
+    const agentName = this._html(agentLabel(agentId));
+    const order = index + 1;
+    const content = marked.parse(turn.text || '');
+    return [
+      '<article class="debate-turn debate-turn--' + this._html(agentId) + '">',
+        '<div class="debate-turn__bubble">',
+          '<header class="debate-turn__head">',
+            '<span class="debate-turn__badge">' + order + '</span>',
+            '<span class="debate-turn__agent">' + agentName + '</span>',
+          '</header>',
+          '<div class="debate-turn__message">' + content + '</div>',
+        '</div>',
+      '</article>'
+    ].join('');
+  }
+
+  _renderSynthesis(agentId, agentName, textValue) {
+    const html = marked.parse(textValue || '');
+    return [
+      '<section class="debate-synthesis">',
+        '<h3 class="debate-synthesis__title">Synth&egrave;se &mdash; ' + this._html(agentName) + '</h3>',
+        '<article class="debate-turn debate-turn--' + this._html(agentId) + ' debate-turn--synthesis">',
+          '<div class="debate-turn__bubble">',
+            '<header class="debate-turn__head">',
+              '<span class="debate-turn__badge" aria-hidden="true">Σ</span>',
+              '<span class="debate-turn__agent">' + this._html(agentName) + '</span>',
+            '</header>',
+            '<div class="debate-turn__message">' + html + '</div>',
+          '</div>',
+        '</article>',
+      '</section>'
+    ].join('');
+  }
   _bindTimelineEvents(root, state) {
     root.querySelector('#debate-export')?.addEventListener('click', () => {
       const topic = (state?.topic || '').trim();
@@ -257,14 +292,25 @@ export class DebateUI {
     // Verrou + compte à rebours sur "Nouveau débat"
     const btnNew = root.querySelector('#debate-new');
     if (btnNew) {
+      const statusNote = root.querySelector('#debate-hold-note');
       const tick = () => {
         const left = parseInt(btnNew.getAttribute('data-hold-left') || '0', 10);
-        if (!btnNew.disabled || !left) return;
+        if (!btnNew.disabled || !left) {
+          if (statusNote) statusNote.remove();
+          return;
+        }
         const next = Math.max(0, left - 1);
         btnNew.setAttribute('data-hold-left', String(next));
-        btnNew.textContent = next > 0 ? `Nouveau débat (disponible dans ${next}s)` : 'Nouveau débat';
-        if (next === 0) { btnNew.disabled = false; btnNew.removeAttribute('aria-disabled'); }
-        else { setTimeout(tick, 1000); }
+        if (statusNote) {
+          if (next > 0) statusNote.textContent = 'Nouveau débat disponible dans ' + next + 's';
+          else statusNote.remove();
+        }
+        if (next === 0) {
+          btnNew.disabled = false;
+          btnNew.removeAttribute('aria-disabled');
+        } else {
+          setTimeout(tick, 1000);
+        }
       };
       if (btnNew.disabled) setTimeout(tick, 1000);
       btnNew.addEventListener('click', () => { if (btnNew.disabled) return; this.eventBus.emit('debate:new'); });

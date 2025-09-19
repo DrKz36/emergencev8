@@ -1,7 +1,7 @@
-// src/frontend/core/state-manager.js
+﻿// src/frontend/core/state-manager.js
 /**
  * @module core/state-manager
- * @description Gestionnaire d'état V15.4 "Threads Aware" + ensureAuth() + chat meta + metrics
+ * @description Gestionnaire d'Ã©tat V15.4 "Threads Aware" + ensureAuth() + chat meta + metrics
  */
 import { AGENTS } from '../shared/constants.js';
 
@@ -11,7 +11,7 @@ export class StateManager {
     this.state = this.DEFAULT_STATE;
 
     this.subscribers = new Map();
-    console.log("✅ StateManager V15.4 (Threads Aware + metrics) Constructor: Default state is set.");
+    console.log("âœ… StateManager V15.4 (Threads Aware + metrics) Constructor: Default state is set.");
   }
 
   async init() {
@@ -43,8 +43,36 @@ export class StateManager {
 
     // Chat meta
     cleanState.chat = cleanState.chat || {};
+    let activeAgent = (typeof cleanState.chat.activeAgent === 'string' ? cleanState.chat.activeAgent : '').trim().toLowerCase();
+    if (!activeAgent || !AGENTS[activeAgent]) {
+      if (activeAgent.endsWith('_lite') && AGENTS[activeAgent.slice(0, -5)]) {
+        activeAgent = activeAgent.slice(0, -5);
+      } else {
+        activeAgent = 'anima';
+      }
+    }
+    cleanState.chat.activeAgent = activeAgent;
+
+    let currentAgent = (typeof cleanState.chat.currentAgentId === 'string' ? cleanState.chat.currentAgentId : '').trim().toLowerCase();
+    if (!currentAgent || !AGENTS[currentAgent]) {
+      if (currentAgent.endsWith('_lite') && AGENTS[currentAgent.slice(0, -5)]) {
+        currentAgent = currentAgent.slice(0, -5);
+      } else {
+        currentAgent = activeAgent;
+      }
+    }
+    cleanState.chat.currentAgentId = currentAgent;
+
+    const messageBuckets = (cleanState.chat.messages && typeof cleanState.chat.messages === 'object') ? { ...cleanState.chat.messages } : {};
+    Object.keys(AGENTS).forEach((agentId) => {
+      if (!Array.isArray(messageBuckets[agentId])) {
+        messageBuckets[agentId] = [];
+      }
+    });
+    cleanState.chat.messages = messageBuckets;
     cleanState.chat.lastMessageMeta = cleanState.chat.lastMessageMeta || null;
     cleanState.chat.modelInfo = cleanState.chat.modelInfo || null;
+    if (cleanState.chat.lastAnalysis === undefined) cleanState.chat.lastAnalysis = null;
 
     // Chat metrics
     cleanState.chat.metrics = cleanState.chat.metrics || {
@@ -63,12 +91,14 @@ export class StateManager {
     if (cleanState.chat.memoryStats === undefined) {
       cleanState.chat.memoryStats = { has_stm: false, ltm_items: 0, injected: false };
     }
+    cleanState.chat.selectedDocIds = Array.isArray(cleanState.chat.selectedDocIds) ? cleanState.chat.selectedDocIds : [];
+    cleanState.chat.selectedDocs = Array.isArray(cleanState.chat.selectedDocs) ? cleanState.chat.selectedDocs : [];
 
-    // ✅ NEW: agent actif par défaut
-    if (!cleanState.chat.activeAgent || typeof cleanState.chat.activeAgent !== 'string') {
-      cleanState.chat.activeAgent = 'anima';
-    }
+    cleanState.documents = cleanState.documents || {};
+    cleanState.documents.selectedIds = Array.isArray(cleanState.documents.selectedIds) ? cleanState.documents.selectedIds : [];
+    cleanState.documents.selectionMeta = Array.isArray(cleanState.documents.selectionMeta) ? cleanState.documents.selectionMeta : [];
 
+    // âœ… NEW: agent actif par dÃ©faut
     return cleanState;
   }
 
@@ -77,7 +107,7 @@ export class StateManager {
 
   set(key, value) {
     if (value === undefined) {
-      console.warn(`[StateManager] Tentative de 'set' avec une valeur 'undefined' pour la clé '${key}'. Opération bloquée.`);
+      console.warn(`[StateManager] Tentative de 'set' avec une valeur 'undefined' pour la clÃ© '${key}'. OpÃ©ration bloquÃ©e.`);
       return;
     }
     const keys = key.split('.');
@@ -165,3 +195,8 @@ export class StateManager {
     return false;
   }
 }
+
+
+
+
+
