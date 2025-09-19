@@ -47,8 +47,16 @@
   box-shadow: var(--glass-shadow);
   display:flex; flex-direction:column; height:100%;
   min-height:0;
-  overflow: visible !important;   /* ne pas clipper le footer sticky */
+  overflow:hidden;
 }
+.chat-body{
+  display:flex;
+  flex-direction:column;
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+}
+
 .chat-header{
   display:flex; align-items:center; justify-content:space-between;
   gap:16px;
