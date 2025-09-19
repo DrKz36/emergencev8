@@ -179,14 +179,15 @@
 /* ===== Mobile Portrait : centrage garanti ===== */
 @media (max-width: 760px){
   .documents-view-wrapper{
-    padding: 16px;
+    padding: 12px 12px 18px;
     justify-content: stretch;
+    align-items: stretch;
   }
   .documents-view-wrapper .card{
     width: 100%;
     max-width: 100%;
     margin: 0;
-    padding: 18px 16px;
+    padding: 18px 14px;
   }
   .list-toolbar{ flex-direction: column; align-items: stretch; gap: .75rem; }
   .select-all{ justify-content: center; }

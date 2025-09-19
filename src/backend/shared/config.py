@@ -30,6 +30,14 @@ class DbSettings(BaseSettings):
     vector_store_path: str = str(DATA_DIR / "vector_store")
     migrations_dir: str = str(DATA_DIR / "migrations")
 
+
+class VectorSettings(BaseSettings):
+    backend: str = "auto"  # auto → Qdrant si configuré, sinon Chroma local
+    persist_directory: str = str(DATA_DIR / "vector_store")
+    embed_model_name: str = "all-MiniLM-L6-v2"
+    qdrant_url: Optional[str] = None
+    qdrant_api_key: Optional[str] = None
+
 class PathSettings(BaseSettings):
     documents: str = str(DATA_DIR / "uploads")
     sessions: str = str(DATA_DIR / "sessions")
@@ -58,6 +66,7 @@ class Settings(BaseSettings):
     # Configurations imbriquÃ©es
     rag: RagSettings = RagSettings()
     db: DbSettings = DbSettings()
+    vector: VectorSettings = VectorSettings()
     paths: PathSettings = PathSettings()
 
     class Config:

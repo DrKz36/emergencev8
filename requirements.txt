@@ -24,6 +24,7 @@ tiktoken>=0.5.2,<0.8
 # --- Data & vectors ---
 aiosqlite==0.21.0                # match env stable
 chromadb==0.4.22                 # known reliable version
+qdrant-client>=1.7.3,<2          # optional vector backend (Qdrant)
 
 # --- Embeddings & NumPy/Torch ---
 sentence-transformers>=2.7,<3

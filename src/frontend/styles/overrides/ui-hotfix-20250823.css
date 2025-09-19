@@ -32,7 +32,9 @@ body::before, body::after,
 
 .chat-container.card{
 
-  height: calc(100vh - var(--page-gap) * 2);
+  min-height: calc(100dvh - var(--mobile-topbar-height, 56px) - var(--page-gap) * 1.5);
+
+  height: auto;
 
   display: flex; flex-direction: column;
 
@@ -348,7 +350,7 @@ body::before, body::after,
 
 .debate-view-wrapper{ padding-top: 12px; padding-bottom: max(12px, var(--safe-b)); overflow-x: clip; }
 
-.debate-view-wrapper .card{ height: calc(100vh - var(--page-gap) * 2 - 2px); display:flex; flex-direction:column; }
+.debate-view-wrapper .card{ min-height: calc(100dvh - var(--mobile-topbar-height, 56px) - var(--page-gap) * 1.5); height:auto; display:flex; flex-direction:column; }
 
 .debate-view-wrapper .card-body{ flex:1 1 auto; min-height:0; overflow:auto; }
 
@@ -597,7 +599,9 @@ body::before, body::after,
 .mobile-topbar__actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  min-width: 44px;
 }
 
 .mobile-backdrop[hidden] {
@@ -605,6 +609,7 @@ body::before, body::after,
 }
 
 @media (max-width: 760px) {
+  :root{ --page-gap: 16px; }
   body {
     padding-top: var(--mobile-topbar-height);
   }
@@ -632,14 +637,19 @@ body::before, body::after,
     top: var(--mobile-topbar-height);
     bottom: 0;
     left: 0;
-    width: min(82vw, 320px);
+    width: min(78vw, 312px);
     transform: translateX(-100%);
-    transition: transform .25s ease;
+    transition: transform .28s ease;
     z-index: 1201;
-    background: rgba(10,16,28,.98);
-    box-shadow: 0 20px 50px rgba(0,0,0,.48);
-    display: block !important;
-    padding: 24px 18px 28px;
+    background: linear-gradient(180deg, rgba(8,13,24,.96), rgba(5,9,18,.94));
+    backdrop-filter: blur(18px);
+    box-shadow: 0 22px 60px rgba(0,0,0,.55);
+    border-right: 1px solid rgba(148,163,184,.18);
+    border-top: 1px solid rgba(148,163,184,.14);
+    border-bottom: 1px solid rgba(148,163,184,.08);
+    display: flex !important;
+    flex-direction: column;
+    padding: 20px 18px 28px;
   }
 
   .brand-block {
@@ -649,26 +659,29 @@ body::before, body::after,
   .sidebar-nav {
     display: flex !important;
     flex-direction: column !important;
-    gap: 12px !important;
+    gap: 10px !important;
+    padding-top: 8px !important;
   }
 
   .sidebar-nav .nav-link {
     display: flex !important;
     align-items: center !important;
-    gap: 12px !important;
-    font-size: 1rem !important;
-    padding: 12px 14px !important;
+    gap: 10px !important;
+    font-size: .85rem !important;
+    letter-spacing: .04em !important;
+    padding: 10px 14px !important;
     border-radius: 14px !important;
     border: 1px solid rgba(148,163,184,.18) !important;
-    background: rgba(15,23,42,.6) !important;
+    background: linear-gradient(145deg, rgba(17,24,39,.72), rgba(11,18,33,.82)) !important;
     color: #e2e8f0 !important;
     position: relative !important;
     z-index: 1;
+    box-shadow: 0 12px 28px rgba(2,6,17,.45);
   }
 
   .sidebar-nav .nav-link svg {
-    width: 22px !important;
-    height: 22px !important;
+    width: 20px !important;
+    height: 20px !important;
   }
 
   body.mobile-menu-open .app-sidebar {
@@ -683,7 +696,7 @@ body::before, body::after,
   }
 
   #app-content {
-    padding: 0 min(var(--page-gap), 18px) var(--page-gap);
+    padding: 0 min(var(--page-gap), 18px) calc(var(--page-gap) + env(safe-area-inset-bottom, 0px));
   }
 
   #mobile-brain-toggle {
@@ -742,6 +755,19 @@ body::before, body::after,
   #mobile-open-documents:hover {
     background: rgba(59,130,246,.22);
     border-color: rgba(59,130,246,.4);
+  }
+
+  .tab-content{
+    padding-top: 4px;
+    gap: 12px;
+  }
+
+  .tab-content > .card,
+  .tab-content > .documents-view-wrapper,
+  .tab-content > .dashboard-container,
+  .tab-content > .debate-view-wrapper,
+  .tab-content > .memory-page {
+    margin-top: 0 !important;
   }
 
   body.mobile-menu-open,
@@ -1301,3 +1327,7 @@ body.brain-panel-open .memory-overlay {
   background: rgba(148, 163, 184, .28);
   box-shadow: inset 0 0 4px rgba(15, 23, 42, .4);
 }
+@media (max-width: 480px){
+  :root{ --page-gap: 14px; }
+}
+
