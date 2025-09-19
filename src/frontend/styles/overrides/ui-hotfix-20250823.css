@@ -683,7 +683,11 @@ body::before, body::after,
   }
 
   #app-content {
-    padding: 12px min(var(--page-gap), 18px) var(--page-gap);
+    padding: 0 min(var(--page-gap), 18px) var(--page-gap);
+  }
+
+  #mobile-brain-toggle {
+    display: none;
   }
 
   #settings-container {
@@ -1205,15 +1209,7 @@ body.brain-panel-open .memory-overlay {
 }
 
 .sidebar-nav .nav-item--memory::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 14px;
-  right: 14px;
-  height: 1px;
-  background: linear-gradient(90deg, rgba(148, 163, 184, .4), rgba(148, 163, 184, .12));
-  pointer-events: none;
-  z-index: 2;
+  content: none;
 }
 
 .sidebar-nav .nav-link--memory.active {

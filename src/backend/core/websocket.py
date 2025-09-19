@@ -49,23 +49,25 @@ class ConnectionManager:
             logger.info("WebSocket accepté sans sous-protocole compatible.")
         return selected
 
-    async def connect(self, websocket: WebSocket, session_id: str, user_id: str = "default_user"):
+    async def connect(self, websocket: WebSocket, session_id: str, user_id: str = "default_user",
+                      thread_id: Optional[str] = None):
         await self._accept_with_subprotocol(websocket)
 
         is_new_session = session_id not in self.active_connections
         if is_new_session:
             self.active_connections[session_id] = []
-            self.session_manager.create_session(session_id=session_id, user_id=user_id)
-            logger.info(f"Client connecté. Session {session_id} créée et associée.")
+            await self.session_manager.ensure_session(session_id=session_id, user_id=user_id, thread_id=thread_id)
+            logger.info(f"Client connecté. Session {session_id} associée (thread={thread_id}).")
         else:
-            logger.info(f"Nouveau client connecté pour la session existante {session_id}.")
+            await self.session_manager.ensure_session(session_id=session_id, user_id=user_id, thread_id=thread_id)
+            logger.info(f"Nouveau client connecté pour la session existante {session_id} (thread={thread_id}).")
 
         self.active_connections[session_id].append(websocket)
 
         try:
             await websocket.send_json({
                 "type": "ws:session_established",
-                "payload": {"session_id": session_id}
+                "payload": {"session_id": session_id, "thread_id": thread_id}
             })
         except (WebSocketDisconnect, RuntimeError) as e:
             logger.warning(f"Client déconnecté immédiatement (session {session_id}). Nettoyage... Erreur: {e}")
@@ -108,6 +110,7 @@ def get_websocket_router(container) -> APIRouter:
     @router.websocket("/ws/{session_id}")
     async def websocket_endpoint(websocket: WebSocket, session_id: str):
         user_id_hint = websocket.query_params.get("user_id")
+        thread_id = websocket.query_params.get("thread_id")
 
         async def _reject_ws(reason: str, close_code: int = 4401):
             try:
@@ -150,7 +153,7 @@ def get_websocket_router(container) -> APIRouter:
         if conn_manager is None:
             conn_manager = ConnectionManager(session_manager)
 
-        await conn_manager.connect(websocket, session_id, user_id=user_id)
+        await conn_manager.connect(websocket, session_id, user_id=user_id, thread_id=thread_id)
 
         handler = _find_handler(session_manager)
         try:
@@ -180,3 +183,4 @@ def get_websocket_router(container) -> APIRouter:
             await conn_manager.disconnect(session_id, websocket)
 
     return router
+

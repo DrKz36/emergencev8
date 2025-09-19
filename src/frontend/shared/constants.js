@@ -1,7 +1,7 @@
 // src/frontend/shared/constants.js
-// V5.3 — Exporte WS_CONFIG (attendu par main.js) + EVENTS + AGENTS(mapping) + AGENT_IDS
-// - URL WS auto-déduite (overrides supportés): localStorage 'em.ws_url', window.EMERGENCE_WS_URL
-// - wss:// forcé si page en https:// ; sinon ws://
+// V5.3 - Exporte WS_CONFIG (attendu par main.js) + EVENTS + AGENTS(mapping) + AGENT_IDS
+// - URL WS auto-deduite (overrides supportes): localStorage 'em.ws_url', window.EMERGENCE_WS_URL
+// - wss:// force si page en https:// ; sinon ws://
 // - Aucun impact d'architecture : fichier autonome, aucun import externe
 
 /* ------------------- WS URL Resolver ------------------- */
@@ -15,12 +15,12 @@ function resolveWsUrl() {
     const ov = (win && win.EMERGENCE_WS_URL) ? String(win.EMERGENCE_WS_URL) : '';
     if (ov && ov.trim()) return ov.trim();
 
-    // 2) Auto-déduction
+    // 2) Auto-deduction
     const loc = win.location || { protocol: 'http:', host: '127.0.0.1:8000' };
     const isHttps = String(loc.protocol || '').toLowerCase().startsWith('https');
     const scheme = isHttps ? 'wss' : 'ws';
 
-    // Si on tourne en local sans port précisé, garder 8000
+    // Si on tourne en local sans port precise, garder 8000
     let host = String(loc.host || '').trim() || '127.0.0.1:8000';
     if (!host.includes(':') && !isHttps) host = `${host}:8000`;
 
@@ -48,10 +48,13 @@ export const EVENTS = {
   WS_ERROR: 'ws:error',
   SERVER_NOTIFICATION: 'notification',
 
-  // Server push (chat)
+  // Server push (chat & session)
+  WS_SESSION_ESTABLISHED: 'ws:session_established',
   WS_CHAT_STREAM_START: 'ws:chat_stream_start',
   WS_CHAT_STREAM_CHUNK: 'ws:chat_stream_chunk',
   WS_CHAT_STREAM_END: 'ws:chat_stream_end',
+  WS_RAG_STATUS: 'ws:rag_status',
+  WS_MESSAGE_PERSISTED: 'ws:message_persisted',
 
   // Server push (debate)
   WS_DEBATE_STARTED: 'ws:debate_started',
@@ -78,6 +81,10 @@ export const EVENTS = {
   // Documents
   DOCUMENTS_SELECTION_CHANGED: 'documents:selection_changed',
   DOCUMENTS_CMD_DESELECT: 'documents:cmd:deselect',
+
+  // Generic UI helpers
+  SHOW_MODAL: 'ui:show_modal',
+  SHOW_NOTIFICATION: 'ui:show_notification',
 };
 
 export const AGENTS = {
@@ -86,6 +93,5 @@ export const AGENTS = {
   nexus: { id: 'nexus', label: 'Nexus', color: '#34d399', cssClass: 'message--nexus' },
 };
 
-// Liste d’IDs utilisable partout (legacy friendly)
+// Liste d'IDs utilisable partout (legacy friendly)
 export const AGENT_IDS = Object.keys(AGENTS);
-

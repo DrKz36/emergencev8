@@ -25,6 +25,8 @@ export class ChatUI {
       modelInfo: null,
       lastMessageMeta: null
     };
+    this._panelHandlersBound = false;
+    this.disableSidebarPanel = true;
     console.log('[ChatUI] V28.3.2 (glass-layout) initialisee.');
   }
 
@@ -218,6 +220,14 @@ export class ChatUI {
   }
   _ensureControlPanel() {
     try {
+      if (this.disableSidebarPanel) {
+        if (this._controlPanel?.parentElement) {
+          this._controlPanel.remove();
+        }
+        this._controlPanel = null;
+        this._panelHandlersBound = false;
+        return null;
+      }
       const host = document.getElementById('settings-container');
       if (!host) return null;
       let panel = host.querySelector('[data-role="chat-control-panel"]');
@@ -270,6 +280,7 @@ export class ChatUI {
   }
 
   _bindControlPanelEvents(panel) {
+    if (!panel) return;
     panel.querySelector('#memory-analyze')?.addEventListener('click', () => this.eventBus.emit('memory:tend'));
     panel.querySelector('#memory-clear')?.addEventListener('click', () => this.eventBus.emit('memory:clear'));
     panel.querySelector('#memory-open-center')?.addEventListener('click', () => this.eventBus.emit('memory:center:open'));
@@ -277,39 +288,39 @@ export class ChatUI {
 
   _updateControlPanelState() {
     const panel = this._ensureControlPanel();
-    if (!panel) return;
-
     const lastAnalysis = this.state.lastAnalysis || {};
     const memoryOn = !!(this.state.memoryBannerAt || lastAnalysis.status === 'completed');
-    const running = lastAnalysis.status === 'running';
-    const dot = panel.querySelector('#memory-dot');
-    const lbl = panel.querySelector('#memory-label');
-    const cnt = panel.querySelector('#memory-counters');
-
-    if (dot) {
-      dot.classList.toggle('is-on', memoryOn);
-      dot.style.background = '';
-      dot.style.boxShadow = '';
-    }
-    if (lbl) {
-      lbl.textContent = memoryOn ? 'Memoire ON' : 'Memoire OFF';
-      lbl.classList.toggle('is-off', !memoryOn);
-    }
-
     const mem = this.state.memoryStats || {};
-    if (cnt) {
-      const stmTxt = mem.has_stm ? 'STM V' : 'STM 0';
-      const ltmTxt = `LTM ${Number(mem.ltm_items || 0)}`;
-      const inj = mem.injected ? ' | inj' : '';
-      cnt.textContent = `${stmTxt} | ${ltmTxt}${inj}`;
+
+    if (panel) {
+      const dot = panel.querySelector('#memory-dot');
+      const lbl = panel.querySelector('#memory-label');
+      const cnt = panel.querySelector('#memory-counters');
+
+      if (dot) {
+        dot.classList.toggle('is-on', memoryOn);
+        dot.style.background = '';
+        dot.style.boxShadow = '';
+      }
+      if (lbl) {
+        lbl.textContent = memoryOn ? 'Memoire ON' : 'Memoire OFF';
+        lbl.classList.toggle('is-off', !memoryOn);
+      }
+      if (cnt) {
+        const stmTxt = mem.has_stm ? 'STM V' : 'STM 0';
+        const ltmTxt = `LTM ${Number(mem.ltm_items || 0)}`;
+        const inj = mem.injected ? ' | inj' : '';
+        cnt.textContent = `${stmTxt} | ${ltmTxt}${inj}`;
+      }
+
+      const met = this.state.metrics || {};
+      const metricsHost = panel.querySelector('#chat-metrics');
+      const ttfbEl = metricsHost?.querySelector('#metric-ttfb');
+      const fbEl = metricsHost?.querySelector('#metric-fallbacks');
+      if (ttfbEl) ttfbEl.textContent = `TTFB: ${Number.isFinite(met.last_ttfb_ms) ? met.last_ttfb_ms : 0} ms`;
+      if (fbEl) fbEl.textContent = `Fallback REST: ${met.rest_fallback_count || 0}`;
     }
 
-    const met = this.state.metrics || {};
-    const metricsHost = panel.querySelector('#chat-metrics');
-    const ttfbEl = metricsHost?.querySelector('#metric-ttfb');
-    const fbEl = metricsHost?.querySelector('#metric-fallbacks');
-    if (ttfbEl) ttfbEl.textContent = `TTFB: ${Number.isFinite(met.last_ttfb_ms) ? met.last_ttfb_ms : 0} ms`;
-    if (fbEl) fbEl.textContent = `Fallback REST: ${met.rest_fallback_count || 0}`;
     this.eventBus.emit?.('memory:center:state', {
       memoryOn,
       memoryStats: mem,
