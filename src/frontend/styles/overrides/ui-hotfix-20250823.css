@@ -828,6 +828,122 @@ body::before, body::after,
   }
 }
 
+/* === Memory Module Page (2025-09-19) === */
+.memory-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 28px;
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, .16);
+  background: linear-gradient(180deg, rgba(15, 23, 42, .88), rgba(8, 13, 28, .94));
+  box-shadow: 0 26px 60px rgba(5, 10, 25, .55);
+}
+
+.memory-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.memory-page__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: min(420px, 100%);
+}
+
+.memory-page__title {
+  margin: 0;
+  font-size: 1.4rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #e2e8f0;
+}
+
+.memory-page__subtitle {
+  margin: 0;
+  font-size: .95rem;
+  color: rgba(203, 213, 225, .82);
+}
+
+.memory-page__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.memory-page__actions .button {
+  min-width: 140px;
+}
+
+.memory-page__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.memory-stat-card {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  background: linear-gradient(160deg, rgba(24, 33, 52, .72), rgba(14, 22, 38, .78));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.memory-stat-card.is-on {
+  border-color: rgba(34, 197, 94, .45);
+  background: linear-gradient(160deg, rgba(34, 197, 94, .25), rgba(14, 22, 38, .78));
+}
+
+.memory-stat-card__label {
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: rgba(148, 163, 184, .9);
+}
+
+.memory-stat-card__value {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.memory-page__body {
+  padding: 0;
+}
+
+.memory-page__body .memory-panel {
+  gap: 20px;
+}
+
+@media (max-width: 960px) {
+  .memory-page {
+    padding: 22px;
+    gap: 20px;
+  }
+  .memory-page__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  .memory-page {
+    padding: 18px;
+    gap: 18px;
+  }
+  .memory-page__summary {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* === Memory Overlay & Panel === */
 .memory-overlay {
   position: fixed;

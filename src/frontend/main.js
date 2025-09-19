@@ -121,24 +121,44 @@ function setupMobileShell(appInstance, eventBus) {
   const backdrop = document.getElementById('mobile-backdrop');
   const memoryClosers = memoryOverlay ? memoryOverlay.querySelectorAll('[data-memory-close]') : [];
 
-  if (!menuToggle && !brainToggle && !memoryOverlay) return;
+  if (!menuToggle && !brainToggle && !memoryOverlay && !sidebar) return;
+
+  const navMode = sidebar?.dataset?.mobileNav || '';
+  const persistentNav = navMode.toLowerCase() === 'persistent';
+
+  if (persistentNav) {
+    try { body.classList.add('mobile-nav-persistent'); } catch (_) {}
+    if (menuToggle) {
+      menuToggle.setAttribute('hidden', 'hidden');
+      menuToggle.setAttribute('aria-hidden', 'true');
+      menuToggle.setAttribute('tabindex', '-1');
+      menuToggle.removeAttribute('aria-expanded');
+    }
+  }
 
   const syncBackdrop = () => {
     if (!backdrop) return;
+    if (persistentNav) {
+      backdrop.hidden = true;
+      return;
+    }
     const open = body.classList.contains('mobile-menu-open') || body.classList.contains('brain-panel-open');
     backdrop.hidden = !open;
   };
 
   const updateAria = () => {
-    if (menuToggle) {
+    if (menuToggle && !persistentNav) {
       menuToggle.setAttribute('aria-expanded', body.classList.contains('mobile-menu-open') ? 'true' : 'false');
     }
     if (brainToggle) {
       brainToggle.setAttribute('aria-expanded', body.classList.contains('brain-panel-open') ? 'true' : 'false');
     }
     if (sidebar) {
-      if (window.innerWidth <= 760) {
-        sidebar.setAttribute('aria-hidden', body.classList.contains('mobile-menu-open') ? 'false' : 'true');
+      if (persistentNav) {
+        sidebar.removeAttribute('aria-hidden');
+      } else if (window.innerWidth <= 760) {
+        const navVisible = body.classList.contains('mobile-menu-open') || body.classList.contains('brain-panel-open');
+        sidebar.setAttribute('aria-hidden', navVisible ? 'false' : 'true');
       } else {
         sidebar.removeAttribute('aria-hidden');
       }
@@ -150,6 +170,7 @@ function setupMobileShell(appInstance, eventBus) {
   };
 
   const closeMenu = () => {
+    if (persistentNav) return;
     if (!body.classList.contains('mobile-menu-open')) return;
     body.classList.remove('mobile-menu-open');
     syncBackdrop();
@@ -166,6 +187,7 @@ function setupMobileShell(appInstance, eventBus) {
   };
 
   const openMenu = () => {
+    if (persistentNav) return;
     body.classList.add('mobile-menu-open');
     body.classList.remove('brain-panel-open');
     syncBackdrop();
@@ -174,7 +196,7 @@ function setupMobileShell(appInstance, eventBus) {
 
   const openBrain = () => {
     body.classList.add('brain-panel-open');
-    body.classList.remove('mobile-menu-open');
+    if (!persistentNav) body.classList.remove('mobile-menu-open');
     if (memoryOverlay) memoryOverlay.setAttribute('aria-hidden', 'false');
     syncBackdrop();
     updateAria();
@@ -185,13 +207,15 @@ function setupMobileShell(appInstance, eventBus) {
     try { window.dispatchEvent(new CustomEvent('emergence:memory:open')); } catch (_) {}
   };
 
-  menuToggle?.addEventListener('click', () => {
-    if (body.classList.contains('mobile-menu-open')) {
-      closeMenu();
-    } else {
-      openMenu();
-    }
-  });
+  if (!persistentNav && menuToggle) {
+    menuToggle.addEventListener('click', () => {
+      if (body.classList.contains('mobile-menu-open')) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    });
+  }
 
   brainToggle?.addEventListener('click', () => {
     if (body.classList.contains('brain-panel-open')) {
@@ -202,7 +226,7 @@ function setupMobileShell(appInstance, eventBus) {
   });
 
   backdrop?.addEventListener('click', () => {
-    closeMenu();
+    if (!persistentNav) closeMenu();
     closeBrain();
   });
 
@@ -220,7 +244,7 @@ function setupMobileShell(appInstance, eventBus) {
     if (event.key === 'Escape') {
       if (body.classList.contains('brain-panel-open')) {
         closeBrain();
-      } else if (body.classList.contains('mobile-menu-open')) {
+      } else if (!persistentNav && body.classList.contains('mobile-menu-open')) {
         closeMenu();
       }
     }
@@ -228,8 +252,11 @@ function setupMobileShell(appInstance, eventBus) {
 
   window.addEventListener('resize', () => {
     if (window.innerWidth > 760) {
-      body.classList.remove('mobile-menu-open', 'brain-panel-open');
-      syncBackdrop();
+      body.classList.remove('brain-panel-open');
+      if (!persistentNav) {
+        body.classList.remove('mobile-menu-open');
+        syncBackdrop();
+      }
     }
     updateAria();
   });
@@ -244,13 +271,14 @@ function setupMobileShell(appInstance, eventBus) {
 
   if (eventBus?.on) {
     eventBus.on(EVENTS.MODULE_SHOW, () => {
-      if (body.classList.contains('mobile-menu-open')) closeMenu();
+      if (!persistentNav && body.classList.contains('mobile-menu-open')) closeMenu();
     });
   }
 
   syncBackdrop();
   updateAria();
 }
+
 
 /* ---------------------- Toast minimal ---------------------- */
 function mountToastHost() {

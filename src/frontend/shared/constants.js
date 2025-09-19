@@ -1,4 +1,4 @@
-﻿// src/frontend/shared/constants.js
+// src/frontend/shared/constants.js
 // V5.3 — Exporte WS_CONFIG (attendu par main.js) + EVENTS + AGENTS(mapping) + AGENT_IDS
 // - URL WS auto-déduite (overrides supportés): localStorage 'em.ws_url', window.EMERGENCE_WS_URL
 // - wss:// forcé si page en https:// ; sinon ws://
@@ -40,6 +40,7 @@ export const EVENTS = {
   // Core
   APP_READY: 'app:ready',
   MODULE_SHOW: 'module:show',
+  MODULE_NAVIGATE: 'app:navigate',
 
   // WebSocket (client)
   WS_CONNECTED: 'ws:connected',
@@ -87,3 +88,4 @@ export const AGENTS = {
 
 // Liste d’IDs utilisable partout (legacy friendly)
 export const AGENT_IDS = Object.keys(AGENTS);
+

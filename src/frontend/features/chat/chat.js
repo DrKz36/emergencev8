@@ -130,6 +130,18 @@ export default class ChatModule {
     this.eventBus.on?.('memory:tend', (payload = {}) => this._runMemoryAnalysis(!!payload.force));
     this.eventBus.on?.('memory:clear', () => this._clearMemory());
     this.eventBus.on?.('memory:center:open', () => {
+      let handled = false;
+      try {
+        const viewport = typeof window !== 'undefined' ? Number(window.innerWidth || 0) : 0;
+        if (viewport >= 768) {
+          const navEvent = (EVENTS && EVENTS.MODULE_NAVIGATE) ? EVENTS.MODULE_NAVIGATE : 'app:navigate';
+          this.eventBus.emit?.(navEvent, 'memory');
+          handled = true;
+        }
+      } catch (err) {
+        console.debug('[ChatModule] memory center viewport check failed', err);
+      }
+      if (handled) return;
       try { this.memoryCenter?.open?.(); }
       catch (err) { console.warn('[ChatModule] memory center open failed', err); }
     });
