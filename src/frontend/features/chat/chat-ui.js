@@ -54,18 +54,27 @@ export class ChatUI {
           <form id="chat-form" class="chat-form" autocomplete="off">
             <div class="chat-composer" data-role="chat-composer">
               <div class="chat-input-shell" data-role="chat-input-shell">
-                <button
-                  type="button"
-                  id="rag-power"
-                  class="rag-switch${this.state.ragEnabled ? ' is-on' : ''}"
-                  role="switch"
-                  aria-checked="${String(!!this.state.ragEnabled)}"
-                  aria-label="${this.state.ragEnabled ? 'RAG activé' : 'RAG désactivé'}"
-                  title="Basculer le RAG">
-                  <span class="rag-switch__label" aria-hidden="true">RAG</span>
-                  <span id="rag-status" class="rag-switch__state" aria-hidden="true">${this.state.ragEnabled ? 'ON' : 'OFF'}</span>
-                  <span class="sr-only" id="rag-status-text">${this.state.ragEnabled ? 'RAG actif' : 'RAG inactif'}</span>
-                </button>
+                <div class="chat-rag-toggle" data-role="rag-toggle">
+                  <button
+                    type="button"
+                    id="rag-power"
+                    class="chat-rag-toggle__button${this.state.ragEnabled ? ' is-on' : ''}"
+                    role="switch"
+                    aria-checked="${String(!!this.state.ragEnabled)}"
+                    aria-label="${this.state.ragEnabled ? 'RAG active' : 'RAG inactive'}"
+                    title="Basculer le RAG">
+                    <span class="chat-rag-toggle__icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="14" height="14" focusable="false">
+                        <path d="M12 2v10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                        <path d="M7.5 4.6A8 8 0 1012 20a8 8 0 004.5-15.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+                      </svg>
+                    </span>
+                    <span class="chat-rag-toggle__label" aria-hidden="true">RAG</span>
+                    <span id="rag-status" class="chat-rag-toggle__state" aria-hidden="true">${this.state.ragEnabled ? 'Actif' : 'Veille'}</span>
+                    <span class="sr-only" id="rag-status-text">${this.state.ragEnabled ? 'RAG actif' : 'RAG inactif'}</span>
+                  </button>
+                </div>
+
                 <textarea id="chat-input" class="chat-input" rows="1" placeholder="Ecris ton message..." aria-label="Message"></textarea>
                 <button type="submit" id="chat-send" class="chat-send-button" title="Envoyer" aria-label="Envoyer">
                   <span class="sr-only">Envoyer</span>
@@ -95,12 +104,12 @@ export class ChatUI {
     const ragEnabled = !!this.state.ragEnabled;
     if (ragBtn) {
       ragBtn.setAttribute('aria-checked', String(ragEnabled));
-      ragBtn.setAttribute('aria-label', ragEnabled ? 'RAG activé' : 'RAG désactivé');
-      ragBtn.title = ragEnabled ? 'Désactiver le RAG' : 'Activer le RAG';
+      ragBtn.setAttribute('aria-label', ragEnabled ? 'RAG active' : 'RAG inactive');
+      ragBtn.title = ragEnabled ? 'Desactiver le RAG' : 'Activer le RAG';
       ragBtn.classList.toggle('is-on', ragEnabled);
     }
     const ragStatus = container.querySelector('#rag-status');
-    if (ragStatus) ragStatus.textContent = ragEnabled ? 'ON' : 'OFF';
+    if (ragStatus) ragStatus.textContent = ragEnabled ? 'Actif' : 'Veille';
     const ragStatusText = container.querySelector('#rag-status-text');
     if (ragStatusText) ragStatusText.textContent = ragEnabled ? 'RAG actif' : 'RAG inactif';
 
@@ -169,11 +178,11 @@ export class ChatUI {
       const on = ragBtn.getAttribute('aria-checked') === 'true';
       const next = !on;
       ragBtn.setAttribute('aria-checked', String(next));
-      ragBtn.setAttribute('aria-label', next ? 'RAG activé' : 'RAG désactivé');
-      ragBtn.title = next ? 'Désactiver le RAG' : 'Activer le RAG';
+      ragBtn.setAttribute('aria-label', next ? 'RAG active' : 'RAG inactive');
+      ragBtn.title = next ? 'Desactiver le RAG' : 'Activer le RAG';
       ragBtn.classList.toggle('is-on', next);
       const ragStatus = container.querySelector('#rag-status');
-      if (ragStatus) ragStatus.textContent = next ? 'ON' : 'OFF';
+      if (ragStatus) ragStatus.textContent = next ? 'Actif' : 'Veille';
       const ragStatusText = container.querySelector('#rag-status-text');
       if (ragStatusText) ragStatusText.textContent = next ? 'RAG actif' : 'RAG inactif';
       this.eventBus.emit(EVENTS.CHAT_RAG_TOGGLED, { enabled: next });
@@ -379,40 +388,59 @@ export class ChatUI {
     if (!items.length) {
       host.style.display = 'none';
       host.innerHTML = '';
+      host.removeAttribute('data-count');
       return;
     }
 
-    const chips = items.map((s, i) => {
+    const countLabel = items.length > 1 ? `${items.length} references` : '1 reference';
+    const list = items.map((s, index) => {
       const filename = (s.filename || 'Document').toString();
-      const page = (Number(s.page) || 0) > 0 ? ` - p.${Number(s.page)}` : '';
-      const label = `${filename}${page}`;
-      const tip = (s.excerpt || '').toString().slice(0, 300);
-      const docId = (s.document_id || `doc-${i}`).toString();
+      const pageNumber = Number(s.page) || 0;
+      const pageLabel = pageNumber > 0 ? ` (p.${pageNumber})` : '';
+      const displayName = `${filename}${pageLabel}`;
+      const rawExcerpt = (s.excerpt || '').toString().replace(/\s+/g, ' ').trim();
+      const excerptText = rawExcerpt ? rawExcerpt.slice(0, 240) : '';
+      const docId = (s.document_id || `doc-${index}`).toString();
+      const tooltip = (excerptText || displayName).replace(/\n/g, ' ');
       return `
-        <button
-          type="button"
-          class="chip chip-source rag-source-chip"
-          data-doc-id="${this._escapeHTML(docId)}"
-          data-filename="${this._escapeHTML(filename)}"
-          data-page="${Number(s.page) || ''}"
-          data-excerpt="${this._escapeHTML(tip)}"
-          title="${this._escapeHTML(tip.replace(/\n/g, ' '))}"
-        >
-          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-            <path d="M4 4h10l6 6v10H4z" fill="none" stroke="currentColor" stroke-width="1.5"></path>
-            <path d="M14 4v6h6" fill="none" stroke="currentColor" stroke-width="1.5"></path>
-          </svg>
-          <span>${this._escapeHTML(label)}</span>
-        </button>`;
+        <li class="rag-source-item">
+          <button
+            type="button"
+            class="rag-source-button"
+            data-doc-id="${this._escapeHTML(docId)}"
+            data-filename="${this._escapeHTML(filename)}"
+            data-page="${pageNumber || ''}"
+            data-excerpt="${this._escapeHTML(rawExcerpt)}"
+            title="${this._escapeHTML(tooltip)}"
+          >
+            <span class="rag-source-line">
+              <span class="rag-source-index">${index + 1}</span>
+              <span class="rag-source-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="14" height="14">
+                  <path d="M7 3h7l5 5v13H7z" fill="none" stroke="currentColor" stroke-width="1.4"></path>
+                  <path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="1.4"></path>
+                </svg>
+              </span>
+              <span class="rag-source-name">${this._escapeHTML(displayName)}</span>
+            </span>
+            ${excerptText ? `<span class="rag-source-excerpt">${this._escapeHTML(excerptText)}</span>` : ''}
+          </button>
+        </li>`;
     }).join('');
 
     host.innerHTML = `
-      <div class="rag-sources-wrap">
-        <span class="rag-sources-label">Sources :</span>
-        ${chips}
-      </div>
+      <section class="rag-sources-panel">
+        <header class="rag-sources-header">
+          <span class="rag-sources-label">Sources</span>
+          <span class="rag-sources-count">${countLabel}</span>
+        </header>
+        <ul class="rag-source-list">
+          ${list}
+        </ul>
+      </section>
     `;
     host.style.display = 'block';
+    host.setAttribute('data-count', String(items.length));
   }
 
   _messageHTML(m) {
