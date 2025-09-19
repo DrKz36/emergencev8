@@ -134,6 +134,17 @@ export class App {
     c.querySelectorAll('.skeleton').forEach(el => el.remove());
   }
 
+  _syncSessionWithThread(threadId) {
+    if (!threadId || typeof threadId !== 'string') return;
+    try {
+      const current = this.state.get('websocket.sessionId');
+      if (current === threadId) return;
+      this.state.set('websocket.sessionId', threadId);
+    } catch (err) {
+      console.warn('[App] sync sessionId -> threadId impossible', err);
+    }
+  }
+
   async loadModule(moduleId) {
     if (this.modules[moduleId]) return this.modules[moduleId];
     const moduleLoader = moduleLoaders[moduleId];
@@ -173,18 +184,17 @@ export class App {
           const created = await api.createThread({ type: 'chat', title: 'Conversation' });
           currentId = created?.id;
         }
-        if (currentId) {
-          this.state.set('threads.currentId', currentId);
-          try { localStorage.setItem('emergence.threadId', currentId); } catch (_) {}
-        }
       }
 
       if (currentId) {
+        this.state.set('threads.currentId', currentId);
+        this._syncSessionWithThread(currentId);
         try { localStorage.setItem('emergence.threadId', currentId); } catch (_) {}
         this.eventBus.emit('threads:ready', { id: currentId });
         const thread = await api.getThreadById(currentId, { messages_limit: 50 });
         if (thread?.id) {
           this.state.set(`threads.map.${thread.id}`, thread);
+          this._syncSessionWithThread(thread.id);
           this.eventBus.emit('threads:loaded', thread);
         }
       }

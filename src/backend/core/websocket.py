@@ -53,11 +53,23 @@ class ConnectionManager:
                       thread_id: Optional[str] = None):
         await self._accept_with_subprotocol(websocket)
 
-        is_new_session = session_id not in self.active_connections
-        if is_new_session:
+        first_connection = session_id not in self.active_connections
+        if first_connection:
             self.active_connections[session_id] = []
-            await self.session_manager.ensure_session(session_id=session_id, user_id=user_id, thread_id=thread_id)
-            logger.info(f"Client connecté. Session {session_id} associée (thread={thread_id}).")
+            previously_cached = self.session_manager.get_session(session_id)
+            session = await self.session_manager.ensure_session(
+                session_id=session_id, user_id=user_id, thread_id=thread_id,
+            )
+            if previously_cached:
+                logger.info(f"Client connecté. Session {session_id} déjà active en mémoire (thread={thread_id}).")
+            elif getattr(session, "end_time", None):
+                logger.info(
+                    f"Session {session_id} restaurée depuis la BDD pour l'utilisateur {user_id} (thread={thread_id})."
+                )
+            else:
+                logger.info(
+                    f"Client connecté. Nouvelle session {session_id} créée pour {user_id} (thread={thread_id})."
+                )
         else:
             await self.session_manager.ensure_session(session_id=session_id, user_id=user_id, thread_id=thread_id)
             logger.info(f"Nouveau client connecté pour la session existante {session_id} (thread={thread_id}).")

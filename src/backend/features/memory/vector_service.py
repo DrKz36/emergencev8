@@ -72,33 +72,67 @@ from chromadb.config import Settings
 from chromadb.types import Collection
 from sentence_transformers import SentenceTransformer
 
+try:
+    from qdrant_client import QdrantClient  # type: ignore
+    from qdrant_client.http import models as qdrant_models  # type: ignore
+except Exception:  # pragma: no cover - dépendance optionnelle
+    QdrantClient = None  # type: ignore
+    qdrant_models = None  # type: ignore
+
 logger = logging.getLogger(__name__)
+
+
+class QdrantCollectionAdapter:
+    """Adapte l'API collection Chroma attendue par le code pour Qdrant."""
+
+    def __init__(self, service: "VectorService", name: str):
+        self._service = service
+        self.name = name
+
+    # Les signatures restent compatibles avec chroma.Collection.get/delete
+    def get(self, where: Optional[Dict[str, Any]] = None, limit: Optional[int] = None):
+        return self._service._qdrant_get(self.name, where_filter=where, limit=limit)
+
+    def delete(self, where: Optional[Dict[str, Any]] = None, ids: Optional[List[str]] = None) -> None:
+        self._service._qdrant_delete_via_collection(self.name, where_filter=where, ids=ids)
 
 class VectorService:
     """
-    VectorService V3.0.0
+    VectorService V3.5.0
     - API identique.
-    - Lazy-load: modèle SBERT + client Chroma instanciés au 1er usage (_ensure_inited()).
+    - Lazy-load: modèle SBERT + backend vectoriel (Chroma ou Qdrant) instanciés au 1er usage.
     - Auto-reset AVANT instanciation Chroma si DB corrompue (évite locks Windows).
     - Télémétrie Chroma/PostHog durcie (env + shim).
     - Normalisation des filtres where conservée.
+    - Backend Qdrant optionnel (via qdrant-client) avec fallback automatique sur Chroma.
     """
 
     def __init__(
         self,
         persist_directory: str,
         embed_model_name: str,
-        auto_reset_on_schema_error: bool = True
+        auto_reset_on_schema_error: bool = True,
+        backend_preference: str = "auto",
+        qdrant_url: Optional[str] = None,
+        qdrant_api_key: Optional[str] = None,
     ):
         self.persist_directory = os.path.abspath(persist_directory)
         self.embed_model_name = embed_model_name
         self.auto_reset_on_schema_error = auto_reset_on_schema_error
+        self.backend_preference = (backend_preference or "auto").strip().lower()
+        self.qdrant_url = (qdrant_url or os.getenv("QDRANT_URL") or None)
+        self.qdrant_api_key = (qdrant_api_key or os.getenv("QDRANT_API_KEY") or None)
 
         os.makedirs(self.persist_directory, exist_ok=True)
 
         # Lazy members (instanciés à la demande)
         self.model: Optional[SentenceTransformer] = None
         self.client: Optional[chromadb.PersistentClient] = None
+        self.qdrant_client: Optional[QdrantClient] = None  # type: ignore[assignment]
+
+        # Backend effectif sélectionné ("chroma" ou "qdrant")
+        self.backend: str = "chroma"
+        self._qdrant_known_collections: Dict[str, int] = {}
 
         # Guard thread-safe (double-checked lock)
         self._init_lock = threading.Lock()
@@ -106,11 +140,17 @@ class VectorService:
 
     # ---------- Lazy init ----------
     def _ensure_inited(self) -> None:
-        if self._inited and self.model is not None and self.client is not None:
-            return
-        with self._init_lock:
-            if self._inited and self.model is not None and self.client is not None:
+        if self._inited and self.model is not None:
+            if self.backend == "chroma" and self.client is not None:
                 return
+            if self.backend == "qdrant" and self.qdrant_client is not None:
+                return
+        with self._init_lock:
+            if self._inited and self.model is not None:
+                if self.backend == "chroma" and self.client is not None:
+                    return
+                if self.backend == "qdrant" and self.qdrant_client is not None:
+                    return
 
             # 0) Pré-check : corruption SQLite → backup + reset AVANT Chroma
             if self.auto_reset_on_schema_error and self._is_sqlite_corrupted(self.persist_directory):
@@ -118,21 +158,33 @@ class VectorService:
                 backup_path = self._backup_persist_dir(self.persist_directory)
                 logger.warning(f"Store existant déplacé en backup: {backup_path}")
 
-            # 1) Charger le modèle d'embedding
-            try:
-                self.model = SentenceTransformer(self.embed_model_name)
-                logger.info(f"Modèle SentenceTransformer '{self.embed_model_name}' chargé (lazy).")
-            except Exception as e:
-                logger.error(f"Échec du chargement du modèle '{self.embed_model_name}': {e}", exc_info=True)
-                raise
+            # 1) Charger le modèle d'embedding (commun aux backends)
+            if self.model is None:
+                try:
+                    self.model = SentenceTransformer(self.embed_model_name)
+                    logger.info(f"Modèle SentenceTransformer '{self.embed_model_name}' chargé (lazy).")
+                except Exception as e:
+                    logger.error(f"Échec du chargement du modèle '{self.embed_model_name}': {e}", exc_info=True)
+                    raise
 
-            # 2) Initialiser Chroma PersistentClient (télémétrie désactivée)
-            self.client = self._init_client_with_guard(
-                self.persist_directory,
-                self.auto_reset_on_schema_error
-            )
+            # 2) Sélectionner et initialiser le backend vectoriel
+            backend = self._select_backend()
+            if backend == "qdrant":
+                if not self._init_qdrant_client():
+                    logger.warning("VectorService: fallback sur Chroma (init Qdrant impossible).")
+                    backend = "chroma"
+
+            if backend == "chroma":
+                self.client = self._init_client_with_guard(
+                    self.persist_directory,
+                    self.auto_reset_on_schema_error
+                )
+            else:
+                logger.info("VectorService: backend Qdrant activé.")
+
+            self.backend = backend
             self._inited = True
-            logger.info("VectorService initialisé (lazy) : SBERT + Chroma prêts.")
+            logger.info("VectorService initialisé (lazy) : SBERT + backend %s prêts.", backend.upper())
 
     # ---------- Pré-check SQLite ----------
     def _is_sqlite_corrupted(self, path: str) -> bool:
@@ -204,6 +256,38 @@ class VectorService:
             raise
         return backup_path
 
+    # ---------- Sélection backend ----------
+    def _select_backend(self) -> str:
+        pref = (self.backend_preference or "auto").lower()
+        if pref in {"chroma", "chromadb"}:
+            return "chroma"
+        if pref == "qdrant":
+            return "qdrant"
+        if pref == "auto":
+            if QdrantClient is not None and self.qdrant_url:
+                return "qdrant"
+        return "chroma"
+
+    def _init_qdrant_client(self) -> bool:
+        if QdrantClient is None:
+            logger.warning("qdrant-client non installé — impossible d'initialiser le backend Qdrant.")
+            self.qdrant_client = None
+            return False
+        target = self.qdrant_url
+        if not target:
+            logger.warning("VectorService: URL Qdrant absente (env QDRANT_URL).")
+            self.qdrant_client = None
+            return False
+        try:
+            self.qdrant_client = QdrantClient(url=target, api_key=self.qdrant_api_key, timeout=5.0)  # type: ignore[call-arg]
+            self.qdrant_client.get_collections()
+            logger.info(f"Client Qdrant connecté: {target}")
+            return True
+        except Exception as e:
+            logger.error(f"Échec connexion Qdrant ({target}): {e}", exc_info=True)
+            self.qdrant_client = None
+            return False
+
     # ---------- Normalisation where (FIX) ----------
     def _normalize_where(self, where: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         if not where:
@@ -225,9 +309,203 @@ class VectorService:
             return where
         return {"$and": [{k: v} for k, v in items]}
 
+    # ---------- Backend Qdrant helpers ----------
+    def _flatten_where_pairs(self, where_filter: Optional[Dict[str, Any]]) -> List[tuple[str, Any]]:
+        pairs: List[tuple[str, Any]] = []
+
+        def _walk(node: Any) -> None:
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    if key in {"$and", "$or"} and isinstance(value, list):
+                        for child in value:
+                            _walk(child)
+                    elif not str(key).startswith("$"):
+                        pairs.append((key, value))
+
+        if where_filter:
+            _walk(where_filter)
+        return pairs
+
+    def _build_qdrant_filter(self, where_filter: Optional[Dict[str, Any]]):
+        if qdrant_models is None or not where_filter:
+            return None
+        pairs = self._flatten_where_pairs(where_filter)
+        if not pairs:
+            return None
+        conditions = [
+            qdrant_models.FieldCondition(key=key, match=qdrant_models.MatchValue(value=value))
+            for key, value in pairs
+        ]
+        if not conditions:
+            return None
+        return qdrant_models.Filter(must=conditions)
+
+    def _ensure_qdrant_collection(self, name: str, vector_size: int) -> None:
+        if self.qdrant_client is None or qdrant_models is None:
+            raise RuntimeError("Backend Qdrant indisponible")
+        if name in self._qdrant_known_collections:
+            return
+        try:
+            info = self.qdrant_client.get_collection(name)
+            if info:
+                self._qdrant_known_collections[name] = vector_size or getattr(getattr(info, "config", None), "vectors_count", 0)
+                return
+        except Exception:
+            pass
+        if vector_size <= 0:
+            raise ValueError("vector_size requis pour initialiser une collection Qdrant")
+        params = qdrant_models.VectorParams(size=vector_size, distance=qdrant_models.Distance.COSINE)
+        try:
+            self.qdrant_client.create_collection(collection_name=name, vectors_config=params)
+            logger.info(f"Collection Qdrant '{name}' créée (dim={vector_size}).")
+        except Exception as e:
+            if "exists" not in str(e).lower():
+                logger.warning(f"Création collection Qdrant '{name}' impossible: {e}")
+            else:
+                logger.info(f"Collection Qdrant '{name}' déjà existante.")
+        self._qdrant_known_collections[name] = vector_size
+
+    def _qdrant_upsert(
+        self,
+        collection_name: str,
+        ids: List[str],
+        embeddings: List[List[float]],
+        documents: List[str],
+        metadatas: List[Dict[str, Any]],
+    ) -> None:
+        if self.qdrant_client is None or qdrant_models is None:
+            raise RuntimeError("Backend Qdrant non initialisé")
+        if not embeddings:
+            logger.warning("Tentative d'upsert Qdrant sans embeddings.")
+            return
+        vector_size = len(embeddings[0])
+        self._ensure_qdrant_collection(collection_name, vector_size)
+
+        points = []
+        for idx, vector in enumerate(embeddings):
+            payload = dict(metadatas[idx] or {}) if idx < len(metadatas) else {}
+            text_value = documents[idx] if idx < len(documents) else None
+            if text_value is not None:
+                payload.setdefault("text", text_value)
+            payload = {k: v for k, v in payload.items() if v is not None}
+            point_id = ids[idx] if idx < len(ids) else uuid.uuid4().hex
+            points.append(qdrant_models.PointStruct(id=point_id, vector=vector, payload=payload))
+
+        if not points:
+            return
+
+        self.qdrant_client.upsert(collection_name=collection_name, points=points)
+        logger.info(f"{len(points)} vecteurs upsertés dans Qdrant '{collection_name}'.")
+
+    def _qdrant_query(
+        self,
+        collection_name: str,
+        query_vector: List[float],
+        n_results: int,
+        where_filter: Optional[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        if self.qdrant_client is None or qdrant_models is None:
+            return []
+        filter_obj = self._build_qdrant_filter(where_filter)
+        try:
+            results = self.qdrant_client.search(
+                collection_name=collection_name,
+                query_vector=query_vector,
+                limit=max(1, n_results),
+                with_payload=True,
+                with_vectors=False,
+                filter=filter_obj,
+            )
+        except Exception as e:
+            logger.error(f"Échec recherche Qdrant '{collection_name}': {e}", exc_info=True)
+            return []
+
+        formatted: List[Dict[str, Any]] = []
+        for scored in results or []:
+            payload = dict(scored.payload or {})
+            text_value = payload.pop("text", None)
+            formatted.append({
+                "id": str(scored.id),
+                "text": text_value,
+                "metadata": payload,
+                "distance": scored.score,
+            })
+        return formatted
+
+    def _qdrant_delete(self, collection_name: str, where_filter: Optional[Dict[str, Any]], ids: Optional[List[str]] = None) -> None:
+        if self.qdrant_client is None or qdrant_models is None:
+            return
+        if ids:
+            selector = qdrant_models.PointIdsList(points=[str(i) for i in ids])
+        else:
+            filter_obj = self._build_qdrant_filter(where_filter)
+            if not filter_obj:
+                logger.warning(f"Suppression Qdrant '{collection_name}' ignorée (aucun filtre).")
+                return
+            selector = qdrant_models.FilterSelector(filter=filter_obj)
+        try:
+            self.qdrant_client.delete(collection_name=collection_name, points_selector=selector)
+        except Exception as e:
+            logger.error(f"Échec suppression Qdrant '{collection_name}': {e}", exc_info=True)
+
+    def _qdrant_get(
+        self,
+        collection_name: str,
+        where_filter: Optional[Dict[str, Any]] = None,
+        limit: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        if self.qdrant_client is None or qdrant_models is None:
+            return {"ids": [[]], "documents": [[]], "metadatas": [[]]}
+        filter_obj = self._build_qdrant_filter(where_filter)
+        fetched = []
+        offset = None
+        remaining = limit if limit is not None else None
+        while True:
+            batch_size = 128
+            if remaining is not None:
+                if remaining <= 0:
+                    break
+                batch_size = min(batch_size, remaining)
+            try:
+                page, offset = self.qdrant_client.scroll(
+                    collection_name=collection_name,
+                    limit=batch_size,
+                    filter=filter_obj,
+                    with_payload=True,
+                    with_vectors=False,
+                    offset=offset,
+                )
+            except Exception as e:
+                logger.error(f"Échec scroll Qdrant '{collection_name}': {e}", exc_info=True)
+                break
+            if not page:
+                break
+            fetched.extend(page)
+            if remaining is not None:
+                remaining -= len(page)
+                if remaining <= 0:
+                    break
+            if offset is None:
+                break
+
+        ids = [[str(r.id) for r in fetched]]
+        documents = [[(r.payload or {}).get("text") for r in fetched]]
+        metadatas = [[{k: v for k, v in (r.payload or {}).items() if k != "text"} for r in fetched]]
+        return {"ids": ids, "documents": documents, "metadatas": metadatas}
+
+    def _qdrant_delete_via_collection(
+        self,
+        collection_name: str,
+        where_filter: Optional[Dict[str, Any]] = None,
+        ids: Optional[List[str]] = None,
+    ) -> None:
+        self._qdrant_delete(collection_name, where_filter, ids)
+
     # ---------- API publique ----------
-    def get_or_create_collection(self, name: str) -> Collection:
+    def get_or_create_collection(self, name: str):
         self._ensure_inited()
+        if self.backend == "qdrant":
+            return QdrantCollectionAdapter(self, name)
         try:
             collection = self.client.get_or_create_collection(name=name)  # type: ignore[union-attr]
             logger.info(f"Collection '{name}' chargée/créée avec succès.")
@@ -236,7 +514,7 @@ class VectorService:
             logger.error(f"Impossible de get/create la collection '{name}': {e}", exc_info=True)
             raise
 
-    def add_items(self, collection: Collection, items: List[Dict[str, Any]], item_text_key: str = 'text') -> None:
+    def add_items(self, collection, items: List[Dict[str, Any]], item_text_key: str = 'text') -> None:
         self._ensure_inited()
         if not items:
             logger.warning(f"Tentative d'ajout d'items vides à '{collection.name}'.")
@@ -249,19 +527,27 @@ class VectorService:
             embeddings = self.model.encode(documents_text, show_progress_bar=False)  # type: ignore[union-attr]
             embeddings_list = embeddings.tolist() if hasattr(embeddings, "tolist") else embeddings
 
-            collection.upsert(embeddings=embeddings_list, documents=documents_text, metadatas=metadatas, ids=ids)
-            logger.info(f"{len(ids)} items ajoutés/mis à jour dans '{collection.name}'.")
+            if self.backend == "qdrant":
+                collection_name = getattr(collection, "name", str(collection))
+                self._qdrant_upsert(collection_name, ids, embeddings_list, documents_text, metadatas)
+            else:
+                collection.upsert(embeddings=embeddings_list, documents=documents_text, metadatas=metadatas, ids=ids)
+                logger.info(f"{len(ids)} items ajoutés/mis à jour dans '{collection.name}'.")
         except Exception as e:
             logger.error(f"Échec de l'ajout d'items à '{collection.name}': {e}", exc_info=True)
             raise
 
-    def query(self, collection: Collection, query_text: str, n_results: int = 5, where_filter: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def query(self, collection, query_text: str, n_results: int = 5, where_filter: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         self._ensure_inited()
         if not query_text:
             return []
         try:
             embeddings = self.model.encode([query_text], show_progress_bar=False)  # type: ignore[union-attr]
             embeddings_list = embeddings.tolist() if hasattr(embeddings, "tolist") else embeddings
+            if self.backend == "qdrant":
+                collection_name = getattr(collection, "name", str(collection))
+                vector = embeddings_list[0] if embeddings_list else []
+                return self._qdrant_query(collection_name, vector, n_results, where_filter)
 
             results = collection.query(
                 query_embeddings=embeddings_list,
@@ -289,14 +575,18 @@ class VectorService:
             logger.error(f"Échec de la recherche '{safe_q}…' dans '{collection.name}': {e}", exc_info=True)
             return []
 
-    def delete_vectors(self, collection: Collection, where_filter: Dict[str, Any]) -> None:
+    def delete_vectors(self, collection, where_filter: Dict[str, Any]) -> None:
         self._ensure_inited()
         if not where_filter:
             logger.warning(f"Suppression annulée sur '{collection.name}' (pas de filtre).")
             return
         try:
-            collection.delete(where=self._normalize_where(where_filter))
-            logger.info(f"Vecteurs supprimés de '{collection.name}' avec filtre {where_filter}.")
+            if self.backend == "qdrant":
+                collection_name = getattr(collection, "name", str(collection))
+                self._qdrant_delete(collection_name, where_filter)
+            else:
+                collection.delete(where=self._normalize_where(where_filter))
+                logger.info(f"Vecteurs supprimés de '{collection.name}' avec filtre {where_filter}.")
         except Exception as e:
             logger.error(f"Échec suppression vecteurs dans '{collection.name}': {e}", exc_info=True)
             raise

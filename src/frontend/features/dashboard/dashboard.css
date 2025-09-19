@@ -170,22 +170,23 @@
 /* === Mobile Portrait adjustments (center dashboard cards) === */
 @media (max-width: 760px){
   .dashboard-container{
-    padding: 16px;
+    padding: 14px 12px 18px;
   }
   .dashboard-header{
     position: static;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
   }
   .dashboard-section-title{
     margin-bottom: 16px;
   }
   .dashboard-grid{
-    grid-template-columns: min(calc(100vw - 32px), 1fr);
-    gap: 16px;
+    grid-template-columns: min(calc(100vw - 28px), 1fr);
+    gap: 14px;
   }
   .summary-card{
     max-width: 100%;
     margin: 0;
-    padding: 18px 16px;
+    padding: 16px 14px;
   }
-}\r\n
+}
+

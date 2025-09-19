@@ -88,6 +88,39 @@ def _get_vector_dir(settings: Settings) -> str:
         cand = "./data/vector_store"
     return str(Path(cand).resolve())
 
+def _get_vector_backend(settings: Settings) -> str:
+    try:
+        vec = getattr(settings, "vector", None)
+        backend = getattr(vec, "backend", None) if vec is not None else None
+        if isinstance(backend, str) and backend.strip():
+            return backend.strip()
+    except Exception:
+        pass
+    env = os.getenv("VECTOR_BACKEND")
+    return (env or "auto").strip()
+
+def _get_qdrant_url(settings: Settings) -> Optional[str]:
+    try:
+        vec = getattr(settings, "vector", None)
+        url = getattr(vec, "qdrant_url", None) if vec is not None else None
+        if isinstance(url, str) and url.strip():
+            return url.strip()
+    except Exception:
+        pass
+    env = os.getenv("QDRANT_URL") or os.getenv("QDRANT_HOST")
+    return env.strip() if isinstance(env, str) and env.strip() else None
+
+def _get_qdrant_api_key(settings: Settings) -> Optional[str]:
+    try:
+        vec = getattr(settings, "vector", None)
+        key = getattr(vec, "qdrant_api_key", None) if vec is not None else None
+        if isinstance(key, str) and key.strip():
+            return key.strip()
+    except Exception:
+        pass
+    env = os.getenv("QDRANT_API_KEY")
+    return env.strip() if isinstance(env, str) and env.strip() else None
+
 def _get_embed_model_name(settings: Settings) -> str:
     """
     Modèle d'embedding SentenceTransformer.
@@ -145,10 +178,16 @@ class AppContainer(containers.DeclarativeContainer):
     # --- Mémoire vectorielle ---
     vector_dir = providers.Callable(_get_vector_dir, settings)
     embed_model_name = providers.Callable(_get_embed_model_name, settings)
+    vector_backend = providers.Callable(_get_vector_backend, settings)
+    qdrant_url = providers.Callable(_get_qdrant_url, settings)
+    qdrant_api_key = providers.Callable(_get_qdrant_api_key, settings)
     vector_service = providers.Singleton(
         VectorService,
         persist_directory=vector_dir,
         embed_model_name=embed_model_name,
+        backend_preference=vector_backend,
+        qdrant_url=qdrant_url,
+        qdrant_api_key=qdrant_api_key,
     )
 
     # --- Analyse sémantique (STM) ---
