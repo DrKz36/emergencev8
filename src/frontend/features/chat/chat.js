@@ -257,6 +257,15 @@ export default class ChatModule {
     this.state.set(`chat.messages.${currentAgentId}`, [...curr, userMessage]);
     this.state.set('chat.isLoading', true);
 
+    const threadId = this.getCurrentThreadId();
+    if (threadId) {
+      api.appendMessage(threadId, {
+        role: 'user',
+        content: trimmed,
+        agent_id: currentAgentId
+      }).catch(err => console.error('[Chat] Échec appendMessage(user):', err));
+    }
+
     // 🛡️ Anti-course: attends brièvement WS avant d'émettre
     await this._waitForWS(this._wsConnectWaitMs);
 
