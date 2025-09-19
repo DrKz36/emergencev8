@@ -37,6 +37,39 @@ def _norm_list(payload, snake_key, camel_key):
         val = payload.get(camel_key)
     return val
 
+
+def _norm_doc_ids(payload, snake_key="doc_ids", camel_key="docIds") -> list[str]:
+    raw = _norm_list(payload, snake_key, camel_key)
+    if raw is None:
+        return []
+    if isinstance(raw, (set, tuple)):
+        raw = list(raw)
+    elif isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, list):
+        return []
+
+    doc_ids: list[str] = []
+    for item in raw:
+        if item is None:
+            continue
+        try:
+            num = int(str(item).strip())
+            doc_ids.append(str(num))
+        except (ValueError, TypeError):
+            text = str(item).strip()
+            if text:
+                doc_ids.append(text)
+    # Déduplication en conservant l'ordre
+    seen = set()
+    ordered: list[str] = []
+    for _id in doc_ids:
+        if _id in seen:
+            continue
+        seen.add(_id)
+        ordered.append(_id)
+    return ordered
+
 def _norm_type(t: str) -> str:
     t = (t or "").strip()
     return t.replace(".", ":", 1) if t.startswith("debate.") else t
@@ -111,6 +144,7 @@ async def _ws_core(
                         agent_order = _norm_list(payload, "agent_order", "agentOrder")
                         rounds      = payload.get("rounds")
                         use_rag     = _norm_bool(payload, "use_rag", "useRag", default=False)
+                        doc_ids     = _norm_doc_ids(payload)
 
                         if not topic or not isinstance(topic, str):
                             await connection_manager.send_personal_message(
@@ -134,7 +168,11 @@ async def _ws_core(
                         # Orchestration — le service émet déjà ws:debate_started/turn_update/result/ended
                         await debate_service.run(
                             session_id=session_id,
-                            topic=topic, agent_order=agent_order, rounds=rounds, use_rag=use_rag
+                            topic=topic,
+                            agent_order=agent_order,
+                            rounds=rounds,
+                            use_rag=use_rag,
+                            doc_ids=doc_ids,
                         )
 
                         # Pas de ré-émission ici (évite les doublons ws:debate_result).
@@ -157,6 +195,7 @@ async def _ws_core(
                     txt = (payload.get("text") or "").strip()
                     ag  = (payload.get("agent_id") or "").strip().lower()
                     use_rag = _norm_bool(payload, "use_rag", "useRag", default=False)
+                    doc_ids = _norm_doc_ids(payload)
 
                     if not txt or not ag:
                         await connection_manager.send_personal_message(
@@ -172,9 +211,19 @@ async def _ws_core(
                         last_role = (last.get("role") if isinstance(last, dict) else getattr(last, "role", None)) if last else None
                         if isinstance(last, dict):
                             last_text = last.get("content") or last.get("message")
+                            last_doc_ids_raw = last.get("doc_ids")
                         else:
                             last_text = getattr(last, "content", None) or getattr(last, "message", None)
+                            last_doc_ids_raw = getattr(last, "doc_ids", None)
                         already_there = (str(last_role).lower().endswith("user") and (last_text or "").strip() == txt.strip())
+                        if already_there:
+                            try:
+                                last_doc_ids = {str(int(str(x).strip())) for x in (last_doc_ids_raw or []) if x not in (None, "")}
+                                current_doc_ids = {str(int(x)) for x in doc_ids}
+                                if last_doc_ids != current_doc_ids:
+                                    already_there = False
+                            except Exception:
+                                already_there = False
                     except Exception:
                         already_there = False
 
@@ -185,12 +234,16 @@ async def _ws_core(
                             role=Role.USER,
                             agent=ag,
                             content=txt,
-                            timestamp=datetime.now(timezone.utc).isoformat()
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                            use_rag=use_rag,
+                            doc_ids=doc_ids,
                         )
                         await connection_manager.session_manager.add_message_to_session(session_id, umsg)
 
                     chat_service.process_user_message_for_agents(
-                        session_id, {"agent_id": ag, "use_rag": use_rag}, connection_manager
+                        session_id,
+                        {"agent_id": ag, "use_rag": use_rag, "doc_ids": doc_ids},
+                        connection_manager,
                     )
 
                 except Exception as e:

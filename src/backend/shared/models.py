@@ -58,6 +58,10 @@ class ChatMessage(BaseModel):
     tokens: Optional[Dict[str, Any]] = Field(None, description="Détail des tokens utilisés (input, output)")
     agents: Optional[List[str]] = Field(None, description="Liste des agents cibles pour un nouveau message utilisateur.")
     use_rag: bool = Field(False, description="Indique si le RAG doit être utilisé pour ce message.")
+    doc_ids: Optional[List[str]] = Field(
+        default=None,
+        description="Liste optionnelle d'identifiants de documents associés au RAG pour ce message.",
+    )
 
     class Config:
         extra = 'ignore'
