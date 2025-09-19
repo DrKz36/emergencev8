@@ -853,6 +853,12 @@ class ChatService:
                 if not success:
                     raise last_error
 
+            thread_id = None
+            try:
+                thread_id = self.session_manager.get_thread_id_for_session(session_id)
+            except Exception:
+                thread_id = None
+
             final_agent_message = AgentMessage(
                 id=temp_message_id,
                 session_id=session_id,
@@ -879,6 +885,9 @@ class ChatService:
                 "provider": provider,
                 "model": model_used,
                 "fallback": bool(provider != primary_provider),
+                "persisted_by": "backend",
+                "persisted_via": "ws",
+                "thread_id": thread_id,
             }
             if selected_doc_ids:
                 try:
@@ -902,7 +911,7 @@ class ChatService:
                         vector_service=self.vector_service,
                         memory_analyzer=getattr(self.session_manager, "memory_analyzer", None),
                     )
-                    asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3))
+                    asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3, thread_id=thread_id))
                 except Exception:
                     pass
 

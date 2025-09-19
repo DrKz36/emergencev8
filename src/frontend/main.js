@@ -6,6 +6,7 @@ import { App } from './core/app.js';
 import { EventBus } from './core/event-bus.js';
 import { StateManager } from './core/state-manager.js';
 import { WebSocketClient } from './core/websocket.js';
+import { MemoryCenter } from './features/memory/memory-center.js';
 import { WS_CONFIG, EVENTS } from './shared/constants.js';
 
 /* ---------------- WS-first Chat dedupe & reroute (main.js patch V1) ----------------
@@ -531,6 +532,23 @@ class EmergenceClient {
 
     const app = new App(eventBus, stateManager);
     setupMobileShell(app, eventBus);
+
+    let overlayMemoryCenter = null;
+    try {
+      overlayMemoryCenter = new MemoryCenter(eventBus, stateManager);
+      overlayMemoryCenter.init();
+    } catch (err) {
+      console.warn('[Memory] Overlay init failed', err);
+    }
+
+    if (overlayMemoryCenter) {
+      eventBus.on?.('memory:center:open', () => {
+        try { overlayMemoryCenter.open(); } catch (e) { console.error('[Memory] open failed', e); }
+      });
+      eventBus.on?.('memory:center:state', () => {
+        try { overlayMemoryCenter.refresh(); } catch (e) { console.error('[Memory] refresh failed', e); }
+      });
+    }
 
     // Sélection initiale du module (débloque mount & APP_READY)
     try { eventBus.emit && eventBus.emit('module:show','chat'); } catch {}

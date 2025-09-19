@@ -31,6 +31,16 @@ export class WebSocketClient {
     console.log('✅ WebSocketClient V22.3 (queued send) prêt.');
   }
 
+  _getActiveThreadId() {
+    try {
+      const direct = this.state?.get?.('threads.currentId');
+      if (direct && typeof direct === 'string' && direct.trim()) return direct.trim();
+      const cached = localStorage.getItem('emergence.threadId');
+      if (cached && cached.trim()) return cached.trim();
+    } catch {}
+    return null;
+  }
+
   _bindEventBus() {
     this.eventBus.on?.('ui:chat:send', (payload = {}) => {
       try {
@@ -108,14 +118,17 @@ export class WebSocketClient {
   _buildUrl(sessionId) {
     const loc = window.location;
     const scheme = (loc.protocol === 'https:') ? 'wss' : 'ws';
+    const threadId = this._getActiveThreadId();
     if (this.url && typeof this.url === 'string') {
       const hasProto = /^wss?:\/\//i.test(this.url);
       const base = hasProto
         ? this.url.replace(/\/+$/, '')
         : `${scheme}://${loc.host}/${this.url.replace(/^\/+/, '')}`.replace(/\/+$/, '');
-      return `${base}/${sessionId}`;
+      const query = threadId ? `?thread_id=${encodeURIComponent(threadId)}` : '';
+      return `${base}/${sessionId}${query}`;
     }
-    return `${scheme}://${loc.host}/ws/${sessionId}`;
+    const query = threadId ? `?thread_id=${encodeURIComponent(threadId)}` : '';
+    return `${scheme}://${loc.host}/ws/${sessionId}${query}`;
   }
 
   async connect() {
