@@ -28,14 +28,69 @@ def _get_gardener_from_request(request: Request) -> MemoryGardener:
         memory_analyzer=container.memory_analyzer(),
     )
 
-def _resolve_session_id(request: Request, explicit_session_id: Optional[str] = None) -> str:
-    if explicit_session_id and str(explicit_session_id).strip():
-        return str(explicit_session_id).strip()
-    for key in ("X-Session-Id", "x-session-id", "X-Session-ID"):
-        sid = request.headers.get(key)
-        if sid and str(sid).strip():
-            return str(sid).strip()
-    raise HTTPException(status_code=400, detail="Session ID manquant (header 'X-Session-Id' ou paramètre 'session_id').")
+def _normalize_history_for_analysis(history: Optional[List[Any]]) -> List[Dict[str, Any]]:
+    normalized: List[Dict[str, Any]] = []
+    for item in history or []:
+        if isinstance(item, dict):
+            normalized.append(item)
+            continue
+        try:
+            if hasattr(item, 'model_dump'):
+                normalized.append(item.model_dump(mode='json'))  # type: ignore[attr-defined]
+            elif hasattr(item, 'dict'):
+                normalized.append(item.dict())  # type: ignore[attr-defined]
+            else:
+                normalized.append(dict(item))  # type: ignore[arg-type]
+        except Exception:
+            normalized.append({})
+    return normalized
+
+
+
+def _normalize_session_id(candidate: Optional[Any]) -> Optional[str]:
+    if candidate is None:
+        return None
+    try:
+        value = str(candidate).strip()
+    except Exception:
+        return None
+    return value or None
+
+
+
+def _resolve_session_id(request: Request, provided: Optional[str]) -> str:
+    for candidate in (
+        provided,
+        request.headers.get('x-session-id'),
+        request.query_params.get('session_id'),
+    ):
+        normalized = _normalize_session_id(candidate)
+        if normalized:
+            return normalized
+
+    try:
+        state_sid = getattr(request.state, 'session_id', None)
+        normalized = _normalize_session_id(state_sid)
+        if normalized:
+            return normalized
+    except Exception:
+        pass
+
+    try:
+        container = getattr(request.app.state, 'service_container', None)
+        if container is not None:
+            session_manager = container.session_manager()
+            active_sessions = getattr(session_manager, 'active_sessions', {})
+            if isinstance(active_sessions, dict) and len(active_sessions) == 1:
+                only_session_id = next(iter(active_sessions.keys()))
+                normalized = _normalize_session_id(only_session_id)
+                if normalized:
+                    return normalized
+    except Exception as exc:
+        logger.debug(f"[memory] Session ID fallback via session_manager failed: {exc}")
+
+    raise HTTPException(status_code=400, detail='Session ID manquant ou invalide.')
+
 
 async def _purge_stm(db_manager, session_id: str) -> bool:
     try:
@@ -87,6 +142,70 @@ def _purge_ltm(vector_service, where_filter: Dict[str, Any]) -> Tuple[int, int]:
     except Exception as e:
         logger.error(f"[memory.clear] purge LTM erreur: {e}", exc_info=True)
         return 0, 0
+
+@router.post(
+    "/analyze",
+    response_model=Dict[str, Any],
+    summary="Analyse sémantique d'une session (STM)",
+    description="Génère ou régénère le résumé/concepts d'une session en utilisant le MemoryAnalyzer."
+)
+async def analyze_session_endpoint(
+    request: Request,
+    payload: Dict[str, Any] = Body(default={})
+) -> Dict[str, Any]:
+    container = _get_container(request)
+    analyzer = container.memory_analyzer()
+    session_manager = container.session_manager()
+
+    raw_session_id = (payload or {}).get('session_id')
+    force = bool((payload or {}).get('force'))
+    session_id = _resolve_session_id(request, raw_session_id)
+
+    if not session_manager.get_session(session_id):
+        await session_manager.load_session_from_db(session_id)
+    if not session_manager.get_session(session_id):
+        raise HTTPException(status_code=404, detail="Session introuvable")
+
+    metadata = session_manager.get_session_metadata(session_id)
+    if metadata.get('summary') and not force:
+        return {
+            'status': 'skipped',
+            'reason': 'already_analyzed',
+            'session_id': session_id,
+            'metadata': metadata,
+        }
+
+    history = _normalize_history_for_analysis(session_manager.get_full_history(session_id))
+
+    if not history:
+        return {
+            'status': 'skipped',
+            'reason': 'no_history',
+            'session_id': session_id,
+            'metadata': metadata,
+        }
+
+    try:
+        analysis = await analyzer.analyze_session_for_concepts(session_id, history, force=force)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"[memory.analyze] Échec analyse session={session_id}: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Analyse mémoire impossible pour cette session.")
+
+    updated_meta = session_manager.get_session_metadata(session_id)
+    has_summary = bool((analysis or {}).get('summary')) or bool(updated_meta.get('summary'))
+    response: Dict[str, Any] = {
+        'status': 'completed' if has_summary else 'skipped',
+        'session_id': session_id,
+        'force': force,
+        'analysis': analysis or updated_meta,
+        'metadata': updated_meta,
+    }
+    if response['status'] == 'skipped':
+        response.setdefault('reason', 'no_changes')
+    return response
+
 
 @router.post(
     "/tend-garden",

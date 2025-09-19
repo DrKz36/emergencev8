@@ -7,6 +7,8 @@
 
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { ChatUI } from './chat-ui.js';
+import { MemoryCenter } from '../memory/memory-center.js';
+import { api } from '../../shared/api-client.js';
 
 /* ------------------------- ChatModule ------------------------- */
 export default class ChatModule {
@@ -14,17 +16,21 @@ export default class ChatModule {
     this.eventBus = eventBus;
     this.state = stateManager;
     this.ui = new ChatUI(eventBus, stateManager);
+    this.memoryCenter = new MemoryCenter(eventBus, stateManager);
     this.container = null;
     this.inited = false;
     this._activeStreams = new Map();
+    this._memoryAnalysisInFlight = false;
   }
 
   init() {
     if (this.inited) return;
     this._wireState();
     this._wireWS();
+    this._wireMemoryEvents();
+    this.memoryCenter?.init?.();
     this.inited = true;
-    console.log('✅ ChatModule V28.3.2 initialisé (handlers & state).');
+    console.log('[ChatModule] V28.3.2 initialized (handlers & state).');
   }
 
   mount(container) {
@@ -120,6 +126,16 @@ export default class ChatModule {
     this.eventBus.on?.('ws:chat_stream_end', (payload) => this._handleStreamEnd(payload));
 
   }
+  _wireMemoryEvents() {
+    this.eventBus.on?.('memory:tend', (payload = {}) => this._runMemoryAnalysis(!!payload.force));
+    this.eventBus.on?.('memory:clear', () => this._clearMemory());
+    this.eventBus.on?.('memory:center:open', () => {
+      try { this.memoryCenter?.open?.(); }
+      catch (err) { console.warn('[ChatModule] memory center open failed', err); }
+    });
+  }
+
+
 
   _handleStreamStart(payload = {}) {
     const messageId = this._resolveMessageId(payload);
@@ -269,13 +285,120 @@ export default class ChatModule {
     return trimmed || 'anima';
   }
 
+  _resolveSessionId() {
+    try {
+      const sid = this.state?.get?.('websocket.sessionId');
+      if (sid) return String(sid);
+    } catch (_) {}
+    try {
+      const raw = localStorage.getItem('emergenceState-V14');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const sid = parsed?.websocket?.sessionId;
+        if (sid) return String(sid);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  async _runMemoryAnalysis(force = false) {
+    if (this._memoryAnalysisInFlight) {
+      this.eventBus.emit?.('ui:toast', { kind: 'info', text: 'Analyse memoire deja en cours.' });
+      return;
+    }
+    const sessionId = this._resolveSessionId();
+    if (!sessionId) {
+      this.eventBus.emit?.('ui:toast', { kind: 'error', text: 'Session introuvable : analyse memoire impossible.' });
+      return;
+    }
+
+    this._memoryAnalysisInFlight = true;
+    const startedAt = Date.now();
+    try {
+      this.state.set('chat.lastAnalysis', { status: 'running', force, startedAt });
+      this.ui.update(this.container, { lastAnalysis: this.state.get('chat.lastAnalysis') });
+
+      const result = await api.analyzeMemory({ session_id: sessionId, force });
+      const completedAt = Date.now();
+      const payload = { ...result, completedAt, force };
+      this.state.set('chat.lastAnalysis', payload);
+
+      const currentStats = this.state.get('chat.memoryStats') || { has_stm: false, ltm_items: 0, injected: false };
+      const analysis = (result && result.analysis) || {};
+      const metadata = (result && result.metadata) || {};
+      const summaryText = (analysis.summary || metadata.summary || '').toString();
+      const hasSummary = summaryText.trim().length > 0;
+      const nextStats = {
+        ...currentStats,
+        has_stm: hasSummary,
+      };
+      if (typeof metadata.ltm_items === 'number' && Number.isFinite(metadata.ltm_items)) {
+        nextStats.ltm_items = Number(metadata.ltm_items);
+      }
+      this.state.set('chat.memoryStats', nextStats);
+      this.state.set('chat.memoryBannerAt', completedAt);
+      this.ui.update(this.container, {
+        memoryStats: nextStats,
+        memoryBannerAt: completedAt,
+        lastAnalysis: payload,
+      });
+
+      if (result && result.status === 'skipped') {
+        const reason = result.reason || 'no_changes';
+        let message = 'Aucune mise a jour memoire.';
+        if (reason === 'already_analyzed') message = 'Memoire deja analysee.';
+        if (reason === 'no_history') message = 'Aucun historique a analyser.';
+        this.eventBus.emit?.('ui:toast', { kind: 'info', text: message });
+      } else {
+        this.eventBus.emit?.('ui:toast', { kind: 'success', text: 'Analyse memoire terminee.' });
+        try {
+          if (typeof api.tendMemory === 'function') {
+            api.tendMemory().catch(() => {});
+          }
+        } catch (err) {
+          console.debug('[ChatModule] tendMemory optional call failed', err);
+        }
+      }
+    } catch (err) {
+      console.error('[ChatModule] analyse memoire echouee', err);
+      const message = (err && err.message) ? err.message : 'Erreur inconnue';
+      this.state.set('chat.lastAnalysis', { status: 'error', error: message, at: Date.now(), force });
+      this.eventBus.emit?.('ui:toast', { kind: 'error', text: 'Analyse memoire impossible: ' + message });
+    } finally {
+      this._memoryAnalysisInFlight = false;
+      this.ui.update(this.container, { lastAnalysis: this.state.get('chat.lastAnalysis') });
+    }
+  }
+
+  async _clearMemory() {
+    try {
+      await api.clearMemory();
+      const clearedAt = Date.now();
+      const resetStats = { has_stm: false, ltm_items: 0, injected: false };
+      this.state.set('chat.memoryStats', resetStats);
+      this.state.set('chat.memoryBannerAt', null);
+      this.state.set('chat.lastAnalysis', { status: 'cleared', clearedAt });
+      this.ui.update(this.container, {
+        memoryStats: resetStats,
+        memoryBannerAt: null,
+        lastAnalysis: this.state.get('chat.lastAnalysis'),
+      });
+      this.eventBus.emit?.('ui:toast', { kind: 'success', text: 'Memoire de session effacee.' });
+    } catch (err) {
+      console.error('[ChatModule] clearMemory echouee', err);
+      const message = (err && err.message) ? err.message : 'Erreur inconnue';
+      this.eventBus.emit?.('ui:toast', { kind: 'error', text: 'Effacement memoire impossible: ' + message });
+    }
+  }
+
   _refreshUi(agentId, messagesSnapshot) {
     if (!this.container) return;
-    const payload = {
-      messages: messagesSnapshot || this.state.get('chat.messages') || {},
-      currentAgentId: this._currentAgentId(),
-    };
-    this.ui.update(this.container, payload);
+    const currentAgentId = agentId ? this._normalizeAgentId(agentId) : this._currentAgentId();
+    const messages = messagesSnapshot || this.state.get('chat.messages') || {};
+    this.ui.update(this.container, {
+      messages,
+      currentAgentId,
+    });
   }
 
 }
