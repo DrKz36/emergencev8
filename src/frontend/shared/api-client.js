@@ -15,6 +15,11 @@ const MEMORY_TEND =
     ? (API_ENDPOINTS.MEMORY_TEND || API_ENDPOINTS.MEMORY_TEND_GARDEN)
     : '/api/memory/tend-garden';
 
+const MEMORY_ANALYZE =
+  (API_ENDPOINTS && API_ENDPOINTS.MEMORY_ANALYZE)
+    ? API_ENDPOINTS.MEMORY_ANALYZE
+    : '/api/memory/analyze';
+
 const MEMORY_CLEAR =
   (API_ENDPOINTS && (API_ENDPOINTS.MEMORY_CLEAR || API_ENDPOINTS.MEMORY_DELETE))
     ? (API_ENDPOINTS.MEMORY_CLEAR || API_ENDPOINTS.MEMORY_DELETE)
@@ -246,6 +251,12 @@ export const api = {
   },
 
   /* ------------------------ MEMORY ----------------------- */
+  analyzeMemory: ({ force = false, session_id } = {}) => {
+    const body = { force: !!force };
+    if (session_id) body.session_id = session_id;
+    return fetchApi(MEMORY_ANALYZE, { method: 'POST', body });
+  },
+
   // Lance l’analyse/compactage mémoire (non bloquant).
   tendMemory: () => fetchApi(MEMORY_TEND, { method: 'POST', body: {} }),
 

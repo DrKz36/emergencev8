@@ -19,6 +19,7 @@ class DebateConfig:
     rounds: int
     agent_order: List[str]  # [attacker, challenger, mediator]
     use_rag: bool = False
+    doc_ids: Optional[List[str]] = None
 
 
 class DebateService:
@@ -60,6 +61,7 @@ class DebateService:
         prompt: str,
         *,
         use_rag: bool,
+        doc_ids: Optional[List[int]] = None,
     ) -> Tuple[str, Dict]:
         try:
             res: Dict = await self.chat_service.get_llm_response_for_debate(
@@ -68,6 +70,7 @@ class DebateService:
                 system_override=None,
                 use_rag=use_rag,
                 session_id=session_id,
+                doc_ids=doc_ids,
             )
         except Exception as e:
             logger.error(f"_say_once error (agent={agent_id}): {e}", exc_info=True)
@@ -87,7 +90,26 @@ class DebateService:
         if not isinstance(agent_order, list):
             agent_order = []
         use_rag = bool(kwargs.get("useRag") if "useRag" in kwargs else kwargs.get("use_rag", False))
-        return DebateConfig(topic=topic, rounds=rounds, agent_order=agent_order, use_rag=use_rag)
+        raw_doc_ids = kwargs.get("doc_ids") if "doc_ids" in kwargs else kwargs.get("docIds")
+        if isinstance(raw_doc_ids, (set, tuple)):
+            raw_doc_ids = list(raw_doc_ids)
+        elif isinstance(raw_doc_ids, str):
+            raw_doc_ids = [raw_doc_ids]
+        doc_ids: Optional[List[str]] = None
+        if isinstance(raw_doc_ids, list):
+            doc_ids = []
+            for item in raw_doc_ids:
+                if item in (None, ""):
+                    continue
+                try:
+                    doc_ids.append(str(int(str(item).strip())))
+                except (ValueError, TypeError):
+                    text = str(item).strip()
+                    if text:
+                        doc_ids.append(text)
+            if not doc_ids:
+                doc_ids = None
+        return DebateConfig(topic=topic, rounds=rounds, agent_order=agent_order, use_rag=use_rag, doc_ids=doc_ids)
 
     async def run(self, session_id: str, config: Optional[DebateConfig] = None, **kwargs) -> Dict:
         cfg = self._normalize_config(config, kwargs)
@@ -95,6 +117,12 @@ class DebateService:
         attacker, challenger, mediator = (cfg.agent_order + ["", "", ""])[:3]
         rounds = max(1, int(cfg.rounds or 1))
         use_rag = bool(cfg.use_rag)
+        selected_doc_ids: List[int] = []
+        try:
+            if self.chat_service:
+                selected_doc_ids = self.chat_service._sanitize_doc_ids(cfg.doc_ids)
+        except Exception:
+            selected_doc_ids = []
 
         logger.info(
             json.dumps(
@@ -126,7 +154,13 @@ class DebateService:
         for r in range(1, rounds + 1):
             await self._status(session_id, f"round_{r}_attacker")
             prompt_attacker = self._build_turn_prompt(topic, turns, speaker="attacker", agent=attacker)
-            text_a, _ = await self._say_once(session_id, attacker, prompt_attacker, use_rag=use_rag)
+            text_a, _ = await self._say_once(
+                session_id,
+                attacker,
+                prompt_attacker,
+                use_rag=use_rag,
+                doc_ids=selected_doc_ids,
+            )
             turn_a = {"round": r, "agent": attacker, "text": text_a}
             turns.append(turn_a)
             # NEW: signal "turn_update"
@@ -134,7 +168,13 @@ class DebateService:
 
             await self._status(session_id, f"round_{r}_challenger")
             prompt_challenger = self._build_turn_prompt(topic, turns, speaker="challenger", agent=challenger)
-            text_c, _ = await self._say_once(session_id, challenger, prompt_challenger, use_rag=use_rag)
+            text_c, _ = await self._say_once(
+                session_id,
+                challenger,
+                prompt_challenger,
+                use_rag=use_rag,
+                doc_ids=selected_doc_ids,
+            )
             turn_c = {"round": r, "agent": challenger, "text": text_c}
             turns.append(turn_c)
             # NEW: signal "turn_update"
@@ -142,13 +182,25 @@ class DebateService:
 
         await self._status(session_id, "synthesis")
         synthesis_prompt = self._build_synthesis_prompt(topic, turns, mediator)
-        synthesis_text, _ = await self._say_once(session_id, mediator, synthesis_prompt, use_rag=use_rag)
+        synthesis_text, _ = await self._say_once(
+            session_id,
+            mediator,
+            synthesis_prompt,
+            use_rag=use_rag,
+            doc_ids=selected_doc_ids,
+        )
 
         payload = {
             "topic": topic,
             "turns": turns,
             "synthesis": synthesis_text,
-            "config": {"topic": topic, "rounds": rounds, "agentOrder": [attacker, challenger, mediator], "useRag": use_rag},
+            "config": {
+                "topic": topic,
+                "rounds": rounds,
+                "agentOrder": [attacker, challenger, mediator],
+                "useRag": use_rag,
+                "docIds": selected_doc_ids,
+            },
             "status": "completed",
         }
 

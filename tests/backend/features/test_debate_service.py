@@ -92,7 +92,7 @@ def test_debate_say_once_short_response(monkeypatch):
         assert cost_tracker.records == [
             {
                 "agent": "anima",
-                "model": "claude-3-haiku-20240307",
+                "model": "claude-3-5-haiku-20241022",
                 "input_tokens": 7,
                 "output_tokens": 2,
                 "total_cost": 0.00042,
@@ -101,3 +101,5 @@ def test_debate_say_once_short_response(monkeypatch):
         ]
 
     asyncio.run(_run())
+
+

@@ -39,6 +39,9 @@ export class WebSocketClient {
 
         const rawAgent = (payload.agent_id ?? payload.agentId ?? '').trim().toLowerCase();
         const agent_id = rawAgent || this._getActiveAgentIdFromState();
+        const doc_ids = Array.isArray(payload.doc_ids)
+          ? payload.doc_ids.map((id) => String(id))
+          : [];
 
         this._lastSendAt = Date.now();
         try {
@@ -51,7 +54,8 @@ export class WebSocketClient {
           payload: {
             text,
             agent_id,
-            use_rag: !!(payload.use_rag ?? payload.useRag ?? this.state?.get?.('chat.ragEnabled'))
+            use_rag: !!(payload.use_rag ?? payload.useRag ?? this.state?.get?.('chat.ragEnabled')),
+            doc_ids,
           }
         });
       } catch (e) {

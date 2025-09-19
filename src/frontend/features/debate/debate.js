@@ -164,7 +164,8 @@ export default class DebateModule {
         topic: st.config.topic,
         rounds: st.config.rounds,
         agentOrder: st.config.agentOrder,
-        useRag: st.config.useRag
+        useRag: st.config.useRag,
+        docIds: this.state.get('chat.selectedDocIds') || []
       }
     });
   }
