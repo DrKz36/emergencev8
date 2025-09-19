@@ -308,21 +308,118 @@
   overflow:auto;
 }
 /* Citations / sources (RAG) */
-.message .sources{
-  margin-top:10px; font-size:12px; opacity:.95;
-  display:flex; flex-wrap:wrap; gap:6px;
+.rag-sources{
+  padding:0 18px 18px;
+  margin-top:12px;
 }
-.message .source-chip{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:6px 8px; border-radius: 999px;
-  background: rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.14);
-  color:#fff;
-  text-decoration:none;
+
+.rag-sources-panel{
+  background:rgba(15,23,42,.78);
+  border:1px solid rgba(148,163,184,.18);
+  border-radius:18px;
+  padding:12px 16px;
+  box-shadow:0 18px 34px rgba(2,6,23,.5);
 }
-.message .source-chip:hover{
-  background: rgba(255,255,255,.14);
+
+.rag-sources-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  font-size:.68rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:rgba(226,232,240,.7);
+  margin-bottom:8px;
 }
+
+.rag-sources-count{
+  font-weight:600;
+  color:rgba(94,234,212,.78);
+}
+
+.rag-source-list{
+  list-style:none;
+  margin:0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.rag-source-button{
+  width:100%;
+  text-align:left;
+  border:1px solid rgba(148,163,184,.24);
+  border-radius:12px;
+  background:rgba(17,24,39,.65);
+  color:#e2e8f0;
+  padding:10px 12px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  transition:border-color .2s ease, background .2s ease, transform .2s ease, box-shadow .2s ease;
+}
+
+.rag-source-button:hover{
+  border-color:rgba(56,189,248,.5);
+  background:rgba(17,24,39,.78);
+  transform:translateY(-1px);
+  box-shadow:0 14px 28px rgba(2,6,23,.45);
+}
+
+.rag-source-button:focus-visible{
+  outline:2px solid rgba(94,234,212,.7);
+  outline-offset:2px;
+}
+
+.rag-source-line{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:.86rem;
+  font-weight:600;
+}
+
+.rag-source-index{
+  width:22px;
+  height:22px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(59,130,246,.28);
+  color:#bfdbfe;
+  font-size:.72rem;
+  font-weight:700;
+}
+
+.rag-source-icon svg{
+  width:14px;
+  height:14px;
+  display:block;
+  color:rgba(226,232,240,.75);
+}
+
+.rag-source-name{
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.rag-source-excerpt{
+  font-size:.74rem;
+  line-height:1.4;
+  color:rgba(226,232,240,.7);
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
 .chip{
   display:inline-flex;
   align-items:center;
@@ -337,7 +434,9 @@
   letter-spacing:.01em;
   transition: background .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
 }
+
 .chip svg{ width:14px; height:14px; display:block; }
+
 /* Loader dans la zone messages */
 .loader{
   width:20px; height:20px; border-radius:50%;
@@ -397,60 +496,67 @@
   box-shadow:0 22px 48px rgba(99,102,241,.32);
 }
 
-.rag-switch{
+.chat-rag-toggle{
   display:flex;
-  flex-direction:column;
   align-items:center;
-  justify-content:center;
-  gap:4px;
-  width:66px;
-  min-height:56px;
-  border-radius:16px;
-  border:1px solid rgba(239,68,68,.5);
-  background:linear-gradient(150deg, rgba(127,29,29,.82), rgba(220,38,38,.48));
-  color:#fecaca;
-  text-transform:uppercase;
-  letter-spacing:.12em;
-  font-size:.65rem;
-  font-weight:600;
-  box-shadow:0 12px 26px rgba(127,29,29,.45);
-  transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
 }
-.rag-switch:focus-visible{
-  outline:2px solid rgba(96,165,250,.8);
+
+.chat-rag-toggle__button{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 14px;
+  border-radius:14px;
+  border:1px solid rgba(148,163,184,.32);
+  background:linear-gradient(135deg, rgba(15,23,42,.9), rgba(30,41,59,.78));
+  color:rgba(226,232,240,.85);
+  font-size:.68rem;
+  font-weight:600;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:border-color .2s ease, background .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease;
+  box-shadow:0 12px 28px rgba(2,6,23,.45);
+}
+
+.chat-rag-toggle__button:hover{
+  transform:translateY(-1px);
+  border-color:rgba(59,130,246,.45);
+  color:#f8fafc;
+}
+
+.chat-rag-toggle__button:focus-visible{
+  outline:2px solid rgba(94,234,212,.7);
   outline-offset:2px;
 }
 
-.rag-switch:hover{
-  transform:translateY(-1px);
-  box-shadow:0 16px 34px rgba(127,29,29,.55);
+.chat-rag-toggle__button.is-on{
+  border-color:rgba(45,212,191,.65);
+  background:linear-gradient(135deg, rgba(17,94,89,.88), rgba(13,148,136,.64));
+  color:#e0f2f1;
+  box-shadow:0 16px 34px rgba(15,118,110,.45);
 }
 
-.rag-switch.is-on{
-  border-color:rgba(34,197,94,.55);
-  background:linear-gradient(150deg, rgba(4,120,87,.88), rgba(22,163,74,.55));
-  color:#bbf7d0;
-  box-shadow:0 16px 34px rgba(6,95,70,.52);
+.chat-rag-toggle__label{
+  font-size:.62rem;
+  letter-spacing:.16em;
 }
 
-.rag-switch__label{
-  font-size:.6rem;
-  letter-spacing:.18em;
+.chat-rag-toggle__icon svg{
+  width:14px;
+  height:14px;
+  display:block;
 }
 
-.rag-switch__state{
-  font-size:.95rem;
-  font-weight:700;
-  letter-spacing:.08em;
-  color:inherit;
+.chat-rag-toggle__state{
+  font-size:.64rem;
+  letter-spacing:.04em;
+  text-transform:none;
+  color:rgba(226,232,240,.65);
 }
 
-.rag-switch.is-on .rag-switch__state{
-  color:#22c55e;
-}
-
-.rag-switch:not(.is-on) .rag-switch__state{
-  color:#f87171;
+.chat-rag-toggle__button.is-on .chat-rag-toggle__state{
+  color:#5eead4;
 }
 
 .chat-input{
@@ -715,12 +821,27 @@
     padding:10px 12px;
     gap:10px;
   }
-  .rag-switch{
-    width:58px;
-    min-height:50px;
+  .chat-rag-toggle__button{
+    padding:6px 10px;
+    gap:6px;
   }
-  .rag-switch__state{
-    font-size:.85rem;
+  .chat-rag-toggle__state{
+    font-size:.6rem;
+  }
+  .chat-rag-toggle__label{
+    display:none;
+  }
+  .rag-sources{
+    padding:0 12px 14px;
+  }
+  .rag-source-button{
+    padding:9px 10px;
+  }
+  .rag-source-line{
+    font-size:.78rem;
+  }
+  .rag-source-excerpt{
+    font-size:.68rem;
   }
   .chat-send-button{
     width:44px;
