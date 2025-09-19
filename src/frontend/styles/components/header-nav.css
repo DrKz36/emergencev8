@@ -56,7 +56,7 @@
   gap: 6px;
   max-width: var(--sidebar-w);
   width: var(--sidebar-w);
-  overflow: hidden;
+  overflow: visible;
   padding-top: 4px;
   align-items: flex-start; /* important: évite l’étirement plein-largeur */
 }
@@ -80,7 +80,7 @@
   color: var(--color-text-secondary);
   border: 1px solid transparent;
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
 }
 
@@ -88,7 +88,7 @@
 .sidebar-nav .nav-link .nav-text {
   flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
 }
 

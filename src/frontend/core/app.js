@@ -46,7 +46,7 @@ export class App {
       {
         id: 'memory',
         name: 'Mémoire',
-        icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor" aria-hidden="true" focusable="false"><path d="M9.2 3.5c-2.05 0-3.7 1.64-3.7 3.66v1.08A3.52 3.52 0 0 0 3 11.8a3.5 3.5 0 0 0 2.05 3.16c.2.93.2 1.92 0 2.85A2.97 2.97 0 0 0 7.9 21H11V3.5H9.2z"></path><path d="M14.8 3.5c2.05 0 3.7 1.64 3.7 3.66v1.08A3.52 3.52 0 0 1 21 11.8a3.5 3.5 0 0 1-2.05 3.16c-.2.93-.2 1.92 0 2.85A2.97 2.97 0 0 1 16.1 21H13V3.5h1.8z"></path><path d="M13 7.5h-2"></path><path d="M13 11.5h-2"></path><path d="M13 15.5h-2"></path></svg>'
+        icon: '<svg class="nav-icon-brain" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><path d="M9.1 3.5c-2.1 0-3.8 1.66-3.8 3.7v1.08A3.6 3.6 0 0 0 3 11.9a3.55 3.55 0 0 0 2.08 3.2c.19.86.19 1.78 0 2.64A3.05 3.05 0 0 0 8 21h3V3.5H9.1z"></path><path d="M14.9 3.5c2.1 0 3.8 1.66 3.8 3.7v1.08A3.6 3.6 0 0 1 21 11.9a3.55 3.55 0 0 1-2.08 3.2c-.19.86-.19 1.78 0 2.64A3.05 3.05 0 0 1 16 21h-3V3.5h1.9z"></path><path d="M11 7.5h-1"></path><path d="M14 7.5h-1"></path><path d="M11 11.5h-1"></path><path d="M14 11.5h-1"></path><path d="M11 15.5h-1"></path><path d="M14 15.5h-1"></path></svg><span class="nav-icon-badge nav-icon-badge--csv" aria-hidden="true">CSV</span>'
       },
     ];
     this.activeModule = 'chat';
@@ -66,10 +66,20 @@ export class App {
   renderNavigation() {
     if (!this.dom.tabs) return;
     const navItemsHTML = this.moduleConfig.map((m) => {
-      const isActive = this.activeModule === m.id ? 'active' : '';
-      return '<li class="nav-item">' +
-        '<a href="#" class="nav-link ' + isActive + '" data-module-id="' + m.id + '">' +
-          '<span class="nav-icon">' + m.icon + '</span>' +
+      const navClasses = ['nav-item'];
+      const linkClasses = ['nav-link'];
+      const iconClasses = ['nav-icon', `nav-icon--${m.id}`];
+      if (this.activeModule === m.id) linkClasses.push('active');
+      if (m.id === 'memory') {
+        navClasses.push('nav-item--memory');
+        linkClasses.push('nav-link--memory');
+      }
+      const navClassStr = navClasses.join(' ');
+      const linkClassStr = linkClasses.filter(Boolean).join(' ');
+      const iconClassStr = iconClasses.join(' ');
+      return '<li class="' + navClassStr + '">' +
+        '<a href="#" class="' + linkClassStr + '" data-module-id="' + m.id + '">' +
+          '<span class="' + iconClassStr + '">' + m.icon + '</span>' +
           '<span class="nav-text">' + m.name + '</span>' +
         '</a>' +
       '</li>';
