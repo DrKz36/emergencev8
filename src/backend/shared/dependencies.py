@@ -1,4 +1,4 @@
-# src/backend/shared/dependencies.py
+﻿# src/backend/shared/dependencies.py
 # V7.4 – Allowlist GIS + WS token handshake + compat alias (_extract_ws_bearer_token) + DI getters sans import container
 from __future__ import annotations
 
@@ -46,6 +46,27 @@ _jwt_like = re.compile(r"^[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+$")
 def _looks_like_jwt(s: str) -> bool:
     return bool(_jwt_like.fullmatch(s or ""))
 
+_DEV_BYPASS_TRUTHY = {"1", "true", "yes", "on", "enable"}
+
+
+def _has_dev_bypass(headers) -> bool:
+    try:
+        if not headers:
+            return False
+        val = headers.get('x-dev-bypass') or headers.get('X-Dev-Bypass')
+        return bool(val) and str(val).strip().lower() in _DEV_BYPASS_TRUTHY
+    except Exception:
+        return False
+
+
+def _has_dev_bypass_query(params) -> bool:
+    try:
+        if not params:
+            return False
+        val = params.get('dev_bypass')
+        return bool(val) and str(val).strip().lower() in _DEV_BYPASS_TRUTHY
+    except Exception:
+        return False
 # -----------------------------
 # Allowlist (emails / domaine)
 # -----------------------------
@@ -93,81 +114,37 @@ async def enforce_allowlist(request: Request):
     mode, _emails, _hd, client_id, _dev = _get_cfg()
     if not mode and not client_id:
         return
+    if _has_dev_bypass(request.headers):
+        logger.debug("Allowlist bypass via X-Dev-Bypass header.")
+        return
     claims = _read_bearer_claims(request)  # 401 si absent/invalide
     _enforce_allowlist_claims(claims)
     return
 
 async def get_user_id(request: Request) -> str:
-    claims = _read_bearer_claims(request)  # 401 si absent/invalide
-    sub = claims.get("sub")
-    if sub:
-        return str(sub)
-    _mode, _emails, _hd, _client_id, dev = _get_cfg()
-    if dev:
-        hdr = request.headers.get("X-User-ID")
+    mode, _emails, _hd, _client_id, dev = _get_cfg()
+    dev_bypass = _has_dev_bypass(request.headers)
+    auth_header = request.headers.get("Authorization") or ""
+
+    if auth_header.startswith("Bearer "):
+        claims = _read_bearer_claims(request)  # 401 si absent/invalide
+        sub = claims.get("sub")
+        if sub:
+            return str(sub)
+        if dev or dev_bypass:
+            hdr = request.headers.get("X-User-ID") or request.headers.get("X-User-Id")
+            if hdr:
+                logger.warning("DevMode: fallback X-User-ID utilisé car le JWT ne porte pas de 'sub'.")
+                return hdr
+        raise HTTPException(status_code=401, detail="ID token invalide ou sans 'sub'.")
+
+    if dev or dev_bypass:
+        hdr = request.headers.get("X-User-ID") or request.headers.get("X-User-Id")
         if hdr:
-            logger.warning("DevMode: fallback X-User-ID utilisé car le JWT ne porte pas de 'sub'.")
+            logger.warning("DevMode: fallback X-User-ID utilisé (pas d'Authorization).")
             return hdr
+
     raise HTTPException(status_code=401, detail="ID token invalide ou sans 'sub'.")
-
-# -----------------------------
-# WebSocket — extraction du JWT
-# -----------------------------
-def _get_ws_token_from_headers(ws: WebSocket) -> Optional[str]:
-    """
-    Stratégie tolérante :
-      1) Sec-WebSocket-Protocol : "jwt,<token>" | "jwt <token>" | "jwt",<token>
-      2) Query params : token | id_token | access_token
-      3) Cookie : id_token
-      4) Header Authorization: Bearer <token> (rare en browser)
-    """
-    # 1) Sous-protocoles
-    proto_raw = ws.headers.get("sec-websocket-protocol") or ""
-    if proto_raw:
-        try:
-            parts = [p.strip() for p in proto_raw.split(",") if p.strip()]
-            if parts:
-                first = parts[0]
-                if first.lower().startswith("jwt"):
-                    rest = first[3:].strip(" ,")
-                    if rest and _looks_like_jwt(rest):
-                        return rest
-                    # second élément possible: token brut
-                    if len(parts) >= 2 and _looks_like_jwt(parts[1]):
-                        return parts[1]
-        except Exception as e:
-            logger.debug(f"Parsing sec-websocket-protocol échoué: {e}")
-
-    # 2) Query
-    for key in ("token", "id_token", "access_token"):
-        val = ws.query_params.get(key)
-        if val and _looks_like_jwt(val):
-            return val
-
-    # 3) Cookie
-    cookie = ws.headers.get("cookie") or ""
-    if cookie:
-        for part in cookie.split(";"):
-            k, _, v = part.strip().partition("=")
-            if k == "id_token" and v:
-                v = v.strip()
-                if _looks_like_jwt(v):
-                    return v
-
-    # 4) Authorization (rare)
-    auth = ws.headers.get("authorization") or ws.headers.get("Authorization") or ""
-    if auth.startswith("Bearer "):
-        maybe = auth.split(" ", 1)[1].strip()
-        if _looks_like_jwt(maybe):
-            return maybe
-
-    return None
-
-# --- Compat : nom attendu par le router WS actuel ---
-def _extract_ws_bearer_token(ws: WebSocket) -> Optional[str]:
-    """Alias compat utilisé par le router WS (accept-first)."""
-    return _get_ws_token_from_headers(ws)
-
 async def get_user_id_for_ws(ws: WebSocket, user_id: Optional[str] = Query(default=None)) -> str:
     """
     Retourne l'user_id à partir d'un JWT trouvé dans le handshake WS.
@@ -175,22 +152,32 @@ async def get_user_id_for_ws(ws: WebSocket, user_id: Optional[str] = Query(defau
     """
     mode, _emails, _hd, client_id, dev = _get_cfg()
     token = _get_ws_token_from_headers(ws)
+    dev_bypass = _has_dev_bypass(ws.headers) or _has_dev_bypass_query(ws.query_params)
 
     if not token:
-        if dev and user_id:
-            logger.warning("DevMode WS: fallback user_id accepté (pas de token).")
+        if (dev or dev_bypass) and user_id:
+            logger.warning("DevMode WS: fallback user_id utilisé (pas de token).")
             return str(user_id)
+        if dev or dev_bypass:
+            qp_user = ws.query_params.get('user_id')
+            if qp_user:
+                logger.warning("DevMode WS: fallback user_id utilisé (query, pas de token).")
+                return str(qp_user)
         raise HTTPException(status_code=401, detail="WS: token absent (Authorization/subprotocol/cookie/query).")
 
     claims = _read_bearer_claims_from_token(token)
-    _enforce_allowlist_claims(claims)
+    if not dev_bypass:
+        _enforce_allowlist_claims(claims)
 
     sub = claims.get("sub")
     if not sub:
+        if dev or dev_bypass:
+            fallback = user_id or ws.query_params.get('user_id')
+            if fallback:
+                logger.warning("DevMode WS: fallback user_id utilisé (token sans 'sub').")
+                return str(fallback)
         raise HTTPException(status_code=401, detail="WS: token sans 'sub'.")
     return str(sub)
-
-# --- Compat pour les modules qui importent l'ancien nom ---
 async def get_user_id_from_websocket(ws: WebSocket, user_id: Optional[str] = Query(default=None)) -> str:
     return await get_user_id_for_ws(ws, user_id)
 
