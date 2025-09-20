@@ -16,6 +16,8 @@
   --color-neo-end:#38bdf8;
   --color-nexus-start:#0f766e;
   --color-nexus-end:#34d399;
+  --color-global-start:#facc15;
+  --color-global-end:#fde047;
   --chat-gap: 12px;
   --chat-gap-lg: 16px;
   --input-height: 52px;
@@ -124,6 +126,7 @@
 .button-tab.active.agent--anima{ background: linear-gradient(140deg,var(--color-anima-start),var(--color-anima-end)); }
 .button-tab.active.agent--neo{ background: linear-gradient(140deg,var(--color-neo-start),var(--color-neo-end)); }
 .button-tab.active.agent--nexus{ background: linear-gradient(140deg,var(--color-nexus-start),var(--color-nexus-end)); }
+.button-tab.active.agent--global{ background: linear-gradient(140deg,var(--color-global-start),var(--color-global-end)); color:#0f172a; }
 .button-tab.active.agent--assistant{ background: linear-gradient(140deg,#1f2937,#111827); border:1px solid rgba(148,163,184,.32); }
 .chat-header-right{
   display:flex; align-items:center; gap:12px;
@@ -253,6 +256,7 @@
 .message--anima .message-header{ color:#fee2e2; }
 .message--neo .message-header{ color:#e0f2fe; }
 .message--nexus .message-header{ color:#dcfce7; }
+.message--global .message-header{ color:#fef08a; }
 .message--assistant .message-header{ color:rgba(226,232,240,.85); }
 .message-name{ font-weight:700; }
 .message-separator{ opacity:.6; }
@@ -290,6 +294,11 @@
   background: linear-gradient(140deg,var(--color-nexus-start),var(--color-nexus-end));
   border-color: rgba(45,212,191,.45);
   color:#ecfdf5;
+}
+.message--global .message-bubble{
+  background: linear-gradient(140deg,var(--color-global-start),var(--color-global-end));
+  border-color: rgba(250,204,21,.4);
+  color:#1f2937;
 }
 .message--assistant .message-bubble{
   background: rgba(30,41,59,.75);
@@ -823,9 +832,40 @@
   }
   .chat-header-right{
     width:100%;
-    justify-content:flex-end;
-    flex-wrap:wrap;
-    gap:10px;
+    justify-content:space-between;
+    flex-wrap:nowrap;
+    align-items:center;
+    gap:8px;
+    min-width:0;
+  }
+  #model-badge{
+    flex:1 1 auto;
+    min-width:0;
+    max-width:60%;
+    padding:3px 10px;
+    font-size:.68rem;
+    gap:4px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .chat-header-right .auth-badge{
+    flex:0 0 auto;
+    padding:4px 10px;
+    gap:8px;
+    font-size:.6rem;
+  }
+  .chat-header-right .auth-button{
+    font-size:.58rem;
+    letter-spacing:.12em;
+  }
+  .chat-header-right .auth-model-chip{
+    font-size:.58rem;
+    padding:3px 8px;
+  }
+  .chat-header-right .auth-dot{
+    width:8px;
+    height:8px;
   }
   .chat-header-left{
     width:100%;

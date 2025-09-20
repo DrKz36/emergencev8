@@ -53,12 +53,13 @@ class ConnectionManager:
                       thread_id: Optional[str] = None):
         await self._accept_with_subprotocol(websocket)
 
+        history_limit = 200
         first_connection = session_id not in self.active_connections
         if first_connection:
             self.active_connections[session_id] = []
             previously_cached = self.session_manager.get_session(session_id)
             session = await self.session_manager.ensure_session(
-                session_id=session_id, user_id=user_id, thread_id=thread_id,
+                session_id=session_id, user_id=user_id, thread_id=thread_id, history_limit=history_limit,
             )
             if previously_cached:
                 logger.info(f"Client connecté. Session {session_id} déjà active en mémoire (thread={thread_id}).")
@@ -71,7 +72,9 @@ class ConnectionManager:
                     f"Client connecté. Nouvelle session {session_id} créée pour {user_id} (thread={thread_id})."
                 )
         else:
-            await self.session_manager.ensure_session(session_id=session_id, user_id=user_id, thread_id=thread_id)
+            await self.session_manager.ensure_session(
+                session_id=session_id, user_id=user_id, thread_id=thread_id, history_limit=history_limit
+            )
             logger.info(f"Nouveau client connecté pour la session existante {session_id} (thread={thread_id}).")
 
         self.active_connections[session_id].append(websocket)
@@ -84,6 +87,27 @@ class ConnectionManager:
         except (WebSocketDisconnect, RuntimeError) as e:
             logger.warning(f"Client déconnecté immédiatement (session {session_id}). Nettoyage... Erreur: {e}")
             await self.disconnect(session_id, websocket)
+            return
+
+        try:
+            history_export = self.session_manager.export_history_for_transport(session_id, limit=history_limit)
+            metadata = self.session_manager.get_session_metadata(session_id)
+            meta_payload = {k: metadata.get(k) for k in ("summary", "concepts", "entities") if metadata.get(k)}
+            if history_export or meta_payload:
+                await websocket.send_json({
+                    "type": "ws:session_restored",
+                    "payload": {
+                        "session_id": session_id,
+                        "thread_id": thread_id,
+                        "messages": history_export,
+                        "metadata": meta_payload,
+                        "history_count": len(history_export),
+                        "source": "session_manager",
+                    }
+                })
+        except Exception as restore_err:
+            logger.debug(f"Impossible d'envoyer l'historique restauré pour {session_id}: {restore_err}")
+
 
     async def disconnect(self, session_id: str, websocket: WebSocket):
         conns = self.active_connections.get(session_id, [])

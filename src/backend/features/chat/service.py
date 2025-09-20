@@ -98,6 +98,9 @@ class ChatService:
         self._knowledge_collection = None
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
+        self.broadcast_agents = self._compute_broadcast_agents()
+        if not self.broadcast_agents:
+            self.broadcast_agents = ['anima', 'neo', 'nexus']
         logger.info(f"ChatService V32.1 initialisé. Prompts chargés: {len(self.prompts)}")
 
     # ---------- prompts ----------
@@ -135,6 +138,27 @@ class ChatService:
         # Conserver texte + nom de fichier pour l'UI / debug
         return {aid: {"text": meta["text"], "file": meta["file"]} for aid, meta in chosen.items()}
 
+
+    def _compute_broadcast_agents(self) -> List[str]:
+        agents_cfg = self.settings.agents or {}
+        candidates = [aid for aid in agents_cfg.keys() if aid not in {"default", "global"}]
+
+        ordered: List[str] = []
+        for preferred in ("anima", "neo", "nexus"):
+            if preferred in candidates and preferred not in ordered:
+                ordered.append(preferred)
+
+        for aid in candidates:
+            if aid not in ordered:
+                ordered.append(aid)
+
+        prompt_ids = [p.replace('_lite', '') for p in self.prompts.keys()]
+        for prompt_id in prompt_ids:
+            if prompt_id not in ordered and prompt_id not in {"default", "global"}:
+                ordered.append(prompt_id)
+
+        return ordered
+
     # ---------- config agent / system prompt ----------
     def _get_agent_config(self, agent_id: str) -> Tuple[str, str, str]:
         """
@@ -142,8 +166,9 @@ class ChatService:
         Possibilité d'override économique pour AnimA via ENV:
           - EMERGENCE_FORCE_CHEAP_ANIMA=1  -> force openai:gpt-4o-mini
         """
-        clean_agent_id = agent_id.replace("_lite", "")
-        agent_configs = self.settings.agents
+        clean_agent_id = (agent_id or "").replace("_lite", "")
+        agent_configs = self.settings.agents or {}
+
         provider_raw = agent_configs.get(clean_agent_id, {}).get("provider")
         model = agent_configs.get(clean_agent_id, {}).get("model")
         provider = _normalize_provider(provider_raw)
@@ -154,17 +179,45 @@ class ChatService:
             model = "gpt-4o-mini"
             logger.info("Override coût activé (ENV): anima → openai:gpt-4o-mini")
 
-        bundle = self.prompts.get(agent_id) or self.prompts.get(clean_agent_id) or {"text": ""}
+        fallback_order = []
+        if clean_agent_id in agent_configs:
+            fallback_order.append(clean_agent_id)
+        if "default" in agent_configs and "default" not in fallback_order:
+            fallback_order.append("default")
+        if "anima" in agent_configs and "anima" not in fallback_order:
+            fallback_order.append("anima")
+        fallback_order.extend([k for k in agent_configs.keys() if k not in fallback_order])
+
+        resolved_id = None
+        for candidate in fallback_order:
+            cfg = agent_configs.get(candidate, {})
+            cand_provider = provider if candidate == clean_agent_id else _normalize_provider(cfg.get("provider"))
+            cand_model = model if candidate == clean_agent_id else cfg.get("model")
+            if not cand_provider or not cand_model:
+                continue
+            resolved_id = candidate
+            provider = cand_provider
+            model = cand_model
+            if candidate != clean_agent_id:
+                logger.warning("Agent '%s' non configuré, fallback sur '%s'", agent_id, candidate)
+            break
+
+        bundle = (
+            self.prompts.get(agent_id)
+            or self.prompts.get(clean_agent_id)
+            or (self.prompts.get(resolved_id) if resolved_id else None)
+            or self.prompts.get("anima")
+            or {"text": ""}
+        )
         system_prompt = bundle.get("text", "")
 
         if not provider or not model or system_prompt is None:
             raise ValueError(
                 f"Configuration incomplète pour l'agent '{agent_id}' "
-                f"(provider='{provider_raw}', normalisé='{provider}', model='{model}')."
+                f"(provider='{provider}', agent_effectif='{resolved_id or clean_agent_id}', model='{model}')."
             )
 
         return provider, model, system_prompt
-
     def _ensure_fr_tutoiement(self, agent_id: str, provider: str, system_prompt: str) -> str:
         """
         Préambule de style prioritaire, cross-provider.
@@ -537,6 +590,7 @@ class ChatService:
         use_rag: bool,
         connection_manager: ConnectionManager,
         doc_ids: Optional[List[int]] = None,
+        origin_agent_id: Optional[str] = None,
     ):
         temp_message_id = str(uuid4())
         full_response_text = ""
@@ -544,9 +598,15 @@ class ChatService:
         model_used = ""
         rag_sources: List[Dict[str, Any]] = []
 
+        origin = (origin_agent_id or "").strip().lower()
+        is_broadcast = origin == "global"
+
         try:
+            start_payload = {"agent_id": agent_id, "id": temp_message_id}
+            if is_broadcast:
+                start_payload["broadcast_origin"] = origin
             await connection_manager.send_personal_message(
-                {"type": "ws:chat_stream_start", "payload": {"agent_id": agent_id, "id": temp_message_id}}, session_id
+                {"type": "ws:chat_stream_start", "payload": start_payload}, session_id
             )
 
             history = self.session_manager.get_full_history(session_id)
@@ -782,11 +842,11 @@ class ChatService:
                 async for chunk in (await _stream_with(primary_provider, primary_model, normalized_history)):
                     if chunk:
                         full_response_text += chunk
+                        chunk_payload = {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}
+                        if is_broadcast:
+                            chunk_payload["broadcast_origin"] = origin
                         await connection_manager.send_personal_message(
-                            {
-                                "type": "ws:chat_stream_chunk",
-                                "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk},
-                            },
+                            {"type": "ws:chat_stream_chunk", "payload": chunk_payload},
                             session_id,
                         )
                 model_used = primary_model
@@ -835,10 +895,13 @@ class ChatService:
                         async for chunk in (await _stream_with(prov2, model2, norm2)):
                             if chunk:
                                 full_response_text += chunk
+                                chunk_payload = {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}
+                                if is_broadcast:
+                                    chunk_payload["broadcast_origin"] = origin
                                 await connection_manager.send_personal_message(
                                     {
                                         "type": "ws:chat_stream_chunk",
-                                        "payload": {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk},
+                                        "payload": chunk_payload,
                                     },
                                     session_id,
                                 )
@@ -889,6 +952,9 @@ class ChatService:
                 "persisted_via": "ws",
                 "thread_id": thread_id,
             }
+            if is_broadcast:
+                payload["meta"]["broadcast_origin"] = origin
+                payload["meta"]["source_agent"] = agent_id
             if selected_doc_ids:
                 try:
                     payload["meta"]["selected_doc_ids"] = selected_doc_ids
@@ -900,6 +966,8 @@ class ChatService:
             except Exception:
                 pass
 
+            if is_broadcast:
+                payload["broadcast_origin"] = origin
             await connection_manager.send_personal_message(
                 {"type": "ws:chat_stream_end", "payload": payload}, session_id
             )
@@ -1097,25 +1165,38 @@ class ChatService:
         connection_manager: Optional[ConnectionManager] = None,
     ) -> None:
         get = lambda k: (chat_request.get(k) if isinstance(chat_request, dict) else getattr(chat_request, k, None))
-        agent_id = (get("agent_id") or "").strip().lower()
-        use_rag = bool(get("use_rag"))
-        doc_ids = self._sanitize_doc_ids(get("doc_ids"))
-        cm = connection_manager or getattr(self.session_manager, "connection_manager", None)
+        agent_id = (get('agent_id') or '').strip().lower()
+        use_rag = bool(get('use_rag'))
+        doc_ids = self._sanitize_doc_ids(get('doc_ids'))
+        cm = connection_manager or getattr(self.session_manager, 'connection_manager', None)
+
         if not agent_id:
-            logger.error("process_user_message_for_agents: agent_id manquant")
+            logger.error('process_user_message_for_agents: agent_id manquant')
             return
         if cm is None:
-            logger.error("process_user_message_for_agents: connection_manager manquant")
+            logger.error('process_user_message_for_agents: connection_manager manquant')
             return
-        asyncio.create_task(
-            self._process_agent_response_stream(
-                session_id,
-                agent_id,
-                use_rag,
-                cm,
-                doc_ids=doc_ids,
+
+        if agent_id == 'global':
+            targets = [aid for aid in dict.fromkeys(self.broadcast_agents) if aid and aid != 'global']
+            if not targets:
+                targets = ['anima', 'neo', 'nexus']
+            origin_marker = 'global'
+        else:
+            targets = [agent_id]
+            origin_marker = None
+
+        for target_agent in targets:
+            asyncio.create_task(
+                self._process_agent_response_stream(
+                    session_id,
+                    target_agent,
+                    use_rag,
+                    cm,
+                    doc_ids=list(doc_ids or []),
+                    origin_agent_id=origin_marker,
+                )
             )
-        )
 
     @staticmethod
     def _sanitize_doc_ids(raw_doc_ids: Any) -> List[int]:
@@ -1148,4 +1229,6 @@ class ChatService:
     # ---------- diverses ----------
     def _count_bullets(self, text: str) -> int:
         return sum(1 for line in (text or "").splitlines() if line.strip().startswith("- "))
+
+
 

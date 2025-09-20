@@ -91,7 +91,11 @@ export const AGENTS = {
   anima: { id: 'anima', label: 'Anima', color: '#fb7185', cssClass: 'message--anima' },
   neo:   { id: 'neo',   label: 'Neo',   color: '#38bdf8', cssClass: 'message--neo' },
   nexus: { id: 'nexus', label: 'Nexus', color: '#34d399', cssClass: 'message--nexus' },
+  global:{ id: 'global', label: 'Global', color: '#facc15', cssClass: 'message--global', isBroadcast: true },
 };
 
 // Liste d'IDs utilisable partout (legacy friendly)
 export const AGENT_IDS = Object.keys(AGENTS);
+export const PRIMARY_AGENT_IDS = AGENT_IDS.filter((id) => id !== 'global');
+export const BROADCAST_AGENT_IDS = PRIMARY_AGENT_IDS;
+
