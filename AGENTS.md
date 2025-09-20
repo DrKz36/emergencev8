@@ -36,6 +36,7 @@ Ces instructions s'appliquent à tout le dépôt `emergencev8`.
 - Avant push : `git fetch --all --prune` puis `git rebase origin/<branche_de_reference>`.
 - Resoudre les conflits en local, relancer les tests, puis utiliser `git push --force-with-lease` uniquement apres un rebase reussi.
 - Nettoyer regulierement les branches fusionnees (localement et sur le remote).
+- Finaliser chaque intervention par `git add -A`, un commit explicite et `git push` afin de synchroniser toutes les modifications locales, sauf instruction contraire explicite.
 
 
 ## 7. Vérifications supplémentaires
