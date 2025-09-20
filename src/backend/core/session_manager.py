@@ -353,6 +353,82 @@ class SessionManager:
                 normalized.append({})
         return normalized
 
+    def export_history_for_transport(self, session_id: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Retourne l'historique hydraté, normalisé pour transport (agent_id, created_at, meta dict)."""
+        history = self.get_full_history(session_id)
+        if not history:
+            return []
+        if isinstance(limit, int) and limit > 0:
+            history = history[-limit:]
+        exported: List[Dict[str, Any]] = []
+        for item in history:
+            data: Dict[str, Any]
+            if isinstance(item, dict):
+                data = item
+            else:
+                try:
+                    if hasattr(item, 'model_dump'):
+                        data = item.model_dump(mode='json')  # type: ignore[attr-defined]
+                    elif hasattr(item, 'dict'):
+                        data = item.dict()  # type: ignore[attr-defined]
+                    else:
+                        data = dict(item)  # type: ignore[arg-type]
+                except Exception:
+                    data = {}
+            if not isinstance(data, dict):
+                continue
+            role_raw = str(data.get('role') or '').strip().lower()
+            if role_raw in {Role.USER.value, 'user'}:
+                role_value = Role.USER.value
+            elif role_raw in {Role.ASSISTANT.value, 'assistant'}:
+                role_value = Role.ASSISTANT.value
+            elif role_raw in {Role.SYSTEM.value, 'system'}:
+                role_value = Role.SYSTEM.value
+            else:
+                role_value = Role.USER.value if role_raw.startswith('user') else Role.ASSISTANT.value
+            content = data.get('content')
+            if content is None:
+                content = data.get('message') or ''
+            if not isinstance(content, str):
+                try:
+                    content = json.dumps(content)
+                except Exception:
+                    content = str(content)
+            agent_id = data.get('agent_id') or data.get('agent')
+            if not agent_id:
+                agent_id = 'user' if role_value == Role.USER.value else 'assistant'
+            created_at = data.get('created_at') or data.get('timestamp')
+            if not created_at:
+                created_at = datetime.now(timezone.utc).isoformat()
+            meta = data.get('meta')
+            if isinstance(meta, str):
+                try:
+                    meta = json.loads(meta)
+                except Exception:
+                    meta = {'raw': meta}
+            if meta is None:
+                meta = {}
+            if not isinstance(meta, dict):
+                meta = {'value': meta}
+            doc_ids = data.get('doc_ids')
+            if isinstance(doc_ids, (set, tuple)):
+                doc_ids = list(doc_ids)
+            elif doc_ids is None:
+                doc_ids = []
+            elif not isinstance(doc_ids, list):
+                doc_ids = [doc_ids]
+            exported.append({
+                'id': data.get('id') or str(uuid4()),
+                'role': role_value,
+                'content': content,
+                'agent_id': str(agent_id),
+                'created_at': created_at,
+                'meta': meta,
+                'doc_ids': doc_ids,
+                'use_rag': bool(data.get('use_rag')),
+            })
+        return exported
+
     async def _persist_message(self, session_id: str, payload: Dict[str, Any]):
         thread_id = self._session_threads.get(session_id)
         if not thread_id:

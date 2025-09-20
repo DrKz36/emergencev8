@@ -514,6 +514,7 @@ class VectorService:
             logger.error(f"Impossible de get/create la collection '{name}': {e}", exc_info=True)
             raise
 
+
     def add_items(self, collection, items: List[Dict[str, Any]], item_text_key: str = 'text') -> None:
         self._ensure_inited()
         if not items:
@@ -524,8 +525,20 @@ class VectorService:
             documents_text = [item[item_text_key] for item in items]
             metadatas = [item.get('metadata', {}) for item in items]
 
-            embeddings = self.model.encode(documents_text, show_progress_bar=False)  # type: ignore[union-attr]
-            embeddings_list = embeddings.tolist() if hasattr(embeddings, "tolist") else embeddings
+            precomputed_embeddings: List[List[float]] = []
+            use_precomputed = True
+            for item in items:
+                embedding = item.get('embedding')
+                if embedding is None:
+                    use_precomputed = False
+                    break
+                precomputed_embeddings.append(list(embedding))
+
+            if use_precomputed:
+                embeddings_list = precomputed_embeddings
+            else:
+                embeddings = self.model.encode(documents_text, show_progress_bar=False)  # type: ignore[union-attr]
+                embeddings_list = embeddings.tolist() if hasattr(embeddings, 'tolist') else embeddings
 
             if self.backend == "qdrant":
                 collection_name = getattr(collection, "name", str(collection))
@@ -536,6 +549,7 @@ class VectorService:
         except Exception as e:
             logger.error(f"Échec de l'ajout d'items à '{collection.name}': {e}", exc_info=True)
             raise
+
 
     def query(self, collection, query_text: str, n_results: int = 5, where_filter: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         self._ensure_inited()

@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional, Tuple, List
 from fastapi import APIRouter, HTTPException, Request, Body, Query
 
 from backend.features.memory.gardener import MemoryGardener
+from backend.shared import dependencies as shared_dependencies
 
 router = APIRouter(tags=["Memory & Knowledge"])
 logger = logging.getLogger(__name__)
@@ -91,6 +92,73 @@ def _resolve_session_id(request: Request, provided: Optional[str]) -> str:
 
     raise HTTPException(status_code=400, detail='Session ID manquant ou invalide.')
 
+
+@router.post(
+    "/sync-stm",
+    response_model=Dict[str, Any],
+    summary="Hydrate le SessionManager avec l'historique persistant.",
+    description="Recharge la STM depuis la base pour un couple session/thread et renvoie les messages normalisés."
+)
+async def sync_short_term_memory(request: Request, data: Dict[str, Any] = Body(default={})) -> Dict[str, Any]:
+    container = _get_container(request)
+    session_manager = container.session_manager()
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise
+
+    payload = data or {}
+    raw_thread_id = (
+        payload.get("thread_id")
+        or request.query_params.get("thread_id")
+        or request.headers.get("x-thread-id")
+    )
+    thread_id = _normalize_session_id(raw_thread_id)
+
+    raw_session_id = (
+        payload.get("session_id")
+        or request.headers.get("x-session-id")
+        or raw_thread_id
+    )
+    session_id = _normalize_session_id(raw_session_id)
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id requis (ou thread_id).")
+
+    limit_value = payload.get("limit") or request.query_params.get("limit")
+    try:
+        history_limit = int(limit_value)
+        if history_limit <= 0:
+            history_limit = 200
+    except (TypeError, ValueError):
+        history_limit = 200
+
+    session = await session_manager.ensure_session(
+        session_id=session_id,
+        user_id=user_id,
+        thread_id=thread_id,
+        history_limit=history_limit,
+    )
+
+    resolved_thread_id = session_manager.get_thread_id_for_session(session_id) or thread_id
+    export = session_manager.export_history_for_transport(session_id, limit=history_limit)
+    metadata = session_manager.get_session_metadata(session_id)
+    meta_payload = {k: metadata.get(k) for k in ("summary", "concepts", "entities") if metadata.get(k)}
+
+    response: Dict[str, Any] = {
+        "status": "ok",
+        "session_id": session_id,
+        "thread_id": resolved_thread_id,
+        "history_count": len(export),
+        "messages": export,
+        "metadata": meta_payload,
+        "hydrated": bool(export),
+    }
+
+    owner = session_manager.get_user_id_for_session(session_id)
+    if owner:
+        response["user_id"] = owner
+
+    return response
 
 async def _purge_stm(db_manager, session_id: str) -> bool:
     try:
