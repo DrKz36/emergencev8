@@ -9,11 +9,12 @@ Ce document synthétise l'état actuel et la trajectoire de la mémoire d'Emerge
 ### Forces existantes
 - **SessionManager** conserve l'historique court terme et déclenche l'analyse sémantique via `MemoryAnalyzer` lors de la persistance.
 - **MemoryGardener** relit les sessions, extrait concepts et faits « mot-code », puis les vectorise dans le magasin de connaissances.
+- **Vitalité des souvenirs** : le jardinier applique un score de vitalité (decay périodique + boost à la consultation) et purge les entrées passées sous le seuil minimal.
 - Les réponses agents injectent déjà résumé STM + faits LTM dans le prompt et exposent des événements WebSocket (`ws:memory_banner`, `ws:analysis_status`).
 
 ### Limites identifiées
 - L'analyse et la vectorisation sont déclenchées dans la boucle WS, ce qui peut bloquer l'event loop.
-- `_decay_knowledge` ne met pas réellement en œuvre d'oubli pondéré ni de purge.
+- Les seuils de vitalité et le reporting restent à affiner (calibrage decay, métriques monitoring).
 - Les « faits » se limitent aux `mot-code`; aucun suivi de préférences, objectifs ou décisions récurrentes.
 - L'UI n'enregistre pas systématiquement les messages utilisateurs et ne recharge pas la STM depuis la base lors d'une reconnexion.
 - Aucun mécanisme proactif pour signaler des concepts récurrents ou déclencher des suggestions.
@@ -34,7 +35,7 @@ Ce document synthétise l'état actuel et la trajectoire de la mémoire d'Emerge
 ### P1 — Hors boucle WS & enrichissement conceptuel
 - Déporter `MemoryAnalyzer` et `MemoryGardener` dans une file de tâches (worker/scheduler) pour éviter de bloquer l'event loop.
 - Étendre l'extraction de faits (préférences explicites, intentions, projets) via pipeline hybride règles + LLM, puis vectoriser dans la collection dédiée du store mémoire.
-- Implémenter un mécanisme d'oubli (timestamp + purge/pénalisation périodique).
+- [FAIT] Mécanisme d'oubli par vitalité (décroissance périodique + purge sous seuil).
 
 ### P2 — Réactivité proactive & UX
 - Maintenir un compteur de vivacité par concept et déclencher des événements `ws:proactive_hint` lorsque des seuils sont franchis.
@@ -52,12 +53,14 @@ Ce document synthétise l'état actuel et la trajectoire de la mémoire d'Emerge
 | Vector store | Ajout d'un backend Qdrant optionnel (HTTP) avec fallback automatique sur Chroma | ✅ livré ici |
 | Persist. messages utilisateur | Envoi systématique via `api.appendMessage` dans le frontend | ✅ livré ici |
 | Restauration session WS | `ConnectionManager` charge la session depuis la BDD avant de créer une nouvelle STM | ✅ livré ici |
-| Mécanisme d'oubli | À implémenter (P1) | ⏳ à faire |
+| Mécanisme d'oubli | Score de vitalité + decay + purge via MemoryGardener | ✅ livré ici |
 | Proactivité concepts | Compteurs + événements à concevoir (P2) | ⏳ à faire |
 
 ## Prochaines étapes immédiates
 - [FAIT] Synchronisation STM côté backend (hydratation `SessionManager` + push `ws:session_restored`).
 - [FAIT] Vectorisation déportée via tâche asynchrone (`asyncio.to_thread`).
+- [FAIT] Décroissance vitalité + purge via `MemoryGardener._decay_knowledge` (journalisation métriques).
+- [A FAIRE] Calibrer les seuils de vitalité et exposer les métriques côté monitoring (Grafana / alerts).
 - [VALIDÉ] Extension `MemoryGardener` pour analyser préférences et intentions en plus des `mot-code` (voir la spécification détaillée ci-dessous).
 
 ## Spécification détaillée — Extension MemoryGardener (préférences & intentions)

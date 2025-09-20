@@ -6,10 +6,14 @@ Ces instructions s'appliquent à tout le dépôt `emergencev8`.
 - Lire intégralement ce fichier (et tout `AGENTS.md` plus spécifique dans un sous-dossier) avant de modifier un fichier.
 - Appliquer immédiatement toute nouvelle consigne découverte pendant la session.
 
-## 2. Préparation de l'environnement
-- Utiliser **Python 3.11** dans un virtualenv (`python -m venv .venv && source .venv/bin/activate`).
-- Installer/mettre à jour les dépendances avec `python -m pip install --upgrade pip && pip install -r requirements.txt`.
-- Utiliser **Node.js ≥ 18** (`nvm use 18` conseillé) et installer les dépendances web via `npm ci`.
+## 2. Preparation de l'environnement
+- Utiliser Python 3.11 dans un virtualenv.
+- Windows PowerShell : `python -m venv .venv` puis `.\.venv\Scripts\Activate.ps1`.
+- macOS / Linux : `python3.11 -m venv .venv` puis `source .venv/bin/activate`.
+- Installer ou mettre a jour les dependances avec `python -m pip install --upgrade pip && python -m pip install -r requirements.txt`.
+- Optionnel : capturer les versions effectives avec `pip freeze > requirements-dev.txt` ou maintenir un `requirements.lock`.
+- Utiliser Node.js >= 18 (`nvm use 18` conseille) et reinstaller via `npm ci` apres chaque rebase qui modifie `package-lock.json`.
+- Executer `npm run build` pour verifier le frontend avant chaque push.
 
 ## 3. Avant de coder
 - Vérifier que `git status` est propre avant de commencer.
@@ -25,11 +29,14 @@ Ces instructions s'appliquent à tout le dépôt `emergencev8`.
 - Frontend : exécuter `npm run build` (et autres scripts spécifiés localement) lorsque du code frontend est modifié.
 - Relire `git diff` pour éliminer secrets, artefacts ou modifications accidentelles.
 
-## 6. Procédure Git
-- Utiliser des messages de commit explicites (ex. `<type>: <résumé>` si applicable).
-- Garder `git status` propre après chaque commit.
-- Avant push : `git fetch && git rebase origin/main`, résoudre les conflits et relancer les tests si nécessaire.
-- Pousser ensuite sur la branche (`git push origin <branche>`).
+## 6. Procedure Git
+- Utiliser des messages de commit explicites (ex. `<type>: <resume>`).
+- Garder `git status` propre apres chaque commit.
+- Identifier la branche de reference amont via `git remote show origin` (HEAD generalement `main`).
+- Avant push : `git fetch --all --prune` puis `git rebase origin/<branche_de_reference>`.
+- Resoudre les conflits en local, relancer les tests, puis utiliser `git push --force-with-lease` uniquement apres un rebase reussi.
+- Nettoyer regulierement les branches fusionnees (localement et sur le remote).
+
 
 ## 7. Vérifications supplémentaires
 - Lancer les scripts de tests disponibles (`pwsh -File tests/run_all.ps1`) pour valider les endpoints backend critiques lorsque des modifications les touchent.
@@ -39,6 +46,21 @@ Ces instructions s'appliquent à tout le dépôt `emergencev8`.
 ## 8. Préparation de la PR
 - Préparer un résumé des changements, des tests exécutés et des commandes utilisées.
 - S'assurer que l'intégration continue passe (si accessible) après le push.
+
+## 9. Workflow cloud -> local recommande
+1. `git status`
+2. `git remote show origin` pour confirmer la branche de base (souvent `main`).
+3. `git fetch --all --prune`
+4. `git checkout <branche_base>` puis `git pull --rebase origin <branche_base>`
+5. `git checkout <branche_travail>` puis `git rebase origin/<branche_base>`
+6. Reactiver le virtualenv Python et executer `python -m pip install -r requirements.txt` si les lockfiles ont evolue.
+7. Executer `npm ci` puis `npm run build` si `package-lock.json` a change ou a ete mis a jour depuis le cloud.
+8. Lancer les tests/lint backend pertinents (`pytest`, `ruff`, `mypy`) et verifier que `npm run build` passe.
+9. Developper et committer de maniere atomique avec un message explicite.
+10. Rebaser rapidement avant le push si la branche a diverge pendant le developpement.
+11. `git push origin <branche>` et ouvrir la PR.
+12. Apres merge, supprimer les branches devenues obsoletes (`git branch -d`, `git push origin --delete`).
+
 
 ---
 

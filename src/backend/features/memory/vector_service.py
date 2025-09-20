@@ -1,5 +1,5 @@
 # src/backend/features/memory/vector_service.py
-# V3.0.0 — Lazy-load sûr (double-checked lock) + télémétrie ultra-OFF conservée
+# V3.0.0 - Lazy-load sûr (double-checked lock) + télémétrie ultra-OFF conservée
 #          - __init__ ne charge plus ni SBERT ni Chroma
 #          - _ensure_inited() déclenché au 1er appel public
 #          - Pré-check corruption + backup AVANT init Chroma (inchangé)
@@ -270,7 +270,7 @@ class VectorService:
 
     def _init_qdrant_client(self) -> bool:
         if QdrantClient is None:
-            logger.warning("qdrant-client non installé — impossible d'initialiser le backend Qdrant.")
+            logger.warning("qdrant-client non installé - impossible d'initialiser le backend Qdrant.")
             self.qdrant_client = None
             return False
         target = self.qdrant_url
@@ -589,7 +589,20 @@ class VectorService:
             logger.error(f"Échec de la recherche '{safe_q}…' dans '{collection.name}': {e}", exc_info=True)
             return []
 
-    def delete_vectors(self, collection, where_filter: Dict[str, Any]) -> None:
+    def update_metadatas(self, collection: Collection, ids: List[str], metadatas: List[Dict[str, Any]]) -> None:
+        self._ensure_inited()
+        if not ids:
+            return
+        if len(ids) != len(metadatas):
+            logger.warning("update_metadatas: taille ids/metadatas incoherente - abandon.")
+            return
+        try:
+            collection.update(ids=ids, metadatas=metadatas)
+            logger.info(f"Metadatas mises a jour pour {len(ids)} items dans '{collection.name}'.")
+        except Exception as e:
+            logger.warning(f"Echec update metadatas '{collection.name}': {e}", exc_info=True)
+
+    def delete_vectors(self, collection: Collection, where_filter: Dict[str, Any]) -> None:
         self._ensure_inited()
         if not where_filter:
             logger.warning(f"Suppression annulée sur '{collection.name}' (pas de filtre).")
