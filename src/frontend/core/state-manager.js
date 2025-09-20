@@ -43,27 +43,34 @@ export class StateManager {
 
     // Chat meta
     cleanState.chat = cleanState.chat || {};
-    let activeAgent = (typeof cleanState.chat.activeAgent === 'string' ? cleanState.chat.activeAgent : '').trim().toLowerCase();
-    if (!activeAgent || !AGENTS[activeAgent]) {
-      if (activeAgent.endsWith('_lite') && AGENTS[activeAgent.slice(0, -5)]) {
-        activeAgent = activeAgent.slice(0, -5);
-      } else {
-        activeAgent = 'anima';
+    const normalizeAgentId = (value) => {
+      if (typeof value !== 'string') return '';
+      let candidate = value.trim().toLowerCase();
+      if (!candidate) return '';
+      if (!AGENTS[candidate] && candidate.endsWith('_lite')) {
+        const base = candidate.slice(0, -5);
+        if (AGENTS[base]) candidate = base;
       }
-    }
-    cleanState.chat.activeAgent = activeAgent;
+      return candidate;
+    };
 
-    let currentAgent = (typeof cleanState.chat.currentAgentId === 'string' ? cleanState.chat.currentAgentId : '').trim().toLowerCase();
-    if (!currentAgent || !AGENTS[currentAgent]) {
-      if (currentAgent.endsWith('_lite') && AGENTS[currentAgent.slice(0, -5)]) {
-        currentAgent = currentAgent.slice(0, -5);
-      } else {
-        currentAgent = activeAgent;
-      }
-    }
+    let activeAgent = normalizeAgentId(cleanState.chat.activeAgent);
+    if (!activeAgent) activeAgent = 'anima';
+    cleanState.chat.activeAgent = activeAgent;
+    cleanState.agents[activeAgent] = cleanState.agents[activeAgent] || { status: 'disconnected', history: [] };
+
+    let currentAgent = normalizeAgentId(cleanState.chat.currentAgentId);
+    if (!currentAgent) currentAgent = activeAgent;
     cleanState.chat.currentAgentId = currentAgent;
+    cleanState.agents[currentAgent] = cleanState.agents[currentAgent] || { status: 'disconnected', history: [] };
 
     const messageBuckets = (cleanState.chat.messages && typeof cleanState.chat.messages === 'object') ? { ...cleanState.chat.messages } : {};
+    if (!Array.isArray(messageBuckets[activeAgent])) {
+      messageBuckets[activeAgent] = [];
+    }
+    if (!Array.isArray(messageBuckets[currentAgent])) {
+      messageBuckets[currentAgent] = [];
+    }
     Object.keys(AGENTS).forEach((agentId) => {
       if (!Array.isArray(messageBuckets[agentId])) {
         messageBuckets[agentId] = [];

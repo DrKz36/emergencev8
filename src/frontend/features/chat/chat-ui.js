@@ -493,7 +493,18 @@ export class ChatUI {
       </div>`;
   }
   _agentTabsHTML(activeId) {
-    const ids = Object.keys(AGENTS);
+    const baseIds = Object.keys(AGENTS);
+    const seen = new Set(baseIds);
+    if (this.state && this.state.messages && typeof this.state.messages === 'object') {
+      Object.keys(this.state.messages).forEach((id) => {
+        if (!id) return;
+        seen.add(String(id).trim().toLowerCase());
+      });
+    }
+    if (this.state && this.state.currentAgentId) {
+      seen.add(String(this.state.currentAgentId).trim().toLowerCase());
+    }
+    const ids = baseIds.concat(Array.from(seen).filter((id) => !baseIds.includes(id)));
     return `
       <div class="tabs-container">
         ${ids.map((id) => {
