@@ -389,7 +389,7 @@ export class ChatUI {
   _renderMessages(host, messages) {
     if (!host) return;
     const html = (messages || []).map((m) => this._messageHTML(m)).join('');
-    host.innerHTML = html || '<div class="placeholder">Commencez � discuter.</div>';
+    host.innerHTML = html || '<div class="placeholder">Commencez à discuter.</div>';
     host.scrollTo(0, 1e9);
   }
 
