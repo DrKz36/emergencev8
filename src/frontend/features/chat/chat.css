@@ -66,27 +66,28 @@
 .chat-header-left{
   display:flex; align-items:center; gap:12px;
 }
-.tabs-container{
+.chat-header .tabs-container{
   display:flex;
   align-items:center;
-  gap:8px;
-  padding:4px;
+  gap:6px;
+  padding:2px 6px;
   border-radius:999px;
   border:1px solid rgba(148,163,184,.18);
   background: rgba(15,23,42,.45);
   backdrop-filter: blur(14px);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
   max-width:100%;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
   overflow-x:auto;
   scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
 }
-.tabs-container::-webkit-scrollbar{ display:none; }
-.button-tab{
+.chat-header .tabs-container::-webkit-scrollbar{ display:none; }
+.chat-header .agent-selector .button-tab{
   display:inline-flex;
   align-items:center;
-  gap:8px;
-  padding:6px 14px;
+  gap:6px;
+  padding:6px 12px;
   border-radius:999px;
   border:1px solid rgba(148,163,184,.22);
   background: rgba(15,23,42,.35);
@@ -98,6 +99,8 @@
   cursor:pointer;
   transition: color .2s ease, background .2s ease, box-shadow .2s ease, border-color .2s ease, transform .2s ease;
   white-space:nowrap;
+  flex-shrink:0;
+  min-width:0;
 }
 .chat-header .agent-selector .button-tab:hover{
   transform: translateY(-1px);
@@ -111,7 +114,7 @@
 .button-tab .tab-icon svg{ width:16px; height:16px; display:block; }
 .button-tab .tab-label{ display:inline-block; }
 .button-tab:hover{ color:#fff; border-color: rgba(148,163,184,.35); }
-.button-tab:focus-visible{ outline:2px solid rgba(129,140,248,.75); outline-offset:2px; }
+.chat-header .agent-selector .button-tab:focus-visible{ outline:0; box-shadow:0 0 0 2px rgba(255,255,255,.28); }
 .button-tab.active{
   color:#fff;
   border-color: transparent;
@@ -792,18 +795,18 @@
   .chat-header-left{
     gap:12px;
   }
-  .tabs-container{
-    gap:7px;
-    padding:4px 8px;
+  .chat-header .tabs-container{
+    gap:4px;
+    padding:2px 4px;
   }
-  .button-tab{
-    padding:6px 12px;
-    font-size:.7rem;
-    letter-spacing:.1em;
+  .chat-header .agent-selector .button-tab{
+    padding:5px 10px;
+    font-size:.68rem;
+    letter-spacing:.12em;
   }
-  .button-tab .tab-icon svg{
-    width:15px;
-    height:15px;
+  .chat-header .agent-selector .button-tab .tab-icon svg{
+    width:14px;
+    height:14px;
   }
 }
 
@@ -831,22 +834,22 @@
   .chat-title{
     font-size:.95rem;
   }
-  .tabs-container{
-    gap:6px;
-    padding:4px 6px;
+  .chat-header .tabs-container{
+    gap:4px;
+    padding:2px 4px;
     border-radius:14px;
   }
-  .button-tab{
-    padding:5px 10px;
-    font-size:.65rem;
-    letter-spacing:.12em;
-  }
-  .button-tab .tab-icon svg{
-    width:14px;
-    height:14px;
-  }
-  .button-tab .tab-label{
+  .chat-header .agent-selector .button-tab{
+    padding:4px 9px;
     font-size:.62rem;
+    letter-spacing:.14em;
+  }
+  .chat-header .agent-selector .button-tab .tab-icon svg{
+    width:13px;
+    height:13px;
+  }
+  .chat-header .agent-selector .button-tab .tab-label{
+    font-size:.6rem;
   }
   .messages{
     padding:12px 12px 140px 12px;
