@@ -10,6 +10,8 @@ import unicodedata
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone
 
+from math import isfinite
+
 from backend.core.database.manager import DatabaseManager
 from backend.features.memory.vector_service import VectorService
 from backend.features.memory.analyzer import MemoryAnalyzer
@@ -161,10 +163,36 @@ def _normalize_classification_payload(payload: Any) -> Dict[str, Any]:
         ]
     return {"items": normalized_items}
 
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
+def _parse_iso_ts(raw: Any) -> Optional[datetime]:
+    """Best effort parser for ISO timestamps stored in metadata."""
+    if not raw:
+        return None
+    if isinstance(raw, datetime):
+        return raw if raw.tzinfo else raw.replace(tzinfo=timezone.utc)
+    if isinstance(raw, (int, float)) and isfinite(raw):
+        try:
+            return datetime.fromtimestamp(float(raw), tz=timezone.utc)
+        except Exception:
+            return None
+    if isinstance(raw, str):
+        candidate = raw.strip()
+        if not candidate:
+            return None
+        candidate = candidate.replace("Z", "+00:00") if candidate.endswith("Z") else candidate
+        try:
+            parsed = datetime.fromisoformat(candidate)
+            return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+        except ValueError:
+            try:
+                return datetime.fromisoformat(candidate + "+00:00")
+            except Exception:
+                return None
+    return None
 
-def _now_iso() -> str: return datetime.now(timezone.utc).isoformat()
 
 def _unique(seq: List[str]) -> List[str]:
     seen, out = set(), []
@@ -225,6 +253,15 @@ class MemoryGardener:
     """
     KNOWLEDGE_COLLECTION_NAME = "emergence_knowledge"
     PREFERENCE_COLLECTION_NAME = "memory_preferences"
+    BASE_DECAY = 0.05
+    STALE_THRESHOLD_DAYS = 7
+    STALE_DECAY = 0.05
+    ARCHIVE_THRESHOLD_DAYS = 30
+    ARCHIVE_DECAY = 0.1
+    MIN_VITALITY = 0.2
+    MAX_VITALITY = 1.0
+    RECALL_THRESHOLD = 0.3
+    USAGE_BOOST = 0.2
 
     def __init__(self, db_manager: DatabaseManager, vector_service: VectorService, memory_analyzer: MemoryAnalyzer):
         self.db = db_manager
@@ -898,6 +935,7 @@ class MemoryGardener:
 
     async def _vectorize_concepts(self, concepts: List[str], session: Dict[str, Any], user_id: Optional[str]):
         payload = []
+        now_iso = _now_iso()
         for concept_text in concepts:
             vid = uuid.uuid4().hex
             payload.append({
@@ -908,7 +946,12 @@ class MemoryGardener:
                     "user_id": user_id,
                     "source_session_id": session["id"],
                     "concept_text": concept_text,
-                    "created_at": _now_iso()
+                    "created_at": now_iso,
+                    "last_access_at": now_iso,
+                    "last_decay_at": now_iso,
+                    "vitality": self.MAX_VITALITY,
+                    "decay_runs": 0,
+                    "usage_count": 0
                 }
             })
         if payload:
@@ -921,6 +964,7 @@ class MemoryGardener:
 
     async def _vectorize_facts(self, facts: List[Dict[str, Any]], session: Dict[str, Any], user_id: Optional[str]):
         payload = []
+        now_iso = _now_iso()
         for f in facts:
             vid = _fact_id(session["id"], f["key"], f.get("agent"), f["value"])  # ← ID déterministe (anti-doublon)
             payload.append({
@@ -933,7 +977,12 @@ class MemoryGardener:
                     "value": f["value"],
                     "user_id": user_id,
                     "source_session_id": session["id"],
-                    "created_at": _now_iso()
+                    "created_at": now_iso,
+                    "last_access_at": now_iso,
+                    "last_decay_at": now_iso,
+                    "vitality": self.MAX_VITALITY,
+                    "decay_runs": 0,
+                    "usage_count": 0
                 }
             })
         if payload:
@@ -955,12 +1004,115 @@ class MemoryGardener:
             logger.warning(f"Impossible de marquer les sessions consolidées: {e}", exc_info=True)
 
     async def _decay_knowledge(self):
-        now = _now_iso()
+        now_dt = datetime.now(timezone.utc)
+        now_iso = now_dt.isoformat()
+        try:
+            snapshot = self.knowledge_collection.get(include=["ids", "metadatas"])
+        except Exception as e:
+            logger.warning(f"Échec lecture collection pour decay: {e}", exc_info=True)
+            snapshot = {}
+
+        raw_ids = snapshot.get("ids") if isinstance(snapshot, dict) else []
+        raw_metas = snapshot.get("metadatas") if isinstance(snapshot, dict) else []
+
+        if raw_ids and isinstance(raw_ids, list) and raw_ids and isinstance(raw_ids[0], list):
+            ids: List[str] = []
+            for chunk in raw_ids:
+                if isinstance(chunk, list):
+                    ids.extend([x for x in chunk if isinstance(x, str)])
+        elif isinstance(raw_ids, list):
+            ids = [x for x in raw_ids if isinstance(x, str)]
+        else:
+            ids = []
+
+        if raw_metas and isinstance(raw_metas, list) and raw_metas and isinstance(raw_metas[0], list):
+            metadatas: List[Dict[str, Any]] = []
+            for chunk in raw_metas:
+                if isinstance(chunk, list):
+                    metadatas.extend([m if isinstance(m, dict) else {} for m in chunk])
+        elif isinstance(raw_metas, list):
+            metadatas = [m if isinstance(m, dict) else {} for m in raw_metas]
+        else:
+            metadatas = []
+
+        if not ids:
+            try:
+                await self.db.execute(
+                    "INSERT INTO monitoring (event_type, event_details, timestamp) VALUES (?, ?, ?)",
+                    ("knowledge_decay", json.dumps({"note": "decay skipped (no items)"}, ensure_ascii=False), now_iso)
+                )
+            except Exception as e:
+                logger.warning(f"Trace vieillissement vide KO: {e}", exc_info=True)
+            return
+
+        updates_ids: List[str] = []
+        updates_meta: List[Dict[str, Any]] = []
+        delete_ids: List[str] = []
+
+        for idx, vec_id in enumerate(ids):
+            meta = metadatas[idx] if idx < len(metadatas) else {}
+            if not isinstance(meta, dict):
+                meta = {}
+
+            vitality_raw = meta.get("vitality", self.MAX_VITALITY)
+            try:
+                vitality = float(vitality_raw)
+            except (TypeError, ValueError):
+                vitality = self.MAX_VITALITY
+
+            last_touch = _parse_iso_ts(meta.get("last_access_at") or meta.get("created_at"))
+            extra_decay = 0.0
+            if last_touch is not None:
+                age_days = (now_dt - last_touch).total_seconds() / 86400.0
+                if age_days > self.STALE_THRESHOLD_DAYS:
+                    extra_decay += self.STALE_DECAY
+                if age_days > self.ARCHIVE_THRESHOLD_DAYS:
+                    extra_decay += self.ARCHIVE_DECAY
+
+            decay_amount = min(1.0, self.BASE_DECAY + extra_decay)
+            new_vitality = max(0.0, vitality - decay_amount)
+
+            if new_vitality <= self.MIN_VITALITY:
+                delete_ids.append(vec_id)
+                continue
+
+            updated_meta = dict(meta)
+            updated_meta["vitality"] = round(min(self.MAX_VITALITY, new_vitality), 4)
+            updated_meta["last_decay_at"] = now_iso
+            updated_meta["decay_runs"] = int(meta.get("decay_runs") or 0) + 1
+            updates_ids.append(vec_id)
+            updates_meta.append(updated_meta)
+
+        if updates_ids:
+            try:
+                self.vector_service.update_metadatas(self.knowledge_collection, updates_ids, updates_meta)
+            except Exception as e:
+                logger.warning(f"Échec mise à jour vitalité mémoire: {e}", exc_info=True)
+
+        if delete_ids:
+            try:
+                self.knowledge_collection.delete(ids=delete_ids)
+            except Exception as e:
+                logger.warning(f"Échec suppression souvenirs périmés: {e}", exc_info=True)
+
+        details = {
+            "note": "decay applied",
+            "processed": len(ids),
+            "decayed": len(updates_ids),
+            "deleted": len(delete_ids),
+            "base_decay": self.BASE_DECAY,
+            "stale_threshold_days": self.STALE_THRESHOLD_DAYS,
+            "archive_threshold_days": self.ARCHIVE_THRESHOLD_DAYS,
+            "min_vitality": self.MIN_VITALITY,
+        }
+
         try:
             await self.db.execute(
                 "INSERT INTO monitoring (event_type, event_details, timestamp) VALUES (?, ?, ?)",
-                ("knowledge_decay", json.dumps({"note": "decay applied"}, ensure_ascii=False), now)
+                ("knowledge_decay", json.dumps(details, ensure_ascii=False), now_iso)
             )
-            logger.info("Vieillissement journalisé (monitoring.knowledge_decay).")
+            logger.info(
+                f"Vieillissement appliqué: total={len(ids)} | decayed={len(updates_ids)} | deleted={len(delete_ids)}"
+            )
         except Exception as e:
-            logger.warning(f"Échec vieillissement (trace): {e}", exc_info=True)
+            logger.warning(f"Échec journalisation vieillissement: {e}", exc_info=True)

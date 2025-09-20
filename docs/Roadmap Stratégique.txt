@@ -29,6 +29,8 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 - Optimiser l’expérience utilisateur en cas d’échec auth (toasts explicites, re-prompt GIS).
 - Afficher l’historique de consolidation (`GET /api/memory/tend-garden`) dans l’UI mémoire.
 - Couvrir `memory:clear` par tests automatisés (smoke + unitaires ciblés).
+- Consolider la mémoire persistante : sauvegarde intégrale des sessions (JSON), analyse sémantique (thèmes, concepts, entités) et score de vivacité décrémenté dans le temps pour orchestrer l’oubli via le `MemoryGardener`.
+- Modules concernés : `core/database.py`, `core/session_manager.py`, `features/memory/analyzer.py`, `features/memory/gardener.py`, `core/temporal_search.py`.
 
 ### P3 — RAG maîtrisé (Stabilisé)
 - Étendre les formats supportés (Markdown, HTML léger) en assurant la purge d’embeddings.
