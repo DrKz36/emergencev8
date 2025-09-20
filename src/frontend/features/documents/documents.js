@@ -23,6 +23,11 @@ export default class DocumentsModule {
         this._autoRefreshIntervalMs = 45000;
         this._lastSelectionHash = '';
         this._offDeselectCmd = null;
+        this._offThreadSelected = null;
+        this._unsubscribeSelectedIds = null;
+        this._unsubscribeSelectionMeta = null;
+        this._skipNextPersist = false;
+        this._currentThreadId = null;
     }
 
     init() {
@@ -34,11 +39,31 @@ export default class DocumentsModule {
             );
             if (typeof off === 'function') this._offDeselectCmd = off;
         }
+        if (this.eventBus?.on && !this._offThreadSelected) {
+            const off = this.eventBus.on(
+                EVENTS?.THREADS_SELECTED || 'threads:selected',
+                (payload) => this._handleThreadSelected(payload)
+            );
+            if (typeof off === 'function') this._offThreadSelected = off;
+        }
         if (this.state?.get) {
             const saved = this.state.get('documents.selectedIds');
             if (Array.isArray(saved) && saved.length) {
                 this.selectedIds = new Set(saved.map((id) => String(id)));
+                this._lastSelectionHash = Array.from(this.selectedIds).join('|');
             }
+            const currentThread = this.state.get('threads.currentId');
+            if (currentThread) this._currentThreadId = String(currentThread);
+        }
+        if (this.state?.subscribe && !this._unsubscribeSelectedIds) {
+            this._unsubscribeSelectedIds = this.state.subscribe('documents.selectedIds', (ids) => {
+                this._applySelectionFromState(ids);
+            });
+        }
+        if (this.state?.subscribe && !this._unsubscribeSelectionMeta) {
+            this._unsubscribeSelectionMeta = this.state.subscribe('threads.currentId', (threadId) => {
+                this._currentThreadId = threadId ? String(threadId) : null;
+            });
         }
         this.isInitialized = true;
     }
@@ -59,6 +84,18 @@ export default class DocumentsModule {
         if (this._offDeselectCmd) {
             try { this._offDeselectCmd(); } catch {}
             this._offDeselectCmd = null;
+        }
+        if (this._offThreadSelected) {
+            try { this._offThreadSelected(); } catch {}
+            this._offThreadSelected = null;
+        }
+        if (typeof this._unsubscribeSelectedIds === 'function') {
+            try { this._unsubscribeSelectedIds(); } catch {}
+            this._unsubscribeSelectedIds = null;
+        }
+        if (typeof this._unsubscribeSelectionMeta === 'function') {
+            try { this._unsubscribeSelectionMeta(); } catch {}
+            this._unsubscribeSelectionMeta = null;
         }
         this.container = null;
         this.dom = {};
@@ -134,8 +171,11 @@ export default class DocumentsModule {
         this.dom.listContainer.addEventListener('change', (e) => this.handleCheckboxChange(e));
     }
 
-    _emitSelectionChanged() {
+    _emitSelectionChanged({ force = false } = {}) {
         const ids = Array.from(this.selectedIds);
+        const hash = ids.join('|');
+        if (!force && hash === this._lastSelectionHash) return;
+
         const items = ids
             .map((id) => this.documents.find((doc) => this._getId(doc) === id))
             .filter(Boolean)
@@ -144,10 +184,17 @@ export default class DocumentsModule {
                 name: this._getName(doc),
                 status: (doc?.status || '').toString().toLowerCase() || 'ready'
             }));
+
         try { this.state?.set?.('documents.selectedIds', ids); } catch {}
         try { this.state?.set?.('documents.selectionMeta', items); } catch {}
         try { this.eventBus.emit(EVENTS?.DOCUMENTS_SELECTION_CHANGED || 'documents:selection_changed', { ids, items }); } catch {}
-        this._lastSelectionHash = ids.join('|');
+
+        this._lastSelectionHash = hash;
+
+        if (this._skipNextPersist) return;
+        this._persistSelectionToThread(ids).catch((error) => {
+            console.error('[Documents] thread docs persist failed', error);
+        });
     }
 
     _handleExternalDeselect(payload) {
@@ -193,6 +240,89 @@ export default class DocumentsModule {
             this._getId(doc) ||
             ''
         );
+    }
+
+    _getActiveThreadId() {
+        try {
+            const current = this.state?.get?.('threads.currentId');
+            if (current) return String(current);
+        } catch {}
+        return this._currentThreadId;
+    }
+
+    _applySelectionFromState(ids) {
+        const normalized = Array.isArray(ids)
+            ? ids.map((id) => String(id)).filter((id) => id)
+            : [];
+        this.selectedIds = new Set(normalized);
+        this._lastSelectionHash = normalized.join('|');
+
+        if (this.container) {
+            this.container.querySelectorAll('.doc-select').forEach((input) => {
+                const id = input.dataset.id;
+                if (!id) return;
+                input.checked = this.selectedIds.has(id);
+            });
+        }
+        this.updateSelectionUI();
+    }
+
+    _handleThreadSelected(payload) {
+        const threadId = payload?.id || payload?.thread?.id || payload?.thread_id || payload?.threadId;
+        if (threadId) this._currentThreadId = String(threadId);
+
+        const docs = Array.isArray(payload?.docs) ? payload.docs : [];
+        const normalizedIds = docs.map((doc) => this._getId(doc)).filter(Boolean);
+
+        this._applySelectionFromState(normalizedIds);
+        this._skipNextPersist = true;
+        this._emitSelectionChanged({ force: true });
+        this._skipNextPersist = false;
+    }
+
+    async _persistSelectionToThread(ids) {
+        const threadId = this._getActiveThreadId();
+        if (!threadId) return;
+
+        try {
+            const response = await this.apiClient.setThreadDocs(threadId, ids);
+            const docs = Array.isArray(response?.docs) ? this._normalizeThreadDocs(response.docs) : [];
+            try { this.state?.set?.(`threads.map.${threadId}.docs`, docs); } catch {}
+        } catch (error) {
+            try {
+                this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, {
+                    type: 'error',
+                    message: 'Sauvegarde des documents du thread impossible.'
+                });
+            } catch {}
+            throw error;
+        }
+    }
+
+    _normalizeThreadDocs(docs) {
+        const sanitized = [];
+        const seen = new Set();
+        for (const doc of docs || []) {
+            const rawId = doc?.doc_id ?? doc?.id ?? doc;
+            const num = Number(rawId);
+            if (!Number.isFinite(num)) continue;
+            const docId = Math.trunc(num);
+            if (seen.has(docId)) continue;
+            seen.add(docId);
+
+            const statusRaw = doc?.status;
+            const status = statusRaw == null ? 'ready' : (String(statusRaw).toLowerCase() || 'ready');
+            sanitized.push({
+                doc_id: docId,
+                id: docId,
+                filename: doc?.filename ?? doc?.name ?? null,
+                name: doc?.filename || doc?.name || doc?.title || `Document ${docId}`,
+                status,
+                weight: Number.isFinite(doc?.weight) ? Number(doc.weight) : 1,
+                last_used_at: doc?.last_used_at ?? null,
+            });
+        }
+        return sanitized;
     }
 
     _normalizeDocumentsResponse(resp) {

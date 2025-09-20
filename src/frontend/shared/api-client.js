@@ -142,6 +142,24 @@ function normalizeThreadId(val) {
   return null;
 }
 
+function normalizeDocIds(input) {
+  const raw = Array.isArray(input) ? input : (input == null ? [] : [input]);
+  const seen = new Set();
+  const result = [];
+  for (const value of raw) {
+    if (value === undefined || value === null || value === '') continue;
+    const str = String(value).trim();
+    if (!str) continue;
+    const num = Number(str);
+    if (!Number.isFinite(num)) continue;
+    const intVal = Math.trunc(num);
+    if (seen.has(intVal)) continue;
+    seen.add(intVal);
+    result.push(intVal);
+  }
+  return result;
+}
+
 /**
  * Auth headers:
  * - Tente TOUJOURS d’abord un ID token GIS (y compris en localhost).
@@ -284,6 +302,25 @@ export const api = {
     fetchApi(`${THREADS_BASE}/`, { method: 'POST', body: { type, title, agent_id, meta: metadata } })
       .then((data) => ({ id: data?.id, thread: data?.thread })),
 
+  updateThread: (id, updates = {}) => {
+    const safeId = normalizeThreadId(id);
+    if (!safeId) {
+      const err = new Error('Thread ID invalide');
+      err.status = 400;
+      return Promise.reject(err);
+    }
+    const payload = {};
+    if (Object.prototype.hasOwnProperty.call(updates, 'title')) payload.title = updates.title;
+    const agentValue = updates.agent_id ?? updates.agentId;
+    if (agentValue !== undefined) payload.agent_id = agentValue;
+    if (Object.prototype.hasOwnProperty.call(updates, 'archived')) payload.archived = !!updates.archived;
+    const metaValue = updates.meta ?? updates.metadata;
+    if (metaValue !== undefined) payload.meta = metaValue;
+    if (!Object.keys(payload).length) return Promise.resolve(null);
+    return fetchApi(`${THREADS_BASE}/${encodeURIComponent(safeId)}`, { method: 'PATCH', body: payload })
+      .then((data) => data?.thread || null);
+  },
+
   getThreadById: async (id, { messages_limit } = {}) => {
     const safeId = normalizeThreadId(id);
     if (!safeId) {
@@ -317,6 +354,45 @@ export const api = {
     }
     const body = { role, content, agent_id, meta: meta ?? metadata ?? {} };
     return fetchApi(`${THREADS_BASE}/${encodeURIComponent(safeId)}/messages`, { method: 'POST', body });
+  },
+
+  getThreadDocs: async (threadId) => {
+    const safeId = normalizeThreadId(threadId);
+    if (!safeId) return { docs: [] };
+    const url = `${THREADS_BASE}/${encodeURIComponent(safeId)}/docs`;
+    try {
+      const data = await fetchApi(url);
+      const docs = Array.isArray(data?.docs) ? data.docs : [];
+      return { docs };
+    } catch (err) {
+      if (err?.status === 404) {
+        return { docs: [] };
+      }
+      console.error(`[API Client] Erreur sur l'endpoint ${url}:`, err);
+      throw err;
+    }
+  },
+
+  setThreadDocs: async (threadId, docIds, { mode = 'replace', weight } = {}) => {
+    const safeId = normalizeThreadId(threadId);
+    if (!safeId) {
+      const err = new Error('Thread ID invalide');
+      err.status = 400;
+      throw err;
+    }
+    const normalizedIds = normalizeDocIds(docIds);
+    const payload = {
+      doc_ids: normalizedIds,
+      mode: mode === 'append' ? 'append' : 'replace',
+    };
+    if (weight !== undefined) {
+      const numeric = Number(weight);
+      if (Number.isFinite(numeric)) payload.weight = numeric;
+    }
+    const url = `${THREADS_BASE}/${encodeURIComponent(safeId)}/docs`;
+    const data = await fetchApi(url, { method: 'POST', body: payload });
+    const docs = Array.isArray(data?.docs) ? data.docs : [];
+    return { docs };
   },
 
   /* ------------------------ MEMORY ----------------------- */

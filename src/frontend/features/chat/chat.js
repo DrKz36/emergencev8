@@ -57,6 +57,8 @@ export default class ChatModule {
     this._H.CHAT_EXPORT        = this.handleExport.bind(this);
     this._H.CHAT_RAG_TOGGLED   = this.handleRagToggle.bind(this);
     this._H.DOC_SELECTION_CHANGED = this.handleDocumentSelectionChanged.bind(this);
+    this._H.THREADS_SELECTED = this.handleThreadSwitch.bind(this);
+    this._H.THREADS_LOADED = this.handleThreadSwitch.bind(this);
 
     // WS flux
     this._H.WS_START           = this.handleStreamStart.bind(this);
@@ -178,6 +180,8 @@ export default class ChatModule {
     this._onOnce(EVENTS.CHAT_EXPORT,        this._H.CHAT_EXPORT);
     this._onOnce(EVENTS.CHAT_RAG_TOGGLED,   this._H.CHAT_RAG_TOGGLED);
     this._onOnce(EVENTS.DOCUMENTS_SELECTION_CHANGED, this._H.DOC_SELECTION_CHANGED);
+    this._onOnce(EVENTS.THREADS_SELECTED, this._H.THREADS_SELECTED);
+    this._onOnce(EVENTS.THREADS_LOADED, this._H.THREADS_LOADED);
 
     // Flux WS (idempotent)
     this._onOnce('ws:chat_stream_start',    this._H.WS_START);
@@ -261,6 +265,19 @@ export default class ChatModule {
       try { this.state.set('threads.currentId', threadId); } catch {}
       try { this.state.set('chat.threadId', threadId); } catch {}
       try { localStorage.setItem('emergence.threadId', threadId); } catch {}
+    }
+
+    const hasDocsProperty = thread && Object.prototype.hasOwnProperty.call(thread, 'docs');
+    if (threadId && hasDocsProperty) {
+      const docsForState = this._normalizeThreadDocsForState(Array.isArray(thread?.docs) ? thread.docs : []);
+      const docIds = docsForState.map((doc) => String(doc.id));
+      const selectionItems = docsForState.map((doc) => ({ id: String(doc.id), name: doc.name, status: doc.status }));
+
+      try { this.state.set(`threads.map.${threadId}.docs`, docsForState); } catch {}
+      this.state.set('chat.selectedDocIds', docIds);
+      this.state.set('chat.selectedDocs', selectionItems);
+      try { this.state.set('documents.selectedIds', docIds); } catch {}
+      try { this.state.set('documents.selectionMeta', selectionItems); } catch {}
     }
 
     const extras = {};
@@ -593,6 +610,38 @@ export default class ChatModule {
     this.state.set('chat.selectedDocs', normalizedItems);
     try { this.state.set('documents.selectedIds', normalizedIds); } catch {}
     try { this.state.set('documents.selectionMeta', normalizedItems); } catch {}
+
+    const threadId = this.getCurrentThreadId();
+    if (threadId) {
+      const docsForThread = normalizedItems
+        .map((item) => {
+          const num = Number(item?.id);
+          if (!Number.isFinite(num)) return null;
+          return {
+            doc_id: Math.trunc(num),
+            id: Math.trunc(num),
+            name: item?.name || `Document ${num}`,
+            status: item?.status || 'ready',
+          };
+        })
+        .filter(Boolean);
+      try { this.state.set(`threads.map.${threadId}.docs`, docsForThread); } catch {}
+    }
+  }
+
+  handleThreadSwitch(payload = {}) {
+    const threadId = payload?.id || payload?.thread?.id || payload?.thread_id;
+    if (!threadId) return;
+    this.loadedThreadId = null;
+    this.state.set('chat.isLoading', false);
+    try { this.state.set('websocket.sessionId', threadId); } catch {}
+    try { this.state.set('threads.currentId', threadId); } catch {}
+    const detail = Array.isArray(payload?.messages) ? payload : this.state.get('threads.map.' + threadId);
+    if (detail) {
+      this.hydrateFromThread(detail);
+    } else {
+      this.hydrateFromThread({ id: threadId, messages: [] });
+    }
   }
 
   handleAnalysisStatus({ session_id, status, error } = {}) {
@@ -725,6 +774,31 @@ export default class ChatModule {
       cleaned.push(num);
     }
     return cleaned;
+  }
+
+  _normalizeThreadDocsForState(docs) {
+    const normalized = [];
+    const seen = new Set();
+    for (const doc of docs || []) {
+      const rawId = doc?.doc_id ?? doc?.id ?? doc;
+      const num = Number(rawId);
+      if (!Number.isFinite(num)) continue;
+      const docId = Math.trunc(num);
+      if (seen.has(docId)) continue;
+      seen.add(docId);
+
+      const statusRaw = doc?.status;
+      const status = statusRaw == null ? 'ready' : (String(statusRaw).toLowerCase() || 'ready');
+      normalized.push({
+        doc_id: docId,
+        id: docId,
+        name: doc?.filename || doc?.name || doc?.title || `Document ${docId}`,
+        status,
+        weight: Number.isFinite(doc?.weight) ? Number(doc.weight) : 1,
+        last_used_at: doc?.last_used_at ?? null,
+      });
+    }
+    return normalized;
   }
 
   _flattenMessagesFromState() {

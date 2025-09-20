@@ -137,8 +137,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     # ...puis DenyList en dernier pour être outermost (court-circuit rapide)
-    app.add_mmiddleware = app.add_middleware  # alias lisible
-    app.add_mmiddleware(
+    app.add_middleware(
         DenyListMiddleware, enabled=DENYLIST_ENABLED, patterns=DENYLIST_PATTERNS
     )
 
@@ -150,6 +149,15 @@ def create_app() -> FastAPI:
     async def _on_shutdown():
         try:
             await container.db_manager().disconnect()
+        except Exception:
+            pass
+        try:
+            voice_client_provider = getattr(container, "voice_http_client", None)
+            if voice_client_provider is not None:
+                client = voice_client_provider()
+                close = getattr(client, "aclose", None)
+                if callable(close):
+                    await close()
         except Exception:
             pass
         try:

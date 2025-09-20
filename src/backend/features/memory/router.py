@@ -1,5 +1,5 @@
-# src/backend/features/memory/router.py
-# V2.5 — + support body {thread_id} pour tend-garden (consolidation ciblée d’un thread)
+﻿# src/backend/features/memory/router.py
+# V2.5 â€” + support body {thread_id} pour tend-garden (consolidation ciblÃ©e dâ€™un thread)
 import os
 import logging
 from typing import Dict, Any, Optional, Tuple, List
@@ -100,7 +100,7 @@ def _resolve_session_id(request: Request, provided: Optional[str]) -> str:
     "/sync-stm",
     response_model=Dict[str, Any],
     summary="Hydrate le SessionManager avec l'historique persistant.",
-    description="Recharge la STM depuis la base pour un couple session/thread et renvoie les messages normalisés.",
+    description="Recharge la STM depuis la base pour un couple session/thread et renvoie les messages normalisÃ©s.",
 )
 async def sync_short_term_memory(
     request: Request, data: Dict[str, Any] = Body(default={})
@@ -130,12 +130,14 @@ async def sync_short_term_memory(
         raise HTTPException(status_code=400, detail="session_id requis (ou thread_id).")
 
     limit_value = payload.get("limit") or request.query_params.get("limit")
-    try:
-        history_limit = int(limit_value)
-        if history_limit <= 0:
+    history_limit = 200
+    if limit_value is not None:
+        try:
+            history_limit = int(str(limit_value).strip())
+            if history_limit <= 0:
+                history_limit = 200
+        except (TypeError, ValueError):
             history_limit = 200
-    except (TypeError, ValueError):
-        history_limit = 200
 
     await session_manager.ensure_session(
         session_id=session_id,
@@ -189,7 +191,7 @@ async def _purge_stm(db_manager, session_id: str) -> bool:
         return True
     except Exception as e:
         logger.error(
-            f"[memory.clear] Échec purge STM pour session={session_id}: {e}",
+            f"[memory.clear] Ã‰chec purge STM pour session={session_id}: {e}",
             exc_info=True,
         )
         return False
@@ -216,7 +218,7 @@ def _build_where_filter(
         clauses.append({"user_id": user_id})
     if not clauses:
         raise HTTPException(
-            status_code=400, detail="Aucun critère de purge LTM déterminé."
+            status_code=400, detail="Aucun critÃ¨re de purge LTM dÃ©terminÃ©."
         )
     return clauses[0] if len(clauses) == 1 else {"$and": clauses}
 
@@ -230,12 +232,12 @@ def _purge_ltm(vector_service, where_filter: Dict[str, Any]) -> Tuple[int, int]:
         try:
             vector_service.delete_vectors(col, where_filter)
         except Exception as de:
-            logger.warning(f"[memory.clear] delete_vectors(...) a levé: {de}")
+            logger.warning(f"[memory.clear] delete_vectors(...) a levÃ©: {de}")
             try:
                 col.delete(where=where_filter)
             except Exception as de2:
                 logger.warning(
-                    f"[memory.clear] fallback col.delete(where=...) a levé: {de2}"
+                    f"[memory.clear] fallback col.delete(where=...) a levÃ©: {de2}"
                 )
         got_after = col.get(where=where_filter)
         n_after = _count_ids_from_get_result(got_after)
@@ -248,8 +250,8 @@ def _purge_ltm(vector_service, where_filter: Dict[str, Any]) -> Tuple[int, int]:
 @router.post(
     "/analyze",
     response_model=Dict[str, Any],
-    summary="Analyse sémantique d'une session (STM)",
-    description="Génère ou régénère le résumé/concepts d'une session en utilisant le MemoryAnalyzer.",
+    summary="Analyse sÃ©mantique d'une session (STM)",
+    description="GÃ©nÃ¨re ou rÃ©gÃ©nÃ¨re le rÃ©sumÃ©/concepts d'une session en utilisant le MemoryAnalyzer.",
 )
 async def analyze_session_endpoint(
     request: Request, payload: Dict[str, Any] = Body(default={})
@@ -296,10 +298,10 @@ async def analyze_session_endpoint(
         raise
     except Exception as exc:
         logger.error(
-            f"[memory.analyze] Échec analyse session={session_id}: {exc}", exc_info=True
+            f"[memory.analyze] Ã‰chec analyse session={session_id}: {exc}", exc_info=True
         )
         raise HTTPException(
-            status_code=500, detail="Analyse mémoire impossible pour cette session."
+            status_code=500, detail="Analyse mÃ©moire impossible pour cette session."
         )
 
     updated_meta = session_manager.get_session_metadata(session_id)
@@ -321,13 +323,13 @@ async def analyze_session_endpoint(
 @router.post(
     "/tend-garden",
     response_model=Dict[str, Any],
-    summary="Déclenche la consolidation de la mémoire (gardener).",
-    description="Lance le 'MemoryGardener' pour analyser/consolider les sessions récentes ou un thread précis si 'thread_id' est fourni.",
+    summary="DÃ©clenche la consolidation de la mÃ©moire (gardener).",
+    description="Lance le 'MemoryGardener' pour analyser/consolider les sessions rÃ©centes ou un thread prÃ©cis si 'thread_id' est fourni.",
 )
 async def tend_garden_endpoint(
     request: Request, data: Dict[str, Any] = Body(default={})
 ) -> Dict[str, Any]:
-    logger.info("Requête reçue sur /api/memory/tend-garden.")
+    logger.info("RequÃªte reÃ§ue sur /api/memory/tend-garden.")
     try:
         gardener = _get_gardener_from_request(request)
         thread_id = None
@@ -346,15 +348,15 @@ async def tend_garden_endpoint(
     except HTTPException:
         raise
     except Exception as e:
-        logger.critical(f"Erreur non gérée dans tend_garden: {e}", exc_info=True)
+        logger.critical(f"Erreur non gÃ©rÃ©e dans tend_garden: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Erreur interne critique.")
 
 
 @router.get(
     "/tend-garden",
     response_model=Dict[str, Any],
-    summary="(Alias) Déclenche la consolidation de la mémoire (gardener).",
-    description="Alias GET pour compatibilité UI (équivalent au POST).",
+    summary="(Alias) DÃ©clenche la consolidation de la mÃ©moire (gardener).",
+    description="Alias GET pour compatibilitÃ© UI (Ã©quivalent au POST).",
 )
 async def tend_garden_get(request: Request) -> Dict[str, Any]:
     return await tend_garden_endpoint(request)
@@ -363,8 +365,8 @@ async def tend_garden_get(request: Request) -> Dict[str, Any]:
 @router.delete(
     "/clear",
     response_model=Dict[str, Any],
-    summary="Efface la mémoire de la session (STM+LTM).",
-    description="Supprime le résumé et les entités extraites de la session (STM) et purge les embeddings associés (LTM).",
+    summary="Efface la mÃ©moire de la session (STM+LTM).",
+    description="Supprime le rÃ©sumÃ© et les entitÃ©s extraites de la session (STM) et purge les embeddings associÃ©s (LTM).",
 )
 async def clear_memory_delete(
     request: Request,
@@ -411,8 +413,8 @@ async def clear_memory_delete(
 @router.post(
     "/clear",
     response_model=Dict[str, Any],
-    summary="Efface la mémoire de la session (STM+LTM) — compat POST.",
-    description="Équivalent DELETE avec body JSON.",
+    summary="Efface la mÃ©moire de la session (STM+LTM) â€” compat POST.",
+    description="Ã‰quivalent DELETE avec body JSON.",
 )
 async def clear_memory_post(
     request: Request, data: Dict[str, Any] = Body(default={})
@@ -454,3 +456,4 @@ async def clear_memory_post(
     }
     logger.info(f"[memory.clear] {payload}")
     return payload
+

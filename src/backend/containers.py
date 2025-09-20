@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 from dependency_injector import containers, providers
+import httpx
 
 # --- Services principaux ---
 from backend.shared.config import Settings
@@ -43,6 +44,19 @@ try:
     from backend.features.debate.service import DebateService  # type: ignore
 except Exception:  # pragma: no cover
     DebateService = None  # type: ignore
+
+try:
+    from backend.features.voice.service import VoiceService  # type: ignore
+    from backend.features.voice.models import VoiceServiceConfig  # type: ignore
+except Exception:  # pragma: no cover
+    VoiceService = None  # type: ignore
+    VoiceServiceConfig = None  # type: ignore
+
+_VOICE_STT_MODEL_DEFAULT = "whisper-1"
+_VOICE_TTS_MODEL_DEFAULT = "a_model_id_here"
+_VOICE_TTS_VOICE_DEFAULT = "a_voice_id_here"
+
+
 
 # ----------------------------
 # Helpers chemins / options
@@ -152,6 +166,31 @@ def _get_uploads_dir(settings: Settings) -> str:
         return str(Path(env).resolve())
     return str(Path("./data/uploads").resolve())
 
+
+def _build_voice_config(settings: Settings) -> VoiceServiceConfig:
+    if VoiceServiceConfig is None:
+        raise RuntimeError("VoiceServiceConfig unavailable.")
+
+    stt_api_key = getattr(settings, "openai_api_key", None)
+    if not stt_api_key or not str(stt_api_key).strip():
+        raise RuntimeError("VoiceService requires OPENAI_API_KEY.")
+
+    tts_api_key = getattr(settings, "elevenlabs_api_key", None)
+    if not tts_api_key or not str(tts_api_key).strip():
+        raise RuntimeError("VoiceService requires ELEVENLABS_API_KEY.")
+
+    stt_model = getattr(settings, "whisper_model", None)
+    tts_model_id = getattr(settings, "elevenlabs_model_id", None)
+    tts_voice_id = getattr(settings, "elevenlabs_voice_id", None)
+
+    return VoiceServiceConfig(
+        stt_api_key=str(stt_api_key).strip(),
+        stt_model=str(stt_model).strip() if stt_model else _VOICE_STT_MODEL_DEFAULT,
+        tts_api_key=str(tts_api_key).strip(),
+        tts_model_id=str(tts_model_id).strip() if tts_model_id else _VOICE_TTS_MODEL_DEFAULT,
+        tts_voice_id=str(tts_voice_id).strip() if tts_voice_id else _VOICE_TTS_VOICE_DEFAULT,
+    )
+
 # ----------------------------
 # Container
 # ----------------------------
@@ -240,5 +279,18 @@ class AppContainer(containers.DeclarativeContainer):
             cost_tracker=cost_tracker,
         )
 
+    if VoiceService is not None and VoiceServiceConfig is not None:
+        voice_http_client = providers.Singleton(
+            httpx.AsyncClient,
+            timeout=httpx.Timeout(60.0),
+        )
+        voice_service = providers.Singleton(
+            VoiceService,
+            config=providers.Callable(_build_voice_config, settings),
+            http_client=voice_http_client,
+            chat_service=chat_service,
+        )
+
 # Alias attendu par main.py & routers
 ServiceContainer = AppContainer
+

@@ -1,5 +1,5 @@
-# src/backend/features/chat/router.py
-# V23.5 — Remove duplicate ws:debate_result (service emits) + minor cleanup
+﻿# src/backend/features/chat/router.py
+# V23.5 â€” Remove duplicate ws:debate_result (service emits) + minor cleanup
 
 import logging
 from uuid import uuid4
@@ -62,7 +62,7 @@ def _norm_doc_ids(payload, snake_key="doc_ids", camel_key="docIds") -> list[str]
             text = str(item).strip()
             if text:
                 doc_ids.append(text)
-    # Déduplication en conservant l'ordre
+    # DÃ©duplication en conservant l'ordre
     seen = set()
     ordered: list[str] = []
     for _id in doc_ids:
@@ -79,8 +79,8 @@ def _norm_type(t: str) -> str:
 
 
 # ---------------------------
-# Core WS — SANS Depends / SANS @inject
-# (les endpoints résolvent les deps et les passent ici)
+# Core WS â€” SANS Depends / SANS @inject
+# (les endpoints rÃ©solvent les deps et les passent ici)
 # ---------------------------
 async def _ws_core(
     websocket: WebSocket,
@@ -89,7 +89,7 @@ async def _ws_core(
     chat_service: ChatService,
     debate_service: DebateService,
 ):
-    """Boucle WS commune. Les deps sont déjà résolues par les endpoints."""
+    """Boucle WS commune. Les deps sont dÃ©jÃ  rÃ©solues par les endpoints."""
     thread_id = None
     try:
         thread_id = websocket.query_params.get("thread_id")
@@ -103,7 +103,7 @@ async def _ws_core(
             deps._enforce_allowlist_claims(claims)
             _uid = str(claims.get("sub") or "")
     except Exception as e:
-        logger.info(f"WS auth tentative échouée: {e}")
+        logger.info(f"WS auth tentative Ã©chouÃ©e: {e}")
 
     await connection_manager.connect(
         websocket,
@@ -137,7 +137,7 @@ async def _ws_core(
                 data = await websocket.receive_json()
             except (JSONDecodeError, WebSocketDisconnect):
                 logger.info(
-                    f"[WS] JSON/Disconnect lors de receive_json() — fermeture propre (session={session_id})"
+                    f"[WS] JSON/Disconnect lors de receive_json() â€” fermeture propre (session={session_id})"
                 )
                 break
 
@@ -164,11 +164,11 @@ async def _ws_core(
                 "chat_message",
             }:
                 logger.info(
-                    f"[WS] Normalisation du type hérité '{message_type}' -> 'chat.message'"
+                    f"[WS] Normalisation du type hÃ©ritÃ© '{message_type}' -> 'chat.message'"
                 )
                 message_type = "chat.message"
 
-            # -------- Débat
+            # -------- DÃ©bat
             if message_type.startswith("debate:"):
                 try:
                     if message_type == "debate:create":
@@ -185,7 +185,7 @@ async def _ws_core(
                                 {
                                     "type": "ws:error",
                                     "payload": {
-                                        "message": "Débat: 'topic' manquant ou invalide."
+                                        "message": "DÃ©bat: 'topic' manquant ou invalide."
                                     },
                                 },
                                 session_id,
@@ -200,7 +200,7 @@ async def _ws_core(
                                 {
                                     "type": "ws:error",
                                     "payload": {
-                                        "message": "Débat: 'agent_order' ≥ 2 agents requis."
+                                        "message": "DÃ©bat: 'agent_order' â‰¥ 2 agents requis."
                                     },
                                 },
                                 session_id,
@@ -211,7 +211,7 @@ async def _ws_core(
                                 {
                                     "type": "ws:error",
                                     "payload": {
-                                        "message": "Débat: 'rounds' doit être un entier ≥ 1."
+                                        "message": "DÃ©bat: 'rounds' doit Ãªtre un entier â‰¥ 1."
                                     },
                                 },
                                 session_id,
@@ -223,14 +223,14 @@ async def _ws_core(
                             {
                                 "type": "ws:debate_status_update",
                                 "payload": {
-                                    "status": "Initialisation du débat…",
+                                    "status": "Initialisation du dÃ©batâ€¦",
                                     "topic": topic,
                                 },
                             },
                             session_id,
                         )
 
-                        # Orchestration — le service émet déjà ws:debate_started/turn_update/result/ended
+                        # Orchestration â€” le service Ã©met dÃ©jÃ  ws:debate_started/turn_update/result/ended
                         await debate_service.run(
                             session_id=session_id,
                             topic=topic,
@@ -240,24 +240,24 @@ async def _ws_core(
                             doc_ids=doc_ids,
                         )
 
-                        # Pas de ré-émission ici (évite les doublons ws:debate_result).
+                        # Pas de rÃ©-Ã©mission ici (Ã©vite les doublons ws:debate_result).
                         continue
 
                     await connection_manager.send_personal_message(
                         {
                             "type": "ws:error",
                             "payload": {
-                                "message": f"Type débat inconnu: {message_type}"
+                                "message": f"Type dÃ©bat inconnu: {message_type}"
                             },
                         },
                         session_id,
                     )
                 except Exception as e:
-                    logger.error(f"[WS] Erreur débat: {e}", exc_info=True)
+                    logger.error(f"[WS] Erreur dÃ©bat: {e}", exc_info=True)
                     await connection_manager.send_personal_message(
                         {
                             "type": "ws:error",
-                            "payload": {"message": f"Erreur débat: {e}"},
+                            "payload": {"message": f"Erreur dÃ©bat: {e}"},
                         },
                         session_id,
                     )
@@ -336,6 +336,9 @@ async def _ws_core(
                             agent=ag,
                             content=txt,
                             timestamp=datetime.now(timezone.utc).isoformat(),
+                            cost=None,
+                            tokens=None,
+                            agents=[ag],
                             use_rag=use_rag,
                             doc_ids=doc_ids,
                         )
@@ -418,3 +421,4 @@ async def websocket_without_session(
         chat_service=chat_service,
         debate_service=debate_service,
     )
+

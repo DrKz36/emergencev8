@@ -92,11 +92,17 @@ class MemoryAnalyzer:
                 pass
 
     def _already_analyzed(self, session_id: str) -> bool:
+        chat_service = self.chat_service
+        if chat_service is None:
+            return False
+        session_manager = getattr(chat_service, "session_manager", None)
+        if session_manager is None:
+            return False
         try:
-            sess = self.chat_service.session_manager.get_session(session_id)
+            sess = session_manager.get_session(session_id)
             meta = getattr(sess, "metadata", None) or {}
-            s = meta.get("summary")
-            return isinstance(s, str) and bool(s.strip())
+            summary_value = meta.get("summary")
+            return isinstance(summary_value, str) and bool(summary_value.strip())
         except Exception:
             return False
 
