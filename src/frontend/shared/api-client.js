@@ -7,6 +7,8 @@
 
 import { API_ENDPOINTS } from './config.js';
 
+const DEV_BYPASS_KEY = 'emergence.devAuthBypass';
+
 const THREADS_BASE =
   (API_ENDPOINTS && API_ENDPOINTS.THREADS) ? API_ENDPOINTS.THREADS : '/api/threads';
 
@@ -55,16 +57,80 @@ function isLocalhost() {
   return h === 'localhost' || h === '127.0.0.1' || h === '::1';
 }
 
+function isLanHost() {
+  try {
+    const h = window.location?.hostname || '';
+    if (!h) return false;
+    if (/^192\.168\./.test(h)) return true;
+    if (/^10\./.test(h)) return true;
+    if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(h)) return true;
+    if (/\.local$/i.test(h)) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeDevFlag(val) {
+  if (val === undefined || val === null) return null;
+  const v = String(val).trim().toLowerCase();
+  if (!v) return null;
+  if (['0', 'false', 'off', 'no', 'none'].includes(v)) return false;
+  if (['1', 'true', 'on', 'yes', 'enable'].includes(v)) return true;
+  return null;
+}
+
+function seedDevBypassFromLocation() {
+  try {
+    const params = new URLSearchParams(window.location?.search || '');
+    const raw = params.get('dev-auth') ?? params.get('devAuth') ?? params.get('dev');
+    const normalized = normalizeDevFlag(raw);
+    if (normalized === true) {
+      localStorage.setItem(DEV_BYPASS_KEY, '1');
+    } else if (normalized === false) {
+      localStorage.setItem(DEV_BYPASS_KEY, '0');
+    }
+  } catch {}
+}
+
+seedDevBypassFromLocation();
+
+function isDevBypassEnabled() {
+  try {
+    const stored = localStorage.getItem(DEV_BYPASS_KEY);
+    if (stored === '1') return true;
+    if (stored === '0') return false;
+  } catch {}
+  if (isLocalhost()) return true;
+  return isLanHost();
+}
+
 /** Entêtes de dev (compat backend local si pas de GIS) */
 function resolveDevHeaders() {
   const st = getStateFromStorage();
   const userId = st?.user?.id || 'FG';
   const userEmail = st?.user?.email;
   const sessionId = st?.websocket?.sessionId;
-  const headers = { 'X-User-Id': userId };
+  const headers = { 'X-User-Id': userId, 'X-Dev-Bypass': '1' };
   if (userEmail) headers['X-User-Email'] = userEmail;
   if (sessionId) headers['X-Session-Id'] = sessionId;
   return headers;
+}
+
+export function getDevUserId() {
+  try {
+    const st = getStateFromStorage();
+    if (st?.user?.id) return String(st.user.id);
+  } catch {}
+  return 'FG';
+}
+
+export function isDevBypassActive() {
+  return isDevBypassEnabled();
+}
+
+export function getDevBypassHeaders() {
+  return resolveDevHeaders();
 }
 
 /** ----------------------- Sanitisation threadId ----------------------- **/
@@ -106,7 +172,10 @@ async function getAuthHeaders() {
   const sid = getSessionIdFromStorage();
   if (sid) headers['X-Session-Id'] = sid;
 
-  if (!token && isLocalhost()) return { ...headers, ...resolveDevHeaders() };
+  if (isDevBypassEnabled()) {
+    Object.assign(headers, resolveDevHeaders());
+    if (!token) return headers;
+  }
   return headers;
 }
 
@@ -280,3 +349,5 @@ try {
     window.api = api;
   }
 } catch (_) {}
+
+
