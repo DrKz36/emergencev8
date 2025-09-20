@@ -1,11 +1,9 @@
 # src/backend/shared/config.py
 # V1.2 - Correction du chemin de BASE_DIR pour localiser les prompts
-import os
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 
-from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # --- CHEMINS DE BASE ---
 # MODIFIÉ V1.2: Correction du chemin. On remonte de 4 niveaux pour atteindre la racine du projet.
@@ -69,10 +67,11 @@ class Settings(BaseSettings):
     vector: VectorSettings = VectorSettings()
     paths: PathSettings = PathSettings()
 
-    class Config:
-        case_sensitive = False
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        case_sensitive=False,
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 

@@ -1,4 +1,4 @@
-﻿# src/backend/features/chat/service.py
+# src/backend/features/chat/service.py
 # V32.1 — Style prelude balisé + anti-vouvoiement (+ tonalités par agent) en priorité system,
 #          ws:model_info expose prompt_file, logs enrichis ; prompts conservent texte+nom de fichier.
 #
@@ -8,15 +8,22 @@
 #          étend le préambule de style FR aux 3 agents, petits nettoyages.
 # - V32.1: STYLE_RULES balisés + anti-vouvoiement explicite, prompt_file exposé, _load_prompts -> bundles.
 
-import os, re, asyncio, logging, glob, json
+import asyncio
+import glob
+import json
+import logging
+import os
+import re
 from uuid import uuid4
-from typing import Dict, Any, List, Tuple, Optional, AsyncGenerator
+from typing import Dict, Any, List, Tuple, Optional, AsyncGenerator, cast
 from pathlib import Path
 from datetime import datetime, timezone
 
 import google.generativeai as genai
 from openai import AsyncOpenAI, OpenAI
 from anthropic import AsyncAnthropic, Anthropic
+from anthropic.types.message_param import MessageParam
+
 
 from backend.core.session_manager import SessionManager
 from backend.core.cost_tracker import CostTracker
@@ -300,14 +307,18 @@ class ChatService:
             knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
             self._knowledge_collection = self.vector_service.get_or_create_collection(knowledge_name)
 
+        collection = self._knowledge_collection
+        if collection is None:
+            return None
+
         clauses = [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]
         if user_id:
             clauses.append({"user_id": user_id})
         where = {"$and": clauses}
-        got = self._knowledge_collection.get(where=where, include=["documents", "metadatas"])
+        got = collection.get(where=where, include=["documents", "metadatas"])
         ids = got.get("ids", []) or []
         if not ids:
-            got = self._knowledge_collection.get(
+            got = collection.get(
                 where={"$and": [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]},
                 include=["documents", "metadatas"],
             )
@@ -351,6 +362,8 @@ class ChatService:
                 self._knowledge_collection = self.vector_service.get_or_create_collection(knowledge_name)
 
             knowledge_col = self._knowledge_collection
+            if knowledge_col is None:
+                return ""
             where_filter = None
             uid = self._try_get_user_id(session_id)
             clauses: List[Dict[str, Any]] = []
@@ -471,7 +484,7 @@ class ChatService:
             yield chunk
 
     async def _get_openai_stream(
-        self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict
+        self, model: str, system_prompt: str, history: List[Dict[str, Any]], cost_info_container: Dict[str, Any]
     ) -> AsyncGenerator[str, None]:
         messages = [{"role": "system", "content": system_prompt}] + history
         usage_seen = False
@@ -509,7 +522,7 @@ class ChatService:
             raise
 
     async def _get_gemini_stream(
-        self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict
+        self, model: str, system_prompt: str, history: List[Dict[str, Any]], cost_info_container: Dict[str, Any]
     ) -> AsyncGenerator[str, None]:
         try:
             model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
@@ -527,7 +540,7 @@ class ChatService:
                         yield text
                 except Exception:
                     pass
-            # Gemini: coût non renvoyé en stream → placeholders
+            # Gemini: coût non renvoyé en stream ? placeholders
             cost_info_container.setdefault("input_tokens", 0)
             cost_info_container.setdefault("output_tokens", 0)
             cost_info_container.setdefault("total_cost", 0.0)
@@ -536,15 +549,16 @@ class ChatService:
             raise
 
     async def _get_anthropic_stream(
-        self, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict
+        self, model: str, system_prompt: str, history: List[Dict[str, Any]], cost_info_container: Dict[str, Any]
     ) -> AsyncGenerator[str, None]:
         try:
+            history_params = cast(List[MessageParam], history)
             async with self.anthropic_client.messages.stream(
                 model=model,
                 max_tokens=1500,
                 temperature=DEFAULT_TEMPERATURE,
                 system=system_prompt,
-                messages=history,
+                messages=history_params,
             ) as stream:
                 async for event in stream:
                     try:
@@ -557,7 +571,7 @@ class ChatService:
                     except Exception:
                         pass
                 try:
-                    final = await stream.get_final_response()
+                    final = await stream.get_final_message()
                     usage = getattr(final, "usage", None)
                     if usage:
                         pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
@@ -586,24 +600,24 @@ class ChatService:
             full_prompt = (
                 f"{prompt}\n\nIMPORTANT: Réponds EXCLUSIVEMENT en JSON valide correspondant strictement à ce SCHÉMA : {schema_hint}"
             )
-            resp = await model_instance.generate_content_async([{"role": "user", "parts": [full_prompt]}])
-            text = getattr(resp, "text", "") or ""
+            google_resp = await model_instance.generate_content_async([{"role": "user", "parts": [full_prompt]}])
+            text = getattr(google_resp, "text", "") or ""
             try:
                 return json.loads(text) if text else {}
             except Exception:
                 m = re.search(r"\{.*\}", text, re.S)
                 return json.loads(m.group(0)) if m else {}
         elif provider == "openai":
-            resp = await self.openai_client.chat.completions.create(
+            openai_resp = await self.openai_client.chat.completions.create(
                 model=model,
                 temperature=0,
                 response_format={"type": "json_object"},
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
             )
-            content = (resp.choices[0].message.content or "").strip()
+            content = (openai_resp.choices[0].message.content or "").strip()
             return json.loads(content) if content else {}
         elif provider == "anthropic":
-            resp = await self.anthropic_client.messages.create(
+            anthropic_resp = await self.anthropic_client.messages.create(
                 model=model,
                 max_tokens=1500,
                 temperature=0,
@@ -611,7 +625,7 @@ class ChatService:
                 messages=[{"role": "user", "content": prompt}],
             )
             text = ""
-            for block in getattr(resp, "content", []) or []:
+            for block in getattr(anthropic_resp, "content", []) or []:
                 t = getattr(block, "text", "") or ""
                 if t:
                     text += t
@@ -698,15 +712,17 @@ class ChatService:
                         {"type": "ws:chat_stream_end", "payload": payload}, session_id
                     )
                     if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
-                        try:
-                            gardener = MemoryGardener(
-                                db_manager=getattr(self.session_manager, "db_manager", None),
-                                vector_service=self.vector_service,
-                                memory_analyzer=getattr(self.session_manager, "memory_analyzer", None),
-                            )
-                            asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3))
-                        except Exception:
-                            pass
+                        analyzer = getattr(self.session_manager, "memory_analyzer", None)
+                        if analyzer is not None:
+                            try:
+                                gardener = MemoryGardener(
+                                    db_manager=self.session_manager.db_manager,
+                                    vector_service=self.vector_service,
+                                    memory_analyzer=analyzer,
+                                )
+                                asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3))
+                            except Exception:
+                                pass
                     return
 
             # Mémoire (STM/LTM)
@@ -753,7 +769,7 @@ class ChatService:
                 if self._doc_collection is None:
                     self._doc_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
 
-                where_filter = None
+                where_filter: Optional[Dict[str, Any]] = None
                 if selected_doc_ids:
                     if len(selected_doc_ids) == 1:
                         where_filter = {"document_id": selected_doc_ids[0]}
@@ -1013,15 +1029,19 @@ class ChatService:
             )
 
             if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
-                try:
-                    gardener = MemoryGardener(
-                        db_manager=getattr(self.session_manager, "db_manager", None),
-                        vector_service=self.vector_service,
-                        memory_analyzer=getattr(self.session_manager, "memory_analyzer", None),
-                    )
-                    asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3, thread_id=thread_id))
-                except Exception:
-                    pass
+                analyzer = getattr(self.session_manager, "memory_analyzer", None)
+                if analyzer is not None:
+                    try:
+                        gardener = MemoryGardener(
+                            db_manager=self.session_manager.db_manager,
+                            vector_service=self.vector_service,
+                            memory_analyzer=analyzer,
+                        )
+                        asyncio.create_task(
+                            gardener.tend_the_garden(consolidation_limit=3, thread_id=thread_id)
+                        )
+                    except Exception:
+                        pass
 
         except Exception as e:
             logger.error(f"Erreur streaming {agent_id}: {e}", exc_info=True)
@@ -1068,7 +1088,7 @@ class ChatService:
                     self._doc_collection = self.vector_service.get_or_create_collection(
                         config.DOCUMENT_COLLECTION_NAME
                     )
-                where_filter = None
+                where_filter: Optional[Dict[str, Any]] = None
                 if selected_doc_ids:
                     if len(selected_doc_ids) == 1:
                         where_filter = {"document_id": selected_doc_ids[0]}
@@ -1204,10 +1224,14 @@ class ChatService:
         chat_request: Any,
         connection_manager: Optional[ConnectionManager] = None,
     ) -> None:
-        get = lambda k: (chat_request.get(k) if isinstance(chat_request, dict) else getattr(chat_request, k, None))
-        agent_id = (get('agent_id') or '').strip().lower()
-        use_rag = bool(get('use_rag'))
-        doc_ids = self._sanitize_doc_ids(get('doc_ids'))
+        def _get_value(key: str):
+            if isinstance(chat_request, dict):
+                return chat_request.get(key)
+            return getattr(chat_request, key, None)
+
+        agent_id = (_get_value('agent_id') or '').strip().lower()
+        use_rag = bool(_get_value('use_rag'))
+        doc_ids = self._sanitize_doc_ids(_get_value('doc_ids'))
         cm = connection_manager or getattr(self.session_manager, 'connection_manager', None)
 
         if not agent_id:
@@ -1269,6 +1293,8 @@ class ChatService:
     # ---------- diverses ----------
     def _count_bullets(self, text: str) -> int:
         return sum(1 for line in (text or "").splitlines() if line.strip().startswith("- "))
+
+
 
 
 

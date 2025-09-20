@@ -51,17 +51,11 @@ class SessionManager:
                     id=session_id,
                     user_id=user_id,
                     start_time=datetime.now(timezone.utc),
+                    end_time=None,
                     history=[],
                 )
-                try:
-                    session.metadata = {}
-                except Exception:
-                    pass
                 if thread_id:
-                    try:
-                        session.metadata["thread_id"] = thread_id
-                    except Exception:
-                        session.metadata = {"thread_id": thread_id}
+                    session.metadata["thread_id"] = thread_id
                 self.active_sessions[session_id] = session
                 logger.info(f"Session active créée : {session_id} pour l'utilisateur {user_id}")
             else:
@@ -69,14 +63,14 @@ class SessionManager:
 
         resolved_user_id = user_id or session.user_id or self._session_user_cache.get(session_id)
         if resolved_user_id:
-            resolved_user_id = str(resolved_user_id)
-            session.user_id = resolved_user_id
-            self._session_users[session_id] = resolved_user_id
-            self._session_user_cache[session_id] = resolved_user_id
+            resolved_user_id_str = str(resolved_user_id)
+            session.user_id = resolved_user_id_str
+            self._session_users[session_id] = resolved_user_id_str
+            self._session_user_cache[session_id] = resolved_user_id_str
 
         if thread_id:
             self._session_threads[session_id] = thread_id
-            if not hasattr(session, "metadata") or not isinstance(session.metadata, dict):
+            if not isinstance(session.metadata, dict):
                 session.metadata = {}
             session.metadata["thread_id"] = thread_id
 
@@ -100,12 +94,9 @@ class SessionManager:
             id=session_id,
             user_id=user_id,
             start_time=datetime.now(timezone.utc),
+            end_time=None,
             history=[],
         )
-        try:
-            session.metadata = {}
-        except Exception:
-            pass
         self.active_sessions[session_id] = session
 
         if user_id:
@@ -126,21 +117,18 @@ class SessionManager:
             self._session_user_cache.setdefault(session_id, uid)
             self._session_users.setdefault(session_id, uid)
             return uid
-        uid = self._session_users.get(session_id) or self._session_user_cache.get(session_id)
-        return str(uid) if uid else None
+        cached_uid = self._session_users.get(session_id) or self._session_user_cache.get(session_id)
+        return str(cached_uid) if cached_uid else None
 
     def get_session_metadata(self, session_id: str) -> Dict[str, Any]:
         """Garantit la présence d'un dictionnaire de métadonnées pour la session active."""
         session = self.active_sessions.get(session_id)
         if not session:
             return {}
-        meta = getattr(session, 'metadata', None)
+        meta = session.metadata
         if not isinstance(meta, dict):
             meta = {}
-            try:
-                session.metadata = meta  # type: ignore[attr-defined]
-            except Exception:
-                pass
+            session.metadata = meta
         return meta
 
     def update_session_metadata(self, session_id: str, *, summary: Optional[str] = None, concepts: Optional[List[str]] = None, entities: Optional[List[str]] = None) -> None:
@@ -156,7 +144,7 @@ class SessionManager:
         if entities is not None:
             meta['entities'] = entities
         try:
-            session.metadata = meta  # type: ignore[attr-defined]
+            session.metadata = meta
         except Exception:
             pass
 
@@ -218,6 +206,7 @@ class SessionManager:
                     continue
                 try:
                     role = str(candidate.get("role") or "").lower()
+                    model: ChatMessage | AgentMessage
                     if role == "assistant":
                         model = AgentMessage(**candidate)
                     else:
@@ -263,16 +252,18 @@ class SessionManager:
             if not thread_row:
                 logger.warning(f"Thread {thread_id} introuvable pour l'hydratation de la session {session_id}.")
             else:
-                if not hasattr(self.active_sessions[session_id], "metadata") or not isinstance(self.active_sessions[session_id].metadata, dict):
-                    self.active_sessions[session_id].metadata = {}
+                session_meta = self.active_sessions[session_id].metadata
+                if not isinstance(session_meta, dict):
+                    session_meta = {}
+                    self.active_sessions[session_id].metadata = session_meta
                 try:
                     raw_meta = thread_row.get("meta")
                     meta_dict = json.loads(raw_meta) if isinstance(raw_meta, str) else (raw_meta or {})
                 except Exception:
                     meta_dict = {}
-                self.active_sessions[session_id].metadata.setdefault("thread", thread_row)
+                session_meta.setdefault("thread", thread_row)
                 if meta_dict:
-                    self.active_sessions[session_id].metadata.setdefault("thread_meta", meta_dict)
+                    session_meta.setdefault("thread_meta", meta_dict)
 
             messages = await queries.get_messages(self.db_manager, thread_id, limit=limit)
             history: List[Dict[str, Any]] = []
@@ -524,7 +515,7 @@ class SessionManager:
             return
 
         try:
-            if not hasattr(session, 'metadata'):
+            if not isinstance(session.metadata, dict):
                 session.metadata = {}
             
             session.metadata.update(update_data.get("metadata", {}))

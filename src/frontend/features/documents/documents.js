@@ -363,7 +363,14 @@ export default class DocumentsModule {
                 <span class="doc-name" data-role="doc-name">${name}</span>
                 <span class="doc-date">${when}</span>
                 <span class="doc-status ${statusClass}">${status}</span>
-                <button class="button button-metal btn-delete" data-id="${id}" title="Supprimer ${name}" aria-label="Supprimer ${name}"></button>
+                <button class="doc-remove" data-id="${id}" title="Supprimer ${name}" aria-label="Supprimer ${name}">
+                    <span class="doc-remove-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="16" height="16" focusable="false">
+                            <path d="M9 3h6l1 2h5v2H3V5h5l1-2Zm1 6h2v9h-2V9Zm6 0h-2v9h2V9ZM8 9H6v9h2V9Z" fill="currentColor"></path>
+                        </svg>
+                    </span>
+                    <span class="doc-remove-label">Supprimer</span>
+                </button>
             </li>
         `;
     }
@@ -371,7 +378,7 @@ export default class DocumentsModule {
     /* ------------------------------- Actions UI ------------------------------ */
 
     async handleDelete(e) {
-        const btn = e.target.closest('.btn-delete');
+        const btn = e.target.closest('.doc-remove');
         if (!btn) return;
         const docId = btn.dataset.id;
         if (!docId) return;

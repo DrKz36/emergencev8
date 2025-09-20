@@ -1,7 +1,6 @@
 # src/backend/features/voice/router.py
 # V1.0 - Création initiale du routeur WebSocket pour la voix
 import logging
-import json
 from typing import AsyncGenerator
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query

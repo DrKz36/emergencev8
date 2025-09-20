@@ -21,6 +21,7 @@ from backend.features.debate.service import DebateService
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+
 # ---------------------------
 # Helpers normalisation
 # ---------------------------
@@ -30,6 +31,7 @@ def _norm_bool(payload, snake_key, camel_key, default=False):
     if camel_key in payload:
         return bool(payload.get(camel_key))
     return default
+
 
 def _norm_list(payload, snake_key, camel_key):
     val = payload.get(snake_key)
@@ -70,9 +72,11 @@ def _norm_doc_ids(payload, snake_key="doc_ids", camel_key="docIds") -> list[str]
         ordered.append(_id)
     return ordered
 
+
 def _norm_type(t: str) -> str:
     t = (t or "").strip()
     return t.replace(".", ":", 1) if t.startswith("debate.") else t
+
 
 # ---------------------------
 # Core WS — SANS Depends / SANS @inject
@@ -88,7 +92,7 @@ async def _ws_core(
     """Boucle WS commune. Les deps sont déjà résolues par les endpoints."""
     thread_id = None
     try:
-        thread_id = websocket.query_params.get('thread_id')
+        thread_id = websocket.query_params.get("thread_id")
     except Exception:
         thread_id = None
     _uid = None
@@ -97,7 +101,7 @@ async def _ws_core(
         if tok:
             claims = deps._read_bearer_claims_from_token(tok)
             deps._enforce_allowlist_claims(claims)
-            _uid = str(claims.get('sub') or '')
+            _uid = str(claims.get("sub") or "")
     except Exception as e:
         logger.info(f"WS auth tentative échouée: {e}")
 
@@ -110,8 +114,14 @@ async def _ws_core(
     if not _uid:
         try:
             await connection_manager.send_personal_message(
-                {"type": "ws:auth_required", "payload": {"message": "Authentication required", "reason": "missing_or_invalid_token"}},
-                session_id
+                {
+                    "type": "ws:auth_required",
+                    "payload": {
+                        "message": "Authentication required",
+                        "reason": "missing_or_invalid_token",
+                    },
+                },
+                session_id,
             )
         except Exception:
             pass
@@ -126,7 +136,9 @@ async def _ws_core(
             try:
                 data = await websocket.receive_json()
             except (JSONDecodeError, WebSocketDisconnect):
-                logger.info(f"[WS] JSON/Disconnect lors de receive_json() — fermeture propre (session={session_id})")
+                logger.info(
+                    f"[WS] JSON/Disconnect lors de receive_json() — fermeture propre (session={session_id})"
+                )
                 break
 
             logger.info(f"---[RAW WS MSG RECEIVED]---: {data}")
@@ -136,43 +148,86 @@ async def _ws_core(
 
             if not message_type or payload is None:
                 await connection_manager.send_personal_message(
-                    {"type": "ws:error", "payload": {"message": "Message WebSocket incomplet (type/payload)."}},
-                    session_id
+                    {
+                        "type": "ws:error",
+                        "payload": {
+                            "message": "Message WebSocket incomplet (type/payload)."
+                        },
+                    },
+                    session_id,
                 )
                 continue
 
             # Compat anciens noms
-            if isinstance(message_type, str) and message_type in {"chat:send", "chat_message"}:
-                logger.info(f"[WS] Normalisation du type hérité '{message_type}' -> 'chat.message'")
+            if isinstance(message_type, str) and message_type in {
+                "chat:send",
+                "chat_message",
+            }:
+                logger.info(
+                    f"[WS] Normalisation du type hérité '{message_type}' -> 'chat.message'"
+                )
                 message_type = "chat.message"
 
             # -------- Débat
             if message_type.startswith("debate:"):
                 try:
                     if message_type == "debate:create":
-                        topic       = payload.get("topic")
+                        topic = payload.get("topic")
                         agent_order = _norm_list(payload, "agent_order", "agentOrder")
-                        rounds      = payload.get("rounds")
-                        use_rag     = _norm_bool(payload, "use_rag", "useRag", default=False)
-                        doc_ids     = _norm_doc_ids(payload)
+                        rounds = payload.get("rounds")
+                        use_rag = _norm_bool(
+                            payload, "use_rag", "useRag", default=False
+                        )
+                        doc_ids = _norm_doc_ids(payload)
 
                         if not topic or not isinstance(topic, str):
                             await connection_manager.send_personal_message(
-                                {"type": "ws:error", "payload": {"message": "Débat: 'topic' manquant ou invalide."}}, session_id
-                            ); continue
-                        if not agent_order or not isinstance(agent_order, list) or len(agent_order) < 2:
+                                {
+                                    "type": "ws:error",
+                                    "payload": {
+                                        "message": "Débat: 'topic' manquant ou invalide."
+                                    },
+                                },
+                                session_id,
+                            )
+                            continue
+                        if (
+                            not agent_order
+                            or not isinstance(agent_order, list)
+                            or len(agent_order) < 2
+                        ):
                             await connection_manager.send_personal_message(
-                                {"type": "ws:error", "payload": {"message": "Débat: 'agent_order' ≥ 2 agents requis."}}, session_id
-                            ); continue
+                                {
+                                    "type": "ws:error",
+                                    "payload": {
+                                        "message": "Débat: 'agent_order' ≥ 2 agents requis."
+                                    },
+                                },
+                                session_id,
+                            )
+                            continue
                         if rounds is None or not isinstance(rounds, int) or rounds < 1:
                             await connection_manager.send_personal_message(
-                                {"type": "ws:error", "payload": {"message": "Débat: 'rounds' doit être un entier ≥ 1."}}, session_id
-                            ); continue
+                                {
+                                    "type": "ws:error",
+                                    "payload": {
+                                        "message": "Débat: 'rounds' doit être un entier ≥ 1."
+                                    },
+                                },
+                                session_id,
+                            )
+                            continue
 
                         # Info statut initial
                         await connection_manager.send_personal_message(
-                            {"type": "ws:debate_status_update", "payload": {"status": "Initialisation du débat…", "topic": topic}},
-                            session_id
+                            {
+                                "type": "ws:debate_status_update",
+                                "payload": {
+                                    "status": "Initialisation du débat…",
+                                    "topic": topic,
+                                },
+                            },
+                            session_id,
                         )
 
                         # Orchestration — le service émet déjà ws:debate_started/turn_update/result/ended
@@ -189,13 +244,22 @@ async def _ws_core(
                         continue
 
                     await connection_manager.send_personal_message(
-                        {"type": "ws:error", "payload": {"message": f"Type débat inconnu: {message_type}"}},
-                        session_id
+                        {
+                            "type": "ws:error",
+                            "payload": {
+                                "message": f"Type débat inconnu: {message_type}"
+                            },
+                        },
+                        session_id,
                     )
                 except Exception as e:
                     logger.error(f"[WS] Erreur débat: {e}", exc_info=True)
                     await connection_manager.send_personal_message(
-                        {"type": "ws:error", "payload": {"message": f"Erreur débat: {e}"}}, session_id
+                        {
+                            "type": "ws:error",
+                            "payload": {"message": f"Erreur débat: {e}"},
+                        },
+                        session_id,
                     )
                 continue
 
@@ -203,32 +267,59 @@ async def _ws_core(
             if message_type == "chat.message":
                 try:
                     txt = (payload.get("text") or "").strip()
-                    ag  = (payload.get("agent_id") or "").strip().lower()
+                    ag = (payload.get("agent_id") or "").strip().lower()
                     use_rag = _norm_bool(payload, "use_rag", "useRag", default=False)
                     doc_ids = _norm_doc_ids(payload)
 
                     if not txt or not ag:
                         await connection_manager.send_personal_message(
-                            {"type": "ws:error", "payload": {"message": "chat.message: 'text' et 'agent_id' requis."}},
-                            session_id
+                            {
+                                "type": "ws:error",
+                                "payload": {
+                                    "message": "chat.message: 'text' et 'agent_id' requis."
+                                },
+                            },
+                            session_id,
                         )
                         continue
 
                     # Anti-duplicate (si dernier message user == txt)
                     try:
-                        history = connection_manager.session_manager.get_full_history(session_id) or []
+                        history = (
+                            connection_manager.session_manager.get_full_history(
+                                session_id
+                            )
+                            or []
+                        )
                         last = history[-1] if history else None
-                        last_role = (last.get("role") if isinstance(last, dict) else getattr(last, "role", None)) if last else None
+                        last_role = (
+                            (
+                                last.get("role")
+                                if isinstance(last, dict)
+                                else getattr(last, "role", None)
+                            )
+                            if last
+                            else None
+                        )
                         if isinstance(last, dict):
                             last_text = last.get("content") or last.get("message")
                             last_doc_ids_raw = last.get("doc_ids")
                         else:
-                            last_text = getattr(last, "content", None) or getattr(last, "message", None)
+                            last_text = getattr(last, "content", None) or getattr(
+                                last, "message", None
+                            )
                             last_doc_ids_raw = getattr(last, "doc_ids", None)
-                        already_there = (str(last_role).lower().endswith("user") and (last_text or "").strip() == txt.strip())
+                        already_there = (
+                            str(last_role).lower().endswith("user")
+                            and (last_text or "").strip() == txt.strip()
+                        )
                         if already_there:
                             try:
-                                last_doc_ids = {str(int(str(x).strip())) for x in (last_doc_ids_raw or []) if x not in (None, "")}
+                                last_doc_ids = {
+                                    str(int(str(x).strip()))
+                                    for x in (last_doc_ids_raw or [])
+                                    if x not in (None, "")
+                                }
                                 current_doc_ids = {str(int(x)) for x in doc_ids}
                                 if last_doc_ids != current_doc_ids:
                                     already_there = False
@@ -248,7 +339,9 @@ async def _ws_core(
                             use_rag=use_rag,
                             doc_ids=doc_ids,
                         )
-                        await connection_manager.session_manager.add_message_to_session(session_id, umsg)
+                        await connection_manager.session_manager.add_message_to_session(
+                            session_id, umsg
+                        )
 
                     chat_service.process_user_message_for_agents(
                         session_id,
@@ -259,14 +352,21 @@ async def _ws_core(
                 except Exception as e:
                     logger.error(f"[WS] chat.message erreur: {e}", exc_info=True)
                     await connection_manager.send_personal_message(
-                        {"type": "ws:error", "payload": {"message": f"chat.message erreur: {e}"}}, session_id
+                        {
+                            "type": "ws:error",
+                            "payload": {"message": f"chat.message erreur: {e}"},
+                        },
+                        session_id,
                     )
                 continue
 
             # -------- Inconnu
             await connection_manager.send_personal_message(
-                {"type": "ws:error", "payload": {"message": f"Type inconnu: {message_type}"}},
-                session_id
+                {
+                    "type": "ws:error",
+                    "payload": {"message": f"Type inconnu: {message_type}"},
+                },
+                session_id,
             )
 
     except Exception as e:
@@ -277,6 +377,7 @@ async def _ws_core(
         except Exception:
             pass
 
+
 # ---------------------------
 # Endpoints WS (DI ici UNIQUEMENT)
 # ---------------------------
@@ -285,7 +386,9 @@ async def _ws_core(
 async def websocket_with_session(
     websocket: WebSocket,
     session_id: str,
-    connection_manager: ConnectionManager = Depends(Provide[ServiceContainer.connection_manager]),
+    connection_manager: ConnectionManager = Depends(
+        Provide[ServiceContainer.connection_manager]
+    ),
     chat_service: ChatService = Depends(Provide[ServiceContainer.chat_service]),
     debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service]),
 ):
@@ -297,11 +400,14 @@ async def websocket_with_session(
         debate_service=debate_service,
     )
 
+
 @router.websocket("/ws")
 @inject
 async def websocket_without_session(
     websocket: WebSocket,
-    connection_manager: ConnectionManager = Depends(Provide[ServiceContainer.connection_manager]),
+    connection_manager: ConnectionManager = Depends(
+        Provide[ServiceContainer.connection_manager]
+    ),
     chat_service: ChatService = Depends(Provide[ServiceContainer.chat_service]),
     debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service]),
 ):

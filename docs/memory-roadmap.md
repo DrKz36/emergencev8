@@ -14,7 +14,7 @@ Ce document synthétise l'état actuel et la trajectoire de la mémoire d'Emerge
 
 ### Limites identifiées
 - L'analyse et la vectorisation sont déclenchées dans la boucle WS, ce qui peut bloquer l'event loop.
-- Les seuils de vitalité et le reporting restent à affiner (calibrage decay, métriques monitoring).
+- (RESOLU 2025-09-20) Seuils de vitalite et reporting recalibres : base=0.03, stale=14j, archive=45j, nouvelles metriques (buckets, percentiles).
 - Les « faits » se limitent aux `mot-code`; aucun suivi de préférences, objectifs ou décisions récurrentes.
 - L'UI n'enregistre pas systématiquement les messages utilisateurs et ne recharge pas la STM depuis la base lors d'une reconnexion.
 - Aucun mécanisme proactif pour signaler des concepts récurrents ou déclencher des suggestions.
@@ -54,13 +54,14 @@ Ce document synthétise l'état actuel et la trajectoire de la mémoire d'Emerge
 | Persist. messages utilisateur | Envoi systématique via `api.appendMessage` dans le frontend | ✅ livré ici |
 | Restauration session WS | `ConnectionManager` charge la session depuis la BDD avant de créer une nouvelle STM | ✅ livré ici |
 | Mécanisme d'oubli | Score de vitalité + decay + purge via MemoryGardener | ✅ livré ici |
+| Calibrage vitalite | Base=0.03, stale=14j, archive=45j, min=0.12 + metrics JSON (vitality_before/after, age_days, buckets) | livre ici |
 | Proactivité concepts | Compteurs + événements à concevoir (P2) | ⏳ à faire |
 
 ## Prochaines étapes immédiates
 - [FAIT] Synchronisation STM côté backend (hydratation `SessionManager` + push `ws:session_restored`).
 - [FAIT] Vectorisation déportée via tâche asynchrone (`asyncio.to_thread`).
 - [FAIT] Décroissance vitalité + purge via `MemoryGardener._decay_knowledge` (journalisation métriques).
-- [A FAIRE] Calibrer les seuils de vitalité et exposer les métriques côté monitoring (Grafana / alerts).
+- [FAIT] Calibrage vitalite + export metriques (events vitality_*, age_days, bucket_counts) + overrides MEMORY_DECAY_*.
 - [VALIDÉ] Extension `MemoryGardener` pour analyser préférences et intentions en plus des `mot-code` (voir la spécification détaillée ci-dessous).
 
 ## Spécification détaillée — Extension MemoryGardener (préférences & intentions)
@@ -100,4 +101,4 @@ Capturer et capitaliser les préférences explicites (goûts, contraintes, canau
 - Revue hebdomadaire des extraits capturés (échantillon aléatoire de 20) pour ajuster les règles lexicales et le prompt LLM.
 
 ---
-Dernière mise à jour : générée automatiquement par l'agent suite aux travaux du __2025-09-20__.
+Derniere mise a jour : texte actualise automatiquement suite aux travaux du __2025-09-20__.

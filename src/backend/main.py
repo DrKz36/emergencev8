@@ -1,7 +1,10 @@
-﻿# src/backend/main.py
+# src/backend/main.py
 from __future__ import annotations
 
-import os, sys, logging, time, re
+import logging
+import os
+import re
+import sys
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +13,9 @@ from starlette.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger("emergence")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s"
+)
 
 # --- PYTHONPATH ---
 SRC_DIR = Path(__file__).resolve().parent.parent
@@ -25,9 +30,10 @@ for path in (SRC_DIR, REPO_ROOT):
     if path_str not in sys.path:
         sys.path.append(path_str)
 
-from backend.containers import ServiceContainer
-from backend.core.database.schema import initialize_database
-from backend.core.config import DENYLIST_ENABLED, DENYLIST_PATTERNS  # ← ajout
+from backend.containers import ServiceContainer  # noqa: E402
+from backend.core.database.schema import initialize_database  # noqa: E402
+from backend.core.config import DENYLIST_ENABLED, DENYLIST_PATTERNS  # noqa: E402
+
 
 def _import_router(dotted: str):
     try:
@@ -37,23 +43,28 @@ def _import_router(dotted: str):
         logger.warning(f"Router non trouvé: {dotted} — {e}")
         return None
 
+
 # Routers REST/WS
 DOCUMENTS_ROUTER = _import_router("backend.features.documents.router")
 DASHBOARD_ROUTER = _import_router("backend.features.dashboard.router")
-DEBATE_ROUTER    = _import_router("backend.features.debate.router")
-CHAT_ROUTER      = _import_router("backend.features.chat.router")  # ← WS ici
-THREADS_ROUTER   = _import_router("backend.features.threads.router")
-MEMORY_ROUTER    = _import_router("backend.features.memory.router")
-DEV_AUTH_ROUTER  = _import_router("backend.features.dev_auth.router")  # optionnel
+DEBATE_ROUTER = _import_router("backend.features.debate.router")
+CHAT_ROUTER = _import_router("backend.features.chat.router")  # ← WS ici
+THREADS_ROUTER = _import_router("backend.features.threads.router")
+MEMORY_ROUTER = _import_router("backend.features.memory.router")
+DEV_AUTH_ROUTER = _import_router("backend.features.dev_auth.router")  # optionnel
+
 
 def _migrations_dir() -> str:
     return str(Path(__file__).resolve().parent / "core" / "migrations")
+
 
 async def _startup(container: ServiceContainer):
     logger.info("Démarrage backend Émergence…")
     try:
         db_manager = container.db_manager()
-        fast_boot = os.getenv("EMERGENCE_FAST_BOOT") or os.getenv("EMERGENCE_SKIP_MIGRATIONS")
+        fast_boot = os.getenv("EMERGENCE_FAST_BOOT") or os.getenv(
+            "EMERGENCE_SKIP_MIGRATIONS"
+        )
         if fast_boot:
             await db_manager.connect()
             logger.info("DB connectée (FAST_BOOT=on).")
@@ -69,7 +80,15 @@ async def _startup(container: ServiceContainer):
         import backend.features.dashboard.router as dashboard_module
         import backend.features.documents.router as documents_module
         import backend.features.debate.router as debate_module
-        container.wire(modules=[chat_router_module, dashboard_module, documents_module, debate_module])
+
+        container.wire(
+            modules=[
+                chat_router_module,
+                dashboard_module,
+                documents_module,
+                debate_module,
+            ]
+        )
         logger.info("DI wired (chat|dashboard|documents|debate.router).")
     except Exception as e:
         logger.warning(f"Wire DI partiel: {e}")
@@ -82,6 +101,7 @@ async def _startup(container: ServiceContainer):
         logger.info("MemoryAnalyzer hook: ChatService injecté (ready=True).")
     except Exception as e:
         logger.warning(f"MemoryAnalyzer hook non appliqué: {e}")
+
 
 # --- Middleware Deny-list (404 early) ---
 class DenyListMiddleware(BaseHTTPMiddleware):
@@ -99,6 +119,7 @@ class DenyListMiddleware(BaseHTTPMiddleware):
                     return PlainTextResponse("Not Found", status_code=404)
         return await call_next(request)
 
+
 def create_app() -> FastAPI:
     container = ServiceContainer()
     app = FastAPI(title="Émergence API", version="7.2")
@@ -110,11 +131,16 @@ def create_app() -> FastAPI:
     # CORS d'abord...
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     # ...puis DenyList en dernier pour être outermost (court-circuit rapide)
     app.add_mmiddleware = app.add_middleware  # alias lisible
-    app.add_mmiddleware(DenyListMiddleware, enabled=DENYLIST_ENABLED, patterns=DENYLIST_PATTERNS)
+    app.add_mmiddleware(
+        DenyListMiddleware, enabled=DENYLIST_ENABLED, patterns=DENYLIST_PATTERNS
+    )
 
     @app.on_event("startup")
     async def _on_startup():
@@ -142,7 +168,9 @@ def create_app() -> FastAPI:
             return
         try:
             if desired_prefix:
-                app.include_router(router, prefix=desired_prefix, tags=getattr(router, "tags", None))
+                app.include_router(
+                    router, prefix=desired_prefix, tags=getattr(router, "tags", None)
+                )
             else:
                 app.include_router(router, tags=getattr(router, "tags", None))
             logger.info(f"Router monté: {desired_prefix or '(no-prefix)'}")
@@ -150,10 +178,10 @@ def create_app() -> FastAPI:
             logger.error(f"Échec du montage router {desired_prefix}: {e}")
 
     _mount_router(DOCUMENTS_ROUTER, "/api/documents")
-    _mount_router(DEBATE_ROUTER,    "/api/debate")
+    _mount_router(DEBATE_ROUTER, "/api/debate")
     _mount_router(DASHBOARD_ROUTER, "/api/dashboard")
-    _mount_router(THREADS_ROUTER,   "/api/threads")
-    _mount_router(MEMORY_ROUTER,    "/api/memory")
+    _mount_router(THREADS_ROUTER, "/api/threads")
+    _mount_router(MEMORY_ROUTER, "/api/memory")
     _mount_router(DEV_AUTH_ROUTER)  # éventuel
 
     # ⚠️ WS: **uniquement** features.chat.router (déclare /ws/{session_id})
@@ -162,6 +190,7 @@ def create_app() -> FastAPI:
     # 🔁 Redirect dev-only : /auth.html → /dev-auth.html si AUTH_DEV_MODE actif
     try:
         if str(os.getenv("AUTH_DEV_MODE", "0")).lower() in {"1", "true", "yes", "on"}:
+
             @app.get("/auth.html", include_in_schema=False)
             async def _auth_redirect():
                 return RedirectResponse(url="/dev-auth.html", status_code=302)
@@ -184,5 +213,6 @@ def create_app() -> FastAPI:
         logger.error(f"Impossible de monter les fichiers statiques: {e}")
 
     return app
+
 
 app = create_app()

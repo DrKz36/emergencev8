@@ -1,10 +1,9 @@
-# src/backend/shared/utils.py
+﻿# src/backend/shared/utils.py
 """
 Utilitaires partagés pour le backend
 """
 
 import datetime
-import json
 from enum import Enum
 from uuid import UUID
 
