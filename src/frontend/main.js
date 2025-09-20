@@ -118,8 +118,13 @@ function setupMobileShell(appInstance, eventBus) {
   const memoryOverlay = document.getElementById('memory-overlay');
   const memoryPanel = memoryOverlay?.querySelector('.memory-overlay__panel');
   const menuToggle = document.getElementById('mobile-menu-toggle');
-  const brainToggle = document.getElementById('mobile-brain-toggle');
+  let brainToggle = document.getElementById('mobile-brain-toggle');
   const backdrop = document.getElementById('mobile-backdrop');
+  if (brainToggle) {
+    try { brainToggle.remove(); } catch (_) {}
+    brainToggle = null;
+  }
+
   const memoryClosers = memoryOverlay ? memoryOverlay.querySelectorAll('[data-memory-close]') : [];
 
   if (!menuToggle && !brainToggle && !memoryOverlay && !sidebar) return;

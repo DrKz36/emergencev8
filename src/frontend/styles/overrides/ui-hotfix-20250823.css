@@ -449,7 +449,7 @@ body::before, body::after,
 @media (max-width: 760px) {
   :root{
     --page-gap: 16px;
-    --mobile-content-gutter: clamp(10px, calc(var(--page-gap) * 0.75), 14px);
+    --mobile-content-gutter: clamp(8px, calc(var(--page-gap) * 0.6), 12px);
     --mobile-menu-gap: 12px;
   }
   body {
