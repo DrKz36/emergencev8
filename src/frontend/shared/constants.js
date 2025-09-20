@@ -1,4 +1,4 @@
-// src/frontend/shared/constants.js
+﻿// src/frontend/shared/constants.js
 // V5.3 - Exporte WS_CONFIG (attendu par main.js) + EVENTS + AGENTS(mapping) + AGENT_IDS
 // - URL WS auto-deduite (overrides supportes): localStorage 'em.ws_url', window.EMERGENCE_WS_URL
 // - wss:// force si page en https:// ; sinon ws://
@@ -82,6 +82,17 @@ export const EVENTS = {
   DOCUMENTS_SELECTION_CHANGED: 'documents:selection_changed',
   DOCUMENTS_CMD_DESELECT: 'documents:cmd:deselect',
 
+  // Threads
+  THREADS_LIST_UPDATED: 'threads:list_updated',
+  THREADS_SELECTED: 'threads:selected',
+  THREADS_CREATED: 'threads:created',
+  THREADS_UPDATED: 'threads:updated',
+  THREADS_ARCHIVED: 'threads:archived',
+  THREADS_ERROR: 'threads:error',
+  THREADS_READY: 'threads:ready',
+  THREADS_LOADED: 'threads:loaded',
+  THREADS_REFRESH_REQUEST: 'threads:refresh',
+
   // Generic UI helpers
   SHOW_MODAL: 'ui:show_modal',
   SHOW_NOTIFICATION: 'ui:show_notification',
@@ -98,4 +109,5 @@ export const AGENTS = {
 export const AGENT_IDS = Object.keys(AGENTS);
 export const PRIMARY_AGENT_IDS = AGENT_IDS.filter((id) => id !== 'global');
 export const BROADCAST_AGENT_IDS = PRIMARY_AGENT_IDS;
+
 

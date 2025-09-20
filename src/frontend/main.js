@@ -7,6 +7,7 @@ import { EventBus } from './core/event-bus.js';
 import { StateManager } from './core/state-manager.js';
 import { WebSocketClient } from './core/websocket.js';
 import { MemoryCenter } from './features/memory/memory-center.js';
+import { ThreadsPanel } from './features/threads/threads.js';
 import { WS_CONFIG, EVENTS } from './shared/constants.js';
 
 /* ---------------- WS-first Chat dedupe & reroute (main.js patch V1) ----------------
@@ -510,7 +511,7 @@ function mountAuthBadge(eventBus) {
 
 /* -------------------- App bootstrap -------------------- */
 class EmergenceClient {
-  constructor() { this.__readyFired=false; this.initialize(); }
+  constructor() { this.__readyFired=false; this.threadsPanel = null; this.initialize(); }
 
   async initialize() {
     console.log("🚀 ÉMERGENCE - Lancement du client.");
@@ -536,6 +537,8 @@ class EmergenceClient {
     eventBus.on(EVENTS.APP_READY, () => { this.__readyFired=true; this.hideLoader(); });
 
     const app = new App(eventBus, stateManager);
+    this.threadsPanel = new ThreadsPanel(eventBus, stateManager);
+    this.threadsPanel.init();
     setupMobileShell(app, eventBus);
 
     let overlayMemoryCenter = null;

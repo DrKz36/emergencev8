@@ -5,6 +5,68 @@
  */
 import { AGENTS } from '../shared/constants.js';
 
+
+const HEX32_RE = /^[0-9a-f]{32}$/i;
+const UUID36_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function sanitizeThreadId(value) {
+  if (value === undefined || value === null) return null;
+  const candidate = String(value).trim();
+  if (!candidate) return null;
+  if (HEX32_RE.test(candidate) || UUID36_RE.test(candidate)) return candidate;
+  if (/^[0-9a-z-]{8,}$/i.test(candidate)) return candidate;
+  return null;
+}
+
+function sanitizeThreadsMap(rawMap) {
+  const safeMap = {};
+  if (!rawMap || typeof rawMap !== 'object') return safeMap;
+  for (const [rawKey, rawValue] of Object.entries(rawMap)) {
+    const source = rawValue && typeof rawValue === 'object' ? { ...rawValue } : {};
+    const safeId = sanitizeThreadId(source.id ?? rawKey);
+    if (!safeId) continue;
+    const entry = { ...source, id: safeId };
+    if (!Array.isArray(entry.messages)) entry.messages = [];
+    if (!Array.isArray(entry.docs)) entry.docs = [];
+    if (entry.thread && typeof entry.thread === 'object') {
+      entry.thread = { ...entry.thread };
+      const threadId = sanitizeThreadId(entry.thread.id ?? safeId);
+      if (threadId) entry.thread.id = threadId;
+      else entry.thread.id = safeId;
+      if (entry.thread.archived === 1) entry.thread.archived = true;
+      if (entry.thread.archived === 0) entry.thread.archived = false;
+      if (typeof entry.thread.archived !== 'boolean') {
+        entry.thread.archived = entry.thread.archived === true;
+      }
+    }
+    safeMap[safeId] = entry;
+  }
+  return safeMap;
+}
+
+function sanitizeThreadsOrder(rawOrder, map) {
+  const result = [];
+  const seen = new Set();
+  if (Array.isArray(rawOrder)) {
+    for (const value of rawOrder) {
+      const id = sanitizeThreadId(value);
+      if (!id) continue;
+      if (!map[id]) continue;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      result.push(id);
+    }
+  }
+  if (!result.length) {
+    for (const id of Object.keys(map)) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      result.push(id);
+    }
+  }
+  return result;
+}
+
 export class StateManager {
   constructor() {
     this.DEFAULT_STATE = this.getInitialState();
@@ -36,13 +98,29 @@ export class StateManager {
     cleanState.user = cleanState.user || { id: 'FG', name: 'Fernando' };
 
     // Threads
-    cleanState.threads = cleanState.threads || { currentId: null, map: {} };
+    const threadsState = (cleanState.threads && typeof cleanState.threads === 'object') ? { ...cleanState.threads } : {};
+    threadsState.map = sanitizeThreadsMap(threadsState.map);
+    threadsState.order = sanitizeThreadsOrder(threadsState.order, threadsState.map);
+    const resolvedCurrentId = sanitizeThreadId(threadsState.currentId);
+    threadsState.currentId = resolvedCurrentId && threadsState.map[resolvedCurrentId] ? resolvedCurrentId : null;
+    threadsState.status = typeof threadsState.status === 'string' ? threadsState.status : 'idle';
+    const errorText = typeof threadsState.error === 'string' ? threadsState.error.trim() : '';
+    threadsState.error = errorText ? errorText : null;
+    const lastFetched = Number(threadsState.lastFetchedAt);
+    threadsState.lastFetchedAt = Number.isFinite(lastFetched) && lastFetched > 0 ? lastFetched : null;
+    cleanState.threads = threadsState;
 
     // Auth
     cleanState.auth = cleanState.auth || { hasToken: false };
 
     // Chat meta
     cleanState.chat = cleanState.chat || {};
+    const safeChatThreadId = sanitizeThreadId(cleanState.chat.threadId);
+    if (safeChatThreadId && threadsState.map[safeChatThreadId]) {
+      cleanState.chat.threadId = safeChatThreadId;
+    } else {
+      cleanState.chat.threadId = threadsState.currentId || null;
+    }
     const normalizeAgentId = (value) => {
       if (typeof value !== 'string') return '';
       let candidate = value.trim().toLowerCase();

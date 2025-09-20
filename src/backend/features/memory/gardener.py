@@ -637,9 +637,9 @@ class MemoryGardener:
                     ):
                         facts_to_add.append(f)
                 if facts_to_add:
-                    s_like: Dict[str, Any] = {"id": tid, "user_id": uid, "themes": []}
-                    await self._record_facts_in_sql(facts_to_add, s_like, uid)
-                    await self._vectorize_facts(facts_to_add, s_like, uid)
+                    session_stub: Dict[str, Any] = {"id": tid, "user_id": uid, "themes": []}
+                    await self._record_facts_in_sql(facts_to_add, session_stub, uid)
+                    await self._vectorize_facts(facts_to_add, session_stub, uid)
                     new_items_count += len(facts_to_add)
                     added_any = True
 
@@ -651,9 +651,9 @@ class MemoryGardener:
             if all_concepts and not await self._any_vectors_for_session_type(
                 tid, "concept"
             ):
-                s_like: Dict[str, Any] = {"id": tid, "user_id": uid, "themes": []}
-                await self._record_concepts_in_sql(all_concepts, s_like, uid)
-                await self._vectorize_concepts(all_concepts, s_like, uid)
+                concept_stub: Dict[str, Any] = {"id": tid, "user_id": uid, "themes": []}
+                await self._record_concepts_in_sql(all_concepts, concept_stub, uid)
+                await self._vectorize_concepts(all_concepts, concept_stub, uid)
                 new_items_count += len(all_concepts)
                 added_any = True
 
@@ -877,10 +877,12 @@ class MemoryGardener:
             if pref_type not in {"preference", "intent", "constraint"}:
                 continue
             raw_conf = item.get("confidence")
-            try:
-                confidence = float(raw_conf)
-            except (TypeError, ValueError):
-                confidence = 0.0
+            confidence = 0.0
+            if raw_conf is not None:
+                try:
+                    confidence = float(str(raw_conf))
+                except (TypeError, ValueError):
+                    confidence = 0.0
             confidence = max(0.0, min(1.0, confidence))
             candidate = candidate_map[cid]
             raw_topic = str(item.get("topic") or "").strip()

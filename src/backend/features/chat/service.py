@@ -32,6 +32,7 @@ from backend.shared.models import AgentMessage, Role, ChatMessage
 from backend.features.memory.vector_service import VectorService
 from backend.shared.config import Settings
 from backend.core import config
+from backend.core.database import queries
 
 from backend.features.memory.gardener import MemoryGardener
 
@@ -671,6 +672,46 @@ class ChatService:
             if not selected_doc_ids and isinstance(last_user_message_obj, dict):
                 selected_doc_ids = self._sanitize_doc_ids(last_user_message_obj.get("doc_ids"))
 
+            thread_id = None
+            try:
+                thread_id = self.session_manager.get_thread_id_for_session(session_id)
+            except Exception:
+                thread_id = None
+
+            allowed_doc_ids: List[int] = []
+            if thread_id:
+                try:
+                    rows = await queries.get_thread_docs(self.session_manager.db_manager, thread_id)
+                    for row in rows:
+                        raw = row.get("doc_id")
+                        if raw is None:
+                            continue
+                        try:
+                            value = int(raw)
+                        except (TypeError, ValueError):
+                            continue
+                        if value not in allowed_doc_ids:
+                            allowed_doc_ids.append(value)
+                except Exception as fetch_err:
+                    logger.warning(
+                        "Unable to fetch thread docs for %s: %s",
+                        thread_id,
+                        fetch_err,
+                    )
+
+            if allowed_doc_ids:
+                filtered_doc_ids = [doc_id for doc_id in selected_doc_ids if doc_id in allowed_doc_ids]
+                if selected_doc_ids and not filtered_doc_ids:
+                    logger.info(
+                        "Selected doc IDs are outside thread scope (session=%s thread=%s ids=%s)",
+                        session_id,
+                        thread_id,
+                        selected_doc_ids,
+                    )
+                if not filtered_doc_ids:
+                    filtered_doc_ids = allowed_doc_ids
+                selected_doc_ids = filtered_doc_ids
+
             # Mot-code court-circuit
             if self._is_mot_code_query(last_user_message):
                 uid = self._try_get_user_id(session_id)
@@ -796,6 +837,18 @@ class ChatService:
                             "excerpt": excerpt,
                         }
                     )
+
+                if allowed_doc_ids:
+                    filtered_sources: List[Dict[str, Any]] = []
+                    for source in rag_sources:
+                        raw_doc_id = source.get("document_id")
+                        try:
+                            doc_id_int = int(raw_doc_id)
+                        except (TypeError, ValueError):
+                            doc_id_int = None
+                        if doc_id_int is None or doc_id_int in allowed_doc_ids:
+                            filtered_sources.append(source)
+                    rag_sources = filtered_sources
 
                 doc_block = (
                     "\n\n".join([f"- {h['text']}" for h in (doc_hits or []) if h.get("text")]) if doc_hits else ""
