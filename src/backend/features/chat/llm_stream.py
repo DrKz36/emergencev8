@@ -1,16 +1,27 @@
-﻿# V1.0 — Provider streaming + anti-429 (OpenAI / Gemini / Anthropic)
+# V1.0 — Provider streaming + anti-429 (OpenAI / Gemini / Anthropic)
 from __future__ import annotations
-import asyncio, logging, random
+import asyncio
+import logging
+import random
 from typing import Any, AsyncGenerator, Dict, List
 import google.generativeai as genai
 from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 from .pricing import MODEL_PRICING
+
 logger = logging.getLogger(__name__)
 
+
 class LLMStreamer:
-    def __init__(self, openai_client: AsyncOpenAI, anthropic_client: AsyncAnthropic,
-                 rate_limits: Dict[str, asyncio.Semaphore], *, base_delay: float = 2.0, max_retries: int = 2):
+    def __init__(
+        self,
+        openai_client: AsyncOpenAI,
+        anthropic_client: AsyncAnthropic,
+        rate_limits: Dict[str, asyncio.Semaphore],
+        *,
+        base_delay: float = 2.0,
+        max_retries: int = 2,
+    ):
         self.openai_client = openai_client
         self.anthropic_client = anthropic_client
         self._rl = rate_limits or {}
@@ -30,73 +41,129 @@ class LLMStreamer:
                 is_429 = False
                 try:
                     from anthropic import RateLimitError as _AnthropicRateLimit
-                    if isinstance(e, _AnthropicRateLimit): is_429 = True
-                except Exception: pass
-                if getattr(e, "status_code", None) == 429 or "429" in str(getattr(e, "status", "")) or "429" in str(e):
+
+                    if isinstance(e, _AnthropicRateLimit):
+                        is_429 = True
+                except Exception:
+                    pass
+                if (
+                    getattr(e, "status_code", None) == 429
+                    or "429" in str(getattr(e, "status", ""))
+                    or "429" in str(e)
+                ):
                     is_429 = True
-                if not is_429 or attempt == max_tries - 1: raise
-                delay = self._rate_base_delay * (2 ** attempt) + random.random() * 0.5
-                logger.warning(f"[rate-limit] {provider} retry in {delay:.1f}s (attempt {attempt+1}/{max_tries})")
+                if not is_429 or attempt == max_tries - 1:
+                    raise
+                delay = self._rate_base_delay * (2**attempt) + random.random() * 0.5
+                logger.warning(
+                    f"[rate-limit] {provider} retry in {delay:.1f}s (attempt {attempt + 1}/{max_tries})"
+                )
                 await asyncio.sleep(delay)
 
-    async def get_llm_response_stream(self, provider: str, model: str, system_prompt: str,
-                                      history: List[Dict[str, Any]], cost_info_container: Dict[str, Any]) -> AsyncGenerator[str, None]:
+    async def get_llm_response_stream(
+        self,
+        provider: str,
+        model: str,
+        system_prompt: str,
+        history: List[Dict[str, Any]],
+        cost_info_container: Dict[str, Any],
+    ) -> AsyncGenerator[str, None]:
         if provider == "openai":
-            streamer = self._get_openai_stream(model, system_prompt, history, cost_info_container)
+            streamer = self._get_openai_stream(
+                model, system_prompt, history, cost_info_container
+            )
         elif provider == "google":
-            streamer = self._get_gemini_stream(model, system_prompt, history, cost_info_container)
+            streamer = self._get_gemini_stream(
+                model, system_prompt, history, cost_info_container
+            )
         elif provider == "anthropic":
-            streamer = self._get_anthropic_stream(model, system_prompt, history, cost_info_container)
+            streamer = self._get_anthropic_stream(
+                model, system_prompt, history, cost_info_container
+            )
         else:
             raise ValueError(f"Fournisseur LLM non supporté: {provider}")
-        async for chunk in streamer: yield chunk
+        async for chunk in streamer:
+            yield chunk
 
-    async def _get_openai_stream(self, model, system_prompt, history, cost_info_container):
+    async def _get_openai_stream(
+        self, model, system_prompt, history, cost_info_container
+    ):
         messages = [{"role": "system", "content": system_prompt}] + history
         usage_seen = False
         try:
+
             async def _op():
                 return await self.openai_client.chat.completions.create(
-                    model=model, messages=messages, temperature=0.4,
-                    stream=True, stream_options={"include_usage": True}
+                    model=model,
+                    messages=messages,
+                    temperature=0.4,
+                    stream=True,
+                    stream_options={"include_usage": True},
                 )
+
             stream = await self.with_rate_limit_retries("openai", _op)
             async for event in stream:
                 try:
                     delta = event.choices[0].delta
                     text = getattr(delta, "content", None)
-                    if text: yield text
-                except Exception: pass
+                    if text:
+                        yield text
+                except Exception:
+                    pass
                 usage = getattr(event, "usage", None)
                 if usage and not usage_seen:
                     usage_seen = True
                     pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
                     in_tok = getattr(usage, "prompt_tokens", 0)
                     out_tok = getattr(usage, "completion_tokens", 0)
-                    cost_info_container.update({
-                        "input_tokens": in_tok,
-                        "output_tokens": out_tok,
-                        "total_cost": (in_tok * pricing["input"]) + (out_tok * pricing["output"])
-                    })
+                    cost_info_container.update(
+                        {
+                            "input_tokens": in_tok,
+                            "output_tokens": out_tok,
+                            "total_cost": (in_tok * pricing["input"])
+                            + (out_tok * pricing["output"]),
+                        }
+                    )
         except Exception as e:
             logger.error(f"OpenAI stream error: {e}", exc_info=True)
             cost_info_container["__error__"] = "provider_error"
 
-    async def _get_gemini_stream(self, model, system_prompt, history, cost_info_container):
+    async def _get_gemini_stream(
+        self, model, system_prompt, history, cost_info_container
+    ):
         try:
-            def _mk_model(): return genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
-            async def _op(): return (_mk_model(), )
+
+            def _mk_model():
+                return genai.GenerativeModel(
+                    model_name=model, system_instruction=system_prompt
+                )
+
+            async def _op():
+                return (_mk_model(),)
+
             (_model,) = await self.with_rate_limit_retries("google", _op)
-            resp = await _model.generate_content_async(history, stream=True, generation_config={"temperature": 0.4})
+            resp = await _model.generate_content_async(
+                history, stream=True, generation_config={"temperature": 0.4}
+            )
             async for chunk in resp:
                 try:
                     text = getattr(chunk, "text", None)
                     if not text and getattr(chunk, "candidates", None):
                         cand = chunk.candidates[0]
-                        if getattr(cand, "content", None) and getattr(cand.content, "parts", None):
-                            text = "".join([getattr(p, "text", "") or str(p) for p in cand.content.parts if p])
-                    if text: yield text
-                except Exception: pass
+                        if getattr(cand, "content", None) and getattr(
+                            cand.content, "parts", None
+                        ):
+                            text = "".join(
+                                [
+                                    getattr(p, "text", "") or str(p)
+                                    for p in cand.content.parts
+                                    if p
+                                ]
+                            )
+                    if text:
+                        yield text
+                except Exception:
+                    pass
             cost_info_container.setdefault("input_tokens", 0)
             cost_info_container.setdefault("output_tokens", 0)
             cost_info_container.setdefault("total_cost", 0.0)
@@ -104,13 +171,20 @@ class LLMStreamer:
             logger.error(f"Gemini stream error: {e}", exc_info=True)
             cost_info_container["__error__"] = "provider_error"
 
-    async def _get_anthropic_stream(self, model, system_prompt, history, cost_info_container):
+    async def _get_anthropic_stream(
+        self, model, system_prompt, history, cost_info_container
+    ):
         try:
+
             async def _op():
                 return self.anthropic_client.messages.stream(
-                    model=model, max_tokens=1500, temperature=0.4,
-                    system=system_prompt, messages=history
+                    model=model,
+                    max_tokens=1500,
+                    temperature=0.4,
+                    system=system_prompt,
+                    messages=history,
                 )
+
             stream_cm = await self.with_rate_limit_retries("anthropic", _op)
             async with stream_cm as stream:
                 async for event in stream:
@@ -119,8 +193,10 @@ class LLMStreamer:
                             delta = getattr(event, "delta", None)
                             if delta:
                                 text = getattr(delta, "text", "") or ""
-                                if text: yield text
-                    except Exception: pass
+                                if text:
+                                    yield text
+                    except Exception:
+                        pass
                 try:
                     final = await stream.get_final_response()
                     usage = getattr(final, "usage", None)
@@ -128,15 +204,20 @@ class LLMStreamer:
                         pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
                         in_tok = getattr(usage, "input_tokens", 0)
                         out_tok = getattr(usage, "output_tokens", 0)
-                        cost_info_container.update({
-                            "input_tokens": in_tok,
-                            "output_tokens": out_tok,
-                            "total_cost": (in_tok * pricing['input']) + (out_tok * pricing['output'])
-                        })
-                except Exception: pass
+                        cost_info_container.update(
+                            {
+                                "input_tokens": in_tok,
+                                "output_tokens": out_tok,
+                                "total_cost": (in_tok * pricing["input"])
+                                + (out_tok * pricing["output"]),
+                            }
+                        )
+                except Exception:
+                    pass
         except Exception as e:
             try:
                 from anthropic import RateLimitError as _AnthropicRateLimit
+
                 if isinstance(e, _AnthropicRateLimit) or "429" in str(e):
                     cost_info_container["__error__"] = "rate_limit"
                 else:

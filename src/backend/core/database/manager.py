@@ -3,7 +3,7 @@
 import aiosqlite
 import logging
 import json
-from typing import Optional, List, TYPE_CHECKING, Dict, Any
+from typing import Optional, List, TYPE_CHECKING, Dict, Any, Iterable, Tuple
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -12,8 +12,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 class DatabaseManager:
     """Gère la connexion aiosqlite et opérations de base."""
+
     def __init__(self, db_path: str):
         self.db_path = db_path
         self.connection: Optional[aiosqlite.Connection] = None
@@ -39,34 +41,56 @@ class DatabaseManager:
             self.connection = None
             logger.info("Connexion aiosqlite fermée.")
 
-    async def execute(self, query: str, params: tuple = None):
-        if not self.connection:
+    async def _ensure_connection(self) -> aiosqlite.Connection:
+        if self.connection is None:
             await self.connect()
-        await self.connection.execute(query, params or ())
-        await self.connection.commit()
+        if self.connection is None:
+            raise RuntimeError("Database connection is not available.")
+        return self.connection
 
-    async def executemany(self, query: str, params: List[tuple]):
-        if not self.connection:
-            await self.connect()
-        await self.connection.executemany(query, params)
-        await self.connection.commit()
+    async def execute(
+        self,
+        query: str,
+        params: Optional[Tuple[Any, ...]] = None,
+    ) -> None:
+        conn = await self._ensure_connection()
+        await conn.execute(query, params or ())
+        await conn.commit()
 
-    async def fetch_one(self, query: str, params: tuple = None) -> Optional[aiosqlite.Row]:
-        if not self.connection:
-            await self.connect()
-        async with self.connection.cursor() as cursor:
+    async def executemany(
+        self,
+        query: str,
+        params: Iterable[Tuple[Any, ...]],
+    ) -> None:
+        conn = await self._ensure_connection()
+        await conn.executemany(query, params)
+        await conn.commit()
+
+    async def fetch_one(
+        self,
+        query: str,
+        params: Optional[Tuple[Any, ...]] = None,
+    ) -> Optional[aiosqlite.Row]:
+        conn = await self._ensure_connection()
+        async with conn.cursor() as cursor:
             await cursor.execute(query, params or ())
             return await cursor.fetchone()
 
-    async def fetch_all(self, query: str, params: tuple = None) -> List[aiosqlite.Row]:
-        if not self.connection:
-            await self.connect()
-        async with self.connection.cursor() as cursor:
+    async def fetch_all(
+        self,
+        query: str,
+        params: Optional[Tuple[Any, ...]] = None,
+    ) -> List[aiosqlite.Row]:
+        conn = await self._ensure_connection()
+        async with conn.cursor() as cursor:
             await cursor.execute(query, params or ())
-            return await cursor.fetchall()
+            rows = await cursor.fetchall()
+        return list(rows)
 
     # --------- AJOUT POUR TemporalSearch ---------
-    async def search_messages(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+    async def search_messages(
+        self, query: str, limit: int = 10
+    ) -> List[Dict[str, Any]]:
         """
         Recherche simple (LIKE) dans messages.content, du plus récent au plus ancien.
         Compat sans FTS (FTS5 non requis par le schéma actuel).
@@ -93,14 +117,15 @@ class DatabaseManager:
                 pass
             out.append(d)
         return out
+
     # --------------------------------------------
 
-    async def save_session(self, session_data: 'Session'):
-        history_json = json.dumps(getattr(session_data, 'history', []))
-        metadata = getattr(session_data, 'metadata', {})
-        summary = metadata.get('summary')
-        concepts = metadata.get('concepts')
-        entities = metadata.get('entities')
+    async def save_session(self, session_data: "Session"):
+        history_json = json.dumps(getattr(session_data, "history", []))
+        metadata = getattr(session_data, "metadata", {})
+        summary = metadata.get("summary")
+        concepts = metadata.get("concepts")
+        entities = metadata.get("entities")
         concepts_json = json.dumps(concepts) if concepts is not None else None
         entities_json = json.dumps(entities) if entities is not None else None
 
@@ -118,15 +143,19 @@ class DatabaseManager:
             session_data.id,
             session_data.user_id,
             session_data.start_time.isoformat(),
-            session_data.end_time.isoformat() if session_data.end_time else datetime.now(timezone.utc).isoformat(),
+            session_data.end_time.isoformat()
+            if session_data.end_time
+            else datetime.now(timezone.utc).isoformat(),
             history_json,
             summary,
             concepts_json,
-            entities_json
+            entities_json,
         )
         try:
             await self.execute(query, params)
             logger.info(f"Session {session_data.id} sauvegardée.")
         except Exception as e:
-            logger.error(f"Échec sauvegarde session {session_data.id}: {e}", exc_info=True)
+            logger.error(
+                f"Échec sauvegarde session {session_data.id}: {e}", exc_info=True
+            )
             # on ne raise pas

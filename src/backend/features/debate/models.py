@@ -45,11 +45,11 @@ class DebateSession(BaseModel):
     session_id: str
     config: DebateConfig
     status: DebateStatus = DebateStatus.PENDING
-    history: List[DebateTurn] = []
+    history: List[DebateTurn] = Field(default_factory=list)
     synthesis: Optional[str] = None
     # V6.0: Ajout d'un champ pour stocker le contexte RAG pour la traçabilité.
     rag_context: Optional[str] = Field(default=None, description="Contexte RAG utilisé pour le débat, s'il y a lieu.")
-    metadata: Dict[str, Any] = {}
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
     def get_total_cost(self) -> float:
         """Calcule le coût total du débat. NOTE: Coûts non implémentés dans cette structure."""

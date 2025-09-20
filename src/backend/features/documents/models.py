@@ -1,5 +1,5 @@
 # src/backend/features/documents/models.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from enum import Enum
 
@@ -25,12 +25,9 @@ class Document(BaseModel):
     chunk_count: int
     uploaded_at: datetime
 
-    class Config:
-        """
-        Permet à Pydantic de fonctionner correctement avec des objets
-        qui ne sont pas des dictionnaires (comme les objets de la BDD).
-        """
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 class UploadResponse(BaseModel):
     """

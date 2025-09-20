@@ -2,16 +2,13 @@
 # V11.2 – Handshake gracieux: accept → ws:auth_required → close(4401) si auth KO
 import logging
 import asyncio
-from typing import Dict, Any, List, Optional, Callable, TYPE_CHECKING
+from typing import Dict, Any, List, Optional, Callable
 
 from fastapi import APIRouter, WebSocket, HTTPException
 from starlette.websockets import WebSocketDisconnect
 
 from .session_manager import SessionManager
 from backend.shared import dependencies  # auth WS (allowlist + sub=uid)
-
-if TYPE_CHECKING:
-    from backend.containers import ServiceContainer  # pragma: no cover
 
 logger = logging.getLogger(__name__)
 
@@ -116,11 +113,19 @@ class ConnectionManager:
         if not conns:
             if session_id in self.active_connections:
                 del self.active_connections[session_id]
+
+            async def _finalize() -> None:
+                try:
+                    await self.session_manager.finalize_session(session_id)
+                    logger.info(f"Session {session_id} finalisée (tâche asynchrone).")
+                except Exception as e:  # pragma: no cover - logging only
+                    logger.warning(f"finalize_session({session_id}) a levé: {e}")
+
             try:
-                await self.session_manager.finalize_session(session_id)
-            except Exception as e:
-                logger.warning(f"finalize_session({session_id}) a levé: {e}")
-            logger.info(f"Dernier client déconnecté. Session {session_id} finalisée.")
+                asyncio.create_task(_finalize())
+            except RuntimeError:
+                await _finalize()
+            logger.info(f"Dernier client déconnecté. Finalisation de la session {session_id} planifiée.")
         else:
             logger.info(f"Un client s'est déconnecté, {len(conns)} connexion(s) restante(s) pour {session_id}.")
 

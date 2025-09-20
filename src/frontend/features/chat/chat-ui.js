@@ -20,13 +20,18 @@ export class ChatUI {
       lastAnalysis: null,
       metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null },
       memoryStats: { has_stm: false, ltm_items: 0, injected: false },
+      selectedDocIds: [],
+      selectedDocs: [],
       exportAgents: Object.keys(AGENTS),
       exportFormat: 'markdown',
       modelInfo: null,
-      lastMessageMeta: null
+      lastMessageMeta: null,
+      areSourcesExpanded: false
     };
     this._panelHandlersBound = false;
     this.disableSidebarPanel = true;
+    this._sourcesCache = [];
+    this._decoderEl = null;
     console.log('[ChatUI] V28.3.2 (glass-layout) initialisee.');
   }
 
@@ -46,6 +51,20 @@ export class ChatUI {
           <div class="chat-header-right">
             <div id="model-badge" class="model-badge">-</div>
             <div id="chat-auth-host" class="chat-auth-host" data-auth-host></div>
+            <div class="chat-actions" role="group" aria-label="Actions de conversation">
+              <button type="button" class="chat-action-btn" data-role="chat-clear" title="Effacer les messages de l'agent actif" data-label="Effacer les messages de l'agent actif" data-title="Effacer les messages de l'agent actif">
+                <span class="sr-only">Effacer les messages de l'agent actif</span>
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+                  <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm1 6h2v8h-2V9Zm6 0h-2v8h2V9ZM8 9H6v8h2V9Z" fill="currentColor"></path>
+                </svg>
+              </button>
+              <button type="button" class="chat-action-btn" data-role="chat-export" title="Exporter toute la conversation" data-label="Exporter toute la conversation" data-title="Exporter toute la conversation">
+                <span class="sr-only">Exporter toute la conversation</span>
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+                  <path d="M12 3v12.17l3.59-3.58L17 13l-5 5-5-5 1.41-1.41L11 15.17V3h1Zm-7 14h14v2H5v-2Z" fill="currentColor"></path>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
         <div class="chat-body">
@@ -76,6 +95,7 @@ export class ChatUI {
                     <span class="sr-only" id="rag-status-text">${this.state.ragEnabled ? 'RAG actif' : 'RAG inactif'}</span>
                   </button>
                 </div>
+                <div class="chat-doc-chips" id="chat-doc-chips" aria-live="polite"></div>
 
                 <textarea id="chat-input" class="chat-input" rows="1" placeholder="Ecris ton message..." aria-label="Message"></textarea>
                 <button type="submit" id="chat-send" class="chat-send-button" title="Envoyer" aria-label="Envoyer">
@@ -99,7 +119,11 @@ export class ChatUI {
   }
   update(container, chatState = {}) {
     if (!container) return;
+    const previousMeta = this.state.lastMessageMeta;
     this.state = { ...this.state, ...chatState };
+    if (chatState && chatState.lastMessageMeta && chatState.lastMessageMeta !== previousMeta) {
+      this.state.areSourcesExpanded = false;
+    }
     this._ensureControlPanel();
 
     const ragBtn = container.querySelector('#rag-power');
@@ -115,11 +139,36 @@ export class ChatUI {
     const ragStatusText = container.querySelector('#rag-status-text');
     if (ragStatusText) ragStatusText.textContent = ragEnabled ? 'RAG actif' : 'RAG inactif';
 
+    this._renderDocChips(container.querySelector('#chat-doc-chips'), this.state.selectedDocs, this.state.selectedDocIds, ragEnabled);
     this._setActiveAgentTab(container, this.state.currentAgentId);
 
     const rawMessages = this.state.messages?.[this.state.currentAgentId];
     const list = this._asArray(rawMessages).map((m) => this._normalizeMessage(m));
     this._renderMessages(container.querySelector('#chat-messages'), list);
+
+    const clearEl = container.querySelector('[data-role="chat-clear"]');
+    if (clearEl) {
+      if (list.length) {
+        clearEl.removeAttribute('disabled');
+        clearEl.classList.remove('is-disabled');
+      } else {
+        clearEl.setAttribute('disabled', 'disabled');
+        clearEl.classList.add('is-disabled');
+      }
+    }
+    const exportEl = container.querySelector('[data-role="chat-export"]');
+    if (exportEl) {
+      const buckets = this.state.messages && typeof this.state.messages === 'object' ? Object.values(this.state.messages) : [];
+      const hasAny = buckets.some((bucket) => Array.isArray(bucket) && bucket.length > 0);
+      if (hasAny) {
+        exportEl.removeAttribute('disabled');
+        exportEl.classList.remove('is-disabled');
+      } else {
+        exportEl.setAttribute('disabled', 'disabled');
+        exportEl.classList.add('is-disabled');
+      }
+    }
+
     this._renderSources(container.querySelector('#rag-sources'), this.state.lastMessageMeta?.sources);
 
     this._updateControlPanelState();
@@ -145,6 +194,10 @@ export class ChatUI {
     const input = container.querySelector('#chat-input');
     const ragBtn = container.querySelector('#rag-power');
     const sendBtn = container.querySelector('#chat-send');
+    const clearButton = container.querySelector('[data-role="chat-clear"]');
+    const exportButton = container.querySelector('[data-role="chat-export"]');
+    const messagesHost = container.querySelector('#chat-messages');
+    const sourcesHost = container.querySelector('#rag-sources');
     this._ensureControlPanel();
     this._updateControlPanelState();
 
@@ -155,9 +208,9 @@ export class ChatUI {
 
     form?.addEventListener('submit', (e) => {
       e.preventDefault();
-      const text = (input?.value || '').trim();
-      if (!text) return;
-      this.eventBus.emit(EVENTS.CHAT_SEND, { text, agent: 'user' });
+      const textValue = (input?.value || '').trim();
+      if (!textValue) return;
+      this.eventBus.emit(EVENTS.CHAT_SEND, { text: textValue, agent: 'user' });
       input.value = '';
       autosize();
     });
@@ -173,6 +226,14 @@ export class ChatUI {
     sendBtn?.addEventListener('click', () => {
       if (typeof form?.requestSubmit === 'function') form.requestSubmit();
       else form?.dispatchEvent(new Event('submit', { cancelable: true }));
+    });
+
+    clearButton?.addEventListener('click', () => {
+      this.eventBus.emit(EVENTS.CHAT_CLEAR);
+    });
+
+    exportButton?.addEventListener('click', () => {
+      this.eventBus.emit(EVENTS.CHAT_EXPORT);
     });
 
     const toggleRag = () => {
@@ -191,6 +252,35 @@ export class ChatUI {
     };
     ragBtn?.addEventListener('click', toggleRag);
 
+    const docChipHost = container.querySelector('#chat-doc-chips');
+    docChipHost?.addEventListener('click', (e) => {
+      const target = e.target;
+      if (!target || typeof target.closest !== 'function') return;
+      const removeBtn = target.closest('[data-doc-remove]');
+      if (removeBtn) {
+        const docId = removeBtn.getAttribute('data-doc-id');
+        if (docId) {
+          const evt = EVENTS?.DOCUMENTS_CMD_DESELECT || 'documents:cmd:deselect';
+          try { this.eventBus.emit(evt, { id: docId }); } catch {}
+        }
+        e.preventDefault();
+        return;
+      }
+      const clearBtn = target.closest('[data-doc-clear]');
+      if (clearBtn) {
+        const ids = Array.isArray(this.state?.selectedDocIds) ? this.state.selectedDocIds : [];
+        if (ids.length) {
+          const evt = EVENTS?.DOCUMENTS_CMD_DESELECT || 'documents:cmd:deselect';
+          for (const id of ids) {
+            if (id || id === 0) {
+              try { this.eventBus.emit(evt, { id }); } catch {}
+            }
+          }
+        }
+        e.preventDefault();
+      }
+    });
+
     container.querySelector('.agent-selector')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-agent-id]');
       if (!btn) return;
@@ -199,17 +289,47 @@ export class ChatUI {
       this._setActiveAgentTab(container, agentId);
     });
 
-    container.querySelector('#rag-sources')?.addEventListener('click', (e) => {
-      const chip = e.target.closest('button[data-doc-id]');
-      if (!chip) return;
-      const info = {
-        document_id: chip.getAttribute('data-doc-id'),
-        filename: chip.getAttribute('data-filename'),
-        page: Number(chip.getAttribute('data-page') || '0') || null,
-        excerpt: chip.getAttribute('data-excerpt') || ''
-      };
-      this.eventBus.emit('rag:source:click', info);
-    });
+    if (sourcesHost) {
+      sourcesHost.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('[data-role="rag-sources-toggle"]');
+        if (toggleBtn) {
+          const next = toggleBtn.getAttribute('aria-expanded') !== 'true';
+          this.state.areSourcesExpanded = next;
+          this._renderSources(sourcesHost, this._sourcesCache);
+          e.preventDefault();
+          return;
+        }
+        const chip = e.target.closest('button[data-doc-id]');
+        if (!chip) return;
+        if (!this.state.areSourcesExpanded) {
+          this.state.areSourcesExpanded = true;
+          this._renderSources(sourcesHost, this._sourcesCache);
+          return;
+        }
+        const info = {
+          document_id: chip.getAttribute('data-doc-id'),
+          filename: chip.getAttribute('data-filename'),
+          page: Number(chip.getAttribute('data-page') || '0') || null,
+          excerpt: chip.getAttribute('data-excerpt') || ''
+        };
+        this.eventBus.emit('rag:source:click', info);
+      });
+    }
+
+    if (messagesHost) {
+      messagesHost.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-role="copy-message"]');
+        if (!button || button.hasAttribute('disabled')) return;
+        const raw = button.getAttribute('data-message') || '';
+        const textValue = this._decodeHTML(raw).replace(/\r?\n/g, '\n').trimEnd();
+        if (!textValue) {
+          this._flashCopyState(button, false);
+          return;
+        }
+        const ok = await this._copyToClipboard(textValue);
+        this._flashCopyState(button, ok);
+      });
+    }
 
     try {
       const off = this.eventBus?.on?.('documents:changed', async (payload = {}) => {
@@ -218,6 +338,7 @@ export class ChatUI {
       if (typeof off === 'function') this._offDocumentsChanged = off;
     } catch {}
   }
+
   _ensureControlPanel() {
     try {
       if (this.disableSidebarPanel) {
@@ -393,25 +514,85 @@ export class ChatUI {
     host.scrollTo(0, 1e9);
   }
 
+  _renderDocChips(host, docs, docIds, ragEnabled) {
+    if (!host) return;
+    const ids = Array.isArray(docIds) ? docIds.map((id) => String(id)) : [];
+    const map = new Map();
+    if (Array.isArray(docs)) {
+      for (const item of docs) {
+        const id = String((item?.id ?? item?.document_id ?? item?.doc_id ?? '') || '').trim();
+        if (!id || map.has(id)) continue;
+        let name = item?.name ?? item?.filename ?? item?.title ?? '';
+        name = String(name ?? '').trim();
+        if (!name) name = 'Document ' + id;
+        const statusRaw = item?.status;
+        const status = statusRaw == null ? 'ready' : (String(statusRaw).toLowerCase() || 'ready');
+        map.set(id, { id, name, status });
+      }
+    }
+    const order = ids.length ? ids : Array.from(map.keys());
+    if (!order.length) {
+      host.innerHTML = '';
+      host.setAttribute('hidden', 'hidden');
+      host.removeAttribute('data-count');
+      host.classList.remove('is-disabled');
+      return;
+    }
+    host.removeAttribute('hidden');
+    host.dataset.count = String(order.length);
+    host.classList.toggle('is-disabled', !ragEnabled);
+    const label = ragEnabled ? 'Documents actifs' : 'Documents sélectionnés (RAG off)';
+    const chips = order.map((rawId) => {
+      const id = String(rawId).trim();
+      const info = map.get(id) || { id, name: 'Document ' + id, status: 'ready' };
+      const safeId = this._escapeHTML(id);
+      const safeName = this._escapeHTML(info.name);
+      const status = (info.status || '').toString().toLowerCase();
+      const safeStatus = this._escapeHTML(status);
+      const statusSpan = status && status !== 'ready'
+        ? '<span class="chat-doc-chip__status chat-doc-chip__status--' + safeStatus + '">' + safeStatus + '</span>'
+        : '';
+      return [
+        '<button type="button" class="chat-doc-chip" data-doc-remove data-doc-id="' + safeId + '" title="Retirer ' + safeName + '">',
+        '  <span class="chat-doc-chip__icon" aria-hidden="true"></span>',
+        '  <span class="chat-doc-chip__label">' + safeName + '</span>',
+        statusSpan ? '  ' + statusSpan : '',
+        '  <span class="chat-doc-chip__close" aria-hidden="true">&times;</span>',
+        '  <span class="sr-only">Retirer ' + safeName + '</span>',
+        '</button>'
+      ].filter(Boolean).join('');
+    }).join('');
+    host.innerHTML =
+      '<div class="chat-doc-chips__header">' +
+        '<span class="chat-doc-chips__title">' + this._escapeHTML(label) + '</span>' +
+        '<button type="button" class="chat-doc-chips__clear" data-doc-clear' + (order.length ? '' : ' disabled') + '>Tout retirer</button>' +
+      '</div>' +
+      '<div class="chat-doc-chips__list">' + chips + '</div>';
+  }
+
   _renderSources(host, sources) {
     if (!host) return;
-    const items = Array.isArray(sources) ? sources : [];
+    const items = Array.isArray(sources) ? sources.filter(Boolean) : [];
+    this._sourcesCache = items;
     if (!items.length) {
       host.style.display = 'none';
       host.innerHTML = '';
       host.removeAttribute('data-count');
+      host.removeAttribute('data-open');
+      this.state.areSourcesExpanded = false;
       return;
     }
 
     const countLabel = items.length > 1 ? `${items.length} references` : '1 reference';
+    const isOpen = !!this.state.areSourcesExpanded;
     const list = items.map((s, index) => {
-      const filename = (s.filename || 'Document').toString();
-      const pageNumber = Number(s.page) || 0;
+      const filename = (s?.filename || 'Document').toString();
+      const pageNumber = Number(s?.page) || 0;
       const pageLabel = pageNumber > 0 ? ` (p.${pageNumber})` : '';
       const displayName = `${filename}${pageLabel}`;
-      const rawExcerpt = (s.excerpt || '').toString().replace(/\s+/g, ' ').trim();
+      const rawExcerpt = (s?.excerpt || '').toString().replace(/\s+/g, ' ').trim();
       const excerptText = rawExcerpt ? rawExcerpt.slice(0, 240) : '';
-      const docId = (s.document_id || `doc-${index}`).toString();
+      const docId = (s?.document_id || `doc-${index}`).toString();
       const tooltip = (excerptText || displayName).replace(/\n/g, ' ');
       return `
         <li class="rag-source-item">
@@ -440,20 +621,33 @@ export class ChatUI {
     }).join('');
 
     host.innerHTML = `
-      <section class="rag-sources-panel">
+      <section class="rag-sources-panel ${isOpen ? 'is-open' : 'is-collapsed'}">
         <header class="rag-sources-header">
-          <span class="rag-sources-label">Sources</span>
-          <span class="rag-sources-count">${countLabel}</span>
+          <div class="rag-sources-summary">
+            <span class="rag-sources-label">Sources</span>
+            <span class="rag-sources-count">${countLabel}</span>
+          </div>
+          <button
+            type="button"
+            class="rag-sources-toggle"
+            data-role="rag-sources-toggle"
+            aria-expanded="${isOpen}"
+            aria-controls="rag-sources-list"
+            title="${isOpen ? 'Reduire les sources' : 'Afficher les sources'}"
+          >
+            <span class="rag-sources-toggle-icon" aria-hidden="true"></span>
+            <span class="sr-only">${isOpen ? 'Reduire les sources' : 'Afficher les sources'}</span>
+          </button>
         </header>
-        <ul class="rag-source-list">
+        <ul id="rag-sources-list" class="rag-source-list"${isOpen ? '' : ' hidden'} role="list">
           ${list}
         </ul>
       </section>
     `;
     host.style.display = 'block';
-    host.setAttribute('data-count', String(items.length));
+    host.dataset.count = String(items.length);
+    host.dataset.open = isOpen ? 'true' : 'false';
   }
-
   _messageHTML(m) {
     const side = m.role === 'user' ? 'user' : 'assistant';
     const agentId = side === 'assistant' ? (m.agent_id || m.agent || 'nexus') : '';
@@ -464,7 +658,7 @@ export class ChatUI {
 
     const raw = this._toPlainText(m.content);
     const content = this._escapeHTML(raw).replace(/\n/g, '<br/>');
-    const cursor = m.isStreaming ? '<span class="blinking-cursor">?</span>' : '';
+    const cursor = m.isStreaming ? '<span class="blinking-cursor">|</span>' : '';
     const timestamp = this._formatTimestamp(m.created_at ?? m.timestamp ?? m.time ?? m.datetime ?? m.date);
 
     const classes = ['message', side, `message--${side}`];
@@ -481,14 +675,41 @@ export class ChatUI {
       .filter((value, index, arr) => arr.indexOf(value) === index)
       .join(' ');
 
+    const encodedRaw = this._encodeForAttribute(raw);
+    const copyDisabled = !!m.isStreaming;
+    const copyLabel = 'Copier le message';
+    const copyTitle = copyDisabled ? 'Message en cours' : copyLabel;
+    const srCopyText = copyDisabled ? 'Copie indisponible pendant la generation' : copyLabel;
+    const copyClass = `message-action message-action-copy${copyDisabled ? ' is-disabled' : ''}`;
+
     return `
       <div class="${className}">
         <div class="message-bubble">
-          <div class="message-meta">
-            <span class="sender-name">${this._escapeHTML(displayName)}</span>
-            <time class="message-time" datetime="${timestamp.iso}">${this._escapeHTML(timestamp.display)}</time>
+          <div class="message-header">
+            <div class="message-meta">
+              <span class="sender-name">${this._escapeHTML(displayName)}</span>
+              <time class="message-time" datetime="${timestamp.iso}">${this._escapeHTML(timestamp.display)}</time>
+            </div>
+            <div class="message-actions">
+              <button
+                type="button"
+                class="${copyClass}"
+                data-role="copy-message"
+                data-message="${encodedRaw}"
+                data-label="${copyLabel}"
+                data-title="${copyTitle}"
+                title="${copyTitle}"
+                aria-label="${copyTitle}"${copyDisabled ? ' disabled aria-disabled="true"' : ''}
+              >
+                <span class="sr-only">${srCopyText}</span>
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+                  <path d="M9 9V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"></path>
+                  <rect x="3" y="9" width="12" height="12" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+                </svg>
+              </button>
+            </div>
           </div>
-          <div class="message-text">${content}${cursor}</div>
+          <div class="message-text" data-raw="${encodedRaw}">${content}${cursor}</div>
         </div>
       </div>`;
   }
@@ -563,6 +784,80 @@ export class ChatUI {
       try { return JSON.stringify(val); } catch { return String(val); }
     }
     return String(val);
+  }
+
+  _encodeForAttribute(value) {
+    const safe = this._escapeHTML(String(value ?? ''));
+    return safe.replace(/\r?\n/g, '&#10;');
+  }
+
+  _decodeHTML(value) {
+    if (value == null) return '';
+    if (!this._decoderEl) {
+      this._decoderEl = document.createElement('textarea');
+    }
+    this._decoderEl.innerHTML = value;
+    return this._decoderEl.value;
+  }
+
+  async _copyToClipboard(text) {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.top = '-1000px';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.focus();
+        area.select();
+        const ok = document.execCommand('copy');
+        area.remove();
+        if (!ok) throw new Error('execCommand returned false');
+      }
+      return true;
+    } catch (error) {
+      console.error('[ChatUI] copy failed', error);
+      return false;
+    }
+  }
+
+  _flashCopyState(button, success) {
+    if (!button) return;
+    const baseLabel = button.getAttribute('data-label') || 'Copier le message';
+    const baseTitle = button.getAttribute('data-title') || baseLabel;
+    if (button._copyTimer) {
+      clearTimeout(button._copyTimer);
+      button._copyTimer = null;
+    }
+    if (success) {
+      button.classList.add('is-copied');
+      button.classList.remove('is-error');
+      button.setAttribute('data-copied', 'true');
+      button.removeAttribute('data-copy-error');
+      button.setAttribute('aria-label', 'Message copie');
+      button.title = 'Message copie';
+    } else {
+      button.classList.remove('is-copied');
+      button.classList.add('is-error');
+      button.setAttribute('data-copy-error', 'true');
+      button.removeAttribute('data-copied');
+      button.setAttribute('aria-label', 'Copie impossible');
+      button.title = 'Copie impossible';
+    }
+    button._copyTimer = setTimeout(() => {
+      try {
+        button.classList.remove('is-copied', 'is-error');
+        button.removeAttribute('data-copied');
+        button.removeAttribute('data-copy-error');
+        button.setAttribute('aria-label', baseLabel);
+        button.title = baseTitle;
+        button._copyTimer = null;
+      } catch {}
+    }, 1500);
   }
 
   _escapeHTML(s) {

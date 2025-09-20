@@ -1,4 +1,4 @@
-# EMERGENCE V8
+﻿# EMERGENCE V8
 
 Multi agent conversation stack (Anima, Neo, Nexus) with cockpit, retrieval augmented generation, and document tools.
 
@@ -55,6 +55,16 @@ Health check
 curl.exe -s http://127.0.0.1:8000/api/health
 ```
 
+### Backend quality checks
+
+Run all backend quality gates in one go (pytest, ruff, mypy).
+
+```powershell
+./scripts/run_backend_quality.ps1
+```
+
+Add `-FailFast` to stop after the first failure, or use `-Python` to point to a custom interpreter. Pass `-Paths src/backend` if you need to lint the whole backend.
+
 ## Git workflow and branch hygiene
 
 1. Start on a clean tree: `git status` should report no changes.
@@ -83,9 +93,10 @@ curl.exe -s http://127.0.0.1:8000/api/health
 3. Activate the Python virtual environment.
 4. `python -m pip install -r requirements.txt` (repeat after rebases that touch `requirements.txt`).
 5. `npm ci` (repeat after rebases that touch `package-lock.json`).
-6. Run back end test and lint commands that match the scope (`pytest`, `ruff`, `mypy`).
+6. Run `./scripts/run_backend_quality.ps1` to execute pytest/ruff/mypy together (or the individual commands if you only touched a subset).
 7. Run `npm run build` to catch front end issues.
 8. Develop the feature, commit with an explicit message, and rerun `git rebase origin/<base_branch>` if long running work drifted.
 9. `git push origin <branch>` and open the pull request.
 
 Keeping these steps in sync between cloud and local runs eliminates version drift and makes conflicts predictable.
+

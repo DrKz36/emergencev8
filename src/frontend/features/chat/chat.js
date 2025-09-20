@@ -7,7 +7,7 @@
  */
 
 import { ChatUI } from './chat-ui.js';   // cache-bust UI présent
-import { EVENTS } from '../../shared/constants.js';
+import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { api } from '../../shared/api-client.js';
 
 export default class ChatModule {
@@ -56,6 +56,7 @@ export default class ChatModule {
     this._H.CHAT_CLEAR         = this.handleClearChat.bind(this);
     this._H.CHAT_EXPORT        = this.handleExport.bind(this);
     this._H.CHAT_RAG_TOGGLED   = this.handleRagToggle.bind(this);
+    this._H.DOC_SELECTION_CHANGED = this.handleDocumentSelectionChanged.bind(this);
 
     // WS flux
     this._H.WS_START           = this.handleStreamStart.bind(this);
@@ -63,6 +64,8 @@ export default class ChatModule {
     this._H.WS_END             = this.handleStreamEnd.bind(this);
     this._H.WS_ANALYSIS        = this.handleAnalysisStatus.bind(this);
     this._H.WS_PERSISTED       = this.handleMessagePersisted.bind(this);
+    this._H.WS_SESSION_ESTABLISHED = this.handleSessionEstablished.bind(this);
+    this._H.WS_SESSION_RESTORED    = this.handleSessionRestored.bind(this);
 
     // WS état
     this._H.WS_CONNECTED       = () => { this._wsConnected = true;  try { this.state.set('connection.status', 'connected'); } catch {} };
@@ -130,6 +133,8 @@ export default class ChatModule {
         memoryBannerAt: null,
         isLoading: false,
         messages: {},
+        selectedDocIds: [],
+        selectedDocs: [],
         metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null }
       });
     } else {
@@ -138,7 +143,24 @@ export default class ChatModule {
       if (!this.state.get('chat.ragStatus')) this.state.set('chat.ragStatus', 'idle');
       if (!this.state.get('chat.memoryBannerAt')) this.state.set('chat.memoryBannerAt', null);
       if (!this.state.get('chat.metrics')) this.state.set('chat.metrics', { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null });
+      if (!Array.isArray(this.state.get('chat.selectedDocIds'))) this.state.set('chat.selectedDocIds', []);
+      if (!Array.isArray(this.state.get('chat.selectedDocs'))) this.state.set('chat.selectedDocs', []);
     }
+    try {
+      const savedDocIds = this.state.get('documents.selectedIds');
+      const savedDocMeta = this.state.get('documents.selectionMeta');
+      const hasIds = Array.isArray(savedDocIds) && savedDocIds.length > 0;
+      const hasMeta = Array.isArray(savedDocMeta) && savedDocMeta.length > 0;
+      if (hasIds || hasMeta) {
+        this.handleDocumentSelectionChanged({
+          ids: hasIds ? savedDocIds : [],
+          items: hasMeta ? savedDocMeta : []
+        });
+      }
+    } catch (err) {
+      console.warn('[Chat] Sync doc selection failed', err);
+    }
+
   }
 
   registerStateChanges() {
@@ -155,6 +177,7 @@ export default class ChatModule {
     this._onOnce(EVENTS.CHAT_CLEAR,         this._H.CHAT_CLEAR);
     this._onOnce(EVENTS.CHAT_EXPORT,        this._H.CHAT_EXPORT);
     this._onOnce(EVENTS.CHAT_RAG_TOGGLED,   this._H.CHAT_RAG_TOGGLED);
+    this._onOnce(EVENTS.DOCUMENTS_SELECTION_CHANGED, this._H.DOC_SELECTION_CHANGED);
 
     // Flux WS (idempotent)
     this._onOnce('ws:chat_stream_start',    this._H.WS_START);
@@ -164,6 +187,8 @@ export default class ChatModule {
     this._onOnce('ws:message_persisted',    this._H.WS_PERSISTED);
 
     // Connexion WS (idempotent)
+    this._onOnce('ws:session_established',  this._H.WS_SESSION_ESTABLISHED);
+    this._onOnce('ws:session_restored',     this._H.WS_SESSION_RESTORED);
     this._onOnce('ws:connected',            this._H.WS_CONNECTED);
     this._onOnce('ws:close',                this._H.WS_CLOSE);
 
@@ -200,6 +225,7 @@ export default class ChatModule {
   }
 
   hydrateFromThread(thread) {
+    const threadId = (thread && (thread.id || thread.thread_id)) || this.getCurrentThreadId();
     const msgsRaw = Array.isArray(thread?.messages) ? [...thread.messages] : [];
     const msgs = msgsRaw.sort((a, b) => (a?.created_at ?? 0) - (b?.created_at ?? 0));
 
@@ -228,6 +254,22 @@ export default class ChatModule {
     }
 
     this.state.set('chat.messages', buckets);
+
+    if (threadId) {
+      this.threadId = threadId;
+      this.loadedThreadId = threadId;
+      try { this.state.set('threads.currentId', threadId); } catch {}
+      try { this.state.set('chat.threadId', threadId); } catch {}
+      try { localStorage.setItem('emergence.threadId', threadId); } catch {}
+    }
+
+    const extras = {};
+    if (thread && typeof thread === 'object') {
+      if (thread.metadata) extras.metadata = thread.metadata;
+      else if (thread.meta) extras.metadata = thread.meta;
+    }
+    this._updateThreadCacheFromBuckets(threadId, extras);
+
     console.debug('[Chat] Répartition messages par agent',
       Object.fromEntries(Object.entries(buckets).map(([k, v]) => [k, v.length])));
   }
@@ -243,6 +285,11 @@ export default class ChatModule {
     if (!trimmed) { this._sendLock = false; return; }
 
     const { currentAgentId, ragEnabled } = this.state.get('chat');
+    const docIdsRaw = this.state.get('chat.selectedDocIds') || [];
+    const selectedDocIds = this._sanitizeDocIds(docIdsRaw);
+    const messageMeta = {};
+    if (selectedDocIds.length) messageMeta.doc_ids = selectedDocIds;
+    messageMeta.use_rag = !!ragEnabled;
     this.state.set('chat.activeAgent', currentAgentId);
 
     // Ajoute localement le message USER
@@ -253,16 +300,21 @@ export default class ChatModule {
       agent_id: currentAgentId,
       created_at: Date.now()
     };
+    if (Object.keys(messageMeta).length) {
+      userMessage.meta = { ...messageMeta };
+    }
     const curr = this.state.get(`chat.messages.${currentAgentId}`) || [];
     this.state.set(`chat.messages.${currentAgentId}`, [...curr, userMessage]);
     this.state.set('chat.isLoading', true);
+    this._updateThreadCacheFromBuckets();
 
     const threadId = this.getCurrentThreadId();
     if (threadId) {
       api.appendMessage(threadId, {
         role: 'user',
         content: trimmed,
-        agent_id: currentAgentId
+        agent_id: currentAgentId,
+        meta: { ...messageMeta }
       }).catch(err => console.error('[Chat] Échec appendMessage(user):', err));
     }
 
@@ -274,12 +326,13 @@ export default class ChatModule {
       this.eventBus.emit('ui:chat:send', {
         text: trimmed,
         agent_id: currentAgentId,
+        doc_ids: selectedDocIds,
         use_rag: !!ragEnabled,
         msg_uid: userMessage.id,
         __enriched: true
       });
       // Pour watchdog (fallback REST si flux ne démarre pas)
-      this._pendingMsg = { id: userMessage.id, agent_id: currentAgentId, text: trimmed, triedRest: false };
+      this._pendingMsg = { id: userMessage.id, agent_id: currentAgentId, text: trimmed, doc_ids: selectedDocIds, use_rag: !!ragEnabled, triedRest: false };
       this._startStreamWatchdog();
     } catch (e) {
       console.error('[Chat] Emission ui:chat:send a échoué', e);
@@ -302,6 +355,7 @@ export default class ChatModule {
     };
     const curr = this.state.get(`chat.messages.${agent_id}`) || [];
     this.state.set(`chat.messages.${agent_id}`, [...curr, agentMessage]);
+    this._updateThreadCacheFromBuckets();
     this._clearStreamWatchdog(); // le flux a bien démarré
   }
 
@@ -313,6 +367,7 @@ export default class ChatModule {
       msg.content = (msg.content || '') + String(chunk || '');
       list[idx] = msg;
       this.state.set(`chat.messages.${agent_id}`, [...list]);
+      this._updateThreadCacheFromBuckets();
     }
   }
 
@@ -325,6 +380,8 @@ export default class ChatModule {
       list[idx] = msg;
       this.state.set(`chat.messages.${agent_id}`, [...list]);
     }
+
+    this._updateThreadCacheFromBuckets();
 
     // Terminer l’état de chargement
     this.state.set('chat.isLoading', false);
@@ -354,6 +411,55 @@ export default class ChatModule {
     }
   }
 
+  handleSessionEstablished(payload = {}) {
+    try {
+      const sessionId = payload?.session_id || null;
+      const threadId = payload?.thread_id || sessionId || this.getCurrentThreadId();
+      if (sessionId) {
+        try { this.state.set('websocket.sessionId', sessionId); } catch {}
+      }
+      if (threadId) {
+        this.threadId = threadId;
+        this.loadedThreadId = threadId;
+        try { this.state.set('threads.currentId', threadId); } catch {}
+        try { this.state.set('chat.threadId', threadId); } catch {}
+        try { localStorage.setItem('emergence.threadId', threadId); } catch {}
+      }
+    } catch (err) {
+      console.warn('[Chat] handleSessionEstablished error', err);
+    }
+  }
+
+  handleSessionRestored(payload = {}) {
+    try {
+      const sessionId = payload?.session_id || null;
+      const threadId = payload?.thread_id || sessionId || this.getCurrentThreadId();
+      const messages = Array.isArray(payload?.messages) ? payload.messages : [];
+      if (messages.length) {
+        this.hydrateFromThread({ id: threadId, messages, metadata: payload.metadata });
+      } else if (threadId && payload?.metadata) {
+        const threadKey = `threads.map.${threadId}`;
+        const existing = this.state.get(threadKey) || { id: threadId, messages: [] };
+        const next = { ...existing, metadata: payload.metadata };
+        this.state.set(threadKey, next);
+      }
+      if (payload?.metadata) {
+        this._applyMemoryMetadata(sessionId || threadId || null, payload.metadata);
+      }
+      if (threadId) {
+        this._updateThreadCacheFromBuckets(threadId, payload?.metadata ? { metadata: payload.metadata } : {});
+      }
+      if (messages.length) {
+        this.showToast('Session restaurée.');
+      } else if (payload?.metadata) {
+        this.showToast('Mémoire synchronisée.');
+      }
+    } catch (err) {
+      console.error('[Chat] handleSessionRestored error', err);
+    }
+  }
+
+
   /* ============================ UI actions ============================ */
   handleAgentSelected(agentId) {
     const prev = this.state.get('chat.currentAgentId');
@@ -364,27 +470,129 @@ export default class ChatModule {
 
   handleClearChat() {
     const agentId = this.state.get('chat.currentAgentId');
+    if (!agentId) return;
     this.state.set(`chat.messages.${agentId}`, []);
+    try {
+      const meta = this.state.get('chat.lastMessageMeta');
+      if (meta && (meta.agent_id === agentId || meta.agent === agentId || !meta.agent_id)) {
+        this.state.set('chat.lastMessageMeta', null);
+      }
+    } catch {}
+    const label = AGENTS?.[agentId]?.label || String(agentId || 'agent');
+    this.showToast(`Conversation ${label} effacee.`);
   }
-
   handleExport() {
-    const { currentAgentId, messages } = this.state.get('chat');
-    const conv = messages[currentAgentId] || [];
+    const chatState = this.state.get('chat') || {};
+    const messagesByAgent = (chatState.messages && typeof chatState.messages === 'object') ? chatState.messages : {};
+    const agentIds = Object.keys(messagesByAgent);
+    if (!agentIds.length) {
+      this.showToast('Aucun message a exporter.');
+      return;
+    }
+
     const you = this.state.get('user.id') || 'Vous';
-    const text = conv.map(m =>
-      `${m.role === 'user' ? you : (m.agent_id || 'Assistant')}: ${
-        typeof m.content === 'string' ? m.content : JSON.stringify(m.content || '')
-      }`
-    ).join('\n\n');
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const formatAgentLabel = (id) => {
+      if (!id) return 'Global';
+      const info = AGENTS?.[id];
+      if (info && info.label) return info.label;
+      return String(id).trim() || 'Agent';
+    };
+    const formatTimestamp = (value) => {
+      if (!value && value !== 0) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      try {
+        return date.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      } catch {
+        return date.toISOString();
+      }
+    };
+    const renderContent = (payload) => {
+      if (payload == null) return '';
+      if (typeof payload === 'string') return payload;
+      try { return JSON.stringify(payload, null, 2); } catch { return String(payload); }
+    };
+
+    const sections = [];
+    for (const agentId of agentIds) {
+      const bucket = Array.isArray(messagesByAgent[agentId]) ? messagesByAgent[agentId] : [];
+      if (!bucket.length) continue;
+      const title = formatAgentLabel(agentId);
+      sections.push(`## ${title}`);
+      for (const message of bucket) {
+        const author = message.role === 'user' ? you : (message.agent_id || title || 'Assistant');
+        const stamp = formatTimestamp(message.created_at ?? message.timestamp ?? message.time ?? message.datetime ?? message.date);
+        const body = renderContent(message.content ?? message.text ?? '');
+        sections.push(stamp ? `[${stamp}] ${author}: ${body}` : `${author}: ${body}`);
+      }
+      sections.push('');
+    }
+
+    const exportPayload = sections.join('\n').trim();
+    if (!exportPayload) {
+      this.showToast('Aucun message a exporter.');
+      return;
+    }
+
+    const blob = new Blob([exportPayload], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `chat_${currentAgentId}_${Date.now()}.txt`;
-    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    const filename = `chat_full_${Date.now()}.txt`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    this.showToast('Export conversation pret.');
   }
 
   handleRagToggle() {
     const current = !!this.state.get('chat.ragEnabled');
     this.state.set('chat.ragEnabled', !current);
+  }
+
+  handleDocumentSelectionChanged(payload = {}) {
+    const data = (payload && typeof payload === 'object') ? payload : {};
+    const rawIds = Array.isArray(data.ids) ? data.ids : [];
+    const itemsArray = Array.isArray(data.items) ? data.items : [];
+    const resolveId = (input) => {
+      if (!input) return '';
+      const cand = input.id ?? input.document_id ?? input.doc_id;
+      return cand == null ? '' : String(cand);
+    };
+    const normalizedIds = [];
+    const seen = new Set();
+    for (const value of rawIds) {
+      const id = String(value ?? '').trim();
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      normalizedIds.push(id);
+    }
+    if (!normalizedIds.length && itemsArray.length) {
+      for (const item of itemsArray) {
+        const candidate = resolveId(item).trim();
+        if (!candidate || seen.has(candidate)) continue;
+        seen.add(candidate);
+        normalizedIds.push(candidate);
+      }
+    }
+    const itemsById = new Map();
+    for (const item of itemsArray) {
+      const itemId = resolveId(item).trim();
+      if (!itemId) continue;
+      let label = item?.name ?? item?.filename ?? item?.title ?? '';
+      label = String(label ?? '').trim();
+      if (!label) label = 'Document ' + itemId;
+      const statusRaw = item?.status;
+      const status = statusRaw == null ? 'ready' : (String(statusRaw).toLowerCase() || 'ready');
+      itemsById.set(itemId, { id: itemId, name: label, status });
+    }
+    const normalizedItems = normalizedIds.map((id) => itemsById.get(id) || { id, name: 'Document ' + id, status: 'ready' });
+    this.state.set('chat.selectedDocIds', normalizedIds);
+    this.state.set('chat.selectedDocs', normalizedItems);
+    try { this.state.set('documents.selectedIds', normalizedIds); } catch {}
+    try { this.state.set('documents.selectionMeta', normalizedItems); } catch {}
   }
 
   handleAnalysisStatus({ session_id, status, error } = {}) {
@@ -446,6 +654,8 @@ export default class ChatModule {
         }
       });
 
+      this._updateThreadCacheFromBuckets();
+
       if (role === 'assistant') {
         this._assistantPersistedIds.add(msgId);
       }
@@ -503,6 +713,110 @@ export default class ChatModule {
     }
   }
 
+  _sanitizeDocIds(raw) {
+    const source = Array.isArray(raw) ? raw : (raw == null ? [] : [raw]);
+    const cleaned = [];
+    const seen = new Set();
+    for (const value of source) {
+      const num = Number.parseInt(String(value ?? '').trim(), 10);
+      if (!Number.isFinite(num)) continue;
+      if (seen.has(num)) continue;
+      seen.add(num);
+      cleaned.push(num);
+    }
+    return cleaned;
+  }
+
+  _flattenMessagesFromState() {
+    const buckets = this.state.get('chat.messages') || {};
+    const combined = [];
+    for (const [agentId, list] of Object.entries(buckets)) {
+      if (!Array.isArray(list)) continue;
+      for (const message of list) {
+        if (!message) continue;
+        const cloned = { ...message };
+        if (!cloned.agent_id) cloned.agent_id = agentId;
+        if (cloned.created_at === undefined && cloned.timestamp !== undefined) {
+          cloned.created_at = cloned.timestamp;
+        }
+        combined.push(cloned);
+      }
+    }
+    return combined.sort((a, b) => this._compareTimestamps(a?.created_at ?? a?.timestamp, b?.created_at ?? b?.timestamp));
+  }
+
+  _compareTimestamps(a, b) {
+    const left = this._toEpoch(a);
+    const right = this._toEpoch(b);
+    if (left === right) return 0;
+    return left - right;
+  }
+
+  _toEpoch(value) {
+    if (value == null) return 0;
+    if (value instanceof Date) {
+      const ms = value.getTime();
+      return Number.isFinite(ms) ? ms : 0;
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      if (value > 1e12) return value;
+      if (value > 1e9) return Math.trunc(value * 1000);
+      return value;
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed) {
+        const parsed = Date.parse(trimmed);
+        if (!Number.isNaN(parsed)) return parsed;
+        const numeric = Number(trimmed);
+        if (Number.isFinite(numeric)) {
+          return this._toEpoch(numeric);
+        }
+      }
+    }
+    return 0;
+  }
+
+  _updateThreadCacheFromBuckets(threadId = null, extras = {}) {
+    try {
+      const targetId = threadId || this.getCurrentThreadId();
+      if (!targetId) return;
+      const flattened = this._flattenMessagesFromState();
+      const threadKey = `threads.map.${targetId}`;
+      const current = this.state.get(threadKey) || { id: targetId, messages: [] };
+      const next = { ...current, id: targetId, messages: flattened };
+      if (extras && typeof extras === 'object') {
+        if (extras.metadata) next.metadata = extras.metadata;
+      }
+      this.state.set(threadKey, next);
+    } catch (err) {
+      console.warn('[Chat] thread cache update failed', err);
+    }
+  }
+
+  _applyMemoryMetadata(sessionId, metadata) {
+    try {
+      const summary = typeof metadata?.summary === 'string' ? metadata.summary : '';
+      const concepts = Array.isArray(metadata?.concepts) ? metadata.concepts.filter(Boolean) : [];
+      const entities = Array.isArray(metadata?.entities) ? metadata.entities.filter(Boolean) : [];
+      const ltmCount = concepts.length + entities.length;
+      this.state.set('chat.memoryStats', { has_stm: !!summary, ltm_items: ltmCount, injected: false });
+      this.state.set('chat.memoryBannerAt', Date.now());
+      this.state.set('chat.lastAnalysis', {
+        session_id: sessionId || null,
+        status: 'restored',
+        summary,
+        concepts,
+        entities,
+        at: Date.now()
+      });
+    } catch (err) {
+      console.warn('[Chat] memory metadata sync failed', err);
+    }
+  }
+
+
+
   /* ============================ Watchdog / Fallback ============================ */
   _startStreamWatchdog() {
     this._clearStreamWatchdog();
@@ -519,11 +833,15 @@ export default class ChatModule {
           return;
         }
         try {
+          const fallbackMeta = { watchdog_fallback: true };
+          fallbackMeta.use_rag = typeof p.use_rag === 'boolean' ? p.use_rag : !!this.state.get('chat.ragEnabled');
+          const docIdsForFallback = Array.isArray(p.doc_ids) ? this._sanitizeDocIds(p.doc_ids) : [];
+          if (docIdsForFallback.length) fallbackMeta.doc_ids = docIdsForFallback;
           await api.appendMessage(threadId, {
             role: 'user',
             content: p.text,
             agent_id: p.agent_id,
-            meta: { watchdog_fallback: true }
+            meta: fallbackMeta
           });
 
           // ✅ Metrics: fallback REST

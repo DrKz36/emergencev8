@@ -36,6 +36,7 @@ class Session(BaseModel):
     start_time: datetime = Field(..., description="Horodatage du début de la session")
     end_time: Optional[datetime] = Field(None, description="Horodatage de la fin de la session")
     history: List[Dict[str, Any]] = Field(default_factory=list, description="Liste des messages (ChatMessage, AgentMessage) de la session")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadata for the session (thread info, summaries).")
     
     class Config:
         extra = 'allow' # Permet d'ajouter des champs non définis (ex: summary, concepts) plus tard
