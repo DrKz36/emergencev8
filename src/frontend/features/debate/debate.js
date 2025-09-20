@@ -2,7 +2,7 @@
 // DebateModule V27.8 — HOLD sticky + anti-recreate global
 
 import { DebateUI } from './debate-ui.js';
-import { EVENTS, AGENTS, AGENT_IDS as _AGENT_IDS } from '../../shared/constants.js';
+import { EVENTS, AGENTS, PRIMARY_AGENT_IDS as _AGENT_IDS } from '../../shared/constants.js';
 
 export default class DebateModule {
   constructor(eventBus, state) {

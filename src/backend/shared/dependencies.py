@@ -67,6 +67,95 @@ def _has_dev_bypass_query(params) -> bool:
         return bool(val) and str(val).strip().lower() in _DEV_BYPASS_TRUTHY
     except Exception:
         return False
+
+# -----------------------------
+# WebSocket token helpers
+# -----------------------------
+def _normalize_bearer_value(value: str) -> str:
+    if not value:
+        return ""
+    candidate = str(value).strip()
+    if not candidate:
+        return ""
+    lower = candidate.lower()
+    if lower.startswith("bearer "):
+        return candidate[7:].strip()
+    if lower.startswith("token="):
+        return candidate.split("=", 1)[1].strip()
+    if lower.startswith("jwt "):
+        return candidate.split(" ", 1)[1].strip()
+    return candidate
+
+
+def _iter_ws_protocol_candidates(ws: WebSocket):
+    try:
+        scope_protocols = ws.scope.get("subprotocols") if isinstance(ws.scope, dict) else None
+        if scope_protocols:
+            for item in scope_protocols:
+                if item:
+                    yield str(item)
+    except Exception:
+        pass
+    try:
+        header_value = ws.headers.get("sec-websocket-protocol")
+        if header_value:
+            for part in header_value.split(","):
+                part = part.strip()
+                if part:
+                    yield part
+    except Exception:
+        pass
+
+
+def _get_ws_token_from_headers(ws: WebSocket) -> Optional[str]:
+    candidates: list[str] = []
+
+    try:
+        auth_header = ws.headers.get("authorization") or ws.headers.get("Authorization")
+        if auth_header:
+            candidates.append(auth_header)
+    except Exception:
+        pass
+
+    candidates.extend(_iter_ws_protocol_candidates(ws))
+
+    try:
+        qp_token = ws.query_params.get("token") or ws.query_params.get("auth") or ws.query_params.get("access_token")
+        if qp_token:
+            candidates.append(qp_token)
+    except Exception:
+        pass
+
+    try:
+        cookie_token = ws.cookies.get("token") or ws.cookies.get("id_token") or ws.cookies.get("access_token")
+        if cookie_token:
+            candidates.append(cookie_token)
+    except Exception:
+        pass
+
+    normalized: list[str] = []
+    for raw in candidates:
+        norm = _normalize_bearer_value(str(raw))
+        if not norm:
+            continue
+        lower = norm.lower()
+        if lower in {"jwt", "bearer"}:
+            continue
+        normalized.append(norm)
+
+    for token in normalized:
+        if _looks_like_jwt(token):
+            return token
+
+    return normalized[0] if normalized else None
+
+
+def _extract_ws_bearer_token(ws: WebSocket) -> Optional[str]:
+    token = _get_ws_token_from_headers(ws)
+    if token and _looks_like_jwt(token):
+        return token
+    return None
+
 # -----------------------------
 # Allowlist (emails / domaine)
 # -----------------------------

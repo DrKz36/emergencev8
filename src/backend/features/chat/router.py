@@ -86,17 +86,27 @@ async def _ws_core(
     debate_service: DebateService,
 ):
     """Boucle WS commune. Les deps sont déjà résolues par les endpoints."""
+    thread_id = None
+    try:
+        thread_id = websocket.query_params.get('thread_id')
+    except Exception:
+        thread_id = None
     _uid = None
     try:
         tok = deps._extract_ws_bearer_token(websocket)
         if tok:
             claims = deps._read_bearer_claims_from_token(tok)
             deps._enforce_allowlist_claims(claims)
-            _uid = str(claims.get("sub") or "")
+            _uid = str(claims.get('sub') or '')
     except Exception as e:
         logger.info(f"WS auth tentative échouée: {e}")
 
-    await connection_manager.connect(websocket, session_id, _uid or f"guest:{session_id}")
+    await connection_manager.connect(
+        websocket,
+        session_id,
+        _uid or f"guest:{session_id}",
+        thread_id=thread_id,
+    )
     if not _uid:
         try:
             await connection_manager.send_personal_message(

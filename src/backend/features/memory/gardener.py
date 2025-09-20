@@ -1,11 +1,13 @@
 # src/backend/features/memory/gardener.py
 # V2.8.0 — + consolidation ciblée d’un thread (sans passer par 'sessions')
 import logging
+import asyncio
 import uuid
 import json
 import re
 import hashlib
-from typing import Dict, Any, List, Optional
+import unicodedata
+from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone
 
 from backend.core.database.manager import DatabaseManager
@@ -22,6 +24,145 @@ _CODE_PATTERNS = [
     r"mon\s*mot[-\s]?code\s*pour\s+(?P<agent>anima|neo|nexus)\s*(?:est|:)\s*[«\"'’]?\s*(?P<value>[A-Za-zÀ-ÖØ-öø-ÿ0-9_\-]+)\s*[»\"'’]?",
     r"mot[-\s]?code\s*(?:est|:|=)\s*[«\"'’]?\s*(?P<value>[A-Za-zÀ-ÖØ-öø-ÿ0-9_\- ]+?)\s*[»\"'’]?(?:[.!?,;:\)]|$)"
 ]
+
+
+_PREFERENCE_REGEX_PATTERNS = [
+    re.compile(r"\bje\s+(?:pr[eé]f[eè]re|souhaite|voudrais|veux|adore|aime|d[eé]teste|n(?:'|e)\s*(?:veux\s+pas|veux|aime|utiliser|utilise)|évite|refuse)\b", re.IGNORECASE),
+    re.compile(r"\bje\s+(?:planifie|pr[eé]vois|compte|vais|dois|pense\s+faire)\b", re.IGNORECASE),
+    re.compile(r"\bj'aimerais\s+(?:que|faire)|je\s+vais\s+(?:faire|prendre)|je\s+compte\s+sur\s+toi\b", re.IGNORECASE),
+    re.compile(r"\b(?:i\s+prefer|my\s+preference\s+is|i\s+would\s+like|i\s+want|i\s+intend|i\s+plan\s+to|please\s+remember|please\s+avoid)\b", re.IGNORECASE),
+]
+_IMPERATIVE_STARTERS = (
+    'merci de',
+    'peux-tu',
+    'pense à',
+    'rappelle-moi',
+    "n'oublie pas",
+    'favorise',
+    'privilégie',
+    'cesse',
+    'arrête',
+    'évite',
+    'garde',
+    'utilise',
+    'ne propose pas',
+    'fait en sorte',
+    'assure-toi',
+    'do not',
+    'please avoid',
+    'please favour',
+)
+_MAX_PREFERENCE_CANDIDATES = 8
+_PREFERENCE_CONFIDENCE_EVENT_THRESHOLD = 0.6
+
+_PREFERENCE_CLASSIFICATION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                    "type": {"type": "string", "enum": ["preference", "intent", "constraint", "neutral"]},
+                    "topic": {"type": "string"},
+                    "action": {"type": "string"},
+                    "timeframe": {"type": "string"},
+                    "sentiment": {"type": "string"},
+                    "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                    "summary": {"type": "string"}
+                },
+                "required": ["id", "type", "confidence"]
+            }
+        }
+    },
+    "required": ["items"]
+}
+
+
+_CLASSIFICATION_KEY_ALIASES = {
+    "items": {"items", "item", "elements", "element", "entries", "records", "liste", "list", "points", "resultats", "resultat", "reponses", "reponse"},
+    "id": {"id", "identifier", "identifiant"},
+    "type": {"type", "categorie", "categories", "category", "classe"},
+    "topic": {"topic", "sujet", "theme", "themes", "thematique", "thematiques"},
+    "action": {"action", "actions", "tache", "taches", "task", "tasks", "verbe"},
+    "timeframe": {"timeframe", "delai", "delais", "echeance", "echeances", "periode", "periodes", "horizon", "date", "dates"},
+    "sentiment": {"sentiment", "sentiments", "ton", "tonalite", "tonalites", "valence", "valences", "opinion"},
+    "confidence": {"confidence", "confiance", "confiances", "score", "scores", "probabilite", "probabilites", "certitude", "certitudes"},
+    "summary": {"summary", "resume", "resumes", "synthese", "syntheses", "description", "descriptions"},
+}
+
+
+def _sanitize_json_key(name: Any) -> str:
+    text = str(name or "").strip()
+    if not text:
+        return ""
+    normalized = unicodedata.normalize("NFKD", text)
+    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    normalized = normalized.lower()
+    return re.sub(r"[^a-z0-9]", "", normalized)
+
+
+def _canonicalize_field_key(name: Any) -> Optional[str]:
+    sanitized = _sanitize_json_key(name)
+    if not sanitized:
+        return None
+    for canonical, aliases in _CLASSIFICATION_KEY_ALIASES.items():
+        if sanitized in aliases:
+            return canonical
+    return None
+
+
+def _normalize_classification_item(raw: Dict[str, Any]) -> Dict[str, Any]:
+    normalized: Dict[str, Any] = {}
+    for key, value in (raw or {}).items():
+        canonical = _canonicalize_field_key(key)
+        target_key = canonical or key
+        normalized[target_key] = value
+    conf_value = normalized.get("confidence")
+    if isinstance(conf_value, str):
+        cleaned = conf_value.strip().replace(" ", "")
+        is_percent = cleaned.endswith("%")
+        cleaned = cleaned.replace("%", "").replace(",", ".")
+        try:
+            conf_float = float(cleaned)
+            if is_percent or conf_float > 1.0:
+                conf_float = conf_float / 100.0
+            normalized["confidence"] = conf_float
+        except ValueError:
+            pass
+    return normalized
+
+
+def _normalize_classification_payload(payload: Any) -> Dict[str, Any]:
+    normalized_items: List[Dict[str, Any]] = []
+    if isinstance(payload, dict):
+        candidate_list: Optional[List[Any]] = None
+        for key, value in payload.items():
+            if _canonicalize_field_key(key) == "items" and isinstance(value, list):
+                candidate_list = value
+                break
+        if candidate_list is None:
+            for value in payload.values():
+                if isinstance(value, list):
+                    candidate_list = value
+                    break
+        if candidate_list:
+            normalized_items = [
+                _normalize_classification_item(item)
+                for item in candidate_list
+                if isinstance(item, dict)
+            ]
+    elif isinstance(payload, list):
+        normalized_items = [
+            _normalize_classification_item(item)
+            for item in payload
+            if isinstance(item, dict)
+        ]
+    return {"items": normalized_items}
+
+
+
 
 def _now_iso() -> str: return datetime.now(timezone.utc).isoformat()
 
@@ -50,6 +191,32 @@ def _clean_value(v: str) -> str:
     v = re.sub(r"\s{2,}", " ", v)
     return v
 
+
+
+def _normalize_for_scan(text: str) -> str:
+    if not text:
+        return ''
+    normalized = unicodedata.normalize('NFKD', text)
+    normalized = ''.join(ch for ch in normalized if not unicodedata.combining(ch))
+    return normalized.lower().strip()
+
+
+def _looks_imperative(sentence: str) -> bool:
+    normalized = _normalize_for_scan(sentence)
+    if not normalized:
+        return False
+    for starter in _IMPERATIVE_STARTERS:
+        if normalized.startswith(starter):
+            return True
+    return False
+
+
+def _preference_record_id(user_identifier: Optional[str], pref_type: str, topic_key: str) -> str:
+    user_part = user_identifier or 'anonymous'
+    base = f"{user_part}:{pref_type}:{topic_key}"
+    return hashlib.sha1(base.encode('utf-8')).hexdigest()
+
+
 class MemoryGardener:
     """
     MEMORY GARDENER V2.8.0
@@ -57,12 +224,14 @@ class MemoryGardener:
     - NEW: consolidation ciblée d’un THREAD via thread_id (analyse no-persist + vectorisation).
     """
     KNOWLEDGE_COLLECTION_NAME = "emergence_knowledge"
+    PREFERENCE_COLLECTION_NAME = "memory_preferences"
 
     def __init__(self, db_manager: DatabaseManager, vector_service: VectorService, memory_analyzer: MemoryAnalyzer):
         self.db = db_manager
         self.vector_service = vector_service
         self.analyzer = memory_analyzer
         self.knowledge_collection = self.vector_service.get_or_create_collection(self.KNOWLEDGE_COLLECTION_NAME)
+        self.preference_collection = self.vector_service.get_or_create_collection(self.PREFERENCE_COLLECTION_NAME)
         logger.info("MemoryGardener V2.8.0 initialisé.")
 
     async def tend_the_garden(self, consolidation_limit: int = 10, thread_id: Optional[str] = None) -> Dict[str, Any]:
@@ -107,6 +276,11 @@ class MemoryGardener:
                     await self._record_facts_in_sql(facts_to_add, s, uid)
                     await self._vectorize_facts(facts_to_add, s, uid)
                     new_items_count += len(facts_to_add); added_any = True
+
+                pref_added = await self._process_preference_pipeline(history, sid, uid)
+                if pref_added:
+                    new_items_count += pref_added
+                    added_any = True
 
                 if all_concepts and not await self._any_vectors_for_session_type(sid, "concept"):
                     await self._record_concepts_in_sql(all_concepts, s, uid)
@@ -170,6 +344,11 @@ class MemoryGardener:
                     await self._vectorize_facts(facts_to_add, s_like, uid)
                     new_items_count += len(facts_to_add); added_any = True
 
+            pref_added = await self._process_preference_pipeline(history, tid, uid)
+            if pref_added:
+                new_items_count += pref_added
+                added_any = True
+
             if all_concepts and not await self._any_vectors_for_session_type(tid, "concept"):
                 s_like = {"id": tid, "user_id": uid, "themes": []}
                 await self._record_concepts_in_sql(all_concepts, s_like, uid)
@@ -227,6 +406,363 @@ class MemoryGardener:
         except Exception as e:
             logger.warning(f"JSON entities invalide: {e}")
             return []
+
+
+    async def _process_preference_pipeline(self, history: List[Dict[str, Any]], session_id: str, user_id: Optional[str]) -> int:
+        if not history:
+            return 0
+        candidates = self._collect_preference_candidates(history)
+        if not candidates:
+            return 0
+        llm_results = await self._classify_preference_candidates(session_id, candidates)
+        if not llm_results:
+            return 0
+        records = self._normalize_preference_records(llm_results, candidates, session_id, user_id)
+        if not records:
+            return 0
+        return await self._store_preference_records(records, session_id, user_id)
+
+    def _collect_preference_candidates(self, history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        candidates: List[Dict[str, Any]] = []
+        seen_keys = set()
+        for msg in history or []:
+            role = (msg.get('role') or '').lower()
+            if role not in {'user', 'client'}:
+                continue
+            raw_text = (msg.get('content') or msg.get('text') or msg.get('message') or '').strip()
+            if not raw_text or len(raw_text) < 8:
+                continue
+            normalized_full = _normalize_for_scan(raw_text)
+            matches_pattern = any(p.search(normalized_full) for p in _PREFERENCE_REGEX_PATTERNS)
+            sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', raw_text) if s.strip()]
+            if not sentences:
+                sentences = [raw_text]
+            for sent in sentences:
+                if len(sent) < 6:
+                    continue
+                normalized_sentence = _normalize_for_scan(sent)
+                if not normalized_sentence:
+                    continue
+                if not matches_pattern and not any(p.search(normalized_sentence) for p in _PREFERENCE_REGEX_PATTERNS) and not _looks_imperative(sent):
+                    continue
+                key = normalized_sentence[:280]
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                candidates.append({
+                    'id': uuid.uuid4().hex,
+                    'text': sent,
+                    'message_id': msg.get('id') or msg.get('message_id') or msg.get('uuid'),
+                    'role': role,
+                })
+                if len(candidates) >= _MAX_PREFERENCE_CANDIDATES:
+                    return candidates
+        return candidates
+
+    async def _classify_preference_candidates(self, session_id: str, candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        chat_service = getattr(self.analyzer, 'chat_service', None)
+        if not chat_service:
+            logger.debug("[MemoryGardener] ChatService absent, impossible de classifier les préférences.")
+            return []
+        prompt_lines = [
+            "Analyse les extraits suivants issus de messages utilisateur.",
+            "Pour chacun, indique s'il s'agit d'une préférence, d'une intention, d'une contrainte ou de contenu neutre.",
+            "Règles :",
+            "- preference : goût, habitude, canal ou format que l'utilisateur apprécie ou rejette.",
+            "- intent : action que l'utilisateur prévoit, décide ou demande explicitement.",
+            "- constraint : interdiction, limite ou condition impérative.",
+            "- neutral : tout ce qui ne rentre pas dans les trois catégories précédentes.",
+            "Pour chaque extrait, fournis topic (sujet synthétique), action (verbe à l'infinitif si pertinent), timeframe (ISO 8601 si date explicite), sentiment (positive/negative/neutral) et confiance (0 à 1).",
+            "Renvoie STRICTEMENT un JSON valide respectant le schéma fourni.",
+            "Utilise EXACTEMENT les clés JSON suivantes sans traduction : items, id, type, topic, action, timeframe, sentiment, confidence, summary.",
+            "N'ajoute aucun texte hors du JSON.",
+            "---",
+        ]
+        limited = candidates[:_MAX_PREFERENCE_CANDIDATES]
+        for cand in limited:
+            prompt_lines.append(f"ID: {cand['id']}")
+            prompt_lines.append("TEXTE:")
+            prompt_lines.append(cand['text'])
+            prompt_lines.append('---')
+        prompt = "\n".join(prompt_lines)
+        result: Dict[str, Any] = {}
+        primary_error: Optional[Exception] = None
+        try:
+            result = await chat_service.get_structured_llm_response(agent_id='anima', prompt=prompt, json_schema=_PREFERENCE_CLASSIFICATION_SCHEMA)
+        except Exception as exc:
+            primary_error = exc
+            logger.warning(f"[MemoryGardener] Classification préférences (anima) échouée : {exc}", exc_info=True)
+        if not result:
+            try:
+                result = await chat_service.get_structured_llm_response(agent_id='nexus', prompt=prompt, json_schema=_PREFERENCE_CLASSIFICATION_SCHEMA)
+            except Exception as exc:
+                logger.error(f"[MemoryGardener] Classification préférences fallback échouée : {exc}", exc_info=True)
+                return []
+        normalized_result = _normalize_classification_payload(result)
+        items = (normalized_result or {}).get('items') or []
+        filtered: List[Dict[str, Any]] = []
+        for item in items:
+            if isinstance(item, dict) and item.get('id'):
+                filtered.append(item)
+        return filtered
+
+    def _normalize_preference_records(self, llm_results: List[Dict[str, Any]], candidates: List[Dict[str, Any]], session_id: str, user_id: Optional[str]) -> List[Dict[str, Any]]:
+        candidate_map = {c['id']: c for c in candidates}
+        records: List[Dict[str, Any]] = []
+        user_identifier = (user_id or '').strip() or 'anonymous'
+        for item in llm_results:
+            cid = str(item.get('id') or '').strip()
+            if not cid or cid not in candidate_map:
+                continue
+            pref_type = str(item.get('type') or '').lower().strip()
+            if pref_type not in {'preference', 'intent', 'constraint'}:
+                continue
+            raw_conf = item.get('confidence')
+            try:
+                confidence = float(raw_conf)
+            except (TypeError, ValueError):
+                confidence = 0.0
+            confidence = max(0.0, min(1.0, confidence))
+            candidate = candidate_map[cid]
+            raw_topic = str(item.get('topic') or '').strip()
+            topic_display = raw_topic or candidate['text'][:80]
+            topic_key = _normalize_for_scan(topic_display)[:120] or _normalize_for_scan(candidate['text'])[:120]
+            action = str(item.get('action') or '').strip()
+            timeframe_raw = str(item.get('timeframe') or '').strip()
+            timeframe = self._normalize_timeframe(timeframe_raw)
+            sentiment = self._sanitize_sentiment(item.get('sentiment'))
+            summary = str(item.get('summary') or '').strip()
+            canonical_text = " | ".join(filter(None, [pref_type, topic_display, action, timeframe, sentiment, candidate['text']]))
+            record_id = _preference_record_id(user_identifier, pref_type, topic_key)
+            records.append({
+                'id': record_id,
+                'type': pref_type,
+                'topic': topic_display,
+                'topic_normalized': topic_key,
+                'action': action,
+                'timeframe': timeframe,
+                'timeframe_raw': timeframe_raw,
+                'sentiment': sentiment,
+                'confidence': confidence,
+                'source_message_id': candidate.get('message_id'),
+                'source_text': candidate['text'],
+                'summary': summary,
+                'user_id': user_identifier,
+                'canonical_text': canonical_text,
+            })
+        return records
+
+    async def _store_preference_records(self, records: List[Dict[str, Any]], session_id: str, user_id: Optional[str]) -> int:
+        if not records:
+            return 0
+        inserted = 0
+        vector_items: List[Dict[str, Any]] = []
+        sql_payload: List[Dict[str, Any]] = []
+        to_notify: List[Dict[str, Any]] = []
+        for record in records:
+            existing = await self._get_existing_preference_record(record['id'])
+            existing_meta = (existing or {}).get('metadata') or {}
+            prev_conf = float(existing_meta.get('confidence', 0.0) or 0.0)
+            prev_occ = int(existing_meta.get('occurrences', 1) or 1)
+            if prev_occ < 1:
+                prev_occ = 1
+            occurrences = prev_occ + 1 if existing else 1
+            confidence = record['confidence']
+            if existing:
+                confidence = ((prev_conf * prev_occ) + confidence) / occurrences
+            record['confidence'] = round(confidence, 4)
+            record['occurrences'] = occurrences
+            if existing:
+                if not record['topic'] and existing_meta.get('topic'):
+                    record['topic'] = existing_meta.get('topic')
+                if not record['action'] and existing_meta.get('action'):
+                    record['action'] = existing_meta.get('action')
+                if record['timeframe'] == 'ongoing' and existing_meta.get('timeframe'):
+                    record['timeframe'] = existing_meta.get('timeframe')
+                if record['sentiment'] == 'neutral' and existing_meta.get('sentiment'):
+                    record['sentiment'] = existing_meta.get('sentiment')
+            source_ids = []
+            prev_sources = existing_meta.get('source_message_ids') or existing_meta.get('source_message_id')
+            if isinstance(prev_sources, list):
+                source_ids.extend(str(s) for s in prev_sources if s)
+            elif isinstance(prev_sources, str):
+                source_ids.append(prev_sources)
+            if record.get('source_message_id'):
+                source_ids.append(str(record['source_message_id']))
+            record['source_message_ids'] = sorted({sid for sid in source_ids if sid})
+            record['captured_at'] = _now_iso()
+            embedding, embedding_model = await self._compute_preference_embedding(record['canonical_text'])
+            metadata = {
+                'type': record['type'],
+                'topic': record['topic'],
+                'topic_normalized': record['topic_normalized'],
+                'action': record['action'],
+                'timeframe': record['timeframe'],
+                'timeframe_raw': record.get('timeframe_raw'),
+                'sentiment': record['sentiment'],
+                'confidence': record['confidence'],
+                'occurrences': record['occurrences'],
+                'user_id': record['user_id'],
+                'thread_id': session_id,
+                'source_message_id': record.get('source_message_id'),
+                'source_message_ids': record.get('source_message_ids'),
+                'captured_at': record['captured_at'],
+                'embedding_model': embedding_model or ('text-embedding-3-large' if embedding else 'vector_service_default'),
+                'summary': record.get('summary'),
+            }
+            item_payload = {
+                'id': record['id'],
+                'text': record['canonical_text'],
+                'metadata': metadata,
+            }
+            if embedding:
+                item_payload['embedding'] = list(embedding)
+            vector_items.append(item_payload)
+            sql_payload.append({
+                'id': record['id'],
+                'type': record['type'],
+                'topic': record['topic'],
+                'confidence': record['confidence'],
+                'user_id': record['user_id'],
+                'thread_id': session_id,
+                'sentiment': record['sentiment'],
+                'timeframe': record['timeframe'],
+                'occurrences': record['occurrences'],
+                'source_message_id': record.get('source_message_id'),
+            })
+            threshold_crossed = record['confidence'] >= _PREFERENCE_CONFIDENCE_EVENT_THRESHOLD and (not existing or prev_conf < _PREFERENCE_CONFIDENCE_EVENT_THRESHOLD)
+            if threshold_crossed:
+                to_notify.append(record)
+            if not existing:
+                inserted += 1
+        if vector_items:
+            try:
+                await asyncio.to_thread(self.vector_service.add_items, self.preference_collection, vector_items)
+                logger.info(f"{len(vector_items)} préférences/intentions vectorisées.")
+            except Exception as exc:
+                logger.error(f"Vectorisation préférences impossible: {exc}", exc_info=True)
+        if sql_payload:
+            await self._record_preferences_in_sql(sql_payload, session_id, user_id)
+        for record in to_notify:
+            await self._emit_preference_banner(session_id, record)
+        return inserted
+
+    async def _get_existing_preference_record(self, record_id: str) -> Optional[Dict[str, Any]]:
+        try:
+            result = await asyncio.to_thread(self.preference_collection.get, ids=[record_id])
+        except Exception:
+            return None
+        if not result:
+            return None
+        ids = result.get('ids') or []
+        metadatas = result.get('metadatas') or []
+        documents = result.get('documents') or []
+        if ids and isinstance(ids[0], list):
+            ids = ids[0]
+        if metadatas and isinstance(metadatas[0], list):
+            metadatas = metadatas[0]
+        if documents and isinstance(documents[0], list):
+            documents = documents[0]
+        if ids:
+            meta = metadatas[0] if metadatas else {}
+            doc = documents[0] if documents else ''
+            return {'id': ids[0], 'metadata': meta, 'document': doc}
+        return None
+
+    async def _compute_preference_embedding(self, text: str) -> Tuple[Optional[List[float]], Optional[str]]:
+        text = (text or '').strip()
+        if not text:
+            return None, None
+        chat_service = getattr(self.analyzer, 'chat_service', None)
+        client = getattr(chat_service, 'openai_client', None)
+        if not client:
+            return None, None
+        for model_name in ('text-embedding-3-large', 'text-embedding-004'):
+            try:
+                response = await client.embeddings.create(model=model_name, input=[text])
+                data = getattr(response, 'data', None) or []
+                if data:
+                    embedding = getattr(data[0], 'embedding', None)
+                    if embedding:
+                        return list(embedding), model_name
+            except Exception as exc:
+                logger.debug(f"Embedding {model_name} échoué: {exc}", exc_info=True)
+                continue
+        return None, None
+
+    async def _emit_preference_banner(self, session_id: str, record: Dict[str, Any]) -> None:
+        chat_service = getattr(self.analyzer, 'chat_service', None)
+        session_manager = getattr(chat_service, 'session_manager', None) if chat_service else None
+        connection_manager = getattr(session_manager, 'connection_manager', None) if session_manager else None
+        if not connection_manager:
+            return
+        payload = {
+            'variant': 'preference_captured',
+            'topic': record.get('topic'),
+            'type': record.get('type'),
+            'confidence': record.get('confidence'),
+            'timeframe': record.get('timeframe'),
+            'sentiment': record.get('sentiment'),
+            'source_message_id': record.get('source_message_id'),
+        }
+        try:
+            await connection_manager.send_personal_message({'type': 'ws:memory_banner', 'payload': payload}, session_id)
+        except Exception:
+            logger.debug("[MemoryGardener] Impossible d'émettre ws:memory_banner preference_captured.", exc_info=True)
+
+    async def _record_preferences_in_sql(self, records: List[Dict[str, Any]], session_id: str, user_id: Optional[str]) -> None:
+        if not records:
+            return
+        now = _now_iso()
+        for record in records:
+            details = {
+                'id': record.get('id'),
+                'type': record.get('type'),
+                'topic': record.get('topic'),
+                'confidence': record.get('confidence'),
+                'user_id': user_id,
+                'thread_id': record.get('thread_id') or session_id,
+                'sentiment': record.get('sentiment'),
+                'timeframe': record.get('timeframe'),
+                'occurrences': record.get('occurrences'),
+                'source_message_id': record.get('source_message_id'),
+            }
+            try:
+                await self.db.execute(
+                    "INSERT INTO monitoring (event_type, event_details, timestamp) VALUES (?, ?, ?)",
+                    ("memory_preference", json.dumps(details, ensure_ascii=False), now)
+                )
+            except Exception as exc:
+                logger.warning(f"Trace preference SQL échouée (session {session_id}): {exc}", exc_info=True)
+
+    def _normalize_timeframe(self, value: Optional[str]) -> str:
+        if not value:
+            return 'ongoing'
+        candidate = str(value).strip()
+        if not candidate:
+            return 'ongoing'
+        try:
+            normalized = candidate.replace('Z', '+00:00')
+            parsed = datetime.fromisoformat(normalized)
+            return parsed.isoformat()
+        except Exception:
+            pass
+        match = re.search(r"(\d{4}-\d{2}-\d{2})", candidate)
+        if match:
+            return match.group(1)
+        return 'ongoing'
+
+    def _sanitize_sentiment(self, value: Optional[str]) -> str:
+        raw = str(value or '').strip().lower()
+        if raw in {'positive', 'positif', 'positives'}:
+            return 'positive'
+        if raw in {'negative', 'negatif', 'négatif', 'neg'}:
+            return 'negative'
+        if raw in {'neutral', 'neutre'}:
+            return 'neutral'
+        if raw in {'constraint', 'constrained'}:
+            return 'neutral'
+        return 'neutral'
 
     # ---------- Helpers extraction ----------
 
@@ -376,8 +912,12 @@ class MemoryGardener:
                 }
             })
         if payload:
-            self.vector_service.add_items(self.knowledge_collection, payload)
-            logger.info(f"{len(payload)} concepts vectorisés et plantés.")
+            try:
+                await asyncio.to_thread(self.vector_service.add_items, self.knowledge_collection, payload)
+                logger.info(f"{len(payload)} concepts vectorisés et plantés.")
+            except Exception as exc:
+                logger.error(f"Vectorisation des concepts pour la session {session.get('id') if isinstance(session, dict) else session}: {exc}", exc_info=True)
+                raise
 
     async def _vectorize_facts(self, facts: List[Dict[str, Any]], session: Dict[str, Any], user_id: Optional[str]):
         payload = []
@@ -397,8 +937,12 @@ class MemoryGardener:
                 }
             })
         if payload:
-            self.vector_service.add_items(self.knowledge_collection, payload)
-            logger.info(f"{len(payload)} faits vectorisés et plantés.")
+            try:
+                await asyncio.to_thread(self.vector_service.add_items, self.knowledge_collection, payload)
+                logger.info(f"{len(payload)} faits vectorisés et plantés.")
+            except Exception as exc:
+                logger.error(f"Vectorisation des faits pour la session {session.get('id') if isinstance(session, dict) else session}: {exc}", exc_info=True)
+                raise
 
     async def _mark_sessions_as_consolidated(self, session_ids: List[str]):
         if not session_ids:

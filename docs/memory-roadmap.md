@@ -9,7 +9,7 @@ Ce document synthétise l'état actuel et la trajectoire de la mémoire d'Emerge
 ### Forces existantes
 - **SessionManager** conserve l'historique court terme et déclenche l'analyse sémantique via `MemoryAnalyzer` lors de la persistance.
 - **MemoryGardener** relit les sessions, extrait concepts et faits « mot-code », puis les vectorise dans le magasin de connaissances.
-- Les réponses agents injectent déjà résumé STM + faits LTM dans le prompt et exposent des évènements WebSocket (`ws:memory_banner`, `ws:analysis_status`).
+- Les réponses agents injectent déjà résumé STM + faits LTM dans le prompt et exposent des événements WebSocket (`ws:memory_banner`, `ws:analysis_status`).
 
 ### Limites identifiées
 - L'analyse et la vectorisation sont déclenchées dans la boucle WS, ce qui peut bloquer l'event loop.
@@ -28,16 +28,16 @@ Ce document synthétise l'état actuel et la trajectoire de la mémoire d'Emerge
    - Charger la session depuis la base lors du handshake WS si elle n'est pas active (implémenté côté backend).
    - Alignement `session_id ↔ thread_id` côté UI (le `sessionId` WS est désormais le `threadId`).
 3. **Étapes suivantes (P0 restant)**
-   - Exposer une route REST permettant de reconstituer la STM et l'injecter côté SessionManager.
-   - Injecter l'historique restauré dans le flux UI immédiatement après handshake.
+   - [FAIT] Route REST `/api/memory/sync-stm` pour reconstituer la STM et hydrater SessionManager.
+   - [FAIT] Injection de l'historique restauré dans le flux UI (`ws:session_restored`).
 
 ### P1 — Hors boucle WS & enrichissement conceptuel
 - Déporter `MemoryAnalyzer` et `MemoryGardener` dans une file de tâches (worker/scheduler) pour éviter de bloquer l'event loop.
-- Étendre l'extraction de faits (préférences, projets, décisions) via règles ou LLM et les vectoriser.
+- Étendre l'extraction de faits (préférences explicites, intentions, projets) via pipeline hybride règles + LLM, puis vectoriser dans la collection dédiée du store mémoire.
 - Implémenter un mécanisme d'oubli (timestamp + purge/pénalisation périodique).
 
 ### P2 — Réactivité proactive & UX
-- Maintenir un compteur de vivacité par concept et déclencher des évènements `ws:proactive_hint` lorsque des seuils sont franchis.
+- Maintenir un compteur de vivacité par concept et déclencher des événements `ws:proactive_hint` lorsque des seuils sont franchis.
 - Côté UI, afficher un bandeau ou un bouton contextuel pour rappeler un souvenir ou proposer une action.
 - Envoyer `thread_id` au endpoint `/api/memory/tend-garden` pour éviter les consolidations globales.
 
@@ -56,9 +56,45 @@ Ce document synthétise l'état actuel et la trajectoire de la mémoire d'Emerge
 | Proactivité concepts | Compteurs + événements à concevoir (P2) | ⏳ à faire |
 
 ## Prochaines étapes immédiates
-- Compléter la synchronisation STM côté backend (hydrater `SessionManager` avec l'historique restauré).
-- Déporter la vectorisation dans une tâche asynchrone dédiée (ex. `asyncio.to_thread` ou worker externe).
-- Étendre `MemoryGardener` pour analyser préférences/intentions en plus des `mot-code`.
+- [FAIT] Synchronisation STM côté backend (hydratation `SessionManager` + push `ws:session_restored`).
+- [FAIT] Vectorisation déportée via tâche asynchrone (`asyncio.to_thread`).
+- [VALIDÉ] Extension `MemoryGardener` pour analyser préférences et intentions en plus des `mot-code` (voir la spécification détaillée ci-dessous).
+
+## Spécification détaillée — Extension MemoryGardener (préférences & intentions)
+- [FAIT] Normalisation des cles JSON du classifieur (prevention de la localisation des champs).
+
+### Objectif
+Capturer et capitaliser les préférences explicites (goûts, contraintes, canaux favoris) ainsi que les intentions déclarées (prochaines actions, objectifs, engagements) exprimées par l'utilisateur afin d'enrichir la mémoire à long terme et d'améliorer la personnalisation des agents.
+
+### Pipeline hybride
+1. **Filtrage lexical immédiat** : détecter les phrases contenant des verbes cibles (préférer, aimer, vouloir, éviter, planifier, décider) et des formes impératives pour réduire le bruit avant appel LLM.
+2. **Classification LLM ciblée** : utiliser un prompt spécialisé (modèle `gpt-4o-mini` par défaut, fallback `claude-3-haiku`) pour catégoriser chaque extrait en `preference`, `intent`, `constraint` ou `neutral`, avec score de confiance.
+3. **Normalisation** : standardiser le sujet (`topic`), l'action (`action`), la temporalite (`timeframe`) et extraire les entites cles (personnes, outils, lieux) via regles Spacy, enrichies par le JSON renvoye par le LLM, avec post-traitement pour conserver les cles canoniques (`items`, `id`, `type`, etc.).
+
+### Modèle de données et vectorisation
+- Nouvelle collection `memory_preferences` (Chroma/Qdrant) avec clé composite `{user_sub, topic, type}`.
+- Métadonnées stockées avec chaque vecteur :
+  - `type` (`preference` | `intent` | `constraint`)
+  - `topic` (chaîne normalisée)
+  - `action` (verbe à l'infinitif)
+  - `timeframe` (ISO 8601 si date reconnue, sinon `ongoing`)
+  - `sentiment` (positif, négatif, neutre — dérivé du LLM)
+  - `confidence` (float 0–1)
+  - `source_message_id` + `thread_id`
+  - `captured_at` (UTC ISO timestamp)
+- Embedding calculé via `text-embedding-3-large` (fallback `text-embedding-004`).
+- Déduplication par `(user_sub, topic, type)` avec fusion pondérée des scores de confiance.
+
+### Intégration dans MemoryGardener
+- Ajout d'une étape `extract_preference_intent(nodes: list[Message]) -> list[PreferenceRecord]` appelée après `extract_concepts` dans `garden_thread`.
+- Injection des nouveaux enregistrements dans la même file de travail que les `mot-code`, en conservant la traçabilité via `MemoryEvent(preference_id=...)`.
+- Publication d'un événement `ws:memory_banner` de type `preference_captured` lorsque la confiance dépasse 0,6 pour informer l'UI et permettre une confirmation utilisateur.
+
+### Validation et instrumentation
+- Corpus d'évaluation de 100 messages réels anonymisés + 50 cas synthétiques edge-cases pour mesurer précision (>0,85) et rappel (>0,75).
+- Tests unitaires ciblant la déduplication et la normalisation (`tests/memory/test_preferences.py`).
+- Dashboard Grafana : métriques `memory_preferences_captured_total`, `memory_preferences_confidence_bucket`.
+- Revue hebdomadaire des extraits capturés (échantillon aléatoire de 20) pour ajuster les règles lexicales et le prompt LLM.
 
 ---
-Dernière mise à jour : générée automatiquement par l'agent suite aux travaux du __2025-09-19__.
+Dernière mise à jour : générée automatiquement par l'agent suite aux travaux du __2025-09-20__.
