@@ -1,86 +1,74 @@
-# 🗺️ Roadmap Stratégique - ÉMERGENCE V7.0
+# 🗺️ Roadmap Stratégique - ÉMERGENCE V8.0
 
-*Version : 2025-07-04*
+*Version : 2025-09-14*
 
-Ce document formalise la vision et la feuille de route pour le développement d'Émergence V7. Il sert de référence pour s'assurer que chaque nouvelle fonctionnalité s'intègre de manière cohérente dans une architecture modulaire, robuste et maintenable.
-
-### Principes Directeurs
-- **Architecture Modulaire :** Chaque fonctionnalité est un module indépendant.
-- **Responsabilité Unique :** Un fichier = une seule et unique fonction.
-- **Développement Pragmatique :** Utilisation d'un "Mode Dev" avec des modèles peu coûteux (Gemini 1.5 Flash) pour accélérer le développement sans impacter la facture.
-- **Zéro Dette Technique :** On construit bien du premier coup.
+Cette feuille de route consolide la vision V8 en décrivant l’état courant et les jalons à venir. Elle articule les piliers (chat multi-agents, mémoire progressive, RAG, cockpit, débats) et priorise les chantiers en fonction des risques identifiés.
 
 ---
 
-### Phase 2 : La Mémoire Vive (Fondation)
-* **Objectif Principal :** Donner à ÉMERGENCE une mémoire persistante, intelligente et capable d'oubli sélectif.
-* **Concepts Clés :**
-    - **Sauvegarde Intégrale :** Stockage de chaque session (dialogues, débats, métadonnées) dans un champ JSON unique.
-    - **Analyse Sémantique :** Extraction automatique de thèmes, concepts et entités de chaque session.
-    - **Score de Vivacité & Oubli :** Simulation d'un mécanisme d'oubli en faisant décroître un "score de pertinence" dans le temps, pour prioriser les souvenirs récents ou importants.
-* **Modules Impactés/Créés :**
-    - `core/database.py` (Modifié)
-    - `core/session_manager.py` (Nouveau)
-    - `features/memory/analyzer.py` (Nouveau)
-    - `features/memory/gardener.py` (Nouveau, pour l'oubli)
-    - `core/temporal_search.py` (Nouveau)
+## Principes directeurs
+- **Architecture modulaire** : chaque capability (chat, mémoire, documents, débats, cockpit) est encapsulée (backend service + module frontend dédié).
+- **Sécurité & Auth** : tout appel REST/WS requiert un ID token (mode dev activable via `AUTH_DEV_MODE`).
+- **Observabilité** : instrumentation native (`ws:model_info`, `ws:memory_banner`, `dashboard`), scripts de smoke-tests pour valider les invariants.
+- **Sobriété des coûts** : orchestration multi-fournisseurs (Google → Anthropic → OpenAI) + suivi des coûts (`DashboardService`).
 
 ---
 
-### Phase 3 : Le RAG Maîtrisé (Gestion des Documents)
-* **Objectif Principal :** Permettre l'upload et l'analyse de documents (`.pdf`, `.docx`, `.txt`) pour que les agents puissent s'y référer dans leurs conversations.
-* **Concepts Clés :**
-    - **Parsing & Chunking :** Extraction du texte et découpage en morceaux sémantiques.
-    - **Vectorisation :** Transformation des morceaux de texte en vecteurs pour la recherche sémantique.
-    - **Augmentation de Contexte :** Les agents trouvent les morceaux de documents les plus pertinents et les utilisent pour formuler leurs réponses.
-* **Modules Impactés/Créés :**
-    - `features/documents/` (Nouveau module de feature)
-    - `features/documents/parser.py` (Nouveau)
-    - `database.py` (Étendu pour gérer les collections de vecteurs de documents)
+## État actuel (2025-09)
+- **Chat temps réel** : opérationnel via WS + fallback REST. Threads persistés (SQLite) avec hydratation automatique côté front.
+- **Mémoire STM/LTM** : `MemoryGardener` et `MemoryAnalyzer` en place (analyse globale ou ciblée, purge STM/LTM). Notifications front via `ws:analysis_status` / `ws:memory_banner`.
+- **RAG documents** : upload `.pdf|.txt|.docx`, vectorisation Chroma, sources affichées dans le chat.
+- **Débats multi-agents** : orchestrés par `DebateService`, synthèse finale et export.
+- **Cockpit** : agrégation coûts/sessions/documents exposée via `/api/dashboard/costs/summary` et rendue dans `DashboardModule`.
 
 ---
 
-### Phase 4 : L'Interaction Vocale
-* **Objectif Principal :** Permettre des conversations vocales fluides avec les agents, en particulier sur mobile.
-* **Concepts Clés :**
-    - **Speech-to-Text :** Transcription de la voix de l'utilisateur en texte via une API externe (ex: Whisper).
-    - **Text-to-Speech :** Synthèse de la réponse textuelle de l'agent en audio via une API externe (ex: ElevenLabs).
-    - **Streaming :** Assurer une faible latence pour une conversation naturelle.
-* **Modules Impactés/Créés :**
-    - `features/voice/` (Nouveau module de feature)
-    - `core/websocket.py` (Probablement modifié pour gérer le streaming audio)
+## Roadmap structurée
+
+### P2 — Mémoire vive & consolidation continue (En cours)
+- Optimiser l’expérience utilisateur en cas d’échec auth (toasts explicites, re-prompt GIS).
+- Afficher l’historique de consolidation (`GET /api/memory/tend-garden`) dans l’UI mémoire.
+- Couvrir `memory:clear` par tests automatisés (smoke + unitaires ciblés).
+
+### P3 — RAG maîtrisé (Stabilisé)
+- Étendre les formats supportés (Markdown, HTML léger) en assurant la purge d’embeddings.
+- Ajout de filtres RAG côté UI (sélection docs par thread).
+
+### P4 — Interaction vocale (À cadrer)
+- POC micro front (enregistrement + streaming) + intégration STT/TTS avec fallback texte.
+- Définir la stratégie coût/latence (modèles vocaux vs. LLM existants).
+
+### P5 — Analyse d’images (À venir)
+- Inventaire des APIs multimodales compatibles (GPT-4o, Gemini 1.5).
+- Adapter `ChatService` pour l’injection d’assets binaires et la diffusion des résultats.
+
+### P6 — Agent connecté (Backlog)
+- Design du `WebConnector` (scraping sécurisé, caches).
+- Définir les politiques d’usage (quota, journalisation).
+
+### P7 — Cockpit étendu (Itératif)
+- Décomposer les coûts par fournisseur/modèle.
+- Ajouter la santé des services (vector store, latence WS) et une timeline d’événements.
 
 ---
 
-### Phase 5 : L'Analyse d'Images
-* **Objectif Principal :** Permettre de soumettre une image aux agents pour analyse ou discussion.
-* **Concepts Clés :**
-    - **Modèles Multimodaux :** Utilisation de la capacité des modèles récents (GPT-4o, Gemini 1.5) à interpréter des images.
-    - **Description Textuelle :** Le modèle décrit l'image en interne pour que le contexte puisse être utilisé par tous les agents.
-* **Modules Impactés/Créés :**
-    - `features/images/` (Nouveau module de feature)
+## Étapes immédiates (Priorités Semaine Courante)
+1. **Stabilité Auth** : implémenter une remontée visuelle côté front lorsque `ensureCurrentThread()` échoue (message “Connexion requise”).
+2. **Tests mémoire** : exécuter `tests/run_all.ps1` + ajouter un scénario ciblé `memory:clear` (script dédié ou extension existant).
+3. **Documentation UX** : compléter `docs/Memoire.md` (présent document) avec captures/flows pour guider la QA manuelle.
+4. **Surveillance vector store** : planifier un run hebdo de `tests/test_vector_store_reset.ps1` pour sécuriser l’auto-reset.
 
 ---
 
-### Phase 6 : L'Agent Connecté (Accès Web)
-* **Objectif Principal :** Donner aux agents la capacité de chercher des informations en temps réel sur le web.
-* **Concepts Clés :**
-    - **Mode Curateur (Proactif) :** Suggérer des articles ou lectures en se basant sur les concepts d'une session terminée.
-    - **Mode Chercheur (Réactif) :** Lancer une recherche web sur demande explicite de l'utilisateur.
-    - **Tool Use / Function Calling :** Utilisation des capacités natives des LLMs à appeler des outils externes.
-* **Modules Impactés/Créés :**
-    - `features/tools/web_connector.py` (Nouveau)
+## Risques & points de vigilance
+- **Dépendances API** : absence de clé IA → erreur serveur (`500`). Préparer un mode “limité” pour les environnements dépourvus de clés.
+- **Téléchargement SBERT** : premier appel long (cache local). Prévoir warm-up lors du déploiement.
+- **Échecs silencieux** : beaucoup d’erreurs sont loguées sans feedback utilisateur (auth, WS). Nécessité de toasts/CTA.
+- **Vector store** : corruption possible (SQLite). Conserver les backups automatiques `vector_store_backup_*`.
 
 ---
 
-### Phase 7 : Le Cockpit de Pilotage (Tableau de Bord)
-* **Objectif Principal :** Fournir une interface claire pour maîtriser les coûts, surveiller la performance et comprendre l'usage de l'application.
-* **Concepts Clés :**
-    - **Gestion des Coûts :** Suivi par session, par agent, par fonctionnalité, avec un système d'alertes.
-    - **Santé du Système :** Monitoring de la base de données, latence des API, performance de la recherche.
-    - **Analyse d'Usage :** Statistiques sur les agents, modes et concepts les plus utilisés.
-* **Modules Impactés/Créés :**
-    - `features/dashboard/` (Nouveau module de feature backend + frontend)
-    - `core/system_monitor.py` (Nouveau)
-
----
+## Références
+- Architecture détaillée : `docs/architecture/*.md`
+- Mémoire progressive : `docs/Memoire.md`
+- Tests : `tests/run_all.ps1`, `tests/test_vector_store_reset.ps1`, `tests/test_vector_store_force_backup.ps1`
