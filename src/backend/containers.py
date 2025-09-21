@@ -63,21 +63,38 @@ _VOICE_TTS_VOICE_DEFAULT = "a_voice_id_here"
 # ----------------------------
 def _get_db_path(settings: Settings) -> str:
     """
-    Préfère settings.db.path, tolère db.PATH/URL/url, sinon EMERGENCE_DB_PATH, défaut ./data/emergence.db
+    Préfère settings.db.filepath/path, tolère db.PATH/URL/url, sinon EMERGENCE_DB_PATH, défaut ./data/emergence.db
     Retour absolu.
     """
     cand: Optional[str] = None
     try:
         db = getattr(settings, "db", None)
-        for key in ("path", "PATH", "url", "URL"):
-            val = getattr(db, key, None) if db is not None else None
-            if isinstance(val, str) and val.strip():
-                cand = val.strip()
-                break
+        keys = ("filepath", "file_path", "path", "PATH", "url", "URL")
+        if db is not None:
+            if isinstance(db, dict):
+                for key in keys:
+                    val = db.get(key)
+                    if isinstance(val, Path):
+                        cand = str(val)
+                        break
+                    if isinstance(val, str) and val.strip():
+                        cand = val.strip()
+                        break
+            else:
+                for key in keys:
+                    val = getattr(db, key, None)
+                    if isinstance(val, Path):
+                        cand = str(val)
+                        break
+                    if isinstance(val, str) and val.strip():
+                        cand = val.strip()
+                        break
     except Exception:
         cand = None
     if not cand:
-        cand = os.getenv("EMERGENCE_DB_PATH")
+        env_val = os.getenv("EMERGENCE_DB_PATH")
+        if isinstance(env_val, str) and env_val.strip():
+            cand = env_val.strip()
     if not cand:
         cand = "./data/emergence.db"
     return str(Path(cand).resolve())
@@ -89,15 +106,32 @@ def _get_vector_dir(settings: Settings) -> str:
     cand: Optional[str] = None
     try:
         vec = getattr(settings, "vector", None)
-        for key in ("persist_directory", "dir", "path"):
-            val = getattr(vec, key, None) if vec is not None else None
-            if isinstance(val, str) and val.strip():
-                cand = val.strip()
-                break
+        keys = ("persist_directory", "persist_dir", "dir", "path")
+        if vec is not None:
+            if isinstance(vec, dict):
+                for key in keys:
+                    val = vec.get(key)
+                    if isinstance(val, Path):
+                        cand = str(val)
+                        break
+                    if isinstance(val, str) and val.strip():
+                        cand = val.strip()
+                        break
+            else:
+                for key in keys:
+                    val = getattr(vec, key, None)
+                    if isinstance(val, Path):
+                        cand = str(val)
+                        break
+                    if isinstance(val, str) and val.strip():
+                        cand = val.strip()
+                        break
     except Exception:
         cand = None
     if not cand:
-        cand = os.getenv("EMERGENCE_VECTOR_DIR")
+        env_val = os.getenv("EMERGENCE_VECTOR_DIR")
+        if isinstance(env_val, str) and env_val.strip():
+            cand = env_val.strip()
     if not cand:
         cand = "./data/vector_store"
     return str(Path(cand).resolve())

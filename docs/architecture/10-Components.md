@@ -28,4 +28,4 @@
 ## Qualité / Observabilité
 - Logs structurés (niveau service) + toasts front pour surfacer auth/token manquants.
 - Tests rapides : `tests/run_all.ps1` (smoke API), `tests/test_vector_store_reset.ps1`, `tests/test_vector_store_force_backup.ps1`.
-- Points de vigilance : latence chargement SBERT (première requête), dépendances clés (`GOOGLE_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`).
+- Points de vigilance : latence chargement SBERT (première requête), dépendances clés (`GOOGLE_API_KEY` (alias `GEMINI_API_KEY`), `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`).

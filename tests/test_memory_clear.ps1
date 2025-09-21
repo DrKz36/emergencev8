@@ -14,10 +14,6 @@
 # Usage :
 #   pwsh -File tests/test_memory_clear.ps1 [-BaseUrl http://...] [-AuthToken <JWT>] [-SessionId <custom>]
 #
-try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
-$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
-$ErrorActionPreference = "Stop"
-
 [CmdletBinding()]
 param(
     [string]$BaseUrl = "http://127.0.0.1:8000",
@@ -29,6 +25,10 @@ param(
     [string]$Collection = "emergence_knowledge",
     [string]$AuthToken = $env:EMERGENCE_ID_TOKEN
 )
+
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
+$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
+$ErrorActionPreference = "Stop"
 
 if (-not $SessionId -or -not $SessionId.Trim()) {
     $SessionId = "memclr-" + ([Guid]::NewGuid().ToString("N"))

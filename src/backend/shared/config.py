@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Optional, Dict, Any
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # --- CHEMINS DE BASE ---
@@ -44,9 +45,9 @@ class PathSettings(BaseSettings):
 
 class Settings(BaseSettings):
     # ClÃ©s API et configurations diverses
-    openai_api_key: str
-    google_api_key: str
-    anthropic_api_key: str
+    openai_api_key: Optional[str] = None
+    google_api_key: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
     gemini_api_key: Optional[str] = None
     elevenlabs_api_key: Optional[str] = None
     elevenlabs_voice_id: Optional[str] = None
@@ -66,6 +67,21 @@ class Settings(BaseSettings):
     db: DbSettings = DbSettings()
     vector: VectorSettings = VectorSettings()
     paths: PathSettings = PathSettings()
+
+    @model_validator(mode="after")
+    def _synchronize_provider_keys(self) -> "Settings":
+        google_key = self.google_api_key or self.gemini_api_key
+        if not google_key:
+            raise ValueError("GOOGLE_API_KEY or GEMINI_API_KEY must be provided.")
+        object.__setattr__(self, "google_api_key", google_key)
+        if self.gemini_api_key is None:
+            object.__setattr__(self, "gemini_api_key", google_key)
+
+        missing = [name for name in ("openai_api_key", "anthropic_api_key") if not getattr(self, name)]
+        if missing:
+            missing_env = ", ".join(name.upper() for name in missing)
+            raise ValueError(f"Missing required API keys: {missing_env}")
+        return self
 
     model_config = SettingsConfigDict(
         case_sensitive=False,

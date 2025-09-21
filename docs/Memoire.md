@@ -63,10 +63,16 @@
 ## 4. Observabilité & tests
 - Logs : `memory:garden:start`, `memory:garden:done`, `memory:clear`.
 - Tests recommandés :
-  - `tests/run_all.ps1` (vérifie `/api/memory/tend-garden`).
-  - Ajout à prévoir : scénario dédié `tests/test_memory_clear.ps1` (statut TODO).
+  - `tests/run_all.ps1` (verifie `/api/memory/tend-garden`).
+  - `tests/test_memory_clear.ps1` (valide la purge STM/LTM et les embeddings). Pre-requis : backend local sur http://127.0.0.1:8000, dependances Python installees, variable `EMERGENCE_ID_TOKEN` si auth activee. Exemple : `powershell -ExecutionPolicy Bypass -File tests/test_memory_clear.ps1 -BaseUrl http://localhost:8000`.
+    - `tests/test_vector_store_reset.ps1` (controle la remise a zero et les backups du vector store).
 - Métriques front : affichage du modèle, TTFB mémoire, nombre d’items injectés.
 
+
+### Journal d'exécution (2025-09-21)
+- `pytest tests/backend/shared/test_config.py`: ÉCHEC – 3 assertions sont tombées car `Settings` charge les clés définies dans `.env` (`GOOGLE_API_KEY`, `GEMINI_API_KEY`) avant les paramètres fournis; valider si les tests doivent neutraliser ces variables d'environnement.
+- `tests/run_all.ps1`: OK – santé API, dashboard, documents et upload `test_upload.txt` (#14) validés, aucun code 5xx observé.
+- `tests/test_memory_clear.ps1 -BaseUrl http://127.0.0.1:8000`: ÉCHEC – insertion de la session factice réussie mais aucun embedding n'est généré après `tend-garden` (compteur à 0, script arrêté avec «Aucun vecteur créé…»); investigation backend/vector store requise.
 ## 5. UX & actions utilisateur
 - **Badges mémoire** : indiquer clairement si STM/LTM ont été injectées dans la dernière réponse agent.
 - **Journal** : prévoir un panneau listant les dernières consolidations (`lastRunAt`, `thread_id`, `model`).
@@ -76,7 +82,8 @@
 1. Ajouter une remontée UI lorsqu’une consolidation échoue (toast + bouton retry).
 2. Exposer dans l’UI l’historique renvoyé par `GET /api/memory/tend-garden`.
 3. Documenter un guide QA (checklist) pour valider la cohérence STM vs LTM après `memory:clear`.
-4. Script de test `tests/test_memory_clear.ps1` (à créer) pour couvrir la purge (STM + LTM + embeddings).
+  4. Integrer le script `tests/test_memory_clear.ps1` (disponible) dans la checklist QA et l'automatiser apres chaque purge majeure (voir section Observabilite & tests).
+  5. Planifier une execution hebdomadaire de `tests/test_vector_store_reset.ps1` et `tests/test_memory_clear.ps1` (journaliser les resultats et les horodatages).
 
 ## 7. Parcours utilisateur détaillés
 ### 7.1. Consolidation globale

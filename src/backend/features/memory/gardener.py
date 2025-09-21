@@ -1451,7 +1451,7 @@ class MemoryGardener:
         now_dt = datetime.now(timezone.utc)
         now_iso = now_dt.isoformat()
         try:
-            snapshot = self.knowledge_collection.get(include=["ids", "metadatas"])
+            snapshot = self.knowledge_collection.get(include=["metadatas"])
         except Exception as e:
             logger.warning(f"[decay] collection read failed: {e}", exc_info=True)
             snapshot = {}
@@ -1638,3 +1638,4 @@ class MemoryGardener:
             )
         except Exception as e:
             logger.warning(f"[decay] monitoring insert failed: {e}", exc_info=True)
+
