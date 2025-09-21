@@ -1,76 +1,90 @@
-# 🗺️ Roadmap Stratégique - ÉMERGENCE V8.0
+﻿# ðŸ—ºï¸ Roadmap StratÃ©gique - Ã‰MERGENCE V8.0
 
 *Version : 2025-09-14*
 
-Cette feuille de route consolide la vision V8 en décrivant l’état courant et les jalons à venir. Elle articule les piliers (chat multi-agents, mémoire progressive, RAG, cockpit, débats) et priorise les chantiers en fonction des risques identifiés.
+Cette feuille de route consolide la vision V8 en dÃ©crivant lâ€™Ã©tat courant et les jalons Ã  venir. Elle articule les piliers (chat multi-agents, mÃ©moire progressive, RAG, cockpit, dÃ©bats) et priorise les chantiers en fonction des risques identifiÃ©s.
 
 ---
 
 ## Principes directeurs
-- **Architecture modulaire** : chaque capability (chat, mémoire, documents, débats, cockpit) est encapsulée (backend service + module frontend dédié).
-- **Sécurité & Auth** : tout appel REST/WS requiert un ID token (mode dev activable via `AUTH_DEV_MODE`).
-- **Observabilité** : instrumentation native (`ws:model_info`, `ws:memory_banner`, `dashboard`), scripts de smoke-tests pour valider les invariants.
-- **Sobriété des coûts** : orchestration multi-fournisseurs (Google → Anthropic → OpenAI) + suivi des coûts (`DashboardService`).
+- **Architecture modulaire** : chaque capability (chat, mÃ©moire, documents, dÃ©bats, cockpit) est encapsulÃ©e (backend service + module frontend dÃ©diÃ©).
+- **SÃ©curitÃ© & Auth** : tout appel REST/WS requiert un ID token (mode dev activable via `AUTH_DEV_MODE`).
+- **ObservabilitÃ©** : instrumentation native (`ws:model_info`, `ws:memory_banner`, `dashboard`), scripts de smoke-tests pour valider les invariants.
+## Phase 2 : La Mémoire Vive (Fondation)
+* **Objectif principal :** Donner à ÉMERGENCE une mémoire persistante, intelligente et capable d’oubli sélectif.
+* **Concepts clés :**
+    - **Sauvegarde intégrale :** Stockage de chaque session (dialogues, débats, métadonnées) dans un champ JSON unique.
+    - **Analyse sémantique :** Extraction automatique de thèmes, concepts et entités de chaque session.
+    - **Score de vivacité & oubli :** Simulation d’un mécanisme d’oubli en faisant décroître un « score de pertinence » dans le temps pour prioriser les souvenirs récents ou importants.
+* **État d’avancement (Phase 2 - Mémoire) :**
+    - Chaque concept/fait vectorisé embarque des métadonnées de vitalité (`vitality`, `usage_count`, `last_access_at`, `last_decay_at`).
+    - Le Jardinier applique à chaque ronde une décroissance progressive (base + bonus selon l’ancienneté) et purge les souvenirs sous le seuil de vivacité.
+    - Les rappels conversationnels rehaussent la vitalité des souvenirs consultés et ignorent ceux en dessous du seuil de rappel.
+* **Modules impactés/créés :**
+    - `core/database.py` (modifié)
+    - `core/session_manager.py` (nouveau)
+    - `features/memory/analyzer.py` (nouveau)
+    - `features/memory/gardener.py` (nouveau, pour l’oubli)
+    - `core/temporal_search.py` (nouveau)
+
+
+## Ã‰tat actuel (2025-09)
+- **Chat temps rÃ©el** : opÃ©rationnel via WS + fallback REST. Threads persistÃ©s (SQLite) avec hydratation automatique cÃ´tÃ© front.
+- **MÃ©moire STM/LTM** : `MemoryGardener` et `MemoryAnalyzer` en place (analyse globale ou ciblÃ©e, purge STM/LTM). Notifications front via `ws:analysis_status` / `ws:memory_banner`.
+- **RAG documents** : upload `.pdf|.txt|.docx`, vectorisation Chroma, sources affichÃ©es dans le chat.
+- **DÃ©bats multi-agents** : orchestrÃ©s par `DebateService`, synthÃ¨se finale et export.
+- **Cockpit** : agrÃ©gation coÃ»ts/sessions/documents exposÃ©e via `/api/dashboard/costs/summary` et rendue dans `DashboardModule`.
 
 ---
 
-## État actuel (2025-09)
-- **Chat temps réel** : opérationnel via WS + fallback REST. Threads persistés (SQLite) avec hydratation automatique côté front.
-- **Mémoire STM/LTM** : `MemoryGardener` et `MemoryAnalyzer` en place (analyse globale ou ciblée, purge STM/LTM). Notifications front via `ws:analysis_status` / `ws:memory_banner`.
-- **RAG documents** : upload `.pdf|.txt|.docx`, vectorisation Chroma, sources affichées dans le chat.
-- **Débats multi-agents** : orchestrés par `DebateService`, synthèse finale et export.
-- **Cockpit** : agrégation coûts/sessions/documents exposée via `/api/dashboard/costs/summary` et rendue dans `DashboardModule`.
+## Roadmap structurÃ©e
 
----
+### P2 â€” MÃ©moire vive & consolidation continue (En cours)
+- Optimiser lâ€™expÃ©rience utilisateur en cas dâ€™Ã©chec auth (toasts explicites, re-prompt GIS).
+- Afficher lâ€™historique de consolidation (`GET /api/memory/tend-garden`) dans lâ€™UI mÃ©moire.
+- Couvrir `memory:clear` par tests automatisÃ©s (smoke + unitaires ciblÃ©s).
+- Consolider la mÃ©moire persistante : sauvegarde intÃ©grale des sessions (JSON), analyse sÃ©mantique (thÃ¨mes, concepts, entitÃ©s) et score de vivacitÃ© dÃ©crÃ©mentÃ© dans le temps pour orchestrer lâ€™oubli via le `MemoryGardener`.
+- Modules concernÃ©s : `core/database.py`, `core/session_manager.py`, `features/memory/analyzer.py`, `features/memory/gardener.py`, `core/temporal_search.py`.
 
-## Roadmap structurée
+### P3 â€” RAG maÃ®trisÃ© (StabilisÃ©)
+- Ã‰tendre les formats supportÃ©s (Markdown, HTML lÃ©ger) en assurant la purge dâ€™embeddings.
+- Ajout de filtres RAG cÃ´tÃ© UI (sÃ©lection docs par thread).
 
-### P2 — Mémoire vive & consolidation continue (En cours)
-- Optimiser l’expérience utilisateur en cas d’échec auth (toasts explicites, re-prompt GIS).
-- Afficher l’historique de consolidation (`GET /api/memory/tend-garden`) dans l’UI mémoire.
-- Couvrir `memory:clear` par tests automatisés (smoke + unitaires ciblés).
-- Consolider la mémoire persistante : sauvegarde intégrale des sessions (JSON), analyse sémantique (thèmes, concepts, entités) et score de vivacité décrémenté dans le temps pour orchestrer l’oubli via le `MemoryGardener`.
-- Modules concernés : `core/database.py`, `core/session_manager.py`, `features/memory/analyzer.py`, `features/memory/gardener.py`, `core/temporal_search.py`.
+### P4 â€” Interaction vocale (Ã€ cadrer)
+- POC micro front (enregistrement + streaming) + intÃ©gration STT/TTS avec fallback texte.
+- DÃ©finir la stratÃ©gie coÃ»t/latence (modÃ¨les vocaux vs. LLM existants).
 
-### P3 — RAG maîtrisé (Stabilisé)
-- Étendre les formats supportés (Markdown, HTML léger) en assurant la purge d’embeddings.
-- Ajout de filtres RAG côté UI (sélection docs par thread).
-
-### P4 — Interaction vocale (À cadrer)
-- POC micro front (enregistrement + streaming) + intégration STT/TTS avec fallback texte.
-- Définir la stratégie coût/latence (modèles vocaux vs. LLM existants).
-
-### P5 — Analyse d’images (À venir)
+### P5 â€” Analyse dâ€™images (Ã€ venir)
 - Inventaire des APIs multimodales compatibles (GPT-4o, Gemini 1.5).
-- Adapter `ChatService` pour l’injection d’assets binaires et la diffusion des résultats.
+- Adapter `ChatService` pour lâ€™injection dâ€™assets binaires et la diffusion des rÃ©sultats.
 
-### P6 — Agent connecté (Backlog)
-- Design du `WebConnector` (scraping sécurisé, caches).
-- Définir les politiques d’usage (quota, journalisation).
+### P6 â€” Agent connectÃ© (Backlog)
+- Design du `WebConnector` (scraping sÃ©curisÃ©, caches).
+- DÃ©finir les politiques dâ€™usage (quota, journalisation).
 
-### P7 — Cockpit étendu (Itératif)
-- Décomposer les coûts par fournisseur/modèle.
-- Ajouter la santé des services (vector store, latence WS) et une timeline d’événements.
+### P7 â€” Cockpit Ã©tendu (ItÃ©ratif)
+- DÃ©composer les coÃ»ts par fournisseur/modÃ¨le.
+- Ajouter la santÃ© des services (vector store, latence WS) et une timeline dâ€™Ã©vÃ©nements.
 
 ---
 
-## Étapes immédiates (Priorités Semaine Courante)
-1. **Stabilité Auth** : implémenter une remontée visuelle côté front lorsque `ensureCurrentThread()` échoue (message “Connexion requise”).
-2. **Tests mémoire** : exécuter `tests/run_all.ps1` + ajouter un scénario ciblé `memory:clear` (script dédié ou extension existant).
-3. **Documentation UX** : compléter `docs/Memoire.md` (présent document) avec captures/flows pour guider la QA manuelle.
-4. **Surveillance vector store** : planifier un run hebdo de `tests/test_vector_store_reset.ps1` pour sécuriser l’auto-reset.
+## Ã‰tapes immÃ©diates (PrioritÃ©s Semaine Courante)
+1. **StabilitÃ© Auth** : implÃ©menter une remontÃ©e visuelle cÃ´tÃ© front lorsque `ensureCurrentThread()` Ã©choue (message â€œConnexion requiseâ€).
+2. **Tests mÃ©moire** : exÃ©cuter `tests/run_all.ps1` + ajouter un scÃ©nario ciblÃ© `memory:clear` (script dÃ©diÃ© ou extension existant).
+3. **Documentation UX** : complÃ©ter `docs/Memoire.md` (prÃ©sent document) avec captures/flows pour guider la QA manuelle.
+4. **Surveillance vector store** : planifier un run hebdo de `tests/test_vector_store_reset.ps1` pour sÃ©curiser lâ€™auto-reset.
 
 ---
 
 ## Risques & points de vigilance
-- **Dépendances API** : absence de clé IA → erreur serveur (`500`). Préparer un mode “limité” pour les environnements dépourvus de clés.
-- **Téléchargement SBERT** : premier appel long (cache local). Prévoir warm-up lors du déploiement.
-- **Échecs silencieux** : beaucoup d’erreurs sont loguées sans feedback utilisateur (auth, WS). Nécessité de toasts/CTA.
+- **DÃ©pendances API** : absence de clÃ© IA â†’ erreur serveur (`500`). PrÃ©parer un mode â€œlimitÃ©â€ pour les environnements dÃ©pourvus de clÃ©s.
+- **TÃ©lÃ©chargement SBERT** : premier appel long (cache local). PrÃ©voir warm-up lors du dÃ©ploiement.
+- **Ã‰checs silencieux** : beaucoup dâ€™erreurs sont loguÃ©es sans feedback utilisateur (auth, WS). NÃ©cessitÃ© de toasts/CTA.
 - **Vector store** : corruption possible (SQLite). Conserver les backups automatiques `vector_store_backup_*`.
 
 ---
 
-## Références
-- Architecture détaillée : `docs/architecture/*.md`
-- Mémoire progressive : `docs/Memoire.md`
+## RÃ©fÃ©rences
+- Architecture dÃ©taillÃ©e : `docs/architecture/*.md`
+- MÃ©moire progressive : `docs/Memoire.md`
 - Tests : `tests/run_all.ps1`, `tests/test_vector_store_reset.ps1`, `tests/test_vector_store_force_backup.ps1`
