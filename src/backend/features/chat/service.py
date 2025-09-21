@@ -30,6 +30,10 @@ from backend.features.memory.gardener import MemoryGardener
 
 logger = logging.getLogger(__name__)
 
+VITALITY_RECALL_THRESHOLD = getattr(MemoryGardener, "RECALL_THRESHOLD", 0.3)
+VITALITY_MAX = getattr(MemoryGardener, "MAX_VITALITY", 1.0)
+VITALITY_USAGE_BOOST = getattr(MemoryGardener, "USAGE_BOOST", 0.2)
+
 # Prix indicatifs (USD / token) — à vérifier en session connectée.
 MODEL_PRICING = {
     "gpt-4o-mini": {"input": 0.15 / 1_000_000, "output": 0.60 / 1_000_000},
@@ -346,6 +350,7 @@ class ChatService:
                 knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
                 self._knowledge_collection = self.vector_service.get_or_create_collection(knowledge_name)
 
+            knowledge_col = self._knowledge_collection
             where_filter = None
             uid = self._try_get_user_id(session_id)
             clauses: List[Dict[str, Any]] = []
@@ -360,7 +365,7 @@ class ChatService:
                 where_filter = {"$and": clauses}
 
             results = self.vector_service.query(
-                collection=self._knowledge_collection,
+                collection=knowledge_col,
                 query_text=last_user_message,
                 n_results=top_k,
                 where_filter=where_filter,
@@ -369,21 +374,56 @@ class ChatService:
             if (not results) and ag and uid:
                 try:
                     results = self.vector_service.query(
-                        collection=self._knowledge_collection,
+                        collection=knowledge_col,
                         query_text=last_user_message,
                         n_results=top_k,
-                        where_filter={"user_id": uid},
+                        where_filter={
+                            "$and": [
+                                {"user_id": uid},
+                                {"vitality": {"$gte": VITALITY_RECALL_THRESHOLD}},
+                            ]
+                        },
                     )
                 except Exception:
                     pass
 
             if not results:
                 return ""
-            lines = []
+            lines: List[str] = []
+            touched_ids: List[str] = []
+            touched_metas: List[Dict[str, Any]] = []
+            touch_ts = datetime.now(timezone.utc).isoformat()
+
             for r in results:
                 t = (r.get("text") or "").strip()
                 if t:
                     lines.append(f"- {t}")
+                vec_id = r.get("id")
+                meta = r.get("metadata")
+                if not vec_id or not isinstance(meta, dict):
+                    continue
+                updated_meta = dict(meta)
+                prev_usage = updated_meta.get("usage_count", 0)
+                try:
+                    updated_meta["usage_count"] = int(prev_usage) + 1
+                except Exception:
+                    updated_meta["usage_count"] = 1
+                prev_vitality = updated_meta.get("vitality", VITALITY_MAX)
+                try:
+                    prev_vitality = float(prev_vitality)
+                except (TypeError, ValueError):
+                    prev_vitality = VITALITY_MAX
+                updated_meta["vitality"] = min(
+                    VITALITY_MAX, round(prev_vitality + VITALITY_USAGE_BOOST, 4)
+                )
+                updated_meta["last_access_at"] = touch_ts
+                touched_ids.append(str(vec_id))
+                touched_metas.append(updated_meta)
+            if touched_ids and knowledge_col is not None:
+                try:
+                    self.vector_service.update_metadatas(knowledge_col, touched_ids, touched_metas)
+                except Exception as err:
+                    logger.warning(f"Impossible de mettre à jour la vitalité mémoire: {err}")
             return "\n".join(lines[:top_k])
         except Exception as e:
             logger.warning(f"build_memory_context: {e}")

@@ -12,6 +12,23 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 - **Observabilité** : instrumentation native (`ws:model_info`, `ws:memory_banner`, `dashboard`), scripts de smoke-tests pour valider les invariants.
 - **Sobriété des coûts** : orchestration multi-fournisseurs (Google → Anthropic → OpenAI) + suivi des coûts (`DashboardService`).
 
+## Phase 2 : La Mémoire Vive (Fondation)
+* **Objectif principal :** Donner à ÉMERGENCE une mémoire persistante, intelligente et capable d’oubli sélectif.
+* **Concepts clés :**
+    - **Sauvegarde intégrale :** Stockage de chaque session (dialogues, débats, métadonnées) dans un champ JSON unique.
+    - **Analyse sémantique :** Extraction automatique de thèmes, concepts et entités de chaque session.
+    - **Score de vivacité & oubli :** Simulation d’un mécanisme d’oubli en faisant décroître un « score de pertinence » dans le temps pour prioriser les souvenirs récents ou importants.
+* **État d’avancement (Phase 2 - Mémoire) :**
+    - Chaque concept/fait vectorisé embarque des métadonnées de vitalité (`vitality`, `usage_count`, `last_access_at`, `last_decay_at`).
+    - Le Jardinier applique à chaque ronde une décroissance progressive (base + bonus selon l’ancienneté) et purge les souvenirs sous le seuil de vivacité.
+    - Les rappels conversationnels rehaussent la vitalité des souvenirs consultés et ignorent ceux en dessous du seuil de rappel.
+* **Modules impactés/créés :**
+    - `core/database.py` (modifié)
+    - `core/session_manager.py` (nouveau)
+    - `features/memory/analyzer.py` (nouveau)
+    - `features/memory/gardener.py` (nouveau, pour l’oubli)
+    - `core/temporal_search.py` (nouveau)
+
 ---
 
 ## État actuel (2025-09)
