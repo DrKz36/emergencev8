@@ -68,8 +68,15 @@ function Invoke-PythonBlock {
     Set-Content -Path $tmpPath -Value $Code -Encoding UTF8
     try {
         Write-Host "▶ python ($Description)" -ForegroundColor DarkGray
-        $output = & python $tmpPath 2>&1
-        $exit = $LASTEXITCODE
+        # Allow Chromadb telemetry warnings on stderr without aborting the test.
+        $prevPreference = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        try {
+            $output = & python $tmpPath 2>&1
+            $exit = $LASTEXITCODE
+        } finally {
+            $ErrorActionPreference = $prevPreference
+        }
         if ($output) { $output | ForEach-Object { Write-Host $_ } }
         if ($exit -ne 0) {
             throw "Bloc Python '$Description' en erreur (exit=$exit)."
@@ -132,11 +139,13 @@ Invoke-PythonBlock -Code $seedCode -Description "seed session" | Out-Null
 $vectorCountCode = @"
 import json, pathlib
 import chromadb
+from chromadb.config import Settings
 
 repo_root = pathlib.Path(r"$repoRootEsc")
 vector_dir = pathlib.Path(r"$vectorDirEsc")
 vector_dir.mkdir(parents=True, exist_ok=True)
-client = chromadb.PersistentClient(path=str(vector_dir))
+# Disable Chromadb telemetry to avoid stderr noise during checks.
+client = chromadb.PersistentClient(path=str(vector_dir), settings=Settings(anonymized_telemetry=False))
 col = client.get_or_create_collection(name="$Collection")
 res = col.get(where={"source_session_id": "$SessionId"})
 ids = res.get("ids") or []
