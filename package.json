@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test": "node --test",
     "preview": "vite preview",
     "backend": "python run_backend.py",
     "start": "concurrently \"npm run backend\" \"npm run dev\"",
