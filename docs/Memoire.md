@@ -73,6 +73,9 @@
 - `pytest tests/backend/shared/test_config.py`: ÉCHEC – 3 assertions sont tombées car `Settings` charge les clés définies dans `.env` (`GOOGLE_API_KEY`, `GEMINI_API_KEY`) avant les paramètres fournis; valider si les tests doivent neutraliser ces variables d'environnement.
 - `tests/run_all.ps1`: OK – santé API, dashboard, documents et upload `test_upload.txt` (#14) validés, aucun code 5xx observé.
 - `tests/test_memory_clear.ps1 -BaseUrl http://127.0.0.1:8000`: ÉCHEC – insertion de la session factice réussie mais aucun embedding n'est généré après `tend-garden` (compteur à 0, script arrêté avec «Aucun vecteur créé…»); investigation backend/vector store requise.
+- `tests/test_memory_clear.ps1`: ÉCHEC (21/09 soir) – le script s'interrompt sur l'erreur Chromadb «Failed to send telemetry event ... capture() takes 1 positional argument but 3 were given». Ajout d'un `Settings(anonymized_telemetry=False)` sur `PersistentClient` et encapsulation des appels Python avec `$ErrorActionPreference = "Continue"` pour tolérer ces warnings.
+- `tests/test_memory_clear.ps1`: OK (x2) – après le correctif, les runs successifs créent 2 vecteurs pour la session de test, `memory:clear` retourne `ltm_deleted = ltm_before = 2` et les colonnes `summary/concepts/entities` repassent à `NULL`. Les warnings Chromadb subsistent mais n'interrompent plus l'exécution (surveillance upstream).
+
 ## 5. UX & actions utilisateur
 - **Badges mémoire** : indiquer clairement si STM/LTM ont été injectées dans la dernière réponse agent.
 - **Journal** : prévoir un panneau listant les dernières consolidations (`lastRunAt`, `thread_id`, `model`).
@@ -155,3 +158,4 @@
 - [ ] Réaliser un **clear complet** et contrôler la purge STM/LTM + embeddings (captures : `assets/memoire/modal-clear.png`, `assets/memoire/bandeau-vide.png`).
 - [ ] **Tester le scénario d’erreur** (LLM indisponible) et confirmer la présence du toast + bouton retry (capture : `assets/memoire/toast-erreur.png`).
 - [ ] Vérifier la **cohérence des logs** `memory:garden:*` et `memory:clear` avec les actions réalisées (capture : `assets/memoire/logs-erreur.png`).
+

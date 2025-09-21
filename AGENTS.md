@@ -75,3 +75,14 @@ Ces instructions s'appliquent a tout le depot `emergencev8`.
 10. Rebaser juste avant le push si la branche a diverge.
 11. `git push origin <branche>` et ouvrir la PR.
 12. Apres merge, supprimer les branches obsolete (`git branch -d`, `git push origin --delete`).
+## 12. Harmonisation cloud/local
+- Lancer `pwsh -File scripts/sync-workdir.ps1` (fetch/rebase/tests/push par défaut) au démarrage puis à la fin de chaque session locale ou cloud pour garder l'état aligné.
+- Utiliser les options `-SkipTests`, `-NoPush` ou `-AllowDirty` uniquement en cas de blocage identifié et consigner la raison dans le journal de session.
+- Toujours considérer la branche distante comme source de vérité; travailler sur une seule branche de fonctionnalité par sujet et pousser après chaque session (`git push origin <branche>`).
+- Vérifier que `git status` reste propre avant de quitter un poste; le script échoue par défaut en cas de fichiers non commités (sauf usage explicite de `-AllowDirty`).
+- Préférer `git worktree` ou des branches éphémères plutôt que des stashes pour des travaux longs afin de garder un état reproductible.
+
+### Alternative plus robuste
+- Programmer `scripts/sync-workdir.ps1` (Task Scheduler/cron) sur les postes utilisés fréquemment pour rappeler les synchronisations.
+- Coupler la CI (GitHub Actions) pour reconstruire et tester chaque push vers la branche de travail avant fusion.
+- Activer `pre-commit` avec des hooks de formatage/lint afin d'éviter de pousser des artefacts temporaires.
