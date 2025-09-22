@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # --- CHEMINS DE BASE ---
@@ -14,6 +14,17 @@ SRC_DIR = BASE_DIR / "src"
 BACKEND_DIR = SRC_DIR / "backend"
 DATA_DIR = BACKEND_DIR / "data"
 PROMPTS_DIR = BASE_DIR / "prompts" 
+
+
+DEFAULT_AGENT_CONFIGS: Dict[str, Dict[str, str]] = {
+    "default": {"provider": "google", "model": "gemini-1.5-flash"},
+    "neo": {"provider": "google", "model": "gemini-1.5-flash"},
+    "nexus": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+    "anima": {"provider": "openai", "model": "gpt-4o-mini"},
+}
+
+def _default_agent_configs() -> Dict[str, Any]:
+    return {name: dict(cfg) for name, cfg in DEFAULT_AGENT_CONFIGS.items()}
 
 class RagSettings(BaseSettings):
     ENABLED: bool = True
@@ -55,12 +66,7 @@ class Settings(BaseSettings):
     dev_mode: bool = False
     
     # Configurations des agents
-    agents: Dict[str, Any] = {
-        "default": {"provider": "google", "model": "gemini-1.5-flash"},
-        "neo": {"provider": "google", "model": "gemini-1.5-flash"},
-        "nexus": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
-        "anima": {"provider": "openai", "model": "gpt-4o-mini"},
-    }
+    agents: Dict[str, Any] = Field(default_factory=_default_agent_configs)
     
     # Configurations imbriquÃ©es
     rag: RagSettings = RagSettings()

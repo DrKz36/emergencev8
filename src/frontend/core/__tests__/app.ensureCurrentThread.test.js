@@ -127,3 +127,54 @@ test('ensureCurrentThread ne duplique pas le toast auth', async () => {
     assert.equal(toastEvents.length, 1);
   });
 });
+
+
+test('ensureCurrentThread regenere un thread inaccessible sans auth:missing', async () => {
+  await withStubbedDom(async () => {
+    const state = createStateStub({ threads: { currentId: 'thread-private' } });
+    const bus = createEventBusStub();
+    const originalBootstrap = App.prototype.bootstrapFeatures;
+    App.prototype.bootstrapFeatures = function bootstrapNoop() {};
+    const originalGetThreadById = api.getThreadById;
+    const originalCreateThread = api.createThread;
+
+    const inaccessible = new Error('Thread non accessible pour cet utilisateur');
+    inaccessible.status = 403;
+    inaccessible.detail = 'Thread non accessible pour cet utilisateur';
+
+    const getCalls = [];
+    let createCalls = 0;
+
+    api.getThreadById = async (id) => {
+      getCalls.push(id);
+      if (id === 'thread-private') {
+        throw inaccessible;
+      }
+      return { id, thread: { id }, messages: [], docs: [] };
+    };
+
+    api.createThread = async ({ type, title }) => {
+      createCalls += 1;
+      return { id: 'new-thread-id', thread: { id: 'new-thread-id', type, title } };
+    };
+
+    try {
+      const app = new App(bus, state);
+      await app.ensureCurrentThread();
+    } finally {
+      api.getThreadById = originalGetThreadById;
+      api.createThread = originalCreateThread;
+      App.prototype.bootstrapFeatures = originalBootstrap;
+    }
+
+    assert.equal(state.get('threads.currentId'), 'new-thread-id');
+    const storedThread = state.get('threads.map.new-thread-id');
+    assert.equal(storedThread?.id ?? storedThread?.thread?.id, 'new-thread-id');
+    assert.deepEqual(getCalls, ['thread-private', 'new-thread-id']);
+    assert.equal(createCalls, 1);
+    const authMissingEvents = bus.events.filter(e => e.name === 'auth:missing');
+    assert.equal(authMissingEvents.length, 0);
+    const readyEvents = bus.events.filter(e => e.name === 'threads:ready');
+    assert.equal(readyEvents.at(-1)?.payload?.id, 'new-thread-id');
+  });
+});
