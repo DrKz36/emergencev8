@@ -10,6 +10,8 @@ import { api } from '../shared/api-client.js'; // + Threads API
 import { t } from '../shared/i18n.js';
 
 const AUTH_ERROR_STATUSES = new Set([401, 403, 419, 440]);
+const THREAD_INACCESSIBLE_MARKER = 'thread non accessible pour cet utilisateur';
+const THREAD_INACCESSIBLE_CODES = new Set(['thread_not_accessible', 'thread_inaccessible']);
 
 // [CORRECTION VITE]
 const moduleLoaders = {
@@ -113,7 +115,6 @@ export class App {
     }
   }
 
-
   setupMobileNav() {
     if (this._mobileNavSetup) return;
     const toggle = this.dom.mobileNavToggle;
@@ -164,8 +165,6 @@ export class App {
     return typeof document !== 'undefined' && document.body.classList.contains('brain-panel-open');
   }
 
-
-
   closeMemoryMenu() {
     const handle = typeof window !== 'undefined' ? window.__EMERGENCE_MEMORY__ : null;
     if (handle && typeof handle.close === 'function') {
@@ -175,8 +174,6 @@ export class App {
     }
     this.renderNavigation();
   }
-
-
 
   listenToNavEvents() {
     const root = this.dom.sidebar || document;
@@ -197,7 +194,6 @@ export class App {
     });
   }
 
-
   bootstrapFeatures() { this.showModule(this.activeModule, true); }
 
   clearSkeleton() {
@@ -217,6 +213,53 @@ export class App {
     } catch (err) {
       console.warn('[App] sync sessionId -> threadId impossible', err);
     }
+  }
+
+  _persistCurrentThreadId(threadId) {
+    if (!this._isValidThreadId(threadId)) return;
+    try { this.state.set('threads.currentId', threadId); } catch (err) { console.warn('[App] Impossible de mettre a jour threads.currentId', err); }
+    this._syncSessionWithThread(threadId);
+    try { localStorage.setItem('emergence.threadId', threadId); } catch (_) {}
+  }
+
+  _purgePersistedThreadId(previousId) {
+    try { this.state.set('threads.currentId', null); } catch (err) { console.warn('[App] Impossible de purger threads.currentId', err); }
+    if (previousId) {
+      try { this.state.set(`threads.map.${previousId}`, null); } catch (err) { console.warn('[App] Impossible de purger threads.map', err); }
+    }
+    try { localStorage.removeItem('emergence.threadId'); } catch (_) {}
+  }
+
+  async _recoverInaccessibleThread(previousId) {
+    console.warn(`[App] Thread ${previousId} inaccessible. Regeneration en cours.`);
+    this._purgePersistedThreadId(previousId);
+    const created = await api.createThread({ type: 'chat', title: 'Conversation' });
+    return created?.id ?? null;
+  }
+
+  _isThreadInaccessibleError(error) {
+    if (!error) return false;
+    const status = error?.status ?? error?.response?.status ?? error?.cause?.status ?? null;
+    if (status !== 403 && status !== 404) return false;
+    const codeCandidate = error?.code ?? error?.detail_code ?? error?.errorCode;
+    if (typeof codeCandidate === 'string' && THREAD_INACCESSIBLE_CODES.has(codeCandidate.trim().toLowerCase())) {
+      return true;
+    }
+    const detailCandidates = [
+      error?.detail,
+      error?.message,
+      error?.response?.detail,
+      error?.response?.data?.detail,
+      error?.body?.detail,
+      error?.body?.message,
+      error?.cause?.detail,
+    ].filter((value) => typeof value === 'string' && value);
+    if (!detailCandidates.length) return false;
+    return detailCandidates.some((value) => value.toLowerCase().includes(THREAD_INACCESSIBLE_MARKER));
+  }
+
+  _isValidThreadId(value) {
+    return typeof value === 'string' && value.length >= 8;
   }
 
   async loadModule(moduleId) {
@@ -248,9 +291,9 @@ export class App {
   async ensureCurrentThread() {
     try {
       let currentId = this.state.get('threads.currentId');
-      if (!currentId || typeof currentId !== 'string' || currentId.length < 8) {
+      if (!this._isValidThreadId(currentId)) {
         const list = await api.listThreads({ type: 'chat', limit: 1 });
-        // tolâ”œÂ¿re 'items' ou liste brute
+        // tol├¿re 'items' ou liste brute
         const found = Array.isArray(list?.items) ? list.items[0] : Array.isArray(list) ? list[0] : null;
         if (found?.id) {
           currentId = found.id;
@@ -259,21 +302,39 @@ export class App {
           currentId = created?.id;
         }
       }
-
-      if (currentId) {
-        this.state.set('threads.currentId', currentId);
-        this._syncSessionWithThread(currentId);
-        try { localStorage.setItem('emergence.threadId', currentId); } catch (_) {}
-        this.eventBus.emit('threads:ready', { id: currentId });
-        const thread = await api.getThreadById(currentId, { messages_limit: 50 });
-        if (thread?.id) {
-          this.state.set(`threads.map.${thread.id}`, thread);
-          this._syncSessionWithThread(thread.id);
-          this.eventBus.emit('threads:loaded', thread);
+      if (!this._isValidThreadId(currentId)) {
+        return;
+      }
+      let activeThreadId = currentId;
+      this._persistCurrentThreadId(activeThreadId);
+      this.eventBus.emit('threads:ready', { id: activeThreadId });
+      let threadPayload;
+      try {
+        threadPayload = await api.getThreadById(activeThreadId, { messages_limit: 50 });
+      } catch (threadError) {
+        if (this._isThreadInaccessibleError(threadError)) {
+          const regeneratedId = await this._recoverInaccessibleThread(activeThreadId);
+          if (!this._isValidThreadId(regeneratedId)) {
+            return;
+          }
+          activeThreadId = regeneratedId;
+          this._persistCurrentThreadId(activeThreadId);
+          this.eventBus.emit('threads:ready', { id: activeThreadId });
+          threadPayload = await api.getThreadById(activeThreadId, { messages_limit: 50 });
+        } else {
+          throw threadError;
         }
+      }
+      if (threadPayload?.id) {
+        this.state.set(`threads.map.${threadPayload.id}`, threadPayload);
+        this._syncSessionWithThread(threadPayload.id);
+        this.eventBus.emit('threads:loaded', threadPayload);
       }
     } catch (error) {
       console.error('[App] ensureCurrentThread() a echoue :', error);
+      if (this._isThreadInaccessibleError(error)) {
+        return;
+      }
       const status = error?.status ?? error?.response?.status ?? error?.cause?.status ?? null;
       if (AUTH_ERROR_STATUSES.has(status)) {
         try { this.state.set('auth.hasToken', false); } catch (stateErr) { console.warn('[App] Impossible de mettre a jour auth.hasToken', stateErr); }
@@ -287,7 +348,6 @@ export class App {
       }
     }
   }
-
   async showModule(moduleId, isInitialLoad = false) {
     if (!moduleId || !this.dom.content) return;
     if (this.isMemoryMenuOpen()) this.closeMemoryMenu();
@@ -332,6 +392,4 @@ export class App {
     return container;
   }
 }
-
-
 

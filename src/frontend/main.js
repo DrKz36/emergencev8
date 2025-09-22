@@ -2,6 +2,7 @@
  * @module core/main
  * Point d'entrée universel — PROD sans bundler : aucun import CSS ici.
  */
+import { t } from './shared/i18n.js';
 import { App } from './core/app.js';
 import { EventBus } from './core/event-bus.js';
 import { StateManager } from './core/state-manager.js';
@@ -410,6 +411,17 @@ function installEventBusGuards(eventBus) {
 
 /* --------------- Badge Login (CTA + voyant) --------------- */
 function mountAuthBadge(eventBus) {
+  const ensureAlertStyles = () => {
+    if (document.getElementById('auth-alert-style')) return;
+    const style = document.createElement('style');
+    style.id = 'auth-alert-style';
+    style.textContent = `.auth-alert{display:none;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#fecaca;}
+.auth-badge--alert{border-color:rgba(248,113,113,.65);box-shadow:0 14px 28px rgba(127,29,29,.28);}
+.auth-badge--alert .auth-alert{display:inline-flex;align-items:center;font-weight:600;}`;
+    try { document.head?.appendChild(style); } catch (_) {}
+  };
+
+  ensureAlertStyles();
   const ensureBox = () => {
     let node = document.getElementById('auth-badge');
     if (!node) {
@@ -419,6 +431,7 @@ function mountAuthBadge(eventBus) {
       node.innerHTML = `
         <span id="auth-dot" class="auth-dot" aria-hidden="true"></span>
         <button id="auth-btn" type="button" class="auth-button">Se connecter</button>
+        <span id="auth-alert" class="auth-alert" role="status" aria-live="assertive" aria-hidden="true" hidden></span>
         <span id="model-chip" class="auth-model-chip" role="status" aria-live="polite" style="display:none"></span>
       `;
       document.body.appendChild(node);
@@ -430,12 +443,30 @@ function mountAuthBadge(eventBus) {
   const dot = box.querySelector('#auth-dot');
   const btn = box.querySelector('#auth-btn');
   const chip = box.querySelector('#model-chip');
+  const alertNode = box.querySelector('#auth-alert');
+  const loginRequiredMessage = t('auth.login_required');
 
   const updateChipVisibility = () => {
     if (!chip) return;
     const floating = box.classList.contains('is-floating');
     const hasText = (chip.textContent || '').trim().length > 0;
     chip.style.display = floating && hasText ? 'inline-flex' : 'none';
+  };
+
+  const setAlert = (message = '') => {
+    if (!alertNode) return;
+    const text = (typeof message === 'string' ? message : '').trim();
+    if (text) {
+      alertNode.textContent = text;
+      alertNode.hidden = false;
+      alertNode.setAttribute('aria-hidden', 'false');
+      box.classList.add('auth-badge--alert');
+    } else {
+      alertNode.textContent = '';
+      alertNode.hidden = true;
+      alertNode.setAttribute('aria-hidden', 'true');
+      box.classList.remove('auth-badge--alert');
+    }
   };
 
   const attach = () => {
@@ -450,7 +481,10 @@ function mountAuthBadge(eventBus) {
     updateChipVisibility();
   };
 
-  const setConnected = (ok) => { if (dot) dot.style.background = ok ? '#22c55e' : '#f97316'; };
+  const setConnected = (ok) => {
+    if (dot) dot.style.background = ok ? '#22c55e' : '#f97316';
+    if (ok) setAlert('');
+  };
   const setLogged = (logged) => {
     if (!btn) return;
     btn.textContent = logged ? 'Se déconnecter' : 'Se connecter';
@@ -460,6 +494,7 @@ function mountAuthBadge(eventBus) {
           eventBus.emit('auth:login', {});
           setTimeout(() => { if (!hasToken()) openDevAuth(); }, 300);
         };
+    if (logged) setAlert('');
   };
   const setModel = (provider, model, fallback = false) => {
     if (!chip) return;
@@ -469,9 +504,9 @@ function mountAuthBadge(eventBus) {
   };
 
   // Abonnements d’état
-  eventBus.on?.('auth:missing', () => { setLogged(false); setConnected(false); });
-  eventBus.on?.('auth:logout', () => { setLogged(false); setConnected(false); });
-  eventBus.on?.(EVENTS.WS_CONNECTED || 'ws:connected', () => { setLogged(true); setConnected(true); });
+  eventBus.on?.('auth:missing', () => { setLogged(false); setConnected(false); setAlert(loginRequiredMessage); });
+  eventBus.on?.('auth:logout', () => { setLogged(false); setConnected(false); setAlert(loginRequiredMessage); });
+  eventBus.on?.(EVENTS.WS_CONNECTED || 'ws:connected', () => { setLogged(true); setConnected(true); setAlert(''); });
   eventBus.on?.('ws:close', () => { setConnected(false); });
 
   // Hooks model/meta (affiche le modèle utilisé)

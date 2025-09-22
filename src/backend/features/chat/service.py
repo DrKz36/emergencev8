@@ -9,13 +9,14 @@
 # - V32.1: STYLE_RULES balisés + anti-vouvoiement explicite, prompt_file exposé, _load_prompts -> bundles.
 
 import asyncio
+import inspect
 import glob
 import json
 import logging
 import os
 import re
 from uuid import uuid4
-from typing import Dict, Any, List, Tuple, Optional, AsyncGenerator, cast
+from typing import Dict, Any, List, Tuple, Optional, AsyncGenerator, AsyncIterator, cast
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -30,7 +31,7 @@ from backend.core.cost_tracker import CostTracker
 from backend.core.websocket import ConnectionManager
 from backend.shared.models import AgentMessage, Role, ChatMessage
 from backend.features.memory.vector_service import VectorService
-from backend.shared.config import Settings
+from backend.shared.config import Settings, DEFAULT_AGENT_CONFIGS
 from backend.core import config
 from backend.core.database import queries
 
@@ -151,8 +152,24 @@ class ChatService:
         return {aid: {"text": meta["text"], "file": meta["file"]} for aid, meta in chosen.items()}
 
 
+    def _resolve_agent_configs(self) -> Dict[str, Dict[str, Any]]:
+        base = {name: dict(cfg) for name, cfg in DEFAULT_AGENT_CONFIGS.items()}
+        raw_configs = getattr(self.settings, "agents", None)
+        if isinstance(raw_configs, dict):
+            for name, cfg in raw_configs.items():
+                if not isinstance(cfg, dict):
+                    continue
+                merged = dict(base.get(name, {}))
+                for key, value in cfg.items():
+                    if value is None:
+                        continue
+                    merged[key] = value
+                base[name] = merged
+        return base
+
+
     def _compute_broadcast_agents(self) -> List[str]:
-        agents_cfg = self.settings.agents or {}
+        agents_cfg = self._resolve_agent_configs()
         candidates = [aid for aid in agents_cfg.keys() if aid not in {"default", "global"}]
 
         ordered: List[str] = []
@@ -179,7 +196,7 @@ class ChatService:
           - EMERGENCE_FORCE_CHEAP_ANIMA=1  -> force openai:gpt-4o-mini
         """
         clean_agent_id = (agent_id or "").replace("_lite", "")
-        agent_configs = self.settings.agents or {}
+        agent_configs = self._resolve_agent_configs()
 
         provider_raw = agent_configs.get(clean_agent_id, {}).get("provider")
         model = agent_configs.get(clean_agent_id, {}).get("model")
@@ -468,6 +485,16 @@ class ChatService:
             else:
                 normalized.append({"role": "user" if role in (Role.USER, "user") else "assistant", "content": text})
         return normalized
+
+    async def _ensure_async_stream(
+        self,
+        stream_candidate: Any,
+    ) -> AsyncIterator[str]:
+        if inspect.isawaitable(stream_candidate):
+            stream_candidate = await stream_candidate
+        if hasattr(stream_candidate, "__aiter__"):
+            return stream_candidate
+        raise TypeError("LLM stream must be an awaitable or async iterable")
 
     # ---------- providers (stream) ----------
     async def _get_llm_response_stream(
@@ -803,7 +830,8 @@ class ChatService:
 
             # RAG documents
             rag_context = ""
-            if use_rag and last_user_message:
+            should_search_docs = bool(use_rag and (last_user_message or selected_doc_ids))
+            if should_search_docs:
                 await connection_manager.send_personal_message(
                     {"type": "ws:rag_status", "payload": {"status": "searching", "agent_id": agent_id}}, session_id
                 )
@@ -817,9 +845,14 @@ class ChatService:
                     else:
                         where_filter = {"$or": [{"document_id": did} for did in selected_doc_ids]}
 
+                query_text = (last_user_message or "").strip()
+                if not query_text and selected_doc_ids:
+                    # Fallback ensures we still hit the vector store when docs are explicitly selected.
+                    query_text = " ".join(f"document:{doc_id}" for doc_id in selected_doc_ids) or "selected documents"
+
                 doc_hits = self.vector_service.query(
                     collection=self._doc_collection,
-                    query_text=last_user_message,
+                    query_text=query_text or " ",
                     where_filter=where_filter,
                 )
 
@@ -942,10 +975,11 @@ class ChatService:
             )
 
             async def _stream_with(provider_name, model_name, hist):
-                return self._get_llm_response_stream(
-                    provider_name, model_name, system_prompt, hist, cost_info_container
+                return await self._ensure_async_stream(
+                    self._get_llm_response_stream(
+                        provider_name, model_name, system_prompt, hist, cost_info_container
+                    )
                 )
-
             success = False
             try:
                 async for chunk in (await _stream_with(primary_provider, primary_model, normalized_history)):
@@ -1186,16 +1220,19 @@ class ChatService:
             )
             local_cost: Dict[str, Any] = {}
             chunks: List[str] = []
-            async for chunk in self._get_llm_response_stream(
-                provider_name,
-                model_name,
-                system_prompt,
-                normalized,
-                local_cost,
-            ):
+            stream_iter = await self._ensure_async_stream(
+                self._get_llm_response_stream(
+                    provider_name,
+                    model_name,
+                    system_prompt,
+                    normalized,
+                    local_cost,
+                )
+            )
+            async for chunk in stream_iter:
                 if chunk:
                     chunks.append(chunk)
-            return ''.join(chunks), local_cost
+            return "".join(chunks), local_cost
 
         primary_provider, primary_model = provider, model
         provider_used = primary_provider
@@ -1346,8 +1383,3 @@ class ChatService:
     # ---------- diverses ----------
     def _count_bullets(self, text: str) -> int:
         return sum(1 for line in (text or "").splitlines() if line.strip().startswith("- "))
-
-
-
-
-
