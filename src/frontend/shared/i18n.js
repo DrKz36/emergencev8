@@ -8,6 +8,8 @@ const MESSAGES = {
     auth: {
       login_required: 'Connexion requise',
       session_expired: 'Session expirée',
+      login_hint: 'Veuillez vous reconnecter pour poursuivre la conversation.',
+      login_action: 'Se connecter',
     },
     errors: {
       generic: 'Une erreur est survenue.',
@@ -17,6 +19,8 @@ const MESSAGES = {
     auth: {
       login_required: 'Sign-in required',
       session_expired: 'Session expired',
+      login_hint: 'Please sign in again to continue the conversation.',
+      login_action: 'Sign in',
     },
     errors: {
       generic: 'Something went wrong.',

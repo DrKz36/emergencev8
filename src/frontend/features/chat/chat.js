@@ -148,6 +148,7 @@ export default class ChatModule {
       if (!Array.isArray(this.state.get('chat.selectedDocIds'))) this.state.set('chat.selectedDocIds', []);
       if (!Array.isArray(this.state.get('chat.selectedDocs'))) this.state.set('chat.selectedDocs', []);
     }
+    if (this.state.get('chat.authRequired') === undefined) this.state.set('chat.authRequired', false);
     try {
       const savedDocIds = this.state.get('documents.selectedIds');
       const savedDocMeta = this.state.get('documents.selectionMeta');
@@ -980,4 +981,3 @@ export default class ChatModule {
     } catch {}
   }
 }
-

@@ -176,6 +176,8 @@ export class StateManager {
     if (cleanState.chat.memoryStats === undefined) {
       cleanState.chat.memoryStats = { has_stm: false, ltm_items: 0, injected: false };
     }
+    if (cleanState.chat.authRequired === undefined) cleanState.chat.authRequired = false;
+    else cleanState.chat.authRequired = !!cleanState.chat.authRequired;
     cleanState.chat.selectedDocIds = Array.isArray(cleanState.chat.selectedDocIds) ? cleanState.chat.selectedDocIds : [];
     cleanState.chat.selectedDocs = Array.isArray(cleanState.chat.selectedDocs) ? cleanState.chat.selectedDocs : [];
 
@@ -280,8 +282,4 @@ export class StateManager {
     return false;
   }
 }
-
-
-
-
 

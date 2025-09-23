@@ -98,6 +98,7 @@ test('ensureCurrentThread signale la nécessité de connexion sur erreur 401', a
     }
 
     assert.equal(state.get('auth.hasToken'), false);
+    assert.equal(state.get('chat.authRequired'), true);
     const toastEvents = bus.events.filter(e => e.name === 'ui:toast');
     assert.equal(toastEvents.length, 1);
     assert.equal(toastEvents[0].payload.text, t('auth.login_required', { locale: 'fr' }));
@@ -125,6 +126,7 @@ test('ensureCurrentThread ne duplique pas le toast auth', async () => {
 
     const toastEvents = bus.events.filter(e => e.name === 'ui:toast');
     assert.equal(toastEvents.length, 1);
+    assert.equal(state.get('chat.authRequired'), true);
   });
 });
 
@@ -176,5 +178,6 @@ test('ensureCurrentThread regenere un thread inaccessible sans auth:missing', as
     assert.equal(authMissingEvents.length, 0);
     const readyEvents = bus.events.filter(e => e.name === 'threads:ready');
     assert.equal(readyEvents.at(-1)?.payload?.id, 'new-thread-id');
+    assert.equal(state.get('chat.authRequired'), false);
   });
 });

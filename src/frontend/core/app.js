@@ -329,6 +329,8 @@ export class App {
         this.state.set(`threads.map.${threadPayload.id}`, threadPayload);
         this._syncSessionWithThread(threadPayload.id);
         this.eventBus.emit('threads:loaded', threadPayload);
+        try { this.state.set('chat.authRequired', false); }
+        catch (stateErr) { console.warn('[App] Impossible de mettre a jour chat.authRequired', stateErr); }
       }
     } catch (error) {
       console.error('[App] ensureCurrentThread() a echoue :', error);
@@ -337,6 +339,8 @@ export class App {
       }
       const status = error?.status ?? error?.response?.status ?? error?.cause?.status ?? null;
       if (AUTH_ERROR_STATUSES.has(status)) {
+        try { this.state.set('chat.authRequired', true); }
+        catch (stateErr) { console.warn('[App] Impossible de mettre a jour chat.authRequired', stateErr); }
         try { this.state.set('auth.hasToken', false); } catch (stateErr) { console.warn('[App] Impossible de mettre a jour auth.hasToken', stateErr); }
         try { this.eventBus.emit?.('auth:missing'); } catch (emitErr) { console.warn("[App] Impossible d'emettre auth:missing", emitErr); }
         if (!this._authToastShown) {

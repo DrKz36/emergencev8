@@ -568,6 +568,20 @@ class EmergenceClient {
 
     const badge = mountAuthBadge(eventBus);
 
+    eventBus.on?.('auth:missing', () => {
+      try { stateManager.set('chat.authRequired', true); }
+      catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=true', err); }
+    });
+    eventBus.on?.('auth:logout', () => {
+      try { stateManager.set('chat.authRequired', true); }
+      catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=true (logout)', err); }
+    });
+    const wsConnectedEvent = EVENTS.WS_CONNECTED || 'ws:connected';
+    eventBus.on?.(wsConnectedEvent, () => {
+      try { stateManager.set('chat.authRequired', false); }
+      catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=false', err); }
+    });
+
     const websocket = new WebSocketClient(WS_CONFIG.URL, eventBus, stateManager);
     eventBus.on(EVENTS.APP_READY, () => { this.__readyFired=true; this.hideLoader(); });
 

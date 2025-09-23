@@ -37,3 +37,16 @@ pwsh -File scripts/sync-workdir.ps1 -TestCommands @(
 - Documenter tout usage de `-SkipTests`, `-NoPush` ou `-AllowDirty` dans le journal de session.
 - Programmer un rappel (Task Scheduler / cron) pour éviter les oublis.
 - Coupler avec la CI afin de valider automatiquement chaque push (recommandé).
+
+
+## Maintenance hebdomadaire du vector store
+- Utiliser `pwsh -File scripts/maintenance/run-vector-store-reset.ps1` pour exécuter le scénario auto-reset sans saisie manuelle (démarrage backend, corruption contrôlée, relance et upload post-reset).
+- Les journaux sont archivés sous `logs/vector-store/vector_store_reset_YYYYMMDD-HHmmss.log`; conserver les 4 dernières exécutions pour traçabilité.
+- Exemple Task Scheduler (Windows) :
+  ```powershell
+  schtasks /Create /SC WEEKLY /D SUN /TN "Emergence_VectorStore_Reset" `
+    /TR "pwsh -NoProfile -ExecutionPolicy Bypass -File C:\dev\emergenceV8\scripts/maintenance/run-vector-store-reset.ps1" `
+    /ST 03:00 /RL HIGHEST
+  ```
+- Pour un backend dans un virtualenv, préciser `-BackendCommand @("pwsh","-NoProfile","-Command",". .\.venv\Scripts\Activate.ps1; uvicorn --app-dir src backend.main:app --host 127.0.0.1 --port 8000")` dans la tâche planifiée.
+- Sur Linux/macOS, planifier via cron : `0 4 * * Mon cd /opt/emergence && pwsh -File scripts/maintenance/run-vector-store-reset.ps1 >> logs/vector-store/cron.log 2>&1`.

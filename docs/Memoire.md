@@ -75,6 +75,8 @@
 - Tests recommandés :
   - `tests/run_all.ps1` (vérifie `/api/memory/tend-garden`).
   - `tests/test_memory_clear.ps1` (valide la purge STM/LTM et les embeddings). Pré-requis : backend local sur http://127.0.0.1:8000, dépendances Python installées, variable `EMERGENCE_ID_TOKEN` si auth activée. Exemple : `powershell -ExecutionPolicy Bypass -File tests/test_memory_clear.ps1 -BaseUrl http://localhost:8000`.
+  - `scripts/smoke/scenario-memory-clear.ps1` (guide QA: health-check + injection auto + rappel des vérifications UI). Exemple : `pwsh -File scripts/smoke/scenario-memory-clear.ps1 -BaseUrl http://localhost:8000`.
+  - `scripts/maintenance/run-vector-store-reset.ps1` (mode hebdo sans interaction, journalise sous `logs/vector-store/`).
   - `tests/test_vector_store_reset.ps1` (contrôle la remise à zéro et les backups du vector store).
 - Métriques front : affichage du modèle, TTFB mémoire, nombre d’items injectés.
 
@@ -129,16 +131,19 @@
 ### 7.3. Purge STM + LTM
 - **Acteurs** : admin projet, référent sécurité.
 - **Objectif** : supprimer toutes les traces de mémoire (session + long terme) pour conformité.
-- **Étapes** :
-  1. Cliquer sur `Clear` dans le bandeau mémoire.
-  2. Valider la modal de confirmation détaillant l’impact.
-  3. Vérifier le retour `memory:clear` côté backend (journalisation) et la notification UI.
-  4. Confirmer que le bandeau indique une mémoire vide et que les listes STM/LTM sont purgées.
-- **Points de vigilance** : l’ordre STM → LTM → embeddings doit être respecté, et la modal doit résumer les effets.
+- **Préparation automatique** :
+  - Lancer `pwsh -File scripts/smoke/scenario-memory-clear.ps1 -BaseUrl http://localhost:8000` (ajouter `-AuthToken` si l'auth est requise).
+  - Le script vérifie `/api/health`, injecte un jeu de test via `tests/test_memory_clear.ps1`, puis rappelle les contrôles UI à effectuer.
+- **Étapes UI** :
+  1. Depuis le bandeau mémoire du chat, cliquer sur `Clear`.
+  2. Lire le résumé de la modal et confirmer la purge.
+  3. Observer le toast succès et le rafraîchissement `ws:memory_banner`.
+  4. Recharger le thread et confirmer que STM/LTM sont à zéro (compteurs + liste vide).
+- **Points de vigilance** : l'ordre STM → LTM → embeddings doit être respecté, et la modal doit résumer les effets (scope, session, agent).
 - **Captures à intégrer** :
   - ![Capture modal clear](assets/memoire/modal-clear.png)
   - ![Capture bandeau vide](assets/memoire/bandeau-vide.png)
-
+  - ![Capture console script](assets/memoire/scenario-memory-clear-log.png)
 ### 7.4. Gestion des erreurs de consolidation
 - **Acteurs** : utilisateur final, équipe SRE.
 - **Objectif** : identifier et corriger les consolidations échouées.
@@ -153,19 +158,20 @@
   - ![Capture logs erreur](assets/memoire/logs-erreur.png)
 
 ## 8. Assets visuels & schémas à produire
-- **Captures UI** : bandeau mémoire (états `idle`, `loading`, `error`, `empty`), modal Clear, panneau thread, toasts succès/erreur.
+- **Dossier cible** : placer les captures et exports sous `docs/assets/memoire/` (ex. `memoire-clear-before.png`, `memoire-clear-after.png`, `memoire-toast-success.png`).
+- **Captures UI** : bandeau mémoire (états `idle`, `loading`, `error`, `empty`), modal Clear, panneau thread, toasts succès/erreur, sortie console du script scénario.
 - **Schémas** :
   - Diagramme séquence `ChatUI → MemoryGardener → MemoryAnalyzer → VectorService`.
   - Schéma de flux purge STM/LTM/embeddings (ordre et webhooks associés).
 - **Exports données** : anonymiser un exemple de réponse `GET /api/memory/tend-garden` pour illustrer la doc.
-- **Formats recommandés** : PNG pour captures (largeur 1440px), SVG pour schémas.
-
+- **Formats recommandés** : PNG pour captures (largeur 1440px), SVG pour schémas, TXT/MD pour journaux (ex. `scenario-memory-clear.log`).
 ## 9. Checklist QA manuelle
 - [ ] Déclencher une **consolidation globale** et vérifier l’affichage du loader puis du résumé STM (capture : `assets/memoire/bandeau-analyse.png`).
 - [ ] Exécuter une **analyse ciblée** avec `persist=False` et confirmer que la LTM ne change pas (capture : `assets/memoire/panneau-thread.png`).
 - [ ] Lancer une **analyse ciblée persistée** (`persist=True`) et valider l’incrément du compteur d’items LTM (capture : `assets/memoire/option-persist.png`).
 - [ ] Verifier qu'une selection de documents en dehors du thread est ignoree : le front affiche les ressources valides et `meta.selected_doc_ids` ne contient que les IDs autorisees.
 - [ ] Activer RAG puis rafraichir la recherche sans message utilisateur en modifiant uniquement la selection; observer `ws:rag_status` et la mise a jour du bandeau documents.
+- [ ] Exécuter `pwsh -File scripts/smoke/scenario-memory-clear.ps1` et archiver la sortie console (`docs/assets/memoire/scenario-memory-clear.log`).
 - [ ] Réaliser un **clear complet** et contrôler la purge STM/LTM + embeddings (captures : `assets/memoire/modal-clear.png`, `assets/memoire/bandeau-vide.png`).
 - [ ] **Tester le scénario d’erreur** (LLM indisponible) et confirmer la présence du toast + bouton retry (capture : `assets/memoire/toast-erreur.png`).
 - [ ] Vérifier la **cohérence des logs** `memory:garden:*` et `memory:clear` avec les actions réalisées (capture : `assets/memoire/logs-erreur.png`).

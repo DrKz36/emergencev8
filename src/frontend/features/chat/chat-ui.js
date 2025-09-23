@@ -5,6 +5,7 @@
  * - Merges composer toolbar refinements and message bubble metadata.
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
+import { t } from '../../shared/i18n.js';
 
 export class ChatUI {
   constructor(eventBus, stateManager) {
@@ -108,6 +109,13 @@ export class ChatUI {
             </div>
           </form>
         </div>
+        <div id="chat-auth-overlay" class="chat-auth-overlay" role="alertdialog" aria-live="assertive" aria-hidden="true" hidden>
+          <div class="chat-auth-overlay__content">
+            <h2 class="chat-auth-overlay__title">${t('auth.login_required')}</h2>
+            <p class="chat-auth-overlay__text">${t('auth.login_hint')}</p>
+            <button type="button" class="chat-auth-overlay__action" data-role="chat-auth-login">${t('auth.login_action')}</button>
+          </div>
+        </div>
       </div>
     `;
 
@@ -188,6 +196,7 @@ export class ChatUI {
       badge.title = `Modele planifie: ${planned} - Utilise: ${used} - TTFB: ${ttfb}`;
       badge.classList.toggle('is-fallback', fallback);
     }
+    this._updateAuthOverlay(container);
   }
   _bindEvents(container) {
     const form = container.querySelector('#chat-form');
@@ -234,6 +243,12 @@ export class ChatUI {
 
     exportButton?.addEventListener('click', () => {
       this.eventBus.emit(EVENTS.CHAT_EXPORT);
+    });
+
+    const authLoginBtn = container.querySelector('[data-role="chat-auth-login"]');
+    authLoginBtn?.addEventListener('click', () => {
+      try { this.eventBus.emit('auth:login', {}); }
+      catch (err) { console.warn('[ChatUI] auth login emit failed', err); }
     });
 
     const toggleRag = () => {
@@ -337,6 +352,19 @@ export class ChatUI {
       });
       if (typeof off === 'function') this._offDocumentsChanged = off;
     } catch {}
+  }
+
+  _updateAuthOverlay(container) {
+    if (!container) return;
+    const root = container.querySelector('.chat-container');
+    if (!root) return;
+    const overlay = root.querySelector('#chat-auth-overlay');
+    if (!overlay) return;
+    const requiresAuth = !!this.state.authRequired;
+    overlay.hidden = !requiresAuth;
+    overlay.setAttribute('aria-hidden', requiresAuth ? 'false' : 'true');
+    overlay.classList.toggle('is-visible', requiresAuth);
+    root.classList.toggle('chat-auth-required', requiresAuth);
   }
 
   _ensureControlPanel() {
@@ -910,8 +938,3 @@ export class ChatUI {
     return { display: `${datePart} - ${timePart}`, iso: date.toISOString() };
   }
 }
-
-
-
-
-
