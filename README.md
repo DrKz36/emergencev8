@@ -1,4 +1,4 @@
-﻿# EMERGENCE V8
+# EMERGENCE V8
 
 Multi agent conversation stack (Anima, Neo, Nexus) with cockpit, retrieval augmented generation, and document tools.
 
@@ -65,6 +65,20 @@ Run all backend quality gates in one go (pytest, ruff, mypy).
 
 Add `-FailFast` to stop after the first failure, or use `-Python` to point to a custom interpreter. Pass `-Paths src/backend` if you need to lint the whole backend.
 
+## Git remote configuration
+
+When cloning from an archive or copying the folder you need to add the remote manually so that pulls and pushes work. Configure it once with git or use the helper scripts included in `scripts/`.
+
+```powershell
+git remote add origin https://github.com/DrKz36/emergencev8.git
+```
+
+```bash
+git remote add origin https://github.com/DrKz36/emergencev8.git
+```
+
+On Windows/PowerShell you can run `pwsh -File scripts/bootstrap.ps1` and the script will ensure the `origin` remote points to `https://github.com/DrKz36/emergencev8.git` before starting `npm run start`. On Unix shells run `./scripts/bootstrap.sh` for the same behaviour. Pass `-SkipStart`/`--skip-start` if you only need to configure git or override the remote settings via the corresponding flags.
+
 ## Git workflow and branch hygiene
 
 1. Start on a clean tree: `git status` should report no changes.
@@ -99,4 +113,3 @@ Add `-FailFast` to stop after the first failure, or use `-Python` to point to a 
 9. `git push origin <branch>` and open the pull request.
 
 Keeping these steps in sync between cloud and local runs eliminates version drift and makes conflicts predictable.
-
