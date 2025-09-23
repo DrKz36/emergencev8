@@ -37,6 +37,7 @@ pwsh -File scripts/sync-workdir.ps1 -TestCommands @(
 - Windows/PowerShell : `pwsh -File scripts/bootstrap.ps1 -SkipStart` pour configurer le remote sans lancer npm.
 - Linux/macOS : `./scripts/bootstrap.sh --skip-start` pour le meme scenario.
 - Les options `--remote-name` / `--remote-url` ou `-StartScript` adaptent le script aux forks ou workflows specifiques.
+- Si vous utilisez HTTPS avec un PAT GitHub, assurez-vous que le token dispose des permissions `repo` ET `workflow` (fine-grained : `Actions` / `Workflows` en lecture/écriture), faute de quoi GitHub refuse les pushes modifiant `.github/workflows/*.yml`.
 
 ## Bonnes pratiques
 - Lancer le script au début et à la fin de chaque session de travail.
