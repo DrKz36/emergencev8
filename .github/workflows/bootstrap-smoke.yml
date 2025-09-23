@@ -1,0 +1,23 @@
+name: Bootstrap Smoke Test
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  bootstrap-sh:
+    name: Bootstrap helper (bash)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run scripts/bootstrap.sh --skip-start
+        run: bash scripts/bootstrap.sh --skip-start
+
+  bootstrap-ps1:
+    name: Bootstrap helper (pwsh)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run scripts/bootstrap.ps1 -SkipStart
+        run: pwsh -File scripts/bootstrap.ps1 -SkipStart

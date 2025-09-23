@@ -1,4 +1,4 @@
-﻿# Workflow de synchronisation cloud/local
+# Workflow de synchronisation cloud/local
 
 ## Objectif
 - Garantir que les environnements locaux et cloud (Codex) consomment la même base de code.
@@ -15,7 +15,7 @@
   - `-SkipTests` : saute l'étape de test (à éviter hors dépannage).
   - `-NoPush` : ne pousse pas automatiquement.
   - `-AllowDirty` : tolère un working tree non vide (journaliser la raison).
-  - `-TestCommands @( <cmd1>, <cmd2> )` : tableau de commandes (chaque commande est un tableau `@(exe, args...)`).
+  - `-TestCommands @( <cmd1>, <cmd2> )` : tableau de commandes (chaque commande est un tableau `@(exe, args...)`). Un tableau simple (`@("pytest","-k","smoke")`) ou une chaîne (`"pytest -k smoke"`) sont également acceptés pour exécuter une seule commande.
 
 ### Exemples d'utilisation
 ```powershell
@@ -31,6 +31,12 @@ pwsh -File scripts/sync-workdir.ps1 -TestCommands @(
     @("pytest","tests/backend")
 )
 ```
+
+## Initialisation du remote
+- Utiliser les scripts bootstrap pour aligner `origin` sur https://github.com/DrKz36/emergencev8.git avant la premiere synchronisation.
+- Windows/PowerShell : `pwsh -File scripts/bootstrap.ps1 -SkipStart` pour configurer le remote sans lancer npm.
+- Linux/macOS : `./scripts/bootstrap.sh --skip-start` pour le meme scenario.
+- Les options `--remote-name` / `--remote-url` ou `-StartScript` adaptent le script aux forks ou workflows specifiques.
 
 ## Bonnes pratiques
 - Lancer le script au début et à la fin de chaque session de travail.

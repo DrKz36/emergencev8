@@ -1,8 +1,6 @@
-﻿param(
+param(
     [string]$BaseBranch = "main",
-    [object[]]$TestCommands = @(
-        @("pwsh","-NoProfile","-ExecutionPolicy","Bypass","-File","tests/run_all.ps1")
-    ),
+    [object[]]$TestCommands,
     [switch]$SkipTests,
     [switch]$NoPush,
     [switch]$AllowDirty
@@ -13,6 +11,25 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot ".." )).Path
 Set-Location $repoRoot
+
+if (-not $PSBoundParameters.ContainsKey('TestCommands')) {
+    $TestCommands = ,@(
+        "pwsh","-NoProfile","-ExecutionPolicy","Bypass","-File","tests/run_all.ps1"
+    )
+}
+
+if ($null -ne $TestCommands) {
+    $containsNested = $false
+    foreach ($entry in $TestCommands) {
+        if ($entry -is [System.Collections.IEnumerable] -and $entry -isnot [string]) {
+            $containsNested = $true
+            break
+        }
+    }
+    if (-not $containsNested -and $TestCommands.Count -gt 0) {
+        $TestCommands = ,$TestCommands
+    }
+}
 
 function Write-Step {
     param([string]$Message)
@@ -53,14 +70,29 @@ function Invoke-TestCommand {
     $exe = $null
     $args = @()
 
-    if ($Command -is [System.Array]) {
+    if ($Command -is [System.Collections.IEnumerable] -and $Command -isnot [string]) {
         $flat = @()
-        foreach ($item in $Command) { $flat += $item }
+        foreach ($item in $Command) {
+            if ($null -eq $item) { continue }
+            if ($item -is [string]) {
+                if (-not [string]::IsNullOrWhiteSpace($item)) {
+                    $flat += $item
+                }
+            } else {
+                $flat += $item
+            }
+        }
         if ($flat.Count -eq 0) { return }
         $exe = [string]$flat[0]
         if ($flat.Count -gt 1) {
-            $args = $flat[1..($flat.Count - 1)]
+            $args = @()
+            for ($i = 1; $i -lt $flat.Count; $i++) {
+                $args += [string]$flat[$i]
+            }
         }
+    } elseif ($Command -is [scriptblock]) {
+        $exe = "pwsh"
+        $args = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $Command.ToString())
     } else {
         $exe = "pwsh"
         $args = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", [string]$Command)
