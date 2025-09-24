@@ -420,6 +420,24 @@ async def update_thread(
     )
 
 
+async def delete_thread(
+    db: DatabaseManager,
+    thread_id: str,
+    user_id: str,
+) -> bool:
+    """Delete a thread and its related records when the user owns it."""
+    thread = await get_thread(db, thread_id, user_id)
+    if not thread:
+        return False
+
+    await db.execute("DELETE FROM thread_docs WHERE thread_id = ?", (thread_id,))
+    await db.execute("DELETE FROM messages WHERE thread_id = ?", (thread_id,))
+    await db.execute(
+        "DELETE FROM threads WHERE id = ? AND user_id = ?", (thread_id, user_id)
+    )
+    return True
+
+
 # -- Messages --
 async def add_message(
     db: DatabaseManager,

@@ -128,3 +128,18 @@ export async function archiveThread(id) {
   const updated = await updateThread(id, { archived: true });
   return updated;
 }
+
+export async function deleteThread(id) {
+  const safeId = sanitizeThreadId(id);
+  if (!safeId) {
+    const err = new Error('Identifiant de thread invalide');
+    err.status = 400;
+    throw err;
+  }
+  try {
+    await api.deleteThread(safeId);
+    return true;
+  } catch (error) {
+    throw wrapError(error, 'Impossible de supprimer le thread.');
+  }
+}

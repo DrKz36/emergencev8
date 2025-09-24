@@ -8,6 +8,7 @@ import {
   fetchThreadDetail,
   createThread as apiCreateThread,
   archiveThread as apiArchiveThread,
+  deleteThread as apiDeleteThread,
 } from './threads-service.js';
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
@@ -61,9 +62,16 @@ function normalizeId(value) {
 }
 
 export class ThreadsPanel {
-  constructor(eventBus, stateManager) {
+  constructor(eventBus, stateManager, options = {}) {
     this.eventBus = eventBus;
     this.state = stateManager;
+    const opts = options || {};
+    this.options = {
+      keepMarkup: !!opts.keepMarkup,
+      hostId: typeof opts.hostId === 'string' ? opts.hostId : null,
+    };
+    this.hostElement = opts.hostElement || null;
+    this.deleteThreadFn = typeof opts.deleteThread === 'function' ? opts.deleteThread : apiDeleteThread;
 
     this.container = null;
     this.listEl = null;
@@ -76,36 +84,84 @@ export class ThreadsPanel {
     this.selectionLoadingId = null;
     this.archivingId = null;
     this.pendingCreate = false;
+    this.pendingDeleteId = null;
+    this.deletingId = null;
 
     this._hasInitialRender = false;
+    this._domBound = false;
+    this._initialized = false;
     this._onContainerClick = this.handleContainerClick.bind(this);
     this._onRefreshRequested = this.reload.bind(this);
   }
 
+  setHostElement(element) {
+    if (this.container && this._domBound) {
+      this.container.removeEventListener('click', this._onContainerClick);
+    }
+    this.hostElement = element || null;
+    this.container = null;
+    this.listEl = null;
+    this.errorEl = null;
+    this.newButton = null;
+    this.pendingDeleteId = null;
+    this.deletingId = null;
+    this._domBound = false;
+    this._hasInitialRender = false;
+  }
+
+  template() {
+    return `
+      <div class="threads-panel__inner">
+        <header class="threads-panel__header">
+          <div class="threads-panel__titles">
+            <h2 class="threads-panel__title">Conversations</h2>
+            <p class="threads-panel__subtitle">Gerer vos discussions actives et archivees.</p>
+          </div>
+          <button type="button" class="threads-panel__new" data-action="new" aria-label="Lancer une nouvelle conversation">
+            Nouvelle conversation
+          </button>
+        </header>
+        <div class="threads-panel__body">
+          <p class="threads-panel__error" data-role="thread-error" hidden></p>
+          <ul class="threads-panel__list" data-role="thread-list" role="list"></ul>
+        </div>
+      </div>
+    `;
+  }
+
   init() {
     this.ensureContainer();
-    if (this.container) {
+    if (!this.container) return;
+
+    if (!this._domBound) {
       this.container.addEventListener('click', this._onContainerClick);
+      this._domBound = true;
     }
-    if (this.eventBus?.on) {
+
+    if (!this.unsubscribeRefresh && this.eventBus?.on) {
       this.unsubscribeRefresh = this.eventBus.on(EVENTS.THREADS_REFRESH_REQUEST, this._onRefreshRequested);
+    }
+
+    if (!this.unsubscribeState) {
+      this.unsubscribeState = this.state.subscribe('threads', (threads) => {
+        this.render(threads);
+      });
     }
 
     const currentThreadsState = this.state.get('threads');
     this.render(currentThreadsState);
 
-    this.unsubscribeState = this.state.subscribe('threads', (threads) => {
-      this.render(threads);
-    });
-
-    if (!currentThreadsState || currentThreadsState.status === 'idle') {
+    if (!this._initialized && (!currentThreadsState || currentThreadsState.status === 'idle')) {
       this.reload();
     }
+
+    this._initialized = true;
   }
 
   destroy() {
-    if (this.container) {
+    if (this.container && this._domBound) {
       this.container.removeEventListener('click', this._onContainerClick);
+      this._domBound = false;
     }
     if (typeof this.unsubscribeState === 'function') {
       this.unsubscribeState();
@@ -115,38 +171,34 @@ export class ThreadsPanel {
       this.unsubscribeRefresh();
       this.unsubscribeRefresh = null;
     }
+    this._initialized = false;
+    this.pendingDeleteId = null;
+    this.deletingId = null;
+    if (!this.options.keepMarkup && this.container) {
+      this.container.innerHTML = '';
+      this.container = null;
+      this.listEl = null;
+      this.errorEl = null;
+      this.newButton = null;
+    }
   }
 
   ensureContainer() {
     if (this.container) return;
 
-    const sidebar = document.getElementById('app-sidebar');
-    if (!sidebar) return;
+    let host = this.hostElement;
+    if (!host && this.options.hostId) {
+      host = document.getElementById(this.options.hostId);
+    }
+    if (!host) return;
 
-    let host = document.getElementById('threads-panel');
-    if (!host) {
-      host = document.createElement('section');
-      host.id = 'threads-panel';
-      host.className = 'threads-panel card';
-      host.innerHTML = `
-        <header class="threads-panel__header">
-          <h2 class="threads-panel__title">Conversations</h2>
-          <button type="button" class="threads-panel__new" data-action="new" aria-label="Lancer une nouvelle conversation">
-            Nouvelle conversation
-          </button>
-        </header>
-        <div class="threads-panel__body">
-          <p class="threads-panel__error" data-role="thread-error" hidden></p>
-          <ul class="threads-panel__list" data-role="thread-list" role="list"></ul>
-        </div>
-      `;
-
-      const tabs = document.getElementById('app-tabs');
-      if (tabs && tabs.parentNode === sidebar) {
-        sidebar.insertBefore(host, tabs.nextSibling);
-      } else {
-        sidebar.appendChild(host);
-      }
+    if (!host.querySelector('[data-role="thread-list"]')) {
+      host.classList.add('threads-panel');
+      host.setAttribute('data-threads-panel', 'module');
+      host.innerHTML = this.template();
+    } else {
+      host.classList.add('threads-panel');
+      host.setAttribute('data-threads-panel', 'module');
     }
 
     this.container = host;
@@ -240,6 +292,19 @@ export class ThreadsPanel {
     } else if (action === 'archive') {
       event.preventDefault();
       await this.handleArchive(threadId);
+    } else if (action === 'delete') {
+      event.preventDefault();
+      this.pendingDeleteId = threadId;
+      this.render(this.state.get('threads'));
+    } else if (action === 'delete-cancel') {
+      event.preventDefault();
+      if (this.pendingDeleteId === threadId) {
+        this.pendingDeleteId = null;
+        this.render(this.state.get('threads'));
+      }
+    } else if (action === 'delete-confirm') {
+      event.preventDefault();
+      await this.handleDelete(threadId);
     }
   }
 
@@ -361,6 +426,50 @@ export class ThreadsPanel {
     }
   }
 
+  async handleDelete(threadId) {
+    const safeId = normalizeId(threadId);
+    if (!safeId || this.deletingId === safeId) return;
+
+    const wasActive = this.state.get('threads.currentId') === safeId;
+
+    this.deletingId = safeId;
+    this.render(this.state.get('threads'));
+
+    try {
+      await this.deleteThreadFn(safeId);
+      this.removeThreadFromState(safeId);
+      this.pendingDeleteId = null;
+      this.eventBus.emit?.(EVENTS.THREADS_DELETED, { id: safeId });
+
+      const order = this.state.get('threads.order') || [];
+      const fallbackId = this.state.get('threads.currentId') || (order.length ? order[0] : null);
+      if (!order.length) {
+        await this.handleCreate();
+      } else if (wasActive && fallbackId) {
+        await this.handleSelect(fallbackId);
+      }
+
+      try {
+        const stored = this.readStoredThreadId();
+        if (stored === safeId) {
+          localStorage.removeItem(THREAD_STORAGE_KEY);
+        }
+      } catch {}
+    } catch (error) {
+      const message = error?.message || "Impossible de supprimer la conversation.";
+      this.setStatus('error', message);
+      this.eventBus.emit?.(EVENTS.THREADS_ERROR, { action: 'delete', error });
+      if (error?.status === 401) {
+        this.eventBus.emit?.('auth:missing', { reason: 401 });
+      }
+    } finally {
+      this.deletingId = null;
+      this.pendingDeleteId = null;
+      this.render(this.state.get('threads'));
+    }
+  }
+
+
   mergeThread(id, threadRecord) {
     const safeId = normalizeId(id);
     if (!safeId) return;
@@ -462,6 +571,11 @@ export class ThreadsPanel {
     }
 
     const currentId = state.currentId || null;
+    const confirmId = this.pendingDeleteId || null;
+    const deletingId = this.deletingId || null;
+    const archivingId = this.archivingId || null;
+    const loadingId = this.selectionLoadingId || null;
+
     const itemsHtml = order.map((id) => {
       const entry = map[id] || { id };
       const record = entry.thread || entry;
@@ -470,18 +584,44 @@ export class ThreadsPanel {
       const statusLabel = record?.archived ? STATUS_LABELS.archived : STATUS_LABELS.active;
       const timestamp = record?.updated_at || record?.created_at || null;
       const isActive = currentId === id;
-      const isLoading = this.selectionLoadingId === id;
-      const isArchiving = this.archivingId === id;
+      const isLoading = loadingId === id;
+      const isArchiving = archivingId === id;
+      const isDeleting = deletingId === id;
+      const showConfirmDelete = confirmId === id;
       const buttonClasses = ['threads-panel__select'];
       if (isActive) buttonClasses.push('is-active');
+      if (isLoading) buttonClasses.push('is-loading');
+      if (isDeleting) buttonClasses.push('is-disabled');
       const archiveClasses = ['threads-panel__archive'];
       if (isArchiving) archiveClasses.push('is-busy');
+      if (isDeleting) archiveClasses.push('is-disabled');
+      const deleteClasses = ['threads-panel__delete'];
+      if (isDeleting) deleteClasses.push('is-busy');
       const label = agentLabel(agentId);
-      const statusText = isLoading ? 'Chargement...' : statusLabel;
+      let statusText = statusLabel;
+      if (isDeleting) statusText = 'Suppression...';
+      else if (isArchiving) statusText = 'Archivage...';
+      else if (isLoading) statusText = 'Chargement...';
       const updated = formatDateTime(timestamp);
+      const actionsHtml = showConfirmDelete
+        ? `
+          <div class="threads-panel__confirm" data-thread-id="${escapeHtml(id)}">
+            <p class="threads-panel__confirm-text">Supprimer cette conversation ?</p>
+            <div class="threads-panel__confirm-actions">
+              <button type="button" class="threads-panel__confirm-delete" data-action="delete-confirm" data-thread-id="${escapeHtml(id)}"${isDeleting ? ' disabled' : ''}>Confirmer</button>
+              <button type="button" class="threads-panel__confirm-cancel" data-action="delete-cancel" data-thread-id="${escapeHtml(id)}"${isDeleting ? ' disabled' : ''}>Annuler</button>
+            </div>
+          </div>
+        `
+        : `
+          <div class="threads-panel__actions">
+            <button type="button" class="${archiveClasses.join(' ')}" data-action="archive" data-thread-id="${escapeHtml(id)}"${(isArchiving || isDeleting) ? ' disabled' : ''}>Archiver</button>
+            <button type="button" class="${deleteClasses.join(' ')}" data-action="delete" data-thread-id="${escapeHtml(id)}"${isDeleting ? ' disabled' : ''}>Supprimer</button>
+          </div>
+        `;
       return `
         <li class="threads-panel__item${isActive ? ' is-active' : ''}" data-thread-id="${escapeHtml(id)}">
-          <button type="button" class="${buttonClasses.join(' ')}" data-action="select" data-thread-id="${escapeHtml(id)}" aria-pressed="${isActive ? 'true' : 'false'}">
+          <button type="button" class="${buttonClasses.join(' ')}" data-action="select" data-thread-id="${escapeHtml(id)}" aria-pressed="${isActive ? 'true' : 'false'}"${isDeleting ? ' disabled' : ''}>
             <span class="threads-panel__item-title">${escapeHtml(title)}</span>
             <span class="threads-panel__item-meta">
               <span class="threads-panel__item-agent">${escapeHtml(label)}</span>
@@ -489,7 +629,7 @@ export class ThreadsPanel {
             </span>
             <span class="threads-panel__item-timestamp">${escapeHtml(updated)}</span>
           </button>
-          <button type="button" class="${archiveClasses.join(' ')}" data-action="archive" data-thread-id="${escapeHtml(id)}" aria-label="Archiver la conversation"${isArchiving ? ' disabled' : ''}>Archiver</button>
+          ${actionsHtml}
         </li>
       `;
     }).join('');

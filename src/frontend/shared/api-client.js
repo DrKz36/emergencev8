@@ -302,6 +302,16 @@ export const api = {
     fetchApi(`${THREADS_BASE}/`, { method: 'POST', body: { type, title, agent_id, meta: metadata } })
       .then((data) => ({ id: data?.id, thread: data?.thread })),
 
+  deleteThread: async (id) => {
+    const safeId = normalizeThreadId(id);
+    if (!safeId) {
+      const err = new Error('Thread ID invalide');
+      err.status = 400;
+      throw err;
+    }
+    await fetchApi(`${THREADS_BASE}/${encodeURIComponent(safeId)}`, { method: 'DELETE' });
+    return true;
+  },
   updateThread: (id, updates = {}) => {
     const safeId = normalizeThreadId(id);
     if (!safeId) {
@@ -425,5 +435,4 @@ try {
     window.api = api;
   }
 } catch (_) {}
-
 

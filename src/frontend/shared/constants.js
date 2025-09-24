@@ -88,6 +88,7 @@ export const EVENTS = {
   THREADS_CREATED: 'threads:created',
   THREADS_UPDATED: 'threads:updated',
   THREADS_ARCHIVED: 'threads:archived',
+  THREADS_DELETED: 'threads:deleted',
   THREADS_ERROR: 'threads:error',
   THREADS_READY: 'threads:ready',
   THREADS_LOADED: 'threads:loaded',

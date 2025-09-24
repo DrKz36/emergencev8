@@ -55,6 +55,7 @@
 ### Threads & messages
 - `GET /api/threads?type=chat&limit=1` → `{ items:[{id,type,created_at,last_message_at}] }`
 - `POST /api/threads` → crée un thread chat (payload optionnel `{ "type": "chat", "title": "…" }`).
+- `DELETE /api/threads/{id}` → 204 (cascade: messages + documents associés).
 - `GET /api/threads/{id}/messages?limit=50&before=cursor` → pagination descendante, messages `{ id, role, agent, content, created_at, rag_sources[] }`.
 - `POST /api/threads/{id}/messages` → fallback REST si WS indispo (`{ text, agent_id, use_rag }`).
 - `POST /api/threads/{id}/documents` → associe documents (`{ document_ids: [] }`).

@@ -1,7 +1,7 @@
 # src/backend/features/threads/router.py
 # V1.5 — Retrait du prefix interne (montage géré par main.py) + alias GET/POST sans slash conservés
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from backend.core.database.manager import DatabaseManager
@@ -133,6 +133,29 @@ async def update_thread(
     )
     thread = await queries.get_thread(db, thread_id, user_id)
     return {"thread": thread}
+
+@router.delete("/{thread_id}", status_code=204)
+async def delete_thread(
+    thread_id: str,
+    user_id: str = Depends(get_user_id),
+    db: DatabaseManager = Depends(get_db),
+):
+    thread = await queries.get_thread(db, thread_id, user_id)
+    if not thread:
+        alt = await queries.get_thread_any(db, thread_id)
+        if not alt:
+            raise HTTPException(status_code=404, detail="Thread introuvable")
+        t_uid = (alt.get("user_id") or "").strip().lower()
+        u_uid = (user_id or "").strip().lower()
+        if t_uid and t_uid != u_uid:
+            raise HTTPException(status_code=403, detail="Thread non accessible pour cet utilisateur")
+        raise HTTPException(status_code=404, detail="Thread introuvable")
+
+    removed = await queries.delete_thread(db, thread_id, user_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Thread introuvable")
+    return Response(status_code=204)
+
 
 @router.post("/{thread_id}/messages", status_code=201)
 async def add_message(

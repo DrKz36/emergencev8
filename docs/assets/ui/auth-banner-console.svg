@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <style type="text/css"><![CDATA[
+      .bg { fill: #0f172a; }
+      .header { fill: #1e293b; }
+      .header-text { font: 18px 'Segoe UI', 'Inter', sans-serif; fill: #e2e8f0; }
+      .console-label { font: 24px 'Consolas', 'Menlo', monospace; fill: #facc15; }
+      .console-command { font: 20px 'Consolas', 'Menlo', monospace; fill: #f97316; }
+      .console-output { font: 20px 'Consolas', 'Menlo', monospace; fill: #e2e8f0; }
+      .console-comment { font: 18px 'Consolas', 'Menlo', monospace; fill: #94a3b8; }
+    ]]></style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="960" height="540" rx="24"/>
+  <rect class="header" x="0" y="0" width="960" height="68" rx="24"/>
+  <text class="header-text" x="32" y="42">QA Console Capture - Auth Banner Metrics</text>
+  <text class="console-label" x="32" y="120">Console &gt; window.__EMERGENCE_QA_METRICS__.authRequired</text>
+  <text class="console-command" x="32" y="180">{</text>
+  <text class="console-command" x="48" y="215">requiredCount: 1,</text>
+  <text class="console-command" x="48" y="250">missingCount: 1,</text>
+  <text class="console-command" x="48" y="285">restoredCount: 0,</text>
+  <text class="console-command" x="48" y="320">events: [</text>
+  <text class="console-output" x="64" y="355">{ type: 'required', status: 401, reason: 'threads_boot_failed',</text>
+  <text class="console-output" x="64" y="390">  message: 'Connexion requise pour poursuivre.' }</text>
+  <text class="console-command" x="48" y="425">]</text>
+  <text class="console-command" x="32" y="460">}</text>
+  <text class="console-comment" x="32" y="500">Instrumentation main.js &gt; installAuthRequiredBanner(eventBus)</text>
+</svg>

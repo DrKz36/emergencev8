@@ -139,6 +139,34 @@ test('ensureCurrentThread ne duplique pas le toast auth', async () => {
 });
 
 
+
+
+test('ensureCurrentThread emet AUTH_REQUIRED avec les metadonnees attendues', async () => {
+  await withStubbedDom(async () => {
+    const state = createStateStub();
+    const bus = createEventBusStub();
+    const app = new App(bus, state);
+    const originalListThreads = api.listThreads;
+    const error = new Error('Session expirée');
+    error.status = 419;
+    error.response = { status: 419 };
+    api.listThreads = async () => { throw error; };
+
+    try {
+      await app.ensureCurrentThread();
+    } finally {
+      api.listThreads = originalListThreads;
+    }
+
+    const authRequiredEvents = bus.events.filter((e) => e.name === EVENTS.AUTH_REQUIRED);
+    assert.equal(authRequiredEvents.length, 1);
+    const payload = authRequiredEvents[0].payload || {};
+    assert.equal(payload.status, 419);
+    assert.equal(payload.reason, 'threads_boot_failed');
+    assert.equal(payload.message, t('auth.login_required', { locale: 'fr' }));
+  });
+});
+
 test('ensureCurrentThread regenere un thread inaccessible sans auth:missing', async () => {
   await withStubbedDom(async () => {
     const state = createStateStub({ threads: { currentId: 'thread-private' } });
