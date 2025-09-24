@@ -1,6 +1,6 @@
-# tests/run_all.ps1 — v1.2 (compatibilité PowerShell 5.1)
-# Teste les endpoints clés du backend ÉMERGENCE.
-# Usage : lancer depuis la racine du projet avec le backend démarré sur localhost:8000
+# tests/run_all.ps1 - v1.3 (compatibilite PowerShell 5.1)
+# Teste les endpoints cles du backend EMERGENCE.
+# Usage : lancer depuis la racine du projet avec le backend demarre sur localhost:8000
 
 $baseUrl = "http://localhost:8000"
 
@@ -36,16 +36,16 @@ try {
 }
 
 Write-Host "`n=== [4] Upload fichier test_upload.txt via curl.exe ==="
-# Vérifier que test_upload.txt existe
+# Verifier que test_upload.txt existe
 $testFile = Join-Path (Get-Location) "test_upload.txt"
 if (-Not (Test-Path $testFile)) {
-    "Ceci est un fichier de test pour ÉMERGENCE." | Out-File -FilePath $testFile -Encoding UTF8
-    Write-Host "Fichier $testFile créé."
+    "Ceci est un fichier de test pour EMERGENCE." | Out-File -FilePath $testFile -Encoding UTF8
+    Write-Host "Fichier $testFile cree."
 }
 
 try {
     $uploadCmd = "curl.exe -s -X POST -F `"file=@$testFile;type=text/plain`" $baseUrl/api/documents/upload"
-    Write-Host "Commande exécutée : $uploadCmd"
+    Write-Host "Commande executee : $uploadCmd"
     iex $uploadCmd
 } catch {
     Write-Host "Upload FAILED: $_"
@@ -56,7 +56,26 @@ try {
     Invoke-RestMethod -Uri "$baseUrl/api/documents/1" -Method DELETE
     Write-Host "Suppression du document 1 OK (si existait)."
 } catch {
-    Write-Host "Suppression FAILED (peut être normal si ID=1 n'existe pas): $_"
+    Write-Host "Suppression FAILED (peut etre normal si ID=1 n'existe pas): $_"
 }
 
-Write-Host "`n=== Tests terminés ==="
+Write-Host "`n=== [6] Test memory:clear (pytest) ==="
+$originalPythonPath = $env:PYTHONPATH
+try {
+    $repoPath = (Get-Location).Path
+    $srcPath = Join-Path $repoPath "src"
+    if ([string]::IsNullOrEmpty($originalPythonPath)) {
+        $env:PYTHONPATH = $srcPath
+    } else {
+        $env:PYTHONPATH = "$srcPath;${originalPythonPath}"
+    }
+    $pytestCmd = "python -m pytest tests/backend/features/test_memory_clear.py -q"
+    Write-Host "Commande executee : $pytestCmd"
+    iex $pytestCmd
+} catch {
+    Write-Host "memory:clear pytest FAILED: $_"
+} finally {
+    $env:PYTHONPATH = $originalPythonPath
+}
+
+Write-Host "`n=== Tests termines ==="

@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 import asyncio
 import sys
 from pathlib import Path
@@ -79,3 +80,4 @@ def test_delete_thread_requires_owner(tmp_path):
         await db.disconnect()
 
     asyncio.run(scenario())
+

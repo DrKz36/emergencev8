@@ -1,4 +1,5 @@
-﻿import asyncio
+# ruff: noqa: E402
+import asyncio
 import os
 import sys
 from pathlib import Path
@@ -157,3 +158,4 @@ def test_thread_doc_filter(tmp_path):
         os.environ.pop('EMERGENCE_AUTO_TEND', None)
 
     asyncio.run(scenario())
+

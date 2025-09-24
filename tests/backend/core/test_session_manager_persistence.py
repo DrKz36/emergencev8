@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 import asyncio
 import sys
 from pathlib import Path
@@ -55,3 +56,4 @@ def test_session_manager_hydrates_and_persists(tmp_path):
         await db.disconnect()
 
     asyncio.run(scenario())
+

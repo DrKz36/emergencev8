@@ -45,7 +45,7 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 ### P2 — Mémoire vive & consolidation continue (En cours)
 - Optimiser l’expérience utilisateur en cas d’échec auth (toasts explicites, re-prompt GIS).
 - Afficher l’historique de consolidation (`GET /api/memory/tend-garden`) dans l’UI mémoire.
-- Couvrir `memory:clear` par tests automatisés (smoke + unitaires ciblés).
+- [FAIT] Couvrir `memory:clear` par tests automatises (pytest `tests/backend/features/test_memory_clear.py` integre dans `tests/run_all.ps1`).
 
 ### P3 — RAG maîtrisé (Stabilisé)
 - Étendre les formats supportés (Markdown, HTML léger) en assurant la purge d’embeddings.
@@ -71,7 +71,7 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 
 ## Étapes immédiates (Priorités Semaine Courante)
 1. [FAIT] Stabilite Auth : remontee visuelle front en place (livre le 26/09/2025, message Connexion requise).
-2. **Tests mémoire** : exécuter `tests/run_all.ps1` + ajouter un scénario ciblé `memory:clear` (script dédié ou extension existant).
+2. [FAIT] Tests memoire : `tests/run_all.ps1` lance maintenant le scenario pytest `memory:clear` (`tests/backend/features/test_memory_clear.py`).
 3. **Documentation UX** : compléter `docs/Memoire.md` (présent document) avec captures/flows pour guider la QA manuelle.
 4. **Surveillance vector store** : planifier un run hebdo de `tests/test_vector_store_reset.ps1` pour sécuriser l’auto-reset.
 
@@ -88,4 +88,5 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 ## Références
 - Architecture détaillée : `docs/architecture/*.md`
 - Mémoire progressive : `docs/Memoire.md`
-- Tests : `tests/run_all.ps1`, `tests/test_vector_store_reset.ps1`, `tests/test_vector_store_force_backup.ps1`
+- Tests : `tests/run_all.ps1`, `tests/backend/features/test_memory_clear.py`, `tests/test_vector_store_reset.ps1`, `tests/test_vector_store_force_backup.ps1`
+
