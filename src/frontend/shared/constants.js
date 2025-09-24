@@ -94,6 +94,8 @@ export const EVENTS = {
   THREADS_REFRESH_REQUEST: 'threads:refresh',
 
   // Generic UI helpers
+  AUTH_REQUIRED: 'ui:auth:required',
+  AUTH_RESTORED: 'ui:auth:restored',
   SHOW_MODAL: 'ui:show_modal',
   SHOW_NOTIFICATION: 'ui:show_notification',
 };

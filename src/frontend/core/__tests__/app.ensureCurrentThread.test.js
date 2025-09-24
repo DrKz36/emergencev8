@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { App } from '../app.js';
 import { api } from '../../shared/api-client.js';
 import { t } from '../../shared/i18n.js';
+import { EVENTS } from '../../shared/constants.js';
 
 async function withStubbedDom(fn) {
   const originalDocument = global.document;
@@ -104,6 +105,11 @@ test('ensureCurrentThread signale la nécessité de connexion sur erreur 401', a
     assert.equal(toastEvents[0].payload.text, t('auth.login_required', { locale: 'fr' }));
     const authMissingEvents = bus.events.filter(e => e.name === 'auth:missing');
     assert.equal(authMissingEvents.length, 1);
+    const authRequiredEvents = bus.events.filter(e => e.name === EVENTS.AUTH_REQUIRED);
+    assert.equal(authRequiredEvents.length, 1);
+    assert.equal(authRequiredEvents[0].payload?.message, t('auth.login_required', { locale: 'fr' }));
+    const authRestoredEvents = bus.events.filter(e => e.name === EVENTS.AUTH_RESTORED);
+    assert.equal(authRestoredEvents.length, 0);
   });
 });
 
@@ -126,6 +132,8 @@ test('ensureCurrentThread ne duplique pas le toast auth', async () => {
 
     const toastEvents = bus.events.filter(e => e.name === 'ui:toast');
     assert.equal(toastEvents.length, 1);
+    const authRequiredEvents = bus.events.filter(e => e.name === EVENTS.AUTH_REQUIRED);
+    assert.equal(authRequiredEvents.length, 1);
     assert.equal(state.get('chat.authRequired'), true);
   });
 });
@@ -176,6 +184,11 @@ test('ensureCurrentThread regenere un thread inaccessible sans auth:missing', as
     assert.equal(createCalls, 1);
     const authMissingEvents = bus.events.filter(e => e.name === 'auth:missing');
     assert.equal(authMissingEvents.length, 0);
+    const authRequiredEvents = bus.events.filter(e => e.name === EVENTS.AUTH_REQUIRED);
+    assert.equal(authRequiredEvents.length, 0);
+    const authRestoredEvents = bus.events.filter(e => e.name === EVENTS.AUTH_RESTORED);
+    assert.equal(authRestoredEvents.length, 1);
+    assert.equal(authRestoredEvents[0].payload?.threadId, 'new-thread-id');
     const readyEvents = bus.events.filter(e => e.name === 'threads:ready');
     assert.equal(readyEvents.at(-1)?.payload?.id, 'new-thread-id');
     assert.equal(state.get('chat.authRequired'), false);

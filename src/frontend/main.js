@@ -508,6 +508,11 @@ function mountAuthBadge(eventBus) {
   eventBus.on?.('auth:logout', () => { setLogged(false); setConnected(false); setAlert(loginRequiredMessage); });
   eventBus.on?.(EVENTS.WS_CONNECTED || 'ws:connected', () => { setLogged(true); setConnected(true); setAlert(''); });
   eventBus.on?.('ws:close', () => { setConnected(false); });
+  eventBus.on?.(EVENTS.AUTH_REQUIRED, (payload) => {
+    const alertText = (payload && typeof payload?.message === 'string' && payload.message.trim()) ? payload.message.trim() : loginRequiredMessage;
+    setAlert(alertText);
+  });
+  eventBus.on?.(EVENTS.AUTH_RESTORED, () => { setAlert(''); });
 
   // Hooks model/meta (affiche le modèle utilisé)
   eventBus.on?.('chat:model_info', (p) => { if (p) setModel(p.provider, p.model, false); });
@@ -541,7 +546,167 @@ function mountAuthBadge(eventBus) {
 
   setLogged(hasToken()); setConnected(false);
   attach();
-  return { setLogged, setConnected, attach };
+  return { setLogged, setConnected, attach, setAlert };
+}
+
+function createAuthBannerRecorder() {
+  const win = (typeof window !== 'undefined') ? window : null;
+  const maxEvents = 50;
+
+  return {
+    record(type, context = {}) {
+      if (!win) return;
+      try {
+        const root = win.__EMERGENCE_QA_METRICS__ = win.__EMERGENCE_QA_METRICS__ || {};
+        const bucket = root.authRequired = root.authRequired || {
+          requiredCount: 0,
+          missingCount: 0,
+          restoredCount: 0,
+          events: [],
+        };
+        if (!Array.isArray(bucket.events)) bucket.events = [];
+        const entry = {
+          type,
+          at: new Date().toISOString(),
+          source: context.source ?? null,
+          reason: context.reason ?? null,
+          status: context.status ?? null,
+          message: context.message ?? null,
+          threadId: context.threadId ?? null,
+        };
+        bucket.events.push(entry);
+        if (bucket.events.length > maxEvents) {
+          bucket.events.splice(0, bucket.events.length - maxEvents);
+        }
+
+        if (type === 'required') bucket.requiredCount = (bucket.requiredCount || 0) + 1;
+        else if (type === 'missing') bucket.missingCount = (bucket.missingCount || 0) + 1;
+        else if (type === 'restored') bucket.restoredCount = (bucket.restoredCount || 0) + 1;
+
+        if (typeof console !== 'undefined' && typeof console.info === 'function') {
+          const label = type === 'required'
+            ? '[AuthBanner] AUTH_REQUIRED'
+            : (type === 'missing' ? '[AuthBanner] AUTH_MISSING' : '[AuthBanner] AUTH_RESTORED');
+          console.info(label, entry);
+        }
+
+        const dispatcher = typeof win.dispatchEvent === 'function' ? win.dispatchEvent.bind(win) : null;
+        const CustomEvt = typeof win.CustomEvent === 'function'
+          ? win.CustomEvent
+          : (typeof CustomEvent === 'function' ? CustomEvent : null);
+        if (dispatcher && CustomEvt) {
+          try { dispatcher(new CustomEvt('emergence:auth:banner', { detail: entry })); } catch (_) {}
+        }
+      } catch (err) {
+        try { console.warn('[AuthBanner] QA instrumentation failed', err); } catch (_) {}
+      }
+    },
+  };
+}
+
+function installAuthRequiredBanner(eventBus) {
+  const recorder = createAuthBannerRecorder();
+  let banner = null;
+  let messageNode = null;
+
+  const ensureBanner = () => {
+    if (banner && typeof document !== 'undefined' && document.body?.contains(banner)) return banner;
+    const existing = (typeof document !== 'undefined') ? document.getElementById('app-auth-required-banner') : null;
+    if (existing) {
+      banner = existing;
+      messageNode = banner.querySelector('.app-auth-required-banner__message');
+      return banner;
+    }
+    if (typeof document === 'undefined') return null;
+    banner = document.createElement('div');
+    banner.id = 'app-auth-required-banner';
+    banner.className = 'app-auth-required-banner';
+    banner.setAttribute('role', 'alert');
+    banner.setAttribute('aria-live', 'assertive');
+    banner.setAttribute('hidden', 'true');
+
+    const icon = document.createElement('span');
+    icon.className = 'app-auth-required-banner__icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML = "<svg viewBox='0 0 20 20' fill='currentColor' xmlns='http://www.w3.org/2000/svg'><path d='M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm0 3.5a1 1 0 0 1 .993.883L11 6.5v4a1 1 0 0 1-1.993.117L9 10.5v-4a1 1 0 0 1 1-1Zm.002 8a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5Z'/></svg>";
+
+    messageNode = document.createElement('span');
+    messageNode.className = 'app-auth-required-banner__message';
+
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'app-auth-required-banner__action';
+    action.textContent = t('auth.login_action');
+    action.addEventListener('click', () => {
+      try { eventBus.emit('auth:login', {}); } catch (_) {}
+      setTimeout(() => {
+        try { if (!hasToken()) openDevAuth(); } catch (_) {}
+      }, 300);
+    });
+
+    banner.append(icon, messageNode, action);
+    const host = document.body || document.documentElement;
+    if (host) host.appendChild(banner);
+    return banner;
+  };
+
+  const show = (message) => {
+    const node = ensureBanner();
+    if (!node) return;
+    const textValue = (typeof message === 'string' && message.trim()) ? message.trim() : t('auth.login_required');
+    if (messageNode) messageNode.textContent = textValue;
+    node.classList.add('is-visible');
+    node.removeAttribute('hidden');
+  };
+
+  const hide = () => {
+    if (!banner) return;
+    banner.classList.remove('is-visible');
+    banner.setAttribute('hidden', 'true');
+  };
+
+  eventBus.on?.(EVENTS.AUTH_REQUIRED, (payload) => {
+    const message = typeof payload?.message === 'string' ? payload.message : undefined;
+    recorder.record('required', {
+      source: payload?.source ?? 'event',
+      reason: payload?.reason ?? null,
+      status: payload?.status ?? null,
+      message: message ? message.trim() : null,
+    });
+    show(message);
+  });
+
+  eventBus.on?.('auth:missing', (payload) => {
+    const message = typeof payload?.message === 'string' ? payload.message : undefined;
+    recorder.record('missing', {
+      source: 'auth:missing',
+      reason: payload?.reason ?? null,
+      status: payload?.status ?? null,
+      message: message ? message.trim() : null,
+    });
+    show(message);
+  });
+
+  eventBus.on?.(EVENTS.AUTH_RESTORED, (payload) => {
+    recorder.record('restored', {
+      source: payload?.source ?? 'event',
+      threadId: payload?.threadId ?? null,
+    });
+    hide();
+  });
+
+  const wsConnectedEvent = EVENTS.WS_CONNECTED || 'ws:connected';
+  eventBus.on?.(wsConnectedEvent, () => {
+    recorder.record('restored', { source: wsConnectedEvent });
+    hide();
+  });
+
+  eventBus.on?.('auth:login', () => {
+    recorder.record('restored', { source: 'auth:login' });
+    hide();
+  });
+
+  return { show, hide, recorder };
 }
 
 /* -------------------- App bootstrap -------------------- */
@@ -567,6 +732,7 @@ class EmergenceClient {
     eventBus.on('ui:toast', (p) => { if (p?.text) showToast(p); });
 
     const badge = mountAuthBadge(eventBus);
+    installAuthRequiredBanner(eventBus);
 
     eventBus.on?.('auth:missing', () => {
       try { stateManager.set('chat.authRequired', true); }

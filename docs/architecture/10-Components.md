@@ -14,6 +14,7 @@
 ## Frontend
 - **`core/state-manager.js`** : store global, bootstrap auth + threads (REST), conserve map des threads/messages.
 - **`core/websocket.js`** : ouverture WS post-auth (sub-proto `jwt`), gestion reconnexion, diffusion événements sur `EventBus`.
+- **`main.js`** : bootstrap EventBus/State, badge auth, bannière `Connexion requise` via `installAuthRequiredBanner` + instrumentation QA (`window.__EMERGENCE_QA_METRICS__.authRequired`).
 - **`shared/api-client.js`** : `fetchWithAuth` (Authorization Bearer), gère erreurs `auth:missing`, uniformise réponses.
 - **`features/chat/chat-module.js`** : synchronise state threads ↔ UI, gère envoi message (WS + watchdog REST), toasts, toggles RAG/mémoire.
 - **`features/chat/chat-ui.js`** : rendu messages, sources RAG, badges mémoire (STM/LTM, modèle), actions `Analyser` / `Clear`, overlay « Connexion requise » quand l'auth est absente.

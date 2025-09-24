@@ -28,6 +28,7 @@ export class App {
     this.state = state;
     this.initialized = false;
     this._authToastShown = false;
+    this._authBannerShown = false;
 
     this.dom = {
       appContainer: document.getElementById('app-container'),
@@ -329,8 +330,12 @@ export class App {
         this.state.set(`threads.map.${threadPayload.id}`, threadPayload);
         this._syncSessionWithThread(threadPayload.id);
         this.eventBus.emit('threads:loaded', threadPayload);
+        this._authToastShown = false;
+        this._authBannerShown = false;
         try { this.state.set('chat.authRequired', false); }
         catch (stateErr) { console.warn('[App] Impossible de mettre a jour chat.authRequired', stateErr); }
+        try { this.eventBus.emit?.(EVENTS.AUTH_RESTORED, { source: 'ensureCurrentThread', threadId: threadPayload.id }); }
+        catch (emitErr) { console.warn('[App] Impossible d\'emettre ui:auth:restored', emitErr); }
       }
     } catch (error) {
       console.error('[App] ensureCurrentThread() a echoue :', error);
@@ -339,13 +344,18 @@ export class App {
       }
       const status = error?.status ?? error?.response?.status ?? error?.cause?.status ?? null;
       if (AUTH_ERROR_STATUSES.has(status)) {
+        const message = t('auth.login_required');
         try { this.state.set('chat.authRequired', true); }
         catch (stateErr) { console.warn('[App] Impossible de mettre a jour chat.authRequired', stateErr); }
         try { this.state.set('auth.hasToken', false); } catch (stateErr) { console.warn('[App] Impossible de mettre a jour auth.hasToken', stateErr); }
         try { this.eventBus.emit?.('auth:missing'); } catch (emitErr) { console.warn("[App] Impossible d'emettre auth:missing", emitErr); }
+        if (!this._authBannerShown) {
+          this._authBannerShown = true;
+          try { this.eventBus.emit?.(EVENTS.AUTH_REQUIRED, { reason: 'threads_boot_failed', status, message }); }
+          catch (emitErr) { console.warn("[App] Impossible d'emettre ui:auth:required", emitErr); }
+        }
         if (!this._authToastShown) {
           this._authToastShown = true;
-          const message = t('auth.login_required');
           try { this.eventBus.emit?.('ui:toast', { kind: 'error', text: message }); }
           catch (toastErr) { console.warn("[App] Impossible d'emettre ui:toast", toastErr); }
         }

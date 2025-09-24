@@ -46,6 +46,7 @@
 - macOS / Linux : `python3.11 -m venv .venv` puis `source .venv/bin/activate`.
 - Installer ou mettre a jour les dependances avec `python -m pip install --upgrade pip && python -m pip install -r requirements.txt`.
 - Optionnel : capturer les versions effectives avec `pip freeze > requirements-dev.txt` ou maintenir un `requirements.lock`.
+- Demarrer le backend local via `pwsh -File scripts/run-backend.ps1` (maintient uvicorn en avant-plan, evite le signal window close precedent et prepare l'ajout d'une supervision).
 - Utiliser Node.js >= 18 (`nvm use 18` recommande) et reinstaller via `npm ci` apres tout changement de `package-lock.json`.
 - Executer `npm run build` pour verifier le frontend avant chaque push.
 
