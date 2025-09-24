@@ -507,6 +507,37 @@ class SessionManager:
         for key in keys_to_remove:
             self._hydrated_threads.pop(key, None)
 
+    async def handle_session_revocation(
+        self,
+        session_id: str,
+        *,
+        reason: str = "session_revoked",
+        close_connections: bool = True,
+        close_code: int = 4401,
+    ) -> bool:
+        """Finalize a revoked session and close related WebSocket connections."""
+        had_session = session_id in self.active_sessions
+        if close_connections:
+            conn = getattr(self, "connection_manager", None)
+            if conn:
+                try:
+                    await conn.close_session(session_id, code=close_code, reason=reason)
+                except Exception as exc:
+                    logger.debug(
+                        "Fermeture WS pour %s impossible: %s",
+                        session_id,
+                        exc,
+                    )
+        if had_session:
+            await self.finalize_session(session_id)
+        else:
+            self._session_threads.pop(session_id, None)
+            self._session_users.pop(session_id, None)
+            keys_to_remove = [key for key in self._hydrated_threads if key[0] == session_id]
+            for key in keys_to_remove:
+                self._hydrated_threads.pop(key, None)
+        return had_session
+
     async def update_and_save_session(self, session_id: str, update_data: Dict[str, Any]):
         """Met à jour une session active et la sauvegarde."""
         session = self.get_session(session_id)

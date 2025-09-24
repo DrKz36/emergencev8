@@ -36,6 +36,9 @@
   - `_sanitize_doc_ids` filtre les identifiants envoyes par l'UI et supprime les doublons.
   - Les identifiants sont recoupes avec les documents rattaches au thread courant; si aucun ne correspond, le service retombe sur la liste autorisee renvoyee par l'API.
   - Les IDs valides sont reinjectees dans `meta.selected_doc_ids` sur `ws:chat_stream_*` et la progression RAG diffusee via `ws:rag_status` (searching/found/idle).
+- **`AuthService`** (features/auth/service.py)
+  - Verifie les JWT HS256 et enrichit les claims (`session_revoked`, `revoked_at`) consommes par `get_auth_claims`.
+  - `logout` idempotent : marque `auth_sessions.revoked_at` et coupe les consolidations memoire/RAG en cas de session revoquee.
 - **Endpoints REST**
   - `POST /api/memory/tend-garden` : lance une consolidation (option `thread_id`, `mode`).
   - `GET /api/memory/tend-garden` : renvoie l’état consolidé (`summaries`, `facts`, compteurs LTM).
@@ -72,6 +75,7 @@
 ## 4. Observabilité & tests
 - Logs : `memory:garden:start`, `memory:garden:done`, `memory:clear`.
 - WS meta : `meta.selected_doc_ids` expose les documents retenus et `ws:rag_status` trace les etats searching/found/idle pour la QA.
+- Auth: les claims exposent `session_revoked`; apres un logout, toute reconnexion WS refuse la session tant que le token n'est pas renouvele.
 - Tests recommandés :
   - `tests/run_all.ps1` (vérifie `/api/memory/tend-garden`).
   - `pytest tests/backend/features/test_memory_clear.py` : valide `POST /api/memory/clear` sans serveur actif (stubs DB/vector) et est invoque depuis `tests/run_all.ps1`.
@@ -176,4 +180,3 @@
 - [ ] Réaliser un **clear complet** et contrôler la purge STM/LTM + embeddings (captures : `assets/memoire/modal-clear.png`, `assets/memoire/bandeau-vide.png`).
 - [ ] **Tester le scénario d’erreur** (LLM indisponible) et confirmer la présence du toast + bouton retry (capture : `assets/memoire/toast-erreur.png`).
 - [ ] Vérifier la **cohérence des logs** `memory:garden:*` et `memory:clear` avec les actions réalisées (capture : `assets/memoire/logs-erreur.png`).
-

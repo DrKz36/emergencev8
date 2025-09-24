@@ -1,5 +1,15 @@
 # ÉMERGENCE — Séquences (User Journeys)
 
+## 0) Auth email (Allowlist -> Token -> Landing)
+1. Front : `HomeModule` affiche le hero (fond noir + logo) et le formulaire email; validation locale du format.
+2. Front : `POST /api/auth/login` avec `{ email }` et métadonnées (user-agent, locale); état `pending`.
+3. Back : `AuthRateLimiter` vérifie le quota IP+email (5 essais / 5 min); `AuthService` contrôle l'allowlist (`LOCAL_ALLOWED_EMAILS`).
+4. Back : génération JWT HS256 (`iss=emergence.local`, `aud=emergence-app`, `sub=sha256(email)`), enregistrement dans `auth_sessions` (`issued_at`, `expires_at=+7j`, `ip`, `role`, `otp_fields`).
+5. Back : réponse `200` `{ token, expires_at, role, session_id }`; sinon `429` (rate) ou `401` (email refusé).
+6. Front : stockage token (`localStorage` + cookie), mise à jour `StateManager.auth`, déclenche `App` puis `WebSocketClient.connect()`.
+7. Back : handshake WS accepte le token local (signature, expiration, révocation) et attache `session.sub`.
+8. Front : badge auth actif; bouton `Se déconnecter` appelle `POST /api/auth/logout`, purge le token et remonte `HomeModule`.
+
 ## 1) Chat temps réel (Bootstrap → WS → Agents → Persist)
 1. Front : `ensureAuth()` (GIS) → ID token (ou `AUTH_DEV_MODE`).
 2. Front : `ensureCurrentThread()` → `GET /api/threads?type=chat&limit=1` ; crée (`POST /api/threads`) si vide, hydrate `state.threads.map` via `GET /api/threads/{id}/messages?limit=50`.
@@ -33,3 +43,11 @@
 1. Front : `DashboardModule` → `GET /api/dashboard/costs/summary`.
 2. Back : `DashboardService` agrège coûts, sessions, documents.
 3. Front : rend cartes (jour/semaine/mois/total) + monitoring ; rafraîchissement manuel possible.
+
+## 6) Admin auth (Allowlist & Sessions)
+1. Admin : login via email (présent dans `LOCAL_AUTH_ADMIN_EMAILS`) -> payload `role="admin"`.
+2. Front : `AuthAdminModule` consomme `GET /api/auth/admin/allowlist` et `GET /api/auth/admin/sessions?status=active`.
+3. Back : `AuthService` vérifie le rôle admin, renvoie allowlist + sessions (expiration, ip, revoked_at).
+4. Admin : ajoute une entrée `POST /api/auth/admin/allowlist` (`{ email, note? }`) ou supprime `DELETE /api/auth/admin/allowlist/{email}`; peut révoquer `POST /api/auth/admin/sessions/revoke` (`{ session_id }`).
+5. Back : journalise l'action (`auth_audit_log`), met à jour tables, renvoie l'état; front rafraîchit et notifie.
+

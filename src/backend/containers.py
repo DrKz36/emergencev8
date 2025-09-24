@@ -23,6 +23,8 @@ from backend.core.cost_tracker import CostTracker
 from backend.core.session_manager import SessionManager
 from backend.core.websocket import ConnectionManager
 
+from backend.features.auth.service import AuthService, build_auth_config_from_env
+from backend.features.auth.rate_limiter import SlidingWindowRateLimiter
 from backend.features.memory.vector_service import VectorService  # persist_directory + embed_model_name
 from backend.features.memory.analyzer import MemoryAnalyzer
 from backend.features.chat.service import ChatService
@@ -272,6 +274,15 @@ class AppContainer(containers.DeclarativeContainer):
         db_manager=db_manager,
         memory_analyzer=memory_analyzer,
     )
+    auth_config = providers.Callable(build_auth_config_from_env)
+    auth_rate_limiter = providers.Singleton(SlidingWindowRateLimiter)
+    auth_service = providers.Singleton(
+        AuthService,
+        db_manager=db_manager,
+        config=auth_config,
+        rate_limiter=auth_rate_limiter,
+    )
+
     connection_manager = providers.Singleton(ConnectionManager, session_manager=session_manager)
 
     # --- Chat ---

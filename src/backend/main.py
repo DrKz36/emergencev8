@@ -51,6 +51,7 @@ DEBATE_ROUTER = _import_router("backend.features.debate.router")
 CHAT_ROUTER = _import_router("backend.features.chat.router")  # ← WS ici
 THREADS_ROUTER = _import_router("backend.features.threads.router")
 MEMORY_ROUTER = _import_router("backend.features.memory.router")
+AUTH_ROUTER = _import_router("backend.features.auth.router")
 DEV_AUTH_ROUTER = _import_router("backend.features.dev_auth.router")  # optionnel
 
 
@@ -101,6 +102,14 @@ async def _startup(container: ServiceContainer):
         logger.info("MemoryAnalyzer hook: ChatService injecté (ready=True).")
     except Exception as e:
         logger.warning(f"MemoryAnalyzer hook non appliqué: {e}")
+
+
+    try:
+        auth_service = container.auth_service()
+        await auth_service.bootstrap()
+        logger.info("AuthService bootstrap terminé.")
+    except Exception as e:
+        logger.warning(f"AuthService bootstrap non appliqué: {e}")
 
 
 # --- Middleware Deny-list (404 early) ---
@@ -190,6 +199,7 @@ def create_app() -> FastAPI:
     _mount_router(DASHBOARD_ROUTER, "/api/dashboard")
     _mount_router(THREADS_ROUTER, "/api/threads")
     _mount_router(MEMORY_ROUTER, "/api/memory")
+    _mount_router(AUTH_ROUTER)
     _mount_router(DEV_AUTH_ROUTER)  # éventuel
 
     # ⚠️ WS: **uniquement** features.chat.router (déclare /ws/{session_id})

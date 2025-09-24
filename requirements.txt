@@ -1,4 +1,4 @@
-﻿# ==============================
+# ==============================
 # EMERGENCE - Requirements (E2E)
 # Targets: Windows dev + Cloud Run
 # ==============================
@@ -8,6 +8,7 @@ fastapi==0.109.2                 # match env stable
 uvicorn[standard]>=0.24,<0.31    # uvloop/httptools included for perf
 websockets>=11.0.2
 python-multipart>=0.0.9
+PyJWT>=2.9,<3
 
 # --- DI & Config ---
 dependency-injector>=4.41,<5

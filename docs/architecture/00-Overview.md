@@ -10,17 +10,17 @@
   - Fournisseurs LLM (Google, Anthropic, OpenAI)
   - Stockages projet (SQLite app + Chroma vector store)
   - Hébergement Cloud Run / infrastructure containerisée
-- **Contraintes** : Auth forte (JWT), isolation multi-tenant par `sub`, fonctionnement offline impossible (dépendances IA externes), respect ARBO-LOCK.
+- **Contraintes** : Auth forte (JWT locale HS256 7j + rotation secret), isolation multi-tenant par `sub`, allowlist email maintenue via interface admin, fonctionnement offline impossible (dépendances IA externes), respect ARBO-LOCK.
 
 ## 2) Conteneurs (C4-Container)
 - **Frontend (Vite + JS)**
-  - Modules clés : `StateManager`, `EventBus`, `WebSocketClient`, `ChatModule`, `DebateModule`, `DocumentsModule`, `DashboardModule`.
-  - Responsabilités : Auth GIS (mode dev via `AUTH_DEV_MODE`), initialisation des threads (`ensureCurrentThread()`), connexion WS (`/ws/{session_id}`), rendu des métriques chat/mémoire, interactions RAG/documents.
+  - Modules clés : `HomeModule`, `StateManager`, `EventBus`, `WebSocketClient`, `ChatModule`, `DebateModule`, `DocumentsModule`, `DashboardModule`, `AuthAdminModule`.
+  - Responsabilités : Landing page (logo + email form), auth locale via allowlist (`POST /api/auth/login`), gestion des tokens (stockage + logout), bootstrap threads (`ensureCurrentThread()`), connexion WS (`/ws/{session_id}`), rendu chat/mémoire/RAG/documents.
 - **Backend (FastAPI + WebSocket)**
-  - Couches : `main.py` (DI + migrations + routers), `containers.py` (`ServiceContainer`), routers REST (`/api/threads`, `/api/memory`, `/api/documents`, `/api/dashboard`, `/api/debates`), router WS (`chat.router`), services (`ChatService`, `MemoryAnalyzer`, `MemoryGardener`, `DocumentService`, `DebateService`, `DashboardService`).
-  - Responsabilités : Auth ID Token (fallback `X-User-Id` si dev), gestion des sessions, orchestration multi-agents avec fallback fournisseur, consolidation mémoire, ingestion documents, diffusion WS.
+  - Couches : `main.py` (DI + migrations + routers), `containers.py` (`ServiceContainer`), routers REST (`/api/auth`, `/api/threads`, `/api/memory`, `/api/documents`, `/api/dashboard`, `/api/debates`), router WS (`chat.router`), services (`AuthService`, `ChatService`, `MemoryAnalyzer`, `MemoryGardener`, `DocumentService`, `DebateService`, `DashboardService`).
+  - Responsabilités : Auth locale (allowlist email, JWT 7j, admin allowlist) + compat GIS dev, gestion des sessions, orchestration multi-agents avec fallback fournisseur, consolidation mémoire, ingestion documents, diffusion WS.
 - **Stockages & ressources partagées**
-  - **SQLite app** : threads, messages, coûts, documents, mémoire STM/LTM.
+  - **SQLite app** : threads, messages, coûts, documents, mémoire STM/LTM, tables auth (`auth_allowlist`, `auth_sessions`, `auth_audit_log`).
   - **Vector DB (Chroma)** : collection `emergence_knowledge` pour chunks documents + faits mémoire (auto-reset en cas de corruption, backup automatique).
   - **Modèles SentenceTransformer** : embeddings pour RAG et mémoire.
 

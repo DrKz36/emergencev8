@@ -138,6 +138,31 @@ class ConnectionManager:
                 logger.error(f"Erreur d'envoi (session {session_id}) → cleanup: {e}")
                 await self.disconnect(session_id, ws)
 
+    async def close_session(
+        self,
+        session_id: str,
+        *,
+        code: int = 4401,
+        reason: str = "session_revoked",
+    ) -> int:
+        connections = self.active_connections.pop(session_id, [])
+        if not connections:
+            return 0
+        closed = 0
+        notice = {"type": "ws:auth_required", "payload": {"reason": reason, "code": code}}
+        for ws in list(connections):
+            try:
+                await ws.send_json(notice)
+            except Exception:
+                pass
+            try:
+                await ws.close(code=code)
+            except Exception:
+                pass
+            closed += 1
+        logger.info("Session %s: closed %s WebSocket connection(s) (reason=%s).", session_id, closed, reason)
+        return closed
+
 def _find_handler(sm: SessionManager) -> Optional[Callable[..., Any]]:
     for name in ("on_client_message", "ingest_ws_message", "handle_client_message", "dispatch"):
         fn = getattr(sm, name, None)
@@ -188,6 +213,12 @@ def get_websocket_router(container) -> APIRouter:
             logger.error("WS auth unexpected error -> close 1008 : %s", e)
             await _reject_ws("unexpected_error", 1008)
             return
+
+        claims = getattr(getattr(websocket, "state", None), "auth_claims", {})
+        auth_email = claims.get("email") if isinstance(claims, dict) else None
+        if auth_email:
+            websocket.scope["auth_email"] = auth_email
+            logger.info("WS auth accepté pour %s (sub=%s)", auth_email, user_id)
 
         session_manager: SessionManager = container.session_manager()
         conn_manager = getattr(session_manager, "connection_manager", None)

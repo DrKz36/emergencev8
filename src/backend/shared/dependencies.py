@@ -7,12 +7,18 @@ import json
 import base64
 import logging
 import re
-from typing import Optional
+from typing import TYPE_CHECKING
+from typing import Optional, Any, Dict
 
 from fastapi import Request, HTTPException, Query
 from fastapi import WebSocket
 
 logger = logging.getLogger("emergence.allowlist")
+
+
+if TYPE_CHECKING:
+    from backend.features.auth.service import AuthService
+    from backend.core.session_manager import SessionManager
 
 # -----------------------------
 # Helpers JWT
@@ -68,6 +74,100 @@ def _has_dev_bypass_query(params) -> bool:
     except Exception:
         return False
 
+
+
+def _maybe_get_auth_service(scope_holder) -> Optional["AuthService"]:
+    try:
+        app = scope_holder.app  # type: ignore[attr-defined]
+    except AttributeError:
+        app = getattr(scope_holder, "app", None)
+    if app is None:
+        return None
+    state = getattr(app, "state", None)
+    container = getattr(state, "service_container", None)
+    if container is None:
+        return None
+    getter = getattr(container, "auth_service", None)
+    if getter is None:
+        return None
+    try:
+        return getter()
+    except Exception as exc:
+        logger.debug("AuthService indisponible: %s", exc)
+        return None
+
+def _extract_bearer_token_from_header(auth_header: Optional[str]) -> str:
+    if not auth_header:
+        return ""
+    parts = auth_header.strip().split(" ", 1)
+    if len(parts) == 2 and parts[0].lower() == "bearer":
+        return parts[1].strip()
+    return ""
+
+async def _resolve_token_claims(token: str, scope_holder, *, allow_revoked: bool = False) -> Dict[str, Any]:
+    if not token:
+        raise HTTPException(status_code=401, detail="ID token invalide ou absent.")
+    claims_unverified = _read_bearer_claims_from_token(token)
+    auth_service = _maybe_get_auth_service(scope_holder)
+    if auth_service is not None:
+        try:
+            verified = await auth_service.verify_token(token, allow_revoked=allow_revoked)
+        except Exception as exc:
+            status = getattr(exc, "status_code", 401)
+            message = str(exc) or "Token invalide."
+            local_issuer = getattr(getattr(auth_service, "config", None), "issuer", None)
+            if claims_unverified and local_issuer and claims_unverified.get("iss") == local_issuer:
+                raise HTTPException(status_code=status, detail=message) from exc
+            if not claims_unverified:
+                raise HTTPException(status_code=status, detail=message) from exc
+        else:
+            verified_dict = dict(verified)
+            verified_dict.setdefault("_auth_source", "local")
+            verified_dict["_raw_token"] = token
+            return verified_dict
+    if not claims_unverified:
+        raise HTTPException(status_code=401, detail="ID token invalide ou absent.")
+    _enforce_allowlist_claims(claims_unverified)
+    claims_out = dict(claims_unverified)
+    claims_out.setdefault("_auth_source", "google")
+    claims_out["_raw_token"] = token
+    return claims_out
+
+async def _get_claims_from_request(request: Request, *, allow_revoked: bool = False) -> Dict[str, Any]:
+    cache_key = "auth_claims_allow_revoked" if allow_revoked else "auth_claims"
+    cached = getattr(request.state, cache_key, None)
+    if isinstance(cached, dict):
+        return cached
+    token = _extract_bearer_token_from_header(request.headers.get("Authorization"))
+    claims = await _resolve_token_claims(token, request, allow_revoked=allow_revoked)
+    setattr(request.state, cache_key, claims)
+    if allow_revoked and not isinstance(getattr(request.state, "auth_claims", None), dict):
+        setattr(request.state, "auth_claims", claims)
+    return claims
+
+async def _get_claims_from_ws(ws: WebSocket) -> Dict[str, Any]:
+    cached = getattr(ws.state, "auth_claims", None)
+    if isinstance(cached, dict):
+        return cached
+    token = _get_ws_token_from_headers(ws)
+    token = _normalize_bearer_value(token)
+    if not token or not _looks_like_jwt(token):
+        raise HTTPException(status_code=401, detail="WS: token absent (Authorization/subprotocol/cookie/query).")
+    claims = await _resolve_token_claims(token, ws)
+    setattr(ws.state, "auth_claims", claims)
+    return claims
+
+def _is_admin_claims(claims: Dict[str, Any], auth_service: Optional["AuthService"]) -> bool:
+    role = str(claims.get("role") or "").lower()
+    if claims.get("_auth_source") == "local":
+        return role == "admin"
+    email = str(claims.get("email") or "").lower().strip()
+    if not email or auth_service is None:
+        return False
+    try:
+        return email in getattr(auth_service, "config").admin_emails  # type: ignore[attr-defined]
+    except Exception:
+        return False
 # -----------------------------
 # WebSocket token helpers
 # -----------------------------
@@ -201,22 +301,32 @@ def _enforce_allowlist_claims(claims: dict):
 # -----------------------------
 async def enforce_allowlist(request: Request):
     mode, _emails, _hd, client_id, _dev = _get_cfg()
-    if not mode and not client_id:
-        return
     if _has_dev_bypass(request.headers):
         logger.debug("Allowlist bypass via X-Dev-Bypass header.")
         return
-    claims = _read_bearer_claims(request)  # 401 si absent/invalide
-    _enforce_allowlist_claims(claims)
+    auth_service = _maybe_get_auth_service(request)
+    token_present = bool(_extract_bearer_token_from_header(request.headers.get("Authorization")))
+    if auth_service is not None:
+        dev_mode = bool(getattr(getattr(auth_service, "config", None), "dev_mode", False))
+        if token_present:
+            await _get_claims_from_request(request)
+            return
+        if dev_mode:
+            return
+        raise HTTPException(status_code=401, detail="Authorization Bearer requis.")
+    if not mode and not client_id:
+        return
+    await _get_claims_from_request(request)
     return
 
 async def get_user_id(request: Request) -> str:
     mode, _emails, _hd, _client_id, dev = _get_cfg()
     dev_bypass = _has_dev_bypass(request.headers)
-    auth_header = request.headers.get("Authorization") or ""
+    auth_service = _maybe_get_auth_service(request)
+    token = _extract_bearer_token_from_header(request.headers.get("Authorization"))
 
-    if auth_header.startswith("Bearer "):
-        claims = _read_bearer_claims(request)  # 401 si absent/invalide
+    if token:
+        claims = await _get_claims_from_request(request)
         sub = claims.get("sub")
         if sub:
             return str(sub)
@@ -227,7 +337,8 @@ async def get_user_id(request: Request) -> str:
                 return hdr
         raise HTTPException(status_code=401, detail="ID token invalide ou sans 'sub'.")
 
-    if dev or dev_bypass:
+    dev_mode_active = bool(getattr(getattr(auth_service, "config", None), "dev_mode", False)) if auth_service else False
+    if dev_mode_active or dev_bypass or dev:
         hdr = request.headers.get("X-User-ID") or request.headers.get("X-User-Id")
         if hdr:
             logger.warning("DevMode: fallback X-User-ID utilisé (pas d'Authorization).")
@@ -240,33 +351,29 @@ async def get_user_id_for_ws(ws: WebSocket, user_id: Optional[str] = Query(defau
     En DEV (AUTH_DEV_MODE=1) peut accepter user_id explicite si aucun token.
     """
     mode, _emails, _hd, client_id, dev = _get_cfg()
-    token = _get_ws_token_from_headers(ws)
     dev_bypass = _has_dev_bypass(ws.headers) or _has_dev_bypass_query(ws.query_params)
+    auth_service = _maybe_get_auth_service(ws)
+    dev_mode_active = bool(getattr(getattr(auth_service, "config", None), "dev_mode", False)) if auth_service else False
 
-    if not token:
-        if (dev or dev_bypass) and user_id:
-            logger.warning("DevMode WS: fallback user_id utilisé (pas de token).")
-            return str(user_id)
-        if dev or dev_bypass:
-            qp_user = ws.query_params.get('user_id')
-            if qp_user:
-                logger.warning("DevMode WS: fallback user_id utilisé (query, pas de token).")
-                return str(qp_user)
-        raise HTTPException(status_code=401, detail="WS: token absent (Authorization/subprotocol/cookie/query).")
-
-    claims = _read_bearer_claims_from_token(token)
-    if not dev_bypass:
-        _enforce_allowlist_claims(claims)
-
-    sub = claims.get("sub")
-    if not sub:
-        if dev or dev_bypass:
+    try:
+        claims = await _get_claims_from_ws(ws)
+    except HTTPException as exc:
+        if dev or dev_mode_active or dev_bypass:
             fallback = user_id or ws.query_params.get('user_id')
             if fallback:
-                logger.warning("DevMode WS: fallback user_id utilisé (token sans 'sub').")
+                logger.warning("DevMode WS: fallback user_id utilisé (pas de token).")
                 return str(fallback)
-        raise HTTPException(status_code=401, detail="WS: token sans 'sub'.")
-    return str(sub)
+        raise
+
+    sub = claims.get("sub")
+    if sub:
+        return str(sub)
+    if dev or dev_mode_active or dev_bypass:
+        fallback = user_id or ws.query_params.get('user_id')
+        if fallback:
+            logger.warning("DevMode WS: fallback user_id utilisé (token sans 'sub').")
+            return str(fallback)
+    raise HTTPException(status_code=401, detail="WS: token sans 'sub'.")
 async def get_user_id_from_websocket(ws: WebSocket, user_id: Optional[str] = Query(default=None)) -> str:
     return await get_user_id_for_ws(ws, user_id)
 
@@ -275,6 +382,47 @@ async def get_user_id_from_websocket(ws: WebSocket, user_id: Optional[str] = Que
 # -----------------------------
 # NB: pas d'import de ServiceContainer ici (évite les cycles).
 # On récupère le conteneur déjà instancié via request.app.state.service_container
+
+async def get_auth_service(request: Request):
+    service = _maybe_get_auth_service(request)
+    if service is None:
+        raise HTTPException(status_code=503, detail="AuthService indisponible.")
+    return service
+
+async def get_auth_claims(request: Request) -> Dict[str, Any]:
+    if _has_dev_bypass(request.headers):
+        email = request.headers.get("X-User-Email") or request.headers.get("X-User-ID") or "dev@local"
+        return {"email": email, "role": "admin", "_auth_source": "bypass"}
+    return await _get_claims_from_request(request)
+
+async def get_auth_claims_allow_revoked(request: Request) -> Dict[str, Any]:
+    if _has_dev_bypass(request.headers):
+        email = request.headers.get("X-User-Email") or request.headers.get("X-User-ID") or "dev@local"
+        return {"email": email, "role": "admin", "_auth_source": "bypass"}
+    return await _get_claims_from_request(request, allow_revoked=True)
+
+async def require_admin_claims(request: Request) -> Dict[str, Any]:
+    if _has_dev_bypass(request.headers):
+        email = request.headers.get("X-User-Email") or request.headers.get("X-User-ID") or "dev@local"
+        return {"email": email, "role": "admin", "_auth_source": "bypass"}
+    claims = await _get_claims_from_request(request)
+    auth_service = _maybe_get_auth_service(request)
+    if _is_admin_claims(claims, auth_service):
+        return claims
+    raise HTTPException(status_code=403, detail="Accès admin requis.")
+
+async def get_session_manager_optional(request: Request) -> Optional["SessionManager"]:
+    container = getattr(request.app.state, "service_container", None)  # type: ignore[attr-defined]
+    if container is None:
+        return None
+    provider = getattr(container, "session_manager", None)
+    if provider is None:
+        return None
+    try:
+        return provider()
+    except Exception as exc:
+        logger.debug("SessionManager indisponible: %s", exc)
+        return None
 
 async def get_dashboard_service(request: Request):
     container = getattr(request.app.state, "service_container", None)  # type: ignore

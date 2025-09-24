@@ -74,6 +74,7 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 2. [FAIT] Tests memoire : `tests/run_all.ps1` lance maintenant le scenario pytest `memory:clear` (`tests/backend/features/test_memory_clear.py`).
 3. **Documentation UX** : compléter `docs/Memoire.md` (présent document) avec captures/flows pour guider la QA manuelle.
 4. **Surveillance vector store** : planifier un run hebdo de `tests/test_vector_store_reset.ps1` pour sécuriser l’auto-reset.
+5. **Auth docs** : documenter le logout idempotent et le champ `session_revoked` (architecture + Memoire).
 
 ---
 
@@ -89,4 +90,3 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 - Architecture détaillée : `docs/architecture/*.md`
 - Mémoire progressive : `docs/Memoire.md`
 - Tests : `tests/run_all.ps1`, `tests/backend/features/test_memory_clear.py`, `tests/test_vector_store_reset.ps1`, `tests/test_vector_store_force_backup.ps1`
-
