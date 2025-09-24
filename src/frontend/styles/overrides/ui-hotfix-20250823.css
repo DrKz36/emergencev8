@@ -1015,3 +1015,9 @@ body.brain-panel-open .memory-overlay {
 }
 
 
+
+/* === Sidebar width fix 2025-09-26 === */
+:root{
+  --nav-text-doc-ch: 13.5ch;
+}
+

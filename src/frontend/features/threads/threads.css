@@ -2,10 +2,17 @@
 .conversations-module {
   width: 100%;
   padding: 32px 20px 48px;
-  display: flex;
   justify-content: center;
   align-items: stretch;
   box-sizing: border-box;
+}
+
+.tab-content.active.conversations-module {
+  display: flex;
+}
+
+.tab-content.conversations-module[hidden] {
+  display: none !important;
 }
 
 .conversations-module--empty::after {
