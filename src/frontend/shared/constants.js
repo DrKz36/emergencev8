@@ -104,6 +104,34 @@ export const EVENTS = {
   SHOW_NOTIFICATION: 'ui:show_notification',
 };
 
+export const ANIMATIONS = Object.freeze({
+  CLASSES: Object.freeze({
+    FADE_IN: 'fade-in',
+    FADE_OUT: 'fade-out',
+    SLIDE_UP: 'slide-up',
+    SLIDE_DOWN: 'slide-down',
+    SCALE_IN: 'scale-in',
+  }),
+  DURATIONS: Object.freeze({
+    ENTER: 220,
+    EXIT: 260,
+    MODAL: 280,
+    TOAST: 260,
+  }),
+  EASING: Object.freeze({
+    STANDARD: 'cubic-bezier(0.4, 0, 0.2, 1)',
+    EMPHASIZED: 'cubic-bezier(0.22, 1, 0.36, 1)',
+    ACCELERATE: 'cubic-bezier(0.4, 0, 1, 1)',
+  }),
+});
+
+export const TIMEOUTS = Object.freeze({
+  NOTIFICATION: 5000,
+  ANIMATION_EXIT: ANIMATIONS.DURATIONS.EXIT + 40,
+  MODAL_FOCUS_DELAY: 100,
+  LOADER_MINIMUM_VISIBLE: 500,
+});
+
 export const AGENTS = {
   anima: { id: 'anima', label: 'Anima', color: '#fb7185', cssClass: 'message--anima' },
   neo:   { id: 'neo',   label: 'Neo',   color: '#38bdf8', cssClass: 'message--neo' },
@@ -115,5 +143,4 @@ export const AGENTS = {
 export const AGENT_IDS = Object.keys(AGENTS);
 export const PRIMARY_AGENT_IDS = AGENT_IDS.filter((id) => id !== 'global');
 export const BROADCAST_AGENT_IDS = PRIMARY_AGENT_IDS;
-
 

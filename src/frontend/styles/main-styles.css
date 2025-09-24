@@ -216,3 +216,62 @@
 @media (max-width: 920px) and (orientation: landscape){
   .sidebar-nav{ max-width: 100%; width: 100%; }
 }
+
+/* --- Motion utilities --- */
+.fade-in {
+  animation: fade-in var(--animation-duration-enter, var(--duration-subtle)) var(--animation-ease-out, var(--ease-out-quint)) forwards;
+}
+
+.fade-out {
+  animation: fade-out var(--animation-duration-exit, var(--duration-normal)) var(--animation-ease-in, cubic-bezier(0.4, 0, 1, 1)) forwards;
+  pointer-events: none;
+}
+
+.slide-up {
+  animation: slide-up var(--animation-duration-modal, var(--duration-normal)) var(--animation-ease-out, var(--ease-out-quint)) forwards;
+}
+
+.slide-down {
+  animation: slide-down var(--animation-duration-exit, var(--duration-normal)) var(--animation-ease-standard, cubic-bezier(0.4, 0, 0.2, 1)) forwards;
+}
+
+.scale-in {
+  animation: scale-in var(--animation-duration-enter, var(--duration-subtle)) var(--animation-ease-out, var(--ease-out-quint)) forwards;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slide-down {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(16px); opacity: 0; }
+}
+
+@keyframes scale-in {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in,
+  .fade-out,
+  .slide-up,
+  .slide-down,
+  .scale-in {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    animation-name: none !important;
+  }
+}

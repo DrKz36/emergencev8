@@ -3,7 +3,10 @@
  * @description Gestionnaire d'animations de chargement
  */
 
-import { ANIMATIONS } from '../shared/constants.js';
+import { ANIMATIONS, TIMEOUTS } from '../shared/constants.js';
+
+const { CLASSES: ANIMATION_CLASSES } = ANIMATIONS;
+const { ANIMATION_EXIT, LOADER_MINIMUM_VISIBLE } = TIMEOUTS;
 
 class LoaderManager {
   constructor() {
@@ -216,9 +219,9 @@ class LoaderManager {
       complete() {
         this.update(100);
         setTimeout(() => {
-          loader.classList.add('fade-out');
-          setTimeout(() => loader.remove(), 300);
-        }, 500);
+          loader.classList.add(ANIMATION_CLASSES.FADE_OUT);
+          setTimeout(() => loader.remove(), ANIMATION_EXIT);
+        }, LOADER_MINIMUM_VISIBLE);
       },
       
       error(message = 'Erreur') {
@@ -262,3 +265,4 @@ export const loader = new LoaderManager();
 
 // Also export for custom usage
 export { LoaderManager };
+

@@ -6,6 +6,9 @@
 import { TIMEOUTS, ANIMATIONS } from '../shared/constants.js';
 import { generateId } from '../shared/utils.js';
 
+const { CLASSES: ANIMATION_CLASSES } = ANIMATIONS;
+const { ANIMATION_EXIT, NOTIFICATION: NOTIFICATION_TIMEOUT } = TIMEOUTS;
+
 class NotificationManager {
   constructor() {
     this.container = null;
@@ -35,7 +38,7 @@ class NotificationManager {
     type = 'info', // success, error, warning, info
     title = '',
     message = '',
-    duration = TIMEOUTS.NOTIFICATION,
+    duration = NOTIFICATION_TIMEOUT,
     persistent = false,
     action = null,
     onClose = null
@@ -71,7 +74,11 @@ class NotificationManager {
    */
   render(notification) {
     const element = document.createElement('div');
-    element.className = `notification notification--${notification.type} fade-in`;
+    element.className = [
+      'notification',
+      `notification--${notification.type}`,
+      ANIMATION_CLASSES.FADE_IN
+    ].join(' ');
     element.setAttribute('role', 'alert');
     
     let html = '<div class="notification__content">';
@@ -150,7 +157,7 @@ class NotificationManager {
     }
     
     // Animate out
-    notification.element.classList.add('fade-out');
+    notification.element.classList.add(ANIMATION_CLASSES.FADE_OUT);
     
     setTimeout(() => {
       notification.element.remove();
@@ -166,7 +173,7 @@ class NotificationManager {
         const next = this.queue.shift();
         this.render(next);
       }
-    }, 300);
+    }, ANIMATION_EXIT);
   }
 
   /**
@@ -199,7 +206,7 @@ class NotificationManager {
     return this.show({
       type: 'error',
       message,
-      duration: TIMEOUTS.NOTIFICATION * 2, // Errors stay longer
+      duration: NOTIFICATION_TIMEOUT * 2, // Errors stay longer
       ...options
     });
   }
@@ -251,3 +258,4 @@ export const notifications = new NotificationManager();
 
 // Also export for custom usage
 export { NotificationManager };
+

@@ -409,12 +409,18 @@ export class App {
     this.renderNavigation();
     this.closeMobileNav?.();
 
-    this.dom.content.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    this.dom.content.querySelectorAll('.tab-content').forEach((c) => {
+      c.classList.remove('active');
+      c.setAttribute('aria-hidden', 'true');
+      c.hidden = true;
+    });
     let container = this.dom.content.querySelector(`#tab-content-${moduleId}`);
     if (!container) container = this.createModuleContainer(moduleId);
 
     const moduleInstance = await this.loadModule(moduleId);
     if (moduleInstance?.mount) {
+      container.hidden = false;
+      container.setAttribute('aria-hidden', 'false');
       moduleInstance.mount(container);
       container.classList.add('active');
       this.eventBus.emit(EVENTS.MODULE_SHOW, moduleId);
@@ -435,6 +441,8 @@ export class App {
     const container = document.createElement('div');
     container.id = `tab-content-${moduleId}`;
     container.className = 'tab-content';
+    container.setAttribute('aria-hidden', 'true');
+    container.hidden = true;
     this.dom.content?.appendChild(container);
     return container;
   }

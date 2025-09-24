@@ -61,7 +61,14 @@
 
   /* === MOTION === */
   --duration-subtle: 150ms; --duration-normal: 300ms;
+  --animation-duration-enter: 220ms;
+  --animation-duration-exit: 260ms;
+  --animation-duration-modal: 280ms;
+  --animation-duration-toast: 280ms;
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --animation-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --animation-ease-out: var(--ease-out-quint);
+  --animation-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* === LAYOUT === */
   --header-height: 60px; --sidebar-width: 280px; --mobile-nav-height: 64px; --max-content-width: 1600px;
@@ -79,3 +86,4 @@
   --color-background-tertiary: rgba(255, 255, 255, 0.06);
   --color-background-light: rgba(255, 255, 255, 0.08);
 }
+
