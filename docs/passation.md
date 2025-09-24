@@ -19,3 +19,10 @@
 - Pass 3 complete: conversations module live in main content (nav entry, inline delete confirm, node tests on `ThreadsPanel.handleDelete`).
 - Pass 4 next: run build + targeted Jest suite, capture new Conversations screenshots, rerun sync script for final handoff.
 
+
+## Session 2025-09-25 - Debate metrics QA
+- Tests: python -m pytest tests/backend/features/test_debate_service.py (2 passes) ; npm run build (vite ok, warning persists on ANIMATIONS export).
+- Manual QA: simulated debate run (DebateService.run) -> 10 ws events (started, status updates, turn updates, result, ended); cost total 0.053200 USD with tokens 340/172 and by agent neo 0.0123, nexus 0.0222, anima 0.0187.
+- UI follow-up: header shows progress + cost block; css wraps cost spans under 560px; next run full UI QA once backend is online.
+
+

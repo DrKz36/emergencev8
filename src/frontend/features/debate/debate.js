@@ -44,23 +44,23 @@ export default class DebateModule {
       isActive: false,
       debateId: null,
       status: 'idle',
-      statusText: 'Prêt à commencer.',
+      stage: 'idle',
+      statusText: 'Pret a commencer.',
       topic: '',
       config: { topic:'', rounds:3, agentOrder:['neo','nexus','anima'], useRag:true },
       turns: [],
       history: [],
       synthesis: null,
+      synthesisMeta: null,
+      cost: null,
       ragContext: null,
       error: null,
-      holdUntil: 0           // ← sticky HOLD (ms epoch)
+      holdUntil: 0,          // sticky HOLD (ms epoch)
+      currentRound: null,
+      currentSpeaker: null,
+      currentRole: null
     };
   }
-
-  _now(){ return Date.now(); }
-  _inHoldVolatile(){ return (this._completedAt > 0) && ((this._now() - this._completedAt) < this.HOLD_MS); }
-  _inHoldSticky(){ const u = Number(this.state.get('debate')?.holdUntil || 0); return u > this._now(); }
-  _inHold(){ return this._inHoldVolatile() || this._inHoldSticky(); }
-
   reset() {
     if (this._inHold()) { console.warn('[Debate] reset() ignoré (hold actif).'); return; }
     this._completedAt = 0;
@@ -96,6 +96,11 @@ export default class DebateModule {
     }));
   }
 
+  _now() { return Date.now(); }
+  _inHoldVolatile() { return (this._completedAt > 0) && ((this._now() - this._completedAt) < this.HOLD_MS); }
+  _inHoldSticky() { const until = Number(this.state.get('debate')?.holdUntil || 0); return until > this._now(); }
+  _inHold() { return this._inHoldVolatile() || this._inHoldSticky(); }
+
   _guardedReset(source) {
     if (this._inHold()) {
       const until = Number(this.state.get('debate')?.holdUntil || 0);
@@ -110,6 +115,35 @@ export default class DebateModule {
     if (Array.isArray(AGENTS)) return AGENTS.map(String);
     const ids = _AGENT_IDS && Array.isArray(_AGENT_IDS) ? _AGENT_IDS : Object.keys(AGENTS||{});
     return ids.map(String);
+  }
+
+  _agentLabel(agentId) {
+    const key = (agentId || '').toString();
+    const entry = AGENTS?.[key];
+    if (entry?.label) return entry.label;
+    if (entry?.name) return entry.name;
+    if (!key) return 'Agent';
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  }
+
+  _buildStatusText(info = {}) {
+    const status = (info.status || info.stage || '').toString();
+    const roundNumber = Number.isFinite(info.round) ? Number(info.round) : null;
+    const agentId = info.agent ? String(info.agent) : '';
+    const role = info.role ? String(info.role) : '';
+    if (!status) return '';
+    if (status === 'completed') return 'Debat termine.';
+    if (status === 'starting') return 'Initialisation du debat...';
+    if (status === 'synthesizing') {
+      const label = this._agentLabel(agentId || role);
+      return `Synthese en cours (${label}).`;
+    }
+    if (status === 'speaking' || status === 'running') {
+      const label = this._agentLabel(agentId || role);
+      const prefix = roundNumber ? `Tour ${roundNumber} - ` : '';
+      return `${prefix}${label} intervient.`;
+    }
+    return status.replace(/_/g, ' ').replace(/\w/g, (c) => c.toUpperCase());
   }
 
   _validateConfig(config) {
@@ -171,17 +205,32 @@ export default class DebateModule {
   }
 
   onDebateStatusUpdate(payload = {}) {
-    const txt = payload?.message || payload?.status || '';
     const st = this.state.get('debate') || this._blank();
-    if (txt) st.statusText = String(txt);
+    const stage = (payload?.stage || payload?.status || '').toString();
+    if (payload?.topic) st.topic = payload.topic;
+    if (stage) {
+      st.stage = stage;
+      st.status = stage === 'completed' ? 'completed' : 'running';
+    }
+    if (Number.isFinite(payload?.round)) st.currentRound = Number(payload.round);
+    if (payload?.agent) st.currentSpeaker = String(payload.agent);
+    if (payload?.role) st.currentRole = String(payload.role);
+    const message = payload?.message || this._buildStatusText({
+      status: stage,
+      stage,
+      round: payload?.round,
+      agent: payload?.agent,
+      role: payload?.role,
+    });
+    if (message) st.statusText = String(message);
     this.state.set('debate', st);
   }
 
   _applyStarted(payload = {}) {
     const st = this.state.get('debate') || this._blank();
     st.isActive = true;
-    st.status = 'in_progress';
-    st.statusText = 'Débat lancé…';
+    st.stage = payload?.stage || 'starting';
+    st.status = 'running';
     const cfg = payload?.config || {};
     st.topic = payload?.topic ?? st.topic;
     st.config = {
@@ -190,17 +239,39 @@ export default class DebateModule {
       agentOrder: Array.isArray(cfg.agentOrder) && cfg.agentOrder.length ? cfg.agentOrder.slice(0,3) : st.config.agentOrder,
       useRag: !!(cfg.useRag ?? st.config.useRag)
     };
+    if (Number.isFinite(payload?.round)) st.currentRound = Number(payload.round);
+    if (payload?.agent) st.currentSpeaker = String(payload.agent);
+    if (payload?.role) st.currentRole = String(payload.role);
+    st.statusText = payload?.message || this._buildStatusText({
+      status: st.stage,
+      stage: payload?.stage,
+      round: payload?.round,
+      agent: payload?.agent,
+      role: payload?.role,
+    }) || 'Debat lance.';
+    st.error = null;
     this.state.set('debate', st);
   }
 
   _applyTurnUpdate(payload = {}) {
     const st = this.state.get('debate') || this._blank();
     st.isActive = true;
-    st.status = 'in_progress';
-    st.statusText = 'En cours…';
+    st.status = 'running';
+    st.stage = 'speaking';
+    const roundNumber = Number.isFinite(payload?.round) ? Number(payload.round) : null;
+    if (roundNumber !== null) st.currentRound = roundNumber;
     const agent = (payload?.agent || '').toString() || 'anima';
-    const text  = (payload?.text  || '').toString();
-    if (text) st.turns.push({ agent, text });
+    st.currentSpeaker = agent;
+    const role = payload?.speaker || payload?.meta?.role || null;
+    if (role) st.currentRole = String(role);
+    const text = (payload?.text || '').toString();
+    if (text) {
+      const meta = (payload?.meta && typeof payload.meta === 'object') ? { ...payload.meta } : {};
+      if (role && !meta.role) meta.role = role;
+      if (roundNumber !== null && typeof meta.round === 'undefined') meta.round = roundNumber;
+      st.turns.push({ agent, text, round: roundNumber, meta });
+    }
+    st.statusText = this._buildStatusText({ status: 'speaking', round: roundNumber, agent, role }) || 'Intervention en cours.';
     this.state.set('debate', st);
   }
 
@@ -208,11 +279,15 @@ export default class DebateModule {
     const next = this._normalizeServerState(serverData);
     next.isActive = false;
     next.status = 'completed';
-    next.statusText = next.synthesis ? 'Débat terminé — synthèse disponible.' : 'Débat terminé.';
+    next.stage = serverData?.stage || 'completed';
+    next.statusText = serverData?.message || (next.synthesis ? 'Debat termine - synthese disponible.' : 'Debat termine.');
+    next.currentRound = null;
+    next.currentSpeaker = null;
+    next.currentRole = null;
     this._completedAt = Date.now();
-    next.holdUntil = this._completedAt + this.HOLD_MS;   // ← sticky HOLD
+    next.holdUntil = this._completedAt + this.HOLD_MS;
     this.state.set('debate', next);
-    if (next.synthesis) this._notify('success', 'Débat terminé — synthèse disponible.');
+    if (next.synthesis) this._notify('success', 'Debat termine - synthese disponible.');
   }
 
   _applyEnded(serverData = {}) {
@@ -226,10 +301,14 @@ export default class DebateModule {
 
     const st = this.state.get('debate') || this._blank();
     st.isActive = false;
+    st.stage = 'completed';
     st.status = 'completed';
-    st.statusText = st.statusText || 'Débat terminé.';
+    st.statusText = st.statusText || 'Debat termine.';
+    st.currentRound = null;
+    st.currentSpeaker = null;
+    st.currentRole = null;
     this._completedAt = Date.now();
-    st.holdUntil = this._completedAt + this.HOLD_MS;     // ← HOLD même sans synthèse
+    st.holdUntil = this._completedAt + this.HOLD_MS;
     this.state.set('debate', st);
   }
 
@@ -244,21 +323,46 @@ export default class DebateModule {
     };
 
     const raw = Array.isArray(serverData.turns) ? serverData.turns
-               : (Array.isArray(serverData.history) ? serverData.history
-               : (Array.isArray(serverData.rounds_history) ? serverData.rounds_history : []));
+      : (Array.isArray(serverData.history) ? serverData.history
+      : (Array.isArray(serverData.rounds_history) ? serverData.rounds_history : []));
     const turns = Array.isArray(raw)
-      ? raw.map(t => ({ agent: (t.agent || '').toString() || 'anima', text: (t.text || '').toString() })).filter(x => x.text)
+      ? raw.map((t) => {
+          const agent = (t.agent || '').toString() || 'anima';
+          const text = (t.text || '').toString();
+          if (!text) return null;
+          const round = Number.isFinite(t.round) ? Number(t.round) : null;
+          const meta = (t.meta && typeof t.meta === 'object') ? { ...t.meta } : {};
+          if (round !== null && typeof meta.round === 'undefined') meta.round = round;
+          return { agent, text, round, meta };
+        }).filter(Boolean)
       : [];
 
     const syn = typeof serverData.synthesis === 'string'
       ? serverData.synthesis
       : (serverData.synthesis?.text || serverData.synthesis?.content || '');
     const synthesis = (syn && syn.trim()) ? syn : null;
+    const synthesisMeta = (serverData.synthesis_meta && typeof serverData.synthesis_meta === 'object')
+      ? { ...serverData.synthesis_meta }
+      : prev.synthesisMeta;
+    const cost = (serverData.cost && typeof serverData.cost === 'object') ? { ...serverData.cost } : prev.cost;
+    const stage = typeof serverData.stage === 'string' ? serverData.stage : prev.stage;
 
-    return { ...prev, topic: config.topic, config, turns, synthesis };
+    return {
+      ...prev,
+      topic: config.topic,
+      config,
+      turns,
+      synthesis,
+      synthesisMeta,
+      cost,
+      stage,
+    };
   }
 
   _notify(kind, message) {
     try { this.eventBus.emit(EVENTS.SHOW_NOTIFICATION || 'ui:show_notification', { type: kind, message }); } catch {}
   }
 }
+
+
+

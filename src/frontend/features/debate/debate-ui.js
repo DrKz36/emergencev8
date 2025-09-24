@@ -196,6 +196,13 @@ export class DebateUI {
       '<div class="debate-progress__label">' + clampedTurns + ' / ' + expectedTurns + ' interventions</div>' +
       '<div class="debate-progress__bar"><span style="width:' + progressPercent + '%;"></span></div>' +
     '</div>';
+    const costSummary = this._renderCostSummary(state?.cost);
+    const metricsPieces = [];
+    if (progressInfo) metricsPieces.push(progressInfo);
+    if (costSummary) metricsPieces.push(costSummary);
+    const metricsHtml = metricsPieces.length
+      ? '<div class="debate-header__metrics">' + metricsPieces.join('') + '</div>'
+      : '';
 
     const header = '<div class="card-header debate-header">' +
       '<div class="debate-header__topic">' +
@@ -203,7 +210,7 @@ export class DebateUI {
         '<p class="debate-topic">' + this._html(topic || '—') + '</p>' +
       '</div>' +
       statusBlock +
-      progressInfo +
+      metricsHtml +
     '</div>';
 
     const turnsHtml = turnCount
@@ -215,8 +222,9 @@ export class DebateUI {
       ? state.config.agentOrder[state.config.agentOrder.length - 1] : 'nexus';
     const synthesizerName = agentLabel(synthesizerId);
 
+    const synthesisMeta = state?.synthesisMeta;
     const synthesis = (state?.status === 'completed' && state?.synthesis)
-      ? this._renderSynthesis(synthesizerId, synthesizerName, state.synthesis)
+      ? this._renderSynthesis(synthesizerId, synthesizerName, state.synthesis, synthesisMeta)
       : '';
 
     const footer = '<div class="card-footer debate-footer">' +
@@ -233,12 +241,60 @@ export class DebateUI {
   }
 
 
+  _renderCostSummary(cost) {
+    if (!cost || typeof cost !== 'object') return '';
+    const total = Number(cost.total_usd ?? cost.totalUsd ?? cost.total) || 0;
+    const tokens = cost.tokens || {};
+    const inputTokens = Number.isFinite(tokens.input) ? Number(tokens.input) : null;
+    const outputTokens = Number.isFinite(tokens.output) ? Number(tokens.output) : null;
+    const parts = [`<span class="debate-cost__total">Cout total&nbsp;: $${total.toFixed(4)}</span>`];
+    if (inputTokens !== null || outputTokens !== null) {
+      parts.push(`<span class="debate-cost__tokens">Tokens ${inputTokens ?? 0}/${outputTokens ?? 0}</span>`);
+    }
+    const agentEntries = (cost.by_agent && typeof cost.by_agent === 'object')
+      ? Object.entries(cost.by_agent)
+      : [];
+    if (agentEntries.length) {
+      const chips = agentEntries.map(([agentId, info]) => {
+        const usd = Number(info?.usd ?? info?.total_usd ?? info?.total) || 0;
+        return `<span>${this._html(agentLabel(agentId))}: $${usd.toFixed(4)}</span>`;
+      });
+      parts.push(`<span class="debate-cost__agents">${chips.join(' &#183; ')}</span>`);
+    }
+    return `<div class="debate-cost" role="note">${parts.join(' ')}</div>`;
+  }
+  _renderMeta(meta) {
+    if (!meta || typeof meta !== 'object') return '';
+    const summary = [];
+    const providerParts = [];
+    if (meta.provider) providerParts.push(String(meta.provider));
+    if (meta.model) providerParts.push(String(meta.model));
+    if (providerParts.length) summary.push(providerParts.join(' / '));
+    if (meta.fallback) summary.push('Fallback');
+    const cost = (meta.cost && typeof meta.cost === 'object') ? meta.cost : null;
+    if (cost) {
+      const totalCost = Number(cost.total_cost ?? cost.total ?? cost.usd);
+      if (Number.isFinite(totalCost) && totalCost > 0) summary.push(`$${totalCost.toFixed(4)}`);
+      const inputTokens = Number(cost.input_tokens ?? cost.inputTokens);
+      const outputTokens = Number(cost.output_tokens ?? cost.outputTokens);
+      if (Number.isFinite(inputTokens) || Number.isFinite(outputTokens)) {
+        const inVal = Number.isFinite(inputTokens) ? inputTokens : 0;
+        const outVal = Number.isFinite(outputTokens) ? outputTokens : 0;
+        summary.push(`Tokens ${inVal}/${outVal}`);
+      }
+    }
+    if (!summary.length) return '';
+    const html = summary.map((item) => `<span>${this._html(item)}</span>`).join('<span aria-hidden="true">&#183;</span>');
+    return `<footer class="debate-turn__meta">${html}</footer>`;
+  }
+
   _renderTurn(turn, index) {
     if (!turn) return '';
     const agentId = (turn.agent || 'anima').toLowerCase();
     const agentName = this._html(agentLabel(agentId));
     const order = index + 1;
     const content = marked.parse(turn.text || '');
+    const metaHtml = this._renderMeta(turn && turn.meta) || '';
     return [
       '<article class="debate-turn debate-turn--' + this._html(agentId) + '">',
         '<div class="debate-turn__bubble">',
@@ -247,13 +303,15 @@ export class DebateUI {
             '<span class="debate-turn__agent">' + agentName + '</span>',
           '</header>',
           '<div class="debate-turn__message">' + content + '</div>',
+          metaHtml,
         '</div>',
       '</article>'
     ].join('');
   }
 
-  _renderSynthesis(agentId, agentName, textValue) {
+  _renderSynthesis(agentId, agentName, textValue, meta = null) {
     const html = marked.parse(textValue || '');
+    const metaHtml = this._renderMeta(meta) || '';
     return [
       '<section class="debate-synthesis">',
         '<h3 class="debate-synthesis__title">Synth&egrave;se &mdash; ' + this._html(agentName) + '</h3>',
@@ -264,11 +322,13 @@ export class DebateUI {
               '<span class="debate-turn__agent">' + this._html(agentName) + '</span>',
             '</header>',
             '<div class="debate-turn__message">' + html + '</div>',
+            metaHtml,
           '</div>',
         '</article>',
       '</section>'
     ].join('');
   }
+
   _bindTimelineEvents(root, state) {
     root.querySelector('#debate-export')?.addEventListener('click', () => {
       const topic = (state?.topic || '').trim();

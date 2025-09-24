@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional
 
 from backend.core.websocket import ConnectionManager
 
@@ -39,20 +39,70 @@ class DebateService:
         self.cost_tracker = cost_tracker
         self.settings = settings
 
-    async def _status(self, session_id: str, status: str, topic: str = "") -> None:
+    async def _status(
+        self,
+        session_id: str,
+        status: str,
+        topic: str = "",
+        *,
+        round_number: Optional[int] = None,
+        agent_id: Optional[str] = None,
+        role: Optional[str] = None,
+        status_label: Optional[str] = None,
+        message: Optional[str] = None,
+    ) -> None:
+        payload: Dict[str, Any] = {"stage": status, "status": status_label or status}
+        if topic:
+            payload["topic"] = topic
+        if round_number is not None:
+            payload["round"] = round_number
+        if agent_id:
+            payload["agent"] = agent_id
+        if role:
+            payload["role"] = role
+        payload["message"] = message or self._format_status_message(
+            stage=status, round_number=round_number, agent_id=agent_id, role=role
+        )
         try:
             await self.connection_manager.send_personal_message(
-                {"type": "ws:debate_status_update", "payload": {"status": status, "topic": topic}},
+                {"type": "ws:debate_status_update", "payload": payload},
                 session_id,
             )
         except Exception:
             logger.debug("Impossible d'envoyer ws:debate_status_update", exc_info=True)
 
+    def _format_status_message(
+        self,
+        *,
+        stage: str,
+        round_number: Optional[int] = None,
+        agent_id: Optional[str] = None,
+        role: Optional[str] = None,
+    ) -> str:
+        stage_norm = (stage or "").strip().lower()
+        if stage_norm in {"", "idle"}:
+            return "Pret a commencer."
+        if stage_norm in {"starting", "start"}:
+            return "Initialisation du debat..."
+        if stage_norm in {"completed", "done", "finished"}:
+            return "Debat termine."
+        if stage_norm in {"synthesis", "synthesizing"}:
+            target = agent_id or role or "mediateur"
+            return f"Synthese en cours ({target})."
+        if stage_norm.startswith("round"):
+            round_txt = f"Tour {round_number}" if round_number is not None else ""
+            agent_txt = agent_id or role or "intervenant"
+            prefix = f"{round_txt} - " if round_txt else ""
+            return f"{prefix}{agent_txt} intervient."
+        return stage.replace("_", " " ).capitalize() or "Progression en cours."
+
     async def _emit(self, session_id: str, type_: str, payload: Dict) -> None:
         try:
-            await self.connection_manager.send_personal_message({"type": type_, "payload": payload}, session_id)
+            await self.connection_manager.send_personal_message(
+                {"type": type_, "payload": payload}, session_id
+            )
         except Exception:
-            logger.debug("Emission WS échouée (%s)", type_, exc_info=True)
+            logger.debug("Emission WS echouee (%s)", type_, exc_info=True)
 
     async def _say_once(
         self,
@@ -62,7 +112,7 @@ class DebateService:
         *,
         use_rag: bool,
         doc_ids: Optional[List[int]] = None,
-    ) -> Tuple[str, Dict]:
+    ) -> Dict[str, Any]:
         try:
             res: Dict = await self.chat_service.get_llm_response_for_debate(
                 agent_id,
@@ -78,7 +128,16 @@ class DebateService:
 
         text = (res or {}).get("text", "") or ""
         cost_info = (res or {}).get("cost_info", {}) or {}
-        return text, cost_info
+        provider = (res or {}).get("provider")
+        model = (res or {}).get("model")
+        fallback = bool((res or {}).get("fallback"))
+        return {
+            "text": text,
+            "cost_info": cost_info,
+            "provider": provider,
+            "model": model,
+            "fallback": fallback,
+        }
 
     @staticmethod
     def _normalize_config(config: Optional[DebateConfig], kwargs: Dict[str, Any]) -> DebateConfig:
@@ -138,7 +197,29 @@ class DebateService:
             )
         )
 
-        # NEW: signal "started"
+        cost_summary: Dict[str, Any] = {
+            "total_usd": 0.0,
+            "tokens": {"input": 0, "output": 0},
+            "by_agent": {},
+        }
+
+        def accumulate_cost(agent: str, info: Optional[Dict[str, Any]]) -> None:
+            if not info:
+                return
+            total_cost = float(info.get("total_cost") or 0.0)
+            input_tokens = int(info.get("input_tokens") or 0)
+            output_tokens = int(info.get("output_tokens") or 0)
+            if agent:
+                agent_entry = cost_summary["by_agent"].setdefault(
+                    agent, {"usd": 0.0, "input_tokens": 0, "output_tokens": 0}
+                )
+                agent_entry["usd"] += total_cost
+                agent_entry["input_tokens"] += input_tokens
+                agent_entry["output_tokens"] += output_tokens
+            cost_summary["total_usd"] += total_cost
+            cost_summary["tokens"]["input"] += input_tokens
+            cost_summary["tokens"]["output"] += output_tokens
+
         await self._emit(
             session_id,
             "ws:debate_started",
@@ -147,53 +228,130 @@ class DebateService:
                 "config": {"rounds": rounds, "agentOrder": [attacker, challenger, mediator], "useRag": use_rag},
             },
         )
-        await self._status(session_id, "starting", topic)
+        await self._status(
+            session_id,
+            "starting",
+            topic,
+            status_label="starting",
+            message="Initialisation du debat...",
+        )
 
         turns: List[Dict] = []
 
         for r in range(1, rounds + 1):
-            await self._status(session_id, f"round_{r}_attacker")
+            await self._status(
+                session_id,
+                "round_attacker",
+                topic,
+                round_number=r,
+                agent_id=attacker,
+                role="attacker",
+                status_label="speaking",
+            )
             prompt_attacker = self._build_turn_prompt(topic, turns, speaker="attacker", agent=attacker)
-            text_a, _ = await self._say_once(
+            attacker_response = await self._say_once(
                 session_id,
                 attacker,
                 prompt_attacker,
                 use_rag=use_rag,
                 doc_ids=selected_doc_ids,
             )
-            turn_a = {"round": r, "agent": attacker, "text": text_a}
+            turn_a = {
+                "round": r,
+                "agent": attacker,
+                "text": attacker_response.get("text", ""),
+                "meta": {
+                    "role": "attacker",
+                    "provider": attacker_response.get("provider"),
+                    "model": attacker_response.get("model"),
+                    "fallback": attacker_response.get("fallback"),
+                    "cost": attacker_response.get("cost_info"),
+                },
+            }
             turns.append(turn_a)
-            # NEW: signal "turn_update"
+            accumulate_cost(attacker, attacker_response.get("cost_info"))
             await self._emit(session_id, "ws:debate_turn_update", {**turn_a, "speaker": "attacker"})
 
-            await self._status(session_id, f"round_{r}_challenger")
+            await self._status(
+                session_id,
+                "round_challenger",
+                topic,
+                round_number=r,
+                agent_id=challenger,
+                role="challenger",
+                status_label="speaking",
+            )
             prompt_challenger = self._build_turn_prompt(topic, turns, speaker="challenger", agent=challenger)
-            text_c, _ = await self._say_once(
+            challenger_response = await self._say_once(
                 session_id,
                 challenger,
                 prompt_challenger,
                 use_rag=use_rag,
                 doc_ids=selected_doc_ids,
             )
-            turn_c = {"round": r, "agent": challenger, "text": text_c}
+            turn_c = {
+                "round": r,
+                "agent": challenger,
+                "text": challenger_response.get("text", ""),
+                "meta": {
+                    "role": "challenger",
+                    "provider": challenger_response.get("provider"),
+                    "model": challenger_response.get("model"),
+                    "fallback": challenger_response.get("fallback"),
+                    "cost": challenger_response.get("cost_info"),
+                },
+            }
             turns.append(turn_c)
-            # NEW: signal "turn_update"
+            accumulate_cost(challenger, challenger_response.get("cost_info"))
             await self._emit(session_id, "ws:debate_turn_update", {**turn_c, "speaker": "challenger"})
 
-        await self._status(session_id, "synthesis")
+        await self._status(
+            session_id,
+            "synthesis",
+            topic,
+            agent_id=mediator,
+            role="mediator",
+            status_label="synthesizing",
+        )
         synthesis_prompt = self._build_synthesis_prompt(topic, turns, mediator)
-        synthesis_text, _ = await self._say_once(
+        synthesis_response = await self._say_once(
             session_id,
             mediator,
             synthesis_prompt,
             use_rag=use_rag,
             doc_ids=selected_doc_ids,
         )
+        synthesis_text = synthesis_response.get("text", "")
+        synthesis_meta = {
+            "role": "mediator",
+            "provider": synthesis_response.get("provider"),
+            "model": synthesis_response.get("model"),
+            "fallback": synthesis_response.get("fallback"),
+            "cost": synthesis_response.get("cost_info"),
+        }
+        accumulate_cost(mediator, synthesis_response.get("cost_info"))
+
+        cost_payload = {
+            "total_usd": round(cost_summary["total_usd"], 6),
+            "tokens": {
+                "input": int(cost_summary["tokens"].get("input", 0)),
+                "output": int(cost_summary["tokens"].get("output", 0)),
+            },
+            "by_agent": {
+                agent: {
+                    "usd": round(values.get("usd", 0.0), 6),
+                    "input_tokens": int(values.get("input_tokens", 0)),
+                    "output_tokens": int(values.get("output_tokens", 0)),
+                }
+                for agent, values in cost_summary["by_agent"].items()
+            },
+        }
 
         payload = {
             "topic": topic,
             "turns": turns,
             "synthesis": synthesis_text,
+            "synthesis_meta": synthesis_meta,
             "config": {
                 "topic": topic,
                 "rounds": rounds,
@@ -202,12 +360,19 @@ class DebateService:
                 "docIds": selected_doc_ids,
             },
             "status": "completed",
+            "stage": "completed",
+            "cost": cost_payload,
         }
 
-        # Résultat global + "ended"
         await self._emit(session_id, "ws:debate_result", payload)
         await self._emit(session_id, "ws:debate_ended", {"topic": topic, "rounds": rounds})
-        await self._status(session_id, "completed", topic)
+        await self._status(
+            session_id,
+            "completed",
+            topic,
+            status_label="completed",
+            message="Debat termine.",
+        )
         return payload
 
     def _build_turn_prompt(self, topic: str, turns: List[Dict], *, speaker: str, agent: str) -> str:
@@ -232,3 +397,5 @@ class DebateService:
             "pas de répétitions, pas de nouvelles idées, conclure par 1 phrase d'ouverture constructive."
         )
         return "\n".join(lines)
+
+

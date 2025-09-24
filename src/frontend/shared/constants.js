@@ -1,4 +1,4 @@
-﻿// src/frontend/shared/constants.js
+// src/frontend/shared/constants.js
 // V5.3 - Exporte WS_CONFIG (attendu par main.js) + EVENTS + AGENTS(mapping) + AGENT_IDS
 // - URL WS auto-deduite (overrides supportes): localStorage 'em.ws_url', window.EMERGENCE_WS_URL
 // - wss:// force si page en https:// ; sinon ws://
@@ -40,6 +40,7 @@ export const EVENTS = {
   // Core
   APP_READY: 'app:ready',
   MODULE_SHOW: 'module:show',
+  MODULE_HIDE: 'module:hide',
   MODULE_NAVIGATE: 'app:navigate',
 
   // WebSocket (client)
@@ -98,6 +99,8 @@ export const EVENTS = {
   AUTH_REQUIRED: 'ui:auth:required',
   AUTH_RESTORED: 'ui:auth:restored',
   SHOW_MODAL: 'ui:show_modal',
+  MODAL_OPEN: 'ui:modal_open',
+  MODAL_CLOSE: 'ui:modal_close',
   SHOW_NOTIFICATION: 'ui:show_notification',
 };
 

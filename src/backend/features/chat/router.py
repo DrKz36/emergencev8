@@ -223,7 +223,9 @@ async def _ws_core(
                             {
                                 "type": "ws:debate_status_update",
                                 "payload": {
-                                    "status": "Initialisation du dÃ©batâ€¦",
+                                    "stage": "starting",
+                                    "status": "starting",
+                                    "message": "Initialisation du debat...",
                                     "topic": topic,
                                 },
                             },

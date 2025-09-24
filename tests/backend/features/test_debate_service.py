@@ -1,6 +1,9 @@
 from pathlib import Path
 import sys
 import asyncio
+import types
+
+import pytest
 
 sys.path.append(str(Path(__file__).resolve().parents[3] / "src"))
 
@@ -80,26 +83,109 @@ def test_debate_say_once_short_response(monkeypatch):
         chat_service = ChatService(DummySessionManager(), cost_tracker, DummyVectorService(), settings)
         debate_service = DebateService(chat_service, DummyConnectionManager())
 
-        text, cost_info = await debate_service._say_once(
+        response = await debate_service._say_once(
             session_id="sess-1",
             agent_id="anima",
             prompt="Expose le sujet",
             use_rag=False,
         )
 
-        assert text == "Salut"
-        assert cost_info["output_tokens"] == 2
-        assert cost_tracker.records == [
-            {
-                "agent": "anima",
-                "model": "claude-3-5-haiku-20241022",
-                "input_tokens": 7,
-                "output_tokens": 2,
-                "total_cost": 0.00042,
-                "feature": "debate",
-            }
-        ]
+        assert isinstance(response, dict)
+        assert response.get("text") == "Salut"
+        assert set(response.keys()) >= {"text", "cost_info", "provider", "model", "fallback"}
+        assert response["cost_info"]["output_tokens"] == 2
+        assert isinstance(response["fallback"], bool)
+        assert response["provider"]
+        assert response["model"]
+
+        assert len(cost_tracker.records) == 1
+        record = cost_tracker.records[0]
+        assert record["agent"] == "anima"
+        assert record["input_tokens"] == 7
+        assert record["output_tokens"] == 2
+        assert record["total_cost"] == pytest.approx(0.00042)
+        assert record["feature"] == "debate"
+        assert record["model"] == response["model"]
 
     asyncio.run(_run())
 
 
+def test_debate_run_cost_summary_aggregation():
+    class StubChatService:
+        def _sanitize_doc_ids(self, doc_ids):
+            return [101, 202]
+
+    async def _run():
+        chat_service = StubChatService()
+        debate_service = DebateService(chat_service, DummyConnectionManager())
+
+        async def _no_op(self, *args, **kwargs):
+            return None
+
+        debate_service._emit = types.MethodType(_no_op, debate_service)
+        debate_service._status = types.MethodType(_no_op, debate_service)
+
+        cost_map = {
+            "neo": {
+                "text": "Neo opening",
+                "cost_info": {"total_cost": 0.0105, "input_tokens": 100, "output_tokens": 50},
+                "provider": "anthropic",
+                "model": "claude-neo",
+                "fallback": False,
+            },
+            "nexus": {
+                "text": "Nexus rebuttal",
+                "cost_info": {"total_cost": 0.021, "input_tokens": 120, "output_tokens": 60},
+                "provider": "anthropic",
+                "model": "claude-nexus",
+                "fallback": False,
+            },
+            "anima": {
+                "text": "Anima synthesis",
+                "cost_info": {"total_cost": 0.01575, "input_tokens": 150, "output_tokens": 75},
+                "provider": "anthropic",
+                "model": "claude-anima",
+                "fallback": False,
+            },
+        }
+
+        async def _fake_say_once(self, session_id, agent_id, prompt, *, use_rag, doc_ids=None):
+            data = cost_map[agent_id]
+            return {
+                "text": data["text"],
+                "cost_info": data["cost_info"].copy(),
+                "provider": data["provider"],
+                "model": data["model"],
+                "fallback": data["fallback"],
+            }
+
+        debate_service._say_once = types.MethodType(_fake_say_once, debate_service)
+
+        result = await debate_service.run(
+            session_id="sess-agg",
+            topic="Test aggregation",
+            agentOrder=["neo", "nexus", "anima"],
+            rounds=1,
+        )
+
+        cost = result["cost"]
+        assert cost["total_usd"] == pytest.approx(0.04725, rel=1e-9)
+        assert cost["tokens"]["input"] == 370
+        assert cost["tokens"]["output"] == 185
+
+        by_agent = cost["by_agent"]
+        assert by_agent["neo"]["usd"] == pytest.approx(0.0105, rel=1e-9)
+        assert by_agent["neo"]["input_tokens"] == 100
+        assert by_agent["neo"]["output_tokens"] == 50
+
+        assert by_agent["nexus"]["usd"] == pytest.approx(0.021, rel=1e-9)
+        assert by_agent["nexus"]["input_tokens"] == 120
+        assert by_agent["nexus"]["output_tokens"] == 60
+
+        assert by_agent["anima"]["usd"] == pytest.approx(0.01575, rel=1e-9)
+        assert by_agent["anima"]["input_tokens"] == 150
+        assert by_agent["anima"]["output_tokens"] == 75
+
+        assert result["config"]["docIds"] == [101, 202]
+
+    asyncio.run(_run())

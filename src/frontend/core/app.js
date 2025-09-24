@@ -8,6 +8,7 @@
 import { EVENTS } from '../shared/constants.js';
 import { api } from '../shared/api-client.js'; // + Threads API
 import { t } from '../shared/i18n.js';
+import { modals } from '../components/modals.js';
 
 const AUTH_ERROR_STATUSES = new Set([401, 403, 419, 440]);
 const THREAD_INACCESSIBLE_MARKER = 'thread non accessible pour cet utilisateur';
@@ -372,6 +373,31 @@ export class App {
   async showModule(moduleId, isInitialLoad = false) {
     if (!moduleId || !this.dom.content) return;
     if (this.isMemoryMenuOpen()) this.closeMemoryMenu();
+
+    const previousModuleId = (this.activeModule && this.activeModule !== moduleId)
+      ? this.activeModule
+      : null;
+
+    if (previousModuleId) {
+      const previousInstance = this.modules[previousModuleId];
+      if (previousInstance?.unmount) {
+        try {
+          previousInstance.unmount();
+        } catch (error) {
+          console.error(`[App] Failed to unmount module "${previousModuleId}"`, error);
+        }
+      }
+      this.eventBus.emit(EVENTS.MODULE_HIDE, previousModuleId);
+
+      if (modals && typeof modals.closeAll === 'function') {
+        try {
+          modals.closeAll();
+        } catch (modalError) {
+          console.error('[App] Failed to close modals while switching module.', modalError);
+        }
+      }
+    }
+
     this.clearSkeleton();
 
     // Bootstrap thread AVANT le premier mount du module 'chat'

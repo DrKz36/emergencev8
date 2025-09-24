@@ -43,10 +43,25 @@
 { "type": "ws:model_fallback", "payload": { "from_provider": "anthropic", "to_provider": "openai", "reason": "quota" } }
 { "type": "ws:memory_banner", "payload": { "agent_id": "anima", "has_stm": true, "ltm_items": 3, "injected_into_prompt": true } }
 { "type": "ws:analysis_status", "payload": { "status": "running|done|error", "thread_id": "uuid?", "summary_id": "…" } }
-{ "type": "ws:debate_status_update", "payload": { "round": 1, "agent": "neo", "status": "speaking" } }
-{ "type": "ws:debate_result", "payload": { "topic": "…", "summary": "…", "cost": { "total_usd": 0.12 } } }
+{ "type": "ws:debate_status_update", "payload": { "stage": "round_attacker", "status": "speaking", "round": 1, "agent": "neo", "role": "attacker", "message": "Tour 1 - Neo intervient.", "topic": "..." } }
+{ "type": "ws:debate_turn_update", "payload": { "round": 1, "agent": "neo", "text": "Ouverture du debat", "speaker": "attacker", "meta": { "role": "attacker", "provider": "anthropic", "model": "claude-neo", "fallback": false, "cost": { "total_cost": 0.0105, "input_tokens": 100, "output_tokens": 48 } } } }
+{ "type": "ws:debate_result", "payload": {
+    "topic": "…",
+    "status": "completed",
+    "stage": "completed",
+    "turns": [
+      { "round": 1, "agent": "neo", "text": "…", "meta": { "role": "attacker", "provider": "anthropic", "model": "claude-neo", "fallback": false, "cost": { "total_cost": 0.0105, "input_tokens": 100, "output_tokens": 48 } } },
+      { "round": 1, "agent": "nexus", "text": "…", "meta": { "role": "challenger", "provider": "anthropic", "model": "claude-nexus", "fallback": false, "cost": { "total_cost": 0.0210, "input_tokens": 120, "output_tokens": 60 } } }
+    ],
+    "synthesis": "…",
+    "synthesis_meta": { "role": "mediator", "provider": "anthropic", "model": "claude-anima", "fallback": false, "cost": { "total_cost": 0.0158, "input_tokens": 150, "output_tokens": 76 } },
+    "cost": { "total_usd": 0.0473, "tokens": { "input": 370, "output": 184 }, "by_agent": { "neo": { "usd": 0.0105, "input_tokens": 100, "output_tokens": 48 }, "nexus": { "usd": 0.0210, "input_tokens": 120, "output_tokens": 60 }, "anima": { "usd": 0.0158, "input_tokens": 150, "output_tokens": 76 } } }
+  } }
 { "type": "ws:error", "payload": { "message": "…", "code": "rate_limited|internal_error" } }
 ```
+
+- `ws:debate_turn_update.payload.meta` expose le role declare, le fournisseur LLM, le modele choisi, le flag fallback et le cout granularise (`total_cost`, `input_tokens`, `output_tokens`).
+- `ws:debate_result.cost` resume le cout total (`total_usd`), les tokens injectes/produits et la repartition `by_agent`.
 
 ---
 
