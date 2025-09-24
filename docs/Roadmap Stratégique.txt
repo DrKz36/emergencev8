@@ -1,4 +1,4 @@
-﻿# 🗺️ Roadmap Stratégique - ÉMERGENCE V8.0
+# 🗺️ Roadmap Stratégique - ÉMERGENCE V8.0
 
 *Version : 2025-09-14*
 
@@ -70,7 +70,7 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 ---
 
 ## Étapes immédiates (Priorités Semaine Courante)
-1. **Stabilité Auth** : implémenter une remontée visuelle côté front lorsque `ensureCurrentThread()` échoue (message “Connexion requise”).
+1. [FAIT] Stabilite Auth : remontee visuelle front en place (livre le 26/09/2025, message Connexion requise).
 2. **Tests mémoire** : exécuter `tests/run_all.ps1` + ajouter un scénario ciblé `memory:clear` (script dédié ou extension existant).
 3. **Documentation UX** : compléter `docs/Memoire.md` (présent document) avec captures/flows pour guider la QA manuelle.
 4. **Surveillance vector store** : planifier un run hebdo de `tests/test_vector_store_reset.ps1` pour sécuriser l’auto-reset.
