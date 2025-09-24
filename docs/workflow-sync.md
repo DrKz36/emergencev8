@@ -41,6 +41,7 @@ pwsh -File scripts/sync-workdir.ps1 -TestCommands @(
 
 ## Bonnes pratiques
 - Lancer le script au début et à la fin de chaque session de travail.
+- Verifier a chaque session que les remotes `origin` (HTTPS) et `codex` (SSH) pointent vers le meme depot (`git remote -v`) et corriger l'URL si besoin avant de lancer la synchronisation.
 - Documenter tout usage de `-SkipTests`, `-NoPush` ou `-AllowDirty` dans le journal de session.
 - Programmer un rappel (Task Scheduler / cron) pour éviter les oublis.
 - Coupler avec la CI afin de valider automatiquement chaque push (recommandé).
@@ -57,3 +58,4 @@ pwsh -File scripts/sync-workdir.ps1 -TestCommands @(
   ```
 - Pour un backend dans un virtualenv, préciser `-BackendCommand @("pwsh","-NoProfile","-Command",". .\.venv\Scripts\Activate.ps1; uvicorn --app-dir src backend.main:app --host 127.0.0.1 --port 8000")` dans la tâche planifiée.
 - Sur Linux/macOS, planifier via cron : `0 4 * * Mon cd /opt/emergence && pwsh -File scripts/maintenance/run-vector-store-reset.ps1 >> logs/vector-store/cron.log 2>&1`.
+

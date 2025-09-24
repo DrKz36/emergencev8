@@ -10,6 +10,7 @@
 
 ## Suivi
 - Conserver l'habitude d'utiliser `scripts/run-backend.ps1` avant la QA UI.
+- Controler la configuration des remotes via `git remote -v` en debut de session et aligner `origin`/`codex` si besoin.
 - Rejouer `npm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js` en cas de modification auth/front.
 
 ## Sidebar to Conversations Migration (2025-09-24)
@@ -17,5 +18,4 @@
 - Pass 2 done: backend delete endpoint + API client/service updates (pytest `tests/backend/features/test_threads_delete.py`).
 - Pass 3 complete: conversations module live in main content (nav entry, inline delete confirm, node tests on `ThreadsPanel.handleDelete`).
 - Pass 4 next: run build + targeted Jest suite, capture new Conversations screenshots, rerun sync script for final handoff.
-
 
