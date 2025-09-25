@@ -149,7 +149,11 @@ async def _run_memory_clear_scenario(tmp_path):
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-        response = await client.post("/api/memory/clear", json={"session_id": session_id})
+        response = await client.post(
+            "/api/memory/clear",
+            json={"session_id": session_id},
+            headers={"X-Dev-Bypass": "1", "X-User-ID": owner_id},
+        )
 
     assert response.status_code == 200
     payload = response.json()
@@ -181,3 +185,21 @@ async def _run_memory_clear_scenario(tmp_path):
 def test_memory_clear_resets_short_and_long_term(tmp_path):
     asyncio.run(_run_memory_clear_scenario(tmp_path))
 
+
+
+async def _run_memory_endpoints_require_auth():
+    app = FastAPI()
+    app.include_router(memory_router.router, prefix="/api/memory")
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response_tend = await client.post("/api/memory/tend-garden")
+        assert response_tend.status_code == 401
+        response_clear = await client.post(
+            "/api/memory/clear",
+            json={"session_id": "unauthorized-session"},
+        )
+        assert response_clear.status_code == 401
+
+
+def test_memory_endpoints_require_auth():
+    asyncio.run(_run_memory_endpoints_require_auth())

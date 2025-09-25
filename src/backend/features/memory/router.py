@@ -330,7 +330,9 @@ async def tend_garden_endpoint(
     request: Request, data: Dict[str, Any] = Body(default={})
 ) -> Dict[str, Any]:
     logger.info("RequÃªte reÃ§ue sur /api/memory/tend-garden.")
+
     try:
+        await shared_dependencies.get_user_id(request)
         gardener = _get_gardener_from_request(request)
         thread_id = None
         try:
@@ -373,9 +375,10 @@ async def clear_memory_delete(
     session_id: Optional[str] = Query(default=None),
     agent_id: Optional[str] = Query(default=None),
 ) -> Dict[str, Any]:
+    requester_id = await shared_dependencies.get_user_id(request)
     container = _get_container(request)
     sid = _resolve_session_id(request, session_id)
-    uid = None
+    uid = requester_id
     try:
         sm = container.session_manager()
         for name in (
@@ -386,11 +389,13 @@ async def clear_memory_delete(
         ):
             fn = getattr(sm, name, None)
             if callable(fn):
-                uid = fn(sid) or None
-                if uid:
+                resolved = fn(sid) or None
+                if resolved:
+                    uid = resolved
                     break
     except Exception:
-        uid = None
+        uid = requester_id
+
     where_filter = _build_where_filter(
         sid, (agent_id or "").strip().lower() or None, uid
     )
@@ -421,9 +426,10 @@ async def clear_memory_post(
 ) -> Dict[str, Any]:
     session_id = (data or {}).get("session_id")
     agent_id = (data or {}).get("agent_id")
+    requester_id = await shared_dependencies.get_user_id(request)
     container = _get_container(request)
     sid = _resolve_session_id(request, session_id)
-    uid = None
+    uid = requester_id
     try:
         sm = container.session_manager()
         for name in (
@@ -434,11 +440,13 @@ async def clear_memory_post(
         ):
             fn = getattr(sm, name, None)
             if callable(fn):
-                uid = fn(sid) or None
-                if uid:
+                resolved = fn(sid) or None
+                if resolved:
+                    uid = resolved
                     break
     except Exception:
-        uid = None
+        uid = requester_id
+
     where_filter = _build_where_filter(
         sid, (agent_id or "").strip().lower() or None, uid
     )

@@ -43,6 +43,7 @@
   - `POST /api/memory/tend-garden` : lance une consolidation (option `thread_id`, `mode`).
   - `GET /api/memory/tend-garden` : renvoie l’état consolidé (`summaries`, `facts`, compteurs LTM).
   - `POST /api/memory/clear` : purge STM puis LTM (scope global ou thread).
+  - Toutes les routes `/api/memory/*` valident le JWT via `shared_dependencies.get_user_id`; sans jeton valide la requête est rejetée en `401`. En DEV, le couple d'en-têtes `X-Dev-Bypass: 1` + `X-User-Id` reste accepté pour les environnements sans GIS.
 
 ### Frontend
 - **`ChatModule`**
@@ -145,6 +146,7 @@
   3. Observer le toast succès et le rafraîchissement `ws:memory_banner`.
   4. Recharger le thread et confirmer que STM/LTM sont à zéro (compteurs + liste vide).
 - **Points de vigilance** : l'ordre STM → LTM → embeddings doit être respecté, et la modal doit résumer les effets (scope, session, agent).
+    - Toute exécution `POST/DELETE /api/memory/clear` doit inclure un `Authorization: Bearer <JWT>` actif; sans cela, l'API renvoie immédiatement `401`. Conserver les en-têtes de contournement DEV uniquement sur les postes locaux.
 - **Captures à intégrer** :
   - ![Capture modal clear](assets/memoire/modal-clear.png)
   - ![Capture bandeau vide](assets/memoire/bandeau-vide.png)
