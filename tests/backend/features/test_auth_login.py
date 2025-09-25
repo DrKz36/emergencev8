@@ -57,6 +57,11 @@ def test_login_logout_flow(tmp_path):
             resp = await client.post("/api/auth/login", json={"email": admin_email})
             assert resp.status_code == 200
             login_body = LoginResponse(**resp.json())
+            assert resp.cookies.get("id_token") == login_body.token
+            assert resp.cookies.get("emergence_session_id") == login_body.session_id
+            set_cookie_headers = [value.lower() for value in resp.headers.get_list("set-cookie")]
+            assert any('id_token=' in cookie and 'samesite=lax' in cookie for cookie in set_cookie_headers)
+            assert any('emergence_session_id=' in cookie and 'samesite=lax' in cookie for cookie in set_cookie_headers)
 
             # Session endpoint should reflect token metadata
             headers = {"Authorization": f"Bearer {login_body.token}"}
@@ -71,6 +76,12 @@ def test_login_logout_flow(tmp_path):
             # Logout clears the session
             logout_resp = await client.post("/api/auth/logout", json={}, headers=headers)
             assert logout_resp.status_code == 204
+            # httpx>=0.28 drops expired cookies from the response jar, returning None after deletion.
+            assert logout_resp.cookies.get("id_token") in ("", None)
+            assert logout_resp.cookies.get("emergence_session_id") in ("", None)
+            logout_set_cookie = [value.lower() for value in logout_resp.headers.get_list("set-cookie")]
+            assert any('id_token=' in cookie and 'max-age=0' in cookie and 'samesite=lax' in cookie for cookie in logout_set_cookie)
+            assert any('emergence_session_id=' in cookie and 'max-age=0' in cookie and 'samesite=lax' in cookie for cookie in logout_set_cookie)
 
             row = await db.fetch_one(
                 "SELECT revoked_at FROM auth_sessions WHERE id = ?",
@@ -87,3 +98,4 @@ def test_login_logout_flow(tmp_path):
         await db.disconnect()
 
     asyncio.run(scenario())
+

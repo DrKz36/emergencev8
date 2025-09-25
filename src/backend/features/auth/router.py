@@ -44,14 +44,58 @@ def _map_auth_error(exc: AuthError) -> HTTPException:
     return HTTPException(status_code=exc.status_code, detail=detail, headers=headers or None)
 
 
+def _set_blank_cookie(response: Response, key: str, *, secure: bool) -> None:
+    """Expire cookie immediately while keeping logout semantics explicit."""
+    expires_at = datetime.fromtimestamp(0, tz=timezone.utc)
+    response.set_cookie(
+        key=key,
+        value="",
+        max_age=0,
+        expires=expires_at,
+        path="/",
+        secure=secure,
+        httponly=False,
+        samesite="lax",
+    )
+
+
 @router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
-async def login(payload: LoginRequest, request: Request, auth_service: AuthService = Depends(get_auth_service)) -> LoginResponse:
+async def login(
+    payload: LoginRequest,
+    request: Request,
+    response: Response,
+    auth_service: AuthService = Depends(get_auth_service),
+) -> LoginResponse:
     client_host = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
     try:
-        return await auth_service.login(payload.email, client_host, user_agent)
+        login_result = await auth_service.login(payload.email, client_host, user_agent)
     except AuthError as exc:
         raise _map_auth_error(exc)
+
+    max_age = int(auth_service.config.token_ttl_seconds)
+    cookie_secure = not bool(getattr(auth_service.config, "dev_mode", False))
+    response.set_cookie(
+        key="id_token",
+        value=login_result.token,
+        max_age=max_age,
+        expires=login_result.expires_at,
+        path="/",
+        secure=cookie_secure,
+        httponly=False,
+        samesite="lax",
+    )
+    response.set_cookie(
+        key="emergence_session_id",
+        value=login_result.session_id,
+        max_age=max_age,
+        expires=login_result.expires_at,
+        path="/",
+        secure=cookie_secure,
+        httponly=False,
+        samesite="lax",
+    )
+    return login_result
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -63,6 +107,7 @@ async def logout(
 ) -> Response:
     session_id = payload.session_id or claims.get("session_id") or claims.get("sid")
     actor = claims.get("email")
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
     if session_id:
         sid = str(session_id)
         await auth_service.logout(sid, actor=actor)
@@ -72,7 +117,10 @@ async def logout(
                 reason="session_revoked",
                 close_code=4401,
             )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    cookie_secure = not bool(getattr(auth_service.config, "dev_mode", False))
+    _set_blank_cookie(response, "id_token", secure=cookie_secure)
+    _set_blank_cookie(response, "emergence_session_id", secure=cookie_secure)
+    return response
 
 
 @router.get("/session", response_model=SessionStatusResponse)
@@ -155,3 +203,4 @@ async def revoke_session(
             close_code=4401,
         )
     return SessionRevokeResult(updated=1 if updated else 0)
+

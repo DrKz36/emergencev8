@@ -30,6 +30,16 @@ const MEMORY_CLEAR =
 const DEFAULT_TIMEOUT_MS = 15000;
 
 /* ------------------------------ Utils --------------------------------- */
+function getCookieValue(name) {
+  try {
+    const pattern = new RegExp('(?:^|; )' + name + '=([^;]*)');
+    const match = (typeof document !== 'undefined' ? document.cookie : '').match(pattern);
+    return match ? decodeURIComponent(match[1]) : '';
+  } catch (_) {
+    return '';
+  }
+}
+
 function buildQuery(params = {}) {
   const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '');
   return entries.length ? `?${new URLSearchParams(entries).toString()}` : '';
@@ -182,6 +192,9 @@ async function getAuthHeaders() {
     try {
       token = sessionStorage.getItem('emergence.id_token') || localStorage.getItem('emergence.id_token');
     } catch (_) {}
+  }
+  if (!token) {
+    token = getCookieValue('id_token');
   }
 
   const headers = {};

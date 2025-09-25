@@ -68,8 +68,8 @@
 ## 2) REST Endpoints majeurs
 
 ### Auth (Allowlist email)
-- `POST /api/auth/login` -> 200 `{ token, expires_at, role, session_id }` (body `{ email }`). 401 si email hors allowlist, 429 si rate-limit dépassé, 423 si compte révoqué.
-- `POST /api/auth/logout` -> 204 (idempotent). Payload optionnel `{ session_id }` pour marquer la session `revoked_at`.
+- `POST /api/auth/login` -> 200 `{ token, expires_at, role, session_id }` (body `{ email }`). `Set-Cookie` renvoie `id_token` + `emergence_session_id` avec `SameSite=Lax`. 401 si email hors allowlist, 429 si rate-limit dépassé, 423 si compte révoqué.
+- `POST /api/auth/logout` -> 204 (idempotent). Payload optionnel `{ session_id }` pour marquer la session `revoked_at`. Réponse: `Set-Cookie` vide (`id_token=`, `emergence_session_id=`) avec `Max-Age=0` et `SameSite=Lax` pour forcer la purge navigateur.
 - `GET /api/auth/session` -> 200 `{ email, role, expires_at, issued_at }` (vérifie token courant).
 - `GET /api/auth/admin/allowlist` -> 200 `{ items:[{ email, note, created_at }] }` (réservé `role=admin`).
 - `POST /api/auth/admin/allowlist` -> 201 `{ email, note }` ajoute un testeur (audit log).
@@ -119,3 +119,5 @@
 - Révocation : `auth_sessions.revoked_at` + liste en mémoire purgée toutes les 5 minutes.
 - Les claims enrichis exposent `session_revoked` et `revoked_at` le cas échéant; le handshake WS refuse une session révoquée.
 - OTP futur : champs réservés (`otp_secret`, `otp_expires_at`, `otp_channel`) pour SMS/OTP; routes resteront compatibles.
+
+

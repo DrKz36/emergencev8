@@ -100,15 +100,44 @@ export class HomeModule {
     const submit = t('home.submit');
     const legal = t('home.legal');
     const highlights = t('home.highlights');
+    const brandAlt = t('home.brand_alt');
+    const agentsTitle = t('home.agents_title');
+    const agentsSubtitle = t('home.agents_subtitle');
+    const agentAnima = t('home.agent_anima');
+    const agentNeo = t('home.agent_neo');
+    const agentNexus = t('home.agent_nexus');
 
     return `
       <section class="home" data-role="home">
         <div class="home__panel">
+          <div class="home__branding">
+            <img src="/assets/emergence_logo.png" alt="${brandAlt}" class="home__logo" loading="lazy" />
+          </div>
           <div class="home__hero">
             <span class="home__badge">${highlights}</span>
             <h1 class="home__title">${title}</h1>
             <p class="home__subtitle">${subtitle}</p>
           </div>
+          <section class="home__agents" aria-labelledby="home-agents-title">
+            <header class="home__agents-header">
+              <h2 id="home-agents-title" class="home__agents-title">${agentsTitle}</h2>
+              <p class="home__agents-subtitle">${agentsSubtitle}</p>
+            </header>
+            <div class="home__agents-grid">
+              <figure class="home__agent-card">
+                <img src="/assets/anima.png" alt="${agentAnima}" loading="lazy" class="home__agent-image" />
+                <figcaption class="home__agent-label">${agentAnima}</figcaption>
+              </figure>
+              <figure class="home__agent-card">
+                <img src="/assets/neo.png" alt="${agentNeo}" loading="lazy" class="home__agent-image" />
+                <figcaption class="home__agent-label">${agentNeo}</figcaption>
+              </figure>
+              <figure class="home__agent-card">
+                <img src="/assets/nexus.png" alt="${agentNexus}" loading="lazy" class="home__agent-image" />
+                <figcaption class="home__agent-label">${agentNexus}</figcaption>
+              </figure>
+            </div>
+          </section>
           <form class="home__form" data-role="home-form" novalidate>
             <label class="home__label" for="home-email">${label}</label>
             <div class="home__form-row">

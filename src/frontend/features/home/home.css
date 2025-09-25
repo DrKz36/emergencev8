@@ -45,10 +45,88 @@ body.home-active #home-root {
   gap: 28px;
 }
 
+.home__branding {
+  display: flex;
+  justify-content: center;
+}
+
+.home__logo {
+  width: clamp(92px, 12vw, 132px);
+  height: auto;
+  filter: drop-shadow(0 12px 26px rgba(59, 130, 246, 0.25));
+}
+
 .home__hero {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.home__agents {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.home__agents-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 480px;
+}
+
+.home__agents-title {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(191, 219, 254, 0.95);
+}
+
+.home__agents-subtitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: rgba(203, 213, 225, 0.86);
+}
+
+.home__agents-grid {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.home__agent-card {
+  width: 164px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  padding: 18px 16px 20px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(30, 64, 175, 0.25), rgba(8, 47, 73, 0.38));
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  box-shadow: 0 18px 34px rgba(8, 47, 73, 0.35);
+  backdrop-filter: blur(12px);
+}
+
+.home__agent-image {
+  width: 112px;
+  height: 112px;
+  object-fit: contain;
+  border-radius: 14px;
+}
+
+.home__agent-label {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(226, 232, 240, 0.92);
 }
 
 .home__badge {
@@ -170,6 +248,18 @@ body.home-active #home-root {
   .home__submit {
     width: 100%;
     justify-content: center;
+  }
+
+  .home__agents-grid {
+    gap: 14px;
+  }
+
+  .home__agent-card {
+    width: min(100%, 220px);
+  }
+
+  .home__logo {
+    width: clamp(84px, 22vw, 110px);
   }
 }
 

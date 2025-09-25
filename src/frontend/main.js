@@ -84,22 +84,66 @@ function openDevAuth() {
   try { window.open('/dev-auth.html', '_blank', 'noopener,noreferrer'); } catch {}
 }
 
+function shouldUseSecureCookies() {
+  try {
+    if (typeof window === 'undefined') return false;
+    const location = window.location || {};
+    const protocol = location.protocol || '';
+    if (protocol !== 'https:') return false;
+    const hostname = (location.hostname || '').toLowerCase();
+    return hostname !== 'localhost' && hostname !== '127.0.0.1' && hostname !== '0.0.0.0' && hostname !== '::1';
+  } catch (_) {
+    return false;
+  }
+}
+
 /* === Nouveaux helpers (auto-auth) === */
 function pickTokenFromLocation() {
   const blob = (window.location.hash || '') + '&' + (window.location.search || '');
   const m = blob.match(/(?:^|[?#&])(id_token|token)=([^&#]+)/i);
   return m ? decodeURIComponent(m[2]) : '';
 }
-function saveToken(tok) {
+function saveToken(tok, { expiresAt } = {}) {
   if (!tok) return;
   try { localStorage.setItem('emergence.id_token', tok); } catch {}
   try { localStorage.setItem('id_token', tok); } catch {}
+  try { sessionStorage.setItem('id_token', tok); } catch {}
+  try { sessionStorage.setItem('emergence.id_token', tok); } catch {}
+  try {
+    const parts = [
+      `id_token=${encodeURIComponent(tok)}`,
+      'path=/',
+      'SameSite=Lax',
+    ];
+    if (expiresAt) {
+      const dt = new Date(expiresAt);
+      if (!Number.isNaN(dt.getTime())) {
+        parts.push(`expires=${dt.toUTCString()}`);
+      } else {
+        parts.push('Max-Age=604800');
+      }
+    } else {
+      parts.push('Max-Age=604800');
+    }
+    if (shouldUseSecureCookies()) parts.push('Secure');
+    document.cookie = parts.join('; ');
+  } catch {}
 }
 function clearToken() {
   try { localStorage.removeItem('emergence.id_token'); } catch {}
   try { localStorage.removeItem('id_token'); } catch {}
   try { sessionStorage.removeItem('id_token'); } catch {}
-  try { document.cookie = 'id_token=; Max-Age=0; path=/; SameSite=Lax'; } catch {}
+  try { sessionStorage.removeItem('emergence.id_token'); } catch {}
+  try { document.cookie = (function() {
+    const parts = ['id_token=', 'Max-Age=0', 'path=/', 'SameSite=Lax'];
+    if (shouldUseSecureCookies()) parts.push('Secure');
+    return parts.join('; ');
+  })(); } catch {}
+  try { document.cookie = (function() {
+    const parts = ['emergence_session_id=', 'Max-Age=0', 'path=/', 'SameSite=Lax'];
+    if (shouldUseSecureCookies()) parts.push('Secure');
+    return parts.join('; ');
+  })(); } catch {}
 }
 function isLocalHost() {
   const h = (window.location && window.location.hostname || '').toLowerCase();
@@ -843,10 +887,25 @@ class EmergenceClient {
 
   handleLoginSuccess(payload = {}) {
     const token = payload?.token;
-    if (token && token.trim()) saveToken(token.trim());
+    if (token && token.trim()) saveToken(token.trim(), { expiresAt: payload?.expiresAt });
     if (payload?.sessionId) {
       try { this.state?.set?.('websocket.sessionId', payload.sessionId); }
       catch (err) { console.warn('[main] Impossible d’enregistrer websocket.sessionId', err); }
+      try {
+        const cookieParts = [
+          `emergence_session_id=${encodeURIComponent(payload.sessionId)}`,
+          'path=/',
+          'SameSite=Lax',
+        ];
+        if (payload?.expiresAt) {
+          const dt = new Date(payload.expiresAt);
+          if (!Number.isNaN(dt.getTime())) cookieParts.push(`expires=${dt.toUTCString()}`);
+        } else {
+          cookieParts.push('Max-Age=604800');
+        }
+        if (shouldUseSecureCookies()) cookieParts.push('Secure');
+        document.cookie = cookieParts.join('; ');
+      } catch (_) {}
     }
     this.handleTokenAvailable('home-login');
   }

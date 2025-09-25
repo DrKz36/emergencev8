@@ -77,6 +77,7 @@
 - Logs : `memory:garden:start`, `memory:garden:done`, `memory:clear`.
 - WS meta : `meta.selected_doc_ids` expose les documents retenus et `ws:rag_status` trace les etats searching/found/idle pour la QA.
 - Auth: les claims exposent `session_revoked`; apres un logout, toute reconnexion WS refuse la session tant que le token n'est pas renouvele.
+- Auth: `POST /api/auth/logout` renvoie `Set-Cookie` vides (`id_token`, `emergence_session_id`) avec `SameSite=Lax` pour aligner la purge navigateur.
 - UX 401 : en cas de 401 sur /api/memory/*, l'application émet `auth:missing` et affiche le toast « Connexion requise pour la mémoire. ».
 - Tests recommandés :
   - `tests/run_all.ps1` (vérifie `/api/memory/tend-garden`).
@@ -183,3 +184,4 @@
 - [ ] Réaliser un **clear complet** et contrôler la purge STM/LTM + embeddings (captures : `assets/memoire/modal-clear.png`, `assets/memoire/bandeau-vide.png`).
 - [ ] **Tester le scénario d’erreur** (LLM indisponible) et confirmer la présence du toast + bouton retry (capture : `assets/memoire/toast-erreur.png`).
 - [ ] Vérifier la **cohérence des logs** `memory:garden:*` et `memory:clear` avec les actions réalisées (capture : `assets/memoire/logs-erreur.png`).
+

@@ -8,9 +8,9 @@
 1. Arriver sans token (`localStorage.emergence.id_token` vide). Le `body` expose la classe `home-active`, `#home-root` est visible.
 2. Le formulaire email (placeholder `prenom@entreprise.com`) valide le format et affiche les erreurs inline.
 3. Soumettre un email autorisé -> spinner bouton, appel `POST /api/auth/login` (payload `{ email, meta:{ locale, user_agent, timezone } }`).
-4. Réponse 200 -> message succès, token stocké (`localStorage` + `sessionStorage`), événement `auth:login:success` émis.
+4. Réponse 200 -> message succès, token stocké (`localStorage` + `sessionStorage` + cookie `id_token`), événement `auth:login:success` émis et cookie `emergence_session_id` mis à jour.
 5. `HomeModule` se démonte, `body.home-active` retiré, App `module:show('chat')` + connexion WS.
-6. Logout (`auth:logout`) purge le token, remet `home-active` et réactive l’écoute `storage` (dev auth).
+6. Logout (`auth:logout`) purge le token, remet `home-active`, réactive l’écoute `storage` (dev auth) et l’API renvoie `Set-Cookie` vides (`id_token`, `emergence_session_id`) avec `SameSite=Lax`.
 
 ## États d’erreur
 - **401** : message "Adresse non autorisée" + QA recorder `home_login_error` avec `status` 401.
@@ -20,6 +20,7 @@
 
 ## QA rapide
 - [ ] Sans token → le bandeau auth (badge) affiche "Connexion requise" et `home-active` est présent.
+- [ ] La section "Vos copilotes IA" affiche Anima/Neo/Nexus (image + libellé, attribut alt).
 - [ ] Soumission email invalide → message inline, pas d’appel réseau.
 - [ ] Email autorisé → message succès, App visible, WS se connecte.
 - [ ] Logout → retour immédiat sur landing + nouvel enregistrement QA metrics (`home_login_submit`).
