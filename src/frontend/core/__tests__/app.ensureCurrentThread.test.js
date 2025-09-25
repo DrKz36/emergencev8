@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import './helpers/dom-shim.js';
 import assert from 'node:assert/strict';
 
 import { App } from '../app.js';

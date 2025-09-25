@@ -44,12 +44,12 @@
 - Bannière "Connexion requise" : `npm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js` passe après avoir neutralisé l'init DOM dans `components/modals.js`; capture déposée (`docs/assets/ui/auth-banner-20250925.png`) pour la prochaine passe UI.
 
 ### Pistes suivantes UI/Auth
-- Ajuster le bootstrap DOM des tests Node afin que `document`/`window` soient disponibles avant l'import des modules UI.
-- Relancer le test ciblé puis collecter une capture récente de la bannière + console QA.
-- Actualiser `docs/ui/auth-required-banner.md` si le flux ou les captures évoluent.
+- [FAIT 2025-09-26] Bootstrap DOM Node (`src/frontend/core/__tests__/helpers/dom-shim.js`) + relance de `npm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js`.
+- Prochaine étape : relancer `node scripts/qa/home-qa.mjs` une fois le backend local disponible pour rafraîchir les captures et mettre à jour `docs/ui/auth-required-banner.md` si nécessaire.
 
 
 ## Session 2025-09-26 - Accueil email allowlist
 - Module `features/home/home-module.js` : landing auth plein écran, formulaire email, appels `POST /api/auth/login`, intégration metrics QA.
 - Refonte `src/frontend/main.js` : bascule automatique vers le landing sans token, bootstrap App/WS après succès, purge des tokens au logout.
 - QA : `scripts/qa/home-qa.mjs` attend désormais `body.home-active` et capture l’état landing + overlay QA.
+
