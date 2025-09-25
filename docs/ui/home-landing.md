@@ -29,7 +29,8 @@
 ## Observations auth:missing (QA 2025-09-25)
 - Scenario: apres un login 200, la reconnection WS a echoue (backend indisponible) et `eventBus` a emis `auth:missing`.
 - Effets observes : `AuthBanner` bascule en `AUTH_MISSING` deux fois (raisons `missing_or_invalid_token`, `4401`) et le compteur `missingCount` augmente dans `window.__EMERGENCE_QA_METRICS__.authRequired`.
-- Evidence: voir `docs/assets/ui/home-console-log-20250925.txt` lignes 37-45 pour les traces console generes pendant le run QA.
+- Evidence: voir `docs/assets/ui/home-console-log-20250925.txt` lignes 35-37 pour les traces console generes pendant le run QA.
+- Metrics: la capture `home-authenticated-console-20250925.png` confirme `missingCount: 2` et la sequence restored → missing → missing → restored.
 - Action QA : consigner toute repetition de `auth:missing` post-login (backend HS) et verifier que le HomeModule reactive `body.home-active` + listener `storage`.
 
 ## QA Metrics
@@ -37,6 +38,7 @@
 - `home_login_submit`
 - `home_login_success`
 - `home_login_error`
+
 
 
 

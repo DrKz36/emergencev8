@@ -8,10 +8,10 @@
 [log] [StateManager] V15.4 Initialized: State loaded from localStorage and sanitized.
 [log] ✅ WebSocketClient V22.3 (queued send) prêt.
 [log] ? Client ÉMERGENCE prêt. En attente du signal APP_READY...
-[log] [BOOT][front] {ttfb_ms: 303, fcp_ms: 1348}
+[log] [BOOT][front] {ttfb_ms: 6}
 [log] [WebSocket] Token détecté via storage — reconnexion…
 [log] Ã”Â£Ã  App V35.0 (ThreadBootstrap) Initialisâ”œÂ®e.
-[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:00:29.444Z, source: storage, reason: null, status: null}
+[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:30:48.732Z, source: storage, reason: null, status: null}
 [error] [App] ensureCurrentThread() a echoue : TypeError: Failed to fetch
     at doFetch (http://127.0.0.1:5173/src/frontend/shared/api-client.js:207:28)
     at fetchApi (http://127.0.0.1:5173/src/frontend/shared/api-client.js:250:18)
@@ -26,22 +26,22 @@
 [log] [StateManager] V15.4 Initialized: State loaded from localStorage and sanitized.
 [log] ✅ WebSocketClient V22.3 (queued send) prêt.
 [log] Ã”Â£Ã  App V35.0 (ThreadBootstrap) Initialisâ”œÂ®e.
-[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:00:32.514Z, source: startup, reason: null, status: null}
+[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:30:52.138Z, source: startup, reason: null, status: null}
 [log] ? Client ÉMERGENCE prêt. En attente du signal APP_READY...
-[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:00:32.755Z, source: ensureCurrentThread, reason: null, status: null}
-[log] [BOOT][front] {ttfb_ms: 645}
 [warning] [Watchdog] APP_READY manquant – re-module:show(chat)
+[log] [BOOT][front] {ttfb_ms: 537}
+[debug] [vite] connected.
+[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:30:54.701Z, source: ws:connected, reason: null, status: null}
+[info] [AuthBanner] AUTH_MISSING {type: missing, at: 2025-09-25T07:30:54.702Z, source: auth:missing, reason: missing_or_invalid_token, status: null}
+[info] [AuthBanner] AUTH_MISSING {type: missing, at: 2025-09-25T07:30:54.704Z, source: auth:missing, reason: 4401, status: null}
+[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:30:55.192Z, source: ensureCurrentThread, reason: null, status: null}
 [log] [ChatUI] V28.3.2 (glass-layout) initialisee.
 [log] ✅ ChatModule V25.4 initialisé (listeners idempotents).
 [log] Ã”Â£Ã  Module chat initialisâ”œÂ® et mis en cache.
 [log] [CHAT] ChatUI rendu -> container.id = tab-content-chat
 [debug] [Chat] Répartition messages par agent {}
-[log] [Chat] mount() → hydratation tardive depuis state pour e80a381ac384418e84c4c44ff2108e05
+[log] [Chat] mount() → hydratation tardive depuis state pour a6d05c6ea5ad46bfa449d2ebf2456e4d
 [log] Ã”ÃœÃ­Â´Â©Ã… Prâ”œÂ®-chargement des autres modulesÃ”Ã‡Âª
-[debug] [vite] connected.
-[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:00:36.110Z, source: ws:connected, reason: null, status: null}
-[info] [AuthBanner] AUTH_MISSING {type: missing, at: 2025-09-25T07:00:36.117Z, source: auth:missing, reason: missing_or_invalid_token, status: null}
-[info] [AuthBanner] AUTH_MISSING {type: missing, at: 2025-09-25T07:00:36.126Z, source: auth:missing, reason: 4401, status: null}
 [log] Ã”Â£Ã  Module memory initialisâ”œÂ® et mis en cache.
 [log] Ã”Â£Ã  Module documents initialisâ”œÂ® et mis en cache.
 [log] ✅ DashboardModule V4.0 (Concordance) Prêt.

@@ -45,7 +45,9 @@
 
 ### Pistes suivantes UI/Auth
 - [FAIT 2025-09-26] Bootstrap DOM Node (`src/frontend/core/__tests__/helpers/dom-shim.js`) + relance de `npm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js`.
-- Prochaine étape : relancer `node scripts/qa/home-qa.mjs` une fois le backend local disponible pour rafraîchir les captures et mettre à jour `docs/ui/auth-required-banner.md` si nécessaire.
+- [FAIT 2025-09-26] `node scripts/qa/home-qa.mjs` rejoué (captures + console QA rafraîchies, `missingCount: 2` confirmé).
+- Suivi: prévoir une passe QA manuelle backend hors-ligne prolongée pour valider la remise en place continue de `body.home-active` et mettre à jour `docs/ui/auth-required-banner.md` si le comportement évolue.
+
 
 
 ## Session 2025-09-26 - Accueil email allowlist
