@@ -39,6 +39,7 @@ const MESSAGES = {
       agent_anima: 'Anima',
       agent_neo: 'Neo',
       agent_nexus: 'Nexus',
+    },
     admin: {
       title: 'Administration allowlist',
       subtitle: 'Ajoutez, mettez a jour ou regenerez les acces testeurs.',
@@ -79,7 +80,6 @@ const MESSAGES = {
       prev_page: 'Precedent',
       next_page: 'Suivant',
       never: 'Jamais',
-    },
     },
   },
   en: {
@@ -196,7 +196,5 @@ export function getMessages() {
 }
 
 export const LOCALES = Object.freeze(Object.keys(MESSAGES));
-
-
 
 
