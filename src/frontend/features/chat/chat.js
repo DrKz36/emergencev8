@@ -738,6 +738,11 @@ export default class ChatModule {
       // Le backend émettra ensuite ws:analysis_status → géré dans handleAnalysisStatus()
     } catch (e) {
       console.error('[Chat] memory.tend error', e);
+      if (e?.status === 401) {
+        this.eventBus.emit?.('auth:missing', { reason: 401, source: 'memory:tend' });
+        this.showToast('Connexion requise pour la mémoire.');
+        return;
+      }
       this.showToast('Analyse mémoire : échec');
     }
   }
@@ -759,6 +764,11 @@ export default class ChatModule {
       this.showToast('Mémoire effacée ✓');
     } catch (e) {
       console.error('[Chat] memory.clear error', e);
+      if (e?.status === 401) {
+        this.eventBus.emit?.('auth:missing', { reason: 401, source: 'memory:clear' });
+        this.showToast('Connexion requise pour la mémoire.');
+        return;
+      }
       this.showToast('Effacement mémoire : échec');
     }
   }

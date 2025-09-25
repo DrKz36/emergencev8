@@ -194,6 +194,8 @@ async def _run_memory_endpoints_require_auth():
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         response_tend = await client.post("/api/memory/tend-garden")
         assert response_tend.status_code == 401
+        response_tend_get = await client.get("/api/memory/tend-garden")
+        assert response_tend_get.status_code == 401
         response_clear = await client.post(
             "/api/memory/clear",
             json={"session_id": "unauthorized-session"},
@@ -203,3 +205,38 @@ async def _run_memory_endpoints_require_auth():
 
 def test_memory_endpoints_require_auth():
     asyncio.run(_run_memory_endpoints_require_auth())
+
+
+async def _run_memory_tend_garden_get_authorized():
+    app = FastAPI()
+    app.include_router(memory_router.router, prefix="/api/memory")
+
+    class DummyGardener:
+        def __init__(self) -> None:
+            self.calls: list[str | None] = []
+
+        async def tend_the_garden(self, thread_id: str | None = None):
+            self.calls.append(thread_id)
+            return {"status": "success", "runs": 1}
+
+    gardener = DummyGardener()
+    original_getter = memory_router._get_gardener_from_request
+    try:
+        memory_router._get_gardener_from_request = lambda request: gardener  # type: ignore[assignment]
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            response = await client.get(
+                "/api/memory/tend-garden",
+                headers={"X-Dev-Bypass": "1", "X-User-ID": "authorized-user"},
+            )
+        assert response.status_code == 200
+        assert response.json() == {"status": "success", "runs": 1}
+    finally:
+        memory_router._get_gardener_from_request = original_getter
+
+    assert gardener.calls == [None]
+
+
+
+def test_memory_tend_garden_get_authorized():
+    asyncio.run(_run_memory_tend_garden_get_authorized())

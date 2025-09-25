@@ -77,6 +77,7 @@
 - Logs : `memory:garden:start`, `memory:garden:done`, `memory:clear`.
 - WS meta : `meta.selected_doc_ids` expose les documents retenus et `ws:rag_status` trace les etats searching/found/idle pour la QA.
 - Auth: les claims exposent `session_revoked`; apres un logout, toute reconnexion WS refuse la session tant que le token n'est pas renouvele.
+- UX 401 : en cas de 401 sur /api/memory/*, l'application émet `auth:missing` et affiche le toast « Connexion requise pour la mémoire. ».
 - Tests recommandés :
   - `tests/run_all.ps1` (vérifie `/api/memory/tend-garden`).
   - `pytest tests/backend/features/test_memory_clear.py` : valide `POST /api/memory/clear` sans serveur actif (stubs DB/vector) et est invoque depuis `tests/run_all.ps1`.
