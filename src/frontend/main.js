@@ -760,8 +760,7 @@ class EmergenceClient {
     this.home = new HomeModule(eventBus, stateManager, { qaRecorder });
 
     eventBus.on?.('auth:missing', () => {
-      this.markAuthRequired();
-      if (!hasToken()) this.showHome();
+      this.handleLogout();
     });
 
     eventBus.on?.('auth:logout', () => {

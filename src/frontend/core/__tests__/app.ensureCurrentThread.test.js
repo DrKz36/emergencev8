@@ -106,9 +106,14 @@ test('ensureCurrentThread signale la nécessité de connexion sur erreur 401', a
     assert.equal(toastEvents[0].payload.text, t('auth.login_required', { locale: 'fr' }));
     const authMissingEvents = bus.events.filter(e => e.name === 'auth:missing');
     assert.equal(authMissingEvents.length, 1);
+    assert.equal(authMissingEvents[0].payload?.reason, 'threads_boot_failed');
+    assert.equal(authMissingEvents[0].payload?.status, 401);
     const authRequiredEvents = bus.events.filter(e => e.name === EVENTS.AUTH_REQUIRED);
     assert.equal(authRequiredEvents.length, 1);
-    assert.equal(authRequiredEvents[0].payload?.message, t('auth.login_required', { locale: 'fr' }));
+    const authRequiredPayload = authRequiredEvents[0].payload || {};
+    assert.equal(authRequiredPayload.message, t('auth.login_required', { locale: 'fr' }));
+    assert.equal(authRequiredPayload.reason, 'threads_boot_failed');
+    assert.equal(authRequiredPayload.status, 401);
     const authRestoredEvents = bus.events.filter(e => e.name === EVENTS.AUTH_RESTORED);
     assert.equal(authRestoredEvents.length, 0);
   });
@@ -141,6 +146,37 @@ test('ensureCurrentThread ne duplique pas le toast auth', async () => {
 
 
 
+
+test('ensureCurrentThread signale la necessite de connexion sur erreur reseau', async () => {
+  await withStubbedDom(async () => {
+    const state = createStateStub();
+    const bus = createEventBusStub();
+    const app = new App(bus, state);
+    const originalListThreads = api.listThreads;
+    const networkError = new TypeError('Failed to fetch');
+    networkError.code = 'ECONNREFUSED';
+    api.listThreads = async () => { throw networkError; };
+
+    try {
+      await app.ensureCurrentThread();
+    } finally {
+      api.listThreads = originalListThreads;
+    }
+
+    assert.equal(state.get('auth.hasToken'), false);
+    assert.equal(state.get('chat.authRequired'), true);
+    const authMissingEvents = bus.events.filter(e => e.name === 'auth:missing');
+    assert.equal(authMissingEvents.length, 1);
+    assert.equal(authMissingEvents[0].payload?.reason, 'threads_boot_failed_network');
+    assert.equal(authMissingEvents[0].payload?.status ?? null, null);
+    const authRequiredEvents = bus.events.filter(e => e.name === EVENTS.AUTH_REQUIRED);
+    assert.equal(authRequiredEvents.length, 1);
+    const authRequiredPayload = authRequiredEvents[0].payload || {};
+    assert.equal(authRequiredPayload.reason, 'threads_boot_failed_network');
+    assert.equal(authRequiredPayload.status ?? null, null);
+    assert.equal(authRequiredPayload.message, t('auth.login_required', { locale: 'fr' }));
+  });
+});
 
 test('ensureCurrentThread emet AUTH_REQUIRED avec les metadonnees attendues', async () => {
   await withStubbedDom(async () => {

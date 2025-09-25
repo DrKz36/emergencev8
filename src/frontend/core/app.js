@@ -14,6 +14,32 @@ const AUTH_ERROR_STATUSES = new Set([401, 403, 419, 440]);
 const THREAD_INACCESSIBLE_MARKER = 'thread non accessible pour cet utilisateur';
 const THREAD_INACCESSIBLE_CODES = new Set(['thread_not_accessible', 'thread_inaccessible']);
 
+function isNetworkError(error) {
+  const status =
+    error?.status ??
+    error?.response?.status ??
+    error?.cause?.status ??
+    null;
+  if (typeof status === 'number') {
+    return false;
+  }
+  const code = (error?.code || error?.cause?.code || '').toString().toUpperCase();
+  const name = (error?.name || '').toString().toLowerCase();
+  const message = (
+    error?.message ||
+    error?.cause?.message ||
+    ''
+  ).toString().toLowerCase();
+  return (
+    name === 'typeerror' ||
+    message.includes('failed to fetch') ||
+    message.includes('network') ||
+    message.includes('load failed') ||
+    code === 'ECONNREFUSED' ||
+    code === 'ECONNRESET'
+  );
+}
+
 // [CORRECTION VITE]
 const moduleLoaders = {
   chat: () => import('../features/chat/chat.js'),
@@ -351,15 +377,20 @@ export class App {
         return;
       }
       const status = error?.status ?? error?.response?.status ?? error?.cause?.status ?? null;
-      if (AUTH_ERROR_STATUSES.has(status)) {
+      const networkError = isNetworkError(error);
+      if (AUTH_ERROR_STATUSES.has(status) || networkError) {
         const message = t('auth.login_required');
+        const reason = networkError ? 'threads_boot_failed_network' : 'threads_boot_failed';
+        const payload = { reason, status, message };
         try { this.state.set('chat.authRequired', true); }
         catch (stateErr) { console.warn('[App] Impossible de mettre a jour chat.authRequired', stateErr); }
-        try { this.state.set('auth.hasToken', false); } catch (stateErr) { console.warn('[App] Impossible de mettre a jour auth.hasToken', stateErr); }
-        try { this.eventBus.emit?.('auth:missing'); } catch (emitErr) { console.warn("[App] Impossible d'emettre auth:missing", emitErr); }
+        try { this.state.set('auth.hasToken', false); }
+        catch (stateErr) { console.warn('[App] Impossible de mettre a jour auth.hasToken', stateErr); }
+        try { this.eventBus.emit?.('auth:missing', payload); }
+        catch (emitErr) { console.warn("[App] Impossible d'emettre auth:missing", emitErr); }
         if (!this._authBannerShown) {
           this._authBannerShown = true;
-          try { this.eventBus.emit?.(EVENTS.AUTH_REQUIRED, { reason: 'threads_boot_failed', status, message }); }
+          try { this.eventBus.emit?.(EVENTS.AUTH_REQUIRED, payload); }
           catch (emitErr) { console.warn("[App] Impossible d'emettre ui:auth:required", emitErr); }
         }
         if (!this._authToastShown) {
