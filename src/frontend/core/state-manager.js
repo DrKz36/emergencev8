@@ -1,4 +1,4 @@
-﻿// src/frontend/core/state-manager.js
+// src/frontend/core/state-manager.js
 /**
  * @module core/state-manager
  * @description Gestionnaire d'Ã©tat V15.4 "Threads Aware" + ensureAuth() + chat meta + metrics
@@ -112,6 +112,16 @@ export class StateManager {
 
     // Auth
     cleanState.auth = cleanState.auth || { hasToken: false };
+    if (typeof cleanState.auth.hasToken !== 'boolean') {
+      cleanState.auth.hasToken = !!cleanState.auth.hasToken;
+    }
+    const authRole = cleanState.auth.role;
+    if (typeof authRole === 'string' && authRole.trim()) {
+      cleanState.auth.role = authRole.trim().toLowerCase();
+    } else {
+      cleanState.auth.role = 'member';
+    }
+    if (cleanState.auth.email === undefined) cleanState.auth.email = null;
 
     // Chat meta
     cleanState.chat = cleanState.chat || {};
@@ -282,4 +292,9 @@ export class StateManager {
     return false;
   }
 }
+
+
+
+
+
 

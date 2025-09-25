@@ -20,6 +20,7 @@
 - **`main.js`** : bootstrap EventBus/State, badge auth, bannière `Connexion requise` via `installAuthRequiredBanner` + instrumentation QA (`window.__EMERGENCE_QA_METRICS__.authRequired`).
 - **`features/home/home-module.js`** : landing auth (full screen), formulaire email allowlist, appels `POST /api/auth/login`, pilotage badge auth + bootstrap App après succès.
 - **`features/auth/auth-admin-module.js`** : interface admin (allowlist, sessions, révocation), réservée aux emails listés, s'appuie sur les endpoints `/api/auth/admin/*`.
+- **eatures/admin/admin.js** : point d'entrée dynamique pour AuthAdminModule, gère mount/unmount et expose l'API attendue par App.loadModule (charge uniquement les rôles admin).
 - **`shared/api-client.js`** : `fetchWithAuth` (Authorization Bearer), gère erreurs `auth:missing`, uniformise réponses.
 - **`features/chat/chat-module.js`** : synchronise state threads ↔ UI, gère envoi message (WS + watchdog REST), toasts, toggles RAG/mémoire.
 - **`features/chat/chat-ui.js`** : rendu messages, sources RAG, badges mémoire (STM/LTM, modèle), actions `Analyser` / `Clear`, overlay « Connexion requise » quand l'auth est absente.

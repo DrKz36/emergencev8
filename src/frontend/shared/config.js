@@ -20,6 +20,9 @@ export const API_ENDPOINTS = {
   DOCUMENTS_UPLOAD: '/api/documents/upload',
   THREADS: '/api/threads',
   AUTH_LOGIN: '/api/auth/login',
+  AUTH_SESSION: '/api/auth/session',
+  AUTH_ADMIN_ALLOWLIST: '/api/auth/admin/allowlist',
+  AUTH_ADMIN_SESSIONS: '/api/auth/admin/sessions',
 };
 
 export const WS_CONFIG = {

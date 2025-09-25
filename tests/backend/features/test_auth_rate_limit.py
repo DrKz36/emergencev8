@@ -51,13 +51,13 @@ def test_login_rate_limit(tmp_path):
     async def scenario():
         test_email = "tester@example.com"
         app, auth_service, db = await _prepare_app(tmp_path / "auth-rate.db", allowed_email="admin@example.com")
-        await auth_service.upsert_allowlist(test_email, role="member", note=None, actor="admin@example.com")
+        await auth_service.upsert_allowlist(test_email, role="member", note=None, actor="admin@example.com", password="TesterPass123!")
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             # First attempt for non-allowlisted email to trigger limiter quickly
             for attempt in range(3):
-                resp = await client.post("/api/auth/login", json={"email": "blocked@example.com"})
+                resp = await client.post("/api/auth/login", json={"email": "blocked@example.com", "password": "WrongPass123!"})
                 if attempt < 2:
                     assert resp.status_code == 401
                 else:
@@ -65,7 +65,7 @@ def test_login_rate_limit(tmp_path):
                     assert "Retry-After" in resp.headers
 
             # Successful login should reset limiter for allowed email
-            success = await client.post("/api/auth/login", json={"email": test_email})
+            success = await client.post("/api/auth/login", json={"email": test_email, "password": "TesterPass123!"})
             assert success.status_code == 200
 
         await db.disconnect()

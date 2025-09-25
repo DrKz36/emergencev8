@@ -6,17 +6,18 @@
 
 ## Parcours
 1. Arriver sans token (`localStorage.emergence.id_token` vide). Le `body` expose la classe `home-active`, `#home-root` est visible.
-2. Le formulaire email (placeholder `prenom@entreprise.com`) valide le format et affiche les erreurs inline.
-3. Soumettre un email autorisé -> spinner bouton, appel `POST /api/auth/login` (payload `{ email, meta:{ locale, user_agent, timezone } }`).
+2. Le formulaire email + mot de passe (placeholders `prenom@entreprise.com` et `Mot de passe (8 caracteres min.)`) valide les champs et affiche les erreurs inline.
+3. Soumettre un email autorisé + mot de passe valide -> spinner bouton, appel `POST /api/auth/login` (payload `{ email, password, meta:{ locale, user_agent, timezone } }`).
 4. Réponse 200 -> message succès, token stocké (`localStorage` + `sessionStorage` + cookie `id_token`), événement `auth:login:success` émis et cookie `emergence_session_id` mis à jour.
 5. `HomeModule` se démonte, `body.home-active` retiré, App `module:show('chat')` + connexion WS.
 6. Logout (`auth:logout`) purge le token, remet `home-active`, réactive l’écoute `storage` (dev auth) et l’API renvoie `Set-Cookie` vides (`id_token`, `emergence_session_id`) avec `SameSite=Lax`.
 
 ## États d’erreur
-- **401** : message "Adresse non autorisée" + QA recorder `home_login_error` avec `status` 401.
+- **401** : message "Adresse non autorisee" pour email hors allowlist OU "Mot de passe invalide" pour un couple email/mot de passe incorrect. QA recorder `home_login_error` avec `status` 401.
 - **429** : message rate-limit, bouton réactivé après retour.
 - **423** : message session verrouillée.
-- **Autres** : message générique (erreur serveur).
+- **400** : champs manquants ou mot de passe trop court (validation client).
+- **Autres** : message generique (erreur serveur).
 
 ## QA rapide
 - [ ] Sans token → le bandeau auth (badge) affiche "Connexion requise" et `home-active` est présent.

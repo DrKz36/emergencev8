@@ -110,12 +110,18 @@ TABLE_DEFINITIONS = [
         created_at TEXT NOT NULL,
         created_by TEXT,
         revoked_at TEXT,
-        revoked_by TEXT
+        revoked_by TEXT,
+        password_hash TEXT,
+        password_updated_at TEXT
     );
     """,
     """
     CREATE INDEX IF NOT EXISTS idx_auth_allowlist_active
     ON auth_allowlist(revoked_at);
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_auth_allowlist_password_updated
+    ON auth_allowlist(password_updated_at DESC);
     """,
     """
     CREATE TABLE IF NOT EXISTS auth_sessions (
@@ -217,6 +223,24 @@ async def _ensure_messages_backward_compat(db: DatabaseManager):
     except Exception as e:
         logger.warning(f"[DDL] Index idx_messages_thread_created non créé: {e}")
 
+
+async def _ensure_allowlist_password_columns(db: DatabaseManager):
+    """Ensure legacy allowlist tables get password columns and index."""
+    cols = await _get_columns(db, "auth_allowlist")
+    if not cols:
+        return
+
+    await _add_column_if_missing(db, "auth_allowlist", "password_hash", "TEXT")
+    await _add_column_if_missing(db, "auth_allowlist", "password_updated_at", "TEXT")
+
+    try:
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_auth_allowlist_password_updated
+            ON auth_allowlist(password_updated_at DESC)
+        """)
+    except Exception as e:
+        logger.warning(f"[DDL] Index idx_auth_allowlist_password_updated non cree: {e}")
+
 # ------------------------------------------------------------------------ #
 
 async def create_tables(db_manager: DatabaseManager):
@@ -239,6 +263,12 @@ async def create_tables(db_manager: DatabaseManager):
         await _ensure_messages_backward_compat(db_manager)
     except Exception as e:
         logger.error(f"[DDL] Échec backcompat 'messages': {e}", exc_info=True)
+        raise
+
+    try:
+        await _ensure_allowlist_password_columns(db_manager)
+    except Exception as e:
+        logger.error(f"[DDL] echec backcompat 'auth_allowlist': {e}", exc_info=True)
         raise
 
     logger.info("Toutes les tables/index requis sont en place (avec backcompat au besoin).")

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @module core/app
  * @description Câ”¼Ã´ur de l'application â”œÃ«MERGENCE - V35.0 "ThreadBootstrap"
  * - Bootstrap du thread courant au premier affichage (persist inter-sessions).
@@ -48,6 +48,7 @@ const moduleLoaders = {
   documents: () => import('../features/documents/documents.js'),
   dashboard: () => import('../features/dashboard/dashboard.js'),
   memory: () => import('../features/memory/memory.js'),
+  admin: () => import('../features/admin/admin.js'),
 };
 
 export class App {
@@ -71,7 +72,7 @@ export class App {
     };
 
     this.modules = {};
-    this.moduleConfig = [
+    this.baseModules = [
       {
         id: 'chat',
         name: 'Dialogue',
@@ -91,13 +92,43 @@ export class App {
         icon: '<svg class="nav-icon-brain" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><path d="M9.1 3.5c-2.1 0-3.8 1.66-3.8 3.7v1.08A3.6 3.6 0 0 0 3 11.9a3.55 3.55 0 0 0 2.08 3.2c.19.86.19 1.78 0 2.64A3.05 3.05 0 0 0 8 21h3V3.5H9.1z"></path><path d="M14.9 3.5c2.1 0 3.8 1.66 3.8 3.7v1.08A3.6 3.6 0 0 1 21 11.9a3.55 3.55 0 0 1-2.08 3.2c-.19.86-.19 1.78 0 2.64A3.05 3.05 0 0 1 16 21h-3V3.5h1.9z"></path><path d="M11 7.5h-1"></path><path d="M14 7.5h-1"></path><path d="M11 11.5h-1"></path><path d="M14 11.5h-1"></path><path d="M11 15.5h-1"></path><path d="M14 15.5h-1"></path></svg>'
       },
 
+      {
+        id: 'admin',
+        name: 'Admin',
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a3.75 3.75 0 117 0m-7 0H6.75A2.25 2.25 0 004.5 8.25v7.5A2.25 2.25 0 006.75 18h8.5A2.25 2.25 0 0017.5 15.75V11.5m0-5.5v5.25" /></svg>',
+        requiresRole: 'admin',
+      },
     ];
     this.activeModule = 'chat';
     this.closeMobileNav = null;
     this._mobileNavSetup = false;
 
+    if (this.state?.subscribe) {
+      try {
+        this.state.subscribe('auth.role', () => {
+          this.renderNavigation();
+        });
+      } catch (err) {
+        console.warn('[App] Impossible de souscrire a auth.role', err);
+      }
+    }
+
     console.log('Ã”Â£Ã  App V35.0 (ThreadBootstrap) Initialisâ”œÂ®e.');
     this.init();
+  }
+
+  getModuleConfig() {
+    const modules = Array.isArray(this.baseModules) ? this.baseModules : [];
+    const roleRaw = this.state?.get?.('auth.role');
+    const role = (typeof roleRaw === 'string' && roleRaw.trim()) ? roleRaw.trim().toLowerCase() : 'member';
+    return modules.filter((module) => {
+      const requirement = module.requiresRole;
+      if (!requirement) return true;
+      if (Array.isArray(requirement)) {
+        return requirement.map((item) => (typeof item === 'string' ? item.toLowerCase() : item)).includes(role);
+      }
+      return requirement === role;
+    });
   }
 
   init() {
@@ -110,7 +141,8 @@ export class App {
   }
 
   renderNavigation() {
-    const navItemsHTML = this.moduleConfig.map((m) => {
+    const modules = this.getModuleConfig();
+    const navItemsHTML = modules.map((m) => {
       const navClasses = ['nav-item'];
       const linkClasses = ['nav-link'];
       const iconClasses = ['nav-icon', 'nav-icon--' + m.id];
@@ -135,7 +167,7 @@ export class App {
     }
 
     if (this.dom.headerNav) {
-      const headerNavItemsHTML = this.moduleConfig.map((m) => {
+      const headerNavItemsHTML = modules.map((m) => {
         const linkClasses = ['nav-link', 'mobile-nav-link'];
         if (this.activeModule === m.id) linkClasses.push('active');
         const linkClassStr = linkClasses.join(' ');
@@ -403,6 +435,11 @@ export class App {
   }
   async showModule(moduleId, isInitialLoad = false) {
     if (!moduleId || !this.dom.content) return;
+    const availableModules = this.getModuleConfig();
+    const moduleIds = availableModules.map((m) => m.id);
+    if (!moduleIds.includes(moduleId)) {
+      moduleId = moduleIds[0] || 'chat';
+    }
     if (this.isMemoryMenuOpen()) this.closeMemoryMenu();
 
     const previousModuleId = (this.activeModule && this.activeModule !== moduleId)
@@ -465,7 +502,7 @@ export class App {
 
   preloadOtherModules() {
     console.log('Ã”ÃœÃ­Â´Â©Ã… Prâ”œÂ®-chargement des autres modulesÃ”Ã‡Âª');
-    this.moduleConfig.forEach(m => { if (m.id !== this.activeModule) this.loadModule(m.id); });
+    this.getModuleConfig().forEach((m) => { if (m.id !== this.activeModule) this.loadModule(m.id); });
   }
 
   createModuleContainer(moduleId) {
@@ -478,4 +515,8 @@ export class App {
     return container;
   }
 }
+
+
+
+
 

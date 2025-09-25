@@ -27,6 +27,11 @@ const MEMORY_CLEAR =
     ? (API_ENDPOINTS.MEMORY_CLEAR || API_ENDPOINTS.MEMORY_DELETE)
     : '/api/memory/clear';
 
+const AUTH_LOGIN = (API_ENDPOINTS && API_ENDPOINTS.AUTH_LOGIN) ? API_ENDPOINTS.AUTH_LOGIN : '/api/auth/login';
+const AUTH_SESSION = (API_ENDPOINTS && API_ENDPOINTS.AUTH_SESSION) ? API_ENDPOINTS.AUTH_SESSION : '/api/auth/session';
+const AUTH_ADMIN_ALLOWLIST = (API_ENDPOINTS && API_ENDPOINTS.AUTH_ADMIN_ALLOWLIST) ? API_ENDPOINTS.AUTH_ADMIN_ALLOWLIST : '/api/auth/admin/allowlist';
+const AUTH_ADMIN_SESSIONS = (API_ENDPOINTS && API_ENDPOINTS.AUTH_ADMIN_SESSIONS) ? API_ENDPOINTS.AUTH_ADMIN_SESSIONS : '/api/auth/admin/sessions';
+
 const DEFAULT_TIMEOUT_MS = 15000;
 
 /* ------------------------------ Utils --------------------------------- */
@@ -211,9 +216,19 @@ async function getAuthHeaders() {
 }
 
 /* ------------------------------ Fetch core ---------------------------- */
-async function doFetch(endpoint, config, timeoutMs = DEFAULT_TIMEOUT_MS) {
+async function doFetch(endpoint, config, timeoutMs = DEFAULT_TIMEOUT_MS, externalSignal) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const abortRelay = () => controller.abort();
+
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort();
+    } else {
+      try { externalSignal.addEventListener('abort', abortRelay, { once: true }); } catch (_) {}
+    }
+  }
+
   const finalConfig = { ...config, signal: controller.signal };
 
   try {
@@ -233,19 +248,22 @@ async function doFetch(endpoint, config, timeoutMs = DEFAULT_TIMEOUT_MS) {
     return ct.includes('application/json') ? response.json() : {};
   } catch (e) {
     if (e?.name === 'AbortError') {
-      const err = new Error('Requête expirée (timeout)');
+      const err = new Error('Requete expiree (timeout)');
       err.status = 408;
       throw err;
     }
     throw e;
   } finally {
     clearTimeout(timer);
+    if (externalSignal) {
+      try { externalSignal.removeEventListener('abort', abortRelay); } catch (_) {}
+    }
   }
 }
 
 /* ------------------------------ Core ---------------------------------- */
 async function fetchApi(endpoint, options = {}) {
-  const { method = 'GET', body = null, headers = {}, timeoutMs } = options;
+  const { method = 'GET', body = null, headers = {}, timeoutMs, signal } = options;
   const authHeaders = await getAuthHeaders();
   const finalHeaders = { Accept: 'application/json', ...authHeaders, ...headers };
   const config = { method, headers: finalHeaders };
@@ -260,7 +278,7 @@ async function fetchApi(endpoint, options = {}) {
   }
 
   try {
-    return await doFetch(endpoint, config, timeoutMs);
+    return await doFetch(endpoint, config, timeoutMs, signal);
   } catch (err) {
     // Retry unique sur 401: refresh GIS si possible
     if (err?.status === 401 && window.gis?.getIdToken) {
@@ -269,7 +287,7 @@ async function fetchApi(endpoint, options = {}) {
         if (fresh) {
           config.headers['Authorization'] = `Bearer ${fresh}`;
           try { sessionStorage.setItem('emergence.id_token', fresh); } catch (_) {}
-          return await doFetch(endpoint, config, timeoutMs);
+          return await doFetch(endpoint, config, timeoutMs, signal);
         }
       } catch (_) {}
     }
@@ -279,6 +297,75 @@ async function fetchApi(endpoint, options = {}) {
 
 /* ------------------------------ API ----------------------------------- */
 export const api = {
+  /* ------------------------ AUTH ----------------------- */
+  authLogin: async ({ email, password, meta, signal } = {}) => {
+    const safeEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const safePassword = typeof password === 'string' ? password : '';
+    if (!safeEmail || !safePassword) {
+      const err = new Error('Email et mot de passe requis.');
+      err.status = 400;
+      throw err;
+    }
+    const payload = { email: safeEmail, password: safePassword };
+    if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
+      payload.meta = meta;
+    }
+    return fetchApi(AUTH_LOGIN, { method: 'POST', body: payload, signal });
+  },
+  authSession: () => fetchApi(AUTH_SESSION),
+  authAdminListAllowlist: ({ status, includeRevoked = false, query, search, page, pageSize } = {}) => {
+    const params = new URLSearchParams();
+    const normalizedStatus = typeof status === 'string' ? status.trim().toLowerCase() : undefined;
+    if (includeRevoked) {
+      params.set('include_revoked', 'true');
+    } else if (normalizedStatus && ['active', 'all', 'revoked'].includes(normalizedStatus)) {
+      params.set('status', normalizedStatus);
+    }
+    const rawSearch = typeof query === 'string' ? query : (typeof search === 'string' ? search : '');
+    if (rawSearch && rawSearch.trim()) {
+      params.set('search', rawSearch.trim());
+    }
+    const pageNumber = Number(page);
+    if (Number.isFinite(pageNumber) && pageNumber > 1) {
+      params.set('page', String(Math.floor(pageNumber)));
+    }
+    const pageSizeNumber = Number(pageSize);
+    if (Number.isFinite(pageSizeNumber) && pageSizeNumber > 0 && pageSizeNumber !== 20) {
+      params.set('page_size', String(Math.floor(pageSizeNumber)));
+    }
+    const qs = params.toString();
+    const url = qs ? `${AUTH_ADMIN_ALLOWLIST}?${qs}` : AUTH_ADMIN_ALLOWLIST;
+    return fetchApi(url);
+  },
+  authAdminUpsertAllowlist: async ({ email, role, note, password, generatePassword } = {}) => {
+    const safeEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if (!safeEmail) {
+      const err = new Error('Email requis.');
+      err.status = 400;
+      throw err;
+    }
+    const payload = { email: safeEmail };
+    if (typeof role === 'string' && role.trim()) {
+      payload.role = role.trim();
+    }
+    if (note !== undefined) {
+      payload.note = typeof note === 'string' ? note.trim() : note;
+    }
+    const hasPassword = typeof password === 'string' && password.trim().length > 0;
+    if (hasPassword) {
+      payload.password = password.trim();
+    }
+    if (generatePassword) {
+      if (hasPassword) {
+        const err = new Error('Ne pas combiner mot de passe et génération automatique.');
+        err.status = 400;
+        throw err;
+      }
+      payload.generate_password = true;
+    }
+    return fetchApi(AUTH_ADMIN_ALLOWLIST, { method: 'POST', body: payload });
+  },
+
   /* ---------------------- DOCUMENTS ---------------------- */
   async getDocuments() {
     const url = `${API_ENDPOINTS.DOCUMENTS}/`;

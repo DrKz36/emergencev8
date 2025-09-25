@@ -67,12 +67,11 @@
 
 ## 2) REST Endpoints majeurs
 
-### Auth (Allowlist email)
-- `POST /api/auth/login` -> 200 `{ token, expires_at, role, session_id }` (body `{ email }`). `Set-Cookie` renvoie `id_token` + `emergence_session_id` avec `SameSite=Lax`. 401 si email hors allowlist, 429 si rate-limit dépassé, 423 si compte révoqué.
+- `POST /api/auth/login` -> 200 `{ token, expires_at, role, session_id }` (body `{ email, password, meta? }`). `Set-Cookie` renvoie `id_token` + `emergence_session_id` avec `SameSite=Lax`. 401 si identifiants invalides ou email hors allowlist, 429 si rate-limit depasse, 423 si compte revoque.
 - `POST /api/auth/logout` -> 204 (idempotent). Payload optionnel `{ session_id }` pour marquer la session `revoked_at`. Réponse: `Set-Cookie` vide (`id_token=`, `emergence_session_id=`) avec `Max-Age=0` et `SameSite=Lax` pour forcer la purge navigateur.
-- `GET /api/auth/session` -> 200 `{ email, role, expires_at, issued_at }` (vérifie token courant).
-- `GET /api/auth/admin/allowlist` -> 200 `{ items:[{ email, note, created_at }] }` (réservé `role=admin`).
-- `POST /api/auth/admin/allowlist` -> 201 `{ email, note }` ajoute un testeur (audit log).
+- `GET /api/auth/session` -> 200 `{ email, role, expires_at, issued_at }` (verifie token courant).
+- `GET /api/auth/admin/allowlist` -> 200 `{ items:[...], total, page, page_size, has_more, status, query }` (paramètres `status=active|revoked|all`, `search`, `page`, `page_size`; compat hérité `include_revoked=true`).
+- `POST /api/auth/admin/allowlist` -> 201 `{ entry:{ email, role, note, password_updated_at? }, clear_password?, generated }`. Payload: `{ email, role?, note?, password?, generate_password? }` (mot de passe >= 8 caracteres si fourni; `generate_password=true` renvoie le secret en clair une seule fois et journalise `allowlist:password_generated`).
 - `DELETE /api/auth/admin/allowlist/{email}` -> 204 (suppression).
 - `GET /api/auth/admin/sessions` -> 200 `{ items:[{ id, email, ip, issued_at, expires_at, revoked_at }] }`.
 - `POST /api/auth/admin/sessions/revoke` -> 200 `{ updated:1 }` (révoque `id`).
@@ -119,5 +118,6 @@
 - Révocation : `auth_sessions.revoked_at` + liste en mémoire purgée toutes les 5 minutes.
 - Les claims enrichis exposent `session_revoked` et `revoked_at` le cas échéant; le handshake WS refuse une session révoquée.
 - OTP futur : champs réservés (`otp_secret`, `otp_expires_at`, `otp_channel`) pour SMS/OTP; routes resteront compatibles.
+
 
 

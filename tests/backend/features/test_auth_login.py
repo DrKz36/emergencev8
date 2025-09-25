@@ -50,11 +50,13 @@ def test_login_logout_flow(tmp_path):
     async def scenario():
         admin_email = "admin@example.com"
         app, auth_service, db = await _build_app(tmp_path / "auth-login.db", admin_email)
+        admin_password = "AdminPass123!"
+        await auth_service.set_allowlist_password(admin_email, admin_password, actor="tests")
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             # Admin login via API
-            resp = await client.post("/api/auth/login", json={"email": admin_email})
+            resp = await client.post("/api/auth/login", json={"email": admin_email, "password": admin_password})
             assert resp.status_code == 200
             login_body = LoginResponse(**resp.json())
             assert resp.cookies.get("id_token") == login_body.token
@@ -94,6 +96,21 @@ def test_login_logout_flow(tmp_path):
             repeat_logout = await client.post("/api/auth/logout", json={}, headers=headers)
             assert repeat_logout.status_code == 204
 
+
+        await db.disconnect()
+
+    asyncio.run(scenario())
+
+def test_login_wrong_password(tmp_path):
+    async def scenario():
+        admin_email = "admin@example.com"
+        app, auth_service, db = await _build_app(tmp_path / "auth-login-wrong.db", admin_email)
+        await auth_service.set_allowlist_password(admin_email, "AdminPass123!", actor="tests")
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            resp = await client.post("/api/auth/login", json={"email": admin_email, "password": "WrongPass999"})
+            assert resp.status_code == 401
 
         await db.disconnect()
 

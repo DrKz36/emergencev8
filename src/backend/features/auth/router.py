@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import secrets
+import string
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
@@ -9,6 +11,7 @@ from backend.features.auth.models import (
     AllowlistCreatePayload,
     AllowlistEntry,
     AllowlistListResponse,
+    AllowlistMutationResponse,
     LoginRequest,
     LoginResponse,
     LogoutPayload,
@@ -28,6 +31,23 @@ from backend.shared.dependencies import (
 )
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
+
+PASSWORD_DEFAULT_LENGTH = 16
+PASSWORD_SYMBOLS = "!@#$%_-+"
+PASSWORD_ALPHABET = string.ascii_letters + string.digits + PASSWORD_SYMBOLS
+
+
+def _generate_password(length: int = PASSWORD_DEFAULT_LENGTH) -> str:
+    if length < 8:
+        length = 8
+    while True:
+        candidate = ''.join(secrets.choice(PASSWORD_ALPHABET) for _ in range(length))
+        if (any(c.islower() for c in candidate)
+                and any(c.isupper() for c in candidate)
+                and any(c.isdigit() for c in candidate)
+                and any(c in PASSWORD_SYMBOLS for c in candidate)):
+            return candidate
+
 
 
 def _map_auth_error(exc: AuthError) -> HTTPException:
@@ -69,7 +89,7 @@ async def login(
     client_host = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
     try:
-        login_result = await auth_service.login(payload.email, client_host, user_agent)
+        login_result = await auth_service.login(payload.email, payload.password, client_host, user_agent)
     except AuthError as exc:
         raise _map_auth_error(exc)
 
@@ -147,24 +167,88 @@ async def get_session(claims: Dict[str, Any] = Depends(get_auth_claims)) -> Sess
 
 @router.get("/admin/allowlist", response_model=AllowlistListResponse)
 async def list_allowlist(
-    include_revoked: bool = False,
+    include_revoked: Optional[bool] = None,
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
     _claims: Dict[str, Any] = Depends(require_admin_claims),
     auth_service: AuthService = Depends(get_auth_service),
 ) -> AllowlistListResponse:
-    items = await auth_service.list_allowlist(include_revoked=include_revoked)
-    return AllowlistListResponse(items=items)
+    normalized_status = (status or "").strip().lower()
+    if include_revoked:
+        normalized_status = "all"
+    if normalized_status not in {"active", "revoked", "all"}:
+        normalized_status = "active"
+
+    try:
+        page = int(page)
+    except (TypeError, ValueError):
+        page = 1
+    if page < 1:
+        page = 1
+
+    try:
+        page_size = int(page_size)
+    except (TypeError, ValueError):
+        page_size = 20
+    page_size = max(1, min(page_size, 100))
+
+    offset = (page - 1) * page_size
+    query_value = (search or "").strip()
+
+    items, total = await auth_service.list_allowlist(
+        status=normalized_status,
+        search=query_value or None,
+        limit=page_size,
+        offset=offset,
+    )
+    has_more = offset + len(items) < total
+
+    return AllowlistListResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_more=has_more,
+        status=normalized_status,
+        query=query_value or None,
+    )
 
 
-@router.post("/admin/allowlist", response_model=AllowlistEntry, status_code=status.HTTP_201_CREATED)
+@router.post("/admin/allowlist", response_model=AllowlistMutationResponse, status_code=status.HTTP_201_CREATED)
 async def upsert_allowlist(
     payload: AllowlistCreatePayload,
     claims: Dict[str, Any] = Depends(require_admin_claims),
     auth_service: AuthService = Depends(get_auth_service),
-) -> AllowlistEntry:
+) -> AllowlistMutationResponse:
+    if payload.generate_password and payload.password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ne pas fournir 'password' lorsque 'generate_password' est actif.")
+
+    clear_password: Optional[str] = None
+    password_value = payload.password
+    if payload.generate_password:
+        clear_password = _generate_password()
+        password_value = clear_password
+    elif isinstance(password_value, str):
+        password_value = password_value.strip()
+
     try:
-        return await auth_service.upsert_allowlist(payload.email, payload.role, payload.note, actor=claims.get("email"))
+        entry = await auth_service.upsert_allowlist(
+            payload.email,
+            payload.role,
+            payload.note,
+            actor=claims.get("email"),
+            password=password_value,
+            password_generated=bool(payload.generate_password),
+        )
     except AuthError as exc:
         raise _map_auth_error(exc)
+
+    if clear_password is not None:
+        clear_password = clear_password.strip()
+
+    return AllowlistMutationResponse(entry=entry, clear_password=clear_password, generated=bool(clear_password))
 
 
 @router.delete("/admin/allowlist/{email}", status_code=status.HTTP_204_NO_CONTENT)
@@ -203,4 +287,7 @@ async def revoke_session(
             close_code=4401,
         )
     return SessionRevokeResult(updated=1 if updated else 0)
+
+
+
 

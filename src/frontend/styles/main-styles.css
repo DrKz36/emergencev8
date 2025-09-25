@@ -275,3 +275,113 @@
     animation-name: none !important;
   }
 }
+/* -------------------------------------------------------------------------- */
+/* Auth admin module                                                          */
+/* -------------------------------------------------------------------------- */
+.auth-admin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.auth-admin__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3, 0.75rem);
+  margin: var(--space-4, 1rem) 0;
+}
+
+.auth-admin__filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 180px;
+}
+
+.auth-admin__summary {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+}
+
+.auth-admin__table-wrapper {
+  overflow-x: auto;
+}
+
+.auth-admin__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.auth-admin__table th,
+.auth-admin__table td {
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+
+.auth-admin__table tr:last-child td {
+  border-bottom: none;
+}
+
+.auth-admin__row--revoked {
+  opacity: 0.65;
+}
+
+.auth-admin__status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-full, 9999px);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.auth-admin__status-badge--active {
+  background: rgba(34, 197, 94, 0.16);
+  color: var(--color-success);
+}
+
+.auth-admin__status-badge--revoked {
+  background: rgba(239, 68, 68, 0.18);
+  color: var(--color-error);
+}
+
+.auth-admin__generated {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-lg, 0.75rem);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+}
+
+.auth-admin__generated-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.auth-admin__generated-value {
+  font-family: var(--font-mono, 'Fira Code', 'Courier New', monospace);
+  font-size: 0.95rem;
+  word-break: break-all;
+}
+
+.auth-admin__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3, 0.75rem);
+}
+
+.auth-admin__pagination-info {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.auth-admin__message {
+  min-height: 1.25rem;
+}
+
+.auth-admin__muted {
+  color: var(--color-text-muted);
+}

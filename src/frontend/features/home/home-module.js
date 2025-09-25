@@ -5,9 +5,8 @@
 
 import { EVENTS } from '../../shared/constants.js';
 import { t } from '../../shared/i18n.js';
-import { API_ENDPOINTS } from '../../shared/config.js';
+import { api } from '../../shared/api-client.js';
 
-const LOGIN_ENDPOINT = (API_ENDPOINTS && API_ENDPOINTS.AUTH_LOGIN) ? API_ENDPOINTS.AUTH_LOGIN : '/api/auth/login';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function getEmailDomain(email) {
@@ -60,6 +59,7 @@ export class HomeModule {
     this.root = container.querySelector('[data-role="home"]');
     this.form = container.querySelector('[data-role="home-form"]');
     this.emailInput = container.querySelector('[data-role="home-email"]');
+    this.passwordInput = container.querySelector('[data-role="home-password"]');
     this.messageNode = container.querySelector('[data-role="home-message"]');
     this.submitButton = container.querySelector('[data-role="home-submit"]');
 
@@ -72,12 +72,16 @@ export class HomeModule {
         try { this.emailInput.focus(); } catch (_) {}
       }, 25);
     }
+    if (this.passwordInput) {
+      this.passwordInput.addEventListener('input', this.handleInput);
+    }
   }
 
   unmount() {
     if (!this.container) return;
     if (this.form) this.form.removeEventListener('submit', this.handleSubmit);
     if (this.emailInput) this.emailInput.removeEventListener('input', this.handleInput);
+    if (this.passwordInput) this.passwordInput.removeEventListener('input', this.handleInput);
     this.abortPending();
 
     this.container.setAttribute('hidden', 'true');
@@ -87,6 +91,7 @@ export class HomeModule {
     this.root = null;
     this.form = null;
     this.emailInput = null;
+    this.passwordInput = null;
     this.messageNode = null;
     this.submitButton = null;
     this.status = 'idle';
@@ -95,8 +100,10 @@ export class HomeModule {
   render() {
     const title = t('home.title');
     const subtitle = t('home.subtitle');
-    const label = t('home.email_label');
-    const placeholder = t('home.email_placeholder');
+    const emailLabel = t('home.email_label');
+    const emailPlaceholder = t('home.email_placeholder');
+    const passwordLabel = t('home.password_label');
+    const passwordPlaceholder = t('home.password_placeholder');
     const submit = t('home.submit');
     const legal = t('home.legal');
     const highlights = t('home.highlights');
@@ -139,9 +146,15 @@ export class HomeModule {
             </div>
           </section>
           <form class="home__form" data-role="home-form" novalidate>
-            <label class="home__label" for="home-email">${label}</label>
+            <label class="home__label" for="home-email">${emailLabel}</label>
             <div class="home__form-row">
-              <input id="home-email" name="email" type="email" autocomplete="email" required placeholder="${placeholder}" class="home__input" data-role="home-email" />
+              <input id="home-email" name="email" type="email" autocomplete="email" required placeholder="${emailPlaceholder}" class="home__input" data-role="home-email" />
+            </div>
+            <label class="home__label" for="home-password">${passwordLabel}</label>
+            <div class="home__form-row">
+              <input id="home-password" name="password" type="password" autocomplete="current-password" required minlength="8" placeholder="${passwordPlaceholder}" class="home__input" data-role="home-password" />
+            </div>
+            <div class="home__form-row">
               <button type="submit" class="btn btn--primary home__submit" data-role="home-submit">${submit}</button>
             </div>
             <p class="home__message" data-role="home-message" aria-live="assertive"></p>
@@ -164,11 +177,22 @@ export class HomeModule {
 
     const rawEmail = this.emailInput.value || '';
     const email = rawEmail.trim().toLowerCase();
+    const passwordValue = this.passwordInput ? (this.passwordInput.value || '') : '';
+    const password = passwordValue;
 
     if (!EMAIL_REGEX.test(email)) {
       this.showMessage('error', t('home.error_invalid'));
       this.status = 'error';
       try { this.emailInput.focus(); } catch (_) {}
+      return;
+    }
+
+    if (!password || password.length < 8) {
+      this.showMessage('error', t('home.error_password_short'));
+      this.status = 'error';
+      if (this.passwordInput) {
+        try { this.passwordInput.focus(); } catch (_) {}
+      }
       return;
     }
 
@@ -185,7 +209,7 @@ export class HomeModule {
     }
 
     try {
-      const data = await this.login(email);
+      const data = await this.login(email, password);
       this.status = 'success';
       this.showMessage('success', t('home.success'));
 
@@ -208,8 +232,11 @@ export class HomeModule {
     } catch (error) {
       const status = error?.status ?? null;
       let message = t('home.error_generic');
-      if (status === 401) message = t('home.error_unauthorized');
-      else if (status === 429) message = t('home.error_rate');
+      if (status === 401) {
+        const detail = String(error?.message || '').toLowerCase();
+        if (detail.includes('identifiant')) message = t('home.error_password_invalid');
+        else message = t('home.error_unauthorized');
+      } else if (status === 429) message = t('home.error_rate');
       else if (status === 423) message = t('home.error_locked');
 
       this.status = 'error';
@@ -233,51 +260,43 @@ export class HomeModule {
     }
   }
 
-  async login(email) {
+  async login(email, password) {
     this.abortPending();
     this.pendingController = typeof AbortController !== 'undefined' ? new AbortController() : null;
 
-    const payload = {
-      email,
-      meta: buildMeta(),
-    };
-
-    const response = await fetch(LOGIN_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      signal: this.pendingController?.signal,
-    });
-
-    let data = null;
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      try { data = await response.json(); }
-      catch (_) { data = null; }
-    } else {
-      try { data = await response.text(); }
-      catch (_) { data = null; }
+    const meta = buildMeta();
+    if (meta && typeof meta === 'object') {
+      meta.email_domain = getEmailDomain(email);
+      meta.source = 'home-module';
     }
+    let data;
 
-    if (!response.ok) {
-      const error = new Error('Login failed');
-      error.status = response.status;
-      error.body = data;
+    try {
+      data = await api.authLogin({
+        email,
+        password,
+        meta,
+        signal: this.pendingController ? this.pendingController.signal : undefined,
+      });
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        const abortErr = new Error('Connexion annulee');
+        abortErr.status = 499;
+        throw abortErr;
+      }
       throw error;
     }
 
     if (!data || typeof data !== 'object' || !data.token) {
-      const error = new Error('Login succeeded without token');
-      error.status = response.status;
-      error.body = data;
-      throw error;
+      const err = new Error('Login succeeded without token');
+      err.status = 500;
+      err.body = data;
+      throw err;
     }
 
     return data;
   }
+
 
   abortPending() {
     if (this.pendingController) {
@@ -294,6 +313,9 @@ export class HomeModule {
     }
     if (this.emailInput) {
       this.emailInput.disabled = !!isLoading;
+    }
+    if (this.passwordInput) {
+      this.passwordInput.disabled = !!isLoading;
     }
   }
 

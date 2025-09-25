@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 from pydantic import BaseModel, Field
 
@@ -21,6 +21,8 @@ class AuthConfig(BaseModel):
 
 class LoginRequest(BaseModel):
     email: str
+    password: str = Field(min_length=8)
+    meta: Optional[dict[str, Any]] = None
 
 
 class LoginResponse(BaseModel):
@@ -56,18 +58,33 @@ class AllowlistEntry(BaseModel):
     note: Optional[str] = None
     created_at: datetime
     created_by: Optional[str] = None
+    password_updated_at: Optional[datetime] = None
     revoked_at: Optional[datetime] = None
     revoked_by: Optional[str] = None
 
 
 class AllowlistCreatePayload(BaseModel):
     email: str
-    role: str = "member"
+    role: Optional[str] = Field(default=None)
     note: Optional[str] = None
+    password: Optional[str] = Field(default=None, min_length=8)
+    generate_password: bool = False
+
+
+class AllowlistMutationResponse(BaseModel):
+    entry: AllowlistEntry
+    clear_password: Optional[str] = None
+    generated: bool = False
 
 
 class AllowlistListResponse(BaseModel):
     items: Sequence[AllowlistEntry]
+    total: int
+    page: int
+    page_size: int
+    has_more: bool
+    status: str = "active"
+    query: Optional[str] = None
 
 
 class SessionsListResponse(BaseModel):

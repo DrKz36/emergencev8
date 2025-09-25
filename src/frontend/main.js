@@ -9,6 +9,7 @@ import { StateManager } from './core/state-manager.js';
 import { WebSocketClient } from './core/websocket.js';
 import { MemoryCenter } from './features/memory/memory-center.js';
 import { HomeModule } from './features/home/home-module.js';
+import { api } from './shared/api-client.js';
 import { WS_CONFIG, EVENTS } from './shared/constants.js';
 
 /* ---------------- WS-first Chat dedupe & reroute (main.js patch V1) ----------------
@@ -881,6 +882,10 @@ class EmergenceClient {
     catch (err) { console.warn('[main] Impossible de mettre à jour auth.hasToken', err); }
     try { this.state?.set?.('chat.authRequired', true); }
     catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=true', err); }
+    try { this.state?.set?.('auth.role', 'member'); }
+    catch (err) { console.warn('[main] Impossible de remettre auth.role', err); }
+    try { this.state?.set?.('auth.email', null); }
+    catch (err) { console.warn('[main] Impossible de remettre auth.email', err); }
     this.badge?.setLogged(false);
     this.badge?.setConnected(false);
   }
@@ -888,6 +893,14 @@ class EmergenceClient {
   handleLoginSuccess(payload = {}) {
     const token = payload?.token;
     if (token && token.trim()) saveToken(token.trim(), { expiresAt: payload?.expiresAt });
+    const role = (payload?.role ?? 'member');
+    try { this.state?.set?.('auth.role', String(role).toLowerCase()); }
+    catch (err) { console.warn('[main] Impossible de mettre a jour auth.role', err); }
+    const email = payload?.email;
+    if (email) {
+      try { this.state?.set?.('auth.email', String(email).toLowerCase()); }
+      catch (err) { console.warn('[main] Impossible de mettre a jour auth.email', err); }
+    }
     if (payload?.sessionId) {
       try { this.state?.set?.('websocket.sessionId', payload.sessionId); }
       catch (err) { console.warn('[main] Impossible d’enregistrer websocket.sessionId', err); }
@@ -910,7 +923,23 @@ class EmergenceClient {
     this.handleTokenAvailable('home-login');
   }
 
-  handleTokenAvailable(source = 'unknown') {
+  async refreshSessionRole(source = 'unknown') {
+    try {
+      const session = await api.authSession();
+      if (session && typeof session.role === 'string') {
+        try { this.state?.set?.('auth.role', session.role.toLowerCase()); }
+        catch (err) { console.warn('[main] Impossible de mettre a jour auth.role', err); }
+      }
+      if (session && typeof session.email === 'string') {
+        try { this.state?.set?.('auth.email', session.email.toLowerCase()); }
+        catch (err) { console.warn('[main] Impossible de mettre a jour auth.email', err); }
+      }
+    } catch (err) {
+      console.warn('[main] Impossible de recuperer la session actuelle', err, { source });
+    }
+  }
+
+  async handleTokenAvailable(source = 'unknown') {
     this.hideLoader();
     if (this.storageListener) {
       try { window.removeEventListener('storage', this.storageListener); } catch (_) {}
@@ -921,7 +950,8 @@ class EmergenceClient {
       document.body.classList.remove('home-active');
     }
     try { this.state?.set?.('auth.hasToken', true); }
-    catch (err) { console.warn('[main] Impossible de mettre à jour auth.hasToken', err); }
+    catch (err) { console.warn('[main] Impossible de mettre a jour auth.hasToken', err); }
+    await this.refreshSessionRole(source);
     try { this.state?.set?.('chat.authRequired', false); }
     catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=false', err); }
     this.badge?.setLogged(true);
@@ -1009,3 +1039,9 @@ class EmergenceClient {
   window[FLAG] = true;
   window.emergenceApp = new EmergenceClient();
 })();
+
+
+
+
+
+

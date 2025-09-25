@@ -9,6 +9,7 @@ from typing import Any, Optional, Sequence
 from uuid import uuid4
 
 import jwt
+import bcrypt
 
 from backend.core.database.manager import DatabaseManager
 
@@ -44,25 +45,33 @@ class AuthService:
                 continue
             await self._upsert_allowlist(normalized, role="admin", note="seed", actor="bootstrap")
 
-    async def login(self, email: str, ip_address: Optional[str], user_agent: Optional[str]) -> LoginResponse:
+    async def login(self, email: str, password: str, ip_address: Optional[str], user_agent: Optional[str]) -> LoginResponse:
         normalized = self._normalize_email(email)
         if not normalized:
             raise AuthError("Email invalide ou vide.", status_code=400)
+
+        candidate_password = (password or "").strip()
+        if not candidate_password:
+            raise AuthError("Mot de passe requis.", status_code=400)
 
         try:
             await self.rate_limiter.check(normalized, ip_address)
         except RateLimitExceeded as exc:
             raise AuthError(
-                "Trop de tentatives. Réessaie plus tard.",
+                "Trop de tentatives. Reessaie plus tard.",
                 status_code=429,
                 payload={"retry_after": exc.retry_after},
             ) from exc
 
         allow_row = await self._get_allowlist_row(normalized)
         if allow_row is None:
-            raise AuthError("Email non autorisé.", status_code=401)
+            raise AuthError("Email non autorise.", status_code=401)
         if allow_row.get("revoked_at"):
-            raise AuthError("Compte temporairement désactivé.", status_code=423)
+            raise AuthError("Compte temporairement desactive.", status_code=423)
+
+        password_hash = allow_row.get("password_hash")
+        if not password_hash or not self._verify_password(candidate_password, password_hash):
+            raise AuthError("Identifiants invalides.", status_code=401)
 
         now = self._now()
         expires_at = now + timedelta(seconds=self.config.token_ttl_seconds)
@@ -216,32 +225,186 @@ class AuthService:
         if revoked_at:
             claims["revoked_at"] = revoked_at
         return claims
-    async def list_allowlist(self, include_revoked: bool = False) -> list[AllowlistEntry]:
-        if include_revoked:
-            rows = await self._fetch_all_dicts(
-                "SELECT email, role, note, created_at, created_by, revoked_at, revoked_by FROM auth_allowlist ORDER BY email ASC"
-            )
-        else:
-            rows = await self._fetch_all_dicts(
-                "SELECT email, role, note, created_at, created_by, revoked_at, revoked_by FROM auth_allowlist WHERE revoked_at IS NULL ORDER BY email ASC"
-            )
-        return [self._row_to_allowlist(r) for r in rows]
+    async def list_allowlist(
+        self,
+        *,
+        status: Optional[str] = None,
+        search: Optional[str] = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[AllowlistEntry], int]:
+        try:
+            limit = int(limit)
+        except (TypeError, ValueError):
+            limit = 20
+        limit = max(1, min(limit, 100))
 
-    async def upsert_allowlist(self, email: str, role: str, note: Optional[str], actor: Optional[str]) -> AllowlistEntry:
+        try:
+            offset = int(offset)
+        except (TypeError, ValueError):
+            offset = 0
+        offset = max(0, offset)
+
+        status_normalized = (status or "").strip().lower()
+        if status_normalized not in {"active", "revoked", "all"}:
+            status_normalized = "active"
+
+        filters: list[str] = []
+        params: list[Any] = []
+
+        if status_normalized == "active":
+            filters.append("revoked_at IS NULL")
+        elif status_normalized == "revoked":
+            filters.append("revoked_at IS NOT NULL")
+
+        search_value = (search or "").strip()
+        if search_value:
+            like = f"%{search_value.lower()}%"
+            filters.append("(LOWER(email) LIKE ? OR LOWER(COALESCE(note, '')) LIKE ?)")
+            params.extend([like, like])
+
+        where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+
+        total_row = await self._fetch_one_dict(
+            f"SELECT COUNT(*) AS count FROM auth_allowlist {where_clause}",
+            tuple(params) if params else None,
+        )
+        total = int(total_row.get('count', 0) if total_row else 0)
+
+        query_params: list[Any] = list(params)
+        query_params.extend([limit, offset])
+
+        rows = await self._fetch_all_dicts(
+            f"""
+            SELECT email, role, note, created_at, created_by, revoked_at, revoked_by, password_updated_at
+            FROM auth_allowlist
+            {where_clause}
+            ORDER BY (revoked_at IS NULL) DESC, LOWER(email) ASC
+            LIMIT ? OFFSET ?
+            """,
+            tuple(query_params),
+        )
+        return [self._row_to_allowlist(r) for r in rows], total
+
+    async def upsert_allowlist(
+        self,
+        email: str,
+        role: Optional[str],
+        note: Optional[str],
+        actor: Optional[str],
+        password: Optional[str] = None,
+        *,
+        password_generated: bool = False,
+    ) -> AllowlistEntry:
         normalized = self._normalize_email(email)
         if not normalized:
             raise AuthError("Email invalide.", status_code=400)
-        await self._upsert_allowlist(normalized, role=role, note=note, actor=actor)
-        await self._write_audit(
-            "allowlist:add",
-            email=normalized,
+
+        existing = await self._get_allowlist_row(normalized)
+
+        effective_role_raw = role if role is not None else (existing.get("role") if existing else None)
+        effective_role = (effective_role_raw or "member").strip().lower()
+        if effective_role not in {"member", "admin"}:
+            raise AuthError("Role invalide. Utiliser 'member' ou 'admin'.", status_code=400)
+
+        if note is not None:
+            effective_note = note.strip() if isinstance(note, str) else note
+        else:
+            effective_note = existing.get("note") if existing else None
+
+        password_hash: Optional[str] = None
+        password_updated_at: Optional[str] = None
+        password_length: Optional[int] = None
+        if password is not None:
+            if not isinstance(password, str):
+                password = str(password)
+            cleaned_password = password.strip()
+            self._validate_password_strength(cleaned_password)
+            password_hash = self._hash_password(cleaned_password)
+            password_updated_at = self._now().isoformat()
+            password_length = len(cleaned_password)
+
+        await self._upsert_allowlist(
+            normalized,
+            role=effective_role,
+            note=effective_note,
             actor=actor,
-            metadata={"role": role, "note": note},
+            password_hash=password_hash,
+            password_updated_at=password_updated_at,
         )
+
+        was_existing = existing is not None
+        was_revoked = bool(existing and existing.get("revoked_at"))
+        role_changed = bool(existing and (existing.get("role") or "member").lower() != effective_role)
+        note_changed = bool(existing and (existing.get("note") or "") != (effective_note or ""))
+
+        metadata: dict[str, Any] = {
+            "role": effective_role,
+            "password_updated": bool(password_hash),
+            "password_generated": bool(password_hash and password_generated),
+            "was_existing": was_existing,
+        }
+        if effective_note is not None:
+            metadata["note"] = effective_note
+        if was_revoked:
+            metadata["reactivated"] = True
+        if role_changed:
+            metadata["role_changed"] = True
+        if note_changed:
+            metadata["note_changed"] = True
+
+        event_type = "allowlist:add" if not was_existing else "allowlist:update"
+        await self._write_audit(event_type, email=normalized, actor=actor, metadata=metadata)
+
+        if password_hash and password_generated:
+            generated_meta: dict[str, Any] = {"password_length": password_length or 0}
+            if was_existing:
+                generated_meta["was_existing"] = True
+            if was_revoked:
+                generated_meta["reactivated"] = True
+            await self._write_audit(
+                "allowlist:password_generated",
+                email=normalized,
+                actor=actor,
+                metadata=generated_meta,
+            )
+
         row = await self._get_allowlist_row(normalized)
         if not row:
-            raise AuthError("Entrée allowlist introuvable après création.", status_code=500)
+            raise AuthError("Entree allowlist introuvable apres creation.", status_code=500)
         return self._row_to_allowlist(row)
+
+    async def set_allowlist_password(self, email: str, password: str, actor: Optional[str] = None) -> AllowlistEntry:
+        normalized = self._normalize_email(email)
+        if not normalized:
+            raise AuthError("Email invalide.", status_code=400)
+
+        row = await self._get_allowlist_row(normalized)
+        if not row:
+            raise AuthError("Email non autorise.", status_code=404)
+
+        self._validate_password_strength(password)
+        password_hash = self._hash_password(password)
+        updated_at = self._now().isoformat()
+
+        await self._upsert_allowlist(
+            normalized,
+            role=row.get("role") or "member",
+            note=row.get("note"),
+            actor=actor,
+            password_hash=password_hash,
+            password_updated_at=updated_at,
+        )
+        await self._write_audit(
+            "allowlist:password_set",
+            email=normalized,
+            actor=actor,
+            metadata={"password_updated_at": updated_at},
+        )
+        updated_row = await self._get_allowlist_row(normalized)
+        if not updated_row:
+            raise AuthError("Entree allowlist introuvable apres mise a jour.", status_code=500)
+        return self._row_to_allowlist(updated_row)
 
     async def remove_allowlist(self, email: str, actor: Optional[str]) -> None:
         normalized = self._normalize_email(email)
@@ -264,24 +427,41 @@ class AuthService:
         return [self._row_to_session(r) for r in rows]
 
     # ------------------------------------------------------------------
-    async def _upsert_allowlist(self, email: str, role: str, note: Optional[str], actor: Optional[str]) -> None:
+    async def _upsert_allowlist(
+        self,
+        email: str,
+        role: str,
+        note: Optional[str],
+        actor: Optional[str],
+        *,
+        password_hash: Optional[str] = None,
+        password_updated_at: Optional[str] = None,
+    ) -> None:
         now = self._now().isoformat()
         await self.db.execute(
             """
-            INSERT INTO auth_allowlist (email, role, note, created_at, created_by, revoked_at, revoked_by)
-            VALUES (?, ?, ?, ?, ?, NULL, NULL)
+            INSERT INTO auth_allowlist (email, role, note, created_at, created_by, revoked_at, revoked_by, password_hash, password_updated_at)
+            VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?)
             ON CONFLICT(email) DO UPDATE SET
                 role = excluded.role,
                 note = excluded.note,
                 revoked_at = NULL,
-                revoked_by = NULL
+                revoked_by = NULL,
+                password_hash = CASE
+                    WHEN excluded.password_hash IS NOT NULL THEN excluded.password_hash
+                    ELSE auth_allowlist.password_hash
+                END,
+                password_updated_at = CASE
+                    WHEN excluded.password_hash IS NOT NULL THEN excluded.password_updated_at
+                    ELSE auth_allowlist.password_updated_at
+                END
             """,
-            (email, role, note, now, actor),
+            (email, role, note, now, actor, password_hash, password_updated_at),
         )
 
     async def _get_allowlist_row(self, email: str) -> Optional[dict[str, Any]]:
         return await self._fetch_one_dict(
-            "SELECT email, role, note, created_at, created_by, revoked_at, revoked_by FROM auth_allowlist WHERE email = ?",
+            "SELECT email, role, note, created_at, created_by, revoked_at, revoked_by, password_hash, password_updated_at FROM auth_allowlist WHERE email = ?",
             (email,),
         )
 
@@ -331,12 +511,14 @@ class AuthService:
 
     def _row_to_allowlist(self, row: dict[str, Any]) -> AllowlistEntry:
         revoked_at = row.get("revoked_at")
+        pwd_updated = row.get("password_updated_at")
         return AllowlistEntry(
             email=row["email"],
             role=row.get("role", "member"),
             note=row.get("note"),
             created_at=self._parse_dt(row.get("created_at")),
             created_by=row.get("created_by"),
+            password_updated_at=self._parse_dt(pwd_updated) if pwd_updated else None,
             revoked_at=self._parse_dt(revoked_at) if revoked_at else None,
             revoked_by=row.get("revoked_by"),
         )
@@ -353,6 +535,19 @@ class AuthService:
             revoked_at=self._parse_dt(revoked_at) if revoked_at else None,
             revoked_by=row.get("revoked_by"),
         )
+
+    def _hash_password(self, password: str) -> str:
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    def _verify_password(self, password: str, password_hash: str) -> bool:
+        try:
+            return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+        except (ValueError, TypeError):
+            return False
+
+    def _validate_password_strength(self, password: str) -> None:
+        if len(password) < 8:
+            raise AuthError('Mot de passe trop court (8 caracteres minimum).', status_code=400)
 
     def _hash_subject(self, email: str) -> str:
         return hashlib.sha256(email.encode("utf-8")).hexdigest()
@@ -400,6 +595,9 @@ def build_auth_config_from_env() -> AuthConfig:
         admin_emails=admin_emails,
         dev_mode=dev_mode,
     )
+
+
+
 
 
 
