@@ -95,6 +95,12 @@ function saveToken(tok) {
   try { localStorage.setItem('emergence.id_token', tok); } catch {}
   try { localStorage.setItem('id_token', tok); } catch {}
 }
+function clearToken() {
+  try { localStorage.removeItem('emergence.id_token'); } catch {}
+  try { localStorage.removeItem('id_token'); } catch {}
+  try { sessionStorage.removeItem('id_token'); } catch {}
+  try { document.cookie = 'id_token=; Max-Age=0; path=/; SameSite=Lax'; } catch {}
+}
 function isLocalHost() {
   const h = (window.location && window.location.hostname || '').toLowerCase();
   return h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0';

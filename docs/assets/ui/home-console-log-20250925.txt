@@ -8,10 +8,10 @@
 [log] [StateManager] V15.4 Initialized: State loaded from localStorage and sanitized.
 [log] ✅ WebSocketClient V22.3 (queued send) prêt.
 [log] ? Client ÉMERGENCE prêt. En attente du signal APP_READY...
-[log] [BOOT][front] {ttfb_ms: 6}
+[log] [BOOT][front] {ttfb_ms: 14, fcp_ms: 92}
 [log] [WebSocket] Token détecté via storage — reconnexion…
 [log] Ã”Â£Ã  App V35.0 (ThreadBootstrap) Initialisâ”œÂ®e.
-[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:30:48.732Z, source: storage, reason: null, status: null}
+[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:42:09.765Z, source: storage, reason: null, status: null}
 [error] [App] ensureCurrentThread() a echoue : TypeError: Failed to fetch
     at doFetch (http://127.0.0.1:5173/src/frontend/shared/api-client.js:207:28)
     at fetchApi (http://127.0.0.1:5173/src/frontend/shared/api-client.js:250:18)
@@ -26,15 +26,15 @@
 [log] [StateManager] V15.4 Initialized: State loaded from localStorage and sanitized.
 [log] ✅ WebSocketClient V22.3 (queued send) prêt.
 [log] Ã”Â£Ã  App V35.0 (ThreadBootstrap) Initialisâ”œÂ®e.
-[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:30:52.138Z, source: startup, reason: null, status: null}
+[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:42:14.769Z, source: startup, reason: null, status: null}
 [log] ? Client ÉMERGENCE prêt. En attente du signal APP_READY...
-[warning] [Watchdog] APP_READY manquant – re-module:show(chat)
-[log] [BOOT][front] {ttfb_ms: 537}
 [debug] [vite] connected.
-[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:30:54.701Z, source: ws:connected, reason: null, status: null}
-[info] [AuthBanner] AUTH_MISSING {type: missing, at: 2025-09-25T07:30:54.702Z, source: auth:missing, reason: missing_or_invalid_token, status: null}
-[info] [AuthBanner] AUTH_MISSING {type: missing, at: 2025-09-25T07:30:54.704Z, source: auth:missing, reason: 4401, status: null}
-[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:30:55.192Z, source: ensureCurrentThread, reason: null, status: null}
+[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:42:15.868Z, source: ensureCurrentThread, reason: null, status: null}
+[info] [AuthBanner] AUTH_RESTORED {type: restored, at: 2025-09-25T07:42:15.876Z, source: ws:connected, reason: null, status: null}
+[info] [AuthBanner] AUTH_MISSING {type: missing, at: 2025-09-25T07:42:15.945Z, source: auth:missing, reason: missing_or_invalid_token, status: null}
+[info] [AuthBanner] AUTH_MISSING {type: missing, at: 2025-09-25T07:42:15.947Z, source: auth:missing, reason: 4401, status: null}
+[warning] [Watchdog] APP_READY manquant – re-module:show(chat)
+[log] [BOOT][front] {ttfb_ms: 576}
 [log] [ChatUI] V28.3.2 (glass-layout) initialisee.
 [log] ✅ ChatModule V25.4 initialisé (listeners idempotents).
 [log] Ã”Â£Ã  Module chat initialisâ”œÂ® et mis en cache.
