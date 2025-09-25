@@ -3,7 +3,7 @@
 import logging
 import json
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Set
 from uuid import uuid4
 
 # Imports corrigés pour refléter la structure réelle
@@ -30,6 +30,8 @@ class SessionManager:
         self._session_threads: Dict[str, str] = {}
         self._session_users: Dict[str, str] = {}
         self._hydrated_threads: Dict[Tuple[str, str], bool] = {}
+        self._session_alias_to_canonical: Dict[str, str] = {}
+        self._session_canonical_to_aliases: Dict[str, Set[str]] = {}
         is_ready = self.memory_analyzer is not None
         logger.info(f"SessionManager V13.2 initialisé. MemoryAnalyzer prêt : {is_ready}")
 
@@ -42,6 +44,7 @@ class SessionManager:
     async def ensure_session(self, session_id: str, user_id: str, *, thread_id: Optional[str] = None,
                              history_limit: int = 200) -> Session:
         """Garantit qu'une session est active en mémoire et hydratée depuis les persistances disponibles."""
+        session_id = self.resolve_session_id(session_id)
         session = self.active_sessions.get(session_id)
 
         if not session:
@@ -86,6 +89,7 @@ class SessionManager:
 
     def create_session(self, session_id: str, user_id: str):
         """Crée une session et la garde active en mémoire (compatibilité synchrone)."""
+        session_id = self.resolve_session_id(session_id)
         if session_id in self.active_sessions:
             logger.warning(f"Tentative de création d'une session déjà existante: {session_id}")
             return self.active_sessions[session_id]
@@ -109,8 +113,31 @@ class SessionManager:
         return session
 
 
+
+
+    def register_session_alias(self, session_id: str, alias: Optional[str]) -> None:
+        if not alias:
+            return
+        alias_str = str(alias)
+        if not alias_str or alias_str == session_id:
+            return
+        canonical = str(session_id)
+        self._session_alias_to_canonical[alias_str] = canonical
+        self._session_canonical_to_aliases.setdefault(canonical, set()).add(alias_str)
+
+    def resolve_session_id(self, session_id: str) -> str:
+        candidate = str(session_id)
+        return self._session_alias_to_canonical.get(candidate, candidate)
+
+    def _cleanup_session_aliases(self, session_id: str) -> None:
+        canonical = str(session_id)
+        aliases = self._session_canonical_to_aliases.pop(canonical, set())
+        for alias in aliases:
+            self._session_alias_to_canonical.pop(alias, None)
+
     def get_user_id_for_session(self, session_id: str) -> Optional[str]:
         """Retourne l'identifiant utilisateur associé à la session (cache + fallback)."""
+        session_id = self.resolve_session_id(session_id)
         session = self.active_sessions.get(session_id)
         if session and getattr(session, 'user_id', None):
             uid = str(session.user_id)
@@ -122,6 +149,7 @@ class SessionManager:
 
     def get_session_metadata(self, session_id: str) -> Dict[str, Any]:
         """Garantit la présence d'un dictionnaire de métadonnées pour la session active."""
+        session_id = self.resolve_session_id(session_id)
         session = self.active_sessions.get(session_id)
         if not session:
             return {}
@@ -132,6 +160,7 @@ class SessionManager:
         return meta
 
     def update_session_metadata(self, session_id: str, *, summary: Optional[str] = None, concepts: Optional[List[str]] = None, entities: Optional[List[str]] = None) -> None:
+        session_id = self.resolve_session_id(session_id)
         session = self.active_sessions.get(session_id)
         if not session:
             logger.debug(f"update_session_metadata ignoré: session {session_id} introuvable")
@@ -150,6 +179,7 @@ class SessionManager:
 
     def get_session(self, session_id: str) -> Optional[Session]:
         """Récupère une session depuis le cache mémoire actif."""
+        session_id = self.resolve_session_id(session_id)
         return self.active_sessions.get(session_id)
 
     async def load_session_from_db(self, session_id: str) -> Optional[Session]:
@@ -157,6 +187,7 @@ class SessionManager:
         NOUVEAU V13.2: Charge une session depuis la BDD si elle n'est pas active.
         C'est le chaînon manquant pour travailler sur des sessions passées.
         """
+        session_id = self.resolve_session_id(session_id)
         if session_id in self.active_sessions:
             return self.active_sessions[session_id]
 
@@ -308,6 +339,7 @@ class SessionManager:
             logger.error(f"Hydratation session {session_id} depuis thread {thread_id} échouée: {e}", exc_info=True)
 
     async def add_message_to_session(self, session_id: str, message: ChatMessage | AgentMessage):
+        session_id = self.resolve_session_id(session_id)
         session = self.get_session(session_id)
         if session:
             payload = message.model_dump(mode='json')
@@ -346,6 +378,7 @@ class SessionManager:
 
     def export_history_for_transport(self, session_id: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """Retourne l'historique hydraté, normalisé pour transport (agent_id, created_at, meta dict)."""
+        session_id = self.resolve_session_id(session_id)
         history = self.get_full_history(session_id)
         if not history:
             return []
@@ -421,6 +454,7 @@ class SessionManager:
         return exported
 
     async def _persist_message(self, session_id: str, payload: Dict[str, Any]):
+        session_id = self.resolve_session_id(session_id)
         thread_id = self._session_threads.get(session_id)
         if not thread_id:
             return
@@ -481,6 +515,7 @@ class SessionManager:
         except Exception as e:
             logger.error(f"Persistance du message pour la session {session_id} a échoué: {e}", exc_info=True)
     async def finalize_session(self, session_id: str):
+        session_id = self.resolve_session_id(session_id)
         session = self.active_sessions.pop(session_id, None)
         if session:
             if getattr(session, 'user_id', None):
@@ -506,6 +541,7 @@ class SessionManager:
         keys_to_remove = [key for key in self._hydrated_threads if key[0] == session_id]
         for key in keys_to_remove:
             self._hydrated_threads.pop(key, None)
+        self._cleanup_session_aliases(session_id)
 
     async def handle_session_revocation(
         self,
@@ -516,6 +552,7 @@ class SessionManager:
         close_code: int = 4401,
     ) -> bool:
         """Finalize a revoked session and close related WebSocket connections."""
+        session_id = self.resolve_session_id(session_id)
         had_session = session_id in self.active_sessions
         if close_connections:
             conn = getattr(self, "connection_manager", None)
@@ -536,10 +573,12 @@ class SessionManager:
             keys_to_remove = [key for key in self._hydrated_threads if key[0] == session_id]
             for key in keys_to_remove:
                 self._hydrated_threads.pop(key, None)
+            self._cleanup_session_aliases(session_id)
         return had_session
 
     async def update_and_save_session(self, session_id: str, update_data: Dict[str, Any]):
         """Met à jour une session active et la sauvegarde."""
+        session_id = self.resolve_session_id(session_id)
         session = self.get_session(session_id)
         if not session:
             logger.error(f"Impossible de mettre à jour la session {session_id} : non trouvée.")
@@ -558,6 +597,7 @@ class SessionManager:
 
     # --- Helper WS facultatif ---
     async def publish_event(self, session_id: str, type_: str, payload: Dict[str, Any]):
+        session_id = self.resolve_session_id(session_id)
         cm = getattr(self, "connection_manager", None)
         if cm:
             await cm.send_personal_message({"type": type_, "payload": payload}, session_id)
@@ -565,4 +605,5 @@ class SessionManager:
             logger.warning("Aucun ConnectionManager attaché au SessionManager (publish_event ignoré).")
 
     def get_thread_id_for_session(self, session_id: str) -> Optional[str]:
+        session_id = self.resolve_session_id(session_id)
         return self._session_threads.get(session_id)

@@ -26,3 +26,8 @@
 - UI follow-up: header shows progress + cost block; css wraps cost spans under 560px; next run full UI QA once backend is online.
 
 
+## Session 2025-09-24 - Auth revocation QA
+- Reprise backend via `pwsh -File scripts/run-backend.ps1` puis exécution `tests/run_all.ps1` : statut OK, endpoints accessibles.
+- Vérification manuelle WS : réutiliser un token révoqué renvoie `ws:auth_required` (reason=`session_revoked`) lorsque la session WebSocket correspond au `sid` d'auth.
+- Observation actuelle : les connexions WS gardant un `sessionId` distinct du `sid` ne sont pas encore coupées lors d'un logout (à corriger côté core/chat).
+- 2025-09-26 : Correction livrée. Le handshake WS s'appuie désormais sur le `sid` vérifié (`AuthService.verify_token`) et `SessionManager` maintient les alias côté backend. Le client JS extrait ce `sid` du token afin d'aligner REST/WS, ce qui permet à `handle_session_revocation()` de couper les connexions actives après logout.

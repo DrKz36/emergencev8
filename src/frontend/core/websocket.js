@@ -131,6 +131,32 @@ export class WebSocketClient {
     return `${scheme}://${loc.host}/ws/${sessionId}${query}`;
   }
 
+
+  _extractSessionIdFromToken(token) {
+    if (!token || typeof token !== 'string') return null;
+    const parts = token.split('.');
+    if (!Array.isArray(parts) || parts.length !== 3) return null;
+    try {
+      let payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const pad = payload.length % 4;
+      if (pad) payload += '='.repeat(4 - pad);
+      let decoded;
+      if (typeof atob === 'function') {
+        decoded = atob(payload);
+      } else if (typeof Buffer !== 'undefined') {
+        decoded = Buffer.from(payload, 'base64').toString('utf8');
+      } else {
+        return null;
+      }
+      const data = JSON.parse(decoded);
+      const sid = data?.sid || data?.session_id || data?.sessionId;
+      if (sid && typeof sid === 'string' && sid.trim()) return sid.trim();
+    } catch (error) {
+      console.debug('[WebSocket] Unable to decode auth session id from token', error);
+    }
+    return null;
+  }
+
   async connect() {
     if (this.websocket && this.websocket.readyState !== WebSocket.CLOSED) return;
 
@@ -138,6 +164,11 @@ export class WebSocketClient {
     if (!token) { this.eventBus.emit?.('auth:missing', null); console.warn('[WebSocket] Aucun ID token — connexion WS annulée.'); return; }
 
     let sessionId = this.state?.get?.('websocket.sessionId');
+    const sidFromToken = this._extractSessionIdFromToken(token);
+    if (sidFromToken && sessionId !== sidFromToken) {
+      sessionId = sidFromToken;
+      try { this.state?.set?.('websocket.sessionId', sessionId); } catch {}
+    }
     if (!sessionId) {
       sessionId = crypto?.randomUUID?.() || (Math.random().toString(16).slice(2) + Date.now());
       this.state?.set?.('websocket.sessionId', sessionId);
