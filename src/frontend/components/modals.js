@@ -10,11 +10,14 @@ import { eventBus } from '../core/event-bus.js';
 const { CLASSES: ANIMATION_CLASSES } = ANIMATIONS;
 const { ANIMATION_EXIT, MODAL_FOCUS_DELAY } = TIMEOUTS;
 
+const DOM_IS_AVAILABLE = typeof window !== 'undefined' && typeof document !== 'undefined' && typeof document.createElement === 'function';
+
 class ModalManager {
   constructor() {
     this.modals = new Map();
     this.activeModal = null;
     this.container = null;
+    this.domReady = DOM_IS_AVAILABLE;
     this.init();
   }
 
@@ -22,6 +25,9 @@ class ModalManager {
    * Initialize modal container
    */
   init() {
+    if (!this.domReady) {
+      return;
+    }
     this.container = document.createElement('div');
     this.container.className = 'modals-container';
     document.body.appendChild(this.container);
@@ -53,6 +59,9 @@ class ModalManager {
     onOpen = null,
     onClose = null
   }) {
+    if (!this.domReady) {
+      return null;
+    }
     const id = generateId();
     
     // Create backdrop
@@ -173,6 +182,9 @@ class ModalManager {
    * @param {string} id
    */
   close(id) {
+    if (!this.domReady) {
+      return;
+    }
     const modalData = this.modals.get(id);
     if (!modalData) return;
     
@@ -218,6 +230,9 @@ class ModalManager {
    * Close all modals
    */
   closeAll() {
+    if (!this.domReady) {
+      return;
+    }
     this.modals.forEach((_, id) => this.close(id));
   }
 
@@ -226,6 +241,9 @@ class ModalManager {
    * @param {HTMLElement} modal
    */
   setupFocusTrap(modal) {
+    if (!this.domReady) {
+      return;
+    }
     const focusableElements = modal.querySelectorAll(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     );
@@ -264,6 +282,9 @@ class ModalManager {
     cancelText = 'Annuler',
     type = 'warning' // info, warning, danger
   }) {
+    if (!this.domReady) {
+      return Promise.resolve(false);
+    }
     return new Promise((resolve) => {
       const footer = document.createElement('div');
       footer.className = 'modal__actions';
@@ -310,6 +331,9 @@ class ModalManager {
     buttonText = 'OK',
     type = 'info'
   }) {
+    if (!this.domReady) {
+      return Promise.resolve();
+    }
     return new Promise((resolve) => {
       const footer = document.createElement('div');
       footer.className = 'modal__actions';

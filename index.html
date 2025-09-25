@@ -33,6 +33,7 @@
   <link rel="stylesheet" href="/src/frontend/styles/components/tabs.css">
 
   <!-- ===== CSS FEATURES ===== -->
+  <link rel="stylesheet" href="/src/frontend/features/home/home.css">
   <link rel="stylesheet" href="/src/frontend/features/chat/chat.css">
   <link rel="stylesheet" href="/src/frontend/features/debate/debate.css">
   <link rel="stylesheet" href="/src/frontend/features/documents/documents.css">
@@ -71,6 +72,10 @@
 
     .app-sidebar, .app-content { min-height: 0; }
     .app-content{ overflow-y:auto; overflow-x:hidden; }
+
+    #home-root { display:none; }
+    body.home-active #home-root { display:flex; }
+    body.home-active #app-container { display:none; }
   </style>
 </head>
 <body class="loading">
@@ -79,6 +84,7 @@
     &Eacute;MERGENCE&hellip;
   </div>
 
+  <div id="home-root" class="home-root" hidden aria-hidden="true"></div>
   <div id="app-container" class="app-container">
     <header id="app-header" class="app-header" role="banner">
       <div class="header-logo-title">

@@ -11,7 +11,7 @@
 4. Dans la console, executer `window.__EMERGENCE_QA_METRICS__.authRequired` pour afficher la derniere trace.
 
 ## Capture UI
-![Banniere Connexion requise](../assets/ui/auth-banner.png)
+![Banniere Connexion requise 2025-09-25](../assets/ui/auth-banner-20250925.png)
 
 ## Console QA
 ![Console QA Auth Banner (exemple stylise)](../assets/ui/auth-banner-console.svg)

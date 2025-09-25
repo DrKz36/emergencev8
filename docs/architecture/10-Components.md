@@ -18,7 +18,7 @@
 - **`core/state-manager.js`** : store global, bootstrap auth + threads (REST), conserve map des threads/messages.
 - **`core/websocket.js`** : ouverture WS post-auth (sub-proto `jwt`), gestion reconnexion, diffusion événements sur `EventBus`.
 - **`main.js`** : bootstrap EventBus/State, badge auth, bannière `Connexion requise` via `installAuthRequiredBanner` + instrumentation QA (`window.__EMERGENCE_QA_METRICS__.authRequired`).
-- **`features/home/home-module.js`** : page d'accueil (fond noir, logo hero, trio Anima/Neo/Nexus animé), formulaire email, redirige vers l'app une fois le token stocké.
+- **`features/home/home-module.js`** : landing auth (full screen), formulaire email allowlist, appels `POST /api/auth/login`, pilotage badge auth + bootstrap App après succès.
 - **`features/auth/auth-admin-module.js`** : interface admin (allowlist, sessions, révocation), réservée aux emails listés, s'appuie sur les endpoints `/api/auth/admin/*`.
 - **`shared/api-client.js`** : `fetchWithAuth` (Authorization Bearer), gère erreurs `auth:missing`, uniformise réponses.
 - **`features/chat/chat-module.js`** : synchronise state threads ↔ UI, gère envoi message (WS + watchdog REST), toasts, toggles RAG/mémoire.

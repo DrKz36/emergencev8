@@ -18,7 +18,8 @@ function computeWsUrl() {
 export const API_ENDPOINTS = {
   DOCUMENTS: '/api/documents',
   DOCUMENTS_UPLOAD: '/api/documents/upload',
-  THREADS: '/api/threads',    // ← ajouté pour solidifier l’API client
+  THREADS: '/api/threads',
+  AUTH_LOGIN: '/api/auth/login',
 };
 
 export const WS_CONFIG = {

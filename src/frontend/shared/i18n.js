@@ -14,6 +14,22 @@ const MESSAGES = {
     errors: {
       generic: 'Une erreur est survenue.',
     },
+    home: {
+      title: 'ÉMERGENCE V8',
+      subtitle: 'La plateforme multi-agents pour orchestrer vos conversations, débats et mémoires IA.',
+      highlights: 'Multi-agents - Mémoire - RAG temps réel',
+      email_label: 'Adresse email professionnelle',
+      email_placeholder: 'prenom@entreprise.com',
+      submit: 'Recevoir l’accès',
+      pending: 'Connexion en cours...',
+      success: 'Connexion réussie. Préparation de votre session...',
+      error_invalid: 'Veuillez saisir une adresse email valide.',
+      error_unauthorized: 'Adresse non autorisée. Contactez un administrateur.',
+      error_rate: 'Trop de tentatives. Réessayez dans quelques minutes.',
+      error_locked: 'Session verrouillée. Vérifiez votre boîte mail ou contactez le support.',
+      error_generic: 'Connexion impossible pour le moment. Réessayez plus tard.',
+      legal: 'Accès réservé aux comptes autorisés. Chaque demande est journalisée (IP, user-agent) pour la traçabilité.',
+    },
   },
   en: {
     auth: {
@@ -24,6 +40,22 @@ const MESSAGES = {
     },
     errors: {
       generic: 'Something went wrong.',
+    },
+    home: {
+      title: 'EMERGENCE V8',
+      subtitle: 'The multi-agent workspace for conversations, debates and memory workflows.',
+      highlights: 'Multi-agent - Memory - Real-time RAG',
+      email_label: 'Work email address',
+      email_placeholder: 'firstname@company.com',
+      submit: 'Request access',
+      pending: 'Signing you in...',
+      success: 'Signed in successfully. Preparing your workspace...',
+      error_invalid: 'Please enter a valid email address.',
+      error_unauthorized: 'Email not allowed. Contact an administrator.',
+      error_rate: 'Too many attempts. Try again in a few minutes.',
+      error_locked: 'Session locked. Check your inbox or contact support.',
+      error_generic: 'Unable to sign in right now. Please try again later.',
+      legal: 'Access is restricted to allowlisted accounts. Each request is logged (IP, user agent) for auditing.',
     },
   },
 };

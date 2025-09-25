@@ -31,3 +31,25 @@
 - Vérification manuelle WS : réutiliser un token révoqué renvoie `ws:auth_required` (reason=`session_revoked`) lorsque la session WebSocket correspond au `sid` d'auth.
 - Observation actuelle : les connexions WS gardant un `sessionId` distinct du `sid` ne sont pas encore coupées lors d'un logout (à corriger côté core/chat).
 - 2025-09-26 : Correction livrée. Le handshake WS s'appuie désormais sur le `sid` vérifié (`AuthService.verify_token`) et `SessionManager` maintient les alias côté backend. Le client JS extrait ce `sid` du token afin d'aligner REST/WS, ce qui permet à `handle_session_revocation()` de couper les connexions actives après logout.
+
+## Session 2025-09-25 - PR ws alias handoff
+- PR ouverte `fix: align websocket session alias handling` (branche `fix/debate-chat-ws-events-20250915-1808` -> main).
+- Description PR : résumé + tests (voir tmp/pr_body.md).
+- CI GitHub Actions : statut non récupéré (API GitHub inaccessible sans jeton dans cet environnement, vérifier manuellement dès disponibilité).
+
+## Session 2025-09-25 - QA Accueil + Auth
+- Backend local lancé via `pwsh -File scripts/run-backend.ps1 -ListenHost 127.0.0.1` (via Start-Process) ; migrations appliquées, `src/backend/data/db/emergence_v7.db` régénérée.
+- Stockage remis à plat pour la QA : allowlist vérifiée puis enrichie via `/api/auth/admin/allowlist` (dev bypass) avec `gonzalefernando@gmail.com` afin de tester le formulaire.
+- Formulaire email (API) : `POST /api/auth/login` retourne 200 + token pour l'email allowlist (session active dans `auth_sessions`).
+- Bannière "Connexion requise" : `npm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js` passe après avoir neutralisé l'init DOM dans `components/modals.js`; capture déposée (`docs/assets/ui/auth-banner-20250925.png`) pour la prochaine passe UI.
+
+### Pistes suivantes UI/Auth
+- Ajuster le bootstrap DOM des tests Node afin que `document`/`window` soient disponibles avant l'import des modules UI.
+- Relancer le test ciblé puis collecter une capture récente de la bannière + console QA.
+- Actualiser `docs/ui/auth-required-banner.md` si le flux ou les captures évoluent.
+
+
+## Session 2025-09-26 - Accueil email allowlist
+- Module `features/home/home-module.js` : landing auth plein écran, formulaire email, appels `POST /api/auth/login`, intégration metrics QA.
+- Refonte `src/frontend/main.js` : bascule automatique vers le landing sans token, bootstrap App/WS après succès, purge des tokens au logout.
+- QA : `scripts/qa/home-qa.mjs` attend désormais `body.home-active` et capture l’état landing + overlay QA.

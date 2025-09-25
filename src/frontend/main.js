@@ -8,6 +8,7 @@ import { EventBus } from './core/event-bus.js';
 import { StateManager } from './core/state-manager.js';
 import { WebSocketClient } from './core/websocket.js';
 import { MemoryCenter } from './features/memory/memory-center.js';
+import { HomeModule } from './features/home/home-module.js';
 import { WS_CONFIG, EVENTS } from './shared/constants.js';
 
 /* ---------------- WS-first Chat dedupe & reroute (main.js patch V1) ----------------
@@ -710,109 +711,220 @@ function installAuthRequiredBanner(eventBus) {
 
 /* -------------------- App bootstrap -------------------- */
 class EmergenceClient {
-  constructor() { this.__readyFired=false; this.initialize(); }
+  constructor() {
+    this.__readyFired = false;
+    this.eventBus = null;
+    this.state = null;
+    this.badge = null;
+    this.home = null;
+    this.homeRoot = null;
+    this.appContainer = null;
+    this.app = null;
+    this.appInitialized = false;
+    this.memoryCenter = null;
+    this.websocket = null;
+    this.connectWs = () => {};
+    this.storageListener = null;
+    this.appReadyWatchdog = null;
+    this.initialize();
+  }
 
   async initialize() {
-    console.log("🚀 ÉMERGENCE - Lancement du client.");
+    console.log("?? ÉMERGENCE - Lancement du client.");
 
-    // 🔧 Unifier sur le singleton
-    const eventBus = EventBus.getInstance();
+    const eventBus = this.eventBus = EventBus.getInstance();
     installEventBusGuards(eventBus);
 
-    const stateManager = new StateManager();
+    const stateManager = this.state = new StateManager();
     await stateManager.init();
 
-    // Exposition (debug/devtools)
     try {
       window.App = Object.assign(window.App || {}, { eventBus, state: stateManager });
     } catch {}
 
-    // Toasts
     eventBus.on('ui:toast', (p) => { if (p?.text) showToast(p); });
 
-    const badge = mountAuthBadge(eventBus);
-    installAuthRequiredBanner(eventBus);
+    this.homeRoot = typeof document !== 'undefined' ? document.getElementById('home-root') : null;
+    this.appContainer = typeof document !== 'undefined' ? document.getElementById('app-container') : null;
+
+    this.badge = mountAuthBadge(eventBus);
+    const authBannerHandle = installAuthRequiredBanner(eventBus);
+    const qaRecorder = authBannerHandle?.recorder ?? null;
+
+    this.home = new HomeModule(eventBus, stateManager, { qaRecorder });
 
     eventBus.on?.('auth:missing', () => {
-      try { stateManager.set('chat.authRequired', true); }
-      catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=true', err); }
+      this.markAuthRequired();
+      if (!hasToken()) this.showHome();
     });
+
     eventBus.on?.('auth:logout', () => {
-      try { stateManager.set('chat.authRequired', true); }
-      catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=true (logout)', err); }
+      this.handleLogout();
     });
+
     const wsConnectedEvent = EVENTS.WS_CONNECTED || 'ws:connected';
     eventBus.on?.(wsConnectedEvent, () => {
       try { stateManager.set('chat.authRequired', false); }
       catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=false', err); }
+      this.badge?.setConnected(true);
     });
 
-    const websocket = new WebSocketClient(WS_CONFIG.URL, eventBus, stateManager);
-    eventBus.on(EVENTS.APP_READY, () => { this.__readyFired=true; this.hideLoader(); });
+    this.websocket = new WebSocketClient(WS_CONFIG.URL, eventBus, stateManager);
+    eventBus.on(EVENTS.APP_READY, () => { this.__readyFired = true; this.hideLoader(); });
 
-    const app = new App(eventBus, stateManager);
-    setupMobileShell(app, eventBus);
-
-    let overlayMemoryCenter = null;
-    try {
-      overlayMemoryCenter = new MemoryCenter(eventBus, stateManager);
-      overlayMemoryCenter.init();
-    } catch (err) {
-      console.warn('[Memory] Overlay init failed', err);
-    }
-
-    if (overlayMemoryCenter) {
-      eventBus.on?.('memory:center:open', () => {
-        try { overlayMemoryCenter.open(); } catch (e) { console.error('[Memory] open failed', e); }
-      });
-      eventBus.on?.('memory:center:state', () => {
-        try { overlayMemoryCenter.refresh(); } catch (e) { console.error('[Memory] refresh failed', e); }
-      });
-    }
-
-    // Sélection initiale du module (débloque mount & APP_READY)
-    try { eventBus.emit && eventBus.emit('module:show','chat'); } catch {}
-
-    // Watchdog APP_READY
-    setTimeout(() => {
-      if (!this.__readyFired) {
-        console.warn('[Watchdog] APP_READY manquant → re-module:show(chat)');
-        try { eventBus.emit && eventBus.emit('module:show','chat'); } catch {}
-      }
-    }, 1200);
-
-    /* ====== Auto-auth & auto-connect WS ====== */
-    const tokenFromUrl = pickTokenFromLocation();
-    if (tokenFromUrl) saveToken(tokenFromUrl);
-
-    const connectWs = () => {
-      try { websocket.connect(); }
+    this.connectWs = () => {
+      try { this.websocket.connect(); }
       catch (e) { console.error('[WS] connect error', e); }
     };
 
+    eventBus.on?.(EVENTS.AUTH_LOGIN_SUBMIT, () => {
+      this.badge?.setConnected(false);
+    });
+    eventBus.on?.(EVENTS.AUTH_LOGIN_SUCCESS, (payload) => this.handleLoginSuccess(payload));
+    eventBus.on?.(EVENTS.AUTH_LOGIN_ERROR, () => {
+      this.badge?.setConnected(false);
+    });
+    eventBus.on?.('auth:login', () => {
+      if (!hasToken()) this.showHome();
+    });
+
+    const tokenFromUrl = pickTokenFromLocation();
+    if (tokenFromUrl) saveToken(tokenFromUrl);
+
     if (hasToken()) {
-      badge.setLogged(true);
-      connectWs();
+      this.handleTokenAvailable('startup');
     } else {
-      try { eventBus.emit('auth:missing'); } catch (_) {}
-      // En local : ouvre la page d'auth si aucun token
+      this.markAuthRequired();
+      this.showHome();
       if (isLocalHost()) {
         setTimeout(() => { if (!hasToken()) openDevAuth(); }, 250);
       }
-      // Quand le token arrive (dev-auth ou autre), on connecte automatiquement
-      const onStorage = (ev) => {
-        if (ev.key === 'emergence.id_token' || ev.key === 'id_token') {
-          if (ev.newValue && ev.newValue.trim()) {
-            window.removeEventListener('storage', onStorage);
-            badge.setLogged(true);
-            connectWs();
-          }
-        }
-      };
-      window.addEventListener('storage', onStorage);
+      this.installStorageListener();
     }
 
-    console.log("✅ Client ÉMERGENCE prêt. En attente du signal APP_READY...");
+    console.log('? Client ÉMERGENCE prêt. En attente du signal APP_READY...');
+  }
+
+  installStorageListener() {
+    if (typeof window === 'undefined') return;
+    if (this.storageListener) return;
+    const listener = (ev) => {
+      try {
+        const key = ev?.key;
+        if (key !== 'emergence.id_token' && key !== 'id_token') return;
+        const token = ev?.newValue;
+        if (token && token.trim()) {
+          saveToken(token.trim());
+          window.removeEventListener('storage', this.storageListener);
+          this.storageListener = null;
+          this.handleTokenAvailable('storage');
+        }
+      } catch (err) {
+        console.warn('[main] storage listener error', err);
+      }
+    };
+    this.storageListener = listener;
+    try { window.addEventListener('storage', listener); } catch (_) {}
+  }
+
+  markAuthRequired() {
+    try { this.state?.set?.('auth.hasToken', false); }
+    catch (err) { console.warn('[main] Impossible de mettre à jour auth.hasToken', err); }
+    try { this.state?.set?.('chat.authRequired', true); }
+    catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=true', err); }
+    this.badge?.setLogged(false);
+    this.badge?.setConnected(false);
+  }
+
+  handleLoginSuccess(payload = {}) {
+    const token = payload?.token;
+    if (token && token.trim()) saveToken(token.trim());
+    if (payload?.sessionId) {
+      try { this.state?.set?.('websocket.sessionId', payload.sessionId); }
+      catch (err) { console.warn('[main] Impossible d’enregistrer websocket.sessionId', err); }
+    }
+    this.handleTokenAvailable('home-login');
+  }
+
+  handleTokenAvailable(source = 'unknown') {
+    this.hideLoader();
+    if (this.storageListener) {
+      try { window.removeEventListener('storage', this.storageListener); } catch (_) {}
+      this.storageListener = null;
+    }
+    if (this.home) this.home.unmount();
+    if (typeof document !== 'undefined') {
+      document.body.classList.remove('home-active');
+    }
+    try { this.state?.set?.('auth.hasToken', true); }
+    catch (err) { console.warn('[main] Impossible de mettre à jour auth.hasToken', err); }
+    try { this.state?.set?.('chat.authRequired', false); }
+    catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=false', err); }
+    this.badge?.setLogged(true);
+    this.badge?.setConnected(false);
+
+    this.ensureApp();
+    this.connectWs();
+
+    this.eventBus?.emit?.(EVENTS.AUTH_RESTORED, { source });
+  }
+
+  ensureApp() {
+    if (this.appInitialized) {
+      try { this.eventBus?.emit?.('module:show', 'chat'); } catch (_) {}
+      return this.app;
+    }
+
+    const app = new App(this.eventBus, this.state);
+    this.app = app;
+    setupMobileShell(app, this.eventBus);
+
+    try {
+      this.memoryCenter = new MemoryCenter(this.eventBus, this.state);
+      this.memoryCenter.init();
+    } catch (err) {
+      console.warn('[Memory] Overlay init failed', err);
+      this.memoryCenter = null;
+    }
+
+    if (this.memoryCenter) {
+      this.eventBus.on?.('memory:center:open', () => {
+        try { this.memoryCenter.open(); } catch (e) { console.error('[Memory] open failed', e); }
+      });
+      this.eventBus.on?.('memory:center:state', () => {
+        try { this.memoryCenter.refresh(); } catch (e) { console.error('[Memory] refresh failed', e); }
+      });
+    }
+
+    try { this.eventBus.emit && this.eventBus.emit('module:show', 'chat'); } catch (_) {}
+
+    if (this.appReadyWatchdog) clearTimeout(this.appReadyWatchdog);
+    this.appReadyWatchdog = setTimeout(() => {
+      if (!this.__readyFired) {
+        console.warn('[Watchdog] APP_READY manquant – re-module:show(chat)');
+        try { this.eventBus.emit && this.eventBus.emit('module:show', 'chat'); } catch (_) {}
+      }
+    }, 1200);
+
+    this.appInitialized = true;
+    return app;
+  }
+
+  showHome() {
+    this.hideLoader();
+    if (typeof document !== 'undefined') {
+      document.body.classList.add('home-active');
+    }
+    if (this.homeRoot && this.home) {
+      this.home.mount(this.homeRoot);
+    }
+  }
+
+  handleLogout() {
+    clearToken();
+    this.markAuthRequired();
+    this.showHome();
+    this.installStorageListener();
   }
 
   hideLoader() {

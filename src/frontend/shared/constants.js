@@ -98,6 +98,9 @@ export const EVENTS = {
   // Generic UI helpers
   AUTH_REQUIRED: 'ui:auth:required',
   AUTH_RESTORED: 'ui:auth:restored',
+  AUTH_LOGIN_SUBMIT: 'auth:login:submit',
+  AUTH_LOGIN_SUCCESS: 'auth:login:success',
+  AUTH_LOGIN_ERROR: 'auth:login:error',
   SHOW_MODAL: 'ui:show_modal',
   MODAL_OPEN: 'ui:modal_open',
   MODAL_CLOSE: 'ui:modal_close',
