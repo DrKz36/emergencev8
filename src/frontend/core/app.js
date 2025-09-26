@@ -1,8 +1,8 @@
 /**
  * @module core/app
- * @description Câ”¼Ã´ur de l'application â”œÃ«MERGENCE - V35.0 "ThreadBootstrap"
+ * @description Core of the Emergence application - V35.0 "ThreadBootstrap"
  * - Bootstrap du thread courant au premier affichage (persist inter-sessions).
- * - Navigation dâ”œÂ®lâ”œÂ®guâ”œÂ®e inchangâ”œÂ®e.
+ * - Navigation deleguee inchangee.
  */
 
 import { EVENTS } from '../shared/constants.js';
@@ -13,6 +13,7 @@ import { modals } from '../components/modals.js';
 const AUTH_ERROR_STATUSES = new Set([401, 403, 419, 440]);
 const THREAD_INACCESSIBLE_MARKER = 'thread non accessible pour cet utilisateur';
 const THREAD_INACCESSIBLE_CODES = new Set(['thread_not_accessible', 'thread_inaccessible']);
+const ONBOARDING_STORAGE_KEY = 'emergence.onboarding.v20250926';
 
 function isNetworkError(error) {
   const status =
@@ -46,6 +47,7 @@ const moduleLoaders = {
   conversations: () => import('../features/conversations/conversations.js'),
   debate: () => import('../features/debate/debate.js'),
   documents: () => import('../features/documents/documents.js'),
+  references: () => import('../features/references/references.js'),
   dashboard: () => import('../features/dashboard/dashboard.js'),
   memory: () => import('../features/memory/memory.js'),
   admin: () => import('../features/admin/admin.js'),
@@ -58,6 +60,9 @@ export class App {
     this.initialized = false;
     this._authToastShown = false;
     this._authBannerShown = false;
+    this.onboardingTour = null;
+    this.onboardingScheduled = false;
+    this.onboardingRetryCount = 0;
 
     this.dom = {
       appContainer: document.getElementById('app-container'),
@@ -85,6 +90,7 @@ export class App {
       },
       { id: 'documents', name: 'Documents', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>' },
       { id: 'debate', name: 'Debats', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" /></svg>' },
+      { id: 'references', name: 'A propos', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5h9a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75h-9A2.25 2.25 0 016 17.25v-12A2.25 2.25 0 018.25 3h9a.75.75 0 01.75.75V4.5h-9z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6 7.5h8.25a.75.75 0 00.75-.75V3" /></svg>' },
       { id: 'dashboard', name: 'Cockpit', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 100 15 7.5 7.5 0 000-15z" /><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 10.5c0 .678-.291 1.32-.782 1.752L6 15.252M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' },
       {
         id: 'memory',
@@ -113,7 +119,7 @@ export class App {
       }
     }
 
-    console.log('Ã”Â£Ã  App V35.0 (ThreadBootstrap) Initialisâ”œÂ®e.');
+    console.log('[App] V35.0 (ThreadBootstrap) ready.');
     this.init();
   }
 
@@ -332,17 +338,17 @@ export class App {
   async loadModule(moduleId) {
     if (this.modules[moduleId]) return this.modules[moduleId];
     const moduleLoader = moduleLoaders[moduleId];
-    if (!moduleLoader) { console.error(`Ã”Ã˜Ã® CRITICAL: Aucun chargeur de module pour "${moduleId}".`); return null; }
+    if (!moduleLoader) { console.error(`[App] Critical: no loader registered for "${moduleId}".`); return null; }
     try {
       const module = await moduleLoader();
       const ModuleClass = module.default || module[Object.keys(module)[0]];
       const moduleInstance = new ModuleClass(this.eventBus, this.state);
       moduleInstance.init?.();
       this.modules[moduleId] = moduleInstance;
-      console.log(`Ã”Â£Ã  Module ${moduleId} initialisâ”œÂ® et mis en cache.`);
+      console.log(`[App] Module ${moduleId} initialized and cached.`);
       return moduleInstance;
     } catch (error) {
-      console.error(`Ã”Ã˜Ã® CRITICAL: â”œÃ«chec du chargement du module "${moduleId}".`, error);
+      console.error(`[App] Critical: failed to load module "${moduleId}".`, error);
       return null;
     }
   }
@@ -350,7 +356,7 @@ export class App {
   /**
    * Assure qu'un thread courant existe et charge son contenu.
    * - Cherche le dernier thread type=chat (limit=1)
-   * - Sinon en crâ”œÂ®e un
+    * - Sinon en cree un
    * - Stocke l'id dans state.threads.currentId
    * - Charge le thread (messages_limit=50) et le stocke dans state.threads.map.{id}
    * - Emet 'threads:ready' puis 'threads:loaded'
@@ -360,7 +366,7 @@ export class App {
       let currentId = this.state.get('threads.currentId');
       if (!this._isValidThreadId(currentId)) {
         const list = await api.listThreads({ type: 'chat', limit: 1 });
-        // tol├¿re 'items' ou liste brute
+        // tolere 'items' ou liste brute
         const found = Array.isArray(list?.items) ? list.items[0] : Array.isArray(list) ? list[0] : null;
         if (found?.id) {
           currentId = found.id;
@@ -497,11 +503,12 @@ export class App {
     if (isInitialLoad) {
       this.eventBus.emit(EVENTS.APP_READY);
       this.preloadOtherModules();
+      this.scheduleOnboardingTour();
     }
   }
 
   preloadOtherModules() {
-    console.log('Ã”ÃœÃ­Â´Â©Ã… Prâ”œÂ®-chargement des autres modulesÃ”Ã‡Âª');
+    console.log('[App] Preloading other modules');
     this.getModuleConfig().forEach((m) => { if (m.id !== this.activeModule) this.loadModule(m.id); });
   }
 
@@ -514,9 +521,45 @@ export class App {
     this.dom.content?.appendChild(container);
     return container;
   }
+  shouldShowOnboarding() {
+    return false;
+  }
+
+  finishOnboarding(persist = true) {
+    if (persist) {
+      try { localStorage.setItem(ONBOARDING_STORAGE_KEY, '1'); } catch (_) {}
+    }
+    if (this.onboardingTour) {
+      try { this.onboardingTour.destroy(); } catch (_) {}
+    }
+    this.onboardingRetryCount = 0;
+    this.onboardingTour = null;
+    this.onboardingScheduled = true;
+  }
+
+  buildOnboardingSteps() {
+    const steps = [
+      {
+        id: 'chat',
+        target: '[data-module-id="chat"]',
+        title: 'Dialoguer',
+        description: 'Envoyez vos messages et recevez les reponses coordonnees des agents.'
+      },
+      {
+        id: 'references',
+        target: '[data-module-id="references"]',
+        title: 'A propos',
+        description: 'Retrouvez les documents clefs et la vision du projet Emergence.'
+      }
+    ];
+    return steps.filter((step) => step && document.querySelector(step.target));
+  }
+
+  scheduleOnboardingTour() {
+    this.finishOnboarding(true);
+  }
+
 }
-
-
 
 
 

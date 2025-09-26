@@ -18,9 +18,12 @@
 - **`core/state-manager.js`** : store global, bootstrap auth + threads (REST), conserve map des threads/messages.
 - **`core/websocket.js`** : ouverture WS post-auth (sub-proto `jwt`), gestion reconnexion, diffusion événements sur `EventBus`.
 - **`main.js`** : bootstrap EventBus/State, badge auth, bannière `Connexion requise` via `installAuthRequiredBanner` + instrumentation QA (`window.__EMERGENCE_QA_METRICS__.authRequired`).
+- **`components/onboarding/onboarding-tour.js`** : legacy overlay (desactive v20250926, conserver pour audit historique).
+- **`features/agents/agents.js`** : module retire (profils agents fusionnes dans `ReferencesModule`).
 - **`features/home/home-module.js`** : landing auth (full screen), formulaire email allowlist, appels `POST /api/auth/login`, pilotage badge auth + bootstrap App après succès.
+- **`features/references/references.js`** : module 'A propos' (markdown + viewer) + galerie horizontale des copilotes (Anima/Neo/Nexus) avec ancrages vers `/docs/agents-profils.md`.
 - **`features/auth/auth-admin-module.js`** : interface admin (allowlist, sessions, révocation), réservée aux emails listés, s'appuie sur les endpoints `/api/auth/admin/*`.
-- **eatures/admin/admin.js** : point d'entrée dynamique pour AuthAdminModule, gère mount/unmount et expose l'API attendue par App.loadModule (charge uniquement les rôles admin).
+- **`features/admin/admin.js`** : point d'entree dynamique pour AuthAdminModule, gere mount/unmount et expose l'API attendue par App.loadModule (charge uniquement les roles admin).
 - **`shared/api-client.js`** : `fetchWithAuth` (Authorization Bearer), gère erreurs `auth:missing`, uniformise réponses.
 - **`features/chat/chat-module.js`** : synchronise state threads ↔ UI, gère envoi message (WS + watchdog REST), toasts, toggles RAG/mémoire.
 - **`features/chat/chat-ui.js`** : rendu messages, sources RAG, badges mémoire (STM/LTM, modèle), actions `Analyser` / `Clear`, overlay « Connexion requise » quand l'auth est absente.

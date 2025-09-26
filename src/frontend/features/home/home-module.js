@@ -1,6 +1,6 @@
 /**
  * @module features/home/home-module
- * @description Landing page pour l’authentification par email (allowlist).
+ * @description Landing page pour l'authentification par email (allowlist).
  */
 
 import { EVENTS } from '../../shared/constants.js';
@@ -98,71 +98,94 @@ export class HomeModule {
   }
 
   render() {
+
     const title = t('home.title');
+
+    const version = t('home.version');
+
     const subtitle = t('home.subtitle');
+
     const emailLabel = t('home.email_label');
+
     const emailPlaceholder = t('home.email_placeholder');
+
     const passwordLabel = t('home.password_label');
+
     const passwordPlaceholder = t('home.password_placeholder');
+
     const submit = t('home.submit');
+
     const legal = t('home.legal');
-    const highlights = t('home.highlights');
+
     const brandAlt = t('home.brand_alt');
-    const agentsTitle = t('home.agents_title');
-    const agentsSubtitle = t('home.agents_subtitle');
-    const agentAnima = t('home.agent_anima');
-    const agentNeo = t('home.agent_neo');
-    const agentNexus = t('home.agent_nexus');
+
+    const versionMarkup = version ? `<span class="home__version">${version}</span>` : '';
+
+    const subtitleMarkup = subtitle ? `<p class="home__subtitle">${subtitle}</p>` : '';
+
+
 
     return `
+
       <section class="home" data-role="home">
+
         <div class="home__panel">
-          <div class="home__branding">
-            <img src="/assets/emergence_logo.png" alt="${brandAlt}" class="home__logo" loading="lazy" />
-          </div>
+
           <div class="home__hero">
-            <span class="home__badge">${highlights}</span>
+
+            <div class="home__emblem" aria-hidden="true">
+
+              <span class="home__emblem-ring"></span>
+
+              <span class="home__emblem-spark"></span>
+
+              <img src="/assets/emergence_logo.png" alt="${brandAlt}" class="home__logo" loading="lazy" />
+
+            </div>
+
+            ${versionMarkup}
+
             <h1 class="home__title">${title}</h1>
-            <p class="home__subtitle">${subtitle}</p>
+
+            ${subtitleMarkup}
+
           </div>
-          <section class="home__agents" aria-labelledby="home-agents-title">
-            <header class="home__agents-header">
-              <h2 id="home-agents-title" class="home__agents-title">${agentsTitle}</h2>
-              <p class="home__agents-subtitle">${agentsSubtitle}</p>
-            </header>
-            <div class="home__agents-grid">
-              <figure class="home__agent-card">
-                <img src="/assets/anima.png" alt="${agentAnima}" loading="lazy" class="home__agent-image" />
-                <figcaption class="home__agent-label">${agentAnima}</figcaption>
-              </figure>
-              <figure class="home__agent-card">
-                <img src="/assets/neo.png" alt="${agentNeo}" loading="lazy" class="home__agent-image" />
-                <figcaption class="home__agent-label">${agentNeo}</figcaption>
-              </figure>
-              <figure class="home__agent-card">
-                <img src="/assets/nexus.png" alt="${agentNexus}" loading="lazy" class="home__agent-image" />
-                <figcaption class="home__agent-label">${agentNexus}</figcaption>
-              </figure>
-            </div>
-          </section>
+
           <form class="home__form" data-role="home-form" novalidate>
-            <label class="home__label" for="home-email">${emailLabel}</label>
-            <div class="home__form-row">
-              <input id="home-email" name="email" type="email" autocomplete="email" required placeholder="${emailPlaceholder}" class="home__input" data-role="home-email" />
+
+            <label for="home-email" class="home__label">${emailLabel}</label>
+
+            <input id="home-email" name="email" type="email" autocomplete="email" class="home__input" data-role="home-email" placeholder="${emailPlaceholder}" required />
+
+            <label for="home-password" class="home__label">${passwordLabel}</label>
+
+            <input id="home-password" name="password" type="password" autocomplete="current-password" class="home__input" data-role="home-password" placeholder="${passwordPlaceholder}" minlength="8" required />
+
+            <div class="home__actions">
+
+              <button type="submit" class="home__submit button-metal" data-role="home-submit">
+
+                <span>${submit}</span>
+
+              </button>
+
             </div>
-            <label class="home__label" for="home-password">${passwordLabel}</label>
-            <div class="home__form-row">
-              <input id="home-password" name="password" type="password" autocomplete="current-password" required minlength="8" placeholder="${passwordPlaceholder}" class="home__input" data-role="home-password" />
-            </div>
-            <div class="home__form-row">
-              <button type="submit" class="btn btn--primary home__submit" data-role="home-submit">${submit}</button>
-            </div>
-            <p class="home__message" data-role="home-message" aria-live="assertive"></p>
+
+            <div class="home__message" role="status" aria-live="polite" data-role="home-message"></div>
+
           </form>
+
           <p class="home__legal">${legal}</p>
+
         </div>
-      </section>`;
+
+      </section>
+
+    `;
+
   }
+
+
 
   handleInput() {
     if (this.status === 'error') {

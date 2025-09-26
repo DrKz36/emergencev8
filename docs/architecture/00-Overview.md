@@ -14,7 +14,7 @@
 
 ## 2) Conteneurs (C4-Container)
 - **Frontend (Vite + JS)**
-  - Modules clés : `HomeModule`, `StateManager`, `EventBus`, `WebSocketClient`, `ChatModule`, `DebateModule`, `DocumentsModule`, `DashboardModule`, `AuthAdminModule`.
+  - Modules cles : `HomeModule`, `StateManager`, `EventBus`, `WebSocketClient`, `ChatModule`, `DebateModule`, `DocumentsModule`, `DashboardModule`, `ReferencesModule` (profils agents inclus), `AuthAdminModule`.
   - Responsabilités : Landing page (logo + email form), auth locale via allowlist (`POST /api/auth/login`), gestion des tokens (stockage + logout), bootstrap threads (`ensureCurrentThread()`), connexion WS (`/ws/{session_id}`), rendu chat/mémoire/RAG/documents.
 - **Backend (FastAPI + WebSocket)**
   - Couches : `main.py` (DI + migrations + routers), `containers.py` (`ServiceContainer`), routers REST (`/api/auth`, `/api/threads`, `/api/memory`, `/api/documents`, `/api/dashboard`, `/api/debates`), router WS (`chat.router`), services (`AuthService`, `ChatService`, `MemoryAnalyzer`, `MemoryGardener`, `DocumentService`, `DebateService`, `DashboardService`).

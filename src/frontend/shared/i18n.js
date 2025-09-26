@@ -15,9 +15,9 @@ const MESSAGES = {
       generic: 'Une erreur est survenue.',
     },
     home: {
-      title: 'ÉMERGENCE V8',
+      title: 'Emergence',
+      version: 'Beta 1.0',
       subtitle: 'La plateforme multi-agents pour orchestrer vos conversations, débats et mémoires IA.',
-      highlights: 'Multi-agents - Mémoire - RAG temps réel',
       email_label: 'Adresse email professionnelle',
       email_placeholder: 'prenom@entreprise.com',
       password_label: 'Mot de passe',
@@ -36,9 +36,11 @@ const MESSAGES = {
       brand_alt: 'Logo EMERGENCE',
       agents_title: 'Vos copilotes IA',
       agents_subtitle: 'Anima, Neo et Nexus orchestrent vos conversations, débats et mémoires en tandem.',
+      agents_cta: 'Cliquez sur un agent pour ouvrir sa fiche complete.',
       agent_anima: 'Anima',
       agent_neo: 'Neo',
       agent_nexus: 'Nexus',
+      agent_action: 'Ouvrir le profil',
     },
     admin: {
       title: 'Administration allowlist',
@@ -93,9 +95,10 @@ const MESSAGES = {
       generic: 'Something went wrong.',
     },
     home: {
-      title: 'EMERGENCE V8',
+      title: 'Emergence',
+      version: 'Beta 1.0',
+
       subtitle: 'The multi-agent workspace for conversations, debates and memory workflows.',
-      highlights: 'Multi-agent - Memory - Real-time RAG',
       email_label: 'Work email address',
       email_placeholder: 'firstname@company.com',
       password_label: 'Password',
@@ -114,9 +117,11 @@ const MESSAGES = {
       brand_alt: 'EMERGENCE logo',
       agents_title: 'Your AI copilots',
       agents_subtitle: 'Anima, Neo and Nexus keep your conversations, debates and memory flows in sync.',
+      agents_cta: 'Click any agent to open its full profile.',
       agent_anima: 'Anima',
       agent_neo: 'Neo',
       agent_nexus: 'Nexus',
+      agent_action: 'Open profile',
     },
     admin: {
       title: 'Allowlist administration',

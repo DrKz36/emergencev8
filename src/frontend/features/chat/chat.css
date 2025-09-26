@@ -1,4 +1,4 @@
-/* src/frontend/features/chat/chat.css — V11.6 (Send button fixed, RAG styles, mobile ergonomics++) */
+/* src/frontend/features/chat/chat.css â€” V11.6 (Send button fixed, RAG styles, mobile ergonomics++) */
 :root{
   --glass-bg: rgba(22,22,26,.55);
   --glass-blur: 18px;
@@ -131,11 +131,19 @@
 .chat-header-left{
   display:flex; align-items:center; gap:12px;
 }
-.chat-header .tabs-container{
+.chat-header .agent-selector{
+  margin-left:auto;
+  margin-right:auto;
+}
+
+.chat-header .tabs-container,
+.chat-container .tabs-container{
   display:flex;
   align-items:center;
+  justify-content:center;
   gap:10px;
   padding:0;
+  border-radius:999px;
   border:none;
   background:transparent;
   box-shadow:none;
@@ -145,53 +153,129 @@
   scrollbar-width:none;
   -webkit-overflow-scrolling:touch;
 }
-.chat-header .tabs-container::-webkit-scrollbar{ display:none; }
+.chat-header .tabs-container::-webkit-scrollbar,
+.chat-container .tabs-container::-webkit-scrollbar{ display:none; }
 .chat-header .agent-selector .button-tab{
+  position:relative;
   display:inline-flex;
   align-items:center;
-  gap:6px;
-  padding:6px 14px;
+  gap:.5rem;
+  padding:.48rem 1.15rem;
   border-radius:999px;
-  border:1px solid transparent;
-  background:transparent;
-  color:rgba(226,232,240,.72);
-  font-size:12px;
+  border:1px solid var(--agent-tab-border, rgba(148,163,184,.28));
+  background:var(--agent-tab-bg, rgba(15,23,42,.6));
+  color:var(--agent-tab-color, rgba(226,232,240,.9));
+  font-size:.74rem;
   font-weight:600;
-  letter-spacing:.08em;
+  letter-spacing:.12em;
   text-transform:uppercase;
   cursor:pointer;
-  transition: color .2s ease, background .2s ease, box-shadow .2s ease, border-color .2s ease, transform .2s ease;
+  transition:transform .25s var(--ease-out-quint), box-shadow .25s var(--ease-out-quint), border-color .25s var(--ease-out-quint), color .25s var(--ease-out-quint), background .25s var(--ease-out-quint);
   white-space:nowrap;
   flex-shrink:0;
   min-width:0;
+  overflow:hidden;
+  box-shadow:var(--agent-tab-shadow, 0 8px 20px rgba(15,23,42,.32));
 }
 .chat-header .agent-selector .button-tab:hover{
-  transform: translateY(-1px);
-  border-color: rgba(148,163,184,.35);
-  background: rgba(15,23,42,.25);
-  color:#f8fafc;
-  box-shadow: 0 10px 24px rgba(15,23,42,.3);
+  transform:translateY(-1px);
+  background:var(--agent-tab-bg-hover, rgba(15,23,42,.55));
+  border-color:var(--agent-tab-border-hover, rgba(148,163,184,.4));
+  color:var(--agent-tab-color-hover, #f8fafc);
+  box-shadow:var(--agent-tab-shadow-hover, 0 12px 28px rgba(15,23,42,.35));
+}
+.chat-header .agent-selector .button-tab:focus-visible{
+  outline:0;
+  box-shadow:0 0 0 2px rgba(255,255,255,.28);
 }
 .chat-header .agent-selector .button-tab.active{
-  color:#fff;
-  box-shadow: 0 12px 30px rgba(15,23,42,.45);
+  transform:translateY(-2px);
+  background:var(--agent-tab-bg-active, var(--agent-tab-bg-hover, rgba(37,99,235,.24)));
+  border-color:var(--agent-tab-border-active, rgba(59,130,246,.65));
+  color:var(--agent-tab-color-active, #f8fafc);
+  box-shadow:var(--agent-tab-shadow-active, 0 16px 34px rgba(37,99,235,.26));
 }
 .button-tab .tab-icon{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }
 .button-tab .tab-icon svg{ width:16px; height:16px; display:block; }
 .button-tab .tab-label{ display:inline-block; }
-.button-tab:hover{ color:#fff; border-color: rgba(148,163,184,.35); background: rgba(15,23,42,.18); }
-.chat-header .agent-selector .button-tab:focus-visible{ outline:0; box-shadow:0 0 0 2px rgba(255,255,255,.28); }
+.button-tab:hover{ color:#fff; border-color: rgba(148,163,184,.35); background: rgba(15,23,42,.2); }
 .button-tab.active{
   color:#fff;
-  border-color: transparent;
-  box-shadow:0 12px 26px rgba(15,23,42,.45);
-  transform: translateY(-1px);
+  border-color: rgba(59,130,246,.65);
+  box-shadow:0 14px 32px rgba(59,130,246,.24);
+  transform: translateY(-2px);
 }
-.button-tab.active.agent--anima{ background: linear-gradient(140deg,var(--color-anima-start),var(--color-anima-end)); }
-.button-tab.active.agent--neo{ background: linear-gradient(140deg,var(--color-neo-start),var(--color-neo-end)); }
-.button-tab.active.agent--nexus{ background: linear-gradient(140deg,var(--color-nexus-start),var(--color-nexus-end)); }
-.button-tab.active.agent--global{ background: linear-gradient(140deg,var(--color-global-start),var(--color-global-end)); color:#0f172a; }
-.button-tab.active.agent--assistant{ background: linear-gradient(140deg,#1f2937,#111827); border:1px solid rgba(148,163,184,.32); }
+.chat-header .agent-selector .button-tab.agent--anima{
+  --agent-tab-bg: linear-gradient(140deg, rgba(244,63,94,.26), rgba(248,113,113,.1));
+  --agent-tab-bg-hover: linear-gradient(140deg, rgba(244,63,94,.34), rgba(248,113,113,.18));
+  --agent-tab-bg-active: linear-gradient(140deg, rgba(244,63,94,.48), rgba(248,113,113,.24));
+  --agent-tab-border: rgba(244,63,94,.38);
+  --agent-tab-border-hover: rgba(244,63,94,.52);
+  --agent-tab-border-active: rgba(244,63,94,.62);
+  --agent-tab-shadow: 0 8px 22px rgba(244,63,94,.22);
+  --agent-tab-shadow-hover: 0 12px 30px rgba(244,63,94,.28);
+  --agent-tab-shadow-active: 0 20px 38px rgba(244,63,94,.32);
+  --agent-tab-color: #fff;
+  --agent-tab-color-hover: #fff;
+  --agent-tab-color-active: #fff;
+}
+.chat-header .agent-selector .button-tab.agent--neo{
+  --agent-tab-bg: linear-gradient(140deg, rgba(59,130,246,.22), rgba(37,99,235,.1));
+  --agent-tab-bg-hover: linear-gradient(140deg, rgba(59,130,246,.3), rgba(37,99,235,.16));
+  --agent-tab-bg-active: linear-gradient(140deg, rgba(59,130,246,.45), rgba(37,99,235,.22));
+  --agent-tab-border: rgba(59,130,246,.42);
+  --agent-tab-border-hover: rgba(59,130,246,.56);
+  --agent-tab-border-active: rgba(59,130,246,.68);
+  --agent-tab-shadow: 0 8px 22px rgba(37,99,235,.22);
+  --agent-tab-shadow-hover: 0 12px 30px rgba(37,99,235,.28);
+  --agent-tab-shadow-active: 0 20px 40px rgba(37,99,235,.32);
+  --agent-tab-color: #f8fafc;
+  --agent-tab-color-hover: #f8fafc;
+  --agent-tab-color-active: #f8fafc;
+}
+.chat-header .agent-selector .button-tab.agent--nexus{
+  --agent-tab-bg: linear-gradient(140deg, rgba(34,197,94,.22), rgba(15,118,110,.08));
+  --agent-tab-bg-hover: linear-gradient(140deg, rgba(34,197,94,.3), rgba(15,118,110,.16));
+  --agent-tab-bg-active: linear-gradient(140deg, rgba(34,197,94,.45), rgba(15,118,110,.22));
+  --agent-tab-border: rgba(34,197,94,.38);
+  --agent-tab-border-hover: rgba(34,197,94,.52);
+  --agent-tab-border-active: rgba(34,197,94,.62);
+  --agent-tab-shadow: 0 8px 22px rgba(34,197,94,.2);
+  --agent-tab-shadow-hover: 0 12px 30px rgba(34,197,94,.26);
+  --agent-tab-shadow-active: 0 20px 40px rgba(34,197,94,.3);
+  --agent-tab-color: #f8fafc;
+  --agent-tab-color-hover: #f8fafc;
+  --agent-tab-color-active: #f8fafc;
+}
+.chat-header .agent-selector .button-tab.agent--global{
+  --agent-tab-bg: linear-gradient(140deg, rgba(250,204,21,.3), rgba(253,224,71,.12));
+  --agent-tab-bg-hover: linear-gradient(140deg, rgba(250,204,21,.38), rgba(253,224,71,.18));
+  --agent-tab-bg-active: linear-gradient(140deg, rgba(250,204,21,.5), rgba(253,224,71,.24));
+  --agent-tab-border: rgba(250,204,21,.45);
+  --agent-tab-border-hover: rgba(250,204,21,.6);
+  --agent-tab-border-active: rgba(250,204,21,.72);
+  --agent-tab-shadow: 0 8px 22px rgba(250,204,21,.22);
+  --agent-tab-shadow-hover: 0 12px 30px rgba(250,204,21,.28);
+  --agent-tab-shadow-active: 0 20px 40px rgba(250,204,21,.32);
+  --agent-tab-color: #0f172a;
+  --agent-tab-color-hover: #0f172a;
+  --agent-tab-color-active: #0f172a;
+}
+.chat-header .agent-selector .button-tab.agent--assistant{
+  --agent-tab-bg: linear-gradient(140deg, rgba(71,85,105,.36), rgba(15,23,42,.6));
+  --agent-tab-bg-hover: linear-gradient(140deg, rgba(71,85,105,.44), rgba(15,23,42,.68));
+  --agent-tab-bg-active: linear-gradient(140deg, rgba(71,85,105,.54), rgba(15,23,42,.75));
+  --agent-tab-border: rgba(148,163,184,.38);
+  --agent-tab-border-hover: rgba(148,163,184,.5);
+  --agent-tab-border-active: rgba(148,163,184,.6);
+  --agent-tab-shadow: 0 8px 20px rgba(15,23,42,.28);
+  --agent-tab-shadow-hover: 0 12px 30px rgba(15,23,42,.32);
+  --agent-tab-shadow-active: 0 18px 36px rgba(15,23,42,.36);
+  --agent-tab-color: #e2e8f0;
+  --agent-tab-color-hover: #f8fafc;
+  --agent-tab-color-active: #f8fafc;
+}
+
 .chat-header-right{
   display:flex; align-items:center; gap:12px;
 }
@@ -1125,7 +1209,7 @@
   border:1px solid rgba(255,255,255,.12);
   box-shadow: var(--shadow-soft);
 }
-/* Petits écrans */
+/* Petits Ã©crans */
 @media (max-width: 760px){
   .chat-container.card{
     height: auto;
@@ -1146,12 +1230,13 @@
   .chat-header-left{
     gap:12px;
   }
-  .chat-header .tabs-container{
-    gap:6px;
+  .chat-header .tabs-container,
+  .chat-container .tabs-container{
+    gap:8px;
     padding:0;
   }
   .chat-header .agent-selector .button-tab{
-    padding:4px 10px;
+    padding:.42rem 1rem;
     font-size:.68rem;
     letter-spacing:.12em;
   }
@@ -1167,7 +1252,7 @@
     --input-height: 60px;
   }
   .chat-header{
-    padding:12px;
+    padding:10px;
     flex-direction:column;
     align-items:flex-start;
     gap:12px;
@@ -1216,13 +1301,14 @@
   .chat-title{
     font-size:.95rem;
   }
-  .chat-header .tabs-container{
-    gap:4px;
-    padding:2px 4px;
-    border-radius:14px;
+  .chat-header .tabs-container,
+  .chat-container .tabs-container{
+    gap:6px;
+    padding:0;
+    border-radius:16px;
   }
   .chat-header .agent-selector .button-tab{
-    padding:4px 9px;
+    padding:.36rem .9rem;
     font-size:.62rem;
     letter-spacing:.14em;
   }
@@ -1297,3 +1383,7 @@
     height:44px;
   }
 }
+
+
+
+
