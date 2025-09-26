@@ -3,8 +3,8 @@
 ## Backend
 - **`main.py`** : instancie `ServiceContainer`, exécute migrations SQLite, monte routers REST (`/api/*`) et WS (`/ws/{session_id}`), gère middleware deny-list + statiques.
 - **`containers.py`** : centralise la DI (DB, `SessionManager`, `ConnectionManager`, `VectorService`, `MemoryAnalyzer`, `ChatService`, `DocumentService`, `DebateService`, `DashboardService`).
-- **`features/auth/service.py`** : gère l'allowlist email, génère les JWT locaux (HS256, 7 jours), trace les sessions (`auth_sessions`) et expose la révocation + métadonnées OTP.
-- **`features/auth/router.py`** : endpoints login/logout (`POST /api/auth/*`), opérations admin (allowlist, sessions) et branche le rate limiting côté FastAPI.
+- **`features/auth/service.py`** : gère l'allowlist email, génère les JWT locaux (HS256, 7 jours), trace les sessions (`auth_sessions`), expose la révocation + métadonnées OTP **et fournit** `dev_login` (auto-session DEV via `AUTH_DEV_MODE=1` & `AUTH_DEV_DEFAULT_EMAIL`).
+- **`features/auth/router.py`** : endpoints login/logout (`POST /api/auth/*`), opérations admin (allowlist, sessions), route DEV (`POST /api/auth/dev/login`) et branche le rate limiting côté FastAPI.
 - **`features/auth/rate_limiter.py`** : garde-fou IP+email (fenêtre glissante), utilisé par le router pour limiter les tentatives.
 - **`features/chat/router.py`** : REST threads/messages, montage WS ; valide JWT (`get_user_id`) ; fallback REST si WS indisponible.
 - **`features/chat/service.py`** : orchestration multi-agents (ordre préférentiel Google → Anthropic → OpenAI), injection mémoire/RAG, diffusion WS (`ws:chat_stream_*`, `ws:model_info`, `ws:memory_banner`).
@@ -24,7 +24,7 @@
 - **`features/references/references.js`** : module 'A propos' (markdown + viewer) + galerie horizontale des copilotes (Anima/Neo/Nexus) avec ancrages vers `/docs/agents-profils.md`.
 - **`features/auth/auth-admin-module.js`** : interface admin (allowlist, sessions, révocation), réservée aux emails listés, s'appuie sur les endpoints `/api/auth/admin/*`.
 - **`features/admin/admin.js`** : point d'entree dynamique pour AuthAdminModule, gere mount/unmount et expose l'API attendue par App.loadModule (charge uniquement les roles admin).
-- **`shared/api-client.js`** : `fetchWithAuth` (Authorization Bearer), gère erreurs `auth:missing`, uniformise réponses.
+- **`shared/api-client.js`** : `fetchWithAuth` (Authorization Bearer), gère erreurs `auth:missing`, uniformise réponses et expose `authDevLogin()` pour le bypass DEV.
 - **`features/chat/chat-module.js`** : synchronise state threads ↔ UI, gère envoi message (WS + watchdog REST), toasts, toggles RAG/mémoire.
 - **`features/chat/chat-ui.js`** : rendu messages, sources RAG, badges mémoire (STM/LTM, modèle), actions `Analyser` / `Clear`, overlay « Connexion requise » quand l'auth est absente.
 - **`features/documents/`** : drag-and-drop, upload multi, rafraîchissement liste, suppressions.

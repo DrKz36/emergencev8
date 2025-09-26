@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from typing import Optional
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 SRC_DIR = ROOT_DIR / "src"
@@ -27,7 +28,13 @@ class _Container:
         return self._auth_service
 
 
-async def _build_app(db_path: Path, admin_email: str) -> tuple[FastAPI, AuthService, DatabaseManager]:
+async def _build_app(
+    db_path: Path,
+    admin_email: str,
+    *,
+    dev_mode: bool = False,
+    dev_default_email: Optional[str] = None,
+) -> tuple[FastAPI, AuthService, DatabaseManager]:
     db = DatabaseManager(str(db_path))
     await schema.create_tables(db)
     config = AuthConfig(
@@ -36,6 +43,8 @@ async def _build_app(db_path: Path, admin_email: str) -> tuple[FastAPI, AuthServ
         audience="test-audience",
         token_ttl_seconds=3600,
         admin_emails={admin_email},
+        dev_mode=dev_mode,
+        dev_default_email=dev_default_email,
     )
     auth_service = AuthService(db_manager=db, config=config)
     await auth_service.bootstrap()
@@ -59,6 +68,7 @@ def test_login_logout_flow(tmp_path):
             resp = await client.post("/api/auth/login", json={"email": admin_email, "password": admin_password})
             assert resp.status_code == 200
             login_body = LoginResponse(**resp.json())
+            assert login_body.email == admin_email
             assert resp.cookies.get("id_token") == login_body.token
             assert resp.cookies.get("emergence_session_id") == login_body.session_id
             set_cookie_headers = [value.lower() for value in resp.headers.get_list("set-cookie")]
@@ -116,3 +126,50 @@ def test_login_wrong_password(tmp_path):
 
     asyncio.run(scenario())
 
+
+
+
+def test_dev_login_auto_session(tmp_path):
+    async def scenario():
+        admin_email = "admin@example.com"
+        app, auth_service, db = await _build_app(
+            tmp_path / "auth-dev-login.db",
+            admin_email,
+            dev_mode=True,
+            dev_default_email="dev@example.com",
+        )
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            resp = await client.post("/api/auth/dev/login")
+            assert resp.status_code == 200
+            body = LoginResponse(**resp.json())
+            assert body.email == "dev@example.com"
+            assert resp.cookies.get("id_token") == body.token
+            assert resp.cookies.get("emergence_session_id") == body.session_id
+
+            session_row = await db.fetch_one(
+                "SELECT email FROM auth_sessions WHERE id = ?",
+                (body.session_id,),
+            )
+            assert session_row is not None
+            assert session_row["email"] == "dev@example.com"
+
+        await db.disconnect()
+
+    asyncio.run(scenario())
+
+
+def test_dev_login_disabled_returns_404(tmp_path):
+    async def scenario():
+        admin_email = "admin@example.com"
+        app, auth_service, db = await _build_app(tmp_path / "auth-dev-disabled.db", admin_email)
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            resp = await client.post("/api/auth/dev/login")
+            assert resp.status_code == 404
+
+        await db.disconnect()
+
+    asyncio.run(scenario())

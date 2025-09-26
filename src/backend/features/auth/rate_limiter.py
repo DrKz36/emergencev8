@@ -4,7 +4,7 @@ import asyncio
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Deque, Dict, Tuple
+from typing import Deque, Dict
 
 
 class RateLimitExceeded(Exception):

@@ -73,26 +73,56 @@ class AuthService:
         if not password_hash or not self._verify_password(candidate_password, password_hash):
             raise AuthError("Identifiants invalides.", status_code=401)
 
+        role = allow_row.get("role") or "member"
+
+        session_response = await self._issue_session(
+            normalized,
+            role,
+            ip_address,
+            user_agent,
+            event_type="login",
+            audit_metadata={"source": "password"},
+            session_metadata={"source": "password"},
+        )
+        await self.rate_limiter.reset(normalized, ip_address)
+        return session_response
+
+    async def _issue_session(
+        self,
+        email: str,
+        role: str,
+        ip_address: Optional[str],
+        user_agent: Optional[str],
+        *,
+        event_type: str,
+        audit_metadata: Optional[dict[str, Any]] = None,
+        session_metadata: Optional[dict[str, Any]] = None,
+        claims_extra: Optional[dict[str, Any]] = None,
+    ) -> LoginResponse:
         now = self._now()
         expires_at = now + timedelta(seconds=self.config.token_ttl_seconds)
         session_id = str(uuid4())
-        role = allow_row.get("role") or "member"
-
         claims = {
             "iss": self.config.issuer,
             "aud": self.config.audience,
-            "sub": self._hash_subject(normalized),
-            "email": normalized,
+            "sub": self._hash_subject(email),
+            "email": email,
             "role": role,
             "sid": session_id,
             "iat": int(now.timestamp()),
             "exp": int(expires_at.timestamp()),
         }
+        if claims_extra:
+            for key, value in claims_extra.items():
+                if value is not None:
+                    claims[key] = value
         token = jwt.encode(claims, self.config.secret, algorithm="HS256")
 
-        metadata: dict[str, Any] = {}
+        session_meta: dict[str, Any] = {}
+        if session_metadata:
+            session_meta.update({k: v for k, v in session_metadata.items() if v is not None})
         if user_agent:
-            metadata["user_agent"] = user_agent
+            session_meta.setdefault("user_agent", user_agent)
 
         await self.db.execute(
             """
@@ -101,22 +131,65 @@ class AuthService:
             """,
             (
                 session_id,
-                normalized,
+                email,
                 role,
                 ip_address,
                 user_agent,
                 now.isoformat(),
                 expires_at.isoformat(),
-                json.dumps(metadata) if metadata else None,
+                json.dumps(session_meta) if session_meta else None,
             ),
         )
-        await self._write_audit(
-            "login",
-            email=normalized,
-            metadata={"session_id": session_id, "ip": ip_address},
+
+        audit_meta: dict[str, Any] = {"session_id": session_id}
+        if ip_address:
+            audit_meta["ip"] = ip_address
+        if audit_metadata:
+            audit_meta.update({k: v for k, v in audit_metadata.items() if v is not None})
+
+        await self._write_audit(event_type, email=email, metadata=audit_meta)
+        return LoginResponse(token=token, expires_at=expires_at, role=role, session_id=session_id, email=email)
+
+    async def dev_login(self, email: Optional[str], ip_address: Optional[str], user_agent: Optional[str]) -> LoginResponse:
+        if not self.config.dev_mode:
+            raise AuthError("Mode dev desactive.", status_code=403)
+
+        candidate = self._normalize_email(email or "")
+        env_email = self._normalize_email(self.config.dev_default_email or "")
+        if not candidate and env_email:
+            candidate = env_email
+        if not candidate and self.config.admin_emails:
+            candidate = next(iter(sorted(self.config.admin_emails)))
+        if not candidate:
+            candidate = "dev@local"
+        candidate = self._normalize_email(candidate)
+
+        existing = await self._get_allowlist_row(candidate)
+        desired_role = "admin"
+        note = existing.get("note") if existing and existing.get("note") else "dev:auto"
+
+        await self._upsert_allowlist(
+            candidate,
+            role=desired_role,
+            note=note,
+            actor="dev-login",
         )
-        await self.rate_limiter.reset(normalized, ip_address)
-        return LoginResponse(token=token, expires_at=expires_at, role=role, session_id=session_id)
+
+        refreshed = await self._get_allowlist_row(candidate)
+        if refreshed:
+            refreshed_role = refreshed.get("role")
+            if isinstance(refreshed_role, str) and refreshed_role.strip():
+                desired_role = refreshed_role.strip()
+
+        return await self._issue_session(
+            candidate,
+            desired_role or "admin",
+            ip_address,
+            user_agent,
+            event_type="login:dev",
+            audit_metadata={"mode": "dev", "source": "auto"},
+            session_metadata={"source": "dev"},
+        )
 
     async def logout(self, session_id: str, actor: Optional[str] = None) -> bool:
         session = await self._fetch_one_dict(
@@ -307,11 +380,12 @@ class AuthService:
         if effective_role not in {"member", "admin"}:
             raise AuthError("Role invalide. Utiliser 'member' ou 'admin'.", status_code=400)
 
+        effective_note: Optional[str] = None
         if note is not None:
-            effective_note = note.strip() if isinstance(note, str) else note
+            effective_note = note.strip() if isinstance(note, str) else str(note)
         else:
-            effective_note = existing.get("note") if existing else None
-
+            existing_note = existing.get("note") if existing else None
+            effective_note = existing_note if isinstance(existing_note, str) else None
         password_hash: Optional[str] = None
         password_updated_at: Optional[str] = None
         password_length: Optional[int] = None
@@ -487,12 +561,26 @@ class AuthService:
         except Exception as exc:
             logger.warning("Auth audit log failure: %s", exc)
 
-    async def _fetch_one_dict(self, query: str, params: Sequence[Any] | tuple[Any, ...] | None = None) -> Optional[dict[str, Any]]:
-        row = await self.db.fetch_one(query, params)
+    def _prepare_params(self, params: Sequence[Any] | None) -> tuple[Any, ...] | None:
+        if params is None:
+            return None
+        if isinstance(params, tuple):
+            return params
+        if isinstance(params, (str, bytes, bytearray)):
+            return (params,)
+        try:
+            return tuple(params)
+        except TypeError:
+            return (params,)  # type: ignore[arg-type]
+
+    async def _fetch_one_dict(self, query: str, params: Sequence[Any] | None = None) -> Optional[dict[str, Any]]:
+        tuple_params = self._prepare_params(params)
+        row = await self.db.fetch_one(query, tuple_params)
         return self._row_to_dict(row)
 
-    async def _fetch_all_dicts(self, query: str, params: Sequence[Any] | tuple[Any, ...] | None = None) -> list[dict[str, Any]]:
-        rows = await self.db.fetch_all(query, params)
+    async def _fetch_all_dicts(self, query: str, params: Sequence[Any] | None = None) -> list[dict[str, Any]]:
+        tuple_params = self._prepare_params(params)
+        rows = await self.db.fetch_all(query, tuple_params)
         return [d for d in (self._row_to_dict(r) for r in rows or []) if d]
 
     def _row_to_dict(self, row) -> Optional[dict[str, Any]]:
@@ -587,6 +675,8 @@ def build_auth_config_from_env() -> AuthConfig:
     admin_raw = os.getenv("AUTH_ADMIN_EMAILS", "")
     admin_emails = {email.strip().lower() for email in admin_raw.split(',') if email.strip()}
     dev_mode = str(os.getenv("AUTH_DEV_MODE", "0")).strip().lower() in TRUTHY
+    dev_default_email_raw = os.getenv("AUTH_DEV_DEFAULT_EMAIL", "") or ""
+    dev_default_email = dev_default_email_raw.strip().lower() or None
     return AuthConfig(
         secret=secret,
         issuer=issuer,
@@ -594,10 +684,6 @@ def build_auth_config_from_env() -> AuthConfig:
         token_ttl_seconds=ttl_days * 24 * 60 * 60,
         admin_emails=admin_emails,
         dev_mode=dev_mode,
+        dev_default_email=dev_default_email,
     )
-
-
-
-
-
 

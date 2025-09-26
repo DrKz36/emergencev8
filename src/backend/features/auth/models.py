@@ -13,6 +13,7 @@ class AuthConfig(BaseModel):
     token_ttl_seconds: int = Field(default=7 * 24 * 60 * 60)
     admin_emails: set[str] = Field(default_factory=set)
     dev_mode: bool = False
+    dev_default_email: Optional[str] = None
 
     model_config = {
         "frozen": True,
@@ -30,6 +31,11 @@ class LoginResponse(BaseModel):
     expires_at: datetime
     role: str
     session_id: str
+    email: str
+
+
+class DevLoginRequest(BaseModel):
+    email: Optional[str] = None
 
 
 class SessionStatusResponse(BaseModel):

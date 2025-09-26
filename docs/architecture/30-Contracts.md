@@ -67,7 +67,8 @@
 
 ## 2) REST Endpoints majeurs
 
-- `POST /api/auth/login` -> 200 `{ token, expires_at, role, session_id }` (body `{ email, password, meta? }`). `Set-Cookie` renvoie `id_token` + `emergence_session_id` avec `SameSite=Lax`. 401 si identifiants invalides ou email hors allowlist, 429 si rate-limit depasse, 423 si compte revoque.
+- `POST /api/auth/login` -> 200 `{ token, expires_at, role, session_id, email }` (body `{ email, password, meta? }`). `Set-Cookie` renvoie `id_token` + `emergence_session_id` avec `SameSite=Lax`. 401 si identifiants invalides ou email hors allowlist, 429 si rate-limit depasse, 423 si compte revoque.
+- POST /api/auth/dev/login -> 200 { token, expires_at, role, session_id, email } (body optionnel { email? }, accessible uniquement si AUTH_DEV_MODE=1; 404 sinon).
 - `POST /api/auth/logout` -> 204 (idempotent). Payload optionnel `{ session_id }` pour marquer la session `revoked_at`. Réponse: `Set-Cookie` vide (`id_token=`, `emergence_session_id=`) avec `Max-Age=0` et `SameSite=Lax` pour forcer la purge navigateur.
 - `GET /api/auth/session` -> 200 `{ email, role, expires_at, issued_at }` (verifie token courant).
 - `GET /api/auth/admin/allowlist` -> 200 `{ items:[...], total, page, page_size, has_more, status, query }` (paramètres `status=active|revoked|all`, `search`, `page`, `page_size`; compat hérité `include_revoked=true`).
@@ -118,6 +119,8 @@
 - Révocation : `auth_sessions.revoked_at` + liste en mémoire purgée toutes les 5 minutes.
 - Les claims enrichis exposent `session_revoked` et `revoked_at` le cas échéant; le handshake WS refuse une session révoquée.
 - OTP futur : champs réservés (`otp_secret`, `otp_expires_at`, `otp_channel`) pour SMS/OTP; routes resteront compatibles.
+
+
 
 
 

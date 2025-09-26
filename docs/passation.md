@@ -88,7 +88,7 @@
 - Correctif: `main.js` réintroduit `clearToken()` pour purger les tokens navigateur lors d’un logout ou backend HS (supprime le warning console).
 ## Session 2025-09-26 - Auth password mode planning
 - Objectif: préparer la bascule vers une authentification email + mot de passe sans dépendance GIS (mode dev).
-- Étape 1: activer `AUTH_DEV_MODE=1` via `.env.local` et documenter le flux dev-only.
+- Étape 1: activer `AUTH_DEV_MODE=1` (et optionnellement `AUTH_DEV_DEFAULT_EMAIL`) via `.env.local`, puis valider le flux d'auto-login (plus d'overlay Home).
 - Étape 2: concevoir la migration `auth_allowlist` (`password_hash`, `password_updated_at`) + script de seed pour l’admin.
 - Étape 3: adapter `AuthService.login` et `/api/auth/login` pour accepter `{ email, password }` (bcrypt/argon2) tout en conservant l’allowlist.
 - Étape 4: mettre à jour la landing front (`home-module.js`) avec champ mot de passe + messages i18n et ajuster l’API client.

@@ -9,10 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from backend.features.auth.models import (
     AllowlistCreatePayload,
-    AllowlistEntry,
     AllowlistListResponse,
     AllowlistMutationResponse,
     LoginRequest,
+    DevLoginRequest,
     LoginResponse,
     LogoutPayload,
     SessionRevokePayload,
@@ -79,6 +79,7 @@ def _set_blank_cookie(response: Response, key: str, *, secure: bool) -> None:
     )
 
 
+
 @router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
 async def login(
     payload: LoginRequest,
@@ -89,7 +90,12 @@ async def login(
     client_host = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
     try:
-        login_result = await auth_service.login(payload.email, payload.password, client_host, user_agent)
+        login_result = await auth_service.login(
+            payload.email,
+            payload.password,
+            client_host,
+            user_agent,
+        )
     except AuthError as exc:
         raise _map_auth_error(exc)
 
@@ -117,6 +123,48 @@ async def login(
     )
     return login_result
 
+@router.post("/dev/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
+async def dev_login(
+    request: Request,
+    response: Response,
+    payload: Optional[DevLoginRequest] = None,
+    auth_service: AuthService = Depends(get_auth_service),
+) -> LoginResponse:
+    if not getattr(auth_service.config, "dev_mode", False):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+
+    client_host = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    email = payload.email if payload else None
+
+    try:
+        login_result = await auth_service.dev_login(email, client_host, user_agent)
+    except AuthError as exc:
+        raise _map_auth_error(exc)
+
+    max_age = int(auth_service.config.token_ttl_seconds)
+    cookie_secure = not bool(getattr(auth_service.config, "dev_mode", False))
+    response.set_cookie(
+        key="id_token",
+        value=login_result.token,
+        max_age=max_age,
+        expires=login_result.expires_at,
+        path="/",
+        secure=cookie_secure,
+        httponly=False,
+        samesite="lax",
+    )
+    response.set_cookie(
+        key="emergence_session_id",
+        value=login_result.session_id,
+        max_age=max_age,
+        expires=login_result.expires_at,
+        path="/",
+        secure=cookie_secure,
+        httponly=False,
+        samesite="lax",
+    )
+    return login_result
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
@@ -287,7 +335,3 @@ async def revoke_session(
             close_code=4401,
         )
     return SessionRevokeResult(updated=1 if updated else 0)
-
-
-
-

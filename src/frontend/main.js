@@ -777,6 +777,8 @@ class EmergenceClient {
     this.connectWs = () => {};
     this.storageListener = null;
     this.appReadyWatchdog = null;
+    this.devAutoAttempted = false;
+    this.devAutoLogged = false;
     this.initialize();
   }
 
@@ -841,8 +843,15 @@ class EmergenceClient {
     const tokenFromUrl = pickTokenFromLocation();
     if (tokenFromUrl) saveToken(tokenFromUrl);
 
+    let devAutoLogged = false;
+    if (!hasToken()) {
+      devAutoLogged = await this.tryDevAutoLogin();
+    }
+
     if (hasToken()) {
-      this.handleTokenAvailable('startup');
+      if (!devAutoLogged && !this.devAutoLogged) {
+        this.handleTokenAvailable('startup');
+      }
     } else {
       this.markAuthRequired();
       this.showHome();
@@ -853,6 +862,37 @@ class EmergenceClient {
     }
 
     console.log('? Client ÉMERGENCE prêt. En attente du signal APP_READY...');
+  }
+
+  async tryDevAutoLogin() {
+    if (this.devAutoAttempted) return false;
+    this.devAutoAttempted = true;
+
+    try {
+      const data = await api.authDevLogin();
+      if (!data || typeof data !== 'object' || !data.token) {
+        return false;
+      }
+
+      this.devAutoLogged = true;
+      const payload = {
+        token: data.token,
+        role: data.role ?? null,
+        sessionId: data.session_id ?? data.sessionId ?? null,
+        expiresAt: data.expires_at ?? data.expiresAt ?? null,
+        email: data.email ?? null,
+        response: data,
+      };
+      this.handleLoginSuccess(payload);
+      return true;
+    } catch (error) {
+      const status = error?.status ?? error?.response?.status;
+      if (status && [401, 403, 404, 405].includes(status)) {
+        return false;
+      }
+      console.warn('[main] Dev auto-login failed', error);
+      return false;
+    }
   }
 
   installStorageListener() {
@@ -1016,6 +1056,8 @@ class EmergenceClient {
 
   handleLogout() {
     clearToken();
+    this.devAutoLogged = false;
+    this.devAutoAttempted = false;
     this.markAuthRequired();
     this.showHome();
     this.installStorageListener();
@@ -1039,6 +1081,8 @@ class EmergenceClient {
   window[FLAG] = true;
   window.emergenceApp = new EmergenceClient();
 })();
+
+
 
 
 

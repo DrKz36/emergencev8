@@ -875,9 +875,12 @@ class ChatService:
                     filtered_sources: List[Dict[str, Any]] = []
                     for source in rag_sources:
                         raw_doc_id = source.get("document_id")
-                        try:
-                            doc_id_int = int(raw_doc_id)
-                        except (TypeError, ValueError):
+                        if isinstance(raw_doc_id, (str, int)):
+                            try:
+                                doc_id_int = int(raw_doc_id)
+                            except (TypeError, ValueError):
+                                doc_id_int = None
+                        else:
                             doc_id_int = None
                         if doc_id_int is None or doc_id_int in allowed_doc_ids:
                             filtered_sources.append(source)

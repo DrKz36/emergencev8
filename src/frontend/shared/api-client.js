@@ -29,6 +29,7 @@ const MEMORY_CLEAR =
 
 const AUTH_LOGIN = (API_ENDPOINTS && API_ENDPOINTS.AUTH_LOGIN) ? API_ENDPOINTS.AUTH_LOGIN : '/api/auth/login';
 const AUTH_SESSION = (API_ENDPOINTS && API_ENDPOINTS.AUTH_SESSION) ? API_ENDPOINTS.AUTH_SESSION : '/api/auth/session';
+const AUTH_DEV_LOGIN = '/api/auth/dev/login';
 const AUTH_ADMIN_ALLOWLIST = (API_ENDPOINTS && API_ENDPOINTS.AUTH_ADMIN_ALLOWLIST) ? API_ENDPOINTS.AUTH_ADMIN_ALLOWLIST : '/api/auth/admin/allowlist';
 const AUTH_ADMIN_SESSIONS = (API_ENDPOINTS && API_ENDPOINTS.AUTH_ADMIN_SESSIONS) ? API_ENDPOINTS.AUTH_ADMIN_SESSIONS : '/api/auth/admin/sessions';
 
@@ -311,6 +312,14 @@ export const api = {
       payload.meta = meta;
     }
     return fetchApi(AUTH_LOGIN, { method: 'POST', body: payload, signal });
+  },
+  authDevLogin: async ({ email } = {}) => {
+    const safeEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const options = { method: 'POST' };
+    if (safeEmail) {
+      options.body = { email: safeEmail };
+    }
+    return fetchApi(AUTH_DEV_LOGIN, options);
   },
   authSession: () => fetchApi(AUTH_SESSION),
   authAdminListAllowlist: ({ status, includeRevoked = false, query, search, page, pageSize } = {}) => {

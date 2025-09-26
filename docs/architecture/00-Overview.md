@@ -25,7 +25,7 @@
   - **Modèles SentenceTransformer** : embeddings pour RAG et mémoire.
 
 ## 3) Invariants & Qualité
-- **Auth & WS** : aucun acces API critique ni WS sans JWT valide (sauf mode dev). Handshake rejette (4401/1008) si token manquant et le front relaie `auth:missing` vers le toast deconnexion.
+- **Auth & WS** : aucun accès API critique ni WS sans JWT valide (sauf mode dev). Handshake rejette (4401/1008) si token manquant et le front relaie `auth:missing` vers le toast déconnexion. En DEV (`AUTH_DEV_MODE=1`), `/api/auth/dev/login` émet un JWT local auto-consommé par le front (pas d'overlay).
 - **Thread bootstrap** : a l'ouverture, le front garantit un thread `type=chat` (REST) puis hydrate les messages (limite 50). Si `GET /api/threads/{id}` renvoie 403 ou 404, l'app regenere un thread `type=chat` et relance le chargement sans dupliquer les toasts.
 - **RAG et Memoire** : activation explicite (toggle) ; bandeau sources cote UI ; consolidation memoire declenchee manuellement ou auto (gardener) ; `memory:clear` purge STM puis LTM filtree ; meta WS enrichies (`selected_doc_ids`, `rag_status`).
 - **Débat** : tours orchestrés côté back, isolation stricte des contextes agents, diffusion WS (`ws:debate_*`).

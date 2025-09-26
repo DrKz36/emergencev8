@@ -149,11 +149,12 @@ async def _get_claims_from_ws(ws: WebSocket) -> Dict[str, Any]:
     cached = getattr(ws.state, "auth_claims", None)
     if isinstance(cached, dict):
         return cached
-    token = _get_ws_token_from_headers(ws)
-    token = _normalize_bearer_value(token)
-    if not token or not _looks_like_jwt(token):
+    token_raw = _get_ws_token_from_headers(ws)
+    token = _normalize_bearer_value(token_raw) if isinstance(token_raw, str) else token_raw
+    token_str = str(token) if token is not None else ""
+    if not token_str or not _looks_like_jwt(token_str):
         raise HTTPException(status_code=401, detail="WS: token absent (Authorization/subprotocol/cookie/query).")
-    claims = await _resolve_token_claims(token, ws)
+    claims = await _resolve_token_claims(token_str, ws)
     setattr(ws.state, "auth_claims", claims)
     return claims
 
@@ -357,7 +358,7 @@ async def get_user_id_for_ws(ws: WebSocket, user_id: Optional[str] = Query(defau
 
     try:
         claims = await _get_claims_from_ws(ws)
-    except HTTPException as exc:
+    except HTTPException:
         if dev or dev_mode_active or dev_bypass:
             fallback = user_id or ws.query_params.get('user_id')
             if fallback:
