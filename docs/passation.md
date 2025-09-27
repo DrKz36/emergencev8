@@ -1,10 +1,18 @@
+## Session 2025-09-27 - Migration session isolation
+- Migration `20250928_session_isolation.sql` rendue idempotente (suppression des `ALTER TABLE` + propagation vers `core/migrations`).
+- Stockage local remis a zero (`src/backend/data/db/` + `src/backend/data/vector_store/`) puis backend relance via `pwsh -File scripts/run-backend.ps1`; toutes les migrations passent sans stacktrace.
+- Nouvelle base SQLite regeneree; `migrations` contient bien l'entree `20250928_session_isolation.sql`.
+
 # Passation Courante
 
 ## Backend & QA
 - Backend verifie via `pwsh -File scripts/run-backend.ps1` (logs OK, WS et bannieres auth observes).
 - Utiliser `python scripts/seed_admin.py --email <admin> --password <motdepasse>` pour initialiser ou mettre a jour le mot de passe admin en local.
 - `tests/run_all.ps1` : dernier passage indique OK (voir session precedente, aucun echec signale).
-- `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest124 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1"` : OK (27/09), flux `ws:chat_stream_end` + upload document_id=57 sans 5xx. Logs `#<-` → `docs/assets/memoire/smoke-ws-rag.log`.
+- `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest124 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1"` : OK (27/09) — flux `ws:chat_stream_end` (OpenAI gpt-4o-mini) + upload document_id=57 sans 5xx. Logs `#<-` → `docs/assets/memoire/smoke-ws-rag.log`.
+- `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest-ws-send-20250927 -MsgType ws:chat_send -UserId "smoke_rag&dev_bypass=1"` : KO (27/09) — handshake accepté mais réponse `ws:error` (`Type inconnu: ws:chat_send`). Logs `#<-` → `docs/assets/memoire/smoke-ws-rag-ws-chat_send.log`.
+- `scripts/smoke/smoke-ws-3msgs.ps1 -SessionId ragtest-3msgs-20250927 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1"` : OK (27/09) — 3 messages consécutifs, `ws:chat_stream_start` x3 puis `ws:chat_stream_end`; aucun HTTP 5xx côté documents/uploads (`backend.err.log` inchangé). Logs `#<-` → `docs/assets/memoire/smoke-ws-3msgs.log`.
+- Le tableau allowlist du module *Admin* expose desormais un bouton `Supprimer` par entree : confirmation navigateur, appel `DELETE /api/auth/admin/allowlist/{email}`, toast `Entree supprimee.` puis rechargement de la pagination active.
 
 ## Auth allowlist - mots de passe (2025-09-27)
 - Module *Admin* cote frontend (navigation principale) reserve aux comptes `role=admin`. La liste est paginee, filtrable (`Actives`, `Revoquees`, `Toutes`) et propose une recherche email/note + resumes (`total`, `page`). Les toasts front confirment les sauvegardes et la copie du mot de passe genere.

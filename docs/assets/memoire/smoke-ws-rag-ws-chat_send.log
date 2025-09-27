@@ -1,0 +1,4 @@
+#<- session-id=ragtest-ws-send-20250927
+#<- WS handshake ok (dev_bypass=1, user_id=smoke_rag) -> ws:session_established
+#<- ws:error recu (Type inconnu: ws:chat_send) : backend ne supporte pas encore ce type d'enveloppe
+#<- Scenario smoke-ws-rag (ws:chat_send) aborted on 2025-09-27T16:13:09.9730004+02:00

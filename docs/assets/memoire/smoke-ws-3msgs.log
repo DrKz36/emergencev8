@@ -1,0 +1,5 @@
+#<- session-id=ragtest-3msgs-20250927
+#<- WS handshake ok (dev_bypass=1, user_id=smoke_rag) -> ws:session_established
+#<- ws:chat_stream_start x3 + ws:chat_stream_end (provider=openai, model=gpt-4o-mini, fallback=false)
+#<- backend.err.log tail verifie apres run : aucun HTTP 5xx cote documents/uploads
+#<- Scenario smoke-ws-3msgs (MsgType=chat.message) completed on 2025-09-27T16:13:34.6169853+02:00
