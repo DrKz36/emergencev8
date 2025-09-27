@@ -35,6 +35,8 @@
 - **`ChatService` (RAG guardrails)**
   - `_sanitize_doc_ids` filtre les identifiants envoyes par l'UI et supprime les doublons.
   - Les identifiants sont recoupes avec les documents rattaches au thread courant; si aucun ne correspond, le service retombe sur la liste autorisee renvoyee par l'API.
+  - Normalise l'historique (role en lower-case, fallback sur les champs content/message) pour aligner les filtres agent/user.
+  - Injecte le bloc [MEMORY_CONTEXT] en message user (chaine) afin de reutiliser les garde-fous RAG/memoire existants.
   - Les IDs valides sont reinjectees dans `meta.selected_doc_ids` sur `ws:chat_stream_*` et la progression RAG diffusee via `ws:rag_status` (searching/found/idle).
 - **`AuthService`** (features/auth/service.py)
   - Verifie les JWT HS256 et enrichit les claims (`session_revoked`, `revoked_at`) consommes par `get_auth_claims`.

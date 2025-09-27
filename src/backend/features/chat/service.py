@@ -289,6 +289,57 @@ class ChatService:
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
 
+    @staticmethod
+    def _normalize_role_value(role: Any) -> str:
+        if isinstance(role, Role):
+            return role.value
+        if isinstance(role, str):
+            return role.strip().lower()
+        try:
+            value = getattr(role, "value", None)
+            if isinstance(value, str):
+                return value.strip().lower()
+        except Exception:
+            pass
+        return ""
+
+    def _is_user_role(self, role: Any) -> bool:
+        return self._normalize_role_value(role) == Role.USER.value
+
+    def _message_to_dict(self, message: Any) -> Dict[str, Any]:
+        if isinstance(message, dict):
+            payload = dict(message)
+        else:
+            payload = {}
+            for attr in ("model_dump", "dict"):
+                if hasattr(message, attr):
+                    try:
+                        dump = getattr(message, attr)
+                        payload = dump(mode="json") if attr == "model_dump" else dump()
+                        if isinstance(payload, dict):
+                            break
+                        payload = {}
+                    except TypeError:
+                        try:
+                            payload = getattr(message, attr)()
+                            if isinstance(payload, dict):
+                                break
+                            payload = {}
+                        except Exception:
+                            payload = {}
+                    except Exception:
+                        payload = {}
+            if not payload:
+                for key in ("id", "session_id", "role", "content", "message", "agent", "agent_id",
+                            "timestamp", "cost_info", "meta"):
+                    if hasattr(message, key):
+                        payload[key] = getattr(message, key)
+
+        role_value = self._normalize_role_value(payload.get("role"))
+        if role_value:
+            payload["role"] = role_value
+        return payload
+
     def _try_get_user_id(self, session_id: str) -> Optional[str]:
         for attr in ("get_user_id_for_session", "get_user", "get_owner", "get_session_owner"):
             try:
@@ -691,9 +742,18 @@ class ChatService:
                 {"type": "ws:chat_stream_start", "payload": start_payload}, session_id
             )
 
-            history = self.session_manager.get_full_history(session_id)
-            last_user_message_obj = next((m for m in reversed(history) if m.get("role") == Role.USER), None)
-            last_user_message = last_user_message_obj.get("content", "") if last_user_message_obj else ""
+            raw_history = self.session_manager.get_full_history(session_id) or []
+            history = [self._message_to_dict(m) for m in raw_history if m is not None]
+
+            last_user_message_obj = next(
+                (m for m in reversed(history) if self._is_user_role(m.get("role"))),
+                None,
+            )
+            last_user_message = ""
+            if last_user_message_obj:
+                last_user_message = (
+                    str(last_user_message_obj.get("content") or last_user_message_obj.get("message") or "")
+                ).strip()
 
             selected_doc_ids = self._sanitize_doc_ids(doc_ids)
             if not selected_doc_ids and isinstance(last_user_message_obj, dict):
@@ -810,7 +870,7 @@ class ChatService:
 
             injected = bool(memory_context and memory_context.strip())
             if injected:
-                history = [{"role": Role.USER, "content": f"[MEMORY_CONTEXT]\n{memory_context}"}] + history
+                history = [{"role": Role.USER.value, "content": f"[MEMORY_CONTEXT]\n{memory_context}"}] + history
 
             try:
                 await connection_manager.send_personal_message(
