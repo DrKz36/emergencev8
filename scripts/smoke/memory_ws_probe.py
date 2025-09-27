@@ -20,15 +20,16 @@ except Exception:
     raise
 
 
-def compute_ws_url(base: str) -> str:
+def compute_ws_url(base: str, session_id: str | None = None) -> str:
     base = base.strip().rstrip("/")
+    sid = (session_id or "").strip() or str(uuid.uuid4())
     if base.startswith(("https://", "http://")):
         scheme = "wss://" if base.startswith("https://") else "ws://"
         host = base.split("://", 1)[1]
-        return f"{scheme}{host}/ws/{uuid.uuid4()}"
+        return f"{scheme}{host}/ws/{sid}"
     if base.startswith(("wss://", "ws://")):
-        return f"{base.rstrip('/')}/{uuid.uuid4()}"
-    return f"ws://{base.strip('/')}/ws/{uuid.uuid4()}"
+        return f"{base.rstrip('/')}/{sid}"
+    return f"ws://{base.strip('/')}/ws/{sid}"
 
 
 def compute_origin(base: str) -> str:
@@ -42,9 +43,10 @@ def compute_origin(base: str) -> str:
 
 
 class Probe:
-    def __init__(self, base, token=None, timeout=120):
+    def __init__(self, base, token=None, timeout=120, session_id=None):
         self.base = base
-        self.ws_url = compute_ws_url(base)
+        self.session_id = (session_id or "").strip() or str(uuid.uuid4())
+        self.ws_url = compute_ws_url(base, self.session_id)
         self.origin = compute_origin(base)
         self.token = token or os.environ.get("EMERGENCE_ID_TOKEN")
         self.timeout = int(timeout)
@@ -53,7 +55,7 @@ class Probe:
     async def _connect(self):
         # Toujours proposer 'jwt'; ajouter le token si dispo (mimique du front). :contentReference[oaicite:2]{index=2}
         subprotocols = ["jwt"] + ([self.token] if self.token else [])
-        print(f"[probe] connect → {self.ws_url}  (subprotocols={subprotocols}, origin={self.origin})")
+        print(f"[probe] connect → {self.ws_url}  (session_id={self.session_id}, subprotocols={subprotocols}, origin={self.origin})")
         # NB: PAS d'extra_headers (incompatible sur ta version)
         return await websockets.connect(
             self.ws_url,
@@ -193,9 +195,11 @@ async def main():
     ap.add_argument("--text", default=None)
     ap.add_argument("--use-rag", action="store_true")
     ap.add_argument("--timeout", default="120")
+    ap.add_argument("--session-id", dest="session_id", default=None)
     args = ap.parse_args()
 
-    probe = Probe(args.base, token=args.token, timeout=args.timeout)
+    probe = Probe(args.base, token=args.token, timeout=args.timeout, session_id=args.session_id)
+    print(f"[probe] using session_id={probe.session_id}")
     run = args.run.upper()
 
     if run == "A":

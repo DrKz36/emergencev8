@@ -31,8 +31,13 @@ TABLE_DEFINITIONS = [
         char_count INTEGER,
         chunk_count INTEGER,
         error_message TEXT,
-        uploaded_at TEXT NOT NULL
+        uploaded_at TEXT NOT NULL,
+        session_id TEXT NOT NULL
     );
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_documents_session_uploaded
+    ON documents(session_id, uploaded_at DESC);
     """,
     """
     CREATE TABLE IF NOT EXISTS document_chunks (
@@ -40,8 +45,13 @@ TABLE_DEFINITIONS = [
         document_id INTEGER NOT NULL,
         chunk_index INTEGER NOT NULL,
         content TEXT NOT NULL,
+        session_id TEXT NOT NULL,
         FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
     );
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_document_chunks_session
+    ON document_chunks(session_id, document_id);
     """,
     # -- sessions (existant) --
     """
@@ -60,7 +70,8 @@ TABLE_DEFINITIONS = [
     """
     CREATE TABLE IF NOT EXISTS threads (
         id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        user_id TEXT,
         type TEXT NOT NULL CHECK(type IN ('chat','debate')),
         title TEXT,
         agent_id TEXT,
@@ -75,6 +86,10 @@ TABLE_DEFINITIONS = [
     ON threads(user_id, type, updated_at DESC);
     """,
     """
+    CREATE INDEX IF NOT EXISTS idx_threads_session_updated
+    ON threads(session_id, updated_at DESC);
+    """,
+    """
     CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
         thread_id TEXT NOT NULL,
@@ -84,6 +99,7 @@ TABLE_DEFINITIONS = [
         tokens INTEGER,
         meta TEXT,
         created_at TEXT NOT NULL,
+        session_id TEXT NOT NULL,
         FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE
     );
     """,
@@ -92,8 +108,13 @@ TABLE_DEFINITIONS = [
     ON messages(thread_id, created_at);
     """,
     """
+    CREATE INDEX IF NOT EXISTS idx_messages_session_created
+    ON messages(session_id, created_at);
+    """,
+    """
     CREATE TABLE IF NOT EXISTS thread_docs (
         thread_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
         doc_id INTEGER NOT NULL,
         weight REAL DEFAULT 1.0,
         last_used_at TEXT,
@@ -101,6 +122,10 @@ TABLE_DEFINITIONS = [
         FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE,
         FOREIGN KEY (doc_id) REFERENCES documents(id) ON DELETE CASCADE
     );
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_thread_docs_session
+    ON thread_docs(session_id, thread_id, doc_id);
     """,
     """
     CREATE TABLE IF NOT EXISTS auth_allowlist (
@@ -213,6 +238,7 @@ async def _ensure_messages_backward_compat(db: DatabaseManager):
     await _add_column_if_missing(db, "messages", "tokens", "INTEGER")
     await _add_column_if_missing(db, "messages", "meta", "TEXT")
     await _add_column_if_missing(db, "messages", "created_at", "TEXT")
+    await _add_column_if_missing(db, "messages", "session_id", "TEXT")
 
     # Index après rattrapage
     try:
@@ -240,6 +266,36 @@ async def _ensure_allowlist_password_columns(db: DatabaseManager):
         """)
     except Exception as e:
         logger.warning(f"[DDL] Index idx_auth_allowlist_password_updated non cree: {e}")
+
+async def _ensure_session_isolation_columns(db: DatabaseManager):
+    await _add_column_if_missing(db, "threads", "session_id", "TEXT")
+    await _add_column_if_missing(db, "messages", "session_id", "TEXT")
+    await _add_column_if_missing(db, "thread_docs", "session_id", "TEXT")
+    await _add_column_if_missing(db, "documents", "session_id", "TEXT")
+    await _add_column_if_missing(db, "document_chunks", "session_id", "TEXT")
+    try:
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_threads_session_updated
+            ON threads(session_id, updated_at DESC)
+        """)
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_messages_session_created
+            ON messages(session_id, created_at)
+        """)
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_thread_docs_session
+            ON thread_docs(session_id, thread_id, doc_id)
+        """)
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_documents_session_uploaded
+            ON documents(session_id, uploaded_at DESC)
+        """)
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_document_chunks_session
+            ON document_chunks(session_id, document_id)
+        """)
+    except Exception as e:
+        logger.warning(f"[DDL] Index session isolation non cré: {e}")
 
 # ------------------------------------------------------------------------ #
 
@@ -269,6 +325,12 @@ async def create_tables(db_manager: DatabaseManager):
         await _ensure_allowlist_password_columns(db_manager)
     except Exception as e:
         logger.error(f"[DDL] echec backcompat 'auth_allowlist': {e}", exc_info=True)
+        raise
+
+    try:
+        await _ensure_session_isolation_columns(db_manager)
+    except Exception as e:
+        logger.error(f"[DDL] echec backcompat 'session isolation': {e}", exc_info=True)
         raise
 
     logger.info("Toutes les tables/index requis sont en place (avec backcompat au besoin).")

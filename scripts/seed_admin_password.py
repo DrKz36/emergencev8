@@ -1,6 +1,12 @@
 import argparse
 import asyncio
+import sys
 from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SRC_DIR = REPO_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 from backend.core.database.manager import DatabaseManager
 from backend.features.auth.service import AuthService, build_auth_config_from_env
@@ -36,7 +42,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Seed or update an admin password in auth_allowlist.")
     parser.add_argument("--email", required=True, help="Email address to seed/update")
     parser.add_argument("--password", required=True, help="Plain password that will be hashed")
-    parser.add_argument("--db", default="./data/emergence.db", help="Path to the SQLite database")
+    parser.add_argument("--db", default="src/backend/data/db/emergence_v7.db", help="Path to the SQLite database")
     parser.add_argument("--role", default="admin", help="Role to apply when creating the entry (default: admin)")
     parser.add_argument("--note", default=None, help="Optional note stored on the allowlist entry")
     args = parser.parse_args()
@@ -54,4 +60,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

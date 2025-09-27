@@ -2,7 +2,7 @@
 // WebSocketClient V22.3 — queued send + flush onopen (version complète)
 
 import { EVENTS } from '../shared/constants.js';
-import { ensureAuth, getIdToken, clearAuth } from './auth.js';
+import { getIdToken, clearAuth } from './auth.js';
 
 export class WebSocketClient {
   constructor(url, eventBus, stateManager) {
@@ -75,19 +75,21 @@ export class WebSocketClient {
 
     this.eventBus.on?.(EVENTS.WS_SEND || 'ws:send', (frame) => this.send(frame));
 
-    this.eventBus.on?.('auth:login', async (opts) => {
-      const clientId = (opts && typeof opts === 'object') ? (opts.client_id ?? opts.clientId ?? null) : null;
-      await ensureAuth({ interactive: true, clientId });
+    this.eventBus.on?.('auth:login', () => {
       this.connect();
     });
-    this.eventBus.on?.('auth:logout', () => { try { clearAuth(); } catch {} this.close(4001, 'logout'); });
+    this.eventBus.on?.('auth:logout', () => {
+      try { clearAuth(); } catch {}
+      try { if (typeof this.state?.resetForSession === 'function') this.state.resetForSession(null); } catch {}
+      this.close(4001, 'logout');
+    });
 
-    this.eventBus.on?.('auth:missing', async () => {
+    this.eventBus.on?.('auth:missing', () => {
       const now = Date.now();
       if (now - this._authPromptedAt > 4000) {
         this._authPromptedAt = now;
-        await ensureAuth({ interactive: true });
-        this.connect();
+        const token = getIdToken();
+        if (token) this.connect();
       }
     });
   }
@@ -160,18 +162,29 @@ export class WebSocketClient {
   async connect() {
     if (this.websocket && this.websocket.readyState !== WebSocket.CLOSED) return;
 
-    const token = getIdToken() || await ensureAuth({ interactive: false });
+    const rawToken = getIdToken();
+    const token = typeof rawToken === 'string' ? rawToken.trim() : '';
     if (!token) { this.eventBus.emit?.('auth:missing', null); console.warn('[WebSocket] Aucun ID token — connexion WS annulée.'); return; }
 
     let sessionId = this.state?.get?.('websocket.sessionId');
     const sidFromToken = this._extractSessionIdFromToken(token);
     if (sidFromToken && sessionId !== sidFromToken) {
       sessionId = sidFromToken;
-      try { this.state?.set?.('websocket.sessionId', sessionId); } catch {}
+      try {
+        if (typeof this.state?.resetForSession === 'function') {
+          this.state.resetForSession(sessionId);
+        }
+        this.state?.set?.('websocket.sessionId', sessionId);
+      } catch {}
     }
     if (!sessionId) {
       sessionId = crypto?.randomUUID?.() || (Math.random().toString(16).slice(2) + Date.now());
-      this.state?.set?.('websocket.sessionId', sessionId);
+      try {
+        if (typeof this.state?.resetForSession === 'function') {
+          this.state.resetForSession(sessionId);
+        }
+        this.state?.set?.('websocket.sessionId', sessionId);
+      } catch {}
     }
 
     const url = this._buildUrl(sessionId);

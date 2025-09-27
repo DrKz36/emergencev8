@@ -435,7 +435,7 @@ class ChatService:
                 return ""
             where_filter = None
             uid = self._try_get_user_id(session_id)
-            clauses: List[Dict[str, Any]] = []
+            clauses: List[Dict[str, Any]] = [{"session_id": session_id}]
             if uid:
                 clauses.append({"user_id": uid})
             ag = (agent_id or "").strip().lower() if agent_id else ""
@@ -461,6 +461,7 @@ class ChatService:
                         n_results=top_k,
                         where_filter={
                             "$and": [
+                                {"session_id": session_id},
                                 {"user_id": uid},
                                 {"vitality": {"$gte": VITALITY_RECALL_THRESHOLD}},
                             ]
@@ -768,7 +769,9 @@ class ChatService:
             allowed_doc_ids: List[int] = []
             if thread_id:
                 try:
-                    rows = await queries.get_thread_docs(self.session_manager.db_manager, thread_id)
+                    rows = await queries.get_thread_docs(
+                        self.session_manager.db_manager, thread_id, session_id
+                    )
                     for row in rows:
                         raw = row.get("doc_id")
                         if raw is None:
@@ -848,7 +851,7 @@ class ChatService:
                                     vector_service=self.vector_service,
                                     memory_analyzer=analyzer,
                                 )
-                                asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3))
+                                asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3, session_id=session_id))
                             except Exception:
                                 pass
                     return
@@ -898,16 +901,17 @@ class ChatService:
                 if self._doc_collection is None:
                     self._doc_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
 
-                where_filter: Optional[Dict[str, Any]] = None
+                base_filter: Dict[str, Any] = {"session_id": session_id}
+                where_filter: Optional[Dict[str, Any]] = base_filter
                 if selected_doc_ids:
                     if len(selected_doc_ids) == 1:
-                        where_filter = {"document_id": selected_doc_ids[0]}
+                        doc_filter: Dict[str, Any] = {"document_id": selected_doc_ids[0]}
                     else:
-                        where_filter = {"$or": [{"document_id": did} for did in selected_doc_ids]}
+                        doc_filter = {"$or": [{"document_id": did} for did in selected_doc_ids]}
+                    where_filter = {"$and": [base_filter, doc_filter]}
 
                 query_text = (last_user_message or "").strip()
                 if not query_text and selected_doc_ids:
-                    # Fallback ensures we still hit the vector store when docs are explicitly selected.
                     query_text = " ".join(f"document:{doc_id}" for doc_id in selected_doc_ids) or "selected documents"
 
                 doc_hits = self.vector_service.query(
@@ -1188,7 +1192,7 @@ class ChatService:
                             memory_analyzer=analyzer,
                         )
                         asyncio.create_task(
-                            gardener.tend_the_garden(consolidation_limit=3, thread_id=thread_id)
+                            gardener.tend_the_garden(consolidation_limit=3, thread_id=thread_id, session_id=session_id)
                         )
                     except Exception:
                         pass
@@ -1238,12 +1242,14 @@ class ChatService:
                     self._doc_collection = self.vector_service.get_or_create_collection(
                         config.DOCUMENT_COLLECTION_NAME
                     )
-                where_filter: Optional[Dict[str, Any]] = None
+                base_filter: Dict[str, Any] = {"session_id": session_id}
+                where_filter: Optional[Dict[str, Any]] = base_filter
                 if selected_doc_ids:
                     if len(selected_doc_ids) == 1:
-                        where_filter = {"document_id": selected_doc_ids[0]}
+                        doc_filter: Dict[str, Any] = {"document_id": selected_doc_ids[0]}
                     else:
-                        where_filter = {"$or": [{"document_id": did} for did in selected_doc_ids]}
+                        doc_filter = {"$or": [{"document_id": did} for did in selected_doc_ids]}
+                    where_filter = {"$and": [base_filter, doc_filter]}
 
                 doc_hits = self.vector_service.query(
                     collection=self._doc_collection,
@@ -1446,3 +1452,4 @@ class ChatService:
     # ---------- diverses ----------
     def _count_bullets(self, text: str) -> int:
         return sum(1 for line in (text or "").splitlines() if line.strip().startswith("- "))
+

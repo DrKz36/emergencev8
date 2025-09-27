@@ -62,7 +62,8 @@ function getStateFromStorage() {
 
 function getSessionIdFromStorage() {
   try {
-    return getStateFromStorage()?.websocket?.sessionId || null;
+    const st = getStateFromStorage();
+    return st?.session?.id || st?.websocket?.sessionId || null;
   } catch {
     return null;
   }
@@ -121,12 +122,12 @@ function isDevBypassEnabled() {
   return isLanHost();
 }
 
-/** Entêtes de dev (compat backend local si pas de GIS) */
+/** Entêtes de dev (compat backend local sans jeton) */
 function resolveDevHeaders() {
   const st = getStateFromStorage();
   const userId = st?.user?.id || 'FG';
   const userEmail = st?.user?.email;
-  const sessionId = st?.websocket?.sessionId;
+  const sessionId = st?.session?.id || st?.websocket?.sessionId;
   const headers = { 'X-User-Id': userId, 'X-Dev-Bypass': '1' };
   if (userEmail) headers['X-User-Email'] = userEmail;
   if (sessionId) headers['X-Session-Id'] = sessionId;
@@ -178,7 +179,7 @@ function normalizeDocIds(input) {
 
 /**
  * Auth headers:
- * - Tente TOUJOURS d’abord un ID token GIS (y compris en localhost).
+ * - Lit le token stocké (storage ou cookie) si disponible.
  * - Si aucun token et qu’on est en localhost → fallback entêtes de dev.
  * - Ajoute TOUJOURS X-Session-Id si disponible (corrélation REST/WS).
  */
@@ -186,17 +187,11 @@ async function getAuthHeaders() {
   let token = null;
 
   try {
-    if (window.gis?.getIdToken) {
-      token = await window.gis.getIdToken();
-      if (token) {
-        try { sessionStorage.setItem('emergence.id_token', token); } catch (_) {}
-      }
-    }
+    token = sessionStorage.getItem('emergence.id_token') || localStorage.getItem('emergence.id_token');
   } catch (_) {}
-
   if (!token) {
     try {
-      token = sessionStorage.getItem('emergence.id_token') || localStorage.getItem('emergence.id_token');
+      token = sessionStorage.getItem('id_token') || localStorage.getItem('id_token');
     } catch (_) {}
   }
   if (!token) {
@@ -204,14 +199,15 @@ async function getAuthHeaders() {
   }
 
   const headers = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const trimmed = typeof token === 'string' ? token.trim() : '';
+  if (trimmed) headers['Authorization'] = `Bearer ${trimmed}`;
 
   const sid = getSessionIdFromStorage();
   if (sid) headers['X-Session-Id'] = sid;
 
   if (isDevBypassEnabled()) {
     Object.assign(headers, resolveDevHeaders());
-    if (!token) return headers;
+    if (!headers['Authorization']) return headers;
   }
   return headers;
 }
@@ -281,17 +277,6 @@ async function fetchApi(endpoint, options = {}) {
   try {
     return await doFetch(endpoint, config, timeoutMs, signal);
   } catch (err) {
-    // Retry unique sur 401: refresh GIS si possible
-    if (err?.status === 401 && window.gis?.getIdToken) {
-      try {
-        const fresh = await window.gis.getIdToken();
-        if (fresh) {
-          config.headers['Authorization'] = `Bearer ${fresh}`;
-          try { sessionStorage.setItem('emergence.id_token', fresh); } catch (_) {}
-          return await doFetch(endpoint, config, timeoutMs, signal);
-        }
-      } catch (_) {}
-    }
     throw err;
   }
 }

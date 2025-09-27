@@ -19,16 +19,19 @@ def test_delete_thread_removes_related_records(tmp_path):
         await schema.create_tables(db)
 
         user_id = 'owner-1'
+        session_id = 'sess-owner-1'
         doc_id = await queries.insert_document(
             db,
             filename='spec.pdf',
             filepath='spec.pdf',
             status='ready',
             uploaded_at='2025-09-24T00:00:00Z',
+            session_id=session_id,
         )
 
         thread_id = await queries.create_thread(
             db,
+            session_id=session_id,
             user_id=user_id,
             type_='chat',
             title='Conversation to delete',
@@ -36,20 +39,21 @@ def test_delete_thread_removes_related_records(tmp_path):
         await queries.add_message(
             db,
             thread_id=thread_id,
+            session_id=session_id,
             role='user',
             content='Hello world',
             agent_id=None,
             tokens=None,
             meta=None,
         )
-        await queries.set_thread_docs(db, thread_id, [doc_id])
+        await queries.set_thread_docs(db, thread_id, session_id, [doc_id])
 
-        removed = await queries.delete_thread(db, thread_id, user_id)
+        removed = await queries.delete_thread(db, thread_id, session_id)
         assert removed is True
 
-        assert await queries.get_thread(db, thread_id, user_id) is None
-        assert await db.fetch_one('SELECT id FROM messages WHERE thread_id = ?', (thread_id,)) is None
-        assert await db.fetch_one('SELECT thread_id FROM thread_docs WHERE thread_id = ?', (thread_id,)) is None
+        assert await queries.get_thread(db, thread_id, session_id) is None
+        assert await db.fetch_one('SELECT id FROM messages WHERE thread_id = ? AND session_id = ?', (thread_id, session_id)) is None
+        assert await db.fetch_one('SELECT thread_id FROM thread_docs WHERE thread_id = ? AND session_id = ?', (thread_id, session_id)) is None
 
         await db.disconnect()
 
@@ -63,18 +67,20 @@ def test_delete_thread_requires_owner(tmp_path):
         await schema.create_tables(db)
 
         owner_id = 'owner-2'
-        intruder_id = 'intruder'
+        owner_session = 'sess-owner-2'
+        intruder_session = 'intruder-sess'
         thread_id = await queries.create_thread(
             db,
+            session_id=owner_session,
             user_id=owner_id,
             type_='chat',
             title='Owned thread',
         )
 
-        removed = await queries.delete_thread(db, thread_id, intruder_id)
+        removed = await queries.delete_thread(db, thread_id, intruder_session)
         assert removed is False
 
-        still_there = await queries.get_thread(db, thread_id, owner_id)
+        still_there = await queries.get_thread(db, thread_id, owner_session)
         assert still_there is not None
 
         await db.disconnect()

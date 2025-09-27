@@ -32,6 +32,9 @@
 - **`VectorService`**
   - Stocke les embeddings mémoire dans la collection `emergence_knowledge` (partagée avec les documents).
   - Surveille la corruption SQLite → backup + reset auto (`vector_store_backup_*`).
+- **Isolation par session**
+  - `SessionManager.ensure_session()` transmet le `session_id` a `MemoryGardener` et `MemoryAnalyzer`; toutes les requetes SQLite utilisent ce champ (memory_sessions, memory_items, thread_docs, messages).
+  - Les endpoints `POST /api/memory/*` exigent `X-Session-Id`; les evenements WS transportent `session_id` pour l'audit des consolidations/purges.
 - **`ChatService` (RAG guardrails)**
   - `_sanitize_doc_ids` filtre les identifiants envoyes par l'UI et supprime les doublons.
   - Les identifiants sont recoupes avec les documents rattaches au thread courant; si aucun ne correspond, le service retombe sur la liste autorisee renvoyee par l'API.
@@ -45,7 +48,7 @@
   - `POST /api/memory/tend-garden` : lance une consolidation (option `thread_id`, `mode`).
   - `GET /api/memory/tend-garden` : renvoie l’état consolidé (`summaries`, `facts`, compteurs LTM).
   - `POST /api/memory/clear` : purge STM puis LTM (scope global ou thread).
-  - Toutes les routes `/api/memory/*` valident le JWT via `shared_dependencies.get_user_id`; sans jeton valide la requête est rejetée en `401`. En DEV, le couple d'en-têtes `X-Dev-Bypass: 1` + `X-User-Id` reste accepté pour les environnements sans GIS.
+  - Toutes les routes `/api/memory/*` valident le JWT via `shared_dependencies.get_user_id`; sans jeton valide la requête est rejetée en `401`. En DEV, le couple d'en-têtes `X-Dev-Bypass: 1` + `X-User-Id` reste accepté pour les environnements sans jeton (tests locaux).
 
 ### Frontend
 - **`ChatModule`**
@@ -56,6 +59,7 @@
   - Propose les boutons `Analyser` (POST) et `Clear` (POST clear) + toasts de confirmation.
 - **State Manager**
   - Stocke `state.memory.lastRunAt`, `state.memory.status`, `state.memory.items` pour informer l’utilisateur.
+  - `StateManager.resetForSession()` remet a zero la memoire locale lors d'un changement de session (purge threads/documents/memory caches).
 
 ## 3. Flux opérationnels
 1. **Analyse globale**

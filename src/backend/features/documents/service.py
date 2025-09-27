@@ -4,7 +4,7 @@ import logging
 import uuid
 import asyncio
 from datetime import datetime, timezone
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from fastapi import UploadFile, HTTPException
 from pathlib import Path
@@ -45,7 +45,13 @@ class DocumentService:
             for i in range(0, len(text), config.CHUNK_SIZE)
         ]
 
-    async def process_uploaded_file(self, file: UploadFile) -> int:
+    async def process_uploaded_file(
+        self,
+        file: UploadFile,
+        *,
+        session_id: str,
+        user_id: Optional[str] = None,
+    ) -> int:
         filename = file.filename
         if not filename:
             raise HTTPException(status_code=400, detail="Nom de fichier manquant.")
@@ -55,44 +61,62 @@ class DocumentService:
             with open(filepath, "wb") as buffer:
                 buffer.write(await file.read())
 
-            # Étape 1: Insérer le document avec un statut 'pending' pour obtenir un ID
             doc_id = await db_queries.insert_document(
                 self.db_manager,
                 filename=filename,
                 filepath=str(filepath),
                 status="pending",
                 uploaded_at=datetime.now(timezone.utc).isoformat(),
+                session_id=session_id,
             )
 
-            # Étape 2: Traiter le fichier
             parser = self.parser_factory.get_parser(filepath.suffix)
             text_content = await asyncio.to_thread(parser.parse, str(filepath))
-
             chunks = self._chunk_text(text_content)
 
-            # Étape 3: Mettre à jour le document avec les infos de traitement
             await db_queries.update_document_processing_info(
                 self.db_manager,
                 doc_id=doc_id,
+                session_id=session_id,
                 char_count=len(text_content),
                 chunk_count=len(chunks),
-                status="ready",  # <- PATCH: 'processed' -> 'ready'
+                status="ready",
             )
 
-            # Étape 4: Vectoriser et stocker les chunks
+            chunk_rows = []
+            if chunks:
+                chunk_rows = [
+                    {
+                        "id": f"{doc_id}_{i}",
+                        "document_id": doc_id,
+                        "chunk_index": i,
+                        "content": chunk,
+                    }
+                    for i, chunk in enumerate(chunks)
+                ]
+                await db_queries.insert_document_chunks(
+                    self.db_manager,
+                    session_id=session_id,
+                    chunks=chunk_rows,
+                )
+
             chunk_vectors = [
                 {
-                    "id": f"{doc_id}_{i}",
-                    "text": chunk,
-                    "metadata": {"document_id": doc_id, "filename": filename},
+                    "id": row["id"],
+                    "text": row.get("content", ""),
+                    "metadata": {
+                        "document_id": doc_id,
+                        "filename": filename,
+                        "session_id": session_id,
+                        "owner_id": user_id,
+                    },
                 }
-                for i, chunk in enumerate(chunks)
+                for row in chunk_rows
             ]
-
-            # Envoi vers Chroma
-            self.vector_service.add_items(
-                collection=self.document_collection, items=chunk_vectors
-            )
+            if chunk_vectors:
+                self.vector_service.add_items(
+                    collection=self.document_collection, items=chunk_vectors
+                )
 
             logger.info(
                 f"Document '{filename}' (ID: {doc_id}) traité et vectorisé avec succès."
@@ -107,34 +131,38 @@ class DocumentService:
                 status_code=500, detail="Erreur lors du traitement du fichier."
             )
         finally:
-            # Pas de suppression du fichier upload ici (utile pour audit)
             pass
 
     # --- ✅ NOUVELLES MÉTHODES EXPOSÉES AU ROUTEUR ---
 
-    async def get_all_documents(self) -> List[Dict[str, Any]]:
+    async def get_all_documents(self, session_id: str) -> List[Dict[str, Any]]:
         """
-        Retourne la liste des documents enregistrés en base (avec champs clés).
-        S'appuie sur backend.core.database.queries.get_all_documents.
+        Retourne la liste des documents enregistrés pour la session donnée.
         """
-        return await db_queries.get_all_documents(self.db_manager)
+        return await db_queries.get_all_documents(self.db_manager, session_id=session_id)
 
-    async def delete_document(self, doc_id: int) -> bool:
+    async def delete_document(self, doc_id: int, session_id: str) -> bool:
         """
-        Supprime un document:
-         1) purge des vecteurs dans la collection (filtre metadata.document_id)
-         2) suppression en base (document + chunks)
+        Supprime un document de la session :
+         1) purge des vecteurs associés
+         2) suppression en base (document + chunks + liaisons)
         """
+        doc = await db_queries.get_document_by_id(
+            self.db_manager, doc_id, session_id=session_id
+        )
+        if not doc:
+            return False
+
         try:
-            # 1) Purge vecteurs
             self.vector_service.delete_vectors(
                 collection=self.document_collection,
-                where_filter={"document_id": int(doc_id)},
+                where_filter={"document_id": int(doc_id), "session_id": session_id},
             )
         except Exception as e:
-            # On loggue mais on n'empêche pas la suppression DB
             logger.warning(f"Echec purge vecteurs pour document {doc_id}: {e}")
 
-        # 2) Suppression DB
-        await db_queries.delete_document(self.db_manager, int(doc_id))
-        return True
+        deleted = await db_queries.delete_document(
+            self.db_manager, int(doc_id), session_id
+        )
+        return bool(deleted)
+

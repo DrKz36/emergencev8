@@ -156,7 +156,7 @@ try {
   Write-Host $h200
 
   if ($h200 -match 'HTTP/1\.[01]\s+403') {
-    Write-Warning "Got 403 (Email not allowed). Adjust GOOGLE_ALLOWED_EMAILS or GOOGLE_ALLOWED_HD in .env.local."
+    Write-Warning "Got 403 (Email not allowed). Add the user to auth_allowlist via /api/auth/admin/allowlist or the CLI."
   } elseif ($h200 -notmatch 'HTTP/1\.[01]\s+200') {
     Write-Warning "Unexpected response. Check logs."
   } else {

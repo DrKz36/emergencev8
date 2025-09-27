@@ -22,19 +22,28 @@ def test_session_manager_hydrates_and_persists(tmp_path):
         await schema.create_tables(db)
 
         user_id = 'user-test'
-        thread_id = await queries.create_thread(db, user_id=user_id, type_='chat', title='Persist Test')
-        await queries.add_message(db, thread_id, role='user', content='Salut', agent_id='anima')
-        await queries.add_message(db, thread_id, role='assistant', content='Bonjour', agent_id='anima')
+        session_id = 'sess-persist'
+        thread_id = await queries.create_thread(
+            db, session_id=session_id, user_id=user_id, type_='chat', title='Persist Test'
+        )
+        await queries.add_message(
+            db, thread_id, session_id, role='user', content='Salut', agent_id='anima'
+        )
+        await queries.add_message(
+            db, thread_id, session_id, role='assistant', content='Bonjour', agent_id='anima'
+        )
 
         manager = SessionManager(db, memory_analyzer=None)
-        await manager.ensure_session(session_id=thread_id, user_id=user_id, thread_id=thread_id, history_limit=20)
+        await manager.ensure_session(
+            session_id=session_id, user_id=user_id, thread_id=thread_id, history_limit=20
+        )
 
-        history = manager.get_full_history(thread_id)
+        history = manager.get_full_history(session_id)
         assert len(history) == 2
         assert history[0]['role'] == Role.USER.value
         assert history[1]['role'] == Role.ASSISTANT.value
 
-        exported = manager.export_history_for_transport(thread_id)
+        exported = manager.export_history_for_transport(session_id)
         assert exported[-1]['content'] == 'Bonjour'
         assert exported[-1]['agent_id'] == 'anima'
 
@@ -48,9 +57,9 @@ def test_session_manager_hydrates_and_persists(tmp_path):
             use_rag=False,
             doc_ids=[],
         )
-        await manager.add_message_to_session(thread_id, message)
+        await manager.add_message_to_session(session_id, message)
 
-        stored = await queries.get_messages(db, thread_id, limit=10)
+        stored = await queries.get_messages(db, thread_id, session_id=session_id, limit=10)
         assert any(row['content'] == 'Nouvelle question' for row in stored)
 
         await db.disconnect()

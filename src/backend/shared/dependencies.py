@@ -1,5 +1,5 @@
-﻿# src/backend/shared/dependencies.py
-# V7.4 – Allowlist GIS + WS token handshake + compat alias (_extract_ws_bearer_token) + DI getters sans import container
+# src/backend/shared/dependencies.py
+# V8.0 - Local JWT auth (email/password) + dev bypass + WS token helpers
 from __future__ import annotations
 
 import os
@@ -7,6 +7,7 @@ import json
 import base64
 import logging
 import re
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from typing import Optional, Any, Dict
 
@@ -19,6 +20,49 @@ logger = logging.getLogger("emergence.allowlist")
 if TYPE_CHECKING:
     from backend.features.auth.service import AuthService
     from backend.core.session_manager import SessionManager
+
+@dataclass(frozen=True)
+class SessionContext:
+    session_id: str
+    user_id: Optional[str]
+    email: Optional[str]
+    role: Optional[str]
+    claims: Dict[str, Any]
+
+
+def _normalize_identifier(value) -> Optional[str]:
+    if value is None:
+        return None
+    try:
+        text = str(value).strip()
+    except Exception:
+        return None
+    return text or None
+
+
+def _extract_session_id_from_claims(claims: Dict[str, Any]) -> Optional[str]:
+    for key in ("session_id", "sid", "sessionId"):
+        candidate = _normalize_identifier(claims.get(key))
+        if candidate:
+            return candidate
+    return None
+
+
+def _resolve_session_id_from_request(request: Request) -> Optional[str]:
+    for candidate in (
+        request.headers.get("X-Session-Id"),
+        request.headers.get("X-Session-ID"),
+        request.headers.get("x-session-id"),
+        request.query_params.get("session_id"),
+        request.query_params.get("sessionId"),
+        getattr(request.state, "session_id", None),
+    ):
+        normalized = _normalize_identifier(candidate)
+        if normalized:
+            return normalized
+    return None
+
+
 
 # -----------------------------
 # Helpers JWT
@@ -53,6 +97,18 @@ def _looks_like_jwt(s: str) -> bool:
     return bool(_jwt_like.fullmatch(s or ""))
 
 _DEV_BYPASS_TRUTHY = {"1", "true", "yes", "on", "enable"}
+
+
+def _is_global_dev_mode(scope_holder) -> bool:
+    auth_service = _maybe_get_auth_service(scope_holder)
+    if auth_service is not None:
+        try:
+            if bool(getattr(getattr(auth_service, "config", None), "dev_mode", False)):
+                return True
+        except Exception:
+            pass
+    env_flag = (os.getenv("AUTH_DEV_MODE") or "0").strip().lower()
+    return env_flag in _DEV_BYPASS_TRUTHY
 
 
 def _has_dev_bypass(headers) -> bool:
@@ -107,31 +163,19 @@ def _extract_bearer_token_from_header(auth_header: Optional[str]) -> str:
 async def _resolve_token_claims(token: str, scope_holder, *, allow_revoked: bool = False) -> Dict[str, Any]:
     if not token:
         raise HTTPException(status_code=401, detail="ID token invalide ou absent.")
-    claims_unverified = _read_bearer_claims_from_token(token)
     auth_service = _maybe_get_auth_service(scope_holder)
-    if auth_service is not None:
-        try:
-            verified = await auth_service.verify_token(token, allow_revoked=allow_revoked)
-        except Exception as exc:
-            status = getattr(exc, "status_code", 401)
-            message = str(exc) or "Token invalide."
-            local_issuer = getattr(getattr(auth_service, "config", None), "issuer", None)
-            if claims_unverified and local_issuer and claims_unverified.get("iss") == local_issuer:
-                raise HTTPException(status_code=status, detail=message) from exc
-            if not claims_unverified:
-                raise HTTPException(status_code=status, detail=message) from exc
-        else:
-            verified_dict = dict(verified)
-            verified_dict.setdefault("_auth_source", "local")
-            verified_dict["_raw_token"] = token
-            return verified_dict
-    if not claims_unverified:
-        raise HTTPException(status_code=401, detail="ID token invalide ou absent.")
-    _enforce_allowlist_claims(claims_unverified)
-    claims_out = dict(claims_unverified)
-    claims_out.setdefault("_auth_source", "google")
-    claims_out["_raw_token"] = token
-    return claims_out
+    if auth_service is None:
+        raise HTTPException(status_code=503, detail="AuthService indisponible.")
+    try:
+        verified = await auth_service.verify_token(token, allow_revoked=allow_revoked)
+    except Exception as exc:
+        status = getattr(exc, "status_code", 401)
+        message = str(exc) or "Token invalide."
+        raise HTTPException(status_code=status, detail=message) from exc
+    verified_dict = dict(verified)
+    verified_dict.setdefault("_auth_source", "local")
+    verified_dict["_raw_token"] = token
+    return verified_dict
 
 async def _get_claims_from_request(request: Request, *, allow_revoked: bool = False) -> Dict[str, Any]:
     cache_key = "auth_claims_allow_revoked" if allow_revoked else "auth_claims"
@@ -258,72 +302,80 @@ def _extract_ws_bearer_token(ws: WebSocket) -> Optional[str]:
     return None
 
 # -----------------------------
-# Allowlist (emails / domaine)
-# -----------------------------
-def _get_cfg():
-    mode = (os.getenv("GOOGLE_ALLOWLIST_MODE") or "").strip().lower()  # "email" | "domain" | ""
-    allowed_emails = [e.strip().lower() for e in (os.getenv("GOOGLE_ALLOWED_EMAILS") or "").split(",") if e.strip()]
-    allowed_hd = [d.strip().lower() for d in (os.getenv("GOOGLE_ALLOWED_HD") or "").split(",") if d.strip()]
-    client_id = (os.getenv("GOOGLE_OAUTH_CLIENT_ID") or "").strip()
-    dev = (os.getenv("AUTH_DEV_MODE") or "0").strip() in {"1", "true", "yes"}
-    return mode, allowed_emails, allowed_hd, client_id, dev
-
-def _enforce_allowlist_claims(claims: dict):
-    mode, allowed_emails, allowed_hd, client_id, _dev = _get_cfg()
-    if not mode and not client_id:
-        return  # inactif
-
-    iss = (claims.get("iss") or "").lower()
-    aud = (claims.get("aud") or "").strip()
-    email = (claims.get("email") or "").lower()
-    hd = (claims.get("hd") or "").lower()
-
-    if client_id:
-        if aud != client_id or "accounts.google.com" not in iss:
-            raise HTTPException(status_code=401, detail="ID token (aud/iss) invalide pour cette app.")
-
-    if mode == "email":
-        if email and email in set(allowed_emails):
-            return
-        raise HTTPException(status_code=401, detail="Email non autorisé.")
-    elif mode == "domain":
-        if hd and hd in set(allowed_hd):
-            return
-        if email and "@" in email:
-            _domain = email.split("@", 1)[1].lower()
-            if _domain in set(allowed_hd):
-                return
-        raise HTTPException(status_code=401, detail="Domaine non autorisé.")
-    elif mode:
-        raise HTTPException(status_code=401, detail="Allowlist mal configurée.")
-
-# -----------------------------
 # REST
 # -----------------------------
+async def get_session_context(request: Request) -> SessionContext:
+    dev_bypass = _has_dev_bypass(request.headers)
+    dev_mode = dev_bypass or _is_global_dev_mode(request)
+    try:
+        claims = await _get_claims_from_request(request)
+    except HTTPException:
+        if dev_mode:
+            fallback_sid = _resolve_session_id_from_request(request)
+            if not fallback_sid:
+                fallback_sid = _normalize_identifier(request.headers.get("X-User-ID") or request.headers.get("X-User-Id")) or "dev-session"
+            user_id = _normalize_identifier(request.headers.get("X-User-ID") or request.headers.get("X-User-Id"))
+            email = _normalize_identifier(request.headers.get("X-User-Email"))
+            role = _normalize_identifier(request.headers.get("X-User-Role")) or "admin"
+            claims = {"_auth_source": "bypass", "session_id": fallback_sid}
+            if user_id:
+                claims.setdefault("sub", user_id)
+            if email:
+                claims.setdefault("email", email)
+            if role:
+                claims.setdefault("role", role)
+            return SessionContext(
+                session_id=fallback_sid,
+                user_id=user_id,
+                email=email,
+                role=role,
+                claims=claims,
+            )
+        raise
+
+    session_id = _extract_session_id_from_claims(claims)
+    if not session_id and dev_mode:
+        session_id = _resolve_session_id_from_request(request)
+    if not session_id:
+        raise HTTPException(status_code=401, detail="Session ID manquant ou invalide.")
+
+    claims.setdefault("session_id", session_id)
+    user_id = _normalize_identifier(claims.get("sub") or claims.get("user_id"))
+    if user_id:
+        claims.setdefault("sub", user_id)
+    email = _normalize_identifier(claims.get("email"))
+    role = _normalize_identifier(claims.get("role"))
+    return SessionContext(
+        session_id=session_id,
+        user_id=user_id,
+        email=email,
+        role=role,
+        claims=claims,
+    )
+
+
+async def get_session_id(request: Request) -> str:
+    return (await get_session_context(request)).session_id
+
+
+
 async def enforce_allowlist(request: Request):
-    mode, _emails, _hd, client_id, _dev = _get_cfg()
     if _has_dev_bypass(request.headers):
         logger.debug("Allowlist bypass via X-Dev-Bypass header.")
         return
     auth_service = _maybe_get_auth_service(request)
+    if auth_service is None:
+        raise HTTPException(status_code=503, detail="AuthService indisponible.")
     token_present = bool(_extract_bearer_token_from_header(request.headers.get("Authorization")))
-    if auth_service is not None:
-        dev_mode = bool(getattr(getattr(auth_service, "config", None), "dev_mode", False))
-        if token_present:
-            await _get_claims_from_request(request)
-            return
-        if dev_mode:
-            return
-        raise HTTPException(status_code=401, detail="Authorization Bearer requis.")
-    if not mode and not client_id:
+    if token_present:
+        await _get_claims_from_request(request)
         return
-    await _get_claims_from_request(request)
-    return
+    if _is_global_dev_mode(request):
+        return
+    raise HTTPException(status_code=401, detail="Authorization Bearer requis.")
 
 async def get_user_id(request: Request) -> str:
-    mode, _emails, _hd, _client_id, dev = _get_cfg()
     dev_bypass = _has_dev_bypass(request.headers)
-    auth_service = _maybe_get_auth_service(request)
     token = _extract_bearer_token_from_header(request.headers.get("Authorization"))
 
     if token:
@@ -331,15 +383,14 @@ async def get_user_id(request: Request) -> str:
         sub = claims.get("sub")
         if sub:
             return str(sub)
-        if dev or dev_bypass:
+        if dev_bypass or _is_global_dev_mode(request):
             hdr = request.headers.get("X-User-ID") or request.headers.get("X-User-Id")
             if hdr:
                 logger.warning("DevMode: fallback X-User-ID utilisé car le JWT ne porte pas de 'sub'.")
                 return hdr
         raise HTTPException(status_code=401, detail="ID token invalide ou sans 'sub'.")
 
-    dev_mode_active = bool(getattr(getattr(auth_service, "config", None), "dev_mode", False)) if auth_service else False
-    if dev_mode_active or dev_bypass or dev:
+    if dev_bypass or _is_global_dev_mode(request):
         hdr = request.headers.get("X-User-ID") or request.headers.get("X-User-Id")
         if hdr:
             logger.warning("DevMode: fallback X-User-ID utilisé (pas d'Authorization).")
@@ -351,15 +402,13 @@ async def get_user_id_for_ws(ws: WebSocket, user_id: Optional[str] = Query(defau
     Retourne l'user_id à partir d'un JWT trouvé dans le handshake WS.
     En DEV (AUTH_DEV_MODE=1) peut accepter user_id explicite si aucun token.
     """
-    mode, _emails, _hd, client_id, dev = _get_cfg()
     dev_bypass = _has_dev_bypass(ws.headers) or _has_dev_bypass_query(ws.query_params)
-    auth_service = _maybe_get_auth_service(ws)
-    dev_mode_active = bool(getattr(getattr(auth_service, "config", None), "dev_mode", False)) if auth_service else False
+    dev_mode = _is_global_dev_mode(ws)
 
     try:
         claims = await _get_claims_from_ws(ws)
     except HTTPException:
-        if dev or dev_mode_active or dev_bypass:
+        if dev_mode or dev_bypass:
             fallback = user_id or ws.query_params.get('user_id')
             if fallback:
                 logger.warning("DevMode WS: fallback user_id utilisé (pas de token).")
@@ -369,7 +418,7 @@ async def get_user_id_for_ws(ws: WebSocket, user_id: Optional[str] = Query(defau
     sub = claims.get("sub")
     if sub:
         return str(sub)
-    if dev or dev_mode_active or dev_bypass:
+    if dev_mode or dev_bypass:
         fallback = user_id or ws.query_params.get('user_id')
         if fallback:
             logger.warning("DevMode WS: fallback user_id utilisé (token sans 'sub').")

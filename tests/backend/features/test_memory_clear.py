@@ -216,10 +216,10 @@ async def _run_memory_tend_garden_get_authorized():
 
     class DummyGardener:
         def __init__(self) -> None:
-            self.calls: list[str | None] = []
+            self.calls: list[tuple[str | None, str | None]] = []
 
-        async def tend_the_garden(self, thread_id: str | None = None):
-            self.calls.append(thread_id)
+        async def tend_the_garden(self, thread_id: str | None = None, session_id: str | None = None):
+            self.calls.append((thread_id, session_id))
             return {"status": "success", "runs": 1}
 
     gardener = DummyGardener()
@@ -242,7 +242,7 @@ async def _run_memory_tend_garden_get_authorized():
     finally:
         memory_router._get_gardener_from_request = original_getter
 
-    assert gardener.calls == [None]
+    assert gardener.calls == [(None, None)]
 
 
 

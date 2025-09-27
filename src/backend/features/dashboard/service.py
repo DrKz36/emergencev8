@@ -99,7 +99,7 @@ class DashboardService:
                 costs_raw = {}
 
             try:
-                documents_raw = await db_queries.get_all_documents(self.db)
+                documents_raw = await db_queries.get_all_documents(self.db, session_id=None)
             except Exception as e:
                 logger.warning(f"[dashboard] get_all_documents KO: {e}")
                 documents_raw = []

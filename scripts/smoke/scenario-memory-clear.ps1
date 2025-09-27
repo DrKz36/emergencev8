@@ -21,6 +21,20 @@ $ErrorActionPreference = "Stop"
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
 
+function Write-ScenarioNote {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Message
+    )
+    Write-Host "#<- $Message" -ForegroundColor DarkGray
+}
+
+if (-not $SessionId -or -not $SessionId.Trim()) {
+    $SessionId = "memclr-" + ([Guid]::NewGuid().ToString("N"))
+} else {
+    $SessionId = $SessionId.Trim()
+}
+
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
 $testScript = Join-Path $repoRoot 'tests/test_memory_clear.ps1'
 
@@ -36,10 +50,10 @@ if ($AuthToken) {
 } else {
     Write-Host "Auth token    : none (dev mode expected)" -ForegroundColor Yellow
 }
-if ($SessionId) {
-    Write-Host "Session ID    : $SessionId"
-}
+Write-Host "Session ID    : $SessionId"
+Write-ScenarioNote ("session-id=" + $SessionId)
 
+Write-ScenarioNote "Step 1: Health check"
 if (-not $SkipHealthCheck) {
     Write-Host "`n[1] Health-check $BaseUrl/api/health" -ForegroundColor Cyan
     try {
@@ -57,6 +71,7 @@ if (-not $SkipHealthCheck) {
     Write-Host "`n[1] Health-check skipped." -ForegroundColor DarkGray
 }
 
+Write-ScenarioNote "Step 2: Automated coverage"
 if (-not $SkipAutomatedTest) {
     Write-Host "`n[2] Running automated coverage (tests/test_memory_clear.ps1)" -ForegroundColor Cyan
     $pwshExe = (Get-Command pwsh -ErrorAction SilentlyContinue)?.Path
@@ -92,11 +107,12 @@ if (-not $SkipAutomatedTest) {
 
 if (-not $Silent) {
     Write-Host "`n[3] Manual QA checklist" -ForegroundColor Cyan
-    Write-Host " - Open the frontend, sign in, and pick an existing thread." -ForegroundColor Gray
-    Write-Host " - Confirm the memory banner shows counts before the purge." -ForegroundColor Gray
-    Write-Host " - Click Clear, validate the confirmation modal, confirm the success toast." -ForegroundColor Gray
-    Write-Host " - Refresh and ensure STM/LTM indicators are empty." -ForegroundColor Gray
-    Write-Host " - Log the run in docs/Memoire.md (journal / QA section)." -ForegroundColor Gray
+    Write-ScenarioNote "Manual: Open the frontend, sign in, and pick an existing thread."
+    Write-ScenarioNote "Manual: Confirm the memory banner shows counts before the purge."
+    Write-ScenarioNote "Manual: Click Clear, validate the confirmation modal, confirm the success toast."
+    Write-ScenarioNote "Manual: Refresh and ensure STM/LTM indicators are empty."
+    Write-ScenarioNote "Manual: Log the run in docs/Memoire.md (journal / QA section)."
 }
 
+Write-ScenarioNote "Scenario completed"
 Write-Host "`n=== Done. memory:clear scenario completed ===" -ForegroundColor Green

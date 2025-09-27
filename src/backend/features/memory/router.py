@@ -342,7 +342,25 @@ async def tend_garden_endpoint(
                 thread_id = t.strip()
         except Exception:
             thread_id = None
-        report = await gardener.tend_the_garden(thread_id=thread_id)
+
+        resolved_session_id = None
+        try:
+            candidate_session = (data or {}).get("session_id")
+        except Exception:
+            candidate_session = None
+        if not candidate_session:
+            candidate_session = (
+                request.headers.get("x-session-id")
+                or request.query_params.get("session_id")
+            )
+        if not candidate_session and thread_id:
+            candidate_session = thread_id
+        if candidate_session:
+            resolved_session_id = _resolve_session_id(request, candidate_session)
+
+        report = await gardener.tend_the_garden(
+            thread_id=thread_id, session_id=resolved_session_id
+        )
         if report.get("status") == "error":
             raise HTTPException(
                 status_code=500, detail=report.get("message", "Erreur interne")

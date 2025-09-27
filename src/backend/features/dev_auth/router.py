@@ -1,5 +1,5 @@
 # src/backend/features/dev_auth/router.py
-# Sert /dev-auth.html (outil GIS). ARBO-LOCK: chemins stricts, aucune dérive.
+# Sert /dev-auth.html (outil de connexion locale). ARBO-LOCK: chemins stricts, aucune dérive.
 
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
@@ -15,7 +15,7 @@ DEV_AUTH_HTML = SRC_DIR / "frontend" / "dev-auth.html"
 @router.get("/dev-auth.html", response_class=HTMLResponse)
 def get_dev_auth_html() -> HTMLResponse:
     """
-    Sert la page GIS de debug pour récupérer un ID token (JWT).
+    Sert la page de debug pour récupérer un JWT local via email/mot de passe.
     """
     try:
         if DEV_AUTH_HTML.exists():

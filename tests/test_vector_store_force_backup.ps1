@@ -1,4 +1,4 @@
-﻿#requires -Version 5.1
+#requires -Version 5.1
 <#
     EMERGENCE — Test force-backup (PowerShell 5.1 compatible, ASCII-only)
     - Corrompt le header SQLite du vector store Chroma
@@ -30,6 +30,8 @@ $DbFile      = Join-Path $VectorRoot  "chroma.sqlite3"
 $ApiBase   = "http://127.0.0.1:8000"
 $HealthUrl = "$ApiBase/api/health"
 $UploadUrl = "$ApiBase/api/documents/upload"
+$SmokeUserId = "vector-force"
+$SmokeSessionId = "vsforce-" + ([Guid]::NewGuid().ToString("N"))
 
 $TmpDir      = Join-Path $ProjectRoot "tmp_tests"
 $BackupGlob  = "vector_store_backup_*"
@@ -190,3 +192,4 @@ Write-Host ("Upload check  : {0}" -f ($(if ($uploadOk) {'OK'} else {'FAIL'})))
 Write-Host ("Backup latest : {0}" -f ($(if ($latest) {$latest.FullName} else {'NO'})))
 
 if ($uploadOk) { exit 0 } else { exit 2 }
+

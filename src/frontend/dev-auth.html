@@ -1,198 +1,267 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8"/>
-  <title>ÉMERGENCE — dev-auth (GIS)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="utf-8" />
+  <title>ÉMERGENCE — dev-auth (email & mot de passe)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --bg:#0b0f17; --card:#111726; --ink:#e7eaf3; --muted:#9aa4b2; --accent:#5eead4; }
-    html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Roboto,Arial;}
-    .wrap{max-width:940px;margin:32px auto;padding:0 16px;}
-    .card{background:var(--card);border-radius:16px;padding:20px;box-shadow:0 6px 28px rgba(0,0,0,.35)}
-    h1{margin:0 0 12px;font-size:20px}
-    label{display:block;margin:12px 0 6px;color:var(--muted)}
-    input,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #1f2937;background:#0e1422;color:var(--ink)}
-    textarea{min-height:120px;resize:vertical}
-    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-    .btn{border:0;border-radius:10px;padding:10px 14px;background:#1f2937;color:var(--ink);cursor:pointer}
-    .btn.primary{background:var(--accent);color:#05221c;font-weight:600}
-    .muted{color:var(--muted)}
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
-    .mt8{margin-top:8px} .mt12{margin-top:12px} .mt20{margin-top:20px} .mt28{margin-top:28px}
-    .gutter{height:12px}
-    .token{word-break:break-all}
-    .badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#0e1422;color:var(--muted);font-size:12px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media (max-width: 800px){ .grid{grid-template-columns:1fr;} }
+    :root {
+      color-scheme: light dark;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #10131a, #1f2635);
+      color: #f5f7fb;
+    }
+    main {
+      margin: auto;
+      width: min(480px, 92vw);
+      background: rgba(8, 12, 20, 0.85);
+      padding: 2.5rem 2.25rem;
+      border-radius: 18px;
+      box-shadow: 0 18px 46px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(4px);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 1.6rem;
+      letter-spacing: 0.03em;
+    }
+    p { color: #cbd3e6; line-height: 1.5; }
+    form {
+      margin-top: 1.5rem;
+      display: grid;
+      gap: 1rem;
+    }
+    label {
+      display: grid;
+      gap: 0.35rem;
+      font-size: 0.95rem;
+    }
+    input[type="email"],
+    input[type="password"] {
+      background: rgba(22, 30, 45, 0.95);
+      border: 1px solid rgba(102, 133, 187, 0.45);
+      border-radius: 10px;
+      padding: 0.6rem 0.8rem;
+      color: #f6f8ff;
+      font-size: 1rem;
+    }
+    input:focus {
+      outline: 2px solid rgba(122, 166, 255, 0.65);
+      outline-offset: 1px;
+    }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0.65rem 1.1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    button.primary {
+      background: linear-gradient(135deg, #4878ff, #6f9dff);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(64, 111, 255, 0.35);
+    }
+    button.secondary {
+      background: rgba(30, 39, 55, 0.9);
+      color: #dce3f7;
+      border: 1px solid rgba(102, 133, 187, 0.35);
+    }
+    button:disabled {
+      opacity: 0.55;
+      cursor: wait;
+      transform: none;
+      box-shadow: none;
+    }
+    button:not(:disabled):hover {
+      transform: translateY(-1px);
+    }
+    #status {
+      margin-top: 1.5rem;
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      background: rgba(22, 30, 45, 0.85);
+      border: 1px solid rgba(102, 133, 187, 0.35);
+      min-height: 3.2rem;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+    #status.success { border-color: rgba(104, 214, 132, 0.55); color: #a5f7bb; }
+    #status.error { border-color: rgba(255, 108, 108, 0.55); color: #ffb3b3; }
+    #status.info { color: #cbd3e6; }
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.2rem;
+      flex-wrap: wrap;
+    }
   </style>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>ÉMERGENCE — <span class="badge">/dev-auth.html</span></h1>
-      <p class="muted">Génère un <strong>ID token Google</strong> (JWT) via Google Identity Services, l’enregistre pour l’app (storage + cookie), puis teste des appels <code>/api/*</code>.</p>
+  <main>
+    <h1>Connexion locale — ÉMERGENCE</h1>
+    <p>Utilise cette page pour générer un JWT local directement via l'API <code>/api/auth/login</code>. Les identifiants doivent être présents dans l'allowlist.</p>
 
-      <label for="client_id">Google OAuth Client ID</label>
-      <input id="client_id" class="mono" placeholder="xxx.apps.googleusercontent.com"/>
+    <form id="login-form">
+      <label>
+        Adresse e-mail
+        <input type="email" id="email" name="email" autocomplete="email" required placeholder="prenom.nom@exemple.com" />
+      </label>
+      <label>
+        Mot de passe
+        <input type="password" id="password" name="password" autocomplete="current-password" required minlength="8" />
+      </label>
+      <button type="submit" class="primary" id="submit-btn">Obtenir un token</button>
+    </form>
 
-      <div class="row mt8">
-        <label style="display:flex;align-items:center;gap:8px;">
-          <input type="checkbox" id="auto_init"/> Auto-init GIS au chargement
-        </label>
-        <button class="btn primary" onclick="initGIS()">Init GIS</button>
-        <button class="btn" onclick="openApp()">Ouvrir l’app</button>
-        <button class="btn" onclick="clearStored()">Effacer token</button>
-        <span id="status" class="muted">en attente…</span>
-      </div>
-
-      <div class="mt20" id="gsi_btn"></div>
-      <div class="gutter"></div>
-
-      <label for="token">ID token (JWT)</label>
-      <textarea id="token" class="mono token" placeholder="— vide —"></textarea>
-      <div class="row mt8">
-        <button class="btn" onclick="storeToken()">Enregistrer pour l’app</button>
-        <button class="btn" onclick="copyToken()">Copier</button>
-        <button class="btn" onclick="decode()">Décoder (payload)</button>
-        <button class="btn" onclick="testHealth()">Tester /api/health</button>
-      </div>
-
-      <label for="curl" class="mt28">Exemple curl (M2)</label>
-      <textarea id="curl" class="mono" placeholder='curl -s -H "Authorization: Bearer ${ID_TOKEN}" -H "Content-Type: application/json" -d "{\"agent\":\"anima\",\"text\":\"Quel était le mot-code ?\",\"use_rag\": false}" "https://<cloud-run-url>/api/chat"'></textarea>
-      <div class="row mt8">
-        <button class="btn" onclick="fillCurl()">Générer la commande</button>
-      </div>
-
-      <pre id="payload" class="mono mt20 muted"></pre>
+    <div class="actions">
+      <button type="button" class="secondary" id="clear-btn">Vider les tokens locaux</button>
+      <button type="button" class="secondary" id="copy-btn">Copier le dernier token</button>
     </div>
-  </div>
 
-<script>
-/* ----------------------- Config & Helpers ----------------------- */
-const TOKEN_KEY = 'emergence.id_token';
-const COOKIE_NAME = 'id_token';
-const $ = (id) => document.getElementById(id);
-const qs = (k) => new URLSearchParams(location.search).get(k);
+    <div id="status" class="info">En attente d'informations.</div>
+  </main>
 
-/** Écrit le token dans sessionStorage, localStorage et cookie non-HTTPOnly */
-function writeTokenEverywhere(tok) {
-  if (!tok || !tok.trim()) return null;
-  const t = tok.trim();
-  try { sessionStorage.setItem(TOKEN_KEY, t); } catch {}
-  try { localStorage.setItem(TOKEN_KEY, t); } catch {}
-  try {
-    // Cookie lisible par le serveur (fallback côté WS allowlist)
-    document.cookie = `${COOKIE_NAME}=${encodeURIComponent(t)}; Path=/; Max-Age=7200; SameSite=Lax${location.protocol==='https:'?'; Secure':''}`;
-  } catch {}
-  // Notifie l’onglet/app qui t’a ouvert (au cas où)
-  try { if (window.opener) window.opener.postMessage({ type:'emergence:id_token', token:t }, '*'); } catch {}
-  return t;
-}
+  <script type="module">
+    import { storeAuthToken, clearAuth as clearStoredAuth } from './core/auth.js';
 
-function readStoredToken() {
-  try { return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; }
-}
+    const form = document.getElementById('login-form');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const submitBtn = document.getElementById('submit-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const copyBtn = document.getElementById('copy-btn');
+    const statusEl = document.getElementById('status');
 
-function clearStored() {
-  try { sessionStorage.removeItem(TOKEN_KEY); } catch {}
-  try { localStorage.removeItem(TOKEN_KEY); } catch {}
-  try { document.cookie = `${COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`; } catch {}
-  $('status').textContent = '🧹 token effacé';
-}
+    let lastToken = '';
 
-/* ----------------------- GIS / One Tap -------------------------- */
-function initGIS(){
-  const clientId = ($('client_id').value || '').trim();
-  if(!clientId){ $('status').textContent = '⛔ Client ID requis'; return; }
-  $('status').textContent = 'GIS initialisé — clique sur “Sign in with Google”.';
-
-  google.accounts.id.initialize({
-    client_id: clientId,
-    callback: (resp) => {
-      const tok = resp?.credential || '';
-      $('token').value = tok;
-      if (tok) {
-        writeTokenEverywhere(tok);
-        $('status').textContent = '✅ ID token reçu (stocké pour l’app)';
-      } else {
-        $('status').textContent = '❌ aucun token';
+    function shouldUseSecureCookies() {
+      try {
+        const location = window.location || {};
+        const protocol = (location.protocol || '').toLowerCase();
+        if (protocol !== 'https:') return false;
+        const hostname = (location.hostname || '').toLowerCase();
+        return !['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(hostname);
+      } catch (_) {
+        return false;
       }
     }
-  });
-  google.accounts.id.renderButton($('gsi_btn'), { theme: "outline", size: "large", text: "signin_with" });
-}
 
-/* ----------------------- UI actions ----------------------------- */
-async function copyToken(){
-  try { await navigator.clipboard.writeText(($('token').value || '').trim()); $('status').textContent = '📋 token copié'; }
-  catch { $('status').textContent = '⚠️ copie impossible'; }
-}
+    function setSessionCookie(sessionId, expiresAt) {
+      if (!sessionId) return;
+      try {
+        const parts = [
+          `emergence_session_id=${encodeURIComponent(sessionId)}`,
+          'path=/',
+          'SameSite=Lax',
+        ];
+        if (expiresAt) {
+          const dt = new Date(expiresAt);
+          if (!Number.isNaN(dt.getTime())) parts.push(`expires=${dt.toUTCString()}`);
+          else parts.push('Max-Age=604800');
+        } else {
+          parts.push('Max-Age=604800');
+        }
+        if (shouldUseSecureCookies()) parts.push('Secure');
+        document.cookie = parts.join('; ');
+      } catch (_) {}
+    }
 
-function storeToken(){
-  const tok = ($('token').value || '').trim();
-  if (!tok) { $('status').textContent = '⚠️ aucun token à enregistrer'; return; }
-  writeTokenEverywhere(tok);
-  $('status').textContent = '✅ token enregistré pour l’app';
-}
+    function setStatus(message, kind = 'info') {
+      statusEl.textContent = message;
+      statusEl.classList.remove('success', 'error', 'info');
+      statusEl.classList.add(kind);
+    }
 
-function fillCurl(){
-  const BASE = prompt("URL Cloud Run (ex: https://emergence-app-xxxx-uc.a.run.app)", "");
-  const tok = ($('token').value || '').trim();
-  if(!BASE || !tok){ $('status').textContent = '⚠️ BASE ou token manquant'; return; }
-  const body = JSON.stringify({agent:"anima", text:"Quel était le mot-code ?", use_rag:false}).replace(/"/g,'\\"');
-  const cmd = `curl -s -H "Authorization: Bearer ${tok}" -H "Content-Type: application/json" -d "${body}" "${BASE}/api/chat"`;
-  $('curl').value = cmd;
-}
+    async function login(email, password) {
+      const payload = { email, password };
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-function decode(){
-  const t = ($('token').value || '').trim();
-  const p = $('payload');
-  if(!t || t.split('.').length !== 3){ p.textContent = '— token invalide —'; return; }
-  try{
-    const payload = JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
-    p.textContent = JSON.stringify(payload, null, 2);
-  }catch(e){ p.textContent = '— erreur de décodage —'; }
-}
+      if (!response.ok) {
+        const text = await response.text();
+        const detail = (() => {
+          try { return JSON.parse(text)?.detail || text; }
+          catch { return text || 'Échec de la connexion'; }
+        })();
+        const error = new Error(typeof detail === 'string' ? detail : 'Échec de la connexion');
+        error.status = response.status;
+        throw error;
+      }
 
-async function testHealth(){
-  const tok = ($('token').value || '').trim();
-  if (!tok) { $('status').textContent = '⚠️ pas de token'; return; }
-  try{
-    const r = await fetch('/api/health', { headers: { 'Authorization': `Bearer ${tok}` } });
-    const j = await r.json();
-    $('status').textContent = `🩺 /api/health → ${r.status} ${j?.status||''} ${j?.message||''}`;
-  }catch(e){
-    $('status').textContent = '❌ /api/health KO (voir console)';
-    console.error(e);
-  }
-}
+      return response.json();
+    }
 
-function openApp(){ try { window.open('/', '_blank'); } catch {} }
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const email = emailInput.value.trim().toLowerCase();
+      const password = passwordInput.value;
+      if (!email || !password) {
+        setStatus('Complète les champs e-mail et mot de passe.', 'error');
+        return;
+      }
 
-/* ----------------------- Boot UX -------------------------------- */
-(function boot(){
-  // Préremplis le client_id : query ?client_id=... sinon valeur connue du projet
-  const fromQS = qs('client_id');
-  $('client_id').value = (fromQS && fromQS.trim()) || '486095406755-mbjgt9np24o4jg15jrgko74dennlqhp7.apps.googleusercontent.com';
+      submitBtn.disabled = true;
+      setStatus('Connexion en cours...', 'info');
 
-  // Récupère un token déjà stocké, s’il existe
-  const existing = readStoredToken();
-  if (existing) $('token').value = existing;
+      try {
+        const data = await login(email, password);
+        if (!data || typeof data !== 'object' || !data.token) {
+          throw new Error('Réponse inattendue du serveur.');
+        }
 
-  // Auto-init si demandé (?autoinit=1) ou si la case est cochée
-  const auto = qs('autoinit');
-  if (auto === '1') { $('auto_init').checked = true; }
-  if ($('auto_init').checked) {
-    // attends que GIS soit chargé
-    const t0 = Date.now();
-    (function waitGIS(){
-      if (window.google && window.google.accounts && window.google.accounts.id) { initGIS(); }
-      else if (Date.now() - t0 < 8000) { setTimeout(waitGIS, 100); }
-      else { $('status').textContent = '⚠️ GIS non chargé (réessaie init manuellement)'; }
-    })();
-  }
-})();
-</script>
+        lastToken = data.token;
+        storeAuthToken(data.token, { expiresAt: data.expires_at });
+        setSessionCookie(data.session_id || data.sessionId, data.expires_at || data.expiresAt);
+
+        setStatus(`Succès ! Token stocké pour ${email}.\nExpiration: ${data.expires_at || data.expiresAt || 'inconnue'}`, 'success');
+
+        try {
+          window.opener?.postMessage({ type: 'emergence:auth-token', token: data.token, email }, '*');
+        } catch (_) {}
+      } catch (err) {
+        const message = err?.message || 'Impossible de se connecter.';
+        setStatus(`Erreur (${err?.status || 'n/a'}) : ${message}`, 'error');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      clearStoredAuth();
+      lastToken = '';
+      try {
+        const parts = ['emergence_session_id=', 'Max-Age=0', 'path=/', 'SameSite=Lax'];
+        if (shouldUseSecureCookies()) parts.push('Secure');
+        document.cookie = parts.join('; ');
+      } catch (_) {}
+      setStatus('Tokens locaux supprimés.', 'info');
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      if (!lastToken) {
+        setStatus('Aucun token à copier. Réalise d’abord une connexion.', 'error');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(lastToken);
+        setStatus('Token copié dans le presse-papiers.', 'success');
+      } catch (_) {
+        setStatus('Impossible de copier automatiquement. Copie manuelle nécessaire.', 'error');
+      }
+    });
+
+    emailInput.focus();
+  </script>
 </body>
 </html>

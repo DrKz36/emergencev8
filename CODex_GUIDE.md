@@ -67,7 +67,8 @@ Conclusion du panorama : EMERGENCE se distingue par sa **double orientation** :
 - **Backend** :
   - main.py (montage FastAPI, keepalive).
   - core/websocket.py (handshake gracieux, auth_required).
-  - eatures/chat/service.py (orchestration multi-fournisseurs, fallback).
+  - 
+eatures/chat/service.py (orchestration multi-fournisseurs, fallback).
   - shared/dependencies.py (extraction user ID).
 - **Frontend** :
   - state-manager.js (bootstrap + auth).
@@ -83,7 +84,7 @@ Conclusion du panorama : EMERGENCE se distingue par sa **double orientation** :
 
 ### P0 - Quick wins
 
-- Auth GIS (allowlist beta-testeurs, refus 401 sinon).
+- Auth locale (email + mot de passe, allowlist bêta-testeurs, refus 401 sinon).
 - Dialogue UX : horodatage complet (JJ.MM.AAAA HH:MM).
 - RAG : selection multi-docs, bandeau RAG actif, sources citees.
 - Debat : isolation stricte T1 (pas de fuite contexte).
@@ -156,7 +157,7 @@ Conclusion du panorama : EMERGENCE se distingue par sa **double orientation** :
 ## 6. Sequences (User Journeys)
 
 1. **Chat -> WS -> Agents -> Persist (P0)**
-   - Auth GIS -> ouverture WS.
+    - Auth locale -> ouverture WS.
    - Back : stream deltas + fallback.
    - P1.5 : threads/messages persistants.
 
@@ -193,7 +194,8 @@ Conclusion du panorama : EMERGENCE se distingue par sa **double orientation** :
 - **Runtime** : concurrency=80, cpu=1, memory=1Gi, timeout=120s, min-instances=1, max-instances=10.
 - **Scheduler** : ping /api/health toutes 5 min.
 - **Tests** : /.git/config = 403, /api/health = 200.
-- **Prochaines etapes** : integration GIS directe (remplacer dev-auth), wrapper etchWithAuth, allowlist emails/domaines.
+- **Prochaines etapes** : finaliser UX login (email + mot de passe), renforcer wrapper 
+etchWithAuth, allowlist emails/domaines.
 
 ---
 

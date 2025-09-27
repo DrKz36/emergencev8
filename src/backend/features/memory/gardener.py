@@ -473,24 +473,39 @@ class MemoryGardener:
         return int(value) if as_int else float(value)
 
     async def tend_the_garden(
-        self, consolidation_limit: int = 10, thread_id: Optional[str] = None
+        self,
+        consolidation_limit: int = 10,
+        thread_id: Optional[str] = None,
+        session_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         if thread_id:
-            return await self._tend_single_thread(thread_id)
+            return await self._tend_single_thread(thread_id, session_id=session_id)
 
         logger.info(
             "Le jardinier commence sa ronde dans le jardin de la mémoire (mode sessions)…"
         )
-        sessions = await self._fetch_recent_sessions(limit=consolidation_limit)
-        if not sessions:
-            logger.info("Aucune session récente à traiter. Le jardin est en ordre.")
-            await self._decay_knowledge()
-            return {
-                "status": "success",
-                "message": "Aucune session à traiter.",
-                "consolidated_sessions": 0,
-                "new_concepts": 0,
-            }
+        if session_id:
+            session_row = await self._fetch_session_by_id(session_id)
+            if not session_row:
+                logger.info(f"Session {session_id} introuvable pour la consolidation ciblée.")
+                return {
+                    "status": "success",
+                    "message": "Aucune session à traiter.",
+                    "consolidated_sessions": 0,
+                    "new_concepts": 0,
+                }
+            sessions = [session_row]
+        else:
+            sessions = await self._fetch_recent_sessions(limit=consolidation_limit)
+            if not sessions:
+                logger.info("Aucune session récente à traiter. Le jardin est en ordre.")
+                await self._decay_knowledge()
+                return {
+                    "status": "success",
+                    "message": "Aucune session à traiter.",
+                    "consolidated_sessions": 0,
+                    "new_concepts": 0,
+                }
 
         processed_ids: List[str] = []
         new_items_count = 0
@@ -575,7 +590,7 @@ class MemoryGardener:
         return report
 
     # ---------- NEW: consolidation d’un thread ----------
-    async def _tend_single_thread(self, thread_id: str) -> Dict[str, Any]:
+    async def _tend_single_thread(self, thread_id: str, session_id: Optional[str] = None) -> Dict[str, Any]:
         tid = (thread_id or "").strip()
         if not tid:
             return {
@@ -586,7 +601,11 @@ class MemoryGardener:
             }
 
         try:
-            thr = await queries.get_thread_any(self.db, tid)
+            normalized_session = (session_id or "").strip() or None
+            if normalized_session:
+                thr = await queries.get_thread(self.db, tid, normalized_session)
+            else:
+                thr = await queries.get_thread_any(self.db, tid)
             if not thr:
                 logger.warning(f"Thread {tid} introuvable.")
                 return {
@@ -596,8 +615,20 @@ class MemoryGardener:
                     "new_concepts": 0,
                 }
 
+            sid = thr.get("session_id") or normalized_session or tid
+            if normalized_session and sid and normalized_session != sid:
+                logger.warning(
+                    f"Thread {tid} introuvable pour la session {normalized_session}."
+                )
+                return {
+                    "status": "success",
+                    "message": "Thread introuvable pour cette session.",
+                    "consolidated_sessions": 0,
+                    "new_concepts": 0,
+                }
+
             uid = thr.get("user_id")
-            msgs = await queries.get_messages(self.db, tid, limit=1000)
+            msgs = await queries.get_messages(self.db, tid, session_id=sid, limit=1000)
             history = []
             for m in msgs or []:
                 history.append(
@@ -614,7 +645,7 @@ class MemoryGardener:
 
             # Analyse sémantique sans persistance en table sessions
             analysis = (
-                await self.analyzer.analyze_history(session_id=tid, history=history)
+                await self.analyzer.analyze_history(session_id=sid, history=history)
                 if history
                 else {}
             )
@@ -633,11 +664,11 @@ class MemoryGardener:
                 facts_to_add = []
                 for f in facts:
                     if not await self._fact_already_vectorized(
-                        tid, f["key"], f.get("agent")
+                        sid, f["key"], f.get("agent")
                     ):
                         facts_to_add.append(f)
                 if facts_to_add:
-                    session_stub: Dict[str, Any] = {"id": tid, "user_id": uid, "themes": []}
+                    session_stub: Dict[str, Any] = {"id": sid, "user_id": uid, "thread_id": tid, "themes": []}
                     await self._record_facts_in_sql(facts_to_add, session_stub, uid)
                     await self._vectorize_facts(facts_to_add, session_stub, uid)
                     new_items_count += len(facts_to_add)
@@ -683,6 +714,17 @@ class MemoryGardener:
     # … (le reste du fichier est inchangé par rapport à ta version V2.7.0) …
 
     # ---------- Helpers SQL ----------
+
+    async def _fetch_session_by_id(self, session_id: str) -> Optional[Dict[str, Any]]:
+        row = await self.db.fetch_one(
+            """
+            SELECT id, user_id, created_at, updated_at, session_data, summary, extracted_concepts, extracted_entities
+            FROM sessions
+            WHERE id = ?
+            """,
+            (session_id,),
+        )
+        return dict(row) if row else None
 
     async def _fetch_recent_sessions(self, limit: int) -> List[Dict[str, Any]]:
         query = """
@@ -1638,4 +1680,3 @@ class MemoryGardener:
             )
         except Exception as e:
             logger.warning(f"[decay] monitoring insert failed: {e}", exc_info=True)
-

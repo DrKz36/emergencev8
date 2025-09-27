@@ -9,6 +9,7 @@ import { StateManager } from './core/state-manager.js';
 import { WebSocketClient } from './core/websocket.js';
 import { MemoryCenter } from './features/memory/memory-center.js';
 import { HomeModule } from './features/home/home-module.js';
+import { storeAuthToken, clearAuth as clearStoredAuth, getIdToken } from './core/auth.js';
 import { api } from './shared/api-client.js';
 import { WS_CONFIG, EVENTS } from './shared/constants.js';
 
@@ -67,18 +68,9 @@ import { WS_CONFIG, EVENTS } from './shared/constants.js';
 })();
 
 /* ---------------- Helpers token ---------------- */
-function getCookie(name) {
-  const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-  return m ? decodeURIComponent(m[1]) : null;
-}
 function getAnyToken() {
-  return (
-    localStorage.getItem('emergence.id_token') ||
-    localStorage.getItem('id_token') ||
-    sessionStorage.getItem('id_token') ||
-    getCookie('id_token') ||
-    ''
-  ).trim();
+  const token = getIdToken();
+  return token ? token.trim() : '';
 }
 function hasToken() { return !!getAnyToken(); }
 function openDevAuth() {
@@ -103,48 +95,6 @@ function pickTokenFromLocation() {
   const blob = (window.location.hash || '') + '&' + (window.location.search || '');
   const m = blob.match(/(?:^|[?#&])(id_token|token)=([^&#]+)/i);
   return m ? decodeURIComponent(m[2]) : '';
-}
-function saveToken(tok, { expiresAt } = {}) {
-  if (!tok) return;
-  try { localStorage.setItem('emergence.id_token', tok); } catch {}
-  try { localStorage.setItem('id_token', tok); } catch {}
-  try { sessionStorage.setItem('id_token', tok); } catch {}
-  try { sessionStorage.setItem('emergence.id_token', tok); } catch {}
-  try {
-    const parts = [
-      `id_token=${encodeURIComponent(tok)}`,
-      'path=/',
-      'SameSite=Lax',
-    ];
-    if (expiresAt) {
-      const dt = new Date(expiresAt);
-      if (!Number.isNaN(dt.getTime())) {
-        parts.push(`expires=${dt.toUTCString()}`);
-      } else {
-        parts.push('Max-Age=604800');
-      }
-    } else {
-      parts.push('Max-Age=604800');
-    }
-    if (shouldUseSecureCookies()) parts.push('Secure');
-    document.cookie = parts.join('; ');
-  } catch {}
-}
-function clearToken() {
-  try { localStorage.removeItem('emergence.id_token'); } catch {}
-  try { localStorage.removeItem('id_token'); } catch {}
-  try { sessionStorage.removeItem('id_token'); } catch {}
-  try { sessionStorage.removeItem('emergence.id_token'); } catch {}
-  try { document.cookie = (function() {
-    const parts = ['id_token=', 'Max-Age=0', 'path=/', 'SameSite=Lax'];
-    if (shouldUseSecureCookies()) parts.push('Secure');
-    return parts.join('; ');
-  })(); } catch {}
-  try { document.cookie = (function() {
-    const parts = ['emergence_session_id=', 'Max-Age=0', 'path=/', 'SameSite=Lax'];
-    if (shouldUseSecureCookies()) parts.push('Secure');
-    return parts.join('; ');
-  })(); } catch {}
 }
 function isLocalHost() {
   const h = (window.location && window.location.hostname || '').toLowerCase();
@@ -891,7 +841,7 @@ class EmergenceClient {
     });
 
     const tokenFromUrl = pickTokenFromLocation();
-    if (tokenFromUrl) saveToken(tokenFromUrl);
+    if (tokenFromUrl) storeAuthToken(tokenFromUrl);
 
     let devAutoLogged = false;
     if (!hasToken()) {
@@ -954,7 +904,7 @@ class EmergenceClient {
         if (key !== 'emergence.id_token' && key !== 'id_token') return;
         const token = ev?.newValue;
         if (token && token.trim()) {
-          saveToken(token.trim());
+          storeAuthToken(token.trim());
           window.removeEventListener('storage', this.storageListener);
           this.storageListener = null;
           this.handleTokenAvailable('storage');
@@ -982,7 +932,7 @@ class EmergenceClient {
 
   handleLoginSuccess(payload = {}) {
     const token = payload?.token;
-    if (token && token.trim()) saveToken(token.trim(), { expiresAt: payload?.expiresAt });
+    if (token && token.trim()) storeAuthToken(token.trim(), { expiresAt: payload?.expiresAt });
     const role = (payload?.role ?? 'member');
     try { this.state?.set?.('auth.role', String(role).toLowerCase()); }
     catch (err) { console.warn('[main] Impossible de mettre a jour auth.role', err); }
@@ -1113,7 +1063,7 @@ class EmergenceClient {
   }
 
   handleLogout() {
-    clearToken();
+    clearStoredAuth();
     this.devAutoLogged = false;
     this.devAutoAttempted = false;
     this.markAuthRequired();

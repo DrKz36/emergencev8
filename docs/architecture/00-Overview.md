@@ -6,7 +6,7 @@
 - **But** : Plateforme IA multi-agents (Anima, Neo, Nexus) offrant chat temps réel, débats, mémoire progressive (STM/LTM) et RAG multi-documents.
 - **Acteurs externes**
   - Utilisateur (web/mobile)
-  - Google Identity Services (ID Token)
+  - Service d'auth interne (allowlist email + mot de passe, JWT locale)
   - Fournisseurs LLM (Google, Anthropic, OpenAI)
   - Stockages projet (SQLite app + Chroma vector store)
   - Hébergement Cloud Run / infrastructure containerisée
@@ -18,7 +18,7 @@
   - Responsabilités : Landing page (logo + email form), auth locale via allowlist (`POST /api/auth/login`), gestion des tokens (stockage + logout), bootstrap threads (`ensureCurrentThread()`), connexion WS (`/ws/{session_id}`), rendu chat/mémoire/RAG/documents.
 - **Backend (FastAPI + WebSocket)**
   - Couches : `main.py` (DI + migrations + routers), `containers.py` (`ServiceContainer`), routers REST (`/api/auth`, `/api/threads`, `/api/memory`, `/api/documents`, `/api/dashboard`, `/api/debates`), router WS (`chat.router`), services (`AuthService`, `ChatService`, `MemoryAnalyzer`, `MemoryGardener`, `DocumentService`, `DebateService`, `DashboardService`).
-  - Responsabilités : Auth locale (allowlist email, JWT 7j, admin allowlist) + compat GIS dev, gestion des sessions, orchestration multi-agents avec fallback fournisseur, consolidation mémoire, ingestion documents, diffusion WS.
+  - Responsabilités : Auth locale (allowlist email + mot de passe, JWT 7j, interface admin), gestion des sessions, orchestration multi-agents avec fallback fournisseur, consolidation mémoire, ingestion documents, diffusion WS.
 - **Stockages & ressources partagées**
   - **SQLite app** : threads, messages, coûts, documents, mémoire STM/LTM, tables auth (`auth_allowlist`, `auth_sessions`, `auth_audit_log`).
   - **Vector DB (Chroma)** : collection `emergence_knowledge` pour chunks documents + faits mémoire (auto-reset en cas de corruption, backup automatique).
@@ -26,6 +26,7 @@
 
 ## 3) Invariants & Qualité
 - **Auth & WS** : aucun accès API critique ni WS sans JWT valide (sauf mode dev). Handshake rejette (4401/1008) si token manquant et le front relaie `auth:missing` vers le toast déconnexion. En DEV (`AUTH_DEV_MODE=1`), `/api/auth/dev/login` émet un JWT local auto-consommé par le front (pas d'overlay).
+- **Session isolation** : chaque session auth fournit un identifiant unique ; le front remet a zero l'etat via StateManager.resetForSession() et envoie `X-Session-Id` sur chaque requête REST ; toutes les queries backend filtrent par `session_id`.
 - **Thread bootstrap** : a l'ouverture, le front garantit un thread `type=chat` (REST) puis hydrate les messages (limite 50). Si `GET /api/threads/{id}` renvoie 403 ou 404, l'app regenere un thread `type=chat` et relance le chargement sans dupliquer les toasts.
 - **RAG et Memoire** : activation explicite (toggle) ; bandeau sources cote UI ; consolidation memoire declenchee manuellement ou auto (gardener) ; `memory:clear` purge STM puis LTM filtree ; meta WS enrichies (`selected_doc_ids`, `rag_status`).
 - **Débat** : tours orchestrés côté back, isolation stricte des contextes agents, diffusion WS (`ws:debate_*`).

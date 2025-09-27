@@ -2,17 +2,17 @@
 
 ## Backend & QA
 - Backend verifie via `pwsh -File scripts/run-backend.ps1` (logs OK, WS et bannieres auth observes).
-- Utiliser `python scripts/seed_admin_password.py --email <admin> --password <motdepasse>` pour initialiser ou mettre a jour le mot de passe admin en local.
+- Utiliser `python scripts/seed_admin.py --email <admin> --password <motdepasse>` pour initialiser ou mettre a jour le mot de passe admin en local.
 - `tests/run_all.ps1` : dernier passage indique OK (voir session precedente, aucun echec signale).
 
 ## Auth allowlist - mots de passe (2025-09-27)
 - Module *Admin* cote frontend (navigation principale) reserve aux comptes `role=admin`. La liste est paginee, filtrable (`Actives`, `Revoquees`, `Toutes`) et propose une recherche email/note + resumes (`total`, `page`). Les toasts front confirment les sauvegardes et la copie du mot de passe genere.
 - `GET /api/auth/admin/allowlist` expose maintenant `status=active|revoked|all`, `search`, `page`, `page_size` et renvoie `{ items, total, page, page_size, has_more, status, query }`. Le flag historique `include_revoked=true` reste accepte pour la compatibilite.
 - `POST /api/auth/admin/allowlist` continue d'accepter `{ email, role?, note?, password?, generate_password? }` et retourne `{ entry, clear_password?, generated }`. Lorsque `generate_password=true`, l'audit ajoute `allowlist:password_generated` (longueur consigne dans `metadata.password_length`).
-- Toujours initialiser/rafraichir les admins via `scripts/seed_admin_password.py` avant de communiquer le formulaire aux testeurs; la commande est idempotente et journalisee (`allowlist:password_set`).
+- Toujours initialiser/rafraichir les admins via `scripts/seed_admin.py` avant de communiquer le formulaire aux testeurs; la commande est idempotente et journalisee (`allowlist:password_set`).
 
 ### Quickstart QA - flux admin → generation → communication
-1. `pwsh -File scripts/run-backend.ps1` puis `python scripts/seed_admin_password.py --email <admin> --password <secret>` pour garantir un acces admin valide.
+1. `pwsh -File scripts/run-backend.ps1` puis `python scripts/seed_admin.py --email <admin> --password <secret>` pour garantir un acces admin valide.
 2. Connexion UI avec le compte admin, onglet *Admin*. Verifier le resume (`total`, filtre `Actives`) et que la recherche vide affiche la pagination (`Page 1 sur 1`).
 3. Ajouter un testeur `qa+<date>@example.com` avec une note, valider le toast `Entree mise a jour.` puis filtrer `Revoquees` = 0, `Actives` >= 1.
 4. Utiliser `Generer un mot de passe` sur la ligne nouvellement creee : le panneau affiche le secret, le bouton *Copier* remonte le toast `Copie dans le presse-papiers.` et `password_updated_at` est renseigne. Capturer l'ecran (`docs/assets/admin/qa-password-generated.png`).
@@ -22,7 +22,7 @@
 
 ## Plan de deploiement - allowlist mots de passe
 1. Deployer la version backend (FastAPI) et verifier au demarrage que les logs confirment la presence des colonnes `auth_allowlist.password_hash` / `password_updated_at` (DDL auto via `create_tables`).
-2. Pour chaque environnement, executer `python scripts/seed_admin_password.py --email <admin> --password <motdepasse>` afin d'initialiser les comptes admin existants (idempotent, journalise).
+2. Pour chaque environnement, executer `python scripts/seed_admin.py --email <admin> --password <motdepasse>` afin d'initialiser les comptes admin existants (idempotent, journalise).
 3. Depuis le module *Admin*, generer ou saisir les nouveaux mots de passe pour les testeurs (`Generate password`) et consigner `password_updated_at`.
 4. Communiquer les identifiants mis a jour via un canal securise, demander aux testeurs de se deconnecter/reconnecter pour invalider les anciens tokens.
 5. QA post-deploiement : tester `POST /api/auth/login`, verifier l'apparition de l'entree dans la liste (colonne `password_updated_at`) et rejouer `tests/backend/features/test_auth_admin.py`.
@@ -87,10 +87,12 @@
 - QA : `scripts/qa/home-qa.mjs` attend désormais `body.home-active` et capture l’état landing + overlay QA.
 - Correctif: `main.js` réintroduit `clearToken()` pour purger les tokens navigateur lors d’un logout ou backend HS (supprime le warning console).
 ## Session 2025-09-26 - Auth password mode planning
-- Objectif: préparer la bascule vers une authentification email + mot de passe sans dépendance GIS (mode dev).
+- État : authentification email + mot de passe (JWT local) déployée, sans dépendance GIS.
 - Étape 1: activer `AUTH_DEV_MODE=1` (et optionnellement `AUTH_DEV_DEFAULT_EMAIL`) via `.env.local`, puis valider le flux d'auto-login (plus d'overlay Home).
 - Étape 2: concevoir la migration `auth_allowlist` (`password_hash`, `password_updated_at`) + script de seed pour l’admin.
 - Étape 3: adapter `AuthService.login` et `/api/auth/login` pour accepter `{ email, password }` (bcrypt/argon2) tout en conservant l’allowlist.
 - Étape 4: mettre à jour la landing front (`home-module.js`) avec champ mot de passe + messages i18n et ajuster l’API client.
 - Étape 5: étendre les tests (`tests/backend/features/test_auth_login.py`, QA landing) et synchroniser la doc (`docs/architecture/30-Contracts.md`, `docs/ui/home-landing.md`, `docs/Memoire.md`).
 - Étape 6: élargir l’allowlist aux bêta-testeurs via scripts dédiés une fois la mécanique validée.
+
+

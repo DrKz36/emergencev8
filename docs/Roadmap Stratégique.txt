@@ -42,6 +42,14 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 
 ## Roadmap structurée
 
+### P0 - Auth & sessions isolées (Priorité)
+- Déployer un compte admin unique (`gonzalefernando@gmail.com`, mot de passe défini) via seed/migration et documenter la procédure.
+- Garantir que chaque connexion crée une session indépendante : threads initiaux, STM/LTM et embeddings totalement séparés.
+- [FAIT 2025-09-28] Migration `session_id` (threads/messages/documents) + propagation `X-Session-Id` sur REST/WS; front reset via `StateManager.resetForSession()`.
+- Revoir les services (`AuthService`, `ChatService`, `MemoryGardener`, `MemoryAnalyzer`, `DocumentService`) pour s'assurer qu'ils respectent l'isolation par `session_id`.
+- Mettre à jour l'UI (HomeModule, StateManager, WebSocketClient) pour refléter le statut session/token et exposer l'interface d'administration sécurisée.
+- Fournir tests adaptés (pytest + smoke scripts) et documentation (architecture, passation, runbooks) alignée sur la nouvelle gouvernance des sessions.
+
 ### P2 — Mémoire vive & consolidation continue (En cours)
 - Optimiser l’expérience utilisateur en cas d’échec auth (toasts explicites, re-prompt GIS).
 - [FAIT 2025-09-27] Afficher l’historique de consolidation (`GET /api/memory/tend-garden`) dans l’UI mémoire.

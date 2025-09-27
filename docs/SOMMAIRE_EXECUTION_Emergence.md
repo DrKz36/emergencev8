@@ -12,9 +12,11 @@
 
 ## 2. Déploiement & Infrastructure
 - **Résumé déploiement Cloud Run (MAJ v4)**  
-  → Migration Cloud Run, intégration GIS (Google Identity Services), suppression IAP, endpoints `/api/*` protégés.  
-  → Page `/dev-auth.html` validée comme outil de debug.  
-  → Prochaines étapes : intégration GIS native, wrapper `fetchWithAuth`.
+  → Migration Cloud Run, authentification email + mot de passe (JWT HS256), suppression IAP, endpoints `/api/*` protégés.
+  → Page `/dev-auth.html` transformée en outil de login local (email + mot de passe).
+  → Prochaines étapes : UX login (erreurs explicites) et audit allowlist/révocation.
+- **scripts/seed_admin.py**  
+  -> Initialisation admin (email/mot de passe) idempotente; seed aligne sur l'isolation des sessions (`session_id`).
 
 ---
 
@@ -43,6 +45,10 @@
 ## 5. Architecture
 - **arborescence_synchronisée_20250829.txt**  
   → Source absolue de vérité sur l’architecture du repo (strict ARBO-LOCK).  
+- **docs/architecture/00-Overview.md**  
+  -> SessionManager + `X-Session-Id` documentes (isolation par session, reset front).
+- **docs/architecture/20-Sequences.md**  
+  -> Sequences Auth/Chat/Memoire ajoutes au scope `session_id` et `StateManager.resetForSession()`.
   → Toute création/déplacement = annonce + snapshot.
 
 ---

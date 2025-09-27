@@ -100,13 +100,26 @@ def test_thread_doc_filter(tmp_path):
         db = DatabaseManager(str(db_path))
         await schema.create_tables(db)
 
-        doc1 = await queries.insert_document(db, filename='doc1.pdf', filepath='doc1.pdf', status='ready', uploaded_at='2025-09-20T00:00:00Z')
+        session_id = 'sess-thread-docs'
+        doc1 = await queries.insert_document(
+            db,
+            filename='doc1.pdf',
+            filepath='doc1.pdf',
+            status='ready',
+            uploaded_at='2025-09-20T00:00:00Z',
+            session_id=session_id,
+        )
         user_id = 'user-test'
-        thread_id = await queries.create_thread(db, user_id=user_id, type_='chat', title='Test Thread')
-        await queries.set_thread_docs(db, thread_id, [doc1])
+        thread_id = await queries.create_thread(
+            db,
+            session_id=session_id,
+            user_id=user_id,
+            type_='chat',
+            title='Test Thread',
+        )
+        await queries.set_thread_docs(db, thread_id, session_id, [doc1])
 
         session_manager = SessionManager(db, memory_analyzer=None)
-        session_id = 'sess-thread-docs'
         await session_manager.ensure_session(session_id=session_id, user_id=user_id, thread_id=thread_id, history_limit=50)
 
         cost_tracker = FakeCostTracker()
@@ -152,7 +165,7 @@ def test_thread_doc_filter(tmp_path):
             if doc_id is not None:
                 assert int(doc_id) == doc1
 
-        assert vector_service.last_where_filter == {'document_id': doc1}
+        assert vector_service.last_where_filter == {'$and': [{'session_id': session_id}, {'document_id': doc1}]}
 
         await db.disconnect()
         os.environ.pop('EMERGENCE_AUTO_TEND', None)

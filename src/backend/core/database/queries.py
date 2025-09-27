@@ -223,11 +223,16 @@ async def get_costs_summary(db: DatabaseManager) -> Dict[str, float]:
 
 # ------------------- Documents (existant) ------------------- #
 async def insert_document(
-    db: DatabaseManager, filename: str, filepath: str, status: str, uploaded_at: str
+    db: DatabaseManager,
+    filename: str,
+    filepath: str,
+    status: str,
+    uploaded_at: str,
+    session_id: str,
 ) -> int:
     await db.execute(
-        "INSERT INTO documents (filename, filepath, status, uploaded_at) VALUES (?, ?, ?, ?)",
-        (filename, filepath, status, uploaded_at),
+        "INSERT INTO documents (filename, filepath, status, uploaded_at, session_id) VALUES (?, ?, ?, ?, ?)",
+        (filename, filepath, status, uploaded_at, session_id),
     )
     row = await db.fetch_one("SELECT last_insert_rowid() AS id")
     if row is None:
@@ -236,46 +241,84 @@ async def insert_document(
 
 
 async def update_document_processing_info(
-    db: DatabaseManager, doc_id: int, char_count: int, chunk_count: int, status: str
+    db: DatabaseManager,
+    doc_id: int,
+    session_id: str,
+    char_count: int,
+    chunk_count: int,
+    status: str,
 ):
     await db.execute(
-        "UPDATE documents SET char_count = ?, chunk_count = ?, status = ? WHERE id = ?",
-        (char_count, chunk_count, status, doc_id),
+        "UPDATE documents SET char_count = ?, chunk_count = ?, status = ? WHERE id = ? AND session_id = ?",
+        (char_count, chunk_count, status, doc_id, session_id),
     )
 
 
 async def set_document_error_status(
-    db: DatabaseManager, doc_id: int, error_message: str
+    db: DatabaseManager, doc_id: int, session_id: str, error_message: str
 ):
     await db.execute(
-        "UPDATE documents SET status = 'error', error_message = ? WHERE id = ?",
-        (error_message, doc_id),
+        "UPDATE documents SET status = 'error', error_message = ? WHERE id = ? AND session_id = ?",
+        (error_message, doc_id, session_id),
     )
 
 
-async def insert_document_chunks(db: DatabaseManager, chunks: List[Dict[str, Any]]):
+async def insert_document_chunks(
+    db: DatabaseManager, session_id: str, chunks: List[Dict[str, Any]]
+):
     await db.executemany(
-        "INSERT INTO document_chunks (id, document_id, chunk_index, content) VALUES (?, ?, ?, ?)",
-        [(c["id"], c["document_id"], c["chunk_index"], c["content"]) for c in chunks],
+        "INSERT INTO document_chunks (id, document_id, chunk_index, content, session_id) VALUES (?, ?, ?, ?, ?)",
+        [
+            (
+                c["id"],
+                c["document_id"],
+                c["chunk_index"],
+                c["content"],
+                session_id,
+            )
+            for c in chunks
+        ],
     )
 
 
-async def get_all_documents(db: DatabaseManager) -> List[Dict[str, Any]]:
-    rows = await db.fetch_all(
-        "SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents ORDER BY uploaded_at DESC"
-    )
+async def get_all_documents(
+    db: DatabaseManager, session_id: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    if session_id:
+        rows = await db.fetch_all(
+            "SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents WHERE session_id = ? ORDER BY uploaded_at DESC",
+            (session_id,),
+        )
+    else:
+        rows = await db.fetch_all(
+            "SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents ORDER BY uploaded_at DESC"
+        )
     return [dict(row) for row in rows]
 
 
 async def get_document_by_id(
-    db: DatabaseManager, doc_id: int
+    db: DatabaseManager, doc_id: int, session_id: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
-    row = await db.fetch_one("SELECT * FROM documents WHERE id = ?", (doc_id,))
+    if session_id:
+        row = await db.fetch_one("SELECT * FROM documents WHERE id = ? AND session_id = ?", (doc_id, session_id))
+    else:
+        row = await db.fetch_one("SELECT * FROM documents WHERE id = ?", (doc_id,))
     return dict(row) if row else None
 
 
-async def delete_document(db: DatabaseManager, doc_id: int):
-    await db.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
+async def delete_document(
+    db: DatabaseManager, doc_id: int, session_id: str
+) -> bool:
+    existing = await db.fetch_one(
+        "SELECT id FROM documents WHERE id = ? AND session_id = ?", (doc_id, session_id)
+    )
+    if not existing:
+        return False
+
+    await db.execute("DELETE FROM documents WHERE id = ? AND session_id = ?", (doc_id, session_id))
+    await db.execute("DELETE FROM document_chunks WHERE document_id = ? AND session_id = ?", (doc_id, session_id))
+    await db.execute("DELETE FROM thread_docs WHERE doc_id = ? AND session_id = ?", (doc_id, session_id))
+    return True
 
 
 # ------------------- Sessions (existant) ------------------- #
@@ -327,7 +370,8 @@ async def update_session_analysis_data(
 # -- Threads --
 async def create_thread(
     db: DatabaseManager,
-    user_id: str,
+    session_id: str,
+    user_id: Optional[str],
     type_: str,
     title: Optional[str] = None,
     agent_id: Optional[str] = None,
@@ -336,9 +380,10 @@ async def create_thread(
     thread_id = uuid.uuid4().hex
     now = datetime.now(timezone.utc).isoformat()
     await db.execute(
-        "INSERT INTO threads (id, user_id, type, title, agent_id, meta, archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)",
+        "INSERT INTO threads (id, session_id, user_id, type, title, agent_id, meta, archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)",
         (
             thread_id,
+            session_id,
             user_id,
             type_,
             title,
@@ -353,45 +398,57 @@ async def create_thread(
 
 async def get_threads(
     db: DatabaseManager,
-    user_id: str,
+    session_id: str,
     type_: Optional[str] = None,
     limit: int = 20,
     offset: int = 0,
 ) -> List[Dict[str, Any]]:
+    clauses = ["session_id = ?", "archived = 0"]
+    params: list[Any] = [session_id]
     if type_:
-        rows = await db.fetch_all(
-            "SELECT * FROM threads WHERE user_id = ? AND type = ? AND archived = 0 ORDER BY updated_at DESC LIMIT ? OFFSET ?",
-            (user_id, type_, limit, offset),
-        )
-    else:
-        rows = await db.fetch_all(
-            "SELECT * FROM threads WHERE user_id = ? AND archived = 0 ORDER BY updated_at DESC LIMIT ? OFFSET ?",
-            (user_id, limit, offset),
-        )
+        clauses.append("type = ?")
+        params.append(type_)
+    query = (
+        "SELECT * FROM threads WHERE "
+        + " AND ".join(clauses)
+        + " ORDER BY updated_at DESC LIMIT ? OFFSET ?"
+    )
+    params.extend([limit, offset])
+    rows = await db.fetch_all(query, tuple(params))
     return [dict(r) for r in rows]
 
 
 async def get_thread(
-    db: DatabaseManager, thread_id: str, user_id: str
+    db: DatabaseManager,
+    thread_id: str,
+    session_id: str,
 ) -> Optional[Dict[str, Any]]:
     row = await db.fetch_one(
-        "SELECT * FROM threads WHERE id = ? AND user_id = ?", (thread_id, user_id)
+        "SELECT * FROM threads WHERE id = ? AND session_id = ?",
+        (thread_id, session_id),
     )
     return dict(row) if row else None
 
 
 async def get_thread_any(
-    db: DatabaseManager, thread_id: str
+    db: DatabaseManager,
+    thread_id: str,
+    session_id: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    """Récupère un thread par id, sans filtrer user_id (fallback debug/compat)."""
-    row = await db.fetch_one("SELECT * FROM threads WHERE id = ?", (thread_id,))
+    if session_id:
+        row = await db.fetch_one(
+            "SELECT * FROM threads WHERE id = ? AND session_id = ?",
+            (thread_id, session_id),
+        )
+    else:
+        row = await db.fetch_one("SELECT * FROM threads WHERE id = ?", (thread_id,))
     return dict(row) if row else None
 
 
 async def update_thread(
     db: DatabaseManager,
     thread_id: str,
-    user_id: str,
+    session_id: str,
     title: Optional[str] = None,
     agent_id: Optional[str] = None,
     archived: Optional[bool] = None,
@@ -413,9 +470,9 @@ async def update_thread(
         params.append(1 if archived else 0)
     fields.append("updated_at = ?")
     params.append(datetime.now(timezone.utc).isoformat())
-    params.extend([thread_id, user_id])
+    params.extend([thread_id, session_id])
     await db.execute(
-        f"UPDATE threads SET {', '.join(fields)} WHERE id = ? AND user_id = ?",
+        f"UPDATE threads SET {', '.join(fields)} WHERE id = ? AND session_id = ?",
         tuple(params),
     )
 
@@ -423,17 +480,23 @@ async def update_thread(
 async def delete_thread(
     db: DatabaseManager,
     thread_id: str,
-    user_id: str,
+    session_id: str,
 ) -> bool:
-    """Delete a thread and its related records when the user owns it."""
-    thread = await get_thread(db, thread_id, user_id)
+    thread = await get_thread(db, thread_id, session_id)
     if not thread:
         return False
 
-    await db.execute("DELETE FROM thread_docs WHERE thread_id = ?", (thread_id,))
-    await db.execute("DELETE FROM messages WHERE thread_id = ?", (thread_id,))
     await db.execute(
-        "DELETE FROM threads WHERE id = ? AND user_id = ?", (thread_id, user_id)
+        "DELETE FROM thread_docs WHERE thread_id = ? AND session_id = ?",
+        (thread_id, session_id),
+    )
+    await db.execute(
+        "DELETE FROM messages WHERE thread_id = ? AND session_id = ?",
+        (thread_id, session_id),
+    )
+    await db.execute(
+        "DELETE FROM threads WHERE id = ? AND session_id = ?",
+        (thread_id, session_id),
     )
     return True
 
@@ -442,6 +505,7 @@ async def delete_thread(
 async def add_message(
     db: DatabaseManager,
     thread_id: str,
+    session_id: str,
     role: str,
     content: str,
     agent_id: Optional[str] = None,
@@ -455,9 +519,7 @@ async def add_message(
     need_session = await _messages_requires_session_id(db)
     need_timestamp = await _messages_requires_timestamp(db)
     safe_agent_id = await _maybe_neutralize_agent_id(db, agent_id)
-    session_value = (
-        await _ensure_legacy_session_fk_row(db, thread_id) if need_session else None
-    )
+    session_value = session_id if need_session else None
 
     def _cols_vals(base_cols: List[str], base_vals: List[Any]):
         cols, vals = list(base_cols), list(base_vals)
@@ -503,50 +565,73 @@ async def add_message(
             tuple(vals),
         )
 
-    await db.execute("UPDATE threads SET updated_at = ? WHERE id = ?", (now, thread_id))
+    await db.execute(
+        "UPDATE threads SET updated_at = ? WHERE id = ? AND session_id = ?",
+        (now, thread_id, session_id),
+    )
     return {"id": message_id, "created_at": now}
 
 
 async def get_messages(
-    db: DatabaseManager, thread_id: str, limit: int = 50, before: Optional[str] = None
+    db: DatabaseManager,
+    thread_id: str,
+    session_id: Optional[str] = None,
+    limit: int = 50,
+    before: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
+    clauses = ["thread_id = ?"]
+    params: list[Any] = [thread_id]
+    if session_id:
+        clauses.append("session_id = ?")
+        params.append(session_id)
     if before:
-        rows = await db.fetch_all(
-            "SELECT * FROM messages WHERE thread_id = ? AND created_at < ? ORDER BY created_at DESC LIMIT ?",
-            (thread_id, before, limit),
-        )
-    else:
-        rows = await db.fetch_all(
-            "SELECT * FROM messages WHERE thread_id = ? ORDER BY created_at DESC LIMIT ?",
-            (thread_id, limit),
-        )
+        clauses.append("created_at < ?")
+        params.append(before)
+    query = (
+        "SELECT * FROM messages WHERE "
+        + " AND ".join(clauses)
+        + " ORDER BY created_at DESC LIMIT ?"
+    )
+    params.append(limit)
+    rows = await db.fetch_all(query, tuple(params))
     return [dict(r) for r in rows][::-1]
 
 
 # -- Thread Docs --
 async def set_thread_docs(
-    db: DatabaseManager, thread_id: str, doc_ids: List[int], weight: float = 1.0
+    db: DatabaseManager,
+    thread_id: str,
+    session_id: str,
+    doc_ids: List[int],
+    weight: float = 1.0,
 ) -> None:
     now = datetime.now(timezone.utc).isoformat()
-    await db.execute("DELETE FROM thread_docs WHERE thread_id = ?", (thread_id,))
-    params = [(thread_id, int(d), weight, now) for d in doc_ids]
+    await db.execute(
+        "DELETE FROM thread_docs WHERE thread_id = ? AND session_id = ?",
+        (thread_id, session_id),
+    )
+    params = [(thread_id, int(d), session_id, weight, now) for d in doc_ids]
     if params:
         await db.executemany(
-            "INSERT INTO thread_docs (thread_id, doc_id, weight, last_used_at) VALUES (?, ?, ?, ?)",
+            "INSERT INTO thread_docs (thread_id, doc_id, session_id, weight, last_used_at) VALUES (?, ?, ?, ?, ?)",
             params,
         )
 
 
 async def append_thread_docs(
-    db: DatabaseManager, thread_id: str, doc_ids: List[int], weight: float = 1.0
+    db: DatabaseManager,
+    thread_id: str,
+    session_id: str,
+    doc_ids: List[int],
+    weight: float = 1.0,
 ) -> None:
     now = datetime.now(timezone.utc).isoformat()
-    params = [(thread_id, int(d), weight, now) for d in doc_ids]
+    params = [(thread_id, int(d), session_id, weight, now) for d in doc_ids]
     if params:
         await db.executemany(
             """
-            INSERT INTO thread_docs (thread_id, doc_id, weight, last_used_at)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO thread_docs (thread_id, doc_id, session_id, weight, last_used_at)
+            VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(thread_id, doc_id) DO UPDATE SET
                 weight = excluded.weight,
                 last_used_at = excluded.last_used_at
@@ -555,15 +640,33 @@ async def append_thread_docs(
         )
 
 
-async def get_thread_docs(db: DatabaseManager, thread_id: str) -> List[Dict[str, Any]]:
-    rows = await db.fetch_all(
-        """
-        SELECT td.thread_id, td.doc_id, td.weight, td.last_used_at, d.filename, d.status
-        FROM thread_docs td
-        JOIN documents d ON d.id = td.doc_id
-        WHERE td.thread_id = ?
-        ORDER BY td.last_used_at DESC
-        """,
-        (thread_id,),
-    )
+async def get_thread_docs(
+    db: DatabaseManager,
+    thread_id: str,
+    session_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    if session_id:
+        rows = await db.fetch_all(
+            """
+            SELECT td.thread_id, td.doc_id, td.weight, td.last_used_at, d.filename, d.status
+            FROM thread_docs td
+            JOIN documents d ON d.id = td.doc_id
+            WHERE td.thread_id = ? AND td.session_id = ?
+            ORDER BY td.last_used_at DESC
+            """,
+            (thread_id, session_id),
+        )
+    else:
+        rows = await db.fetch_all(
+            """
+            SELECT td.thread_id, td.doc_id, td.weight, td.last_used_at, d.filename, d.status
+            FROM thread_docs td
+            JOIN documents d ON d.id = td.doc_id
+            WHERE td.thread_id = ?
+            ORDER BY td.last_used_at DESC
+            """,
+            (thread_id,),
+        )
     return [dict(r) for r in rows]
+
+

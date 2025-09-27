@@ -4,19 +4,40 @@ Param(
   [string]$UserId  = "FG",
   [string]$AgentId = "anima",
   [string]$Text    = "Hello from WSS (Cloud Run).",
-  [string]$IdTokenPath = ".\id_token.txt",
-  [int]$TotalSeconds = 20
+  [string]$IdTokenPath = "./id_token.txt",
+  [int]$TotalSeconds = 20,
+  [string]$SessionId
 )
 
 Add-Type -AssemblyName System.Net.WebSockets
 if (-not (Test-Path $IdTokenPath)) { throw "ID token introuvable: $IdTokenPath" }
 $token = (Get-Content $IdTokenPath -Raw).Trim()
 
-$uri = [Uri]("$WssBase/ws?user_id=" + [Uri]::EscapeDataString($UserId))
+if (-not $SessionId -or -not $SessionId.Trim()) {
+  $parts = $token.Split('.')
+  if ($parts.Count -ge 2) {
+    try {
+      $payloadJson = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($parts[1] + ('=' * ((4 - $parts[1].Length % 4) % 4))))
+      $payloadObj = $payloadJson | ConvertFrom-Json -ErrorAction Stop
+      $SessionId = ($payloadObj.session_id, $payloadObj.sid, $payloadObj.sessionId | Where-Object { $_ })[0]
+    } catch {
+      Write-Warning "Impossible d'extraire session_id du token: $($_.Exception.Message)"
+    }
+  }
+}
+
+if (-not $SessionId -or -not $SessionId.Trim()) {
+  throw "SessionId requis (paramètre -SessionId ou claim session_id/sid dans le token)."
+}
+$SessionId = $SessionId.Trim()
+
+$base = $WssBase.TrimEnd('/')
+$uri = [Uri]("$base/ws/$SessionId?user_id=" + [Uri]::EscapeDataString($UserId))
 $ws  = [System.Net.WebSockets.ClientWebSocket]::new()
 $ws.Options.SetRequestHeader("Authorization","Bearer $token")
 
-Write-Host ">> Connecting to $($uri.AbsoluteUri) with Authorization: Bearer <token>"
+Write-Host ">> Connecting to $($uri.AbsoluteUri) with Authorization: Bearer <token>" -ForegroundColor Cyan
+Write-Host "   SessionId : $SessionId" -ForegroundColor DarkGray
 $ws.ConnectAsync($uri, [Threading.CancellationToken]::None).Wait()
 
 $payload = @{ agent_id = $AgentId; use_rag = $false; text = $Text } | ConvertTo-Json -Compress

@@ -13,7 +13,9 @@ $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
 $ErrorActionPreference = "Stop"
 $baseUrl    = "http://localhost:8000"
 $repoRoot   = (Get-Location).Path
-$vectorDir  = Join-Path $repoRoot "src\backend\data\vector_store"
+$vectorDir  = Join-Path $repoRoot "src\\backend\\data\\vector_store"
+$smokeUserId = "vector-reset"
+$smokeSessionId = "vsreset-" + ([Guid]::NewGuid().ToString("N"))
 
 Write-Host "=== [Préflight] Vérifications de base ==="
 if (-not (Test-Path $vectorDir)) {
@@ -29,7 +31,16 @@ if (-not (Test-Path $testFile)) {
 }
 
 try {
-    $resp1 = & curl.exe -s -X POST -F "file=@$testFile;type=text/plain" "$baseUrl/api/documents/upload"
+    $curlArgs = @(
+        "-s",
+        "-X","POST",
+        "-H","X-Session-Id: $smokeSessionId",
+        "-H","X-User-Id: $smokeUserId",
+        "-H","X-Dev-Bypass: 1",
+        "-F","file=@$testFile;type=text/plain",
+        "$baseUrl/api/documents/upload"
+    )
+    $resp1 = & curl.exe @curlArgs
     Write-Host "Réponse upload initial : $resp1"
 } catch {
     Write-Warning "Upload initial a échoué. Le backend est-il démarré sur $baseUrl ?"
@@ -109,10 +120,20 @@ if ($backups.Count -eq 0) {
 }
 
 try {
-    $resp2 = & curl.exe -s -X POST -F "file=@$testFile;type=text/plain" "$baseUrl/api/documents/upload"
+    $curlArgs2 = @(
+        "-s",
+        "-X","POST",
+        "-H","X-Session-Id: $smokeSessionId",
+        "-H","X-User-Id: $smokeUserId",
+        "-H","X-Dev-Bypass: 1",
+        "-F","file=@$testFile;type=text/plain",
+        "$baseUrl/api/documents/upload"
+    )
+    $resp2 = & curl.exe @curlArgs2
     Write-Host "Réponse upload après reset : $resp2"
     Write-Host "`n=== ✅ Test terminé : auto-reset validé si backup créé et upload OK ==="
 } catch {
     Write-Error "Upload après reset a échoué. Consulte les logs backend."
     throw
 }
+

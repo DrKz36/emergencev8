@@ -7,32 +7,32 @@
 4. Back : `AuthRateLimiter` vérifie le quota IP+email (5 essais / 5 min); `AuthService` contrôle l'allowlist (`LOCAL_ALLOWED_EMAILS`).
 5. Back : génération JWT HS256 (`iss=emergence.local`, `aud=emergence-app`, `sub=sha256(email)`), enregistrement dans `auth_sessions` (`issued_at`, `expires_at=+7j`, `ip`, `role`, `otp_fields`).
 6. Back : réponse `200` `{ token, expires_at, role, session_id }`; sinon `429` (rate) ou `401` (email refusé).
-7. Front : stockage token (`localStorage` + cookie), mise à jour `StateManager.auth`, déclenche `App` puis `WebSocketClient.connect()`.
-8. Back : handshake WS accepte le token local (signature, expiration, révocation) et attache `session.sub`.
-9. Front : badge auth actif; bouton `Se déconnecter` appelle `POST /api/auth/logout`, purge le token et remonte `HomeModule`.
+7. Front : stockage token (`localStorage` + cookie), mise a jour `StateManager.auth`, `StateManager.resetForSession(session_id)` remet l'etat a zero, `api-client` memorise le `session_id` pour l'entete `X-Session-Id`, puis `App` lance `WebSocketClient.connect()`.
+8. Back : handshake WS accepte le token local (signature, expiration, revocation), verifie le `session_id` (path WS + entete) et attache `session.sub`.
+9. Front : badge auth actif; `POST /api/auth/logout` purge le token, supprime `X-Session-Id` cote storage/localStorage et relance `HomeModule`.
 
 ## 1) Chat temps réel (Bootstrap -> WS -> Agents -> Persist)
-1. Front : `ensureAuth()` (GIS) → ID token (prod) ou auto-login DEV (`tryDevAutoLogin` + `/api/auth/dev/login`).
-2. Front : `ensureCurrentThread()` → `GET /api/threads?type=chat&limit=1` ; crée (`POST /api/threads`) si vide, hydrate `state.threads.map` via `GET /api/threads/{id}/messages?limit=50`.
-3. Front : ouverture WS `wss:///ws/{session_id}` (sub-proto `jwt` + token) → écoute `ws:session_established`.
-4. Front : envoi `{type:"chat.message", payload:{text, agent_id, use_rag, thread_id}}` ; watchdog REST (`POST /api/threads/{id}/messages`) si `ws:chat_stream_start` ne survient pas en 1,5 s.
-5. Back : `ChatService` normalise l'historique (roles en lower-case, fallback sur content/message), persiste le message, enrichit le prompt (mémoire STM/LTM + RAG si activé), puis appelle les modèles (fallback Google → Anthropic → OpenAI).
+1. Front : `HomeModule` + `storeAuthToken()` garantissent un JWT (storage/cookie) et `StateManager.getSessionId()` expose le `session_id` pour REST/WS. En DEV (`AUTH_DEV_MODE=1`), l'app peut appeler `/api/auth/dev/login` pour obtenir un token de test.
+2. Front : `ensureCurrentThread()` -> `GET /api/threads?type=chat&limit=1` ; cree (`POST /api/threads`) si vide, hydrate `state.threads.map` via `GET /api/threads/{id}/messages?limit=50` ; `api-client` ajoute `X-Session-Id` sur chaque appel.
+3. Front : ouverture WS `wss:///ws/{session_id}` (sub-proto `jwt` + token) et entete `X-Session-Id` ; ecoute `ws:session_established`.
+4. Front : envoi {type:"chat.message", payload:{text, agent_id, use_rag, thread_id}} ; watchdog REST (`POST /api/threads/{id}/messages` + `X-Session-Id`) si `ws:chat_stream_start` ne survient pas en 1,5 s.
+5. Back : `ChatService` normalise l'historique (roles en lower-case, fallback sur content/message), persiste le message, filtre threads/messages/documents par `session_id` et enrichit le prompt (memoire STM/LTM + RAG si active) avant d'appeler les modeles (fallback Google -> Anthropic -> OpenAI).
 6. Back : stream `ws:chat_stream_start/chunk/end`, `ws:model_info`, `ws:model_fallback`, `ws:memory_banner`, `ws:rag_status`.
-7. Front : intègre chunks, affiche sources RAG, met à jour métriques; REST `GET /api/threads/{id}/messages` pour pagination.
+7. Front : integre chunks, affiche sources RAG, met a jour metriques; REST `GET /api/threads/{id}/messages` (avec `X-Session-Id`) pour pagination.
 
 ## 2) Mémoire (Analyse → Consolidation → Clear)
-1. Front : utilisateur clique `Analyser` → `POST /api/memory/tend-garden` (payload optionnel `thread_id`).
-2. Back : `MemoryGardener` agrège historique (global ou thread), `MemoryAnalyzer` produit résumé/faits/concepts via LLM, persiste en base et vectorise (Chroma).
-3. Back : notifie via `ws:analysis_status` + `ws:memory_banner` (STM/LTM injectées).
-4. Front : badges mémoire mis à jour; `GET /api/memory/tend-garden` disponible pour vérifier l’état courant.
-5. Clear : `POST /api/memory/clear` → purge STM + items LTM filtrés par session/agent, notifie WS.
+1. Front : utilisateur clique `Analyser` -> `POST /api/memory/tend-garden` (payload optionnel `thread_id`); `api-client` ajoute `X-Session-Id` pour cibler la session active.
+2. Back : `MemoryGardener` agrege l'historique de la session (global ou thread), `MemoryAnalyzer` produit resume/faits/concepts via LLM, persiste en base avec `session_id` et vectorise (Chroma).
+3. Back : notifie via `ws:analysis_status` + `ws:memory_banner` (STM/LTM injectees) en rappelant le `session_id`.
+4. Front : badges memoire mis a jour; `GET /api/memory/tend-garden` (avec `X-Session-Id`) pour verifier l'etat courant.
+5. Clear : `POST /api/memory/clear` (avec `X-Session-Id`) -> purge STM + items LTM filtres par session/agent, notifie WS.
 
 ## 3) Documents (Upload → Indexation → Utilisation RAG)
-1. Front : drop/upload → `POST /api/documents/upload` (FormData).
-2. Back : `DocumentService` valide extension (`.pdf|.txt|.docx`), parse, chunk, vectorise, persiste métadonnées.
-3. Back : répond `201` + déclenche rafraîchissement (`GET /api/documents`).
-4. Front : `DocumentsModule` met à jour liste + quotas; `ChatModule` peut lier `document_ids` au thread.
-5. RAG : lors du chat, `ChatService` interroge `VectorService` pour récupérer passages pertinents (filtre thread/doc), inclut sources dans `ws:chat_stream_end`.
+1. Front : drop/upload -> `POST /api/documents/upload` (FormData + `X-Session-Id`).
+2. Back : `DocumentService` valide extension (`.pdf|.txt|.docx`), parse, chunk, vectorise, persiste metadonnees avec `session_id`.
+3. Back : repond `201` + declenche rafraichissement (`GET /api/documents` filtre par `session_id`).
+4. Front : `DocumentsModule` met a jour liste + quotas; `ChatModule` peut lier `document_ids` au thread (POST docs avec `X-Session-Id`).
+5. RAG : lors du chat, `ChatService` interroge `VectorService` pour recuperer passages pertinents (filtre thread/doc + `session_id`), inclut sources dans `ws:chat_stream_end`.
 
 ## 4) Débat multi-agents
 1. Front : configure débat → envoie `{type:"debate:create"}` (topic, agents, rounds, `use_rag`).
@@ -51,6 +51,3 @@
 3. Back : `AuthService` vérifie le rôle admin, renvoie allowlist + sessions (expiration, ip, revoked_at).
 4. Admin : ajoute une entrée `POST /api/auth/admin/allowlist` (`{ email, note? }`) ou supprime `DELETE /api/auth/admin/allowlist/{email}`; peut révoquer `POST /api/auth/admin/sessions/revoke` (`{ session_id }`).
 5. Back : journalise l'action (`auth_audit_log`), met à jour tables, renvoie l'état; front rafraîchit et notifie.
-
-
-

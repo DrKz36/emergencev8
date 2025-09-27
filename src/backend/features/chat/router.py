@@ -6,7 +6,7 @@ from uuid import uuid4
 from datetime import datetime, timezone
 from json import JSONDecodeError
 
-from fastapi import APIRouter, WebSocket, Depends
+from fastapi import APIRouter, WebSocket, Depends, HTTPException
 from dependency_injector.wiring import inject, Provide
 from starlette.websockets import WebSocketDisconnect
 
@@ -97,13 +97,9 @@ async def _ws_core(
         thread_id = None
     _uid = None
     try:
-        tok = deps._extract_ws_bearer_token(websocket)
-        if tok:
-            claims = deps._read_bearer_claims_from_token(tok)
-            deps._enforce_allowlist_claims(claims)
-            _uid = str(claims.get("sub") or "")
-    except Exception as e:
-        logger.info(f"WS auth tentative Ã©chouÃ©e: {e}")
+        _uid = await deps.get_user_id_from_websocket(websocket)
+    except HTTPException as exc:
+        logger.info(f"WS auth tentative échouée: {getattr(exc, 'detail', exc)}")
 
     await connection_manager.connect(
         websocket,

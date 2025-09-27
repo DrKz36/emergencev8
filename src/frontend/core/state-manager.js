@@ -4,6 +4,7 @@
  * @description Gestionnaire d'Ã©tat V15.4 "Threads Aware" + ensureAuth() + chat meta + metrics
  */
 import { AGENTS } from '../shared/constants.js';
+import { getIdToken } from './auth.js';
 
 
 const HEX32_RE = /^[0-9a-f]{32}$/i;
@@ -86,6 +87,13 @@ export class StateManager {
 
   sanitize(stateToClean) {
     let cleanState = { ...stateToClean };
+
+    const sessionState = (cleanState.session && typeof cleanState.session === 'object') ? { ...cleanState.session } : {};
+    const rawSessionId = typeof sessionState.id === 'string' ? sessionState.id.trim() : '';
+    sessionState.id = rawSessionId || null;
+    const rawStartedAt = Number(sessionState.startedAt);
+    sessionState.startedAt = Number.isFinite(rawStartedAt) ? rawStartedAt : Date.now();
+    cleanState.session = sessionState;
 
     cleanState.agents = cleanState.agents || {};
     for (const agentId of Object.keys(AGENTS)) {
@@ -199,7 +207,28 @@ export class StateManager {
     return cleanState;
   }
 
-  getInitialState() { return this.sanitize({}); }
+  getSessionId() {
+    return this.state?.session?.id || null;
+  }
+
+  resetForSession(newSessionId) {
+    const preservedAuth = { ...(this.state?.auth || {}) };
+    const preservedUser = { ...(this.state?.user || {}) };
+    const baseState = {
+      session: { id: newSessionId || null, startedAt: Date.now() },
+      auth: preservedAuth,
+      user: preservedUser,
+    };
+    this.state = this.sanitize(baseState);
+    try { localStorage.removeItem('emergence.threadId'); } catch (_) {}
+    try { localStorage.removeItem('emergence.documents.selection'); } catch (_) {}
+    this.notify('session');
+    this.persist();
+  }
+
+  getInitialState() {
+    return this.sanitize({ session: { id: null, startedAt: null } });
+  }
   get(key) { return key.split('.').reduce((acc, part) => acc && acc[part], this.state); }
 
   set(key, value) {
@@ -219,6 +248,10 @@ export class StateManager {
     }
 
     target[lastKey] = value;
+    if (key === 'websocket.sessionId' && this.state?.session) {
+      this.state.session.id = typeof value === 'string' && value.trim() ? value.trim() : null;
+      this.state.session.startedAt = Date.now();
+    }
     this.notify(key);
     this.persist();
   }
@@ -278,23 +311,19 @@ export class StateManager {
 
   async ensureAuth() {
     try {
-      if (window.gis?.getIdToken) {
-        const tok = await window.gis.getIdToken()
-        if (tok) {
-          try { sessionStorage.setItem('emergence.id_token', tok); } catch (_) {}
-          try { localStorage.setItem('emergence.id_token', tok); } catch (_) {}
-          this.set('auth.hasToken', true);
-          return true;
-        }
-      }
-    } catch (_) {}
-    this.set('auth.hasToken', false);
-    return false;
+      const tok = getIdToken();
+      const hasToken = !!(tok && String(tok).trim());
+      this.set('auth.hasToken', hasToken);
+      return hasToken;
+    } catch (_) {
+      this.set('auth.hasToken', false);
+      return false;
+    }
   }
+
+
+
+
+
+
 }
-
-
-
-
-
-
