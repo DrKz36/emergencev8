@@ -1,12 +1,12 @@
-﻿#requires -Version 5.1
-<#!
+#requires -Version 5.1
+<#
 .SYNOPSIS
     QA helper scenario to validate the memory:clear workflow end-to-end.
 .DESCRIPTION
     Runs a quick API health check, executes the detailed automated test located in tests/test_memory_clear.ps1,
     and prints the manual UI verifications expected from the QA checklist.
     Execute from the repository root.
-!>
+#>
 [CmdletBinding()]
 param(
     [string]$BaseUrl = "http://127.0.0.1:8000",
@@ -116,3 +116,4 @@ if (-not $Silent) {
 
 Write-ScenarioNote "Scenario completed"
 Write-Host "`n=== Done. memory:clear scenario completed ===" -ForegroundColor Green
+
