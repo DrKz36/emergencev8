@@ -130,7 +130,15 @@
   </main>
 
   <script type="module">
-    import { storeAuthToken, clearAuth as clearStoredAuth } from './core/auth.js';
+    import * as AuthModule from './core/auth.js';
+    const legacyAuthModule = (() => {
+      if (AuthModule && typeof AuthModule === 'object' && 'default' in AuthModule) {
+        return AuthModule.default;
+      }
+      return null;
+    })();
+    const storeAuthToken = AuthModule.storeAuthToken ?? legacyAuthModule?.storeAuthToken ?? (() => null);
+    const clearStoredAuth = AuthModule.clearAuth ?? legacyAuthModule?.clearAuth ?? (() => {});
 
     const form = document.getElementById('login-form');
     const emailInput = document.getElementById('email');

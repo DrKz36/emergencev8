@@ -198,6 +198,11 @@ export class AuthAdminModule {
           const role = decodeURIComponent(encodedRole);
           const note = decodeNote(encodedNote) || null;
           this.handleRowGenerate(email, role, note);
+        } else if (action === 'delete') {
+          event.preventDefault();
+          const email = target.getAttribute('data-email');
+          if (!email) return;
+          this.handleRowDelete(email);
         }
       };
       this.tableBody.addEventListener('click', onTableClick);
@@ -412,6 +417,40 @@ export class AuthAdminModule {
     await this.submitAllowlist({ email, role: normalizedRole, note: normalizedNote, password: null, generatePassword: true });
   }
 
+  async handleRowDelete(email) {
+    if (this.isSubmitting) return;
+    const rawEmail = typeof email === 'string' ? email.trim() : '';
+    const safeEmail = rawEmail.toLowerCase();
+    if (!safeEmail) return;
+    const template = t('admin.confirm_delete') || 'Supprimer cet acces ?';
+    const confirmationMessage = template.includes('{email}') ? template.replace('{email}', rawEmail || safeEmail) : `${template} ${rawEmail || safeEmail}`;
+    let confirmed = true;
+    try {
+      if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+        confirmed = window.confirm(confirmationMessage);
+      }
+    } catch (_) {
+      confirmed = true;
+    }
+    if (!confirmed) return;
+    this.setLoading(true);
+    this.clearGeneratedPassword();
+    try {
+      await api.authAdminDeleteAllowlist({ email: safeEmail });
+      this.notify('success', t('admin.message_deleted') || 'Entree supprimee.');
+      const targetPage = this.page > 0 ? this.page : 1;
+      await this.loadAllowlist({ page: targetPage });
+      if (this.page > this.totalPages && this.totalPages >= 1) {
+        await this.loadAllowlist({ page: this.totalPages });
+      }
+    } catch (error) {
+      console.error('[AuthAdmin] delete allowlist failed', error);
+      this.notify('error', t('admin.message_error'));
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
   handleStatusChange(value) {
     const normalized = (value || '').trim().toLowerCase();
     const allowed = new Set(['active', 'all', 'revoked']);
@@ -600,13 +639,14 @@ export class AuthAdminModule {
   updateAllowlistTable(items) {
     if (!this.tableBody) return;
     if (!Array.isArray(items) || !items.length) {
-      this.tableBody.innerHTML = `<tr><td colspan="6">${t('admin.table_empty') || 'Aucune entrée'}</td></tr>`;
+      this.tableBody.innerHTML = `<tr><td colspan="6">${t('admin.table_empty') || 'Aucune entree'}</td></tr>`;
       return;
     }
     const actionLabel = t('admin.action_generate');
+    const deleteLabel = t('admin.action_delete') || 'Supprimer';
     const neverLabel = t('admin.never') || 'Jamais';
     const activeLabel = t('admin.status_active') || 'Actives';
-    const revokedLabel = t('admin.status_revoked') || 'Révoquées';
+    const revokedLabel = t('admin.status_revoked') || 'Revoquees';
     const rows = items.map((item) => {
       const emailRaw = item?.email || '';
       const roleRaw = item?.role || 'member';
@@ -615,7 +655,7 @@ export class AuthAdminModule {
       const isRevoked = Boolean(item?.revoked_at);
       const email = escapeHtml(emailRaw);
       const role = escapeHtml(roleRaw);
-      const note = noteRaw ? escapeHtml(noteRaw) : `<span class="auth-admin__muted">—</span>`;
+      const note = noteRaw ? escapeHtml(noteRaw) : `<span class="auth-admin__muted">&mdash;</span>`;
       const statusBadgeLabel = escapeHtml(isRevoked ? revokedLabel : activeLabel);
       const statusBadgeClass = isRevoked
         ? 'auth-admin__status-badge auth-admin__status-badge--revoked'
@@ -624,6 +664,9 @@ export class AuthAdminModule {
       const rowClass = isRevoked ? 'auth-admin__row auth-admin__row--revoked' : 'auth-admin__row';
       const encodedNote = encodeNote(noteRaw);
       const safeRoleAttr = encodeURIComponent(roleRaw);
+      const generateButtonLabel = escapeHtml(actionLabel);
+      const deleteButtonLabel = escapeHtml(deleteLabel);
+      const emailAttr = escapeHtml(emailRaw);
       return `
         <tr class="${rowClass}">
           <td>${email}</td>
@@ -632,7 +675,10 @@ export class AuthAdminModule {
           <td><span class="${statusBadgeClass}">${statusBadgeLabel}</span></td>
           <td>${passwordCell}</td>
           <td>
-            <button type="button" data-action="generate" data-email="${escapeHtml(emailRaw)}" data-role-value="${safeRoleAttr}" data-note="${encodedNote}" class="auth-admin__button">${escapeHtml(actionLabel)}</button>
+            <div class="auth-admin__actions-cell">
+              <button type="button" data-action="generate" data-email="${emailAttr}" data-role-value="${safeRoleAttr}" data-note="${encodedNote}" class="auth-admin__button">${generateButtonLabel}</button>
+              <button type="button" data-action="delete" data-email="${emailAttr}" class="auth-admin__button auth-admin__button--danger">${deleteButtonLabel}</button>
+            </div>
           </td>
         </tr>
       `;

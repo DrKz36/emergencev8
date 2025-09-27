@@ -95,7 +95,8 @@
   - `pytest tests/backend/features/test_chat_message_normalization.py` : mesure la normalisation des rôles/messages dans `ChatService` avant l'injection mémoire/RAG et capte les régressions sur les formats de contenu.
   - `tests/test_memory_clear.ps1` (valide la purge STM/LTM et les embeddings). Pré-requis : backend local sur http://127.0.0.1:8000, dépendances Python installées, variable `EMERGENCE_ID_TOKEN` si auth activée. Exemple : `powershell -ExecutionPolicy Bypass -File tests/test_memory_clear.ps1 -BaseUrl http://localhost:8000`.
   - `scripts/smoke/scenario-memory-clear.ps1` (guide QA: health-check + injection auto + rappel des vérifications UI). Exemple : `pwsh -File scripts/smoke/scenario-memory-clear.ps1 -BaseUrl http://localhost:8000`. Dernier run : voir `docs/assets/memoire/scenario-memory-clear.log` (session `memclr-057bd36ddd5742238cc4db74f8b4bf22`, 2025-09-27).
-  - `scripts/smoke/smoke-ws-rag.ps1` (WS + RAG: handshake + stream). Utiliser `-MsgType chat.message` en DEV avec `user_id=...&dev_bypass=1`. Dernier run : `docs/assets/memoire/smoke-ws-rag.log` (session `ragtest124`, 2025-09-27).
+  - `scripts/smoke/smoke-ws-rag.ps1` (WS + RAG : handshake + stream). Utiliser `-MsgType chat.message` en DEV tant que `ws:chat_send` renvoie `ws:error`. Logs 27/09 : `docs/assets/memoire/smoke-ws-rag.log` (session `ragtest124`, flux `ws:chat_stream_end`) et `docs/assets/memoire/smoke-ws-rag-ws-chat_send.log` (session `ragtest-ws-send-20250927`, erreur `Type inconnu: ws:chat_send`).
+  - `scripts/smoke/smoke-ws-3msgs.ps1` (multi-messages). En attente du support `ws:chat_send`, lancer avec `-MsgType chat.message` pour valider la diffusion continue (`ws:chat_stream_start` x3 + `ws:chat_stream_end`). Log QA : `docs/assets/memoire/smoke-ws-3msgs.log` (aucun HTTP 5xx sur uploads/documents, 27/09).
   - `scripts/maintenance/run-vector-store-reset.ps1` (mode hebdo sans interaction, journalise sous `logs/vector-store/`).
   - `tests/test_vector_store_reset.ps1` (contrôle la remise à zéro et les backups du vector store).
 - Métriques front : affichage du modèle, TTFB mémoire, nombre d’items injectés.
@@ -103,7 +104,8 @@
 ### Journal d'exécution (2025-09-27)
 - `scripts/smoke/scenario-memory-clear.ps1 -BaseUrl http://127.0.0.1:8000` : OK – scénario complet, embeddings régénérés (2 vecteurs), purge STM/LTM vérifiée. Logs `#<-` archivés dans `docs/assets/memoire/scenario-memory-clear.log` (session `memclr-057bd36ddd5742238cc4db74f8b4bf22`).
 - `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest124 -MsgType chat.message` : OK – handshake dev_bypass, flux `ws:chat_stream_end` (OpenAI gpt-4o-mini) et upload document_id=57 sans 5xx. Logs `#<-` : `docs/assets/memoire/smoke-ws-rag.log`.
-
+- `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest-ws-send-20250927 -MsgType ws:chat_send` : KO – handshake accepté mais réponse `ws:error` (`Type inconnu: ws:chat_send`). Diagnostic consigné dans `docs/assets/memoire/smoke-ws-rag-ws-chat_send.log`.
+- `scripts/smoke/smoke-ws-3msgs.ps1 -SessionId ragtest-3msgs-20250927 -MsgType chat.message` : OK – envoi 3 messages consécutifs, `ws:chat_stream_start` x3 puis `ws:chat_stream_end` (OpenAI gpt-4o-mini). Aucun HTTP 5xx observé côté documents/uploads (`backend.err.log` inchangé). Logs `#<-` : `docs/assets/memoire/smoke-ws-3msgs.log`.
 ### Journal d'exécution (2025-09-21)
 - `pytest tests/backend/shared/test_config.py`: ÉCHEC – 3 assertions sont tombées car `Settings` charge les clés définies dans `.env` (`GOOGLE_API_KEY`, `GEMINI_API_KEY`) avant les paramètres fournis; valider si les tests doivent neutraliser ces variables d'environnement.
 - `tests/run_all.ps1`: OK – santé API, dashboard, documents et upload `test_upload.txt` (#14) validés, aucun code 5xx observé.

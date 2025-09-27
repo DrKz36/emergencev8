@@ -359,6 +359,17 @@ export const api = {
     }
     return fetchApi(AUTH_ADMIN_ALLOWLIST, { method: 'POST', body: payload });
   },
+  authAdminDeleteAllowlist: async ({ email } = {}) => {
+    const safeEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if (!safeEmail) {
+      const err = new Error('Email requis.');
+      err.status = 400;
+      throw err;
+    }
+    const url = `${AUTH_ADMIN_ALLOWLIST}/${encodeURIComponent(safeEmail)}`;
+    return fetchApi(url, { method: 'DELETE' });
+  },
+
 
   /* ---------------------- DOCUMENTS ---------------------- */
   async getDocuments() {

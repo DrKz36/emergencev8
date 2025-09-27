@@ -15,7 +15,7 @@
 1. Front : `HomeModule` + `storeAuthToken()` garantissent un JWT (storage/cookie) et `StateManager.getSessionId()` expose le `session_id` pour REST/WS. En DEV (`AUTH_DEV_MODE=1`), l'app peut appeler `/api/auth/dev/login` pour obtenir un token de test.
 2. Front : `ensureCurrentThread()` -> `GET /api/threads?type=chat&limit=1` ; cree (`POST /api/threads`) si vide, hydrate `state.threads.map` via `GET /api/threads/{id}/messages?limit=50` ; `api-client` ajoute `X-Session-Id` sur chaque appel.
 3. Front : ouverture WS `wss:///ws/{session_id}` (sub-proto `jwt` + token) et entete `X-Session-Id` ; ecoute `ws:session_established`.
-4. Front : envoi {type:"chat.message", payload:{text, agent_id, use_rag, thread_id}} ; watchdog REST (`POST /api/threads/{id}/messages` + `X-Session-Id`) si `ws:chat_stream_start` ne survient pas en 1,5 s.
+4. Front : envoi {type:"chat.message", payload:{text, agent_id, use_rag, thread_id}} ; watchdog REST (`POST /api/threads/{id}/messages` + `X-Session-Id`) si `ws:chat_stream_start` ne survient pas en 1,5 s. (27/09 : `ws:chat_send` reste refuse cote backend → smokes QA forces en `chat.message`).
 5. Back : `ChatService` normalise l'historique (roles en lower-case, fallback sur content/message), persiste le message, filtre threads/messages/documents par `session_id` et enrichit le prompt (memoire STM/LTM + RAG si active) avant d'appeler les modeles (fallback Google -> Anthropic -> OpenAI).
 6. Back : stream `ws:chat_stream_start/chunk/end`, `ws:model_info`, `ws:model_fallback`, `ws:memory_banner`, `ws:rag_status`.
 7. Front : integre chunks, affiche sources RAG, met a jour metriques; REST `GET /api/threads/{id}/messages` (avec `X-Session-Id`) pour pagination.

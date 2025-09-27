@@ -1,9 +1,9 @@
-﻿param(
+param(
   [string]$WsHost   = "127.0.0.1",
   [int]   $Port     = 8000,
   [string]$UserId   = "FG",
   [string]$AgentId  = "anima",
-  [string]$MsgType  = "ws:chat_send"
+  [string]$MsgType  = "ws:chat_send",
   [string]$SessionId
 )
 

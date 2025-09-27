@@ -9,9 +9,22 @@ import { StateManager } from './core/state-manager.js';
 import { WebSocketClient } from './core/websocket.js';
 import { MemoryCenter } from './features/memory/memory-center.js';
 import { HomeModule } from './features/home/home-module.js';
-import { storeAuthToken, clearAuth as clearStoredAuth, getIdToken } from './core/auth.js';
+import * as AuthModule from './core/auth.js';
+
 import { api } from './shared/api-client.js';
 import { WS_CONFIG, EVENTS } from './shared/constants.js';
+
+const legacyAuthModule = (() => {
+  if (AuthModule && typeof AuthModule === 'object' && 'default' in AuthModule) {
+    return AuthModule.default;
+  }
+  return null;
+})();
+
+const storeAuthToken = AuthModule.storeAuthToken ?? legacyAuthModule?.storeAuthToken ?? (() => null);
+const clearStoredAuth = AuthModule.clearAuth ?? legacyAuthModule?.clearAuth ?? (() => {});
+const getIdToken = AuthModule.getIdToken ?? legacyAuthModule?.getIdToken ?? (() => null);
+
 
 /* ---------------- WS-first Chat dedupe & reroute (main.js patch V1) ----------------
    - Empêche le doublon d'affichage du message utilisateur.
@@ -1089,12 +1102,4 @@ class EmergenceClient {
   window[FLAG] = true;
   window.emergenceApp = new EmergenceClient();
 })();
-
-
-
-
-
-
-
-
 

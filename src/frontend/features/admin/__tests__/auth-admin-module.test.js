@@ -34,6 +34,7 @@ test('updateAllowlistTable flags revoked entries', () => {
 
   assert(module.tableBody.innerHTML.includes('auth-admin__row--revoked'));
   assert(module.tableBody.innerHTML.includes('auth-admin__status-badge--revoked'));
+  assert(module.tableBody.innerHTML.includes('data-action="delete"'));
 });
 
 test('loadAllowlist applies filters and updates summary', async () => {
@@ -84,3 +85,55 @@ test('loadAllowlist applies filters and updates summary', async () => {
     api.authAdminListAllowlist = originalList;
   }
 });
+
+test('handleRowDelete removes entry when confirmed', async () => {
+  const notifications = [];
+  const loadCalls = [];
+  const originalDelete = api.authAdminDeleteAllowlist;
+  const originalList = api.authAdminListAllowlist;
+  const originalConfirm = (typeof window !== 'undefined' && 'confirm' in window) ? window.confirm : undefined;
+
+  api.authAdminDeleteAllowlist = async ({ email } = {}) => {
+    notifications.push({ kind: 'delete-call', email });
+  };
+  api.authAdminListAllowlist = async () => ({ items: [], total: 0, page: 1, page_size: 20, status: 'active', query: '', has_more: false });
+  if (typeof window !== 'undefined') {
+    window.confirm = () => true;
+  }
+
+  try {
+    const module = new AuthAdminModule({ emit: () => {} }, {});
+    module.tableBody = { innerHTML: '' };
+    module.summaryNode = { textContent: '' };
+    module.paginationInfo = { textContent: '' };
+    module.messageNode = { textContent: '', classList: noopClassList };
+    module.prevPageButton = { disabled: false };
+    module.nextPageButton = { disabled: false };
+    module.page = 1;
+    module.totalPages = 1;
+    module.notify = (kind, message) => { notifications.push({ kind, message }); };
+    module.loadAllowlist = async ({ page } = {}) => {
+      loadCalls.push(page ?? module.page);
+      module.page = page ?? module.page;
+      module.totalPages = Math.max(1, module.totalPages);
+      module.tableBody.innerHTML = '';
+    };
+
+    await module.handleRowDelete('DeleteMe@example.com');
+
+    const deleteCall = notifications.find((item) => item.kind === 'delete-call');
+    assert(deleteCall, 'delete API not called');
+    assert.equal(deleteCall.email, 'deleteme@example.com');
+    const success = notifications.find((item) => item.kind === 'success');
+    assert(success, 'success notification missing');
+    assert(loadCalls.length >= 1);
+  } finally {
+    api.authAdminDeleteAllowlist = originalDelete;
+    api.authAdminListAllowlist = originalList;
+    if (typeof window !== 'undefined') {
+      if (originalConfirm) window.confirm = originalConfirm;
+      else delete window.confirm;
+    }
+  }
+});
+
