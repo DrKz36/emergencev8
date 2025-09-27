@@ -1,11 +1,11 @@
 #requires -Version 5.1
-<#!
+<#
 .SYNOPSIS
     Automates the weekly execution of tests/test_vector_store_reset.ps1 without manual prompts.
 .DESCRIPTION
     Starts a backend instance (unless instructed otherwise), runs the vector store reset scenario end-to-end,
     and archives the console output in logs/vector-store. Designed to be scheduled (Task Scheduler / cron).
-!>
+#>
 [CmdletBinding()]
 param(
     [string]$BaseUrl = "http://127.0.0.1:8000",
@@ -40,12 +40,22 @@ $logLines = New-Object System.Collections.Generic.List[string]
 function Write-Log {
     param(
         [string]$Message,
-        [ConsoleColor]$Color = [ConsoleColor]::Gray
+        [object]$Color = ([ConsoleColor]::Gray)
     )
     $timestamp = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
     $formatted = "[{0}] {1}" -f $timestamp, $Message
     $logLines.Add($formatted)
-    Write-Host $formatted -ForegroundColor $Color
+    $targetColor = [ConsoleColor]::Gray
+    if ($Color -is [ConsoleColor]) {
+        $targetColor = $Color
+    } elseif ($Color) {
+        try {
+            $targetColor = [System.Enum]::Parse([ConsoleColor], [string]$Color, $true)
+        } catch {
+            $targetColor = [ConsoleColor]::Gray
+        }
+    }
+    Write-Host $formatted -ForegroundColor $targetColor
 }
 
 function Start-Backend {
@@ -118,19 +128,53 @@ function Invoke-Upload {
         [string]$FilePath,
         [string]$Label
     )
-    $curl = (Get-Command curl.exe -ErrorAction SilentlyContinue)
-    if (-not $curl) {
-        throw "curl.exe introuvable (requis pour l'upload)."
+    Add-Type -AssemblyName System.Net.Http
+    Write-Log ("Upload {0} via HttpClient..." -f $Label) [ConsoleColor]::DarkCyan
+    $client = $null
+    $content = $null
+    $fileStream = $null
+    $streamContent = $null
+    try {
+        $client = New-Object System.Net.Http.HttpClient
+        $content = New-Object System.Net.Http.MultipartFormDataContent
+        $fileStream = [System.IO.File]::OpenRead($FilePath)
+        $streamContent = New-Object System.Net.Http.StreamContent($fileStream)
+        $streamContent.Headers.ContentType = 'text/plain'
+        $content.Add($streamContent, 'file', [System.IO.Path]::GetFileName($FilePath))
+        $response = $client.PostAsync(("{0}/api/documents/upload" -f $Url.TrimEnd('/')), $content).Result
+        $body = $response.Content.ReadAsStringAsync().Result
+        Write-Log ("Reponse {0} : {1}" -f $Label, ($body -replace "\s+$", ''))
+        if (-not $response.IsSuccessStatusCode) {
+            throw "Upload ${Label} a echoue (HTTP $([int]$response.StatusCode))."
+        }
+    } finally {
+        if ($streamContent) { $streamContent.Dispose() }
+        if ($fileStream) { $fileStream.Dispose() }
+        if ($content) { $content.Dispose() }
+        if ($client) { $client.Dispose() }
     }
-    $formArg = "file=@`"$FilePath`";type=text/plain"
-    $args = @('-s','-X','POST','-F',$formArg,"{0}/api/documents/upload" -f $Url.TrimEnd('/'))
-    Write-Log ("Upload {0} via curl..." -f $Label) [ConsoleColor]::DarkCyan
-    $output = & $curl.Path @args
-    $exit = $LASTEXITCODE
-    Write-Log ("Reponse {0} : {1}" -f $Label, ($output -replace "\s+$", ''))
-    if ($exit -ne 0) {
-        throw "curl a retourne $exit pour l'upload ${Label}."
+}
+
+function Wait-ForFileUnlock {
+    param(
+        [string]$Path,
+        [int]$TimeoutSeconds = 60,
+        [int]$IntervalMilliseconds = 500
+    )
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $stream = [System.IO.File]::Open($Path,
+                                             [System.IO.FileMode]::Open,
+                                             [System.IO.FileAccess]::ReadWrite,
+                                             [System.IO.FileShare]::None)
+            $stream.Close()
+            return $true
+        } catch {
+            Start-Sleep -Milliseconds $IntervalMilliseconds
+        }
     }
+    return $false
 }
 
 if (-not (Test-Path $LogDirectory)) {
@@ -179,6 +223,10 @@ try {
     }
     Write-Log ("Fichier SQLite cible : {0}" -f $sqliteCandidate.FullName)
     Write-Log ("Taille avant corruption : {0} octets" -f $sqliteCandidate.Length)
+    Write-Log "Attente liberation du fichier SQLite (verrou exclusif)..." [ConsoleColor]::DarkGray
+    if (-not (Wait-ForFileUnlock -Path $sqliteCandidate.FullName -TimeoutSeconds 60)) {
+        throw "Impossible d'obtenir un acces exclusif sur $($sqliteCandidate.FullName) (verrou persistant)."
+    }
 
     $fs = [System.IO.File]::Open($sqliteCandidate.FullName,
                                  [System.IO.FileMode]::Truncate,

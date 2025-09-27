@@ -16,7 +16,7 @@
 2. Front : `ensureCurrentThread()` → `GET /api/threads?type=chat&limit=1` ; crée (`POST /api/threads`) si vide, hydrate `state.threads.map` via `GET /api/threads/{id}/messages?limit=50`.
 3. Front : ouverture WS `wss:///ws/{session_id}` (sub-proto `jwt` + token) → écoute `ws:session_established`.
 4. Front : envoi `{type:"chat.message", payload:{text, agent_id, use_rag, thread_id}}` ; watchdog REST (`POST /api/threads/{id}/messages`) si `ws:chat_stream_start` ne survient pas en 1,5 s.
-5. Back : `ChatService` persiste message, enrichit prompt (mémoire STM/LTM + RAG si activé), appelle modèles (fallback Google → Anthropic → OpenAI).
+5. Back : `ChatService` normalise l'historique (roles en lower-case, fallback sur content/message), persiste le message, enrichit le prompt (mémoire STM/LTM + RAG si activé), puis appelle les modèles (fallback Google → Anthropic → OpenAI).
 6. Back : stream `ws:chat_stream_start/chunk/end`, `ws:model_info`, `ws:model_fallback`, `ws:memory_banner`, `ws:rag_status`.
 7. Front : intègre chunks, affiche sources RAG, met à jour métriques; REST `GET /api/threads/{id}/messages` pour pagination.
 

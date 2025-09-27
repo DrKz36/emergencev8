@@ -80,10 +80,12 @@
 - WS meta : `meta.selected_doc_ids` expose les documents retenus et `ws:rag_status` trace les etats searching/found/idle pour la QA.
 - Auth: les claims exposent `session_revoked`; apres un logout, toute reconnexion WS refuse la session tant que le token n'est pas renouvele.
 - Auth: `POST /api/auth/logout` renvoie `Set-Cookie` vides (`id_token`, `emergence_session_id`) avec `SameSite=Lax` pour aligner la purge navigateur.
+- Reset vector store valide le 27/09/2025 via `scripts/maintenance/run-vector-store-reset.ps1`; log archive : `logs/vector-store/vector_store_reset_20250927-065824.log` (health-check, tronquage, backup, upload OK).
 - UX 401 : en cas de 401 sur /api/memory/*, l'application émet `auth:missing` et affiche le toast « Connexion requise pour la mémoire. ».
 - Tests recommandés :
   - `tests/run_all.ps1` (vérifie `/api/memory/tend-garden`).
   - `pytest tests/backend/features/test_memory_clear.py` : valide `POST /api/memory/clear` sans serveur actif (stubs DB/vector) et est invoque depuis `tests/run_all.ps1`.
+  - `pytest tests/backend/features/test_chat_message_normalization.py` : mesure la normalisation des rôles/messages dans `ChatService` avant l'injection mémoire/RAG et capte les régressions sur les formats de contenu.
   - `tests/test_memory_clear.ps1` (valide la purge STM/LTM et les embeddings). Pré-requis : backend local sur http://127.0.0.1:8000, dépendances Python installées, variable `EMERGENCE_ID_TOKEN` si auth activée. Exemple : `powershell -ExecutionPolicy Bypass -File tests/test_memory_clear.ps1 -BaseUrl http://localhost:8000`.
   - `scripts/smoke/scenario-memory-clear.ps1` (guide QA: health-check + injection auto + rappel des vérifications UI). Exemple : `pwsh -File scripts/smoke/scenario-memory-clear.ps1 -BaseUrl http://localhost:8000`.
   - `scripts/maintenance/run-vector-store-reset.ps1` (mode hebdo sans interaction, journalise sous `logs/vector-store/`).
@@ -101,6 +103,7 @@
 - **Badges mémoire** : indiquer clairement si STM/LTM ont été injectées dans la dernière réponse agent.
 - **Journal** : prévoir un panneau listant les dernières consolidations (`lastRunAt`, `thread_id`, `model`).
 - **CTA Clear** : confirmer avant purge (modal).
+- **Vue Centre mémoire** : capture de l'état nominal (STM disponible, compteur LTM, dernière analyse) pour illustrer la section Dashboard mémoire. ![Centre mémoire](assets/memoire/centre-memoire.png)
 
 ## 6. Étapes immédiates
 1. Ajouter une remontée UI lorsqu’une consolidation échoue (toast + bouton retry).
@@ -170,7 +173,7 @@
 
 ## 8. Assets visuels & schémas à produire
 - **Dossier cible** : placer les captures et exports sous `docs/assets/memoire/` (ex. `memoire-clear-before.png`, `memoire-clear-after.png`, `memoire-toast-success.png`).
-- **Captures UI** : bandeau mémoire (états `idle`, `loading`, `error`, `empty`), modal Clear, panneau thread, toasts succès/erreur, sortie console du script scénario.
+- **Captures UI** : bandeau mémoire (états `idle`, `loading`, `error`, `empty`), modal Clear, panneau thread, vue Centre mémoire (assets/memoire/centre-memoire.png), toasts succès/erreur, sortie console du script scénario.
 - **Schémas** :
   - Diagramme séquence `ChatUI → MemoryGardener → MemoryAnalyzer → VectorService`.
   - Schéma de flux purge STM/LTM/embeddings (ordre et webhooks associés).
@@ -180,10 +183,12 @@
 - [ ] Déclencher une **consolidation globale** et vérifier l’affichage du loader puis du résumé STM (capture : `assets/memoire/bandeau-analyse.png`).
 - [ ] Exécuter une **analyse ciblée** avec `persist=False` et confirmer que la LTM ne change pas (capture : `assets/memoire/panneau-thread.png`).
 - [ ] Lancer une **analyse ciblée persistée** (`persist=True`) et valider l’incrément du compteur d’items LTM (capture : `assets/memoire/option-persist.png`).
-- [ ] Verifier qu'une selection de documents en dehors du thread est ignoree : le front affiche les ressources valides et `meta.selected_doc_ids` ne contient que les IDs autorisees.
-- [ ] Activer RAG puis rafraichir la recherche sans message utilisateur en modifiant uniquement la selection; observer `ws:rag_status` et la mise a jour du bandeau documents.
+- [ ] Vérifier qu’une sélection de documents en dehors du thread est ignorée : le front affiche les ressources valides et `meta.selected_doc_ids` ne contient que les IDs autorisées.
+- [ ] Activer RAG puis rafraîchir la recherche sans message utilisateur en modifiant uniquement la sélection; observer `ws:rag_status` et la mise à jour du bandeau documents.
+- [ ] Mélanger des messages agent/user/system avec des capitalisations variées puis relancer `tend-garden` : confirmer, via `ws:memory_banner` et le diff back-end, que les rôles sont convertis en lower-case et qu’aucun doublon n’est injecté dans le prompt ou la LTM.
 - [ ] Exécuter `pwsh -File scripts/smoke/scenario-memory-clear.ps1` et archiver la sortie console (`docs/assets/memoire/scenario-memory-clear.log`).
 - [ ] Réaliser un **clear complet** et contrôler la purge STM/LTM + embeddings (captures : `assets/memoire/modal-clear.png`, `assets/memoire/bandeau-vide.png`).
 - [ ] **Tester le scénario d’erreur** (LLM indisponible) et confirmer la présence du toast + bouton retry (capture : `assets/memoire/toast-erreur.png`).
 - [ ] Vérifier la **cohérence des logs** `memory:garden:*` et `memory:clear` avec les actions réalisées (capture : `assets/memoire/logs-erreur.png`).
+
 
