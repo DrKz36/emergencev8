@@ -1,0 +1,5 @@
+#<- session-id=ragtest124
+#<- WS handshake ok (dev_bypass=1, user_id=smoke_rag) -> ws:session_established
+#<- ws:chat_stream_end reçu (provider=openai, model=gpt-4o-mini, fallback=false)
+#<- POST /api/documents/upload => success (document_id=57, aucun HTTP 5xx)
+#<- Scenario smoke-ws-rag completed on 2025-09-27T15:55:19.4217379+02:00

@@ -94,10 +94,15 @@
   - `pytest tests/backend/features/test_memory_clear.py` : valide `POST /api/memory/clear` sans serveur actif (stubs DB/vector) et est invoque depuis `tests/run_all.ps1`.
   - `pytest tests/backend/features/test_chat_message_normalization.py` : mesure la normalisation des rôles/messages dans `ChatService` avant l'injection mémoire/RAG et capte les régressions sur les formats de contenu.
   - `tests/test_memory_clear.ps1` (valide la purge STM/LTM et les embeddings). Pré-requis : backend local sur http://127.0.0.1:8000, dépendances Python installées, variable `EMERGENCE_ID_TOKEN` si auth activée. Exemple : `powershell -ExecutionPolicy Bypass -File tests/test_memory_clear.ps1 -BaseUrl http://localhost:8000`.
-  - `scripts/smoke/scenario-memory-clear.ps1` (guide QA: health-check + injection auto + rappel des vérifications UI). Exemple : `pwsh -File scripts/smoke/scenario-memory-clear.ps1 -BaseUrl http://localhost:8000`.
+  - `scripts/smoke/scenario-memory-clear.ps1` (guide QA: health-check + injection auto + rappel des vérifications UI). Exemple : `pwsh -File scripts/smoke/scenario-memory-clear.ps1 -BaseUrl http://localhost:8000`. Dernier run : voir `docs/assets/memoire/scenario-memory-clear.log` (session `memclr-057bd36ddd5742238cc4db74f8b4bf22`, 2025-09-27).
+  - `scripts/smoke/smoke-ws-rag.ps1` (WS + RAG: handshake + stream). Utiliser `-MsgType chat.message` en DEV avec `user_id=...&dev_bypass=1`. Dernier run : `docs/assets/memoire/smoke-ws-rag.log` (session `ragtest124`, 2025-09-27).
   - `scripts/maintenance/run-vector-store-reset.ps1` (mode hebdo sans interaction, journalise sous `logs/vector-store/`).
   - `tests/test_vector_store_reset.ps1` (contrôle la remise à zéro et les backups du vector store).
 - Métriques front : affichage du modèle, TTFB mémoire, nombre d’items injectés.
+
+### Journal d'exécution (2025-09-27)
+- `scripts/smoke/scenario-memory-clear.ps1 -BaseUrl http://127.0.0.1:8000` : OK – scénario complet, embeddings régénérés (2 vecteurs), purge STM/LTM vérifiée. Logs `#<-` archivés dans `docs/assets/memoire/scenario-memory-clear.log` (session `memclr-057bd36ddd5742238cc4db74f8b4bf22`).
+- `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest124 -MsgType chat.message` : OK – handshake dev_bypass, flux `ws:chat_stream_end` (OpenAI gpt-4o-mini) et upload document_id=57 sans 5xx. Logs `#<-` : `docs/assets/memoire/smoke-ws-rag.log`.
 
 ### Journal d'exécution (2025-09-21)
 - `pytest tests/backend/shared/test_config.py`: ÉCHEC – 3 assertions sont tombées car `Settings` charge les clés définies dans `.env` (`GOOGLE_API_KEY`, `GEMINI_API_KEY`) avant les paramètres fournis; valider si les tests doivent neutraliser ces variables d'environnement.
@@ -195,7 +200,7 @@
 - [ ] Vérifier qu’une sélection de documents en dehors du thread est ignorée : le front affiche les ressources valides et `meta.selected_doc_ids` ne contient que les IDs autorisées.
 - [ ] Activer RAG puis rafraîchir la recherche sans message utilisateur en modifiant uniquement la sélection; observer `ws:rag_status` et la mise à jour du bandeau documents.
 - [ ] Mélanger des messages agent/user/system avec des capitalisations variées puis relancer `tend-garden` : confirmer, via `ws:memory_banner` et le diff back-end, que les rôles sont convertis en lower-case et qu’aucun doublon n’est injecté dans le prompt ou la LTM.
-- [ ] Exécuter `pwsh -File scripts/smoke/scenario-memory-clear.ps1` et archiver la sortie console (`docs/assets/memoire/scenario-memory-clear.log`).
+- [ ] Exécuter `pwsh -File scripts/smoke/scenario-memory-clear.ps1` et archiver la sortie console (`docs/assets/memoire/scenario-memory-clear.log`). Dernier run : 2025-09-27 (`memclr-057bd36ddd5742238cc4db74f8b4bf22`).
 - [ ] Réaliser un **clear complet** et contrôler la purge STM/LTM + embeddings (captures : `assets/memoire/modal-clear.png`, `assets/memoire/bandeau-vide.png`).
 - [ ] **Tester le scénario d’erreur** (LLM indisponible) et confirmer la présence du toast + bouton retry (capture : `assets/memoire/toast-erreur.png`).
 - [ ] Vérifier la **cohérence des logs** `memory:garden:*` et `memory:clear` avec les actions réalisées (capture : `assets/memoire/logs-erreur.png`).

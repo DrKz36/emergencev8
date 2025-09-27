@@ -4,7 +4,7 @@
   [string]$UserId   = "FG",
   [string]$AgentId  = "anima",
   [string]$Text     = "Teste RAG avec documents ingérés.",
-  [string]$MsgType  = "ws:chat_send"
+  [string]$MsgType  = "ws:chat_send",
   [string]$SessionId
 )
 

@@ -4,6 +4,7 @@
 - Backend verifie via `pwsh -File scripts/run-backend.ps1` (logs OK, WS et bannieres auth observes).
 - Utiliser `python scripts/seed_admin.py --email <admin> --password <motdepasse>` pour initialiser ou mettre a jour le mot de passe admin en local.
 - `tests/run_all.ps1` : dernier passage indique OK (voir session precedente, aucun echec signale).
+- `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest124 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1"` : OK (27/09), flux `ws:chat_stream_end` + upload document_id=57 sans 5xx. Logs `#<-` → `docs/assets/memoire/smoke-ws-rag.log`.
 
 ## Auth allowlist - mots de passe (2025-09-27)
 - Module *Admin* cote frontend (navigation principale) reserve aux comptes `role=admin`. La liste est paginee, filtrable (`Actives`, `Revoquees`, `Toutes`) et propose une recherche email/note + resumes (`total`, `page`). Les toasts front confirment les sauvegardes et la copie du mot de passe genere.

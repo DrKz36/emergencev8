@@ -34,6 +34,8 @@
 4. Front : `DocumentsModule` met a jour liste + quotas; `ChatModule` peut lier `document_ids` au thread (POST docs avec `X-Session-Id`).
 5. RAG : lors du chat, `ChatService` interroge `VectorService` pour recuperer passages pertinents (filtre thread/doc + `session_id`), inclut sources dans `ws:chat_stream_end`.
 
+- **Smoke QA** : `pwsh -File scripts/smoke/smoke-ws-rag.ps1 -SessionId <id> -MsgType chat.message -UserId "tester&dev_bypass=1"` valide le flux WS+RAG. Logs `#<-` archivés dans `docs/assets/memoire/smoke-ws-rag.log` (session `ragtest124`, 2025-09-27).
+
 ## 4) Débat multi-agents
 1. Front : configure débat → envoie `{type:"debate:create"}` (topic, agents, rounds, `use_rag`).
 2. Back : `DebateService` crée session interne, boucle sur les agents (isolation contextuelle), invoque `ChatService` pour chaque tour.
