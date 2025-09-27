@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ChatUI - V28.3.2 (glass layout merge)
  * - Adopt glassmorphic layout with header/footer zones and auth host badge.
  * - Keeps mount-safe render, RAG sources, metrics, memory controls, and WS guards.
@@ -430,7 +430,7 @@ export class ChatUI {
 
   _bindControlPanelEvents(panel) {
     if (!panel) return;
-    panel.querySelector('#memory-analyze')?.addEventListener('click', () => this.eventBus.emit('memory:tend'));
+    panel.querySelector('#memory-analyze')?.addEventListener('click', () => this.eventBus.emit('memory:tend', { useActiveThread: true }));
     panel.querySelector('#memory-clear')?.addEventListener('click', () => this.eventBus.emit('memory:clear'));
     panel.querySelector('#memory-open-center')?.addEventListener('click', () => this.eventBus.emit('memory:center:open'));
   }
@@ -938,3 +938,5 @@ export class ChatUI {
     return { display: `${datePart} - ${timePart}`, iso: date.toISOString() };
   }
 }
+
+

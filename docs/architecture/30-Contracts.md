@@ -87,7 +87,7 @@
 
 ### Mémoire
 - `POST /api/memory/tend-garden` (`{ thread_id?, mode? }`) → 202 + job async ; renvoie état courant (`{ status, last_run_at, summary_id }`).
-- `GET /api/memory/tend-garden` → état consolidé (`{ summaries: [], facts: [], ltm_count }`).
+- `GET /api/memory/tend-garden` → état consolidé (`{ status: "ok", summaries: [...], facts: [], ltm_count, total }`).
 - `POST /api/memory/clear` (`{ scope: "stm|ltm|all", thread_id? }`) → 200 + compte rendu (`{ removed_stm: 1, removed_ltm: 12 }`).
 
 ### Documents

@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional, Tuple, List
 from fastapi import APIRouter, HTTPException, Request, Body, Query
 
 from backend.features.memory.gardener import MemoryGardener
+from backend.core.database import queries
 from backend.shared import dependencies as shared_dependencies
 
 router = APIRouter(tags=["Memory & Knowledge"])
@@ -357,11 +358,79 @@ async def tend_garden_endpoint(
 @router.get(
     "/tend-garden",
     response_model=Dict[str, Any],
-    summary="(Alias) DÃ©clenche la consolidation de la mÃ©moire (gardener).",
-    description="Alias GET pour compatibilitÃ© UI (Ã©quivalent au POST).",
+    summary="Retourne l'état de consolidation mémoire.",
+    description="Renvoie l'historique des consolidations (STM/LTM) et des métriques associées.",
 )
-async def tend_garden_get(request: Request) -> Dict[str, Any]:
-    return await tend_garden_endpoint(request)
+async def tend_garden_get(
+    request: Request, limit: Optional[int] = Query(default=None, ge=1, le=50)
+) -> Dict[str, Any]:
+    await shared_dependencies.get_user_id(request)
+    use_fallback = False
+    try:
+        container = _get_container(request)
+    except HTTPException as exc:
+        if exc.status_code == 503:
+            use_fallback = True
+        else:
+            raise
+
+    if use_fallback:
+        gardener = _get_gardener_from_request(request)
+        report = await gardener.tend_the_garden()
+        return {
+            "status": report.get("status", "success"),
+            "summaries": [],
+            "facts": [],
+            "ltm_count": int(report.get("new_concepts") or 0),
+            "total": int(report.get("consolidated_sessions") or 0),
+            "legacy_report": report,
+        }
+
+    db = container.db_manager()
+
+    try:
+        rows = await queries.get_all_sessions_overview(db)
+    except Exception as exc:
+        logger.error("[memory.tend_garden] Impossible de récupérer l'historique: %s", exc, exc_info=True)
+        rows = []
+
+    if limit is not None and limit >= 1:
+        rows = rows[: int(limit)]
+
+    summaries: List[Dict[str, Any]] = []
+    for row in rows:
+        summaries.append(
+            {
+                "session_id": row.get("id"),
+                "updated_at": row.get("updated_at"),
+                "summary": row.get("summary"),
+                "concept_count": int(row.get("concept_count") or 0),
+                "entity_count": int(row.get("entity_count") or 0),
+            }
+        )
+
+    ltm_count: Optional[int] = None
+    try:
+        vector_service = container.vector_service()
+        collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+        collection = vector_service.get_or_create_collection(collection_name)
+        if hasattr(collection, "count"):
+            try:
+                ltm_count = int(collection.count() or 0)
+            except Exception as exc:  # pragma: no cover - dépend backend
+                logger.debug("[memory.tend_garden] count() indisponible: %s", exc)
+                ltm_count = None
+    except Exception as exc:
+        logger.debug("[memory.tend_garden] Impossible de déterminer ltm_count: %s", exc)
+        ltm_count = None
+
+    return {
+        "status": "ok",
+        "summaries": summaries,
+        "facts": [],
+        "ltm_count": ltm_count if ltm_count is not None else 0,
+        "total": len(summaries),
+    }
 
 
 @router.delete(

@@ -2,7 +2,7 @@
 import asyncio
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -56,6 +56,9 @@ class FakeCollection:
         for item_id, metadata in list(self.items.items()):
             if self._matches(where, metadata):
                 self.items.pop(item_id, None)
+
+    def count(self) -> int:
+        return len(self.items)
 
 
 class FakeVectorService:
@@ -230,7 +233,12 @@ async def _run_memory_tend_garden_get_authorized():
                 headers={"X-Dev-Bypass": "1", "X-User-ID": "authorized-user"},
             )
         assert response.status_code == 200
-        assert response.json() == {"status": "success", "runs": 1}
+        payload = response.json()
+        assert payload.get("status") == "success"
+        assert payload.get("total") == 0
+        assert payload.get("ltm_count") == 0
+        assert isinstance(payload.get("summaries"), list)
+        assert payload.get("legacy_report") == {"status": "success", "runs": 1}
     finally:
         memory_router._get_gardener_from_request = original_getter
 
@@ -240,3 +248,93 @@ async def _run_memory_tend_garden_get_authorized():
 
 def test_memory_tend_garden_get_authorized():
     asyncio.run(_run_memory_tend_garden_get_authorized())
+
+
+
+async def _run_memory_tend_garden_get_with_data(tmp_path):
+    db_path = tmp_path / "memory-history.db"
+    db = DatabaseManager(str(db_path))
+    await db.connect()
+    await schema.create_tables(db)
+
+    owner_id = "history-owner"
+    now = datetime.now(timezone.utc)
+    rows = [
+        (
+            "session-old",
+            now - timedelta(minutes=5),
+            now - timedelta(minutes=2),
+            "Resume ancien",
+            ["concept-alpha", "concept-beta"],
+            ["entity-1"],
+        ),
+        (
+            "session-new",
+            now - timedelta(minutes=1),
+            now,
+            "Resume recent",
+            ["concept-gamma"],
+            ["entity-2", "entity-3"],
+        ),
+    ]
+
+    try:
+        for session_id, created_at, updated_at, summary, concepts, entities in rows:
+            await db.execute(
+                """
+                INSERT INTO sessions (id, user_id, created_at, updated_at, session_data, summary, extracted_concepts, extracted_entities)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    session_id,
+                    owner_id,
+                    created_at.isoformat(),
+                    updated_at.isoformat(),
+                    json.dumps([{"messages": "seed"}]),
+                    summary,
+                    json.dumps(concepts),
+                    json.dumps(entities),
+                ),
+            )
+
+        collection = FakeCollection()
+        collection.add("vec-a", {"source_session_id": "session-old", "user_id": owner_id})
+        collection.add("vec-b", {"source_session_id": "session-new", "user_id": owner_id})
+        collection.add("vec-c", {"source_session_id": "session-new", "user_id": owner_id})
+        vector_service = FakeVectorService(collection)
+        session_manager = FakeSessionManager(owner_id)
+        container = FakeContainer(db, vector_service, session_manager)
+
+        app = FastAPI()
+        app.include_router(memory_router.router, prefix="/api/memory")
+        app.state.service_container = container
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            response = await client.get(
+                "/api/memory/tend-garden",
+                headers={"X-Dev-Bypass": "1", "X-User-ID": owner_id},
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "ok"
+        assert payload["total"] == 2
+        assert payload["ltm_count"] == 3
+
+        summaries = payload["summaries"]
+        assert isinstance(summaries, list)
+        assert len(summaries) == 2
+        assert summaries[0]["session_id"] == "session-new"
+        assert summaries[0]["concept_count"] == 1
+        assert summaries[0]["entity_count"] == 2
+        assert summaries[1]["session_id"] == "session-old"
+        assert summaries[1]["concept_count"] == 2
+        assert summaries[1]["entity_count"] == 1
+    finally:
+        await db.disconnect()
+
+
+def test_memory_tend_garden_get_returns_history(tmp_path):
+    asyncio.run(_run_memory_tend_garden_get_with_data(tmp_path))
+

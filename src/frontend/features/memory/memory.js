@@ -83,7 +83,7 @@ export default class MemoryModule {
   _bindActions() {
     const { analyzeBtn, clearBtn } = this._nodes;
     analyzeBtn?.addEventListener('click', () => {
-      this.eventBus.emit?.('memory:tend', { force: true });
+      this.eventBus.emit?.('memory:tend', { force: true, useActiveThread: true });
     });
     clearBtn?.addEventListener('click', () => {
       this.eventBus.emit?.('memory:clear');
@@ -137,3 +137,4 @@ export default class MemoryModule {
     return fallback || 'Jamais';
   }
 }
+

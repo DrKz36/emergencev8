@@ -645,21 +645,72 @@ export default class ChatModule {
     }
   }
 
-  handleAnalysisStatus({ session_id, status, error } = {}) {
-    this.state.set('chat.lastAnalysis', {
+  handleAnalysisStatus({ session_id, status, error, reason, retry_after } = {}) {
+    const rawStatus = typeof status === 'string' ? status.trim().toLowerCase() : '';
+    const normalizedStatus = rawStatus === 'failed' ? 'error' : (rawStatus || 'unknown');
+    const payload = {
       session_id: session_id || null,
-      status: status || 'unknown',
+      status: normalizedStatus,
+      rawStatus: rawStatus || null,
       error: error || null,
+      reason: reason || null,
+      retryAfter: retry_after ?? null,
       at: Date.now()
-    });
-    console.log('[Chat] ws:analysis_status', { session_id, status, error });
+    };
+    this.state.set('chat.lastAnalysis', payload);
+    console.log('[Chat] ws:analysis_status', { session_id, status: normalizedStatus, error, reason });
 
     const now = Date.now();
-    if (now - this._lastToastAt < 1000) return;
-    this._lastToastAt = now;
+    const delta = now - this._lastToastAt;
 
-    if (status === 'completed') this.showToast('Mémoire consolidée ✓');
-    else if (status === 'failed') this.showToast('Analyse mémoire : échec');
+    if (normalizedStatus === 'completed') {
+      if (delta > 1000) {
+        this._lastToastAt = now;
+        const message = 'Mémoire consolidée ✓';
+        if (this.eventBus?.emit) this.eventBus.emit('ui:toast', { kind: 'info', text: message });
+        else this.showToast(message);
+      }
+      return;
+    }
+
+    if (normalizedStatus === 'error') {
+      if (delta > 1000) {
+        this._lastToastAt = now;
+        let detail = '';
+        if (typeof error === 'string' && error.trim()) {
+          const cleaned = error.trim().split('\n')[0].slice(0, 140);
+          detail = ` (${cleaned})`;
+        } else if (typeof reason === 'string' && reason.trim()) {
+          const cleaned = reason.trim().split('\n')[0].slice(0, 140);
+          detail = ` (${cleaned})`;
+        }
+        const message = `Analyse mémoire : échec${detail}`;
+        const retryPayload = { force: true, source: 'analysis_status_toast', useActiveThread: true };
+        if (this.eventBus?.emit) {
+          this.eventBus.emit('ui:toast', {
+            kind: 'error',
+            text: message,
+            action: {
+              label: 'Réessayer',
+              event: 'memory:tend',
+              payload: retryPayload
+            },
+            duration: 6500
+          });
+        } else {
+          this.showToast(message);
+        }
+      }
+      return;
+    }
+
+    if (normalizedStatus === 'skipped' && delta > 1000) {
+      this._lastToastAt = now;
+      const note = (typeof reason === 'string' && reason.trim()) ? ` (${reason.trim()})` : '';
+      const message = `Analyse mémoire ignorée${note}`;
+      if (this.eventBus?.emit) this.eventBus.emit('ui:toast', { kind: 'warning', text: message });
+      else this.showToast(message);
+    }
   }
 
   handleMessagePersisted(payload = {}) {
@@ -727,14 +778,38 @@ export default class ChatModule {
     if (st === 'found') this.showToast('RAG : sources trouvées ✓');
   }
 
-  async handleMemoryTend() {
+  async handleMemoryTend(payload = {}) {
+    const forced = payload?.force === true;
     const now = Date.now();
-    if (now - this._lastMemoryTendAt < this._memoryTendThrottleMs) return;
+    if (!forced && (now - this._lastMemoryTendAt) < this._memoryTendThrottleMs) return;
     this._lastMemoryTendAt = now;
 
+    const request = {};
+    const explicitThread = payload?.thread_id ?? payload?.threadId ?? null;
+    if (explicitThread && typeof explicitThread === 'string' && explicitThread.trim()) {
+      request.thread_id = explicitThread.trim();
+    } else if (payload?.useActiveThread) {
+      const activeThread = this.getCurrentThreadId();
+      if (activeThread) request.thread_id = activeThread;
+    }
+
     try {
-      this.showToast('Analyse mémoire démarrée…');
-      await api.tendMemory();
+      const previous = this.state?.get?.('chat.lastAnalysis') || {};
+      const sessionValue = request.thread_id || previous.session_id || null;
+      this.state?.set?.('chat.lastAnalysis', {
+        ...previous,
+        session_id: sessionValue,
+        status: 'running',
+        rawStatus: 'running',
+        error: null,
+        reason: null,
+        at: Date.now()
+      });
+    } catch (_) {}
+
+    try {
+      if (!payload?.quiet) this.showToast('Analyse mémoire démarrée…');
+      await api.tendMemory(request);
       // Le backend émettra ensuite ws:analysis_status → géré dans handleAnalysisStatus()
     } catch (e) {
       console.error('[Chat] memory.tend error', e);
@@ -991,3 +1066,4 @@ export default class ChatModule {
     } catch {}
   }
 }
+

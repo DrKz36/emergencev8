@@ -349,18 +349,68 @@ function mountToastHost() {
   document.body.appendChild(host);
   return host;
 }
-function showToast({ kind = 'info', text = '' } = {}) {
+function showToast({ kind = 'info', text = '', duration = 3200, action } = {}) {
   const host = mountToastHost();
   const card = document.createElement('div');
   card.role = 'status';
   card.style.cssText = 'min-width:260px;max-width:420px;padding:.6rem .8rem;border-radius:12px;background:#111a;color:#eee;border:1px solid #333;box-shadow:0 10px 30px rgba(0,0,0,.45);pointer-events:auto';
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:center;gap:.6rem';
+
   const chip = kind === 'warning' ? '#f59e0b' : (kind === 'error' ? '#ef4444' : '#22c55e');
-  card.innerHTML = `<div style="display:flex;align-items:center;gap:.6rem">
-    <span style="width:10px;height:10px;border-radius:50%;background:${chip};display:inline-block"></span>
-    <div style="font-family:system-ui,Segoe UI,Roboto,Arial;font-size:.95rem;line-height:1.3">${text}</div>
-  </div>`;
+  const dot = document.createElement('span');
+  dot.style.cssText = `width:10px;height:10px;border-radius:50%;background:${chip};display:inline-block`;
+  row.appendChild(dot);
+
+  const message = document.createElement('div');
+  message.style.cssText = 'flex:1;font-family:system-ui,Segoe UI,Roboto,Arial;font-size:.95rem;line-height:1.3';
+  message.textContent = String(text ?? '');
+  row.appendChild(message);
+
+  let removed = false;
+  const remove = () => {
+    if (removed) return;
+    removed = true;
+    try { card.remove(); } catch (_) {}
+  };
+
+  if (action && action.label) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = action.label;
+    btn.style.cssText = 'margin-left:auto;background:rgba(148,163,184,.18);border:1px solid rgba(148,163,184,.4);color:#e2e8f0;padding:.35rem .7rem;border-radius:10px;font-size:.85rem;cursor:pointer;font-family:inherit;';
+    btn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      try {
+        if (typeof action.handler === 'function') action.handler();
+      } catch (err) {
+        console.error('[Toast] action handler error', err);
+      }
+      try {
+        if (action.event) {
+          const bus = EventBus.getInstance();
+          bus?.emit?.(action.event, action.payload ?? {});
+        }
+      } catch (err) {
+        console.error('[Toast] action event error', err);
+      }
+      remove();
+    });
+    row.appendChild(btn);
+  }
+
+  card.appendChild(row);
   host.appendChild(card);
-  setTimeout(() => { try { card.remove(); } catch {} }, 3200);
+
+  let closeDelay = Number(duration);
+  if (!Number.isFinite(closeDelay) || closeDelay <= 0) closeDelay = action && action.label ? 7000 : 3200;
+  if (closeDelay !== Infinity) {
+    setTimeout(remove, closeDelay);
+  }
+
+  return card;
 }
 
 /* ---------------------- Guards EventBus (V3) ---------------------- */
@@ -1028,6 +1078,14 @@ class EmergenceClient {
       this.eventBus.on?.('memory:center:state', () => {
         try { this.memoryCenter.refresh(); } catch (e) { console.error('[Memory] refresh failed', e); }
       });
+      this.eventBus.on?.('memory:center:history', (payload = {}) => {
+        try {
+          const items = Array.isArray(payload.items) ? payload.items : [];
+          console.log('[MemoryCenter] history refresh', { count: items.length, first: items[0]?.session_id || null, ts: new Date().toISOString() });
+        } catch (err) {
+          console.warn('[MemoryCenter] history instrumentation failed', err);
+        }
+      });
     }
 
     try { this.eventBus.emit && this.eventBus.emit('module:show', 'chat'); } catch (_) {}
@@ -1081,6 +1139,7 @@ class EmergenceClient {
   window[FLAG] = true;
   window.emergenceApp = new EmergenceClient();
 })();
+
 
 
 

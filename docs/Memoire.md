@@ -77,6 +77,9 @@
 
 ## 4. Observabilité & tests
 - Logs : `memory:garden:start`, `memory:garden:done`, `memory:clear`.
+- EventBus front : `memory:center:history` est tracé via la console (main.js) avec le nombre d'entrées et le premier `session_id` de chaque rafraîchissement du centre mémoire. Utiliser ce log pour suivre les chargements côté UI et comparer les deltas entre STM/LTM.
+- UI retry : en cas d'échec du GET, le panneau centre affiche un bouton "Réessayer" qui relance `_fetchHistory(true)` et réémet l'événement `memory:center:history`. La présence d'un nouveau log console confirme que la relance a bien été exécutée.
+
 - WS meta : `meta.selected_doc_ids` expose les documents retenus et `ws:rag_status` trace les etats searching/found/idle pour la QA.
 - Auth: les claims exposent `session_revoked`; apres un logout, toute reconnexion WS refuse la session tant que le token n'est pas renouvele.
 - Auth: `POST /api/auth/logout` renvoie `Set-Cookie` vides (`id_token`, `emergence_session_id`) avec `SameSite=Lax` pour aligner la purge navigateur.
@@ -101,13 +104,14 @@
 
 ## 5. UX & actions utilisateur
 - **Badges mémoire** : indiquer clairement si STM/LTM ont été injectées dans la dernière réponse agent.
-- **Journal** : prévoir un panneau listant les dernières consolidations (`lastRunAt`, `thread_id`, `model`).
+- **Toasts d'échec** : en cas de `ws:analysis_status` avec `status=failed|error`, le front affiche un toast rouge « Analyse mémoire : échec » contenant un bouton `Réessayer` qui relance `memory:tend`.
+- **Journal** : panneau mémoire listant les dernières consolidations (`lastRunAt`, `thread_id`, `model` si disponible) alimenté par `GET /api/memory/tend-garden`.
 - **CTA Clear** : confirmer avant purge (modal).
 - **Vue Centre mémoire** : capture de l'état nominal (STM disponible, compteur LTM, dernière analyse) pour illustrer la section Dashboard mémoire. ![Centre mémoire](assets/memoire/centre-memoire.png)
 
 ## 6. Étapes immédiates
-1. Ajouter une remontée UI lorsqu’une consolidation échoue (toast + bouton retry).
-2. Exposer dans l’UI l’historique renvoyé par `GET /api/memory/tend-garden`.
+1. [FAIT 2025-09-27] Ajouter une remontée UI lorsqu’une consolidation échoue (toast + bouton retry).
+2. [FAIT 2025-09-27] Exposer dans l’UI l’historique renvoyé par `GET /api/memory/tend-garden`.
 3. Documenter un guide QA (checklist) pour valider la cohérence STM vs LTM après `memory:clear`.
 4. Intégrer le script `tests/test_memory_clear.ps1` (disponible) dans la checklist QA et l’automatiser après chaque purge majeure (voir section Observabilité & tests).
 5. Planifier une exécution hebdomadaire de `tests/test_vector_store_reset.ps1` et `tests/test_memory_clear.ps1` (journaliser les résultats et les horodatages).
@@ -182,6 +186,7 @@
 ## 9. Checklist QA manuelle
 - [ ] Déclencher une **consolidation globale** et vérifier l’affichage du loader puis du résumé STM (capture : `assets/memoire/bandeau-analyse.png`).
 - [ ] Exécuter une **analyse ciblée** avec `persist=False` et confirmer que la LTM ne change pas (capture : `assets/memoire/panneau-thread.png`).
+- [ ] Ouvrir le centre mémoire et vérifier que l'historique des consolidations se charge (GET /api/memory/tend-garden), inclut les derniers timestamps et résumés, et qu'un échec réseau propose le bouton `Réessayer`.
 - [ ] Lancer une **analyse ciblée persistée** (`persist=True`) et valider l’incrément du compteur d’items LTM (capture : `assets/memoire/option-persist.png`).
 - [ ] Vérifier qu’une sélection de documents en dehors du thread est ignorée : le front affiche les ressources valides et `meta.selected_doc_ids` ne contient que les IDs autorisées.
 - [ ] Activer RAG puis rafraîchir la recherche sans message utilisateur en modifiant uniquement la sélection; observer `ws:rag_status` et la mise à jour du bandeau documents.

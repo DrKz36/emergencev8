@@ -522,7 +522,34 @@ export const api = {
   },
 
   // Lance l’analyse/compactage mémoire (non bloquant).
-  tendMemory: () => fetchApi(MEMORY_TEND, { method: 'POST', body: {} }),
+  tendMemory: (options = {}) => {
+    const payload = {};
+    const rawThread = options?.thread_id ?? options?.threadId ?? null;
+    if (rawThread && typeof rawThread === 'string' && rawThread.trim()) {
+      payload.thread_id = rawThread.trim();
+    }
+    const rawMode = options?.mode ?? options?.scope ?? null;
+    if (rawMode && typeof rawMode === 'string') {
+      const normalizedMode = rawMode.trim().toLowerCase();
+      if (['stm', 'ltm', 'full', 'all'].includes(normalizedMode)) {
+        payload.mode = normalizedMode === 'all' ? 'full' : normalizedMode;
+      }
+    }
+    const body = Object.keys(payload).length ? payload : {};
+    return fetchApi(MEMORY_TEND, { method: 'POST', body });
+  },
+
+  // Récupère l’historique de consolidation mémoire (GET /api/memory/tend-garden).
+  getMemoryHistory: ({ limit } = {}) => {
+    let url = MEMORY_TEND;
+    const size = Number(limit);
+    if (Number.isFinite(size) && size > 0) {
+      const capped = Math.min(50, Math.max(1, Math.floor(size)));
+      const qs = new URLSearchParams({ limit: String(capped) }).toString();
+      url = `${MEMORY_TEND}?${qs}`;
+    }
+    return fetchApi(url);
+  },
 
   // Efface la mémoire de session. Essaie DELETE /api/memory/clear ; si non supporté → POST /api/memory/clear
   clearMemory: async () => {

@@ -44,7 +44,7 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 
 ### P2 — Mémoire vive & consolidation continue (En cours)
 - Optimiser l’expérience utilisateur en cas d’échec auth (toasts explicites, re-prompt GIS).
-- Afficher l’historique de consolidation (`GET /api/memory/tend-garden`) dans l’UI mémoire.
+- [FAIT 2025-09-27] Afficher l’historique de consolidation (`GET /api/memory/tend-garden`) dans l’UI mémoire.
 - [FAIT] Couvrir `memory:clear` par tests automatises (pytest `tests/backend/features/test_memory_clear.py` integre dans `tests/run_all.ps1`).
 
 ### P3 — RAG maîtrisé (Stabilisé)
