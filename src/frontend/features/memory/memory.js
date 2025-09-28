@@ -1,4 +1,5 @@
 import { MemoryCenter } from './memory-center.js';
+import { ThreadsPanel } from '../threads/threads.js';
 import { EVENTS } from '../../shared/constants.js';
 
 export default class MemoryModule {
@@ -6,9 +7,20 @@ export default class MemoryModule {
     this.eventBus = eventBus;
     this.state = stateManager;
     this.memoryCenter = new MemoryCenter(eventBus, stateManager, { hostSelector: null });
+    this.threadsPanel = new ThreadsPanel(eventBus, stateManager, { keepMarkup: true });
     this.container = null;
     this._nodes = {};
     this._wired = false;
+  }
+
+  _isAdmin() {
+    try {
+      const role = this.state?.get?.('auth.role');
+      if (typeof role !== 'string') return false;
+      return role.trim().toLowerCase() === 'admin';
+    } catch (_err) {
+      return false;
+    }
   }
 
   init() {
@@ -21,14 +33,24 @@ export default class MemoryModule {
   }
 
   mount(container) {
-    this.init();
     if (!container) return;
+    if (!this._isAdmin()) {
+      container.innerHTML = '';
+      container.hidden = true;
+      container.setAttribute('aria-hidden', 'true');
+      return;
+    }
+
+    this.init();
     this.container = container;
     container.innerHTML = this._template();
     this._cacheNodes();
 
     const host = container.querySelector('[data-memory-center-host]');
     this.memoryCenter.init(host);
+    const threadsHost = container.querySelector('[data-memory-threads-host]');
+    this.threadsPanel.setHostElement(threadsHost);
+    this.threadsPanel.init();
     this.memoryCenter.refresh();
 
     this._syncStatus();
@@ -48,21 +70,26 @@ export default class MemoryModule {
             <button type="button" class="button" data-memory-action="clear">Effacer</button>
           </div>
         </header>
-        <section class="memory-page__summary">
-          <article class="memory-stat-card" data-memory-stm-card>
-            <span class="memory-stat-card__label">STM</span>
-            <span class="memory-stat-card__value" data-memory-stm></span>
-          </article>
-          <article class="memory-stat-card">
-            <span class="memory-stat-card__label">LTM</span>
-            <span class="memory-stat-card__value" data-memory-ltm-count></span>
-          </article>
-          <article class="memory-stat-card">
-            <span class="memory-stat-card__label">Derniere analyse</span>
-            <span class="memory-stat-card__value" data-memory-last-analysis></span>
-          </article>
-        </section>
-        <section class="memory-page__body" data-memory-center-host></section>
+        <div class="memory-page__layout">
+          <div class="memory-page__primary">
+            <section class="memory-page__summary">
+              <article class="memory-stat-card" data-memory-stm-card>
+                <span class="memory-stat-card__label">STM</span>
+                <span class="memory-stat-card__value" data-memory-stm></span>
+              </article>
+              <article class="memory-stat-card">
+                <span class="memory-stat-card__label">LTM</span>
+                <span class="memory-stat-card__value" data-memory-ltm-count></span>
+              </article>
+              <article class="memory-stat-card">
+                <span class="memory-stat-card__label">Derniere analyse</span>
+                <span class="memory-stat-card__value" data-memory-last-analysis></span>
+              </article>
+            </section>
+            <section class="memory-page__body" data-memory-center-host></section>
+          </div>
+          <aside class="memory-page__threads" data-memory-threads-host></aside>
+        </div>
       </section>
     `;
   }
@@ -77,6 +104,7 @@ export default class MemoryModule {
       lastAnalysis: this.container.querySelector('[data-memory-last-analysis]'),
       analyzeBtn: this.container.querySelector('[data-memory-action="analyze"]'),
       clearBtn: this.container.querySelector('[data-memory-action="clear"]'),
+      threadsHost: this.container.querySelector('[data-memory-threads-host]'),
     };
   }
 
@@ -114,6 +142,13 @@ export default class MemoryModule {
     }
   }
 
+  destroy() {
+    this.memoryCenter?.destroy?.();
+    this.threadsPanel?.destroy();
+    this.container = null;
+    this._nodes = {};
+  }
+
   _formatLastAnalysis(last, fallback) {
     if (!last) return fallback || 'Jamais';
     if (last.status === 'running') return 'Analyse en cours';
@@ -137,4 +172,3 @@ export default class MemoryModule {
     return fallback || 'Jamais';
   }
 }
-

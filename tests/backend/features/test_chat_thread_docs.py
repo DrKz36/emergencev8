@@ -101,6 +101,7 @@ def test_thread_doc_filter(tmp_path):
         await schema.create_tables(db)
 
         session_id = 'sess-thread-docs'
+        user_id = 'user-test'
         doc1 = await queries.insert_document(
             db,
             filename='doc1.pdf',
@@ -108,8 +109,8 @@ def test_thread_doc_filter(tmp_path):
             status='ready',
             uploaded_at='2025-09-20T00:00:00Z',
             session_id=session_id,
+            user_id=user_id,
         )
-        user_id = 'user-test'
         thread_id = await queries.create_thread(
             db,
             session_id=session_id,
@@ -117,7 +118,9 @@ def test_thread_doc_filter(tmp_path):
             type_='chat',
             title='Test Thread',
         )
-        await queries.set_thread_docs(db, thread_id, session_id, [doc1])
+        await queries.set_thread_docs(
+            db, thread_id, session_id, [doc1], user_id=user_id
+        )
 
         session_manager = SessionManager(db, memory_analyzer=None)
         await session_manager.ensure_session(session_id=session_id, user_id=user_id, thread_id=thread_id, history_limit=50)
@@ -165,7 +168,13 @@ def test_thread_doc_filter(tmp_path):
             if doc_id is not None:
                 assert int(doc_id) == doc1
 
-        assert vector_service.last_where_filter == {'$and': [{'session_id': session_id}, {'document_id': doc1}]}
+        assert vector_service.last_where_filter == {
+            '$and': [
+                {'session_id': session_id},
+                {'user_id': user_id},
+                {'document_id': doc1},
+            ]
+        }
 
         await db.disconnect()
         os.environ.pop('EMERGENCE_AUTO_TEND', None)

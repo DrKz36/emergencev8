@@ -41,7 +41,10 @@
 } }
 { "type": "ws:model_info", "payload": { "provider": "openai", "model": "gpt-4o-mini" } }
 { "type": "ws:model_fallback", "payload": { "from_provider": "anthropic", "to_provider": "openai", "reason": "quota" } }
-{ "type": "ws:memory_banner", "payload": { "agent_id": "anima", "has_stm": true, "ltm_items": 3, "injected_into_prompt": true } }
+{ "type": "ws:memory_banner", "payload": { "agent_id": "anima", "has_stm": true, "ltm_items": 3, "ltm_injected": 3, "ltm_candidates": 3, "ltm_skipped": false, "injected_into_prompt": true } }
+- `ltm_injected` représente le nombre d'éléments effectivement injectés dans le prompt.
+- `ltm_candidates` conserve le total d'éléments rappelés depuis le vector store (équivalent de `ltm_items`).
+- `ltm_skipped` devient `true` lorsque des souvenirs ont été rappelés mais non injectés (ex: mode RAG actif); un log backend et un toast UI sont émis pour signaler la situation.
 { "type": "ws:analysis_status", "payload": { "status": "running|done|error", "thread_id": "uuid?", "summary_id": "…" } }
 { "type": "ws:debate_status_update", "payload": { "stage": "round_attacker", "status": "speaking", "round": 1, "agent": "neo", "role": "attacker", "message": "Tour 1 - Neo intervient.", "topic": "..." } }
 { "type": "ws:debate_turn_update", "payload": { "round": 1, "agent": "neo", "text": "Ouverture du debat", "speaker": "attacker", "meta": { "role": "attacker", "provider": "anthropic", "model": "claude-neo", "fallback": false, "cost": { "total_cost": 0.0105, "input_tokens": 100, "output_tokens": 48 } } } }

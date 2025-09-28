@@ -472,14 +472,51 @@ class MemoryGardener:
             value = max_value
         return int(value) if as_int else float(value)
 
+    @staticmethod
+    def _normalize_agent_id(agent_id: Optional[str]) -> Optional[str]:
+        if agent_id is None:
+            return None
+        try:
+            value = str(agent_id).strip().lower()
+        except Exception:
+            return None
+        return value or None
+
+    @staticmethod
+    def _filter_history_for_agent(history: Optional[List[Dict[str, Any]]], agent_id: Optional[str]) -> List[Dict[str, Any]]:
+        if not history:
+            return []
+        normalized = MemoryGardener._normalize_agent_id(agent_id)
+        if not normalized:
+            return list(history)
+        filtered: List[Dict[str, Any]] = []
+        for item in history:
+            if not isinstance(item, dict):
+                continue
+            role = str(item.get("role") or "").strip().lower()
+            if role == "assistant":
+                agent_value = MemoryGardener._normalize_agent_id(item.get("agent_id") or item.get("agent"))
+                if agent_value == normalized:
+                    filtered.append(item)
+            else:
+                filtered.append(item)
+        return filtered
+
     async def tend_the_garden(
         self,
         consolidation_limit: int = 10,
         thread_id: Optional[str] = None,
         session_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        normalized_agent = self._normalize_agent_id(agent_id)
+
         if thread_id:
-            return await self._tend_single_thread(thread_id, session_id=session_id)
+            return await self._tend_single_thread(
+                thread_id,
+                session_id=session_id,
+                agent_id=normalized_agent,
+            )
 
         logger.info(
             "Le jardinier commence sa ronde dans le jardin de la mémoire (mode sessions)…"
@@ -590,7 +627,12 @@ class MemoryGardener:
         return report
 
     # ---------- NEW: consolidation d’un thread ----------
-    async def _tend_single_thread(self, thread_id: str, session_id: Optional[str] = None) -> Dict[str, Any]:
+    async def _tend_single_thread(
+        self,
+        thread_id: str,
+        session_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
         tid = (thread_id or "").strip()
         if not tid:
             return {
@@ -600,6 +642,7 @@ class MemoryGardener:
                 "new_concepts": 0,
             }
 
+        normalized_agent = self._normalize_agent_id(agent_id)
         try:
             normalized_session = (session_id or "").strip() or None
             if normalized_session:
@@ -628,7 +671,13 @@ class MemoryGardener:
                 }
 
             uid = thr.get("user_id")
-            msgs = await queries.get_messages(self.db, tid, session_id=sid, limit=1000)
+            msgs = await queries.get_messages(
+                self.db,
+                tid,
+                session_id=sid,
+                user_id=uid,
+                limit=1000,
+            )
             history = []
             for m in msgs or []:
                 history.append(
@@ -641,6 +690,7 @@ class MemoryGardener:
                     }
                 )
 
+            history = self._filter_history_for_agent(history, normalized_agent)
             facts = self._extract_facts_from_history(history)
 
             # Analyse sémantique sans persistance en table sessions

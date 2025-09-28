@@ -6,14 +6,36 @@ import json
 
 from typing import Optional
 
+DEFAULT_GOOGLE_MODEL = "models/gemini-2.5-flash"
+_GOOGLE_MODEL_ALIASES = {
+    "gemini-2.5-flash": DEFAULT_GOOGLE_MODEL,
+    "models/gemini-2.5-flash": DEFAULT_GOOGLE_MODEL,
+    "gemini-2.0-flash": DEFAULT_GOOGLE_MODEL,
+    "models/gemini-2.0-flash": DEFAULT_GOOGLE_MODEL,
+    "gemini-1.5-flash": DEFAULT_GOOGLE_MODEL,
+    "models/gemini-1.5-flash": DEFAULT_GOOGLE_MODEL,
+    "models/gemini-1.5-flash-latest": DEFAULT_GOOGLE_MODEL,
+    DEFAULT_GOOGLE_MODEL: DEFAULT_GOOGLE_MODEL,
+}
+
+
+def _normalize_google_model(value: Optional[str]) -> str:
+    if not value:
+        return DEFAULT_GOOGLE_MODEL
+    cleaned = value.strip()
+    if not cleaned:
+        return DEFAULT_GOOGLE_MODEL
+    return _GOOGLE_MODEL_ALIASES.get(cleaned, cleaned)
+
+
 # --- Fallback global (héritage) ---
 # Utilisé si un agent ne trouve ni son provider ni son model.
-DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "gemini-1.5-flash")
+DEFAULT_MODEL = _normalize_google_model(os.getenv("DEFAULT_MODEL", DEFAULT_GOOGLE_MODEL))
 
 # --- Mapping par agent (provider + model) ---
 # Valeurs par défaut validées pour ÉMERGENCE (Q/P):
 #   - anima  -> OpenAI    : gpt-4o-mini
-#   - neo    -> Google    : gemini-1.5-flash
+#   - neo    -> Google    : models/gemini-2.5-flash
 #   - nexus  -> Anthropic : claude-3-haiku
 AGENT_PROVIDERS = {
     "anima": {
@@ -22,7 +44,7 @@ AGENT_PROVIDERS = {
     },
     "neo": {
         "provider": os.getenv("NEO_PROVIDER", "google"),
-        "model": os.getenv("NEO_MODEL", "gemini-1.5-flash"),
+        "model": _normalize_google_model(os.getenv("NEO_MODEL", DEFAULT_GOOGLE_MODEL)),
     },
     "nexus": {
         "provider": os.getenv("NEXUS_PROVIDER", "anthropic"),
@@ -89,3 +111,4 @@ def _load_env_patterns() -> list[str]:
 
 
 DENYLIST_PATTERNS: list[str] = _load_env_patterns()
+

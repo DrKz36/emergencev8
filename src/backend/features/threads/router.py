@@ -50,6 +50,7 @@ async def list_threads(
     items = await queries.get_threads(
         db,
         session_id=session.session_id,
+        user_id=session.user_id,
         type_=type,
         limit=limit,
         offset=offset,
@@ -68,6 +69,7 @@ async def list_threads_no_slash(
     items = await queries.get_threads(
         db,
         session_id=session.session_id,
+        user_id=session.user_id,
         type_=type,
         limit=limit,
         offset=offset,
@@ -89,7 +91,7 @@ async def create_thread(
         agent_id=payload.agent_id,
         meta=payload.meta,
     )
-    thread = await queries.get_thread(db, tid, session.session_id)
+    thread = await queries.get_thread(db, tid, session.session_id, user_id=session.user_id)
     return {"id": tid, "thread": thread}
 
 # Miroir POST sans slash (corrige 405 quand le client poste sur /api/threads)
@@ -108,7 +110,7 @@ async def create_thread_no_slash(
         agent_id=payload.agent_id,
         meta=payload.meta,
     )
-    thread = await queries.get_thread(db, tid, session.session_id)
+    thread = await queries.get_thread(db, tid, session.session_id, user_id=session.user_id)
     return {"id": tid, "thread": thread}
 
 # ---- DEBUG caché ----
@@ -124,14 +126,14 @@ async def get_thread(
     db: DatabaseManager = Depends(get_db),
     messages_limit: int = Query(default=50, ge=1, le=200),
 ):
-    thread = await queries.get_thread(db, thread_id, session.session_id)
+    thread = await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id)
     if not thread:
         raise HTTPException(status_code=404, detail="Thread introuvable")
 
     messages = await queries.get_messages(
-        db, thread_id, session_id=session.session_id, limit=messages_limit
+        db, thread_id, session_id=session.session_id, user_id=session.user_id, limit=messages_limit
     )
-    docs = await queries.get_thread_docs(db, thread_id, session.session_id)
+    docs = await queries.get_thread_docs(db, thread_id, session.session_id, user_id=session.user_id)
     return {"thread": thread, "messages": messages, "docs": docs}
 
 @router.patch("/{thread_id}")
@@ -141,18 +143,19 @@ async def update_thread(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
 ):
-    if not await queries.get_thread(db, thread_id, session.session_id):
+    if not await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id):
         raise HTTPException(status_code=404, detail="Thread introuvable")
     await queries.update_thread(
         db,
         thread_id,
         session.session_id,
+        user_id=session.user_id,
         title=payload.title,
         agent_id=payload.agent_id,
         archived=payload.archived,
         meta=payload.meta,
     )
-    thread = await queries.get_thread(db, thread_id, session.session_id)
+    thread = await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id)
     return {"thread": thread}
 
 @router.delete("/{thread_id}", status_code=204)
@@ -161,7 +164,7 @@ async def delete_thread(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
 ):
-    removed = await queries.delete_thread(db, thread_id, session.session_id)
+    removed = await queries.delete_thread(db, thread_id, session.session_id, user_id=session.user_id)
     if not removed:
         raise HTTPException(status_code=404, detail="Thread introuvable")
     return Response(status_code=204)
@@ -174,13 +177,14 @@ async def add_message(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
 ):
-    if not await queries.get_thread(db, thread_id, session.session_id):
+    if not await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id):
         raise HTTPException(status_code=404, detail="Thread introuvable")
 
     res = await queries.add_message(
         db,
         thread_id,
         session.session_id,
+        user_id=session.user_id,
         role=payload.role,
         content=payload.content,
         agent_id=payload.agent_id,
@@ -197,10 +201,10 @@ async def list_messages(
     limit: int = Query(default=50, ge=1, le=200),
     before: Optional[str] = Query(default=None),
 ):
-    if not await queries.get_thread(db, thread_id, session.session_id):
+    if not await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id):
         raise HTTPException(status_code=404, detail="Thread introuvable")
     items = await queries.get_messages(
-        db, thread_id, session_id=session.session_id, limit=limit, before=before
+        db, thread_id, session_id=session.session_id, user_id=session.user_id, limit=limit, before=before
     )
     return {"items": items}
 
@@ -211,17 +215,27 @@ async def set_docs(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
 ):
-    if not await queries.get_thread(db, thread_id, session.session_id):
+    if not await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id):
         raise HTTPException(status_code=404, detail="Thread introuvable")
     if payload.mode == "replace":
         await queries.set_thread_docs(
-            db, thread_id, session.session_id, payload.doc_ids, weight=payload.weight or 1.0
+            db,
+            thread_id,
+            session.session_id,
+            payload.doc_ids,
+            user_id=session.user_id,
+            weight=payload.weight or 1.0,
         )
     else:
         await queries.append_thread_docs(
-            db, thread_id, session.session_id, payload.doc_ids, weight=payload.weight or 1.0
+            db,
+            thread_id,
+            session.session_id,
+            payload.doc_ids,
+            user_id=session.user_id,
+            weight=payload.weight or 1.0,
         )
-    docs = await queries.get_thread_docs(db, thread_id, session.session_id)
+    docs = await queries.get_thread_docs(db, thread_id, session.session_id, user_id=session.user_id)
     return {"docs": docs}
 
 @router.get("/{thread_id}/docs")
@@ -230,9 +244,9 @@ async def get_docs(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
 ):
-    if not await queries.get_thread(db, thread_id, session.session_id):
+    if not await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id):
         raise HTTPException(status_code=404, detail="Thread introuvable")
-    docs = await queries.get_thread_docs(db, thread_id, session.session_id)
+    docs = await queries.get_thread_docs(db, thread_id, session.session_id, user_id=session.user_id)
     return {"docs": docs}
 
 @router.post("/{thread_id}/export")
@@ -241,11 +255,11 @@ async def export_thread(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
 ):
-    thread = await queries.get_thread(db, thread_id, session.session_id)
+    thread = await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id)
     if not thread:
         raise HTTPException(status_code=404, detail="Thread introuvable")
     messages = await queries.get_messages(
-        db, thread_id, session_id=session.session_id, limit=1000
+        db, thread_id, session_id=session.session_id, user_id=session.user_id, limit=1000
     )
-    docs = await queries.get_thread_docs(db, thread_id, session.session_id)
+    docs = await queries.get_thread_docs(db, thread_id, session.session_id, user_id=session.user_id)
     return {"thread": thread, "messages": messages, "docs": docs}

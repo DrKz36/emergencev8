@@ -147,7 +147,7 @@ vector_dir.mkdir(parents=True, exist_ok=True)
 # Disable Chromadb telemetry to avoid stderr noise during checks.
 client = chromadb.PersistentClient(path=str(vector_dir), settings=Settings(anonymized_telemetry=False))
 col = client.get_or_create_collection(name="$Collection")
-res = col.get(where={"source_session_id": "$SessionId"})
+res = col.get(where={"$or": [{"session_id": "$SessionId"}, {"source_session_id": "$SessionId"}]})
 ids = res.get("ids") or []
 count = 0
 if ids:

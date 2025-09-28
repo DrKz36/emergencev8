@@ -435,7 +435,13 @@ class ChatService:
                 return ""
             where_filter = None
             uid = self._try_get_user_id(session_id)
-            clauses: List[Dict[str, Any]] = [{"session_id": session_id}]
+            session_clause: Dict[str, Any] = {
+                "$or": [
+                    {"session_id": session_id},
+                    {"source_session_id": session_id},
+                ]
+            }
+            clauses: List[Dict[str, Any]] = [session_clause]
             if uid:
                 clauses.append({"user_id": uid})
             ag = (agent_id or "").strip().lower() if agent_id else ""
@@ -500,6 +506,12 @@ class ChatService:
                     VITALITY_MAX, round(prev_vitality + VITALITY_USAGE_BOOST, 4)
                 )
                 updated_meta["last_access_at"] = touch_ts
+                if not updated_meta.get("session_id"):
+                    updated_meta["session_id"] = session_id
+                if not updated_meta.get("source_session_id"):
+                    updated_meta["source_session_id"] = session_id
+                if uid and not updated_meta.get("user_id"):
+                    updated_meta["user_id"] = uid
                 touched_ids.append(str(vec_id))
                 touched_metas.append(updated_meta)
             if touched_ids and knowledge_col is not None:
@@ -766,11 +778,16 @@ class ChatService:
             except Exception:
                 thread_id = None
 
+            uid = self._try_get_user_id(session_id)
+
             allowed_doc_ids: List[int] = []
             if thread_id:
                 try:
                     rows = await queries.get_thread_docs(
-                        self.session_manager.db_manager, thread_id, session_id
+                        self.session_manager.db_manager,
+                        thread_id,
+                        session_id,
+                        user_id=uid,
                     )
                     for row in rows:
                         raw = row.get("doc_id")
@@ -804,8 +821,8 @@ class ChatService:
 
             # Mot-code court-circuit
             if self._is_mot_code_query(last_user_message):
-                uid = self._try_get_user_id(session_id)
-                mot = self._fetch_mot_code_for_agent(agent_id, uid)
+                mot_uid = uid or self._try_get_user_id(session_id)
+                mot = self._fetch_mot_code_for_agent(agent_id, mot_uid)
                 try:
                     stm_here = self._try_get_session_summary(session_id)
                     await connection_manager.send_personal_message(
@@ -901,14 +918,24 @@ class ChatService:
                 if self._doc_collection is None:
                     self._doc_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
 
-                base_filter: Dict[str, Any] = {"session_id": session_id}
-                where_filter: Optional[Dict[str, Any]] = base_filter
+                base_clauses: List[Dict[str, Any]] = [{"session_id": session_id}]
+                if uid:
+                    base_clauses.append({"user_id": uid})
+
+                where_clauses: List[Dict[str, Any]] = list(base_clauses)
                 if selected_doc_ids:
                     if len(selected_doc_ids) == 1:
                         doc_filter: Dict[str, Any] = {"document_id": selected_doc_ids[0]}
                     else:
                         doc_filter = {"$or": [{"document_id": did} for did in selected_doc_ids]}
-                    where_filter = {"$and": [base_filter, doc_filter]}
+                    where_clauses.append(doc_filter)
+
+                if not where_clauses:
+                    where_filter: Optional[Dict[str, Any]] = None
+                elif len(where_clauses) == 1:
+                    where_filter = where_clauses[0]
+                else:
+                    where_filter = {"$and": where_clauses}
 
                 query_text = (last_user_message or "").strip()
                 if not query_text and selected_doc_ids:
@@ -1242,14 +1269,25 @@ class ChatService:
                     self._doc_collection = self.vector_service.get_or_create_collection(
                         config.DOCUMENT_COLLECTION_NAME
                     )
-                base_filter: Dict[str, Any] = {"session_id": session_id}
-                where_filter: Optional[Dict[str, Any]] = base_filter
+                base_clauses: List[Dict[str, Any]] = [{"session_id": session_id}]
+                uid = self._try_get_user_id(session_id)
+                if uid:
+                    base_clauses.append({"user_id": uid})
+
+                where_clauses: List[Dict[str, Any]] = list(base_clauses)
                 if selected_doc_ids:
                     if len(selected_doc_ids) == 1:
                         doc_filter: Dict[str, Any] = {"document_id": selected_doc_ids[0]}
                     else:
                         doc_filter = {"$or": [{"document_id": did} for did in selected_doc_ids]}
-                    where_filter = {"$and": [base_filter, doc_filter]}
+                    where_clauses.append(doc_filter)
+
+                if not where_clauses:
+                    where_filter: Optional[Dict[str, Any]] = None
+                elif len(where_clauses) == 1:
+                    where_filter = where_clauses[0]
+                else:
+                    where_filter = {"$and": where_clauses}
 
                 doc_hits = self.vector_service.query(
                     collection=self._doc_collection,

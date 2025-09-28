@@ -3,7 +3,10 @@
 import logging
 import os
 from datetime import datetime, timezone
+from typing import Iterable
+
 from .manager import DatabaseManager
+from .backfill import run_user_scope_backfill
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +35,17 @@ TABLE_DEFINITIONS = [
         chunk_count INTEGER,
         error_message TEXT,
         uploaded_at TEXT NOT NULL,
-        session_id TEXT NOT NULL
+        session_id TEXT NOT NULL,
+        user_id TEXT NOT NULL
     );
     """,
     """
     CREATE INDEX IF NOT EXISTS idx_documents_session_uploaded
     ON documents(session_id, uploaded_at DESC);
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_documents_user_uploaded
+    ON documents(user_id, uploaded_at DESC);
     """,
     """
     CREATE TABLE IF NOT EXISTS document_chunks (
@@ -46,12 +54,17 @@ TABLE_DEFINITIONS = [
         chunk_index INTEGER NOT NULL,
         content TEXT NOT NULL,
         session_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
         FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE
     );
     """,
     """
     CREATE INDEX IF NOT EXISTS idx_document_chunks_session
     ON document_chunks(session_id, document_id);
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_document_chunks_user
+    ON document_chunks(user_id, document_id);
     """,
     # -- sessions (existant) --
     """
@@ -71,7 +84,7 @@ TABLE_DEFINITIONS = [
     CREATE TABLE IF NOT EXISTS threads (
         id TEXT PRIMARY KEY,
         session_id TEXT NOT NULL,
-        user_id TEXT,
+        user_id TEXT NOT NULL,
         type TEXT NOT NULL CHECK(type IN ('chat','debate')),
         title TEXT,
         agent_id TEXT,
@@ -100,6 +113,7 @@ TABLE_DEFINITIONS = [
         meta TEXT,
         created_at TEXT NOT NULL,
         session_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
         FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE
     );
     """,
@@ -112,9 +126,14 @@ TABLE_DEFINITIONS = [
     ON messages(session_id, created_at);
     """,
     """
+    CREATE INDEX IF NOT EXISTS idx_messages_user_created
+    ON messages(user_id, created_at);
+    """,
+    """
     CREATE TABLE IF NOT EXISTS thread_docs (
         thread_id TEXT NOT NULL,
         session_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
         doc_id INTEGER NOT NULL,
         weight REAL DEFAULT 1.0,
         last_used_at TEXT,
@@ -126,6 +145,10 @@ TABLE_DEFINITIONS = [
     """
     CREATE INDEX IF NOT EXISTS idx_thread_docs_session
     ON thread_docs(session_id, thread_id, doc_id);
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_thread_docs_user
+    ON thread_docs(user_id, thread_id, doc_id);
     """,
     """
     CREATE TABLE IF NOT EXISTS auth_allowlist (
@@ -154,6 +177,7 @@ TABLE_DEFINITIONS = [
         email TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'member',
         ip_address TEXT,
+        user_id TEXT,
         user_agent TEXT,
         issued_at TEXT NOT NULL,
         expires_at TEXT NOT NULL,
@@ -206,6 +230,115 @@ TABLE_DEFINITIONS = [
     );
     """
 ]
+
+INDEX_DEFINITIONS = {
+    "threads": [
+        (
+            "idx_threads_session_updated",
+            """
+            CREATE INDEX IF NOT EXISTS idx_threads_session_updated
+            ON threads(session_id, updated_at DESC)
+            """,
+        ),
+        (
+            "idx_threads_user_type_updated",
+            """
+            CREATE INDEX IF NOT EXISTS idx_threads_user_type_updated
+            ON threads(user_id, type, updated_at DESC)
+            """,
+        ),
+    ],
+    "messages": [
+        (
+            "idx_messages_session_created",
+            """
+            CREATE INDEX IF NOT EXISTS idx_messages_session_created
+            ON messages(session_id, created_at)
+            """,
+        ),
+        (
+            "idx_messages_user_created",
+            """
+            CREATE INDEX IF NOT EXISTS idx_messages_user_created
+            ON messages(user_id, created_at)
+            """,
+        ),
+    ],
+    "thread_docs": [
+        (
+            "idx_thread_docs_session",
+            """
+            CREATE INDEX IF NOT EXISTS idx_thread_docs_session
+            ON thread_docs(session_id, thread_id, doc_id)
+            """,
+        ),
+        (
+            "idx_thread_docs_user",
+            """
+            CREATE INDEX IF NOT EXISTS idx_thread_docs_user
+            ON thread_docs(user_id, thread_id, doc_id)
+            """,
+        ),
+    ],
+    "documents": [
+        (
+            "idx_documents_session_uploaded",
+            """
+            CREATE INDEX IF NOT EXISTS idx_documents_session_uploaded
+            ON documents(session_id, uploaded_at DESC)
+            """,
+        ),
+        (
+            "idx_documents_user_uploaded",
+            """
+            CREATE INDEX IF NOT EXISTS idx_documents_user_uploaded
+            ON documents(user_id, uploaded_at DESC)
+            """,
+        ),
+    ],
+    "document_chunks": [
+        (
+            "idx_document_chunks_session",
+            """
+            CREATE INDEX IF NOT EXISTS idx_document_chunks_session
+            ON document_chunks(session_id, document_id)
+            """,
+        ),
+        (
+            "idx_document_chunks_user",
+            """
+            CREATE INDEX IF NOT EXISTS idx_document_chunks_user
+            ON document_chunks(user_id, document_id)
+            """,
+        ),
+    ],
+}
+
+
+async def _log_index_dump(db: DatabaseManager, tables: Iterable[str]) -> None:
+    for table in tables:
+        try:
+            rows = await db.fetch_all(f"PRAGMA index_list('{table}')")
+        except Exception as exc:  # pragma: no cover - logging aid
+            logger.debug(f"[DDL] Unable to dump index_list for {table}: {exc}")
+            continue
+
+        payload = []
+        for row in rows:
+            row_dict = dict(row)
+            payload.append(
+                {
+                    "seq": row_dict.get("seq"),
+                    "name": row_dict.get("name"),
+                    "unique": row_dict.get("unique"),
+                    "origin": row_dict.get("origin"),
+                    "partial": row_dict.get("partial"),
+                }
+            )
+        logger.info("[DDL] index_list(%s) -> %s", table, payload)
+
+
+
 
 # ---------------------- Helpers rétro-compatibilité ---------------------- #
 async def _get_columns(db: DatabaseManager, table: str):
@@ -269,34 +402,27 @@ async def _ensure_allowlist_password_columns(db: DatabaseManager):
 
 async def _ensure_session_isolation_columns(db: DatabaseManager):
     await _add_column_if_missing(db, "threads", "session_id", "TEXT")
+    await _add_column_if_missing(db, "threads", "user_id", "TEXT")
     await _add_column_if_missing(db, "messages", "session_id", "TEXT")
+    await _add_column_if_missing(db, "messages", "user_id", "TEXT")
     await _add_column_if_missing(db, "thread_docs", "session_id", "TEXT")
+    await _add_column_if_missing(db, "thread_docs", "user_id", "TEXT")
     await _add_column_if_missing(db, "documents", "session_id", "TEXT")
+    await _add_column_if_missing(db, "documents", "user_id", "TEXT")
     await _add_column_if_missing(db, "document_chunks", "session_id", "TEXT")
-    try:
-        await db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_threads_session_updated
-            ON threads(session_id, updated_at DESC)
-        """)
-        await db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_messages_session_created
-            ON messages(session_id, created_at)
-        """)
-        await db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_thread_docs_session
-            ON thread_docs(session_id, thread_id, doc_id)
-        """)
-        await db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_documents_session_uploaded
-            ON documents(session_id, uploaded_at DESC)
-        """)
-        await db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_document_chunks_session
-            ON document_chunks(session_id, document_id)
-        """)
-    except Exception as e:
-        logger.warning(f"[DDL] Index session isolation non cré: {e}")
-
+    await _add_column_if_missing(db, "document_chunks", "user_id", "TEXT")
+    await _add_column_if_missing(db, "auth_sessions", "user_id", "TEXT")
+    index_errors = []
+    for table_name, definitions in INDEX_DEFINITIONS.items():
+        for index_name, ddl in definitions:
+            try:
+                await db.execute(ddl)
+            except Exception as exc:
+                logger.warning(f"[DDL] Index {index_name} non cree: {exc}")
+                index_errors.append((index_name, str(exc)))
+    if index_errors:
+        logger.debug("[DDL] Index creation issues: %s", index_errors)
+    await _log_index_dump(db, INDEX_DEFINITIONS.keys())
 # ------------------------------------------------------------------------ #
 
 async def create_tables(db_manager: DatabaseManager):
@@ -377,4 +503,5 @@ async def initialize_database(db_manager: DatabaseManager, migrations_dir: str):
     await db_manager.connect()
     await create_tables(db_manager)
     await run_migrations(db_manager, migrations_dir)
+    await run_user_scope_backfill(db_manager)
     logger.info("Initialisation de la base de données terminée.")

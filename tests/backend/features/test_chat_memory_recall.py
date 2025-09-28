@@ -82,6 +82,7 @@ async def _run_memory_context_scenario():
     assert '$or' in session_clause
     assert {'session_id': session_id} in session_clause['$or']
     assert {'source_session_id': session_id} in session_clause['$or']
+    assert {'user_id': user_id} in clauses
 
     assert vector_service.updated, 'Vector metadata should be updated on recall'
     _, ids, metadatas = vector_service.updated[0]

@@ -126,14 +126,15 @@ class AuthService:
 
         await self.db.execute(
             """
-            INSERT INTO auth_sessions (id, email, role, ip_address, user_agent, issued_at, expires_at, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO auth_sessions (id, email, role, ip_address, user_id, user_agent, issued_at, expires_at, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 session_id,
                 email,
                 role,
                 ip_address,
+                claims.get("sub"),
                 user_agent,
                 now.isoformat(),
                 expires_at.isoformat(),
@@ -148,7 +149,14 @@ class AuthService:
             audit_meta.update({k: v for k, v in audit_metadata.items() if v is not None})
 
         await self._write_audit(event_type, email=email, metadata=audit_meta)
-        return LoginResponse(token=token, expires_at=expires_at, role=role, session_id=session_id, email=email)
+        return LoginResponse(
+            token=token,
+            expires_at=expires_at,
+            role=role,
+            session_id=session_id,
+            user_id=claims.get("sub", ""),
+            email=email,
+        )
 
     async def dev_login(self, email: Optional[str], ip_address: Optional[str], user_agent: Optional[str]) -> LoginResponse:
         if not self.config.dev_mode:

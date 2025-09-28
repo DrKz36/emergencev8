@@ -39,7 +39,7 @@ async def list_documents(
     service: DocumentService = Depends(_get_document_service),
 ):
     """Retourne la liste de tous les documents uploades."""
-    return await service.get_all_documents(session.session_id)
+    return await service.get_all_documents(session.session_id, user_id=session.user_id)
 
 
 @router.get("", response_model=List[Dict[str, Any]])
@@ -48,7 +48,7 @@ async def list_documents_alias(
     service: DocumentService = Depends(_get_document_service),
 ):
     """Alias sans slash final pour eviter 404."""
-    return await service.get_all_documents(session.session_id)
+    return await service.get_all_documents(session.session_id, user_id=session.user_id)
 
 
 @router.post("/upload", status_code=201)
@@ -89,7 +89,7 @@ async def delete_document(
     service: DocumentService = Depends(_get_document_service),
 ):
     """Supprime un document, ses chunks et ses vecteurs."""
-    success = await service.delete_document(document_id, session.session_id)
+    success = await service.delete_document(document_id, session.session_id, user_id=session.user_id)
     if success:
         return {"message": "Document supprime avec succes."}
     raise HTTPException(status_code=404, detail="Document introuvable")

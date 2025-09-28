@@ -16,6 +16,16 @@ export default class AdminModule {
     this._module = new AuthAdminModule(eventBus, state, options);
   }
 
+  _isAdmin() {
+    try {
+      const role = this.state?.get?.('auth.role');
+      if (typeof role !== 'string') return false;
+      return role.trim().toLowerCase() === 'admin';
+    } catch (_err) {
+      return false;
+    }
+  }
+
   init() {
     if (this._initialized) return;
     if (typeof this._module?.init === 'function') {
@@ -26,6 +36,13 @@ export default class AdminModule {
 
   mount(container) {
     if (!container) return;
+    if (!this._isAdmin()) {
+      container.innerHTML = '';
+      container.hidden = true;
+      container.setAttribute('aria-hidden', 'true');
+      return;
+    }
+
     this.container = container;
     if (typeof this._module?.mount === 'function') {
       this._module.mount(container);

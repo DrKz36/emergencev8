@@ -15,7 +15,6 @@ function sanitizeThreadId(value) {
   const candidate = String(value).trim();
   if (!candidate) return null;
   if (HEX32_RE.test(candidate) || UUID36_RE.test(candidate)) return candidate;
-  if (/^[0-9a-z-]{8,}$/i.test(candidate)) return candidate;
   return null;
 }
 

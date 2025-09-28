@@ -52,14 +52,16 @@
 
 ### Frontend
 - **`ChatModule`**
-  - Expose les actions `tendMemory()` / `clearMemory()` via l’UI.
+  - Expose les actions `tendMemory()` / `clearMemory()` via l’UI et relaie désormais un bouton « Mémoire » par agent pour lancer un memory:tend ciblé sur le thread courant.
   - Écoute `ws:analysis_status` pour afficher les loaders/badges.
 - **`ChatUI`**
-  - Affiche le bandeau mémoire (`ws:memory_banner`) : état STM/LTM, modèle utilisé, compteur d’items injectés.
+  - Affiche le bandeau mémoire (`ws:memory_banner`) : état STM/LTM, modèle utilisé, compteur d’items injectés. Si `ltm_skipped=true`, l’UI affiche un toast Memoire longue non injectee et consigne le cas côté logs. L’interface affiche aussi la dernière activité du thread et le nombre total d’interactions sous l’en-tête du chat.
   - Propose les boutons `Analyser` (POST) et `Clear` (POST clear) + toasts de confirmation.
 - **State Manager**
   - Stocke `state.memory.lastRunAt`, `state.memory.status`, `state.memory.items` pour informer l’utilisateur.
   - `StateManager.resetForSession()` remet a zero la memoire locale lors d'un changement de session (purge threads/documents/memory caches).
+
+> Note : l’onglet « Mémoire » est désormais réservé aux comptes admin et embarque le panneau Conversations (ThreadsPanel) pour piloter les threads et leurs consolidations depuis un même écran.
 
 ## 3. Flux opérationnels
 1. **Analyse globale**

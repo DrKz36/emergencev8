@@ -207,12 +207,16 @@ def _count_ids_from_get_result(got: Dict[str, Any]) -> int:
     return len(ids)
 
 
+
+def _session_vector_clause(session_id: str) -> Dict[str, Any]:
+    return {"$or": [{"session_id": session_id}, {"source_session_id": session_id}]}
+
 def _build_where_filter(
     session_id: Optional[str], agent_id: Optional[str], user_id: Optional[str]
 ) -> Dict[str, Any]:
     clauses: List[Dict[str, Any]] = []
     if session_id:
-        clauses.append({"source_session_id": session_id})
+        clauses.append(_session_vector_clause(session_id))
     if agent_id:
         clauses.append({"agent": agent_id})
     if user_id:
@@ -343,6 +347,14 @@ async def tend_garden_endpoint(
         except Exception:
             thread_id = None
 
+        agent_id = None
+        try:
+            raw_agent = (data or {}).get("agent_id") or (data or {}).get("agentId")
+            if isinstance(raw_agent, str) and raw_agent.strip():
+                agent_id = raw_agent.strip()
+        except Exception:
+            agent_id = None
+
         resolved_session_id = None
         try:
             candidate_session = (data or {}).get("session_id")
@@ -353,13 +365,24 @@ async def tend_garden_endpoint(
                 request.headers.get("x-session-id")
                 or request.query_params.get("session_id")
             )
-        if not candidate_session and thread_id:
-            candidate_session = thread_id
         if candidate_session:
             resolved_session_id = _resolve_session_id(request, candidate_session)
 
+        if not resolved_session_id and thread_id:
+            try:
+                container = _get_container(request)
+                db = container.db_manager()
+                thread_row = await queries.get_thread_any(db, thread_id)
+                inferred_session = _normalize_session_id((thread_row or {}).get("session_id"))
+                if inferred_session:
+                    resolved_session_id = inferred_session
+            except HTTPException:
+                pass
+            except Exception as exc:  # pragma: no cover - diagnostic path
+                logger.debug("[memory] unable to infer session from thread %s: %s", thread_id, exc)
+
         report = await gardener.tend_the_garden(
-            thread_id=thread_id, session_id=resolved_session_id
+            thread_id=thread_id, session_id=resolved_session_id, agent_id=agent_id
         )
         if report.get("status") == "error":
             raise HTTPException(

@@ -203,6 +203,21 @@
   background: rgba(148, 163, 184, 0.16);
 }
 
+.threads-panel__item-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(226, 232, 240, 0.68);
+  font-weight: 500;
+}
+
+.threads-panel__item-count::before {
+  content: "\2022";
+  color: rgba(148, 163, 184, 0.7);
+  font-weight: 600;
+  margin-right: 6px;
+}
+
 .threads-panel__item-timestamp {
   font-size: 13px;
   color: rgba(148, 163, 184, 0.68);
@@ -377,5 +392,6 @@
     width: 100%;
   }
 }
+
 
 

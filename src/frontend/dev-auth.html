@@ -130,15 +130,12 @@
   </main>
 
   <script type="module">
-    import * as AuthModule from './core/auth.js';
-    const legacyAuthModule = (() => {
-      if (AuthModule && typeof AuthModule === 'object' && 'default' in AuthModule) {
-        return AuthModule.default;
-      }
-      return null;
-    })();
-    const storeAuthToken = AuthModule.storeAuthToken ?? legacyAuthModule?.storeAuthToken ?? (() => null);
-    const clearStoredAuth = AuthModule.clearAuth ?? legacyAuthModule?.clearAuth ?? (() => {});
+    import {
+      storeAuthToken as storeAuthTokenImpl,
+      clearAuth as clearAuthImpl,
+    } from './core/auth.js';
+    const storeAuthToken = typeof storeAuthTokenImpl === 'function' ? storeAuthTokenImpl : () => null;
+    const clearStoredAuth = typeof clearAuthImpl === 'function' ? clearAuthImpl : () => {};
 
     const form = document.getElementById('login-form');
     const emailInput = document.getElementById('email');

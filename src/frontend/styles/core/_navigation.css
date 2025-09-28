@@ -23,6 +23,20 @@
     width: 100%; /* S'assure que la liste prend toute la largeur */
 }
 
+.sidebar-auth-status {
+    margin-top: auto;
+    padding: 1rem 1.25rem;
+    font-size: 0.9rem;
+    line-height: 1.35;
+    color: var(--color-text-secondary);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-auth-status strong {
+    color: var(--color-text-primary);
+    font-weight: var(--weight-medium, 600);
+}
+
 /* [CORRECTION] Remplacement de .tab-button par .nav-link pour correspondre au HTML */
 .nav-link {
     display: flex;

@@ -6,6 +6,7 @@
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { t } from '../../shared/i18n.js';
+import { getInteractionCount, formatInteractionCount, getLastInteractionTimestamp } from '../threads/threads.js';
 
 export class ChatUI {
   constructor(eventBus, stateManager) {
@@ -20,7 +21,7 @@ export class ChatUI {
       memoryBannerAt: null,
       lastAnalysis: null,
       metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null },
-      memoryStats: { has_stm: false, ltm_items: 0, injected: false },
+      memoryStats: { has_stm: false, ltm_items: 0, ltm_injected: 0, ltm_candidates: 0, injected: false, ltm_skipped: false },
       selectedDocIds: [],
       selectedDocs: [],
       exportAgents: Object.keys(AGENTS),
@@ -59,6 +60,12 @@ export class ChatUI {
                   <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm1 6h2v8h-2V9Zm6 0h-2v8h2V9ZM8 9H6v8h2V9Z" fill="currentColor"></path>
                 </svg>
               </button>
+              <button type="button" class="chat-action-btn" data-role="chat-memory" title="Consolider la memoire de cet agent" data-label="Consolider la memoire pour cet agent" data-title="Consolider la memoire pour cet agent">
+                <span class="sr-only">Consolider la memoire de l'agent actif</span>
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+                  <path d="M8.5 3C6 3 4 5 4 7.5v1c0 .8-.3 1.5-.8 2.1A3.5 3.5 0 006 15.5V17a3 3 0 003 3h1v-7H8.5a.5.5 0 110-1H11V3.1A5.1 5.1 0 008.5 3Zm7 0c-1 0-2 .3-2.8.9V12h2.5a.5.5 0 110 1H12v7h1a3 3 0 003-3v-1.5a3.5 3.5 0 001.8-3.4c-.5-.6-.8-1.3-.8-2.1v-1C17 5 15 3 12.5 3Z" fill="currentColor"></path>
+                </svg>
+              </button>
               <button type="button" class="chat-action-btn" data-role="chat-export" title="Exporter toute la conversation" data-label="Exporter toute la conversation" data-title="Exporter toute la conversation">
                 <span class="sr-only">Exporter toute la conversation</span>
                 <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
@@ -67,6 +74,11 @@ export class ChatUI {
               </button>
             </div>
           </div>
+        </div>
+        <div class="chat-thread-meta" id="chat-thread-meta" hidden>
+          <span class="chat-thread-meta__item" data-role="thread-date"></span>
+          <span class="chat-thread-meta__separator" aria-hidden="true">•</span>
+          <span class="chat-thread-meta__item" data-role="thread-count"></span>
         </div>
         <div class="chat-body">
           <div class="messages" id="chat-messages"></div>
@@ -153,6 +165,7 @@ export class ChatUI {
     const rawMessages = this.state.messages?.[this.state.currentAgentId];
     const list = this._asArray(rawMessages).map((m) => this._normalizeMessage(m));
     this._renderMessages(container.querySelector('#chat-messages'), list);
+    this._updateThreadMeta(container);
 
     const clearEl = container.querySelector('[data-role="chat-clear"]');
     if (clearEl) {
@@ -162,6 +175,23 @@ export class ChatUI {
       } else {
         clearEl.setAttribute('disabled', 'disabled');
         clearEl.classList.add('is-disabled');
+      }
+    }
+    const memoryEl = container.querySelector('[data-role="chat-memory"]');
+    if (memoryEl) {
+      const agentId = (this.state.currentAgentId || '').trim().toLowerCase() || 'anima';
+      const agentInfo = AGENTS[agentId] || {};
+      const agentLabel = agentInfo.label || agentInfo.name || this._humanizeAgentId(agentId) || agentId;
+      memoryEl.setAttribute('aria-label', 'Consolider la memoire pour ' + agentLabel);
+      memoryEl.setAttribute('title', 'Consolider la memoire pour ' + agentLabel);
+      const lastAnalysis = this.state.lastAnalysis || {};
+      const isRunning = lastAnalysis?.status === 'running';
+      if (list.length === 0 || isRunning) {
+        memoryEl.setAttribute('disabled', 'disabled');
+        memoryEl.classList.add('is-disabled');
+      } else {
+        memoryEl.removeAttribute('disabled');
+        memoryEl.classList.remove('is-disabled');
       }
     }
     const exportEl = container.querySelector('[data-role="chat-export"]');
@@ -196,14 +226,130 @@ export class ChatUI {
       badge.title = `Modele planifie: ${planned} - Utilise: ${used} - TTFB: ${ttfb}`;
       badge.classList.toggle('is-fallback', fallback);
     }
+
     this._updateAuthOverlay(container);
   }
+
+  _updateThreadMeta(container) {
+    const host = container?.querySelector('#chat-thread-meta');
+    if (!host) return;
+
+    const dateEl = host.querySelector('[data-role="thread-date"]');
+    const countEl = host.querySelector('[data-role="thread-count"]');
+    const separatorEl = host.querySelector('.chat-thread-meta__separator');
+
+    const safeGet = (pathKey) => {
+      if (!this.stateManager || typeof this.stateManager.get !== 'function') return null;
+      try { return this.stateManager.get(pathKey); }
+      catch { return null; }
+    };
+
+    let threadId = this.state.threadId || null;
+    if (!threadId) {
+      const altId = safeGet('chat.threadId');
+      const fallbackId = safeGet('threads.currentId');
+      threadId = altId || fallbackId || null;
+    }
+
+    if (!threadId) {
+      if (dateEl) {
+        dateEl.textContent = '';
+        dateEl.removeAttribute('title');
+        delete dateEl.dataset.iso;
+      }
+      if (countEl) {
+        countEl.textContent = '';
+        countEl.removeAttribute('data-count');
+        countEl.setAttribute('hidden', 'hidden');
+      }
+      if (separatorEl) separatorEl.setAttribute('hidden', 'hidden');
+      host.hidden = true;
+      host.setAttribute('hidden', 'hidden');
+      delete host.dataset.threadId;
+      return;
+    }
+
+    host.dataset.threadId = threadId;
+
+    const threadsState = safeGet('threads') || {};
+    const threadsMap = threadsState && typeof threadsState.map === 'object' ? threadsState.map : null;
+    const entry = threadsMap && Object.prototype.hasOwnProperty.call(threadsMap, threadId) ? threadsMap[threadId] : null;
+    const record = entry && typeof entry === 'object' ? (entry.thread || entry) : null;
+
+    let interactionCount = null;
+    let interactionLabel = null;
+    if (entry || record) {
+      interactionCount = getInteractionCount(entry, record);
+      interactionLabel = formatInteractionCount(interactionCount);
+    }
+
+    if (countEl) {
+      if (interactionLabel) {
+        countEl.textContent = 'Interactions : ' + interactionLabel;
+        countEl.dataset.count = String(interactionCount ?? 0);
+        countEl.removeAttribute('hidden');
+      } else {
+        countEl.textContent = 'Interactions : inconnues';
+        countEl.removeAttribute('data-count');
+        countEl.removeAttribute('hidden');
+      }
+    }
+
+    let lastInteraction = entry || record ? getLastInteractionTimestamp(entry, record) : null;
+    if (!lastInteraction) {
+      const fallbacks = [
+        this.state.lastMessageMeta?.created_at,
+        this.state.lastMessageMeta?.timestamp,
+        record?.updated_at,
+        record?.updatedAt,
+        record?.last_message_at,
+        record?.lastMessageAt,
+        entry?.updated_at,
+        entry?.updatedAt,
+        entry?.last_message_at,
+        entry?.lastMessageAt
+      ];
+      for (const candidate of fallbacks) {
+        if (candidate) {
+          lastInteraction = candidate;
+          break;
+        }
+      }
+    }
+
+    if (dateEl) {
+      if (lastInteraction) {
+        const { display, iso } = this._formatTimestamp(lastInteraction);
+        dateEl.textContent = 'Derniere activite : ' + display;
+        dateEl.setAttribute('title', iso);
+        dateEl.dataset.iso = iso;
+        dateEl.removeAttribute('hidden');
+      } else {
+        dateEl.textContent = 'Derniere activite : inconnue';
+        dateEl.removeAttribute('title');
+        delete dateEl.dataset.iso;
+        dateEl.removeAttribute('hidden');
+      }
+    }
+
+    if (separatorEl) {
+      const hasDate = !!(dateEl && dateEl.textContent && dateEl.textContent.trim());
+      const hasCount = !!(countEl && countEl.textContent && countEl.textContent.trim());
+      if (hasDate && hasCount) separatorEl.removeAttribute('hidden');
+      else separatorEl.setAttribute('hidden', 'hidden');
+    }
+
+    host.hidden = false;
+    host.removeAttribute('hidden');
+  }
+
   _bindEvents(container) {
     const form = container.querySelector('#chat-form');
     const input = container.querySelector('#chat-input');
     const ragBtn = container.querySelector('#rag-power');
     const sendBtn = container.querySelector('#chat-send');
     const clearButton = container.querySelector('[data-role="chat-clear"]');
+    const memoryButton = container.querySelector('[data-role="chat-memory"]');
     const exportButton = container.querySelector('[data-role="chat-export"]');
     const messagesHost = container.querySelector('#chat-messages');
     const sourcesHost = container.querySelector('#rag-sources');
@@ -239,6 +385,19 @@ export class ChatUI {
 
     clearButton?.addEventListener('click', () => {
       this.eventBus.emit(EVENTS.CHAT_CLEAR);
+    });
+
+    memoryButton?.addEventListener('click', () => {
+      const agentId = (this.state.currentAgentId || '').trim();
+      if (!agentId) return;
+      const payload = { agent_id: agentId, agentId };
+      let threadId = this.state.threadId || null;
+      if (!threadId && this.stateManager?.get) {
+        threadId = this.stateManager.get('chat.threadId') || this.stateManager.get('threads.currentId');
+      }
+      if (threadId) payload.thread_id = threadId;
+      else payload.useActiveThread = true;
+      this.eventBus.emit('memory:tend', payload);
     });
 
     exportButton?.addEventListener('click', () => {
@@ -457,9 +616,16 @@ export class ChatUI {
       }
       if (cnt) {
         const stmTxt = mem.has_stm ? 'STM V' : 'STM 0';
-        const ltmTxt = `LTM ${Number(mem.ltm_items || 0)}`;
-        const inj = mem.injected ? ' | inj' : '';
-        cnt.textContent = `${stmTxt} | ${ltmTxt}${inj}`;
+        const totalLtm = Number.isFinite(Number(mem.ltm_items)) ? Number(mem.ltm_items) : 0;
+        const injectedLtm = Number.isFinite(Number(mem.ltm_injected)) ? Number(mem.ltm_injected) : (mem.injected ? totalLtm : 0);
+        let ltmTxt = `LTM ${totalLtm}`;
+        if (totalLtm && injectedLtm !== totalLtm) {
+          ltmTxt = `LTM ${injectedLtm}/${totalLtm}`;
+        }
+        let flags = '';
+        if (mem.ltm_skipped) flags = ' | skip';
+        else if (mem.injected) flags = ' | inj';
+        cnt.textContent = `${stmTxt} | ${ltmTxt}${flags}`;
       }
 
       const met = this.state.metrics || {};

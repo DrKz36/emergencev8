@@ -31,6 +31,7 @@ class LoginResponse(BaseModel):
     expires_at: datetime
     role: str
     session_id: str
+    user_id: str
     email: str
 
 

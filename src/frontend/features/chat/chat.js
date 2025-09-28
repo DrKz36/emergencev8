@@ -635,7 +635,6 @@ export default class ChatModule {
     if (!threadId) return;
     this.loadedThreadId = null;
     this.state.set('chat.isLoading', false);
-    try { this.state.set('websocket.sessionId', threadId); } catch {}
     try { this.state.set('threads.currentId', threadId); } catch {}
     const detail = Array.isArray(payload?.messages) ? payload : this.state.get('threads.map.' + threadId);
     if (detail) {
@@ -833,7 +832,7 @@ export default class ChatModule {
       }
       // Reset local (affichage OFF)
       try {
-        this.state.set('chat.memoryStats', { has_stm: false, ltm_items: 0, injected: false });
+        this.state.set('chat.memoryStats', { has_stm: false, ltm_items: 0, ltm_injected: 0, ltm_candidates: 0, injected: false, ltm_skipped: false });
         this.state.set('chat.memoryBannerAt', null);
       } catch {}
       this.showToast('Mémoire effacée ✓');
@@ -960,7 +959,7 @@ export default class ChatModule {
       const concepts = Array.isArray(metadata?.concepts) ? metadata.concepts.filter(Boolean) : [];
       const entities = Array.isArray(metadata?.entities) ? metadata.entities.filter(Boolean) : [];
       const ltmCount = concepts.length + entities.length;
-      this.state.set('chat.memoryStats', { has_stm: !!summary, ltm_items: ltmCount, injected: false });
+      this.state.set('chat.memoryStats', { has_stm: !!summary, ltm_items: ltmCount, ltm_injected: 0, ltm_candidates: ltmCount, injected: false, ltm_skipped: false });
       this.state.set('chat.memoryBannerAt', Date.now());
       this.state.set('chat.lastAnalysis', {
         session_id: sessionId || null,

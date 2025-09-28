@@ -10,6 +10,9 @@ import { api } from '../shared/api-client.js'; // + Threads API
 import { t } from '../shared/i18n.js';
 import { modals } from '../components/modals.js';
 
+const THREAD_ID_HEX_RE = /^[0-9a-f]{32}$/i;
+const THREAD_ID_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const AUTH_ERROR_STATUSES = new Set([401, 403, 419, 440]);
 const THREAD_INACCESSIBLE_MARKER = 'thread non accessible pour cet utilisateur';
 const THREAD_INACCESSIBLE_CODES = new Set(['thread_not_accessible', 'thread_inaccessible']);
@@ -44,6 +47,7 @@ function isNetworkError(error) {
 // [CORRECTION VITE]
 const moduleLoaders = {
   chat: () => import('../features/chat/chat.js'),
+  // conversations module kept for admin tooling (embedded via memory)
   conversations: () => import('../features/conversations/conversations.js'),
   debate: () => import('../features/debate/debate.js'),
   documents: () => import('../features/documents/documents.js'),
@@ -74,6 +78,7 @@ export class App {
       tabs: document.getElementById('app-tabs'),
       content: document.getElementById('app-content'),
       memoryOverlay: document.getElementById('memory-overlay'),
+      authStatus: document.getElementById('sidebar-auth-status'),
     };
 
     this.modules = {};
@@ -95,7 +100,8 @@ export class App {
       {
         id: 'memory',
         name: 'Memoire',
-        icon: '<svg class="nav-icon-brain" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><path d="M9.1 3.5c-2.1 0-3.8 1.66-3.8 3.7v1.08A3.6 3.6 0 0 0 3 11.9a3.55 3.55 0 0 0 2.08 3.2c.19.86.19 1.78 0 2.64A3.05 3.05 0 0 0 8 21h3V3.5H9.1z"></path><path d="M14.9 3.5c2.1 0 3.8 1.66 3.8 3.7v1.08A3.6 3.6 0 0 1 21 11.9a3.55 3.55 0 0 1-2.08 3.2c-.19.86-.19 1.78 0 2.64A3.05 3.05 0 0 1 16 21h-3V3.5h1.9z"></path><path d="M11 7.5h-1"></path><path d="M14 7.5h-1"></path><path d="M11 11.5h-1"></path><path d="M14 11.5h-1"></path><path d="M11 15.5h-1"></path><path d="M14 15.5h-1"></path></svg>'
+        icon: '<svg class="nav-icon-brain" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><path d="M9.1 3.5c-2.1 0-3.8 1.66-3.8 3.7v1.08A3.6 3.6 0 0 0 3 11.9a3.55 3.55 0 0 0 2.08 3.2c.19.86.19 1.78 0 2.64A3.05 3.05 0 0 0 8 21h3V3.5H9.1z"></path><path d="M14.9 3.5c2.1 0 3.8 1.66 3.8 3.7v1.08A3.6 3.6 0 0 1 21 11.9a3.55 3.55 0 0 1-2.08 3.2c-.19.86-.19 1.78 0 2.64A3.05 3.05 0 0 1 16 21h-3V3.5h1.9z"></path><path d="M11 7.5h-1"></path><path d="M14 7.5h-1"></path><path d="M11 11.5h-1"></path><path d="M14 11.5h-1"></path><path d="M11 15.5h-1"></path><path d="M14 15.5h-1"></path></svg>',
+        requiresRole: 'admin',
       },
 
       {
@@ -111,8 +117,8 @@ export class App {
 
     if (this.state?.subscribe) {
       try {
-        this.state.subscribe('auth.role', () => {
-          this.renderNavigation();
+        this.state.subscribe('auth.role', (role) => {
+          this.handleRoleChange(role);
         });
       } catch (err) {
         console.warn('[App] Impossible de souscrire a auth.role', err);
@@ -144,6 +150,83 @@ export class App {
     this.listenToNavEvents();
     this.bootstrapFeatures();
     this.initialized = true;
+    this.handleRoleChange(this.state?.get?.('auth.role'));
+  }
+
+  handleRoleChange(role) {
+    const normalizedRole = typeof role === 'string' && role.trim()
+      ? role.trim().toLowerCase()
+      : (this.state?.get?.('auth.role') || 'member');
+
+    this.updateAuthStatus(normalizedRole);
+    try {
+      if (document?.body) {
+        document.body.dataset.authRole = normalizedRole;
+      }
+    } catch (err) {
+      console.warn('[App] Impossible de positionner data-auth-role', err);
+    }
+
+    const modules = this.getModuleConfig();
+    const allowedIds = modules.map((m) => m.id);
+    const hasMemory = allowedIds.includes('memory');
+    const hasAdmin = allowedIds.includes('admin');
+
+    if (!hasMemory) {
+      try { this.closeMemoryMenu(); } catch (err) { console.warn('[App] Impossible de fermer le panneau memoire', err); }
+      if (this.modules?.memory?.unmount) {
+        try { this.modules.memory.unmount(); } catch (err) { console.warn('[App] Impossible de nettoyer le module memoire', err); }
+      }
+      if (this.modules) delete this.modules.memory;
+      const memoryContainer = this.dom.content?.querySelector?.('#tab-content-memory');
+      if (memoryContainer?.remove) {
+        try { memoryContainer.remove(); } catch (err) { console.warn('[App] Impossible de retirer le container memoire', err); }
+      }
+    }
+
+    if (!hasAdmin) {
+      if (this.modules?.admin?.unmount) {
+        try { this.modules.admin.unmount(); } catch (err) { console.warn('[App] Impossible de nettoyer le module admin', err); }
+      }
+      if (this.modules) delete this.modules.admin;
+      const adminContainer = this.dom.content?.querySelector?.('#tab-content-admin');
+      if (adminContainer?.remove) {
+        try { adminContainer.remove(); } catch (err) { console.warn('[App] Impossible de retirer le container admin', err); }
+      }
+    }
+
+    const currentIsAllowed = allowedIds.includes(this.activeModule);
+    if (!currentIsAllowed) {
+      const fallback = allowedIds.includes('chat') ? 'chat' : (allowedIds[0] || null);
+      if (fallback) {
+        this.showModule(fallback);
+        return;
+      }
+    }
+
+    this.renderNavigation();
+  }
+
+  updateAuthStatus(role) {
+    const target = this.dom?.authStatus;
+    if (!target) return;
+
+    const normalizedRole = typeof role === 'string' && role.trim() ? role.trim().toLowerCase() : null;
+    const emailRaw = this.state?.get?.('auth.email');
+    const email = typeof emailRaw === 'string' && emailRaw.trim() ? emailRaw.trim().toLowerCase() : null;
+
+    if (!normalizedRole) {
+      target.textContent = 'Non connecte.';
+      return;
+    }
+
+    const roleLabels = {
+      admin: 'Administrateur',
+      member: 'Membre',
+    };
+    const label = roleLabels[normalizedRole] || normalizedRole;
+    const emailPart = email ? ` (${email})` : '';
+    target.innerHTML = `Vous etes connecte en tant que <strong>${label}</strong>${emailPart}`;
   }
 
   renderNavigation() {
@@ -332,7 +415,10 @@ export class App {
   }
 
   _isValidThreadId(value) {
-    return typeof value === 'string' && value.length >= 8;
+    if (typeof value !== 'string') return false;
+    const candidate = value.trim();
+    if (!candidate) return false;
+    return THREAD_ID_HEX_RE.test(candidate) || THREAD_ID_UUID_RE.test(candidate);
   }
 
   async loadModule(moduleId) {
@@ -560,6 +646,7 @@ export class App {
   }
 
 }
+
 
 
 

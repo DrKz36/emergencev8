@@ -16,6 +16,7 @@ if str(SRC_DIR) not in sys.path:
 from backend.core.database import schema
 from backend.core.database.manager import DatabaseManager
 from backend.features.memory import router as memory_router
+from backend.features.memory.gardener import MemoryGardener
 
 
 class FakeCollection:
@@ -34,6 +35,9 @@ class FakeCollection:
         if "$and" in where:
             clauses = where.get("$and") or []
             return all(self._matches(clause or {}, metadata) for clause in clauses)
+        if "$or" in where:
+            clauses = where.get("$or") or []
+            return any(self._matches(clause or {}, metadata) for clause in clauses)
         for key, expected in where.items():
             if metadata.get(key) != expected:
                 return False
@@ -109,6 +113,29 @@ class FakeContainer:
         return self._session
 
 
+
+
+def test_filter_history_for_agent_preserves_target_messages():
+    history = [
+        {"role": "assistant", "agent_id": "anima", "content": "bonjour"},
+        {"role": "assistant", "agent_id": "neo", "content": "salut"},
+        {"role": "user", "content": "ok"},
+        {"role": "system", "content": "meta"},
+    ]
+    filtered = MemoryGardener._filter_history_for_agent(history, 'neo')
+    assert any((item.get('agent_id') or '').lower() == 'neo' for item in filtered)
+    assert all((item.get('role') or '').lower() != 'assistant' or (item.get('agent_id') or '').lower() == 'neo' for item in filtered)
+    assert any((item.get('role') or '').lower() == 'user' for item in filtered)
+
+
+def test_filter_history_for_agent_no_agent_returns_original():
+    history = [
+        {"role": "assistant", "agent_id": "anima", "content": "bonjour"},
+        {"role": "user", "content": "ok"},
+    ]
+    assert MemoryGardener._filter_history_for_agent(history, None) == history
+
+
 async def _run_memory_clear_scenario(tmp_path):
     db_path = tmp_path / "memory-clear.db"
     db = DatabaseManager(str(db_path))
@@ -140,8 +167,8 @@ async def _run_memory_clear_scenario(tmp_path):
     )
 
     collection = FakeCollection()
-    collection.add("vec-1", {"source_session_id": session_id, "user_id": owner_id})
-    collection.add("vec-2", {"source_session_id": "other", "user_id": owner_id})
+    collection.add("vec-1", {"session_id": session_id, "source_session_id": session_id, "user_id": owner_id})
+    collection.add("vec-2", {"session_id": "other", "source_session_id": "other", "user_id": owner_id})
     vector_service = FakeVectorService(collection)
     session_manager = FakeSessionManager(owner_id)
     container = FakeContainer(db, vector_service, session_manager)
@@ -178,9 +205,13 @@ async def _run_memory_clear_scenario(tmp_path):
 
     assert "vec-1" not in collection.items
     assert "vec-2" in collection.items
-    assert vector_service.deleted_filters == [
-        {"$and": [{"source_session_id": session_id}, {"user_id": owner_id}]}
-    ]
+    expected_filter = {
+        "$and": [
+            {"$or": [{"session_id": session_id}, {"source_session_id": session_id}]},
+            {"user_id": owner_id},
+        ]
+    }
+    assert vector_service.deleted_filters == [expected_filter]
 
     await db.disconnect()
 
@@ -210,6 +241,49 @@ def test_memory_endpoints_require_auth():
     asyncio.run(_run_memory_endpoints_require_auth())
 
 
+
+async def _run_memory_tend_garden_post_with_agent():
+    app = FastAPI()
+    app.include_router(memory_router.router, prefix="/api/memory")
+
+    captured = {}
+
+    class DummyGardener:
+        async def tend_the_garden(
+            self,
+            consolidation_limit: int = 10,
+            thread_id: str | None = None,
+            session_id: str | None = None,
+            agent_id: str | None = None,
+        ):
+            captured['limit'] = consolidation_limit
+            captured['thread_id'] = thread_id
+            captured['session_id'] = session_id
+            captured['agent_id'] = agent_id
+            return {"status": "success", "message": "OK", "consolidated_sessions": 0, "new_concepts": 0}
+
+    original_getter = memory_router._get_gardener_from_request
+    try:
+        memory_router._get_gardener_from_request = lambda request: DummyGardener()  # type: ignore[assignment]
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            response = await client.post(
+                "/api/memory/tend-garden",
+                json={"thread_id": "thread-123", "agent_id": "Neo"},
+                headers={"X-Dev-Bypass": "1", "X-User-ID": "tester", "X-Session-Id": "session-agent"},
+            )
+        assert response.status_code == 200
+    finally:
+        memory_router._get_gardener_from_request = original_getter
+
+    assert captured == {
+        "limit": 10,
+        "thread_id": "thread-123",
+        "session_id": "session-agent",
+        "agent_id": "Neo",
+    }
+
+
 async def _run_memory_tend_garden_get_authorized():
     app = FastAPI()
     app.include_router(memory_router.router, prefix="/api/memory")
@@ -218,8 +292,14 @@ async def _run_memory_tend_garden_get_authorized():
         def __init__(self) -> None:
             self.calls: list[tuple[str | None, str | None]] = []
 
-        async def tend_the_garden(self, thread_id: str | None = None, session_id: str | None = None):
-            self.calls.append((thread_id, session_id))
+        async def tend_the_garden(
+            self,
+            consolidation_limit: int = 10,
+            thread_id: str | None = None,
+            session_id: str | None = None,
+            agent_id: str | None = None,
+        ):
+            self.calls.append((thread_id, session_id, consolidation_limit, agent_id))
             return {"status": "success", "runs": 1}
 
     gardener = DummyGardener()
@@ -242,8 +322,12 @@ async def _run_memory_tend_garden_get_authorized():
     finally:
         memory_router._get_gardener_from_request = original_getter
 
-    assert gardener.calls == [(None, None)]
+    assert gardener.calls == [(None, None, 10, None)]
 
+
+
+def test_memory_tend_garden_post_forwards_agent():
+    asyncio.run(_run_memory_tend_garden_post_with_agent())
 
 
 def test_memory_tend_garden_get_authorized():
@@ -298,9 +382,9 @@ async def _run_memory_tend_garden_get_with_data(tmp_path):
             )
 
         collection = FakeCollection()
-        collection.add("vec-a", {"source_session_id": "session-old", "user_id": owner_id})
-        collection.add("vec-b", {"source_session_id": "session-new", "user_id": owner_id})
-        collection.add("vec-c", {"source_session_id": "session-new", "user_id": owner_id})
+        collection.add("vec-a", {"session_id": "session-old", "source_session_id": "session-old", "user_id": owner_id})
+        collection.add("vec-b", {"session_id": "session-new", "source_session_id": "session-new", "user_id": owner_id})
+        collection.add("vec-c", {"session_id": "session-new", "source_session_id": "session-new", "user_id": owner_id})
         vector_service = FakeVectorService(collection)
         session_manager = FakeSessionManager(owner_id)
         container = FakeContainer(db, vector_service, session_manager)

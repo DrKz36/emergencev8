@@ -9,22 +9,18 @@ import { StateManager } from './core/state-manager.js';
 import { WebSocketClient } from './core/websocket.js';
 import { MemoryCenter } from './features/memory/memory-center.js';
 import { HomeModule } from './features/home/home-module.js';
-import * as AuthModule from './core/auth.js';
+import {
+  storeAuthToken as storeAuthTokenImpl,
+  clearAuth as clearAuthImpl,
+  getIdToken as getIdTokenImpl,
+} from './core/auth.js';
 
 import { api } from './shared/api-client.js';
 import { WS_CONFIG, EVENTS } from './shared/constants.js';
 
-const legacyAuthModule = (() => {
-  if (AuthModule && typeof AuthModule === 'object' && 'default' in AuthModule) {
-    return AuthModule.default;
-  }
-  return null;
-})();
-
-const storeAuthToken = AuthModule.storeAuthToken ?? legacyAuthModule?.storeAuthToken ?? (() => null);
-const clearStoredAuth = AuthModule.clearAuth ?? legacyAuthModule?.clearAuth ?? (() => {});
-const getIdToken = AuthModule.getIdToken ?? legacyAuthModule?.getIdToken ?? (() => null);
-
+const storeAuthToken = typeof storeAuthTokenImpl === 'function' ? storeAuthTokenImpl : () => null;
+const clearStoredAuth = typeof clearAuthImpl === 'function' ? clearAuthImpl : () => {};
+const getIdToken = typeof getIdTokenImpl === 'function' ? getIdTokenImpl : () => null;
 
 /* ---------------- WS-first Chat dedupe & reroute (main.js patch V1) ----------------
    - Empêche le doublon d'affichage du message utilisateur.
@@ -300,7 +296,6 @@ function setupMobileShell(appInstance, eventBus) {
   syncBackdrop();
   updateAria();
 }
-
 
 /* ---------------------- Toast minimal ---------------------- */
 function mountToastHost() {
@@ -932,34 +927,61 @@ class EmergenceClient {
 
   markAuthRequired() {
     try { this.state?.set?.('auth.hasToken', false); }
-    catch (err) { console.warn('[main] Impossible de mettre à jour auth.hasToken', err); }
+    catch (err) { console.warn('[main] Impossible de mettre a jour auth.hasToken', err); }
     try { this.state?.set?.('chat.authRequired', true); }
     catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=true', err); }
     try { this.state?.set?.('auth.role', 'member'); }
     catch (err) { console.warn('[main] Impossible de remettre auth.role', err); }
     try { this.state?.set?.('auth.email', null); }
     catch (err) { console.warn('[main] Impossible de remettre auth.email', err); }
+    try { this.state?.set?.('session.id', null); }
+    catch (err) { console.warn('[main] Impossible de remettre session.id', err); }
+    try { this.state?.set?.('websocket.sessionId', null); }
+    catch (err) { console.warn('[main] Impossible de remettre websocket.sessionId', err); }
+    try { this.app?.updateAuthStatus?.(null); }
+    catch (err) { console.warn('[main] Impossible de remettre le statut de connexion', err); }
     this.badge?.setLogged(false);
     this.badge?.setConnected(false);
   }
 
+  normalizeSessionId(raw) {
+    if (raw === null || raw === undefined) return null;
+    const value = String(raw).trim();
+    return value ? value : null;
+  }
+
+  normalizeRole(raw) {
+    if (typeof raw !== 'string') return null;
+    const value = raw.trim().toLowerCase();
+    return value ? value : null;
+  }
+
+  normalizeEmail(raw) {
+    if (typeof raw !== 'string') return null;
+    const value = raw.trim().toLowerCase();
+    return value ? value : null;
+  }
+
   handleLoginSuccess(payload = {}) {
+    const normalizedSessionId = this.normalizeSessionId(payload?.sessionId ?? payload?.session_id);
+    try { this.state?.resetForSession?.(normalizedSessionId); }
+    catch (err) { console.warn('[main] Impossible de reset l\'etat de session apres login', err, { sessionId: normalizedSessionId }); }
     const token = payload?.token;
     if (token && token.trim()) storeAuthToken(token.trim(), { expiresAt: payload?.expiresAt });
-    const role = (payload?.role ?? 'member');
-    try { this.state?.set?.('auth.role', String(role).toLowerCase()); }
+    try { this.state?.set?.('auth.hasToken', true); }
+    catch (err) { console.warn('[main] Impossible de mettre a jour auth.hasToken', err); }
+    const normalizedRole = this.normalizeRole(payload?.role) ?? 'member';
+    try { this.state?.set?.('auth.role', normalizedRole); }
     catch (err) { console.warn('[main] Impossible de mettre a jour auth.role', err); }
-    const email = payload?.email;
-    if (email) {
-      try { this.state?.set?.('auth.email', String(email).toLowerCase()); }
-      catch (err) { console.warn('[main] Impossible de mettre a jour auth.email', err); }
-    }
-    if (payload?.sessionId) {
-      try { this.state?.set?.('websocket.sessionId', payload.sessionId); }
-      catch (err) { console.warn('[main] Impossible d’enregistrer websocket.sessionId', err); }
+    const normalizedEmail = this.normalizeEmail(payload?.email);
+    try { this.state?.set?.('auth.email', normalizedEmail); }
+    catch (err) { console.warn('[main] Impossible de mettre a jour auth.email', err); }
+    if (normalizedSessionId !== null) {
+      try { this.state?.set?.('websocket.sessionId', normalizedSessionId); }
+      catch (err) { console.warn('[main] Impossible d\'enregistrer websocket.sessionId', err); }
       try {
         const cookieParts = [
-          `emergence_session_id=${encodeURIComponent(payload.sessionId)}`,
+          `emergence_session_id=${encodeURIComponent(normalizedSessionId)}`,
           'path=/',
           'SameSite=Lax',
         ];
@@ -972,24 +994,57 @@ class EmergenceClient {
         if (shouldUseSecureCookies()) cookieParts.push('Secure');
         document.cookie = cookieParts.join('; ');
       } catch (_) {}
+    } else {
+      try { this.state?.set?.('websocket.sessionId', null); }
+      catch (err) { console.warn('[main] Impossible de purger websocket.sessionId', err); }
     }
     this.handleTokenAvailable('home-login');
+    try { this.app?.handleRoleChange?.(normalizedRole); }
+    catch (err) { console.warn('[main] Impossible de rafraichir la navigation (login)', err); }
   }
 
   async refreshSessionRole(source = 'unknown') {
+    let session;
     try {
-      const session = await api.authSession();
-      if (session && typeof session.role === 'string') {
-        try { this.state?.set?.('auth.role', session.role.toLowerCase()); }
-        catch (err) { console.warn('[main] Impossible de mettre a jour auth.role', err); }
-      }
-      if (session && typeof session.email === 'string') {
-        try { this.state?.set?.('auth.email', session.email.toLowerCase()); }
-        catch (err) { console.warn('[main] Impossible de mettre a jour auth.email', err); }
-      }
+      session = await api.authSession();
     } catch (err) {
       console.warn('[main] Impossible de recuperer la session actuelle', err, { source });
+      return;
     }
+
+    if (!session || typeof session !== 'object') {
+      console.warn('[main] Session auth absente, retour a l\'etat non authentifie', { source });
+      this.handleLogout();
+      return;
+    }
+
+    const normalizedRole = this.normalizeRole(session.role) ?? 'member';
+    const normalizedEmail = this.normalizeEmail(session.email);
+    const nextSessionId = this.normalizeSessionId(session.session_id ?? session.sessionId);
+    const currentSessionId = this.state?.get?.('session.id') || this.state?.get?.('websocket.sessionId') || null;
+
+    if (nextSessionId) {
+      if (!currentSessionId || currentSessionId !== nextSessionId) {
+        try { this.state?.resetForSession?.(nextSessionId); }
+        catch (err) { console.warn('[main] Impossible d\'appliquer la nouvelle session', err, { source, nextSessionId }); }
+      }
+      try { this.state?.set?.('websocket.sessionId', nextSessionId); }
+      catch (err) { console.warn('[main] Impossible de propager websocket.sessionId', err); }
+    } else if (currentSessionId) {
+      try { this.state?.resetForSession?.(null); }
+      catch (err) { console.warn('[main] Impossible de purger la session courante', err); }
+      try { this.state?.set?.('websocket.sessionId', null); }
+      catch (err) { console.warn('[main] Impossible de purger websocket.sessionId', err); }
+    }
+
+    try { this.state?.set?.('auth.role', normalizedRole); }
+    catch (err) { console.warn('[main] Impossible de mettre a jour auth.role', err); }
+
+    try { this.state?.set?.('auth.email', normalizedEmail); }
+    catch (err) { console.warn('[main] Impossible de mettre a jour auth.email', err); }
+
+    try { this.app?.handleRoleChange?.(normalizedRole); }
+    catch (err) { console.warn('[main] Impossible de rafraichir la navigation (refreshSessionRole)', err); }
   }
 
   async handleTokenAvailable(source = 'unknown') {
@@ -1079,6 +1134,8 @@ class EmergenceClient {
     clearStoredAuth();
     this.devAutoLogged = false;
     this.devAutoAttempted = false;
+    try { this.state?.resetForSession?.(null); }
+    catch (err) { console.warn('[main] Impossible de remettre l\'etat par defaut', err); }
     this.markAuthRequired();
     this.showHome();
     this.installStorageListener();

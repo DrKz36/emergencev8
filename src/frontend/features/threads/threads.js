@@ -61,6 +61,157 @@ function normalizeId(value) {
   return candidate ? candidate : null;
 }
 
+function coerceTimestamp(value) {
+  if (!value) return null;
+  if (value instanceof Date) {
+    const time = value.getTime();
+    return Number.isNaN(time) ? null : time;
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || value <= 0) return null;
+    if (value > 1e12) return Math.trunc(value);
+    if (value > 1e9) return Math.trunc(value * 1000);
+    return Math.trunc(value);
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const numeric = Number(trimmed);
+    if (Number.isFinite(numeric)) return coerceTimestamp(numeric);
+    const parsed = Date.parse(trimmed);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return null;
+}
+
+function extractMessageTimestamp(message) {
+  if (!message || typeof message !== 'object') return null;
+  return coerceTimestamp(
+    message.created_at ??
+    message.createdAt ??
+    message.updated_at ??
+    message.updatedAt ??
+    message.timestamp ??
+    message.time ??
+    message.datetime ??
+    message.date ??
+    (message.meta && (message.meta.timestamp ?? message.meta.created_at ?? message.meta.updated_at))
+  );
+}
+
+function resolveThreadRecord(entry, record) {
+  if (record && typeof record === 'object') return record;
+  if (entry && typeof entry === 'object') {
+    if (entry.thread && typeof entry.thread === 'object') return entry.thread;
+    return entry;
+  }
+  return null;
+}
+
+export function getInteractionCount(entry, record) {
+  const messages = Array.isArray(entry?.messages) ? entry.messages.filter(Boolean) : [];
+  if (messages.length) return messages.length;
+  const target = resolveThreadRecord(entry, record);
+  if (Array.isArray(target?.messages) && target.messages.length) {
+    return target.messages.filter(Boolean).length;
+  }
+  const targetStats = target?.stats || {};
+  const entryStats = entry?.stats || {};
+  const targetMeta = target?.meta || target?.metadata || {};
+  const entryMeta = entry?.meta || entry?.metadata || {};
+  const candidates = [
+    targetStats.interactions,
+    targetStats.messages,
+    targetStats.total,
+    targetStats.count,
+    entryStats.interactions,
+    entryStats.messages,
+    entryStats.total,
+    entryStats.count,
+    target?.message_count,
+    target?.messages_count,
+    target?.messages_total,
+    target?.total_messages,
+    entry?.message_count,
+    entry?.messages_count,
+    entry?.messages_total,
+    entry?.total_messages,
+    targetMeta.interaction_count,
+    targetMeta.interactions,
+    targetMeta.messages_count,
+    entryMeta.interaction_count,
+    entryMeta.interactions,
+    entryMeta.messages_count
+  ];
+  for (const candidate of candidates) {
+    const num = Number(candidate);
+    if (Number.isFinite(num) && num >= 0) {
+      return Math.max(0, Math.floor(num));
+    }
+  }
+  return 0;
+}
+
+export function formatInteractionCount(count) {
+  const safe = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+  if (safe === 0) return 'Aucune interaction';
+  if (safe === 1) return '1 interaction';
+  return `${safe} interactions`;
+}
+
+export function getLastInteractionTimestamp(entry, record) {
+  const timestamps = [];
+  const addTimestamp = (value) => {
+    const epoch = coerceTimestamp(value);
+    if (epoch) timestamps.push(epoch);
+  };
+  const messages = Array.isArray(entry?.messages) ? entry.messages : [];
+  for (const message of messages) {
+    const ts = extractMessageTimestamp(message);
+    if (ts) timestamps.push(ts);
+  }
+  const target = resolveThreadRecord(entry, record);
+  const candidateValues = [
+    entry?.lastInteractionAt,
+    entry?.last_interaction_at,
+    entry?.lastMessageAt,
+    entry?.last_message_at,
+    target?.lastInteractionAt,
+    target?.last_interaction_at,
+    target?.lastMessageAt,
+    target?.last_message_at,
+    target?.latestMessageAt,
+    target?.latest_message_at,
+    target?.updatedAt,
+    target?.updated_at,
+    target?.createdAt,
+    target?.created_at,
+    entry?.updatedAt,
+    entry?.updated_at
+  ];
+  const targetMeta = target?.meta || target?.metadata || {};
+  const entryMeta = entry?.meta || entry?.metadata || {};
+  candidateValues.push(
+    targetMeta.lastInteractionAt,
+    targetMeta.last_interaction_at,
+    targetMeta.lastMessageAt,
+    targetMeta.last_message_at,
+    entryMeta.lastInteractionAt,
+    entryMeta.last_interaction_at,
+    entryMeta.lastMessageAt,
+    entryMeta.last_message_at
+  );
+  if (!timestamps.length && Array.isArray(target?.messages) && target.messages.length) {
+    for (const message of target.messages) {
+      const ts = extractMessageTimestamp(message);
+      if (ts) timestamps.push(ts);
+    }
+  }
+  if (!timestamps.length) return null;
+  const latest = Math.max(...timestamps);
+  return new Date(latest).toISOString();
+}
+
 export class ThreadsPanel {
   constructor(eventBus, stateManager, options = {}) {
     this.eventBus = eventBus;
@@ -345,7 +496,6 @@ export class ThreadsPanel {
     this.selectionLoadingId = safeId;
     this.state.set('threads.currentId', safeId);
     this.state.set('chat.threadId', safeId);
-    this.state.set('websocket.sessionId', safeId);
     this.updateOrderForSelection(safeId);
     this.render(this.state.get('threads'));
 
@@ -582,7 +732,10 @@ export class ThreadsPanel {
       const title = record?.title || 'Conversation';
       const agentId = record?.agent_id || record?.agentId || null;
       const statusLabel = record?.archived ? STATUS_LABELS.archived : STATUS_LABELS.active;
-      const timestamp = record?.updated_at || record?.created_at || null;
+      const messageCount = getInteractionCount(entry, record);
+      const interactionsLabel = formatInteractionCount(messageCount);
+      const lastTimestamp = getLastInteractionTimestamp(entry, record);
+      const timestamp = lastTimestamp || record?.updated_at || record?.last_message_at || record?.created_at || null;
       const isActive = currentId === id;
       const isLoading = loadingId === id;
       const isArchiving = archivingId === id;
@@ -603,6 +756,11 @@ export class ThreadsPanel {
       else if (isArchiving) statusText = 'Archivage...';
       else if (isLoading) statusText = 'Chargement...';
       const updated = formatDateTime(timestamp);
+      const updatedTitle = timestamp ? new Date(timestamp).toISOString() : '';
+      const timestampAttributes = [];
+      if (updatedTitle) timestampAttributes.push('title="' + escapeHtml(updatedTitle) + '"');
+      if (lastTimestamp) timestampAttributes.push('data-source="last-interaction"');
+      const timestampAttr = timestampAttributes.length ? ' ' + timestampAttributes.join(' ') : '';
       const actionsHtml = showConfirmDelete
         ? `
           <div class="threads-panel__confirm" data-thread-id="${escapeHtml(id)}">
@@ -626,8 +784,9 @@ export class ThreadsPanel {
             <span class="threads-panel__item-meta">
               <span class="threads-panel__item-agent">${escapeHtml(label)}</span>
               <span class="threads-panel__item-status">${escapeHtml(statusText)}</span>
+              <span class="threads-panel__item-count">${escapeHtml(interactionsLabel)}</span>
             </span>
-            <span class="threads-panel__item-timestamp">${escapeHtml(updated)}</span>
+            <span class="threads-panel__item-timestamp"${timestampAttr}>${escapeHtml(updated)}</span>
           </button>
           ${actionsHtml}
         </li>

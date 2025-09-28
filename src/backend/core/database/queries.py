@@ -76,6 +76,57 @@ async def _session_fk_target(db: DatabaseManager) -> Optional[Tuple[str, str]]:
     return None
 
 
+async def _table_has_column(db: DatabaseManager, table: str, column: str) -> bool:
+    rows = await _pragma_table_info(db, table)
+    for row in rows or []:
+        if row["name"] == column:
+            return True
+    return False
+
+
+def _normalize_scope_identifier(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    try:
+        text = str(value).strip()
+    except Exception:
+        return None
+    return text or None
+
+
+def _resolve_user_scope(user_id: Optional[str], session_id: Optional[str]) -> str:
+    normalized_user = _normalize_scope_identifier(user_id)
+    if normalized_user:
+        return normalized_user
+    normalized_session = _normalize_scope_identifier(session_id)
+    if normalized_session:
+        return normalized_session
+    raise ValueError("User scope requires user_id or session_id.")
+
+
+def _build_scope_condition(
+    user_id: Optional[str],
+    session_id: Optional[str],
+    *,
+    user_column: str = "user_id",
+    session_column: str = "session_id",
+) -> Tuple[str, Tuple[Any, ...]]:
+    normalized_user = _normalize_scope_identifier(user_id)
+    normalized_session = _normalize_scope_identifier(session_id)
+    clauses: list[str] = []
+    params: list[Any] = []
+    if normalized_user:
+        clauses.append(f"{user_column} = ?")
+        params.append(normalized_user)
+    if normalized_session:
+        clauses.append(f"{session_column} = ?")
+        params.append(normalized_session)
+    if not clauses:
+        raise ValueError("Scope requires at least user_id or session_id.")
+    if len(clauses) == 1:
+        return clauses[0], tuple(params)
+    return "(" + " OR ".join(clauses) + ")", tuple(params)
+
 # ------------------- Bootstraps legacy ------------------- #
 def _guess_default_for(
     col_name: str, col_type: str, now_iso: str, user_id: Optional[str]
@@ -228,99 +279,131 @@ async def insert_document(
     filepath: str,
     status: str,
     uploaded_at: str,
-    session_id: str,
+    session_id: Optional[str],
+    *,
+    user_id: Optional[str] = None,
 ) -> int:
+    user_value = _resolve_user_scope(user_id, session_id)
+    normalized_session = _normalize_scope_identifier(session_id) or user_value
     await db.execute(
-        "INSERT INTO documents (filename, filepath, status, uploaded_at, session_id) VALUES (?, ?, ?, ?, ?)",
-        (filename, filepath, status, uploaded_at, session_id),
+        "INSERT INTO documents (filename, filepath, status, uploaded_at, session_id, user_id) VALUES (?, ?, ?, ?, ?, ?)",
+        (filename, filepath, status, uploaded_at, normalized_session, user_value),
     )
     row = await db.fetch_one("SELECT last_insert_rowid() AS id")
     if row is None:
         raise RuntimeError("Failed to retrieve inserted document identifier.")
     return int(row["id"])
-
-
 async def update_document_processing_info(
     db: DatabaseManager,
     doc_id: int,
-    session_id: str,
+    session_id: Optional[str],
+    *,
+    user_id: Optional[str] = None,
     char_count: int,
     chunk_count: int,
     status: str,
 ):
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
     await db.execute(
-        "UPDATE documents SET char_count = ?, chunk_count = ?, status = ? WHERE id = ? AND session_id = ?",
-        (char_count, chunk_count, status, doc_id, session_id),
+        f"UPDATE documents SET char_count = ?, chunk_count = ?, status = ? WHERE id = ? AND {scope_sql}",
+        (char_count, chunk_count, status, doc_id, *scope_params),
     )
-
-
 async def set_document_error_status(
-    db: DatabaseManager, doc_id: int, session_id: str, error_message: str
+    db: DatabaseManager, doc_id: int, session_id: Optional[str], error_message: str, *, user_id: Optional[str] = None
 ):
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
     await db.execute(
-        "UPDATE documents SET status = 'error', error_message = ? WHERE id = ? AND session_id = ?",
-        (error_message, doc_id, session_id),
+        f"UPDATE documents SET status = 'error', error_message = ? WHERE id = ? AND {scope_sql}",
+        (error_message, doc_id, *scope_params),
     )
-
-
 async def insert_document_chunks(
-    db: DatabaseManager, session_id: str, chunks: List[Dict[str, Any]]
+    db: DatabaseManager,
+    session_id: Optional[str],
+    chunks: List[Dict[str, Any]],
+    *,
+    user_id: Optional[str] = None,
 ):
+    if not chunks:
+        return
+    user_value = _resolve_user_scope(user_id, session_id)
+    normalized_session = _normalize_scope_identifier(session_id) or user_value
+    payload = [
+        (
+            c["id"],
+            c["document_id"],
+            c["chunk_index"],
+            c.get("content", ""),
+            normalized_session,
+            user_value,
+        )
+        for c in chunks
+    ]
     await db.executemany(
-        "INSERT INTO document_chunks (id, document_id, chunk_index, content, session_id) VALUES (?, ?, ?, ?, ?)",
-        [
-            (
-                c["id"],
-                c["document_id"],
-                c["chunk_index"],
-                c["content"],
-                session_id,
-            )
-            for c in chunks
-        ],
+        "INSERT INTO document_chunks (id, document_id, chunk_index, content, session_id, user_id) VALUES (?, ?, ?, ?, ?, ?)",
+        payload,
     )
-
-
 async def get_all_documents(
-    db: DatabaseManager, session_id: Optional[str] = None
+    db: DatabaseManager,
+    session_id: Optional[str] = None,
+    *,
+    user_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    if session_id:
+    if user_id or session_id:
+        scope_sql, scope_params = _build_scope_condition(user_id, session_id)
         rows = await db.fetch_all(
-            "SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents WHERE session_id = ? ORDER BY uploaded_at DESC",
-            (session_id,),
+            f"SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents WHERE {scope_sql} ORDER BY uploaded_at DESC",
+            scope_params,
         )
     else:
         rows = await db.fetch_all(
             "SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents ORDER BY uploaded_at DESC"
         )
     return [dict(row) for row in rows]
-
-
 async def get_document_by_id(
-    db: DatabaseManager, doc_id: int, session_id: Optional[str] = None
+    db: DatabaseManager,
+    doc_id: int,
+    session_id: Optional[str] = None,
+    *,
+    user_id: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    if session_id:
-        row = await db.fetch_one("SELECT * FROM documents WHERE id = ? AND session_id = ?", (doc_id, session_id))
+    if user_id or session_id:
+        scope_sql, scope_params = _build_scope_condition(user_id, session_id)
+        row = await db.fetch_one(
+            f"SELECT * FROM documents WHERE id = ? AND {scope_sql}",
+            (doc_id, *scope_params),
+        )
     else:
         row = await db.fetch_one("SELECT * FROM documents WHERE id = ?", (doc_id,))
     return dict(row) if row else None
-
-
 async def delete_document(
-    db: DatabaseManager, doc_id: int, session_id: str
+    db: DatabaseManager,
+    doc_id: int,
+    session_id: Optional[str],
+    *,
+    user_id: Optional[str] = None,
 ) -> bool:
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
     existing = await db.fetch_one(
-        "SELECT id FROM documents WHERE id = ? AND session_id = ?", (doc_id, session_id)
+        f"SELECT id FROM documents WHERE id = ? AND {scope_sql}",
+        (doc_id, *scope_params),
     )
     if not existing:
         return False
 
-    await db.execute("DELETE FROM documents WHERE id = ? AND session_id = ?", (doc_id, session_id))
-    await db.execute("DELETE FROM document_chunks WHERE document_id = ? AND session_id = ?", (doc_id, session_id))
-    await db.execute("DELETE FROM thread_docs WHERE doc_id = ? AND session_id = ?", (doc_id, session_id))
+    params = (doc_id, *scope_params)
+    await db.execute(
+        f"DELETE FROM documents WHERE id = ? AND {scope_sql}",
+        params,
+    )
+    await db.execute(
+        f"DELETE FROM document_chunks WHERE document_id = ? AND {scope_sql}",
+        params,
+    )
+    await db.execute(
+        f"DELETE FROM thread_docs WHERE doc_id = ? AND {scope_sql}",
+        params,
+    )
     return True
-
-
 # ------------------- Sessions (existant) ------------------- #
 async def get_session_by_id(
     db: DatabaseManager, session_id: str
@@ -370,7 +453,8 @@ async def update_session_analysis_data(
 # -- Threads --
 async def create_thread(
     db: DatabaseManager,
-    session_id: str,
+    session_id: Optional[str],
+    *,
     user_id: Optional[str],
     type_: str,
     title: Optional[str] = None,
@@ -379,12 +463,15 @@ async def create_thread(
 ) -> str:
     thread_id = uuid.uuid4().hex
     now = datetime.now(timezone.utc).isoformat()
+    user_value = _resolve_user_scope(user_id, session_id)
+    normalized_session = _normalize_scope_identifier(session_id) or user_value
     await db.execute(
-        "INSERT INTO threads (id, session_id, user_id, type, title, agent_id, meta, archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)",
+        "INSERT INTO threads (id, session_id, user_id, type, title, agent_id, meta, archived, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)",
         (
             thread_id,
-            session_id,
-            user_id,
+            normalized_session,
+            user_value,
             type_,
             title,
             agent_id,
@@ -394,61 +481,65 @@ async def create_thread(
         ),
     )
     return thread_id
-
-
 async def get_threads(
     db: DatabaseManager,
-    session_id: str,
+    session_id: Optional[str],
+    *,
+    user_id: Optional[str] = None,
     type_: Optional[str] = None,
     limit: int = 20,
     offset: int = 0,
 ) -> List[Dict[str, Any]]:
-    clauses = ["session_id = ?", "archived = 0"]
-    params: list[Any] = [session_id]
+    clauses: list[str] = ["archived = 0"]
+    params: list[Any] = []
+    if user_id or session_id:
+        scope_sql, scope_params = _build_scope_condition(user_id, session_id)
+        clauses.append(scope_sql)
+        params.extend(scope_params)
     if type_:
         clauses.append("type = ?")
         params.append(type_)
-    query = (
-        "SELECT * FROM threads WHERE "
-        + " AND ".join(clauses)
-        + " ORDER BY updated_at DESC LIMIT ? OFFSET ?"
-    )
+    query = "SELECT * FROM threads"
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+    query += " ORDER BY updated_at DESC LIMIT ? OFFSET ?"
     params.extend([limit, offset])
     rows = await db.fetch_all(query, tuple(params))
     return [dict(r) for r in rows]
-
-
 async def get_thread(
     db: DatabaseManager,
     thread_id: str,
-    session_id: str,
+    session_id: Optional[str],
+    *,
+    user_id: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    row = await db.fetch_one(
-        "SELECT * FROM threads WHERE id = ? AND session_id = ?",
-        (thread_id, session_id),
-    )
-    return dict(row) if row else None
-
-
-async def get_thread_any(
-    db: DatabaseManager,
-    thread_id: str,
-    session_id: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
-    if session_id:
+    if user_id or session_id:
+        scope_sql, scope_params = _build_scope_condition(user_id, session_id)
         row = await db.fetch_one(
-            "SELECT * FROM threads WHERE id = ? AND session_id = ?",
-            (thread_id, session_id),
+            f"SELECT * FROM threads WHERE id = ? AND {scope_sql}",
+            (thread_id, *scope_params),
         )
     else:
         row = await db.fetch_one("SELECT * FROM threads WHERE id = ?", (thread_id,))
     return dict(row) if row else None
-
-
+async def get_thread_any(
+    db: DatabaseManager,
+    thread_id: str,
+    session_id: Optional[str] = None,
+    *,
+    user_id: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    row = await get_thread(db, thread_id, session_id, user_id=user_id)
+    if row:
+        return row
+    fallback = await db.fetch_one("SELECT * FROM threads WHERE id = ?", (thread_id,))
+    return dict(fallback) if fallback else None
 async def update_thread(
     db: DatabaseManager,
     thread_id: str,
-    session_id: str,
+    session_id: Optional[str],
+    *,
+    user_id: Optional[str] = None,
     title: Optional[str] = None,
     agent_id: Optional[str] = None,
     archived: Optional[bool] = None,
@@ -470,42 +561,44 @@ async def update_thread(
         params.append(1 if archived else 0)
     fields.append("updated_at = ?")
     params.append(datetime.now(timezone.utc).isoformat())
-    params.extend([thread_id, session_id])
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
+    params.extend([thread_id, *scope_params])
     await db.execute(
-        f"UPDATE threads SET {', '.join(fields)} WHERE id = ? AND session_id = ?",
+        f"UPDATE threads SET {', '.join(fields)} WHERE id = ? AND {scope_sql}",
         tuple(params),
     )
-
-
 async def delete_thread(
     db: DatabaseManager,
     thread_id: str,
-    session_id: str,
+    session_id: Optional[str],
+    *,
+    user_id: Optional[str] = None,
 ) -> bool:
-    thread = await get_thread(db, thread_id, session_id)
+    thread = await get_thread(db, thread_id, session_id, user_id=user_id)
     if not thread:
         return False
 
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
     await db.execute(
-        "DELETE FROM thread_docs WHERE thread_id = ? AND session_id = ?",
-        (thread_id, session_id),
+        f"DELETE FROM thread_docs WHERE thread_id = ? AND {scope_sql}",
+        (thread_id, *scope_params),
     )
     await db.execute(
-        "DELETE FROM messages WHERE thread_id = ? AND session_id = ?",
-        (thread_id, session_id),
+        f"DELETE FROM messages WHERE thread_id = ? AND {scope_sql}",
+        (thread_id, *scope_params),
     )
     await db.execute(
-        "DELETE FROM threads WHERE id = ? AND session_id = ?",
-        (thread_id, session_id),
+        f"DELETE FROM threads WHERE id = ? AND {scope_sql}",
+        (thread_id, *scope_params),
     )
     return True
-
-
 # -- Messages --
 async def add_message(
     db: DatabaseManager,
     thread_id: str,
-    session_id: str,
+    session_id: Optional[str],
+    *,
+    user_id: Optional[str] = None,
     role: str,
     content: str,
     agent_id: Optional[str] = None,
@@ -518,14 +611,20 @@ async def add_message(
     id_is_int = await _messages_id_is_integer(db)
     need_session = await _messages_requires_session_id(db)
     need_timestamp = await _messages_requires_timestamp(db)
+    has_user_column = await _table_has_column(db, "messages", "user_id")
     safe_agent_id = await _maybe_neutralize_agent_id(db, agent_id)
-    session_value = session_id if need_session else None
+    normalized_session = _normalize_scope_identifier(session_id)
+    session_value = normalized_session or _resolve_user_scope(user_id, session_id)
+    user_value = _resolve_user_scope(user_id, session_id)
 
     def _cols_vals(base_cols: List[str], base_vals: List[Any]):
         cols, vals = list(base_cols), list(base_vals)
         if need_session:
             cols.append("session_id")
             vals.append(session_value)
+        if has_user_column:
+            cols.append("user_id")
+            vals.append(user_value)
         if need_timestamp:
             cols.append("timestamp")
             vals.append(now)
@@ -565,108 +664,122 @@ async def add_message(
             tuple(vals),
         )
 
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
     await db.execute(
-        "UPDATE threads SET updated_at = ? WHERE id = ? AND session_id = ?",
-        (now, thread_id, session_id),
+        f"UPDATE threads SET updated_at = ? WHERE id = ? AND {scope_sql}",
+        (now, thread_id, *scope_params),
     )
     return {"id": message_id, "created_at": now}
-
-
 async def get_messages(
     db: DatabaseManager,
     thread_id: str,
     session_id: Optional[str] = None,
+    *,
+    user_id: Optional[str] = None,
     limit: int = 50,
     before: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     clauses = ["thread_id = ?"]
     params: list[Any] = [thread_id]
-    if session_id:
-        clauses.append("session_id = ?")
-        params.append(session_id)
+    if user_id or session_id:
+        scope_sql, scope_params = _build_scope_condition(user_id, session_id)
+        clauses.append(scope_sql)
+        params.extend(scope_params)
     if before:
         clauses.append("created_at < ?")
         params.append(before)
-    query = (
-        "SELECT * FROM messages WHERE "
-        + " AND ".join(clauses)
-        + " ORDER BY created_at DESC LIMIT ?"
-    )
+    query = "SELECT * FROM messages"
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+    query += " ORDER BY created_at DESC LIMIT ?"
     params.append(limit)
     rows = await db.fetch_all(query, tuple(params))
     return [dict(r) for r in rows][::-1]
-
-
 # -- Thread Docs --
 async def set_thread_docs(
     db: DatabaseManager,
     thread_id: str,
-    session_id: str,
+    session_id: Optional[str],
     doc_ids: List[int],
+    *,
+    user_id: Optional[str] = None,
     weight: float = 1.0,
 ) -> None:
     now = datetime.now(timezone.utc).isoformat()
+    user_value = _resolve_user_scope(user_id, session_id)
+    normalized_session = _normalize_scope_identifier(session_id) or user_value
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
     await db.execute(
-        "DELETE FROM thread_docs WHERE thread_id = ? AND session_id = ?",
-        (thread_id, session_id),
+        f"DELETE FROM thread_docs WHERE thread_id = ? AND {scope_sql}",
+        (thread_id, *scope_params),
     )
-    params = [(thread_id, int(d), session_id, weight, now) for d in doc_ids]
-    if params:
-        await db.executemany(
-            "INSERT INTO thread_docs (thread_id, doc_id, session_id, weight, last_used_at) VALUES (?, ?, ?, ?, ?)",
-            params,
-        )
-
-
-async def append_thread_docs(
-    db: DatabaseManager,
-    thread_id: str,
-    session_id: str,
-    doc_ids: List[int],
-    weight: float = 1.0,
-) -> None:
-    now = datetime.now(timezone.utc).isoformat()
-    params = [(thread_id, int(d), session_id, weight, now) for d in doc_ids]
+    params = [
+        (thread_id, int(d), normalized_session, user_value, weight, now)
+        for d in doc_ids
+    ]
     if params:
         await db.executemany(
             """
-            INSERT INTO thread_docs (thread_id, doc_id, session_id, weight, last_used_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO thread_docs (thread_id, doc_id, session_id, user_id, weight, last_used_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            params,
+        )
+async def append_thread_docs(
+    db: DatabaseManager,
+    thread_id: str,
+    session_id: Optional[str],
+    doc_ids: List[int],
+    *,
+    user_id: Optional[str] = None,
+    weight: float = 1.0,
+) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    user_value = _resolve_user_scope(user_id, session_id)
+    normalized_session = _normalize_scope_identifier(session_id) or user_value
+    params = [
+        (thread_id, int(d), normalized_session, user_value, weight, now)
+        for d in doc_ids
+    ]
+    if params:
+        await db.executemany(
+            """
+            INSERT INTO thread_docs (thread_id, doc_id, session_id, user_id, weight, last_used_at)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(thread_id, doc_id) DO UPDATE SET
+                session_id = excluded.session_id,
+                user_id = excluded.user_id,
                 weight = excluded.weight,
                 last_used_at = excluded.last_used_at
             """,
             params,
         )
-
-
 async def get_thread_docs(
     db: DatabaseManager,
     thread_id: str,
     session_id: Optional[str] = None,
+    *,
+    user_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    if session_id:
-        rows = await db.fetch_all(
-            """
-            SELECT td.thread_id, td.doc_id, td.weight, td.last_used_at, d.filename, d.status
-            FROM thread_docs td
-            JOIN documents d ON d.id = td.doc_id
-            WHERE td.thread_id = ? AND td.session_id = ?
-            ORDER BY td.last_used_at DESC
-            """,
-            (thread_id, session_id),
+    clauses = ["td.thread_id = ?"]
+    params: list[Any] = [thread_id]
+    if user_id or session_id:
+        scope_sql, scope_params = _build_scope_condition(
+            user_id,
+            session_id,
+            user_column="td.user_id",
+            session_column="td.session_id",
         )
-    else:
-        rows = await db.fetch_all(
-            """
-            SELECT td.thread_id, td.doc_id, td.weight, td.last_used_at, d.filename, d.status
-            FROM thread_docs td
-            JOIN documents d ON d.id = td.doc_id
-            WHERE td.thread_id = ?
-            ORDER BY td.last_used_at DESC
-            """,
-            (thread_id,),
-        )
+        clauses.append(scope_sql)
+        params.extend(scope_params)
+    clauses.append("d.user_id = td.user_id")
+    query = (
+        "SELECT td.thread_id, td.doc_id, td.weight, td.last_used_at, d.filename, d.status "
+        "FROM thread_docs td "
+        "JOIN documents d ON d.id = td.doc_id"
+    )
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+    query += " ORDER BY td.last_used_at DESC"
+    rows = await db.fetch_all(query, tuple(params))
     return [dict(r) for r in rows]
-
-

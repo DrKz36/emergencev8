@@ -27,6 +27,7 @@ def test_delete_thread_removes_related_records(tmp_path):
             status='ready',
             uploaded_at='2025-09-24T00:00:00Z',
             session_id=session_id,
+            user_id=user_id,
         )
 
         thread_id = await queries.create_thread(
@@ -40,20 +41,31 @@ def test_delete_thread_removes_related_records(tmp_path):
             db,
             thread_id=thread_id,
             session_id=session_id,
+            user_id=user_id,
             role='user',
             content='Hello world',
             agent_id=None,
             tokens=None,
             meta=None,
         )
-        await queries.set_thread_docs(db, thread_id, session_id, [doc_id])
+        await queries.set_thread_docs(
+            db, thread_id, session_id, [doc_id], user_id=user_id
+        )
 
-        removed = await queries.delete_thread(db, thread_id, session_id)
+        removed = await queries.delete_thread(db, thread_id, session_id, user_id=user_id)
         assert removed is True
 
-        assert await queries.get_thread(db, thread_id, session_id) is None
-        assert await db.fetch_one('SELECT id FROM messages WHERE thread_id = ? AND session_id = ?', (thread_id, session_id)) is None
-        assert await db.fetch_one('SELECT thread_id FROM thread_docs WHERE thread_id = ? AND session_id = ?', (thread_id, session_id)) is None
+        assert await queries.get_thread(
+            db, thread_id, session_id, user_id=user_id
+        ) is None
+        assert await db.fetch_one(
+            'SELECT id FROM messages WHERE thread_id = ? AND session_id = ? AND user_id = ?',
+            (thread_id, session_id, user_id),
+        ) is None
+        assert await db.fetch_one(
+            'SELECT thread_id FROM thread_docs WHERE thread_id = ? AND session_id = ? AND user_id = ?',
+            (thread_id, session_id, user_id),
+        ) is None
 
         await db.disconnect()
 
@@ -77,10 +89,14 @@ def test_delete_thread_requires_owner(tmp_path):
             title='Owned thread',
         )
 
-        removed = await queries.delete_thread(db, thread_id, intruder_session)
+        removed = await queries.delete_thread(
+            db, thread_id, intruder_session, user_id='intruder'
+        )
         assert removed is False
 
-        still_there = await queries.get_thread(db, thread_id, owner_session)
+        still_there = await queries.get_thread(
+            db, thread_id, owner_session, user_id=owner_id
+        )
         assert still_there is not None
 
         await db.disconnect()

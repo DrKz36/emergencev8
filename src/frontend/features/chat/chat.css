@@ -1387,3 +1387,9 @@
 
 
 
+
+/* Thread metadata strip */
+.chat-thread-meta{display:flex;align-items:center;gap:12px;padding:0 18px 12px 18px;font-size:.85rem;color:rgba(203,213,225,.78);}
+.chat-thread-meta[hidden]{display:none!important;}
+.chat-thread-meta__item{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.chat-thread-meta__separator{opacity:.45;font-weight:600;}

@@ -15,10 +15,31 @@ BACKEND_DIR = SRC_DIR / "backend"
 DATA_DIR = BACKEND_DIR / "data"
 PROMPTS_DIR = BASE_DIR / "prompts" 
 
+DEFAULT_GOOGLE_MODEL = "models/gemini-2.5-flash"
+_GOOGLE_MODEL_ALIASES = {
+    "gemini-2.5-flash": DEFAULT_GOOGLE_MODEL,
+    "models/gemini-2.5-flash": DEFAULT_GOOGLE_MODEL,
+    "gemini-2.0-flash": DEFAULT_GOOGLE_MODEL,
+    "models/gemini-2.0-flash": DEFAULT_GOOGLE_MODEL,
+    "gemini-1.5-flash": DEFAULT_GOOGLE_MODEL,
+    "models/gemini-1.5-flash": DEFAULT_GOOGLE_MODEL,
+    "models/gemini-1.5-flash-latest": DEFAULT_GOOGLE_MODEL,
+    DEFAULT_GOOGLE_MODEL: DEFAULT_GOOGLE_MODEL,
+}
+
+
+def _normalize_google_model(value: Optional[str]) -> str:
+    if not value:
+        return DEFAULT_GOOGLE_MODEL
+    cleaned = value.strip()
+    if not cleaned:
+        return DEFAULT_GOOGLE_MODEL
+    return _GOOGLE_MODEL_ALIASES.get(cleaned, cleaned)
+
 
 DEFAULT_AGENT_CONFIGS: Dict[str, Dict[str, str]] = {
-    "default": {"provider": "google", "model": "gemini-1.5-flash"},
-    "neo": {"provider": "google", "model": "gemini-1.5-flash"},
+    "default": {"provider": "google", "model": DEFAULT_GOOGLE_MODEL},
+    "neo": {"provider": "google", "model": DEFAULT_GOOGLE_MODEL},
     "nexus": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
     "anima": {"provider": "openai", "model": "gpt-4o-mini"},
 }
@@ -87,6 +108,19 @@ class Settings(BaseSettings):
         if missing:
             missing_env = ", ".join(name.upper() for name in missing)
             raise ValueError(f"Missing required API keys: {missing_env}")
+        normalized_agents: Dict[str, Any] = {}
+        for name, cfg in (self.agents or {}).items():
+            if not isinstance(cfg, dict):
+                normalized_agents[name] = cfg
+                continue
+            normalized_cfg = dict(cfg)
+            provider = str(normalized_cfg.get("provider", "")).strip().lower()
+            model_value = normalized_cfg.get("model")
+            if provider in {"google", "gemini", "googleai", "vertex"} and isinstance(model_value, str):
+                normalized_cfg["model"] = _normalize_google_model(model_value)
+            normalized_agents[name] = normalized_cfg
+        object.__setattr__(self, "agents", normalized_agents)
+
         return self
 
     model_config = SettingsConfigDict(
@@ -95,5 +129,4 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
-
 

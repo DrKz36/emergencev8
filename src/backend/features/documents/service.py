@@ -68,6 +68,7 @@ class DocumentService:
                 status="pending",
                 uploaded_at=datetime.now(timezone.utc).isoformat(),
                 session_id=session_id,
+                user_id=user_id,
             )
 
             parser = self.parser_factory.get_parser(filepath.suffix)
@@ -78,6 +79,7 @@ class DocumentService:
                 self.db_manager,
                 doc_id=doc_id,
                 session_id=session_id,
+                user_id=user_id,
                 char_count=len(text_content),
                 chunk_count=len(chunks),
                 status="ready",
@@ -98,6 +100,7 @@ class DocumentService:
                     self.db_manager,
                     session_id=session_id,
                     chunks=chunk_rows,
+                    user_id=user_id,
                 )
 
             chunk_vectors = [
@@ -108,6 +111,7 @@ class DocumentService:
                         "document_id": doc_id,
                         "filename": filename,
                         "session_id": session_id,
+                        "user_id": user_id,
                         "owner_id": user_id,
                     },
                 }
@@ -135,34 +139,39 @@ class DocumentService:
 
     # --- ✅ NOUVELLES MÉTHODES EXPOSÉES AU ROUTEUR ---
 
-    async def get_all_documents(self, session_id: str) -> List[Dict[str, Any]]:
+    async def get_all_documents(self, session_id: str, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Retourne la liste des documents enregistrés pour la session donnée.
         """
-        return await db_queries.get_all_documents(self.db_manager, session_id=session_id)
+        return await db_queries.get_all_documents(
+            self.db_manager, session_id=session_id, user_id=user_id
+        )
 
-    async def delete_document(self, doc_id: int, session_id: str) -> bool:
+    async def delete_document(self, doc_id: int, session_id: str, user_id: Optional[str] = None) -> bool:
         """
         Supprime un document de la session :
          1) purge des vecteurs associés
          2) suppression en base (document + chunks + liaisons)
         """
         doc = await db_queries.get_document_by_id(
-            self.db_manager, doc_id, session_id=session_id
+            self.db_manager, doc_id, session_id=session_id, user_id=user_id
         )
         if not doc:
             return False
 
         try:
+            where_filter = {"document_id": int(doc_id), "session_id": session_id}
+            if user_id:
+                where_filter["user_id"] = user_id
             self.vector_service.delete_vectors(
                 collection=self.document_collection,
-                where_filter={"document_id": int(doc_id), "session_id": session_id},
+                where_filter=where_filter,
             )
         except Exception as e:
             logger.warning(f"Echec purge vecteurs pour document {doc_id}: {e}")
 
         deleted = await db_queries.delete_document(
-            self.db_manager, int(doc_id), session_id
+            self.db_manager, int(doc_id), session_id, user_id=user_id
         )
         return bool(deleted)
 

@@ -259,3 +259,44 @@ test('ensureCurrentThread regenere un thread inaccessible sans auth:missing', as
     assert.equal(state.get('chat.authRequired'), false);
   });
 });
+
+
+test('ensureCurrentThread recupere un thread valide quand currentId correspond a la session active', async () => {
+  await withStubbedDom(async () => {
+    const state = createStateStub({
+      session: { id: 'session-b' },
+      threads: { currentId: 'session-b', map: {} },
+    });
+    const bus = createEventBusStub();
+    const app = new App(bus, state);
+    const originalListThreads = api.listThreads;
+    const originalGetThreadById = api.getThreadById;
+    const originalCreateThread = api.createThread;
+    const fetchedThreads = [{ id: 'thread-b1', type: 'chat' }];
+    const getCalls = [];
+    let createCalls = 0;
+
+    api.listThreads = async () => ({ items: fetchedThreads });
+    api.getThreadById = async (id) => {
+      getCalls.push(id);
+      return { id, thread: { id, type: 'chat' }, messages: [], docs: [] };
+    };
+    api.createThread = async () => {
+      createCalls += 1;
+      return { id: 'thread-created', thread: { id: 'thread-created', type: 'chat' } };
+    };
+
+    try {
+      await app.ensureCurrentThread();
+    } finally {
+      api.listThreads = originalListThreads;
+      api.getThreadById = originalGetThreadById;
+      api.createThread = originalCreateThread;
+    }
+
+    assert.equal(state.get('threads.currentId'), 'thread-b1');
+    assert.deepEqual(getCalls, ['thread-b1']);
+    assert.equal(createCalls, 0);
+    assert.notEqual(state.get('threads.currentId'), state.get('session.id'));
+  });
+});

@@ -279,7 +279,17 @@ class SessionManager:
             return
 
         try:
-            thread_row = await queries.get_thread_any(self.db_manager, thread_id, session_id)
+            user_scope = (
+                self._session_users.get(session_id)
+                or self._session_user_cache.get(session_id)
+                or getattr(self.active_sessions.get(session_id), 'user_id', None)
+            )
+            thread_row = await queries.get_thread_any(
+                self.db_manager,
+                thread_id,
+                session_id,
+                user_id=user_scope,
+            )
             if not thread_row:
                 logger.warning(f"Thread {thread_id} introuvable pour l'hydratation de la session {session_id}.")
             else:
@@ -296,7 +306,13 @@ class SessionManager:
                 if meta_dict:
                     session_meta.setdefault("thread_meta", meta_dict)
 
-            messages = await queries.get_messages(self.db_manager, thread_id, session_id=session_id, limit=limit)
+            messages = await queries.get_messages(
+                self.db_manager,
+                thread_id,
+                session_id=session_id,
+                user_id=user_scope,
+                limit=limit,
+            )
             history: List[Dict[str, Any]] = []
             for item in messages or []:
                 try:
@@ -494,10 +510,16 @@ class SessionManager:
         payload["session_id"] = session_id
 
         try:
+            user_scope = (
+                self._session_users.get(session_id)
+                or self._session_user_cache.get(session_id)
+                or getattr(self.active_sessions.get(session_id), 'user_id', None)
+            )
             result = await queries.add_message(
                 self.db_manager,
                 thread_id,
                 session_id,
+                user_id=user_scope,
                 role=role,
                 content=content,
                 agent_id=agent_id,
