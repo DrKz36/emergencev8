@@ -35,3 +35,10 @@
 ## 4) Références & Tests clés
 - Scripts PowerShell `tests/run_all.ps1`, `tests/test_vector_store_reset.ps1`, `tests/test_vector_store_force_backup.ps1`.
 - Documentation complémentaire : `docs/architecture/10-Components.md`, `docs/Memoire.md`, `docs/Roadmap Stratégique.txt`.
+## 5) Cycle multi-session (Synthese)
+- Connexion : AuthService emet un JWT + `session_id`; le front stocke le token et diffuse l'entete `X-Session-Id` sur REST/WS.
+- Reset : `StateManager.resetForSession(session_id)` vide l'etat local (threads, documents, memoire) avant de reinitialiser les modules.
+- Bootstrap : `ensureCurrentThread()` puis `WebSocketClient.connect()` recuperent le thread actif et ouvrent la connexion temps reel sur `/ws/{session_id}`.
+- Suppression : `ThreadsPanel.handleDelete` appelle `threads-service.deleteThread()` qui cible la session courante et cascade sur messages + documents via `queries.delete_thread(...)`.
+- Logout : `POST /api/auth/logout` + `SessionManager.handle_session_revocation()` purgent cookies, etat front et connexions WS; tout nouvel identifiant relance la sequence.
+

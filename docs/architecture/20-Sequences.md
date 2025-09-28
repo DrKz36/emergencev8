@@ -19,6 +19,12 @@
 5. Back : `ChatService` normalise l'historique (roles en lower-case, fallback sur content/message), persiste le message, filtre threads/messages/documents par `session_id` et enrichit le prompt (memoire STM/LTM + RAG si active) avant d'appeler les modeles (fallback Google -> Anthropic -> OpenAI).
 6. Back : stream `ws:chat_stream_start/chunk/end`, `ws:model_info`, `ws:model_fallback`, `ws:memory_banner`, `ws:rag_status`.
 7. Front : integre chunks, affiche sources RAG, met a jour metriques; REST `GET /api/threads/{id}/messages` (avec `X-Session-Id`) pour pagination.
+8. Suppression (module Conversations) :
+   - L'utilisateur confirme la suppression dans ThreadsPanel.handleDelete avant d'appeler `DELETE /api/threads/{id}`.
+   - Front : `threads-service.deleteThread()` utilise `fetchApi` avec `X-Session-Id`; apres 204, le module emet `EVENTS.THREADS_DELETED`, retire l'entree, selectionne le prochain thread ou cree un nouveau si la liste est vide.
+   - Back : `queries.delete_thread(...)` supprime messages et liaisons documents du thread dans la meme session (`session_id` filtre scope).
+   - Memo : la suppression ne vide pas la LTM; lancer `memory:clear` si un effacement complet est requis.
+
 
 ## 2) Mémoire (Analyse → Consolidation → Clear)
 1. Front : utilisateur clique `Analyser` -> `POST /api/memory/tend-garden` (payload optionnel `thread_id`); `api-client` ajoute `X-Session-Id` pour cibler la session active.

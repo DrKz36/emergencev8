@@ -89,7 +89,7 @@
 - WS meta : `meta.selected_doc_ids` expose les documents retenus et `ws:rag_status` trace les etats searching/found/idle pour la QA.
 - Auth: les claims exposent `session_revoked`; apres un logout, toute reconnexion WS refuse la session tant que le token n'est pas renouvele.
 - Auth: `POST /api/auth/logout` renvoie `Set-Cookie` vides (`id_token`, `emergence_session_id`) avec `SameSite=Lax` pour aligner la purge navigateur.
-- Reset vector store valide le 27/09/2025 via `scripts/maintenance/run-vector-store-reset.ps1`; log archive : `logs/vector-store/vector_store_reset_20250927-065824.log` (health-check, tronquage, backup, upload OK).
+- Reset vector store valide le 27/09/2025 via `scripts/maintenance/run-vector-store-reset.ps1`; log archive : `docs/assets/memoire/vector-store-reset-20250927.log` (health-check, tronquage, backup, upload OK).
 - UX 401 : en cas de 401 sur /api/memory/*, l'application émet `auth:missing` et affiche le toast « Connexion requise pour la mémoire. ».
 - Tests recommandés :
   - `tests/run_all.ps1` (vérifie `/api/memory/tend-garden`).
@@ -99,8 +99,8 @@
   - `scripts/smoke/scenario-memory-clear.ps1` (guide QA: health-check + injection auto + rappel des vérifications UI). Exemple : `pwsh -File scripts/smoke/scenario-memory-clear.ps1 -BaseUrl http://localhost:8000`. Dernier run : voir `docs/assets/memoire/scenario-memory-clear.log` (session `memclr-057bd36ddd5742238cc4db74f8b4bf22`, 2025-09-27).
   - `scripts/smoke/smoke-ws-rag.ps1` (WS + RAG : handshake + stream). Utiliser `-MsgType chat.message` en DEV tant que `ws:chat_send` renvoie `ws:error`. Logs 27/09 : `docs/assets/memoire/smoke-ws-rag.log` (session `ragtest124`, flux `ws:chat_stream_end`) et `docs/assets/memoire/smoke-ws-rag-ws-chat_send.log` (session `ragtest-ws-send-20250927`, erreur `Type inconnu: ws:chat_send`).
   - `scripts/smoke/smoke-ws-3msgs.ps1` (multi-messages). En attente du support `ws:chat_send`, lancer avec `-MsgType chat.message` pour valider la diffusion continue (`ws:chat_stream_start` x3 + `ws:chat_stream_end`). Log QA : `docs/assets/memoire/smoke-ws-3msgs.log` (aucun HTTP 5xx sur uploads/documents, 27/09).
-  - `scripts/maintenance/run-vector-store-reset.ps1` (mode hebdo sans interaction, journalise sous `logs/vector-store/`).
-  - `tests/test_vector_store_reset.ps1` (contrôle la remise à zéro et les backups du vector store).
+  - `scripts/maintenance/run-vector-store-reset.ps1` (mode hebdo sans interaction, journalise sous `docs/assets/memoire/`).
+  - `tests/test_vector_store_reset.ps1` (contrôle la remise à zéro et les backups du vector store ; option `-AutoBackend` pour un run non interactif).
 - Métriques front : affichage du modèle, TTFB mémoire, nombre d’items injectés.
 
 ### Journal d'exécution (2025-09-27)
@@ -190,23 +190,31 @@
 
 ## 8. Assets visuels & schémas à produire
 - **Dossier cible** : placer les captures et exports sous `docs/assets/memoire/` (ex. `memoire-clear-before.png`, `memoire-clear-after.png`, `memoire-toast-success.png`).
-- **Captures UI** : bandeau mémoire (états `idle`, `loading`, `error`, `empty`), modal Clear, panneau thread, vue Centre mémoire (assets/memoire/centre-memoire.png), toasts succès/erreur, sortie console du script scénario.
+- **Captures UI** :
+  - Bandeau mémoire (états `idle`, `loading`, `error`, `empty`).
+  - Module Conversations : vue liste (`conversations-list.png`), bloc de confirmation (`conversations-confirm.png`), état vide (`conversations-empty.png`).
+  - Bandeau mémoire intégré dans Conversations (`memory-banner.png`) pour tracer STM/LTM après suppression ou création de thread.
+  - Modal Clear, panneau thread, vue Centre mémoire (`assets/memoire/centre-memoire.png`).
+  - Toasts succès/erreur et sortie console du script scénario (voir `scenario-memory-clear.log`).
 - **Schémas** :
   - Diagramme séquence `ChatUI → MemoryGardener → MemoryAnalyzer → VectorService`.
   - Schéma de flux purge STM/LTM/embeddings (ordre et webhooks associés).
 - **Exports données** : anonymiser un exemple de réponse `GET /api/memory/tend-garden` pour illustrer la doc.
 - **Formats recommandés** : PNG pour captures (largeur 1440px), SVG pour schémas, TXT/MD pour journaux (ex. `scenario-memory-clear.log`).
+- **Journal vector store** : consigner chaque run hebdo de `tests/test_vector_store_reset.ps1` sous `docs/assets/memoire/vector-store-reset-YYYYMMDD.log` (inclure révision backend, backup détecté, réponse upload).
 ## 9. Checklist QA manuelle
 - [ ] Déclencher une **consolidation globale** et vérifier l’affichage du loader puis du résumé STM (capture : `assets/memoire/bandeau-analyse.png`).
 - [ ] Exécuter une **analyse ciblée** avec `persist=False` et confirmer que la LTM ne change pas (capture : `assets/memoire/panneau-thread.png`).
 - [ ] Ouvrir le centre mémoire et vérifier que l'historique des consolidations se charge (GET /api/memory/tend-garden), inclut les derniers timestamps et résumés, et qu'un échec réseau propose le bouton `Réessayer`.
 - [ ] Lancer une **analyse ciblée persistée** (`persist=True`) et valider l’incrément du compteur d’items LTM (capture : `assets/memoire/option-persist.png`).
 - [ ] Vérifier qu’une sélection de documents en dehors du thread est ignorée : le front affiche les ressources valides et `meta.selected_doc_ids` ne contient que les IDs autorisées.
+- [ ] Supprimer un thread depuis Conversations (`Supprimer ?` -> `Confirmer`) et valider la cascade messages/documents; noter que la mémoire reste active tant que `POST /api/memory/clear` n'est pas lancé. Capture : `assets/memoire/conversations-confirm.png`.
 - [ ] Activer RAG puis rafraîchir la recherche sans message utilisateur en modifiant uniquement la sélection; observer `ws:rag_status` et la mise à jour du bandeau documents.
 - [ ] Mélanger des messages agent/user/system avec des capitalisations variées puis relancer `tend-garden` : confirmer, via `ws:memory_banner` et le diff back-end, que les rôles sont convertis en lower-case et qu’aucun doublon n’est injecté dans le prompt ou la LTM.
 - [ ] Exécuter `pwsh -File scripts/smoke/scenario-memory-clear.ps1` et archiver la sortie console (`docs/assets/memoire/scenario-memory-clear.log`). Dernier run : 2025-09-27 (`memclr-057bd36ddd5742238cc4db74f8b4bf22`).
 - [ ] Réaliser un **clear complet** et contrôler la purge STM/LTM + embeddings (captures : `assets/memoire/modal-clear.png`, `assets/memoire/bandeau-vide.png`).
 - [ ] **Tester le scénario d’erreur** (LLM indisponible) et confirmer la présence du toast + bouton retry (capture : `assets/memoire/toast-erreur.png`).
 - [ ] Vérifier la **cohérence des logs** `memory:garden:*` et `memory:clear` avec les actions réalisées (capture : `assets/memoire/logs-erreur.png`).
+
 
 

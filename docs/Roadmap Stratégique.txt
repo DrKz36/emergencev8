@@ -81,7 +81,7 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 1. [FAIT] Stabilite Auth : remontee visuelle front en place (livre le 26/09/2025, message Connexion requise).
 2. [FAIT] Tests memoire : `tests/run_all.ps1` lance maintenant le scenario pytest `memory:clear` (`tests/backend/features/test_memory_clear.py`).
 3. **Documentation UX** : compléter `docs/Memoire.md` (présent document) avec captures/flows pour guider la QA manuelle.
-4. **Surveillance vector store** : planifier un run hebdo de `tests/test_vector_store_reset.ps1` pour sécuriser l’auto-reset.
+4. **Surveillance vector store** : lancer `tests/test_vector_store_reset.ps1` chaque lundi 08:00 CET; archiver le log sous `docs/assets/memoire/vector-store-reset-YYYYMMDD.log` (revision backend, backup detecte, reponse upload) et noter le resultat dans `docs/passation.md`.
 5. **Auth docs** : documenter le logout idempotent et le champ `session_revoked` (architecture + Memoire).
 
 ---

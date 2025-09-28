@@ -6,14 +6,15 @@
 # Passation Courante
 
 ## Backend & QA
+- 2025-09-28 : `tests/test_vector_store_reset.ps1 -AutoBackend` relanc� OK (backend auto, backup + upload valid�s). Log associ� : `docs/assets/memoire/vector-store-reset-20250928-153333.log`.
 - Backend verifie via `pwsh -File scripts/run-backend.ps1` (logs OK, WS et bannieres auth observes).
 - Utiliser `python scripts/seed_admin.py --email <admin> --password <motdepasse>` pour initialiser ou mettre a jour le mot de passe admin en local.
 - `tests/run_all.ps1` : dernier passage indique OK (voir session precedente, aucun echec signale).
-- `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest124 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1"` : OK (27/09) — flux `ws:chat_stream_end` (OpenAI gpt-4o-mini) + upload document_id=57 sans 5xx. Logs `#<-` → `docs/assets/memoire/smoke-ws-rag.log`.
-- `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest-ws-send-20250927 -MsgType ws:chat_send -UserId "smoke_rag&dev_bypass=1"` : KO (27/09) — handshake accepté mais réponse `ws:error` (`Type inconnu: ws:chat_send`). Logs `#<-` → `docs/assets/memoire/smoke-ws-rag-ws-chat_send.log`.
-- `scripts/smoke/smoke-ws-3msgs.ps1 -SessionId ragtest-3msgs-20250927 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1"` : OK (27/09) — 3 messages consécutifs, `ws:chat_stream_start` x3 puis `ws:chat_stream_end`; aucun HTTP 5xx côté documents/uploads (`backend.err.log` inchangé). Logs `#<-` → `docs/assets/memoire/smoke-ws-3msgs.log`.
-- Vérification UI nav rôle (2025-09-30) : scénario admin → logout → membre (`fernando36@bluewin.ch`). Après reconnexion, la sidebar doit exclure `Mémoire` et `Admin` et le bandeau afficher `Membre (fernando36@bluewin.ch)`. Capture à archiver : `docs/assets/passation/auth-role-reset.png`.
-- Module Admin – Sessions (2025-09-30) : depuis l'onglet Admin, vérifier que le bloc Sessions liste les connexions actives (session_id, email, IP, dates). Rafraîchir via le bouton dédié et confirmer qu'un membre connecté apparait avec le statut Actif.
+- `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest124 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1"` : OK (27/09) â flux `ws:chat_stream_end` (OpenAI gpt-4o-mini) + upload document_id=57 sans 5xx. Logs `#<-` â `docs/assets/memoire/smoke-ws-rag.log`.
+- `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest-ws-send-20250927 -MsgType ws:chat_send -UserId "smoke_rag&dev_bypass=1"` : KO (27/09) â handshake acceptÃ© mais rÃ©ponse `ws:error` (`Type inconnu: ws:chat_send`). Logs `#<-` â `docs/assets/memoire/smoke-ws-rag-ws-chat_send.log`.
+- `scripts/smoke/smoke-ws-3msgs.ps1 -SessionId ragtest-3msgs-20250927 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1"` : OK (27/09) â 3 messages consÃ©cutifs, `ws:chat_stream_start` x3 puis `ws:chat_stream_end`; aucun HTTP 5xx cÃ´tÃ© documents/uploads (`backend.err.log` inchangÃ©). Logs `#<-` â `docs/assets/memoire/smoke-ws-3msgs.log`.
+- VÃ©rification UI nav rÃ´le (2025-09-30) : scÃ©nario admin â logout â membre (`fernando36@bluewin.ch`). AprÃ¨s reconnexion, la sidebar doit exclure `MÃ©moire` et `Admin` et le bandeau afficher `Membre (fernando36@bluewin.ch)`. Capture Ã  archiver : `docs/assets/passation/auth-role-reset.png`.
+- Module Admin â Sessions (2025-09-30) : depuis l'onglet Admin, vÃ©rifier que le bloc Sessions liste les connexions actives (session_id, email, IP, dates). RafraÃ®chir via le bouton dÃ©diÃ© et confirmer qu'un membre connectÃ© apparait avec le statut Actif.
 - `scripts/smoke/smoke-health.ps1 -BaseUrl https://emergence-app-486095406755.europe-west1.run.app` : OK (27/09 18:09 UTC) -> 200 `{ "status": "ok" }` sur revision `emergence-app-00256-jxh`.
 - `scripts/smoke/smoke-memory-tend.ps1 -BaseUrl https://emergence-app-486095406755.europe-west1.run.app -UserId "smoke_rag&dev_bypass=1" -SessionId cloud-smoke-memory-20250927` : OK (27/09) -> `status=success`, `message="Aucune session a traiter."`.
 - Test WSS Cloud Run (27/09) : envelope `chat.message` (session `cloud-wss-rag-20250927`, query `user_id=smoke_rag&dev_bypass=1`) -> `ws:rag_status` `searching` puis `found`, `ws:model_info` (`openai gpt-4o-mini`), flux complet jusqu'a `ws:chat_stream_end`. La tentative legacy `ws:chat_send` via `smoke-wss-cloudrun.ps1` retourne `ws:error` (`Type inconnu`), a realigner.
@@ -22,7 +23,7 @@
 ## Observabilite & logs (2025-09-27)
 - `gcloud run services describe emergence-app --region europe-west1` : revision `emergence-app-00256-jxh` Ready (100 % traffic), tag `canary` pointe sur `emergence-app-00279-kub`.
 - `gcloud logging read --freshness=1h --limit=200` filtre `service_name=emergence-app` : aucune entree `httpRequest.status >= 500`.
-- Plus de 404 Gemini depuis le passage de `DEFAULT_GOOGLE_MODEL` sur `models/gemini-2.5-flash` (les anciens alias `models/gemini-1.5-flash*` sont maintenant mappés automatiquement). Surveiller `gcloud logging read --freshness=1h --limit=200` (aucune entree `google.api_core.exceptions.NotFound`) et controler les frames `ws:model_info` (`provider=google`, `model=models/gemini-2.5-flash`).
+- Plus de 404 Gemini depuis le passage de `DEFAULT_GOOGLE_MODEL` sur `models/gemini-2.5-flash` (les anciens alias `models/gemini-1.5-flash*` sont maintenant mappÃ©s automatiquement). Surveiller `gcloud logging read --freshness=1h --limit=200` (aucune entree `google.api_core.exceptions.NotFound`) et controler les frames `ws:model_info` (`provider=google`, `model=models/gemini-2.5-flash`).
 
 ## Auth allowlist - mots de passe (2025-09-27)
 - Module *Admin* cote frontend (navigation principale) reserve aux comptes `role=admin`. La liste est paginee, filtrable (`Actives`, `Revoquees`, `Toutes`) et propose une recherche email/note + resumes (`total`, `page`). Les toasts front confirment les sauvegardes et la copie du mot de passe genere.
@@ -30,7 +31,7 @@
 - `POST /api/auth/admin/allowlist` continue d'accepter `{ email, role?, note?, password?, generate_password? }` et retourne `{ entry, clear_password?, generated }`. Lorsque `generate_password=true`, l'audit ajoute `allowlist:password_generated` (longueur consigne dans `metadata.password_length`).
 - Toujours initialiser/rafraichir les admins via `scripts/seed_admin.py` avant de communiquer le formulaire aux testeurs; la commande est idempotente et journalisee (`allowlist:password_set`).
 
-### Quickstart QA - flux admin → generation → communication
+### Quickstart QA - flux admin â generation â communication
 1. `pwsh -File scripts/run-backend.ps1` puis `python scripts/seed_admin.py --email <admin> --password <secret>` pour garantir un acces admin valide.
 2. Connexion UI avec le compte admin, onglet *Admin*. Verifier le resume (`total`, filtre `Actives`) et que la recherche vide affiche la pagination (`Page 1 sur 1`).
 3. Ajouter un testeur `qa+<date>@example.com` avec une note, valider le toast `Entree mise a jour.` puis filtrer `Revoquees` = 0, `Actives` >= 1.
@@ -52,8 +53,8 @@
 - Test unitaire ajoute pour verrouiller `ensureCurrentThread()` -> `EVENTS.AUTH_REQUIRED` et garantir le payload QA.
 
 ## Suivi
-- Le module « Mémoire » est désormais réservé aux admins et intègre la liste des conversations pour faciliter la revue des threads.
-- Nouvel accès rapide « Mémoire » dans chaque agent du module Chat : tester qu’il lance bien memory:tend sur le thread actif.
+- Le module Â« MÃ©moire Â» est dÃ©sormais rÃ©servÃ© aux admins et intÃ¨gre la liste des conversations pour faciliter la revue des threads.
+- Nouvel accÃ¨s rapide Â« MÃ©moire Â» dans chaque agent du module Chat : tester quâil lance bien memory:tend sur le thread actif.
 - Mettre a jour `scripts/smoke/smoke-wss-cloudrun.ps1` pour envoyer `chat.message` (RAG) et consigner les evenements attendus.
 - Confirmer que la configuration Gemini reference `models/gemini-2.5-flash` (les alias historiques `gemini-1.5-flash*` restent acceptes) afin d'eviter les 404 dans `MemoryAnalyzer`.
 - Planifier le prochain chantier canary (WS/RAG) en s'appuyant sur la revision `emergence-app-00256-jxh` et la route taggee `canary`.
@@ -67,6 +68,13 @@
 - Pass 3 complete: conversations module live in main content (nav entry, inline delete confirm, node tests on `ThreadsPanel.handleDelete`).
 - Pass 4 next: run build + targeted Jest suite, capture new Conversations screenshots, rerun sync script for final handoff.
 
+### Conversations - flux suppression & memoire (2025-09-28)
+- Inline confirm: `ThreadsPanel` renders the `Supprimer ?` prompt with `Confirmer`/`Annuler` before hitting the destructive endpoint.
+- Nav admin uniquement: l'entrée `Conversations` est retirée de la sidebar; vérifier que seuls `Memoire` et `Admin` apparaissent pour le rôle admin, aucun onglet supplémentaire côté membres.
+- `threads-service.deleteThread()` uses `DELETE /api/threads/{id}` with `X-Session-Id`; backend cascades to `messages` + `thread_docs` scoped to the same session.
+- After `204` the module emits `EVENTS.THREADS_DELETED`, re-selects the next available thread, and boots a fresh chat when the list becomes empty.
+- Memoire: STM/LTM entries remain until `POST /api/memory/clear`; rappeler aux testeurs qu'une purge est necessaire pour un effacement complet.
+- Captures attendues: liste, bloc de confirmation, et etat vide + bandeau memoire; stocker `conversations-list.png`, `conversations-confirm.png`, `conversations-empty.png`, `memory-banner.png` sous `docs/assets/memoire/`.
 
 ## Session 2025-09-25 - Debate metrics QA
 - Tests: python -m pytest tests/backend/features/test_debate_service.py (2 passes) ; npm run build (vite ok, warning persists on ANIMATIONS export).
@@ -75,21 +83,21 @@
 
 
 ## Session 2025-09-24 - Auth revocation QA
-- Reprise backend via `pwsh -File scripts/run-backend.ps1` puis exécution `tests/run_all.ps1` : statut OK, endpoints accessibles.
-- Vérification manuelle WS : réutiliser un token révoqué renvoie `ws:auth_required` (reason=`session_revoked`) lorsque la session WebSocket correspond au `sid` d'auth.
-- Observation actuelle : les connexions WS gardant un `sessionId` distinct du `sid` ne sont pas encore coupées lors d'un logout (à corriger côté core/chat).
-- 2025-09-26 : Correction livrée. Le handshake WS s'appuie désormais sur le `sid` vérifié (`AuthService.verify_token`) et `SessionManager` maintient les alias côté backend. Le client JS extrait ce `sid` du token afin d'aligner REST/WS, ce qui permet à `handle_session_revocation()` de couper les connexions actives après logout.
+- Reprise backend via `pwsh -File scripts/run-backend.ps1` puis exÃ©cution `tests/run_all.ps1` : statut OK, endpoints accessibles.
+- VÃ©rification manuelle WS : rÃ©utiliser un token rÃ©voquÃ© renvoie `ws:auth_required` (reason=`session_revoked`) lorsque la session WebSocket correspond au `sid` d'auth.
+- Observation actuelle : les connexions WS gardant un `sessionId` distinct du `sid` ne sont pas encore coupÃ©es lors d'un logout (Ã  corriger cÃ´tÃ© core/chat).
+- 2025-09-26 : Correction livrÃ©e. Le handshake WS s'appuie dÃ©sormais sur le `sid` vÃ©rifiÃ© (`AuthService.verify_token`) et `SessionManager` maintient les alias cÃ´tÃ© backend. Le client JS extrait ce `sid` du token afin d'aligner REST/WS, ce qui permet Ã  `handle_session_revocation()` de couper les connexions actives aprÃ¨s logout.
 
 ## Session 2025-09-25 - PR ws alias handoff
 - PR ouverte `fix: align websocket session alias handling` (branche `fix/debate-chat-ws-events-20250915-1808` -> main).
-- Description PR : résumé + tests (voir tmp/pr_body.md).
-- CI GitHub Actions : statut non récupéré (API GitHub inaccessible sans jeton dans cet environnement, vérifier manuellement dès disponibilité).
+- Description PR : rÃ©sumÃ© + tests (voir tmp/pr_body.md).
+- CI GitHub Actions : statut non rÃ©cupÃ©rÃ© (API GitHub inaccessible sans jeton dans cet environnement, vÃ©rifier manuellement dÃ¨s disponibilitÃ©).
 
 ## Session 2025-09-25 - QA Accueil + Auth
-- Backend local lancé via `pwsh -File scripts/run-backend.ps1 -ListenHost 127.0.0.1` (via Start-Process) ; migrations appliquées, `src/backend/data/db/emergence_v7.db` régénérée.
-- Stockage remis à plat pour la QA : allowlist vérifiée puis enrichie via `/api/auth/admin/allowlist` (dev bypass) avec `gonzalefernando@gmail.com` afin de tester le formulaire.
+- Backend local lancÃ© via `pwsh -File scripts/run-backend.ps1 -ListenHost 127.0.0.1` (via Start-Process) ; migrations appliquÃ©es, `src/backend/data/db/emergence_v7.db` rÃ©gÃ©nÃ©rÃ©e.
+- Stockage remis Ã  plat pour la QA : allowlist vÃ©rifiÃ©e puis enrichie via `/api/auth/admin/allowlist` (dev bypass) avec `gonzalefernando@gmail.com` afin de tester le formulaire.
 - Formulaire email (API) : `POST /api/auth/login` retourne 200 + token pour l'email allowlist (session active dans `auth_sessions`).
-- Bannière "Connexion requise" : `npm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js` passe après avoir neutralisé l'init DOM dans `components/modals.js`; capture déposée (`docs/assets/ui/auth-banner-20250925.png`) pour la prochaine passe UI.
+- BanniÃ¨re "Connexion requise" : `npm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js` passe aprÃ¨s avoir neutralisÃ© l'init DOM dans `components/modals.js`; capture dÃ©posÃ©e (`docs/assets/ui/auth-banner-20250925.png`) pour la prochaine passe UI.
 
 ### QA - Roles & navigation
 1. Se connecter avec un compte admin : confirmer la presence des modules `Memoire` et `Admin` dans la navigation, puis ouvrir un chat pour generer un evenement `ws:model_info` (noter `provider`/`model`).
@@ -101,9 +109,8 @@
 
 ### Pistes suivantes UI/Auth
 - [FAIT 2025-09-26] Bootstrap DOM Node (`src/frontend/core/__tests__/helpers/dom-shim.js`) + relance de `npm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js`.
-- [FAIT 2025-09-26] `node scripts/qa/home-qa.mjs` rejoué (captures + console QA rafraîchies, `missingCount: 2` confirmé).
-- Suivi: prévoir une passe QA manuelle backend hors-ligne prolongée pour valider la remise en place continue de `body.home-active` et mettre à jour `docs/ui/auth-required-banner.md` si le comportement évolue.
-
+- [FAIT 2025-09-26] `node scripts/qa/home-qa.mjs` rejouÃ© (captures + console QA rafraÃ®chies, `missingCount: 2` confirmÃ©).
+- Suivi: prÃ©voir une passe QA manuelle backend hors-ligne prolongÃ©e pour valider la remise en place continue de `body.home-active` et mettre Ã  jour `docs/ui/auth-required-banner.md` si le comportement Ã©volue.
 
 
 ## Session 2025-09-26 - QA Accueil (clearToken)
@@ -114,17 +121,17 @@
 - Suite : rejouer le scenario en CI et planifier un test backend off (>1 min) pour confirmer l'absence de regressions.
 
 ## Session 2025-09-26 - Accueil email allowlist
-- Module `features/home/home-module.js` : landing auth plein écran, formulaire email, appels `POST /api/auth/login`, intégration metrics QA.
-- Refonte `src/frontend/main.js` : bascule automatique vers le landing sans token, bootstrap App/WS après succès, purge des tokens au logout.
-- QA : `scripts/qa/home-qa.mjs` attend désormais `body.home-active` et capture l’état landing + overlay QA.
-- Correctif: `main.js` réintroduit `clearToken()` pour purger les tokens navigateur lors d’un logout ou backend HS (supprime le warning console).
+- Module `features/home/home-module.js` : landing auth plein Ã©cran, formulaire email, appels `POST /api/auth/login`, intÃ©gration metrics QA.
+- Refonte `src/frontend/main.js` : bascule automatique vers le landing sans token, bootstrap App/WS aprÃ¨s succÃ¨s, purge des tokens au logout.
+- QA : `scripts/qa/home-qa.mjs` attend dÃ©sormais `body.home-active` et capture lâÃ©tat landing + overlay QA.
+- Correctif: `main.js` rÃ©introduit `clearToken()` pour purger les tokens navigateur lors dâun logout ou backend HS (supprime le warning console).
 ## Session 2025-09-26 - Auth password mode planning
-- État : authentification email + mot de passe (JWT local) déployée, sans dépendance GIS.
-- Étape 1: activer `AUTH_DEV_MODE=1` (et optionnellement `AUTH_DEV_DEFAULT_EMAIL`) via `.env.local`, puis valider le flux d'auto-login (plus d'overlay Home).
-- Étape 2: concevoir la migration `auth_allowlist` (`password_hash`, `password_updated_at`) + script de seed pour l’admin.
-- Étape 3: adapter `AuthService.login` et `/api/auth/login` pour accepter `{ email, password }` (bcrypt/argon2) tout en conservant l’allowlist.
-- Étape 4: mettre à jour la landing front (`home-module.js`) avec champ mot de passe + messages i18n et ajuster l’API client.
-- Étape 5: étendre les tests (`tests/backend/features/test_auth_login.py`, QA landing) et synchroniser la doc (`docs/architecture/30-Contracts.md`, `docs/ui/home-landing.md`, `docs/Memoire.md`).
-- Étape 6: élargir l’allowlist aux bêta-testeurs via scripts dédiés une fois la mécanique validée.
+- Ãtat : authentification email + mot de passe (JWT local) dÃ©ployÃ©e, sans dÃ©pendance GIS.
+- Ãtape 1: activer `AUTH_DEV_MODE=1` (et optionnellement `AUTH_DEV_DEFAULT_EMAIL`) via `.env.local`, puis valider le flux d'auto-login (plus d'overlay Home).
+- Ãtape 2: concevoir la migration `auth_allowlist` (`password_hash`, `password_updated_at`) + script de seed pour lâadmin.
+- Ãtape 3: adapter `AuthService.login` et `/api/auth/login` pour accepter `{ email, password }` (bcrypt/argon2) tout en conservant lâallowlist.
+- Ãtape 4: mettre Ã  jour la landing front (`home-module.js`) avec champ mot de passe + messages i18n et ajuster lâAPI client.
+- Ãtape 5: Ã©tendre les tests (`tests/backend/features/test_auth_login.py`, QA landing) et synchroniser la doc (`docs/architecture/30-Contracts.md`, `docs/ui/home-landing.md`, `docs/Memoire.md`).
+- Ãtape 6: Ã©largir lâallowlist aux bÃªta-testeurs via scripts dÃ©diÃ©s une fois la mÃ©canique validÃ©e.
 
 
