@@ -51,8 +51,7 @@ export class ChatUI {
             <div class="agent-selector">${agentTabs}</div>
           </div>
           <div class="chat-header-right">
-            <div id="model-badge" class="model-badge">-</div>
-            <div id="chat-auth-host" class="chat-auth-host" data-auth-host></div>
+            <div id="model-badge" class="model-badge" hidden></div>
             <div class="chat-actions" role="group" aria-label="Actions de conversation">
               <button type="button" class="chat-action-btn" data-role="chat-clear" title="Effacer les messages de l'agent actif" data-label="Effacer les messages de l'agent actif" data-title="Effacer les messages de l'agent actif">
                 <span class="sr-only">Effacer les messages de l'agent actif</span>
@@ -216,14 +215,24 @@ export class ChatUI {
     if (badge) {
       const mi = this.state.modelInfo || {};
       const lm = this.state.lastMessageMeta || {};
-      const usedProvider = (lm.provider || mi.provider || '').toString();
-      const usedModel = (lm.model || mi.model || '').toString();
-      const planned = `${mi.provider || '?'}:${mi.model || '?'}`;
-      const used = `${usedProvider || '?'}:${usedModel || '?'}`;
-      const fallback = !!(mi.provider && mi.model && (mi.provider !== usedProvider || mi.model !== usedModel));
-      badge.textContent = usedProvider || usedModel ? (fallback ? `Fallback -> ${used}` : used) : '-';
-      const ttfb = Number.isFinite(met.last_ttfb_ms) ? `${met.last_ttfb_ms} ms` : '-';
-      badge.title = `Modele planifie: ${planned} - Utilise: ${used} - TTFB: ${ttfb}`;
+      const plannedProvider = (mi.provider || '').toString();
+      const plannedModel = (mi.model || '').toString();
+      const usedProvider = (lm.provider || '').toString();
+      const usedModel = (lm.model || '').toString();
+      const hasUsed = !!(usedProvider || usedModel);
+      const usedLabel = hasUsed ? [usedProvider, usedModel].filter(Boolean).join(':') || usedProvider || usedModel : '';
+      const plannedLabel = plannedProvider && plannedModel ? `${plannedProvider}:${plannedModel}` : '';
+      const fallback = hasUsed && plannedLabel && (plannedProvider !== usedProvider || plannedModel !== usedModel);
+      if (hasUsed) {
+        badge.textContent = fallback ? `Fallback -> ${usedLabel}` : usedLabel;
+        const ttfb = Number.isFinite(met.last_ttfb_ms) ? `${met.last_ttfb_ms} ms` : '-';
+        badge.title = `Modele prevu: ${plannedLabel || 'n/d'} - Utilise: ${usedLabel || 'n/d'} - TTFB: ${ttfb}`;
+        badge.hidden = false;
+      } else {
+        badge.textContent = '';
+        badge.hidden = true;
+        badge.removeAttribute('title');
+      }
       badge.classList.toggle('is-fallback', fallback);
     }
 

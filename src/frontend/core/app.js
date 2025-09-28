@@ -209,7 +209,7 @@ export class App {
     const email = typeof emailRaw === 'string' && emailRaw.trim() ? emailRaw.trim().toLowerCase() : null;
 
     if (!normalizedRole) {
-      target.textContent = 'Non connecte.';
+      target.textContent = 'Non connecté.';
       return;
     }
 
@@ -219,7 +219,7 @@ export class App {
     };
     const label = roleLabels[normalizedRole] || normalizedRole;
     const emailPart = email ? ` (${email})` : '';
-    target.innerHTML = `Vous etes connecte en tant que <strong>${label}</strong>${emailPart}`;
+    target.innerHTML = `Vous êtes connecté en tant que <strong>${label}</strong>${emailPart}`;
   }
 
   renderNavigation() {

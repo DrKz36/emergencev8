@@ -491,6 +491,13 @@ body::before, body::after,
   border: 1px solid rgba(148, 163, 184, .16);
   background: linear-gradient(180deg, rgba(15, 23, 42, .88), rgba(8, 13, 28, .94));
   box-shadow: 0 26px 60px rgba(5, 10, 25, .55);
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(100dvh - var(--mobile-topbar-height, 56px) - var(--page-gap) * 1.5);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
+  overscroll-behavior: contain;
 }
 
 .memory-page__header {
@@ -536,9 +543,11 @@ body::before, body::after,
 .memory-page__layout {
   display: flex;
   gap: 28px;
-  align-items: flex-start;
+  align-items: stretch;
   justify-content: space-between;
   flex-wrap: wrap;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .memory-page__primary {
@@ -546,6 +555,7 @@ body::before, body::after,
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-height: 0;
 }
 
 .memory-page__threads {
@@ -554,6 +564,7 @@ body::before, body::after,
   width: 100%;
   display: flex;
   align-items: stretch;
+  min-height: 0;
 }
 
 .memory-page__threads .threads-panel {
@@ -561,6 +572,10 @@ body::before, body::after,
   width: 100%;
   max-width: none;
   padding: 26px;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  overflow: visible;
 }
 
 .memory-page__threads .threads-panel__inner {
@@ -604,16 +619,34 @@ body::before, body::after,
 
 .memory-page__body {
   padding: 0;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .memory-page__body .memory-panel {
   gap: 20px;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.memory-page__threads .threads-panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
+}
+
+.memory-page__threads .threads-panel__body > *:last-child {
+  padding-bottom: 8px;
 }
 
 @media (max-width: 960px) {
   .memory-page {
     padding: 22px;
     gap: 20px;
+    max-height: none;
+    overflow: visible;
   }
   .memory-page__actions {
     width: 100%;
@@ -622,11 +655,19 @@ body::before, body::after,
   .memory-page__layout {
     flex-direction: column;
   }
+  .memory-page__body {
+    overflow: visible;
+  }
   .memory-page__threads {
     min-width: 0;
+    width: 100%;
   }
   .memory-page__threads .threads-panel {
     padding: 22px;
+    max-height: none;
+  }
+  .memory-page__threads .threads-panel__body {
+    overflow: visible;
   }
 }
 

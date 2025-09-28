@@ -37,6 +37,83 @@
     font-weight: var(--weight-medium, 600);
 }
 
+.sidebar-auth-actions {
+    padding: 1rem 0.75rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.sidebar-auth-actions .auth-badge {
+    position: static;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    color: var(--color-text-secondary);
+}
+
+.sidebar-auth-actions .auth-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(34, 197, 94, 0.9);
+    box-shadow: none;
+}
+
+.sidebar-auth-actions .auth-button {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 0.75rem;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.22), rgba(37, 99, 235, 0.18));
+    color: #f8fafc;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-auth-actions .auth-button:hover,
+.sidebar-auth-actions .auth-button:focus-visible {
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.32), rgba(37, 99, 235, 0.26));
+    color: #f8fafc;
+    transform: translateY(-1px);
+}
+
+.sidebar-auth-actions .auth-alert {
+    display: block;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fecaca;
+}
+
+.sidebar-auth-actions .auth-model-chip {
+    display: none !important;
+}
+
+@media (max-width: 760px) {
+    .sidebar-auth-actions {
+        padding: 0.5rem 0.75rem 1.5rem;
+    }
+
+    .sidebar-auth-actions .auth-button {
+        font-size: 0.68rem;
+        letter-spacing: 0.12em;
+        padding: 0.45rem 0.6rem;
+    }
+}
+
 /* [CORRECTION] Remplacement de .tab-button par .nav-link pour correspondre au HTML */
 .nav-link {
     display: flex;
@@ -147,3 +224,4 @@
     width: 1.5rem;
     height: 1.5rem;
 }
+

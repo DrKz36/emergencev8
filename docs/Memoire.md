@@ -206,6 +206,7 @@
 - [ ] Déclencher une **consolidation globale** et vérifier l’affichage du loader puis du résumé STM (capture : `assets/memoire/bandeau-analyse.png`).
 - [ ] Exécuter une **analyse ciblée** avec `persist=False` et confirmer que la LTM ne change pas (capture : `assets/memoire/panneau-thread.png`).
 - [ ] Ouvrir le centre mémoire et vérifier que l'historique des consolidations se charge (GET /api/memory/tend-garden), inclut les derniers timestamps et résumés, et qu'un échec réseau propose le bouton `Réessayer`.
+- [ ] Confirmer que le panneau « Centre mémoire » et la colonne Conversations proposent un défilement vertical : atteindre le bas de la synthèse et des conversations sur un écran desktop (≥1080px) et en responsive mobile.
 - [ ] Lancer une **analyse ciblée persistée** (`persist=True`) et valider l’incrément du compteur d’items LTM (capture : `assets/memoire/option-persist.png`).
 - [ ] Vérifier qu’une sélection de documents en dehors du thread est ignorée : le front affiche les ressources valides et `meta.selected_doc_ids` ne contient que les IDs autorisées.
 - [ ] Supprimer un thread depuis Conversations (`Supprimer ?` -> `Confirmer`) et valider la cascade messages/documents; noter que la mémoire reste active tant que `POST /api/memory/clear` n'est pas lancé. Capture : `assets/memoire/conversations-confirm.png`.
