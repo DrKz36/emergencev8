@@ -10,6 +10,7 @@
   2. `git fetch --all --prune` puis rebase sur `origin/<BaseBranch>` (défaut `main`).
   3. Exécute les commandes de test fournies (défaut : `pwsh -File tests/run_all.ps1`).
   4. Pousse la branche courante sur `origin` si tout est vert.
+  5. Supprime les artefacts de test g�n�r�s (ex : `test_upload.txt`) avant la v�rification finale.
 - Paramètres utiles :
   - `-BaseBranch <nom>` : branche de référence, `main` par défaut.
   - `-SkipTests` : saute l'étape de test (à éviter hors dépannage).

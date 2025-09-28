@@ -12,6 +12,10 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot ".." )).Path
 Set-Location $repoRoot
 
+$generatedArtifacts = @(
+    (Join-Path $repoRoot "test_upload.txt")
+)
+
 if (-not $PSBoundParameters.ContainsKey('TestCommands')) {
     $TestCommands = ,@(
         "pwsh","-NoProfile","-ExecutionPolicy","Bypass","-File","tests/run_all.ps1"
@@ -105,6 +109,23 @@ function Invoke-TestCommand {
     }
 }
 
+
+function Remove-GeneratedArtifacts {
+    param([string[]]$Paths)
+    if ($null -eq $Paths) { return }
+    foreach ($path in $Paths) {
+        if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        if (Test-Path -LiteralPath $path) {
+            try {
+                Remove-Item -LiteralPath $path -Force
+                Write-Host ("Removed generated artifact: {0}" -f $path) -ForegroundColor DarkGray
+            } catch {
+                Write-Warning ("Unable to remove generated artifact {0}: {1}" -f $path, $_.Exception.Message)
+            }
+        }
+    }
+}
+
 try {
     Write-Step "Repository root: $repoRoot"
     Assert-CleanWorkingTree -AllowDirty:$AllowDirty
@@ -129,6 +150,8 @@ try {
         Write-Host "Tests skipped (SkipTests flag)." -ForegroundColor Yellow
     }
 
+    Remove-GeneratedArtifacts -Paths $generatedArtifacts
+
     Assert-CleanWorkingTree -AllowDirty:$AllowDirty
 
     if (-not $NoPush) {
@@ -144,4 +167,7 @@ try {
     Write-Host ""
     Write-Host "Sync failed: $($_.Exception.Message)" -ForegroundColor Red
     throw
+}
+finally {
+    Remove-GeneratedArtifacts -Paths $generatedArtifacts
 }
