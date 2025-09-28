@@ -4,6 +4,10 @@
 import { EVENTS } from '../shared/constants.js';
 import { getIdToken, clearAuth } from './auth.js';
 
+const SESSION_STATE_PRESERVE = {
+  preserveAuth: { role: true, email: true, hasToken: true },
+  preserveUser: true,
+};
 export class WebSocketClient {
   constructor(url, eventBus, stateManager) {
     this.url = url;
@@ -172,7 +176,7 @@ export class WebSocketClient {
       sessionId = sidFromToken;
       try {
         if (typeof this.state?.resetForSession === 'function') {
-          this.state.resetForSession(sessionId);
+          this.state.resetForSession(sessionId, SESSION_STATE_PRESERVE);
         }
         this.state?.set?.('websocket.sessionId', sessionId);
       } catch {}
@@ -181,7 +185,7 @@ export class WebSocketClient {
       sessionId = crypto?.randomUUID?.() || (Math.random().toString(16).slice(2) + Date.now());
       try {
         if (typeof this.state?.resetForSession === 'function') {
-          this.state.resetForSession(sessionId);
+          this.state.resetForSession(sessionId, SESSION_STATE_PRESERVE);
         }
         this.state?.set?.('websocket.sessionId', sessionId);
       } catch {}
@@ -224,7 +228,26 @@ export class WebSocketClient {
         }
         if (msg?.type === 'ws:memory_banner') {
           const p = msg.payload || {};
-          try { this.state?.set?.('chat.memoryStats', { has_stm: !!p.has_stm, ltm_items: Number.isFinite(p.ltm_items) ? p.ltm_items : 0, injected: !!p.injected_into_prompt }); this.state?.set?.('chat.memoryBannerAt', Date.now()); } catch {}
+          try {
+            const prev = this.state?.get?.('chat.memoryStats') || {};
+            const ltmItems = Number.isFinite(p.ltm_items) ? Number(p.ltm_items) : 0;
+            const ltmInjected = Number.isFinite(p.ltm_injected) ? Number(p.ltm_injected) : (p.injected_into_prompt ? ltmItems : 0);
+            const stats = {
+              has_stm: !!p.has_stm,
+              ltm_items: ltmItems,
+              ltm_injected: ltmInjected,
+              ltm_candidates: Number.isFinite(p.ltm_candidates) ? Number(p.ltm_candidates) : ltmItems,
+              injected: !!p.injected_into_prompt,
+              ltm_skipped: !!p.ltm_skipped
+            };
+            this.state?.set?.('chat.memoryStats', stats);
+            this.state?.set?.('chat.memoryBannerAt', Date.now());
+            if (stats.ltm_skipped && !prev?.ltm_skipped) {
+              const count = stats.ltm_items || 0;
+              const label = count ? `Memoire longue disponible (${count}) non injectee dans le prompt.` : 'Memoire longue non injectee dans le prompt.';
+              this.eventBus.emit?.('ui:toast', { kind: 'info', text: label });
+            }
+          } catch { }
         }
 
         // Dispatch générique

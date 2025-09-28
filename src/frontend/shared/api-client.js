@@ -200,14 +200,14 @@ async function getAuthHeaders() {
 
   const headers = {};
   const trimmed = typeof token === 'string' ? token.trim() : '';
-  if (trimmed) headers['Authorization'] = `Bearer ${trimmed}`;
+  const hasBearer = !!trimmed;
+  if (hasBearer) headers['Authorization'] = `Bearer ${trimmed}`;
 
   const sid = getSessionIdFromStorage();
   if (sid) headers['X-Session-Id'] = sid;
 
-  if (isDevBypassEnabled()) {
+  if (!hasBearer && isDevBypassEnabled()) {
     Object.assign(headers, resolveDevHeaders());
-    if (!headers['Authorization']) return headers;
   }
   return headers;
 }
@@ -369,6 +369,16 @@ export const api = {
     const url = `${AUTH_ADMIN_ALLOWLIST}/${encodeURIComponent(safeEmail)}`;
     return fetchApi(url, { method: 'DELETE' });
   },
+  authAdminListSessions: ({ status } = {}) => {
+    const params = new URLSearchParams();
+    const normalized = typeof status === 'string' ? status.trim().toLowerCase() : '';
+    if (normalized === 'active') {
+      params.set('status_filter', 'active');
+    }
+    const qs = params.toString();
+    const url = qs ? `${AUTH_ADMIN_SESSIONS}?${qs}` : AUTH_ADMIN_SESSIONS;
+    return fetchApi(url);
+  },
 
 
   /* ---------------------- DOCUMENTS ---------------------- */
@@ -523,6 +533,10 @@ export const api = {
     const rawThread = options?.thread_id ?? options?.threadId ?? null;
     if (rawThread && typeof rawThread === 'string' && rawThread.trim()) {
       payload.thread_id = rawThread.trim();
+    }
+    const agentRaw = options?.agent_id ?? options?.agentId ?? options?.agent ?? null;
+    if (agentRaw && typeof agentRaw === 'string' && agentRaw.trim()) {
+      payload.agent_id = agentRaw.trim();
     }
     const rawMode = options?.mode ?? options?.scope ?? null;
     if (rawMode && typeof rawMode === 'string') {

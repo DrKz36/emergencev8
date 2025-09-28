@@ -80,6 +80,13 @@ export class AuthAdminModule {
     this.query = '';
     this.hasMore = false;
     this.searchTimer = null;
+
+    this.sessions = [];
+    this.sessionFilter = 'active';
+    this.sessionsContainer = null;
+    this.sessionsContent = null;
+    this.sessionsFilter = null;
+    this.sessionsRefreshButton = null;
   }
 
   mount(container) {
@@ -89,6 +96,7 @@ export class AuthAdminModule {
     this.cacheElements();
     this.bindEvents();
     this.loadAllowlist();
+    this.loadSessions();
   }
 
   unmount() {
@@ -125,6 +133,12 @@ export class AuthAdminModule {
     this.prevPageButton = null;
     this.nextPageButton = null;
     this.paginationInfo = null;
+    this.sessionsContainer = null;
+    this.sessionsContent = null;
+    this.sessionsFilter = null;
+    this.sessionsRefreshButton = null;
+    this.sessions = [];
+    this.sessionFilter = 'active';
   }
 
   cacheElements() {
@@ -147,11 +161,18 @@ export class AuthAdminModule {
     this.prevPageButton = this.container.querySelector('[data-role="page-prev"]');
     this.nextPageButton = this.container.querySelector('[data-role="page-next"]');
     this.paginationInfo = this.container.querySelector('[data-role="pagination-info"]');
+    this.sessionsContainer = this.container.querySelector('[data-role="sessions-block"]');
+    this.sessionsContent = this.container.querySelector('[data-role="sessions-content"]');
+    this.sessionsFilter = this.container.querySelector('[data-role="sessions-filter"]');
+    this.sessionsRefreshButton = this.container.querySelector('[data-role="sessions-refresh"]');
     if (this.statusSelect) {
       this.statusSelect.value = this.status;
     }
     if (this.searchInput) {
       this.searchInput.value = this.query;
+    }
+    if (this.sessionsFilter) {
+      this.sessionsFilter.value = this.sessionFilter;
     }
   }
 
@@ -246,6 +267,25 @@ export class AuthAdminModule {
       this.nextPageButton.addEventListener('click', onNext);
       this.listeners.push(() => this.nextPageButton.removeEventListener('click', onNext));
     }
+
+    if (this.sessionsFilter) {
+      const onSessionsFilterChange = (event) => {
+        const value = (event.target?.value || 'active').trim().toLowerCase();
+        this.sessionFilter = value === 'all' ? 'all' : 'active';
+        this.loadSessions();
+      };
+      this.sessionsFilter.addEventListener('change', onSessionsFilterChange);
+      this.listeners.push(() => this.sessionsFilter.removeEventListener('change', onSessionsFilterChange));
+    }
+
+    if (this.sessionsRefreshButton) {
+      const onSessionsRefresh = (event) => {
+        event.preventDefault();
+        this.loadSessions();
+      };
+      this.sessionsRefreshButton.addEventListener('click', onSessionsRefresh);
+      this.listeners.push(() => this.sessionsRefreshButton.removeEventListener('click', onSessionsRefresh));
+    }
   }
 
   render() {
@@ -276,6 +316,13 @@ export class AuthAdminModule {
     const copyLabel = t('admin.copy');
     const prevLabel = t('admin.prev_page') || 'Précédent';
     const nextLabel = t('admin.next_page') || 'Suivant';
+    const sessionsTitle = t('admin.sessions_title') || 'Sessions actives';
+    const sessionsFilterLabel = t('admin.sessions_filter_label') || 'Afficher';
+    const sessionsFilterActive = t('admin.sessions_filter_active') || 'Actives';
+    const sessionsFilterAll = t('admin.sessions_filter_all') || 'Toutes';
+    const sessionsRefresh = t('admin.sessions_refresh') || 'Rafraîchir';
+    const sessionsLoading = t('admin.sessions_loading') || 'Chargement des sessions...';
+    const sessionsEmpty = t('admin.sessions_empty') || 'Aucune session trouvée.';
 
     return `
       <section class="auth-admin" data-role="auth-admin">
@@ -283,6 +330,24 @@ export class AuthAdminModule {
           <h2 class="auth-admin__title">${title}</h2>
           <p class="auth-admin__subtitle">${subtitle}</p>
         </header>
+        <section data-role="sessions-block">
+          <div class="auth-admin__filters">
+            <div class="auth-admin__filter">
+              <span>${sessionsTitle}</span>
+            </div>
+            <label class="auth-admin__filter">
+              <span>${sessionsFilterLabel}</span>
+              <select data-role="sessions-filter">
+                <option value="active">${sessionsFilterActive}</option>
+                <option value="all">${sessionsFilterAll}</option>
+              </select>
+            </label>
+            <button type="button" class="auth-admin__button auth-admin__button--ghost" data-role="sessions-refresh">${sessionsRefresh}</button>
+          </div>
+          <div data-role="sessions-content" class="auth-admin__sessions-content" data-empty-text="${escapeHtml(sessionsEmpty)}" data-loading-text="${escapeHtml(sessionsLoading)}">
+            <p class="auth-admin__muted">${sessionsLoading}</p>
+          </div>
+        </section>
         <form data-role="allowlist-form" class="auth-admin__form">
           <div class="auth-admin__form-grid">
             <label class="auth-admin__field">
@@ -568,6 +633,84 @@ export class AuthAdminModule {
     } finally {
       this.setLoading(false);
     }
+  }
+
+
+  async loadSessions() {
+    if (!this.sessionsContent) return;
+    const loadingLabel = this.sessionsContent.dataset?.loadingText || (t('admin.sessions_loading') || 'Chargement des sessions...');
+    this.sessionsContent.innerHTML = `<p class="auth-admin__muted">${escapeHtml(loadingLabel)}</p>`;
+    try {
+      const data = await api.authAdminListSessions({ status: this.sessionFilter });
+      const items = Array.isArray(data?.items) ? data.items : [];
+      this.sessions = items;
+      this.renderSessions(items);
+    } catch (error) {
+      console.error('[AuthAdmin] list sessions failed', error);
+      const errorLabel = t('admin.sessions_error') || t('admin.message_error') || 'Erreur lors du chargement des sessions.';
+      this.sessionsContent.innerHTML = `<p class="auth-admin__muted">${escapeHtml(errorLabel)}</p>`;
+      this.notify('error', t('admin.message_error'));
+    }
+  }
+
+  renderSessions(items) {
+    if (!this.sessionsContent) return;
+    const emptyLabel = this.sessionsContent.dataset?.emptyText || (t('admin.sessions_empty') || 'Aucune session trouvée.');
+    if (!Array.isArray(items) || !items.length) {
+      this.sessionsContent.innerHTML = `<p class="auth-admin__muted">${escapeHtml(emptyLabel)}</p>`;
+      return;
+    }
+    const statusActive = t('admin.sessions_status_active') || t('admin.status_active') || 'Active';
+    const statusRevoked = t('admin.sessions_status_revoked') || t('admin.status_revoked') || 'Révoquée';
+    const sessionIdLabel = t('admin.sessions_table_id') || 'Session';
+    const emailLabel = t('admin.sessions_table_email') || t('admin.table_email') || 'Email';
+    const roleLabel = t('admin.sessions_table_role') || t('admin.table_role') || 'Rôle';
+    const ipLabel = t('admin.sessions_table_ip') || 'IP';
+    const issuedLabel = t('admin.sessions_table_issued') || 'Ouverte';
+    const expiresLabel = t('admin.sessions_table_expires') || 'Expire';
+    const statusLabel = t('admin.sessions_table_status') || t('admin.table_status') || 'Statut';
+
+    const rows = items.map((item) => {
+      const email = escapeHtml(item?.email || '');
+      const role = escapeHtml(item?.role || 'member');
+      const sessionId = escapeHtml(item?.id || '');
+      const ip = escapeHtml(item?.ip_address || '-');
+      const issuedAt = formatDateTime(item?.issued_at);
+      const expiresAt = formatDateTime(item?.expires_at);
+      const revoked = Boolean(item?.revoked_at);
+      const statusText = revoked ? statusRevoked : statusActive;
+      const statusClass = revoked
+        ? 'auth-admin__status-badge auth-admin__status-badge--revoked'
+        : 'auth-admin__status-badge auth-admin__status-badge--active';
+      return `
+        <tr>
+          <td>${email}</td>
+          <td>${role}</td>
+          <td><code>${sessionId}</code></td>
+          <td>${ip}</td>
+          <td>${issuedAt}</td>
+          <td>${expiresAt}</td>
+          <td><span class="${statusClass}">${statusText}</span></td>
+        </tr>
+      `;
+    }).join('');
+
+    this.sessionsContent.innerHTML = `
+      <table class="auth-admin__table auth-admin__table--sessions">
+        <thead>
+          <tr>
+            <th scope="col">${emailLabel}</th>
+            <th scope="col">${roleLabel}</th>
+            <th scope="col">${sessionIdLabel}</th>
+            <th scope="col">${ipLabel}</th>
+            <th scope="col">${issuedLabel}</th>
+            <th scope="col">${expiresLabel}</th>
+            <th scope="col">${statusLabel}</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
   }
 
   async loadAllowlist({ page } = {}) {

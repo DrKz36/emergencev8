@@ -191,8 +191,28 @@ export class StateManager {
     if (cleanState.chat.ragStatus === undefined) cleanState.chat.ragStatus = 'idle';
     if (cleanState.chat.memoryBannerAt === undefined) cleanState.chat.memoryBannerAt = null;
 
-    if (cleanState.chat.memoryStats === undefined) {
-      cleanState.chat.memoryStats = { has_stm: false, ltm_items: 0, injected: false };
+    const baseMemoryStats = {
+      has_stm: false,
+      ltm_items: 0,
+      ltm_injected: 0,
+      ltm_candidates: 0,
+      injected: false,
+      ltm_skipped: false
+    };
+    const rawMemoryStats = cleanState.chat.memoryStats;
+    if (!rawMemoryStats || typeof rawMemoryStats !== 'object') {
+      cleanState.chat.memoryStats = { ...baseMemoryStats };
+    } else {
+      cleanState.chat.memoryStats = { ...baseMemoryStats, ...rawMemoryStats };
+      cleanState.chat.memoryStats.has_stm = !!cleanState.chat.memoryStats.has_stm;
+      cleanState.chat.memoryStats.ltm_items = Number.isFinite(Number(cleanState.chat.memoryStats.ltm_items)) ? Number(cleanState.chat.memoryStats.ltm_items) : 0;
+      cleanState.chat.memoryStats.ltm_injected = Number.isFinite(Number(cleanState.chat.memoryStats.ltm_injected)) ? Number(cleanState.chat.memoryStats.ltm_injected) : 0;
+      cleanState.chat.memoryStats.ltm_candidates = Number.isFinite(Number(cleanState.chat.memoryStats.ltm_candidates)) ? Number(cleanState.chat.memoryStats.ltm_candidates) : cleanState.chat.memoryStats.ltm_items;
+      cleanState.chat.memoryStats.injected = !!cleanState.chat.memoryStats.injected;
+      cleanState.chat.memoryStats.ltm_skipped = !!cleanState.chat.memoryStats.ltm_skipped;
+    }
+    if (!Number.isFinite(cleanState.chat.memoryStats.ltm_candidates)) {
+      cleanState.chat.memoryStats.ltm_candidates = cleanState.chat.memoryStats.ltm_items;
     }
     if (cleanState.chat.authRequired === undefined) cleanState.chat.authRequired = false;
     else cleanState.chat.authRequired = !!cleanState.chat.authRequired;
@@ -211,18 +231,45 @@ export class StateManager {
     return this.state?.session?.id || null;
   }
 
-  resetForSession(newSessionId) {
+  resetForSession(newSessionId, options = {}) {
+    const { preserveAuth = {}, preserveUser = true } = options || {};
+    const {
+      role: keepRole = false,
+      email: keepEmail = false,
+      hasToken: keepHasToken = true,
+    } = preserveAuth;
+
     const preservedAuth = { ...(this.state?.auth || {}) };
-    const preservedUser = { ...(this.state?.user || {}) };
+    if (!keepRole) delete preservedAuth.role;
+    if (!keepEmail) delete preservedAuth.email;
+    if (!keepHasToken) delete preservedAuth.hasToken;
+
+    const preservedUser = preserveUser ? { ...(this.state?.user || {}) } : {};
+
     const baseState = {
       session: { id: newSessionId || null, startedAt: Date.now() },
       auth: preservedAuth,
       user: preservedUser,
     };
-    this.state = this.sanitize(baseState);
+
+    let sanitizedState = this.sanitize(baseState);
+    if (!sanitizedState.auth || typeof sanitizedState.auth !== 'object') {
+      sanitizedState.auth = {};
+    }
+    if (!keepRole) sanitizedState.auth.role = 'member';
+    if (!keepEmail) sanitizedState.auth.email = null;
+    if (keepHasToken && Object.prototype.hasOwnProperty.call(preservedAuth, 'hasToken')) {
+      sanitizedState.auth.hasToken = !!preservedAuth.hasToken;
+    }
+
+    this.state = sanitizedState;
+
     try { localStorage.removeItem('emergence.threadId'); } catch (_) {}
     try { localStorage.removeItem('emergence.documents.selection'); } catch (_) {}
+
     this.notify('session');
+    this.notify('auth.role');
+    this.notify('auth.email');
     this.persist();
   }
 

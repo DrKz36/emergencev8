@@ -12,7 +12,17 @@
 - `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest124 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1"` : OK (27/09) — flux `ws:chat_stream_end` (OpenAI gpt-4o-mini) + upload document_id=57 sans 5xx. Logs `#<-` → `docs/assets/memoire/smoke-ws-rag.log`.
 - `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest-ws-send-20250927 -MsgType ws:chat_send -UserId "smoke_rag&dev_bypass=1"` : KO (27/09) — handshake accepté mais réponse `ws:error` (`Type inconnu: ws:chat_send`). Logs `#<-` → `docs/assets/memoire/smoke-ws-rag-ws-chat_send.log`.
 - `scripts/smoke/smoke-ws-3msgs.ps1 -SessionId ragtest-3msgs-20250927 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1"` : OK (27/09) — 3 messages consécutifs, `ws:chat_stream_start` x3 puis `ws:chat_stream_end`; aucun HTTP 5xx côté documents/uploads (`backend.err.log` inchangé). Logs `#<-` → `docs/assets/memoire/smoke-ws-3msgs.log`.
+- Vérification UI nav rôle (2025-09-30) : scénario admin → logout → membre (`fernando36@bluewin.ch`). Après reconnexion, la sidebar doit exclure `Mémoire` et `Admin` et le bandeau afficher `Membre (fernando36@bluewin.ch)`. Capture à archiver : `docs/assets/passation/auth-role-reset.png`.
+- Module Admin – Sessions (2025-09-30) : depuis l'onglet Admin, vérifier que le bloc Sessions liste les connexions actives (session_id, email, IP, dates). Rafraîchir via le bouton dédié et confirmer qu'un membre connecté apparait avec le statut Actif.
+- `scripts/smoke/smoke-health.ps1 -BaseUrl https://emergence-app-486095406755.europe-west1.run.app` : OK (27/09 18:09 UTC) -> 200 `{ "status": "ok" }` sur revision `emergence-app-00256-jxh`.
+- `scripts/smoke/smoke-memory-tend.ps1 -BaseUrl https://emergence-app-486095406755.europe-west1.run.app -UserId "smoke_rag&dev_bypass=1" -SessionId cloud-smoke-memory-20250927` : OK (27/09) -> `status=success`, `message="Aucune session a traiter."`.
+- Test WSS Cloud Run (27/09) : envelope `chat.message` (session `cloud-wss-rag-20250927`, query `user_id=smoke_rag&dev_bypass=1`) -> `ws:rag_status` `searching` puis `found`, `ws:model_info` (`openai gpt-4o-mini`), flux complet jusqu'a `ws:chat_stream_end`. La tentative legacy `ws:chat_send` via `smoke-wss-cloudrun.ps1` retourne `ws:error` (`Type inconnu`), a realigner.
 - Le tableau allowlist du module *Admin* expose desormais un bouton `Supprimer` par entree : confirmation navigateur, appel `DELETE /api/auth/admin/allowlist/{email}`, toast `Entree supprimee.` puis rechargement de la pagination active.
+
+## Observabilite & logs (2025-09-27)
+- `gcloud run services describe emergence-app --region europe-west1` : revision `emergence-app-00256-jxh` Ready (100 % traffic), tag `canary` pointe sur `emergence-app-00279-kub`.
+- `gcloud logging read --freshness=1h --limit=200` filtre `service_name=emergence-app` : aucune entree `httpRequest.status >= 500`.
+- Plus de 404 Gemini depuis le passage de `DEFAULT_GOOGLE_MODEL` sur `models/gemini-2.5-flash` (les anciens alias `models/gemini-1.5-flash*` sont maintenant mappés automatiquement). Surveiller `gcloud logging read --freshness=1h --limit=200` (aucune entree `google.api_core.exceptions.NotFound`) et controler les frames `ws:model_info` (`provider=google`, `model=models/gemini-2.5-flash`).
 
 ## Auth allowlist - mots de passe (2025-09-27)
 - Module *Admin* cote frontend (navigation principale) reserve aux comptes `role=admin`. La liste est paginee, filtrable (`Actives`, `Revoquees`, `Toutes`) et propose une recherche email/note + resumes (`total`, `page`). Les toasts front confirment les sauvegardes et la copie du mot de passe genere.
@@ -42,6 +52,11 @@
 - Test unitaire ajoute pour verrouiller `ensureCurrentThread()` -> `EVENTS.AUTH_REQUIRED` et garantir le payload QA.
 
 ## Suivi
+- Le module « Mémoire » est désormais réservé aux admins et intègre la liste des conversations pour faciliter la revue des threads.
+- Nouvel accès rapide « Mémoire » dans chaque agent du module Chat : tester qu’il lance bien memory:tend sur le thread actif.
+- Mettre a jour `scripts/smoke/smoke-wss-cloudrun.ps1` pour envoyer `chat.message` (RAG) et consigner les evenements attendus.
+- Confirmer que la configuration Gemini reference `models/gemini-2.5-flash` (les alias historiques `gemini-1.5-flash*` restent acceptes) afin d'eviter les 404 dans `MemoryAnalyzer`.
+- Planifier le prochain chantier canary (WS/RAG) en s'appuyant sur la revision `emergence-app-00256-jxh` et la route taggee `canary`.
 - Conserver l'habitude d'utiliser `scripts/run-backend.ps1` avant la QA UI.
 - Controler la configuration des remotes via `git remote -v` en debut de session et aligner `origin`/`codex` si besoin.
 - Rejouer `npm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js` en cas de modification auth/front.
@@ -75,6 +90,14 @@
 - Stockage remis à plat pour la QA : allowlist vérifiée puis enrichie via `/api/auth/admin/allowlist` (dev bypass) avec `gonzalefernando@gmail.com` afin de tester le formulaire.
 - Formulaire email (API) : `POST /api/auth/login` retourne 200 + token pour l'email allowlist (session active dans `auth_sessions`).
 - Bannière "Connexion requise" : `npm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js` passe après avoir neutralisé l'init DOM dans `components/modals.js`; capture déposée (`docs/assets/ui/auth-banner-20250925.png`) pour la prochaine passe UI.
+
+### QA - Roles & navigation
+1. Se connecter avec un compte admin : confirmer la presence des modules `Memoire` et `Admin` dans la navigation, puis ouvrir un chat pour generer un evenement `ws:model_info` (noter `provider`/`model`).
+2. Se deconnecter via le bouton header : verifier dans `localStorage` (cle `emergenceState-V14`) que `auth.role` repasse a `member`, que `session.id` et `websocket.sessionId` sont `null`, et que l'UI affiche a nouveau l'ecran d'accueil.
+3. Se reconnecter avec un compte membre : controler que seuls les modules de base (`Dialogue`, `Documents`, `Debats`, `A propos`, `Cockpit`) restent visibles et que l'onglet actif revient sur `Dialogue`.
+4. Depuis DevTools > Application > Storage, relire `emergenceState-V14` pour confirmer que `auth.role` et `chat.authRequired` sont respectivement `member` et `false`, sans residus de navigation admin.
+5. Capturer la barre de navigation (etat membre) et un extrait Console montrant `ws:model_info` avec `models/gemini-2.5-flash` pour alimenter la checklist QA.
+
 
 ### Pistes suivantes UI/Auth
 - [FAIT 2025-09-26] Bootstrap DOM Node (`src/frontend/core/__tests__/helpers/dom-shim.js`) + relance de `npm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js`.
