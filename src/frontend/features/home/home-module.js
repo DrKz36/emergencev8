@@ -133,21 +133,33 @@ export class HomeModule {
 
           <div class="home__hero">
 
-            <div class="home__emblem" aria-hidden="true">
+            <div class="home__hero-visual" aria-hidden="true">
 
-              <span class="home__emblem-ring"></span>
+              <div class="home__emblem" aria-hidden="true">
 
-              <span class="home__emblem-spark"></span>
+                <span class="home__emblem-ring"></span>
 
-              <img src="/assets/emergence_logo.png" alt="${brandAlt}" class="home__logo" loading="lazy" />
+                <span class="home__emblem-spark"></span>
+
+                <img src="/assets/emergence_logo.png" alt="${brandAlt}" class="home__logo" loading="lazy" />
+
+              </div>
 
             </div>
 
-            ${versionMarkup}
+            <div class="home__hero-copy">
 
-            <h1 class="home__title">${title}</h1>
+              <div class="home__heading">
 
-            ${subtitleMarkup}
+                <h1 class="home__title">${title}</h1>
+
+                ${versionMarkup}
+
+              </div>
+
+              ${subtitleMarkup}
+
+            </div>
 
           </div>
 
@@ -358,3 +370,4 @@ export class HomeModule {
     this.messageNode.classList.remove('is-error', 'is-success', 'is-info');
   }
 }
+

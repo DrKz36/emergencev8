@@ -488,8 +488,7 @@ function mountAuthBadge(eventBus) {
       node.id = 'auth-badge';
       node.className = 'auth-badge is-floating';
       node.innerHTML = `
-        <span id="auth-dot" class="auth-dot" aria-hidden="true"></span>
-        <button id="auth-btn" type="button" class="auth-button">Se connecter</button>
+        <button id="auth-btn" type="button" class="auth-button auth-button--disconnected" data-auth-action="login">Se connecter</button>
         <span id="auth-alert" class="auth-alert" role="status" aria-live="assertive" aria-hidden="true" hidden></span>
         <span id="model-chip" class="auth-model-chip" role="status" aria-live="polite" style="display:none"></span>
       `;
@@ -499,11 +498,67 @@ function mountAuthBadge(eventBus) {
   };
 
   const box = ensureBox();
-  const dot = box.querySelector('#auth-dot');
   const btn = box.querySelector('#auth-btn');
   const chip = box.querySelector('#model-chip');
   const alertNode = box.querySelector('#auth-alert');
   const loginRequiredMessage = t('auth.login_required');
+
+  let mobileItem = null;
+  let mobileButton = null;
+
+  const ensureMobileButton = () => {
+    if (!mobileItem) {
+      mobileItem = document.createElement('li');
+      mobileItem.id = 'auth-mobile-item';
+      mobileItem.className = 'nav-item nav-item--auth';
+      mobileItem.innerHTML = `
+        <button type="button" class="nav-link nav-link--auth auth-button--disconnected" data-auth-action="login">
+          <span class="nav-text">Se connecter</span>
+        </button>
+      `;
+    }
+    if (!mobileButton || !mobileItem.contains(mobileButton)) {
+      mobileButton = mobileItem.querySelector('button');
+    }
+    return mobileButton;
+  };
+
+  const attachMobile = () => {
+    const navList = document.getElementById('app-header-nav-list');
+    const button = ensureMobileButton();
+    if (!navList || !mobileItem) return button;
+    if (mobileItem.parentElement !== navList) {
+      navList.appendChild(mobileItem);
+    }
+    return button;
+  };
+
+  const updateButtonLabel = (button, label) => {
+    if (!button) return;
+    const text = (typeof label === 'string' ? label : '').trim();
+    const navText = button.querySelector?.('.nav-text');
+    if (navText) navText.textContent = text;
+    else button.textContent = text;
+  };
+
+  const syncConnectionState = (connected) => {
+    const toggle = (button) => {
+      if (!button) return;
+      button.classList.toggle('auth-button--connected', !!connected);
+      button.classList.toggle('auth-button--disconnected', !connected);
+    };
+    toggle(btn);
+    toggle(ensureMobileButton());
+  };
+
+  const triggerLogin = () => {
+    eventBus.emit('auth:login', {});
+    setTimeout(() => { if (!hasToken()) openDevAuth(); }, 300);
+  };
+
+  const triggerLogout = () => {
+    eventBus.emit('auth:logout');
+  };
 
   const updateChipVisibility = () => {
     if (!chip) return;
@@ -538,23 +593,37 @@ function mountAuthBadge(eventBus) {
       box.classList.add('is-floating');
     }
     updateChipVisibility();
+    attachMobile();
   };
 
   const setConnected = (ok) => {
-    if (dot) dot.style.background = ok ? '#22c55e' : '#f97316';
+    syncConnectionState(ok);
     if (ok) setAlert('');
   };
   const setLogged = (logged) => {
-    if (!btn) return;
-    btn.textContent = logged ? 'Se déconnecter' : 'Se connecter';
-    btn.onclick = logged
-      ? () => eventBus.emit('auth:logout')
-      : () => {
-          eventBus.emit('auth:login', {});
-          setTimeout(() => { if (!hasToken()) openDevAuth(); }, 300);
-        };
+    const label = logged ? 'Se déconnecter' : 'Se connecter';
+    updateButtonLabel(btn, label);
+    const mobileBtn = attachMobile() || ensureMobileButton();
+    updateButtonLabel(mobileBtn, label);
+
+    const action = logged ? triggerLogout : triggerLogin;
+
+    if (btn) {
+      btn.onclick = action;
+      btn.dataset.authAction = logged ? 'logout' : 'login';
+    }
+    if (mobileBtn) {
+      mobileBtn.onclick = (event) => {
+        if (event) event.preventDefault();
+        action();
+      };
+      mobileBtn.dataset.authAction = logged ? 'logout' : 'login';
+    }
+
     if (logged) setAlert('');
   };
+
+
   const setModel = (provider, model, fallback = false) => {
     if (!chip) return;
     const txt = provider && model ? `${provider} • ${model}${fallback ? ' (fallback)' : ''}` : '';
@@ -608,7 +677,7 @@ function mountAuthBadge(eventBus) {
   return { setLogged, setConnected, attach, setAlert };
 }
 
-function createAuthBannerRecorder() {
+function createAuthRecorder() {
   const win = (typeof window !== 'undefined') ? window : null;
   const maxEvents = 50;
 
@@ -644,8 +713,8 @@ function createAuthBannerRecorder() {
 
         if (typeof console !== 'undefined' && typeof console.info === 'function') {
           const label = type === 'required'
-            ? '[AuthBanner] AUTH_REQUIRED'
-            : (type === 'missing' ? '[AuthBanner] AUTH_MISSING' : '[AuthBanner] AUTH_RESTORED');
+            ? '[AuthTrace] AUTH_REQUIRED'
+            : (type === 'missing' ? '[AuthTrace] AUTH_MISSING' : '[AuthTrace] AUTH_RESTORED');
           console.info(label, entry);
         }
 
@@ -657,115 +726,35 @@ function createAuthBannerRecorder() {
           try { dispatcher(new CustomEvt('emergence:auth:banner', { detail: entry })); } catch (_) {}
         }
       } catch (err) {
-        try { console.warn('[AuthBanner] QA instrumentation failed', err); } catch (_) {}
+        try { console.warn('[AuthTrace] QA instrumentation failed', err); } catch (_) {}
       }
     },
   };
 }
 
-function installAuthRequiredBanner(eventBus) {
-  const recorder = createAuthBannerRecorder();
-  let banner = null;
-  let messageNode = null;
+function installAuthRequiredInstrumentation(eventBus) {
+  const recorder = createAuthRecorder();
 
-  const ensureBanner = () => {
-    if (banner && typeof document !== 'undefined' && document.body?.contains(banner)) return banner;
-    const existing = (typeof document !== 'undefined') ? document.getElementById('app-auth-required-banner') : null;
-    if (existing) {
-      banner = existing;
-      messageNode = banner.querySelector('.app-auth-required-banner__message');
-      return banner;
-    }
-    if (typeof document === 'undefined') return null;
-    banner = document.createElement('div');
-    banner.id = 'app-auth-required-banner';
-    banner.className = 'app-auth-required-banner';
-    banner.setAttribute('role', 'alert');
-    banner.setAttribute('aria-live', 'assertive');
-    banner.setAttribute('hidden', 'true');
-
-    const icon = document.createElement('span');
-    icon.className = 'app-auth-required-banner__icon';
-    icon.setAttribute('aria-hidden', 'true');
-    icon.innerHTML = "<svg viewBox='0 0 20 20' fill='currentColor' xmlns='http://www.w3.org/2000/svg'><path d='M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm0 3.5a1 1 0 0 1 .993.883L11 6.5v4a1 1 0 0 1-1.993.117L9 10.5v-4a1 1 0 0 1 1-1Zm.002 8a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5Z'/></svg>";
-
-    messageNode = document.createElement('span');
-    messageNode.className = 'app-auth-required-banner__message';
-
-    const action = document.createElement('button');
-    action.type = 'button';
-    action.className = 'app-auth-required-banner__action';
-    action.textContent = t('auth.login_action');
-    action.addEventListener('click', () => {
-      try { eventBus.emit('auth:login', {}); } catch (_) {}
-      setTimeout(() => {
-        try { if (!hasToken()) openDevAuth(); } catch (_) {}
-      }, 300);
-    });
-
-    banner.append(icon, messageNode, action);
-    const host = document.body || document.documentElement;
-    if (host) host.appendChild(banner);
-    return banner;
-  };
-
-  const show = (message) => {
-    const node = ensureBanner();
-    if (!node) return;
-    const textValue = (typeof message === 'string' && message.trim()) ? message.trim() : t('auth.login_required');
-    if (messageNode) messageNode.textContent = textValue;
-    node.classList.add('is-visible');
-    node.removeAttribute('hidden');
-  };
-
-  const hide = () => {
-    if (!banner) return;
-    banner.classList.remove('is-visible');
-    banner.setAttribute('hidden', 'true');
-  };
-
-  eventBus.on?.(EVENTS.AUTH_REQUIRED, (payload) => {
-    const message = typeof payload?.message === 'string' ? payload.message : undefined;
-    recorder.record('required', {
-      source: payload?.source ?? 'event',
+  const record = (type, payload = {}, fallbackSource = 'event') => {
+    const message = typeof payload?.message === 'string' ? payload.message.trim() : null;
+    recorder.record(type, {
+      source: payload?.source ?? fallbackSource,
       reason: payload?.reason ?? null,
       status: payload?.status ?? null,
-      message: message ? message.trim() : null,
-    });
-    show(message);
-  });
-
-  eventBus.on?.('auth:missing', (payload) => {
-    const message = typeof payload?.message === 'string' ? payload.message : undefined;
-    recorder.record('missing', {
-      source: 'auth:missing',
-      reason: payload?.reason ?? null,
-      status: payload?.status ?? null,
-      message: message ? message.trim() : null,
-    });
-    show(message);
-  });
-
-  eventBus.on?.(EVENTS.AUTH_RESTORED, (payload) => {
-    recorder.record('restored', {
-      source: payload?.source ?? 'event',
+      message,
       threadId: payload?.threadId ?? null,
     });
-    hide();
-  });
+  };
+
+  eventBus.on?.(EVENTS.AUTH_REQUIRED, (payload) => record('required', payload));
+  eventBus.on?.('auth:missing', (payload) => record('missing', payload, 'auth:missing'));
+  eventBus.on?.(EVENTS.AUTH_RESTORED, (payload) => record('restored', payload));
 
   const wsConnectedEvent = EVENTS.WS_CONNECTED || 'ws:connected';
-  eventBus.on?.(wsConnectedEvent, () => {
-    recorder.record('restored', { source: wsConnectedEvent });
-    hide();
-  });
+  eventBus.on?.(wsConnectedEvent, () => recorder.record('restored', { source: wsConnectedEvent }));
+  eventBus.on?.('auth:login', () => recorder.record('restored', { source: 'auth:login' }));
 
-  eventBus.on?.('auth:login', () => {
-    recorder.record('restored', { source: 'auth:login' });
-    hide();
-  });
-
-  return { show, hide, recorder };
+  return { recorder };
 }
 
 /* -------------------- App bootstrap -------------------- */
@@ -809,8 +798,8 @@ class EmergenceClient {
     this.appContainer = typeof document !== 'undefined' ? document.getElementById('app-container') : null;
 
     this.badge = mountAuthBadge(eventBus);
-    const authBannerHandle = installAuthRequiredBanner(eventBus);
-    const qaRecorder = authBannerHandle?.recorder ?? null;
+    const authTraceHandle = installAuthRequiredInstrumentation(eventBus);
+    const qaRecorder = authTraceHandle?.recorder ?? null;
 
     this.home = new HomeModule(eventBus, stateManager, { qaRecorder });
 

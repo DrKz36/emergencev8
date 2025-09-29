@@ -17,7 +17,7 @@
 ## Frontend
 - **`core/state-manager.js`** : store global, bootstrap auth + threads (REST), conserve map des threads/messages.
 - **`core/websocket.js`** : ouverture WS post-auth (sub-proto `jwt`), gestion reconnexion, diffusion événements sur `EventBus`.
-- **`main.js`** : bootstrap EventBus/State, badge auth, bannière `Connexion requise` via `installAuthRequiredBanner` + instrumentation QA (`window.__EMERGENCE_QA_METRICS__.authRequired`).
+- **`main.js`** : bootstrap EventBus/State, badge auth et instrumentation QA (`window.__EMERGENCE_QA_METRICS__.authRequired`) via `installAuthRequiredInstrumentation` (trace des états auth sans bannière visible).
 - **`components/onboarding/onboarding-tour.js`** : legacy overlay (desactive v20250926, conserver pour audit historique).
 - **`features/agents/agents.js`** : module retire (profils agents fusionnes dans `ReferencesModule`).
 - **`features/home/home-module.js`** : landing auth (full screen), formulaire email allowlist, appels `POST /api/auth/login`, pilotage badge auth + bootstrap App après succès.

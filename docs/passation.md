@@ -7,7 +7,7 @@
 
 ## Backend & QA
 - 2025-09-28 : `tests/test_vector_store_reset.ps1 -AutoBackend` relanc� OK (backend auto, backup + upload valid�s). Log associ� : `docs/assets/memoire/vector-store-reset-20250928-153333.log`.
-- Backend verifie via `pwsh -File scripts/run-backend.ps1` (logs OK, WS et bannieres auth observes).
+- Backend verifie via `pwsh -File scripts/run-backend.ps1` (logs OK, WS et traces auth `[AuthTrace]` observées).
 - Utiliser `python scripts/seed_admin.py --email <admin> --password <motdepasse>` pour initialiser ou mettre a jour le mot de passe admin en local.
 - `tests/run_all.ps1` : dernier passage indique OK (voir session precedente, aucun echec signale).
 - `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest124 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1"` : OK (27/09) â flux `ws:chat_stream_end` (OpenAI gpt-4o-mini) + upload document_id=57 sans 5xx. Logs `#<-` â `docs/assets/memoire/smoke-ws-rag.log`.
@@ -49,7 +49,7 @@
 
 ## Points livrees
 ## Points livrees
-- Capture QA de la banniere auth documentee dans `docs/ui/auth-required-banner.md` avec asset `docs/assets/ui/auth-banner-console.svg`.
+- Capture QA historique (`docs/ui/auth-required-banner.md`) conservée pour référence (`docs/assets/ui/auth-banner-console.svg`).
 - Test unitaire ajoute pour verrouiller `ensureCurrentThread()` -> `EVENTS.AUTH_REQUIRED` et garantir le payload QA.
 
 ## Suivi
@@ -97,7 +97,8 @@
 - Backend local lancÃ© via `pwsh -File scripts/run-backend.ps1 -ListenHost 127.0.0.1` (via Start-Process) ; migrations appliquÃ©es, `src/backend/data/db/emergence_v7.db` rÃ©gÃ©nÃ©rÃ©e.
 - Stockage remis Ã  plat pour la QA : allowlist vÃ©rifiÃ©e puis enrichie via `/api/auth/admin/allowlist` (dev bypass) avec `gonzalefernando@gmail.com` afin de tester le formulaire.
 - Formulaire email (API) : `POST /api/auth/login` retourne 200 + token pour l'email allowlist (session active dans `auth_sessions`).
-- BanniÃ¨re "Connexion requise" : `npm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js` passe aprÃ¨s avoir neutralisÃ© l'init DOM dans `components/modals.js`; capture dÃ©posÃ©e (`docs/assets/ui/auth-banner-20250925.png`) pour la prochaine passe UI.
+- Log `[AuthTrace]` : `npm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js` passe après avoir neutralisé l'init DOM dans `components/modals.js`; conserver les captures historiques (`docs/assets/ui/auth-banner-20250925.png`).
+pm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js passe après avoir neutralisé l'init DOM dans components/modals.js; conserver les captures historiques (`docs/assets/ui/auth-banner-20250925.png`).
 
 ### QA - Roles & navigation
 1. Se connecter avec un compte admin : confirmer la presence des modules `Memoire` et `Admin` dans la navigation, puis ouvrir un chat pour generer un evenement `ws:model_info` (noter `provider`/`model`).
