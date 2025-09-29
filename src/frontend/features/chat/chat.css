@@ -1253,7 +1253,7 @@
 @media (max-width: 640px){
   :root{
     --chat-bubble-width: 640px;
-    --input-height: 60px;
+    --input-height: 36px;
   }
   .chat-header{
     padding:10px;
@@ -1324,20 +1324,25 @@
     font-size:.58rem;
   }
   .messages{
-    padding:12px 12px 140px 12px;
+    padding:12px 12px 110px 12px;
+  }
+  .chat-footer{
+    padding:8px 12px 10px;
   }
   .chat-form{
     max-width:100%;
   }
   .chat-composer{
     flex-direction:row;
-    align-items:center;
-    gap:10px;
+    align-items:flex-start;
+    gap:8px;
     padding:0;
   }
   .chat-input-shell{
-    padding:6px 8px;
+    position:relative;
+    padding:4px 40px 6px 8px;
     gap:6px;
+    min-height:var(--input-height);
   }
   .chat-rag-toggle__button{
     padding:5px 8px;
@@ -1363,10 +1368,12 @@
   }
   .chat-input{
     flex-basis:100%;
-    min-height:32px;
+    min-height:24px;
+    padding-right:38px;
   }
   .chat-doc-chips{
     gap:4px;
+    margin-bottom:2px;
   }
   .chat-doc-chips__title{
     font-size:.62rem;
@@ -1384,13 +1391,16 @@
     height:10px;
   }
   .chat-send-button{
-    width:24px;
-    height:24px;
-    border-radius:8px;
+    position:absolute;
+    bottom:6px;
+    right:8px;
+    width:20px;
+    height:14px;
+    border-radius:5px;
   }
   .chat-send-button svg{
-    width:10px;
-    height:10px;
+    width:8px;
+    height:8px;
   }
 }
 
