@@ -743,6 +743,7 @@ class ChatService:
         cost_info_container: Dict[str, Any] = {}
         model_used = ""
         rag_sources: List[Dict[str, Any]] = []
+        uid = self._try_get_user_id(session_id)
 
         origin = (origin_agent_id or "").strip().lower()
         is_broadcast = origin == "global"
@@ -860,17 +861,24 @@ class ChatService:
                         {"type": "ws:chat_stream_end", "payload": payload}, session_id
                     )
                     if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
-                        analyzer = getattr(self.session_manager, "memory_analyzer", None)
-                        if analyzer is not None:
-                            try:
+                        try:
+                            db_manager = getattr(self.session_manager, "db_manager", None)
+                            analyzer = getattr(self.session_manager, "memory_analyzer", None)
+                            if db_manager and analyzer:
                                 gardener = MemoryGardener(
-                                    db_manager=self.session_manager.db_manager,
+                                    db_manager=db_manager,
                                     vector_service=self.vector_service,
                                     memory_analyzer=analyzer,
                                 )
-                                asyncio.create_task(gardener.tend_the_garden(consolidation_limit=3, session_id=session_id))
-                            except Exception:
-                                pass
+                                asyncio.create_task(
+                                    gardener.tend_the_garden(
+                                        consolidation_limit=3,
+                                        session_id=session_id,
+                                        user_id=mot_uid,
+                                    )
+                                )
+                        except Exception:
+                            pass
                     return
 
             # Mémoire (STM/LTM)
@@ -1176,6 +1184,8 @@ class ChatService:
                 output_tokens=cost_info_container.get("output_tokens", 0),
                 total_cost=cost_info_container.get("total_cost", 0.0),
                 feature="chat",
+                session_id=session_id,
+                user_id=uid,
             )
             payload = final_agent_message.model_dump(mode="json")
             payload["agent_id"] = agent_id
@@ -1210,16 +1220,22 @@ class ChatService:
             )
 
             if os.getenv("EMERGENCE_AUTO_TEND", "1") != "0":
+                db_manager = getattr(self.session_manager, "db_manager", None)
                 analyzer = getattr(self.session_manager, "memory_analyzer", None)
-                if analyzer is not None:
+                if db_manager and analyzer:
                     try:
                         gardener = MemoryGardener(
-                            db_manager=self.session_manager.db_manager,
+                            db_manager=db_manager,
                             vector_service=self.vector_service,
                             memory_analyzer=analyzer,
                         )
                         asyncio.create_task(
-                            gardener.tend_the_garden(consolidation_limit=3, thread_id=thread_id, session_id=session_id)
+                            gardener.tend_the_garden(
+                                consolidation_limit=3,
+                                thread_id=thread_id,
+                                session_id=session_id,
+                                user_id=uid or self._try_get_user_id(session_id),
+                            )
                         )
                     except Exception:
                         pass

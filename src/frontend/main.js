@@ -129,7 +129,7 @@ function setupMobileShell(appInstance, eventBus) {
   const sidebar = document.getElementById('app-sidebar');
   const memoryOverlay = document.getElementById('memory-overlay');
   const memoryPanel = memoryOverlay?.querySelector('.memory-overlay__panel');
-  const menuToggle = document.getElementById('mobile-menu-toggle');
+  const menuToggle = document.getElementById('mobile-menu-toggle') || document.getElementById('mobile-nav-toggle');
   let brainToggle = document.getElementById('mobile-brain-toggle');
   const backdrop = document.getElementById('mobile-backdrop');
   if (brainToggle) {
@@ -256,6 +256,12 @@ function setupMobileShell(appInstance, eventBus) {
     if (event.target === memoryOverlay) {
       closeBrain();
     }
+  });
+
+  window.addEventListener('emergence:mobile-menu-state', () => {
+    if (persistentNav) return;
+    syncBackdrop();
+    updateAria();
   });
 
   window.addEventListener('keydown', (event) => {
@@ -799,6 +805,12 @@ class EmergenceClient {
       window.App = Object.assign(window.App || {}, { eventBus, state: stateManager });
     } catch {}
 
+    eventBus.on('auth:logout', () => {
+      try { stateManager.reset(); }
+      catch (e) { console.error('[Main] echec reset state apres logout', e); }
+    });
+
+    // Toasts
     eventBus.on('ui:toast', (p) => { if (p?.text) showToast(p); });
 
     this.homeRoot = typeof document !== 'undefined' ? document.getElementById('home-root') : null;
@@ -815,6 +827,20 @@ class EmergenceClient {
         catch (err) { console.warn('[main] Impossible de synchroniser le badge (connected)', err); }
       }
     };
+    const app = new App(eventBus, stateManager);
+    this.app = app;
+    eventBus.on(EVENTS.WS_CONNECTED, () => {
+      if (typeof app.ensureCurrentThread === 'function') {
+        try {
+          const maybe = app.ensureCurrentThread();
+          if (maybe && typeof maybe.catch === 'function') {
+            maybe.catch((e) => console.warn('[Main] ensureCurrentThread après WS_CONNECTED a échoué', e));
+          }
+        } catch (e) {
+          console.warn('[Main] ensureCurrentThread après WS_CONNECTED a échoué', e);
+        }
+      }
+    });
 
     try {
       const initialHasToken = stateManager.get?.('auth.hasToken');
@@ -1224,3 +1250,4 @@ class EmergenceClient {
   window[FLAG] = true;
   window.emergenceApp = new EmergenceClient();
 })();
+

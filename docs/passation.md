@@ -15,7 +15,7 @@
 - `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest124 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1"` : OK (27/09) â flux `ws:chat_stream_end` (OpenAI gpt-4o-mini) + upload document_id=57 sans 5xx. Logs `#<-` â `docs/assets/memoire/smoke-ws-rag.log`.
 - `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest-ws-send-20250927 -MsgType ws:chat_send -UserId "smoke_rag&dev_bypass=1"` : KO (27/09) â handshake acceptÃ© mais rÃ©ponse `ws:error` (`Type inconnu: ws:chat_send`). Logs `#<-` â `docs/assets/memoire/smoke-ws-rag-ws-chat_send.log`.
 - `scripts/smoke/smoke-ws-3msgs.ps1 -SessionId ragtest-3msgs-20250927 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1"` : OK (27/09) â 3 messages consÃ©cutifs, `ws:chat_stream_start` x3 puis `ws:chat_stream_end`; aucun HTTP 5xx cÃ´tÃ© documents/uploads (`backend.err.log` inchangÃ©). Logs `#<-` â `docs/assets/memoire/smoke-ws-3msgs.log`.
-- VÃ©rification UI nav rÃ´le (2025-09-30) : scÃ©nario admin â logout â membre (`fernando36@bluewin.ch`). AprÃ¨s reconnexion, la sidebar doit exclure `MÃ©moire` et `Admin` et le bandeau afficher `Membre (fernando36@bluewin.ch)`. Capture Ã  archiver : `docs/assets/passation/auth-role-reset.png`.
+- VÃ©rification UI nav rÃ´le (2025-09-30) : scÃ©nario admin â logout â membre (`fernando36@bluewin.ch`). AprÃ¨s reconnexion, la sidebar doit exclure `Admin` tout en conservant `Memoire`; le bandeau doit afficher `Membre (fernando36@bluewin.ch)`. Capture Ã  archiver : `docs/assets/passation/auth-role-reset.png`.
 - Module Admin â Sessions (2025-09-30) : depuis l'onglet Admin, vÃ©rifier que le bloc Sessions liste les connexions actives (session_id, email, IP, dates). RafraÃ®chir via le bouton dÃ©diÃ© et confirmer qu'un membre connectÃ© apparait avec le statut Actif.
 - `scripts/smoke/smoke-health.ps1 -BaseUrl https://emergence-app-486095406755.europe-west1.run.app` : OK (27/09 18:09 UTC) -> 200 `{ "status": "ok" }` sur revision `emergence-app-00256-jxh`.
 - `scripts/smoke/smoke-memory-tend.ps1 -BaseUrl https://emergence-app-486095406755.europe-west1.run.app -UserId "smoke_rag&dev_bypass=1" -SessionId cloud-smoke-memory-20250927` : OK (27/09) -> `status=success`, `message="Aucune session a traiter."`.
@@ -72,7 +72,7 @@
 
 ### Conversations - flux suppression & memoire (2025-09-28)
 - Inline confirm: `ThreadsPanel` renders the `Supprimer ?` prompt with `Confirmer`/`Annuler` before hitting the destructive endpoint.
-- Nav admin uniquement: l'entrée `Conversations` est retirée de la sidebar; vérifier que seuls `Memoire` et `Admin` apparaissent pour le rôle admin, aucun onglet supplémentaire côté membres.
+- Nav admin uniquement: l'entrée `Conversations` est retirée de la sidebar; vérifier que le rôle admin voit `Memoire` + `Admin` et que les membres conservent `Memoire` sans onglet `Admin`.
 - `threads-service.deleteThread()` uses `DELETE /api/threads/{id}` with `X-Session-Id`; backend cascades to `messages` + `thread_docs` scoped to the same session.
 - After `204` the module emits `EVENTS.THREADS_DELETED`, re-selects the next available thread, and boots a fresh chat when the list becomes empty.
 - Memoire: STM/LTM entries remain until `POST /api/memory/clear`; rappeler aux testeurs qu'une purge est necessaire pour un effacement complet.

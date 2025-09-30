@@ -61,7 +61,7 @@
   - Stocke `state.memory.lastRunAt`, `state.memory.status`, `state.memory.items` pour informer l’utilisateur.
   - `StateManager.resetForSession()` remet a zero la memoire locale lors d'un changement de session (purge threads/documents/memory caches).
 
-> Note : l’onglet « Mémoire » est désormais réservé aux comptes admin et embarque le panneau Conversations (ThreadsPanel) pour piloter les threads et leurs consolidations depuis un même écran.
+> Note: l'onglet "Memoire" est accessible aux comptes membres authentifies; le panneau Conversations (ThreadsPanel) reste disponible pour piloter threads et consolidations depuis un meme ecran.
 
 ## 3. Flux opérationnels
 1. **Analyse globale**

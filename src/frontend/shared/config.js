@@ -23,6 +23,7 @@ export const API_ENDPOINTS = {
   AUTH_SESSION: '/api/auth/session',
   AUTH_ADMIN_ALLOWLIST: '/api/auth/admin/allowlist',
   AUTH_ADMIN_SESSIONS: '/api/auth/admin/sessions',
+  DASHBOARD_SUMMARY: '/api/dashboard/costs/summary',
 };
 
 export const WS_CONFIG = {

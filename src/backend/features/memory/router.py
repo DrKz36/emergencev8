@@ -2,6 +2,7 @@
 # V2.5 â€” + support body {thread_id} pour tend-garden (consolidation ciblÃ©e dâ€™un thread)
 import os
 import logging
+import inspect
 from typing import Dict, Any, Optional, Tuple, List
 
 from fastapi import APIRouter, HTTPException, Request, Body, Query
@@ -17,6 +18,17 @@ _KNOWLEDGE_COLLECTION_ENV = "EMERGENCE_KNOWLEDGE_COLLECTION"
 _DEFAULT_KNOWLEDGE_NAME = "emergence_knowledge"
 
 
+
+
+def _supports_kwarg(func, name: str) -> bool:
+    try:
+        signature = inspect.signature(func)
+    except (ValueError, TypeError):
+        return False
+    for param in signature.parameters.values():
+        if param.name == name and param.kind in (inspect.Parameter.KEYWORD_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
+            return True
+    return False
 def _get_container(request: Request):
     container = getattr(request.app.state, "service_container", None)
     if container is None:
@@ -337,7 +349,7 @@ async def tend_garden_endpoint(
     logger.info("RequÃªte reÃ§ue sur /api/memory/tend-garden.")
 
     try:
-        await shared_dependencies.get_user_id(request)
+        user_id = await shared_dependencies.get_user_id(request)
         gardener = _get_gardener_from_request(request)
         thread_id = None
         try:
@@ -381,9 +393,14 @@ async def tend_garden_endpoint(
             except Exception as exc:  # pragma: no cover - diagnostic path
                 logger.debug("[memory] unable to infer session from thread %s: %s", thread_id, exc)
 
-        report = await gardener.tend_the_garden(
-            thread_id=thread_id, session_id=resolved_session_id, agent_id=agent_id
-        )
+        call_kwargs = {
+            'thread_id': thread_id,
+            'session_id': resolved_session_id,
+            'agent_id': agent_id,
+        }
+        if _supports_kwarg(gardener.tend_the_garden, 'user_id'):
+            call_kwargs['user_id'] = user_id
+        report = await gardener.tend_the_garden(**call_kwargs)
         if report.get("status") == "error":
             raise HTTPException(
                 status_code=500, detail=report.get("message", "Erreur interne")
@@ -405,7 +422,7 @@ async def tend_garden_endpoint(
 async def tend_garden_get(
     request: Request, limit: Optional[int] = Query(default=None, ge=1, le=50)
 ) -> Dict[str, Any]:
-    await shared_dependencies.get_user_id(request)
+    user_id = await shared_dependencies.get_user_id(request)
     use_fallback = False
     try:
         container = _get_container(request)
@@ -417,7 +434,10 @@ async def tend_garden_get(
 
     if use_fallback:
         gardener = _get_gardener_from_request(request)
-        report = await gardener.tend_the_garden()
+        call_kwargs = {}
+        if _supports_kwarg(gardener.tend_the_garden, 'user_id'):
+            call_kwargs['user_id'] = user_id
+        report = await gardener.tend_the_garden(**call_kwargs)
         return {
             "status": report.get("status", "success"),
             "summaries": [],
@@ -430,7 +450,7 @@ async def tend_garden_get(
     db = container.db_manager()
 
     try:
-        rows = await queries.get_all_sessions_overview(db)
+        rows = await queries.get_all_sessions_overview(db, user_id=user_id)
     except Exception as exc:
         logger.error("[memory.tend_garden] Impossible de récupérer l'historique: %s", exc, exc_info=True)
         rows = []

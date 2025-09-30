@@ -1,7 +1,7 @@
 # src/backend/core/database/queries.py
 # V6.7 - Backcompat messages ultra-robuste + utilitaire get_thread_any
-#  - Schémas legacy pris en charge: id INTEGER, session_id NOT NULL (+FK), timestamp NOT NULL, éventuelle FK agent_id
-#  - Schéma cible V6: id TEXT (UUID), created_at TEXT, pas de session_id/timestamp
+#  - SchÃ©mas legacy pris en charge: id INTEGER, session_id NOT NULL (+FK), timestamp NOT NULL, Ã©ventuelle FK agent_id
+#  - SchÃ©ma cible V6: id TEXT (UUID), created_at TEXT, pas de session_id/timestamp
 import logging
 import json
 import uuid
@@ -14,7 +14,7 @@ from .manager import DatabaseManager
 logger = logging.getLogger(__name__)
 
 
-# ------------------- Introspection schéma / FK ------------------- #
+# ------------------- Introspection schÃ©ma / FK ------------------- #
 async def _pragma_table_info(db: DatabaseManager, table: str) -> List[aiosqlite.Row]:
     try:
         return await db.fetch_all(f"PRAGMA table_info({table})")
@@ -37,7 +37,7 @@ async def _messages_id_is_integer(db: DatabaseManager) -> bool:
     for r in rows or []:
         if r["name"] == "id":
             return "INT" in (r["type"] or "").upper()
-    return False  # défaut: V6 (TEXT)
+    return False  # dÃ©faut: V6 (TEXT)
 
 
 async def _messages_col_notnull(db: DatabaseManager, col: str) -> bool:
@@ -174,7 +174,7 @@ async def _bootstrap_row_for_fk_table(
         f"INSERT OR IGNORE INTO {table} ({cols_clause}) VALUES ({placeholders})",
         tuple(insert_vals),
     )
-    logger.info(f"[DDL] Bootstrap '{table}'({pk_col}='{pk_value}') assuré.")
+    logger.info(f"[DDL] Bootstrap '{table}'({pk_col}='{pk_value}') assurÃ©.")
 
 
 async def _ensure_legacy_session_fk_row(
@@ -203,24 +203,24 @@ async def _maybe_neutralize_agent_id(
     if exists:
         return agent_id
     if not await _messages_col_notnull(db, "agent_id"):
-        logger.info(f"[FK] agent_id='{agent_id}' non référencé → neutralisé (NULL).")
+        logger.info(f"[FK] agent_id='{agent_id}' non rÃ©fÃ©rencÃ© â†’ neutralisÃ© (NULL).")
         return None
     try:
         await _bootstrap_row_for_fk_table(
             db, table=tgt_table, pk_col=tgt_col, pk_value=agent_id, thread_id=""
         )
         logger.info(
-            f"[FK] agent '{agent_id}' créé à la volée dans {tgt_table}.{tgt_col}."
+            f"[FK] agent '{agent_id}' crÃ©Ã© Ã  la volÃ©e dans {tgt_table}.{tgt_col}."
         )
         return agent_id
     except Exception as e:
         logger.warning(
-            f"[FK] Impossible de créer {tgt_table}({tgt_col})='{agent_id}': {e}"
+            f"[FK] Impossible de crÃ©er {tgt_table}({tgt_col})='{agent_id}': {e}"
         )
         return agent_id
 
 
-# ------------------- Coûts (existant) ------------------- #
+# ------------------- CoÃ»ts (existant) ------------------- #
 async def add_cost_log(
     db: DatabaseManager,
     timestamp: datetime,
@@ -230,11 +230,19 @@ async def add_cost_log(
     output_tokens: int,
     total_cost: float,
     feature: str,
+    *,
+    session_id: Optional[str] = None,
+    user_id: Optional[str] = None,
 ):
     await db.execute(
-        "INSERT INTO costs (timestamp, agent, model, input_tokens, output_tokens, total_cost, feature) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        """
+        INSERT INTO costs (timestamp, session_id, user_id, agent, model, input_tokens, output_tokens, total_cost, feature)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
         (
             timestamp.isoformat(),
+            session_id,
+            user_id,
             agent,
             model,
             input_tokens,
@@ -245,17 +253,40 @@ async def add_cost_log(
     )
 
 
-async def get_costs_summary(db: DatabaseManager) -> Dict[str, float]:
-    row = await db.fetch_one(
-        """
+def _build_costs_where_clause(
+    user_id: Optional[str], session_id: Optional[str]
+) -> tuple[str, tuple[Any, ...]]:
+    clauses: list[str] = []
+    params: list[Any] = []
+    normalized_user = _normalize_scope_identifier(user_id)
+    normalized_session = _normalize_scope_identifier(session_id)
+    if normalized_user:
+        clauses.append("user_id = ?")
+        params.append(normalized_user)
+    if normalized_session:
+        clauses.append("session_id = ?")
+        params.append(normalized_session)
+    if not clauses:
+        return "", tuple()
+    return " WHERE " + " AND ".join(clauses), tuple(params)
+
+
+async def get_costs_summary(
+    db: DatabaseManager,
+    *,
+    user_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> Dict[str, float]:
+    where_clause, params = _build_costs_where_clause(user_id, session_id)
+    query = f"""
         SELECT
             SUM(total_cost) AS total_cost,
             SUM(CASE WHEN date(timestamp) = date('now','localtime') THEN total_cost ELSE 0 END) AS today_cost,
             SUM(CASE WHEN strftime('%Y-%W', timestamp) = strftime('%Y-%W','now','localtime') THEN total_cost ELSE 0 END) AS week_cost,
             SUM(CASE WHEN strftime('%Y-%m',  timestamp) = strftime('%Y-%m','now','localtime') THEN total_cost ELSE 0 END) AS month_cost
-        FROM costs
-        """
-    )
+        FROM costs{where_clause}
+    """
+    row = await db.fetch_one(query, params)
     if row:
         return {
             "total": row["total_cost"] or 0.0,
@@ -266,6 +297,7 @@ async def get_costs_summary(db: DatabaseManager) -> Dict[str, float]:
     return {"total": 0.0, "today": 0.0, "this_week": 0.0, "this_month": 0.0}
 
 
+# ------------------- Documents (existant) ------------------- #
 # ------------------- Documents (existant) ------------------- #
 async def insert_document(
     db: DatabaseManager,
@@ -405,15 +437,31 @@ async def get_session_by_id(
     return await db.fetch_one("SELECT * FROM sessions WHERE id = ?", (session_id,))
 
 
-async def get_all_sessions_overview(db: DatabaseManager) -> List[Dict[str, Any]]:
-    rows = await db.fetch_all(
-        """
-        SELECT id, created_at, updated_at, summary,
-               json_array_length(extracted_concepts) as concept_count,
-               json_array_length(extracted_entities) as entity_count
-        FROM sessions ORDER BY updated_at DESC
-        """
-    )
+async def get_all_sessions_overview(
+    db: DatabaseManager,
+    user_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    if user_id:
+        rows = await db.fetch_all(
+            """
+            SELECT id, created_at, updated_at, summary,
+                   json_array_length(extracted_concepts) as concept_count,
+                   json_array_length(extracted_entities) as entity_count
+            FROM sessions
+            WHERE user_id = ?
+            ORDER BY updated_at DESC
+            """,
+            (user_id,),
+        )
+    else:
+        rows = await db.fetch_all(
+            """
+            SELECT id, created_at, updated_at, summary,
+                   json_array_length(extracted_concepts) as concept_count,
+                   json_array_length(extracted_entities) as entity_count
+            FROM sessions ORDER BY updated_at DESC
+            """
+        )
     return [dict(r) for r in rows]
 
 
@@ -438,7 +486,7 @@ async def update_session_analysis_data(
             session_id,
         ),
     )
-    logger.info(f"Données d'analyse pour la session {session_id} mises à jour en BDD.")
+    logger.info(f"DonnÃ©es d'analyse pour la session {session_id} mises Ã  jour en BDD.")
 
 
 # ------------------- Threads / Messages / Thread Docs ------------------- #

@@ -48,6 +48,9 @@ class CostTracker:
         output_tokens: int,
         total_cost: float,
         feature: str,
+        *,
+        session_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ):
         """Enregistre le coût d'une opération via le module requêtes."""
         async with self._lock:
@@ -61,6 +64,8 @@ class CostTracker:
                     output_tokens=output_tokens,
                     total_cost=total_cost,
                     feature=feature,
+                    session_id=session_id,
+                    user_id=user_id,
                 )
                 logger.info(
                     f"Coût de {total_cost:.6f} pour '{agent}' ('{model}') enregistré."
@@ -71,9 +76,14 @@ class CostTracker:
                     exc_info=True,
                 )
 
-    async def get_spending_summary(self) -> Dict[str, float]:
+    async def get_spending_summary(self, *, user_id: Optional[str] = None,
+                                   session_id: Optional[str] = None) -> Dict[str, float]:
         """Résumé brut depuis la BDD (clés: total/today/this_week/this_month)."""
-        return await db_queries.get_costs_summary(db=self.db_manager)
+        return await db_queries.get_costs_summary(
+            db=self.db_manager,
+            user_id=user_id,
+            session_id=session_id,
+        )
 
     async def check_alerts(self) -> List[Tuple[str, float, float]]:
         """

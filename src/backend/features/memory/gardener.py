@@ -508,6 +508,7 @@ class MemoryGardener:
         thread_id: Optional[str] = None,
         session_id: Optional[str] = None,
         agent_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         normalized_agent = self._normalize_agent_id(agent_id)
 
@@ -516,6 +517,7 @@ class MemoryGardener:
                 thread_id,
                 session_id=session_id,
                 agent_id=normalized_agent,
+                user_id=user_id,
             )
 
         logger.info(
@@ -532,8 +534,21 @@ class MemoryGardener:
                     "new_concepts": 0,
                 }
             sessions = [session_row]
+            owner_uid = session_row.get("user_id") or None
+            if user_id and owner_uid and owner_uid != user_id:
+                logger.warning(
+                    f"Session {session_id} ignorée pour l'utilisateur {user_id} (propriétaire: {owner_uid})."
+                )
+                return {
+                    "status": "success",
+                    "message": "Session non autorisée pour cet utilisateur.",
+                    "consolidated_sessions": 0,
+                    "new_concepts": 0,
+                }
         else:
-            sessions = await self._fetch_recent_sessions(limit=consolidation_limit)
+            sessions = await self._fetch_recent_sessions(
+                limit=consolidation_limit, user_id=user_id
+            )
             if not sessions:
                 logger.info("Aucune session récente à traiter. Le jardin est en ordre.")
                 await self._decay_knowledge()
@@ -632,6 +647,7 @@ class MemoryGardener:
         thread_id: str,
         session_id: Optional[str] = None,
         agent_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         tid = (thread_id or "").strip()
         if not tid:
@@ -671,6 +687,17 @@ class MemoryGardener:
                 }
 
             uid = thr.get("user_id")
+            if user_id and uid and uid != user_id:
+                logger.warning(
+                    f"Thread {tid} ignoré pour l'utilisateur {user_id} (propriétaire: {uid})."
+                )
+                return {
+                    "status": "success",
+                    "message": "Thread non autorisé pour cet utilisateur.",
+                    "consolidated_sessions": 0,
+                    "new_concepts": 0,
+                }
+
             msgs = await queries.get_messages(
                 self.db,
                 tid,
@@ -776,14 +803,18 @@ class MemoryGardener:
         )
         return dict(row) if row else None
 
-    async def _fetch_recent_sessions(self, limit: int) -> List[Dict[str, Any]]:
-        query = """
+    async def _fetch_recent_sessions(self, limit: int, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        base_query = """
             SELECT id, user_id, created_at, updated_at, session_data, summary, extracted_concepts, extracted_entities
             FROM sessions
-            ORDER BY updated_at DESC
-            LIMIT ?
         """
-        rows = await self.db.fetch_all(query, (int(limit),))
+        params: List[Any] = []
+        if user_id:
+            base_query += " WHERE user_id = ?"
+            params.append(user_id)
+        base_query += " ORDER BY updated_at DESC LIMIT ?"
+        params.append(int(limit))
+        rows = await self.db.fetch_all(base_query, tuple(params))
         return [dict(r) for r in (rows or [])]
 
     def _parse_concepts(self, raw: Any) -> List[str]:

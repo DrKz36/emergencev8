@@ -327,10 +327,8 @@ export class StateManager {
     this.notify('user');
     this.notify('user.id');
     this.notify('user.email');
-    if (shouldKeepThreads) {
-      this.notify('threads');
-      this.notify('chat.threadId');
-    }
+    this.notify('threads');
+    this.notify('chat.threadId');
     this.persist();
   }
 
@@ -422,6 +420,19 @@ export class StateManager {
       console.error('[StateManager] Error loading state, returning empty object.', error);
       return {};
     }
+  }
+
+  reset() {
+    this.state = this.getInitialState();
+    this.persist();
+    this.subscribers.forEach((callbacks, key) => {
+      try {
+        const value = this.get(key);
+        callbacks.forEach(cb => cb(value));
+      } catch (error) {
+        console.warn('[StateManager] Error notifying subscriber during reset:', error);
+      }
+    });
   }
 
   _deepMerge(target, source) {

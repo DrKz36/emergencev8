@@ -16,6 +16,8 @@ TABLE_DEFINITIONS = [
     CREATE TABLE IF NOT EXISTS costs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp TEXT NOT NULL,
+        session_id TEXT,
+        user_id TEXT,
         agent TEXT NOT NULL,
         model TEXT NOT NULL,
         input_tokens INTEGER,
@@ -425,6 +427,17 @@ async def _ensure_session_isolation_columns(db: DatabaseManager):
     await _log_index_dump(db, INDEX_DEFINITIONS.keys())
 # ------------------------------------------------------------------------ #
 
+async def _ensure_costs_enriched_columns(db: DatabaseManager):
+    """Garantit la présence des colonnes session_id / user_id pour la table des coûts."""
+    try:
+        await _add_column_if_missing(db, "costs", "session_id", "TEXT")
+        await _add_column_if_missing(db, "costs", "user_id", "TEXT")
+    except Exception as e:
+        logger.error(f"[DDL] Impossible d'ajouter les colonnes session_id/user_id sur costs: {e}", exc_info=True)
+        raise
+
+# ------------------------------------------------------------------------ #
+
 async def create_tables(db_manager: DatabaseManager):
     logger.info("Vérification et création des tables de la base de données...")
     errors = []
@@ -457,6 +470,12 @@ async def create_tables(db_manager: DatabaseManager):
         await _ensure_session_isolation_columns(db_manager)
     except Exception as e:
         logger.error(f"[DDL] echec backcompat 'session isolation': {e}", exc_info=True)
+        raise
+
+    try:
+        await _ensure_costs_enriched_columns(db_manager)
+    except Exception as e:
+        logger.error(f"[DDL] echec backcompat 'costs': {e}", exc_info=True)
         raise
 
     logger.info("Toutes les tables/index requis sont en place (avec backcompat au besoin).")

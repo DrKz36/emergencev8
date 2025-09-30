@@ -32,6 +32,10 @@ const AUTH_SESSION = (API_ENDPOINTS && API_ENDPOINTS.AUTH_SESSION) ? API_ENDPOIN
 const AUTH_DEV_LOGIN = '/api/auth/dev/login';
 const AUTH_ADMIN_ALLOWLIST = (API_ENDPOINTS && API_ENDPOINTS.AUTH_ADMIN_ALLOWLIST) ? API_ENDPOINTS.AUTH_ADMIN_ALLOWLIST : '/api/auth/admin/allowlist';
 const AUTH_ADMIN_SESSIONS = (API_ENDPOINTS && API_ENDPOINTS.AUTH_ADMIN_SESSIONS) ? API_ENDPOINTS.AUTH_ADMIN_SESSIONS : '/api/auth/admin/sessions';
+const DASHBOARD_SUMMARY =
+  (API_ENDPOINTS && API_ENDPOINTS.DASHBOARD_SUMMARY)
+    ? API_ENDPOINTS.DASHBOARD_SUMMARY
+    : '/api/dashboard/costs/summary';
 
 const DEFAULT_TIMEOUT_MS = 15000;
 
@@ -412,6 +416,11 @@ export const api = {
       console.error(`[API Client] Erreur sur l'endpoint ${url}:`, err);
       throw err;
     }
+  },
+
+  /* ---------------------- DASHBOARD ---------------------- */
+  async getDashboardSummary() {
+    return fetchApi(DASHBOARD_SUMMARY);
   },
 
   uploadDocument: (file) => {

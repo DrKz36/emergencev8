@@ -4,6 +4,7 @@
  * - Applique le pattern init/mount.
  */
 import { DashboardUI } from './dashboard-ui.js';
+import { api } from '../../shared/api-client.js';
 
 export class DashboardModule {
     constructor(eventBus, state) {
@@ -48,16 +49,12 @@ export class DashboardModule {
         if (!this.container) return;
         this.ui.showLoading(this.container, true);
         try {
-            const response = await fetch('/api/dashboard/costs/summary');
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ detail: "Réponse invalide du serveur." }));
-                throw new Error(`Erreur HTTP: ${response.status} - ${errorData.detail}`);
-            }
-            const data = await response.json();
+            const data = await api.getDashboardSummary();
             this.ui.renderDashboardData(this.container, data);
         } catch (error) {
             console.error("Erreur lors de la récupération des données du cockpit:", error);
-            this.ui.showError(this.container, `Impossible de charger les données. (${error.message})`);
+            const message = error?.message || 'Erreur inconnue.';
+            this.ui.showError(this.container, `Impossible de charger les données. (${message})`);
         } finally {
             this.ui.showLoading(this.container, false);
         }

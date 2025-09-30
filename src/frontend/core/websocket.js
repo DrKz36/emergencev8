@@ -2,7 +2,7 @@
 // WebSocketClient V22.3 — queued send + flush onopen (version complète)
 
 import { EVENTS } from '../shared/constants.js';
-import { getIdToken, clearAuth } from './auth.js';
+import { ensureAuth, getIdToken, clearAuth } from './auth.js';
 
 const SESSION_STATE_PRESERVE = {
   preserveAuth: { role: true, email: true, hasToken: true },
@@ -55,6 +55,11 @@ export class WebSocketClient {
     return trimmed;
   }
 
+  _resetSessionId() {
+    try { this.state?.set?.('websocket.sessionId', null); }
+    catch (e) { console.warn('[WebSocket] reset session id failed', e); }
+  }
+
   _bindEventBus() {
     this.eventBus.on?.('ui:chat:send', (payload = {}) => {
       try {
@@ -89,21 +94,25 @@ export class WebSocketClient {
 
     this.eventBus.on?.(EVENTS.WS_SEND || 'ws:send', (frame) => this.send(frame));
 
-    this.eventBus.on?.('auth:login', () => {
+    this.eventBus.on?.('auth:login', async (opts) => {
+      const clientId = (opts && typeof opts === 'object') ? (opts.client_id ?? opts.clientId ?? null) : null;
+      this._resetSessionId();
+      await ensureAuth({ interactive: true, clientId });
       this.connect();
     });
     this.eventBus.on?.('auth:logout', () => {
       try { clearAuth(); } catch {}
       try { if (typeof this.state?.resetForSession === 'function') this.state.resetForSession(null); } catch {}
+      this._resetSessionId();
       this.close(4001, 'logout');
     });
 
-    this.eventBus.on?.('auth:missing', () => {
+    this.eventBus.on?.('auth:missing', async () => {
       const now = Date.now();
       if (now - this._authPromptedAt > 4000) {
         this._authPromptedAt = now;
-        const token = getIdToken();
-        if (token) this.connect();
+        await ensureAuth({ interactive: true });
+        this.connect();
       }
     });
   }
@@ -113,6 +122,7 @@ export class WebSocketClient {
       window.addEventListener('storage', (ev) => {
         if ((ev.key === 'emergence.id_token' || ev.key === 'id_token') && ev.newValue && ev.newValue.trim()) {
           console.log('[WebSocket] Token détecté via storage — reconnexion…');
+          this._resetSessionId();
           this.connect();
         }
       });
