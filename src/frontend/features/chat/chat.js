@@ -431,11 +431,24 @@ export default class ChatModule {
 
   handleSessionEstablished(payload = {}) {
     try {
-      const sessionId = payload?.session_id || null;
-      const threadId = payload?.thread_id || sessionId || this.getCurrentThreadId();
+      const rawSessionId = typeof payload?.session_id === 'string' ? payload.session_id.trim() : '';
+      const sessionId = rawSessionId || null;
+      const sanitizeThread = (candidate) => {
+        if (!candidate || typeof candidate !== 'string') return null;
+        const trimmed = candidate.trim();
+        if (!trimmed) return null;
+        if (sessionId && trimmed === sessionId) return null;
+        return trimmed;
+      };
+      const threadFromPayload = sanitizeThread(payload?.thread_id);
+      const threadFromState = sanitizeThread(this.getCurrentThreadId());
+      const threadFromInstance = sanitizeThread(this.threadId);
+
       if (sessionId) {
         try { this.state.set('websocket.sessionId', sessionId); } catch {}
       }
+
+      const threadId = threadFromPayload || threadFromState || threadFromInstance;
       if (threadId) {
         this.threadId = threadId;
         this.loadedThreadId = threadId;
@@ -450,10 +463,30 @@ export default class ChatModule {
 
   handleSessionRestored(payload = {}) {
     try {
-      const sessionId = payload?.session_id || null;
-      const threadId = payload?.thread_id || sessionId || this.getCurrentThreadId();
+      const rawSessionId = typeof payload?.session_id === 'string' ? payload.session_id.trim() : '';
+      const sessionId = rawSessionId || null;
+      const sanitizeThread = (candidate) => {
+        if (!candidate || typeof candidate !== 'string') return null;
+        const trimmed = candidate.trim();
+        if (!trimmed) return null;
+        if (sessionId && trimmed === sessionId) return null;
+        return trimmed;
+      };
+      const threadFromPayload = sanitizeThread(payload?.thread_id);
+      const threadFromState = sanitizeThread(this.getCurrentThreadId());
+      const threadFromInstance = sanitizeThread(this.threadId);
+      const threadId = threadFromPayload || threadFromState || threadFromInstance;
       const messages = Array.isArray(payload?.messages) ? payload.messages : [];
-      if (messages.length) {
+
+      if (threadId) {
+        this.threadId = threadId;
+        this.loadedThreadId = threadId;
+        try { this.state.set('threads.currentId', threadId); } catch {}
+        try { this.state.set('chat.threadId', threadId); } catch {}
+        try { localStorage.setItem('emergence.threadId', threadId); } catch {}
+      }
+
+      if (messages.length && threadId) {
         this.hydrateFromThread({ id: threadId, messages, metadata: payload.metadata });
       } else if (threadId && payload?.metadata) {
         const threadKey = `threads.map.${threadId}`;
@@ -461,12 +494,14 @@ export default class ChatModule {
         const next = { ...existing, metadata: payload.metadata };
         this.state.set(threadKey, next);
       }
+
       if (payload?.metadata) {
         this._applyMemoryMetadata(sessionId || threadId || null, payload.metadata);
       }
       if (threadId) {
         this._updateThreadCacheFromBuckets(threadId, payload?.metadata ? { metadata: payload.metadata } : {});
       }
+
       if (messages.length) {
         this.showToast('Session restaurée.');
       } else if (payload?.metadata) {

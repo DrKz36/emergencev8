@@ -471,9 +471,12 @@ class SessionManager:
 
     async def _persist_message(self, session_id: str, payload: Dict[str, Any]):
         session_id = self.resolve_session_id(session_id)
-        thread_id = self._session_threads.get(session_id)
-        if not thread_id:
-            return
+        raw_thread_id = (
+            self._session_threads.get(session_id)
+            or payload.get("thread_id")
+            or (payload.get("meta") or {}).get("thread_id")
+        )
+        thread_id = str(raw_thread_id).strip() if raw_thread_id else ""
 
         role = str(payload.get("role") or Role.USER.value).lower()
         content = payload.get("content") or payload.get("message") or ""
@@ -509,12 +512,95 @@ class SessionManager:
         payload["meta"] = meta
         payload["session_id"] = session_id
 
+        def _sanitize_candidate(value: Optional[Any]) -> str:
+            if value is None:
+                return ""
+            try:
+                candidate = str(value).strip()
+            except Exception:
+                candidate = ""
+            return candidate
+
+        thread_id = _sanitize_candidate(thread_id)
+
+        user_scope = (
+            self._session_users.get(session_id)
+            or self._session_user_cache.get(session_id)
+            or getattr(self.active_sessions.get(session_id), 'user_id', None)
+        )
+
+        async def _resolve_latest_thread_id() -> Optional[str]:
+            try:
+                threads = await queries.get_threads(
+                    self.db_manager,
+                    session_id,
+                    user_id=user_scope,
+                    type_="chat",
+                    limit=1,
+                )
+            except Exception as fetch_err:
+                logger.warning(
+                    "Unable to fetch fallback thread for session %s: %s",
+                    session_id,
+                    fetch_err,
+                )
+                return None
+            for item in threads or []:
+                candidate = _sanitize_candidate(item.get("id"))
+                if candidate:
+                    return candidate
+            return None
+
+        if not thread_id:
+            fallback_thread_id = await _resolve_latest_thread_id()
+            if not fallback_thread_id:
+                logger.warning(
+                    "Skip message persistence: no thread available for session %s.",
+                    session_id,
+                )
+                return
+            thread_id = fallback_thread_id
+            self._session_threads[session_id] = thread_id
+
         try:
-            user_scope = (
-                self._session_users.get(session_id)
-                or self._session_user_cache.get(session_id)
-                or getattr(self.active_sessions.get(session_id), 'user_id', None)
+            thread_row = await queries.get_thread_any(
+                self.db_manager,
+                thread_id,
+                session_id,
+                user_id=user_scope,
             )
+        except Exception as thread_err:
+            logger.debug(
+                "get_thread_any failed for session=%s thread=%s: %s",
+                session_id,
+                thread_id,
+                thread_err,
+            )
+            thread_row = None
+
+        if not thread_row:
+            fallback_thread_id = await _resolve_latest_thread_id()
+            if fallback_thread_id:
+                if fallback_thread_id != thread_id:
+                    logger.warning(
+                        "Thread %s not found for session %s. Using fallback %s.",
+                        thread_id,
+                        session_id,
+                        fallback_thread_id,
+                    )
+                thread_id = fallback_thread_id
+                self._session_threads[session_id] = thread_id
+            else:
+                logger.warning(
+                    "Skip message persistence: unable to resolve thread for session %s.",
+                    session_id,
+                )
+                return
+
+        meta.setdefault("thread_id", thread_id)
+        payload["thread_id"] = thread_id
+
+        try:
             result = await queries.add_message(
                 self.db_manager,
                 thread_id,
@@ -537,7 +623,8 @@ class SessionManager:
                 "session_id": session_id,
             })
         except Exception as e:
-            logger.error(f"Persistance du message pour la session {session_id} a échoué: {e}", exc_info=True)
+            logger.error(f"Persistance du message pour la session {session_id} a echoue: {e}", exc_info=True)
+
     async def finalize_session(self, session_id: str):
         session_id = self.resolve_session_id(session_id)
         session = self.active_sessions.pop(session_id, None)
@@ -631,3 +718,4 @@ class SessionManager:
     def get_thread_id_for_session(self, session_id: str) -> Optional[str]:
         session_id = self.resolve_session_id(session_id)
         return self._session_threads.get(session_id)
+

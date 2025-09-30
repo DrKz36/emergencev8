@@ -231,7 +231,13 @@ export class StateManager {
   }
 
   resetForSession(newSessionId, options = {}) {
-    const { preserveAuth = {}, preserveUser = true } = options || {};
+    const {
+      preserveAuth = {},
+      preserveUser = true,
+      userId: nextUserId = null,
+      preserveThreads = false,
+    } = options || {};
+
     const {
       role: keepRole = false,
       email: keepEmail = false,
@@ -243,7 +249,18 @@ export class StateManager {
     if (!keepEmail) delete preservedAuth.email;
     if (!keepHasToken) delete preservedAuth.hasToken;
 
-    const preservedUser = preserveUser ? { ...(this.state?.user || {}) } : {};
+    const rawCurrentUserId = this.state?.user?.id;
+    const currentUserId = typeof rawCurrentUserId === 'string' ? rawCurrentUserId.trim() : (rawCurrentUserId == null ? null : String(rawCurrentUserId).trim());
+    const normalizedNextUserId = nextUserId === null || nextUserId === undefined
+      ? null
+      : (() => { const text = String(nextUserId).trim(); return text ? text : null; })();
+    const sameUser = Boolean(normalizedNextUserId && currentUserId && normalizedNextUserId === currentUserId);
+
+    const preservedUser = this._buildPreservedUser({
+      preserveUser,
+      normalizedNextUserId,
+      sameUser,
+    });
 
     const baseState = {
       session: { id: newSessionId || null, startedAt: Date.now() },
@@ -261,6 +278,44 @@ export class StateManager {
       sanitizedState.auth.hasToken = !!preservedAuth.hasToken;
     }
 
+    if (!normalizedNextUserId && !sameUser) {
+      if (sanitizedState.user && typeof sanitizedState.user === 'object') {
+        delete sanitizedState.user.id;
+        delete sanitizedState.user.email;
+        delete sanitizedState.user.name;
+      }
+    } else if (normalizedNextUserId) {
+      sanitizedState.user = { ...(sanitizedState.user || {}), id: normalizedNextUserId };
+    }
+
+    const shouldKeepThreads = (preserveThreads || sameUser) && this.state?.threads;
+    if (shouldKeepThreads) {
+      const preservedMap = sanitizeThreadsMap(this.state.threads.map);
+      const preservedOrder = sanitizeThreadsOrder(this.state.threads.order, preservedMap);
+      let nextCurrentId = sanitizeThreadId(this.state.threads.currentId);
+      if (!nextCurrentId || !preservedMap[nextCurrentId]) {
+        nextCurrentId = preservedOrder[0] || null;
+      }
+      sanitizedState.threads = {
+        ...sanitizedState.threads,
+        ...this.state.threads,
+        map: preservedMap,
+        order: preservedOrder,
+        currentId: nextCurrentId,
+        status: this.state.threads.status || 'idle',
+        error: this.state.threads.error || null,
+        lastFetchedAt: this.state.threads.lastFetchedAt || null,
+      };
+
+      if (this.state?.chat && typeof this.state.chat === 'object') {
+        sanitizedState.chat = { ...sanitizedState.chat, ...this.state.chat };
+        const preservedThreadId = sanitizeThreadId(sanitizedState.chat.threadId);
+        if (!preservedThreadId || !preservedMap[preservedThreadId]) {
+          sanitizedState.chat.threadId = nextCurrentId || null;
+        }
+      }
+    }
+
     this.state = sanitizedState;
 
     try { localStorage.removeItem('emergence.threadId'); } catch (_) {}
@@ -269,7 +324,37 @@ export class StateManager {
     this.notify('session');
     this.notify('auth.role');
     this.notify('auth.email');
+    this.notify('user');
+    this.notify('user.id');
+    this.notify('user.email');
+    if (shouldKeepThreads) {
+      this.notify('threads');
+      this.notify('chat.threadId');
+    }
     this.persist();
+  }
+
+  _buildPreservedUser({ preserveUser, normalizedNextUserId, sameUser }) {
+    if (!preserveUser) {
+      return normalizedNextUserId ? { id: normalizedNextUserId } : {};
+    }
+
+    const currentUser = this.state?.user && typeof this.state.user === 'object'
+      ? { ...this.state.user }
+      : {};
+
+    if (normalizedNextUserId) {
+      currentUser.id = normalizedNextUserId;
+      return currentUser;
+    }
+
+    if (!sameUser) {
+      delete currentUser.id;
+      delete currentUser.email;
+      delete currentUser.name;
+    }
+
+    return currentUser;
   }
 
   getInitialState() {

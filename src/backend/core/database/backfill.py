@@ -4,11 +4,29 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 from typing import Dict, Tuple
 
 from backend.core.database.manager import DatabaseManager
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_email(row) -> str | None:
+    if row is None:
+        return None
+    value = None
+    if isinstance(row, dict):
+        value = row.get("email")
+    else:
+        try:
+            value = row["email"]  # type: ignore[index]
+        except Exception:
+            try:
+                value = row[0]  # type: ignore[index]
+            except Exception:
+                value = None
+    return _normalize_email(value)
 
 
 def _normalize_email(value: object) -> str | None:
@@ -82,6 +100,94 @@ async def _apply_session_mapping(
     await db.executemany(query, updates)
 
 
+async def _resolve_placeholder_target_email(db: DatabaseManager) -> str | None:
+    env_candidates = [
+        os.getenv("AUTH_DEV_DEFAULT_EMAIL"),
+    ]
+    admin_env = os.getenv("AUTH_ADMIN_EMAILS")
+    if admin_env:
+        env_candidates.extend(admin_env.split(","))
+    for candidate_raw in env_candidates:
+        normalized = _normalize_email(candidate_raw)
+        if normalized:
+            return normalized
+    row = await db.fetch_one(
+        "SELECT email FROM auth_sessions WHERE email IS NOT NULL ORDER BY issued_at DESC LIMIT 1"
+    )
+    candidate = _extract_email(row)
+    if candidate:
+        return candidate
+    row = await db.fetch_one(
+        "SELECT email FROM auth_allowlist WHERE email IS NOT NULL ORDER BY created_at ASC LIMIT 1"
+    )
+    candidate = _extract_email(row)
+    if candidate:
+        return candidate
+    return None
+
+
+async def _resolve_legacy_placeholder_aliases(db: DatabaseManager) -> Dict[str, str]:
+    rows = await db.fetch_all(
+        "SELECT DISTINCT user_id FROM threads WHERE user_id IS NOT NULL AND TRIM(user_id) <> ''"
+    )
+    has_fg_placeholder = False
+    for row in rows or []:
+        value = row["user_id"]
+        text = str(value).strip() if value is not None else ""
+        if text and text.upper() == "FG":
+            has_fg_placeholder = True
+            break
+    if not has_fg_placeholder:
+        return {}
+    target_email = await _resolve_placeholder_target_email(db)
+    if not target_email:
+        logger.warning(
+            "User scope backfill: placeholder 'FG' detected but no email mapping was found."
+        )
+        return {}
+    target_user_id = _compute_user_id(target_email)
+    return {"FG": target_user_id}
+
+
+async def _apply_placeholder_aliases(
+    db: DatabaseManager, replacements: Dict[str, str]
+) -> int:
+    if not replacements:
+        return 0
+    tables = (
+        ("threads", "user_id"),
+        ("messages", "user_id"),
+        ("thread_docs", "user_id"),
+        ("documents", "user_id"),
+        ("document_chunks", "user_id"),
+    )
+    total_updated = 0
+    for placeholder, resolved in replacements.items():
+        if not placeholder or not resolved or placeholder == resolved:
+            continue
+        placeholder_updates = 0
+        for table, column in tables:
+            count_row = await db.fetch_one(
+                f"SELECT COUNT(*) AS count FROM {table} WHERE {column} = ?",
+                (placeholder,),
+            )
+            count = int(count_row[0]) if count_row else 0
+            if not count:
+                continue
+            await db.execute(
+                f"UPDATE {table} SET {column} = ? WHERE {column} = ?",
+                (resolved, placeholder),
+            )
+            placeholder_updates += count
+            total_updated += count
+        if placeholder_updates:
+            logger.info(
+                "User scope backfill: remapped placeholder '%s' (rows=%d).",
+                placeholder,
+                placeholder_updates,
+            )
+    return total_updated
+
 async def _backfill_from_threads(db: DatabaseManager) -> None:
     await db.execute(
         """
@@ -144,21 +250,39 @@ async def _backfill_document_chunks(db: DatabaseManager) -> None:
 
 async def run_user_scope_backfill(db: DatabaseManager) -> None:
     """Ensure user_id columns are populated using the JWT subject."""
+    placeholder_map: Dict[str, str] = {}
+    placeholder_rows = 0
     try:
         mapping = await _sync_auth_session_user_ids(db)
-        if not mapping:
-            logger.info("User scope backfill: no auth sessions with emails detected.")
-            return
+        session_mapping_count = len(mapping)
+        has_changes = False
 
-        await _apply_session_mapping(db, "threads", "session_id", mapping)
-        await _apply_session_mapping(db, "messages", "session_id", mapping)
-        await _apply_session_mapping(db, "thread_docs", "session_id", mapping)
-        await _apply_session_mapping(db, "documents", "session_id", mapping)
-        await _apply_session_mapping(db, "document_chunks", "session_id", mapping)
+        if mapping:
+            await _apply_session_mapping(db, "threads", "session_id", mapping)
+            await _apply_session_mapping(db, "messages", "session_id", mapping)
+            await _apply_session_mapping(db, "thread_docs", "session_id", mapping)
+            await _apply_session_mapping(db, "documents", "session_id", mapping)
+            await _apply_session_mapping(db, "document_chunks", "session_id", mapping)
+            has_changes = True
 
-        await _backfill_from_threads(db)
-        await _backfill_document_chunks(db)
+        placeholder_map = await _resolve_legacy_placeholder_aliases(db)
+        if placeholder_map:
+            placeholder_rows = await _apply_placeholder_aliases(db, placeholder_map)
+            if placeholder_rows:
+                has_changes = True
 
-        logger.info("User scope backfill completed (sessions=%d).", len(mapping))
+        if has_changes:
+            await _backfill_from_threads(db)
+            await _backfill_document_chunks(db)
+
+        if not mapping and not placeholder_map:
+            logger.info("User scope backfill: nothing to update.")
+        else:
+            logger.info(
+                "User scope backfill completed (session_mappings=%d, legacy_rows=%d).",
+                session_mapping_count,
+                placeholder_rows,
+            )
     except Exception as exc:
         logger.warning("User scope backfill failed: %s", exc, exc_info=True)
+

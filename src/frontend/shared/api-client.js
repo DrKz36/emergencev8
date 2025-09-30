@@ -69,6 +69,18 @@ function getSessionIdFromStorage() {
   }
 }
 
+function getUserIdFromStorage() {
+  try {
+    const st = getStateFromStorage();
+    const raw = st?.user?.id;
+    if (raw === null || raw === undefined) return null;
+    const str = String(raw).trim();
+    return str ? str : null;
+  } catch {
+    return null;
+  }
+}
+
 function isLocalhost() {
   const h = window.location?.hostname || '';
   return h === 'localhost' || h === '127.0.0.1' || h === '::1';
@@ -205,6 +217,9 @@ async function getAuthHeaders() {
 
   const sid = getSessionIdFromStorage();
   if (sid) headers['X-Session-Id'] = sid;
+
+  const userId = getUserIdFromStorage();
+  if (userId) headers['X-User-Id'] = userId;
 
   if (!hasBearer && isDevBypassEnabled()) {
     Object.assign(headers, resolveDevHeaders());

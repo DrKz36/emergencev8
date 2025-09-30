@@ -634,7 +634,13 @@ function mountAuthBadge(eventBus) {
   // Abonnements d’état
   eventBus.on?.('auth:missing', () => { setLogged(false); setConnected(false); setAlert(loginRequiredMessage); });
   eventBus.on?.('auth:logout', () => { setLogged(false); setConnected(false); setAlert(loginRequiredMessage); });
-  eventBus.on?.(EVENTS.WS_CONNECTED || 'ws:connected', () => { setLogged(true); setConnected(true); setAlert(''); });
+  const wsConnectedEvent = EVENTS.WS_CONNECTED || 'ws:connected';
+  const wsEstablishedEvent = EVENTS.WS_SESSION_ESTABLISHED || 'ws:session_established';
+  const wsRestoredEvent = EVENTS.WS_SESSION_RESTORED || 'ws:session_restored';
+  const markConnected = () => { setLogged(true); setConnected(true); setAlert(''); };
+  eventBus.on?.(wsConnectedEvent, markConnected);
+  eventBus.on?.(wsEstablishedEvent, markConnected);
+  eventBus.on?.(wsRestoredEvent, markConnected);
   eventBus.on?.('ws:close', () => { setConnected(false); });
   eventBus.on?.(EVENTS.AUTH_REQUIRED, (payload) => {
     const alertText = (payload && typeof payload?.message === 'string' && payload.message.trim()) ? payload.message.trim() : loginRequiredMessage;
@@ -764,6 +770,7 @@ class EmergenceClient {
     this.eventBus = null;
     this.state = null;
     this.badge = null;
+    this.badgeLoginSyncUnsub = null;
     this.home = null;
     this.homeRoot = null;
     this.appContainer = null;
@@ -798,6 +805,36 @@ class EmergenceClient {
     this.appContainer = typeof document !== 'undefined' ? document.getElementById('app-container') : null;
 
     this.badge = mountAuthBadge(eventBus);
+
+    const syncBadgeLoginState = (rawHasToken) => {
+      const isLogged = !!rawHasToken;
+      try { this.badge?.setLogged?.(isLogged); }
+      catch (err) { console.warn('[main] Impossible de synchroniser le badge (logged)', err); }
+      if (!isLogged) {
+        try { this.badge?.setConnected?.(false); }
+        catch (err) { console.warn('[main] Impossible de synchroniser le badge (connected)', err); }
+      }
+    };
+
+    try {
+      const initialHasToken = stateManager.get?.('auth.hasToken');
+      if (initialHasToken !== undefined) syncBadgeLoginState(initialHasToken);
+    } catch (err) {
+      console.warn('[main] Impossible de lire auth.hasToken pour le badge', err);
+    }
+
+    if (typeof stateManager.subscribe === 'function') {
+      try {
+        if (typeof this.badgeLoginSyncUnsub === 'function') {
+          this.badgeLoginSyncUnsub();
+        }
+      } catch (_) {}
+      try {
+        this.badgeLoginSyncUnsub = stateManager.subscribe('auth.hasToken', syncBadgeLoginState);
+      } catch (err) {
+        console.warn("[main] Impossible d'abonner le badge a auth.hasToken", err);
+      }
+    }
     const authTraceHandle = installAuthRequiredInstrumentation(eventBus);
     const qaRecorder = authTraceHandle?.recorder ?? null;
 
@@ -812,11 +849,18 @@ class EmergenceClient {
     });
 
     const wsConnectedEvent = EVENTS.WS_CONNECTED || 'ws:connected';
-    eventBus.on?.(wsConnectedEvent, () => {
+    const wsEstablishedEvent = EVENTS.WS_SESSION_ESTABLISHED || 'ws:session_established';
+    const wsRestoredEvent = EVENTS.WS_SESSION_RESTORED || 'ws:session_restored';
+    const handleWsReady = () => {
       try { stateManager.set('chat.authRequired', false); }
       catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=false', err); }
-      this.badge?.setConnected(true);
-    });
+      this.badge?.setLogged?.(true);
+      this.badge?.setConnected?.(true);
+      this.badge?.setAlert?.('');
+    };
+    eventBus.on?.(wsConnectedEvent, handleWsReady);
+    eventBus.on?.(wsEstablishedEvent, handleWsReady);
+    eventBus.on?.(wsRestoredEvent, handleWsReady);
 
     this.websocket = new WebSocketClient(WS_CONFIG.URL, eventBus, stateManager);
     eventBus.on(EVENTS.APP_READY, () => { this.__readyFired = true; this.hideLoader(); });
@@ -951,9 +995,22 @@ class EmergenceClient {
     return value ? value : null;
   }
 
+  normalizeUserId(raw) {
+    if (raw === null || raw === undefined) return null;
+    const value = String(raw).trim();
+    return value ? value : null;
+  }
+
   handleLoginSuccess(payload = {}) {
     const normalizedSessionId = this.normalizeSessionId(payload?.sessionId ?? payload?.session_id);
-    try { this.state?.resetForSession?.(normalizedSessionId); }
+    const normalizedUserId = this.normalizeUserId(
+      payload?.userId ??
+      payload?.user_id ??
+      payload?.response?.user_id ??
+      payload?.response?.userId ??
+      payload?.response?.user?.id
+    );
+    try { this.state?.resetForSession?.(normalizedSessionId, { userId: normalizedUserId }); }
     catch (err) { console.warn('[main] Impossible de reset l\'etat de session apres login', err, { sessionId: normalizedSessionId }); }
     const token = payload?.token;
     if (token && token.trim()) storeAuthToken(token.trim(), { expiresAt: payload?.expiresAt });
@@ -965,6 +1022,14 @@ class EmergenceClient {
     const normalizedEmail = this.normalizeEmail(payload?.email);
     try { this.state?.set?.('auth.email', normalizedEmail); }
     catch (err) { console.warn('[main] Impossible de mettre a jour auth.email', err); }
+    if (normalizedEmail !== null) {
+      try { this.state?.set?.('user.email', normalizedEmail); }
+      catch (err) { console.warn('[main] Impossible de mettre a jour user.email', err); }
+    }
+    if (normalizedUserId) {
+      try { this.state?.set?.('user.id', normalizedUserId); }
+      catch (err) { console.warn('[main] Impossible de mettre a jour user.id', err); }
+    }
     if (normalizedSessionId !== null) {
       try { this.state?.set?.('websocket.sessionId', normalizedSessionId); }
       catch (err) { console.warn('[main] Impossible d\'enregistrer websocket.sessionId', err); }
@@ -1031,6 +1096,10 @@ class EmergenceClient {
 
     try { this.state?.set?.('auth.email', normalizedEmail); }
     catch (err) { console.warn('[main] Impossible de mettre a jour auth.email', err); }
+    if (normalizedEmail !== null) {
+      try { this.state?.set?.('user.email', normalizedEmail); }
+      catch (err) { console.warn('[main] Impossible de mettre a jour user.email', err); }
+    }
 
     try { this.app?.handleRoleChange?.(normalizedRole); }
     catch (err) { console.warn('[main] Impossible de rafraichir la navigation (refreshSessionRole)', err); }
@@ -1123,7 +1192,14 @@ class EmergenceClient {
     clearStoredAuth();
     this.devAutoLogged = false;
     this.devAutoAttempted = false;
-    try { this.state?.resetForSession?.(null); }
+    try {
+      this.state?.resetForSession?.(null, {
+        preserveAuth: {},
+        preserveUser: false,
+        userId: null,
+        preserveThreads: false,
+      });
+    }
     catch (err) { console.warn('[main] Impossible de remettre l\'etat par defaut', err); }
     this.markAuthRequired();
     this.showHome();
@@ -1148,4 +1224,3 @@ class EmergenceClient {
   window[FLAG] = true;
   window.emergenceApp = new EmergenceClient();
 })();
-

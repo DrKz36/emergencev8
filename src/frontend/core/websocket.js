@@ -7,6 +7,7 @@ import { getIdToken, clearAuth } from './auth.js';
 const SESSION_STATE_PRESERVE = {
   preserveAuth: { role: true, email: true, hasToken: true },
   preserveUser: true,
+  preserveThreads: true,
 };
 export class WebSocketClient {
   constructor(url, eventBus, stateManager) {
@@ -26,6 +27,7 @@ export class WebSocketClient {
     this._dedupMs = 1200;
 
     this._lastSendAt = 0;
+    this._threadWaitUnsub = null;
 
     // ✅ queue d’envoi
     this._sendQueue = [];
@@ -43,6 +45,14 @@ export class WebSocketClient {
       if (cached && cached.trim()) return cached.trim();
     } catch {}
     return null;
+  }
+
+  _sanitizeThreadForSession(threadId, sessionId) {
+    if (!threadId || typeof threadId !== 'string') return null;
+    const trimmed = threadId.trim();
+    if (!trimmed) return null;
+    if (sessionId && typeof sessionId === 'string' && trimmed === sessionId.trim()) return null;
+    return trimmed;
   }
 
   _bindEventBus() {
@@ -124,7 +134,8 @@ export class WebSocketClient {
   _buildUrl(sessionId) {
     const loc = window.location;
     const scheme = (loc.protocol === 'https:') ? 'wss' : 'ws';
-    const threadId = this._getActiveThreadId();
+    const rawThreadId = this._getActiveThreadId();
+    const threadId = this._sanitizeThreadForSession(rawThreadId, sessionId);
     if (this.url && typeof this.url === 'string') {
       const hasProto = /^wss?:\/\//i.test(this.url);
       const base = hasProto
@@ -189,6 +200,37 @@ export class WebSocketClient {
         }
         this.state?.set?.('websocket.sessionId', sessionId);
       } catch {}
+    }
+
+    const readyThreadId = this._sanitizeThreadForSession(this._getActiveThreadId(), sessionId);
+    if (!readyThreadId) {
+      if (!this._threadWaitUnsub && this.eventBus?.on) {
+        const handler = () => {
+          const candidate = this._sanitizeThreadForSession(this._getActiveThreadId(), sessionId);
+          if (!candidate) return;
+          if (typeof this._threadWaitUnsub === 'function') {
+            try { this._threadWaitUnsub(); } catch {}
+          }
+          this._threadWaitUnsub = null;
+          this.connect();
+        };
+        const off = this.eventBus.on('threads:ready', handler);
+        if (typeof off === 'function') {
+          this._threadWaitUnsub = () => { try { off(); } catch {} };
+        } else if (this.eventBus?.off) {
+          this._threadWaitUnsub = () => { try { this.eventBus.off('threads:ready', handler); } catch {} };
+        }
+        console.warn('[WebSocket] Thread id missing; deferring connection until threads:ready.');
+      }
+      if (!this._threadWaitUnsub) {
+        console.warn('[WebSocket] Thread id missing and no event bus listener available; aborting connect.');
+      }
+      return;
+    }
+
+    if (this._threadWaitUnsub) {
+      try { this._threadWaitUnsub(); } catch {}
+      this._threadWaitUnsub = null;
     }
 
     const url = this._buildUrl(sessionId);
@@ -265,7 +307,14 @@ export class WebSocketClient {
     this.websocket.onerror = (e) => { console.error('[WebSocket] error', e); };
   }
 
-  close(code = 1000, reason = 'normal') { try { this.websocket?.close(code, reason); } catch {} finally { this.websocket = null; } }
+  close(code = 1000, reason = 'normal') {
+    try { this.websocket?.close(code, reason); } catch {}
+    this.websocket = null;
+    if (typeof this._threadWaitUnsub === 'function') {
+      try { this._threadWaitUnsub(); } catch {}
+    }
+    this._threadWaitUnsub = null;
+  }
 
   send(frame) {
     try {

@@ -113,19 +113,13 @@ def _build_scope_condition(
 ) -> Tuple[str, Tuple[Any, ...]]:
     normalized_user = _normalize_scope_identifier(user_id)
     normalized_session = _normalize_scope_identifier(session_id)
-    clauses: list[str] = []
-    params: list[Any] = []
     if normalized_user:
-        clauses.append(f"{user_column} = ?")
-        params.append(normalized_user)
+        # When the caller knows the user_id we enforce it strictly so data remains
+        # accessible across sessions/devices for the same account.
+        return f"{user_column} = ?", (normalized_user,)
     if normalized_session:
-        clauses.append(f"{session_column} = ?")
-        params.append(normalized_session)
-    if not clauses:
-        raise ValueError("Scope requires at least user_id or session_id.")
-    if len(clauses) == 1:
-        return clauses[0], tuple(params)
-    return "(" + " OR ".join(clauses) + ")", tuple(params)
+        return f"{session_column} = ?", (normalized_session,)
+    raise ValueError("Scope requires at least user_id or session_id.")
 
 # ------------------- Bootstraps legacy ------------------- #
 def _guess_default_for(

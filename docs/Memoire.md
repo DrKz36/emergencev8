@@ -203,6 +203,7 @@
 - **Formats recommandés** : PNG pour captures (largeur 1440px), SVG pour schémas, TXT/MD pour journaux (ex. `scenario-memory-clear.log`).
 - **Journal vector store** : consigner chaque run hebdo de `tests/test_vector_store_reset.ps1` sous `docs/assets/memoire/vector-store-reset-YYYYMMDD.log` (inclure révision backend, backup détecté, réponse upload).
 ## 9. Checklist QA manuelle
+- [ ] Vérifier la persistance cross-session des conversations : démarrer un thread, se déconnecter, ouvrir une session avec un autre profil (thread vide) puis se reconnecter avec l'utilisateur initial et confirmer que les messages réapparaissent immédiatement sans recréation de thread.
 - [ ] Déclencher une **consolidation globale** et vérifier l’affichage du loader puis du résumé STM (capture : `assets/memoire/bandeau-analyse.png`).
 - [ ] Exécuter une **analyse ciblée** avec `persist=False` et confirmer que la LTM ne change pas (capture : `assets/memoire/panneau-thread.png`).
 - [ ] Ouvrir le centre mémoire et vérifier que l'historique des consolidations se charge (GET /api/memory/tend-garden), inclut les derniers timestamps et résumés, et qu'un échec réseau propose le bouton `Réessayer`.

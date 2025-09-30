@@ -63,6 +63,39 @@ def _resolve_session_id_from_request(request: Request) -> Optional[str]:
     return None
 
 
+async def _resolve_user_id_from_session(session_id: Optional[str], scope_holder) -> Optional[str]:
+    normalized = _normalize_identifier(session_id)
+    if not normalized:
+        return None
+    auth_service = _maybe_get_auth_service(scope_holder)
+    if auth_service is None:
+        return None
+    try:
+        resolved = await auth_service.get_user_id_for_session(normalized)
+    except Exception as exc:  # pragma: no cover - logging only
+        logger.debug("Resolution user_id via session %s impossible: %s", normalized, exc)
+        return None
+    return _normalize_identifier(resolved)
+
+
+async def _ensure_user_id_in_claims(claims: Dict[str, Any], scope_holder) -> Optional[str]:
+    user_candidate = _normalize_identifier(claims.get("sub") or claims.get("user_id"))
+    if user_candidate:
+        claims.setdefault("sub", user_candidate)
+        claims.setdefault("user_id", user_candidate)
+        return user_candidate
+    session_candidate = _normalize_identifier(
+        claims.get("session_id") or claims.get("sid") or claims.get("sessionId")
+    )
+    if not session_candidate:
+        return None
+    resolved = await _resolve_user_id_from_session(session_candidate, scope_holder)
+    if resolved:
+        claims["sub"] = resolved
+        claims.setdefault("user_id", resolved)
+        return resolved
+    return None
+
 
 # -----------------------------
 # Helpers JWT
@@ -314,21 +347,23 @@ async def get_session_context(request: Request) -> SessionContext:
             fallback_sid = _resolve_session_id_from_request(request)
             if not fallback_sid:
                 fallback_sid = _normalize_identifier(request.headers.get("X-User-ID") or request.headers.get("X-User-Id")) or "dev-session"
-            user_id = _normalize_identifier(request.headers.get("X-User-ID") or request.headers.get("X-User-Id"))
+            raw_user_id = _normalize_identifier(request.headers.get("X-User-ID") or request.headers.get("X-User-Id"))
             email = _normalize_identifier(request.headers.get("X-User-Email"))
-            role = _normalize_identifier(request.headers.get("X-User-Role")) or "admin"
+            role_value = _normalize_identifier(request.headers.get("X-User-Role")) or "admin"
             claims = {"_auth_source": "bypass", "session_id": fallback_sid}
-            if user_id:
-                claims.setdefault("sub", user_id)
+            resolved_user_id = raw_user_id or await _resolve_user_id_from_session(fallback_sid, request)
+            if resolved_user_id:
+                claims.setdefault("sub", resolved_user_id)
+                claims.setdefault("user_id", resolved_user_id)
             if email:
                 claims.setdefault("email", email)
-            if role:
-                claims.setdefault("role", role)
+            if role_value:
+                claims.setdefault("role", role_value)
             return SessionContext(
                 session_id=fallback_sid,
-                user_id=user_id,
+                user_id=resolved_user_id,
                 email=email,
-                role=role,
+                role=role_value,
                 claims=claims,
             )
         raise
@@ -340,16 +375,14 @@ async def get_session_context(request: Request) -> SessionContext:
         raise HTTPException(status_code=401, detail="Session ID manquant ou invalide.")
 
     claims.setdefault("session_id", session_id)
-    user_id = _normalize_identifier(claims.get("sub") or claims.get("user_id"))
-    if user_id:
-        claims.setdefault("sub", user_id)
+    user_id = await _ensure_user_id_in_claims(claims, request)
     email = _normalize_identifier(claims.get("email"))
-    role = _normalize_identifier(claims.get("role"))
+    role_claim = _normalize_identifier(claims.get("role"))
     return SessionContext(
         session_id=session_id,
         user_id=user_id,
         email=email,
-        role=role,
+        role=role_claim,
         claims=claims,
     )
 
@@ -380,23 +413,24 @@ async def get_user_id(request: Request) -> str:
 
     if token:
         claims = await _get_claims_from_request(request)
-        sub = claims.get("sub")
-        if sub:
-            return str(sub)
+        resolved_user_id = await _ensure_user_id_in_claims(claims, request)
+        if resolved_user_id:
+            return resolved_user_id
         if dev_bypass or _is_global_dev_mode(request):
             hdr = request.headers.get("X-User-ID") or request.headers.get("X-User-Id")
             if hdr:
-                logger.warning("DevMode: fallback X-User-ID utilisé car le JWT ne porte pas de 'sub'.")
+                logger.warning("DevMode: fallback X-User-ID used because JWT has no 'sub'.")
                 return hdr
         raise HTTPException(status_code=401, detail="ID token invalide ou sans 'sub'.")
 
     if dev_bypass or _is_global_dev_mode(request):
         hdr = request.headers.get("X-User-ID") or request.headers.get("X-User-Id")
         if hdr:
-            logger.warning("DevMode: fallback X-User-ID utilisé (pas d'Authorization).")
+            logger.warning("DevMode: fallback X-User-ID used with no Authorization header.")
             return hdr
 
     raise HTTPException(status_code=401, detail="ID token invalide ou sans 'sub'.")
+
 async def get_user_id_for_ws(ws: WebSocket, user_id: Optional[str] = Query(default=None)) -> str:
     """
     Retourne l'user_id à partir d'un JWT trouvé dans le handshake WS.
@@ -415,9 +449,9 @@ async def get_user_id_for_ws(ws: WebSocket, user_id: Optional[str] = Query(defau
                 return str(fallback)
         raise
 
-    sub = claims.get("sub")
-    if sub:
-        return str(sub)
+    resolved_user_id = await _ensure_user_id_in_claims(claims, ws)
+    if resolved_user_id:
+        return resolved_user_id
     if dev_mode or dev_bypass:
         fallback = user_id or ws.query_params.get('user_id')
         if fallback:

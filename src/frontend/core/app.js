@@ -353,21 +353,10 @@ export class App {
     c.querySelectorAll('.skeleton').forEach(el => el.remove());
   }
 
-  _syncSessionWithThread(threadId) {
-    if (!threadId || typeof threadId !== 'string') return;
-    try {
-      const current = this.state.get('websocket.sessionId');
-      if (current === threadId) return;
-      this.state.set('websocket.sessionId', threadId);
-    } catch (err) {
-      console.warn('[App] sync sessionId -> threadId impossible', err);
-    }
-  }
 
   _persistCurrentThreadId(threadId) {
     if (!this._isValidThreadId(threadId)) return;
     try { this.state.set('threads.currentId', threadId); } catch (err) { console.warn('[App] Impossible de mettre a jour threads.currentId', err); }
-    this._syncSessionWithThread(threadId);
     try { localStorage.setItem('emergence.threadId', threadId); } catch (_) {}
   }
 
@@ -479,7 +468,6 @@ export class App {
       }
       if (threadPayload?.id) {
         this.state.set(`threads.map.${threadPayload.id}`, threadPayload);
-        this._syncSessionWithThread(threadPayload.id);
         this.eventBus.emit('threads:loaded', threadPayload);
         this._authToastShown = false;
         this._authBannerShown = false;

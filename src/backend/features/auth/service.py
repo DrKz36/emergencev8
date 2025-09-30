@@ -148,13 +148,14 @@ class AuthService:
         if audit_metadata:
             audit_meta.update({k: v for k, v in audit_metadata.items() if v is not None})
 
+        user_claim = str(claims.get("sub") or "")
         await self._write_audit(event_type, email=email, metadata=audit_meta)
         return LoginResponse(
             token=token,
             expires_at=expires_at,
             role=role,
             session_id=session_id,
-            user_id=claims.get("sub", ""),
+            user_id=user_claim,
             email=email,
         )
 
@@ -279,11 +280,18 @@ class AuthService:
             raise AuthError("Compte non autoris�.", status_code=401)
 
         session = await self._fetch_one_dict(
-            "SELECT expires_at, revoked_at FROM auth_sessions WHERE id = ?",
+            "SELECT expires_at, revoked_at, user_id FROM auth_sessions WHERE id = ?",
             (session_id,),
         )
         if not session:
             raise AuthError("Session inconnue.", status_code=401)
+
+        stored_user_id = str((session.get("user_id") or "").strip())
+        claim_user_id = str((claims.get("sub") or claims.get("user_id") or "").strip())
+        effective_user_id = claim_user_id or stored_user_id
+        if effective_user_id:
+            claims["sub"] = effective_user_id
+            claims["user_id"] = effective_user_id
 
         revoked_at_raw = session.get("revoked_at")
         session_revoked = bool(revoked_at_raw)
@@ -306,6 +314,23 @@ class AuthService:
         if revoked_at:
             claims["revoked_at"] = revoked_at
         return claims
+
+    async def get_user_id_for_session(self, session_id: str) -> Optional[str]:
+        normalized = (session_id or "").strip()
+        if not normalized:
+            return None
+        row = await self._fetch_one_dict(
+            "SELECT user_id FROM auth_sessions WHERE id = ?",
+            (normalized,),
+        )
+        if not row:
+            return None
+        value = row.get('user_id')
+        if value is None:
+            return None
+        normalized_value = str(value).strip()
+        return normalized_value or None
+
     async def list_allowlist(
         self,
         *,

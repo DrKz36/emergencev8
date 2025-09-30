@@ -232,14 +232,27 @@
 }
 
 
-.sidebar-auth-actions .auth-button.auth-button--connected,
-.mobile-nav .nav-link--auth.auth-button--connected {
-    color: var(--color-success);
+.auth-badge .auth-button,
+.sidebar-auth-actions .auth-button,
+.mobile-nav .nav-link--auth {
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    border: 1px solid transparent;
 }
 
+.auth-badge .auth-button.auth-button--connected,
+.sidebar-auth-actions .auth-button.auth-button--connected,
+.mobile-nav .nav-link--auth.auth-button--connected {
+    background-color: var(--color-success, #22c55e);
+    border-color: rgba(34, 197, 94, 0.35);
+    color: var(--color-surface-primary, #0f172a);
+}
+
+.auth-badge .auth-button.auth-button--disconnected,
 .sidebar-auth-actions .auth-button.auth-button--disconnected,
 .mobile-nav .nav-link--auth.auth-button--disconnected {
-    color: var(--color-warning);
+    background-color: var(--color-warning, #f97316);
+    border-color: rgba(249, 115, 22, 0.35);
+    color: var(--color-surface-primary, #0f172a);
 }
 
 .sidebar-auth-actions .auth-button:focus-visible {
