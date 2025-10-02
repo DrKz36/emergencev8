@@ -78,6 +78,42 @@ def _norm_type(t: str) -> str:
     return t.replace(".", ":", 1) if t.startswith("debate.") else t
 
 
+def _history_has_opinion_request(history, *, target_agent: str, source_agent: str | None, message_id: str) -> bool:
+    target = (target_agent or '').strip().lower()
+    source = (source_agent or '').strip().lower() if source_agent else ''
+    message = (message_id or '').strip()
+    if not target or not message:
+        return False
+    for item in reversed(history or []):
+        if not item:
+            continue
+        if isinstance(item, dict):
+            role = item.get('role')
+            meta = item.get('meta') or item.get('metadata')
+        else:
+            role = getattr(item, 'role', None)
+            meta = getattr(item, 'meta', None)
+            if meta is None:
+                meta = getattr(item, 'metadata', None)
+        if not str(role or '').lower().endswith('user'):
+            continue
+        if not isinstance(meta, dict):
+            continue
+        opinion_req = meta.get('opinion_request') or meta.get('opinion-request')
+        if not isinstance(opinion_req, dict):
+            continue
+        req_target = str(opinion_req.get('target_agent') or opinion_req.get('target_agent_id') or '').strip().lower()
+        if req_target != target:
+            continue
+        req_source = str(opinion_req.get('source_agent') or opinion_req.get('source_agent_id') or '').strip().lower()
+        if source and req_source != source:
+            continue
+        req_message = str(opinion_req.get('requested_message_id') or opinion_req.get('message_id') or '').strip()
+        if req_message == message:
+            return True
+    return False
+
+
 # ---------------------------
 # Core WS â€” SANS Depends / SANS @inject
 # (les endpoints rÃ©solvent les deps et les passent ici)
@@ -281,6 +317,7 @@ async def _ws_core(
                         )
                         continue
 
+
                     # Anti-duplicate (si dernier message user == txt)
                     try:
                         history = (
@@ -356,6 +393,85 @@ async def _ws_core(
                         {
                             "type": "ws:error",
                             "payload": {"message": f"chat.message erreur: {e}"},
+                        },
+                        session_id,
+                    )
+                continue
+
+            if message_type == "chat.opinion":
+                try:
+                    opinion_payload = payload if isinstance(payload, dict) else {}
+                    target_agent = str(
+                        opinion_payload.get("target_agent_id")
+                        or opinion_payload.get("target_agent")
+                        or ""
+                    ).strip().lower()
+                    source_agent = str(
+                        opinion_payload.get("source_agent_id")
+                        or opinion_payload.get("source_agent")
+                        or ""
+                    ).strip().lower()
+                    message_id = str(
+                        opinion_payload.get("message_id")
+                        or opinion_payload.get("messageId")
+                        or ""
+                    ).strip()
+                    request_id = str(
+                        opinion_payload.get("request_id")
+                        or opinion_payload.get("requestId")
+                        or opinion_payload.get("note_id")
+                        or opinion_payload.get("noteId")
+                        or ""
+                    ).strip()
+                    message_text = opinion_payload.get("message_text") or opinion_payload.get("messageText")
+
+                    if not target_agent or not message_id:
+                        await connection_manager.send_personal_message(
+                            {
+                                "type": "ws:error",
+                                "payload": {
+                                    "message": "chat.opinion: 'target_agent_id' et 'message_id' requis."
+                                },
+                            },
+                            session_id,
+                        )
+                        continue
+
+                    already_there = False
+                    try:
+                        history = connection_manager.session_manager.get_full_history(session_id) or []
+                        already_there = _history_has_opinion_request(
+                            history,
+                            target_agent=target_agent,
+                            source_agent=source_agent,
+                            message_id=message_id,
+                        )
+                    except Exception:
+                        already_there = False
+
+                    if already_there:
+                        logger.info(
+                            "[WS] chat.opinion ignored (duplicate target=%s message_id=%s)",
+                            target_agent,
+                            message_id,
+                        )
+                        continue
+
+                    await chat_service.request_opinion(
+                        session_id=session_id,
+                        target_agent_id=target_agent,
+                        source_agent_id=source_agent or None,
+                        message_id=message_id or None,
+                        message_text=message_text,
+                        connection_manager=connection_manager,
+                        request_id=request_id or None,
+                    )
+                except Exception as opinion_error:
+                    logger.error(f"[WS] chat.opinion erreur: {opinion_error}", exc_info=True)
+                    await connection_manager.send_personal_message(
+                        {
+                            "type": "ws:error",
+                            "payload": {"message": f"chat.opinion erreur: {opinion_error}"},
                         },
                         session_id,
                     )

@@ -501,6 +501,47 @@ export class ChatUI {
 
     if (messagesHost) {
       messagesHost.addEventListener('click', async (event) => {
+        const opinionBtn = event.target.closest('[data-role="ask-opinion"]');
+        if (opinionBtn) {
+          if (opinionBtn.hasAttribute('disabled')) {
+            event.preventDefault();
+            return;
+          }
+          const targetAgentId = (opinionBtn.getAttribute('data-target-agent') || '').trim().toLowerCase();
+          const sourceAgentId = (opinionBtn.getAttribute('data-source-agent') || '').trim().toLowerCase();
+          const messageId = (opinionBtn.getAttribute('data-message-id') || '').trim();
+          if (!targetAgentId || !messageId) {
+            console.warn('[ChatUI] opinion button missing target/message id');
+            return;
+          }
+          const rawMessage = opinionBtn.getAttribute('data-message') || '';
+          const messageText = this._decodeHTML(rawMessage).replace(/\r?\n/g, '\n').trim();
+          const payload = {
+            target_agent_id: targetAgentId,
+            message_id: messageId,
+          };
+          if (sourceAgentId) payload.source_agent_id = sourceAgentId;
+          if (messageText) payload.message_text = messageText;
+          let emitted = false;
+          try {
+            opinionBtn.setAttribute('disabled', 'true');
+            opinionBtn.setAttribute('aria-disabled', 'true');
+            if (this.eventBus?.emit) {
+              this.eventBus.emit(EVENTS.CHAT_REQUEST_OPINION, payload);
+              emitted = true;
+            }
+          } catch (err) {
+            console.error('[ChatUI] opinion request emit failed', err);
+          } finally {
+            if (!emitted) {
+              opinionBtn.removeAttribute('disabled');
+              opinionBtn.removeAttribute('aria-disabled');
+            }
+          }
+          event.preventDefault();
+          return;
+        }
+
         const button = event.target.closest('[data-role="copy-message"]');
         if (!button || button.hasAttribute('disabled')) return;
         const raw = button.getAttribute('data-message') || '';
@@ -851,6 +892,94 @@ export class ChatUI {
     host.dataset.count = String(items.length);
     host.dataset.open = isOpen ? 'true' : 'false';
   }
+  _getAgentLabel(agentId) {
+    if (!agentId) return 'Agent';
+    const info = AGENTS[agentId] || {};
+    return info.label || info.name || this._humanizeAgentId(agentId) || agentId;
+  }
+
+
+_hasOpinionFromAgent(agentId, messageId) {
+  if (!agentId || !messageId) return false;
+  try {
+    const targetAgent = String(agentId).trim().toLowerCase();
+    const targetMessageId = String(messageId);
+    const buckets = (this.state && typeof this.state === 'object') ? this.state.messages : null;
+    if (!buckets || typeof buckets !== 'object') return false;
+    return Object.keys(buckets || {}).some((bucketKey) => {
+      const bucket = Array.isArray(buckets[bucketKey]) ? buckets[bucketKey] : [];
+      return bucket.some((entry) => {
+        if (!entry || typeof entry !== 'object') return false;
+        const meta = (entry.meta && typeof entry.meta === 'object') ? entry.meta : {};
+        const opinion = (meta.opinion && typeof meta.opinion === 'object') ? meta.opinion : null;
+        const opinionRequest = (meta.opinion_request && typeof meta.opinion_request === 'object') ? meta.opinion_request : null;
+        if (opinion) {
+          const reviewer = String(opinion.reviewer_agent_id ?? opinion.agent_id ?? entry.agent_id ?? '').trim().toLowerCase();
+          if (reviewer && reviewer !== targetAgent) return false;
+          const candidates = [
+            opinion.of_message_id,
+            opinion.message_id,
+            opinion.target_message_id,
+            opinion.about_message_id,
+            opinion.request_note_id,
+            opinion.request_id,
+          ];
+          return candidates.some((value) => value != null && String(value) === targetMessageId);
+        }
+        if (opinionRequest) {
+          const candidates = [opinionRequest.requested_message_id, opinionRequest.of_message_id, opinionRequest.request_id];
+          const reviewer = String(entry.agent_id || entry.agent || '').trim().toLowerCase();
+          if (reviewer && reviewer !== targetAgent) return false;
+          return candidates.some((value) => value != null && String(value) === targetMessageId);
+        }
+        return false;
+      });
+    });
+  } catch (error) {
+    console.warn('[ChatUI] _hasOpinionFromAgent failed', error);
+    return false;
+  }
+}
+
+
+  _opinionButtonsHTML(message, encodedRaw) {
+    if (!message || typeof message !== 'object') return '';
+    const role = String(message.role || '').toLowerCase();
+    if (role && role !== 'assistant') return '';
+    if (message.isStreaming) return '';
+    const messageId = message.id ? String(message.id).trim() : '';
+    if (!messageId) return '';
+    const sourceAgentId = String(message.agent_id || message.agent || '').trim().toLowerCase();
+    if (!sourceAgentId) return '';
+    const candidates = Object.keys(AGENTS).filter((id) => id && id !== 'global' && id !== sourceAgentId);
+    if (!candidates.length) return '';
+    const parts = [];
+    for (const targetId of candidates) {
+      const info = AGENTS[targetId] || {};
+      const disabled = this._hasOpinionFromAgent(targetId, messageId);
+      const color = this._escapeHTML(info.color || '#94a3b8');
+      const label = this._escapeHTML(info.label || info.name || this._humanizeAgentId(targetId) || targetId);
+      const targetAttr = this._escapeHTML(targetId);
+      const sourceAttr = this._escapeHTML(sourceAgentId);
+      const messageAttr = this._escapeHTML(messageId);
+      const disabledAttr = disabled ? ' disabled aria-disabled="true"' : '';
+      parts.push('<button type="button" class="opinion-request-btn agent--' + targetAttr + '" data-role="ask-opinion" data-target-agent="' + targetAttr + '" data-source-agent="' + sourceAttr + '" data-message-id="' + messageAttr + '" data-message="' + encodedRaw + '" title="Demander l\'avis de ' + label + '" style="--agent-color: ' + color + ';"' + disabledAttr + '>' + '<span class="sr-only">Demander l\'avis de ' + label + '</span>' + '</button>');
+    }
+    if (!parts.length) return '';
+    return '<div class="opinion-actions" role="group" aria-label="Demander un avis">' + parts.join('') + '</div>';
+  }
+
+  _opinionBadgeHTML(opinion) {
+    if (!opinion || typeof opinion !== 'object') return '';
+    const sourceAgentId = String(opinion.source_agent_id ?? opinion.source_agent ?? opinion.agent ?? '').trim().toLowerCase();
+    if (sourceAgentId) {
+      const label = this._escapeHTML(this._getAgentLabel(sourceAgentId));
+      return '<span class="message-badge message-badge--opinion">Avis sur ' + label + '</span>';
+    }
+    return '<span class="message-badge message-badge--opinion">Avis</span>';
+  }
+
+
   _messageHTML(m) {
     const side = m.role === 'user' ? 'user' : 'assistant';
     const agentId = side === 'assistant' ? (m.agent_id || m.agent || 'nexus') : '';
@@ -884,13 +1013,26 @@ export class ChatUI {
     const copyTitle = copyDisabled ? 'Message en cours' : copyLabel;
     const srCopyText = copyDisabled ? 'Copie indisponible pendant la generation' : copyLabel;
     const copyClass = `message-action message-action-copy${copyDisabled ? ' is-disabled' : ''}`;
+    const meta = (m.meta && typeof m.meta === 'object') ? m.meta : {};
+    const opinion = (meta && typeof meta.opinion === 'object') ? meta.opinion : null;
+    if (opinion) {
+      classes.push('message--opinion');
+      const opinionSource = String(opinion.source_agent_id ?? opinion.source_agent ?? opinion.agent ?? '').trim().toLowerCase();
+      if (opinionSource) classes.push(`message--opinion-${opinionSource}`);
+    }
+    const opinionBadgeHTML = opinion ? this._opinionBadgeHTML(opinion) : '';
+    const opinionButtonsHTML = (side === 'assistant') ? this._opinionButtonsHTML(m, encodedRaw) : '';
 
     return `
       <div class="${className}">
         <div class="message-bubble">
           <div class="message-header">
             <div class="message-meta">
-              <span class="sender-name">${this._escapeHTML(displayName)}</span>
+              <div class="message-meta__title">
+                <span class="sender-name">${this._escapeHTML(displayName)}</span>
+                ${opinionButtonsHTML}
+              </div>
+              ${opinionBadgeHTML}
               <time class="message-time" datetime="${timestamp.iso}">${this._escapeHTML(timestamp.display)}</time>
             </div>
             <div class="message-actions">
@@ -1113,5 +1255,3 @@ export class ChatUI {
     return { display: `${datePart} - ${timePart}`, iso: date.toISOString() };
   }
 }
-
-

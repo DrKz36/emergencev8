@@ -71,6 +71,7 @@ export const EVENTS = {
   CHAT_EXPORT_SELECTION_CHANGED: 'ui:chat:export_selection_changed',
   CHAT_MODE_TOGGLED: 'ui:chat:mode_toggled',
   CHAT_AGENT_SELECTED: 'ui:chat:agent_selected',
+  CHAT_REQUEST_OPINION: 'ui:chat:request_opinion',
   CHAT_PARALLEL_AGENTS_CHANGED: 'ui:chat:parallel_agents_changed',
   CHAT_RAG_TOGGLED: 'ui:chat:rag_toggled',
 
@@ -146,4 +147,5 @@ export const AGENTS = {
 export const AGENT_IDS = Object.keys(AGENTS);
 export const PRIMARY_AGENT_IDS = AGENT_IDS.filter((id) => id !== 'global');
 export const BROADCAST_AGENT_IDS = PRIMARY_AGENT_IDS;
+
 

@@ -25,6 +25,7 @@ export class WebSocketClient {
     this._lastChatSig = null;
     this._lastChatTs = 0;
     this._dedupMs = 1200;
+    this._opinionDedup = new Map();
 
     this._lastSendAt = 0;
     this._threadWaitUnsub = null;
@@ -338,6 +339,38 @@ export class WebSocketClient {
         const now = Date.now();
         if (sig && this._lastChatSig === sig && (now - this._lastChatTs) < this._dedupMs) { console.warn('[WebSocket] Duplicate chat.message ignoré (de-dup).'); return; }
         this._lastChatSig = sig; this._lastChatTs = now;
+      }
+
+      if (frame.type === 'chat.opinion') {
+        const payload = frame && typeof frame === 'object' ? (frame.payload || {}) : {};
+        const target = String(payload.target_agent_id ?? payload.targetAgentId ?? '').trim().toLowerCase();
+        const messageId = String(payload.message_id ?? payload.messageId ?? '').trim();
+        if (target && messageId) {
+          const source = String(payload.source_agent_id ?? payload.sourceAgentId ?? '').trim().toLowerCase();
+          let messageText = '';
+          if (typeof payload.message_text === 'string') messageText = payload.message_text.trim();
+          else if (typeof payload.messageText === 'string') messageText = payload.messageText.trim();
+          const sig = `${target}|${source}|${messageId}|${messageText}`;
+          const nowOpinion = Date.now();
+          const previous = this._opinionDedup.get(sig) || 0;
+          if (previous && (nowOpinion - previous) < this._dedupMs) {
+            console.warn('[WebSocket] Duplicate chat.opinion ignoré (de-dup).');
+            return;
+          }
+          this._opinionDedup.set(sig, nowOpinion);
+          if (this._opinionDedup.size > 128) {
+            for (const [key, ts] of this._opinionDedup.entries()) {
+              if (nowOpinion - ts >= this._dedupMs) this._opinionDedup.delete(key);
+            }
+            if (this._opinionDedup.size > 160) {
+              const overflow = this._opinionDedup.size - 128;
+              const keys = Array.from(this._opinionDedup.keys());
+              for (let i = 0; i < overflow && i < keys.length; i += 1) {
+                this._opinionDedup.delete(keys[i]);
+              }
+            }
+          }
+        }
       }
 
       // Buffer si non OPEN

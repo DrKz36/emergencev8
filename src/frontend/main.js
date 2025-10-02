@@ -1157,11 +1157,14 @@ class EmergenceClient {
 
   ensureApp() {
     if (this.appInitialized) {
+      if (!this.app) {
+        this.app = new App(this.eventBus, this.state);
+      }
       try { this.eventBus?.emit?.('module:show', 'chat'); } catch (_) {}
       return this.app;
     }
 
-    const app = new App(this.eventBus, this.state);
+    const app = this.app || new App(this.eventBus, this.state);
     this.app = app;
     setupMobileShell(app, this.eventBus);
 
@@ -1250,4 +1253,3 @@ class EmergenceClient {
   window[FLAG] = true;
   window.emergenceApp = new EmergenceClient();
 })();
-

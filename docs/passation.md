@@ -6,6 +6,10 @@
 # Passation Courante
 
 ## Backend & QA
+- 2025-10-01 : Flux chat.opinion - `pytest tests/backend/features/test_chat_opinion.py` et `pytest tests/backend/features/test_chat_router_opinion_dedupe.py` OK (dedupe couvert). `pytest tests/backend/features -k opinion` => 2 tests, 28 deselections.
+- 2025-10-01 : Frontend dedupe - `node --test src/frontend/core/__tests__/websocket.dedupe.test.js` et `node --test src/frontend/features/chat/__tests__/chat-opinion.flow.test.js` OK (anti-dup WS + parcours UI).
+- 2025-10-01 : `npm run build` OK (vite build).
+- 2025-10-01 : QA manuelle chat.opinion non realisee (session CLI sans UI); planifier une verification en environnement graphique pour valider ws:chat_stream_* et ws:message_persisted + toast.
 - 2025-09-29 : Correctif persistance multi-session (20251002_user_scope.sql) appliqué ; relancer `pwsh -File scripts/run-backend.ps1` pour regénérer la base et assurer le hachage `user_id` (threads et sessions). Le backend privilégie désormais `user_id` dans `get_threads/get_thread/get_messages` (filtrage cross-session), couvert par `pytest tests/backend/features/test_user_scope_persistence.py::test_threads_api_cross_session_listing`. Côté front, `StateManager.resetForSession()` conserve `threads.map/order` lorsque le même `user_id` se reconnecte et `api-client` envoie `X-User-Id` (QA : logout → login autre profil → retour profil initial = conversation encore visible).
 - 2025-09-30 : Fix front connexion multi-profils – `StateManager.resetForSession()` nettoie désormais l'`user.id` et l'API client purge l'entête `X-User-Id` lors d'un logout/changement d'utilisateur. L'indicateur Auth (badge) écoute aussi `ws:session_established/restored` pour repasser immédiatement en vert après login et adopte un fond orange (déconnecté) / vert (connecté). Les tentatives successives membre/admin ne réutilisent plus le thread du compte précédent (QA locale OK après `npm run build`).
 - 2025-09-28 : `tests/test_vector_store_reset.ps1 -AutoBackend` relanc� OK (backend auto, backup + upload valid�s). Log associ� : `docs/assets/memoire/vector-store-reset-20250928-153333.log`.
@@ -139,3 +143,5 @@ pm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js passe apr
 
 
 - 2025-09-30 : Investigation threads manquants – les requêtes REST filtrent désormais par user_id hashé (cf. src/backend/core/database/queries.py:_build_scope_condition). Les entrées historiques créées avant la migration conservent le placeholder 'FG' en user_id (ex.: threads f5db25d7af01415a8cb47f0bcd5918cc) et sont donc exclues des réponses pour le même compte (gonzalefernando@gmail.com). Aucun contenu n'est perdu en base (messages/documents présents), mais le backfill (src/backend/core/database/backfill.py) ne remplace pas ces valeurs. FAIT 2025-09-30 : run_user_scope_backfill remappe désormais les placeholders 'FG' vers le hash SHA-256 du compte de référence (AUTH_DEV_DEFAULT_EMAIL) et cascade sur threads/messages/documents/thread_docs/document_chunks. Test backend ajouté : tests/backend/features/test_user_scope_persistence.py::test_user_scope_backfill_remaps_legacy_placeholder.
+
+

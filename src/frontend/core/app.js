@@ -404,7 +404,13 @@ export class App {
     if (typeof value !== 'string') return false;
     const candidate = value.trim();
     if (!candidate) return false;
-    return THREAD_ID_HEX_RE.test(candidate) || THREAD_ID_UUID_RE.test(candidate);
+    if (THREAD_ID_HEX_RE.test(candidate) || THREAD_ID_UUID_RE.test(candidate)) {
+      return true;
+    }
+    if (/^[a-z0-9][a-z0-9_-]{2,}$/i.test(candidate) && !candidate.toLowerCase().startsWith('session-')) {
+      return true;
+    }
+    return false;
   }
 
   async loadModule(moduleId) {
@@ -631,3 +637,4 @@ export class App {
   }
 
 }
+

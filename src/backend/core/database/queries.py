@@ -646,9 +646,21 @@ async def add_message(
     agent_id: Optional[str] = None,
     tokens: Optional[int] = None,
     meta: Optional[Dict[str, Any]] = None,
+    message_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     now = datetime.now(timezone.utc).isoformat()
     meta_json = json.dumps(meta) if meta is not None else None
+
+    custom_message_id = None
+    if message_id is not None:
+        try:
+            candidate = str(message_id).strip()
+        except Exception:
+            candidate = None
+        if candidate:
+            if len(candidate) > 256:
+                candidate = candidate[:256]
+            custom_message_id = candidate
 
     id_is_int = await _messages_id_is_integer(db)
     need_session = await _messages_requires_session_id(db)
@@ -678,6 +690,7 @@ async def add_message(
         db, "agent_id"
     )
 
+    persisted_id = None
     if id_is_int:
         base_cols = ["thread_id", "role", "content", "tokens", "meta"]
         base_vals = [thread_id, role, content, tokens, meta_json]
@@ -691,11 +704,11 @@ async def add_message(
             tuple(vals),
         )
         row = await db.fetch_one("SELECT last_insert_rowid() AS id")
-        message_id = str(row["id"]) if row and "id" in row.keys() else None
+        persisted_id = str(row["id"]) if row and "id" in row.keys() else None
     else:
-        message_id = uuid.uuid4().hex
+        assigned_id = custom_message_id or uuid.uuid4().hex
         base_cols = ["id", "thread_id", "role", "content", "tokens", "meta"]
-        base_vals = [message_id, thread_id, role, content, tokens, meta_json]
+        base_vals = [assigned_id, thread_id, role, content, tokens, meta_json]
         if include_agent:
             base_cols.insert(3, "agent_id")
             base_vals.insert(3, safe_agent_id)
@@ -705,13 +718,14 @@ async def add_message(
             f"INSERT INTO messages ({', '.join(cols)}) VALUES ({placeholders})",
             tuple(vals),
         )
+        persisted_id = assigned_id
 
     scope_sql, scope_params = _build_scope_condition(user_id, session_id)
     await db.execute(
         f"UPDATE threads SET updated_at = ? WHERE id = ? AND {scope_sql}",
         (now, thread_id, *scope_params),
     )
-    return {"id": message_id, "created_at": now}
+    return {"id": persisted_id, "created_at": now}
 async def get_messages(
     db: DatabaseManager,
     thread_id: str,

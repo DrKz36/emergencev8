@@ -63,6 +63,10 @@ class ChatMessage(BaseModel):
         default=None,
         description="Liste optionnelle d'identifiants de documents associés au RAG pour ce message.",
     )
+    meta: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Métadonnées complémentaires (RAG, avis, diffusion WS, etc.).",
+    )
 
     class Config:
         extra = 'ignore'
@@ -82,6 +86,7 @@ class AgentMessage(BaseModel):
     agent: str
     cost_info: Optional[Dict[str, Any]] = None
     timestamp: str
+    meta: Optional[Dict[str, Any]] = None
 
 
 class ChatResponse(BaseModel):

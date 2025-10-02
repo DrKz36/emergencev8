@@ -361,12 +361,28 @@ class SessionManager:
             payload = message.model_dump(mode='json')
             if "message" in payload and "content" not in payload:
                 payload["content"] = payload.pop("message")
+            extra_meta = getattr(message, 'meta', None)
+            if isinstance(extra_meta, dict) and extra_meta:
+                payload['meta'] = extra_meta
             payload.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
             session.history.append(payload)
 
             await self._persist_message(session_id, payload)
         else:
             logger.error(f"Impossible d'ajouter un message : session {session_id} non trouvée.")
+
+    def get_message_by_id(self, session_id: str, message_id: str) -> Optional[Dict[str, Any]]:
+        session_id = self.resolve_session_id(session_id)
+        history = self.get_full_history(session_id)
+        if not history:
+            return None
+        for item in history:
+            try:
+                if item and str(item.get('id')) == str(message_id):
+                    return item
+            except Exception:
+                continue
+        return None
 
     def get_full_history(self, session_id: str) -> List[Dict[str, Any]]:
         session = self.get_session(session_id)
@@ -600,6 +616,7 @@ class SessionManager:
         meta.setdefault("thread_id", thread_id)
         payload["thread_id"] = thread_id
 
+        original_message_id = str(payload.get("id") or "").strip()
         try:
             result = await queries.add_message(
                 self.db_manager,
@@ -611,13 +628,20 @@ class SessionManager:
                 agent_id=agent_id,
                 tokens=tokens_value,
                 meta=meta,
+                message_id=payload.get("id"),
             )
+            persisted_id = str(result.get("message_id") or result.get("id") or "").strip()
+            if not persisted_id:
+                persisted_id = original_message_id
+            if persisted_id:
+                payload["id"] = persisted_id
+            client_message_id = original_message_id or persisted_id
             await self.publish_event(session_id, "ws:message_persisted", {
-                "message_id": payload.get("id"),
+                "message_id": client_message_id,
                 "thread_id": thread_id,
                 "role": role,
                 "created_at": result.get("created_at"),
-                "id": result.get("message_id") or result.get("id"),
+                "id": persisted_id,
                 "persisted": True,
                 "agent_id": agent_id,
                 "session_id": session_id,

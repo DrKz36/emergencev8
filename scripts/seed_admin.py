@@ -3,14 +3,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-SRC_DIR = REPO_ROOT / "src"
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
-
-from backend.core.database.manager import DatabaseManager
-from backend.features.auth.service import AuthService, build_auth_config_from_env
+from typing import Any, Callable, Tuple, Type
 
 DEFAULT_EMAIL = "gonzalefernando@gmail.com"
 DEFAULT_PASSWORD = "WinipegMad2015"
@@ -18,8 +11,31 @@ DEFAULT_ROLE = "admin"
 DEFAULT_NOTE = "seed-admin"
 DEFAULT_DB_PATH = "src/backend/data/db/emergence_v7.db"
 
+BackendImports = Tuple[Type[Any], Type[Any], Callable[[], Any]]
 
-async def _seed_admin(db_path: Path, email: str, password: str, role: str, note: str | None) -> None:
+
+def _import_backend() -> BackendImports:
+    repo_root = Path(__file__).resolve().parent.parent
+    src_dir = repo_root / "src"
+    if str(src_dir) not in sys.path:
+        sys.path.insert(0, str(src_dir))
+
+    from backend.core.database.manager import DatabaseManager
+    from backend.features.auth.service import AuthService, build_auth_config_from_env
+
+    return DatabaseManager, AuthService, build_auth_config_from_env
+
+
+async def _seed_admin(
+    db_path: Path,
+    email: str,
+    password: str,
+    role: str,
+    note: str | None,
+    backend: BackendImports,
+) -> None:
+    DatabaseManager, AuthService, build_auth_config_from_env = backend
+
     db = DatabaseManager(str(db_path))
     await db.connect()
     try:
@@ -37,6 +53,8 @@ async def _seed_admin(db_path: Path, email: str, password: str, role: str, note:
 
 
 def main() -> None:
+    backend = _import_backend()
+
     parser = argparse.ArgumentParser(
         description=(
             "Create or update the default admin account in auth_allowlist. "
@@ -80,11 +98,14 @@ def main() -> None:
 
     db_path = Path(args.db).expanduser().resolve()
     if not db_path.exists():
-        print(f"[seed-admin] Warning: database file {db_path} does not exist yet. It will be created if possible.")
+        print(
+            f"[seed-admin] Warning: database file {db_path} does not exist yet. "
+            "It will be created if possible."
+        )
 
     role = (args.role or DEFAULT_ROLE).strip().lower() or DEFAULT_ROLE
 
-    asyncio.run(_seed_admin(db_path, email, password, role, args.note))
+    asyncio.run(_seed_admin(db_path, email, password, role, args.note, backend))
     print(f"[seed-admin] Admin account ready for {email} (role={role}).")
 
 

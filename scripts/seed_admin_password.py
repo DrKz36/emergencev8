@@ -2,17 +2,33 @@ import argparse
 import asyncio
 import sys
 from pathlib import Path
+from typing import Any, Callable, Tuple, Type
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-SRC_DIR = REPO_ROOT / "src"
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
-
-from backend.core.database.manager import DatabaseManager
-from backend.features.auth.service import AuthService, build_auth_config_from_env
+BackendImports = Tuple[Type[Any], Type[Any], Callable[[], Any]]
 
 
-async def seed_password(db_path: Path, email: str, password: str, role: str, note: str | None) -> None:
+def _import_backend() -> BackendImports:
+    repo_root = Path(__file__).resolve().parent.parent
+    src_dir = repo_root / "src"
+    if str(src_dir) not in sys.path:
+        sys.path.insert(0, str(src_dir))
+
+    from backend.core.database.manager import DatabaseManager
+    from backend.features.auth.service import AuthService, build_auth_config_from_env
+
+    return DatabaseManager, AuthService, build_auth_config_from_env
+
+
+async def seed_password(
+    db_path: Path,
+    email: str,
+    password: str,
+    role: str,
+    note: str | None,
+    backend: BackendImports,
+) -> None:
+    DatabaseManager, AuthService, build_auth_config_from_env = backend
+
     db = DatabaseManager(str(db_path))
     await db.connect()
     config = build_auth_config_from_env()
@@ -39,6 +55,8 @@ async def seed_password(db_path: Path, email: str, password: str, role: str, not
 
 
 def main() -> None:
+    backend = _import_backend()
+
     parser = argparse.ArgumentParser(description="Seed or update an admin password in auth_allowlist.")
     parser.add_argument("--email", required=True, help="Email address to seed/update")
     parser.add_argument("--password", required=True, help="Plain password that will be hashed")
@@ -54,7 +72,7 @@ def main() -> None:
         raise SystemExit("--password must contain at least 8 characters")
 
     db_path = Path(args.db).expanduser().resolve()
-    asyncio.run(seed_password(db_path, email, args.password, args.role, args.note))
+    asyncio.run(seed_password(db_path, email, args.password, args.role, args.note, backend))
     print(f"[OK] Password updated for {email} in {db_path}")
 
 

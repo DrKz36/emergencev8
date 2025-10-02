@@ -35,6 +35,7 @@ export default class ChatModule {
     this._sendLock = false;
     this._sendGateMs = 400;
     this._assistantPersistedIds = new Set();
+    this._messageBuckets = new Map();
 
     // UX
     this._lastToastAt = 0;
@@ -49,10 +50,91 @@ export default class ChatModule {
     this._bindHandlers();
   }
 
+  _determineBucketForMessage(agentId, meta) {
+    const baseAgent = typeof agentId === 'string' ? agentId.trim().toLowerCase() : '';
+    const metaObj = (meta && typeof meta === 'object') ? meta : null;
+    if (metaObj) {
+      const opinion = (metaObj.opinion && typeof metaObj.opinion === 'object') ? metaObj.opinion : null;
+      if (opinion) {
+        const source = String(opinion.source_agent_id ?? opinion.source_agent ?? opinion.agent ?? '').trim().toLowerCase();
+        if (source) return source;
+      }
+      const opinionRequest = (metaObj.opinion_request && typeof metaObj.opinion_request === 'object') ? metaObj.opinion_request : null;
+      if (opinionRequest) {
+        const sourceReq = String(opinionRequest.source_agent ?? opinionRequest.source_agent_id ?? '').trim().toLowerCase();
+        if (sourceReq) return sourceReq;
+      }
+    }
+    return baseAgent || 'nexus';
+  }
+
+  _rememberMessageBucket(messageId, bucketId) {
+    if (!messageId) return;
+    try {
+      this._messageBuckets.set(String(messageId), bucketId || null);
+    } catch (error) {
+      console.warn('[Chat] unable to remember message bucket', error);
+    }
+  }
+
+  _resolveBucketFromCache(messageId, agentId, meta) {
+    const key = messageId ? String(messageId) : null;
+    if (key && this._messageBuckets.has(key)) {
+      const stored = this._messageBuckets.get(key);
+      if (stored) return stored;
+    }
+    return this._determineBucketForMessage(agentId, meta);
+  }
+
+  _findExistingOpinionRequest(targetAgentId, sourceAgentId, messageId) {
+    try {
+      const target = (targetAgentId ? String(targetAgentId) : '').trim().toLowerCase();
+      const source = (sourceAgentId ? String(sourceAgentId) : '').trim().toLowerCase();
+      const requestedId = (messageId ? String(messageId) : '').trim();
+      if (!target || !requestedId) return null;
+      const buckets = this.state.get('chat.messages') || {};
+      const agentKeys = Object.keys(buckets || {});
+      for (const agentKey of agentKeys) {
+        const entries = Array.isArray(buckets[agentKey]) ? buckets[agentKey] : [];
+        for (const entry of entries) {
+          if (!entry || typeof entry !== 'object') continue;
+          const meta = (entry.meta && typeof entry.meta === 'object') ? entry.meta : null;
+          const opinionReq = (meta && typeof meta.opinion_request === 'object') ? meta.opinion_request : null;
+          if (!opinionReq) continue;
+          const reqTarget = String(opinionReq.target_agent ?? opinionReq.target_agent_id ?? '').trim().toLowerCase();
+          if (!reqTarget || reqTarget !== target) continue;
+          const reqSource = String(opinionReq.source_agent ?? opinionReq.source_agent_id ?? '').trim().toLowerCase();
+          if (source && reqSource !== source) continue;
+          const reqMessage = String(opinionReq.requested_message_id ?? opinionReq.message_id ?? '').trim();
+          if (reqMessage === requestedId) {
+            return entry;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('[Chat] Unable to inspect existing opinion requests', error);
+    }
+    return null;
+  }
+
+
+  _generateMessageId(prefix = 'msg') {
+    try {
+      if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {
+        return globalThis.crypto.randomUUID();
+      }
+    } catch (error) {
+      console.warn('[Chat] crypto.randomUUID unavailable', error);
+    }
+    const rand = Math.random().toString(16).slice(2);
+    return `${prefix}-${Date.now()}-${rand}`;
+  }
+
   _bindHandlers() {
     // UI
     this._H.CHAT_SEND          = this.handleSendMessage.bind(this);
     this._H.CHAT_AGENT_SELECTED= this.handleAgentSelected.bind(this);
+    this._H.CHAT_REQUEST_OPINION = this.handleOpinionRequest.bind(this);
     this._H.CHAT_CLEAR         = this.handleClearChat.bind(this);
     this._H.CHAT_EXPORT        = this.handleExport.bind(this);
     this._H.CHAT_RAG_TOGGLED   = this.handleRagToggle.bind(this);
@@ -125,6 +207,7 @@ export default class ChatModule {
 
   /* ============================ State init ============================ */
   initializeState() {
+    try { this._messageBuckets.clear(); } catch {}
     if (!this.state.get('chat')) {
       this.state.set('chat', {
         currentAgentId: 'anima',
@@ -137,14 +220,14 @@ export default class ChatModule {
         messages: {},
         selectedDocIds: [],
         selectedDocs: [],
-        metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null }
+        metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null, opinion_request_count: 0 }
       });
     } else {
       if (this.state.get('chat.ragEnabled') === undefined) this.state.set('chat.ragEnabled', false);
       if (!this.state.get('chat.messages')) this.state.set('chat.messages', {});
       if (!this.state.get('chat.ragStatus')) this.state.set('chat.ragStatus', 'idle');
       if (!this.state.get('chat.memoryBannerAt')) this.state.set('chat.memoryBannerAt', null);
-      if (!this.state.get('chat.metrics')) this.state.set('chat.metrics', { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null });
+      if (!this.state.get('chat.metrics')) this.state.set('chat.metrics', { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null, opinion_request_count: 0 });
       if (!Array.isArray(this.state.get('chat.selectedDocIds'))) this.state.set('chat.selectedDocIds', []);
       if (!Array.isArray(this.state.get('chat.selectedDocs'))) this.state.set('chat.selectedDocs', []);
     }
@@ -177,6 +260,7 @@ export default class ChatModule {
     // UI (idempotent)
     this._onOnce(EVENTS.CHAT_SEND,          this._H.CHAT_SEND);
     this._onOnce(EVENTS.CHAT_AGENT_SELECTED,this._H.CHAT_AGENT_SELECTED);
+    this._onOnce(EVENTS.CHAT_REQUEST_OPINION, this._H.CHAT_REQUEST_OPINION);
     this._onOnce(EVENTS.CHAT_CLEAR,         this._H.CHAT_CLEAR);
     this._onOnce(EVENTS.CHAT_EXPORT,        this._H.CHAT_EXPORT);
     this._onOnce(EVENTS.CHAT_RAG_TOGGLED,   this._H.CHAT_RAG_TOGGLED);
@@ -236,6 +320,7 @@ export default class ChatModule {
 
     const buckets = {};
     let lastAssistantAgent = null;
+    try { this._messageBuckets.clear(); } catch {}
 
     for (const m of msgs) {
       const role = m.role || 'assistant';
@@ -249,13 +334,18 @@ export default class ChatModule {
       if (!agentId) agentId = 'global';
       if (role === 'assistant' && agentId) lastAssistantAgent = agentId;
 
-      (buckets[agentId] ||= []).push({
+      const meta = (m && typeof m.meta === 'object') ? m.meta : null;
+      const bucketId = this._determineBucketForMessage(agentId, meta);
+      const entry = {
         id: m.id || `${role}-${m.created_at || Date.now()}`,
         role,
         content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content ?? ''),
         agent_id: agentId,
         created_at: m.created_at
-      });
+      };
+      if (meta) entry.meta = meta;
+      (buckets[bucketId] ||= []).push(entry);
+      this._rememberMessageBucket(entry.id, bucketId);
     }
 
     this.state.set('chat.messages', buckets);
@@ -361,68 +451,225 @@ export default class ChatModule {
     }
   }
 
+  async handleOpinionRequest(payload = {}) {
+    try {
+      const data = (payload && typeof payload === 'object') ? payload : {};
+      const targetAgentId = String(data.target_agent_id ?? data.targetAgentId ?? data.target_agent ?? data.targetAgent ?? '').trim().toLowerCase();
+      const sourceAgentId = String(data.source_agent_id ?? data.sourceAgentId ?? data.source_agent ?? data.sourceAgent ?? '').trim().toLowerCase();
+      const messageId = String(data.message_id ?? data.messageId ?? '').trim();
+      if (!targetAgentId || !AGENTS[targetAgentId]) {
+        this.showToast('Agent indisponible pour avis.');
+        return;
+      }
+      if (targetAgentId === sourceAgentId) {
+        this.showToast('Sélectionnez un autre agent pour l\'avis.');
+        return;
+      }
+      if (!messageId) {
+        this.showToast('Message cible introuvable.');
+        return;
+      }
+
+      let messageText = '';
+      if (typeof data.message_text === 'string') messageText = data.message_text;
+      else if (typeof data.messageText === 'string') messageText = data.messageText;
+
+      if (!messageText) {
+        try {
+          const buckets = this.state.get('chat.messages') || {};
+          for (const key of Object.keys(buckets || {})) {
+            const bucket = Array.isArray(buckets[key]) ? buckets[key] : [];
+            const found = bucket.find((msg) => msg && msg.id === messageId);
+            if (found) {
+              if (typeof found.content === 'string') messageText = found.content;
+              else if (typeof found.text === 'string') messageText = found.text;
+              break;
+            }
+          }
+        } catch (err) {
+          console.warn('[Chat] opinion request message lookup failed', err);
+        }
+      }
+      messageText = String(messageText || '').trim();
+      const existingRequest = this._findExistingOpinionRequest(targetAgentId, sourceAgentId, messageId);
+      if (existingRequest) {
+        this.showToast('Avis déjà demandé pour cette réponse.');
+        return;
+      }
+
+      const agentInfo = AGENTS[targetAgentId] || {};
+      const sourceInfo = sourceAgentId ? (AGENTS[sourceAgentId] || {}) : {};
+      const agentLabel = agentInfo.label || agentInfo.name || (targetAgentId || 'agent');
+      const sourceLabel = sourceInfo.label || sourceInfo.name || (sourceAgentId || 'cet agent');
+
+      const requestId = this._generateMessageId('opinion-request');
+      const createdAt = Date.now();
+      const requestMessage = {
+        id: requestId,
+        role: 'user',
+        content: `@${agentLabel}, peux-tu donner ton avis sur la réponse de ${sourceLabel} ?`,
+        agent_id: targetAgentId,
+        created_at: createdAt,
+        meta: {
+          opinion_request: {
+            target_agent: targetAgentId,
+            source_agent: sourceAgentId || null,
+            requested_message_id: messageId,
+            request_id: requestId
+          }
+        }
+      };
+
+      const bucketTarget = (sourceAgentId || targetAgentId || '').trim().toLowerCase() || targetAgentId;
+      const existing = this.state.get(`chat.messages.${bucketTarget}`) || [];
+      this.state.set(`chat.messages.${bucketTarget}`, [...existing, requestMessage]);
+      this._rememberMessageBucket(requestId, bucketTarget);
+      this._updateThreadCacheFromBuckets();
+      this.showToast(`Avis demandé à ${agentLabel}.`);
+
+      try {
+        const metrics = this.state.get('chat.metrics') || {};
+        const nextMetrics = {
+          ...metrics,
+          opinion_request_count: (metrics.opinion_request_count || 0) + 1,
+          last_opinion_request: {
+            target_agent_id: targetAgentId,
+            source_agent_id: sourceAgentId || null,
+            message_id: messageId,
+            bucket: bucketTarget,
+            at: createdAt
+          }
+        };
+        this.state.set('chat.metrics', nextMetrics);
+      } catch (err) {
+        console.warn('[Chat] unable to trace opinion request metrics', err);
+      }
+      try {
+        this.eventBus?.emit?.('ui:guidance:opinion_request', {
+          target_agent_id: targetAgentId,
+          source_agent_id: sourceAgentId || null,
+          message_id: messageId,
+          request_id: requestId,
+          bucket: bucketTarget,
+          at: createdAt
+        });
+      } catch (err) {
+        console.warn('[Chat] unable to emit guidance trace', err);
+      }
+
+      await this._waitForWS(this._wsConnectWaitMs);
+
+      const framePayload = {
+        target_agent_id: targetAgentId,
+        source_agent_id: sourceAgentId || null,
+        message_id: messageId,
+        request_id: requestId,
+      };
+      if (messageText) framePayload.message_text = messageText;
+
+      this.eventBus.emit(EVENTS.WS_SEND, {
+        type: 'chat.opinion',
+        payload: framePayload,
+      });
+    } catch (error) {
+      console.error('[Chat] handleOpinionRequest error', error);
+      this.showToast('Impossible de demander un avis.');
+    }
+  }
   /* ============================ Flux assistant (WS) ============================ */
-  handleStreamStart({ agent_id, id }) {
+  handleStreamStart(payload = {}) {
+    const agentIdRaw = payload && typeof payload === 'object' ? (payload.agent_id ?? payload.agentId) : null;
+    const agentId = String(agentIdRaw ?? '').trim() || 'nexus';
+    const messageId = payload && typeof payload === 'object' && payload.id ? payload.id : `assistant-${Date.now()}`;
+    const baseMeta = (payload && typeof payload.meta === 'object') ? { ...payload.meta } : null;
+
+    const bucketId = this._resolveBucketFromCache(messageId, agentId, baseMeta);
     const agentMessage = {
-      id,
+      id: messageId,
       role: 'assistant',
       content: '',
-      agent_id,
+      agent_id: agentId,
       isStreaming: true,
-      created_at: Date.now()
+      created_at: Date.now(),
     };
-    const curr = this.state.get(`chat.messages.${agent_id}`) || [];
-    this.state.set(`chat.messages.${agent_id}`, [...curr, agentMessage]);
+    if (baseMeta && Object.keys(baseMeta).length) agentMessage.meta = baseMeta;
+
+    const curr = this.state.get(`chat.messages.${bucketId}`) || [];
+    this.state.set(`chat.messages.${bucketId}`, [...curr, agentMessage]);
+    this._rememberMessageBucket(messageId, bucketId);
     this._updateThreadCacheFromBuckets();
     this._clearStreamWatchdog(); // le flux a bien démarré
   }
 
-  handleStreamChunk({ agent_id, id, chunk }) {
-    const list = this.state.get(`chat.messages.${agent_id}`) || [];
-    const idx = list.findIndex((m) => m.id === id);
+  handleStreamChunk(payload = {}) {
+    const agentId = String(payload && typeof payload === 'object' ? (payload.agent_id ?? payload.agentId) : '').trim();
+    const messageId = payload && typeof payload === 'object' ? payload.id : null;
+    if (!agentId || !messageId) return;
+    const chunk = payload && typeof payload.chunk !== 'undefined' ? payload.chunk : '';
+    const meta = (payload && typeof payload.meta === 'object') ? payload.meta : null;
+
+    const bucketId = this._resolveBucketFromCache(messageId, agentId, meta);
+    const list = this.state.get(`chat.messages.${bucketId}`) || [];
+    const idx = list.findIndex((m) => m.id === messageId);
     if (idx >= 0) {
       const msg = { ...list[idx] };
-      msg.content = (msg.content || '') + String(chunk || '');
+      msg.content = (msg.content || '') + String(chunk ?? '');
       list[idx] = msg;
-      this.state.set(`chat.messages.${agent_id}`, [...list]);
+      this.state.set(`chat.messages.${bucketId}`, [...list]);
       this._updateThreadCacheFromBuckets();
     }
   }
 
-  handleStreamEnd({ agent_id, id, meta }) {
-    // finalise le message assistant
-    const list = this.state.get(`chat.messages.${agent_id}`) || [];
-    const idx = list.findIndex((m) => m.id === id);
+  handleStreamEnd(payload = {}) {
+    const agentId = String(payload && typeof payload === 'object' ? (payload.agent_id ?? payload.agentId) : '').trim();
+    const messageId = payload && typeof payload === 'object' ? payload.id : null;
+    const meta = (payload && typeof payload.meta === 'object') ? { ...payload.meta } : null;
+    if (!agentId || !messageId) return;
+
+    const bucketId = this._resolveBucketFromCache(messageId, agentId, meta);
+    const list = this.state.get(`chat.messages.${bucketId}`) || [];
+    const idx = list.findIndex((m) => m.id === messageId);
     if (idx >= 0) {
-      const msg = { ...list[idx], isStreaming: false };
+      const current = list[idx] || {};
+      const baseMeta = current && typeof current.meta === 'object' ? { ...current.meta } : {};
+      if (meta) Object.assign(baseMeta, meta);
+      const mergedMeta = Object.keys(baseMeta).length ? baseMeta : null;
+
+      const msg = { ...current, isStreaming: false };
+      if (mergedMeta) msg.meta = mergedMeta;
+      else if (msg.meta) delete msg.meta;
+
       list[idx] = msg;
-      this.state.set(`chat.messages.${agent_id}`, [...list]);
+      this.state.set(`chat.messages.${bucketId}`, [...list]);
     }
 
+    this._rememberMessageBucket(messageId, bucketId);
     this._updateThreadCacheFromBuckets();
 
-    // Terminer l’état de chargement
     this.state.set('chat.isLoading', false);
     this._clearStreamWatchdog();
 
-    // Persistence assistant : une seule fois si non géré par le back
     try {
-      if (this._assistantPersistedIds.has(id)) return;
+      if (this._assistantPersistedIds.has(messageId)) return;
 
-      const backendPersisted =
-        !!(meta && (meta.persisted === true || meta.persisted_by === 'backend' || meta.persisted_by_ws === true));
+      const backendPersisted = !!(meta && (meta.persisted === true || meta.persisted_by === 'backend' || meta.persisted_by_ws === true));
 
       const threadId = this.getCurrentThreadId();
-      const finalMsg = (this.state.get(`chat.messages.${agent_id}`) || []).find(m => m.id === id);
+      const finalBucketList = this.state.get(`chat.messages.${bucketId}`) || [];
+      const finalMsg = finalBucketList.find((m) => m.id === messageId);
 
       if (!backendPersisted && threadId && finalMsg) {
-        api.appendMessage(threadId, {
+        const payloadToPersist = {
           role: 'assistant',
           content: typeof finalMsg.content === 'string' ? finalMsg.content : String(finalMsg.content ?? ''),
-          agent_id: finalMsg.agent_id || agent_id
-        })
-          .then(() => this._assistantPersistedIds.add(id))
-          .catch(err => console.error('[Chat] Échec appendMessage(assistant):', err));
+          agent_id: finalMsg.agent_id || agentId,
+        };
+        if (finalMsg.meta && typeof finalMsg.meta === 'object') {
+          payloadToPersist.meta = { ...finalMsg.meta };
+        }
+        api.appendMessage(threadId, payloadToPersist)
+          .then(() => this._assistantPersistedIds.add(messageId))
+          .catch(err => console.error('[Chat] échec appendMessage(assistant):', err));
       }
     } catch (e) {
       console.error('[Chat] handleStreamEnd persist error', e);
@@ -521,19 +768,30 @@ export default class ChatModule {
     this.state.set('chat.activeAgent', agentId);
   }
 
-  handleClearChat() {
-    const agentId = this.state.get('chat.currentAgentId');
-    if (!agentId) return;
-    this.state.set(`chat.messages.${agentId}`, []);
-    try {
-      const meta = this.state.get('chat.lastMessageMeta');
-      if (meta && (meta.agent_id === agentId || meta.agent === agentId || !meta.agent_id)) {
-        this.state.set('chat.lastMessageMeta', null);
+
+handleClearChat() {
+  const agentId = this.state.get('chat.currentAgentId');
+  if (!agentId) return;
+  try {
+    const list = this.state.get(`chat.messages.${agentId}`) || [];
+    list.forEach((msg) => {
+      if (msg && msg.id) {
+        this._messageBuckets.delete(String(msg.id));
       }
-    } catch {}
-    const label = AGENTS?.[agentId]?.label || String(agentId || 'agent');
-    this.showToast(`Conversation ${label} effacee.`);
-  }
+    });
+  } catch {}
+  this.state.set(`chat.messages.${agentId}`, []);
+  this._updateThreadCacheFromBuckets();
+  try {
+    const meta = this.state.get('chat.lastMessageMeta');
+    if (meta && (meta.agent_id === agentId || meta.agent === agentId || !meta.agent_id)) {
+      this.state.set('chat.lastMessageMeta', null);
+    }
+  } catch {}
+  const label = AGENTS?.[agentId]?.label || String(agentId || 'agent');
+  this.showToast(`Conversation ${label} effacee.`);
+}
+
   handleExport() {
     const chatState = this.state.get('chat') || {};
     const messagesByAgent = (chatState.messages && typeof chatState.messages === 'object') ? chatState.messages : {};
@@ -747,57 +1005,93 @@ export default class ChatModule {
     }
   }
 
-  handleMessagePersisted(payload = {}) {
-    try {
-      const msgId = payload.message_id || payload.id;
-      if (!msgId) return;
-      const role = String(payload.role || '').toLowerCase();
-      const agentId = payload.agent_id || (role === 'assistant' ? null : this.state.get('chat.currentAgentId'));
 
-      if (this._pendingMsg && this._pendingMsg.id === msgId) {
-        this._pendingMsg.triedRest = true;
-      }
+handleMessagePersisted(payload = {}) {
+  try {
+    const originalIdRaw = payload.message_id ?? payload.temp_id ?? payload.client_id ?? payload.id;
+    const persistedIdRaw = payload.id ?? null;
+    const originalId = originalIdRaw ? String(originalIdRaw) : null;
+    const persistedId = persistedIdRaw ? String(persistedIdRaw) : (originalId || null);
+    if (!originalId && !persistedId) return;
+    const role = String(payload.role || '').toLowerCase();
+    const agentIdHintRaw = payload.agent_id || (role === 'assistant' ? null : this.state.get('chat.currentAgentId'));
+    const agentIdHint = agentIdHintRaw ? String(agentIdHintRaw).trim().toLowerCase() : null;
 
-      const candidates = [];
-      if (agentId && typeof agentId === 'string') candidates.push(agentId);
-      try {
-        const active = this.state.get('chat.activeAgent');
-        if (active && !candidates.includes(active)) candidates.push(active);
-      } catch {}
-      if (!candidates.length) {
-        try {
-          const map = this.state.get('chat.messages') || {};
-          candidates.push(...Object.keys(map || {}));
-        } catch {}
-      }
-
-      candidates.forEach((aid) => {
-        if (!aid) return;
-        const path = `chat.messages.${aid}`;
-        const list = this.state.get(path) || [];
-        const idx = list.findIndex((m) => m && m.id === msgId);
-        if (idx >= 0) {
-          const msg = { ...list[idx], persisted: true };
-          if (msg.meta && typeof msg.meta === 'object') {
-            msg.meta = { ...msg.meta, persisted: true, persisted_by: 'backend' };
-          } else {
-            msg.meta = { persisted: true, persisted_by: 'backend' };
-          }
-          const next = [...list];
-          next[idx] = msg;
-          this.state.set(path, next);
-        }
-      });
-
-      this._updateThreadCacheFromBuckets();
-
-      if (role === 'assistant') {
-        this._assistantPersistedIds.add(msgId);
-      }
-    } catch (e) {
-      console.warn('[Chat] handleMessagePersisted erreur', e);
+    if (this._pendingMsg && originalId && this._pendingMsg.id === originalId) {
+      this._pendingMsg.triedRest = true;
     }
+
+    const candidateBuckets = new Set();
+    if (agentIdHint) candidateBuckets.add(agentIdHint);
+    if (originalId && this._messageBuckets.has(originalId)) {
+      const mapped = this._messageBuckets.get(originalId);
+      if (mapped) candidateBuckets.add(mapped);
+    }
+    if (persistedId && this._messageBuckets.has(persistedId)) {
+      const mapped = this._messageBuckets.get(persistedId);
+      if (mapped) candidateBuckets.add(mapped);
+    }
+    try {
+      const active = this.state.get('chat.activeAgent');
+      if (active) candidateBuckets.add(active);
+    } catch {}
+    if (!candidateBuckets.size) {
+      try {
+        const map = this.state.get('chat.messages') || {};
+        Object.keys(map || {}).forEach((key) => candidateBuckets.add(key));
+      } catch {}
+    }
+
+    const updatedBuckets = [];
+    candidateBuckets.forEach((aid) => {
+      if (!aid) return;
+      const statePath = `chat.messages.${aid}`;
+      const list = this.state.get(statePath) || [];
+      const idx = list.findIndex((m) => m && (m.id === originalId || m.id === persistedId));
+      if (idx >= 0) {
+        const current = list[idx] || {};
+        const msg = { ...current, persisted: true };
+        if (msg.meta && typeof msg.meta === 'object') {
+          msg.meta = { ...msg.meta, persisted: true, persisted_by: 'backend' };
+          if (msg.meta.opinion_request && typeof msg.meta.opinion_request === 'object' && persistedId) {
+            msg.meta.opinion_request = { ...msg.meta.opinion_request, request_id: persistedId };
+          }
+        } else {
+          msg.meta = { persisted: true, persisted_by: 'backend' };
+        }
+        if (persistedId) {
+          msg.id = persistedId;
+        }
+        const next = [...list];
+        next[idx] = msg;
+        this.state.set(statePath, next);
+        updatedBuckets.push({ bucket: aid, id: msg.id });
+      }
+    });
+
+    updatedBuckets.forEach(({ bucket, id }) => {
+      if (originalId && originalId !== id) {
+        this._messageBuckets.delete(originalId);
+      }
+      const key = id || originalId;
+      if (key) this._rememberMessageBucket(key, bucket);
+    });
+
+    this._updateThreadCacheFromBuckets();
+
+    if (role === 'assistant') {
+      if (originalId && this._assistantPersistedIds.has(originalId)) {
+        this._assistantPersistedIds.delete(originalId);
+      }
+      if (persistedId) {
+        this._assistantPersistedIds.add(persistedId);
+      }
+    }
+  } catch (e) {
+    console.warn('[Chat] handleMessagePersisted erreur', e);
   }
+}
+
 
   /* ============================ Hooks RAG/Mémoire ============================ */
   handleMemoryBanner() {
@@ -1100,4 +1394,3 @@ export default class ChatModule {
     } catch {}
   }
 }
-

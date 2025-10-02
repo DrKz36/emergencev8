@@ -17,18 +17,24 @@
     "thread_id": "uuid", "use_rag": true,
     "metadata": { "documents": ["doc-id"], "origin": "ui|retry" }
 } }
+{ "type": "chat.opinion", "payload": {
+    "target_agent_id": "anima|neo|nexus",
+    "source_agent_id": "anima|neo|nexus",
+    "message_id": "uuid", "message_text": "…"
+} }
 { "type": "debate:create", "payload": {
     "topic": "…", "agent_order": ["anima","neo"],
     "rounds": 3, "use_rag": false, "thread_id": "uuid?"
 } }
 { "type": "memory:refresh", "payload": { "thread_id": "uuid?", "mode": "stm|ltm|full" } }
 ```
+- `chat.opinion` : le client WebSocket applique une fenetre de 1,2 s pour ignorer les duplicatas (meme cible/message/texte) et le router backend bloque une requete si l'historique contient deja la note correspondante.
 
 ### 1.2 Serveur → Client
 ```json
 { "type": "ws:session_established", "payload": { "session_id": "…" } }
 { "type": "ws:auth_required", "payload": { "reason": "missing_or_invalid_token" } }
-{ "type": "ws:chat_stream_start", "payload": { "agent_id": "anima", "thread_id": "uuid" } }
+{ "type": "ws:chat_stream_start", "payload": { "agent_id": "anima", "thread_id": "uuid", "meta": { "opinion": { "of_message_id": "uuid", "source_agent_id": "neo", "reviewer_agent_id": "anima", "request_note_id": "uuid" } } } }
 { "type": "ws:chat_stream_chunk", "payload": { "id": "…", "content": "delta" } }
 { "type": "ws:chat_stream_end", "payload": {
     "id": "…", "session_id": "…", "role": "assistant",
@@ -36,7 +42,8 @@
     "meta": { "provider": "openai|anthropic|google|memory",
                "model": "…", "fallback": false,
                "rag_sources": [{ "document_id": "…", "chunk_id": "…", "score": 0.76 }],
-               "memory": { "stm": true, "ltm_items": 3 }
+               "memory": { "stm": true, "ltm_items": 3 },
+               "opinion": { "of_message_id": "uuid", "source_agent_id": "neo", "reviewer_agent_id": "anima", "request_note_id": "uuid" }
     }
 } }
 { "type": "ws:model_info", "payload": { "provider": "openai", "model": "gpt-4o-mini" } }
@@ -45,6 +52,7 @@
 - `ltm_injected` représente le nombre d'éléments effectivement injectés dans le prompt.
 - `ltm_candidates` conserve le total d'éléments rappelés depuis le vector store (équivalent de `ltm_items`).
 - `ltm_skipped` devient `true` lorsque des souvenirs ont été rappelés mais non injectés (ex: mode RAG actif); un log backend et un toast UI sont émis pour signaler la situation.
+- `meta.opinion` est présent uniquement pour les réponses d'avis et expose `of_message_id` (message évalué), `source_agent_id`, `reviewer_agent_id` (agent qui commente) et `request_note_id` (note locale liée à la demande).
 { "type": "ws:analysis_status", "payload": { "status": "running|done|error", "thread_id": "uuid?", "summary_id": "…" } }
 { "type": "ws:debate_status_update", "payload": { "stage": "round_attacker", "status": "speaking", "round": 1, "agent": "neo", "role": "attacker", "message": "Tour 1 - Neo intervient.", "topic": "..." } }
 { "type": "ws:debate_turn_update", "payload": { "round": 1, "agent": "neo", "text": "Ouverture du debat", "speaker": "attacker", "meta": { "role": "attacker", "provider": "anthropic", "model": "claude-neo", "fallback": false, "cost": { "total_cost": 0.0105, "input_tokens": 100, "output_tokens": 48 } } } }

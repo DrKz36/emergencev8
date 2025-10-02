@@ -435,6 +435,7 @@ class ChatService:
                 return ""
             where_filter = None
             uid = self._try_get_user_id(session_id)
+
             session_clause: Dict[str, Any] = {
                 "$or": [
                     {"session_id": session_id},
@@ -737,6 +738,7 @@ class ChatService:
         connection_manager: ConnectionManager,
         doc_ids: Optional[List[int]] = None,
         origin_agent_id: Optional[str] = None,
+        opinion_request: Optional[Dict[str, Any]] = None,
     ):
         temp_message_id = str(uuid4())
         full_response_text = ""
@@ -750,6 +752,19 @@ class ChatService:
 
         try:
             start_payload = {"agent_id": agent_id, "id": temp_message_id}
+            if opinion_request:
+                opinion_meta = dict(opinion_request.get("opinion_meta") or {})
+                if opinion_request.get("source_agent_id") is not None:
+                    opinion_meta.setdefault("source_agent_id", opinion_request.get("source_agent_id"))
+                if opinion_request.get("target_message_id") is not None:
+                    opinion_meta.setdefault("target_message_id", opinion_request.get("target_message_id"))
+                if opinion_request.get("request_note_id"):
+                    opinion_meta.setdefault("request_note_id", opinion_request.get("request_note_id"))
+                if opinion_meta.get("request_id") and not opinion_meta.get("request_note_id"):
+                    opinion_meta.setdefault("request_note_id", opinion_meta.get("request_id"))
+                opinion_meta.setdefault("reviewer_agent_id", agent_id)
+                opinion_meta.setdefault("agent_id", agent_id)
+                start_payload["meta"] = {"opinion": opinion_meta}
             if is_broadcast:
                 start_payload["broadcast_origin"] = origin
             await connection_manager.send_personal_message(
@@ -758,6 +773,11 @@ class ChatService:
 
             raw_history = self.session_manager.get_full_history(session_id) or []
             history = [self._message_to_dict(m) for m in raw_history if m is not None]
+
+            if opinion_request:
+                instruction_text = (opinion_request.get("instruction") or "").strip()
+                if instruction_text:
+                    history.append({"role": Role.USER.value, "content": instruction_text})
 
             last_user_message_obj = next(
                 (m for m in reversed(history) if self._is_user_role(m.get("role"))),
@@ -1085,15 +1105,23 @@ class ChatService:
             success = False
             try:
                 async for chunk in (await _stream_with(primary_provider, primary_model, normalized_history)):
-                    if chunk:
-                        full_response_text += chunk
-                        chunk_payload = {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}
-                        if is_broadcast:
-                            chunk_payload["broadcast_origin"] = origin
-                        await connection_manager.send_personal_message(
-                            {"type": "ws:chat_stream_chunk", "payload": chunk_payload},
-                            session_id,
-                        )
+                    if not chunk:
+                        continue
+                    new_total, delta = self._compute_chunk_delta(full_response_text, chunk)
+                    full_response_text = new_total
+                    if not delta:
+                        continue
+                    try:
+                        logger.info("chunk_debug primary raw=%r delta=%r", chunk, delta)
+                    except Exception:
+                        pass
+                    chunk_payload = {"agent_id": agent_id, "id": temp_message_id, "chunk": delta}
+                    if is_broadcast:
+                        chunk_payload["broadcast_origin"] = origin
+                    await connection_manager.send_personal_message(
+                        {"type": "ws:chat_stream_chunk", "payload": chunk_payload},
+                        session_id,
+                    )
                 model_used = primary_model
                 success = True
             except Exception as e_primary:
@@ -1138,18 +1166,26 @@ class ChatService:
                     norm2 = self._normalize_history_for_llm(prov2, history, rag_context, use_rag, agent_id)
                     try:
                         async for chunk in (await _stream_with(prov2, model2, norm2)):
-                            if chunk:
-                                full_response_text += chunk
-                                chunk_payload = {"agent_id": agent_id, "id": temp_message_id, "chunk": chunk}
-                                if is_broadcast:
-                                    chunk_payload["broadcast_origin"] = origin
-                                await connection_manager.send_personal_message(
-                                    {
-                                        "type": "ws:chat_stream_chunk",
-                                        "payload": chunk_payload,
-                                    },
-                                    session_id,
-                                )
+                            if not chunk:
+                                continue
+                            new_total, delta = self._compute_chunk_delta(full_response_text, chunk)
+                            full_response_text = new_total
+                            if not delta:
+                                continue
+                            try:
+                                logger.info("chunk_debug fallback raw=%r delta=%r", chunk, delta)
+                            except Exception:
+                                pass
+                            chunk_payload = {"agent_id": agent_id, "id": temp_message_id, "chunk": delta}
+                            if is_broadcast:
+                                chunk_payload["broadcast_origin"] = origin
+                            await connection_manager.send_personal_message(
+                                {
+                                    "type": "ws:chat_stream_chunk",
+                                    "payload": chunk_payload,
+                                },
+                                session_id,
+                            )
                         provider = prov2
                         model_used = model2
                         success = True
@@ -1176,6 +1212,41 @@ class ChatService:
                 timestamp=datetime.now(timezone.utc).isoformat(),
                 cost_info=cost_info_container,
             )
+            message_meta = {
+                "provider": provider,
+                "model": model_used,
+                "fallback": bool(provider != primary_provider),
+                "persisted_by": "backend",
+                "persisted_via": "ws",
+                "thread_id": thread_id,
+            }
+            if opinion_request:
+                opinion_meta = dict(opinion_request.get("opinion_meta") or {})
+                if opinion_request.get("source_agent_id") is not None:
+                    opinion_meta.setdefault("source_agent_id", opinion_request.get("source_agent_id"))
+                if opinion_request.get("target_message_id") is not None:
+                    opinion_meta.setdefault("target_message_id", opinion_request.get("target_message_id"))
+                if opinion_request.get("request_note_id"):
+                    opinion_meta.setdefault("request_note_id", opinion_request.get("request_note_id"))
+                if opinion_meta.get("request_id") and not opinion_meta.get("request_note_id"):
+                    opinion_meta.setdefault("request_note_id", opinion_meta.get("request_id"))
+                opinion_meta.setdefault("reviewer_agent_id", agent_id)
+                opinion_meta.setdefault("agent_id", agent_id)
+                message_meta["opinion"] = opinion_meta
+            if is_broadcast:
+                message_meta["broadcast_origin"] = origin
+                message_meta["source_agent"] = agent_id
+            if selected_doc_ids:
+                try:
+                    message_meta["selected_doc_ids"] = selected_doc_ids
+                except Exception:
+                    pass
+            if use_rag and rag_sources:
+                try:
+                    message_meta["sources"] = rag_sources
+                except Exception:
+                    pass
+            final_agent_message.meta = message_meta
             await self.session_manager.add_message_to_session(session_id, final_agent_message)
             await self.cost_tracker.record_cost(
                 agent=agent_id,
@@ -1191,14 +1262,7 @@ class ChatService:
             payload["agent_id"] = agent_id
             if "message" in payload:
                 payload["content"] = payload.pop("message")
-            payload["meta"] = {
-                "provider": provider,
-                "model": model_used,
-                "fallback": bool(provider != primary_provider),
-                "persisted_by": "backend",
-                "persisted_via": "ws",
-                "thread_id": thread_id,
-            }
+            payload["meta"] = dict(message_meta)
             if is_broadcast:
                 payload["meta"]["broadcast_origin"] = origin
                 payload["meta"]["source_agent"] = agent_id
@@ -1472,8 +1536,204 @@ class ChatService:
                     cm,
                     doc_ids=list(doc_ids or []),
                     origin_agent_id=origin_marker,
+                    opinion_request=None,
                 )
             )
+
+
+
+    def _build_opinion_instruction(
+        self,
+        *,
+        target_agent_id: str,
+        source_agent_id: Optional[str],
+        message_text: str,
+        user_prompt: Optional[str],
+    ) -> str:
+        target = (target_agent_id or "").strip().lower() or "anima"
+        source = (source_agent_id or "").strip().lower()
+        source_display = f"l'agent {source}" if source else "l'autre agent"
+        answer = (message_text or "").strip()
+        prompt = (user_prompt or "").strip()
+
+        instruction_parts = [
+            f"Tu es l'agent {target} d'Émergence. On sollicite ton avis expert sur la réponse ci-dessous fournie par {source_display}.",
+            "Analyse la réponse pour vérifier sa justesse, sa pertinence et les éléments manquants. Rédige ton avis en français, dans le style propre à ton agent.",
+            "Structure ta réponse en trois sections courtes :",
+            "1. Lecture rapide : une phrase qui résume ton jugement global.",
+            "2. Points solides : liste de points exacts ou utiles.",
+            "3. Points à corriger : liste de corrections, risques ou compléments nécessaires.",
+            "Termine par une recommandation actionnable (1 phrase).",
+        ]
+
+        if prompt:
+            instruction_parts.extend(
+                [
+                    "Question utilisateur initiale :",
+                    "<<<QUESTION>>>",
+                    prompt,
+                    "<<<FIN_QUESTION>>>",
+                ]
+            )
+
+        if answer:
+            instruction_parts.extend(
+                [
+                    "Réponse analysée :",
+                    "<<<REPONSE>>>",
+                    answer,
+                    "<<<FIN_REPONSE>>>",
+                ]
+            )
+        else:
+            instruction_parts.append("Réponse analysée : (contenu vide)")
+
+        if source:
+            instruction_parts.append(
+                f"Indique clairement si tu n'es pas d'accord avec {source} et propose une alternative concrète."
+            )
+
+        return "\n".join(part for part in instruction_parts if part)
+
+
+
+    async def request_opinion(
+        self,
+        session_id: str,
+        target_agent_id: str,
+        source_agent_id: Optional[str],
+        message_id: Optional[str],
+        message_text: Optional[str],
+        connection_manager: ConnectionManager,
+        request_id: Optional[str] = None,
+    ) -> None:
+        target = (target_agent_id or '').strip().lower()
+        if not target:
+            logger.error('request_opinion: target agent missing')
+            return
+        if target == 'global':
+            logger.warning('request_opinion: target agent "global" invalid, fallback anima')
+            target = 'anima'
+        if target not in self.broadcast_agents and target not in {'anima', 'neo', 'nexus'}:
+            await connection_manager.send_personal_message(
+                {
+                    'type': 'ws:error',
+                    'payload': {'message': f"Agent {target_agent_id!r} indisponible pour un avis."},
+                },
+                session_id,
+            )
+            return
+
+        clean_source = (source_agent_id or '').strip().lower() or None
+
+        original_message = None
+        if message_id:
+            try:
+                original_message = self.session_manager.get_message_by_id(session_id, message_id)
+            except Exception:
+                original_message = None
+
+        content = (message_text or '').strip()
+        if not content and isinstance(original_message, dict):
+            content = str(
+                original_message.get('content')
+                or original_message.get('message')
+                or ''
+            ).strip()
+
+        if not content:
+            await connection_manager.send_personal_message(
+                {
+                    'type': 'ws:error',
+                    'payload': {'message': "Impossible de récupérer la réponse à analyser."},
+                },
+                session_id,
+            )
+            return
+
+        user_prompt = None
+        try:
+            history = self.session_manager.get_full_history(session_id) or []
+            if message_id and history:
+                for idx, item in enumerate(history):
+                    if not item:
+                        continue
+                    try:
+                        if str(item.get('id')) == str(message_id):
+                            for previous in reversed(history[:idx]):
+                                if previous and str(previous.get('role') or '').lower().endswith('user'):
+                                    user_prompt = (
+                                        str(previous.get('content') or previous.get('message') or '')
+                                    ).strip()
+                                    if user_prompt:
+                                        break
+                            break
+                    except Exception:
+                        continue
+        except Exception:
+            user_prompt = None
+
+        candidate_note_id = request_id or ""
+        if isinstance(candidate_note_id, bytes):
+            candidate_note_id = candidate_note_id.decode("utf-8", "ignore")
+        note_id = str(candidate_note_id).strip() if candidate_note_id else ""
+        if len(note_id) > 256:
+            note_id = note_id[:256]
+        note_id = note_id or str(uuid4())
+
+        request_display = f"Avis demandé à {target} sur la réponse de {clean_source or 'cet agent'}."
+        user_note = ChatMessage(
+            id=note_id,
+            session_id=session_id,
+            role=Role.USER,
+            agent=target,
+            content=request_display,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+        user_note.meta = {
+            "opinion_request": {
+                "target_agent": target,
+                "source_agent": clean_source,
+                "requested_message_id": message_id,
+                "request_id": note_id,
+            }
+        }
+        try:
+            await self.session_manager.add_message_to_session(session_id, user_note)
+        except Exception:
+            logger.warning('request_opinion: unable to persist user note for request', exc_info=True)
+
+        instruction = self._build_opinion_instruction(
+            target_agent_id=target,
+            source_agent_id=clean_source,
+            message_text=content,
+            user_prompt=user_prompt,
+        )
+
+        opinion_meta = {
+            'of_message_id': message_id,
+            'source_agent_id': clean_source,
+            'requested_at': datetime.now(timezone.utc).isoformat(),
+            'request_note_id': note_id,
+            'request_id': note_id,
+            'reviewer_agent_id': target,
+        }
+
+        await self._process_agent_response_stream(
+            session_id=session_id,
+            agent_id=target,
+            use_rag=False,
+            connection_manager=connection_manager,
+            doc_ids=[],
+            origin_agent_id=None,
+            opinion_request={
+                "instruction": instruction,
+                "opinion_meta": opinion_meta,
+                "source_agent_id": clean_source,
+                "target_message_id": message_id,
+                "request_note_id": note_id,
+            },
+        )
 
     @staticmethod
     def _sanitize_doc_ids(raw_doc_ids: Any) -> List[int]:
@@ -1502,6 +1762,25 @@ class ChatService:
             seen.add(value)
             unique.append(value)
         return unique
+
+    @staticmethod
+    def _compute_chunk_delta(previous_text: str, raw_chunk: Optional[str]) -> Tuple[str, str]:
+        if raw_chunk is None:
+            return previous_text, ""
+        chunk = str(raw_chunk)
+        if not chunk:
+            return previous_text, ""
+        if not previous_text:
+            return chunk, chunk
+        if chunk == previous_text:
+            return previous_text, ""
+        if chunk.startswith(previous_text):
+            return chunk, chunk[len(previous_text):]
+        if previous_text.startswith(chunk):
+            return previous_text, ""
+        if chunk in previous_text:
+            return previous_text, ""
+        return previous_text + chunk, chunk
 
     # ---------- diverses ----------
     def _count_bullets(self, text: str) -> int:
