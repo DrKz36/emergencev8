@@ -1,0 +1,98 @@
+>> Connecting to ws://emergence-app-47nct44nma-ew.a.run.app/ws/smoke-ws-3msgs-20251002?user_id=smoke_rag&dev_bypass=1
+   SessionId : smoke-ws-3msgs-20251002
+>> Send: {"payload":{"use_rag":false,"text":"Msg 1: contexte.","agent_id":"anima"},"type":"chat.message"}
+>> Send: {"payload":{"use_rag":false,"text":"Msg 2: approfondis.","agent_id":"anima"},"type":"chat.message"}
+>> Send: {"payload":{"use_rag":false,"text":"Msg 3: synthèse ?","agent_id":"anima"},"type":"chat.message"}
+RECV: {"type":"ws:session_established","payload":{"session_id":"smoke-ws-3msgs-20251002","thread_id":null}}
+RECV: {"type":"ws:chat_stream_start","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d"}}
+RECV: {"type":"ws:memory_banner","payload":{"agent_id":"anima","has_stm":false,"ltm_items":0,"injected_into_prompt":false}}
+RECV: {"type":"ws:debug_context","payload":{"phase":"before_normalize","agent_id":"anima","use_rag":false,"history_total":1,"rag_context_chars":0,"off_policy":"stateless","sensitive_tokens_in_history":[]}}
+RECV: {"type":"ws:model_info","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","provider":"openai","model":"gpt-4o-mini","prompt_file":"anima_system_v2.md"}}
+RECV: {"type":"ws:debug_context","payload":{"phase":"after_normalize","agent_id":"anima","use_rag":false,"history_filtered":1,"rag_context_chars":0,"off_policy":"stateless","sensitive_tokens_in_prompt":[]}}
+RECV: {"type":"ws:chat_stream_start","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c"}}
+RECV: {"type":"ws:memory_banner","payload":{"agent_id":"anima","has_stm":false,"ltm_items":0,"injected_into_prompt":false}}
+RECV: {"type":"ws:debug_context","payload":{"phase":"before_normalize","agent_id":"anima","use_rag":false,"history_total":2,"rag_context_chars":0,"off_policy":"stateless","sensitive_tokens_in_history":[]}}
+RECV: {"type":"ws:model_info","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","provider":"openai","model":"gpt-4o-mini","prompt_file":"anima_system_v2.md"}}
+RECV: {"type":"ws:debug_context","payload":{"phase":"after_normalize","agent_id":"anima","use_rag":false,"history_filtered":2,"rag_context_chars":0,"off_policy":"stateless","sensitive_tokens_in_prompt":[]}}
+RECV: {"type":"ws:chat_stream_start","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c"}}
+RECV: {"type":"ws:memory_banner","payload":{"agent_id":"anima","has_stm":false,"ltm_items":0,"injected_into_prompt":false}}
+RECV: {"type":"ws:debug_context","payload":{"phase":"before_normalize","agent_id":"anima","use_rag":false,"history_total":3,"rag_context_chars":0,"off_policy":"stateless","sensitive_tokens_in_history":[]}}
+RECV: {"type":"ws:model_info","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","provider":"openai","model":"gpt-4o-mini","prompt_file":"anima_system_v2.md"}}
+RECV: {"type":"ws:debug_context","payload":{"phase":"after_normalize","agent_id":"anima","use_rag":false,"history_filtered":3,"rag_context_chars":0,"off_policy":"stateless","sensitive_tokens_in_prompt":[]}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":"Il"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" me"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" faut"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" un"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" peu"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" plus"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" de"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" préc"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":"isions"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" sur"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" le"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" contexte"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" ou"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" sujet"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" que"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" tu"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" souhait"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":"es"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" approfond"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":"ir"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":"."}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" Que"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" veux"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":"Pour"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":" avancer"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":"Pour"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":" te"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":"-tu"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" explorer"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" ?"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" Une"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":","}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":" j"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":" répondre"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":","}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" situation"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" personnelle"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":","}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":"'ai"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":" besoin"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":" j"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":"'ai"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" enje"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":" de"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":" plus"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":" besoin"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":" d"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" collectif"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" une"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" idée"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":" détails"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":"'un"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":" peu"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" Don"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":"-moi"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":" sur"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":" le"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":" plus"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":" de"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" des"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" éléments"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":" contexte"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":"."}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" pour"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":" préc"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":"isions"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" je"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" puisse"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":" De"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"ce3dfd5c-cfe4-42ac-bc04-bef7a1c9b16d","chunk":" quoi"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":" sur"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"bf3119c1-77dc-4c1a-8712-159dc3bfc14c","chunk":" le"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":"'aider"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" au"}}
+RECV: {"type":"ws:chat_stream_chunk","payload":{"agent_id":"anima","id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","chunk":" mieux"}}
+RECV: {"type":"ws:chat_stream_end","payload":{"id":"d31b1afa-315a-43d4-b469-dc4713cc6d8c","session_id":"smoke-ws-3msgs-20251002","role":"assistant","agent":"anima","cost_info":{"input_tokens":979,"output_tokens":53,"total_cost":0.00017864999999999998},"timestamp":"2025-10-02T06:41:54.600859+00:00","meta":{"provider":"openai","model":"gpt-4o-mini","fallback":false,"persisted_by":"backend","persisted_via":"ws","thread_id":null,"session_id":"smoke-ws-3msgs-20251002"},"agent_id":"anima","content":"Il me faut un peu plus de précisions sur le contexte ou sujet que tu souhaites approfondir. Que veux-tu explorer ? Une situation personnelle, enje collectif une idée Don-moi des éléments pour je puisse'aider au mieux"}}
+>> Done. WS State: Closed | Ends=1

@@ -6,6 +6,8 @@
 # Passation Courante
 
 ## Backend & QA
+- 2025-10-02 : Cloud Run tail `gcloud beta run services logs tail emergence-app --region europe-west1 --project emergence-469005 --log-filter="severity>=DEFAULT"` (revision emergence-app-00261-z79) : aucune entrée >= ERROR; warnings DevMode (fallback user) + sessions/threads orphelins en cohérence avec les 401/404 attendus ; warnings `backend.features.memory.analyzer` (historique vide) attendus sur session smoke sans historique ; export `docs/assets/monitoring/cloud-run-tail-20251002.txt`.
+- 2025-10-02 : `scripts/smoke/smoke-ws-3msgs.ps1 -SessionId smoke-ws-3msgs-20251002 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1" -WsHost emergence-app-47nct44nma-ew.a.run.app -Port 80` OK (3 tours `ws:chat_stream_*`, `ws:chat_stream_end` reçu, modèle gpt-4o-mini) ; trace `docs/assets/monitoring/smoke-ws-3msgs-20251002.txt`.
 - 2025-10-01 : Flux chat.opinion - `pytest tests/backend/features/test_chat_opinion.py` et `pytest tests/backend/features/test_chat_router_opinion_dedupe.py` OK (dedupe couvert). `pytest tests/backend/features -k opinion` => 2 tests, 28 deselections.
 - 2025-10-01 : Frontend dedupe - `node --test src/frontend/core/__tests__/websocket.dedupe.test.js` et `node --test src/frontend/features/chat/__tests__/chat-opinion.flow.test.js` OK (anti-dup WS + parcours UI).
 - 2025-10-01 : `npm run build` OK (vite build).
@@ -143,5 +145,6 @@ pm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js passe apr
 
 
 - 2025-09-30 : Investigation threads manquants – les requêtes REST filtrent désormais par user_id hashé (cf. src/backend/core/database/queries.py:_build_scope_condition). Les entrées historiques créées avant la migration conservent le placeholder 'FG' en user_id (ex.: threads f5db25d7af01415a8cb47f0bcd5918cc) et sont donc exclues des réponses pour le même compte (gonzalefernando@gmail.com). Aucun contenu n'est perdu en base (messages/documents présents), mais le backfill (src/backend/core/database/backfill.py) ne remplace pas ces valeurs. FAIT 2025-09-30 : run_user_scope_backfill remappe désormais les placeholders 'FG' vers le hash SHA-256 du compte de référence (AUTH_DEV_DEFAULT_EMAIL) et cascade sur threads/messages/documents/thread_docs/document_chunks. Test backend ajouté : tests/backend/features/test_user_scope_persistence.py::test_user_scope_backfill_remaps_legacy_placeholder.
+
 
 
