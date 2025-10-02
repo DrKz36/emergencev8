@@ -135,6 +135,7 @@
   margin-left:auto;
   margin-right:auto;
   padding-top:8px;
+  overflow:visible;
 }
 
 .chat-header .tabs-container,
@@ -143,7 +144,7 @@
   align-items:center;
   justify-content:center;
   gap:10px;
-  padding:0;
+  padding:4px 4px 6px;
   border-radius:999px;
   border:none;
   background:transparent;
@@ -151,6 +152,7 @@
   max-width:100%;
   flex-wrap:nowrap;
   overflow-x:auto;
+  overflow-y:visible;
   scrollbar-width:none;
   -webkit-overflow-scrolling:touch;
 }
@@ -577,7 +579,7 @@
 }
 .message--user .message-bubble{
   background: linear-gradient(140deg,var(--color-user-start),var(--color-user-end));
-  border-color: rgba(147,51,234,.55);
+  border-color: rgba(147,51,234,.5);
   color:#fdf4ff;
   align-self:flex-end;
   text-align:left;
@@ -1303,7 +1305,7 @@
   .chat-header .tabs-container,
   .chat-container .tabs-container{
     gap:8px;
-    padding:0;
+    padding:3px 4px 5px;
   }
   .chat-header .agent-selector .button-tab{
     padding:.38rem .9rem;
@@ -1374,7 +1376,7 @@
   .chat-header .tabs-container,
   .chat-container .tabs-container{
     gap:6px;
-    padding:0;
+    padding:3px 4px 5px;
     border-radius:16px;
   }
   .chat-header .agent-selector .button-tab{
