@@ -109,26 +109,15 @@ def test_login_populates_user_scope(tmp_path):
     asyncio.run(scenario())
 
 
-def test_threads_api_cross_session_listing(tmp_path):
+def test_threads_api_cross_session_listing(auth_app_factory):
     async def scenario():
         email = 'member@example.com'
         password = 'Str0ngP@ss!'
-        db_path = tmp_path / 'threads-cross-session.db'
-
-        db = DatabaseManager(str(db_path))
-        await schema.create_tables(db)
-
-        config = AuthConfig(
-            secret='test-secret',
-            issuer='emergence.local',
-            audience='emergence-app',
-            token_ttl_seconds=3600,
+        ctx = await auth_app_factory(
+            'threads-cross-session',
             admin_emails={email},
-            dev_mode=False,
         )
-        auth_service = AuthService(db, config)
-        await auth_service.bootstrap()
-        await auth_service.set_allowlist_password(email, password, actor='tests')
+        await ctx.service.set_allowlist_password(email, password, actor='tests')
 
         class Container:
             def __init__(self, db_manager: DatabaseManager, auth: AuthService) -> None:
@@ -147,9 +136,9 @@ def test_threads_api_cross_session_listing(tmp_path):
 
         app = FastAPI()
         app.include_router(threads_router.router, prefix='/api/threads')
-        app.state.service_container = Container(db, auth_service)
+        app.state.service_container = Container(ctx.db, ctx.service)
 
-        login_primary = await auth_service.login(email, password, '127.0.0.1', 'pytest-primary')
+        login_primary = await ctx.service.login(email, password, '127.0.0.1', 'pytest-primary')
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url='http://testserver') as client:
@@ -175,7 +164,7 @@ def test_threads_api_cross_session_listing(tmp_path):
             )
             assert message_resp.status_code == 201
 
-            login_secondary = await auth_service.login(email, password, '127.0.0.1', 'pytest-secondary')
+            login_secondary = await ctx.service.login(email, password, '127.0.0.1', 'pytest-secondary')
 
             list_resp = await client.get(
                 '/api/threads',
@@ -199,8 +188,6 @@ def test_threads_api_cross_session_listing(tmp_path):
             assert messages_resp.status_code == 200
             messages = messages_resp.json().get('items', [])
             assert any(msg['content'] == 'Persist across sessions' for msg in messages)
-
-        await db.disconnect()
 
     asyncio.run(scenario())
 

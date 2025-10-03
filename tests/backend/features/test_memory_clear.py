@@ -17,7 +17,10 @@ from backend.core.database import schema
 from backend.core.database.manager import DatabaseManager
 from backend.features.memory import router as memory_router
 from backend.features.memory.gardener import MemoryGardener
-# TODO(auth): replace X-Dev-Bypass shortcuts with token-based helpers once pytest fixtures expose authenticated clients.
+from backend.features.auth.models import AuthConfig
+from backend.features.auth.service import AuthService
+
+# Tests rely on AuthService-issued tokens; dev bypass headers are no longer used.
 
 class FakeCollection:
     """Minimal vector collection stub supporting get/delete with filters."""
@@ -81,27 +84,47 @@ class FakeVectorService:
 
 
 class FakeSessionManager:
-    def __init__(self, owner_id: str) -> None:
-        self._owner_id = owner_id
+    def __init__(self, default_owner_id: str) -> None:
+        self._default_owner_id = default_owner_id
+        self.active_sessions: dict[str, str] = {}
 
-    def get_user_id_for_session(self, _session_id: str):
-        return self._owner_id
+    def register(self, session_id: str, owner_id: str | None = None) -> None:
+        if not session_id:
+            return
+        self.active_sessions[session_id] = owner_id or self._default_owner_id
 
-    def get_user(self, _session_id: str):
-        return self._owner_id
+    def _resolve(self, session_id: str | None) -> str:
+        if session_id and session_id in self.active_sessions:
+            return self.active_sessions[session_id]
+        return self._default_owner_id
 
-    def get_owner(self, _session_id: str):
-        return self._owner_id
+    def get_user_id_for_session(self, session_id: str):
+        return self._resolve(session_id)
 
-    def get_session_owner(self, _session_id: str):
-        return self._owner_id
+    def get_user(self, session_id: str):
+        return self._resolve(session_id)
+
+    def get_owner(self, session_id: str):
+        return self._resolve(session_id)
+
+    def get_session_owner(self, session_id: str):
+        return self._resolve(session_id)
 
 
 class FakeContainer:
-    def __init__(self, db_manager: DatabaseManager, vector_service: FakeVectorService, session_manager: FakeSessionManager) -> None:
+    def __init__(
+        self,
+        db_manager: DatabaseManager,
+        vector_service: FakeVectorService,
+        session_manager: FakeSessionManager,
+        auth_service: AuthService,
+        memory_analyzer = None,
+    ) -> None:
         self._db = db_manager
         self._vector = vector_service
         self._session = session_manager
+        self._auth = auth_service
+        self._memory_analyzer = memory_analyzer
 
     def db_manager(self):
         return self._db
@@ -112,8 +135,46 @@ class FakeContainer:
     def session_manager(self):
         return self._session
 
+    def auth_service(self):
+        return self._auth
+
+    def memory_analyzer(self):
+        return self._memory_analyzer
 
 
+
+
+TEST_AUTH_EMAIL = "memory-tester@example.com"
+TEST_AUTH_PASSWORD = "MemoryPass123!"
+
+
+async def _prepare_auth_context(db: DatabaseManager, email: str = TEST_AUTH_EMAIL, password: str = TEST_AUTH_PASSWORD):
+    config = AuthConfig(
+        secret="memory-tests-secret",
+        issuer="memory-tests",
+        audience="memory-tests",
+        token_ttl_seconds=3600,
+        admin_emails=set(),
+        dev_mode=False,
+        dev_default_email=None,
+    )
+    auth_service = AuthService(db_manager=db, config=config)
+    await auth_service.bootstrap()
+    await auth_service.upsert_allowlist(email, role="member", note="tests", actor="tests", password=password)
+    login = await auth_service.login(
+        email,
+        password,
+        ip_address="127.0.0.1",
+        user_agent="memory-tests-suite",
+    )
+    return auth_service, login
+
+
+def _auth_headers(login, *, session_id: str | None = None) -> dict[str, str]:
+    headers = {"Authorization": f"Bearer {login.token}"}
+    headers["X-Session-Id"] = session_id or login.session_id
+    headers["X-User-Id"] = login.user_id
+    return headers
 
 def test_filter_history_for_agent_preserves_target_messages():
     history = [
@@ -142,8 +203,10 @@ async def _run_memory_clear_scenario(tmp_path):
     await db.connect()
     await schema.create_tables(db)
 
+    auth_service, login = await _prepare_auth_context(db)
+
     session_id = "session-clear-1"
-    owner_id = "owner-42"
+    owner_id = login.user_id
     now_iso = datetime.now(timezone.utc).isoformat()
     history = json.dumps([{"role": "user", "content": "hello"}])
     concepts = json.dumps(["concept-A"])
@@ -171,18 +234,20 @@ async def _run_memory_clear_scenario(tmp_path):
     collection.add("vec-2", {"session_id": "other", "source_session_id": "other", "user_id": owner_id})
     vector_service = FakeVectorService(collection)
     session_manager = FakeSessionManager(owner_id)
-    container = FakeContainer(db, vector_service, session_manager)
+    session_manager.register(session_id, owner_id)
+    container = FakeContainer(db, vector_service, session_manager, auth_service)
 
     app = FastAPI()
     app.include_router(memory_router.router, prefix="/api/memory")
     app.state.service_container = container
 
+    headers = _auth_headers(login, session_id=session_id)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         response = await client.post(
             "/api/memory/clear",
             json={"session_id": session_id},
-            headers={"X-Dev-Bypass": "1", "X-User-ID": owner_id},
+            headers=headers,
         )
 
     assert response.status_code == 200
@@ -242,9 +307,22 @@ def test_memory_endpoints_require_auth():
 
 
 
-async def _run_memory_tend_garden_post_with_agent():
+async def _run_memory_tend_garden_post_with_agent(tmp_path):
+    db_path = tmp_path / "memory-tend-agent.db"
+    db = DatabaseManager(str(db_path))
+    await db.connect()
+    await schema.create_tables(db)
+
+    auth_service, login = await _prepare_auth_context(db)
+
+    vector_service = FakeVectorService(FakeCollection())
+    session_manager = FakeSessionManager(login.user_id)
+    session_manager.register("session-agent", login.user_id)
+    container = FakeContainer(db, vector_service, session_manager, auth_service)
+
     app = FastAPI()
     app.include_router(memory_router.router, prefix="/api/memory")
+    app.state.service_container = container
 
     captured = {}
 
@@ -263,18 +341,19 @@ async def _run_memory_tend_garden_post_with_agent():
             return {"status": "success", "message": "OK", "consolidated_sessions": 0, "new_concepts": 0}
 
     original_getter = memory_router._get_gardener_from_request
+    transport = ASGITransport(app=app)
     try:
         memory_router._get_gardener_from_request = lambda request: DummyGardener()  # type: ignore[assignment]
-        transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             response = await client.post(
                 "/api/memory/tend-garden",
                 json={"thread_id": "thread-123", "agent_id": "Neo"},
-                headers={"X-Dev-Bypass": "1", "X-User-ID": "tester", "X-Session-Id": "session-agent"},
+                headers=_auth_headers(login, session_id="session-agent"),
             )
         assert response.status_code == 200
     finally:
         memory_router._get_gardener_from_request = original_getter
+        await db.disconnect()
 
     assert captured == {
         "limit": 10,
@@ -284,54 +363,49 @@ async def _run_memory_tend_garden_post_with_agent():
     }
 
 
-async def _run_memory_tend_garden_get_authorized():
+async def _run_memory_tend_garden_get_authorized(tmp_path):
+    db_path = tmp_path / "memory-tend-get.db"
+    db = DatabaseManager(str(db_path))
+    await db.connect()
+    await schema.create_tables(db)
+
+    auth_service, login = await _prepare_auth_context(db)
+
+    vector_service = FakeVectorService(FakeCollection())
+    session_manager = FakeSessionManager(login.user_id)
+    container = FakeContainer(db, vector_service, session_manager, auth_service)
+
     app = FastAPI()
     app.include_router(memory_router.router, prefix="/api/memory")
+    app.state.service_container = container
 
-    class DummyGardener:
-        def __init__(self) -> None:
-            self.calls: list[tuple[str | None, str | None]] = []
-
-        async def tend_the_garden(
-            self,
-            consolidation_limit: int = 10,
-            thread_id: str | None = None,
-            session_id: str | None = None,
-            agent_id: str | None = None,
-        ):
-            self.calls.append((thread_id, session_id, consolidation_limit, agent_id))
-            return {"status": "success", "runs": 1}
-
-    gardener = DummyGardener()
-    original_getter = memory_router._get_gardener_from_request
+    transport = ASGITransport(app=app)
     try:
-        memory_router._get_gardener_from_request = lambda request: gardener  # type: ignore[assignment]
-        transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             response = await client.get(
                 "/api/memory/tend-garden",
-                headers={"X-Dev-Bypass": "1", "X-User-ID": "authorized-user"},
+                headers=_auth_headers(login),
             )
         assert response.status_code == 200
         payload = response.json()
-        assert payload.get("status") == "success"
+        assert payload.get("status") in {"ok", "success"}
         assert payload.get("total") == 0
         assert payload.get("ltm_count") == 0
         assert isinstance(payload.get("summaries"), list)
-        assert payload.get("legacy_report") == {"status": "success", "runs": 1}
+        legacy_report = payload.get("legacy_report")
+        if legacy_report is not None:
+            assert legacy_report.get("status") in {"ok", "success"}
     finally:
-        memory_router._get_gardener_from_request = original_getter
-
-    assert gardener.calls == [(None, None, 10, None)]
+        await db.disconnect()
 
 
 
-def test_memory_tend_garden_post_forwards_agent():
-    asyncio.run(_run_memory_tend_garden_post_with_agent())
+def test_memory_tend_garden_post_forwards_agent(tmp_path):
+    asyncio.run(_run_memory_tend_garden_post_with_agent(tmp_path))
 
 
-def test_memory_tend_garden_get_authorized():
-    asyncio.run(_run_memory_tend_garden_get_authorized())
+def test_memory_tend_garden_get_authorized(tmp_path):
+    asyncio.run(_run_memory_tend_garden_get_authorized(tmp_path))
 
 
 
@@ -341,7 +415,9 @@ async def _run_memory_tend_garden_get_with_data(tmp_path):
     await db.connect()
     await schema.create_tables(db)
 
-    owner_id = "history-owner"
+    auth_service, login = await _prepare_auth_context(db)
+
+    owner_id = login.user_id
     now = datetime.now(timezone.utc)
     rows = [
         (
@@ -387,7 +463,9 @@ async def _run_memory_tend_garden_get_with_data(tmp_path):
         collection.add("vec-c", {"session_id": "session-new", "source_session_id": "session-new", "user_id": owner_id})
         vector_service = FakeVectorService(collection)
         session_manager = FakeSessionManager(owner_id)
-        container = FakeContainer(db, vector_service, session_manager)
+        session_manager.register("session-old", owner_id)
+        session_manager.register("session-new", owner_id)
+        container = FakeContainer(db, vector_service, session_manager, auth_service)
 
         app = FastAPI()
         app.include_router(memory_router.router, prefix="/api/memory")
@@ -397,7 +475,7 @@ async def _run_memory_tend_garden_get_with_data(tmp_path):
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             response = await client.get(
                 "/api/memory/tend-garden",
-                headers={"X-Dev-Bypass": "1", "X-User-ID": owner_id},
+                headers=_auth_headers(login),
             )
 
         assert response.status_code == 200

@@ -48,7 +48,7 @@
   - `POST /api/memory/tend-garden` : lance une consolidation (option `thread_id`, `mode`).
   - `GET /api/memory/tend-garden` : renvoie l’état consolidé (`summaries`, `facts`, compteurs LTM).
   - `POST /api/memory/clear` : purge STM puis LTM (scope global ou thread).
-  - Toutes les routes `/api/memory/*` valident le JWT via `shared_dependencies.get_user_id`; sans jeton valide la requête est rejetée en `401`. En local uniquement (`AUTH_DEV_MODE=1`), le couple d'en-têtes `X-Dev-Bypass: 1` + `X-User-Id` reste toléré pour les tests CLI; en prod/staging (`AUTH_DEV_MODE=0`), ce bypass doit être désactivé.
+  - Toutes les routes `/api/memory/*` valident le JWT via `shared_dependencies.get_user_id`; sans jeton valide la requête est rejetée en `401`. En local (`AUTH_DEV_MODE=1`), le couple d'en-têtes `X-Dev-Bypass: 1` + `X-User-Id` n'est plus utilisé par les scénarios automatisés (tests et smoke scripts s'appuient désormais sur `AuthService.login`). Il reste réservé aux expérimentations manuelles ; en prod/staging (`AUTH_DEV_MODE=0`), ce bypass doit être désactivé.
 
 ### Frontend
 - **`ChatModule`**
@@ -101,11 +101,12 @@
   - `scripts/smoke/smoke-ws-3msgs.ps1` (multi-messages). En attente du support `ws:chat_send`, lancer avec `-MsgType chat.message` pour valider la diffusion continue (`ws:chat_stream_start` x3 + `ws:chat_stream_end`). Log QA : `docs/assets/memoire/smoke-ws-3msgs.log` (aucun HTTP 5xx sur uploads/documents, 27/09).
   - `scripts/maintenance/run-vector-store-reset.ps1` (mode hebdo sans interaction, journalise sous `docs/assets/memoire/`).
   - `tests/test_vector_store_reset.ps1` (contrôle la remise à zéro et les backups du vector store ; option `-AutoBackend` pour un run non interactif).
+  - `tests/test_vector_store_force_backup.ps1` (simule une corruption de l'en-tête SQLite, peut redémarrer le backend via `-AutoBackend` et valide la création du dossier `vector_store_backup_*` après upload authentifié. Le script journalise l'horodatage du dernier backup détecté et avertit si le dossier précède la corruption déclenchée).
 - Métriques front : affichage du modèle, TTFB mémoire, nombre d’items injectés.
 
 ### Journal d'exécution (2025-09-27)
 - `scripts/smoke/scenario-memory-clear.ps1 -BaseUrl http://127.0.0.1:8000` : OK – scénario complet, embeddings régénérés (2 vecteurs), purge STM/LTM vérifiée. Logs `#<-` archivés dans `docs/assets/memoire/scenario-memory-clear.log` (session `memclr-057bd36ddd5742238cc4db74f8b4bf22`).
-- `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest124 -MsgType chat.message` : OK – handshake dev_bypass, flux `ws:chat_stream_end` (OpenAI gpt-4o-mini) et upload document_id=57 sans 5xx. Logs `#<-` : `docs/assets/memoire/smoke-ws-rag.log`.
+- `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest124 -MsgType chat.message` : OK – handshake authentifié (`AuthService.login` via helpers PowerShell), flux `ws:chat_stream_end` (OpenAI gpt-4o-mini) et upload document_id=57 sans 5xx. Logs `#<-` : `docs/assets/memoire/smoke-ws-rag.log`.
 - `scripts/smoke/smoke-ws-rag.ps1 -SessionId ragtest-ws-send-20250927 -MsgType ws:chat_send` : KO – handshake accepté mais réponse `ws:error` (`Type inconnu: ws:chat_send`). Diagnostic consigné dans `docs/assets/memoire/smoke-ws-rag-ws-chat_send.log`.
 - `scripts/smoke/smoke-ws-3msgs.ps1 -SessionId ragtest-3msgs-20250927 -MsgType chat.message` : OK – envoi 3 messages consécutifs, `ws:chat_stream_start` x3 puis `ws:chat_stream_end` (OpenAI gpt-4o-mini). Aucun HTTP 5xx observé côté documents/uploads (`backend.err.log` inchangé). Logs `#<-` : `docs/assets/memoire/smoke-ws-3msgs.log`.
 ### Journal d'exécution (2025-09-21)
@@ -170,7 +171,7 @@
   3. Observer le toast succès et le rafraîchissement `ws:memory_banner`.
   4. Recharger le thread et confirmer que STM/LTM sont à zéro (compteurs + liste vide).
 - **Points de vigilance** : l'ordre STM → LTM → embeddings doit être respecté, et la modal doit résumer les effets (scope, session, agent).
-    - Toute exécution `POST/DELETE /api/memory/clear` doit inclure un `Authorization: Bearer <JWT>` actif; sans cela, l'API renvoie immédiatement `401`. Conserver les en-têtes de contournement DEV uniquement sur les postes locaux.
+    - Toute exécution `POST/DELETE /api/memory/clear` doit inclure un `Authorization: Bearer <JWT>` actif; sans cela, l'API renvoie immédiatement `401`. Les en-têtes de contournement DEV restent limités aux vérifications manuelles locales; les tests automatisés utilisent désormais les jetons émis par `AuthService`.
 - **Captures à intégrer** :
   - ![Capture modal clear](assets/memoire/modal-clear.png)
   - ![Capture bandeau vide](assets/memoire/bandeau-vide.png)

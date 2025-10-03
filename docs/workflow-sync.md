@@ -59,3 +59,4 @@ pwsh -File scripts/sync-workdir.ps1 -TestCommands @(
     /ST 03:00 /RL HIGHEST
   ````
 - Sur Linux/macOS, planifier via cron : `0 4 * * Mon cd /opt/emergence && pwsh -File scripts/maintenance/run-vector-store-reset.ps1 >> docs/assets/memoire/vector-store-reset-cron.log 2>&1`.
+- `tests/test_vector_store_force_backup.ps1` complète le reset hebdomadaire : le script corrompt volontairement l'entête SQLite, peut relancer le backend via `-AutoBackend` et vérifie la création d'un dossier `vector_store_backup_*` après un upload authentifié. Il journalise le dernier backup détecté et signale si l'horodatage est antérieur au déclenchement du test.
