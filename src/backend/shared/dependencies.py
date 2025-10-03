@@ -514,8 +514,21 @@ async def get_dashboard_service(request: Request):
         raise HTTPException(status_code=503, detail="Service container indisponible.")
     return container.dashboard_service()
 
+async def get_benchmarks_service(request: Request):
+    container = getattr(request.app.state, "service_container", None)  # type: ignore[attr-defined]
+    if container is None:
+        raise HTTPException(status_code=503, detail="Service container indisponible.")
+    provider = getattr(container, "benchmarks_service", None)
+    if provider is None:
+        raise HTTPException(status_code=503, detail="BenchmarksService indisponible.")
+    try:
+        return provider()
+    except Exception as exc:
+        logger.debug("BenchmarksService indisponible: %s", exc)
+        raise HTTPException(status_code=503, detail="BenchmarksService indisponible.")
 async def get_document_service(request: Request):
     container = getattr(request.app.state, "service_container", None)  # type: ignore
     if container is None:
         raise HTTPException(status_code=503, detail="Service container indisponible.")
     return container.document_service()
+

@@ -23,6 +23,8 @@ export class DashboardUI {
                     <div id="costs-grid" class="dashboard-grid"></div>
                     <h3 class="dashboard-section-title">Monitoring Système</h3>
                     <div id="monitoring-grid" class="dashboard-grid"></div>
+                    <h3 class="dashboard-section-title">Benchmarks Agentiques</h3>
+                    <div id="benchmarks-panel" class="dashboard-benchmarks"></div>
                 </div>
             </div>
         `;
@@ -41,17 +43,21 @@ export class DashboardUI {
         }
         const costsGrid = container.querySelector('#costs-grid');
         const monitoringGrid = container.querySelector('#monitoring-grid');
+        const benchmarksPanel = container.querySelector('#benchmarks-panel');
         if (costsGrid) costsGrid.style.display = 'none';
         if (monitoringGrid) monitoringGrid.style.display = 'none';
+        if (benchmarksPanel) benchmarksPanel.style.display = 'none';
     }
 
     renderDashboardData(container, data) {
         const costsGrid = container.querySelector('#costs-grid');
         const monitoringGrid = container.querySelector('#monitoring-grid');
+        const benchmarksPanel = container.querySelector('#benchmarks-panel');
         if (!costsGrid || !monitoringGrid) return;
 
         costsGrid.style.display = 'grid';
         monitoringGrid.style.display = 'grid';
+        if (benchmarksPanel) benchmarksPanel.style.display = 'block';
         const errorContainer = container.querySelector('#dashboard-error');
         if (errorContainer) errorContainer.style.display = 'none';
 

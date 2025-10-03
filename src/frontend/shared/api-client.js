@@ -34,6 +34,16 @@ const DASHBOARD_SUMMARY =
   (API_ENDPOINTS && API_ENDPOINTS.DASHBOARD_SUMMARY)
     ? API_ENDPOINTS.DASHBOARD_SUMMARY
     : '/api/dashboard/costs/summary';
+const BENCHMARKS_RESULTS =
+  (API_ENDPOINTS && API_ENDPOINTS.BENCHMARKS_RESULTS)
+    ? API_ENDPOINTS.BENCHMARKS_RESULTS
+    : '/api/benchmarks/results';
+
+const BENCHMARKS_SCENARIOS =
+  (API_ENDPOINTS && API_ENDPOINTS.BENCHMARKS_SCENARIOS)
+    ? API_ENDPOINTS.BENCHMARKS_SCENARIOS
+    : '/api/benchmarks/scenarios';
+
 
 const DEFAULT_TIMEOUT_MS = 15000;
 
@@ -505,6 +515,25 @@ export const api = {
   },
 
   // Efface la mémoire de session. Essaie DELETE /api/memory/clear ; si non supporté → POST /api/memory/clear
+
+  // Benchmarks matrices
+  getBenchmarkResults: async ({ scenarioId, limit } = {}) => {
+    const params = {};
+    if (scenarioId) {
+      params.scenario_id = String(scenarioId).trim();
+    }
+    const parsedLimit = Number(limit);
+    if (Number.isFinite(parsedLimit)) {
+      const bounded = Math.max(1, Math.min(50, Math.floor(parsedLimit)));
+      params.limit = bounded;
+    }
+    const query = buildQuery(params);
+    const url = query ? `${BENCHMARKS_RESULTS}${query}` : BENCHMARKS_RESULTS;
+    return fetchApi(url);
+  },
+
+  getBenchmarkScenarios: async () => fetchApi(BENCHMARKS_SCENARIOS),
+
   clearMemory: async () => {
     try {
       return await fetchApi(MEMORY_CLEAR, { method: 'DELETE' });

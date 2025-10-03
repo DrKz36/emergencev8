@@ -115,4 +115,13 @@ try {
     $env:PYTHONPATH = $originalPythonPath
 }
 
+Write-Host "`n=== [7] Test benchmarks matrix (pytest) ==="
+try {
+    $pytestCmd = "python -m pytest tests/test_benchmarks.py -q"
+    Write-Host "Commande executee : $pytestCmd"
+    iex $pytestCmd
+} catch {
+    Write-Host "benchmarks pytest FAILED: $_"
+}
 Write-Host "`n=== Tests termines ==="
+

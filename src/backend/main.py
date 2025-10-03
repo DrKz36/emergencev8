@@ -48,6 +48,7 @@ def _import_router(dotted: str):
 DOCUMENTS_ROUTER = _import_router("backend.features.documents.router")
 DASHBOARD_ROUTER = _import_router("backend.features.dashboard.router")
 DEBATE_ROUTER = _import_router("backend.features.debate.router")
+BENCHMARKS_ROUTER = _import_router("backend.features.benchmarks.router")
 CHAT_ROUTER = _import_router("backend.features.chat.router")  # ← WS ici
 THREADS_ROUTER = _import_router("backend.features.threads.router")
 MEMORY_ROUTER = _import_router("backend.features.memory.router")
@@ -81,6 +82,7 @@ async def _startup(container: ServiceContainer):
         import backend.features.dashboard.router as dashboard_module
         import backend.features.documents.router as documents_module
         import backend.features.debate.router as debate_module
+        import backend.features.benchmarks.router as benchmarks_module
 
         container.wire(
             modules=[
@@ -88,9 +90,10 @@ async def _startup(container: ServiceContainer):
                 dashboard_module,
                 documents_module,
                 debate_module,
+                benchmarks_module,
             ]
         )
-        logger.info("DI wired (chat|dashboard|documents|debate.router).")
+        logger.info("DI wired (chat|dashboard|documents|debate|benchmarks.router).")
     except Exception as e:
         logger.warning(f"Wire DI partiel: {e}")
 
@@ -197,6 +200,7 @@ def create_app() -> FastAPI:
     _mount_router(DOCUMENTS_ROUTER, "/api/documents")
     _mount_router(DEBATE_ROUTER, "/api/debate")
     _mount_router(DASHBOARD_ROUTER, "/api/dashboard")
+    _mount_router(BENCHMARKS_ROUTER, "/api/benchmarks")
     _mount_router(THREADS_ROUTER, "/api/threads")
     _mount_router(MEMORY_ROUTER, "/api/memory")
     _mount_router(AUTH_ROUTER)

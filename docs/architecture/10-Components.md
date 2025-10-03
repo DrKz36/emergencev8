@@ -12,12 +12,15 @@
 - **`features/documents/service.py`** : upload, parsing (`ParserFactory`), chunking, vectorisation, suppression (purge embeddings associés).
 - **`features/debate/service.py`** : gère `debate:create`, chaîne les tours agents, isole les contextes, publie `ws:debate_*`.
 - **`features/dashboard/service.py`** : agrège coûts (jour/semaine/mois/total), sessions actives, documents traités.
+- **`features/benchmarks/service.py`** : orchestre le `BenchmarksRunner`, charge le catalogue de scénarios (ARE/Gaia2), persiste les runs en SQLite et (optionnellement) Firestore (`EMERGENCE_FIRESTORE_PROJECT`, `GOOGLE_APPLICATION_CREDENTIALS`) et expose les endpoints `/api/benchmarks/*` (fallback SQLite forcé si `EDGE_MODE=1`).
+- **`benchmarks/`** : noyau de benchmarking (runner, scénarios, executors, sinks).
 - **`shared/vector_service.py`** : gère Chroma + SentenceTransformer, détecte corruption, déclenche backup + reset automatique.
 
 ## Frontend
 - **`core/state-manager.js`** : store global, bootstrap auth + threads (REST), conserve map des threads/messages.
 - **`core/websocket.js`** : ouverture WS post-auth (sub-proto `jwt`), gestion reconnexion, diffusion evenements sur `EventBus` et anti-duplication des frames `chat.opinion` (cache glissant 1,2 s).
 - **`main.js`** : bootstrap EventBus/State, badge auth et instrumentation QA (`window.__EMERGENCE_QA_METRICS__.authRequired`) via `installAuthRequiredInstrumentation` (trace des états auth sans bannière visible).
+- **`features/dashboard/benchmarks.js`** : matrice benchmarks (statut, coût, latence) avec styles dark mode.
 - **`components/onboarding/onboarding-tour.js`** : legacy overlay (desactive v20250926, conserver pour audit historique).
 - **`features/agents/agents.js`** : module retire (profils agents fusionnes dans `ReferencesModule`).
 - **`features/home/home-module.js`** : landing auth (full screen), formulaire email allowlist, appels `POST /api/auth/login`, pilotage badge auth + bootstrap App après succès.

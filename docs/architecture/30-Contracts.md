@@ -108,6 +108,10 @@
 
 ### Dashboard / coûts
 - `GET /api/dashboard/costs/summary` → `{ day, week, month, total, sessions, documents }`.
+- `GET /api/benchmarks/results` → nécessite un token utilisateur ; accepte `scenario_id`/`limit` et renvoie les matrices triées par `created_at` avec `summary` agrégé (succès, coûts, latence) et la liste complète des `runs`. Fallback SQLite automatique si Firestore est absent ou si `EDGE_MODE=1`.
+- `GET /api/benchmarks/scenarios` → catalogue des scénarios disponibles (défaut ARE|Gaia2) enrichi avec `success_threshold`, `base_cost`, `tasks`. Peut être surchargé via `BENCHMARKS_SCENARIO_INDEX`.
+- `POST /api/benchmarks/run` → 202 + `{ matrix }`, déclenche un run synchrone de la matrice demandée. Accès admin requis (`require_admin_claims`).
+> Persistance cloud : activer `EMERGENCE_FIRESTORE_PROJECT` + credentials Google (ou `GOOGLE_APPLICATION_CREDENTIALS`) pour répliquer les résultats dans Firestore ; sinon seul SQLite est alimenté.
 
 ### Débats
 - `POST /api/debates/export` → export texte d’un débat (`{ debate_id }`).

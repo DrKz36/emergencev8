@@ -9,12 +9,15 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 from typing import Optional
 
 from dependency_injector import containers, providers
 import httpx
+
+logger = logging.getLogger(__name__)
 
 # --- Services principaux ---
 from backend.shared.config import Settings
@@ -46,6 +49,17 @@ try:
     from backend.features.debate.service import DebateService  # type: ignore
 except Exception:  # pragma: no cover
     DebateService = None  # type: ignore
+
+try:
+    from backend.features.benchmarks.service import BenchmarksService  # type: ignore
+    from backend.benchmarks.persistence import (
+        BenchmarksRepository,
+        build_firestore_client,
+    )  # type: ignore
+except Exception:  # pragma: no cover
+    BenchmarksService = None  # type: ignore
+    BenchmarksRepository = None  # type: ignore
+    build_firestore_client = None  # type: ignore
 
 try:
     from backend.features.voice.service import VoiceService  # type: ignore
@@ -227,6 +241,43 @@ def _build_voice_config(settings: Settings) -> VoiceServiceConfig:
         tts_voice_id=str(tts_voice_id).strip() if tts_voice_id else _VOICE_TTS_VOICE_DEFAULT,
     )
 
+
+def _build_benchmarks_firestore_client(settings: Settings):
+    if build_firestore_client is None:
+        return None
+    project_id = None
+    candidate = getattr(settings, 'benchmarks_firestore_project', None)
+    if isinstance(candidate, str) and candidate.strip():
+        project_id = candidate.strip()
+    else:
+        bench_cfg = getattr(settings, 'benchmarks', None)
+        if bench_cfg is not None:
+            if isinstance(bench_cfg, dict):
+                for attr in ('firestore_project', 'project_id', 'project'):
+                    value = bench_cfg.get(attr)
+                    if isinstance(value, str) and value.strip():
+                        project_id = value.strip()
+                        break
+            else:
+                for attr in ('firestore_project', 'project_id', 'project'):
+                    value = getattr(bench_cfg, attr, None)
+                    if isinstance(value, str) and value.strip():
+                        project_id = value.strip()
+                        break
+    if project_id is None:
+        for key in (
+            'EMERGENCE_FIRESTORE_PROJECT',
+            'BENCHMARKS_FIRESTORE_PROJECT',
+            'GOOGLE_CLOUD_PROJECT',
+            'GCLOUD_PROJECT',
+            'GOOGLE_PROJECT_ID',
+        ):
+            env_val = os.getenv(key)
+            if isinstance(env_val, str) and env_val.strip():
+                project_id = env_val.strip()
+                break
+    return build_firestore_client(project_id=project_id)
+
 # ----------------------------
 # Container
 # ----------------------------
@@ -237,6 +288,7 @@ class AppContainer(containers.DeclarativeContainer):
             "backend.features.threads.router",
             "backend.features.chat.service",
             "backend.features.debate.router",
+            "backend.features.benchmarks.router",
         ]
     )
 
@@ -313,6 +365,20 @@ class AppContainer(containers.DeclarativeContainer):
             uploads_dir=uploads_dir,
         )
 
+    if BenchmarksService is not None and BenchmarksRepository is not None:
+        benchmarks_repository = providers.Singleton(
+            BenchmarksRepository,
+            db_manager=db_manager,
+        )
+        benchmarks_firestore_client = providers.Callable(
+            _build_benchmarks_firestore_client,
+            settings,
+        )
+        benchmarks_service = providers.Singleton(
+            BenchmarksService,
+            repository=benchmarks_repository,
+            firestore_client=benchmarks_firestore_client,
+        )
     if DebateService is not None:
         debate_service = providers.Singleton(
             DebateService,
@@ -338,4 +404,6 @@ class AppContainer(containers.DeclarativeContainer):
 
 # Alias attendu par main.py & routers
 ServiceContainer = AppContainer
+
+
 

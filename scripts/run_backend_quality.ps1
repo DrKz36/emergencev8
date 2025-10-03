@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string[]]$Paths = @('src/backend/features/debate/models.py'),
     [string]$Python = $null,
     [switch]$FailFast = $false
@@ -37,7 +37,7 @@ if ($normalizedPaths.Count -eq 0) {
 $checks = @(
     @{ name = 'ruff';   args = @('-m', 'ruff', 'check') + $normalizedPaths },
     @{ name = 'mypy';   args = @('-m', 'mypy') + $normalizedPaths },
-    @{ name = 'pytest'; args = @('-m', 'pytest', 'tests/backend') }
+    @{ name = 'pytest'; args = @('-m', 'pytest', 'tests/backend', 'tests/test_benchmarks.py') }
 )
 
 $failed = @()
@@ -60,4 +60,5 @@ if ($failed.Count -gt 0) {
 }
 
 Write-Host 'All backend quality checks completed successfully.'
+
 

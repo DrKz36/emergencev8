@@ -59,3 +59,9 @@
 3. Back : `AuthService` vérifie le rôle admin, renvoie allowlist + sessions (expiration, ip, revoked_at).
 4. Admin : ajoute une entrée `POST /api/auth/admin/allowlist` (`{ email, note? }`) ou supprime `DELETE /api/auth/admin/allowlist/{email}`; peut révoquer `POST /api/auth/admin/sessions/revoke` (`{ session_id }`).
 5. Back : journalise l'action (`auth_audit_log`), met à jour tables, renvoie l'état; front rafraîchit et notifie.
+
+## 7) Benchmarks (Catalogue → Résultats)
+1. Front : `DashboardModule` interroge `/api/benchmarks/scenarios` puis `/api/benchmarks/results` lors du montage afin d'afficher la matrice.
+2. Back : `BenchmarksService.list_results` lit SQLite (et Firestore si disponible) via `BenchmarksRepository` et renvoie les matrices triées par `completed_at`.
+3. Front : `BenchmarksMatrix` rend une table sombre listant chaque configuration (`agent_topology` / `orchestration_mode` / `memory_mode`) avec statut, coût et latence, ainsi qu'un résumé (succès/total).
+4. Admin : peut déclencher `/api/benchmarks/run` (POST) pour lancer la matrice complète ARE/Gaia2, ce qui persiste automatiquement les résultats avant de rafraîchir la vue.

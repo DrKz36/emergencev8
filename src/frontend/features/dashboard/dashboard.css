@@ -190,3 +190,190 @@
   }
 }
 
+
+.dashboard-benchmarks {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    margin-bottom: var(--space-10);
+}
+
+.benchmarks-loading,
+.benchmarks-error,
+.benchmarks-empty {
+    padding: var(--space-6);
+    background: rgba(25, 25, 32, 0.75);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.benchmarks-error {
+    color: var(--color-danger-light);
+    border-color: rgba(255, 99, 99, 0.35);
+    background: rgba(120, 30, 30, 0.35);
+}
+
+.benchmarks-empty__hint {
+    margin-top: var(--space-2);
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+}
+
+.benchmarks-matrix__section {
+    background: rgba(20, 20, 28, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-xl);
+    padding: var(--space-6);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+}
+
+.benchmarks-matrix__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.benchmarks-matrix__title {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: var(--text-lg);
+}
+
+.benchmarks-matrix__description {
+    margin: var(--space-1) 0 0;
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+}
+
+.benchmarks-matrix__summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.benchmarks-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    font-weight: var(--weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+}
+
+.benchmarks-chip.ok {
+    background: rgba(46, 204, 113, 0.15);
+    color: #2ecc71;
+    border: 1px solid rgba(46, 204, 113, 0.4);
+}
+
+.benchmarks-chip.warn {
+    background: rgba(255, 166, 0, 0.17);
+    color: #ffb347;
+    border: 1px solid rgba(255, 166, 0, 0.35);
+}
+
+.benchmarks-matrix__totals {
+    color: var(--text-tertiary);
+}
+
+.benchmarks-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.benchmarks-table thead th {
+    text-align: left;
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.benchmarks-table tbody td {
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: top;
+}
+
+.benchmarks-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.benchmarks-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.benchmarks-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+    font-weight: var(--weight-semibold);
+    font-size: 0.75rem;
+}
+
+.benchmarks-status.ok {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+}
+
+.benchmarks-status.ko {
+    background: rgba(231, 76, 60, 0.25);
+    color: #ff6b6b;
+}
+
+.benchmarks-config {
+    color: var(--text-primary);
+    font-weight: var(--weight-medium);
+}
+
+.benchmarks-config__meta {
+    margin-top: var(--space-1);
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.benchmarks-meta {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.15rem 0.4rem;
+    border-radius: var(--radius-sm);
+}
+
+.benchmarks-meta__key {
+    color: var(--text-secondary);
+    font-weight: var(--weight-semibold);
+}
+
+@media (max-width: 760px) {
+    .benchmarks-table thead {
+        display: none;
+    }
+
+    .benchmarks-table tbody td {
+        display: flex;
+        justify-content: space-between;
+        padding: var(--space-3) 0;
+    }
+
+    .benchmarks-table tbody td::before {
+        content: attr(data-label);
+        font-weight: var(--weight-semibold);
+        color: var(--text-tertiary);
+        margin-right: var(--space-4);
+    }
+}
