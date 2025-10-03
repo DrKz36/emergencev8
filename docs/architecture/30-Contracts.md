@@ -4,7 +4,7 @@
 ## 0) Principes
 - Tous les échanges utilisent `{ "type": string, "payload": object }`.
 - Les événements serveur sont préfixés `ws:` ; les erreurs critiques côté serveur déclenchent `ws:error` + log.
-- Auth : JWT local (allowlist email, HS256) obligatoire (header `Authorization: Bearer <JWT>`). Mode dev : ID token Google ou header `X-User-Id` quand `AUTH_DEV_MODE=1`.
+- Auth : JWT local (allowlist email, HS256) obligatoire (header `Authorization: Bearer <JWT>`). Le mode dev (local uniquement) tolère un ID token Google ou l'entête `X-User-Id` quand `AUTH_DEV_MODE=1`; en production le flag vaut 0 et les bypass répondent 404.
 
 ---
 
@@ -79,7 +79,7 @@
 ## 2) REST Endpoints majeurs
 
 - `POST /api/auth/login` -> 200 `{ token, expires_at, role, session_id, email }` (body `{ email, password, meta? }`). `Set-Cookie` renvoie `id_token` + `emergence_session_id` avec `SameSite=Lax`. 401 si identifiants invalides ou email hors allowlist, 429 si rate-limit depasse, 423 si compte revoque.
-- POST /api/auth/dev/login -> 200 { token, expires_at, role, session_id, email } (body optionnel { email? }, accessible uniquement si AUTH_DEV_MODE=1; 404 sinon).
+- POST /api/auth/dev/login -> 200 { token, expires_at, role, session_id, email } (exposé pour le debug local quand `AUTH_DEV_MODE=1`; en staging/prod le flag vaut 0 et la route renvoie 404).
 - `POST /api/auth/logout` -> 204 (idempotent). Payload optionnel `{ session_id }` pour marquer la session `revoked_at`. Réponse: `Set-Cookie` vide (`id_token=`, `emergence_session_id=`) avec `Max-Age=0` et `SameSite=Lax` pour forcer la purge navigateur.
 - `GET /api/auth/session` -> 200 `{ email, role, expires_at, issued_at }` (verifie token courant).
 - `GET /api/auth/admin/allowlist` -> 200 `{ items:[...], total, page, page_size, has_more, status, query }` (paramètres `status=active|revoked|all`, `search`, `page`, `page_size`; compat hérité `include_revoked=true`).

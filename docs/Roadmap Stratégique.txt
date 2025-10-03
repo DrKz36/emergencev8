@@ -8,7 +8,7 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 
 ## Principes directeurs
 - **Architecture modulaire** : chaque capability (chat, mémoire, documents, débats, cockpit) est encapsulée (backend service + module frontend dédié).
-- **Sécurité & Auth** : tout appel REST/WS requiert un ID token (mode dev activable via `AUTH_DEV_MODE`).
+- **Sécurité & Auth** : tout appel REST/WS requiert un ID token (mode dev désactivé en production ; la route `/api/auth/dev/login` répond 404 tant que `AUTH_DEV_MODE=0`).
 - **Observabilité** : instrumentation native (`ws:model_info`, `ws:memory_banner`, `dashboard`), scripts de smoke-tests pour valider les invariants.
 - **Sobriété des coûts** : orchestration multi-fournisseurs (Google → Anthropic → OpenAI) + suivi des coûts (`DashboardService`).
 

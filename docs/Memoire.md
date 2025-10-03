@@ -48,7 +48,7 @@
   - `POST /api/memory/tend-garden` : lance une consolidation (option `thread_id`, `mode`).
   - `GET /api/memory/tend-garden` : renvoie l’état consolidé (`summaries`, `facts`, compteurs LTM).
   - `POST /api/memory/clear` : purge STM puis LTM (scope global ou thread).
-  - Toutes les routes `/api/memory/*` valident le JWT via `shared_dependencies.get_user_id`; sans jeton valide la requête est rejetée en `401`. En DEV, le couple d'en-têtes `X-Dev-Bypass: 1` + `X-User-Id` reste accepté pour les environnements sans jeton (tests locaux).
+  - Toutes les routes `/api/memory/*` valident le JWT via `shared_dependencies.get_user_id`; sans jeton valide la requête est rejetée en `401`. En local uniquement (`AUTH_DEV_MODE=1`), le couple d'en-têtes `X-Dev-Bypass: 1` + `X-User-Id` reste toléré pour les tests CLI; en prod/staging (`AUTH_DEV_MODE=0`), ce bypass doit être désactivé.
 
 ### Frontend
 - **`ChatModule`**

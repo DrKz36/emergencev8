@@ -139,6 +139,7 @@ function isDevBypassEnabled() {
 }
 
 /** Entêtes de dev (compat backend local sans jeton) */
+// TODO(auth): keep this bypass limited to local QA; migrate automated flows to authenticated headers before removal.
 function resolveDevHeaders() {
   const st = getStateFromStorage();
   const userId = st?.user?.id || 'FG';
@@ -605,4 +606,3 @@ try {
     window.api = api;
   }
 } catch (_) {}
-

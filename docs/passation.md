@@ -4,9 +4,11 @@
 - Nouvelle base SQLite regeneree; `migrations` contient bien l'entree `20250928_session_isolation.sql`.
 
 # Passation Courante
+- 2025-10-02 : Prod redeploy mergence-app-00262-xdv sans mode dev. Tests manuels : login admin réel, purge dev@local, navigation cockpit (200 sur /api/dashboard/costs/summary). Captures archivées : docs/assets/passation/auth-admin-prod-20251002.png, docs/assets/passation/cockpit-prod-20251002.png.
 
 ## Backend & QA
 - 2025-10-02 : Cloud Run tail `gcloud beta run services logs tail emergence-app --region europe-west1 --project emergence-469005 --log-filter="severity>=DEFAULT"` (revision emergence-app-00261-z79) : aucune entrée >= ERROR; warnings DevMode (fallback user) + sessions/threads orphelins en cohérence avec les 401/404 attendus ; warnings `backend.features.memory.analyzer` (historique vide) attendus sur session smoke sans historique ; export `docs/assets/monitoring/cloud-run-tail-20251002.txt`.
+- 2025-10-02 : `tests/run_all.ps1` (backend local lancé via `pwsh -File scripts/run-backend.ps1`, `AUTH_DEV_MODE=0`). Health/dashboard/documents OK, upload `test_upload.txt` -> document_id=28, suppression ID=1 => 404 attendu si absent, `pytest tests/backend/features/test_memory_clear.py -q` = 7 pass. Mise à jour 2025-10-03 : le script s'appuie désormais sur le helper d'auth (`tests/helpers/auth.ps1`) et effectue un login email/mot de passe avant les requêtes REST. Renseigner `EMERGENCE_SMOKE_EMAIL` / `EMERGENCE_SMOKE_PASSWORD` ou passer `-SmokeEmail`/`-SmokePassword` si nécessaire.
 - 2025-10-02 : `scripts/smoke/smoke-ws-3msgs.ps1 -SessionId smoke-ws-3msgs-20251002 -MsgType chat.message -UserId "smoke_rag&dev_bypass=1" -WsHost emergence-app-47nct44nma-ew.a.run.app -Port 80` OK (3 tours `ws:chat_stream_*`, `ws:chat_stream_end` reçu, modèle gpt-4o-mini) ; trace `docs/assets/monitoring/smoke-ws-3msgs-20251002.txt`.
 - 2025-10-01 : Flux chat.opinion - `pytest tests/backend/features/test_chat_opinion.py` et `pytest tests/backend/features/test_chat_router_opinion_dedupe.py` OK (dedupe couvert). `pytest tests/backend/features -k opinion` => 2 tests, 28 deselections.
 - 2025-10-01 : Frontend dedupe - `node --test src/frontend/core/__tests__/websocket.dedupe.test.js` et `node --test src/frontend/features/chat/__tests__/chat-opinion.flow.test.js` OK (anti-dup WS + parcours UI).
@@ -129,6 +131,12 @@ pm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js passe apr
 - Console : plus de warning persistants; seul [WebSocket] Aucun ID token - connexion WS annulee apparait une fois lors de la reconnexion.
 - Suite : rejouer le scenario en CI et planifier un test backend off (>1 min) pour confirmer l'absence de regressions.
 
+## Admin Ops
+- 2025-10-03 : Scripts PowerShell `tests/test_vector_store_reset.ps1` et `tests/test_vector_store_force_backup.ps1` alignés sur l'auth standard (Bearer). Ils consomment `tests/helpers/auth.ps1`, obtiennent un token via login email/mot de passe et injectent désormais `Authorization` + `X-Session-Id` sur les uploads. Configurer les mêmes variables d'environnement avant exécution.
+- 2025-10-02 : `GET /api/auth/admin/allowlist` (headers `X-Dev-Bypass: 1`, `X-User-Id: gonzalefernando@gmail.com`) => 2 entrées actives (`gonzalefernando@gmail.com` admin, `fernando36@bluewin.ch` member). `dev@local` absent en base locale et devra rester banni prod.
+- Procédure création/reset admin : exécuter `python scripts/seed_admin.py --email <admin> --password <motdepasse>` en local (ou utiliser l'onglet Admin > Allowlist > Ajouter), puis communiquer le mot de passe via canal sécurisé; vérifier la présence via `/api/auth/admin/allowlist`.
+- Procédure suppression admin : via l'UI (onglet Allowlist > icône poubelle) ou via `DELETE /api/auth/admin/allowlist/{email}` (JWT admin requis). Penser à invalider les sessions via `/api/auth/admin/sessions/revoke`.
+
 ## Session 2025-09-26 - Accueil email allowlist
 - Module `features/home/home-module.js` : landing auth plein Ã©cran, formulaire email, appels `POST /api/auth/login`, intÃ©gration metrics QA.
 - Refonte `src/frontend/main.js` : bascule automatique vers le landing sans token, bootstrap App/WS aprÃ¨s succÃ¨s, purge des tokens au logout.
@@ -136,7 +144,7 @@ pm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js passe apr
 - Correctif: `main.js` rÃ©introduit `clearToken()` pour purger les tokens navigateur lors dâun logout ou backend HS (supprime le warning console).
 ## Session 2025-09-26 - Auth password mode planning
 - Ãtat : authentification email + mot de passe (JWT local) dÃ©ployÃ©e, sans dÃ©pendance GIS.
-- Ãtape 1: activer `AUTH_DEV_MODE=1` (et optionnellement `AUTH_DEV_DEFAULT_EMAIL`) via `.env.local`, puis valider le flux d'auto-login (plus d'overlay Home).
+- Étape 1: confirmer `AUTH_DEV_MODE=0` et valider le login admin par le flux standard (email + mot de passe, overlay Home requis).
 - Ãtape 2: concevoir la migration `auth_allowlist` (`password_hash`, `password_updated_at`) + script de seed pour lâadmin.
 - Ãtape 3: adapter `AuthService.login` et `/api/auth/login` pour accepter `{ email, password }` (bcrypt/argon2) tout en conservant lâallowlist.
 - Ãtape 4: mettre Ã  jour la landing front (`home-module.js`) avec champ mot de passe + messages i18n et ajuster lâAPI client.
@@ -145,6 +153,7 @@ pm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js passe apr
 
 
 - 2025-09-30 : Investigation threads manquants – les requêtes REST filtrent désormais par user_id hashé (cf. src/backend/core/database/queries.py:_build_scope_condition). Les entrées historiques créées avant la migration conservent le placeholder 'FG' en user_id (ex.: threads f5db25d7af01415a8cb47f0bcd5918cc) et sont donc exclues des réponses pour le même compte (gonzalefernando@gmail.com). Aucun contenu n'est perdu en base (messages/documents présents), mais le backfill (src/backend/core/database/backfill.py) ne remplace pas ces valeurs. FAIT 2025-09-30 : run_user_scope_backfill remappe désormais les placeholders 'FG' vers le hash SHA-256 du compte de référence (AUTH_DEV_DEFAULT_EMAIL) et cascade sur threads/messages/documents/thread_docs/document_chunks. Test backend ajouté : tests/backend/features/test_user_scope_persistence.py::test_user_scope_backfill_remaps_legacy_placeholder.
+
 
 
 

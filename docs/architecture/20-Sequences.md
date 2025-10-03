@@ -2,7 +2,7 @@
 
 ## 0) Auth email (Allowlist -> Token -> Landing)
 1. Front : `HomeModule` affiche le hero (fond noir + logo) et le formulaire email; validation locale du format.
-2. **DEV** (`AUTH_DEV_MODE=1`) : `main.js` tente `POST /api/auth/dev/login` pour récupérer un JWT local (`email` = `AUTH_DEV_DEFAULT_EMAIL` ou premier admin allowlist) et booter l'app sans overlay.
+2. *(Optionnel - local)* : lorsque `AUTH_DEV_MODE=1`, `main.js` tente `POST /api/auth/dev/login` pour récupérer un JWT de test (`email` = `AUTH_DEV_DEFAULT_EMAIL` ou premier admin allowlist) et booter l'app sans overlay ; avec `AUTH_DEV_MODE=0`, la route renvoie 404 et le flux standard prend le relais.
 3. Front : (flux standard) `POST /api/auth/login` avec `{ email }` et métadonnées (user-agent, locale); état `pending`.
 4. Back : `AuthRateLimiter` vérifie le quota IP+email (5 essais / 5 min); `AuthService` contrôle l'allowlist (`LOCAL_ALLOWED_EMAILS`).
 5. Back : génération JWT HS256 (`iss=emergence.local`, `aud=emergence-app`, `sub=sha256(email)`), enregistrement dans `auth_sessions` (`issued_at`, `expires_at=+7j`, `ip`, `role`, `otp_fields`).
@@ -12,7 +12,7 @@
 9. Front : badge auth actif; `POST /api/auth/logout` purge le token, supprime `X-Session-Id` cote storage/localStorage et relance `HomeModule`.
 
 ## 1) Chat temps réel (Bootstrap -> WS -> Agents -> Persist)
-1. Front : `HomeModule` + `storeAuthToken()` garantissent un JWT (storage/cookie) et `StateManager.getSessionId()` expose le `session_id` pour REST/WS. En DEV (`AUTH_DEV_MODE=1`), l'app peut appeler `/api/auth/dev/login` pour obtenir un token de test.
+1. Front : `HomeModule` + `storeAuthToken()` garantissent un JWT (storage/cookie) et `StateManager.getSessionId()` expose le `session_id` pour REST/WS. En local, `AUTH_DEV_MODE=1` autorise un appel `/api/auth/dev/login` de confort ; en prod (`AUTH_DEV_MODE=0`), ce call renvoie 404 et le login standard reste obligatoire.
 2. Front : `ensureCurrentThread()` -> `GET /api/threads?type=chat&limit=1` ; cree (`POST /api/threads`) si vide, hydrate `state.threads.map` via `GET /api/threads/{id}/messages?limit=50` ; `api-client` ajoute `X-Session-Id` sur chaque appel.
 3. Front : ouverture WS `wss:///ws/{session_id}` (sub-proto `jwt` + token) et entete `X-Session-Id` ; ecoute `ws:session_established`.
 4. Front : envoi {type:"chat.message", payload:{text, agent_id, use_rag, thread_id}} ; watchdog REST (`POST /api/threads/{id}/messages` + `X-Session-Id`) si `ws:chat_stream_start` ne survient pas en 1,5 s. (27/09 : `ws:chat_send` reste refuse cote backend → smokes QA forces en `chat.message`).

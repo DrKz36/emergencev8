@@ -15,7 +15,9 @@ param(
     [switch]$AutoBackend,
     [string]$BackendHost = '127.0.0.1',
     [int]$BackendPort = 8000,
-    [int]$BackendStartupTimeoutSec = 60
+    [int]$BackendStartupTimeoutSec = 60,
+    [string]$SmokeEmail,
+    [string]$SmokePassword
 )
 
 # --- Préambule encodage UTF-8 ---
@@ -25,6 +27,23 @@ $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$scriptRoot = Split-Path -Parent $PSCommandPath
+$authHelperPath = Join-Path $scriptRoot 'helpers/auth.ps1'
+if (-not (Test-Path -LiteralPath $authHelperPath)) {
+    throw 'Auth helper introuvable: ' + $authHelperPath
+}
+. $authHelperPath
+
+$baseUrl = Resolve-SmokeBaseUrl -BaseUrl ("http://{0}:{1}" -f $BackendHost, $BackendPort)
+
+$script:VectorAuthSession = $null
+function Get-VectorAuthSession {
+    if (-not $script:VectorAuthSession) {
+        $script:VectorAuthSession = New-SmokeAuthSession -BaseUrl $baseUrl -Email $SmokeEmail -Password $SmokePassword -Source 'tests/test_vector_store_reset.ps1' -UserAgent 'emergence-vector-reset'
+        Write-Host ("[AUTH] Session {0} prete pour {1}" -f $script:VectorAuthSession.SessionId, $script:VectorAuthSession.Email) -ForegroundColor DarkGray
+    }
+    return $script:VectorAuthSession
+}
 function Resolve-PythonExe {
     param([string]$RepoRoot)
     $venvPython = Join-Path $RepoRoot '.venv\Scripts\python.exe'
@@ -135,11 +154,8 @@ function Wait-FileUnlocked {
     return $false
 }
 
-$baseUrl    = "http://${BackendHost}:${BackendPort}"
 $repoRoot   = (Get-Location).Path
 $vectorDir  = Join-Path $repoRoot 'src\backend\data\vector_store'
-$smokeUserId = 'vector-reset'
-$smokeSessionId = 'vsreset-' + ([Guid]::NewGuid().ToString('N'))
 
 Write-Host '=== [Préflight] Vérifications de base ==='
 if (-not (Test-Path $vectorDir)) {
@@ -153,6 +169,12 @@ try {
     }
 
     # 1) Upload initial (crée le store si absent)
+    $authSession = Get-VectorAuthSession
+    $smokeSessionId = $authSession.SessionId
+    $smokeUserId = $authSession.UserId
+    if (-not $smokeUserId) { $smokeUserId = 'vector-reset' }
+    $authHeaderValue = "Authorization: Bearer {0}" -f $authSession.Token
+
     Write-Host "`n=== [1] Upload initial pour amorcer le store ==="
     $testFile = Join-Path $repoRoot 'test_upload.txt'
     if (-not (Test-Path $testFile)) {
@@ -164,12 +186,14 @@ try {
         $curlArgs = @(
             '-s',
             '-X','POST',
-            '-H',"X-Session-Id: $smokeSessionId",
-            '-H',"X-User-Id: $smokeUserId",
-            '-H','X-Dev-Bypass: 1',
-            '-F',"file=@$testFile;type=text/plain",
-            "$baseUrl/api/documents/upload"
+            '-H',$authHeaderValue,
+            '-H',("X-Session-Id: {0}" -f $smokeSessionId)
         )
+        if ($smokeUserId) {
+            $curlArgs += @('-H',("X-User-Id: {0}" -f $smokeUserId))
+        }
+        $curlArgs += @('-F',("file=@{0};type=text/plain" -f $testFile))
+        $curlArgs += "$baseUrl/api/documents/upload"
         $resp1 = & curl.exe @curlArgs
         Write-Host "Réponse upload initial : $resp1"
     } catch {
@@ -246,15 +270,23 @@ try {
     }
 
     try {
+        $authSession = Get-VectorAuthSession
+        $smokeSessionId = $authSession.SessionId
+        $smokeUserId = $authSession.UserId
+        if (-not $smokeUserId) { $smokeUserId = 'vector-reset' }
+        $authHeaderValue = "Authorization: Bearer {0}" -f $authSession.Token
+
         $curlArgs2 = @(
             '-s',
             '-X','POST',
-            '-H',"X-Session-Id: $smokeSessionId",
-            '-H',"X-User-Id: $smokeUserId",
-            '-H','X-Dev-Bypass: 1',
-            '-F',"file=@$testFile;type=text/plain",
-            "$baseUrl/api/documents/upload"
+            '-H',$authHeaderValue,
+            '-H',("X-Session-Id: {0}" -f $smokeSessionId)
         )
+        if ($smokeUserId) {
+            $curlArgs2 += @('-H',("X-User-Id: {0}" -f $smokeUserId))
+        }
+        $curlArgs2 += @('-F',("file=@{0};type=text/plain" -f $testFile))
+        $curlArgs2 += "$baseUrl/api/documents/upload"
         $resp2 = & curl.exe @curlArgs2
         Write-Host "Réponse upload après reset : $resp2"
         Write-Host "`n=== ✅ Test terminé : auto-reset validé si backup créé et upload OK ==="
@@ -268,5 +300,3 @@ finally {
         Stop-AutoBackend -Quiet
     }
 }
-
-

@@ -17,7 +17,7 @@ from backend.core.database import schema
 from backend.core.database.manager import DatabaseManager
 from backend.features.memory import router as memory_router
 from backend.features.memory.gardener import MemoryGardener
-
+# TODO(auth): replace X-Dev-Bypass shortcuts with token-based helpers once pytest fixtures expose authenticated clients.
 
 class FakeCollection:
     """Minimal vector collection stub supporting get/delete with filters."""
