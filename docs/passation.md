@@ -8,6 +8,33 @@
 
 ---
 
+## [2025-10-04 14:01] — Agent: Codex
+
+### Fichiers modifiés
+- `docs/passation.md`
+
+### Contexte
+- Construction et push de l'image Docker `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251004-135440` pour la révision Cloud Run.
+- Déploiement de la révision `emergence-app-00263-n7w` (100 % trafic) via `gcloud run deploy`.
+- Vérification de santé `GET /api/health` sur `https://emergence-app-486095406755.europe-west1.run.app`.
+
+### Actions réalisées
+1. `docker build -t europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251004-135440 .`
+2. `docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251004-135440`
+3. `gcloud run deploy emergence-app --image europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251004-135440 --region europe-west1 --project emergence-469005 --quiet`
+4. `Invoke-WebRequest https://emergence-app-486095406755.europe-west1.run.app/api/health` (HTTP 200).
+
+### Tests
+- ✅ `pwsh -File scripts/sync-workdir.ps1` (inclut `tests/run_all.ps1`, `pytest tests/backend/features/test_memory_clear.py`, `pytest tests/test_benchmarks.py`).
+
+### Prochaines actions recommandées
+1. Surveiller les logs Cloud Run (`gcloud beta run services logs tail emergence-app --region europe-west1 --project emergence-469005 --log-filter="severity>=ERROR"`).
+2. Lancer un smoke test WS distant (`scripts/smoke/smoke-wss-cloudrun.ps1`) pour valider le streaming post-déploiement.
+3. Préparer la validation FG pour promotion vers le domaine custom si les QA passent.
+
+### Blocages
+- Aucun.
+
 ## [2025-10-06 09:30] — Agent: Codex
 
 ### Fichiers modifiés
@@ -229,7 +256,3 @@ pm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js passe apr
 
 
 - 2025-09-30 : Investigation threads manquants – les requêtes REST filtrent désormais par user_id hashé (cf. src/backend/core/database/queries.py:_build_scope_condition). Les entrées historiques créées avant la migration conservent le placeholder 'FG' en user_id (ex.: threads f5db25d7af01415a8cb47f0bcd5918cc) et sont donc exclues des réponses pour le même compte (gonzalefernando@gmail.com). Aucun contenu n'est perdu en base (messages/documents présents), mais le backfill (src/backend/core/database/backfill.py) ne remplace pas ces valeurs. FAIT 2025-09-30 : run_user_scope_backfill remappe désormais les placeholders 'FG' vers le hash SHA-256 du compte de référence (AUTH_DEV_DEFAULT_EMAIL) et cascade sur threads/messages/documents/thread_docs/document_chunks. Test backend ajouté : tests/backend/features/test_user_scope_persistence.py::test_user_scope_backfill_remaps_legacy_placeholder.
-
-
-
-

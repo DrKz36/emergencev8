@@ -30,7 +30,14 @@ def migrate_concept_metadata():
     """
     logger.info(f"🔄 Starting metadata migration for collection: {COLLECTION_NAME}")
 
-    vector_service = VectorService()
+    # Configuration par défaut alignée avec le backend
+    persist_directory = os.getenv("EMERGENCE_VECTOR_DIR", "./src/backend/data/vector_store")
+    embed_model_name = os.getenv("EMBED_MODEL_NAME", "all-MiniLM-L6-v2")
+
+    vector_service = VectorService(
+        persist_directory=persist_directory,
+        embed_model_name=embed_model_name
+    )
     collection = vector_service.get_or_create_collection(COLLECTION_NAME)
 
     # Get all concepts

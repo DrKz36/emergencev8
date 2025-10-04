@@ -91,6 +91,28 @@ git pull origin main
 git branch -D <branche>
 ```
 
+### Aucun remote n'apparait avec `git remote -v`
+Dans les environnements jetables (containers cloud), la configuration Git n'est pas persistante. Les remotes definis par un
+autre agent peuvent disparaitre apres un restart ou un nouveau conteneur.
+
+1. Verifie d'abord l'etat actuel :
+   ```bash
+   git remote -v
+   ```
+   Si rien ne s'affiche, aucun remote n'est enregistre dans `.git/config`.
+2. Reapplique la configuration documentee dans `AGENT_SYNC.md` (section *Remotes configures*) :
+   ```bash
+   git remote add origin https://github.com/DrKz36/emergencev8.git
+   git remote add codex git@github.com:DrKz36/emergencev8.git
+   ```
+   Ajuste les URLs si le referentiel change.
+3. Confirme que la configuration est prise en compte :
+   ```bash
+   git remote show origin
+   git remote show codex
+   ```
+4. Note l'action dans `docs/passation.md` pour informer les autres agents.
+
 ### Je dois garder des fichiers non suivis (notes locales)
 Utiliser `git status --ignored` pour les lister puis lancer `scripts/sync-workdir.ps1 -AllowDirty`. Documenter cette situation dans la passation.
 
