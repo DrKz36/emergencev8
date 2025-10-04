@@ -60,3 +60,31 @@ pwsh -File scripts/sync-workdir.ps1 -TestCommands @(
   ````
 - Sur Linux/macOS, planifier via cron : `0 4 * * Mon cd /opt/emergence && pwsh -File scripts/maintenance/run-vector-store-reset.ps1 >> docs/assets/memoire/vector-store-reset-cron.log 2>&1`.
 - `tests/test_vector_store_force_backup.ps1` complète le reset hebdomadaire : le script corrompt volontairement l'entête SQLite, peut relancer le backend via `-AutoBackend` et vérifie la création d'un dossier `vector_store_backup_*` après un upload authentifié. Il journalise le dernier backup détecté et signale si l'horodatage est antérieur au déclenchement du test.
+## Post-Merge Workflow (Squash Merge)
+
+### Comprendre le squash merge
+Ce depot utilise le mode **squash merge** pour integrer les Pull Requests. Tous les commits realises sur la branche de travail sont compacts en un seul commit dans `main`. Les SHA individuels disparaissent donc de l'historique de `main`, mais les fichiers livres sont bien presents.
+
+### Procedure rapide
+1. Confirmer sur GitHub que la PR affiche le statut `Merged` (badge violet) et noter son numero.
+2. Revenir sur `main` localement et mettre a jour la branche :
+   ```powershell
+   git checkout main
+   git pull origin main
+   ```
+3. Verifier que les fichiers cibles par la PR existent toujours (ne pas rechercher les anciens commits).
+   ```powershell
+   git log --oneline --grep "mot-cle" --all
+   Get-ChildItem chemin/vers/fichier
+   ```
+4. Si tout est bon, supprimer la branche de travail en local puis a distance pour garder un historique propre :
+   ```powershell
+   git branch -d <branche>
+   git push origin --delete <branche>
+   ```
+5. Relancer `scripts/sync-workdir.ps1` pour repartir d'un espace propre (utiliser `-AllowDirty` si des fichiers non suivis doivent rester sur place).
+
+### Points de vigilance
+- Le squash merge supprime les commits individuels : verifier les fichiers, pas les SHA.
+- Documenter dans le compte-rendu de session la suppression des branches ou l'usage de `-AllowDirty`.
+- Pour une vue d'ensemble du workflow Git, consulter `docs/git-workflow.md`.

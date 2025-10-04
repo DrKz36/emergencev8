@@ -54,6 +54,44 @@ function Invoke-Git {
     return $output
 }
 
+function Test-BranchMerged {
+    param(
+        [string]$BranchName,
+        [string]$BaseBranch = "main"
+    )
+
+    if ([string]::IsNullOrWhiteSpace($BranchName)) { return $false }
+
+    $remoteRef = "origin/$BranchName"
+    $baseRef = "origin/$BaseBranch"
+
+    $remoteBranches = git branch -r --list $remoteRef
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning ("Unable to list remote branches for {0}" -f $BranchName)
+        return $false
+    }
+
+    if (-not $remoteBranches) {
+        Write-Host ("Branch {0} not found on remote (already deleted)." -f $BranchName) -ForegroundColor Green
+        return $true
+    }
+
+    $revList = git rev-list "$baseRef..$remoteRef" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning ("Unable to compare {0} with {1}" -f $baseRef, $remoteRef)
+        return $false
+    }
+
+    if (-not $revList) {
+        Write-Warning ("Branch {0} appears merged into {1} but still exists on remote." -f $BranchName, $BaseBranch)
+        Write-Host ("Cleanup suggestion: git push origin --delete {0}" -f $BranchName) -ForegroundColor Yellow
+        return $true
+    }
+
+    return $false
+}
+
+
 function Assert-CleanWorkingTree {
     param([switch]$AllowDirty)
     $status = git status --porcelain
@@ -136,6 +174,13 @@ try {
     $currentBranchOutput = Invoke-Git rev-parse --abbrev-ref HEAD
     $currentBranch = ($currentBranchOutput | Select-Object -Last 1).Trim()
     Write-Host ("Current branch: {0}" -f $currentBranch)
+
+    Write-Step "Checking merged branch status"
+    if ($currentBranch -ne $BaseBranch) {
+        if (Test-BranchMerged -BranchName $currentBranch -BaseBranch $BaseBranch) {
+            throw "Branch ''{0}'' appears already merged into origin/{1}. Checkout main, clean up the branch, then rerun sync." -f $currentBranch, $BaseBranch
+        }
+    }
 
     Write-Step "Rebasing onto origin/$BaseBranch"
     Invoke-Git fetch origin $BaseBranch | Out-Null

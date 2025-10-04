@@ -113,3 +113,7 @@ On Windows/PowerShell you can run `pwsh -File scripts/bootstrap.ps1` and the scr
 9. `git push origin <branch>` and open the pull request.
 
 Keeping these steps in sync between cloud and local runs eliminates version drift and makes conflicts predictable.
+
+### Politique de merge
+
+Le depot applique le **squash merge** pour toutes les Pull Requests. Apres merge, vos commits individuels sont regroupes dans un seul commit sur `main`. Pour connaitre la procedure complete (verification, suppression des branches, relance du script de sync), consulter `docs/git-workflow.md`.
