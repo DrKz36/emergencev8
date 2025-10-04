@@ -595,3 +595,58 @@ async def clear_memory_post(
     logger.info(f"[memory.clear] {payload}")
     return payload
 
+
+
+
+# ========== Concept Recall API (Phase 4) ==========
+
+@router.get("/concepts/search")
+async def search_concepts(
+    request: Request,
+    q: str = Query(..., min_length=3, description="Search query for concepts"),
+    limit: int = Query(10, ge=1, le=50, description="Max number of results"),
+):
+    """
+    Search for concepts in user's memory history.
+
+    Usage: GET /api/memory/concepts/search?q=containerization&limit=10
+
+    Returns list of matching concepts with metadata (first/last mentioned, thread IDs, etc.)
+    """
+    container = _get_container(request)
+
+    # Get user_id from auth
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Get ConceptRecallTracker from container
+    try:
+        from backend.features.memory.concept_recall import ConceptRecallTracker
+
+        tracker = ConceptRecallTracker(
+            db_manager=container.db_manager(),
+            vector_service=container.vector_service(),
+            connection_manager=None,  # No WebSocket emission for REST API
+        )
+    except Exception as e:
+        logger.error(f"[concepts/search] Failed to initialize tracker: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal error initializing concept search")
+
+    # Query concept history
+    try:
+        results = await tracker.query_concept_history(
+            concept_text=q,
+            user_id=user_id,
+            limit=limit,
+        )
+    except Exception as e:
+        logger.error(f"[concepts/search] Query failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Concept search failed: {e}")
+
+    return {
+        "query": q,
+        "results": results,
+        "count": len(results),
+    }

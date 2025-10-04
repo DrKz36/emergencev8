@@ -1478,6 +1478,11 @@ class MemoryGardener:
     ):
         payload = []
         now_iso = _now_iso()
+
+        # Récupérer thread_id et message_id depuis session stub
+        thread_id = session.get("thread_id")
+        message_id = session.get("message_id")
+
         for concept_text in concepts:
             vid = uuid.uuid4().hex
             payload.append(
@@ -1490,6 +1495,12 @@ class MemoryGardener:
                         "source_session_id": session["id"],
                         "concept_text": concept_text,
                         "created_at": now_iso,
+                        "first_mentioned_at": now_iso,
+                        "last_mentioned_at": now_iso,
+                        "thread_id": thread_id,
+                        "thread_ids": [thread_id] if thread_id else [],
+                        "message_id": message_id,
+                        "mention_count": 1,
                         "last_access_at": now_iso,
                         "last_decay_at": now_iso,
                         "vitality": self.max_vitality,
@@ -1503,7 +1514,7 @@ class MemoryGardener:
                 await asyncio.to_thread(
                     self.vector_service.add_items, self.knowledge_collection, payload
                 )
-                logger.info(f"{len(payload)} concepts vectorisés et plantés.")
+                logger.info(f"{len(payload)} concepts vectorisés avec métadonnées enrichies.")
             except Exception as exc:
                 logger.error(
                     f"Vectorisation des concepts pour la session {session.get('id') if isinstance(session, dict) else session}: {exc}",

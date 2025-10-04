@@ -9,6 +9,7 @@
 import { ChatUI } from './chat-ui.js';   // cache-bust UI présent
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { api } from '../../shared/api-client.js';
+import { ConceptRecallBanner } from './concept-recall-banner.js';
 
 export default class ChatModule {
   constructor(eventBus, state) {
@@ -19,6 +20,7 @@ export default class ChatModule {
     this.container = null;
     this.listeners = [];
     this.isInitialized = false;
+    this.recallBanner = null;  // ConceptRecallBanner instance
 
     // Threads / convo
     this.threadId = null;
@@ -231,6 +233,9 @@ export default class ChatModule {
     this._H.RAG_STATUS         = this.handleRagStatus.bind(this);
     this._H.MEM_TEND           = this.handleMemoryTend.bind(this);
     this._H.MEM_CLEAR          = this.handleMemoryClear.bind(this);
+
+    // Concept Recall (Phase 3)
+    this._H.CONCEPT_RECALL     = this.handleConceptRecall.bind(this);
   }
 
   _onOnce(eventName, handler) {
@@ -262,6 +267,17 @@ export default class ChatModule {
   mount(container) {
     this.container = container;
     this.ui.render(this.container, this.state.get('chat'));
+
+    // Initialize ConceptRecallBanner
+    const bannerContainer = container.querySelector('.concept-recall-container');
+    if (bannerContainer && !this.recallBanner) {
+      try {
+        this.recallBanner = new ConceptRecallBanner(bannerContainer);
+        console.log('✅ ConceptRecallBanner initialized');
+      } catch (err) {
+        console.warn('[Chat] ConceptRecallBanner init failed:', err);
+      }
+    }
 
     const currentId = this.getCurrentThreadId();
     if (currentId) {
@@ -359,6 +375,9 @@ export default class ChatModule {
     this._onOnce('ws:rag_status',           this._H.RAG_STATUS);
     this._onOnce('memory:tend',             this._H.MEM_TEND);
     this._onOnce('memory:clear',            this._H.MEM_CLEAR);
+
+    // Concept Recall (Phase 3)
+    this._onOnce('ws:concept_recall',       this._H.CONCEPT_RECALL);
   }
 
   /* ============================ Utils ============================ */
@@ -1209,6 +1228,28 @@ handleMessagePersisted(payload = {}) {
   handleMemoryBanner() {
     try { this.state.set('chat.memoryBannerAt', Date.now()); } catch {}
     this.showToast('Mémoire chargée ✓');
+  }
+
+  handleConceptRecall(payload = {}) {
+    console.log('[Chat] handleConceptRecall:', payload);
+
+    if (!this.recallBanner) {
+      console.warn('[Chat] ConceptRecallBanner not initialized, cannot display recalls');
+      return;
+    }
+
+    const recalls = payload?.recalls;
+    if (!recalls || !Array.isArray(recalls) || recalls.length === 0) {
+      console.log('[Chat] No recalls to display');
+      return;
+    }
+
+    try {
+      this.recallBanner.show(recalls);
+      console.log(`[Chat] Displayed ${recalls.length} concept recall(s)`);
+    } catch (err) {
+      console.error('[Chat] Failed to display concept recalls:', err);
+    }
   }
 
   handleRagStatus(payload = {}) {

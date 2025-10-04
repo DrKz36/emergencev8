@@ -79,6 +79,7 @@ export class ChatUI {
           <span class="chat-thread-meta__separator" aria-hidden="true">•</span>
           <span class="chat-thread-meta__item" data-role="thread-count"></span>
         </div>
+        <div class="concept-recall-container" style="display: none;"></div>
         <div class="chat-body">
           <div class="messages" id="chat-messages"></div>
           <div id="rag-sources" class="rag-sources"></div>

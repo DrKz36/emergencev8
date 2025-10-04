@@ -36,6 +36,7 @@ from backend.core import config
 from backend.core.database import queries
 
 from backend.features.memory.gardener import MemoryGardener
+from backend.features.memory.concept_recall import ConceptRecallTracker
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,20 @@ class ChatService:
         # Cache paresseux des collections
         self._doc_collection = None
         self._knowledge_collection = None
+
+        # ConceptRecallTracker pour détection concepts récurrents
+        db_manager = getattr(session_manager, "db_manager", None)
+        connection_manager = getattr(session_manager, "connection_manager", None)
+        if db_manager and vector_service:
+            self.concept_recall_tracker = ConceptRecallTracker(
+                db_manager=db_manager,
+                vector_service=vector_service,
+                connection_manager=connection_manager,
+            )
+            logger.info("ConceptRecallTracker initialisé")
+        else:
+            self.concept_recall_tracker = None
+            logger.warning("ConceptRecallTracker NON initialisé (db_manager ou vector_service manquant)")
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
         self.broadcast_agents = self._compute_broadcast_agents()
@@ -828,6 +843,26 @@ class ChatService:
                 thread_id = None
 
             uid = self._try_get_user_id(session_id)
+
+            # 🆕 DÉTECTION CONCEPTS RÉCURRENTS (Phase 2)
+            if self.concept_recall_tracker and last_user_message and uid and thread_id:
+                try:
+                    message_id = str(uuid4())
+                    recalls = await self.concept_recall_tracker.detect_recurring_concepts(
+                        message_text=last_user_message,
+                        user_id=uid,
+                        thread_id=thread_id,
+                        message_id=message_id,
+                        session_id=session_id,
+                    )
+                    if recalls:
+                        logger.info(
+                            f"[ConceptRecall] {len(recalls)} récurrences détectées : "
+                            f"{[r['concept_text'] for r in recalls]}"
+                        )
+                        # Phase 2 : NE PAS émettre ws:concept_recall encore (géré par tracker)
+                except Exception as recall_err:
+                    logger.warning(f"[ConceptRecall] Détection échouée : {recall_err}")
 
             allowed_doc_ids: List[int] = []
             if thread_id:

@@ -1,0 +1,141 @@
+/**
+ * Concept Recall Banner Styles - Phase 3
+ * Displays recurring concept notifications
+ */
+
+.concept-recall-container {
+    padding: 0 1rem;
+    margin: 0.5rem 0;
+}
+
+.concept-recall-banner {
+    background: var(--surface-2, #1f2937);
+    border-left: 4px solid var(--accent-blue, #3b82f6);
+    padding: 1rem;
+    margin: 0.5rem 0;
+    border-radius: 8px;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    animation: slide-in 0.3s ease-out;
+}
+
+@keyframes slide-in {
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.concept-recall-banner .banner-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+}
+
+.concept-recall-banner .banner-content {
+    flex: 1;
+    min-width: 0; /* Allow text truncation */
+}
+
+.concept-recall-banner .banner-title {
+    font-weight: 600;
+    color: var(--text-primary, #e5e7eb);
+    margin-bottom: 0.25rem;
+    font-size: 0.95rem;
+}
+
+.concept-recall-banner .banner-concept {
+    font-size: 1.1rem;
+    color: var(--accent-blue, #3b82f6);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.concept-recall-banner .banner-meta {
+    font-size: 0.85rem;
+    color: var(--text-secondary, #9ca3af);
+    line-height: 1.5;
+}
+
+.concept-recall-banner .banner-meta em {
+    font-style: italic;
+    opacity: 0.8;
+}
+
+.concept-recall-banner .banner-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+}
+
+.concept-recall-banner .btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+.concept-recall-banner .btn-secondary {
+    background: var(--accent-blue, #3b82f6);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.concept-recall-banner .btn-secondary:hover {
+    background: var(--accent-blue-hover, #2563eb);
+}
+
+.concept-recall-banner .btn-text {
+    background: transparent;
+    color: var(--text-secondary, #9ca3af);
+    border: 1px solid var(--border, #374151);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.concept-recall-banner .btn-text:hover {
+    color: var(--text-primary, #e5e7eb);
+    border-color: var(--text-secondary, #6b7280);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .concept-recall-banner {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .concept-recall-banner .banner-actions {
+        flex-direction: row;
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .concept-recall-banner .btn-sm {
+        flex: 1;
+    }
+}
+
+/* Dark mode support (if needed) */
+@media (prefers-color-scheme: dark) {
+    .concept-recall-banner {
+        background: var(--surface-2, #1f2937);
+        border-left-color: var(--accent-blue, #60a5fa);
+    }
+
+    .concept-recall-banner .banner-concept {
+        color: var(--accent-blue-light, #60a5fa);
+    }
+}
