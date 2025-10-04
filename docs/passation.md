@@ -8,6 +8,32 @@
 
 ---
 
+## [2025-10-06 09:30] — Agent: Codex
+
+### Fichiers modifiés
+- `docs/passation.md`
+
+### Contexte
+- Initialisation d'une session "Code" pour aligner la configuration Git de l'environnement cloud avec les attentes du dépôt.
+- Absence totale de remotes détectée au lancement ; ajout de `origin` (HTTPS) et `codex` (SSH) pointant vers `DrKz36/emergencev8`.
+- Tentative de `git fetch origin` bloquée par le proxy (HTTP 403) — à relancer dans un environnement disposant de l'accès réseau requis.
+
+### Actions réalisées
+1. `git remote add origin https://github.com/DrKz36/emergencev8.git`
+2. `git remote add codex git@github.com:DrKz36/emergencev8.git`
+3. Vérification via `git remote -v`.
+
+### Tests
+- ⏭️ Non applicables (configuration Git uniquement).
+
+### Prochaines actions recommandées
+1. Relancer `git fetch --all --prune` puis `git rebase origin/main` une fois l'accès réseau rétabli.
+2. Créer/mettre à jour la branche locale `main` pour suivre `origin/main` si nécessaire (`git checkout main && git branch --set-upstream-to=origin/main`).
+3. Vérifier que les scripts d'automatisation (`scripts/sync-workdir.ps1`) passent sans erreur après synchronisation complète.
+
+### Blocages
+- Accès réseau HTTPS vers GitHub restreint (erreur 403 sur `git fetch origin`).
+
 ## [2025-10-04 16:00] — Agent: Claude Code
 
 ### Fichiers modifiés

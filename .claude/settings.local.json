@@ -1,27 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pytest:*)",
-      "Bash(node --test:*)",
-      "Bash(npm run build:*)",
-      "Bash(git add:*)",
-      "Bash(git reset:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(gh:*)",
-      "Bash(pwsh:*)",
-      "Bash(git fetch:*)",
-      "Bash(git checkout:*)",
-      "Bash(git stash:*)",
-      "Bash(git pull:*)",
-      "Bash(git restore:*)",
-      "Bash(git log:*)",
-      "Bash(git config:*)",
-      "Bash(python:*)",
-      "Bash(ruff check:*)",
-      "Bash(mypy:*)"
+      "Bash",
+      "Edit",
+      "Write",
+      "Read",
+      "Glob",
+      "Grep",
+      "Task",
+      "TodoWrite",
+      "NotebookEdit"
     ],
     "deny": [],
     "ask": []
+  },
+  "env": {
+    "CLAUDE_TONE": "casual_direct_fr",
+    "CLAUDE_WORKFLOW": "emergence_codev",
+    "CLAUDE_SYNC_FILE": "AGENT_SYNC.md"
   }
 }

@@ -8,7 +8,9 @@
 
 ## Checklist express
 ### Lancement de session
+- **OBLIGATOIRE** : Lire `AGENT_SYNC.md` (etat sync inter-agents) AVANT toute action de code.
 - Lire integralement ce fichier ainsi que tout `AGENTS.md` specifique au dossier courant.
+- Consulter `docs/passation.md` (3 dernieres entrees minimum) pour contexte recent.
 - Consulter les references clefs : `docs/architecture/`, `docs/Roadmap Strategique.txt`, `docs/Memoire.md`.
 - Lancer `pwsh -File scripts/sync-workdir.ps1` (option par defaut) ou realiser l'equivalent manuel (`git fetch --all --prune`, rebase, tests rapides).
 - Verifier que `git status` est propre et que l'environnement (virtualenv Python + Node.js) est pret.
