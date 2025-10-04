@@ -6,6 +6,7 @@ Phase 1: Verify temporal tracking metadata (first_mentioned_at, mention_count, t
 import pytest
 import pytest_asyncio
 import asyncio
+import json
 import os
 from datetime import datetime, timezone
 from backend.features.memory.gardener import MemoryGardener
@@ -90,7 +91,9 @@ async def test_vectorize_concepts_with_enriched_metadata(gardener, vector_servic
         assert "last_mentioned_at" in meta
         assert meta["mention_count"] == 1
         assert meta["thread_id"] == "test_thread_789"
-        assert meta["thread_ids"] == ["test_thread_789"]
+        # Verify thread_ids_json (JSON string)
+        thread_ids = json.loads(meta["thread_ids_json"])
+        assert thread_ids == ["test_thread_789"]
         assert meta["message_id"] == "test_msg_001"
 
         # Verify ISO 8601 timestamps
@@ -131,9 +134,10 @@ async def test_vectorize_concepts_without_thread_id(gardener, vector_service):
     meta = result["metadatas"][0]
 
     # Verify graceful handling of missing thread_id
-    assert meta["thread_id"] is None
-    assert meta["thread_ids"] == []
-    assert meta["message_id"] is None
+    assert meta["thread_id"] == ""  # Empty string instead of None for ChromaDB compatibility
+    thread_ids = json.loads(meta["thread_ids_json"])
+    assert thread_ids == []
+    assert meta["message_id"] == ""  # Empty string instead of None for ChromaDB compatibility
     assert meta["mention_count"] == 1
 
 

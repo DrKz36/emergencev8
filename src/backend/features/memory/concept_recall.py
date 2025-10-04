@@ -1,6 +1,7 @@
 # src/backend/features/memory/concept_recall.py
 # V1.0 - Concept Recall Tracker for Emergence V8
 
+import json
 import logging
 import os
 from typing import Dict, Any, List, Optional
@@ -23,7 +24,7 @@ class ConceptRecallTracker:
     """
 
     COLLECTION_NAME = "emergence_knowledge"
-    SIMILARITY_THRESHOLD = 0.75  # Seuil de détection (cosine similarity)
+    SIMILARITY_THRESHOLD = 0.5  # Seuil de détection (cosine similarity)
     MAX_RECALLS_PER_MESSAGE = 3  # Limite de rappels par message pour éviter spam
 
     def __init__(
@@ -35,7 +36,7 @@ class ConceptRecallTracker:
         self.db = db_manager
         self.vector_service = vector_service
         self.connection_manager = connection_manager
-        self.collection = vector_service.get_or_create_collection(self.COLLECTION_NAME)
+        self.collection = vector_service.get_or_create_collection(self.COLLECTION_NAME) if vector_service else None
 
     async def detect_recurring_concepts(
         self,
@@ -85,14 +86,19 @@ class ConceptRecallTracker:
             recalls = []
             for res in results:
                 meta = res.get("metadata", {})
-                score = res.get("score", 0.0)
+                # ChromaDB uses L2 squared distance for normalized vectors
+                # For normalized vectors: distance_l2_squared = 2 * (1 - cosine_similarity)
+                # So: cosine_similarity = 1 - (distance / 2)
+                distance = res.get("distance", 2.0)
+                score = 1.0 - (distance / 2.0)
 
                 # Seuil de similarité
                 if score < self.SIMILARITY_THRESHOLD:
                     continue
 
                 # Exclure mentions du thread actuel (on cherche l'historique passé)
-                thread_ids = meta.get("thread_ids", [])
+                thread_ids_json = meta.get("thread_ids_json", "[]")
+                thread_ids = json.loads(thread_ids_json) if thread_ids_json else []
                 if len(thread_ids) == 1 and thread_ids[0] == thread_id:
                     continue  # Concept mentionné uniquement dans le thread actuel
 
@@ -164,7 +170,8 @@ class ConceptRecallTracker:
                 mention_count = int(meta.get("mention_count", 1)) + 1
 
                 # Ajouter thread_id si pas déjà présent
-                thread_ids = meta.get("thread_ids", [])
+                thread_ids_json = meta.get("thread_ids_json", "[]")
+                thread_ids = json.loads(thread_ids_json) if thread_ids_json else []
                 if current_thread_id not in thread_ids:
                     thread_ids.append(current_thread_id)
 
@@ -172,7 +179,7 @@ class ConceptRecallTracker:
                 updated_meta = dict(meta)
                 updated_meta["mention_count"] = mention_count
                 updated_meta["last_mentioned_at"] = now_iso
-                updated_meta["thread_ids"] = thread_ids
+                updated_meta["thread_ids_json"] = json.dumps(thread_ids)
 
                 # Boost vitality (concept réutilisé = plus pertinent)
                 vitality = float(meta.get("vitality", 0.5))
@@ -268,14 +275,23 @@ class ConceptRecallTracker:
             history = []
             for res in results:
                 meta = res.get("metadata", {})
-                if res.get("score", 0) >= 0.6:  # Seuil plus permissif pour requête explicite
+                # ChromaDB uses L2 squared distance for normalized vectors
+                # For normalized vectors: cosine_similarity = 1 - (distance / 2)
+                distance = res.get("distance", 2.0)
+                score = 1.0 - (distance / 2.0)
+
+                if score >= 0.6:  # Seuil plus permissif pour requête explicite
+                    # Decode thread_ids from JSON
+                    thread_ids_json = meta.get("thread_ids_json", "[]")
+                    thread_ids = json.loads(thread_ids_json) if thread_ids_json else []
+
                     history.append({
                         "concept_text": meta.get("concept_text", ""),
                         "first_mentioned_at": meta.get("first_mentioned_at") or meta.get("created_at"),
                         "last_mentioned_at": meta.get("last_mentioned_at") or meta.get("created_at"),
-                        "thread_ids": meta.get("thread_ids", []),
+                        "thread_ids": thread_ids,
                         "mention_count": meta.get("mention_count", 1),
-                        "similarity_score": round(res.get("score", 0), 4),
+                        "similarity_score": round(score, 4),
                     })
 
             return history

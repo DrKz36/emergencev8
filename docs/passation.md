@@ -8,6 +8,58 @@
 
 ---
 
+## [2025-10-04 16:39] — Agent: Claude Code
+
+### Fichiers modifiés
+- [src/backend/features/memory/gardener.py](src/backend/features/memory/gardener.py)
+- [src/backend/features/memory/concept_recall.py](src/backend/features/memory/concept_recall.py)
+- [tests/backend/features/test_concept_recall_tracker.py](tests/backend/features/test_concept_recall_tracker.py)
+- [tests/backend/features/test_memory_gardener_enrichment.py](tests/backend/features/test_memory_gardener_enrichment.py)
+- [docs/passation.md](docs/passation.md)
+
+### Contexte
+Correction du bug ChromaDB thread_ids documenté dans [tests/backend/features/README_CONCEPT_RECALL_TESTS.md](tests/backend/features/README_CONCEPT_RECALL_TESTS.md). ChromaDB ne supporte pas les listes dans les métadonnées, causant l'erreur `ValueError: Expected metadata value to be a str, int, float or bool, got ['thread_1'] which is a <class 'list'>`.
+
+### Actions réalisées
+1. **Migration thread_ids → thread_ids_json** :
+   - [gardener.py:1501](src/backend/features/memory/gardener.py#L1501) : Stockage JSON string `json.dumps([thread_id] if thread_id else [])`
+   - [concept_recall.py:97,170](src/backend/features/memory/concept_recall.py#L97) : Décodage `json.loads(meta.get("thread_ids_json", "[]"))`
+   - [concept_recall.py:178](src/backend/features/memory/concept_recall.py#L178) : Encodage lors mise à jour
+   - Ajout `import json` dans les deux fichiers
+
+2. **Correction distance → score** :
+   - [concept_recall.py:90-93](src/backend/features/memory/concept_recall.py#L90) : ChromaDB utilise L2² pour vecteurs normalisés
+   - Formule : `score = 1.0 - (distance / 2.0)` (au lieu de `1.0 - distance`)
+   - Seuil abaissé de 0.75 → 0.5 pour similarité réaliste
+
+3. **Correction métadonnées ChromaDB** :
+   - [gardener.py:1500,1502](src/backend/features/memory/gardener.py#L1500) : Remplacement `None` → `""` pour `thread_id` et `message_id`
+   - ChromaDB rejette les valeurs `None` dans les métadonnées
+
+4. **Correction tests** :
+   - [test_concept_recall_tracker.py:76](tests/backend/features/test_concept_recall_tracker.py#L76) : Usage `thread_ids_json` dans `seed_concept()`
+   - [test_concept_recall_tracker.py:144](tests/backend/features/test_concept_recall_tracker.py#L144) : Seuil 0.75 → 0.5
+   - [test_concept_recall_tracker.py:204-206](tests/backend/features/test_concept_recall_tracker.py#L204) : Décodage JSON pour assertions
+   - [test_memory_gardener_enrichment.py:9](tests/backend/features/test_memory_gardener_enrichment.py#L9) : Import `json`
+   - [concept_recall.py:39](src/backend/features/memory/concept_recall.py#L39) : Collection optionnelle si `vector_service=None`
+
+### Tests
+- ✅ `pytest tests/backend/features/test_concept_recall_tracker.py -v` => **8/8 passent** ✅
+- ✅ `pytest tests/backend/features/test_memory_gardener_enrichment.py -v` => **4/4 passent** ✅
+- ✅ **Total : 12/12 tests passent** (objectif atteint)
+
+### Prochaines actions recommandées
+1. ⚠️ Migration données production : Si des concepts existent en production avec `thread_ids` comme liste, exécuter un script de migration pour convertir → `thread_ids_json`
+2. 📊 Monitoring : Ajouter métriques Prometheus pour tracker les détections de concept recall (taux de similarité, fréquence)
+3. 🎨 Modal "Voir l'historique" : Implémenter UI pour afficher les threads passés où le concept a été mentionné (Phase suivante)
+4. 📚 Documentation README : Mettre à jour [README_CONCEPT_RECALL_TESTS.md](tests/backend/features/README_CONCEPT_RECALL_TESTS.md) pour refléter les corrections
+5. 🧪 QA manuelle : Tester le banner concept recall en conditions réelles selon [NEXT_INSTANCE_PROMPT.md](NEXT_INSTANCE_PROMPT.md)
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-04 14:01] — Agent: Codex
 
 ### Fichiers modifiés
