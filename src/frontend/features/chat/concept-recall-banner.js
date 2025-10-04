@@ -1,7 +1,9 @@
 /**
- * Concept Recall Banner - Phase 3
+ * Concept Recall Banner - Phase 3 + Option A
  * Displays recurring concept notifications in the chat UI
  */
+
+import { ConceptRecallHistoryModal } from './concept-recall-history-modal.js';
 
 export class ConceptRecallBanner {
     constructor(container) {
@@ -11,6 +13,7 @@ export class ConceptRecallBanner {
         this.container = container;
         this.isVisible = false;
         this.currentRecalls = [];
+        this.historyModal = new ConceptRecallHistoryModal();
     }
 
     /**
@@ -107,19 +110,15 @@ export class ConceptRecallBanner {
      * Handle "View history" button click
      * @private
      */
-    _onViewHistory() {
-        // TODO: Implement history modal (Phase 4+)
-        console.log('[ConceptRecallBanner] View history:', this.currentRecalls);
+    async _onViewHistory() {
+        console.log('[ConceptRecallBanner] Opening history modal:', this.currentRecalls);
 
-        // For now, just log to console and hide banner
-        alert(
-            `Historique des concepts récurrents :\n\n` +
-            this.currentRecalls.map((r, i) =>
-                `${i + 1}. ${r.concept}\n   Première mention: ${this._formatDate(r.first_date)}\n   Mentionné ${r.count} fois`
-            ).join('\n\n')
-        );
+        // Open detailed history modal
+        await this.historyModal.open(this.currentRecalls);
 
-        this.hide();
+        // Keep banner visible (user might want to dismiss after viewing)
+        // Or uncomment to auto-hide:
+        // this.hide();
     }
 
     /**

@@ -195,7 +195,12 @@
 /* ===== A11y ===== */
 :focus-visible{ outline:2px solid var(--color-primary); outline-offset:2px; }
 
-
-
-
+/* ===== MOBILE NAV INTEGRATION ===== */
+/* La MobileNav est définie dans components-modern.css */
+/* Ici on s'assure que l'app-content compense le padding */
+@media (max-width: 767px) and (orientation: portrait) {
+  .app-content {
+    padding-bottom: calc(var(--mobile-nav-height, 64px) + env(safe-area-inset-bottom, 0) + 1rem) !important;
+  }
+}
 

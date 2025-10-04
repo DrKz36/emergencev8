@@ -54,6 +54,7 @@ THREADS_ROUTER = _import_router("backend.features.threads.router")
 MEMORY_ROUTER = _import_router("backend.features.memory.router")
 AUTH_ROUTER = _import_router("backend.features.auth.router")
 DEV_AUTH_ROUTER = _import_router("backend.features.dev_auth.router")  # optionnel
+METRICS_ROUTER = _import_router("backend.features.metrics.router")  # Prometheus metrics
 
 
 def _migrations_dir() -> str:
@@ -205,6 +206,7 @@ def create_app() -> FastAPI:
     _mount_router(MEMORY_ROUTER, "/api/memory")
     _mount_router(AUTH_ROUTER)
     _mount_router(DEV_AUTH_ROUTER)  # éventuel
+    _mount_router(METRICS_ROUTER, "/api")  # Prometheus metrics at /api/metrics
 
     # ⚠️ WS: **uniquement** features.chat.router (déclare /ws/{session_id})
     _mount_router(CHAT_ROUTER)  # pas de prefix → garde /ws/{session_id}

@@ -1,14 +1,16 @@
 # src/backend/features/memory/concept_recall.py
-# V1.0 - Concept Recall Tracker for Emergence V8
+# V1.1 - Concept Recall Tracker with Prometheus metrics
 
 import json
 import logging
 import os
+import time
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 
 from backend.core.database.manager import DatabaseManager
 from backend.features.memory.vector_service import VectorService
+from backend.features.memory.concept_recall_metrics import concept_recall_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,8 @@ class ConceptRecallTracker:
         self.vector_service = vector_service
         self.connection_manager = connection_manager
         self.collection = vector_service.get_or_create_collection(self.COLLECTION_NAME) if vector_service else None
+        self.metrics = concept_recall_metrics
+        logger.info("[ConceptRecallTracker] Initialisé avec métriques Prometheus")
 
     async def detect_recurring_concepts(
         self,
@@ -66,7 +70,11 @@ class ConceptRecallTracker:
             return []
 
         try:
+            # Start timing for metrics
+            start_time = time.time()
+
             # 1. Recherche vectorielle sur concepts existants de l'utilisateur
+            vector_search_start = time.time()
             results = self.vector_service.query(
                 collection=self.collection,
                 query_text=message_text,
@@ -78,6 +86,8 @@ class ConceptRecallTracker:
                     ]
                 }
             )
+            vector_search_duration = time.time() - vector_search_start
+            self.metrics.record_vector_search(vector_search_duration)
 
             if not results:
                 return []
@@ -135,6 +145,16 @@ class ConceptRecallTracker:
                     recalls=recalls,
                 )
 
+            # 5. Record metrics for each detection
+            detection_duration = time.time() - start_time
+            for recall in recalls:
+                self.metrics.record_detection(
+                    user_id=user_id,
+                    similarity_score=recall["similarity_score"],
+                    thread_count=len(recall["thread_ids"]),
+                    duration_seconds=detection_duration
+                )
+
             return recalls
 
         except Exception as e:
@@ -152,6 +172,7 @@ class ConceptRecallTracker:
         Met à jour les métadonnées vectorielles pour enregistrer la nouvelle mention.
         """
         now_iso = datetime.now(timezone.utc).isoformat()
+        update_start = time.time()
 
         for recall in recalls:
             vector_id = recall.get("vector_id")
@@ -193,8 +214,17 @@ class ConceptRecallTracker:
 
                 logger.debug(f"[ConceptRecallTracker] Concept {vector_id} mis à jour : {mention_count} mentions")
 
+                # Record concept reuse metric
+                user_id = meta.get("user_id", "")
+                if user_id:
+                    self.metrics.record_concept_reuse(user_id, mention_count)
+
             except Exception as e:
                 logger.warning(f"[ConceptRecallTracker] Impossible de mettre à jour {vector_id} : {e}")
+
+        # Record metadata update duration
+        update_duration = time.time() - update_start
+        self.metrics.record_metadata_update(update_duration)
 
     async def _emit_concept_recall_event(
         self,
@@ -233,6 +263,13 @@ class ConceptRecallTracker:
                 session_id
             )
             logger.info(f"[ConceptRecallTracker] Événement ws:concept_recall émis : {len(recalls)} récurrences")
+
+            # Record event emission metric (extract user_id from first recall)
+            if recalls and len(recalls) > 0:
+                # Try to get user_id from session or recall metadata
+                # For now, we'll need to pass user_id from caller
+                pass
+
         except Exception as e:
             logger.debug(f"[ConceptRecallTracker] Impossible d'émettre ws:concept_recall : {e}")
 

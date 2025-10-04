@@ -2,6 +2,12 @@
 /* main-styles.css — Styles unifiés (Cartes, Boutons, Inputs) — V3.5          */
 /* ========================================================================== */
 
+/* === DESIGN TOKENS MODERNISÉS === */
+@import './design-tokens.css';
+
+/* === COMPOSANTS MODERNISÉS === */
+@import './components-modern.css';
+
 /* --- Card --- */
 .card {
   background: var(--glass-bg);
