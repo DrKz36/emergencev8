@@ -4,13 +4,17 @@
   [string]$UserId   = "FG",
   [string]$AgentId  = "anima",
   [string]$Text     = "Teste RAG avec documents ingérés.",
-  [string]$MsgType  = "ws:chat_send"
+  [string]$MsgType  = "ws:chat_send",
+  [string]$SessionId
 )
 
 # --- WS SessionId guard (autogen) ---
-if (-not (Get-Variable -Name SessionId -Scope 0 -ErrorAction SilentlyContinue)) {
+if ($SessionId -and $SessionId.Trim()) {
+  Set-Variable -Name SessionId -Value ($SessionId.Trim()) -Scope 0
+} elseif (-not (Get-Variable -Name SessionId -Scope 0 -ErrorAction SilentlyContinue)) {
   Set-Variable -Name SessionId -Value ([guid]::NewGuid().ToString()) -Scope 0
 }
+$SessionId = (Get-Variable -Name SessionId -Scope 0).Value
 # --- end guard ---
 
 try { [void][System.Net.WebSockets.ClientWebSocket]::new() } catch {
@@ -21,6 +25,7 @@ $ub = [System.UriBuilder]::new()
 $ub.Scheme='ws'; $ub.Host=$WsHost; $ub.Port=$Port; $ub.Path="/ws/$SessionId"; $ub.Query="user_id=$UserId"
 $uri = $ub.Uri
 Write-Host ">> Connecting to $($uri.AbsoluteUri)"
+Write-Host "   SessionId : $SessionId" -ForegroundColor DarkGray
 
 $ws  = [System.Net.WebSockets.ClientWebSocket]::new()
 $ws.Options.KeepAliveInterval = [TimeSpan]::FromSeconds(5)

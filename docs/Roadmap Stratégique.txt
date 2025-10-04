@@ -8,9 +8,26 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 
 ## Principes directeurs
 - **Architecture modulaire** : chaque capability (chat, mémoire, documents, débats, cockpit) est encapsulée (backend service + module frontend dédié).
-- **Sécurité & Auth** : tout appel REST/WS requiert un ID token (mode dev activable via `AUTH_DEV_MODE`).
+- **Sécurité & Auth** : tout appel REST/WS requiert un ID token (mode dev désactivé en production ; la route `/api/auth/dev/login` répond 404 tant que `AUTH_DEV_MODE=0`).
 - **Observabilité** : instrumentation native (`ws:model_info`, `ws:memory_banner`, `dashboard`), scripts de smoke-tests pour valider les invariants.
 - **Sobriété des coûts** : orchestration multi-fournisseurs (Google → Anthropic → OpenAI) + suivi des coûts (`DashboardService`).
+
+## Phase 2 : La Mémoire Vive (Fondation)
+* **Objectif principal :** Donner à ÉMERGENCE une mémoire persistante, intelligente et capable d’oubli sélectif.
+* **Concepts clés :**
+    - **Sauvegarde intégrale :** Stockage de chaque session (dialogues, débats, métadonnées) dans un champ JSON unique.
+    - **Analyse sémantique :** Extraction automatique de thèmes, concepts et entités de chaque session.
+    - **Score de vivacité & oubli :** Simulation d’un mécanisme d’oubli en faisant décroître un « score de pertinence » dans le temps pour prioriser les souvenirs récents ou importants.
+* **État d’avancement (Phase 2 - Mémoire) :**
+    - Chaque concept/fait vectorisé embarque des métadonnées de vitalité (`vitality`, `usage_count`, `last_access_at`, `last_decay_at`).
+    - Le Jardinier applique à chaque ronde une décroissance progressive (base + bonus selon l’ancienneté) et purge les souvenirs sous le seuil de vivacité.
+    - Les rappels conversationnels rehaussent la vitalité des souvenirs consultés et ignorent ceux en dessous du seuil de rappel.
+* **Modules impactés/créés :**
+    - `core/database.py` (modifié)
+    - `core/session_manager.py` (nouveau)
+    - `features/memory/analyzer.py` (nouveau)
+    - `features/memory/gardener.py` (nouveau, pour l’oubli)
+    - `core/temporal_search.py` (nouveau)
 
 ---
 
@@ -25,10 +42,18 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 
 ## Roadmap structurée
 
+### P0 - Auth & sessions isolées (Priorité)
+- Déployer un compte admin unique (`gonzalefernando@gmail.com`, mot de passe défini) via seed/migration et documenter la procédure.
+- Garantir que chaque connexion crée une session indépendante : threads initiaux, STM/LTM et embeddings totalement séparés.
+- [FAIT 2025-09-28] Migration `session_id` (threads/messages/documents) + propagation `X-Session-Id` sur REST/WS; front reset via `StateManager.resetForSession()`.
+- Revoir les services (`AuthService`, `ChatService`, `MemoryGardener`, `MemoryAnalyzer`, `DocumentService`) pour s'assurer qu'ils respectent l'isolation par `session_id`.
+- Mettre à jour l'UI (HomeModule, StateManager, WebSocketClient) pour refléter le statut session/token et exposer l'interface d'administration sécurisée.
+- Fournir tests adaptés (pytest + smoke scripts) et documentation (architecture, passation, runbooks) alignée sur la nouvelle gouvernance des sessions.
+
 ### P2 — Mémoire vive & consolidation continue (En cours)
 - Optimiser l’expérience utilisateur en cas d’échec auth (toasts explicites, re-prompt GIS).
-- Afficher l’historique de consolidation (`GET /api/memory/tend-garden`) dans l’UI mémoire.
-- Couvrir `memory:clear` par tests automatisés (smoke + unitaires ciblés).
+- [FAIT 2025-09-27] Afficher l’historique de consolidation (`GET /api/memory/tend-garden`) dans l’UI mémoire.
+- [FAIT] Couvrir `memory:clear` par tests automatises (pytest `tests/backend/features/test_memory_clear.py` integre dans `tests/run_all.ps1`).
 
 ### P3 — RAG maîtrisé (Stabilisé)
 - Étendre les formats supportés (Markdown, HTML léger) en assurant la purge d’embeddings.
@@ -53,10 +78,12 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 ---
 
 ## Étapes immédiates (Priorités Semaine Courante)
-1. **Stabilité Auth** : implémenter une remontée visuelle côté front lorsque `ensureCurrentThread()` échoue (message “Connexion requise”).
-2. **Tests mémoire** : exécuter `tests/run_all.ps1` + ajouter un scénario ciblé `memory:clear` (script dédié ou extension existant).
+1. [FAIT] Stabilite Auth : remontee visuelle front en place (livre le 26/09/2025, message Connexion requise).
+2. [FAIT] Tests memoire : `tests/run_all.ps1` lance maintenant le scenario pytest `memory:clear` (`tests/backend/features/test_memory_clear.py`).
 3. **Documentation UX** : compléter `docs/Memoire.md` (présent document) avec captures/flows pour guider la QA manuelle.
-4. **Surveillance vector store** : planifier un run hebdo de `tests/test_vector_store_reset.ps1` pour sécuriser l’auto-reset.
+4. **Benchmarks ARE/Gaia2** : exposer `/api/benchmarks/results` et intégrer la matrice dans le dashboard (ARE/Gaia2, persistance SQLite/Firestore, EDGE_MODE support).
+5. **Surveillance vector store** : lancer `tests/test_vector_store_reset.ps1` chaque lundi 08:00 CET; archiver le log sous `docs/assets/memoire/vector-store-reset-YYYYMMDD.log` (revision backend, backup detecte, reponse upload) et noter le resultat dans `docs/passation.md`.
+6. **Auth docs** : documenter le logout idempotent et le champ `session_revoked` (architecture + Memoire).
 
 ---
 
@@ -71,4 +98,4 @@ Cette feuille de route consolide la vision V8 en décrivant l’état courant et
 ## Références
 - Architecture détaillée : `docs/architecture/*.md`
 - Mémoire progressive : `docs/Memoire.md`
-- Tests : `tests/run_all.ps1`, `tests/test_vector_store_reset.ps1`, `tests/test_vector_store_force_backup.ps1`
+- Tests : `tests/run_all.ps1`, `tests/backend/features/test_memory_clear.py`, `tests/test_vector_store_reset.ps1`, `tests/test_vector_store_force_backup.ps1`

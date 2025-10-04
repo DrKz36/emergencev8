@@ -6,8 +6,8 @@
  * - Dédoublon robuste des listeners WS/UI (pré-bind + _onOnce) pour éviter toute double subscription au hot-reload / réinit.
  */
 
-import { ChatUI } from './chat-ui.js?v=2713';   // cache-bust UI présent
-import { EVENTS } from '../../shared/constants.js';
+import { ChatUI } from './chat-ui.js';   // cache-bust UI présent
+import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { api } from '../../shared/api-client.js';
 
 export default class ChatModule {
@@ -35,6 +35,8 @@ export default class ChatModule {
     this._sendLock = false;
     this._sendGateMs = 400;
     this._assistantPersistedIds = new Set();
+    this._messageBuckets = new Map();
+    this._lastChunkByMessage = new Map();
 
     // UX
     this._lastToastAt = 0;
@@ -49,19 +51,176 @@ export default class ChatModule {
     this._bindHandlers();
   }
 
+  _determineBucketForMessage(agentId, meta) {
+    const baseAgent = typeof agentId === 'string' ? agentId.trim().toLowerCase() : '';
+    const metaObj = (meta && typeof meta === 'object') ? meta : null;
+    if (metaObj) {
+      const opinion = (metaObj.opinion && typeof metaObj.opinion === 'object') ? metaObj.opinion : null;
+      if (opinion) {
+        const source = String(opinion.source_agent_id ?? opinion.source_agent ?? opinion.agent ?? '').trim().toLowerCase();
+        if (source) return source;
+      }
+      const opinionRequest = (metaObj.opinion_request && typeof metaObj.opinion_request === 'object') ? metaObj.opinion_request : null;
+      if (opinionRequest) {
+        const sourceReq = String(opinionRequest.source_agent ?? opinionRequest.source_agent_id ?? '').trim().toLowerCase();
+        if (sourceReq) return sourceReq;
+      }
+    }
+    return baseAgent || 'nexus';
+  }
+
+  _rememberMessageBucket(messageId, bucketId) {
+    if (!messageId) return;
+    try {
+      this._messageBuckets.set(String(messageId), bucketId || null);
+    } catch (error) {
+      console.warn('[Chat] unable to remember message bucket', error);
+    }
+  }
+
+  _removeMessageById(messageId, bucketHint) {
+    const key = messageId ? String(messageId) : null;
+    if (!key) return false;
+    const bucketId = bucketHint || this._messageBuckets.get(key) || null;
+    if (!bucketId) return false;
+    try {
+      const pathKey = `chat.messages.${bucketId}`;
+      const list = this.state.get(pathKey) || [];
+      const idx = list.findIndex((msg) => msg && msg.id === messageId);
+      if (idx === -1) return false;
+      const next = [...list.slice(0, idx), ...list.slice(idx + 1)];
+      this.state.set(pathKey, next);
+      this._messageBuckets.delete(key);
+      this._lastChunkByMessage.delete(key);
+      this._updateThreadCacheFromBuckets();
+      return true;
+    } catch (error) {
+      console.warn('[Chat] unable to remove message by id', error);
+      return false;
+    }
+  }
+
+  _resolveBucketFromCache(messageId, agentId, meta) {
+    const key = messageId ? String(messageId) : null;
+    if (key && this._messageBuckets.has(key)) {
+      const stored = this._messageBuckets.get(key);
+      if (stored) return stored;
+    }
+    return this._determineBucketForMessage(agentId, meta);
+  }
+
+  _findOpinionArtifacts(targetAgentId, sourceAgentId, messageId) {
+    const normalizeAgent = (value) => (value ? String(value).trim().toLowerCase() : '');
+    const target = normalizeAgent(targetAgentId);
+    const source = normalizeAgent(sourceAgentId);
+    const requestedId = messageId ? String(messageId).trim() : '';
+    const result = { request: null, response: null };
+    if (!target || !requestedId) return result;
+
+    const requests = [];
+    const responses = [];
+
+    try {
+      const buckets = this.state.get('chat.messages') || {};
+      const agentKeys = Object.keys(buckets || {});
+      for (const agentKey of agentKeys) {
+        const entries = Array.isArray(buckets[agentKey]) ? buckets[agentKey] : [];
+        for (const entry of entries) {
+          if (!entry || typeof entry !== 'object') continue;
+          const role = normalizeAgent(entry.role);
+          const meta = (entry.meta && typeof entry.meta === 'object') ? entry.meta : null;
+          if (!meta) continue;
+
+          if (role === 'user') {
+            const opinionReq = (typeof meta.opinion_request === 'object') ? meta.opinion_request : null;
+            if (!opinionReq) continue;
+            const reqTarget = normalizeAgent(opinionReq.target_agent ?? opinionReq.target_agent_id ?? '');
+            if (!reqTarget || reqTarget !== target) continue;
+            const reqSource = normalizeAgent(opinionReq.source_agent ?? opinionReq.source_agent_id ?? '');
+            if (source && reqSource && reqSource !== source) continue;
+            const reqMessage = String(opinionReq.requested_message_id ?? opinionReq.message_id ?? opinionReq.of_message_id ?? '').trim();
+            if (reqMessage && reqMessage !== requestedId) continue;
+            const noteId = String(opinionReq.request_id ?? opinionReq.request_note_id ?? opinionReq.note_id ?? entry.id ?? '').trim();
+            requests.push({ message: entry, bucket: agentKey, noteId, messageId: reqMessage || requestedId });
+          } else if (role === 'assistant') {
+            const opinionMeta = (typeof meta.opinion === 'object') ? meta.opinion : null;
+            if (!opinionMeta) continue;
+            const reviewer = normalizeAgent(opinionMeta.reviewer_agent_id ?? opinionMeta.reviewer_agent ?? opinionMeta.agent_id ?? opinionMeta.agent ?? '');
+            if (reviewer && reviewer !== target) continue;
+            const srcMeta = normalizeAgent(opinionMeta.source_agent_id ?? opinionMeta.source_agent ?? '');
+            if (source && srcMeta && srcMeta !== source) continue;
+            const relatedMsg = String(opinionMeta.of_message_id ?? opinionMeta.of_message ?? opinionMeta.message_id ?? opinionMeta.target_message_id ?? '').trim();
+            const noteId = String(opinionMeta.request_note_id ?? opinionMeta.request_id ?? opinionMeta.note_id ?? '').trim();
+            responses.push({ message: entry, bucket: agentKey, relatedMessage: relatedMsg, noteId });
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('[Chat] Unable to inspect existing opinion requests', error);
+    }
+
+    if (requests.length) {
+      result.request = requests[0];
+    }
+
+    const noteToMatch = result.request?.noteId || '';
+    if (noteToMatch) {
+      const byNote = responses.find((item) => item.noteId && item.noteId === noteToMatch);
+      if (byNote) {
+        result.response = byNote;
+        return result;
+      }
+    }
+
+    const byMessage = responses.find((item) => item.relatedMessage && item.relatedMessage === requestedId);
+    if (byMessage) {
+      result.response = byMessage;
+    } else if (!result.response && noteToMatch) {
+      const fallback = responses.find((item) => item.noteId && item.noteId === noteToMatch);
+      if (fallback) result.response = fallback;
+    }
+
+    return result;
+  }
+
+  _findExistingOpinionRequest(targetAgentId, sourceAgentId, messageId) {
+    const artifacts = this._findOpinionArtifacts(targetAgentId, sourceAgentId, messageId);
+    return artifacts.request ? artifacts.request.message : null;
+  }
+
+  _generateMessageId(prefix = 'msg') {
+    try {
+      if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {
+        return globalThis.crypto.randomUUID();
+      }
+    } catch (error) {
+      console.warn('[Chat] crypto.randomUUID unavailable', error);
+    }
+    const rand = Math.random().toString(16).slice(2);
+    return `${prefix}-${Date.now()}-${rand}`;
+  }
+
   _bindHandlers() {
     // UI
     this._H.CHAT_SEND          = this.handleSendMessage.bind(this);
     this._H.CHAT_AGENT_SELECTED= this.handleAgentSelected.bind(this);
+    this._H.CHAT_REQUEST_OPINION = this.handleOpinionRequest.bind(this);
     this._H.CHAT_CLEAR         = this.handleClearChat.bind(this);
     this._H.CHAT_EXPORT        = this.handleExport.bind(this);
     this._H.CHAT_RAG_TOGGLED   = this.handleRagToggle.bind(this);
+    this._H.DOC_SELECTION_CHANGED = this.handleDocumentSelectionChanged.bind(this);
+    this._H.THREADS_SELECTED = this.handleThreadSwitch.bind(this);
+    this._H.THREADS_LOADED = this.handleThreadSwitch.bind(this);
 
     // WS flux
     this._H.WS_START           = this.handleStreamStart.bind(this);
     this._H.WS_CHUNK           = this.handleStreamChunk.bind(this);
     this._H.WS_END             = this.handleStreamEnd.bind(this);
     this._H.WS_ANALYSIS        = this.handleAnalysisStatus.bind(this);
+    this._H.WS_PERSISTED       = this.handleMessagePersisted.bind(this);
+    this._H.WS_ERROR          = this.handleWsError.bind(this);
+    this._H.WS_SESSION_ESTABLISHED = this.handleSessionEstablished.bind(this);
+    this._H.WS_SESSION_RESTORED    = this.handleSessionRestored.bind(this);
 
     // WS état
     this._H.WS_CONNECTED       = () => { this._wsConnected = true;  try { this.state.set('connection.status', 'connected'); } catch {} };
@@ -119,6 +278,8 @@ export default class ChatModule {
 
   /* ============================ State init ============================ */
   initializeState() {
+    try { this._messageBuckets.clear(); } catch {}
+    try { this._lastChunkByMessage.clear(); } catch {}
     if (!this.state.get('chat')) {
       this.state.set('chat', {
         currentAgentId: 'anima',
@@ -129,15 +290,35 @@ export default class ChatModule {
         memoryBannerAt: null,
         isLoading: false,
         messages: {},
-        metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null }
+        selectedDocIds: [],
+        selectedDocs: [],
+        metrics: { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null, opinion_request_count: 0 }
       });
     } else {
       if (this.state.get('chat.ragEnabled') === undefined) this.state.set('chat.ragEnabled', false);
       if (!this.state.get('chat.messages')) this.state.set('chat.messages', {});
       if (!this.state.get('chat.ragStatus')) this.state.set('chat.ragStatus', 'idle');
       if (!this.state.get('chat.memoryBannerAt')) this.state.set('chat.memoryBannerAt', null);
-      if (!this.state.get('chat.metrics')) this.state.set('chat.metrics', { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null });
+      if (!this.state.get('chat.metrics')) this.state.set('chat.metrics', { send_count: 0, ws_start_count: 0, last_ttfb_ms: 0, rest_fallback_count: 0, last_fallback_at: null, opinion_request_count: 0 });
+      if (!Array.isArray(this.state.get('chat.selectedDocIds'))) this.state.set('chat.selectedDocIds', []);
+      if (!Array.isArray(this.state.get('chat.selectedDocs'))) this.state.set('chat.selectedDocs', []);
     }
+    if (this.state.get('chat.authRequired') === undefined) this.state.set('chat.authRequired', false);
+    try {
+      const savedDocIds = this.state.get('documents.selectedIds');
+      const savedDocMeta = this.state.get('documents.selectionMeta');
+      const hasIds = Array.isArray(savedDocIds) && savedDocIds.length > 0;
+      const hasMeta = Array.isArray(savedDocMeta) && savedDocMeta.length > 0;
+      if (hasIds || hasMeta) {
+        this.handleDocumentSelectionChanged({
+          ids: hasIds ? savedDocIds : [],
+          items: hasMeta ? savedDocMeta : []
+        });
+      }
+    } catch (err) {
+      console.warn('[Chat] Sync doc selection failed', err);
+    }
+
   }
 
   registerStateChanges() {
@@ -151,17 +332,25 @@ export default class ChatModule {
     // UI (idempotent)
     this._onOnce(EVENTS.CHAT_SEND,          this._H.CHAT_SEND);
     this._onOnce(EVENTS.CHAT_AGENT_SELECTED,this._H.CHAT_AGENT_SELECTED);
+    this._onOnce(EVENTS.CHAT_REQUEST_OPINION, this._H.CHAT_REQUEST_OPINION);
     this._onOnce(EVENTS.CHAT_CLEAR,         this._H.CHAT_CLEAR);
     this._onOnce(EVENTS.CHAT_EXPORT,        this._H.CHAT_EXPORT);
     this._onOnce(EVENTS.CHAT_RAG_TOGGLED,   this._H.CHAT_RAG_TOGGLED);
+    this._onOnce(EVENTS.DOCUMENTS_SELECTION_CHANGED, this._H.DOC_SELECTION_CHANGED);
+    this._onOnce(EVENTS.THREADS_SELECTED, this._H.THREADS_SELECTED);
+    this._onOnce(EVENTS.THREADS_LOADED, this._H.THREADS_LOADED);
 
     // Flux WS (idempotent)
     this._onOnce('ws:chat_stream_start',    this._H.WS_START);
     this._onOnce('ws:chat_stream_chunk',    this._H.WS_CHUNK);
     this._onOnce('ws:chat_stream_end',      this._H.WS_END);
     this._onOnce('ws:analysis_status',      this._H.WS_ANALYSIS);
+    this._onOnce('ws:message_persisted',    this._H.WS_PERSISTED);
+    this._onOnce('ws:error',               this._H.WS_ERROR);
 
     // Connexion WS (idempotent)
+    this._onOnce('ws:session_established',  this._H.WS_SESSION_ESTABLISHED);
+    this._onOnce('ws:session_restored',     this._H.WS_SESSION_RESTORED);
     this._onOnce('ws:connected',            this._H.WS_CONNECTED);
     this._onOnce('ws:close',                this._H.WS_CLOSE);
 
@@ -198,11 +387,13 @@ export default class ChatModule {
   }
 
   hydrateFromThread(thread) {
+    const threadId = (thread && (thread.id || thread.thread_id)) || this.getCurrentThreadId();
     const msgsRaw = Array.isArray(thread?.messages) ? [...thread.messages] : [];
     const msgs = msgsRaw.sort((a, b) => (a?.created_at ?? 0) - (b?.created_at ?? 0));
 
     const buckets = {};
     let lastAssistantAgent = null;
+    try { this._messageBuckets.clear(); } catch {}
 
     for (const m of msgs) {
       const role = m.role || 'assistant';
@@ -216,16 +407,50 @@ export default class ChatModule {
       if (!agentId) agentId = 'global';
       if (role === 'assistant' && agentId) lastAssistantAgent = agentId;
 
-      (buckets[agentId] ||= []).push({
+      const meta = (m && typeof m.meta === 'object') ? m.meta : null;
+      const bucketId = this._determineBucketForMessage(agentId, meta);
+      const entry = {
         id: m.id || `${role}-${m.created_at || Date.now()}`,
         role,
         content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content ?? ''),
         agent_id: agentId,
         created_at: m.created_at
-      });
+      };
+      if (meta) entry.meta = meta;
+      (buckets[bucketId] ||= []).push(entry);
+      this._rememberMessageBucket(entry.id, bucketId);
     }
 
     this.state.set('chat.messages', buckets);
+
+    if (threadId) {
+      this.threadId = threadId;
+      this.loadedThreadId = threadId;
+      try { this.state.set('threads.currentId', threadId); } catch {}
+      try { this.state.set('chat.threadId', threadId); } catch {}
+      try { localStorage.setItem('emergence.threadId', threadId); } catch {}
+    }
+
+    const hasDocsProperty = thread && Object.prototype.hasOwnProperty.call(thread, 'docs');
+    if (threadId && hasDocsProperty) {
+      const docsForState = this._normalizeThreadDocsForState(Array.isArray(thread?.docs) ? thread.docs : []);
+      const docIds = docsForState.map((doc) => String(doc.id));
+      const selectionItems = docsForState.map((doc) => ({ id: String(doc.id), name: doc.name, status: doc.status }));
+
+      try { this.state.set(`threads.map.${threadId}.docs`, docsForState); } catch {}
+      this.state.set('chat.selectedDocIds', docIds);
+      this.state.set('chat.selectedDocs', selectionItems);
+      try { this.state.set('documents.selectedIds', docIds); } catch {}
+      try { this.state.set('documents.selectionMeta', selectionItems); } catch {}
+    }
+
+    const extras = {};
+    if (thread && typeof thread === 'object') {
+      if (thread.metadata) extras.metadata = thread.metadata;
+      else if (thread.meta) extras.metadata = thread.meta;
+    }
+    this._updateThreadCacheFromBuckets(threadId, extras);
+
     console.debug('[Chat] Répartition messages par agent',
       Object.fromEntries(Object.entries(buckets).map(([k, v]) => [k, v.length])));
   }
@@ -241,6 +466,11 @@ export default class ChatModule {
     if (!trimmed) { this._sendLock = false; return; }
 
     const { currentAgentId, ragEnabled } = this.state.get('chat');
+    const docIdsRaw = this.state.get('chat.selectedDocIds') || [];
+    const selectedDocIds = this._sanitizeDocIds(docIdsRaw);
+    const messageMeta = {};
+    if (selectedDocIds.length) messageMeta.doc_ids = selectedDocIds;
+    messageMeta.use_rag = !!ragEnabled;
     this.state.set('chat.activeAgent', currentAgentId);
 
     // Ajoute localement le message USER
@@ -251,9 +481,23 @@ export default class ChatModule {
       agent_id: currentAgentId,
       created_at: Date.now()
     };
+    if (Object.keys(messageMeta).length) {
+      userMessage.meta = { ...messageMeta };
+    }
     const curr = this.state.get(`chat.messages.${currentAgentId}`) || [];
     this.state.set(`chat.messages.${currentAgentId}`, [...curr, userMessage]);
     this.state.set('chat.isLoading', true);
+    this._updateThreadCacheFromBuckets();
+
+    const threadId = this.getCurrentThreadId();
+    if (threadId) {
+      api.appendMessage(threadId, {
+        role: 'user',
+        content: trimmed,
+        agent_id: currentAgentId,
+        meta: { ...messageMeta }
+      }).catch(err => console.error('[Chat] Échec appendMessage(user):', err));
+    }
 
     // 🛡️ Anti-course: attends brièvement WS avant d'émettre
     await this._waitForWS(this._wsConnectWaitMs);
@@ -263,12 +507,13 @@ export default class ChatModule {
       this.eventBus.emit('ui:chat:send', {
         text: trimmed,
         agent_id: currentAgentId,
+        doc_ids: selectedDocIds,
         use_rag: !!ragEnabled,
         msg_uid: userMessage.id,
         __enriched: true
       });
       // Pour watchdog (fallback REST si flux ne démarre pas)
-      this._pendingMsg = { id: userMessage.id, agent_id: currentAgentId, text: trimmed, triedRest: false };
+      this._pendingMsg = { id: userMessage.id, agent_id: currentAgentId, text: trimmed, doc_ids: selectedDocIds, use_rag: !!ragEnabled, triedRest: false };
       this._startStreamWatchdog();
     } catch (e) {
       console.error('[Chat] Emission ui:chat:send a échoué', e);
@@ -279,67 +524,346 @@ export default class ChatModule {
     }
   }
 
+  async handleOpinionRequest(payload = {}) {
+    try {
+      const data = (payload && typeof payload === 'object') ? payload : {};
+      const targetAgentId = String(data.target_agent_id ?? data.targetAgentId ?? data.target_agent ?? data.targetAgent ?? '').trim().toLowerCase();
+      const sourceAgentId = String(data.source_agent_id ?? data.sourceAgentId ?? data.source_agent ?? data.sourceAgent ?? '').trim().toLowerCase();
+      const messageId = String(data.message_id ?? data.messageId ?? '').trim();
+      if (!targetAgentId || !AGENTS[targetAgentId]) {
+        this.showToast('Agent indisponible pour avis.');
+        return;
+      }
+      if (targetAgentId === sourceAgentId) {
+        this.showToast('Sélectionnez un autre agent pour l\'avis.');
+        return;
+      }
+      if (!messageId) {
+        this.showToast('Message cible introuvable.');
+        return;
+      }
+
+      let messageText = '';
+      if (typeof data.message_text === 'string') messageText = data.message_text;
+      else if (typeof data.messageText === 'string') messageText = data.messageText;
+
+      if (!messageText) {
+        try {
+          const buckets = this.state.get('chat.messages') || {};
+          for (const key of Object.keys(buckets || {})) {
+            const bucket = Array.isArray(buckets[key]) ? buckets[key] : [];
+            const found = bucket.find((msg) => msg && msg.id === messageId);
+            if (found) {
+              if (typeof found.content === 'string') messageText = found.content;
+              else if (typeof found.text === 'string') messageText = found.text;
+              break;
+            }
+          }
+        } catch (err) {
+          console.warn('[Chat] opinion request message lookup failed', err);
+        }
+      }
+      messageText = String(messageText || '').trim();
+      const artifacts = this._findOpinionArtifacts(targetAgentId, sourceAgentId, messageId);
+      if (artifacts.response) {
+        this.showToast('Avis déjà disponible pour cette réponse.');
+        return;
+      }
+      if (artifacts.request?.message?.id) {
+        this._removeMessageById(artifacts.request.message.id, artifacts.request.bucket);
+      }
+
+      const agentInfo = AGENTS[targetAgentId] || {};
+      const sourceInfo = sourceAgentId ? (AGENTS[sourceAgentId] || {}) : {};
+      const agentLabel = agentInfo.label || agentInfo.name || (targetAgentId || 'agent');
+      const sourceLabel = sourceInfo.label || sourceInfo.name || (sourceAgentId || 'cet agent');
+
+      const requestId = this._generateMessageId('opinion-request');
+      const createdAt = Date.now();
+      const requestMessage = {
+        id: requestId,
+        role: 'user',
+        content: `@${agentLabel}, peux-tu donner ton avis sur la réponse de ${sourceLabel} ?`,
+        agent_id: targetAgentId,
+        created_at: createdAt,
+        meta: {
+          opinion_request: {
+            target_agent: targetAgentId,
+            source_agent: sourceAgentId || null,
+            requested_message_id: messageId,
+            request_id: requestId,
+            request_note_id: requestId
+          }
+        }
+      };
+
+      const bucketTarget = (artifacts.request?.bucket || (sourceAgentId || targetAgentId || '').trim().toLowerCase()) || targetAgentId;
+      const existing = this.state.get(`chat.messages.${bucketTarget}`) || [];
+      this.state.set(`chat.messages.${bucketTarget}`, [...existing, requestMessage]);
+      this._rememberMessageBucket(requestId, bucketTarget);
+      this._updateThreadCacheFromBuckets();
+      this.showToast(`Avis demandé à ${agentLabel}.`);
+
+      try {
+        const metrics = this.state.get('chat.metrics') || {};
+        const nextMetrics = {
+          ...metrics,
+          opinion_request_count: (metrics.opinion_request_count || 0) + 1,
+          last_opinion_request: {
+            target_agent_id: targetAgentId,
+            source_agent_id: sourceAgentId || null,
+            message_id: messageId,
+            bucket: bucketTarget,
+            at: createdAt
+          }
+        };
+        this.state.set('chat.metrics', nextMetrics);
+      } catch (err) {
+        console.warn('[Chat] unable to trace opinion request metrics', err);
+      }
+      try {
+        this.eventBus?.emit?.('ui:guidance:opinion_request', {
+          target_agent_id: targetAgentId,
+          source_agent_id: sourceAgentId || null,
+          message_id: messageId,
+          request_id: requestId,
+          bucket: bucketTarget,
+          at: createdAt
+        });
+      } catch (err) {
+        console.warn('[Chat] unable to emit guidance trace', err);
+      }
+
+      await this._waitForWS(this._wsConnectWaitMs);
+
+      const framePayload = {
+        target_agent_id: targetAgentId,
+        source_agent_id: sourceAgentId || null,
+        message_id: messageId,
+        request_id: requestId,
+      };
+      if (messageText) framePayload.message_text = messageText;
+
+      this.eventBus.emit(EVENTS.WS_SEND, {
+        type: 'chat.opinion',
+        payload: framePayload,
+      });
+    } catch (error) {
+      console.error('[Chat] handleOpinionRequest error', error);
+      this.showToast('Impossible de demander un avis.');
+    }
+  }
   /* ============================ Flux assistant (WS) ============================ */
-  handleStreamStart({ agent_id, id }) {
+  handleStreamStart(payload = {}) {
+    const agentIdRaw = payload && typeof payload === 'object' ? (payload.agent_id ?? payload.agentId) : null;
+    const agentId = String(agentIdRaw ?? '').trim() || 'nexus';
+    const messageId = payload && typeof payload === 'object' && payload.id ? payload.id : `assistant-${Date.now()}`;
+    const baseMeta = (payload && typeof payload.meta === 'object') ? { ...payload.meta } : null;
+
+    const bucketId = this._resolveBucketFromCache(messageId, agentId, baseMeta);
     const agentMessage = {
-      id,
+      id: messageId,
       role: 'assistant',
       content: '',
-      agent_id,
+      agent_id: agentId,
       isStreaming: true,
-      created_at: Date.now()
+      created_at: Date.now(),
     };
-    const curr = this.state.get(`chat.messages.${agent_id}`) || [];
-    this.state.set(`chat.messages.${agent_id}`, [...curr, agentMessage]);
+    if (baseMeta && Object.keys(baseMeta).length) agentMessage.meta = baseMeta;
+
+    const curr = this.state.get(`chat.messages.${bucketId}`) || [];
+    this.state.set(`chat.messages.${bucketId}`, [...curr, agentMessage]);
+    this._rememberMessageBucket(messageId, bucketId);
+    this._lastChunkByMessage.set(String(messageId), '');
+    this._updateThreadCacheFromBuckets();
     this._clearStreamWatchdog(); // le flux a bien démarré
   }
 
-  handleStreamChunk({ agent_id, id, chunk }) {
-    const list = this.state.get(`chat.messages.${agent_id}`) || [];
-    const idx = list.findIndex((m) => m.id === id);
+  handleStreamChunk(payload = {}) {
+    const agentId = String(payload && typeof payload === 'object' ? (payload.agent_id ?? payload.agentId) : '').trim();
+    const messageId = payload && typeof payload === 'object' ? payload.id : null;
+    if (!agentId || !messageId) return;
+    const rawChunk = payload && typeof payload.chunk !== 'undefined' ? payload.chunk : '';
+    const chunkText = typeof rawChunk === 'string' ? rawChunk : String(rawChunk ?? '');
+    const meta = (payload && typeof payload.meta === 'object') ? payload.meta : null;
+
+    const lastChunk = this._lastChunkByMessage.get(String(messageId));
+    if (chunkText && lastChunk === chunkText) return;
+
+    const bucketId = this._resolveBucketFromCache(messageId, agentId, meta);
+    const list = this.state.get(`chat.messages.${bucketId}`) || [];
+    const idx = list.findIndex((m) => m.id === messageId);
     if (idx >= 0) {
       const msg = { ...list[idx] };
-      msg.content = (msg.content || '') + String(chunk || '');
+      msg.content = (msg.content || '') + chunkText;
       list[idx] = msg;
-      this.state.set(`chat.messages.${agent_id}`, [...list]);
+      this.state.set(`chat.messages.${bucketId}`, [...list]);
+      this._lastChunkByMessage.set(String(messageId), chunkText);
+      this._updateThreadCacheFromBuckets();
     }
   }
 
-  handleStreamEnd({ agent_id, id, meta }) {
-    // finalise le message assistant
-    const list = this.state.get(`chat.messages.${agent_id}`) || [];
-    const idx = list.findIndex((m) => m.id === id);
+  handleStreamEnd(payload = {}) {
+    const agentId = String(payload && typeof payload === 'object' ? (payload.agent_id ?? payload.agentId) : '').trim();
+    const messageId = payload && typeof payload === 'object' ? payload.id : null;
+    const meta = (payload && typeof payload.meta === 'object') ? { ...payload.meta } : null;
+    if (!agentId || !messageId) return;
+
+    const bucketId = this._resolveBucketFromCache(messageId, agentId, meta);
+    const list = this.state.get(`chat.messages.${bucketId}`) || [];
+    const idx = list.findIndex((m) => m.id === messageId);
     if (idx >= 0) {
-      const msg = { ...list[idx], isStreaming: false };
+      const current = list[idx] || {};
+      const baseMeta = current && typeof current.meta === 'object' ? { ...current.meta } : {};
+      if (meta) Object.assign(baseMeta, meta);
+      const mergedMeta = Object.keys(baseMeta).length ? baseMeta : null;
+
+      const msg = { ...current, isStreaming: false };
+      if (mergedMeta) msg.meta = mergedMeta;
+      else if (msg.meta) delete msg.meta;
+
       list[idx] = msg;
-      this.state.set(`chat.messages.${agent_id}`, [...list]);
+      this.state.set(`chat.messages.${bucketId}`, [...list]);
     }
 
-    // Terminer l’état de chargement
+    this._rememberMessageBucket(messageId, bucketId);
+    this._lastChunkByMessage.delete(String(messageId));
+    this._updateThreadCacheFromBuckets();
+
     this.state.set('chat.isLoading', false);
     this._clearStreamWatchdog();
 
-    // Persistence assistant : une seule fois si non géré par le back
     try {
-      if (this._assistantPersistedIds.has(id)) return;
+      if (this._assistantPersistedIds.has(messageId)) return;
 
-      const backendPersisted =
-        !!(meta && (meta.persisted === true || meta.persisted_by === 'backend' || meta.persisted_by_ws === true));
+      const backendPersisted = !!(meta && (meta.persisted === true || meta.persisted_by === 'backend' || meta.persisted_by_ws === true));
 
       const threadId = this.getCurrentThreadId();
-      const finalMsg = (this.state.get(`chat.messages.${agent_id}`) || []).find(m => m.id === id);
+      const finalBucketList = this.state.get(`chat.messages.${bucketId}`) || [];
+      const finalMsg = finalBucketList.find((m) => m.id === messageId);
 
       if (!backendPersisted && threadId && finalMsg) {
-        api.appendMessage(threadId, {
+        const payloadToPersist = {
           role: 'assistant',
           content: typeof finalMsg.content === 'string' ? finalMsg.content : String(finalMsg.content ?? ''),
-          agent_id: finalMsg.agent_id || agent_id
-        })
-          .then(() => this._assistantPersistedIds.add(id))
-          .catch(err => console.error('[Chat] Échec appendMessage(assistant):', err));
+          agent_id: finalMsg.agent_id || agentId,
+        };
+        if (finalMsg.meta && typeof finalMsg.meta === 'object') {
+          payloadToPersist.meta = { ...finalMsg.meta };
+        }
+        api.appendMessage(threadId, payloadToPersist)
+          .then(() => this._assistantPersistedIds.add(messageId))
+          .catch(err => console.error('[Chat] échec appendMessage(assistant):', err));
       }
     } catch (e) {
       console.error('[Chat] handleStreamEnd persist error', e);
+    }
+  }
+
+  handleWsError(payload = {}) {
+    try {
+      const code = typeof payload?.code === 'string' ? payload.code.trim() : '';
+      const message = typeof payload?.message === 'string' ? payload.message.trim() : '';
+
+      if (code) {
+        console.warn('[Chat] ws:error', { code, payload });
+      } else {
+        console.warn('[Chat] ws:error', payload);
+      }
+
+      if (code === 'opinion_already_exists') {
+        this.showToast(message || 'Avis déjà disponible pour cette réponse.');
+        return;
+      }
+
+      if (message) {
+        this.showToast(message);
+      }
+    } catch (error) {
+      console.warn('[Chat] ws:error handler failure', error, payload);
+    }
+  }
+
+  handleSessionEstablished(payload = {}) {
+    try {
+      const rawSessionId = typeof payload?.session_id === 'string' ? payload.session_id.trim() : '';
+      const sessionId = rawSessionId || null;
+      const sanitizeThread = (candidate) => {
+        if (!candidate || typeof candidate !== 'string') return null;
+        const trimmed = candidate.trim();
+        if (!trimmed) return null;
+        if (sessionId && trimmed === sessionId) return null;
+        return trimmed;
+      };
+      const threadFromPayload = sanitizeThread(payload?.thread_id);
+      const threadFromState = sanitizeThread(this.getCurrentThreadId());
+      const threadFromInstance = sanitizeThread(this.threadId);
+
+      if (sessionId) {
+        try { this.state.set('websocket.sessionId', sessionId); } catch {}
+      }
+
+      const threadId = threadFromPayload || threadFromState || threadFromInstance;
+      if (threadId) {
+        this.threadId = threadId;
+        this.loadedThreadId = threadId;
+        try { this.state.set('threads.currentId', threadId); } catch {}
+        try { this.state.set('chat.threadId', threadId); } catch {}
+        try { localStorage.setItem('emergence.threadId', threadId); } catch {}
+      }
+    } catch (err) {
+      console.warn('[Chat] handleSessionEstablished error', err);
+    }
+  }
+
+  handleSessionRestored(payload = {}) {
+    try {
+      const rawSessionId = typeof payload?.session_id === 'string' ? payload.session_id.trim() : '';
+      const sessionId = rawSessionId || null;
+      const sanitizeThread = (candidate) => {
+        if (!candidate || typeof candidate !== 'string') return null;
+        const trimmed = candidate.trim();
+        if (!trimmed) return null;
+        if (sessionId && trimmed === sessionId) return null;
+        return trimmed;
+      };
+      const threadFromPayload = sanitizeThread(payload?.thread_id);
+      const threadFromState = sanitizeThread(this.getCurrentThreadId());
+      const threadFromInstance = sanitizeThread(this.threadId);
+      const threadId = threadFromPayload || threadFromState || threadFromInstance;
+      const messages = Array.isArray(payload?.messages) ? payload.messages : [];
+
+      if (threadId) {
+        this.threadId = threadId;
+        this.loadedThreadId = threadId;
+        try { this.state.set('threads.currentId', threadId); } catch {}
+        try { this.state.set('chat.threadId', threadId); } catch {}
+        try { localStorage.setItem('emergence.threadId', threadId); } catch {}
+      }
+
+      if (messages.length && threadId) {
+        this.hydrateFromThread({ id: threadId, messages, metadata: payload.metadata });
+      } else if (threadId && payload?.metadata) {
+        const threadKey = `threads.map.${threadId}`;
+        const existing = this.state.get(threadKey) || { id: threadId, messages: [] };
+        const next = { ...existing, metadata: payload.metadata };
+        this.state.set(threadKey, next);
+      }
+
+      if (payload?.metadata) {
+        this._applyMemoryMetadata(sessionId || threadId || null, payload.metadata);
+      }
+      if (threadId) {
+        this._updateThreadCacheFromBuckets(threadId, payload?.metadata ? { metadata: payload.metadata } : {});
+      }
+
+      if (messages.length) {
+        this.showToast('Session restaurée.');
+      } else if (payload?.metadata) {
+        this.showToast('Mémoire synchronisée.');
+      }
+    } catch (err) {
+      console.error('[Chat] handleSessionRestored error', err);
     }
   }
 
@@ -351,24 +875,93 @@ export default class ChatModule {
     this.state.set('chat.activeAgent', agentId);
   }
 
-  handleClearChat() {
-    const agentId = this.state.get('chat.currentAgentId');
-    this.state.set(`chat.messages.${agentId}`, []);
-  }
+handleClearChat() {
+  const agentId = this.state.get('chat.currentAgentId');
+  if (!agentId) return;
+  try {
+    const list = this.state.get(`chat.messages.${agentId}`) || [];
+    list.forEach((msg) => {
+      if (msg && msg.id) {
+        this._messageBuckets.delete(String(msg.id));
+      }
+    });
+  } catch {}
+  this.state.set(`chat.messages.${agentId}`, []);
+  this._updateThreadCacheFromBuckets();
+  try {
+    const meta = this.state.get('chat.lastMessageMeta');
+    if (meta && (meta.agent_id === agentId || meta.agent === agentId || !meta.agent_id)) {
+      this.state.set('chat.lastMessageMeta', null);
+    }
+  } catch {}
+  const label = AGENTS?.[agentId]?.label || String(agentId || 'agent');
+  this.showToast(`Conversation ${label} effacee.`);
+}
 
   handleExport() {
-    const { currentAgentId, messages } = this.state.get('chat');
-    const conv = messages[currentAgentId] || [];
+    const chatState = this.state.get('chat') || {};
+    const messagesByAgent = (chatState.messages && typeof chatState.messages === 'object') ? chatState.messages : {};
+    const agentIds = Object.keys(messagesByAgent);
+    if (!agentIds.length) {
+      this.showToast('Aucun message a exporter.');
+      return;
+    }
+
     const you = this.state.get('user.id') || 'Vous';
-    const text = conv.map(m =>
-      `${m.role === 'user' ? you : (m.agent_id || 'Assistant')}: ${
-        typeof m.content === 'string' ? m.content : JSON.stringify(m.content || '')
-      }`
-    ).join('\n\n');
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const formatAgentLabel = (id) => {
+      if (!id) return 'Global';
+      const info = AGENTS?.[id];
+      if (info && info.label) return info.label;
+      return String(id).trim() || 'Agent';
+    };
+    const formatTimestamp = (value) => {
+      if (!value && value !== 0) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      try {
+        return date.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      } catch {
+        return date.toISOString();
+      }
+    };
+    const renderContent = (payload) => {
+      if (payload == null) return '';
+      if (typeof payload === 'string') return payload;
+      try { return JSON.stringify(payload, null, 2); } catch { return String(payload); }
+    };
+
+    const sections = [];
+    for (const agentId of agentIds) {
+      const bucket = Array.isArray(messagesByAgent[agentId]) ? messagesByAgent[agentId] : [];
+      if (!bucket.length) continue;
+      const title = formatAgentLabel(agentId);
+      sections.push(`## ${title}`);
+      for (const message of bucket) {
+        const author = message.role === 'user' ? you : (message.agent_id || title || 'Assistant');
+        const stamp = formatTimestamp(message.created_at ?? message.timestamp ?? message.time ?? message.datetime ?? message.date);
+        const body = renderContent(message.content ?? message.text ?? '');
+        sections.push(stamp ? `[${stamp}] ${author}: ${body}` : `${author}: ${body}`);
+      }
+      sections.push('');
+    }
+
+    const exportPayload = sections.join('\n').trim();
+    if (!exportPayload) {
+      this.showToast('Aucun message a exporter.');
+      return;
+    }
+
+    const blob = new Blob([exportPayload], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `chat_${currentAgentId}_${Date.now()}.txt`;
-    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    const filename = `chat_full_${Date.now()}.txt`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    this.showToast('Export conversation pret.');
   }
 
   handleRagToggle() {
@@ -376,22 +969,241 @@ export default class ChatModule {
     this.state.set('chat.ragEnabled', !current);
   }
 
-  handleAnalysisStatus({ session_id, status, error } = {}) {
-    this.state.set('chat.lastAnalysis', {
+  handleDocumentSelectionChanged(payload = {}) {
+    const data = (payload && typeof payload === 'object') ? payload : {};
+    const rawIds = Array.isArray(data.ids) ? data.ids : [];
+    const itemsArray = Array.isArray(data.items) ? data.items : [];
+    const resolveId = (input) => {
+      if (!input) return '';
+      const cand = input.id ?? input.document_id ?? input.doc_id;
+      return cand == null ? '' : String(cand);
+    };
+    const normalizedIds = [];
+    const seen = new Set();
+    for (const value of rawIds) {
+      const id = String(value ?? '').trim();
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      normalizedIds.push(id);
+    }
+    if (!normalizedIds.length && itemsArray.length) {
+      for (const item of itemsArray) {
+        const candidate = resolveId(item).trim();
+        if (!candidate || seen.has(candidate)) continue;
+        seen.add(candidate);
+        normalizedIds.push(candidate);
+      }
+    }
+    const itemsById = new Map();
+    for (const item of itemsArray) {
+      const itemId = resolveId(item).trim();
+      if (!itemId) continue;
+      let label = item?.name ?? item?.filename ?? item?.title ?? '';
+      label = String(label ?? '').trim();
+      if (!label) label = 'Document ' + itemId;
+      const statusRaw = item?.status;
+      const status = statusRaw == null ? 'ready' : (String(statusRaw).toLowerCase() || 'ready');
+      itemsById.set(itemId, { id: itemId, name: label, status });
+    }
+    const normalizedItems = normalizedIds.map((id) => itemsById.get(id) || { id, name: 'Document ' + id, status: 'ready' });
+    this.state.set('chat.selectedDocIds', normalizedIds);
+    this.state.set('chat.selectedDocs', normalizedItems);
+    try { this.state.set('documents.selectedIds', normalizedIds); } catch {}
+    try { this.state.set('documents.selectionMeta', normalizedItems); } catch {}
+
+    const threadId = this.getCurrentThreadId();
+    if (threadId) {
+      const docsForThread = normalizedItems
+        .map((item) => {
+          const num = Number(item?.id);
+          if (!Number.isFinite(num)) return null;
+          return {
+            doc_id: Math.trunc(num),
+            id: Math.trunc(num),
+            name: item?.name || `Document ${num}`,
+            status: item?.status || 'ready',
+          };
+        })
+        .filter(Boolean);
+      try { this.state.set(`threads.map.${threadId}.docs`, docsForThread); } catch {}
+    }
+  }
+
+  handleThreadSwitch(payload = {}) {
+    const threadId = payload?.id || payload?.thread?.id || payload?.thread_id;
+    if (!threadId) return;
+    this.loadedThreadId = null;
+    this.state.set('chat.isLoading', false);
+    try { this.state.set('threads.currentId', threadId); } catch {}
+    const detail = Array.isArray(payload?.messages) ? payload : this.state.get('threads.map.' + threadId);
+    if (detail) {
+      this.hydrateFromThread(detail);
+    } else {
+      this.hydrateFromThread({ id: threadId, messages: [] });
+    }
+  }
+
+  handleAnalysisStatus({ session_id, status, error, reason, retry_after } = {}) {
+    const rawStatus = typeof status === 'string' ? status.trim().toLowerCase() : '';
+    const normalizedStatus = rawStatus === 'failed' ? 'error' : (rawStatus || 'unknown');
+    const payload = {
       session_id: session_id || null,
-      status: status || 'unknown',
+      status: normalizedStatus,
+      rawStatus: rawStatus || null,
       error: error || null,
+      reason: reason || null,
+      retryAfter: retry_after ?? null,
       at: Date.now()
-    });
-    console.log('[Chat] ws:analysis_status', { session_id, status, error });
+    };
+    this.state.set('chat.lastAnalysis', payload);
+    console.log('[Chat] ws:analysis_status', { session_id, status: normalizedStatus, error, reason });
 
     const now = Date.now();
-    if (now - this._lastToastAt < 1000) return;
-    this._lastToastAt = now;
+    const delta = now - this._lastToastAt;
 
-    if (status === 'completed') this.showToast('Mémoire consolidée ✓');
-    else if (status === 'failed') this.showToast('Analyse mémoire : échec');
+    if (normalizedStatus === 'completed') {
+      if (delta > 1000) {
+        this._lastToastAt = now;
+        const message = 'Mémoire consolidée ✓';
+        if (this.eventBus?.emit) this.eventBus.emit('ui:toast', { kind: 'info', text: message });
+        else this.showToast(message);
+      }
+      return;
+    }
+
+    if (normalizedStatus === 'error') {
+      if (delta > 1000) {
+        this._lastToastAt = now;
+        let detail = '';
+        if (typeof error === 'string' && error.trim()) {
+          const cleaned = error.trim().split('\n')[0].slice(0, 140);
+          detail = ` (${cleaned})`;
+        } else if (typeof reason === 'string' && reason.trim()) {
+          const cleaned = reason.trim().split('\n')[0].slice(0, 140);
+          detail = ` (${cleaned})`;
+        }
+        const message = `Analyse mémoire : échec${detail}`;
+        const retryPayload = { force: true, source: 'analysis_status_toast', useActiveThread: true };
+        if (this.eventBus?.emit) {
+          this.eventBus.emit('ui:toast', {
+            kind: 'error',
+            text: message,
+            action: {
+              label: 'Réessayer',
+              event: 'memory:tend',
+              payload: retryPayload
+            },
+            duration: 6500
+          });
+        } else {
+          this.showToast(message);
+        }
+      }
+      return;
+    }
+
+    if (normalizedStatus === 'skipped' && delta > 1000) {
+      this._lastToastAt = now;
+      const note = (typeof reason === 'string' && reason.trim()) ? ` (${reason.trim()})` : '';
+      const message = `Analyse mémoire ignorée${note}`;
+      if (this.eventBus?.emit) this.eventBus.emit('ui:toast', { kind: 'warning', text: message });
+      else this.showToast(message);
+    }
   }
+
+handleMessagePersisted(payload = {}) {
+  try {
+    const originalIdRaw = payload.message_id ?? payload.temp_id ?? payload.client_id ?? payload.id;
+    const persistedIdRaw = payload.id ?? null;
+    const originalId = originalIdRaw ? String(originalIdRaw) : null;
+    const persistedId = persistedIdRaw ? String(persistedIdRaw) : (originalId || null);
+    if (!originalId && !persistedId) return;
+    const role = String(payload.role || '').toLowerCase();
+    const agentIdHintRaw = payload.agent_id || (role === 'assistant' ? null : this.state.get('chat.currentAgentId'));
+    const agentIdHint = agentIdHintRaw ? String(agentIdHintRaw).trim().toLowerCase() : null;
+
+    if (this._pendingMsg && originalId && this._pendingMsg.id === originalId) {
+      this._pendingMsg.triedRest = true;
+    }
+
+    const candidateBuckets = new Set();
+    if (agentIdHint) candidateBuckets.add(agentIdHint);
+    if (originalId && this._messageBuckets.has(originalId)) {
+      const mapped = this._messageBuckets.get(originalId);
+      if (mapped) candidateBuckets.add(mapped);
+    }
+    if (originalId && this._lastChunkByMessage.has(originalId)) {
+      const chunkValue = this._lastChunkByMessage.get(originalId);
+      if (persistedId) {
+        this._lastChunkByMessage.set(persistedId, chunkValue);
+      }
+      this._lastChunkByMessage.delete(originalId);
+    }
+    if (persistedId && this._messageBuckets.has(persistedId)) {
+      const mapped = this._messageBuckets.get(persistedId);
+      if (mapped) candidateBuckets.add(mapped);
+    }
+
+    try {
+      const active = this.state.get('chat.activeAgent');
+      if (active) candidateBuckets.add(active);
+    } catch {}
+    if (!candidateBuckets.size) {
+      try {
+        const map = this.state.get('chat.messages') || {};
+        Object.keys(map || {}).forEach((key) => candidateBuckets.add(key));
+      } catch {}
+    }
+
+    const updatedBuckets = [];
+    candidateBuckets.forEach((aid) => {
+      if (!aid) return;
+      const statePath = `chat.messages.${aid}`;
+      const list = this.state.get(statePath) || [];
+      const idx = list.findIndex((m) => m && (m.id === originalId || m.id === persistedId));
+      if (idx >= 0) {
+        const current = list[idx] || {};
+        const msg = { ...current, persisted: true };
+        if (msg.meta && typeof msg.meta === 'object') {
+          msg.meta = { ...msg.meta, persisted: true, persisted_by: 'backend' };
+          if (msg.meta.opinion_request && typeof msg.meta.opinion_request === 'object' && persistedId) {
+            msg.meta.opinion_request = { ...msg.meta.opinion_request, request_id: persistedId };
+          }
+        } else {
+          msg.meta = { persisted: true, persisted_by: 'backend' };
+        }
+        if (persistedId) {
+          msg.id = persistedId;
+        }
+        const next = [...list];
+        next[idx] = msg;
+        this.state.set(statePath, next);
+        updatedBuckets.push({ bucket: aid, id: msg.id });
+      }
+    });
+
+    updatedBuckets.forEach(({ bucket, id }) => {
+      if (originalId && originalId !== id) {
+        this._messageBuckets.delete(originalId);
+      }
+      const key = id || originalId;
+      if (key) this._rememberMessageBucket(key, bucket);
+    });
+
+    this._updateThreadCacheFromBuckets();
+
+    if (role === 'assistant') {
+      if (originalId && this._assistantPersistedIds.has(originalId)) {
+        this._assistantPersistedIds.delete(originalId);
+      }
+      if (persistedId) {
+        this._assistantPersistedIds.add(persistedId);
+      }
+    }
+  } catch (e) {
+    console.warn('[Chat] handleMessagePersisted erreur', e);
+  }
+}
 
   /* ============================ Hooks RAG/Mémoire ============================ */
   handleMemoryBanner() {
@@ -406,17 +1218,46 @@ export default class ChatModule {
     if (st === 'found') this.showToast('RAG : sources trouvées ✓');
   }
 
-  async handleMemoryTend() {
+  async handleMemoryTend(payload = {}) {
+    const forced = payload?.force === true;
     const now = Date.now();
-    if (now - this._lastMemoryTendAt < this._memoryTendThrottleMs) return;
+    if (!forced && (now - this._lastMemoryTendAt) < this._memoryTendThrottleMs) return;
     this._lastMemoryTendAt = now;
 
+    const request = {};
+    const explicitThread = payload?.thread_id ?? payload?.threadId ?? null;
+    if (explicitThread && typeof explicitThread === 'string' && explicitThread.trim()) {
+      request.thread_id = explicitThread.trim();
+    } else if (payload?.useActiveThread) {
+      const activeThread = this.getCurrentThreadId();
+      if (activeThread) request.thread_id = activeThread;
+    }
+
     try {
-      this.showToast('Analyse mémoire démarrée…');
-      await api.tendMemory();
+      const previous = this.state?.get?.('chat.lastAnalysis') || {};
+      const sessionValue = request.thread_id || previous.session_id || null;
+      this.state?.set?.('chat.lastAnalysis', {
+        ...previous,
+        session_id: sessionValue,
+        status: 'running',
+        rawStatus: 'running',
+        error: null,
+        reason: null,
+        at: Date.now()
+      });
+    } catch (_) {}
+
+    try {
+      if (!payload?.quiet) this.showToast('Analyse mémoire démarrée…');
+      await api.tendMemory(request);
       // Le backend émettra ensuite ws:analysis_status → géré dans handleAnalysisStatus()
     } catch (e) {
       console.error('[Chat] memory.tend error', e);
+      if (e?.status === 401) {
+        this.eventBus.emit?.('auth:missing', { reason: 401, source: 'memory:tend' });
+        this.showToast('Connexion requise pour la mémoire.');
+        return;
+      }
       this.showToast('Analyse mémoire : échec');
     }
   }
@@ -432,13 +1273,145 @@ export default class ChatModule {
       }
       // Reset local (affichage OFF)
       try {
-        this.state.set('chat.memoryStats', { has_stm: false, ltm_items: 0, injected: false });
+        this.state.set('chat.memoryStats', { has_stm: false, ltm_items: 0, ltm_injected: 0, ltm_candidates: 0, injected: false, ltm_skipped: false });
         this.state.set('chat.memoryBannerAt', null);
       } catch {}
       this.showToast('Mémoire effacée ✓');
     } catch (e) {
       console.error('[Chat] memory.clear error', e);
+      if (e?.status === 401) {
+        this.eventBus.emit?.('auth:missing', { reason: 401, source: 'memory:clear' });
+        this.showToast('Connexion requise pour la mémoire.');
+        return;
+      }
       this.showToast('Effacement mémoire : échec');
+    }
+  }
+
+  _sanitizeDocIds(raw) {
+    const source = Array.isArray(raw) ? raw : (raw == null ? [] : [raw]);
+    const cleaned = [];
+    const seen = new Set();
+    for (const value of source) {
+      const num = Number.parseInt(String(value ?? '').trim(), 10);
+      if (!Number.isFinite(num)) continue;
+      if (seen.has(num)) continue;
+      seen.add(num);
+      cleaned.push(num);
+    }
+    return cleaned;
+  }
+
+  _normalizeThreadDocsForState(docs) {
+    const normalized = [];
+    const seen = new Set();
+    for (const doc of docs || []) {
+      const rawId = doc?.doc_id ?? doc?.id ?? doc;
+      const num = Number(rawId);
+      if (!Number.isFinite(num)) continue;
+      const docId = Math.trunc(num);
+      if (seen.has(docId)) continue;
+      seen.add(docId);
+
+      const statusRaw = doc?.status;
+      const status = statusRaw == null ? 'ready' : (String(statusRaw).toLowerCase() || 'ready');
+      normalized.push({
+        doc_id: docId,
+        id: docId,
+        name: doc?.filename || doc?.name || doc?.title || `Document ${docId}`,
+        status,
+        weight: Number.isFinite(doc?.weight) ? Number(doc.weight) : 1,
+        last_used_at: doc?.last_used_at ?? null,
+      });
+    }
+    return normalized;
+  }
+
+  _flattenMessagesFromState() {
+    const buckets = this.state.get('chat.messages') || {};
+    const combined = [];
+    for (const [agentId, list] of Object.entries(buckets)) {
+      if (!Array.isArray(list)) continue;
+      for (const message of list) {
+        if (!message) continue;
+        const cloned = { ...message };
+        if (!cloned.agent_id) cloned.agent_id = agentId;
+        if (cloned.created_at === undefined && cloned.timestamp !== undefined) {
+          cloned.created_at = cloned.timestamp;
+        }
+        combined.push(cloned);
+      }
+    }
+    return combined.sort((a, b) => this._compareTimestamps(a?.created_at ?? a?.timestamp, b?.created_at ?? b?.timestamp));
+  }
+
+  _compareTimestamps(a, b) {
+    const left = this._toEpoch(a);
+    const right = this._toEpoch(b);
+    if (left === right) return 0;
+    return left - right;
+  }
+
+  _toEpoch(value) {
+    if (value == null) return 0;
+    if (value instanceof Date) {
+      const ms = value.getTime();
+      return Number.isFinite(ms) ? ms : 0;
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      if (value > 1e12) return value;
+      if (value > 1e9) return Math.trunc(value * 1000);
+      return value;
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed) {
+        const parsed = Date.parse(trimmed);
+        if (!Number.isNaN(parsed)) return parsed;
+        const numeric = Number(trimmed);
+        if (Number.isFinite(numeric)) {
+          return this._toEpoch(numeric);
+        }
+      }
+    }
+    return 0;
+  }
+
+  _updateThreadCacheFromBuckets(threadId = null, extras = {}) {
+    try {
+      const targetId = threadId || this.getCurrentThreadId();
+      if (!targetId) return;
+      const flattened = this._flattenMessagesFromState();
+      const threadKey = `threads.map.${targetId}`;
+      const current = this.state.get(threadKey) || { id: targetId, messages: [] };
+      const next = { ...current, id: targetId, messages: flattened };
+      if (extras && typeof extras === 'object') {
+        if (extras.metadata) next.metadata = extras.metadata;
+      }
+      this.state.set(threadKey, next);
+    } catch (err) {
+      console.warn('[Chat] thread cache update failed', err);
+    }
+  }
+
+  _applyMemoryMetadata(sessionId, metadata) {
+    try {
+      const summary = typeof metadata?.summary === 'string' ? metadata.summary : '';
+      const concepts = Array.isArray(metadata?.concepts) ? metadata.concepts.filter(Boolean) : [];
+      const entities = Array.isArray(metadata?.entities) ? metadata.entities.filter(Boolean) : [];
+      const ltmCount = concepts.length + entities.length;
+      this.state.set('chat.memoryStats', { has_stm: !!summary, ltm_items: ltmCount, ltm_injected: 0, ltm_candidates: ltmCount, injected: false, ltm_skipped: false });
+      this.state.set('chat.memoryBannerAt', Date.now());
+      this.state.set('chat.lastAnalysis', {
+        session_id: sessionId || null,
+        status: 'restored',
+        summary,
+        concepts,
+        entities,
+        at: Date.now()
+      });
+    } catch (err) {
+      console.warn('[Chat] memory metadata sync failed', err);
     }
   }
 
@@ -458,11 +1431,15 @@ export default class ChatModule {
           return;
         }
         try {
+          const fallbackMeta = { watchdog_fallback: true };
+          fallbackMeta.use_rag = typeof p.use_rag === 'boolean' ? p.use_rag : !!this.state.get('chat.ragEnabled');
+          const docIdsForFallback = Array.isArray(p.doc_ids) ? this._sanitizeDocIds(p.doc_ids) : [];
+          if (docIdsForFallback.length) fallbackMeta.doc_ids = docIdsForFallback;
           await api.appendMessage(threadId, {
             role: 'user',
             content: p.text,
             agent_id: p.agent_id,
-            meta: { watchdog_fallback: true }
+            meta: fallbackMeta
           });
 
           // ✅ Metrics: fallback REST
@@ -527,3 +1504,4 @@ export default class ChatModule {
     } catch {}
   }
 }
+

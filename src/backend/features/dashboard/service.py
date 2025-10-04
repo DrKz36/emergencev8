@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from backend.core.database.manager import DatabaseManager
 from backend.core.database import queries as db_queries
@@ -84,7 +84,8 @@ class DashboardService:
     # -------------------------
     # API principale
     # -------------------------
-    async def get_dashboard_data(self) -> Dict[str, Any]:
+    async def get_dashboard_data(self, *, user_id: Optional[str] = None,
+                                session_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Récupère, agrège et formate toutes les données pour le cockpit.
         La structure de l'objet retourné correspond exactement à ce que
@@ -93,19 +94,25 @@ class DashboardService:
         try:
             # 1) Récupération des données brutes (tolérance None)
             try:
-                costs_raw = await db_queries.get_costs_summary(self.db)
+                costs_raw = await db_queries.get_costs_summary(
+                    self.db,
+                    user_id=user_id,
+                    session_id=session_id,
+                )
             except Exception as e:
                 logger.warning(f"[dashboard] get_costs_summary KO: {e}")
                 costs_raw = {}
 
             try:
-                documents_raw = await db_queries.get_all_documents(self.db)
+                documents_raw = await db_queries.get_all_documents(
+                    self.db, session_id=None, user_id=user_id
+                )
             except Exception as e:
                 logger.warning(f"[dashboard] get_all_documents KO: {e}")
                 documents_raw = []
 
             try:
-                sessions_raw = await db_queries.get_all_sessions_overview(self.db)
+                sessions_raw = await db_queries.get_all_sessions_overview(self.db, user_id=user_id)
             except Exception as e:
                 logger.warning(f"[dashboard] get_all_sessions_overview KO: {e}")
                 sessions_raw = []

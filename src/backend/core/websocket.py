@@ -2,16 +2,13 @@
 # V11.2 – Handshake gracieux: accept → ws:auth_required → close(4401) si auth KO
 import logging
 import asyncio
-from typing import Dict, Any, List, Optional, Callable, TYPE_CHECKING
+from typing import Dict, Any, List, Optional, Callable
 
-from fastapi import APIRouter, WebSocket
+from fastapi import APIRouter, WebSocket, HTTPException
 from starlette.websockets import WebSocketDisconnect
 
 from .session_manager import SessionManager
 from backend.shared import dependencies  # auth WS (allowlist + sub=uid)
-
-if TYPE_CHECKING:
-    from backend.containers import ServiceContainer  # pragma: no cover
 
 logger = logging.getLogger(__name__)
 
@@ -49,51 +46,214 @@ class ConnectionManager:
             logger.info("WebSocket accepté sans sous-protocole compatible.")
         return selected
 
-    async def connect(self, websocket: WebSocket, session_id: str, user_id: str = "default_user"):
+
+    async def connect(
+        self,
+        websocket: WebSocket,
+        session_id: str,
+        user_id: str = "default_user",
+        thread_id: Optional[str] = None,
+        *,
+        client_session_id: Optional[str] = None,
+    ):
         await self._accept_with_subprotocol(websocket)
 
-        is_new_session = session_id not in self.active_connections
-        if is_new_session:
+        history_limit = 200
+        alias = client_session_id if client_session_id and client_session_id != session_id else None
+        first_connection = session_id not in self.active_connections
+        if first_connection:
             self.active_connections[session_id] = []
-            self.session_manager.create_session(session_id=session_id, user_id=user_id)
-            logger.info(f"Client connecté. Session {session_id} créée et associée.")
+            previously_cached = self.session_manager.get_session(session_id)
+            session = await self.session_manager.ensure_session(
+                session_id=session_id,
+                user_id=user_id,
+                thread_id=thread_id,
+                history_limit=history_limit,
+            )
+            if alias:
+                try:
+                    self.session_manager.register_session_alias(session_id, alias)  # type: ignore[attr-defined]
+                except Exception as exc:
+                    logger.debug(
+                        "WS alias registration failed (%s -> %s): %s",
+                        alias,
+                        session_id,
+                        exc,
+                    )
+            if previously_cached:
+                logger.info(
+                    "Client connected. Session %s already in memory (thread=%s, alias=%s).",
+                    session_id,
+                    thread_id,
+                    alias,
+                )
+            elif getattr(session, "end_time", None):
+                logger.info(
+                    "Session %s restored from DB for user %s (thread=%s, alias=%s).",
+                    session_id,
+                    user_id,
+                    thread_id,
+                    alias,
+                )
+            else:
+                logger.info(
+                    "Client connected. New session %s created for %s (thread=%s, alias=%s).",
+                    session_id,
+                    user_id,
+                    thread_id,
+                    alias,
+                )
         else:
-            logger.info(f"Nouveau client connecté pour la session existante {session_id}.")
+            await self.session_manager.ensure_session(
+                session_id=session_id,
+                user_id=user_id,
+                thread_id=thread_id,
+                history_limit=history_limit,
+            )
+            if alias:
+                try:
+                    self.session_manager.register_session_alias(session_id, alias)  # type: ignore[attr-defined]
+                except Exception as exc:
+                    logger.debug(
+                        "WS alias refresh failed (%s -> %s): %s",
+                        alias,
+                        session_id,
+                        exc,
+                    )
+            logger.info(
+                "New client for existing session %s (thread=%s, alias=%s).",
+                session_id,
+                thread_id,
+                alias,
+            )
 
         self.active_connections[session_id].append(websocket)
 
+        est_payload = {"session_id": session_id, "thread_id": thread_id}
+        if alias:
+            est_payload["client_session_id"] = alias
+
         try:
-            await websocket.send_json({
-                "type": "ws:session_established",
-                "payload": {"session_id": session_id}
-            })
-        except (WebSocketDisconnect, RuntimeError) as e:
-            logger.warning(f"Client déconnecté immédiatement (session {session_id}). Nettoyage... Erreur: {e}")
+            await websocket.send_json(
+                {
+                    "type": "ws:session_established",
+                    "payload": est_payload,
+                }
+            )
+        except (WebSocketDisconnect, RuntimeError) as err:
+            logger.warning(
+                "Client disconnected immediately (session %s). Cleanup... Error: %s",
+                session_id,
+                err,
+            )
             await self.disconnect(session_id, websocket)
+            return
+
+        try:
+            history_export = self.session_manager.export_history_for_transport(
+                session_id, limit=history_limit
+            )
+            metadata = self.session_manager.get_session_metadata(session_id)
+            meta_payload = {k: metadata.get(k) for k in ("summary", "concepts", "entities") if metadata.get(k)}
+            if history_export or meta_payload:
+                restored_payload = {
+                    "session_id": session_id,
+                    "thread_id": thread_id,
+                    "messages": history_export,
+                    "metadata": meta_payload,
+                    "history_count": len(history_export),
+                    "source": "session_manager",
+                }
+                if alias:
+                    restored_payload["client_session_id"] = alias
+                await websocket.send_json(
+                    {"type": "ws:session_restored", "payload": restored_payload}
+                )
+        except Exception as restore_err:
+            logger.debug("Unable to send restored history for %s: %s", session_id, restore_err)
+
+    def _resolve_session_id(self, session_id: str) -> str:
+        resolver = getattr(self.session_manager, "resolve_session_id", None)
+        if callable(resolver):
+            try:
+                resolved = resolver(session_id)
+                if isinstance(resolved, str) and resolved:
+                    return resolved
+            except Exception:
+                pass
+        return session_id
 
     async def disconnect(self, session_id: str, websocket: WebSocket):
-        conns = self.active_connections.get(session_id, [])
+        resolved_id = self._resolve_session_id(session_id)
+        conns = self.active_connections.get(resolved_id, [])
         if websocket in conns:
             conns.remove(websocket)
         if not conns:
-            if session_id in self.active_connections:
-                del self.active_connections[session_id]
+            if resolved_id in self.active_connections:
+                del self.active_connections[resolved_id]
+
+            async def _finalize() -> None:
+                try:
+                    await self.session_manager.finalize_session(resolved_id)
+                    logger.info("Session %s finalized (async task).", resolved_id)
+                except Exception as exc:  # pragma: no cover - logging only
+                    logger.warning("finalize_session(%s) raised: %s", resolved_id, exc)
+
             try:
-                await self.session_manager.finalize_session(session_id)
-            except Exception as e:
-                logger.warning(f"finalize_session({session_id}) a levé: {e}")
-            logger.info(f"Dernier client déconnecté. Session {session_id} finalisée.")
+                asyncio.create_task(_finalize())
+            except RuntimeError:
+                await _finalize()
+            logger.info(
+                "Last client disconnected. Finalization of session %s scheduled.",
+                resolved_id,
+            )
         else:
-            logger.info(f"Un client s'est déconnecté, {len(conns)} connexion(s) restante(s) pour {session_id}.")
+            logger.info(
+                "A client disconnected, %s connection(s) remain for %s.",
+                len(conns),
+                resolved_id,
+            )
 
     async def send_personal_message(self, message: dict, session_id: str):
-        connections = self.active_connections.get(session_id, [])
+        resolved_id = self._resolve_session_id(session_id)
+        connections = self.active_connections.get(resolved_id, [])
         for ws in list(connections):
             try:
                 await ws.send_json(message)
-            except (WebSocketDisconnect, RuntimeError) as e:
-                logger.error(f"Erreur d'envoi (session {session_id}) → cleanup: {e}")
-                await self.disconnect(session_id, ws)
+            except (WebSocketDisconnect, RuntimeError) as exc:
+                logger.error("Send error (session %s) -> cleanup: %s", resolved_id, exc)
+                await self.disconnect(resolved_id, ws)
+
+    async def close_session(
+        self,
+        session_id: str,
+        *,
+        code: int = 4401,
+        reason: str = "session_revoked",
+    ) -> int:
+        resolved_id = self._resolve_session_id(session_id)
+        connections = self.active_connections.pop(resolved_id, [])
+        if not connections:
+            return 0
+        closed = 0
+        notice = {"type": "ws:auth_required", "payload": {"reason": reason, "code": code}}
+        for ws in list(connections):
+            try:
+                await ws.send_json(notice)
+            except Exception:
+                pass
+            try:
+                await ws.close(code=code)
+            except Exception:
+                pass
+            closed += 1
+        logger.info(
+            "Session %s: closed %s WebSocket connection(s) (reason=%s).",
+            resolved_id,
+            closed,
+            reason,
+        )
+        return closed
 
 def _find_handler(sm: SessionManager) -> Optional[Callable[..., Any]]:
     for name in ("on_client_message", "ingest_ws_message", "handle_client_message", "dispatch"):
@@ -107,11 +267,11 @@ def get_websocket_router(container) -> APIRouter:
 
     @router.websocket("/ws/{session_id}")
     async def websocket_endpoint(websocket: WebSocket, session_id: str):
+        requested_session_id = session_id
         user_id_hint = websocket.query_params.get("user_id")
-        try:
-            user_id = await dependencies.get_user_id_for_ws(websocket, user_id=user_id_hint)
-        except Exception as e:
-            # 🔁 Handshake gracieux: accept → notifier → close(4401)
+        thread_id = websocket.query_params.get("thread_id")
+
+        async def _reject_ws(reason: str, close_code: int = 4401):
             try:
                 requested = websocket.headers.get("sec-websocket-protocol") or ""
                 selected = None
@@ -121,50 +281,104 @@ def get_websocket_router(container) -> APIRouter:
                         break
                 await websocket.accept(subprotocol=selected)
             except Exception as ae:
-                logger.warning(f"WS accept() avant close a échoué: {ae}")
+                logger.warning("WS accept() before close failed: %s", ae)
             try:
-                await websocket.send_json({"type": "ws:auth_required", "payload": {"reason": "invalid_or_missing_token"}})
+                await websocket.send_json(
+                    {
+                        "type": "ws:auth_required",
+                        "payload": {"reason": reason, "code": close_code},
+                    }
+                )
             except Exception:
                 pass
-            logger.warning(f"WS auth échouée → close 4401 : {e}")
             try:
-                await websocket.close(code=4401)
+                await websocket.close(code=close_code)
             except Exception:
                 pass
+
+        try:
+            user_id = await dependencies.get_user_id_for_ws(websocket, user_id=user_id_hint)
+        except HTTPException as exc:
+            reason = exc.detail if isinstance(exc.detail, str) else "invalid_or_missing_token"
+            close_code = 4401 if exc.status_code in (401, 403) else 1008
+            logger.warning("WS auth failed -> close %s : %s", close_code, exc)
+            await _reject_ws(reason, close_code)
             return
+        except Exception as err:
+            logger.error("WS auth unexpected error -> close 1008 : %s", err)
+            await _reject_ws("unexpected_error", 1008)
+            return
+
+        claims = getattr(getattr(websocket, "state", None), "auth_claims", {})
+        auth_email = None
+        auth_session_id = None
+        session_revoked = False
+        if isinstance(claims, dict):
+            auth_email = claims.get("email")
+            auth_session_id = claims.get("session_id") or claims.get("sid")
+            session_revoked = bool(claims.get("session_revoked"))
+        canonical_session_id = str(auth_session_id or requested_session_id or "").strip() or requested_session_id
+        if session_revoked:
+            logger.warning(
+                "WS auth refused: session %s marked as revoked.",
+                auth_session_id or "<unknown>",
+            )
+            await _reject_ws("session_revoked", 4401)
+            return
+        if auth_email:
+            websocket.scope["auth_email"] = auth_email
+            logger.info(
+                "WS auth accepted for %s (sub=%s, session=%s, alias=%s)",
+                auth_email,
+                user_id,
+                canonical_session_id,
+                requested_session_id if requested_session_id != canonical_session_id else None,
+            )
+        websocket.scope["auth_session_id"] = canonical_session_id
+        if requested_session_id != canonical_session_id:
+            websocket.scope["client_session_id"] = requested_session_id
 
         session_manager: SessionManager = container.session_manager()
         conn_manager = getattr(session_manager, "connection_manager", None)
         if conn_manager is None:
             conn_manager = ConnectionManager(session_manager)
 
-        await conn_manager.connect(websocket, session_id, user_id=user_id)
+        alias_value = requested_session_id if requested_session_id != canonical_session_id else None
+        await conn_manager.connect(
+            websocket,
+            canonical_session_id,
+            user_id=user_id,
+            thread_id=thread_id,
+            client_session_id=alias_value,
+        )
 
         handler = _find_handler(session_manager)
+        target_session_id = canonical_session_id
         try:
             while True:
                 data = await websocket.receive_json()
                 if handler:
                     try:
-                        res = handler(session_id, data)
+                        res = handler(target_session_id, data)
                         if asyncio.iscoroutine(res):
                             await res
                     except TypeError:
-                        res = handler(data, session_id)
+                        res = handler(data, target_session_id)
                         if asyncio.iscoroutine(res):
                             await res
                 else:
                     await conn_manager.send_personal_message(
                         {"type": "ws:ack", "payload": {"received": True, "echo": data}},
-                        session_id,
+                        target_session_id,
                     )
         except WebSocketDisconnect:
-            await conn_manager.disconnect(session_id, websocket)
-        except RuntimeError as e:
-            logger.error(f"WS RuntimeError session={session_id}: {e}")
-            await conn_manager.disconnect(session_id, websocket)
-        except Exception as e:
-            logger.error(f"WS Exception session={session_id}: {e}")
-            await conn_manager.disconnect(session_id, websocket)
+            await conn_manager.disconnect(target_session_id, websocket)
+        except RuntimeError as err:
+            logger.error("WS RuntimeError session=%s: %s", target_session_id, err)
+            await conn_manager.disconnect(target_session_id, websocket)
+        except Exception as err:
+            logger.error("WS Exception session=%s: %s", target_session_id, err)
+            await conn_manager.disconnect(target_session_id, websocket)
 
     return router
+

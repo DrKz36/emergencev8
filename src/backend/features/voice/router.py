@@ -1,34 +1,45 @@
-# src/backend/features/voice/router.py
-# V1.0 - Création initiale du routeur WebSocket pour la voix
+﻿# src/backend/features/voice/router.py
+# V1.0 - Creation initiale du routeur WebSocket pour la voix
 import logging
-import json
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
+from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect, HTTPException
 
 from backend.features.voice.service import VoiceService
 from backend.shared import dependencies
-from backend.shared.dependencies import WebSocketException
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
+def _ensure_voice_service(websocket: WebSocket) -> VoiceService:
+    container = getattr(websocket.app.state, "service_container", None)  # type: ignore[attr-defined]
+    if container is None:
+        raise HTTPException(status_code=503, detail="Voice service unavailable.")
+    provider = getattr(container, "voice_service", None)
+    if provider is None:
+        raise HTTPException(status_code=503, detail="Voice service unavailable.")
+    try:
+        service = provider()
+    except Exception as exc:
+        logger.error(f"Impossible de recuperer VoiceService: {exc}", exc_info=True)
+        raise HTTPException(status_code=503, detail="Voice service indisponible.")
+    if not isinstance(service, VoiceService):
+        raise HTTPException(status_code=503, detail="Voice service invalide.")
+    return service
+
+
 async def audio_receiver(websocket: WebSocket) -> AsyncGenerator[bytes, None]:
-    """
-    Un générateur asynchrone qui écoute les messages entrants du WebSocket
-    et les yield comme des chunks de bytes audio.
-    """
+    """Recoit un flux binaire via WebSocket et le renvoie chunk par chunk."""
     try:
         while True:
             data = await websocket.receive_bytes()
             yield data
     except WebSocketDisconnect:
-        logger.info("Le client a fermé la connexion pendant la réception audio.")
-        # Le générateur s'arrête simplement lorsque le client se déconnecte.
-        pass
-    except Exception as e:
-        logger.error(f"Erreur inattendue pendant la réception audio: {e}", exc_info=True)
+        logger.info("Le client a ferme la connexion pendant la reception audio.")
+    except Exception as exc:
+        logger.error(f"Erreur inattendue pendant la reception audio: {exc}", exc_info=True)
 
 
 @router.websocket("/ws/{agent_name}")
@@ -36,50 +47,48 @@ async def voice_chat_ws(
     websocket: WebSocket,
     agent_name: str,
     session_id: str = Query(...),
-    service: VoiceService = Depends(dependencies.get_voice_service),
-    user_id: str = Depends(dependencies.get_user_id_from_websocket) # Sécurise et identifie
-):
-    """
-    Endpoint WebSocket pour une interaction vocale bi-directionnelle.
-    1. Accepte la connexion.
-    2. Reçoit un flux de bytes audio du client.
-    3. Passe le flux au VoiceService.
-    4. Streame les réponses (texte puis audio) au client.
-    """
+    service: VoiceService = Depends(_ensure_voice_service),
+    user_id: str = Depends(dependencies.get_user_id_from_websocket),
+) -> None:
+    """Interaction vocale bi-directionnelle entre un utilisateur et un agent."""
     await websocket.accept()
-    logger.info(f"WebSocket connecté pour l'agent '{agent_name}' (Session: {session_id}, User: {user_id})")
+    logger.info(
+        "WebSocket connecte pour l'agent '%s' (Session: %s, User: %s)",
+        agent_name,
+        session_id,
+        user_id,
+    )
 
     try:
         audio_stream = audio_receiver(websocket)
-        
-        # Le service traite le flux et renvoie des dictionnaires structurés
         response_generator = service.process_voice_interaction(
             audio_stream=audio_stream,
             agent_name=agent_name,
-            session_id=session_id
+            session_id=session_id,
         )
 
         async for response_part in response_generator:
-            # response_part est un dict: {'type': 'text'|'audio', 'data': ...}
             await websocket.send_json(response_part)
 
-    except WebSocketException as e:
-        # Géré par la dépendance, qui a déjà fermé le socket.
-        logger.warning(f"Erreur de dépendance WebSocket: {e}")
+    except HTTPException as exc:
+        logger.warning(f"Erreur de dependance WebSocket: {exc}")
+        try:
+            await websocket.close(code=4401)
+        except Exception:
+            pass
     except WebSocketDisconnect:
-        logger.info(f"Client déconnecté de l'agent '{agent_name}'. Session: {session_id}")
-    except Exception as e:
-        logger.error(f"Erreur critique dans le WebSocket pour l'agent '{agent_name}': {e}", exc_info=True)
-        error_payload = {
-            "type": "error",
-            "data": "Une erreur interne est survenue sur le serveur."
-        }
+        logger.info("Client deconnecte de l'agent '%s' (Session: %s)", agent_name, session_id)
+    except Exception as exc:
+        logger.error(
+            f"Erreur critique dans le WebSocket pour l'agent '{agent_name}': {exc}",
+            exc_info=True,
+        )
+        error_payload = {"type": "error", "data": "Une erreur interne est survenue sur le serveur."}
         try:
             await websocket.send_json(error_payload)
         except Exception:
-            pass # Le client est peut-être déjà parti
+            pass
     finally:
         if websocket.client_state != "DISCONNECTED":
             await websocket.close()
-            logger.info(f"Connexion WebSocket proprement fermée pour la session {session_id}.")
-
+            logger.info("Connexion WebSocket fermee pour la session %s.", session_id)

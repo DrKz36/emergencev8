@@ -17,15 +17,18 @@
   --color-anima: #e11d48;             /* rose/rouge */
   --color-neo:   #2563eb;             /* bleu */
   --color-nexus: #10b981;             /* ✅ émeraude */
+  --color-user:  #8b5cf6;             /* violet */
 
   --color-anima-bg: rgba(225, 29, 72, 0.12);
   --color-neo-bg:   rgba(37, 99, 235, 0.12);
   --color-nexus-bg: rgba(16, 185, 129, 0.12); /* ✅ émeraude */
+  --color-user-bg:  rgba(139, 92, 246, 0.16);
 
   /* Bulles chat */
   --color-accent-anima: var(--color-anima-bg);
   --color-accent-neo:   var(--color-neo-bg);
   --color-accent-nexus: var(--color-nexus-bg);
+  --color-accent-user:  var(--color-user-bg);
   --color-text-on-accent: #f8fafc;
 
   /* Texte */
@@ -58,7 +61,14 @@
 
   /* === MOTION === */
   --duration-subtle: 150ms; --duration-normal: 300ms;
+  --animation-duration-enter: 220ms;
+  --animation-duration-exit: 260ms;
+  --animation-duration-modal: 280ms;
+  --animation-duration-toast: 280ms;
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --animation-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --animation-ease-out: var(--ease-out-quint);
+  --animation-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* === LAYOUT === */
   --header-height: 60px; --sidebar-width: 280px; --mobile-nav-height: 64px; --max-content-width: 1600px;
@@ -76,3 +86,4 @@
   --color-background-tertiary: rgba(255, 255, 255, 0.06);
   --color-background-light: rgba(255, 255, 255, 0.08);
 }
+

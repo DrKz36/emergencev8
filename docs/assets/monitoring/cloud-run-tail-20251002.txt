@@ -1,0 +1,1039 @@
+streaming logs from emergence-469005
+2025-10-02 05:42:59 GET 200 https://emergence-app.ch/src/frontend/main.js
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/threads/threads.css
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/styles/main-styles.css
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/styles/core/_navigation.css
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/home/home.css
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/styles/overrides/ui-hotfix-20250823.css
+2025-10-02 05:42:59 GET 200 https://emergence-app.ch/src/frontend/features/chat/chat.css
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/styles/core/_layout.css
+2025-10-02 05:42:59 INFO:     169.254.169.126:39622 - "GET /src/frontend/features/chat/chat.css HTTP/1.1" 200 OK
+2025-10-02 05:42:59 INFO:     169.254.169.126:39586 - "GET /src/frontend/main.js HTTP/1.1" 200 OK
+2025-10-02 05:42:59 INFO:     169.254.169.126:39600 - "GET /src/frontend/styles/main-styles.css HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39636 - "GET /src/frontend/features/home/home.css HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39592 - "GET /src/frontend/features/threads/threads.css HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39646 - "GET /src/frontend/styles/core/_layout.css HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39644 - "GET /src/frontend/styles/overrides/ui-hotfix-20250823.css HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39616 - "GET /src/frontend/styles/core/_navigation.css HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/shared/i18n.js
+2025-10-02 05:42:59 INFO:     169.254.169.126:39656 - "GET /src/frontend/shared/i18n.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39584 - "GET / HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 GET 401 https://emergence-app.ch/api/auth/session
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/core/state-manager.js
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/memory/memory-center.js
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/home/home-module.js
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/core/auth.js
+2025-10-02 05:42:59 GET 404 https://emergence-app.ch/api/threads/942acaf79bd14adaa680def5328c9000?messages_limit=50
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/shared/api-client.js
+2025-10-02 05:42:59 GET 200 https://emergence-app.ch/src/frontend/core/app.js
+2025-10-02 05:42:59 GET 200 https://emergence-app.ch/src/frontend/core/websocket.js
+2025-10-02 05:42:59 INFO:     169.254.169.126:39730 - "GET /src/frontend/core/auth.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39684 - "GET /src/frontend/core/state-manager.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39672 - "GET /api/auth/session HTTP/1.1" 401 Unauthorized
+2025-10-02 05:42:59 INFO:     169.254.169.126:39700 - "GET /src/frontend/features/home/home-module.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39728 - "GET /src/frontend/shared/api-client.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39752 - "GET /src/frontend/core/websocket.js HTTP/1.1" 200 OK
+2025-10-02 05:42:59 INFO:     169.254.169.126:39678 - "GET /src/frontend/features/memory/memory-center.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39744 - "GET /src/frontend/core/app.js HTTP/1.1" 200 OK
+2025-10-02 05:42:59 INFO:     169.254.169.126:39714 - "GET /api/threads/942acaf79bd14adaa680def5328c9000?messages_limit=50 HTTP/1.1" 404 Not Found
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/shared/config.js
+2025-10-02 05:42:59 INFO:     169.254.169.126:39758 - "GET /src/frontend/shared/config.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 GET 404 https://emergence-app.ch/api/threads/942acaf79bd14adaa680def5328c9000?messages_limit=50
+2025-10-02 05:42:59 GET 401 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 05:42:59 POST 201 https://emergence-app.ch/api/threads/
+2025-10-02 05:42:59 INFO:     169.254.169.126:39766 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 401 Unauthorized
+2025-10-02 05:42:59 INFO:     169.254.169.126:39762 - "GET /api/threads/942acaf79bd14adaa680def5328c9000?messages_limit=50 HTTP/1.1" 404 Not Found
+2025-10-02 05:42:59 INFO:     169.254.169.126:39768 - "POST /api/threads/ HTTP/1.1" 201 Created
+2025-10-02 05:42:59 2025-10-02 05:42:59,405 INFO [backend.core.websocket] ConnectionManager initialis?.
+2025-10-02 05:42:59 INFO:     169.254.169.126:40012 - "GET /src/frontend/features/admin/auth-admin-module.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:40022 - "GET /src/frontend/features/admin/auth-admin-module.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39818 - "GET /api/threads/942acaf79bd14adaa680def5328c9000?messages_limit=50 HTTP/1.1" 404 Not Found
+2025-10-02 05:42:59 INFO:     169.254.169.126:39894 - "GET /src/frontend/features/threads/threads.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39932 - "GET /src/frontend/features/references/references.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39948 - "GET /src/frontend/features/dashboard/dashboard.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39794 - "GET /src/frontend/features/chat/chat.js HTTP/1.1" 200 OK
+2025-10-02 05:42:59 INFO:     169.254.169.126:39786 - "POST /api/threads/ HTTP/1.1" 201 Created
+2025-10-02 05:42:59 INFO:     169.254.169.126:39802 - "GET /api/auth/session HTTP/1.1" 401 Unauthorized
+2025-10-02 05:42:59 INFO:     169.254.169.126:39820 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 401 Unauthorized
+2025-10-02 05:42:59 INFO:     169.254.169.126:39822 - "POST /api/threads/ HTTP/1.1" 201 Created
+2025-10-02 05:42:59 INFO:     169.254.169.126:39842 - "GET /src/frontend/features/chat/chat-ui.js HTTP/1.1" 200 OK
+2025-10-02 05:42:59 INFO:     169.254.169.126:39852 - "GET /api/threads/942acaf79bd14adaa680def5328c9000?messages_limit=50 HTTP/1.1" 404 Not Found
+2025-10-02 05:42:59 INFO:     169.254.169.126:39868 - "GET /src/frontend/features/chat/chat-ui.js HTTP/1.1" 200 OK
+2025-10-02 05:42:59 INFO:     169.254.169.126:39878 - "GET /api/threads/942acaf79bd14adaa680def5328c9000?messages_limit=50 HTTP/1.1" 404 Not Found
+2025-10-02 05:42:59 INFO:     169.254.169.126:39906 - "POST /api/threads/ HTTP/1.1" 201 Created
+2025-10-02 05:42:59 INFO:     169.254.169.126:39912 - "GET /src/frontend/features/threads/threads.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39922 - "POST /api/threads/ HTTP/1.1" 201 Created
+2025-10-02 05:42:59 INFO:     169.254.169.126:39928 - "GET /src/frontend/features/memory/memory.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39962 - "GET /src/frontend/features/admin/admin.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39972 - "GET /src/frontend/features/dashboard/dashboard.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:40002 - "GET /src/frontend/features/memory/memory.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39974 - "GET /src/frontend/features/references/references.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 INFO:     169.254.169.126:39988 - "GET /src/frontend/features/admin/admin.js HTTP/1.1" 304 Not Modified
+2025-10-02 05:42:59 2025-10-02 05:42:59,409 WARNING [emergence.allowlist] DevMode WS: fallback user_id utilis? (pas de token).
+2025-10-02 05:42:59 INFO:     ('169.254.169.126', 39782) - "WebSocket /ws/03113e22-af40-4795-a15b-0fd6c42f5af5?thread_id=942acaf79bd14adaa680def5328c9000" [accepted]
+2025-10-02 05:42:59 2025-10-02 05:42:59,409 INFO [backend.core.websocket] WebSocket accept? avec sous-protocole: jwt
+2025-10-02 05:42:59 2025-10-02 05:42:59,410 INFO [backend.core.session_manager] Session 03113e22-af40-4795-a15b-0fd6c42f5af5 non active, tentative de chargement depuis la BDD...
+2025-10-02 05:42:59 INFO:     connection open
+2025-10-02 05:42:59 2025-10-02 05:42:59,418 WARNING [backend.core.session_manager] Session 03113e22-af40-4795-a15b-0fd6c42f5af5 non trouv?e en BDD.
+2025-10-02 05:42:59 2025-10-02 05:42:59,418 INFO [backend.core.session_manager] Session active cr??e : 03113e22-af40-4795-a15b-0fd6c42f5af5 pour l'utilisateur annotation=NoneType required=False default=None json_schema_extra={}
+2025-10-02 05:42:59 2025-10-02 05:42:59,421 WARNING [backend.core.session_manager] Thread 942acaf79bd14adaa680def5328c9000 introuvable pour l'hydratation de la session 03113e22-af40-4795-a15b-0fd6c42f5af5.
+2025-10-02 05:42:59 2025-10-02 05:42:59,422 INFO [backend.core.websocket] Client connected. New session 03113e22-af40-4795-a15b-0fd6c42f5af5 created for annotation=NoneType required=False default=None json_schema_extra={} (thread=942acaf79bd14adaa680def5328c9000, alias=None).
+2025-10-02 05:42:59 2025-10-02 05:42:59,516 WARNING [emergence.allowlist] DevMode WS: fallback user_id utilis? (pas de token).
+2025-10-02 05:42:59 INFO:     ('169.254.169.126', 39830) - "WebSocket /ws/03113e22-af40-4795-a15b-0fd6c42f5af5?thread_id=942acaf79bd14adaa680def5328c9000" [accepted]
+2025-10-02 05:42:59 2025-10-02 05:42:59,516 INFO [backend.core.websocket] WebSocket accept? avec sous-protocole: jwt
+2025-10-02 05:42:59 INFO:     connection open
+2025-10-02 05:42:59 2025-10-02 05:42:59,518 WARNING [backend.core.session_manager] Thread 942acaf79bd14adaa680def5328c9000 introuvable pour l'hydratation de la session 03113e22-af40-4795-a15b-0fd6c42f5af5.
+2025-10-02 05:42:59 2025-10-02 05:42:59,518 INFO [backend.core.websocket] New client for existing session 03113e22-af40-4795-a15b-0fd6c42f5af5 (thread=942acaf79bd14adaa680def5328c9000, alias=None).
+2025-10-02 05:42:59 POST 201 https://emergence-app.ch/api/threads/
+2025-10-02 05:42:59 GET 200 https://emergence-app.ch/src/frontend/features/chat/chat.js
+2025-10-02 05:42:59 GET 404 https://emergence-app.ch/api/threads/942acaf79bd14adaa680def5328c9000?messages_limit=50
+2025-10-02 05:42:59 GET 401 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 05:42:59 POST 201 https://emergence-app.ch/api/threads/
+2025-10-02 05:42:59 GET 200 https://emergence-app.ch/src/frontend/features/chat/chat-ui.js
+2025-10-02 05:42:59 GET 404 https://emergence-app.ch/api/threads/942acaf79bd14adaa680def5328c9000?messages_limit=50
+2025-10-02 05:42:59 GET 200 https://emergence-app.ch/src/frontend/features/chat/chat-ui.js
+2025-10-02 05:42:59 GET 404 https://emergence-app.ch/api/threads/942acaf79bd14adaa680def5328c9000?messages_limit=50
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/threads/threads.js
+2025-10-02 05:42:59 POST 201 https://emergence-app.ch/api/threads/
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/threads/threads.js
+2025-10-02 05:42:59 POST 201 https://emergence-app.ch/api/threads/
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/memory/memory.js
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/references/references.js
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/dashboard/dashboard.js
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/admin/admin.js
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/references/references.js
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/dashboard/dashboard.js
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/admin/admin.js
+2025-10-02 05:42:59 GET 401 https://emergence-app.ch/api/auth/session
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/memory/memory.js
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/admin/auth-admin-module.js
+2025-10-02 05:42:59 GET 304 https://emergence-app.ch/src/frontend/features/admin/auth-admin-module.js
+2025-10-02 05:43:10 2025-10-02 05:43:10,136 INFO [backend.features.chat.router] [WS] JSON/Disconnect lors de receive_json() ??? fermeture propre (session=03113e22-af40-4795-a15b-0fd6c42f5af5)
+2025-10-02 05:43:10 2025-10-02 05:43:10,136 INFO [backend.core.websocket] A client disconnected, 1 connection(s) remain for 03113e22-af40-4795-a15b-0fd6c42f5af5.
+2025-10-02 05:43:10 INFO:     connection closed
+2025-10-02 05:42:59 GET 101 https://emergence-app.ch/ws/03113e22-af40-4795-a15b-0fd6c42f5af5?thread_id=942acaf79bd14adaa680def5328c9000
+2025-10-02 05:42:59 GET 101 https://emergence-app.ch/ws/03113e22-af40-4795-a15b-0fd6c42f5af5?thread_id=942acaf79bd14adaa680def5328c9000
+2025-10-02 05:43:24 2025-10-02 05:43:24,610 INFO [backend.core.websocket] Last client disconnected. Finalization of session 03113e22-af40-4795-a15b-0fd6c42f5af5 scheduled.
+2025-10-02 05:43:24 2025-10-02 05:43:24,610 INFO [backend.core.session_manager] Finalisation de la session 03113e22-af40-4795-a15b-0fd6c42f5af5. Dur?e: 25.19s.
+2025-10-02 05:43:24 INFO:     connection closed
+2025-10-02 05:43:24 2025-10-02 05:43:24,612 INFO [backend.core.database.manager] Session 03113e22-af40-4795-a15b-0fd6c42f5af5 sauvegard?e.
+2025-10-02 05:43:24 2025-10-02 05:43:24,612 INFO [backend.features.memory.analyzer] Lancement de l'analyse s??mantique (persist=True) pour 03113e22-af40-4795-a15b-0fd6c42f5af5
+2025-10-02 05:43:24 2025-10-02 05:43:24,612 WARNING [backend.features.memory.analyzer] Historique vide pour 03113e22-af40-4795-a15b-0fd6c42f5af5. Analyse annul??e.
+2025-10-02 05:43:24 2025-10-02 05:43:24,612 INFO [backend.core.websocket] Session 03113e22-af40-4795-a15b-0fd6c42f5af5 finalized (async task).
+2025-10-02 05:43:24 2025-10-02 05:43:24,610 INFO [backend.features.chat.router] [WS] JSON/Disconnect lors de receive_json() ??? fermeture propre (session=03113e22-af40-4795-a15b-0fd6c42f5af5)
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/
+2025-10-02 05:43:29 INFO:     169.254.169.126:46660 - "GET / HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:47032 - "GET /src/frontend/components/modals.js HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:47044 - "GET /src/frontend/shared/config.js HTTP/1.1" 200 OK
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/shared/utils.js
+2025-10-02 05:43:29 INFO:     169.254.169.126:47058 - "GET /src/frontend/shared/utils.js HTTP/1.1" 200 OK
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/api/threads?type=chat&limit=1
+2025-10-02 05:43:29 POST 200 https://emergence-app.ch/api/auth/dev/login
+2025-10-02 05:43:29 INFO:     169.254.169.126:47072 - "GET /api/threads?type=chat&limit=1 HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:47074 - "POST /api/auth/dev/login HTTP/1.1" 200 OK
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/assets/emergence_logo.png
+2025-10-02 05:43:29 INFO:     169.254.169.126:47088 - "GET /assets/emergence_logo.png HTTP/1.1" 200 OK
+2025-10-02 05:43:29 POST 201 https://emergence-app.ch/api/threads/
+2025-10-02 05:43:29 INFO:     169.254.169.126:47102 - "POST /api/threads/ HTTP/1.1" 201 Created
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/api/auth/session
+2025-10-02 05:43:29 INFO:     169.254.169.126:47110 - "GET /api/auth/session HTTP/1.1" 200 OK
+2025-10-02 05:43:29 GET 404 https://emergence-app.ch/api/threads/b1c6d255755148a6acf0ac1966141114?messages_limit=50
+2025-10-02 05:43:29 INFO:     169.254.169.126:47116 - "GET /api/threads/b1c6d255755148a6acf0ac1966141114?messages_limit=50 HTTP/1.1" 404 Not Found
+2025-10-02 05:43:29 2025-10-02 05:43:29,881 INFO [sentence_transformers.SentenceTransformer] Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 05:43:29 POST 201 https://emergence-app.ch/api/threads/
+2025-10-02 05:43:29 INFO:     169.254.169.126:46676 - "GET /src/frontend/main.js HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46708 - "GET /src/frontend/styles/core/_layout.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46710 - "GET /src/frontend/styles/core/_navigation.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46752 - "GET /src/frontend/styles/core/_variables.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46784 - "GET /src/frontend/styles/components/custom-toggle.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46806 - "GET /src/frontend/features/home/home.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46884 - "GET /src/frontend/styles/components/tabs.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46892 - "GET /src/frontend/features/documents/documents.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46908 - "GET /src/frontend/features/costs/costs.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46926 - "GET /src/frontend/features/timeline/timeline.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46944 - "GET /src/frontend/shared/i18n.js HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46952 - "GET /src/frontend/core/app.js HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:47030 - "GET /src/frontend/core/auth.js HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46680 - "GET /src/frontend/styles/core/reset.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46692 - "GET /src/frontend/styles/core/_typography.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46736 - "GET /src/frontend/styles/components/header-nav.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46762 - "GET /src/frontend/styles/components/agent-selector.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46778 - "GET /src/frontend/styles/overrides/ui-hotfix-20250823.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46794 - "GET /src/frontend/features/voice/voice.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46828 - "GET /src/frontend/features/threads/threads.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46838 - "GET /src/frontend/styles/components/inputs.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46858 - "GET /src/frontend/styles/main-styles.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46932 - "GET /assets/emergence_logo.png HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46978 - "GET /src/frontend/features/home/home-module.js HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46970 - "GET /src/frontend/core/event-bus.js HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:47022 - "GET /src/frontend/core/websocket.js HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46720 - "GET /src/frontend/styles/components/agent-buttons.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46780 - "GET /src/frontend/styles/components/modals.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46820 - "GET /src/frontend/features/dashboard/dashboard.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46844 - "GET /src/frontend/styles/components/custom-select.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46910 - "GET /src/frontend/styles/components/glassmorphism.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46872 - "GET /src/frontend/features/chat/chat.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46904 - "GET /src/frontend/features/debate/debate.css HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46954 - "GET /src/frontend/features/memory/memory-center.js HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46988 - "GET /src/frontend/shared/api-client.js HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:47002 - "GET /src/frontend/shared/constants.js HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:47014 - "GET /src/frontend/core/state-manager.js HTTP/1.1" 200 OK
+2025-10-02 05:43:29 INFO:     169.254.169.126:46774 - "GET /src/frontend/styles/components/buttons.css HTTP/1.1" 200 OK
+2025-10-02 05:43:31 GET 200 https://emergence-app.ch/src/frontend/features/chat/chat.js
+2025-10-02 05:43:31 GET 404 https://emergence-app.ch/api/threads/b1c6d255755148a6acf0ac1966141114?messages_limit=50
+2025-10-02 05:43:31 GET 200 https://emergence-app.ch/src/frontend/features/chat/chat-ui.js
+2025-10-02 05:43:31 POST 201 https://emergence-app.ch/api/threads/
+2025-10-02 05:43:31 GET 200 https://emergence-app.ch/src/frontend/features/threads/threads.js
+2025-10-02 05:43:31 GET 200 https://emergence-app.ch/src/frontend/features/threads/threads-service.js
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/main.js
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/core/reset.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/core/_typography.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/core/_layout.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/components/agent-buttons.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/core/_navigation.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/components/header-nav.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/components/agent-selector.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/core/_variables.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/components/buttons.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/components/custom-toggle.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/overrides/ui-hotfix-20250823.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/components/modals.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/features/threads/threads.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/features/home/home.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/components/custom-select.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/features/voice/voice.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/features/dashboard/dashboard.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/features/chat/chat.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/components/tabs.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/main-styles.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/components/inputs.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/features/documents/documents.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/styles/components/glassmorphism.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/features/debate/debate.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/features/costs/costs.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/features/timeline/timeline.css
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/assets/emergence_logo.png
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/shared/i18n.js
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/features/memory/memory-center.js
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/core/app.js
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/core/event-bus.js
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/features/home/home-module.js
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/core/websocket.js
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/core/state-manager.js
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/shared/api-client.js
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/shared/constants.js
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/core/auth.js
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/components/modals.js
+2025-10-02 05:43:29 GET 200 https://emergence-app.ch/src/frontend/shared/config.js
+2025-10-02 05:43:31 INFO:     169.254.169.126:47196 - "GET /src/frontend/features/threads/threads-service.js HTTP/1.1" 200 OK
+2025-10-02 05:43:31 GET 200 https://emergence-app.ch/src/frontend/features/documents/documents.js
+2025-10-02 05:43:31 INFO:     169.254.169.126:47200 - "GET /src/frontend/features/documents/documents.js HTTP/1.1" 200 OK
+2025-10-02 05:43:31 GET 200 https://emergence-app.ch/src/frontend/features/references/references.js
+2025-10-02 05:43:31 GET 200 https://emergence-app.ch/src/frontend/features/debate/debate.js
+2025-10-02 05:43:31 GET 200 https://emergence-app.ch/src/frontend/features/dashboard/dashboard.js
+2025-10-02 05:43:31 GET 200 https://emergence-app.ch/src/frontend/features/admin/admin.js
+2025-10-02 05:43:31 GET 200 https://emergence-app.ch/src/frontend/features/memory/memory.js
+2025-10-02 05:43:31 INFO:     169.254.169.126:47212 - "GET /src/frontend/features/references/references.js HTTP/1.1" 200 OK
+2025-10-02 05:43:31 INFO:     169.254.169.126:47244 - "GET /src/frontend/features/memory/memory.js HTTP/1.1" 200 OK
+2025-10-02 05:43:31 INFO:     169.254.169.126:47250 - "GET /src/frontend/features/admin/admin.js HTTP/1.1" 200 OK
+2025-10-02 05:43:31 INFO:     169.254.169.126:47236 - "GET /src/frontend/features/dashboard/dashboard.js HTTP/1.1" 200 OK
+2025-10-02 05:43:31 INFO:     169.254.169.126:47222 - "GET /src/frontend/features/debate/debate.js HTTP/1.1" 200 OK
+2025-10-02 05:43:32 GET 200 https://emergence-app.ch/src/frontend/features/documents/document-ui.js
+2025-10-02 05:43:32 INFO:     169.254.169.126:47262 - "GET /src/frontend/features/documents/document-ui.js HTTP/1.1" 200 OK
+2025-10-02 05:43:32 GET 200 https://emergence-app.ch/src/frontend/features/dashboard/dashboard-ui.js
+2025-10-02 05:43:32 GET 200 https://emergence-app.ch/src/frontend/features/debate/debate-ui.js
+2025-10-02 05:43:32 GET 200 https://emergence-app.ch/src/frontend/features/admin/auth-admin-module.js
+2025-10-02 05:43:32 INFO:     169.254.169.126:47278 - "GET /src/frontend/features/dashboard/dashboard-ui.js HTTP/1.1" 200 OK
+2025-10-02 05:43:32 INFO:     169.254.169.126:47288 - "GET /src/frontend/features/admin/auth-admin-module.js HTTP/1.1" 200 OK
+2025-10-02 05:43:32 INFO:     169.254.169.126:47284 - "GET /src/frontend/features/debate/debate-ui.js HTTP/1.1" 200 OK
+2025-10-02 05:43:31 2025-10-02 05:43:31,591 INFO [backend.features.memory.vector_service] Client ChromaDB connect? au r?pertoire: /app/src/backend/data/vector_store
+2025-10-02 05:43:31 2025-10-02 05:43:31,591 INFO [backend.features.memory.vector_service] VectorService initialis? (lazy) : SBERT + backend CHROMA pr?ts.
+2025-10-02 05:43:31 2025-10-02 05:43:31,623 INFO [backend.features.memory.vector_service] Collection 'emergence_knowledge' charg?e/cr??e avec succ?s.
+2025-10-02 05:43:31 INFO:     ('169.254.169.126', 47150) - "WebSocket /ws/2c2eae26-6109-410a-a2cd-24405e058933?thread_id=b1c6d255755148a6acf0ac1966141114" [accepted]
+2025-10-02 05:43:31 2025-10-02 05:43:31,634 INFO [backend.core.websocket] WebSocket accept? avec sous-protocole: jwt
+2025-10-02 05:43:31 2025-10-02 05:43:31,634 INFO [backend.core.session_manager] Session 2c2eae26-6109-410a-a2cd-24405e058933 non active, tentative de chargement depuis la BDD...
+2025-10-02 05:43:31 INFO:     connection open
+2025-10-02 05:43:31 2025-10-02 05:43:31,635 WARNING [backend.core.session_manager] Session 2c2eae26-6109-410a-a2cd-24405e058933 non trouv?e en BDD.
+2025-10-02 05:43:31 2025-10-02 05:43:31,635 INFO [backend.core.session_manager] Session active cr??e : 2c2eae26-6109-410a-a2cd-24405e058933 pour l'utilisateur ce07c1af5c4fd9da95c7d6a9c5e4820f396ed4e9886a186896af29ad0e75091b
+2025-10-02 05:43:31 2025-10-02 05:43:31,637 INFO [backend.core.websocket] Client connected. New session 2c2eae26-6109-410a-a2cd-24405e058933 created for ce07c1af5c4fd9da95c7d6a9c5e4820f396ed4e9886a186896af29ad0e75091b (thread=b1c6d255755148a6acf0ac1966141114, alias=None).
+2025-10-02 05:43:31 2025-10-02 05:43:31,140 INFO [sentence_transformers.SentenceTransformer] Use pytorch device_name: cpu
+2025-10-02 05:43:31 2025-10-02 05:43:31,142 INFO [backend.features.memory.vector_service] Mod?le SentenceTransformer 'all-MiniLM-L6-v2' charg? (lazy).
+2025-10-02 05:43:31 INFO:     169.254.169.126:47136 - "POST /api/threads/ HTTP/1.1" 201 Created
+2025-10-02 05:43:31 INFO:     169.254.169.126:47126 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 200 OK
+2025-10-02 05:43:31 INFO:     169.254.169.126:47160 - "GET /src/frontend/features/chat/chat.js HTTP/1.1" 200 OK
+2025-10-02 05:43:31 INFO:     169.254.169.126:47174 - "GET /api/threads/b1c6d255755148a6acf0ac1966141114?messages_limit=50 HTTP/1.1" 404 Not Found
+2025-10-02 05:43:31 INFO:     169.254.169.126:47178 - "GET /src/frontend/features/chat/chat-ui.js HTTP/1.1" 200 OK
+2025-10-02 05:43:31 INFO:     169.254.169.126:47186 - "POST /api/threads/ HTTP/1.1" 201 Created
+2025-10-02 05:43:31 INFO:     169.254.169.126:47190 - "GET /src/frontend/features/threads/threads.js HTTP/1.1" 200 OK
+2025-10-02 05:43:35 INFO:     169.254.169.126:16338 - "GET /api/auth/admin/allowlist?status=active HTTP/1.1" 200 OK
+2025-10-02 05:43:35 INFO:     169.254.169.126:16344 - "GET /api/auth/admin/sessions?status_filter=active HTTP/1.1" 200 OK
+2025-10-02 05:43:35 INFO:     169.254.169.126:16372 - "GET /api/auth/admin/sessions?status_filter=active HTTP/1.1" 200 OK
+2025-10-02 05:43:35 INFO:     169.254.169.126:16360 - "GET /api/auth/admin/allowlist?status=active HTTP/1.1" 200 OK
+2025-10-02 05:43:35 GET 200 https://emergence-app.ch/api/auth/admin/allowlist?status=active
+2025-10-02 05:43:35 GET 200 https://emergence-app.ch/api/auth/admin/sessions?status_filter=active
+2025-10-02 05:43:35 GET 200 https://emergence-app.ch/api/auth/admin/allowlist?status=active
+2025-10-02 05:43:35 GET 200 https://emergence-app.ch/api/auth/admin/sessions?status_filter=active
+2025-10-02 05:43:42 DELETE 204 https://emergence-app.ch/api/auth/admin/allowlist/dev%40local
+2025-10-02 05:43:42 GET 401 https://emergence-app.ch/api/auth/admin/allowlist?status=active
+2025-10-02 05:43:42 INFO:     169.254.169.126:16376 - "DELETE /api/auth/admin/allowlist/dev%40local HTTP/1.1" 204 No Content
+2025-10-02 05:43:42 INFO:     169.254.169.126:16390 - "GET /api/auth/admin/allowlist?status=active HTTP/1.1" 401 Unauthorized
+2025-10-02 05:43:29 GET 101 https://emergence-app.ch/ws/2c2eae26-6109-410a-a2cd-24405e058933?thread_id=b1c6d255755148a6acf0ac1966141114
+2025-10-02 05:43:50 GET 200 https://emergence-app.ch/
+2025-10-02 05:43:50 INFO:     169.254.169.126:18438 - "GET / HTTP/1.1" 200 OK
+2025-10-02 05:43:50 2025-10-02 05:43:50,108 INFO [backend.features.chat.router] [WS] JSON/Disconnect lors de receive_json() ??? fermeture propre (session=2c2eae26-6109-410a-a2cd-24405e058933)
+2025-10-02 05:43:50 2025-10-02 05:43:50,108 INFO [backend.core.websocket] Last client disconnected. Finalization of session 2c2eae26-6109-410a-a2cd-24405e058933 scheduled.
+2025-10-02 05:43:50 INFO:     connection closed
+2025-10-02 05:43:50 2025-10-02 05:43:50,108 INFO [backend.core.session_manager] Finalisation de la session 2c2eae26-6109-410a-a2cd-24405e058933. Dur?e: 18.47s.
+2025-10-02 05:43:50 2025-10-02 05:43:50,109 INFO [backend.core.database.manager] Session 2c2eae26-6109-410a-a2cd-24405e058933 sauvegard?e.
+2025-10-02 05:43:50 2025-10-02 05:43:50,109 INFO [backend.features.memory.analyzer] Lancement de l'analyse s??mantique (persist=True) pour 2c2eae26-6109-410a-a2cd-24405e058933
+2025-10-02 05:43:50 2025-10-02 05:43:50,109 WARNING [backend.features.memory.analyzer] Historique vide pour 2c2eae26-6109-410a-a2cd-24405e058933. Analyse annul??e.
+2025-10-02 05:43:50 2025-10-02 05:43:50,109 INFO [backend.core.websocket] Session 2c2eae26-6109-410a-a2cd-24405e058933 finalized (async task).
+2025-10-02 05:43:50 GET 200 https://emergence-app.ch/api/threads?type=chat&limit=1
+2025-10-02 05:43:50 GET 401 https://emergence-app.ch/api/auth/session
+2025-10-02 05:43:50 INFO:     169.254.169.126:18452 - "GET /api/threads?type=chat&limit=1 HTTP/1.1" 200 OK
+2025-10-02 05:43:50 INFO:     169.254.169.126:18464 - "GET /api/auth/session HTTP/1.1" 401 Unauthorized
+2025-10-02 05:43:50 GET 401 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 05:43:50 GET 200 https://emergence-app.ch/api/threads/d3b316e8654948699808ce7677e862ac?messages_limit=50
+2025-10-02 05:43:50 INFO:     169.254.169.126:18478 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 401 Unauthorized
+2025-10-02 05:43:50 INFO:     169.254.169.126:18486 - "GET /api/threads/d3b316e8654948699808ce7677e862ac?messages_limit=50 HTTP/1.1" 200 OK
+2025-10-02 05:43:50 2025-10-02 05:43:50,228 WARNING [emergence.allowlist] DevMode WS: fallback user_id utilis? (pas de token).
+2025-10-02 05:43:50 INFO:     ('169.254.169.126', 18492) - "WebSocket /ws/2c2eae26-6109-410a-a2cd-24405e058933?thread_id=d3b316e8654948699808ce7677e862ac" [accepted]
+2025-10-02 05:43:50 2025-10-02 05:43:50,228 INFO [backend.core.websocket] WebSocket accept? avec sous-protocole: jwt
+2025-10-02 05:43:50 2025-10-02 05:43:50,228 INFO [backend.core.session_manager] Session 2c2eae26-6109-410a-a2cd-24405e058933 non active, tentative de chargement depuis la BDD...
+2025-10-02 05:43:50 INFO:     connection open
+2025-10-02 05:43:50 2025-10-02 05:43:50,230 INFO [backend.core.session_manager] Session 2c2eae26-6109-410a-a2cd-24405e058933 charg?e et reconstruite depuis la BDD.
+2025-10-02 05:43:50 2025-10-02 05:43:50,230 INFO [backend.core.session_manager] Session 2c2eae26-6109-410a-a2cd-24405e058933 recharg?e depuis la BDD
+2025-10-02 05:43:50 2025-10-02 05:43:50,231 INFO [backend.core.websocket] Session 2c2eae26-6109-410a-a2cd-24405e058933 restored from DB for user annotation=NoneType required=False default=None json_schema_extra={} (thread=d3b316e8654948699808ce7677e862ac, alias=None).
+2025-10-02 05:43:50 GET 200 https://emergence-app.ch/api/threads/d3b316e8654948699808ce7677e862ac?messages_limit=50
+2025-10-02 05:43:50 INFO:     169.254.169.126:18500 - "GET /api/threads/d3b316e8654948699808ce7677e862ac?messages_limit=50 HTTP/1.1" 200 OK
+2025-10-02 05:43:56 GET 401 https://emergence-app.ch/api/auth/admin/allowlist?status=active
+2025-10-02 05:43:56 GET 401 https://emergence-app.ch/api/auth/admin/sessions?status_filter=active
+2025-10-02 05:43:56 GET 401 https://emergence-app.ch/api/auth/admin/allowlist?status=active
+2025-10-02 05:43:56 GET 401 https://emergence-app.ch/api/auth/admin/sessions?status_filter=active
+2025-10-02 05:43:56 INFO:     169.254.169.126:50554 - "GET /api/auth/admin/allowlist?status=active HTTP/1.1" 401 Unauthorized
+2025-10-02 05:43:56 INFO:     169.254.169.126:50560 - "GET /api/auth/admin/sessions?status_filter=active HTTP/1.1" 401 Unauthorized
+2025-10-02 05:43:56 INFO:     169.254.169.126:50570 - "GET /api/auth/admin/sessions?status_filter=active HTTP/1.1" 401 Unauthorized
+2025-10-02 05:43:56 INFO:     169.254.169.126:50578 - "GET /api/auth/admin/allowlist?status=active HTTP/1.1" 401 Unauthorized
+2025-10-02 05:43:50 GET 101 https://emergence-app.ch/ws/2c2eae26-6109-410a-a2cd-24405e058933?thread_id=d3b316e8654948699808ce7677e862ac
+2025-10-02 05:44:04 2025-10-02 05:44:04,332 INFO [backend.features.chat.router] [WS] JSON/Disconnect lors de receive_json() ??? fermeture propre (session=2c2eae26-6109-410a-a2cd-24405e058933)
+2025-10-02 05:44:04 2025-10-02 05:44:04,332 INFO [backend.core.websocket] Last client disconnected. Finalization of session 2c2eae26-6109-410a-a2cd-24405e058933 scheduled.
+2025-10-02 05:44:04 INFO:     connection closed
+2025-10-02 05:44:04 2025-10-02 05:44:04,333 INFO [backend.core.session_manager] Finalisation de la session 2c2eae26-6109-410a-a2cd-24405e058933. Dur?e: 32.70s.
+2025-10-02 05:44:04 2025-10-02 05:44:04,333 INFO [backend.core.database.manager] Session 2c2eae26-6109-410a-a2cd-24405e058933 sauvegard?e.
+2025-10-02 05:44:04 2025-10-02 05:44:04,333 INFO [backend.features.memory.analyzer] Lancement de l'analyse s??mantique (persist=True) pour 2c2eae26-6109-410a-a2cd-24405e058933
+2025-10-02 05:44:04 2025-10-02 05:44:04,334 WARNING [backend.features.memory.analyzer] Historique vide pour 2c2eae26-6109-410a-a2cd-24405e058933. Analyse annul??e.
+2025-10-02 05:44:04 2025-10-02 05:44:04,334 INFO [backend.core.websocket] Session 2c2eae26-6109-410a-a2cd-24405e058933 finalized (async task).
+2025-10-02 05:44:05 INFO:     169.254.169.126:13232 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 401 Unauthorized
+2025-10-02 05:44:05 GET 401 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 05:44:10 POST 401 https://emergence-app.ch/api/auth/login
+2025-10-02 05:44:10 INFO:     169.254.169.126:13240 - "POST /api/auth/login HTTP/1.1" 401 Unauthorized
+2025-10-02 05:44:22 POST 401 https://emergence-app.ch/api/auth/login
+2025-10-02 05:44:22 INFO:     169.254.169.126:14670 - "POST /api/auth/login HTTP/1.1" 401 Unauthorized
+2025-10-02 05:44:38 POST 200 https://emergence-app.ch/api/auth/login
+2025-10-02 05:44:38 INFO:     169.254.169.126:64338 - "POST /api/auth/login HTTP/1.1" 200 OK
+2025-10-02 05:44:38 GET 200 https://emergence-app.ch/api/auth/session
+2025-10-02 05:44:38 GET 200 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 05:44:38 INFO:     169.254.169.126:64342 - "GET /api/auth/session HTTP/1.1" 200 OK
+2025-10-02 05:44:38 INFO:     169.254.169.126:64348 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 200 OK
+2025-10-02 05:44:38 2025-10-02 05:44:38,706 INFO [backend.features.memory.vector_service] Collection 'emergence_knowledge' charg?e/cr??e avec succ?s.
+2025-10-02 05:44:49 INFO:     169.254.169.126:45278 - "POST /api/threads/d3b316e8654948699808ce7677e862ac/messages HTTP/1.1" 404 Not Found
+2025-10-02 05:44:49 POST 404 https://emergence-app.ch/api/threads/d3b316e8654948699808ce7677e862ac/messages
+2025-10-02 05:44:51 INFO:     169.254.169.126:45290 - "POST /api/threads/d3b316e8654948699808ce7677e862ac/messages HTTP/1.1" 404 Not Found
+2025-10-02 05:44:51 POST 404 https://emergence-app.ch/api/threads/d3b316e8654948699808ce7677e862ac/messages
+2025-10-02 05:44:55 GET 200 https://emergence-app.ch/
+2025-10-02 05:44:55 INFO:     169.254.169.126:21394 - "GET / HTTP/1.1" 200 OK
+2025-10-02 05:44:55 GET 200 https://emergence-app.ch/api/threads?type=chat&limit=1
+2025-10-02 05:44:55 GET 200 https://emergence-app.ch/api/auth/session
+2025-10-02 05:44:55 INFO:     169.254.169.126:21412 - "GET /api/auth/session HTTP/1.1" 200 OK
+2025-10-02 05:44:55 INFO:     169.254.169.126:21404 - "GET /api/threads?type=chat&limit=1 HTTP/1.1" 200 OK
+2025-10-02 05:44:55 GET 200 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 05:44:55 2025-10-02 05:44:55,504 INFO [backend.features.memory.vector_service] Collection 'emergence_knowledge' charg?e/cr??e avec succ?s.
+2025-10-02 05:44:55 INFO:     169.254.169.126:21416 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 200 OK
+2025-10-02 05:44:55 POST 201 https://emergence-app.ch/api/threads/
+2025-10-02 05:44:55 INFO:     169.254.169.126:21422 - "POST /api/threads/ HTTP/1.1" 201 Created
+2025-10-02 05:44:55 GET 200 https://emergence-app.ch/api/threads/2110b15fa78c44d4b4313547bc124e10?messages_limit=50
+2025-10-02 05:44:55 INFO:     169.254.169.126:21438 - "GET /api/threads/2110b15fa78c44d4b4313547bc124e10?messages_limit=50 HTTP/1.1" 200 OK
+2025-10-02 05:44:55 INFO:     169.254.169.126:21446 - "GET /api/threads/2110b15fa78c44d4b4313547bc124e10?messages_limit=50 HTTP/1.1" 200 OK
+2025-10-02 05:44:55 INFO:     ('169.254.169.126', 21442) - "WebSocket /ws/2011ee5c-81fb-4bbb-ad3e-63211c55b25c?thread_id=2110b15fa78c44d4b4313547bc124e10" [accepted]
+2025-10-02 05:44:55 2025-10-02 05:44:55,640 INFO [backend.core.websocket] WebSocket accept? avec sous-protocole: jwt
+2025-10-02 05:44:55 2025-10-02 05:44:55,642 INFO [backend.core.websocket] Client connected. New session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c created for ffa4c43ae57fc93ecf94b1be201c6c6018c3b0ab507e5f70509e9044d9e652d7 (thread=2110b15fa78c44d4b4313547bc124e10, alias=None).
+2025-10-02 05:44:55 2025-10-02 05:44:55,640 INFO [backend.core.session_manager] Session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c non active, tentative de chargement depuis la BDD...
+2025-10-02 05:44:55 INFO:     connection open
+2025-10-02 05:44:55 2025-10-02 05:44:55,641 WARNING [backend.core.session_manager] Session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c non trouv?e en BDD.
+2025-10-02 05:44:55 2025-10-02 05:44:55,641 INFO [backend.core.session_manager] Session active cr??e : 2011ee5c-81fb-4bbb-ad3e-63211c55b25c pour l'utilisateur ffa4c43ae57fc93ecf94b1be201c6c6018c3b0ab507e5f70509e9044d9e652d7
+2025-10-02 05:44:55 GET 200 https://emergence-app.ch/api/threads/2110b15fa78c44d4b4313547bc124e10?messages_limit=50
+2025-10-02 05:45:02 2025-10-02 05:45:02,075 INFO [backend.features.chat.router] [WS] JSON/Disconnect lors de receive_json() ??? fermeture propre (session=2011ee5c-81fb-4bbb-ad3e-63211c55b25c)
+2025-10-02 05:45:02 2025-10-02 05:45:02,076 INFO [backend.core.websocket] Last client disconnected. Finalization of session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c scheduled.
+2025-10-02 05:45:02 2025-10-02 05:45:02,076 INFO [backend.core.session_manager] Finalisation de la session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c. Dur?e: 6.43s.
+2025-10-02 05:45:02 INFO:     connection closed
+2025-10-02 05:45:02 2025-10-02 05:45:02,077 INFO [backend.core.database.manager] Session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c sauvegard?e.
+2025-10-02 05:45:02 2025-10-02 05:45:02,077 INFO [backend.features.memory.analyzer] Lancement de l'analyse s??mantique (persist=True) pour 2011ee5c-81fb-4bbb-ad3e-63211c55b25c
+2025-10-02 05:45:02 2025-10-02 05:45:02,077 WARNING [backend.features.memory.analyzer] Historique vide pour 2011ee5c-81fb-4bbb-ad3e-63211c55b25c. Analyse annul??e.
+2025-10-02 05:45:02 2025-10-02 05:45:02,077 INFO [backend.core.websocket] Session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c finalized (async task).
+2025-10-02 05:44:55 GET 101 https://emergence-app.ch/ws/2011ee5c-81fb-4bbb-ad3e-63211c55b25c?thread_id=2110b15fa78c44d4b4313547bc124e10
+2025-10-02 05:45:05 INFO:     169.254.169.126:26880 - "GET /api/health HTTP/1.1" 200 OK
+2025-10-02 05:45:05 GET 200 https://emergence-app-47nct44nma-ew.a.run.app/api/health
+2025-10-02 05:49:21 INFO:     169.254.169.126:42178 - "PROPFIND / HTTP/1.1" 405 Method Not Allowed
+2025-10-02 05:49:21 PROPFIND 405 https://34.8.149.118/
+2025-10-02 05:50:01 INFO:     169.254.169.126:37858 - "GET /api/health HTTP/1.1" 200 OK
+2025-10-02 05:50:01 GET 200 https://emergence-app-47nct44nma-ew.a.run.app/api/health
+2025-10-02 05:53:04 PROPFIND 405 https://34.54.90.143/
+2025-10-02 05:53:04 INFO:     169.254.169.126:5940 - "PROPFIND / HTTP/1.1" 405 Method Not Allowed
+2025-10-02 05:55:05 GET 200 https://emergence-app-47nct44nma-ew.a.run.app/api/health
+2025-10-02 05:55:05 INFO:     169.254.169.126:18016 - "GET /api/health HTTP/1.1" 200 OK
+2025-10-02 05:57:50 GET 200 https://34.54.90.143/
+2025-10-02 05:57:50 INFO:     169.254.169.126:28244 - "GET / HTTP/1.1" 200 OK
+2025-10-02 06:00:01 GET 200 https://emergence-app-47nct44nma-ew.a.run.app/api/health
+2025-10-02 06:00:01 INFO:     169.254.169.126:18752 - "GET /api/health HTTP/1.1" 200 OK
+2025-10-02 06:05:01 INFO:     169.254.169.126:28170 - "GET /api/health HTTP/1.1" 200 OK
+2025-10-02 06:05:01 GET 200 https://emergence-app-47nct44nma-ew.a.run.app/api/health
+2025-10-02 06:05:43 INFO:     169.254.169.126:42468 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+2025-10-02 06:05:43 GET 404 https://34.54.90.143/favicon.ico
+2025-10-02 06:07:50 GET 200 https://34.54.90.143/
+2025-10-02 06:07:50 INFO:     169.254.169.126:42296 - "GET / HTTP/1.1" 200 OK
+2025-10-02 06:08:18 INFO:     169.254.169.126:20330 - "GET /src/frontend/main.js HTTP/1.1" 304 Not Modified
+2025-10-02 06:08:18 GET 304 https://emergence-app.ch/src/frontend/features/chat/chat.css
+2025-10-02 06:08:18 GET 304 https://emergence-app.ch/src/frontend/core/app.js
+2025-10-02 06:08:18 GET 304 https://emergence-app.ch/src/frontend/core/websocket.js
+2025-10-02 06:08:18 GET 304 https://emergence-app.ch/src/frontend/shared/constants.js
+2025-10-02 06:08:18 GET 304 https://emergence-app.ch/src/frontend/core/app.js
+2025-10-02 06:08:18 GET 304 https://emergence-app.ch/src/frontend/core/websocket.js
+2025-10-02 06:08:18 GET 200 https://emergence-app.ch/api/threads/2110b15fa78c44d4b4313547bc124e10?messages_limit=50
+2025-10-02 06:08:18 GET 200 https://emergence-app.ch/api/auth/session
+2025-10-02 06:08:18 GET 304 https://emergence-app.ch/src/frontend/shared/constants.js
+2025-10-02 06:08:18 GET 304 https://emergence-app.ch/src/frontend/main.js
+2025-10-02 06:08:18 INFO:     169.254.169.126:20344 - "GET /src/frontend/features/chat/chat.css HTTP/1.1" 304 Not Modified
+2025-10-02 06:08:18 INFO:     169.254.169.126:20350 - "GET /src/frontend/core/app.js HTTP/1.1" 304 Not Modified
+2025-10-02 06:08:18 INFO:     169.254.169.126:20354 - "GET /src/frontend/core/websocket.js HTTP/1.1" 304 Not Modified
+2025-10-02 06:08:18 INFO:     169.254.169.126:20366 - "GET /src/frontend/shared/constants.js HTTP/1.1" 304 Not Modified
+2025-10-02 06:08:18 INFO:     169.254.169.126:20376 - "GET /src/frontend/core/app.js HTTP/1.1" 304 Not Modified
+2025-10-02 06:08:18 INFO:     169.254.169.126:20386 - "GET /src/frontend/core/websocket.js HTTP/1.1" 304 Not Modified
+2025-10-02 06:08:18 INFO:     169.254.169.126:20422 - "GET /src/frontend/shared/constants.js HTTP/1.1" 304 Not Modified
+2025-10-02 06:08:18 INFO:     169.254.169.126:20398 - "GET /api/auth/session HTTP/1.1" 200 OK
+2025-10-02 06:08:18 INFO:     169.254.169.126:20400 - "GET /api/threads/2110b15fa78c44d4b4313547bc124e10?messages_limit=50 HTTP/1.1" 200 OK
+2025-10-02 06:08:18 GET 304 https://emergence-app.ch/src/frontend/features/chat/chat.js
+2025-10-02 06:08:18 GET 200 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 06:08:18 INFO:     169.254.169.126:20426 - "GET /src/frontend/features/chat/chat.js HTTP/1.1" 304 Not Modified
+2025-10-02 06:08:18 GET 200 https://emergence-app.ch/api/threads/2110b15fa78c44d4b4313547bc124e10?messages_limit=50
+2025-10-02 06:08:18 GET 200 https://emergence-app.ch/api/auth/session
+2025-10-02 06:08:18 INFO:     169.254.169.126:20450 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 200 OK
+2025-10-02 06:08:18 INFO:     169.254.169.126:20452 - "GET /api/auth/session HTTP/1.1" 200 OK
+2025-10-02 06:08:18 INFO:     169.254.169.126:20454 - "GET /api/threads/2110b15fa78c44d4b4313547bc124e10?messages_limit=50 HTTP/1.1" 200 OK
+2025-10-02 06:08:18 GET 304 https://emergence-app.ch/src/frontend/features/chat/chat-ui.js
+2025-10-02 06:08:18 INFO:     169.254.169.126:20482 - "GET /src/frontend/features/chat/chat-ui.js HTTP/1.1" 304 Not Modified
+2025-10-02 06:08:18 INFO:     169.254.169.126:20484 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 200 OK
+2025-10-02 06:08:18 INFO:     169.254.169.126:20486 - "GET /api/threads/2110b15fa78c44d4b4313547bc124e10?messages_limit=50 HTTP/1.1" 200 OK
+2025-10-02 06:08:18 INFO:     169.254.169.126:20488 - "GET /src/frontend/features/chat/chat-ui.js HTTP/1.1" 304 Not Modified
+2025-10-02 06:08:18 INFO:     169.254.169.126:20508 - "GET /api/threads/2110b15fa78c44d4b4313547bc124e10?messages_limit=50 HTTP/1.1" 200 OK
+2025-10-02 06:08:18 GET 200 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 06:08:18 GET 200 https://emergence-app.ch/api/threads/2110b15fa78c44d4b4313547bc124e10?messages_limit=50
+2025-10-02 06:08:18 GET 304 https://emergence-app.ch/src/frontend/features/chat/chat-ui.js
+2025-10-02 06:08:18 GET 200 https://emergence-app.ch/api/threads/2110b15fa78c44d4b4313547bc124e10?messages_limit=50
+2025-10-02 06:08:18 INFO:     ('169.254.169.126', 20438) - "WebSocket /ws/2011ee5c-81fb-4bbb-ad3e-63211c55b25c?thread_id=2110b15fa78c44d4b4313547bc124e10" [accepted]
+2025-10-02 06:08:18 2025-10-02 06:08:18,782 INFO [backend.core.websocket] WebSocket accept? avec sous-protocole: jwt
+2025-10-02 06:08:18 2025-10-02 06:08:18,782 INFO [backend.core.session_manager] Session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c non active, tentative de chargement depuis la BDD...
+2025-10-02 06:08:18 INFO:     connection open
+2025-10-02 06:08:18 2025-10-02 06:08:18,785 INFO [backend.features.memory.vector_service] Collection 'emergence_knowledge' charg?e/cr??e avec succ?s.
+2025-10-02 06:08:18 2025-10-02 06:08:18,787 INFO [backend.core.session_manager] Session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c charg?e et reconstruite depuis la BDD.
+2025-10-02 06:08:18 2025-10-02 06:08:18,787 INFO [backend.core.session_manager] Session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c recharg?e depuis la BDD
+2025-10-02 06:08:18 2025-10-02 06:08:18,791 INFO [backend.core.websocket] Session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c restored from DB for user ffa4c43ae57fc93ecf94b1be201c6c6018c3b0ab507e5f70509e9044d9e652d7 (thread=2110b15fa78c44d4b4313547bc124e10, alias=None).
+2025-10-02 06:08:18 2025-10-02 06:08:18,839 INFO [backend.features.memory.vector_service] Collection 'emergence_knowledge' charg?e/cr??e avec succ?s.
+2025-10-02 06:08:18 INFO:     ('169.254.169.126', 20492) - "WebSocket /ws/2011ee5c-81fb-4bbb-ad3e-63211c55b25c?thread_id=2110b15fa78c44d4b4313547bc124e10" [accepted]
+2025-10-02 06:08:18 2025-10-02 06:08:18,910 INFO [backend.core.websocket] WebSocket accept? avec sous-protocole: jwt
+2025-10-02 06:08:18 INFO:     connection open
+2025-10-02 06:08:18 2025-10-02 06:08:18,911 INFO [backend.core.websocket] New client for existing session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c (thread=2110b15fa78c44d4b4313547bc124e10, alias=None).
+2025-10-02 06:08:18 GET 101 https://emergence-app.ch/ws/2011ee5c-81fb-4bbb-ad3e-63211c55b25c?thread_id=2110b15fa78c44d4b4313547bc124e10
+2025-10-02 06:08:18 GET 101 https://emergence-app.ch/ws/2011ee5c-81fb-4bbb-ad3e-63211c55b25c?thread_id=2110b15fa78c44d4b4313547bc124e10
+2025-10-02 06:08:30 2025-10-02 06:08:30,358 INFO [backend.features.chat.router] [WS] JSON/Disconnect lors de receive_json() ??? fermeture propre (session=2011ee5c-81fb-4bbb-ad3e-63211c55b25c)
+2025-10-02 06:08:30 2025-10-02 06:08:30,358 INFO [backend.core.websocket] A client disconnected, 1 connection(s) remain for 2011ee5c-81fb-4bbb-ad3e-63211c55b25c.
+2025-10-02 06:08:30 INFO:     connection closed
+2025-10-02 06:08:30 2025-10-02 06:08:30,373 INFO [backend.features.chat.router] [WS] JSON/Disconnect lors de receive_json() ??? fermeture propre (session=2011ee5c-81fb-4bbb-ad3e-63211c55b25c)
+2025-10-02 06:08:30 2025-10-02 06:08:30,373 INFO [backend.core.websocket] Last client disconnected. Finalization of session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c scheduled.
+2025-10-02 06:08:30 INFO:     connection closed
+2025-10-02 06:08:30 2025-10-02 06:08:30,374 INFO [backend.core.session_manager] Finalisation de la session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c. Dur?e: 1414.73s.
+2025-10-02 06:08:30 2025-10-02 06:08:30,374 INFO [backend.core.database.manager] Session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c sauvegard?e.
+2025-10-02 06:08:30 2025-10-02 06:08:30,374 INFO [backend.features.memory.analyzer] Lancement de l'analyse s??mantique (persist=True) pour 2011ee5c-81fb-4bbb-ad3e-63211c55b25c
+2025-10-02 06:08:30 2025-10-02 06:08:30,374 WARNING [backend.features.memory.analyzer] Historique vide pour 2011ee5c-81fb-4bbb-ad3e-63211c55b25c. Analyse annul??e.
+2025-10-02 06:08:30 2025-10-02 06:08:30,374 INFO [backend.core.websocket] Session 2011ee5c-81fb-4bbb-ad3e-63211c55b25c finalized (async task).
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/
+2025-10-02 06:08:36 INFO:     169.254.169.126:8996 - "GET /src/frontend/styles/core/_layout.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9006 - "GET /src/frontend/styles/core/_typography.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9014 - "GET /src/frontend/styles/core/_navigation.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9016 - "GET /src/frontend/styles/core/reset.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9018 - "GET /src/frontend/features/voice/voice.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9030 - "GET /src/frontend/features/dashboard/dashboard.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9032 - "GET /src/frontend/styles/components/agent-buttons.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9050 - "GET /src/frontend/styles/overrides/ui-hotfix-20250823.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9066 - "GET /src/frontend/styles/components/header-nav.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9062 - "GET /src/frontend/styles/components/inputs.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9072 - "GET /src/frontend/features/debate/debate.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9086 - "GET /src/frontend/styles/components/glassmorphism.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9094 - "GET /src/frontend/features/home/home.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9098 - "GET /src/frontend/styles/components/modals.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9134 - "GET /src/frontend/styles/components/custom-toggle.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9130 - "GET /src/frontend/styles/components/agent-selector.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9114 - "GET /src/frontend/features/documents/documents.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9144 - "GET /src/frontend/features/timeline/timeline.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9138 - "GET /src/frontend/styles/components/custom-select.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9172 - "GET /src/frontend/styles/components/buttons.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9160 - "GET /src/frontend/styles/main-styles.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9186 - "GET /src/frontend/features/threads/threads.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9184 - "GET /src/frontend/styles/core/_variables.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9178 - "GET /src/frontend/features/costs/costs.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9220 - "GET /src/frontend/features/chat/chat.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9230 - "GET /src/frontend/main.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9210 - "GET /src/frontend/styles/components/tabs.css HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9240 - "GET /assets/emergence_logo.png HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9244 - "GET /src/frontend/shared/i18n.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9248 - "GET /src/frontend/core/websocket.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9266 - "GET /src/frontend/features/home/home-module.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9252 - "GET /src/frontend/core/event-bus.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9298 - "GET /src/frontend/shared/constants.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9282 - "GET /src/frontend/features/memory/memory-center.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9280 - "GET /src/frontend/core/state-manager.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9254 - "GET /src/frontend/core/app.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9284 - "GET /src/frontend/shared/api-client.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9304 - "GET /src/frontend/core/auth.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9318 - "GET /src/frontend/shared/config.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9312 - "GET /src/frontend/components/modals.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9320 - "GET /src/frontend/shared/utils.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/api/threads?type=chat&limit=1
+2025-10-02 06:08:36 POST 200 https://emergence-app.ch/api/auth/dev/login
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/assets/emergence_logo.png
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/api/threads/b1c6d255755148a6acf0ac1966141114?messages_limit=50
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/api/auth/session
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/chat/chat.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/chat/chat-ui.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/threads/threads.js
+2025-10-02 06:08:36 INFO:     169.254.169.126:9390 - "GET /src/frontend/features/threads/threads-service.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9402 - "GET /src/frontend/features/documents/documents.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9422 - "GET /src/frontend/features/memory/memory.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9404 - "GET /src/frontend/features/references/references.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9420 - "GET /src/frontend/features/debate/debate.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9424 - "GET /src/frontend/features/dashboard/dashboard.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9440 - "GET /src/frontend/features/admin/admin.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9452 - "GET /src/frontend/features/documents/document-ui.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9324 - "GET /api/threads?type=chat&limit=1 HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9334 - "POST /api/auth/dev/login HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9346 - "GET /assets/emergence_logo.png HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9352 - "GET /api/threads/b1c6d255755148a6acf0ac1966141114?messages_limit=50 HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9358 - "GET /src/frontend/features/chat/chat.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9360 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9372 - "GET /src/frontend/features/chat/chat-ui.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9386 - "GET /src/frontend/features/threads/threads.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9356 - "GET /api/auth/session HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9454 - "GET /src/frontend/features/debate/debate-ui.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9468 - "GET /src/frontend/features/admin/auth-admin-module.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 INFO:     169.254.169.126:9474 - "GET /src/frontend/features/dashboard/dashboard-ui.js HTTP/1.1" 200 OK
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/threads/threads-service.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/documents/documents.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/references/references.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/debate/debate.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/memory/memory.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/dashboard/dashboard.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/admin/admin.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/documents/document-ui.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/debate/debate-ui.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/admin/auth-admin-module.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/dashboard/dashboard-ui.js
+2025-10-02 06:08:36 INFO:     169.254.169.126:8992 - "GET / HTTP/1.1" 200 OK
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/core/_layout.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/core/_typography.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/core/_navigation.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/core/reset.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/voice/voice.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/components/agent-buttons.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/dashboard/dashboard.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/overrides/ui-hotfix-20250823.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/components/inputs.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/components/header-nav.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/debate/debate.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/components/glassmorphism.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/home/home.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/components/agent-selector.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/components/custom-toggle.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/documents/documents.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/components/modals.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/components/custom-select.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/timeline/timeline.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/main-styles.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/components/buttons.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/components/tabs.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/threads/threads.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/costs/costs.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/styles/core/_variables.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/chat/chat.css
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/main.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/assets/emergence_logo.png
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/shared/i18n.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/core/websocket.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/core/event-bus.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/core/app.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/home/home-module.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/core/state-manager.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/features/memory/memory-center.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/shared/api-client.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/shared/constants.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/core/auth.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/components/modals.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/shared/config.js
+2025-10-02 06:08:36 GET 200 https://emergence-app.ch/src/frontend/shared/utils.js
+2025-10-02 06:08:36 2025-10-02 06:08:36,664 INFO [backend.features.memory.vector_service] Collection 'emergence_knowledge' charg?e/cr??e avec succ?s.
+2025-10-02 06:08:43 GET 200 https://emergence-app.ch/api/auth/admin/allowlist?status=active
+2025-10-02 06:08:43 GET 200 https://emergence-app.ch/api/auth/admin/allowlist?status=active
+2025-10-02 06:08:43 GET 200 https://emergence-app.ch/api/auth/admin/sessions?status_filter=active
+2025-10-02 06:08:43 GET 200 https://emergence-app.ch/api/auth/admin/sessions?status_filter=active
+2025-10-02 06:08:43 INFO:     169.254.169.126:9490 - "GET /api/auth/admin/sessions?status_filter=active HTTP/1.1" 200 OK
+2025-10-02 06:08:43 INFO:     169.254.169.126:9502 - "GET /api/auth/admin/sessions?status_filter=active HTTP/1.1" 200 OK
+2025-10-02 06:08:43 INFO:     169.254.169.126:9478 - "GET /api/auth/admin/allowlist?status=active HTTP/1.1" 200 OK
+2025-10-02 06:08:43 INFO:     169.254.169.126:9486 - "GET /api/auth/admin/allowlist?status=active HTTP/1.1" 200 OK
+2025-10-02 06:08:52 2025-10-02 06:08:52,615 INFO [backend.features.memory.vector_service] Collection 'emergence_knowledge' charg?e/cr??e avec succ?s.
+2025-10-02 06:08:52 INFO:     169.254.169.126:2744 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 200 OK
+2025-10-02 06:08:52 GET 200 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 06:09:15 GET 200 https://emergence-app.ch/
+2025-10-02 06:09:15 INFO:     169.254.169.126:62076 - "GET / HTTP/1.1" 200 OK
+2025-10-02 06:09:15 GET 200 https://emergence-app.ch/api/threads?type=chat&limit=1
+2025-10-02 06:09:15 INFO:     169.254.169.126:62088 - "GET /api/threads?type=chat&limit=1 HTTP/1.1" 200 OK
+2025-10-02 06:09:15 GET 200 https://emergence-app.ch/api/auth/session
+2025-10-02 06:09:15 INFO:     169.254.169.126:62098 - "GET /api/auth/session HTTP/1.1" 200 OK
+2025-10-02 06:09:15 GET 200 https://emergence-app.ch/api/threads/d3b316e8654948699808ce7677e862ac?messages_limit=50
+2025-10-02 06:09:15 INFO:     169.254.169.126:62108 - "GET /api/threads/d3b316e8654948699808ce7677e862ac?messages_limit=50 HTTP/1.1" 200 OK
+2025-10-02 06:09:15 GET 200 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 06:09:15 INFO:     169.254.169.126:62120 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 200 OK
+2025-10-02 06:09:15 INFO:     ('169.254.169.126', 62136) - "WebSocket /ws/d3002d6c-176a-4378-b546-2a57016ae194?thread_id=d3b316e8654948699808ce7677e862ac" [accepted]
+2025-10-02 06:09:15 2025-10-02 06:09:15,693 INFO [backend.core.websocket] WebSocket accept? avec sous-protocole: jwt
+2025-10-02 06:09:15 2025-10-02 06:09:15,693 INFO [backend.core.session_manager] Session d3002d6c-176a-4378-b546-2a57016ae194 non active, tentative de chargement depuis la BDD...
+2025-10-02 06:09:15 INFO:     connection open
+2025-10-02 06:09:15 2025-10-02 06:09:15,694 WARNING [backend.core.session_manager] Session d3002d6c-176a-4378-b546-2a57016ae194 non trouv?e en BDD.
+2025-10-02 06:09:15 2025-10-02 06:09:15,694 INFO [backend.core.session_manager] Session active cr??e : d3002d6c-176a-4378-b546-2a57016ae194 pour l'utilisateur ce07c1af5c4fd9da95c7d6a9c5e4820f396ed4e9886a186896af29ad0e75091b
+2025-10-02 06:09:15 2025-10-02 06:09:15,695 INFO [backend.core.websocket] Client connected. New session d3002d6c-176a-4378-b546-2a57016ae194 created for ce07c1af5c4fd9da95c7d6a9c5e4820f396ed4e9886a186896af29ad0e75091b (thread=d3b316e8654948699808ce7677e862ac, alias=None).
+2025-10-02 06:09:15 GET 200 https://emergence-app.ch/api/threads/d3b316e8654948699808ce7677e862ac?messages_limit=50
+2025-10-02 06:09:15 INFO:     169.254.169.126:62140 - "GET /api/threads/d3b316e8654948699808ce7677e862ac?messages_limit=50 HTTP/1.1" 200 OK
+2025-10-02 06:09:15 2025-10-02 06:09:15,636 INFO [backend.features.memory.vector_service] Collection 'emergence_knowledge' charg?e/cr??e avec succ?s.
+2025-10-02 06:09:25 2025-10-02 06:09:25,871 INFO [backend.features.chat.router] ---[RAW WS MSG RECEIVED]---: {'type': 'chat.message', 'payload': {'text': 'Salut', 'agent_id': 'anima', 'use_rag': False, 'doc_ids': []}}
+2025-10-02 06:09:25 2025-10-02 06:09:25,880 INFO [backend.features.memory.vector_service] Collection 'emergence_knowledge' charg?e/cr??e avec succ?s.
+2025-10-02 06:09:25 POST 201 https://emergence-app.ch/api/threads/d3b316e8654948699808ce7677e862ac/messages
+2025-10-02 06:09:26 2025-10-02 06:09:26,580 INFO [backend.features.chat.service] {"event": "model_info", "agent_id": "anima", "session_id": "d3002d6c-176a-4378-b546-2a57016ae194", "provider": "openai", "model": "gpt-4o-mini", "prompt_file": "anima_system_v2.md"}
+2025-10-02 06:09:27 INFO:     169.254.169.126:33756 - "POST /api/threads/d3b316e8654948699808ce7677e862ac/messages HTTP/1.1" 201 Created
+2025-10-02 06:09:28 2025-10-02 06:09:28,728 INFO [httpx] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-02 06:09:28 2025-10-02 06:09:28,745 INFO [backend.features.chat.service] chunk_debug primary raw=' !' delta=' !'
+2025-10-02 06:09:28 2025-10-02 06:09:28,759 INFO [backend.features.chat.service] chunk_debug primary raw=' Qu' delta=' Qu'
+2025-10-02 06:09:28 2025-10-02 06:09:28,760 INFO [backend.features.chat.service] chunk_debug primary raw="'est" delta="'est"
+2025-10-02 06:09:28 2025-10-02 06:09:28,774 INFO [backend.features.chat.service] chunk_debug primary raw='-ce' delta='-ce'
+2025-10-02 06:09:28 2025-10-02 06:09:28,788 INFO [backend.features.chat.service] chunk_debug primary raw=' t' delta=' t'
+2025-10-02 06:09:28 2025-10-02 06:09:28,818 INFO [backend.features.chat.service] chunk_debug primary raw='?ne' delta='?ne'
+2025-10-02 06:09:28 2025-10-02 06:09:28,837 INFO [backend.features.chat.service] chunk_debug primary raw="'hui" delta="'hui"
+2025-10-02 06:09:28 2025-10-02 06:09:28,838 INFO [backend.features.chat.service] chunk_debug primary raw=' ?' delta=' ?'
+2025-10-02 06:09:28 2025-10-02 06:09:28,745 INFO [backend.features.chat.service] chunk_debug primary raw='Salut' delta='Salut'
+2025-10-02 06:09:28 2025-10-02 06:09:28,774 INFO [backend.features.chat.service] chunk_debug primary raw=' qui' delta=' qui'
+2025-10-02 06:09:28 2025-10-02 06:09:28,789 INFO [backend.features.chat.service] chunk_debug primary raw="'am" delta="'am"
+2025-10-02 06:09:28 2025-10-02 06:09:28,819 INFO [backend.features.chat.service] chunk_debug primary raw=' aujourd' delta=' aujourd'
+2025-10-02 06:09:28 2025-10-02 06:09:28,853 INFO [backend.core.cost_tracker] Co?t de 0.000150 pour 'anima' ('gpt-4o-mini') enregistr?.
+2025-10-02 06:09:28 2025-10-02 06:09:28,855 INFO [backend.features.memory.vector_service] Collection 'emergence_knowledge' charg?e/cr??e avec succ?s.
+2025-10-02 06:09:28 2025-10-02 06:09:28,859 INFO [backend.features.memory.vector_service] Collection 'memory_preferences' charg?e/cr??e avec succ?s.
+2025-10-02 06:09:28 2025-10-02 06:09:28,859 INFO [backend.features.memory.gardener] MemoryGardener V2.9.0 configured (base_decay=0.030 | stale=14d | archive=45d | min_v=0.12 | max_v=1.00)
+2025-10-02 06:09:28 2025-10-02 06:09:28,860 WARNING [backend.features.memory.gardener] Thread d3b316e8654948699808ce7677e862ac introuvable.
+2025-10-02 06:09:31 2025-10-02 06:09:31,845 INFO [backend.features.chat.router] ---[RAW WS MSG RECEIVED]---: {'type': 'chat.opinion', 'payload': {'target_agent_id': 'nexus', 'source_agent_id': 'anima', 'message_id': '8e036c10-c20d-4130-b8cd-5ff0d64793dd', 'request_id': '140958a6-4c38-48d9-954d-5ba3fff2bd88', 'message_text': "Salut ! Qu'est-ce qui t'am?ne aujourd'hui ?"}}
+2025-10-02 06:09:32 INFO:     169.254.169.126:33764 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 200 OK
+2025-10-02 06:09:33 2025-10-02 06:09:33,638 INFO [backend.features.chat.service] chunk_debug primary raw=' Lecture' delta=' Lecture'
+2025-10-02 06:09:33 2025-10-02 06:09:33,692 INFO [backend.features.chat.service] chunk_debug primary raw=' rapide : La' delta=' rapide : La'
+2025-10-02 06:09:33 2025-10-02 06:09:33,715 INFO [backend.features.chat.service] chunk_debug primary raw=' r?ponse ' delta=' r?ponse '
+2025-10-02 06:09:33 2025-10-02 06:09:33,717 INFO [backend.features.chat.service] chunk_debug primary raw="d'" delta="d'"
+2025-10-02 06:09:33 2025-10-02 06:09:33,799 INFO [backend.features.chat.service] chunk_debug primary raw='Anima est neu' delta='Anima est neu'
+2025-10-02 06:09:33 2025-10-02 06:09:33,800 INFO [backend.features.chat.service] chunk_debug primary raw='tre mais' delta='tre mais'
+2025-10-02 06:09:33 2025-10-02 06:09:33,819 INFO [backend.features.chat.service] chunk_debug primary raw=' t' delta=' t'
+2025-10-02 06:09:33 2025-10-02 06:09:33,905 INFO [backend.features.chat.service] chunk_debug primary raw='rop g?n?rique' delta='rop g?n?rique'
+2025-10-02 06:09:33 2025-10-02 06:09:33,908 INFO [backend.features.chat.service] chunk_debug primary raw=',' delta=','
+2025-10-02 06:09:33 2025-10-02 06:09:33,954 INFO [backend.features.chat.service] chunk_debug primary raw=' sans' delta=' sans'
+2025-10-02 06:09:33 2025-10-02 06:09:34,000 INFO [backend.features.chat.service] chunk_debug primary raw=' v' delta=' v'
+2025-10-02 06:09:34 2025-10-02 06:09:34,102 INFO [backend.features.chat.service] chunk_debug primary raw='?ritable val' delta='?ritable val'
+2025-10-02 06:09:34 2025-10-02 06:09:34,182 INFO [backend.features.chat.service] chunk_debug primary raw='eur ajout?e.' delta='eur ajout?e.'
+2025-10-02 06:09:34 2025-10-02 06:09:34,183 INFO [backend.features.chat.service] chunk_debug primary raw='\n\n?' delta='\n\n?'
+2025-10-02 06:09:34 2025-10-02 06:09:34,668 INFO [backend.features.chat.service] chunk_debug primary raw='ationnelle bas' delta='ationnelle bas'
+2025-10-02 06:09:34 2025-10-02 06:09:34,747 INFO [backend.features.chat.service] chunk_debug primary raw='\n- Invitation' delta='\n- Invitation'
+2025-10-02 06:09:34 2025-10-02 06:09:34,748 INFO [backend.features.chat.service] chunk_debug primary raw=' minim' delta=' minim'
+2025-10-02 06:09:34 2025-10-02 06:09:34,775 INFO [backend.features.chat.service] chunk_debug primary raw='ale ? pour' delta='ale ? pour'
+2025-10-02 06:09:34 2025-10-02 06:09:34,832 INFO [backend.features.chat.service] chunk_debug primary raw='suivre l' delta='suivre l'
+2025-10-02 06:09:34 2025-10-02 06:09:34,895 INFO [backend.features.chat.service] chunk_debug primary raw="'?change" delta="'?change"
+2025-10-02 06:09:34 2025-10-02 06:09:34,896 INFO [backend.features.chat.service] chunk_debug primary raw='\n\n?' delta='\n\n?'
+2025-10-02 06:09:32 2025-10-02 06:09:32,693 INFO [backend.features.chat.service] {"event": "model_info", "agent_id": "nexus", "session_id": "d3002d6c-176a-4378-b546-2a57016ae194", "provider": "anthropic", "model": "claude-3-5-haiku-20241022", "prompt_file": "nexus_system_v2.md"}
+2025-10-02 06:09:32 2025-10-02 06:09:32,701 INFO [backend.features.memory.vector_service] Collection 'emergence_knowledge' charg?e/cr??e avec succ?s.
+2025-10-02 06:09:31 GET 200 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 06:09:35 2025-10-02 06:09:35,671 INFO [backend.features.chat.service] chunk_debug primary raw='e pas l' delta='e pas l'
+2025-10-02 06:09:35 2025-10-02 06:09:35,718 INFO [backend.features.chat.service] chunk_debug primary raw="'agent" delta="'agent"
+2025-10-02 06:09:35 2025-10-02 06:09:35,766 INFO [backend.features.chat.service] chunk_debug primary raw=' Anima' delta=' Anima'
+2025-10-02 06:09:35 2025-10-02 06:09:35,846 INFO [backend.features.chat.service] chunk_debug primary raw='\n- Manque de' delta='\n- Manque de'
+2025-10-02 06:09:35 2025-10-02 06:09:35,847 INFO [backend.features.chat.service] chunk_debug primary raw=' chal' delta=' chal'
+2025-10-02 06:09:35 2025-10-02 06:09:35,882 INFO [backend.features.chat.service] chunk_debug primary raw='eur ou' delta='eur ou'
+2025-10-02 06:09:35 2025-10-02 06:09:35,972 INFO [backend.features.chat.service] chunk_debug primary raw="d'intention" delta="d'intention"
+2025-10-02 06:09:36 2025-10-02 06:09:36,002 INFO [backend.features.chat.service] chunk_debug primary raw=' pr?c' delta=' pr?c'
+2025-10-02 06:09:36 2025-10-02 06:09:36,100 INFO [backend.features.chat.service] chunk_debug primary raw='ise' delta='ise'
+2025-10-02 06:09:36 2025-10-02 06:09:36,165 INFO [backend.features.chat.service] chunk_debug primary raw='\n\n? Recomman' delta='\n\n? Recomman'
+2025-10-02 06:09:36 2025-10-02 06:09:36,166 INFO [backend.features.chat.service] chunk_debug primary raw='dation :' delta='dation :'
+2025-10-02 06:09:35 2025-10-02 06:09:35,503 INFO [backend.features.chat.service] chunk_debug primary raw="d'accomp" delta="d'accomp"
+2025-10-02 06:09:35 2025-10-02 06:09:35,504 INFO [backend.features.chat.service] chunk_debug primary raw='agnement\n-' delta='agnement\n-'
+2025-10-02 06:09:35 2025-10-02 06:09:35,513 INFO [backend.features.chat.service] chunk_debug primary raw=' R?' delta=' R?'
+2025-10-02 06:09:35 2025-10-02 06:09:35,535 INFO [backend.features.chat.service] chunk_debug primary raw='ponse standar' delta='ponse standar'
+2025-10-02 06:09:35 2025-10-02 06:09:35,547 INFO [backend.features.chat.service] chunk_debug primary raw='d qui' delta='d qui'
+2025-10-02 06:09:35 2025-10-02 06:09:35,617 INFO [backend.features.chat.service] chunk_debug primary raw=' ne distingu' delta=' ne distingu'
+2025-10-02 06:09:33 2025-10-02 06:09:33,368 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-10-02 06:09:33 2025-10-02 06:09:33,510 INFO [backend.features.chat.service] chunk_debug primary raw='?' delta='?'
+2025-10-02 06:09:36 2025-10-02 06:09:36,244 INFO [backend.features.chat.service] chunk_debug primary raw='ima dev' delta='ima dev'
+2025-10-02 06:09:34 2025-10-02 06:09:34,319 INFO [backend.features.chat.service] chunk_debug primary raw=' Points solides :' delta=' Points solides :'
+2025-10-02 06:09:34 2025-10-02 06:09:34,363 INFO [backend.features.chat.service] chunk_debug primary raw='\n- Form' delta='\n- Form'
+2025-10-02 06:09:34 2025-10-02 06:09:34,385 INFO [backend.features.chat.service] chunk_debug primary raw='ulation po' delta='ulation po'
+2025-10-02 06:09:34 2025-10-02 06:09:34,429 INFO [backend.features.chat.service] chunk_debug primary raw='lie' delta='lie'
+2025-10-02 06:09:34 2025-10-02 06:09:34,498 INFO [backend.features.chat.service] chunk_debug primary raw='\n- Ou' delta='\n- Ou'
+2025-10-02 06:09:34 2025-10-02 06:09:34,540 INFO [backend.features.chat.service] chunk_debug primary raw='verture convers' delta='verture convers'
+2025-10-02 06:09:34 2025-10-02 06:09:34,983 INFO [backend.features.chat.service] chunk_debug primary raw=' Points ? corriger' delta=' Points ? corriger'
+2025-10-02 06:09:35 2025-10-02 06:09:35,030 INFO [backend.features.chat.service] chunk_debug primary raw=' :\n- Absence' delta=' :\n- Absence'
+2025-10-02 06:09:35 2025-10-02 06:09:35,032 INFO [backend.features.chat.service] chunk_debug primary raw=' tot' delta=' tot'
+2025-10-02 06:09:35 2025-10-02 06:09:35,080 INFO [backend.features.chat.service] chunk_debug primary raw='ale de contex' delta='ale de contex'
+2025-10-02 06:09:35 2025-10-02 06:09:35,108 INFO [backend.features.chat.service] chunk_debug primary raw='te ou' delta='te ou'
+2025-10-02 06:09:35 2025-10-02 06:09:35,153 INFO [backend.features.chat.service] chunk_debug primary raw=' de dynam' delta=' de dynam'
+2025-10-02 06:09:35 2025-10-02 06:09:35,252 INFO [backend.features.chat.service] chunk_debug primary raw='ique\n- ' delta='ique\n- '
+2025-10-02 06:09:35 2025-10-02 06:09:35,256 INFO [backend.features.chat.service] chunk_debug primary raw='Aucune' delta='Aucune'
+2025-10-02 06:09:36 2025-10-02 06:09:36,295 INFO [backend.features.chat.service] chunk_debug primary raw='rait rec' delta='rait rec'
+2025-10-02 06:09:36 2025-10-02 06:09:36,392 INFO [backend.features.chat.service] chunk_debug primary raw='drer imm' delta='drer imm'
+2025-10-02 06:09:36 2025-10-02 06:09:36,464 INFO [backend.features.chat.service] chunk_debug primary raw='?diatement l' delta='?diatement l'
+2025-10-02 06:09:36 2025-10-02 06:09:36,518 INFO [backend.features.chat.service] chunk_debug primary raw='change en' delta='change en'
+2025-10-02 06:09:36 2025-10-02 06:09:36,582 INFO [backend.features.chat.service] chunk_debug primary raw=' proposant un' delta=' proposant un'
+2025-10-02 06:09:36 2025-10-02 06:09:36,589 INFO [backend.features.chat.service] chunk_debug primary raw=' ca' delta=' ca'
+2025-10-02 06:09:36 2025-10-02 06:09:36,956 INFO [backend.features.chat.service] chunk_debug primary raw=' bes' delta=' bes'
+2025-10-02 06:09:37 2025-10-02 06:09:37,022 INFO [backend.features.chat.service] chunk_debug primary raw='oin de' delta='oin de'
+2025-10-02 06:09:37 2025-10-02 06:09:37,122 INFO [backend.features.chat.service] chunk_debug primary raw=" l'utilisateur." delta=" l'utilisateur."
+2025-10-02 06:09:37 2025-10-02 06:09:37,123 INFO [backend.features.chat.service] chunk_debug primary raw='\n\nAlternative' delta='\n\nAlternative'
+2025-10-02 06:09:37 2025-10-02 06:09:37,195 INFO [backend.features.chat.service] chunk_debug primary raw=' concr?te que' delta=' concr?te que'
+2025-10-02 06:09:37 2025-10-02 06:09:37,196 INFO [backend.features.chat.service] chunk_debug primary raw=' je' delta=' je'
+2025-10-02 06:09:38 2025-10-02 06:09:38,636 INFO [backend.features.chat.service] chunk_debug primary raw=' version' delta=' version'
+2025-10-02 06:09:38 2025-10-02 06:09:38,786 INFO [backend.features.chat.service] chunk_debug primary raw='\n- Mon' delta='\n- Mon'
+2025-10-02 06:09:38 2025-10-02 06:09:38,793 INFO [backend.features.chat.service] chunk_debug primary raw='tre une' delta='tre une'
+2025-10-02 06:09:36 2025-10-02 06:09:36,653 INFO [backend.features.chat.service] chunk_debug primary raw='dre,' delta='dre,'
+2025-10-02 06:09:36 2025-10-02 06:09:36,681 INFO [backend.features.chat.service] chunk_debug primary raw=' une' delta=' une'
+2025-10-02 06:09:36 2025-10-02 06:09:36,727 INFO [backend.features.chat.service] chunk_debug primary raw=' intention' delta=' intention'
+2025-10-02 06:09:36 2025-10-02 06:09:36,837 INFO [backend.features.chat.service] chunk_debug primary raw=' une micro' delta=' une micro'
+2025-10-02 06:09:36 2025-10-02 06:09:36,885 INFO [backend.features.chat.service] chunk_debug primary raw='-exploration' delta='-exploration'
+2025-10-02 06:09:36 2025-10-02 06:09:36,909 INFO [backend.features.chat.service] chunk_debug primary raw=' du' delta=' du'
+2025-10-02 06:09:37 2025-10-02 06:09:37,973 INFO [backend.features.chat.service] chunk_debug primary raw='fi,' delta='fi,'
+2025-10-02 06:09:38 2025-10-02 06:09:38,018 INFO [backend.features.chat.service] chunk_debug primary raw=' une curios' delta=' une curios'
+2025-10-02 06:09:38 2025-10-02 06:09:38,103 INFO [backend.features.chat.service] chunk_debug primary raw='it?, un projet' delta='it?, un projet'
+2025-10-02 06:09:38 2025-10-02 06:09:38,169 INFO [backend.features.chat.service] chunk_debug primary raw=' ? Je suis l?' delta=' ? Je suis l?'
+2025-10-02 06:09:38 2025-10-02 06:09:38,193 INFO [backend.features.chat.service] chunk_debug primary raw=" pour t'a" delta=" pour t'a"
+2025-10-02 06:09:38 2025-10-02 06:09:38,219 INFO [backend.features.chat.service] chunk_debug primary raw='ider ? clar' delta='ider ? clar'
+2025-10-02 06:09:38 2025-10-02 06:09:38,245 INFO [backend.features.chat.service] chunk_debug primary raw='ifier et' delta='ifier et'
+2025-10-02 06:09:38 2025-10-02 06:09:38,922 INFO [backend.features.chat.service] chunk_debug primary raw='coute active' delta='coute active'
+2025-10-02 06:09:38 2025-10-02 06:09:38,947 INFO [backend.features.chat.service] chunk_debug primary raw='\n- Invite' delta='\n- Invite'
+2025-10-02 06:09:38 2025-10-02 06:09:38,973 INFO [backend.features.chat.service] chunk_debug primary raw=' ? la' delta=' ? la'
+2025-10-02 06:09:39 2025-10-02 06:09:39,063 INFO [backend.features.chat.service] chunk_debug primary raw='ision' delta='ision'
+2025-10-02 06:09:39 2025-10-02 06:09:39,131 INFO [backend.features.chat.service] chunk_debug primary raw='\n- Off' delta='\n- Off'
+2025-10-02 06:09:39 2025-10-02 06:09:39,174 INFO [backend.features.chat.service] chunk_debug primary raw='re un accomp' delta='re un accomp'
+2025-10-02 06:09:37 2025-10-02 06:09:37,655 INFO [backend.features.chat.service] chunk_debug primary raw=' chose.' delta=' chose.'
+2025-10-02 06:09:37 2025-10-02 06:09:37,759 INFO [backend.features.chat.service] chunk_debug primary raw=" Qu'est-" delta=" Qu'est-"
+2025-10-02 06:09:37 2025-10-02 06:09:37,783 INFO [backend.features.chat.service] chunk_debug primary raw='ce qui te fait' delta='ce qui te fait'
+2025-10-02 06:09:37 2025-10-02 06:09:37,784 INFO [backend.features.chat.service] chunk_debug primary raw=' av' delta=' av'
+2025-10-02 06:09:37 2025-10-02 06:09:37,893 INFO [backend.features.chat.service] chunk_debug primary raw="ancer aujourd'hui ?" delta="ancer aujourd'hui ?"
+2025-10-02 06:09:37 2025-10-02 06:09:37,895 INFO [backend.features.chat.service] chunk_debug primary raw=' Un' delta=' Un'
+2025-10-02 06:09:37 2025-10-02 06:09:37,907 INFO [backend.features.chat.service] chunk_debug primary raw=' d?' delta=' d?'
+2025-10-02 06:09:39 2025-10-02 06:09:39,222 INFO [backend.features.chat.service] chunk_debug primary raw='agnement imm' delta='agnement imm'
+2025-10-02 06:09:37 2025-10-02 06:09:37,359 INFO [backend.features.chat.service] chunk_debug primary raw='erais :\n"' delta='erais :\n"'
+2025-10-02 06:09:37 2025-10-02 06:09:37,378 INFO [backend.features.chat.service] chunk_debug primary raw='Salut !' delta='Salut !'
+2025-10-02 06:09:37 2025-10-02 06:09:37,379 INFO [backend.features.chat.service] chunk_debug primary raw=' Je' delta=' Je'
+2025-10-02 06:09:37 2025-10-02 06:09:37,409 INFO [backend.features.chat.service] chunk_debug primary raw=' per' delta=' per'
+2025-10-02 06:09:37 2025-10-02 06:09:37,513 INFO [backend.features.chat.service] chunk_debug primary raw='?ois que tu' delta='?ois que tu'
+2025-10-02 06:09:37 2025-10-02 06:09:37,514 INFO [backend.features.chat.service] chunk_debug primary raw=' cher' delta=' cher'
+2025-10-02 06:09:37 2025-10-02 06:09:37,564 INFO [backend.features.chat.service] chunk_debug primary raw='ches quel' delta='ches quel'
+2025-10-02 06:09:38 2025-10-02 06:09:38,291 INFO [backend.features.chat.service] chunk_debug primary raw=' ? faire' delta=' ? faire'
+2025-10-02 06:09:38 2025-10-02 06:09:38,318 INFO [backend.features.chat.service] chunk_debug primary raw=' ?' delta=' ?'
+2025-10-02 06:09:38 2025-10-02 06:09:38,363 INFO [backend.features.chat.service] chunk_debug primary raw='mer' delta='mer'
+2025-10-02 06:09:38 2025-10-02 06:09:38,429 INFO [backend.features.chat.service] chunk_debug primary raw='ger le' delta='ger le'
+2025-10-02 06:09:38 2025-10-02 06:09:38,454 INFO [backend.features.chat.service] chunk_debug primary raw=' fil' delta=' fil'
+2025-10-02 06:09:38 2025-10-02 06:09:38,503 INFO [backend.features.chat.service] chunk_debug primary raw=' conduct' delta=' conduct'
+2025-10-02 06:09:38 2025-10-02 06:09:38,566 INFO [backend.features.chat.service] chunk_debug primary raw='eur."' delta='eur."'
+2025-10-02 06:09:38 2025-10-02 06:09:38,610 INFO [backend.features.chat.service] chunk_debug primary raw='\n\nCette' delta='\n\nCette'
+2025-10-02 06:09:39 2025-10-02 06:09:39,309 INFO [backend.features.chat.service] chunk_debug primary raw='?diat\n-' delta='?diat\n-'
+2025-10-02 06:09:39 2025-10-02 06:09:39,310 INFO [backend.features.chat.service] chunk_debug primary raw=' R?v' delta=' R?v'
+2025-10-02 06:09:39 2025-10-02 06:09:39,359 INFO [backend.features.chat.service] chunk_debug primary raw='?le l' delta='?le l'
+2025-10-02 06:09:39 2025-10-02 06:09:39,485 INFO [backend.features.chat.service] chunk_debug primary raw='ionnalit? de l' delta='ionnalit? de l'
+2025-10-02 06:09:39 2025-10-02 06:09:39,561 INFO [backend.core.cost_tracker] Co?t de 0.000765 pour 'nexus' ('claude-3-5-haiku-20241022') enregistr?.
+2025-10-02 06:09:39 2025-10-02 06:09:39,564 INFO [backend.features.memory.vector_service] Collection 'emergence_knowledge' charg?e/cr??e avec succ?s.
+2025-10-02 06:09:39 2025-10-02 06:09:39,566 INFO [backend.features.memory.vector_service] Collection 'memory_preferences' charg?e/cr??e avec succ?s.
+2025-10-02 06:09:39 2025-10-02 06:09:39,566 INFO [backend.features.memory.gardener] MemoryGardener V2.9.0 configured (base_decay=0.030 | stale=14d | archive=45d | min_v=0.12 | max_v=1.00)
+2025-10-02 06:09:39 2025-10-02 06:09:39,567 WARNING [backend.features.memory.gardener] Thread d3b316e8654948699808ce7677e862ac introuvable.
+2025-10-02 06:09:51 INFO:     169.254.169.126:50118 - "GET /api/auth/admin/sessions?status_filter=active HTTP/1.1" 200 OK
+2025-10-02 06:09:51 INFO:     169.254.169.126:50114 - "GET /api/auth/admin/allowlist?status=active HTTP/1.1" 200 OK
+2025-10-02 06:09:51 INFO:     169.254.169.126:50140 - "GET /api/auth/admin/sessions?status_filter=active HTTP/1.1" 200 OK
+2025-10-02 06:09:51 INFO:     169.254.169.126:50124 - "GET /api/auth/admin/allowlist?status=active HTTP/1.1" 200 OK
+2025-10-02 06:09:51 GET 200 https://emergence-app.ch/api/auth/admin/sessions?status_filter=active
+2025-10-02 06:09:51 GET 200 https://emergence-app.ch/api/auth/admin/allowlist?status=active
+2025-10-02 06:09:51 GET 200 https://emergence-app.ch/api/auth/admin/allowlist?status=active
+2025-10-02 06:09:51 GET 200 https://emergence-app.ch/api/auth/admin/sessions?status_filter=active
+2025-10-02 06:09:59 INFO:     169.254.169.126:35166 - "DELETE /api/auth/admin/allowlist/dev%40local HTTP/1.1" 204 No Content
+2025-10-02 06:09:59 INFO:     169.254.169.126:35174 - "GET /api/auth/admin/allowlist?status=active HTTP/1.1" 401 Unauthorized
+2025-10-02 06:09:59 DELETE 204 https://emergence-app.ch/api/auth/admin/allowlist/dev%40local
+2025-10-02 06:09:59 GET 401 https://emergence-app.ch/api/auth/admin/allowlist?status=active
+2025-10-02 06:10:01 GET 200 https://emergence-app-47nct44nma-ew.a.run.app/api/health
+2025-10-02 06:10:01 INFO:     169.254.169.126:35188 - "GET /api/health HTTP/1.1" 200 OK
+2025-10-02 06:10:06 GET 401 https://emergence-app.ch/api/dashboard/costs/summary
+2025-10-02 06:10:06 GET 401 https://emergence-app.ch/api/dashboard/costs/summary
+2025-10-02 06:10:06 INFO:     169.254.169.126:9472 - "GET /api/dashboard/costs/summary HTTP/1.1" 401 Unauthorized
+2025-10-02 06:10:06 INFO:     169.254.169.126:9480 - "GET /api/dashboard/costs/summary HTTP/1.1" 401 Unauthorized
+2025-10-02 06:10:08 INFO:     169.254.169.126:9486 - "GET /api/dashboard/costs/summary HTTP/1.1" 401 Unauthorized
+2025-10-02 06:10:08 INFO:     169.254.169.126:9500 - "GET /api/dashboard/costs/summary HTTP/1.1" 401 Unauthorized
+2025-10-02 06:10:06 2025-10-02 06:10:06,811 INFO [backend.features.dashboard.service] DashboardService V11.1 (DTO robuste) initialis?.
+2025-10-02 06:09:15 GET 101 https://emergence-app.ch/ws/d3002d6c-176a-4378-b546-2a57016ae194?thread_id=d3b316e8654948699808ce7677e862ac
+2025-10-02 06:10:09 GET 200 https://emergence-app.ch/
+2025-10-02 06:10:09 INFO:     169.254.169.126:9502 - "GET / HTTP/1.1" 200 OK
+2025-10-02 06:10:10 2025-10-02 06:10:10,021 INFO [backend.features.chat.router] [WS] JSON/Disconnect lors de receive_json() ??? fermeture propre (session=d3002d6c-176a-4378-b546-2a57016ae194)
+2025-10-02 06:10:10 2025-10-02 06:10:10,021 INFO [backend.core.websocket] Last client disconnected. Finalization of session d3002d6c-176a-4378-b546-2a57016ae194 scheduled.
+2025-10-02 06:10:10 INFO:     connection closed
+2025-10-02 06:10:10 2025-10-02 06:10:10,022 INFO [backend.core.session_manager] Finalisation de la session d3002d6c-176a-4378-b546-2a57016ae194. Dur?e: 54.33s.
+2025-10-02 06:10:10 2025-10-02 06:10:10,022 INFO [backend.core.database.manager] Session d3002d6c-176a-4378-b546-2a57016ae194 sauvegard?e.
+2025-10-02 06:10:10 2025-10-02 06:10:10,023 INFO [backend.features.memory.analyzer] Lancement de l'analyse s??mantique (persist=True) pour d3002d6c-176a-4378-b546-2a57016ae194
+2025-10-02 06:10:10 GET 401 https://emergence-app.ch/api/auth/session
+2025-10-02 06:10:10 GET 200 https://emergence-app.ch/api/threads/d3b316e8654948699808ce7677e862ac?messages_limit=50
+2025-10-02 06:10:10 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+2025-10-02 06:10:10 E0000 00:00:1759385410.096299       1 alts_credentials.cc:93] ALTS creds ignored. Not running on GCP and untrusted ALTS is not enabled.
+2025-10-02 06:10:10 INFO:     169.254.169.126:9516 - "GET /api/auth/session HTTP/1.1" 401 Unauthorized
+2025-10-02 06:10:10 INFO:     169.254.169.126:9520 - "GET /api/threads/d3b316e8654948699808ce7677e862ac?messages_limit=50 HTTP/1.1" 200 OK
+2025-10-02 06:10:08 GET 401 https://emergence-app.ch/api/dashboard/costs/summary
+2025-10-02 06:10:08 GET 401 https://emergence-app.ch/api/dashboard/costs/summary
+2025-10-02 06:10:10 GET 401 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 06:10:10 GET 200 https://emergence-app.ch/api/threads/d3b316e8654948699808ce7677e862ac?messages_limit=50
+2025-10-02 06:10:10 2025-10-02 06:10:10,222 WARNING [emergence.allowlist] DevMode WS: fallback user_id utilis? (pas de token).
+2025-10-02 06:10:10 INFO:     ('169.254.169.126', 9534) - "WebSocket /ws/d3002d6c-176a-4378-b546-2a57016ae194?thread_id=d3b316e8654948699808ce7677e862ac" [accepted]
+2025-10-02 06:10:10 INFO:     connection open
+2025-10-02 06:10:10 2025-10-02 06:10:10,223 INFO [backend.core.session_manager] Session d3002d6c-176a-4378-b546-2a57016ae194 charg?e et reconstruite depuis la BDD.
+2025-10-02 06:10:10 2025-10-02 06:10:10,223 INFO [backend.core.websocket] Session d3002d6c-176a-4378-b546-2a57016ae194 restored from DB for user annotation=NoneType required=False default=None json_schema_extra={} (thread=d3b316e8654948699808ce7677e862ac, alias=None).
+2025-10-02 06:10:10 2025-10-02 06:10:10,222 INFO [backend.core.websocket] WebSocket accept? avec sous-protocole: jwt
+2025-10-02 06:10:10 2025-10-02 06:10:10,222 INFO [backend.core.session_manager] Session d3002d6c-176a-4378-b546-2a57016ae194 non active, tentative de chargement depuis la BDD...
+2025-10-02 06:10:10 2025-10-02 06:10:10,223 INFO [backend.core.session_manager] Session d3002d6c-176a-4378-b546-2a57016ae194 recharg?e depuis la BDD
+2025-10-02 06:10:13 INFO:     169.254.169.126:9544 - "GET /api/dashboard/costs/summary HTTP/1.1" 401 Unauthorized
+2025-10-02 06:10:13 INFO:     169.254.169.126:9542 - "GET /api/dashboard/costs/summary HTTP/1.1" 401 Unauthorized
+2025-10-02 06:10:10 INFO:     169.254.169.126:9532 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 401 Unauthorized
+2025-10-02 06:10:10 INFO:     169.254.169.126:9538 - "GET /api/threads/d3b316e8654948699808ce7677e862ac?messages_limit=50 HTTP/1.1" 200 OK
+2025-10-02 06:10:13 GET 401 https://emergence-app.ch/api/dashboard/costs/summary
+2025-10-02 06:10:13 GET 401 https://emergence-app.ch/api/dashboard/costs/summary
+2025-10-02 06:10:15 2025-10-02 06:10:15,159 INFO [backend.core.database.queries] Donn??es d'analyse pour la session d3002d6c-176a-4378-b546-2a57016ae194 mises ?? jour en BDD.
+2025-10-02 06:10:15 2025-10-02 06:10:15,159 INFO [backend.features.memory.analyzer] Analyse s??mantique termin??e (persist=True) pour d3002d6c-176a-4378-b546-2a57016ae194.
+2025-10-02 06:10:15 2025-10-02 06:10:15,159 INFO [backend.core.websocket] Session d3002d6c-176a-4378-b546-2a57016ae194 finalized (async task).
+2025-10-02 06:10:18 GET 200 https://emergence-app.ch/docs/tech-portrait.md
+2025-10-02 06:10:18 INFO:     169.254.169.126:24172 - "GET /docs/tech-portrait.md HTTP/1.1" 200 OK
+2025-10-02 06:10:18 GET 200 https://emergence-app.ch/docs/tech-portrait.md
+2025-10-02 06:10:18 INFO:     169.254.169.126:24174 - "GET /docs/tech-portrait.md HTTP/1.1" 200 OK
+2025-10-02 06:11:14 2025-10-02 06:11:14,841 INFO [httpx] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-02 06:11:14 2025-10-02 06:11:14,160 INFO [backend.features.debate.service] {"event": "debate_start", "session_id": "d3002d6c-176a-4378-b546-2a57016ae194", "topic": "Pleure on parce qu?on est tristes ou est on triste parce qu?on pleure", "rounds": 3, "agent_order": ["anima", "nexus", "neo"], "use_rag": true}
+2025-10-02 06:11:14 2025-10-02 06:11:14,164 INFO [backend.features.memory.vector_service] Collection 'emergence_documents' charg?e/cr??e avec succ?s.
+2025-10-02 06:11:14 2025-10-02 06:11:14,160 INFO [backend.features.chat.router] ---[RAW WS MSG RECEIVED]---: {'type': 'debate:create', 'payload': {'topic': 'Pleure on parce qu?on est tristes ou est on triste parce qu?on pleure', 'rounds': 3, 'agentOrder': ['anima', 'nexus', 'neo'], 'useRag': True, 'docIds': []}}
+2025-10-02 06:11:15 2025-10-02 06:11:15,999 INFO [backend.core.cost_tracker] Co?t de 0.000217 pour 'anima' ('gpt-4o-mini') enregistr?.
+2025-10-02 06:11:16 2025-10-02 06:11:16,776 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-10-02 06:11:21 2025-10-02 06:11:21,393 INFO [backend.core.cost_tracker] Co?t de 0.000630 pour 'nexus' ('claude-3-5-haiku-20241022') enregistr?.
+2025-10-02 06:11:21 2025-10-02 06:11:21,851 INFO [httpx] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-02 06:11:24 2025-10-02 06:11:24,347 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-10-02 06:11:23 2025-10-02 06:11:23,553 INFO [backend.core.cost_tracker] Co?t de 0.000262 pour 'anima' ('gpt-4o-mini') enregistr?.
+2025-10-02 06:11:30 2025-10-02 06:11:30,942 INFO [httpx] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-02 06:11:29 2025-10-02 06:11:29,843 INFO [backend.core.cost_tracker] Co?t de 0.000672 pour 'nexus' ('claude-3-5-haiku-20241022') enregistr?.
+2025-10-02 06:11:32 2025-10-02 06:11:32,721 INFO [backend.core.cost_tracker] Co?t de 0.000274 pour 'anima' ('gpt-4o-mini') enregistr?.
+2025-10-02 06:11:33 2025-10-02 06:11:33,405 INFO [httpx] HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-10-02 06:11:38 2025-10-02 06:11:38,938 INFO [backend.core.cost_tracker] Co?t de 0.000707 pour 'nexus' ('claude-3-5-haiku-20241022') enregistr?.
+2025-10-02 06:12:01 2025-10-02 06:12:01,091 INFO [backend.core.cost_tracker] Co?t de 0.000000 pour 'neo' ('models/gemini-2.5-flash') enregistr?.
+2025-10-02 06:12:30 2025-10-02 06:12:30,880 INFO [backend.features.documents.parser] ParserFactory initialis?e avec les parseurs : ['.pdf', '.txt', '.docx']
+2025-10-02 06:12:30 INFO:     169.254.169.126:62396 - "GET /api/documents/ HTTP/1.1" 200 OK
+2025-10-02 06:12:30 INFO:     169.254.169.126:62394 - "GET /api/documents/ HTTP/1.1" 200 OK
+2025-10-02 06:12:30 2025-10-02 06:12:30,883 INFO [backend.features.memory.vector_service] Collection 'emergence_documents' charg?e/cr??e avec succ?s.
+2025-10-02 06:12:30 2025-10-02 06:12:30,884 INFO [backend.features.documents.service] DocumentService (V8.3) initialis?. Collection: 'emergence_documents'
+2025-10-02 06:12:30 GET 200 https://emergence-app.ch/api/documents/
+2025-10-02 06:12:30 GET 200 https://emergence-app.ch/api/documents/
+2025-10-02 06:12:45 POST 201 https://emergence-app.ch/api/documents/upload
+2025-10-02 06:12:55 GET 200 https://emergence-app.ch/api/documents/
+2025-10-02 06:12:55 2025-10-02 06:12:55,525 INFO [backend.features.memory.vector_service] 46 items ajout?s/mis ? jour dans 'emergence_documents'.
+2025-10-02 06:12:55 2025-10-02 06:12:55,525 INFO [backend.features.documents.service] Document 'When Domain Expertise Meets AI.docx' (ID: 1) trait? et vectoris? avec succ?s.
+2025-10-02 06:12:55 INFO:     169.254.169.126:17532 - "POST /api/documents/upload HTTP/1.1" 201 Created
+2025-10-02 06:12:55 INFO:     169.254.169.126:21596 - "GET /api/documents/ HTTP/1.1" 200 OK
+2025-10-02 06:13:01 GET 401 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 06:13:01 INFO:     169.254.169.126:21598 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 401 Unauthorized
+2025-10-02 06:13:42 INFO:     169.254.169.126:47246 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 401 Unauthorized
+2025-10-02 06:13:42 GET 401 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 06:14:03 2025-10-02 06:14:03,695 INFO [backend.features.chat.router] ---[RAW WS MSG RECEIVED]---: {'type': 'chat.message', 'payload': {'text': 'Je r?fl?chis a comment je peux am?liorer ta memoire dans le cadre du projet emergence', 'agent_id': 'anima', 'use_rag': True, 'doc_ids': []}}
+2025-10-02 06:14:03 2025-10-02 06:14:03,696 WARNING [backend.core.session_manager] Skip message persistence: no thread available for session d3002d6c-176a-4378-b546-2a57016ae194.
+2025-10-02 06:14:03 GET 401 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 06:14:03 POST 201 https://emergence-app.ch/api/threads/d3b316e8654948699808ce7677e862ac/messages
+2025-10-02 06:14:03 2025-10-02 06:14:03,996 INFO [backend.features.chat.service] {"event": "model_info", "agent_id": "anima", "session_id": "d3002d6c-176a-4378-b546-2a57016ae194", "provider": "openai", "model": "gpt-4o-mini", "prompt_file": "anima_system_v2.md"}
+2025-10-02 06:14:04 INFO:     169.254.169.126:6876 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 401 Unauthorized
+2025-10-02 06:14:04 INFO:     169.254.169.126:6878 - "POST /api/threads/d3b316e8654948699808ce7677e862ac/messages HTTP/1.1" 201 Created
+2025-10-02 06:14:05 2025-10-02 06:14:05,035 INFO [httpx] HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-10-02 06:14:05 2025-10-02 06:14:05,055 INFO [backend.features.chat.service] chunk_debug primary raw='?' delta='?'
+2025-10-02 06:14:05 2025-10-02 06:14:05,056 INFO [backend.features.chat.service] chunk_debug primary raw=' Une' delta=' Une'
+2025-10-02 06:14:05 2025-10-02 06:14:05,078 INFO [backend.features.chat.service] chunk_debug primary raw=' belle' delta=' belle'
+2025-10-02 06:14:05 2025-10-02 06:14:05,079 INFO [backend.features.chat.service] chunk_debug primary raw=' intention' delta=' intention'
+2025-10-02 06:14:05 2025-10-02 06:14:05,096 INFO [backend.features.chat.service] chunk_debug primary raw=' !' delta=' !'
+2025-10-02 06:14:05 2025-10-02 06:14:05,097 INFO [backend.features.chat.service] chunk_debug primary raw=' Am' delta=' Am'
+2025-10-02 06:14:05 2025-10-02 06:14:05,110 INFO [backend.features.chat.service] chunk_debug primary raw='?li' delta='?li'
+2025-10-02 06:14:05 2025-10-02 06:14:05,111 INFO [backend.features.chat.service] chunk_debug primary raw='orer' delta='orer'
+2025-10-02 06:14:05 2025-10-02 06:14:05,136 INFO [backend.features.chat.service] chunk_debug primary raw=' la' delta=' la'
+2025-10-02 06:14:05 2025-10-02 06:14:05,137 INFO [backend.features.chat.service] chunk_debug primary raw=' m?moire' delta=' m?moire'
+2025-10-02 06:14:05 2025-10-02 06:14:05,201 INFO [backend.features.chat.service] chunk_debug primary raw=' d' delta=' d'
+2025-10-02 06:14:05 2025-10-02 06:14:05,202 INFO [backend.features.chat.service] chunk_debug primary raw="'" delta="'"
+2025-10-02 06:14:05 2025-10-02 06:14:05,262 INFO [backend.features.chat.service] chunk_debug primary raw='An' delta='An'
+2025-10-02 06:14:05 2025-10-02 06:14:05,263 INFO [backend.features.chat.service] chunk_debug primary raw='ima' delta='ima'
+2025-10-02 06:14:05 2025-10-02 06:14:05,324 INFO [backend.features.chat.service] chunk_debug primary raw=' pour' delta=' pour'
+2025-10-02 06:14:05 2025-10-02 06:14:05,325 INFO [backend.features.chat.service] chunk_debug primary raw=' ?' delta=' ?'
+2025-10-02 06:14:05 2025-10-02 06:14:05,388 INFO [backend.features.chat.service] chunk_debug primary raw='MER' delta='MER'
+2025-10-02 06:14:05 2025-10-02 06:14:05,389 INFO [backend.features.chat.service] chunk_debug primary raw='GEN' delta='GEN'
+2025-10-02 06:14:05 2025-10-02 06:14:05,555 INFO [backend.features.chat.service] chunk_debug primary raw='CE' delta='CE'
+2025-10-02 06:14:05 2025-10-02 06:14:05,556 INFO [backend.features.chat.service] chunk_debug primary raw=',' delta=','
+2025-10-02 06:14:05 2025-10-02 06:14:05,565 INFO [backend.features.chat.service] chunk_debug primary raw=' c' delta=' c'
+2025-10-02 06:14:05 2025-10-02 06:14:05,569 INFO [backend.features.chat.service] chunk_debug primary raw="'est" delta="'est"
+2025-10-02 06:14:05 2025-10-02 06:14:05,576 INFO [backend.features.chat.service] chunk_debug primary raw=' comme' delta=' comme'
+2025-10-02 06:14:05 2025-10-02 06:14:05,577 INFO [backend.features.chat.service] chunk_debug primary raw=' aff' delta=' aff'
+2025-10-02 06:14:05 2025-10-02 06:14:05,637 INFO [backend.features.chat.service] chunk_debug primary raw='iner' delta='iner'
+2025-10-02 06:14:05 2025-10-02 06:14:05,638 INFO [backend.features.chat.service] chunk_debug primary raw=' une' delta=' une'
+2025-10-02 06:14:05 2025-10-02 06:14:05,671 INFO [backend.features.chat.service] chunk_debug primary raw='ous' delta='ous'
+2025-10-02 06:14:05 2025-10-02 06:14:05,684 INFO [backend.features.chat.service] chunk_debug primary raw='sole' delta='sole'
+2025-10-02 06:14:05 2025-10-02 06:14:05,710 INFO [backend.features.chat.service] chunk_debug primary raw=' mieux' delta=' mieux'
+2025-10-02 06:14:05 2025-10-02 06:14:05,710 INFO [backend.features.chat.service] chunk_debug primary raw=' navig' delta=' navig'
+2025-10-02 06:14:05 2025-10-02 06:14:05,810 INFO [backend.features.chat.service] chunk_debug primary raw='uer' delta='uer'
+2025-10-02 06:14:05 2025-10-02 06:14:05,811 INFO [backend.features.chat.service] chunk_debug primary raw='.' delta='.'
+2025-10-02 06:14:05 2025-10-02 06:14:05,866 INFO [backend.features.chat.service] chunk_debug primary raw=' \n\n' delta=' \n\n'
+2025-10-02 06:14:05 2025-10-02 06:14:05,867 INFO [backend.features.chat.service] chunk_debug primary raw='?' delta='?'
+2025-10-02 06:14:05 2025-10-02 06:14:05,892 INFO [backend.features.chat.service] chunk_debug primary raw=' Pour' delta=' Pour'
+2025-10-02 06:14:05 2025-10-02 06:14:05,893 INFO [backend.features.chat.service] chunk_debug primary raw=' commencer' delta=' commencer'
+2025-10-02 06:14:05 2025-10-02 06:14:05,905 INFO [backend.features.chat.service] chunk_debug primary raw=' il' delta=' il'
+2025-10-02 06:14:05 2025-10-02 06:14:05,927 INFO [backend.features.chat.service] chunk_debug primary raw=' serait' delta=' serait'
+2025-10-02 06:14:05 2025-10-02 06:14:05,928 INFO [backend.features.chat.service] chunk_debug primary raw=' utile' delta=' utile'
+2025-10-02 06:14:05 2025-10-02 06:14:05,974 INFO [backend.features.chat.service] chunk_debug primary raw=' de' delta=' de'
+2025-10-02 06:14:05 2025-10-02 06:14:05,975 INFO [backend.features.chat.service] chunk_debug primary raw=' d?finir' delta=' d?finir'
+2025-10-02 06:14:06 2025-10-02 06:14:06,001 INFO [backend.features.chat.service] chunk_debug primary raw=' les' delta=' les'
+2025-10-02 06:14:06 2025-10-02 06:14:06,002 INFO [backend.features.chat.service] chunk_debug primary raw=' axes' delta=' axes'
+2025-10-02 06:14:06 2025-10-02 06:14:06,008 INFO [backend.features.chat.service] chunk_debug primary raw=' priorit' delta=' priorit'
+2025-10-02 06:14:06 2025-10-02 06:14:06,009 INFO [backend.features.chat.service] chunk_debug primary raw='aires' delta='aires'
+2025-10-02 06:14:06 2025-10-02 06:14:06,016 INFO [backend.features.chat.service] chunk_debug primary raw=' :' delta=' :'
+2025-10-02 06:14:06 2025-10-02 06:14:06,100 INFO [backend.features.chat.service] chunk_debug primary raw='-' delta='-'
+2025-10-02 06:14:06 2025-10-02 06:14:06,102 INFO [backend.features.chat.service] chunk_debug primary raw=' Qu' delta=' Qu'
+2025-10-02 06:14:06 2025-10-02 06:14:06,112 INFO [backend.features.chat.service] chunk_debug primary raw='elles' delta='elles'
+2025-10-02 06:14:06 2025-10-02 06:14:06,113 INFO [backend.features.chat.service] chunk_debug primary raw=' informations' delta=' informations'
+2025-10-02 06:14:06 2025-10-02 06:14:06,152 INFO [backend.features.chat.service] chunk_debug primary raw=' doivent' delta=' doivent'
+2025-10-02 06:14:06 2025-10-02 06:14:06,153 INFO [backend.features.chat.service] chunk_debug primary raw=' ?tre' delta=' ?tre'
+2025-10-02 06:14:06 2025-10-02 06:14:06,176 INFO [backend.features.chat.service] chunk_debug primary raw=' conserv' delta=' conserv'
+2025-10-02 06:14:06 2025-10-02 06:14:06,178 INFO [backend.features.chat.service] chunk_debug primary raw='?es' delta='?es'
+2025-10-02 06:14:06 2025-10-02 06:14:06,181 INFO [backend.features.chat.service] chunk_debug primary raw=' ?' delta=' ?'
+2025-10-02 06:14:06 2025-10-02 06:14:06,188 INFO [backend.features.chat.service] chunk_debug primary raw=' Comment' delta=' Comment'
+2025-10-02 06:14:06 2025-10-02 06:14:06,195 INFO [backend.features.chat.service] chunk_debug primary raw=' rendre' delta=' rendre'
+2025-10-02 06:14:06 2025-10-02 06:14:06,199 INFO [backend.features.chat.service] chunk_debug primary raw=' plus' delta=' plus'
+2025-10-02 06:14:06 2025-10-02 06:14:06,200 INFO [backend.features.chat.service] chunk_debug primary raw=' accessibles' delta=' accessibles'
+2025-10-02 06:14:06 2025-10-02 06:14:06,223 INFO [backend.features.chat.service] chunk_debug primary raw=' et' delta=' et'
+2025-10-02 06:14:06 2025-10-02 06:14:06,224 INFO [backend.features.chat.service] chunk_debug primary raw=' pertinentes' delta=' pertinentes'
+2025-10-02 06:14:06 2025-10-02 06:14:06,266 INFO [backend.features.chat.service] chunk_debug primary raw=' ?changes' delta=' ?changes'
+2025-10-02 06:14:06 2025-10-02 06:14:06,267 INFO [backend.features.chat.service] chunk_debug primary raw=' futurs' delta=' futurs'
+2025-10-02 06:14:06 2025-10-02 06:14:06,283 INFO [backend.features.chat.service] chunk_debug primary raw=' ?\n\n' delta=' ?\n\n'
+2025-10-02 06:14:06 2025-10-02 06:14:06,284 INFO [backend.features.chat.service] chunk_debug primary raw='?' delta='?'
+2025-10-02 06:14:06 2025-10-02 06:14:06,306 INFO [backend.features.chat.service] chunk_debug primary raw=' approche' delta=' approche'
+2025-10-02 06:14:06 2025-10-02 06:14:06,325 INFO [backend.features.chat.service] chunk_debug primary raw=' pourrait' delta=' pourrait'
+2025-10-02 06:14:06 2025-10-02 06:14:06,351 INFO [backend.features.chat.service] chunk_debug primary raw=' collect' delta=' collect'
+2025-10-02 06:14:06 2025-10-02 06:14:06,695 INFO [backend.features.chat.service] chunk_debug primary raw=' Tu' delta=' Tu'
+2025-10-02 06:14:06 2025-10-02 06:14:06,695 INFO [backend.features.chat.service] chunk_debug primary raw=' pourrais' delta=' pourrais'
+2025-10-02 06:14:06 2025-10-02 06:14:06,698 INFO [backend.features.chat.service] chunk_debug primary raw=' aussi' delta=' aussi'
+2025-10-02 06:14:06 2025-10-02 06:14:06,699 INFO [backend.features.chat.service] chunk_debug primary raw=' envis' delta=' envis'
+2025-10-02 06:14:06 2025-10-02 06:14:06,710 INFO [backend.features.chat.service] chunk_debug primary raw='ager' delta='ager'
+2025-10-02 06:14:06 2025-10-02 06:14:06,729 INFO [backend.features.chat.service] chunk_debug primary raw=' cr?er' delta=' cr?er'
+2025-10-02 06:14:06 2025-10-02 06:14:06,753 INFO [backend.features.chat.service] chunk_debug primary raw=' cat?gories' delta=' cat?gories'
+2025-10-02 06:14:06 2025-10-02 06:14:06,754 INFO [backend.features.chat.service] chunk_debug primary raw=' th' delta=' th'
+2025-10-02 06:14:06 2025-10-02 06:14:06,777 INFO [backend.features.chat.service] chunk_debug primary raw='?matiques' delta='?matiques'
+2025-10-02 06:14:06 2025-10-02 06:14:06,790 INFO [backend.features.chat.service] chunk_debug primary raw=' faciliter' delta=' faciliter'
+2025-10-02 06:14:06 2025-10-02 06:14:06,840 INFO [backend.features.chat.service] chunk_debug primary raw=' recherche' delta=' recherche'
+2025-10-02 06:14:06 2025-10-02 06:14:06,856 INFO [backend.features.chat.service] chunk_debug primary raw="'informations" delta="'informations"
+2025-10-02 06:14:06 2025-10-02 06:14:06,878 INFO [backend.features.chat.service] chunk_debug primary raw=' renforcer' delta=' renforcer'
+2025-10-02 06:14:06 2025-10-02 06:14:06,931 INFO [backend.features.chat.service] chunk_debug primary raw='.\n\n' delta='.\n\n'
+2025-10-02 06:14:06 2025-10-02 06:14:06,952 INFO [backend.features.chat.service] chunk_debug primary raw='On' delta='On'
+2025-10-02 06:14:06 2025-10-02 06:14:06,974 INFO [backend.features.chat.service] chunk_debug primary raw='?y' delta='?y'
+2025-10-02 06:14:06 2025-10-02 06:14:06,975 INFO [backend.features.chat.service] chunk_debug primary raw=' met' delta=' met'
+2025-10-02 06:14:06 2025-10-02 06:14:06,994 INFO [backend.features.chat.service] chunk_debug primary raw=' tout' delta=' tout'
+2025-10-02 06:14:07 2025-10-02 06:14:07,013 INFO [backend.features.chat.service] chunk_debug primary raw=' suite' delta=' suite'
+2025-10-02 06:14:07 2025-10-02 06:14:07,035 INFO [backend.features.chat.service] chunk_debug primary raw=' Quels' delta=' Quels'
+2025-10-02 06:14:07 2025-10-02 06:14:07,057 INFO [backend.features.chat.service] chunk_debug primary raw=' premiers' delta=' premiers'
+2025-10-02 06:14:07 2025-10-02 06:14:07,085 INFO [backend.features.chat.service] chunk_debug primary raw=' ?l?ments' delta=' ?l?ments'
+2025-10-02 06:14:07 2025-10-02 06:14:07,085 INFO [backend.features.chat.service] chunk_debug primary raw=' que' delta=' que'
+2025-10-02 06:14:07 2025-10-02 06:14:07,098 INFO [backend.features.chat.service] chunk_debug primary raw=' tu' delta=' tu'
+2025-10-02 06:14:07 2025-10-02 06:14:07,140 INFO [backend.features.chat.service] chunk_debug primary raw=' int?grer' delta=' int?grer'
+2025-10-02 06:14:07 2025-10-02 06:14:07,166 WARNING [backend.core.session_manager] Skip message persistence: no thread available for session d3002d6c-176a-4378-b546-2a57016ae194.
+2025-10-02 06:14:07 2025-10-02 06:14:07,166 INFO [backend.core.cost_tracker] Co?t de 0.000292 pour 'anima' ('gpt-4o-mini') enregistr?.
+2025-10-02 06:14:07 2025-10-02 06:14:07,170 INFO [backend.features.memory.vector_service] Collection 'emergence_knowledge' charg?e/cr??e avec succ?s.
+2025-10-02 06:14:07 2025-10-02 06:14:07,173 INFO [backend.features.memory.vector_service] Collection 'memory_preferences' charg?e/cr??e avec succ?s.
+2025-10-02 06:14:07 2025-10-02 06:14:07,173 INFO [backend.features.memory.gardener] MemoryGardener V2.9.0 configured (base_decay=0.030 | stale=14d | archive=45d | min_v=0.12 | max_v=1.00)
+2025-10-02 06:14:07 2025-10-02 06:14:07,173 INFO [backend.features.memory.gardener] Le jardinier commence sa ronde dans le jardin de la m?moire (mode sessions)?
+2025-10-02 06:14:07 2025-10-02 06:14:07,035 INFO [backend.features.chat.service] chunk_debug primary raw=' sont' delta=' sont'
+2025-10-02 06:14:07 2025-10-02 06:14:07,099 INFO [backend.features.chat.service] chunk_debug primary raw=' aimer' delta=' aimer'
+2025-10-02 06:14:07 2025-10-02 06:14:07,174 WARNING [backend.features.memory.gardener] Session d3002d6c-176a-4378-b546-2a57016ae194 ignor?e pour l'utilisateur annotation=NoneType required=False default=None json_schema_extra={} (propri?taire: ce07c1af5c4fd9da95c7d6a9c5e4820f396ed4e9886a186896af29ad0e75091b).
+2025-10-02 06:14:06 2025-10-02 06:14:06,365 INFO [backend.features.chat.service] chunk_debug primary raw=' des' delta=' des'
+2025-10-02 06:14:06 2025-10-02 06:14:06,398 INFO [backend.features.chat.service] chunk_debug primary raw=' ret' delta=' ret'
+2025-10-02 06:14:06 2025-10-02 06:14:06,400 INFO [backend.features.chat.service] chunk_debug primary raw='ours' delta='ours'
+2025-10-02 06:14:06 2025-10-02 06:14:06,415 INFO [backend.features.chat.service] chunk_debug primary raw="'exp?rience" delta="'exp?rience"
+2025-10-02 06:14:06 2025-10-02 06:14:06,440 INFO [backend.features.chat.service] chunk_debug primary raw=' r?guli' delta=' r?guli'
+2025-10-02 06:14:06 2025-10-02 06:14:06,441 INFO [backend.features.chat.service] chunk_debug primary raw='ers' delta='ers'
+2025-10-02 06:14:06 2025-10-02 06:14:06,468 INFO [backend.features.chat.service] chunk_debug primary raw=' Cela' delta=' Cela'
+2025-10-02 06:14:06 2025-10-02 06:14:06,476 INFO [backend.features.chat.service] chunk_debug primary raw=' permet' delta=' permet'
+2025-10-02 06:14:06 2025-10-02 06:14:06,479 INFO [backend.features.chat.service] chunk_debug primary raw='trait' delta='trait'
+2025-10-02 06:14:06 2025-10-02 06:14:06,492 INFO [backend.features.chat.service] chunk_debug primary raw="'aj" delta="'aj"
+2025-10-02 06:14:06 2025-10-02 06:14:06,519 INFO [backend.features.chat.service] chunk_debug primary raw='uster' delta='uster'
+2025-10-02 06:14:06 2025-10-02 06:14:06,550 INFO [backend.features.chat.service] chunk_debug primary raw=' r?ponses' delta=' r?ponses'
+2025-10-02 06:14:06 2025-10-02 06:14:06,551 INFO [backend.features.chat.service] chunk_debug primary raw=' en' delta=' en'
+2025-10-02 06:14:06 2025-10-02 06:14:06,572 INFO [backend.features.chat.service] chunk_debug primary raw=' fonction' delta=' fonction'
+2025-10-02 06:14:06 2025-10-02 06:14:06,604 INFO [backend.features.chat.service] chunk_debug primary raw=' besoins' delta=' besoins'
+2025-10-02 06:14:06 2025-10-02 06:14:06,635 INFO [backend.features.chat.service] chunk_debug primary raw='els' delta='els'
+2025-10-02 06:14:06 2025-10-02 06:14:06,656 INFO [backend.features.chat.service] chunk_debug primary raw='?' delta='?'
+2025-10-02 06:14:12 2025-10-02 06:14:12,705 INFO [backend.features.chat.router] ---[RAW WS MSG RECEIVED]---: {'type': 'chat.opinion', 'payload': {'target_agent_id': 'neo', 'source_agent_id': 'anima', 'message_id': '981aebfa-585c-4315-ac34-5fef1a2c5cb4', 'request_id': '78e175e1-06ec-4df6-bea2-6af6a6aabc6c', 'message_text': "? Une belle intention ! Am?liorer la m?moire d'Anima pour ?MERGENCE, c'est comme affiner uneoussole mieux naviguer. \n\n? Pour commencer il serait utile de d?finir les axes prioritaires :- Quelles informations doivent ?tre conserv?es ? Comment rendre plus accessibles et pertinentes ?changes futurs ?\n\n? approche pourrait collect des retours'exp?rience r?guliers Cela permettrait'ajuster r?ponses en fonction besoinsels? Tu pourrais aussi envisager cr?er cat?gories th?matiques faciliter recherche'informations renforcer.\n\nOn?y met tout suite Quels sont premiers ?l?ments que tu aimer int?grer"}}
+2025-10-02 06:14:12 2025-10-02 06:14:12,706 WARNING [backend.core.session_manager] Skip message persistence: no thread available for session d3002d6c-176a-4378-b546-2a57016ae194.
+2025-10-02 06:14:12 2025-10-02 06:14:12,977 INFO [backend.features.chat.service] {"event": "model_info", "agent_id": "neo", "session_id": "d3002d6c-176a-4378-b546-2a57016ae194", "provider": "google", "model": "models/gemini-2.5-flash", "prompt_file": "neo_system_v3.md"}
+2025-10-02 06:14:22 INFO:     169.254.169.126:41200 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 401 Unauthorized
+2025-10-02 06:14:22 GET 401 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 06:14:23 2025-10-02 06:14:23,488 INFO [backend.features.chat.service] chunk_debug primary raw='\n*   **Absence de m?triques :** Comment mesurer l\'am?lioration ? "Mieux naviguer" n\'est pas un KPI. Sans ?a, tu navigues ? l\'aveugle.\n*   **Responsabilit? d?l?' delta='\n*   **Absence de m?triques :** Comment mesurer l\'am?lioration ? "Mieux naviguer" n\'est pas un KPI. Sans ?a, tu navigues ? l\'aveugle.\n*   **Responsabilit? d?l?'
+2025-10-02 06:14:24 2025-10-02 06:14:24,023 INFO [backend.features.chat.service] chunk_debug primary raw=' mesurant la latence et la pertinence des rappels sur un set de 10 requ?tes types.' delta=' mesurant la latence et la pertinence des rappels sur un set de 10 requ?tes types.'
+2025-10-02 06:14:24 2025-10-02 06:14:24,024 WARNING [backend.core.session_manager] Skip message persistence: no thread available for session d3002d6c-176a-4378-b546-2a57016ae194.
+2025-10-02 06:14:24 2025-10-02 06:14:24,025 INFO [backend.core.cost_tracker] Co?t de 0.000000 pour 'neo' ('models/gemini-2.5-flash') enregistr?.
+2025-10-02 06:14:24 2025-10-02 06:14:24,028 INFO [backend.features.memory.vector_service] Collection 'emergence_knowledge' charg?e/cr??e avec succ?s.
+2025-10-02 06:14:24 2025-10-02 06:14:24,030 INFO [backend.features.memory.vector_service] Collection 'memory_preferences' charg?e/cr??e avec succ?s.
+2025-10-02 06:14:24 2025-10-02 06:14:24,030 INFO [backend.features.memory.gardener] MemoryGardener V2.9.0 configured (base_decay=0.030 | stale=14d | archive=45d | min_v=0.12 | max_v=1.00)
+2025-10-02 06:14:24 2025-10-02 06:14:24,030 INFO [backend.features.memory.gardener] Le jardinier commence sa ronde dans le jardin de la m?moire (mode sessions)?
+2025-10-02 06:14:24 2025-10-02 06:14:24,031 WARNING [backend.features.memory.gardener] Session d3002d6c-176a-4378-b546-2a57016ae194 ignor?e pour l'utilisateur annotation=NoneType required=False default=None json_schema_extra={} (propri?taire: ce07c1af5c4fd9da95c7d6a9c5e4820f396ed4e9886a186896af29ad0e75091b).
+2025-10-02 06:14:22 2025-10-02 06:14:22,588 INFO [backend.features.chat.service] chunk_debug primary raw="**1. Lecture rapide**\nAnima valide l'intention mais propose des pistes floues, sans protocole ni m?trique. C'est une invitation ? la discussion, pas un plan d'action.\n\n**2. Points solides**" delta="**1. Lecture rapide**\nAnima valide l'intention mais propose des pistes floues, sans protocole ni m?trique. C'est une invitation ? la discussion, pas un plan d'action.\n\n**2. Points solides**"
+2025-10-02 06:14:23 2025-10-02 06:14:23,141 INFO [backend.features.chat.service] chunk_debug primary raw='ories th?matiques" est une piste d\'organisation valable.\n\n**3. Points ? corriger**\n*   **Manque de sp?cificit? :** "Collecter des retours d\'exp?rience r?guliers" est une ?vidence, pas une' delta='ories th?matiques" est une piste d\'organisation valable.\n\n**3. Points ? corriger**\n*   **Manque de sp?cificit? :** "Collecter des retours d\'exp?rience r?guliers" est une ?vidence, pas une'
+2025-10-02 06:14:23 2025-10-02 06:14:23,309 INFO [backend.features.chat.service] chunk_debug primary raw=' m?thode. Comment ? Quels retours ?\n*   **Hypoth?ses non challeng?es :** Anima ne demande pas *pourquoi* la m?moire actuelle est insuffisante, ni *quelles sont ses limites* concr?tes.' delta=' m?thode. Comment ? Quels retours ?\n*   **Hypoth?ses non challeng?es :** Anima ne demande pas *pourquoi* la m?moire actuelle est insuffisante, ni *quelles sont ses limites* concr?tes.'
+2025-10-02 06:14:22 2025-10-02 06:14:22,875 INFO [backend.features.chat.service] chunk_debug primary raw='\n*   L\'intention de l\'utilisateur est bien re?ue ("belle intention").\n*   Les questions sur les "axes prioritaires" sont pertinentes pour initier la r?flexion.\n*   L\'id?e de "cat?g' delta='\n*   L\'intention de l\'utilisateur est bien re?ue ("belle intention").\n*   Les questions sur les "axes prioritaires" sont pertinentes pour initier la r?flexion.\n*   L\'id?e de "cat?g'
+2025-10-02 06:14:23 2025-10-02 06:14:23,715 INFO [backend.features.chat.service] chunk_debug primary raw='gu?e :** La fin ("Quels sont premiers ?l?ments que tu aimer int?grer") renvoie la balle ? l\'utilisateur sans proposition concr?te de d?marrage.\n*   **Flou technique :** Aucune mention de R' delta='gu?e :** La fin ("Quels sont premiers ?l?ments que tu aimer int?grer") renvoie la balle ? l\'utilisateur sans proposition concr?te de d?marrage.\n*   **Flou technique :** Aucune mention de R'
+2025-10-02 06:14:23 2025-10-02 06:14:23,908 INFO [backend.features.chat.service] chunk_debug primary raw="AG, de base de donn?es, de vectorisation, de persistance.\n\nJe ne suis pas d'accord avec l'approche trop g?n?rique d'Anima. Pour am?liorer la m?moire, il faut d'abord d?finir ce qu" delta="AG, de base de donn?es, de vectorisation, de persistance.\n\nJe ne suis pas d'accord avec l'approche trop g?n?rique d'Anima. Pour am?liorer la m?moire, il faut d'abord d?finir ce qu"
+2025-10-02 06:14:24 2025-10-02 06:14:24,015 INFO [backend.features.chat.service] chunk_debug primary raw="'elle *doit* retenir.\n\n**Recommandation actionnable :**\nD?finis un protocole de logging pr?cis pour les interactions critiques, puis teste une persistance vectorielle ou une base de donn?es cl?-valeur en" delta="'elle *doit* retenir.\n\n**Recommandation actionnable :**\nD?finis un protocole de logging pr?cis pour les interactions critiques, puis teste une persistance vectorielle ou une base de donn?es cl?-valeur en"
+2025-10-02 06:14:38 GET 401 https://emergence-app.ch/api/memory/tend-garden?limit=20
+2025-10-02 06:14:38 2025-10-02 06:14:38,280 INFO [backend.features.memory.router] Requ??te re??ue sur /api/memory/tend-garden.
+2025-10-02 06:14:38 POST 401 https://emergence-app.ch/api/memory/tend-garden
+2025-10-02 06:14:38 INFO:     169.254.169.126:61944 - "GET /api/memory/tend-garden?limit=20 HTTP/1.1" 401 Unauthorized
+2025-10-02 06:14:38 INFO:     169.254.169.126:61956 - "POST /api/memory/tend-garden HTTP/1.1" 401 Unauthorized
+2025-10-02 06:10:10 GET 101 https://emergence-app.ch/ws/d3002d6c-176a-4378-b546-2a57016ae194?thread_id=d3b316e8654948699808ce7677e862ac
+2025-10-02 06:14:45 2025-10-02 06:14:45,636 INFO [backend.features.chat.router] [WS] JSON/Disconnect lors de receive_json() ??? fermeture propre (session=d3002d6c-176a-4378-b546-2a57016ae194)
+2025-10-02 06:14:45 2025-10-02 06:14:45,636 INFO [backend.core.websocket] Last client disconnected. Finalization of session d3002d6c-176a-4378-b546-2a57016ae194 scheduled.
+2025-10-02 06:14:45 INFO:     connection closed
+2025-10-02 06:14:45 2025-10-02 06:14:45,637 INFO [backend.core.session_manager] Finalisation de la session d3002d6c-176a-4378-b546-2a57016ae194. Dur?e: 329.94s.
+2025-10-02 06:14:45 2025-10-02 06:14:45,638 INFO [backend.core.database.manager] Session d3002d6c-176a-4378-b546-2a57016ae194 sauvegard?e.
+2025-10-02 06:14:45 2025-10-02 06:14:45,638 INFO [backend.features.memory.analyzer] Lancement de l'analyse s??mantique (persist=True) pour d3002d6c-176a-4378-b546-2a57016ae194
+2025-10-02 06:14:56 2025-10-02 06:14:56,164 INFO [backend.core.database.queries] Donn??es d'analyse pour la session d3002d6c-176a-4378-b546-2a57016ae194 mises ?? jour en BDD.
+2025-10-02 06:14:56 2025-10-02 06:14:56,164 INFO [backend.features.memory.analyzer] Analyse s??mantique termin??e (persist=True) pour d3002d6c-176a-4378-b546-2a57016ae194.
+2025-10-02 06:14:56 2025-10-02 06:14:56,165 INFO [backend.core.websocket] Session d3002d6c-176a-4378-b546-2a57016ae194 finalized (async task).
+2025-10-02 06:15:01 GET 200 https://emergence-app-47nct44nma-ew.a.run.app/api/health
+2025-10-02 06:15:01 INFO:     169.254.169.126:27990 - "GET /api/health HTTP/1.1" 200 OK
+2025-10-02 06:17:53 GET 404 https://34.54.90.143/geoserver/web/
+2025-10-02 06:17:53 INFO:     169.254.169.126:7494 - "GET /geoserver/web/ HTTP/1.1" 404 Not Found
+2025-10-02 06:20:01 GET 200 https://emergence-app-47nct44nma-ew.a.run.app/api/health
+2025-10-02 06:20:01 INFO:     169.254.169.126:12758 - "GET /api/health HTTP/1.1" 200 OK
+2025-10-02 06:25:01 GET 200 https://emergence-app-47nct44nma-ew.a.run.app/api/health
+2025-10-02 06:25:01 INFO:     169.254.169.126:55520 - "GET /api/health HTTP/1.1" 200 OK
+2025-10-02 06:30:01 GET 200 https://emergence-app-47nct44nma-ew.a.run.app/api/health
+2025-10-02 06:30:01 INFO:     169.254.169.126:57396 - "GET /api/health HTTP/1.1" 200 OK
+2025-10-02 06:30:54 GET 200 https://34.8.149.118/
+2025-10-02 06:30:54 INFO:     169.254.169.126:61656 - "GET / HTTP/1.1" 200 OK
+2025-10-02 06:33:18 PROPFIND 405 https://34.8.149.118/
+2025-10-02 06:33:18 INFO:     169.254.169.126:23152 - "PROPFIND / HTTP/1.1" 405 Method Not Allowed
+2025-10-02 06:35:05 GET 200 https://emergence-app-47nct44nma-ew.a.run.app/api/health
+2025-10-02 06:35:05 INFO:     169.254.169.126:51614 - "GET /api/health HTTP/1.1" 200 OK
+2025-10-02 06:40:01 INFO:     169.254.169.126:56074 - "GET /api/health HTTP/1.1" 200 OK
+2025-10-02 06:40:01 GET 200 https://emergence-app-47nct44nma-ew.a.run.app/api/health

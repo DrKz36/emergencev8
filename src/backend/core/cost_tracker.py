@@ -2,14 +2,14 @@
 # V13.1 - Mapping tolérant des clés de coûts pour les alertes (compat v5.x)
 import logging
 import asyncio
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from datetime import datetime, timezone
 
 from backend.core.database.manager import DatabaseManager
 from backend.core.database import queries as db_queries
-from backend.core import config  # conservé si utilisé ailleurs
 
 logger = logging.getLogger(__name__)
+
 
 class CostTracker:
     """
@@ -30,10 +30,12 @@ class CostTracker:
             cls._instance = super(CostTracker, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, db_manager: DatabaseManager = None):
-        if not hasattr(self, 'initialized'):
+    def __init__(self, db_manager: Optional[DatabaseManager] = None) -> None:
+        if not hasattr(self, "initialized"):
             if db_manager is None:
-                raise ValueError("DatabaseManager est requis pour l'initialisation de CostTracker.")
+                raise ValueError(
+                    "DatabaseManager est requis pour l'initialisation de CostTracker."
+                )
             self.db_manager = db_manager
             self.initialized = True
             logger.info("CostTracker V13.1 initialisé.")
@@ -45,7 +47,10 @@ class CostTracker:
         input_tokens: int,
         output_tokens: int,
         total_cost: float,
-        feature: str
+        feature: str,
+        *,
+        session_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ):
         """Enregistre le coût d'une opération via le module requêtes."""
         async with self._lock:
@@ -58,15 +63,27 @@ class CostTracker:
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
                     total_cost=total_cost,
-                    feature=feature
+                    feature=feature,
+                    session_id=session_id,
+                    user_id=user_id,
                 )
-                logger.info(f"Coût de {total_cost:.6f} pour '{agent}' ('{model}') enregistré.")
+                logger.info(
+                    f"Coût de {total_cost:.6f} pour '{agent}' ('{model}') enregistré."
+                )
             except Exception as e:
-                logger.error(f"Erreur lors de l'enregistrement du coût pour {model}: {e}", exc_info=True)
+                logger.error(
+                    f"Erreur lors de l'enregistrement du coût pour {model}: {e}",
+                    exc_info=True,
+                )
 
-    async def get_spending_summary(self) -> Dict[str, float]:
+    async def get_spending_summary(self, *, user_id: Optional[str] = None,
+                                   session_id: Optional[str] = None) -> Dict[str, float]:
         """Résumé brut depuis la BDD (clés: total/today/this_week/this_month)."""
-        return await db_queries.get_costs_summary(db=self.db_manager)
+        return await db_queries.get_costs_summary(
+            db=self.db_manager,
+            user_id=user_id,
+            session_id=session_id,
+        )
 
     async def check_alerts(self) -> List[Tuple[str, float, float]]:
         """
@@ -78,9 +95,9 @@ class CostTracker:
         summary = await self.get_spending_summary()
 
         # Mapping tolérant (fallback sur 0.0)
-        today_val  = summary.get('today', summary.get('today_cost', 0.0))
-        week_val   = summary.get('this_week', summary.get('current_week_cost', 0.0))
-        month_val  = summary.get('this_month', summary.get('current_month_cost', 0.0))
+        today_val = summary.get("today", summary.get("today_cost", 0.0))
+        week_val = summary.get("this_week", summary.get("current_week_cost", 0.0))
+        month_val = summary.get("this_month", summary.get("current_month_cost", 0.0))
 
         alerts: List[Tuple[str, float, float]] = []
         if today_val > self.DAILY_LIMIT:

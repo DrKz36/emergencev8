@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Apercu ChatUI</title>
+  <link rel="stylesheet" href="../../src/frontend/styles/core/_variables.css" />
+  <link rel="stylesheet" href="../../src/frontend/styles/components/cards.css" />
+  <link rel="stylesheet" href="../../src/frontend/styles/main-styles.css" />
+  <link rel="stylesheet" href="../../src/frontend/features/chat/chat.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 2rem;
+      background: radial-gradient(circle at top, #0f172a, #020617 60%);
+      font-family: var(--font-sans, 'Inter', sans-serif);
+      color: var(--color-text-primary, #f8fafc);
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+    }
+
+    .preview-wrapper {
+      width: min(960px, 100%);
+      min-height: 640px;
+    }
+  </style>
+</head>
+<body>
+  <main class="preview-wrapper">
+    <div class="chat-container card">
+      <div class="chat-header card-header">
+        <div class="chat-title">Apercu Dialogue</div>
+        <div class="agent-selector">
+          <button class="button-tab active">Anima</button>
+          <button class="button-tab">Neo</button>
+          <button class="button-tab">Nexus</button>
+        </div>
+        <div class="model-badge">nexus-1.2</div>
+      </div>
+
+      <div class="messages card-body">
+        <div class="message-wrapper message-wrapper--assistant message-wrapper--anima">
+          <div class="message-avatar message-avatar--assistant message-avatar--anima">AN</div>
+          <div class="message-card message-card--assistant message-card--anima">
+            <div class="message-meta">
+              <span class="message-sender">Anima</span>
+              <time class="message-time">10:12</time>
+            </div>
+            <div class="message-content">
+              <p>Bienvenue dans l'espace de test du nouveau ChatUI. Exemple de reponse Anima pour valider le style rose.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="message-wrapper message-wrapper--assistant message-wrapper--nexus">
+          <div class="message-avatar message-avatar--assistant message-avatar--nexus">NX</div>
+          <div class="message-card message-card--assistant message-card--nexus">
+            <div class="message-meta">
+              <span class="message-sender">Nexus</span>
+              <time class="message-time">10:14</time>
+            </div>
+            <div class="message-content">
+              <p>La mise a jour apporte un glassmorphism homogene et des avatars colores par agent.</p>
+              <p>Les sources RAG apparaissent ci-dessous :</p>
+              <div class="rag-sources rag-sources--visible">
+                <div class="rag-sources-title">Sources :</div>
+                <div class="rag-sources-wrap">
+                  <button class="rag-source-chip" type="button">specs.pdf -> p.12</button>
+                  <button class="rag-source-chip" type="button">design-system.md</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="message-wrapper message-wrapper--assistant message-wrapper--neo">
+          <div class="message-avatar message-avatar--assistant message-avatar--neo">NE</div>
+          <div class="message-card message-card--assistant message-card--neo message-card--streaming">
+            <div class="message-meta">
+              <span class="message-sender">Neo</span>
+              <time class="message-time">10:15</time>
+            </div>
+            <div class="message-content">
+              <p>Ce message est en streaming pour verifier l'animation du curseur.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="message-wrapper message-wrapper--user">
+          <div class="message-avatar message-avatar--user">VO</div>
+          <div class="message-card message-card--user">
+            <div class="message-meta">
+              <span class="message-sender">Vous</span>
+              <time class="message-time">10:16</time>
+            </div>
+            <div class="message-content">
+              <p>Merci, la bulle violette pour l'utilisateur fonctionne parfaitement.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-input-area card-footer">
+        <div class="chat-actions">
+          <div class="rag-control">
+            <button type="button" class="button">RAG</button>
+            <span class="rag-label">Active</span>
+          </div>
+          <div class="memory-control">
+            <span class="memory-dot"></span>
+            <span class="memory-label">Memoire ON</span>
+            <span class="memory-counters">STM 2 / LTM 5</span>
+            <button type="button" class="button memory-action">Analyser</button>
+            <button type="button" class="button memory-action">Clear</button>
+          </div>
+          <button type="button" class="button">Exporter</button>
+          <button type="button" class="button">Effacer</button>
+          <button type="button" class="chat-send-button">Envoyer</button>
+        </div>
+        <textarea class="chat-input" rows="4" placeholder="Tapez votre message...">Apercu rapide.</textarea>
+        <div class="chat-metrics">
+          <span>TTFB: 820 ms</span>
+          <span class="chat-metrics-separator">/</span>
+          <span>Fallback REST: 0</span>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
+
+

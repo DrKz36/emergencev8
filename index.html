@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>ÉMERGENCE V8</title>
+  <title>&Eacute;MERGENCE V8</title>
 
   <!-- Favicon/Logo -->
   <link rel="icon" type="image/png" href="/assets/emergence_logo.png" />
   <link rel="apple-touch-icon" href="/assets/emergence_logo.png" />
 
-  <!-- Préchargement du module JS -->
+  <!-- Prâ”œÂ®chargement du module JS -->
   <link rel="modulepreload" href="/src/frontend/main.js" />
 
   <!-- ===== CSS CORE ===== -->
@@ -32,6 +32,7 @@
   <link rel="stylesheet" href="/src/frontend/styles/components/tabs.css">
 
   <!-- ===== CSS FEATURES ===== -->
+  <link rel="stylesheet" href="/src/frontend/features/home/home.css">
   <link rel="stylesheet" href="/src/frontend/features/chat/chat.css">
   <link rel="stylesheet" href="/src/frontend/features/debate/debate.css">
   <link rel="stylesheet" href="/src/frontend/features/documents/documents.css">
@@ -41,7 +42,7 @@
   <link rel="stylesheet" href="/src/frontend/features/timeline/timeline.css">
   <link rel="stylesheet" href="/src/frontend/features/costs/costs.css">
 
-  <!-- ===== STYLES UNIFIÉS ===== -->
+  <!-- ===== STYLES UNIFIâ”œÃ«S ===== -->
   <link rel="stylesheet" href="/src/frontend/styles/main-styles.css">
 
   <!-- ===== OVERRIDES (hotfix UI) ===== -->
@@ -61,35 +62,108 @@
 
     #app-loader {
       position: fixed; inset: 0; display:flex; align-items:center; justify-content:center;
+      flex-direction:column; gap:12px;
       background-color: var(--bg-2); color: var(--muted); z-index: 9999; opacity: 1; transition: opacity .35s ease-out;
+      text-align:center;
     }
     #app-loader.fade-out { opacity: 0; }
+
+    #app-loader img {
+      max-height:64px;height:auto;width:auto;opacity:.9;margin-right:0;object-fit:contain;aspect-ratio:auto;
+      filter:drop-shadow(0 0 22px rgba(56,189,248,.45));
+      animation: emergenceLoaderPulse 8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+    }
+
+    #app-loader .loader-word{
+      font-size:clamp(20px, 2.6vw, 28px);
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      background:linear-gradient(120deg, rgba(125,211,252,1) 0%, rgba(59,130,246,1) 45%, rgba(168,85,247,1) 100%);
+      -webkit-background-clip:text;
+      background-clip:text;
+      color:transparent;
+      text-shadow:0 0 24px rgba(59,130,246,.35);
+    }
+
+    @supports not (-webkit-background-clip:text) {
+      #app-loader .loader-word{ color:#e2e8f0; }
+    }
+
+    @keyframes emergenceLoaderPulse {
+      0%,100%{ transform:translateY(0) scale(1); filter:drop-shadow(0 0 18px rgba(56,189,248,.38)); }
+      45%{ transform:translateY(-6px) scale(1.04); filter:drop-shadow(0 0 24px rgba(168,85,247,.45)); }
+      65%{ transform:translateY(-3px) scale(1.02); filter:drop-shadow(0 0 20px rgba(59,130,246,.5)); }
+    }
 
     .app-container { height: 100vh; width: 100vw; }
     @supports (height: 100dvh) { .app-container { height: 100dvh; } }
 
     .app-sidebar, .app-content { min-height: 0; }
     .app-content{ overflow-y:auto; overflow-x:hidden; }
+
+    #home-root { display:none; }
+    body.home-active #home-root { display:flex; }
+    body.home-active #app-container { display:none; }
   </style>
 </head>
 <body class="loading">
   <div id="app-loader">
-    <img src="/assets/emergence_logo.png" alt="ÉMERGENCE" style="max-height:64px;height:auto;width:auto;opacity:.9;margin-right:12px;object-fit:contain;aspect-ratio:auto;">
-    ÉMERGENCE…
+    <img src="/assets/emergence_logo.png" alt="&Eacute;MERGENCE">
+    <span class="loader-word">&Eacute;MERGENCE&hellip;</span>
   </div>
 
+  <div id="home-root" class="home-root" hidden aria-hidden="true"></div>
   <div id="app-container" class="app-container">
+    <header id="app-header" class="app-header" role="banner">
+      <div class="header-logo-title">
+        <img src="/assets/emergence_logo.png" alt="&Eacute;MERGENCE" class="header-logo">
+        <span class="header-title">&Eacute;MERGENCE</span>
+      </div>
+      <div class="header-actions">
+        <button id="mobile-nav-toggle" class="mobile-nav-toggle" type="button" aria-expanded="false" aria-controls="app-header-nav">
+          <span class="visually-hidden">Ouvrir le menu</span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="4" y1="6" x2="20" y2="6" />
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <line x1="4" y1="18" x2="20" y2="18" />
+          </svg>
+        </button>
+        <nav id="app-header-nav" class="mobile-nav" aria-label="Navigation principale" aria-hidden="true">
+          <ul id="app-header-nav-list" class="mobile-nav-list"></ul>
+        </nav>
+      </div>
+    </header>
     <aside id="app-sidebar" class="app-sidebar" role="complementary">
       <div class="brand-block">
-        <img src="/assets/emergence_logo.png" alt="ÉMERGENCE" class="brand-logo">
-        <h1 class="brand-title">ÉMERGENCE</h1>
+        <img src="/assets/emergence_logo.png" alt="&Eacute;MERGENCE" class="brand-logo">
+        <h1 class="brand-title">&Eacute;MERGENCE</h1>
       </div>
-      <nav id="app-tabs" class="sidebar-nav" aria-label="Sections"></nav>
-      <div id="settings-container"></div>
+        <nav id="app-tabs" class="sidebar-nav" aria-label="Sections"></nav>
+        <div id="sidebar-auth-status" class="sidebar-auth-status" role="status" aria-live="polite"></div>
+        <div class="sidebar-auth-actions" data-auth-host></div>
+      <div id="settings-container">
+        <div id="memory-overlay" class="memory-overlay" aria-hidden="true">
+          <div class="memory-overlay__backdrop" data-memory-close></div>
+          <section class="memory-overlay__panel" role="dialog" aria-modal="true" aria-labelledby="memory-overlay-title">
+            <header class="memory-overlay__header">
+              <div class="memory-overlay__title">
+                <svg class="memory-overlay__icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
+                  <path d="M9 3a4 4 0 00-4 4v1.5A3.5 3.5 0 003 12a3.5 3.5 0 002.1 3.2A3.8 3.8 0 007 18.5V21h3V3H9zm6 0a4 4 0 014 4v1.5A3.5 3.5 0 0121 12a3.5 3.5 0 01-2.1 3.2A3.8 3.8 0 0117 18.5V21h-3V3h1z" fill="currentColor" />
+                </svg>
+                <h2 id="memory-overlay-title">MÃ©moire</h2>
+              </div>
+              <button type="button" id="memory-overlay-close" class="memory-overlay__close" data-memory-close aria-label="Fermer la fenÃªtre mÃ©moire">
+                <span aria-hidden="true">Ã—</span>
+              </button>
+            </header>
+            <div id="memory-panel-host" class="memory-overlay__body"></div>
+          </section>
+        </div>
+      </div>
     </aside>
 
     <main id="app-content" class="app-content" role="main">
-      <!-- squelette léger le temps du boot JS -->
+      <!-- squelette lâ”œÂ®ger le temps du boot JS -->
       <div class="skeleton" style="height: calc(100vh - 56px); border: 1px solid var(--border); border-radius: 10px;"></div>
       <div class="skeleton" style="margin-top:10px; height: 44px; border-radius: 10px;"></div>
     </main>
@@ -118,3 +192,4 @@
   <script type="module" src="/src/frontend/main.js" defer></script>
 </body>
 </html>
+

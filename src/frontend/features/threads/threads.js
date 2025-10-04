@@ -1,0 +1,798 @@
+/**
+ * @module features/threads/threads
+ * Threads management panel (list, create, select, archive) with EventBus synchronization.
+ */
+
+import {
+  fetchThreads,
+  fetchThreadDetail,
+  createThread as apiCreateThread,
+  archiveThread as apiArchiveThread,
+  deleteThread as apiDeleteThread,
+} from './threads-service.js';
+import { EVENTS, AGENTS } from '../../shared/constants.js';
+
+const THREAD_STORAGE_KEY = 'emergence.threadId';
+const STATUS_LABELS = Object.freeze({ active: 'Actif', archived: 'Archive' });
+const MAX_FETCH_LIMIT = 50;
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatDateTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  const day = pad(date.getDate());
+  const month = pad(date.getMonth() + 1);
+  const year = date.getFullYear();
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  return `${day}.${month}.${year} ${hours}:${minutes}`;
+}
+
+function agentLabel(agentId) {
+  if (!agentId) return '--';
+  const normalized = typeof agentId === 'string' ? agentId.trim().toLowerCase() : '';
+  if (!normalized) return agentId;
+  return (AGENTS[normalized] && AGENTS[normalized].label) || agentId;
+}
+
+function cloneThreadsState(state) {
+  const map = state?.map && typeof state.map === 'object' ? { ...state.map } : {};
+  const order = Array.isArray(state?.order) ? [...state.order] : [];
+  return { map, order };
+}
+
+function ensureArray(value) {
+  return Array.isArray(value) ? [...value] : [];
+}
+
+function normalizeId(value) {
+  if (value === undefined || value === null) return null;
+  const candidate = String(value).trim();
+  return candidate ? candidate : null;
+}
+
+function coerceTimestamp(value) {
+  if (!value) return null;
+  if (value instanceof Date) {
+    const time = value.getTime();
+    return Number.isNaN(time) ? null : time;
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || value <= 0) return null;
+    if (value > 1e12) return Math.trunc(value);
+    if (value > 1e9) return Math.trunc(value * 1000);
+    return Math.trunc(value);
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const numeric = Number(trimmed);
+    if (Number.isFinite(numeric)) return coerceTimestamp(numeric);
+    const parsed = Date.parse(trimmed);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return null;
+}
+
+function extractMessageTimestamp(message) {
+  if (!message || typeof message !== 'object') return null;
+  return coerceTimestamp(
+    message.created_at ??
+    message.createdAt ??
+    message.updated_at ??
+    message.updatedAt ??
+    message.timestamp ??
+    message.time ??
+    message.datetime ??
+    message.date ??
+    (message.meta && (message.meta.timestamp ?? message.meta.created_at ?? message.meta.updated_at))
+  );
+}
+
+function resolveThreadRecord(entry, record) {
+  if (record && typeof record === 'object') return record;
+  if (entry && typeof entry === 'object') {
+    if (entry.thread && typeof entry.thread === 'object') return entry.thread;
+    return entry;
+  }
+  return null;
+}
+
+export function getInteractionCount(entry, record) {
+  const messages = Array.isArray(entry?.messages) ? entry.messages.filter(Boolean) : [];
+  if (messages.length) return messages.length;
+  const target = resolveThreadRecord(entry, record);
+  if (Array.isArray(target?.messages) && target.messages.length) {
+    return target.messages.filter(Boolean).length;
+  }
+  const targetStats = target?.stats || {};
+  const entryStats = entry?.stats || {};
+  const targetMeta = target?.meta || target?.metadata || {};
+  const entryMeta = entry?.meta || entry?.metadata || {};
+  const candidates = [
+    targetStats.interactions,
+    targetStats.messages,
+    targetStats.total,
+    targetStats.count,
+    entryStats.interactions,
+    entryStats.messages,
+    entryStats.total,
+    entryStats.count,
+    target?.message_count,
+    target?.messages_count,
+    target?.messages_total,
+    target?.total_messages,
+    entry?.message_count,
+    entry?.messages_count,
+    entry?.messages_total,
+    entry?.total_messages,
+    targetMeta.interaction_count,
+    targetMeta.interactions,
+    targetMeta.messages_count,
+    entryMeta.interaction_count,
+    entryMeta.interactions,
+    entryMeta.messages_count
+  ];
+  for (const candidate of candidates) {
+    const num = Number(candidate);
+    if (Number.isFinite(num) && num >= 0) {
+      return Math.max(0, Math.floor(num));
+    }
+  }
+  return 0;
+}
+
+export function formatInteractionCount(count) {
+  const safe = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+  if (safe === 0) return 'Aucune interaction';
+  if (safe === 1) return '1 interaction';
+  return `${safe} interactions`;
+}
+
+export function getLastInteractionTimestamp(entry, record) {
+  const timestamps = [];
+  const addTimestamp = (value) => {
+    const epoch = coerceTimestamp(value);
+    if (epoch) timestamps.push(epoch);
+  };
+  const messages = Array.isArray(entry?.messages) ? entry.messages : [];
+  for (const message of messages) {
+    const ts = extractMessageTimestamp(message);
+    if (ts) timestamps.push(ts);
+  }
+  const target = resolveThreadRecord(entry, record);
+  const candidateValues = [
+    entry?.lastInteractionAt,
+    entry?.last_interaction_at,
+    entry?.lastMessageAt,
+    entry?.last_message_at,
+    target?.lastInteractionAt,
+    target?.last_interaction_at,
+    target?.lastMessageAt,
+    target?.last_message_at,
+    target?.latestMessageAt,
+    target?.latest_message_at,
+    target?.updatedAt,
+    target?.updated_at,
+    target?.createdAt,
+    target?.created_at,
+    entry?.updatedAt,
+    entry?.updated_at
+  ];
+  const targetMeta = target?.meta || target?.metadata || {};
+  const entryMeta = entry?.meta || entry?.metadata || {};
+  candidateValues.push(
+    targetMeta.lastInteractionAt,
+    targetMeta.last_interaction_at,
+    targetMeta.lastMessageAt,
+    targetMeta.last_message_at,
+    entryMeta.lastInteractionAt,
+    entryMeta.last_interaction_at,
+    entryMeta.lastMessageAt,
+    entryMeta.last_message_at
+  );
+  if (!timestamps.length && Array.isArray(target?.messages) && target.messages.length) {
+    for (const message of target.messages) {
+      const ts = extractMessageTimestamp(message);
+      if (ts) timestamps.push(ts);
+    }
+  }
+  if (!timestamps.length) return null;
+  const latest = Math.max(...timestamps);
+  return new Date(latest).toISOString();
+}
+
+export class ThreadsPanel {
+  constructor(eventBus, stateManager, options = {}) {
+    this.eventBus = eventBus;
+    this.state = stateManager;
+    const opts = options || {};
+    this.options = {
+      keepMarkup: !!opts.keepMarkup,
+      hostId: typeof opts.hostId === 'string' ? opts.hostId : null,
+    };
+    this.hostElement = opts.hostElement || null;
+    this.deleteThreadFn = typeof opts.deleteThread === 'function' ? opts.deleteThread : apiDeleteThread;
+
+    this.container = null;
+    this.listEl = null;
+    this.errorEl = null;
+    this.newButton = null;
+
+    this.unsubscribeState = null;
+    this.unsubscribeRefresh = null;
+
+    this.selectionLoadingId = null;
+    this.archivingId = null;
+    this.pendingCreate = false;
+    this.pendingDeleteId = null;
+    this.deletingId = null;
+
+    this._hasInitialRender = false;
+    this._domBound = false;
+    this._initialized = false;
+    this._onContainerClick = this.handleContainerClick.bind(this);
+    this._onRefreshRequested = this.reload.bind(this);
+  }
+
+  setHostElement(element) {
+    if (this.container && this._domBound) {
+      this.container.removeEventListener('click', this._onContainerClick);
+    }
+    this.hostElement = element || null;
+    this.container = null;
+    this.listEl = null;
+    this.errorEl = null;
+    this.newButton = null;
+    this.pendingDeleteId = null;
+    this.deletingId = null;
+    this._domBound = false;
+    this._hasInitialRender = false;
+  }
+
+  template() {
+    return `
+      <div class="threads-panel__inner">
+        <header class="threads-panel__header">
+          <div class="threads-panel__titles">
+            <h2 class="threads-panel__title">Conversations</h2>
+            <p class="threads-panel__subtitle">Gerer vos discussions actives et archivees.</p>
+          </div>
+          <button type="button" class="threads-panel__new" data-action="new" aria-label="Lancer une nouvelle conversation">
+            Nouvelle conversation
+          </button>
+        </header>
+        <div class="threads-panel__body">
+          <p class="threads-panel__error" data-role="thread-error" hidden></p>
+          <ul class="threads-panel__list" data-role="thread-list" role="list"></ul>
+        </div>
+      </div>
+    `;
+  }
+
+  init() {
+    this.ensureContainer();
+    if (!this.container) return;
+
+    if (!this._domBound) {
+      this.container.addEventListener('click', this._onContainerClick);
+      this._domBound = true;
+    }
+
+    if (!this.unsubscribeRefresh && this.eventBus?.on) {
+      this.unsubscribeRefresh = this.eventBus.on(EVENTS.THREADS_REFRESH_REQUEST, this._onRefreshRequested);
+    }
+
+    if (!this.unsubscribeState) {
+      this.unsubscribeState = this.state.subscribe('threads', (threads) => {
+        this.render(threads);
+      });
+    }
+
+    const currentThreadsState = this.state.get('threads');
+    this.render(currentThreadsState);
+
+    if (!this._initialized && (!currentThreadsState || currentThreadsState.status === 'idle')) {
+      this.reload();
+    }
+
+    this._initialized = true;
+  }
+
+  destroy() {
+    if (this.container && this._domBound) {
+      this.container.removeEventListener('click', this._onContainerClick);
+      this._domBound = false;
+    }
+    if (typeof this.unsubscribeState === 'function') {
+      this.unsubscribeState();
+      this.unsubscribeState = null;
+    }
+    if (typeof this.unsubscribeRefresh === 'function') {
+      this.unsubscribeRefresh();
+      this.unsubscribeRefresh = null;
+    }
+    this._initialized = false;
+    this.pendingDeleteId = null;
+    this.deletingId = null;
+    if (!this.options.keepMarkup && this.container) {
+      this.container.innerHTML = '';
+      this.container = null;
+      this.listEl = null;
+      this.errorEl = null;
+      this.newButton = null;
+    }
+  }
+
+  ensureContainer() {
+    if (this.container) return;
+
+    let host = this.hostElement;
+    if (!host && this.options.hostId) {
+      host = document.getElementById(this.options.hostId);
+    }
+    if (!host) return;
+
+    if (!host.querySelector('[data-role="thread-list"]')) {
+      host.classList.add('threads-panel');
+      host.setAttribute('data-threads-panel', 'module');
+      host.innerHTML = this.template();
+    } else {
+      host.classList.add('threads-panel');
+      host.setAttribute('data-threads-panel', 'module');
+    }
+
+    this.container = host;
+    this.listEl = host.querySelector('[data-role="thread-list"]');
+    this.errorEl = host.querySelector('[data-role="thread-error"]');
+    this.newButton = host.querySelector('[data-action="new"]');
+  }
+
+  async reload() {
+    this.setStatus('loading');
+    try {
+      const items = await fetchThreads({ type: 'chat', limit: MAX_FETCH_LIMIT });
+      const meta = this.hydrateStateFromList(items);
+      this.setStatus('ready');
+      const payload = { items, fetchedAt: meta?.fetchedAt };
+      this.eventBus.emit?.(EVENTS.THREADS_LIST_UPDATED, payload);
+      this.eventBus.emit?.(EVENTS.THREADS_READY, payload);
+    } catch (error) {
+      const message = error?.message || 'Chargement impossible.';
+      this.setStatus('error', message);
+      this.eventBus.emit?.(EVENTS.THREADS_ERROR, { action: 'list', error });
+      if (error?.status === 401) {
+        this.eventBus.emit?.('auth:missing', { reason: 401 });
+      }
+    }
+  }
+
+  hydrateStateFromList(items) {
+    const threadsState = this.state.get('threads') || {};
+    const { map, order } = cloneThreadsState(threadsState);
+    const nextOrder = [];
+
+    for (const item of Array.isArray(items) ? items : []) {
+      const id = normalizeId(item?.id);
+      if (!id) continue;
+      const threadRecord = { ...(item || {}), id };
+      const existing = map[id] || { id, messages: [], docs: [] };
+      map[id] = { ...existing, id, thread: threadRecord };
+      nextOrder.push(id);
+    }
+
+    const mergedOrder = [...new Set([...nextOrder, ...order])];
+    const fetchedAt = Date.now();
+    this.state.set('threads.map', map);
+    this.state.set('threads.order', mergedOrder);
+    this.state.set('threads.lastFetchedAt', fetchedAt);
+    this.state.set('threads.error', null);
+
+    let currentId = normalizeId(this.state.get('threads.currentId'));
+    if (currentId && !map[currentId]) currentId = null;
+    if (!currentId) {
+      const stored = this.readStoredThreadId();
+      if (stored && map[stored]) currentId = stored;
+    }
+    if (!currentId && mergedOrder.length) {
+      currentId = mergedOrder[0];
+    }
+    if (currentId) {
+      this.state.set('threads.currentId', currentId);
+    }
+
+    return { map, order: mergedOrder, fetchedAt };
+  }
+
+  readStoredThreadId() {
+    try {
+      const stored = localStorage.getItem(THREAD_STORAGE_KEY);
+      return stored && stored.trim() ? stored.trim() : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async handleContainerClick(event) {
+    const target = event.target instanceof Element ? event.target.closest('[data-action]') : null;
+    if (!target) return;
+
+    const action = target.getAttribute('data-action');
+    if (action === 'new') {
+      event.preventDefault();
+      await this.handleCreate();
+      return;
+    }
+
+    const threadId = target.getAttribute('data-thread-id');
+    if (!threadId) return;
+
+    if (action === 'select') {
+      event.preventDefault();
+      await this.handleSelect(threadId);
+    } else if (action === 'archive') {
+      event.preventDefault();
+      await this.handleArchive(threadId);
+    } else if (action === 'delete') {
+      event.preventDefault();
+      this.pendingDeleteId = threadId;
+      this.render(this.state.get('threads'));
+    } else if (action === 'delete-cancel') {
+      event.preventDefault();
+      if (this.pendingDeleteId === threadId) {
+        this.pendingDeleteId = null;
+        this.render(this.state.get('threads'));
+      }
+    } else if (action === 'delete-confirm') {
+      event.preventDefault();
+      await this.handleDelete(threadId);
+    }
+  }
+
+  async handleCreate() {
+    if (this.pendingCreate) return;
+
+    this.pendingCreate = true;
+    this.render(this.state.get('threads'));
+
+    try {
+      const created = await apiCreateThread({ type: 'chat' });
+      const id = normalizeId(created?.id);
+      if (!id) throw new Error('Thread non cree');
+
+      this.mergeThread(id, created.thread || { id });
+      this.state.set('threads.currentId', id);
+      this.eventBus.emit?.(EVENTS.THREADS_CREATED, created);
+
+      await this.handleSelect(id);
+    } catch (error) {
+      const message = error?.message || 'Impossible de creer la conversation.';
+      this.setStatus('error', message);
+      this.eventBus.emit?.(EVENTS.THREADS_ERROR, { action: 'create', error });
+      if (error?.status === 401) {
+        this.eventBus.emit?.('auth:missing', { reason: 401 });
+      }
+    } finally {
+      this.pendingCreate = false;
+      this.render(this.state.get('threads'));
+    }
+  }
+
+  async handleSelect(threadId) {
+    const safeId = normalizeId(threadId);
+    if (!safeId) return;
+    if (this.selectionLoadingId === safeId) return;
+
+    this.selectionLoadingId = safeId;
+    this.state.set('threads.currentId', safeId);
+    this.state.set('chat.threadId', safeId);
+    this.updateOrderForSelection(safeId);
+    this.render(this.state.get('threads'));
+
+    try {
+      const cached = this.state.get(`threads.map.${safeId}`) || null;
+      const needsFetch = !cached || !Array.isArray(cached.messages) || !cached.messages.length;
+      const detail = needsFetch ? await fetchThreadDetail(safeId, { messages_limit: 100 }) : cached;
+
+      if (detail?.id) {
+        const entry = {
+          id: safeId,
+          thread: detail.thread || cached?.thread || { id: safeId },
+          messages: ensureArray(detail.messages ?? cached?.messages),
+          docs: ensureArray(detail.docs ?? cached?.docs),
+        };
+
+        this.state.set(`threads.map.${safeId}`, entry);
+        this.mergeThread(safeId, entry.thread);
+
+        try { localStorage.setItem(THREAD_STORAGE_KEY, safeId); } catch {}
+
+        this.eventBus.emit?.(EVENTS.THREADS_SELECTED, entry);
+        this.eventBus.emit?.(EVENTS.THREADS_LOADED, entry);
+        this.state.set('threads.error', null);
+      }
+    } catch (error) {
+      const message = error?.message || 'Impossible de charger la conversation.';
+      this.setStatus('error', message);
+      this.eventBus.emit?.(EVENTS.THREADS_ERROR, { action: 'select', error });
+      if (error?.status === 401) {
+        this.eventBus.emit?.('auth:missing', { reason: 401 });
+      }
+    } finally {
+      this.selectionLoadingId = null;
+      this.render(this.state.get('threads'));
+    }
+  }
+
+  async handleArchive(threadId) {
+    const safeId = normalizeId(threadId);
+    if (!safeId || this.archivingId === safeId) return;
+
+    this.archivingId = safeId;
+    this.render(this.state.get('threads'));
+
+    try {
+      const updated = await apiArchiveThread(safeId);
+      this.mergeThread(safeId, updated?.thread || updated || { id: safeId, archived: true });
+      this.removeThreadFromState(safeId);
+      this.eventBus.emit?.(EVENTS.THREADS_ARCHIVED, { id: safeId });
+
+      const state = this.state.get('threads');
+      if (state?.currentId === safeId) {
+        const nextId = state?.order?.[0] || null;
+        if (nextId) {
+          await this.handleSelect(nextId);
+        } else {
+          await this.handleCreate();
+        }
+      }
+
+      try {
+        const stored = this.readStoredThreadId();
+        if (stored === safeId) {
+          localStorage.removeItem(THREAD_STORAGE_KEY);
+        }
+      } catch {}
+    } catch (error) {
+      const message = error?.message || "Impossible d'archiver la conversation.";
+      this.setStatus('error', message);
+      this.eventBus.emit?.(EVENTS.THREADS_ERROR, { action: 'archive', error });
+      if (error?.status === 401) {
+        this.eventBus.emit?.('auth:missing', { reason: 401 });
+      }
+    } finally {
+      this.archivingId = null;
+      this.render(this.state.get('threads'));
+    }
+  }
+
+  async handleDelete(threadId) {
+    const safeId = normalizeId(threadId);
+    if (!safeId || this.deletingId === safeId) return;
+
+    const wasActive = this.state.get('threads.currentId') === safeId;
+
+    this.deletingId = safeId;
+    this.render(this.state.get('threads'));
+
+    try {
+      await this.deleteThreadFn(safeId);
+      this.removeThreadFromState(safeId);
+      this.pendingDeleteId = null;
+      this.eventBus.emit?.(EVENTS.THREADS_DELETED, { id: safeId });
+
+      const order = this.state.get('threads.order') || [];
+      const fallbackId = this.state.get('threads.currentId') || (order.length ? order[0] : null);
+      if (!order.length) {
+        await this.handleCreate();
+      } else if (wasActive && fallbackId) {
+        await this.handleSelect(fallbackId);
+      }
+
+      try {
+        const stored = this.readStoredThreadId();
+        if (stored === safeId) {
+          localStorage.removeItem(THREAD_STORAGE_KEY);
+        }
+      } catch {}
+    } catch (error) {
+      const message = error?.message || "Impossible de supprimer la conversation.";
+      this.setStatus('error', message);
+      this.eventBus.emit?.(EVENTS.THREADS_ERROR, { action: 'delete', error });
+      if (error?.status === 401) {
+        this.eventBus.emit?.('auth:missing', { reason: 401 });
+      }
+    } finally {
+      this.deletingId = null;
+      this.pendingDeleteId = null;
+      this.render(this.state.get('threads'));
+    }
+  }
+
+
+  mergeThread(id, threadRecord) {
+    const safeId = normalizeId(id);
+    if (!safeId) return;
+
+    const mapKey = `threads.map.${safeId}`;
+    const existing = this.state.get(mapKey) || { id: safeId, messages: [], docs: [] };
+    const entry = {
+      ...existing,
+      id: safeId,
+      thread: threadRecord && typeof threadRecord === 'object'
+        ? { ...threadRecord, id: threadRecord.id || safeId }
+        : (existing.thread || { id: safeId }),
+    };
+
+    this.state.set(mapKey, entry);
+
+    const order = this.state.get('threads.order');
+    if (!Array.isArray(order) || !order.includes(safeId)) {
+      const nextOrder = [safeId, ...(Array.isArray(order) ? order.filter((item) => item !== safeId) : [])];
+      this.state.set('threads.order', nextOrder);
+    }
+
+    this.eventBus.emit?.(EVENTS.THREADS_UPDATED, { id: safeId, thread: entry.thread });
+  }
+
+  removeThreadFromState(id) {
+    const safeId = normalizeId(id);
+    if (!safeId) return;
+
+    const threadsState = this.state.get('threads') || {};
+    const { map, order } = cloneThreadsState(threadsState);
+    delete map[safeId];
+
+    const filteredOrder = order.filter((item) => item !== safeId);
+    this.state.set('threads.map', map);
+    this.state.set('threads.order', filteredOrder);
+
+    if (threadsState.currentId === safeId) {
+      this.state.set('threads.currentId', filteredOrder[0] || null);
+      this.state.set('chat.threadId', filteredOrder[0] || null);
+    }
+  }
+
+  updateOrderForSelection(id) {
+    const safeId = normalizeId(id);
+    if (!safeId) return;
+
+    const threadsState = this.state.get('threads') || {};
+    const order = Array.isArray(threadsState.order) ? threadsState.order : [];
+    const nextOrder = [safeId, ...order.filter((item) => item !== safeId)];
+    this.state.set('threads.order', nextOrder);
+  }
+
+  setStatus(status, errorMessage = undefined) {
+    const allowed = ['idle', 'loading', 'ready', 'error'];
+    const nextStatus = allowed.includes(status) ? status : 'idle';
+    if (this.state.get('threads.status') !== nextStatus) {
+      this.state.set('threads.status', nextStatus);
+    }
+    if (errorMessage !== undefined) {
+      this.state.set('threads.error', errorMessage);
+    } else if (nextStatus !== 'error') {
+      this.state.set('threads.error', null);
+    }
+  }
+
+  render(threadsState) {
+    if (!this.container) return;
+    const state = threadsState || {};
+
+    if (this.newButton) {
+      this.newButton.disabled = this.pendingCreate || state.status === 'loading';
+    }
+
+    if (this.errorEl) {
+      const message = state.status === 'error' ? (state.error || 'Une erreur est survenue.') : '';
+      this.errorEl.textContent = message;
+      this.errorEl.hidden = !message;
+    }
+
+    this.renderList(state);
+    this._hasInitialRender = true;
+  }
+
+  renderList(state) {
+    if (!this.listEl) return;
+
+    const order = Array.isArray(state.order) ? state.order : [];
+    const map = state.map && typeof state.map === 'object' ? state.map : {};
+
+    if (state.status === 'loading' && !order.length) {
+      this.listEl.innerHTML = '<li class="threads-panel__placeholder">Chargement en cours...</li>';
+      return;
+    }
+
+    if (!order.length) {
+      this.listEl.innerHTML = '<li class="threads-panel__placeholder">Aucune conversation enregistree.</li>';
+      return;
+    }
+
+    const currentId = state.currentId || null;
+    const confirmId = this.pendingDeleteId || null;
+    const deletingId = this.deletingId || null;
+    const archivingId = this.archivingId || null;
+    const loadingId = this.selectionLoadingId || null;
+
+    const itemsHtml = order.map((id) => {
+      const entry = map[id] || { id };
+      const record = entry.thread || entry;
+      const title = record?.title || 'Conversation';
+      const agentId = record?.agent_id || record?.agentId || null;
+      const statusLabel = record?.archived ? STATUS_LABELS.archived : STATUS_LABELS.active;
+      const messageCount = getInteractionCount(entry, record);
+      const interactionsLabel = formatInteractionCount(messageCount);
+      const lastTimestamp = getLastInteractionTimestamp(entry, record);
+      const timestamp = lastTimestamp || record?.updated_at || record?.last_message_at || record?.created_at || null;
+      const isActive = currentId === id;
+      const isLoading = loadingId === id;
+      const isArchiving = archivingId === id;
+      const isDeleting = deletingId === id;
+      const showConfirmDelete = confirmId === id;
+      const buttonClasses = ['threads-panel__select'];
+      if (isActive) buttonClasses.push('is-active');
+      if (isLoading) buttonClasses.push('is-loading');
+      if (isDeleting) buttonClasses.push('is-disabled');
+      const archiveClasses = ['threads-panel__archive'];
+      if (isArchiving) archiveClasses.push('is-busy');
+      if (isDeleting) archiveClasses.push('is-disabled');
+      const deleteClasses = ['threads-panel__delete'];
+      if (isDeleting) deleteClasses.push('is-busy');
+      const label = agentLabel(agentId);
+      let statusText = statusLabel;
+      if (isDeleting) statusText = 'Suppression...';
+      else if (isArchiving) statusText = 'Archivage...';
+      else if (isLoading) statusText = 'Chargement...';
+      const updated = formatDateTime(timestamp);
+      const updatedTitle = timestamp ? new Date(timestamp).toISOString() : '';
+      const timestampAttributes = [];
+      if (updatedTitle) timestampAttributes.push('title="' + escapeHtml(updatedTitle) + '"');
+      if (lastTimestamp) timestampAttributes.push('data-source="last-interaction"');
+      const timestampAttr = timestampAttributes.length ? ' ' + timestampAttributes.join(' ') : '';
+      const actionsHtml = showConfirmDelete
+        ? `
+          <div class="threads-panel__confirm" data-thread-id="${escapeHtml(id)}">
+            <p class="threads-panel__confirm-text">Supprimer cette conversation ?</p>
+            <div class="threads-panel__confirm-actions">
+              <button type="button" class="threads-panel__confirm-delete" data-action="delete-confirm" data-thread-id="${escapeHtml(id)}"${isDeleting ? ' disabled' : ''}>Confirmer</button>
+              <button type="button" class="threads-panel__confirm-cancel" data-action="delete-cancel" data-thread-id="${escapeHtml(id)}"${isDeleting ? ' disabled' : ''}>Annuler</button>
+            </div>
+          </div>
+        `
+        : `
+          <div class="threads-panel__actions">
+            <button type="button" class="${archiveClasses.join(' ')}" data-action="archive" data-thread-id="${escapeHtml(id)}"${(isArchiving || isDeleting) ? ' disabled' : ''}>Archiver</button>
+            <button type="button" class="${deleteClasses.join(' ')}" data-action="delete" data-thread-id="${escapeHtml(id)}"${isDeleting ? ' disabled' : ''}>Supprimer</button>
+          </div>
+        `;
+      return `
+        <li class="threads-panel__item${isActive ? ' is-active' : ''}" data-thread-id="${escapeHtml(id)}">
+          <button type="button" class="${buttonClasses.join(' ')}" data-action="select" data-thread-id="${escapeHtml(id)}" aria-pressed="${isActive ? 'true' : 'false'}"${isDeleting ? ' disabled' : ''}>
+            <span class="threads-panel__item-title">${escapeHtml(title)}</span>
+            <span class="threads-panel__item-meta">
+              <span class="threads-panel__item-agent">${escapeHtml(label)}</span>
+              <span class="threads-panel__item-status">${escapeHtml(statusText)}</span>
+              <span class="threads-panel__item-count">${escapeHtml(interactionsLabel)}</span>
+            </span>
+            <span class="threads-panel__item-timestamp"${timestampAttr}>${escapeHtml(updated)}</span>
+          </button>
+          ${actionsHtml}
+        </li>
+      `;
+    }).join('');
+
+    this.listEl.innerHTML = itemsHtml;
+  }
+}

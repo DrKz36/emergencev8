@@ -1,0 +1,9 @@
+#<- session-id=memclr-057bd36ddd5742238cc4db74f8b4bf22
+#<- Step 1: Health check
+#<- Step 2: Automated coverage
+#<- Manual: Open the frontend, sign in, and pick an existing thread.
+#<- Manual: Confirm the memory banner shows counts before the purge.
+#<- Manual: Click Clear, validate the confirmation modal, confirm the success toast.
+#<- Manual: Refresh and ensure STM/LTM indicators are empty.
+#<- Manual: Log the run in docs/Memoire.md (journal / QA section).
+#<- Scenario completed

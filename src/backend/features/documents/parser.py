@@ -1,10 +1,10 @@
-# src/backend/features/documents/parser.py
+﻿# src/backend/features/documents/parser.py
 import logging
 from abc import ABC, abstractmethod
 from typing import Dict, Type
 
 # --- Dépendances ---
-import fitz  # PyMuPDF
+import fitz  # type: ignore[import-untyped]  # PyMuPDF
 import docx  # ✅ NOUVEAU : Pour lire les .docx
 
 logger = logging.getLogger(__name__)

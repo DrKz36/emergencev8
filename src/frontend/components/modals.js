@@ -3,15 +3,21 @@
  * @description Gestionnaire de modales avec focus trap
  */
 
-import { ANIMATIONS, EVENTS } from '../shared/constants.js';
+import { ANIMATIONS, EVENTS, TIMEOUTS } from '../shared/constants.js';
 import { generateId } from '../shared/utils.js';
 import { eventBus } from '../core/event-bus.js';
+
+const { CLASSES: ANIMATION_CLASSES } = ANIMATIONS;
+const { ANIMATION_EXIT, MODAL_FOCUS_DELAY } = TIMEOUTS;
+
+const DOM_IS_AVAILABLE = typeof window !== 'undefined' && typeof document !== 'undefined' && typeof document.createElement === 'function';
 
 class ModalManager {
   constructor() {
     this.modals = new Map();
     this.activeModal = null;
     this.container = null;
+    this.domReady = DOM_IS_AVAILABLE;
     this.init();
   }
 
@@ -19,6 +25,9 @@ class ModalManager {
    * Initialize modal container
    */
   init() {
+    if (!this.domReady) {
+      return;
+    }
     this.container = document.createElement('div');
     this.container.className = 'modals-container';
     document.body.appendChild(this.container);
@@ -50,15 +59,24 @@ class ModalManager {
     onOpen = null,
     onClose = null
   }) {
+    if (!this.domReady) {
+      return null;
+    }
     const id = generateId();
     
     // Create backdrop
     const backdrop = document.createElement('div');
-    backdrop.className = 'modal-backdrop fade-in';
-    
+    backdrop.className = ['modal-backdrop', ANIMATION_CLASSES.FADE_IN].join(' ');
+
     // Create modal
     const modal = document.createElement('div');
-    modal.className = `modal modal--${size} ${className} slide-up`;
+    const modalClasses = [
+      'modal',
+      `modal--${size}`,
+      className,
+      ANIMATION_CLASSES.SLIDE_UP
+    ].filter(Boolean).join(' ');
+    modal.className = modalClasses;
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
     if (title) modal.setAttribute('aria-labelledby', `modal-title-${id}`);
@@ -145,7 +163,7 @@ class ModalManager {
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
       );
       if (focusable) focusable.focus();
-    }, 100);
+    }, MODAL_FOCUS_DELAY);
     
     // Prevent body scroll
     document.body.style.overflow = 'hidden';
@@ -164,14 +182,17 @@ class ModalManager {
    * @param {string} id
    */
   close(id) {
+    if (!this.domReady) {
+      return;
+    }
     const modalData = this.modals.get(id);
     if (!modalData) return;
     
     const { modal, backdrop, onClose, previousFocus } = modalData;
     
     // Animate out
-    modal.classList.add('slide-down');
-    backdrop.classList.add('fade-out');
+    modal.classList.add(ANIMATION_CLASSES.SLIDE_DOWN);
+    backdrop.classList.add(ANIMATION_CLASSES.FADE_OUT);
     
     setTimeout(() => {
       modal.remove();
@@ -202,13 +223,16 @@ class ModalManager {
       
       // Callback
       if (onClose) onClose();
-    }, 300);
+    }, ANIMATION_EXIT);
   }
 
   /**
    * Close all modals
    */
   closeAll() {
+    if (!this.domReady) {
+      return;
+    }
     this.modals.forEach((_, id) => this.close(id));
   }
 
@@ -217,6 +241,9 @@ class ModalManager {
    * @param {HTMLElement} modal
    */
   setupFocusTrap(modal) {
+    if (!this.domReady) {
+      return;
+    }
     const focusableElements = modal.querySelectorAll(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     );
@@ -255,6 +282,9 @@ class ModalManager {
     cancelText = 'Annuler',
     type = 'warning' // info, warning, danger
   }) {
+    if (!this.domReady) {
+      return Promise.resolve(false);
+    }
     return new Promise((resolve) => {
       const footer = document.createElement('div');
       footer.className = 'modal__actions';
@@ -301,6 +331,9 @@ class ModalManager {
     buttonText = 'OK',
     type = 'info'
   }) {
+    if (!this.domReady) {
+      return Promise.resolve();
+    }
     return new Promise((resolve) => {
       const footer = document.createElement('div');
       footer.className = 'modal__actions';
@@ -331,3 +364,4 @@ export const modals = new ModalManager();
 
 // Also export for custom usage
 export { ModalManager };
+

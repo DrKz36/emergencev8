@@ -6,6 +6,7 @@
 param(
   [string]$Base       = "http://127.0.0.1:8000",
   [string]$Token      = $env:EMERGENCE_ID_TOKEN,
+  [string]$SessionId,
   [int]   $PaceMs     = 12000,     # 12 s = ~5 req/min
   [int]   $TimeoutSec = 120,
   [string]$AgentNeo   = "neo",
@@ -16,6 +17,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+if (-not $SessionId -or -not $SessionId.Trim()) {
+  $SessionId = "ws-" + ([Guid]::NewGuid().ToString("N"))
+} else {
+  $SessionId = $SessionId.Trim()
+}
+
 function Invoke-Probe {
   param(
     [Parameter(Mandatory)]
@@ -24,7 +31,7 @@ function Invoke-Probe {
     [string]$Agent,
     [string]$Text = ""
   )
-  $args = @("--base", $Base, "--timeout", $TimeoutSec, "--run", $Run, "--agent", $Agent)
+  $args = @("--base", $Base, "--timeout", $TimeoutSec, "--run", $Run, "--agent", $Agent, "--session-id", $SessionId)
   if ($Text) { $args += @("--text", $Text) }
 
   # 🔒 IMPORTANT : passage du JWT au client Python (qui le mettra en sous-protocole 'jwt,<JWT>' et/ou Authorization)
@@ -40,6 +47,7 @@ function Invoke-Probe {
 
 Write-Host "=== EMERGENCE :: Smoke mémoire A→F (pacing=${PaceMs}ms) ===" -ForegroundColor Green
 Write-Host "Base: $Base"
+Write-Host "SessionId: $SessionId" -ForegroundColor DarkGray
 if (-not $Token) {
   Write-Warning "Aucun ID token (-Token) détecté. Le WS exigera un JWT (Authorization ou sous-protocole)."
 }

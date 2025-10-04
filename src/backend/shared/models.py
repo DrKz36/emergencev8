@@ -36,6 +36,7 @@ class Session(BaseModel):
     start_time: datetime = Field(..., description="Horodatage du début de la session")
     end_time: Optional[datetime] = Field(None, description="Horodatage de la fin de la session")
     history: List[Dict[str, Any]] = Field(default_factory=list, description="Liste des messages (ChatMessage, AgentMessage) de la session")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadata for the session (thread info, summaries).")
     
     class Config:
         extra = 'allow' # Permet d'ajouter des champs non définis (ex: summary, concepts) plus tard
@@ -58,6 +59,14 @@ class ChatMessage(BaseModel):
     tokens: Optional[Dict[str, Any]] = Field(None, description="Détail des tokens utilisés (input, output)")
     agents: Optional[List[str]] = Field(None, description="Liste des agents cibles pour un nouveau message utilisateur.")
     use_rag: bool = Field(False, description="Indique si le RAG doit être utilisé pour ce message.")
+    doc_ids: Optional[List[str]] = Field(
+        default=None,
+        description="Liste optionnelle d'identifiants de documents associés au RAG pour ce message.",
+    )
+    meta: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Métadonnées complémentaires (RAG, avis, diffusion WS, etc.).",
+    )
 
     class Config:
         extra = 'ignore'
@@ -77,6 +86,7 @@ class AgentMessage(BaseModel):
     agent: str
     cost_info: Optional[Dict[str, Any]] = None
     timestamp: str
+    meta: Optional[Dict[str, Any]] = None
 
 
 class ChatResponse(BaseModel):
