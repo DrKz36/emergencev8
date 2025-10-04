@@ -13,3 +13,8 @@
 - Applied Option 1 fix: `_normalize_openai_delta_content` now flattens OpenAI delta parts before streaming; `_get_openai_stream` yields the joined string and only logs raw content at debug level.
 - Added regression test `tests/backend/features/test_chat_service_openai_delta_normalization.py` to lock the behavior (covers list of content parts, dict payloads, str/None fallbacks).
 - Adjusted `_compute_chunk_delta` to remove over-aggressive duplicate dropping; now only skips suffix repeats and merges overlapping chunks so intermediate tokens (e.g. "re d'un") persist. Added dedicated tests in `tests/backend/features/test_chat_stream_chunk_delta.py`.
+
+## 2025-10-05 / Session pending-id
+- Backend router `_history_has_opinion_request` now checks for paired user notes + assistant reviews before deduping; regression cases live in `tests/backend/features/test_chat_router_opinion_dedupe.py` and cover mixed Anima/Neo/Nexus flows plus `ChatMessage`-style objects.
+- Frontend `ChatModule` routes `ws:error` with `code=opinion_already_exists` to a toast, dedupes repeated stream chunks, and keeps last chunk caches when ids change; `src/frontend/features/chat/__tests__/chat-opinion.flow.test.js` locks retries-before-response and toast fallbacks.
+- Opinion debug instrumentation removed from the frontend; no `[OpinionDebug]` output remains in standard builds.

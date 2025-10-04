@@ -36,6 +36,7 @@ export default class ChatModule {
     this._sendGateMs = 400;
     this._assistantPersistedIds = new Set();
     this._messageBuckets = new Map();
+    this._lastChunkByMessage = new Map();
 
     // UX
     this._lastToastAt = 0;
@@ -77,6 +78,28 @@ export default class ChatModule {
     }
   }
 
+  _removeMessageById(messageId, bucketHint) {
+    const key = messageId ? String(messageId) : null;
+    if (!key) return false;
+    const bucketId = bucketHint || this._messageBuckets.get(key) || null;
+    if (!bucketId) return false;
+    try {
+      const pathKey = `chat.messages.${bucketId}`;
+      const list = this.state.get(pathKey) || [];
+      const idx = list.findIndex((msg) => msg && msg.id === messageId);
+      if (idx === -1) return false;
+      const next = [...list.slice(0, idx), ...list.slice(idx + 1)];
+      this.state.set(pathKey, next);
+      this._messageBuckets.delete(key);
+      this._lastChunkByMessage.delete(key);
+      this._updateThreadCacheFromBuckets();
+      return true;
+    } catch (error) {
+      console.warn('[Chat] unable to remove message by id', error);
+      return false;
+    }
+  }
+
   _resolveBucketFromCache(messageId, agentId, meta) {
     const key = messageId ? String(messageId) : null;
     if (key && this._messageBuckets.has(key)) {
@@ -86,37 +109,84 @@ export default class ChatModule {
     return this._determineBucketForMessage(agentId, meta);
   }
 
-  _findExistingOpinionRequest(targetAgentId, sourceAgentId, messageId) {
+  _findOpinionArtifacts(targetAgentId, sourceAgentId, messageId) {
+    const normalizeAgent = (value) => (value ? String(value).trim().toLowerCase() : '');
+    const target = normalizeAgent(targetAgentId);
+    const source = normalizeAgent(sourceAgentId);
+    const requestedId = messageId ? String(messageId).trim() : '';
+    const result = { request: null, response: null };
+    if (!target || !requestedId) return result;
+
+    const requests = [];
+    const responses = [];
+
     try {
-      const target = (targetAgentId ? String(targetAgentId) : '').trim().toLowerCase();
-      const source = (sourceAgentId ? String(sourceAgentId) : '').trim().toLowerCase();
-      const requestedId = (messageId ? String(messageId) : '').trim();
-      if (!target || !requestedId) return null;
       const buckets = this.state.get('chat.messages') || {};
       const agentKeys = Object.keys(buckets || {});
       for (const agentKey of agentKeys) {
         const entries = Array.isArray(buckets[agentKey]) ? buckets[agentKey] : [];
         for (const entry of entries) {
           if (!entry || typeof entry !== 'object') continue;
+          const role = normalizeAgent(entry.role);
           const meta = (entry.meta && typeof entry.meta === 'object') ? entry.meta : null;
-          const opinionReq = (meta && typeof meta.opinion_request === 'object') ? meta.opinion_request : null;
-          if (!opinionReq) continue;
-          const reqTarget = String(opinionReq.target_agent ?? opinionReq.target_agent_id ?? '').trim().toLowerCase();
-          if (!reqTarget || reqTarget !== target) continue;
-          const reqSource = String(opinionReq.source_agent ?? opinionReq.source_agent_id ?? '').trim().toLowerCase();
-          if (source && reqSource !== source) continue;
-          const reqMessage = String(opinionReq.requested_message_id ?? opinionReq.message_id ?? '').trim();
-          if (reqMessage === requestedId) {
-            return entry;
+          if (!meta) continue;
+
+          if (role === 'user') {
+            const opinionReq = (typeof meta.opinion_request === 'object') ? meta.opinion_request : null;
+            if (!opinionReq) continue;
+            const reqTarget = normalizeAgent(opinionReq.target_agent ?? opinionReq.target_agent_id ?? '');
+            if (!reqTarget || reqTarget !== target) continue;
+            const reqSource = normalizeAgent(opinionReq.source_agent ?? opinionReq.source_agent_id ?? '');
+            if (source && reqSource && reqSource !== source) continue;
+            const reqMessage = String(opinionReq.requested_message_id ?? opinionReq.message_id ?? opinionReq.of_message_id ?? '').trim();
+            if (reqMessage && reqMessage !== requestedId) continue;
+            const noteId = String(opinionReq.request_id ?? opinionReq.request_note_id ?? opinionReq.note_id ?? entry.id ?? '').trim();
+            requests.push({ message: entry, bucket: agentKey, noteId, messageId: reqMessage || requestedId });
+          } else if (role === 'assistant') {
+            const opinionMeta = (typeof meta.opinion === 'object') ? meta.opinion : null;
+            if (!opinionMeta) continue;
+            const reviewer = normalizeAgent(opinionMeta.reviewer_agent_id ?? opinionMeta.reviewer_agent ?? opinionMeta.agent_id ?? opinionMeta.agent ?? '');
+            if (reviewer && reviewer !== target) continue;
+            const srcMeta = normalizeAgent(opinionMeta.source_agent_id ?? opinionMeta.source_agent ?? '');
+            if (source && srcMeta && srcMeta !== source) continue;
+            const relatedMsg = String(opinionMeta.of_message_id ?? opinionMeta.of_message ?? opinionMeta.message_id ?? opinionMeta.target_message_id ?? '').trim();
+            const noteId = String(opinionMeta.request_note_id ?? opinionMeta.request_id ?? opinionMeta.note_id ?? '').trim();
+            responses.push({ message: entry, bucket: agentKey, relatedMessage: relatedMsg, noteId });
           }
         }
       }
     } catch (error) {
       console.warn('[Chat] Unable to inspect existing opinion requests', error);
     }
-    return null;
+
+    if (requests.length) {
+      result.request = requests[0];
+    }
+
+    const noteToMatch = result.request?.noteId || '';
+    if (noteToMatch) {
+      const byNote = responses.find((item) => item.noteId && item.noteId === noteToMatch);
+      if (byNote) {
+        result.response = byNote;
+        return result;
+      }
+    }
+
+    const byMessage = responses.find((item) => item.relatedMessage && item.relatedMessage === requestedId);
+    if (byMessage) {
+      result.response = byMessage;
+    } else if (!result.response && noteToMatch) {
+      const fallback = responses.find((item) => item.noteId && item.noteId === noteToMatch);
+      if (fallback) result.response = fallback;
+    }
+
+    return result;
   }
 
+  _findExistingOpinionRequest(targetAgentId, sourceAgentId, messageId) {
+    const artifacts = this._findOpinionArtifacts(targetAgentId, sourceAgentId, messageId);
+    return artifacts.request ? artifacts.request.message : null;
+  }
 
   _generateMessageId(prefix = 'msg') {
     try {
@@ -148,6 +218,7 @@ export default class ChatModule {
     this._H.WS_END             = this.handleStreamEnd.bind(this);
     this._H.WS_ANALYSIS        = this.handleAnalysisStatus.bind(this);
     this._H.WS_PERSISTED       = this.handleMessagePersisted.bind(this);
+    this._H.WS_ERROR          = this.handleWsError.bind(this);
     this._H.WS_SESSION_ESTABLISHED = this.handleSessionEstablished.bind(this);
     this._H.WS_SESSION_RESTORED    = this.handleSessionRestored.bind(this);
 
@@ -208,6 +279,7 @@ export default class ChatModule {
   /* ============================ State init ============================ */
   initializeState() {
     try { this._messageBuckets.clear(); } catch {}
+    try { this._lastChunkByMessage.clear(); } catch {}
     if (!this.state.get('chat')) {
       this.state.set('chat', {
         currentAgentId: 'anima',
@@ -274,6 +346,7 @@ export default class ChatModule {
     this._onOnce('ws:chat_stream_end',      this._H.WS_END);
     this._onOnce('ws:analysis_status',      this._H.WS_ANALYSIS);
     this._onOnce('ws:message_persisted',    this._H.WS_PERSISTED);
+    this._onOnce('ws:error',               this._H.WS_ERROR);
 
     // Connexion WS (idempotent)
     this._onOnce('ws:session_established',  this._H.WS_SESSION_ESTABLISHED);
@@ -491,10 +564,13 @@ export default class ChatModule {
         }
       }
       messageText = String(messageText || '').trim();
-      const existingRequest = this._findExistingOpinionRequest(targetAgentId, sourceAgentId, messageId);
-      if (existingRequest) {
-        this.showToast('Avis déjà demandé pour cette réponse.');
+      const artifacts = this._findOpinionArtifacts(targetAgentId, sourceAgentId, messageId);
+      if (artifacts.response) {
+        this.showToast('Avis déjà disponible pour cette réponse.');
         return;
+      }
+      if (artifacts.request?.message?.id) {
+        this._removeMessageById(artifacts.request.message.id, artifacts.request.bucket);
       }
 
       const agentInfo = AGENTS[targetAgentId] || {};
@@ -515,12 +591,13 @@ export default class ChatModule {
             target_agent: targetAgentId,
             source_agent: sourceAgentId || null,
             requested_message_id: messageId,
-            request_id: requestId
+            request_id: requestId,
+            request_note_id: requestId
           }
         }
       };
 
-      const bucketTarget = (sourceAgentId || targetAgentId || '').trim().toLowerCase() || targetAgentId;
+      const bucketTarget = (artifacts.request?.bucket || (sourceAgentId || targetAgentId || '').trim().toLowerCase()) || targetAgentId;
       const existing = this.state.get(`chat.messages.${bucketTarget}`) || [];
       this.state.set(`chat.messages.${bucketTarget}`, [...existing, requestMessage]);
       this._rememberMessageBucket(requestId, bucketTarget);
@@ -597,6 +674,7 @@ export default class ChatModule {
     const curr = this.state.get(`chat.messages.${bucketId}`) || [];
     this.state.set(`chat.messages.${bucketId}`, [...curr, agentMessage]);
     this._rememberMessageBucket(messageId, bucketId);
+    this._lastChunkByMessage.set(String(messageId), '');
     this._updateThreadCacheFromBuckets();
     this._clearStreamWatchdog(); // le flux a bien démarré
   }
@@ -605,17 +683,22 @@ export default class ChatModule {
     const agentId = String(payload && typeof payload === 'object' ? (payload.agent_id ?? payload.agentId) : '').trim();
     const messageId = payload && typeof payload === 'object' ? payload.id : null;
     if (!agentId || !messageId) return;
-    const chunk = payload && typeof payload.chunk !== 'undefined' ? payload.chunk : '';
+    const rawChunk = payload && typeof payload.chunk !== 'undefined' ? payload.chunk : '';
+    const chunkText = typeof rawChunk === 'string' ? rawChunk : String(rawChunk ?? '');
     const meta = (payload && typeof payload.meta === 'object') ? payload.meta : null;
+
+    const lastChunk = this._lastChunkByMessage.get(String(messageId));
+    if (chunkText && lastChunk === chunkText) return;
 
     const bucketId = this._resolveBucketFromCache(messageId, agentId, meta);
     const list = this.state.get(`chat.messages.${bucketId}`) || [];
     const idx = list.findIndex((m) => m.id === messageId);
     if (idx >= 0) {
       const msg = { ...list[idx] };
-      msg.content = (msg.content || '') + String(chunk ?? '');
+      msg.content = (msg.content || '') + chunkText;
       list[idx] = msg;
       this.state.set(`chat.messages.${bucketId}`, [...list]);
+      this._lastChunkByMessage.set(String(messageId), chunkText);
       this._updateThreadCacheFromBuckets();
     }
   }
@@ -644,6 +727,7 @@ export default class ChatModule {
     }
 
     this._rememberMessageBucket(messageId, bucketId);
+    this._lastChunkByMessage.delete(String(messageId));
     this._updateThreadCacheFromBuckets();
 
     this.state.set('chat.isLoading', false);
@@ -673,6 +757,30 @@ export default class ChatModule {
       }
     } catch (e) {
       console.error('[Chat] handleStreamEnd persist error', e);
+    }
+  }
+
+  handleWsError(payload = {}) {
+    try {
+      const code = typeof payload?.code === 'string' ? payload.code.trim() : '';
+      const message = typeof payload?.message === 'string' ? payload.message.trim() : '';
+
+      if (code) {
+        console.warn('[Chat] ws:error', { code, payload });
+      } else {
+        console.warn('[Chat] ws:error', payload);
+      }
+
+      if (code === 'opinion_already_exists') {
+        this.showToast(message || 'Avis déjà disponible pour cette réponse.');
+        return;
+      }
+
+      if (message) {
+        this.showToast(message);
+      }
+    } catch (error) {
+      console.warn('[Chat] ws:error handler failure', error, payload);
     }
   }
 
@@ -759,7 +867,6 @@ export default class ChatModule {
     }
   }
 
-
   /* ============================ UI actions ============================ */
   handleAgentSelected(agentId) {
     const prev = this.state.get('chat.currentAgentId');
@@ -767,7 +874,6 @@ export default class ChatModule {
     this.state.set('chat.currentAgentId', agentId);
     this.state.set('chat.activeAgent', agentId);
   }
-
 
 handleClearChat() {
   const agentId = this.state.get('chat.currentAgentId');
@@ -1005,7 +1111,6 @@ handleClearChat() {
     }
   }
 
-
 handleMessagePersisted(payload = {}) {
   try {
     const originalIdRaw = payload.message_id ?? payload.temp_id ?? payload.client_id ?? payload.id;
@@ -1027,10 +1132,18 @@ handleMessagePersisted(payload = {}) {
       const mapped = this._messageBuckets.get(originalId);
       if (mapped) candidateBuckets.add(mapped);
     }
+    if (originalId && this._lastChunkByMessage.has(originalId)) {
+      const chunkValue = this._lastChunkByMessage.get(originalId);
+      if (persistedId) {
+        this._lastChunkByMessage.set(persistedId, chunkValue);
+      }
+      this._lastChunkByMessage.delete(originalId);
+    }
     if (persistedId && this._messageBuckets.has(persistedId)) {
       const mapped = this._messageBuckets.get(persistedId);
       if (mapped) candidateBuckets.add(mapped);
     }
+
     try {
       const active = this.state.get('chat.activeAgent');
       if (active) candidateBuckets.add(active);
@@ -1091,7 +1204,6 @@ handleMessagePersisted(payload = {}) {
     console.warn('[Chat] handleMessagePersisted erreur', e);
   }
 }
-
 
   /* ============================ Hooks RAG/Mémoire ============================ */
   handleMemoryBanner() {
@@ -1303,8 +1415,6 @@ handleMessagePersisted(payload = {}) {
     }
   }
 
-
-
   /* ============================ Watchdog / Fallback ============================ */
   _startStreamWatchdog() {
     this._clearStreamWatchdog();
@@ -1394,3 +1504,4 @@ handleMessagePersisted(payload = {}) {
     } catch {}
   }
 }
+

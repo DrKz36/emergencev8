@@ -84,7 +84,12 @@ def _history_has_opinion_request(history, *, target_agent: str, source_agent: st
     message = (message_id or '').strip()
     if not target or not message:
         return False
-    for item in reversed(history or []):
+
+    request_ids: set[str] = set()
+    note_found = False
+    responses: list[dict[str, str]] = []
+
+    for item in history or []:
         if not item:
             continue
         if isinstance(item, dict):
@@ -95,24 +100,97 @@ def _history_has_opinion_request(history, *, target_agent: str, source_agent: st
             meta = getattr(item, 'meta', None)
             if meta is None:
                 meta = getattr(item, 'metadata', None)
-        if not str(role or '').lower().endswith('user'):
-            continue
         if not isinstance(meta, dict):
             continue
-        opinion_req = meta.get('opinion_request') or meta.get('opinion-request')
-        if not isinstance(opinion_req, dict):
-            continue
-        req_target = str(opinion_req.get('target_agent') or opinion_req.get('target_agent_id') or '').strip().lower()
-        if req_target != target:
-            continue
-        req_source = str(opinion_req.get('source_agent') or opinion_req.get('source_agent_id') or '').strip().lower()
-        if source and req_source != source:
-            continue
-        req_message = str(opinion_req.get('requested_message_id') or opinion_req.get('message_id') or '').strip()
-        if req_message == message:
-            return True
-    return False
 
+        role_str = str(role or '').lower()
+        if role_str.endswith('user'):
+            opinion_req = meta.get('opinion_request') or meta.get('opinion-request')
+            if not isinstance(opinion_req, dict):
+                continue
+            req_target = str(
+                opinion_req.get('target_agent') or opinion_req.get('target_agent_id') or ''
+            ).strip().lower()
+            if req_target != target:
+                continue
+            req_source = str(
+                opinion_req.get('source_agent') or opinion_req.get('source_agent_id') or ''
+            ).strip().lower()
+            if source and req_source and req_source != source:
+                continue
+            req_message = str(
+                opinion_req.get('requested_message_id')
+                or opinion_req.get('message_id')
+                or opinion_req.get('of_message_id')
+                or ''
+            ).strip()
+            if req_message and req_message != message:
+                continue
+            note_found = True
+            req_id = str(
+                opinion_req.get('request_id')
+                or opinion_req.get('request_note_id')
+                or opinion_req.get('note_id')
+                or opinion_req.get('id')
+                or ''
+            ).strip()
+            if req_id:
+                request_ids.add(req_id)
+        elif role_str.endswith('assistant'):
+            opinion_meta = meta.get('opinion') or meta.get('opinion_meta')
+            if not isinstance(opinion_meta, dict):
+                continue
+            responses.append(
+                {
+                    'reviewer': str(
+                        opinion_meta.get('reviewer_agent_id')
+                        or opinion_meta.get('reviewer_agent')
+                        or opinion_meta.get('agent_id')
+                        or ''
+                    ).strip().lower(),
+                    'source': str(
+                        opinion_meta.get('source_agent_id')
+                        or opinion_meta.get('source_agent')
+                        or ''
+                    ).strip().lower(),
+                    'message': str(
+                        opinion_meta.get('of_message_id')
+                        or opinion_meta.get('of_message')
+                        or opinion_meta.get('message_id')
+                        or ''
+                    ).strip(),
+                    'note': str(
+                        opinion_meta.get('request_note_id')
+                        or opinion_meta.get('request_id')
+                        or opinion_meta.get('note_id')
+                        or ''
+                    ).strip(),
+                }
+            )
+
+    if not note_found:
+        return False
+
+    for response in responses:
+        reviewer = response['reviewer']
+        if reviewer and reviewer != target:
+            continue
+        src_meta = response['source']
+        if source and src_meta and src_meta != source:
+            continue
+        related_msg = response['message']
+        if related_msg and related_msg != message:
+            continue
+        req_note = response['note']
+        if request_ids:
+            if req_note and req_note in request_ids:
+                return True
+            if not req_note:
+                return True
+        else:
+            return True
+
+    return False
 
 # ---------------------------
 # Core WS â€” SANS Depends / SANS @inject
@@ -455,6 +533,16 @@ async def _ws_core(
                             target_agent,
                             message_id,
                         )
+                        try:
+                            await connection_manager.send_personal_message(
+                                {
+                                    "type": "ws:error",
+                                    "payload": {"message": "Avis déjà disponible pour cette réponse.", "code": "opinion_already_exists"},
+                                },
+                                session_id,
+                            )
+                        except Exception:
+                            pass
                         continue
 
                     await chat_service.request_opinion(

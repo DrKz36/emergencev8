@@ -119,9 +119,11 @@ test('chat opinion flow reuses request id and routes buckets to the source agent
   assert.equal(module._messageBuckets.get('stream-1'), 'neo');
 
   module.handleStreamChunk({ agent_id: 'anima', id: 'stream-1', chunk: 'Bravo' });
+  module.handleStreamChunk({ agent_id: 'anima', id: 'stream-1', chunk: 'Encore' });
+  module.handleStreamChunk({ agent_id: 'anima', id: 'stream-1', chunk: 'Encore' });
   bucketMessages = state.get('chat.messages.neo');
   const chunked = bucketMessages.find((msg) => msg.id === 'stream-1');
-  assert(chunked.content.endsWith('Bravo'));
+  assert.equal(chunked.content, 'BravoEncore');
 
   module.handleStreamEnd({
     agent_id: 'anima',
@@ -195,6 +197,17 @@ test('chat opinion duplicate request is ignored', async () => {
   const baselineMessages = state.get('chat.messages.neo').slice();
   bus.events.length = 0;
 
+  module.handleStreamStart({
+    agent_id: 'anima',
+    id: 'stream-opinion',
+    meta: { opinion: { source_agent_id: 'neo', reviewer_agent_id: 'anima', request_note_id: 'client-request-id' } },
+  });
+  module.handleStreamEnd({
+    agent_id: 'anima',
+    id: 'stream-opinion',
+    meta: { opinion: { source_agent_id: 'neo', reviewer_agent_id: 'anima', request_note_id: 'client-request-id' } },
+  });
+
   await module.handleOpinionRequest({
     target_agent_id: 'anima',
     source_agent_id: 'neo',
@@ -205,5 +218,88 @@ test('chat opinion duplicate request is ignored', async () => {
   const wsEvents = bus.events.filter((evt) => evt.name === EVENTS.WS_SEND);
   assert.equal(wsEvents.length, 0);
   const updatedMessages = state.get('chat.messages.neo');
-  assert.equal(updatedMessages.length, baselineMessages.length);
+  assert.equal(updatedMessages.length, baselineMessages.length + 1);
+  const requestMessages = updatedMessages.filter((msg) => msg?.meta?.opinion_request);
+  assert.equal(requestMessages.length, 1);
+  assert.equal(requestMessages[0].id, 'client-request-id');
 });
+
+
+test('chat opinion retry allowed before response', async () => {
+  const state = createStateStub({});
+  const bus = createEventBusStub();
+  const module = new ChatModule(bus, state);
+
+  module.showToast = () => {};
+  module._updateThreadCacheFromBuckets = () => {};
+  module._clearStreamWatchdog = () => {};
+  module._startStreamWatchdog = () => {};
+  module._waitForWS = async () => true;
+  let seq = 0;
+  module._generateMessageId = () => (seq++ === 0 ? 'req-1' : 'req-2');
+
+  module.initializeState();
+  state.set('chat.currentAgentId', 'neo');
+  state.set('chat.activeAgent', 'neo');
+  state.set('chat.messages', {
+    neo: [{
+      id: 'assistant-1',
+      role: 'assistant',
+      content: 'Réponse initiale',
+      agent_id: 'neo',
+      created_at: Date.now(),
+    }],
+  });
+
+  await module.handleOpinionRequest({
+    target_agent_id: 'anima',
+    source_agent_id: 'neo',
+    message_id: 'assistant-1',
+    message_text: 'Réponse initiale',
+  });
+  const firstFrame = bus.events.find((evt) => evt.name === EVENTS.WS_SEND);
+  assert(firstFrame);
+  assert.equal(firstFrame.payload.payload.request_id, 'req-1');
+
+  bus.events.length = 0;
+  await module.handleOpinionRequest({
+    target_agent_id: 'anima',
+    source_agent_id: 'neo',
+    message_id: 'assistant-1',
+    message_text: 'Réponse initiale',
+  });
+
+  const retryEvents = bus.events.filter((evt) => evt.name === EVENTS.WS_SEND);
+  assert.equal(retryEvents.length, 1);
+  assert.equal(retryEvents[0].payload.payload.request_id, 'req-2');
+  const neoMessages = state.get('chat.messages.neo');
+  assert(neoMessages.some((msg) => msg.id === 'req-2'));
+  assert(!neoMessages.some((msg) => msg.id === 'req-1'));
+});
+
+test('chat opinion ws error surfaces toast fallback', () => {
+  const state = createStateStub({});
+  const bus = createEventBusStub();
+  const module = new ChatModule(bus, state);
+
+  const toasts = [];
+  module.showToast = (msg) => { toasts.push(msg); };
+
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    module.handleWsError({ code: 'opinion_already_exists', message: 'Dupliqué' });
+    assert.deepEqual(toasts, ['Dupliqué']);
+
+    toasts.length = 0;
+    module.handleWsError({ code: 'opinion_already_exists' });
+    assert.deepEqual(toasts, ['Avis déjà disponible pour cette réponse.']);
+
+    toasts.length = 0;
+    module.handleWsError({ message: 'Erreur générique' });
+    assert.deepEqual(toasts, ['Erreur générique']);
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
