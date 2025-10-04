@@ -50,6 +50,7 @@ psutil>=5.9,<6
 
 # --- Tooling & QA ---
 pytest>=8.3,<9                   # ensure unit tests run in CI/local
+pytest-asyncio>=1.2,<2           # async test support
 ruff>=0.13,<1                   # lint backend modules (Pydantic v2, style)
 mypy>=1.18,<2                   # static typing for backend
 

@@ -19,22 +19,46 @@
 ## 2. Architecture technique
 
 ### Backend
+
+#### Composants principaux
+
 - **`MemoryGardener`** (features/memory/gardener.py)
-  - Agrège l’historique des threads (global ou filtré par `thread_id`).
+  - Agrège l'historique des threads (global ou filtré par `thread_id`).
   - Détermine si la consolidation doit être persistée (`persist=True/False`).
   - Publie les statuts via `ConnectionManager` (`ws:analysis_status`).
+
 - **`MemoryAnalyzer`** (features/memory/analyzer.py)
   - Appelle les LLM (ordre Google → Anthropic → OpenAI) pour produire :
     - Résumé STM (texte court)
     - Concepts / faits clés
     - Entités nommées
   - Persiste dans SQLite (`memory_items`) et déclenche la vectorisation via `VectorService`.
+  - **[NOUVEAU]** Détection topic shift via `detect_topic_shift()` : compare messages récents avec résumé STM (similarité cosine), émet `ws:topic_shifted` si < seuil (0.5).
 - **`VectorService`**
   - Stocke les embeddings mémoire dans la collection `emergence_knowledge` (partagée avec les documents).
   - Surveille la corruption SQLite → backup + reset auto (`vector_store_backup_*`).
 - **Isolation par session**
   - `SessionManager.ensure_session()` transmet le `session_id` a `MemoryGardener` et `MemoryAnalyzer`; toutes les requetes SQLite utilisent ce champ (memory_sessions, memory_items, thread_docs, messages).
   - Les endpoints `POST /api/memory/*` exigent `X-Session-Id`; les evenements WS transportent `session_id` pour l'audit des consolidations/purges.
+#### Améliorations mémoire (2025-10-04)
+
+- **`MemoryContextBuilder`** (features/chat/memory_ctx.py) — Contexte enrichi
+  - **[NOUVEAU]** Injection automatique préférences actives : fetch préférences avec `confidence >= 0.6`, injectées en tête du contexte mémoire sous section "Préférences actives"
+  - **[NOUVEAU]** Pondération temporelle : boost items récents (<7j: +30%, <30j: +15%) et fréquemment utilisés (usage_count * 2%)
+  - Structure contexte : 1) Préférences actives, 2) Connaissances pertinentes (recherche vectorielle pondérée)
+
+- **`IncrementalConsolidator`** (features/memory/incremental_consolidation.py)
+  - **[NOUVEAU]** Micro-consolidations tous les N messages (seuil: 10 par défaut)
+  - Fenêtre glissante : traite seulement les 10 derniers messages au lieu de tout l'historique
+  - Merge incrémental : fusionne nouveaux concepts avec STM existante (dédupe + limite top 10)
+  - Réduit latence fin de session en évitant retraitement complet
+
+- **`IntentTracker`** (features/memory/intent_tracker.py)
+  - **[NOUVEAU]** Parsing timeframes naturels : "demain", "dans 3 jours", "cette semaine", etc.
+  - Détection intentions expirantes : scan quotidien avec lookahead configurable (7j par défaut)
+  - Rappels proactifs via `ws:memory_reminder` : max 3 rappels par intention
+  - Auto-purge : supprime intentions ignorées après 3 rappels pour éviter spam
+
 - **`ChatService` (RAG guardrails)**
   - `_sanitize_doc_ids` filtre les identifiants envoyes par l'UI et supprime les doublons.
   - Les identifiants sont recoupes avec les documents rattaches au thread courant; si aucun ne correspond, le service retombe sur la liste autorisee renvoyee par l'API.
@@ -64,25 +88,65 @@
 > Note: l'onglet "Memoire" est accessible aux comptes membres authentifies; le panneau Conversations (ThreadsPanel) reste disponible pour piloter threads et consolidations depuis un meme ecran.
 
 ## 3. Flux opérationnels
+
+### Flux existants
+
 1. **Analyse globale**
    - Trigger : clic `Analyser` sans `thread_id`.
    - `MemoryGardener` récupère toutes les sessions actives, passe `persist=True`.
    - Résultats persistés + vectorisés, diffusion `ws:analysis_status(status="done")`.
+
 2. **Analyse ciblée (thread)**
    - Trigger : action depuis un thread → `thread_id` envoyé.
    - `persist=False` possible (lecture seule) ou `persist=True` pour enregistrement.
    - Résumé disponible immédiatement via `GET /api/memory/tend-garden`.
+
 3. **Clear mémoire**
-   - `POST /api/memory/clear` → supprime d’abord STM (`memory_sessions`), puis LTM filtrée (`memory_items` + embeddings Chroma).
+   - `POST /api/memory/clear` → supprime d'abord STM (`memory_sessions`), puis LTM filtrée (`memory_items` + embeddings Chroma).
    - Diffusion `ws:memory_banner` indiquant mémoire vide.
+
 4. **RAG sur selection de documents**
    - Declencheur : modification de `selected_doc_ids` dans l'UI avec RAG actif, meme sans nouveau message utilisateur.
    - `ChatService` lance la recherche Chroma si la liste est non vide alors que `last_user_message` est vide.
    - L'UI suit les transitions `ws:rag_status` et met a jour le bandeau documents et les toasts RAG.
 
+### Nouveaux flux (2025-10-04)
+
+5. **Consolidation incrémentale automatique**
+   - Trigger : tous les 10 messages (seuil configurable)
+   - `IncrementalConsolidator.check_and_consolidate()` traite fenêtre glissante (10 derniers messages)
+   - Extraction concepts + merge avec STM existante
+   - Évite retraitement complet en fin de session
+
+6. **Détection topic shift**
+   - Trigger : analyse post-message (optionnel, peut être activé par endpoint ou automatiquement)
+   - `MemoryAnalyzer.detect_topic_shift()` compare 3 derniers messages vs résumé STM
+   - Si similarité < 0.5 → émet `ws:topic_shifted` avec suggestion de nouveau thread
+   - UI affiche toast + bouton création thread
+
+7. **Rappels intentions expirantes**
+   - Trigger : tâche cron quotidienne ou endpoint `/api/memory/check-intents`
+   - `IntentTracker.send_intent_reminders()` scan intentions avec deadline < 7j
+   - Émet `ws:memory_reminder` pour chaque intention (max 3 rappels)
+   - Auto-purge après 3 rappels ignorés
+
+8. **Contexte mémoire enrichi**
+   - Trigger : chaque message utilisateur
+   - `MemoryContextBuilder.build_memory_context()` construit contexte en 3 étapes:
+     1. Fetch préférences actives (confidence >= 0.6)
+     2. Recherche vectorielle sur connaissances
+     3. Pondération temporelle (boost récent + fréquent)
+   - Injection sections structurées : "Préférences actives" + "Connaissances pertinentes"
+
 
 ## 4. Observabilité & tests
+
+### Logs et événements
 - Logs : `memory:garden:start`, `memory:garden:done`, `memory:clear`.
+- **[NOUVEAU]** Événements WebSocket additionnels :
+  - `ws:topic_shifted` : émis quand changement de sujet détecté (similarité < seuil)
+  - `ws:memory_reminder` : rappel intention expirante (deadline approchant)
+  - Payloads incluent contexte complet (similarity score, days_remaining, etc.)
 - EventBus front : `memory:center:history` est tracé via la console (main.js) avec le nombre d'entrées et le premier `session_id` de chaque rafraîchissement du centre mémoire. Utiliser ce log pour suivre les chargements côté UI et comparer les deltas entre STM/LTM.
 - UI retry : en cas d'échec du GET, le panneau centre affiche un bouton "Réessayer" qui relance `_fetchHistory(true)` et réémet l'événement `memory:center:history`. La présence d'un nouveau log console confirme que la relance a bien été exécutée.
 
@@ -91,10 +155,19 @@
 - Auth: `POST /api/auth/logout` renvoie `Set-Cookie` vides (`id_token`, `emergence_session_id`) avec `SameSite=Lax` pour aligner la purge navigateur.
 - Reset vector store valide le 27/09/2025 via `scripts/maintenance/run-vector-store-reset.ps1`; log archive : `docs/assets/memoire/vector-store-reset-20250927.log` (health-check, tronquage, backup, upload OK).
 - UX 401 : en cas de 401 sur /api/memory/*, l'application émet `auth:missing` et affiche le toast « Connexion requise pour la mémoire. ».
-- Tests recommandés :
+### Tests recommandés
+
+#### Tests existants
   - `tests/run_all.ps1` (vérifie `/api/memory/tend-garden`).
   - `pytest tests/backend/features/test_memory_clear.py` : valide `POST /api/memory/clear` sans serveur actif (stubs DB/vector) et est invoque depuis `tests/run_all.ps1`.
   - `pytest tests/backend/features/test_chat_message_normalization.py` : mesure la normalisation des rôles/messages dans `ChatService` avant l'injection mémoire/RAG et capte les régressions sur les formats de contenu.
+
+#### Nouveaux tests (2025-10-04)
+  - **`pytest tests/backend/features/test_memory_enhancements.py`** : suite complète pour améliorations mémoire
+    - `TestMemoryContextEnhancements` : injection préférences, pondération temporelle, contexte enrichi
+    - `TestIncrementalConsolidation` : seuil déclenchement, merge concepts, fenêtre glissante
+    - `TestIntentTracker` : parsing timeframes, détection expiration, rappels, auto-purge
+  - Exécution : `pytest tests/backend/features/test_memory_enhancements.py -v`
   - `tests/test_memory_clear.ps1` (valide la purge STM/LTM et les embeddings). Pré-requis : backend local sur http://127.0.0.1:8000, dépendances Python installées, variable `EMERGENCE_ID_TOKEN` si auth activée. Exemple : `powershell -ExecutionPolicy Bypass -File tests/test_memory_clear.ps1 -BaseUrl http://localhost:8000`.
   - `scripts/smoke/scenario-memory-clear.ps1` (guide QA: health-check + injection auto + rappel des vérifications UI). Exemple : `pwsh -File scripts/smoke/scenario-memory-clear.ps1 -BaseUrl http://localhost:8000`. Dernier run : voir `docs/assets/memoire/scenario-memory-clear.log` (session `memclr-057bd36ddd5742238cc4db74f8b4bf22`, 2025-09-27).
   - `scripts/smoke/smoke-ws-rag.ps1` (WS + RAG : handshake + stream). Utiliser `-MsgType chat.message` en DEV tant que `ws:chat_send` renvoie `ws:error`. Logs 27/09 : `docs/assets/memoire/smoke-ws-rag.log` (session `ragtest124`, flux `ws:chat_stream_end`) et `docs/assets/memoire/smoke-ws-rag-ws-chat_send.log` (session `ragtest-ws-send-20250927`, erreur `Type inconnu: ws:chat_send`).

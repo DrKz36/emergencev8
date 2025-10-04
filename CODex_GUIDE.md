@@ -1,11 +1,11 @@
 # EMERGENCE - Guide Citadelle pour Codex
-_Version integree (2025-09-18)_
+_Version integree (2025-10-04)_
 
 ---
 
 ## 0. Principes Citadelle / ARBO-LOCK
 
-- **Verite** = (1) code source livre complet, (2) dernier snapshot rborescence_synchronisee_*.txt.
+- **Verite** = (1) code source livre complet, (2) dernier snapshot rborescence_synchronisee_*.txt.
 - **ARBO-LOCK** : tout fichier non liste n'existe pas. Toute creation/deplacement/suppression doit etre annonce + snapshot mis a jour.
 - **Snapshot commande** (Windows PowerShell) :
   `powershell
@@ -67,13 +67,12 @@ Conclusion du panorama : EMERGENCE se distingue par sa **double orientation** :
 - **Backend** :
   - main.py (montage FastAPI, keepalive).
   - core/websocket.py (handshake gracieux, auth_required).
-  - 
-eatures/chat/service.py (orchestration multi-fournisseurs, fallback).
+  - features/chat/service.py (orchestration multi-fournisseurs, fallback).
   - shared/dependencies.py (extraction user ID).
 - **Frontend** :
   - state-manager.js (bootstrap + auth).
   - websocket.js (ouverture WS post-auth).
-  - pi-client.js (fetchWithAuth).
+  - api-client.js (fetchWithAuth).
   - documents.js + document-ui.js (evenements, stats).
   - debate-ui.js (UI homogene, isolation stricte).
   - main.js (branding, responsive).
@@ -194,8 +193,7 @@ eatures/chat/service.py (orchestration multi-fournisseurs, fallback).
 - **Runtime** : concurrency=80, cpu=1, memory=1Gi, timeout=120s, min-instances=1, max-instances=10.
 - **Scheduler** : ping /api/health toutes 5 min.
 - **Tests** : /.git/config = 403, /api/health = 200.
-- **Prochaines etapes** : finaliser UX login (email + mot de passe), renforcer wrapper 
-etchWithAuth, allowlist emails/domaines.
+- **Prochaines etapes** : finaliser UX login (email + mot de passe), renforcer wrapper fetchWithAuth, allowlist emails/domaines.
 
 ---
 
@@ -212,19 +210,60 @@ etchWithAuth, allowlist emails/domaines.
 ## 10. Checklist pour Codex
 
 1. **Avant toute modif** :
-   - Lire le dernier rborescence_synchronisee_*.txt.
+   - Lire le dernier arborescence_synchronisee_*.txt.
    - Verifier la roadmap dans ce guide.
+   - **Consulter `docs/passation.md`** (dernières 3 entrées minimum).
+   - **Lire `CODEV_PROTOCOL.md`** (protocole co-développement avec Claude Code).
 
 2. **Pendant la modif** :
    - Ne livrer que des fichiers complets.
    - Respecter l'ARBO-LOCK (pas de deplacement sans snapshot).
    - Commit clair, e.g. [chat][backend] Fix fallback Neo.
+   - **Modification croisée autorisée** : Codex peut modifier du code écrit par Claude Code et vice-versa.
 
 3. **Apres la modif** :
-   - Generer un snapshot arbo.
+   - Generer un snapshot arbo (si creation/deplacement/suppression).
    - Verifier les tests d'acceptation (auth, chat, docs, debat, UI).
+   - **Tests obligatoires** : `pytest`, `npm run build`, `pwsh -File tests/run_all.ps1`.
+   - **Consigner dans `docs/passation.md`** (template complet dans CODEV_PROTOCOL.md).
    - Deployer en canary -> valider health -> promouvoir.
 
 ---
 
-Ce document est **exhaustif** : genese, comparatif, architecture, roadmaps (strategique et execution), sequences, API, deploiement, checklist Codex.
+## 11. Collaboration avec Claude Code (co-développement)
+
+### Principes
+- **Égalité** : Codex et Claude Code sont des co-développeurs de niveau équivalent.
+- **Autonomie** : chaque agent peut modifier n'importe quel fichier (backend, frontend, docs, scripts).
+- **Validation** : l'architecte humain (FG) valide avant commit/push/deploy GCloud.
+- **Communication** : via Git (commits, branches) et `docs/passation.md` (journal inter-agents).
+
+### Lecture obligatoire avant session
+1. **`CODEV_PROTOCOL.md`** : protocole complet de co-développement.
+2. **`docs/passation.md`** : contexte récent, blocages, actions recommandées.
+3. **`git status`** et **`git log --oneline -10`** : état actuel du dépôt.
+
+### Passation de relais (handoff)
+Consigner systématiquement dans `docs/passation.md` :
+- Date/heure (Europe/Zurich), agent (**Codex** | Claude Code).
+- Fichiers modifiés (liste exhaustive).
+- Contexte et décisions prises.
+- Actions recommandées pour le prochain agent.
+- Blocages éventuels (tests échoués, dépendances manquantes).
+
+**Template complet disponible dans `CODEV_PROTOCOL.md` section 2.1.**
+
+### Zones de responsabilité suggérées (non bloquantes)
+- **Codex** : Frontend JavaScript, UI/UX, scripts PowerShell, documentation utilisateur.
+- **Claude Code** : Backend Python, architecture, tests, documentation technique.
+- **Important** : ces zones sont indicatives. Tout agent peut intervenir partout.
+
+### Ressources
+- **`CODEV_PROTOCOL.md`** : protocole détaillé.
+- **`AGENTS.md`** : consignes générales (section 13 : co-développement).
+- **`docs/passation.md`** : journal inter-agents.
+- **`docs/git-workflow.md`** : workflow Git et squash merge.
+
+---
+
+Ce document est **exhaustif** : genese, comparatif, architecture, roadmaps (strategique et execution), sequences, API, deploiement, checklist Codex, co-développement multi-agents.

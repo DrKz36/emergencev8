@@ -60,27 +60,120 @@ class MemoryContextBuilder:
                 "EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge"
             )
             knowledge_col = self.vector_service.get_or_create_collection(knowledge_name)
-            where_filter = None
             uid = self.try_get_user_id(session_id)
+
+            # Build memory context with 3 components:
+            # 1. Active preferences (high confidence, always injected)
+            # 2. Vector search results (concepts/facts related to query)
+            # 3. Temporal weighting (boost recent items)
+
+            sections = []
+
+            # 1. Fetch and inject active preferences
             if uid:
-                where_filter = {"user_id": uid}
+                prefs = self._fetch_active_preferences(knowledge_col, uid)
+                if prefs:
+                    sections.append(("Préférences actives", prefs))
+
+            # 2. Vector search for concepts/facts
+            where_filter = {"user_id": uid} if uid else None
             results = self.vector_service.query(
                 collection=knowledge_col,
                 query_text=last_user_message,
                 n_results=top_k,
                 where_filter=where_filter,
             )
-            if not results:
+
+            if results:
+                # 3. Apply temporal weighting (boost recent items)
+                weighted_results = self._apply_temporal_weighting(results)
+
+                lines = []
+                for r in weighted_results[:top_k]:
+                    t = (r.get("text") or "").strip()
+                    if t:
+                        lines.append(f"- {t}")
+
+                if lines:
+                    sections.append(("Connaissances pertinentes", "\n".join(lines)))
+
+            # Merge all sections
+            if not sections:
                 return ""
-            lines = []
-            for r in results:
-                t = (r.get("text") or "").strip()
-                if t:
-                    lines.append(f"- {t}")
-            return "\n".join(lines[:top_k])
+
+            return self.merge_blocks(sections)
+
         except Exception as e:
             logger.warning(f"build_memory_context: {e}")
             return ""
+
+    def _fetch_active_preferences(self, collection, user_id: str) -> str:
+        """Fetch active preferences with high confidence (>0.6) for immediate injection."""
+        try:
+            where = {
+                "$and": [
+                    {"user_id": user_id},
+                    {"type": "preference"},
+                    {"confidence": {"$gte": 0.6}},
+                ]
+            }
+            got = collection.get(where=where, include=["documents", "metadatas"])
+            docs = got.get("documents", []) or []
+
+            if not docs:
+                return ""
+
+            prefs = []
+            for doc in docs[:5]:  # Limit to top 5 preferences
+                if doc and doc.strip():
+                    # Extract preference text (format: "topic: preference")
+                    prefs.append(f"- {doc.strip()}")
+
+            return "\n".join(prefs) if prefs else ""
+
+        except Exception as e:
+            logger.debug(f"_fetch_active_preferences: {e}")
+            return ""
+
+    def _apply_temporal_weighting(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Apply temporal weighting to boost recent and frequently used items."""
+        import datetime
+
+        now = datetime.datetime.now(datetime.timezone.utc)
+        weighted = []
+
+        for r in results:
+            meta = r.get("metadata", {}) or {}
+            created_at = meta.get("created_at")
+            usage_count = meta.get("usage_count", 0)
+
+            # Calculate freshness boost (1.0 to 1.3 based on age)
+            freshness_boost = 1.0
+            if created_at:
+                try:
+                    created_dt = datetime.datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                    age_days = (now - created_dt).days
+                    if age_days < 7:
+                        freshness_boost = 1.3  # Recent items (< 7 days)
+                    elif age_days < 30:
+                        freshness_boost = 1.15  # Medium recent (< 30 days)
+                except Exception:
+                    pass
+
+            # Calculate usage boost (1.0 to 1.2 based on usage count)
+            usage_boost = 1.0 + min(0.2, usage_count * 0.02)
+
+            # Apply combined boost to score
+            original_score = r.get("score", 1.0)
+            boosted_score = original_score * freshness_boost * usage_boost
+
+            r["boosted_score"] = boosted_score
+            weighted.append(r)
+
+        # Sort by boosted score (descending)
+        weighted.sort(key=lambda x: x.get("boosted_score", 0), reverse=True)
+
+        return weighted
 
     def normalize_history_for_llm(
         self,

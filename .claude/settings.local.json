@@ -16,7 +16,10 @@
       "Bash(git pull:*)",
       "Bash(git restore:*)",
       "Bash(git log:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(python:*)",
+      "Bash(ruff check:*)",
+      "Bash(mypy:*)"
     ],
     "deny": [],
     "ask": []

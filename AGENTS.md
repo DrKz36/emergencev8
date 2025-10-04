@@ -113,3 +113,45 @@
 - Programmer `scripts/sync-workdir.ps1` (Task Scheduler/cron) sur les postes utilises frequemment pour rappeler les synchronisations.
 - Coupler la CI (GitHub Actions) pour reconstruire et tester chaque push vers la branche de travail avant fusion.
 - Activer `pre-commit` avec des hooks de formatage/lint afin d'eviter de pousser des artefacts temporaires.
+
+---
+
+## 13. Co-developpement multi-agents (Claude Code ↔ Codex)
+
+### Principes fondamentaux
+- **Egalite technique** : Claude Code et Codex sont des co-developpeurs de niveau ingenieur equivalent.
+- **Modification croisee autorisee** : tout agent peut modifier n'importe quel fichier du depot.
+- **Validation architecte** : l'architecte humain (FG) valide avant commit/push/deploy.
+- **Communication asynchrone** : via Git (commits, branches) et documentation (passation).
+
+### Lecture obligatoire avant toute session
+1. `CODEV_PROTOCOL.md` : protocole complet de co-developpement.
+2. `docs/passation.md` : dernières 3 entrées minimum (contexte, blocages, next actions).
+3. `git status` et `git log --oneline -10` : etat actuel du depot.
+
+### Passation de relais (handoff)
+Chaque agent doit consigner systematiquement dans `docs/passation.md` :
+- Date/heure (Europe/Zurich), agent (Claude Code | Codex).
+- Fichiers modifies (liste exhaustive).
+- Contexte et decisions prises.
+- Actions recommandees pour le prochain agent.
+- Blocages eventuels (dependances, tests echoues).
+
+### Tests obligatoires avant validation
+- [ ] Backend : `pytest` (ou sous-ensemble pertinent).
+- [ ] Frontend : `npm run build`.
+- [ ] Smoke tests : `pwsh -File tests/run_all.ps1`.
+- [ ] Linters : `ruff check`, `mypy`.
+- [ ] Documentation : mise a jour `docs/passation.md`, architecture si impactee.
+- [ ] ARBO-LOCK : snapshot si creation/deplacement/suppression de fichiers.
+
+### Zones de responsabilite suggerees (non bloquantes)
+- **Claude Code** : Backend Python, architecture, tests, documentation technique.
+- **Codex** : Frontend JavaScript, UI/UX, scripts PowerShell, documentation utilisateur.
+- **Important** : ces zones sont indicatives. Tout agent peut intervenir partout.
+
+### Ressources
+- `CODEV_PROTOCOL.md` : protocole detaille.
+- `docs/passation.md` : journal inter-agents.
+- `docs/git-workflow.md` : workflow Git.
+- `docs/workflow-sync.md` : synchronisation cloud/local.

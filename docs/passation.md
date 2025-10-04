@@ -1,3 +1,43 @@
+# Journal de Passation Inter-Agents — Emergence V8
+
+**Usage** : ce fichier sert de journal chronologique pour la communication asynchrone entre agents IA (Claude Code, Codex) et l'architecte humain (FG).
+
+**Template** : voir `docs/passation-template.md` pour le format standard d'une entrée.
+
+**Protocole complet** : `CODEV_PROTOCOL.md`
+
+---
+
+## [2025-10-04 16:00] — Agent: Claude Code
+
+### Fichiers modifiés
+- `CODEV_PROTOCOL.md` (nouveau, racine)
+- `AGENTS.md` (ajout section 13 : co-développement multi-agents)
+- `CODex_GUIDE.md` (ajout section 11 : collaboration Claude Code)
+- `docs/passation-template.md` (nouveau)
+- `docs/passation.md` (ajout entête + cette entrée)
+
+### Contexte
+Mise en place du protocole de co-développement multi-agents selon demande architecte.
+Établissement workflow Claude Code ↔ Codex avec égalité technique, modification croisée autorisée, validation humaine requise.
+Documentation complète créée pour assurer collaboration fluide sans accrocs.
+
+### Tests
+- ⏭️ Tests non applicables (documentation uniquement)
+- ⏭️ `git status` : fichiers non commités (attente validation architecte)
+
+### Prochaines actions recommandées
+1. **Validation architecte** : revue `CODEV_PROTOCOL.md` + mises à jour `AGENTS.md`/`CODex_GUIDE.md`.
+2. **Après validation** : mettre à jour `README.md` (lien vers `CODEV_PROTOCOL.md`).
+3. **Commit** : `docs: add multi-agent codev protocol (Claude Code ↔ Codex)`.
+4. **Communication** : partager `CODEV_PROTOCOL.md` avec Codex lors de sa prochaine session.
+5. **Suite** : implémenter Quick Wins audit mémoire (injection préférences, pondération temporelle, topic shift).
+
+### Blocages
+Aucun. Attente validation avant commit/push.
+
+---
+
 ## Session 2025-09-27 - Migration session isolation
 - Migration `20250928_session_isolation.sql` rendue idempotente (suppression des `ALTER TABLE` + propagation vers `core/migrations`).
 - Stockage local remis a zero (`src/backend/data/db/` + `src/backend/data/vector_store/`) puis backend relance via `pwsh -File scripts/run-backend.ps1`; toutes les migrations passent sans stacktrace.

@@ -117,3 +117,18 @@ Keeping these steps in sync between cloud and local runs eliminates version drif
 ### Politique de merge
 
 Le depot applique le **squash merge** pour toutes les Pull Requests. Apres merge, vos commits individuels sont regroupes dans un seul commit sur `main`. Pour connaitre la procedure complete (verification, suppression des branches, relance du script de sync), consulter `docs/git-workflow.md`.
+
+## Co-développement multi-agents
+
+Emergence V8 utilise une approche collaborative avec plusieurs agents IA (Claude Code, Codex) travaillant comme co-développeurs de niveau équivalent. Les principes clés :
+
+- **Égalité technique** : tous les agents peuvent modifier n'importe quel fichier du dépôt.
+- **Modification croisée** : un agent peut compléter ou corriger le travail d'un autre.
+- **Validation humaine** : l'architecte valide les changements avant commit/push/deploy.
+- **Communication asynchrone** : via Git (commits, branches) et `docs/passation.md` (journal inter-agents).
+
+**Protocole complet** : voir [`CODEV_PROTOCOL.md`](CODEV_PROTOCOL.md)
+
+**Consignes agents** : voir [`AGENTS.md`](AGENTS.md) (section 13) et [`CODex_GUIDE.md`](CODex_GUIDE.md) (section 11)
+
+**Journal de passation** : [`docs/passation.md`](docs/passation.md) (contexte récent, blocages, prochaines actions)

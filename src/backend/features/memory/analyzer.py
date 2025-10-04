@@ -1,5 +1,5 @@
 # src/backend/features/memory/analyzer.py
-# V3.2 - + analyze_history(no-persist) ; refactor _analyze(..., persist)
+# V3.3 - + topic shift detection
 import logging
 from typing import Dict, Any, List, Optional, TYPE_CHECKING
 
