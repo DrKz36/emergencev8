@@ -1138,9 +1138,19 @@ class EmergenceClient {
       this.storageListener = null;
     }
     if (this.home) this.home.unmount();
+
     if (typeof document !== 'undefined') {
       document.body.classList.remove('home-active');
+      if (this.homeRoot) {
+        this.homeRoot.setAttribute('hidden', 'true');
+        this.homeRoot.setAttribute('aria-hidden', 'true');
+      }
+      if (this.appContainer) {
+        this.appContainer.removeAttribute('hidden');
+        this.appContainer.style.display = '';
+      }
     }
+
     try { this.state?.set?.('auth.hasToken', true); }
     catch (err) { console.warn('[main] Impossible de mettre a jour auth.hasToken', err); }
     await this.refreshSessionRole(source);
@@ -1211,6 +1221,10 @@ class EmergenceClient {
     this.hideLoader();
     if (typeof document !== 'undefined') {
       document.body.classList.add('home-active');
+      if (this.homeRoot) {
+        this.homeRoot.removeAttribute('hidden');
+        this.homeRoot.setAttribute('aria-hidden', 'false');
+      }
     }
     if (this.homeRoot && this.home) {
       this.home.mount(this.homeRoot);
