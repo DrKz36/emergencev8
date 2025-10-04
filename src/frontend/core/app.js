@@ -9,6 +9,8 @@ import { EVENTS } from '../shared/constants.js';
 import { api } from '../shared/api-client.js'; // + Threads API
 import { t } from '../shared/i18n.js';
 import { modals } from '../components/modals.js';
+import { Tutorial } from '../components/tutorial/Tutorial.js';
+import { TutorialMenu } from '../components/tutorial/TutorialMenu.js';
 
 const THREAD_ID_HEX_RE = /^[0-9a-f]{32}$/i;
 const THREAD_ID_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -17,6 +19,7 @@ const AUTH_ERROR_STATUSES = new Set([401, 403, 419, 440]);
 const THREAD_INACCESSIBLE_MARKER = 'thread non accessible pour cet utilisateur';
 const THREAD_INACCESSIBLE_CODES = new Set(['thread_not_accessible', 'thread_inaccessible']);
 const ONBOARDING_STORAGE_KEY = 'emergence.onboarding.v20250926';
+const TUTORIAL_STORAGE_KEY = 'emergence_tutorial_completed';
 
 function isNetworkError(error) {
   const status =
@@ -66,6 +69,9 @@ export class App {
     this.onboardingScheduled = false;
     this.onboardingRetryCount = 0;
 
+    this.tutorial = null;
+    this.tutorialMenu = null;
+
     this.dom = {
       appContainer: document.getElementById('app-container'),
       header: document.getElementById('app-header'),
@@ -88,7 +94,6 @@ export class App {
       },
       { id: 'documents', name: 'Documents', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>' },
       { id: 'debate', name: 'Debats', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" /></svg>' },
-      { id: 'references', name: 'A propos', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5h9a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75h-9A2.25 2.25 0 016 17.25v-12A2.25 2.25 0 018.25 3h9a.75.75 0 01.75.75V4.5h-9z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6 7.5h8.25a.75.75 0 00.75-.75V3" /></svg>' },
       { id: 'dashboard', name: 'Cockpit', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 100 15 7.5 7.5 0 000-15z" /><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 10.5c0 .678-.291 1.32-.782 1.752L6 15.252M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>' },
       {
         id: 'memory',
@@ -96,12 +101,18 @@ export class App {
         icon: '<svg class="nav-icon-brain" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><path d="M9.1 3.5c-2.1 0-3.8 1.66-3.8 3.7v1.08A3.6 3.6 0 0 0 3 11.9a3.55 3.55 0 0 0 2.08 3.2c.19.86.19 1.78 0 2.64A3.05 3.05 0 0 0 8 21h3V3.5H9.1z"></path><path d="M14.9 3.5c2.1 0 3.8 1.66 3.8 3.7v1.08A3.6 3.6 0 0 1 21 11.9a3.55 3.55 0 0 1-2.08 3.2c-.19.86-.19 1.78 0 2.64A3.05 3.05 0 0 1 16 21h-3V3.5h1.9z"></path><path d="M11 7.5h-1"></path><path d="M14 7.5h-1"></path><path d="M11 11.5h-1"></path><path d="M14 11.5h-1"></path><path d="M11 15.5h-1"></path><path d="M14 15.5h-1"></path></svg>',
         requiresRole: ['admin', 'member', 'tester'],
       },
-
       {
         id: 'admin',
         name: 'Admin',
         icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a3.75 3.75 0 117 0m-7 0H6.75A2.25 2.25 0 004.5 8.25v7.5A2.25 2.25 0 006.75 18h8.5A2.25 2.25 0 0017.5 15.75V11.5m0-5.5v5.25" /></svg>',
         requiresRole: 'admin',
+      },
+      { id: 'references', name: 'A propos', icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5h9a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75h-9A2.25 2.25 0 016 17.25v-12A2.25 2.25 0 018.25 3h9a.75.75 0 01.75.75V4.5h-9z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6 7.5h8.25a.75.75 0 00.75-.75V3" /></svg>' },
+      {
+        id: 'tutorial',
+        name: 'Tutoriel',
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><path stroke-linecap="round" stroke-linejoin="round" d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+        isTutorialTrigger: true
       },
     ];
     this.activeModule = 'chat';
@@ -141,6 +152,7 @@ export class App {
     this.renderNavigation();
     this.setupMobileNav();
     this.listenToNavEvents();
+    this.setupTutorial();
     this.bootstrapFeatures();
     this.initialized = true;
     this.handleRoleChange(this.state?.get?.('auth.role'));
@@ -334,6 +346,13 @@ export class App {
       const link = e.target.closest('.nav-link');
       if (!link || !link.dataset.moduleId) return;
       e.preventDefault();
+
+      // Gérer le clic sur le bouton Tutorial
+      if (link.dataset.moduleId === 'tutorial') {
+        this.openTutorialMenu();
+        return;
+      }
+
       this.showModule(link.dataset.moduleId);
     };
     root.addEventListener('click', handleNavClick);
@@ -636,5 +655,52 @@ export class App {
     this.finishOnboarding(true);
   }
 
+  setupTutorial() {
+    // Créer l'instance du tutoriel interactif
+    this.tutorial = new Tutorial();
+
+    // Créer l'instance du menu de tutoriels
+    this.tutorialMenu = new TutorialMenu(() => this.openTutorial());
+
+    // Vérifier si c'est la première connexion
+    const hasSeenTutorial = localStorage.getItem(TUTORIAL_STORAGE_KEY);
+
+    // Attendre que l'utilisateur soit connecté avant d'afficher le tutoriel
+    if (!hasSeenTutorial) {
+      // Écouter l'événement threads:loaded qui indique que l'auth est OK
+      this.eventBus.on('threads:loaded', () => {
+        // Attendre un peu après le chargement pour que l'UI soit stable
+        setTimeout(() => {
+          this.openTutorial();
+        }, 1500);
+      });
+    }
+  }
+
+  openTutorial() {
+    if (this.tutorial) {
+      this.tutorial.open();
+    }
+  }
+
+  closeTutorial() {
+    if (this.tutorial) {
+      this.tutorial.close();
+    }
+  }
+
+  openTutorialMenu() {
+    if (this.tutorialMenu) {
+      this.tutorialMenu.open();
+    }
+  }
+
+  closeTutorialMenu() {
+    if (this.tutorialMenu) {
+      this.tutorialMenu.close();
+    }
+  }
+
 }
+
 

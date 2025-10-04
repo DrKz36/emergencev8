@@ -9,8 +9,18 @@
   <link rel="icon" type="image/png" href="/assets/emergence_logo.png" />
   <link rel="apple-touch-icon" href="/assets/emergence_logo.png" />
 
-  <!-- Prâ”œÂ®chargement du module JS -->
+  <!-- Prâ"œÂ®chargement du module JS -->
   <link rel="modulepreload" href="/src/frontend/main.js" />
+
+  <!-- Import map pour React et ReactDOM -->
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.3.1",
+        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client"
+      }
+    }
+  </script>
 
   <!-- ===== CSS CORE ===== -->
   <link rel="stylesheet" href="/src/frontend/styles/core/reset.css">
@@ -43,6 +53,10 @@
   <link rel="stylesheet" href="/src/frontend/features/voice/voice.css">
   <link rel="stylesheet" href="/src/frontend/features/timeline/timeline.css">
   <link rel="stylesheet" href="/src/frontend/features/costs/costs.css">
+
+  <!-- ===== CSS TUTORIAL ===== -->
+  <link rel="stylesheet" href="/src/frontend/components/tutorial/Tutorial.css">
+  <link rel="stylesheet" href="/src/frontend/components/tutorial/TutorialMenu.css">
 
   <!-- ===== STYLES UNIFIâ”œÃ«S ===== -->
   <link rel="stylesheet" href="/src/frontend/styles/main-styles.css">
