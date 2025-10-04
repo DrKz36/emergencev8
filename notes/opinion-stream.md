@@ -61,3 +61,47 @@
   - `test_opinion_flow_with_duplicate_detection` : vérifie que le 2e avis identique → `ws:error` avec `code=opinion_already_exists`
   - `test_opinion_different_targets_not_duplicate` : vérifie que les avis pour des cibles différentes ne sont pas considérés comme duplicata
   - Simule le cycle complet : note USER + réponse ASSISTANT + vérification `_history_has_opinion_request`
+
+---
+
+## Passation / Review notes (2025-10-05)
+
+### Résumé de la branche `fix/debate-chat-ws-events-20250915-1808`
+
+**Objectif** : Corriger la déduplication des opinions + normalisation des chunks OpenAI + gestion d'erreurs WS
+
+**Commits clés** :
+1. `9119e0a` - fix: tighten opinion dedupe flow (backend router + frontend cache)
+2. `27a2f63` - fix: normalize streaming chunks (OpenAI delta parts)
+3. `86358ec` - docs: add ws:error matrix and integration tests
+
+**Changements backend** :
+- `router.py` : `_history_has_opinion_request` détecte les paires note+réponse (pas juste les notes isolées)
+- `service.py` : normalisation des deltas OpenAI avec `_normalize_openai_delta_content`
+- `ws:error` avec `code=opinion_already_exists` envoyé sur duplicata opinion
+
+**Changements frontend** :
+- `chat.js` : `handleWsError` route `opinion_already_exists` vers toast
+- Déduplication chunks répétés avec `_lastChunkByMessage` cache
+- `_findOpinionArtifacts` recherche note+réponse dans le DOM
+
+**Tests** :
+- ✅ `test_chat_router_opinion_dedupe.py` (3 tests backend)
+- ✅ `test_ws_opinion_flow.py` (2 tests intégration)
+- ✅ `chat-opinion.flow.test.js` (4 tests frontend)
+- ✅ `npm run build` OK
+
+**Documentation** :
+- `notes/opinion-stream.md` : matrice complète des 15 points d'émission `ws:error`
+- `30-Contracts.md` : spec existante `{ code: "rate_limited|internal_error" }` non implémentée
+
+**Métriques** :
+- 0 régression sur les tests existants
+- +5 nouveaux tests (2 intégration, 3 dedupe)
+- Couverture opinion flow : note creation → duplicate detection → toast UI
+
+**Prochaines étapes suggérées** :
+1. ✅ Merge dans `main` après revue
+2. 📊 Implémenter métriques/telemetry pour `ws:error` (compteur par code)
+3. 🔧 Standardiser : tous les `ws:error` devraient avoir un `code` (actuellement 1/15)
+4. 🚀 Ajouter codes manquants : `rate_limited`, `internal_error`
