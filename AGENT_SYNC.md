@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-04 (Claude Code)
+**Dernière mise à jour** : 2025-10-04 (Codex)
 
 ---
 
@@ -33,7 +33,8 @@
 **Note cloud (Codex)** : `git fetch origin` bloqué par proxy HTTP 403. Retry quand réseau OK.
 
 ### Fichiers modifiés non commités
-- `.claude/settings.local.json` — config permissions + tone casual
+- `requirements.txt` — ajout `prometheus-client` (metrics)
+- `docs/passation.md` — entrée session Codex 2025-10-04 21:08
 
 ---
 
@@ -53,8 +54,18 @@
 - **Actions recommandées** : `git fetch --all --prune` puis `git rebase origin/main` une fois réseau OK
 
 ### Codex (local)
-- **Dernier sync** : Attente info
-- **Statut** : À documenter lors prochaine session
+- **Dernier sync** : 2025-10-04 21:10
+- **Statut** : Build Docker + déploiement Cloud Run (révision 00265-6cb)
+- **Fichiers touchés** :
+  - `requirements.txt` (ajout bloc Monitoring + `prometheus-client`)
+  - `docs/passation.md` (entrée session)
+- **Tests** :
+  - `pytest tests/backend/features/test_concept_recall_tracker.py`
+  - Vérification santé Cloud Run (`/api/health`)
+- **Next** :
+  - Surveiller logs `severity>=ERROR`
+  - Lancer smoke WS Cloud Run
+  - Ajouter garde-fou CI pour dépendances metrics
 
 ---
 
@@ -130,6 +141,7 @@ git log --oneline -10
 ### 2025-10-04
 - **Claude Code** : Setup protocole codev, permissions autonomes, tone casual
 - **Codex** : Protocole multi-agents établi, passation template créé
+- **Codex (local)** : Ajout `prometheus-client` (metrics) + build/push + déploiement Cloud Run révision 00265-6cb
 
 ---
 

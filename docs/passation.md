@@ -308,3 +308,32 @@ pm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js passe apr
 
 
 - 2025-09-30 : Investigation threads manquants – les requêtes REST filtrent désormais par user_id hashé (cf. src/backend/core/database/queries.py:_build_scope_condition). Les entrées historiques créées avant la migration conservent le placeholder 'FG' en user_id (ex.: threads f5db25d7af01415a8cb47f0bcd5918cc) et sont donc exclues des réponses pour le même compte (gonzalefernando@gmail.com). Aucun contenu n'est perdu en base (messages/documents présents), mais le backfill (src/backend/core/database/backfill.py) ne remplace pas ces valeurs. FAIT 2025-09-30 : run_user_scope_backfill remappe désormais les placeholders 'FG' vers le hash SHA-256 du compte de référence (AUTH_DEV_DEFAULT_EMAIL) et cascade sur threads/messages/documents/thread_docs/document_chunks. Test backend ajouté : tests/backend/features/test_user_scope_persistence.py::test_user_scope_backfill_remaps_legacy_placeholder.
+
+## [2025-10-04 21:08] - Agent: Codex
+
+### Fichiers modifiés
+- `requirements.txt`
+
+### Contexte
+- Dépendance `prometheus-client` manquante provoquait l’échec du démarrage Cloud Run ; ajout dans `requirements.txt` puis rebuild image.
+- Nouvelle image poussée et déployée (`deploy-20251004-205347` → révision `emergence-app-00265-6cb`).
+
+### Actions réalisées
+1. `pip install -r requirements.txt` (mise à jour env local, ajout `prometheus-client`).
+2. `docker build --platform linux/amd64 -t europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251004-205347 .`
+3. `docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251004-205347`
+4. `gcloud run deploy emergence-app --image europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251004-205347 --region europe-west1 --project emergence-469005 --quiet`
+5. `Invoke-WebRequest https://emergence-app-486095406755.europe-west1.run.app/api/health` → 200 OK.
+
+### Tests
+- ✅ `pytest tests/backend/features/test_concept_recall_tracker.py`
+- ✅ `Invoke-WebRequest https://emergence-app-486095406755.europe-west1.run.app/api/health`
+- ⏭️ `pwsh -File scripts/run_all.ps1` (échec précédent: credentials smoke manquants, à relancer quand identifiants dispo)
+
+### Prochaines actions recommandées
+1. Surveiller `gcloud beta run services logs tail emergence-app --region europe-west1 --project emergence-469005 --log-filter "severity>=ERROR"` durant la fenêtre post-déploiement.
+2. Lancer un smoke test WS (`pwsh -File scripts/smoke/smoke-wss-cloudrun.ps1`) pour valider le streaming temps réel avec la nouvelle révision.
+3. Ajouter un check CI pour garantir que `prometheus-client` reste packagé si d’autres modules métriques sont ajoutés.
+
+### Blocages
+- Aucun (hors smoke tests nécessitant credentials).
