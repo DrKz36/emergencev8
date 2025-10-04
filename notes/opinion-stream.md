@@ -18,3 +18,46 @@
 - Backend router `_history_has_opinion_request` now checks for paired user notes + assistant reviews before deduping; regression cases live in `tests/backend/features/test_chat_router_opinion_dedupe.py` and cover mixed Anima/Neo/Nexus flows plus `ChatMessage`-style objects.
 - Frontend `ChatModule` routes `ws:error` with `code=opinion_already_exists` to a toast, dedupes repeated stream chunks, and keeps last chunk caches when ids change; `src/frontend/features/chat/__tests__/chat-opinion.flow.test.js` locks retries-before-response and toast fallbacks.
 - Opinion debug instrumentation removed from the frontend; no `[OpinionDebug]` output remains in standard builds.
+
+### WebSocket Error Matrix (ws:error)
+
+**Backend sources** (`router.py` + `service.py`):
+| Location | Code | Message | Trigger |
+|----------|------|---------|---------|
+| router.py:262 | - | "Message WebSocket incomplet (type/payload)." | Missing type/payload in WS frame |
+| router.py:296 | - | "Débat: 'topic' manquant ou invalide." | debate:create without valid topic |
+| router.py:311 | - | "Débat: 'agent_order' ≥ 2 agents requis." | debate:create agent_order < 2 |
+| router.py:322 | - | "Débat: 'rounds' doit être un entier ≥ 1." | debate:create rounds < 1 |
+| router.py:360 | - | f"Type débat inconnu: {message_type}" | Unknown debate:* subtype |
+| router.py:371 | - | f"Erreur débat: {e}" | Exception during debate processing |
+| router.py:389 | - | "chat.message: 'text' et 'agent_id' requis." | chat.message missing text/agent_id |
+| router.py:472 | - | f"chat.message erreur: {e}" | Exception during chat.message |
+| router.py:509 | - | "chat.opinion: 'target_agent_id' et 'message_id' requis." | chat.opinion missing required fields |
+| router.py:539 | **opinion_already_exists** | "Avis déjà disponible pour cette réponse." | Duplicate opinion request detected in history |
+| router.py:561 | - | f"chat.opinion erreur: {e}" | Exception during chat.opinion |
+| router.py:571 | - | f"Type inconnu: {message_type}" | Unknown message type (fallback) |
+| service.py:1339 | - | f"Erreur interne pour l'agent {agent_id}: {e}" | Streaming exception |
+| service.py:1648 | - | f"Agent {target_agent_id!r} indisponible pour un avis." | Invalid opinion target agent |
+| service.py:1675 | - | "Impossible de récupérer la réponse à analyser." | Opinion message_text empty/not found |
+
+**Frontend handling** (`chat.js:763-785`):
+- `code=opinion_already_exists` → toast avec message custom (ligne 774-776)
+- Autres codes → toast avec `payload.message` (ligne 779-780)
+- Tous les `ws:error` sont loggés en `console.warn` (ligne 769/771)
+
+**Documentation** ([30-Contracts.md:71](c:\dev\emergenceV8\docs\architecture\30-Contracts.md#L71)):
+```json
+{ "type": "ws:error", "payload": { "message": "…", "code": "rate_limited|internal_error" } }
+```
+→ Les codes `rate_limited|internal_error` mentionnés dans la spec ne sont pas encore implémentés côté backend
+
+**TODO** :
+- [ ] Ajouter métriques/telemetry pour les `ws:error` (compteur par code/message_type)
+- [ ] Implémenter les codes manquants : `rate_limited`, `internal_error`
+- [ ] Standardiser le format : tous les `ws:error` devraient avoir un `code` (actuellement seul `opinion_already_exists` l'expose)
+
+### Integration tests
+- `tests/backend/integration/test_ws_opinion_flow.py` : tests intégration du flux opinion avec détection de duplicata
+  - `test_opinion_flow_with_duplicate_detection` : vérifie que le 2e avis identique → `ws:error` avec `code=opinion_already_exists`
+  - `test_opinion_different_targets_not_duplicate` : vérifie que les avis pour des cibles différentes ne sont pas considérés comme duplicata
+  - Simule le cycle complet : note USER + réponse ASSISTANT + vérification `_history_has_opinion_request`
