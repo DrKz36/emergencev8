@@ -551,6 +551,33 @@ class ChatService:
                 normalized.append({"role": "user" if role in (Role.USER, "user") else "assistant", "content": text})
         return normalized
 
+    @staticmethod
+    def _normalize_openai_delta_content(raw: Any) -> str:
+        """Return normalized text from OpenAI delta content."""
+        if raw is None:
+            return ""
+        if isinstance(raw, str):
+            return raw
+        if isinstance(raw, list):
+            parts: List[str] = []
+            for item in raw:
+                try:
+                    if hasattr(item, 'text'):
+                        text_value = getattr(item, 'text')
+                    elif isinstance(item, dict):
+                        text_value = item.get('text')
+                    else:
+                        text_value = None
+                    if text_value:
+                        parts.append(str(text_value))
+                except Exception:
+                    continue
+            return ''.join(parts)
+        try:
+            return str(raw)
+        except Exception:
+            return ""
+
     async def _ensure_async_stream(
         self,
         stream_candidate: Any,
@@ -592,7 +619,8 @@ class ChatService:
             async for event in stream:
                 try:
                     delta = event.choices[0].delta
-                    text = getattr(delta, "content", None)
+                    raw_content = getattr(delta, "content", None)
+                    text = self._normalize_openai_delta_content(raw_content)
                     if text:
                         yield text
                 except Exception:
@@ -1767,7 +1795,10 @@ class ChatService:
     def _compute_chunk_delta(previous_text: str, raw_chunk: Optional[str]) -> Tuple[str, str]:
         if raw_chunk is None:
             return previous_text, ""
-        chunk = str(raw_chunk)
+        try:
+            chunk = str(raw_chunk)
+        except Exception:
+            chunk = ""
         if not chunk:
             return previous_text, ""
         if not previous_text:
@@ -1778,8 +1809,21 @@ class ChatService:
             return chunk, chunk[len(previous_text):]
         if previous_text.startswith(chunk):
             return previous_text, ""
-        if chunk in previous_text:
+        if previous_text.endswith(chunk):
             return previous_text, ""
+
+        max_overlap = min(len(chunk), len(previous_text))
+        overlap = 0
+        for size in range(max_overlap, 0, -1):
+            if previous_text.endswith(chunk[:size]):
+                overlap = size
+                break
+        if overlap:
+            delta = chunk[overlap:]
+            if not delta:
+                return previous_text, ""
+            return previous_text + delta, delta
+
         return previous_text + chunk, chunk
 
     # ---------- diverses ----------
