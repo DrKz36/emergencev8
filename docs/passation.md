@@ -464,3 +464,27 @@ pm test -- src/frontend/core/__tests__/app.ensureCurrentThread.test.js passe apr
 
 ### Blocages
 - Aucun (hors smoke tests nécessitant credentials).
+## [2025-10-05 17:42] - Agent: Codex
+
+### Fichiers modifies
+- `docs/story-genese-emergence.md`
+
+### Contexte
+- Refonte de la section Genese pour le module "A propos" en s'appuyant sur "docs/ÉMERGENCE_Genese 120625.pdf" et "When Domain Expertise Meets AI.docx".
+- Objectif: aligner la narration avec les sources recentes (timeline detaillee, collaboration symbiotique FG + Claude, vigilance sur souverainete et memoire).
+
+### Actions
+1. Lecture et extraction du contenu PDF/Docx (conversion via PowerShell/Zip + PyPDF2).
+2. Re-ecriture complete de `docs/story-genese-emergence.md` (structure chronologique, focus collaboration humain-IA, vigilance).
+3. Tentative de `pwsh -File scripts/sync-workdir.ps1` avant travaux -> echecs car le depot etait deja dirty (modifs preexistantes non touchees).
+
+### Tests
+- Documentation uniquement (pas de tests executes).
+
+### Prochaines actions recommandees
+1. Verifier en front que le module "A propos" rend correctement la nouvelle structure (ancrages, slugify, surlignage).
+2. Decider si un resume court doit etre expose dans `index.html` ou un autre module pour coherence marketing.
+3. Evaluer la necessite de derivations FR/EN si d'autres agents doivent reutiliser le narratif (docs/user-facing).
+
+### Blocages
+- Aucun cote documentation; attendre que l'etat dirty historique soit resolu avant une prochaine sync script.

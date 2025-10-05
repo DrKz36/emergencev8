@@ -15,6 +15,7 @@
 - Consulter les references clefs : `docs/architecture/`, `docs/Roadmap Strategique.txt`, `docs/Memoire.md`.
 - Lancer `pwsh -File scripts/sync-workdir.ps1` (option par defaut) ou realiser l'equivalent manuel (`git fetch --all --prune`, rebase, tests rapides).
 - Verifier que `git status` est propre et que l'environnement (virtualenv Python + Node.js) est pret.
+- Verifier que Codex/Copilot est configure en auto-completion auto-apply (settings VS Code/Windsurf) pour eviter les demandes d'approbation.
 
 ### Pendant le developpement
 - Avancer sans interruption sur l'objectif confie en bouclant l'ensemble des taches identifiees avant de solliciter l'utilisateur, sauf dependance bloquante explicitement consignee.
@@ -120,7 +121,7 @@
 
 ---
 
-## 13. Co-developpement multi-agents (Claude Code ↔ Codex)
+## 13. Co-developpement multi-agents (Claude Code ? Codex)
 
 ### Principes fondamentaux
 - **Egalite technique** : Claude Code et Codex sont des co-developpeurs de niveau ingenieur equivalent.
@@ -130,7 +131,7 @@
 
 ### Lecture obligatoire avant toute session
 1. `CODEV_PROTOCOL.md` : protocole complet de co-developpement.
-2. `docs/passation.md` : dernières 3 entrées minimum (contexte, blocages, next actions).
+2. `docs/passation.md` : derni?res 3 entr?es minimum (contexte, blocages, next actions).
 3. `git status` et `git log --oneline -10` : etat actuel du depot.
 
 ### Passation de relais (handoff)

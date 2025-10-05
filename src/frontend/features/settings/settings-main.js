@@ -94,14 +94,6 @@ export class Settings {
                             <span class="nav-hint">Guides et documentation</span>
                         </div>
                     </button>
-                    <button class="settings-nav-item ${this.activeTab === 'about' ? 'active' : ''}"
-                            data-tab="about">
-                        <span class="nav-icon">ℹ️</span>
-                        <div class="nav-content">
-                            <span class="nav-label">À propos</span>
-                            <span class="nav-hint">Version et informations</span>
-                        </div>
-                    </button>
                 </div>
 
                 <!-- Settings Content -->
@@ -122,14 +114,6 @@ export class Settings {
                     <div class="settings-panel ${this.activeTab === 'tutorial' ? 'active' : ''}"
                          data-panel="tutorial">
                         <div id="settings-tutorial-container"></div>
-                    </div>
-
-                    <!-- About Tab -->
-                    <div class="settings-panel ${this.activeTab === 'about' ? 'active' : ''}"
-                         data-panel="about">
-                        <div id="settings-about-container">
-                            ${this.renderAbout()}
-                        </div>
                     </div>
                 </div>
 
@@ -397,39 +381,45 @@ export class Settings {
             const modal = document.createElement('div');
             modal.className = 'modal-overlay documentation-modal';
             modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.75);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10000;
-                backdrop-filter: blur(4px);
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                background: rgba(0, 0, 0, 0.85) !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                z-index: 2147483646 !important;
+                backdrop-filter: blur(4px) !important;
+                pointer-events: auto !important;
             `;
             modal.innerHTML = `
                 <div class="modal-container documentation-modal-container" style="
-                    background: rgba(11, 18, 32, 0.98);
-                    border: 1px solid rgba(148, 163, 184, 0.3);
-                    border-radius: 20px;
-                    max-width: 95vw;
-                    width: 1600px;
-                    max-height: 95vh;
-                    display: flex;
-                    flex-direction: column;
-                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-                    position: relative;
-                    z-index: 10001;
+                    background: rgba(11, 18, 32, 0.98) !important;
+                    border: 1px solid rgba(148, 163, 184, 0.3) !important;
+                    border-radius: 20px !important;
+                    max-width: 95vw !important;
+                    width: 1600px !important;
+                    max-height: 95vh !important;
+                    height: 95vh !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+                    position: relative !important;
+                    z-index: 2147483647 !important;
+                    overflow: hidden !important;
                 ">
                     <div class="modal-header" style="
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        padding: 24px 28px;
-                        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-                        background: rgba(11, 18, 32, 0.98);
+                        display: flex !important;
+                        justify-content: space-between !important;
+                        align-items: center !important;
+                        padding: 24px 28px !important;
+                        border-bottom: 1px solid rgba(148, 163, 184, 0.2) !important;
+                        background: rgba(11, 18, 32, 0.98) !important;
+                        flex-shrink: 0 !important;
                     ">
                         <h2 style="
                             font-size: 24px;
@@ -453,19 +443,31 @@ export class Settings {
                         ">✕</button>
                     </div>
                     <div class="modal-body documentation-modal-body" style="
-                        padding: 0;
-                        overflow-y: auto;
-                        flex: 1;
-                        background: rgba(11, 18, 32, 0.98);
-                        max-height: calc(95vh - 80px);
+                        padding: 0 !important;
+                        overflow-y: auto !important;
+                        flex: 1 !important;
+                        background: rgba(11, 18, 32, 0.98) !important;
+                        max-height: calc(95vh - 80px) !important;
+                        min-height: 0 !important;
                     ">
-                        <div id="documentation-modal-content"></div>
+                        <div id="documentation-modal-content" style="
+                            width: 100% !important;
+                            height: 100% !important;
+                            min-height: 100% !important;
+                        "></div>
                     </div>
                 </div>
             `;
 
             console.log('[Settings] Appending modal to body...');
             document.body.appendChild(modal);
+            console.log('[Settings] Modal appended. Computed style:', {
+                display: window.getComputedStyle(modal).display,
+                position: window.getComputedStyle(modal).position,
+                zIndex: window.getComputedStyle(modal).zIndex,
+                visibility: window.getComputedStyle(modal).visibility,
+                opacity: window.getComputedStyle(modal).opacity
+            });
 
             // Mount documentation in modal - use querySelector on modal to ensure it's found
             console.log('[Settings] Finding container...');
@@ -906,9 +908,6 @@ Envoyé depuis ÉMERGENCE V8
                 break;
             case 'tutorial':
                 await this.modules.tutorial.init('settings-tutorial-container');
-                break;
-            case 'about':
-                // About links handled by event delegation
                 break;
         }
     }

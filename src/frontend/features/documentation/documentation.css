@@ -4,11 +4,12 @@
  */
 
 .documentation-page {
-    min-height: 100%;
-    height: auto;
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(8, 15, 35, 0.98));
-    padding: 0;
-    overflow-y: visible;
+    min-height: 100% !important;
+    height: auto !important;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(8, 15, 35, 0.98)) !important;
+    padding: 0 !important;
+    overflow-y: visible !important;
+    width: 100% !important;
 }
 
 /* Header */
@@ -615,20 +616,66 @@
     }
 }
 
+/* Modal Specific Styles */
+.documentation-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    z-index: 2147483646 !important;
+    backdrop-filter: blur(4px);
+}
+
+.documentation-modal-container {
+    background: rgba(11, 18, 32, 0.98) !important;
+    border: 1px solid rgba(148, 163, 184, 0.3) !important;
+    border-radius: 20px !important;
+    max-width: 95vw !important;
+    width: 1600px !important;
+    max-height: 95vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+    position: relative !important;
+    z-index: 2147483647 !important;
+}
+
+.documentation-modal-body {
+    padding: 0 !important;
+    overflow-y: auto !important;
+    flex: 1 !important;
+    background: rgba(11, 18, 32, 0.98) !important;
+    max-height: calc(95vh - 80px) !important;
+}
+
+.documentation-modal-body .documentation-page {
+    background: transparent !important;
+    padding: 0 !important;
+}
+
 /* Scrollbar */
-.documentation-page::-webkit-scrollbar {
+.documentation-page::-webkit-scrollbar,
+.documentation-modal-body::-webkit-scrollbar {
     width: 8px;
 }
 
-.documentation-page::-webkit-scrollbar-track {
+.documentation-page::-webkit-scrollbar-track,
+.documentation-modal-body::-webkit-scrollbar-track {
     background: rgba(15, 23, 42, 0.4);
 }
 
-.documentation-page::-webkit-scrollbar-thumb {
+.documentation-page::-webkit-scrollbar-thumb,
+.documentation-modal-body::-webkit-scrollbar-thumb {
     background: rgba(56, 189, 248, 0.3);
     border-radius: 4px;
 }
 
-.documentation-page::-webkit-scrollbar-thumb:hover {
+.documentation-page::-webkit-scrollbar-thumb:hover,
+.documentation-modal-body::-webkit-scrollbar-thumb:hover {
     background: rgba(56, 189, 248, 0.5);
 }

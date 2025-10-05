@@ -133,12 +133,35 @@ function setupMobileShell(appInstance, eventBus) {
   const menuToggle = document.getElementById('mobile-menu-toggle') || document.getElementById('mobile-nav-toggle');
   let brainToggle = document.getElementById('mobile-brain-toggle');
   const backdrop = document.getElementById('mobile-backdrop');
+  const headerNavContainer = document.getElementById('app-header-nav');
+  const usingHeaderNav = !!(headerNavContainer && headerNavContainer.classList.contains('mobile-nav'));
   if (brainToggle) {
     try { brainToggle.remove(); } catch (_) {}
     brainToggle = null;
   }
 
   const memoryClosers = memoryOverlay ? memoryOverlay.querySelectorAll('[data-memory-close]') : [];
+
+  const applyHeaderNavState = (expanded) => {
+    if (!usingHeaderNav) return false;
+    const isExpanded = !!expanded;
+    try {
+      headerNavContainer.classList.toggle('is-open', isExpanded);
+      headerNavContainer.setAttribute('aria-hidden', isExpanded ? 'false' : 'true');
+      if (menuToggle) menuToggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+      if (typeof document !== 'undefined' && document.body) {
+        document.body.classList.toggle('mobile-nav-open', isExpanded);
+        document.body.classList.toggle('mobile-menu-open', isExpanded);
+        if (isExpanded) document.body.classList.remove('brain-panel-open');
+      }
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        try { window.dispatchEvent(new CustomEvent('emergence:mobile-menu-state', { detail: { open: isExpanded } })); } catch (_) {}
+      }
+    } catch (err) {
+      console.warn('[mobile] Impossible de mettre a jour la navigation mobile', err);
+    }
+    return true;
+  };
 
   if (!menuToggle && !brainToggle && !memoryOverlay && !sidebar) return;
 
@@ -190,8 +213,20 @@ function setupMobileShell(appInstance, eventBus) {
 
   const closeMenu = () => {
     if (persistentNav) return;
-    if (!body.classList.contains('mobile-menu-open')) return;
-    body.classList.remove('mobile-menu-open');
+    let handled = false;
+    if (usingHeaderNav) {
+      if (appInstance && typeof appInstance.closeMobileNav === 'function') {
+        try { appInstance.closeMobileNav(); } catch (err) { console.warn('[mobile] closeMobileNav failed', err); }
+        handled = true;
+      } else {
+        handled = applyHeaderNavState(false);
+      }
+    } else if (body.classList.contains('mobile-menu-open')) {
+      body.classList.remove('mobile-menu-open');
+      body.classList.remove('mobile-nav-open');
+      handled = true;
+    }
+    if (!handled && !usingHeaderNav) return;
     syncBackdrop();
     updateAria();
   };
@@ -207,8 +242,17 @@ function setupMobileShell(appInstance, eventBus) {
 
   const openMenu = () => {
     if (persistentNav) return;
-    body.classList.add('mobile-menu-open');
-    body.classList.remove('brain-panel-open');
+    if (usingHeaderNav) {
+      if (appInstance && typeof appInstance.openMobileNav === 'function') {
+        try { appInstance.openMobileNav(); } catch (err) { console.warn('[mobile] openMobileNav failed', err); }
+      } else {
+        applyHeaderNavState(true);
+      }
+    } else {
+      body.classList.add('mobile-menu-open');
+      body.classList.add('mobile-nav-open');
+      body.classList.remove('brain-panel-open');
+    }
     syncBackdrop();
     updateAria();
   };
@@ -226,7 +270,7 @@ function setupMobileShell(appInstance, eventBus) {
     try { window.dispatchEvent(new CustomEvent('emergence:memory:open')); } catch (_) {}
   };
 
-  if (!persistentNav && menuToggle) {
+  if (!persistentNav && menuToggle && !usingHeaderNav) {
     menuToggle.addEventListener('click', () => {
       if (body.classList.contains('mobile-menu-open')) {
         closeMenu();
@@ -280,6 +324,7 @@ function setupMobileShell(appInstance, eventBus) {
       body.classList.remove('brain-panel-open');
       if (!persistentNav) {
         body.classList.remove('mobile-menu-open');
+        body.classList.remove('mobile-nav-open');
         syncBackdrop();
       }
     }
