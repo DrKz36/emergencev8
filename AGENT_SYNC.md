@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-04 (Codex)
+**Dernière mise à jour** : 2025-10-05 12:50 CET (Claude Code - Déploiement)
 
 ---
 
@@ -17,42 +17,52 @@
 
 ---
 
-## 📍 État actuel du dépôt (2025-10-04)
+## 📍 État actuel du dépôt (2025-10-05)
 
 ### Branche active
 - **Branche courante** : `main`
 - **Derniers commits** :
-  - `b48c998` feat: add LiteLLM proxy + Docker orchestration
-  - `6f17c70` feat: memory enhancements + codev protocol
-  - `923d632` chore: add codex session artifacts
+  - `d5ee4a4` docs: update passation and agent sync after audit fixes
+  - `4bad1fe` fix: apply audit corrections (critical + major + minor)
+  - `6c30f2e` feat: add comprehensive metrics tracking and documentation system
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
 - `codex` → SSH : `git@github.com:DrKz36/emergencev8.git`
 
-**Note cloud (Codex)** : `git fetch origin` bloqué par proxy HTTP 403. Retry quand réseau OK.
+### Déploiement Cloud Run
+- **Révision active** : `emergence-app-00266-jc4`
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251005-123837`
+- **URL** : https://emergence-app-486095406755.europe-west1.run.app
+- **Déployé** : 2025-10-05 12:45 CET
+- **Trafic** : 100% sur nouvelle révision
+- **Documentation** : [docs/deployments/2025-10-05-audit-fixes-deployment.md](docs/deployments/2025-10-05-audit-fixes-deployment.md)
 
-### Fichiers modifiés non commités
-- `requirements.txt` — ajout `prometheus-client` (metrics)
-- `docs/passation.md` — entrée session Codex 2025-10-04 21:08
+### Working tree
+✅ Clean (tous changements commités et pushés)
 
 ---
 
 ## 🚧 Zones de travail en cours
 
 ### Claude Code (moi)
-- **Statut** : Corrections audit complet (Phase 1-3 terminées)
+- **Statut** : ✅ Déploiement Cloud Run terminé (révision 00266-jc4 active)
+- **Session complète** :
+  1. ✅ Corrections audit (13 fixes: 3 critiques + 6 majeurs + 4 mineurs)
+  2. ✅ Tests backend (8/8 passent, httpx v0.27.2 installé)
+  3. ✅ Build frontend (succès 756ms, bundle conversations généré)
+  4. ✅ Build Docker image (13.3 GB, push Artifact Registry)
+  5. ✅ Deploy Cloud Run (révision 00266-jc4, 100% trafic)
+  6. ✅ Documentation déploiement créée
 - **Fichiers touchés** :
-  - `requirements.txt` (ajout httpx)
-  - `docs/architecture/30-Contracts.md` (retrait debates/export)
-  - `src/frontend/core/app.js` (ajout conversations module)
-  - `src/frontend/shared/constants.js` + `websocket.js` (5 WS events + handlers)
-  - `docs/architecture/10-Components.md` (documentation services/modules)
-  - `src/frontend/components/tutorial/Tutorial.jsx` (suppression doublon)
-  - `package.json` (marked → devDependencies)
-  - `docs/TUTORIAL_SYSTEM.md` (update références lignes)
-  - `docs/passation.md` (entrée 2025-10-05 12:15)
-- **Prochain chantier** : QA manuelle + tests backend (pip install httpx) + déploiement Cloud Run
+  - `requirements.txt`, `package.json`
+  - `src/frontend/core/app.js`, `websocket.js`, `shared/constants.js`
+  - `docs/architecture/10-Components.md`, `30-Contracts.md`
+  - `docs/TUTORIAL_SYSTEM.md`, `docs/passation.md`
+  - `docs/deployments/2025-10-05-audit-fixes-deployment.md` (nouveau)
+  - `docs/deployments/README.md` (nouveau)
+  - `AGENT_SYNC.md` (ce fichier)
+- **Prochain chantier** : QA manuelle Cloud Run + monitoring métriques Prometheus
 
 ### Codex (cloud)
 - **Dernier sync** : 2025-10-06 09:30
