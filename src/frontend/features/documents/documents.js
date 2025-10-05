@@ -493,14 +493,20 @@ export default class DocumentsModule {
                 <span class="doc-name" data-role="doc-name">${name}</span>
                 <span class="doc-date">${when}</span>
                 <span class="doc-status ${statusClass}">${status}</span>
-                <button class="doc-remove" data-id="${id}" title="Supprimer ${name}" aria-label="Supprimer ${name}">
-                    <span class="doc-remove-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" width="16" height="16" focusable="false">
-                            <path d="M9 3h6l1 2h5v2H3V5h5l1-2Zm1 6h2v9h-2V9Zm6 0h-2v9h2V9ZM8 9H6v9h2V9Z" fill="currentColor"></path>
-                        </svg>
-                    </span>
-                    <span class="doc-remove-label">Supprimer</span>
-                </button>
+                <div class="doc-actions">
+                    <button class="doc-action doc-preview" data-action="preview" data-id="${id}" title="Prévisualiser ${name}" aria-label="Prévisualiser ${name}">
+                        👁️
+                    </button>
+                    <button class="doc-action doc-download" data-action="download" data-id="${id}" title="Télécharger ${name}" aria-label="Télécharger ${name}">
+                        ⬇️
+                    </button>
+                    <button class="doc-action doc-reindex" data-action="reindex" data-id="${id}" title="Ré-indexer ${name}" aria-label="Ré-indexer ${name}">
+                        🔄
+                    </button>
+                    <button class="doc-action doc-remove" data-action="delete" data-id="${id}" title="Supprimer ${name}" aria-label="Supprimer ${name}">
+                        🗑️
+                    </button>
+                </div>
             </li>
         `;
     }
@@ -508,20 +514,100 @@ export default class DocumentsModule {
     /* ------------------------------- Actions UI ------------------------------ */
 
     async handleDelete(e) {
-        const btn = e.target.closest('.doc-remove');
+        const btn = e.target.closest('[data-action]');
         if (!btn) return;
+
+        const action = btn.dataset.action;
         const docId = btn.dataset.id;
         if (!docId) return;
 
-        if (confirm('Supprimer ce document ?')) {
-            try {
-                await this.apiClient.deleteDocument(docId);
-                this.selectedIds.delete(docId);
-                this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: 'Document supprim.' });
-                await this.fetchAndRenderDocuments(true);
-            } catch {
-                this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'error', message: 'Erreur lors de la suppression.' });
-            }
+        switch (action) {
+            case 'preview':
+                await this.previewDocument(docId);
+                break;
+            case 'download':
+                await this.downloadDocument(docId);
+                break;
+            case 'reindex':
+                await this.reindexDocument(docId);
+                break;
+            case 'delete':
+                if (confirm('Supprimer ce document ?')) {
+                    try {
+                        await this.apiClient.deleteDocument(docId);
+                        this.selectedIds.delete(docId);
+                        this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: 'Document supprimé.' });
+                        await this.fetchAndRenderDocuments(true);
+                    } catch {
+                        this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'error', message: 'Erreur lors de la suppression.' });
+                    }
+                }
+                break;
+        }
+    }
+
+    async previewDocument(docId) {
+        try {
+            const content = await this.apiClient.getDocumentContent(docId);
+            const doc = this.documents.find(d => this._getId(d) === docId);
+            const name = doc ? this._getName(doc) : 'Document';
+
+            // Create modal
+            const modal = document.createElement('div');
+            modal.className = 'doc-preview-modal';
+            modal.innerHTML = `
+                <div class="doc-preview-modal__backdrop" data-action="close-preview"></div>
+                <div class="doc-preview-modal__content">
+                    <header class="doc-preview-modal__header">
+                        <h3 class="doc-preview-modal__title">${name}</h3>
+                        <button class="doc-preview-modal__close" data-action="close-preview" aria-label="Fermer">✕</button>
+                    </header>
+                    <div class="doc-preview-modal__body">
+                        <pre class="doc-preview-modal__text">${content.content || content.text || JSON.stringify(content, null, 2)}</pre>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            modal.addEventListener('click', (e) => {
+                if (e.target.closest('[data-action="close-preview"]')) {
+                    modal.remove();
+                }
+            });
+        } catch (error) {
+            this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'error', message: 'Impossible de prévisualiser le document.' });
+        }
+    }
+
+    async downloadDocument(docId) {
+        try {
+            const blob = await this.apiClient.downloadDocument(docId);
+            const doc = this.documents.find(d => this._getId(d) === docId);
+            const name = doc ? this._getName(doc) : `document-${docId}`;
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: 'Document téléchargé.' });
+        } catch (error) {
+            this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'error', message: 'Erreur lors du téléchargement.' });
+        }
+    }
+
+    async reindexDocument(docId) {
+        try {
+            await this.apiClient.reindexDocument(docId);
+            this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: 'Ré-indexation lancée.' });
+            await this.fetchAndRenderDocuments(true);
+        } catch (error) {
+            this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'error', message: 'Erreur lors de la ré-indexation.' });
         }
     }
 

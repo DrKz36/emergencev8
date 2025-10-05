@@ -170,7 +170,7 @@ export class Tutorial {
 
     // Créer le conteneur principal
     this.container = document.createElement('div');
-    this.container.className = 'tutorial-overlay';
+    this.container.className = 'tutorial-overlay active';
 
     // Backdrop - NE PAS écouter les clics ici pour ne pas bloquer l'interaction
     this.backdropElement = document.createElement('div');

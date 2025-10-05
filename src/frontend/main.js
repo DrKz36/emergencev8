@@ -17,6 +17,7 @@ import {
 
 import { api } from './shared/api-client.js';
 import { WS_CONFIG, EVENTS } from './shared/constants.js';
+import { notifications } from './shared/notifications.js';
 
 const storeAuthToken = typeof storeAuthTokenImpl === 'function' ? storeAuthTokenImpl : () => null;
 const clearStoredAuth = typeof clearAuthImpl === 'function' ? clearAuthImpl : () => {};
@@ -1255,6 +1256,14 @@ class EmergenceClient {
     loader.classList.add('fade-out');
     setTimeout(() => { try { loader.remove(); } catch {} document.body.classList.remove('loading'); }, 300);
   }
+}
+
+/* ---------- Init global notifications ---------- */
+try {
+  notifications.init();
+  console.log('[Notifications] Système initialisé');
+} catch (err) {
+  console.error('[Notifications] Erreur initialisation:', err);
 }
 
 /* ---------- Boot guard : éviter tout second bootstrap involontaire ---------- */

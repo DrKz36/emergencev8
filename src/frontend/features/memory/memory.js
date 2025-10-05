@@ -2,6 +2,8 @@ import { MemoryCenter } from './memory-center.js';
 
 import { ThreadsPanel } from '../threads/threads.js';
 
+import { ConceptSearch } from './concept-search.js';
+
 import { EVENTS } from '../../shared/constants.js';
 
 
@@ -17,6 +19,8 @@ export default class MemoryModule {
     this.memoryCenter = new MemoryCenter(eventBus, stateManager, { hostSelector: null });
 
     this.threadsPanel = new ThreadsPanel(eventBus, stateManager, { keepMarkup: true });
+
+    this.conceptSearch = new ConceptSearch(eventBus, stateManager);
 
     this.container = null;
 
@@ -148,6 +152,8 @@ export default class MemoryModule {
 
             <section class="memory-page__body" data-memory-center-host></section>
 
+            <section class="memory-page__concepts" data-memory-concepts-host></section>
+
           </div>
 
           <aside class="memory-page__threads" data-memory-threads-host></aside>
@@ -244,6 +250,12 @@ export default class MemoryModule {
 
     this.threadsPanel.init();
 
+    const conceptsHost = this.container.querySelector('[data-memory-concepts-host]');
+
+    this.conceptSearch.hostElement = conceptsHost;
+
+    this.conceptSearch.init();
+
     this.memoryCenter.refresh();
 
 
@@ -309,6 +321,12 @@ export default class MemoryModule {
     try {
 
       this.threadsPanel?.destroy?.();
+
+    } catch (_err) {}
+
+    try {
+
+      this.conceptSearch?.destroy?.();
 
     } catch (_err) {}
 

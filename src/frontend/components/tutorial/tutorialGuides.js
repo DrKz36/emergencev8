@@ -69,13 +69,22 @@ export const TUTORIAL_GUIDES = [
           <li><strong>Performance :</strong> Légèrement plus lent mais beaucoup plus précis avec vos données</li>
         </ul>
 
+        <h4>💬 Consultation Ponctuelle d'Autres Agents</h4>
+        <p>Vous pouvez demander l'avis d'un autre agent ponctuellement :</p>
+        <ul>
+          <li>Dans votre message, mentionnez l'agent : "@Anima", "@Neo", ou "@Nexus"</li>
+          <li>L'agent actuel consultera l'agent mentionné pour obtenir son point de vue</li>
+          <li>Utile pour combiner différentes perspectives (créativité + analyse)</li>
+          <li>Exemple : "Analyse ce problème, et @Anima propose des solutions innovantes"</li>
+        </ul>
+
         <h4>🧠 Mémoire Conversationnelle</h4>
         <p>Emergence garde en mémoire vos conversations :</p>
         <ul>
           <li>Contexte maintenu sur plusieurs messages</li>
           <li>Références aux échanges précédents</li>
           <li>Personnalisation progressive des réponses</li>
-          <li>Continuité entre sessions (via threads)</li>
+          <li>Continuité entre sessions (via conversations)</li>
         </ul>
 
         <h4>⌨️ Raccourcis Clavier</h4>
@@ -120,56 +129,77 @@ export const TUTORIAL_GUIDES = [
   {
     id: 'threads',
     icon: '📂',
-    title: 'Gestion des Threads',
+    title: 'Gestion des Conversations',
     summary: 'Organisez et retrouvez toutes vos conversations',
     content: `
       <section class="guide-section">
-        <h3>🎯 Qu'est-ce qu'un Thread ?</h3>
-        <p>Un <strong>thread</strong> (fil de discussion) est une conversation isolée avec un contexte propre. Chaque thread maintient son propre historique et sa propre mémoire contextuelle.</p>
+        <h3>🎯 Qu'est-ce qu'une Conversation ?</h3>
+        <p>Une <strong>conversation</strong> (aussi appelée thread dans l'onglet Mémoire) est un fil de discussion isolé avec un contexte propre. Chaque conversation maintient son propre historique et sa propre mémoire contextuelle.</p>
+        <p><strong>Note :</strong> Les conversations apparaissent sous le nom "Threads" dans l'interface Mémoire - c'est la même chose.</p>
       </section>
 
       <section class="guide-section">
-        <h3>📝 Créer et Gérer des Threads</h3>
+        <h3>📝 Créer et Gérer des Conversations</h3>
 
-        <h4>Créer un nouveau thread</h4>
+        <h4>Créer une nouvelle conversation</h4>
         <ol>
-          <li>Cliquez sur le bouton <strong>"+"</strong> ou <strong>"Nouveau Thread"</strong></li>
-          <li>Le nouveau thread démarre avec un contexte vierge</li>
-          <li>Donnez-lui un nom descriptif pour le retrouver facilement</li>
+          <li>Cliquez sur le bouton <strong>"+"</strong> ou <strong>"Nouvelle Conversation"</strong></li>
+          <li>La nouvelle conversation démarre avec un contexte vierge</li>
+          <li>Donnez-lui un nom descriptif pour la retrouver facilement</li>
         </ol>
 
-        <h4>Renommer un thread</h4>
+        <h4>Ouvrir une conversation</h4>
+        <p>Lorsque vous ouvrez une conversation :</p>
+        <ul>
+          <li>L'historique complet des messages est chargé</li>
+          <li>Le contexte de la conversation devient actif</li>
+          <li>Les agents se souviennent des échanges précédents de cette conversation</li>
+          <li>Les concepts mémorisés spécifiques à cette conversation sont accessibles</li>
+        </ul>
+
+        <h4>Archiver une conversation</h4>
+        <p>L'archivage permet de ranger les conversations terminées :</p>
+        <ul>
+          <li>La conversation est retirée de la vue principale</li>
+          <li>Les données restent sauvegardées et accessibles via les archives</li>
+          <li>Vous pouvez désarchiver à tout moment</li>
+          <li>Utile pour garder votre liste organisée</li>
+        </ul>
+
+        <h4>Supprimer une conversation</h4>
+        <p><strong>Attention :</strong> La suppression est définitive !</p>
+        <ul>
+          <li>Tous les messages de la conversation sont effacés</li>
+          <li>Les concepts extraits spécifiques à cette conversation sont perdus</li>
+          <li>Cette action est <strong>irréversible</strong></li>
+          <li>Préférez l'archivage si vous n'êtes pas certain</li>
+        </ul>
+
+        <h4>Renommer une conversation</h4>
         <ol>
-          <li>Survolez le thread dans la liste</li>
+          <li>Survolez la conversation dans la liste</li>
           <li>Cliquez sur l'icône ✏️ ou faites un clic droit</li>
           <li>Saisissez le nouveau nom</li>
           <li>Validez avec <kbd>Entrée</kbd></li>
         </ol>
-
-        <h4>Supprimer un thread</h4>
-        <ol>
-          <li>Cliquez sur l'icône 🗑️ à côté du thread</li>
-          <li>Confirmez la suppression</li>
-          <li><strong>Attention :</strong> Cette action est irréversible</li>
-        </ol>
       </section>
 
       <section class="guide-section">
-        <h3>🔍 Recherche et Navigation</h3>
+        <h3>🔍 Navigation</h3>
 
-        <h4>Rechercher un thread</h4>
+        <h4>Trier les conversations</h4>
+        <p>Les conversations sont triées par :</p>
         <ul>
-          <li>Utilisez la barre de recherche en haut de la liste</li>
-          <li>Tapez des mots-clés du titre ou du contenu</li>
-          <li>La liste se filtre en temps réel</li>
+          <li><strong>Date de modification</strong> (défaut) : Les plus récentes en premier</li>
+          <li><strong>Date de création :</strong> Les plus anciennes ou nouvelles</li>
+          <li><strong>Alphabétique :</strong> Par nom de conversation</li>
         </ul>
 
-        <h4>Trier les threads</h4>
-        <p>Les threads sont triés par :</p>
+        <h4>Navigation rapide</h4>
         <ul>
-          <li><strong>Date de modification</strong> (défaut) : Les plus récents en premier</li>
-          <li><strong>Date de création :</strong> Les plus anciens ou nouveaux</li>
-          <li><strong>Alphabétique :</strong> Par nom de thread</li>
+          <li>Double-clic sur une conversation pour l'ouvrir</li>
+          <li>Utilisez les flèches haut/bas pour naviguer dans la liste</li>
+          <li>La conversation active est mise en évidence</li>
         </ul>
       </section>
 
@@ -177,33 +207,33 @@ export const TUTORIAL_GUIDES = [
         <h3>💡 Bonnes Pratiques</h3>
 
         <div class="guide-tip">
-          <h4>🏷️ Nommage des Threads</h4>
+          <h4>🏷️ Nommage des Conversations</h4>
           <ul>
             <li>✅ <strong>Descriptif :</strong> "Analyse architecture projet X"</li>
             <li>✅ <strong>Date si pertinent :</strong> "Sprint planning 2024-01"</li>
             <li>✅ <strong>Catégorie :</strong> "[Dev] Optimisation base de données"</li>
-            <li>❌ <strong>Éviter :</strong> "Thread 1", "Discussion", "Notes"</li>
+            <li>❌ <strong>Éviter :</strong> "Conversation 1", "Discussion", "Notes"</li>
           </ul>
         </div>
 
         <div class="guide-tip">
           <h4>📁 Organisation</h4>
           <ul>
-            <li>Un thread par projet ou sujet majeur</li>
-            <li>Nouveau thread pour changer radicalement de sujet</li>
-            <li>Gardez les threads focalisés sur un thème</li>
-            <li>Archivez ou supprimez les threads obsolètes</li>
+            <li>Une conversation par projet ou sujet majeur</li>
+            <li>Nouvelle conversation pour changer radicalement de sujet</li>
+            <li>Gardez les conversations focalisées sur un thème</li>
+            <li>Archivez ou supprimez les conversations obsolètes</li>
           </ul>
         </div>
       </section>
 
       <section class="guide-section">
         <h3>🧠 Contexte et Mémoire</h3>
-        <p>Chaque thread maintient son propre contexte :</p>
+        <p>Chaque conversation maintient son propre contexte :</p>
         <ul>
           <li>✅ Historique des messages indépendant</li>
-          <li>✅ Concepts mémorisés spécifiques au thread</li>
-          <li>✅ Documents liés au thread</li>
+          <li>✅ Concepts mémorisés spécifiques à la conversation</li>
+          <li>✅ Documents liés à la conversation</li>
           <li>✅ Continuité entre sessions (sauvegarde auto)</li>
         </ul>
       </section>
@@ -211,8 +241,8 @@ export const TUTORIAL_GUIDES = [
       <section class="guide-section">
         <h3>⚡ Raccourcis et Astuces</h3>
         <ul>
-          <li><kbd>Ctrl/Cmd + N</kbd> : Nouveau thread (si configuré)</li>
-          <li>Double-clic sur un thread pour l'ouvrir</li>
+          <li><kbd>Ctrl/Cmd + N</kbd> : Nouvelle conversation (si configuré)</li>
+          <li>Double-clic sur une conversation pour l'ouvrir</li>
           <li>Glisser-déposer pour réorganiser (si activé)</li>
           <li>Export possible via menu contextuel (clic droit)</li>
         </ul>
@@ -252,28 +282,23 @@ export const TUTORIAL_GUIDES = [
       </section>
 
       <section class="guide-section">
-        <h3>🔍 Consultation et Recherche</h3>
+        <h3>🔍 Consultation des Concepts</h3>
 
         <h4>Accéder à vos concepts</h4>
         <ol>
           <li>Cliquez sur <strong>"Concepts"</strong> dans la sidebar</li>
-          <li>Parcourez la liste ou utilisez la recherche</li>
+          <li>Parcourez la liste des concepts mémorisés</li>
           <li>Cliquez sur un concept pour voir ses détails</li>
         </ol>
 
-        <h4>Recherche sémantique</h4>
-        <p>La recherche utilise la <strong>similarité sémantique</strong> :</p>
+        <h4>Visualisation</h4>
+        <p>Les concepts sont affichés avec :</p>
         <ul>
-          <li>Tapez un mot-clé ou une phrase</li>
-          <li>L'IA trouve les concepts similaires (même sens différent)</li>
-          <li>Résultats classés par pertinence</li>
+          <li>Leur nom et description</li>
+          <li>La date d'extraction</li>
+          <li>Les conversations où ils apparaissent</li>
+          <li>Les relations avec d'autres concepts</li>
         </ul>
-
-        <div class="guide-example">
-          <strong>Exemple :</strong>
-          <p>Recherche : <code>"base de données rapide"</code></p>
-          <p>Trouvera : Redis, PostgreSQL optimisé, indexation, cache, etc.</p>
-        </div>
       </section>
 
       <section class="guide-section">
@@ -315,13 +340,12 @@ export const TUTORIAL_GUIDES = [
           <p><strong>IA (avec concept recall) :</strong> "Basé sur nos discussions précédentes sur PostgreSQL et Redis, voici comment optimiser..."</p>
         </div>
 
-        <h4>Historique et Métriques</h4>
+        <h4>Historique</h4>
         <p>Consultez l'historique du concept recall :</p>
         <ul>
           <li>📊 Nombre de concepts récupérés par requête</li>
-          <li>⏱️ Temps de recherche</li>
-          <li>🎯 Pertinence des concepts trouvés</li>
-          <li>📈 Évolution dans le temps</li>
+          <li>📈 Fréquence d'utilisation du concept recall</li>
+          <li>📝 Historique des concepts rappelés</li>
         </ul>
       </section>
 
@@ -481,12 +505,6 @@ export const TUTORIAL_GUIDES = [
           <li>🗑️ <strong>Supprimer :</strong> Retirer le document et ses chunks</li>
         </ul>
 
-        <h4>Recherche dans les documents</h4>
-        <ul>
-          <li>Barre de recherche sémantique</li>
-          <li>Filtres par type, date, taille</li>
-          <li>Tri par nom, date, pertinence</li>
-        </ul>
       </section>
 
       <section class="guide-section">

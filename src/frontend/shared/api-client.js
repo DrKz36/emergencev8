@@ -361,6 +361,22 @@ export const api = {
   deleteDocument: (docId) =>
     fetchApi(`${API_ENDPOINTS.DOCUMENTS}/${docId}`, { method: 'DELETE' }),
 
+  getDocumentContent: (docId) =>
+    fetchApi(`${API_ENDPOINTS.DOCUMENTS}/${docId}/content`),
+
+  downloadDocument: async (docId) => {
+    const headers = await getAuthHeaders();
+    const url = `${API_ENDPOINTS.DOCUMENTS}/${docId}/download`;
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status}`);
+    }
+    return response.blob();
+  },
+
+  reindexDocument: (docId) =>
+    fetchApi(`${API_ENDPOINTS.DOCUMENTS}/${docId}/reindex`, { method: 'POST' }),
+
   /* ------------------------ THREADS ---------------------- */
   listThreads: ({ type, limit = 20, offset } = {}) =>
     fetchApi(`${THREADS_BASE}${buildQuery({ type, limit, offset })}`)

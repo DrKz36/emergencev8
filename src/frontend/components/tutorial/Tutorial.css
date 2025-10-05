@@ -8,6 +8,11 @@
   bottom: 0;
   z-index: 10000;
   pointer-events: none;
+  display: none; /* Caché par défaut */
+}
+
+.tutorial-overlay.active {
+  display: block; /* Affiché seulement quand actif */
 }
 
 .tutorial-overlay * {

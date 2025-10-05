@@ -1,0 +1,85 @@
+/* DEBUG: Force tous les conteneurs principaux à être cliquables */
+
+body,
+#app-container,
+.app-container,
+#app-content,
+.app-content,
+#app-sidebar,
+.app-sidebar,
+main,
+.chat-container,
+.chat-input-shell,
+button,
+input,
+textarea,
+select,
+a {
+  pointer-events: auto !important;
+}
+
+/* Fix scroll du cockpit */
+.cockpit-charts,
+.cockpit-metrics,
+.cockpit-insights {
+  overflow-y: visible !important;
+  max-height: none !important;
+}
+
+/* Force les conteneurs de graphiques à avoir une largeur */
+.charts-grid {
+  width: 100% !important;
+  display: grid !important;
+}
+
+.chart-container {
+  width: 100% !important;
+  min-width: 400px !important;
+}
+
+/* Force les wrappers de canvas à avoir des dimensions */
+.chart-canvas-wrapper {
+  min-height: 300px !important;
+  width: 100% !important;
+  min-width: 400px !important;
+  display: block !important;
+  position: relative !important;
+}
+
+.timeline-chart .chart-canvas-wrapper {
+  min-height: 350px !important;
+}
+
+.distribution-chart .chart-canvas-wrapper {
+  min-height: 280px !important;
+}
+
+.usage-chart .chart-canvas-wrapper,
+.cost-chart .chart-canvas-wrapper {
+  min-height: 280px !important;
+}
+
+.chart-canvas-wrapper canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+}
+
+/* Seuls les overlays fermés doivent avoir pointer-events: none */
+.tutorial-overlay:not(.active) {
+  pointer-events: none !important;
+  display: none !important;
+}
+
+.memory-overlay:not(.active) {
+  pointer-events: none !important;
+}
+
+/* Les éléments décoratifs gardent pointer-events: none */
+.fade-out,
+.shimmer::before,
+.metallic-shimmer::before,
+.app-background,
+.background-gradient {
+  pointer-events: none !important;
+}

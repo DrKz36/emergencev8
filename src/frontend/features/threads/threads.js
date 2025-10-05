@@ -9,6 +9,7 @@ import {
   createThread as apiCreateThread,
   archiveThread as apiArchiveThread,
   deleteThread as apiDeleteThread,
+  updateThread as apiUpdateThread,
 } from './threads-service.js';
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
@@ -228,6 +229,8 @@ export class ThreadsPanel {
     this.listEl = null;
     this.errorEl = null;
     this.newButton = null;
+    this.searchInput = null;
+    this.sortSelect = null;
 
     this.unsubscribeState = null;
     this.unsubscribeRefresh = null;
@@ -237,25 +240,39 @@ export class ThreadsPanel {
     this.pendingCreate = false;
     this.pendingDeleteId = null;
     this.deletingId = null;
+    this.searchQuery = '';
+    this.editingId = null;
+    this.editingValue = '';
+    this.sortBy = 'modified'; // 'modified', 'created', 'alphabetical'
+    this.contextMenuId = null;
+    this.contextMenuX = 0;
+    this.contextMenuY = 0;
 
     this._hasInitialRender = false;
     this._domBound = false;
     this._initialized = false;
     this._onContainerClick = this.handleContainerClick.bind(this);
     this._onRefreshRequested = this.reload.bind(this);
+    this._onSearchInput = this.handleSearchInput.bind(this);
+    this._onKeyDown = this.handleKeyDown.bind(this);
   }
 
   setHostElement(element) {
     if (this.container && this._domBound) {
       this.container.removeEventListener('click', this._onContainerClick);
     }
+    if (this.searchInput) {
+      this.searchInput.removeEventListener('input', this._onSearchInput);
+    }
     this.hostElement = element || null;
     this.container = null;
     this.listEl = null;
     this.errorEl = null;
     this.newButton = null;
+    this.searchInput = null;
     this.pendingDeleteId = null;
     this.deletingId = null;
+    this.searchQuery = '';
     this._domBound = false;
     this._hasInitialRender = false;
   }
@@ -272,6 +289,25 @@ export class ThreadsPanel {
             Nouvelle conversation
           </button>
         </header>
+        <div class="threads-panel__controls">
+          <div class="threads-panel__search">
+            <input
+              type="search"
+              class="threads-panel__search-input"
+              data-role="thread-search"
+              placeholder="Rechercher une conversation..."
+              aria-label="Rechercher dans les conversations"
+            />
+          </div>
+          <div class="threads-panel__sort">
+            <label for="thread-sort" class="threads-panel__sort-label">Trier par :</label>
+            <select id="thread-sort" class="threads-panel__sort-select" data-role="thread-sort">
+              <option value="modified">Date de modification</option>
+              <option value="created">Date de création</option>
+              <option value="alphabetical">Alphabétique</option>
+            </select>
+          </div>
+        </div>
         <div class="threads-panel__body">
           <p class="threads-panel__error" data-role="thread-error" hidden></p>
           <ul class="threads-panel__list" data-role="thread-list" role="list"></ul>
@@ -286,7 +322,25 @@ export class ThreadsPanel {
 
     if (!this._domBound) {
       this.container.addEventListener('click', this._onContainerClick);
+      this.container.addEventListener('keydown', this._onKeyDown);
+      this.container.addEventListener('contextmenu', (e) => this.handleContextMenu(e));
+      // Close context menu when clicking elsewhere
+      document.addEventListener('click', () => this.closeContextMenu());
       this._domBound = true;
+    }
+
+    if (this.searchInput && !this.searchInput.hasAttribute('data-listener-attached')) {
+      this.searchInput.addEventListener('input', this._onSearchInput);
+      this.searchInput.setAttribute('data-listener-attached', 'true');
+    }
+
+    if (this.sortSelect && !this.sortSelect.hasAttribute('data-listener-attached')) {
+      this.sortSelect.addEventListener('change', (e) => {
+        this.sortBy = e.target.value;
+        this.render(this.state.get('threads'));
+      });
+      this.sortSelect.setAttribute('data-listener-attached', 'true');
+      this.sortSelect.value = this.sortBy;
     }
 
     if (!this.unsubscribeRefresh && this.eventBus?.on) {
@@ -312,7 +366,11 @@ export class ThreadsPanel {
   destroy() {
     if (this.container && this._domBound) {
       this.container.removeEventListener('click', this._onContainerClick);
+      this.container.removeEventListener('keydown', this._onKeyDown);
       this._domBound = false;
+    }
+    if (this.searchInput) {
+      this.searchInput.removeEventListener('input', this._onSearchInput);
     }
     if (typeof this.unsubscribeState === 'function') {
       this.unsubscribeState();
@@ -325,12 +383,14 @@ export class ThreadsPanel {
     this._initialized = false;
     this.pendingDeleteId = null;
     this.deletingId = null;
+    this.searchQuery = '';
     if (!this.options.keepMarkup && this.container) {
       this.container.innerHTML = '';
       this.container = null;
       this.listEl = null;
       this.errorEl = null;
       this.newButton = null;
+      this.searchInput = null;
     }
   }
 
@@ -356,6 +416,8 @@ export class ThreadsPanel {
     this.listEl = host.querySelector('[data-role="thread-list"]');
     this.errorEl = host.querySelector('[data-role="thread-error"]');
     this.newButton = host.querySelector('[data-action="new"]');
+    this.searchInput = host.querySelector('[data-role="thread-search"]');
+    this.sortSelect = host.querySelector('[data-role="thread-sort"]');
   }
 
   async reload() {
@@ -423,6 +485,76 @@ export class ThreadsPanel {
     }
   }
 
+  handleSearchInput(event) {
+    this.searchQuery = event.target.value.toLowerCase().trim();
+    this.render(this.state.get('threads'));
+  }
+
+  filterThreadsBySearch(order, map) {
+    if (!this.searchQuery) return order;
+
+    return order.filter((id) => {
+      const entry = map[id] || { id };
+      const record = entry.thread || entry;
+      const title = (record?.title || '').toLowerCase();
+      const agentId = (record?.agent_id || record?.agentId || '').toLowerCase();
+
+      // Search in title
+      if (title.includes(this.searchQuery)) return true;
+
+      // Search in agent name
+      if (agentId.includes(this.searchQuery)) return true;
+
+      // Search in messages content
+      const messages = Array.isArray(entry.messages) ? entry.messages : [];
+      for (const message of messages) {
+        const content = (message?.content || message?.text || '').toLowerCase();
+        if (content.includes(this.searchQuery)) return true;
+      }
+
+      return false;
+    });
+  }
+
+  sortThreads(order, map) {
+    const orderCopy = [...order];
+
+    if (this.sortBy === 'alphabetical') {
+      orderCopy.sort((idA, idB) => {
+        const entryA = map[idA] || { id: idA };
+        const entryB = map[idB] || { id: idB };
+        const recordA = entryA.thread || entryA;
+        const recordB = entryB.thread || entryB;
+        const titleA = (recordA?.title || 'Conversation').toLowerCase();
+        const titleB = (recordB?.title || 'Conversation').toLowerCase();
+        return titleA.localeCompare(titleB);
+      });
+    } else if (this.sortBy === 'created') {
+      orderCopy.sort((idA, idB) => {
+        const entryA = map[idA] || { id: idA };
+        const entryB = map[idB] || { id: idB };
+        const recordA = entryA.thread || entryA;
+        const recordB = entryB.thread || entryB;
+        const createdA = coerceTimestamp(recordA?.created_at || recordA?.createdAt) || 0;
+        const createdB = coerceTimestamp(recordB?.created_at || recordB?.createdAt) || 0;
+        return createdB - createdA; // Newest first
+      });
+    } else {
+      // Default: 'modified' - sort by last interaction or update time
+      orderCopy.sort((idA, idB) => {
+        const entryA = map[idA] || { id: idA };
+        const entryB = map[idB] || { id: idB };
+        const lastA = getLastInteractionTimestamp(entryA, entryA.thread);
+        const lastB = getLastInteractionTimestamp(entryB, entryB.thread);
+        const tsA = coerceTimestamp(lastA) || 0;
+        const tsB = coerceTimestamp(lastB) || 0;
+        return tsB - tsA; // Most recent first
+      });
+    }
+
+    return orderCopy;
+  }
+
   async handleContainerClick(event) {
     const target = event.target instanceof Element ? event.target.closest('[data-action]') : null;
     if (!target) return;
@@ -456,6 +588,228 @@ export class ThreadsPanel {
     } else if (action === 'delete-confirm') {
       event.preventDefault();
       await this.handleDelete(threadId);
+    } else if (action === 'rename') {
+      event.preventDefault();
+      this.startRename(threadId);
+    } else if (action === 'rename-cancel') {
+      event.preventDefault();
+      this.cancelRename();
+    } else if (action === 'rename-save') {
+      event.preventDefault();
+      await this.saveRename(threadId);
+    } else if (action === 'context-rename') {
+      event.preventDefault();
+      this.closeContextMenu();
+      this.startRename(threadId);
+    } else if (action === 'context-export') {
+      event.preventDefault();
+      this.closeContextMenu();
+      await this.exportThread(threadId);
+    } else if (action === 'context-archive') {
+      event.preventDefault();
+      this.closeContextMenu();
+      await this.handleArchive(threadId);
+    } else if (action === 'context-delete') {
+      event.preventDefault();
+      this.closeContextMenu();
+      this.pendingDeleteId = threadId;
+      this.render(this.state.get('threads'));
+    }
+  }
+
+  handleKeyDown(event) {
+    // Handle rename input Enter/Escape
+    if (this.editingId && event.target.classList?.contains('threads-panel__rename-input')) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        this.saveRename(this.editingId);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        this.cancelRename();
+      }
+      return;
+    }
+
+    // Don't interfere with input fields
+    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+      return;
+    }
+
+    // Global keyboard shortcuts
+    if (event.ctrlKey || event.metaKey) {
+      if (event.key === 'n' || event.key === 'N') {
+        event.preventDefault();
+        this.handleCreate();
+      }
+    }
+
+    // Arrow navigation
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.navigateThreads(event.key === 'ArrowUp' ? -1 : 1);
+    }
+  }
+
+  navigateThreads(direction) {
+    const threadsState = this.state.get('threads');
+    const order = Array.isArray(threadsState?.order) ? threadsState.order : [];
+    const map = threadsState?.map || {};
+
+    if (!order.length) return;
+
+    // Apply filters and sorting to get the visible order
+    let visibleOrder = this.filterThreadsBySearch(order, map);
+    visibleOrder = this.sortThreads(visibleOrder, map);
+
+    if (!visibleOrder.length) return;
+
+    const currentId = threadsState?.currentId;
+    const currentIndex = currentId ? visibleOrder.indexOf(currentId) : -1;
+
+    let nextIndex;
+    if (currentIndex === -1) {
+      // No selection, select first
+      nextIndex = 0;
+    } else {
+      nextIndex = currentIndex + direction;
+      // Wrap around
+      if (nextIndex < 0) nextIndex = visibleOrder.length - 1;
+      if (nextIndex >= visibleOrder.length) nextIndex = 0;
+    }
+
+    const nextId = visibleOrder[nextIndex];
+    if (nextId) {
+      this.handleSelect(nextId);
+    }
+  }
+
+  handleContextMenu(event) {
+    const item = event.target.closest('.threads-panel__item');
+    if (!item) return;
+
+    event.preventDefault();
+    const threadId = item.getAttribute('data-thread-id');
+    if (!threadId) return;
+
+    this.contextMenuId = threadId;
+    this.contextMenuX = event.clientX;
+    this.contextMenuY = event.clientY;
+    this.render(this.state.get('threads'));
+  }
+
+  closeContextMenu() {
+    if (this.contextMenuId) {
+      this.contextMenuId = null;
+      this.render(this.state.get('threads'));
+    }
+  }
+
+  async exportThread(threadId) {
+    const safeId = normalizeId(threadId);
+    if (!safeId) return;
+
+    try {
+      const threadsState = this.state.get('threads');
+      const entry = threadsState?.map?.[safeId];
+      const record = entry?.thread || entry || {};
+      const messages = entry?.messages || [];
+
+      const exportData = {
+        id: safeId,
+        title: record.title || 'Conversation',
+        agent_id: record.agent_id || record.agentId,
+        created_at: record.created_at || record.createdAt,
+        updated_at: record.updated_at || record.updatedAt,
+        messages: messages.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.created_at || msg.createdAt || msg.timestamp,
+        })),
+        exported_at: new Date().toISOString(),
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `conversation-${safeId}-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      this.eventBus.emit?.(EVENTS.SHOW_NOTIFICATION, {
+        type: 'success',
+        message: 'Conversation exportée avec succès',
+      });
+    } catch (error) {
+      this.eventBus.emit?.(EVENTS.SHOW_NOTIFICATION, {
+        type: 'error',
+        message: 'Erreur lors de l\'export',
+      });
+    }
+  }
+
+  startRename(threadId) {
+    const safeId = normalizeId(threadId);
+    if (!safeId) return;
+
+    const threadsState = this.state.get('threads');
+    const entry = threadsState?.map?.[safeId];
+    const record = entry?.thread || entry || {};
+    const currentTitle = record.title || 'Conversation';
+
+    this.editingId = safeId;
+    this.editingValue = currentTitle;
+    this.render(this.state.get('threads'));
+
+    // Focus the input after render
+    requestAnimationFrame(() => {
+      const input = this.container?.querySelector(`.threads-panel__rename-input[data-thread-id="${safeId}"]`);
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
+  }
+
+  cancelRename() {
+    this.editingId = null;
+    this.editingValue = '';
+    this.render(this.state.get('threads'));
+  }
+
+  async saveRename(threadId) {
+    const safeId = normalizeId(threadId);
+    if (!safeId || this.editingId !== safeId) return;
+
+    const input = this.container?.querySelector(`.threads-panel__rename-input[data-thread-id="${safeId}"]`);
+    if (!input) return;
+
+    const newTitle = input.value.trim();
+    if (!newTitle) {
+      this.cancelRename();
+      return;
+    }
+
+    const oldEditingId = this.editingId;
+    this.editingId = null;
+    this.editingValue = '';
+
+    try {
+      const updated = await apiUpdateThread(safeId, { title: newTitle });
+      if (updated) {
+        this.mergeThread(safeId, updated);
+        this.eventBus.emit?.(EVENTS.THREADS_UPDATED, { id: safeId, thread: updated });
+      }
+    } catch (error) {
+      const message = error?.message || 'Impossible de renommer la conversation.';
+      this.setStatus('error', message);
+      this.eventBus.emit?.(EVENTS.THREADS_ERROR, { action: 'rename', error });
+      this.editingId = oldEditingId;
+      this.editingValue = newTitle;
+    } finally {
+      this.render(this.state.get('threads'));
     }
   }
 
@@ -701,7 +1055,51 @@ export class ThreadsPanel {
     }
 
     this.renderList(state);
+    this.renderContextMenu();
     this._hasInitialRender = true;
+  }
+
+  renderContextMenu() {
+    // Remove existing context menu
+    const existingMenu = document.querySelector('.threads-context-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+    }
+
+    if (!this.contextMenuId) return;
+
+    const menu = document.createElement('div');
+    menu.className = 'threads-context-menu';
+    menu.style.left = `${this.contextMenuX}px`;
+    menu.style.top = `${this.contextMenuY}px`;
+
+    menu.innerHTML = `
+      <button type="button" class="threads-context-menu__item" data-action="context-rename" data-thread-id="${escapeHtml(this.contextMenuId)}">
+        ✏️ Renommer
+      </button>
+      <button type="button" class="threads-context-menu__item" data-action="context-export" data-thread-id="${escapeHtml(this.contextMenuId)}">
+        💾 Exporter
+      </button>
+      <button type="button" class="threads-context-menu__item" data-action="context-archive" data-thread-id="${escapeHtml(this.contextMenuId)}">
+        📦 Archiver
+      </button>
+      <button type="button" class="threads-context-menu__item threads-context-menu__item--danger" data-action="context-delete" data-thread-id="${escapeHtml(this.contextMenuId)}">
+        🗑️ Supprimer
+      </button>
+    `;
+
+    document.body.appendChild(menu);
+
+    // Adjust position if menu goes off screen
+    requestAnimationFrame(() => {
+      const rect = menu.getBoundingClientRect();
+      if (rect.right > window.innerWidth) {
+        menu.style.left = `${this.contextMenuX - rect.width}px`;
+      }
+      if (rect.bottom > window.innerHeight) {
+        menu.style.top = `${this.contextMenuY - rect.height}px`;
+      }
+    });
   }
 
   renderList(state) {
@@ -720,13 +1118,24 @@ export class ThreadsPanel {
       return;
     }
 
+    // Apply search filter
+    let filteredOrder = this.filterThreadsBySearch(order, map);
+
+    // Apply sorting
+    filteredOrder = this.sortThreads(filteredOrder, map);
+
+    if (this.searchQuery && !filteredOrder.length) {
+      this.listEl.innerHTML = '<li class="threads-panel__placeholder">Aucune conversation ne correspond à votre recherche.</li>';
+      return;
+    }
+
     const currentId = state.currentId || null;
     const confirmId = this.pendingDeleteId || null;
     const deletingId = this.deletingId || null;
     const archivingId = this.archivingId || null;
     const loadingId = this.selectionLoadingId || null;
 
-    const itemsHtml = order.map((id) => {
+    const itemsHtml = filteredOrder.map((id) => {
       const entry = map[id] || { id };
       const record = entry.thread || entry;
       const title = record?.title || 'Conversation';
@@ -761,6 +1170,7 @@ export class ThreadsPanel {
       if (updatedTitle) timestampAttributes.push('title="' + escapeHtml(updatedTitle) + '"');
       if (lastTimestamp) timestampAttributes.push('data-source="last-interaction"');
       const timestampAttr = timestampAttributes.length ? ' ' + timestampAttributes.join(' ') : '';
+      const isEditing = this.editingId === id;
       const actionsHtml = showConfirmDelete
         ? `
           <div class="threads-panel__confirm" data-thread-id="${escapeHtml(id)}">
@@ -771,8 +1181,26 @@ export class ThreadsPanel {
             </div>
           </div>
         `
+        : isEditing
+        ? `
+          <div class="threads-panel__rename-form" data-thread-id="${escapeHtml(id)}">
+            <input
+              type="text"
+              class="threads-panel__rename-input"
+              data-thread-id="${escapeHtml(id)}"
+              value="${escapeHtml(title)}"
+              placeholder="Nouveau nom..."
+              aria-label="Nouveau nom de conversation"
+            />
+            <div class="threads-panel__rename-actions">
+              <button type="button" class="threads-panel__rename-save" data-action="rename-save" data-thread-id="${escapeHtml(id)}">✓</button>
+              <button type="button" class="threads-panel__rename-cancel" data-action="rename-cancel" data-thread-id="${escapeHtml(id)}">✕</button>
+            </div>
+          </div>
+        `
         : `
           <div class="threads-panel__actions">
+            <button type="button" class="threads-panel__rename" data-action="rename" data-thread-id="${escapeHtml(id)}" title="Renommer"${(isArchiving || isDeleting) ? ' disabled' : ''}>✏️</button>
             <button type="button" class="${archiveClasses.join(' ')}" data-action="archive" data-thread-id="${escapeHtml(id)}"${(isArchiving || isDeleting) ? ' disabled' : ''}>Archiver</button>
             <button type="button" class="${deleteClasses.join(' ')}" data-action="delete" data-thread-id="${escapeHtml(id)}"${isDeleting ? ' disabled' : ''}>Supprimer</button>
           </div>

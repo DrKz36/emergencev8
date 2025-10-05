@@ -1,0 +1,324 @@
+/**
+ * Concept Editor Modal Styles
+ */
+
+.concept-editor-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.concept-editor-modal__backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+}
+
+.concept-editor-modal__content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 700px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 23, 42, 0.98);
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.concept-editor-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.concept-editor-modal__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.95);
+}
+
+.concept-editor-modal__close {
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.concept-editor-modal__close:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+
+.concept-editor-modal__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.concept-editor-modal__loading {
+  text-align: center;
+  padding: 48px 24px;
+  color: rgba(226, 232, 240, 0.6);
+}
+
+.concept-editor-modal__footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 20px 24px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.concept-editor-modal__btn {
+  padding: 10px 24px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.concept-editor-modal__btn--secondary {
+  background: rgba(15, 23, 42, 0.8);
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.concept-editor-modal__btn--secondary:hover {
+  background: rgba(148, 163, 184, 0.15);
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.concept-editor-modal__btn--primary {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.1));
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #e0f2fe;
+}
+
+.concept-editor-modal__btn--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.3), rgba(56, 189, 248, 0.15));
+  border-color: rgba(56, 189, 248, 0.6);
+  transform: translateY(-1px);
+}
+
+.concept-editor-modal__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Form */
+.concept-editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.concept-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.concept-editor-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.concept-editor-input,
+.concept-editor-textarea,
+.concept-editor-select {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.8);
+  color: rgba(226, 232, 240, 0.95);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.concept-editor-input:focus,
+.concept-editor-textarea:focus,
+.concept-editor-select:focus {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.concept-editor-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.concept-editor-input--small {
+  flex: 1;
+}
+
+.concept-editor-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.concept-editor-select {
+  cursor: pointer;
+}
+
+.concept-editor-hint {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(226, 232, 240, 0.5);
+}
+
+.concept-editor-empty {
+  padding: 16px;
+  text-align: center;
+  color: rgba(226, 232, 240, 0.5);
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* Tags */
+.concept-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  min-height: 50px;
+}
+
+.concept-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #e0f2fe;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.concept-tag__remove {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.concept-tag__remove:hover {
+  color: #fca5a5;
+}
+
+/* Relations */
+.concept-relations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  min-height: 60px;
+}
+
+.concept-relation {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.concept-relation__text {
+  flex: 1;
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.concept-relation__type {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: #ddd6fe;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.concept-relation__remove {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.6);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.concept-relation__remove:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+
+/* Add buttons */
+.concept-editor-add,
+.concept-editor-add-relation {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.concept-editor-add-btn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(56, 189, 248, 0.1);
+  color: #e0f2fe;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.concept-editor-add-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(56, 189, 248, 0.5);
+  transform: translateY(-1px);
+}

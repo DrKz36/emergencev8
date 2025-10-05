@@ -34,7 +34,17 @@ export class ChatUI {
     this.disableSidebarPanel = true;
     this._sourcesCache = [];
     this._decoderEl = null;
+    this._globalKeyHandler = null;
     console.log('[ChatUI] V28.3.2 (glass-layout) initialisee.');
+  }
+
+  destroy() {
+    // Cleanup global keyboard handler
+    if (this._globalKeyHandler) {
+      document.removeEventListener('keydown', this._globalKeyHandler);
+      this._globalKeyHandler = null;
+    }
+    this.root = null;
   }
 
   render(container, chatState = {}) {
@@ -386,7 +396,27 @@ export class ChatUI {
         if (typeof form?.requestSubmit === 'function') form.requestSubmit();
         else form?.dispatchEvent(new Event('submit', { cancelable: true }));
       }
+      // Shift+Enter for new line is default behavior, no need to handle
     });
+
+    // Global keyboard shortcut: Ctrl/Cmd+K to focus chat input
+    const globalKeyHandler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        // Don't interfere if user is already in an input/textarea
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+          return;
+        }
+        e.preventDefault();
+        input?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', globalKeyHandler);
+
+    // Store reference for cleanup
+    if (!this._globalKeyHandler) {
+      this._globalKeyHandler = globalKeyHandler;
+    }
 
     sendBtn?.addEventListener('click', () => {
       if (typeof form?.requestSubmit === 'function') form.requestSubmit();

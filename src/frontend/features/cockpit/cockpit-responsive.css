@@ -1,0 +1,190 @@
+/**
+ * Dashboard Responsive Styles
+ * Ensures proper display on all screen sizes and prevents horizontal scroll
+ */
+
+/* Prevent horizontal scroll and improve mobile responsive */
+.dashboard-container,
+.dashboard-content,
+.dashboard-view {
+    max-width: 100%;
+    overflow-x: hidden !important;
+}
+
+/* Responsive improvements for all dashboard sections */
+@media (max-width: 1024px) {
+    .insights-grid,
+    .charts-grid,
+    .metrics-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+    }
+
+    .trends-section,
+    .activity-section,
+    .recommendations-section,
+    .timeline-chart,
+    .usage-chart,
+    .cost-chart {
+        grid-column: 1 !important;
+    }
+
+    .insight-item,
+    .metric-card,
+    .chart-container {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    /* Make stat cards stack vertically */
+    .metrics-summary {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 12px !important;
+    }
+
+    .insights-header,
+    .metrics-header,
+    .charts-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 12px;
+    }
+
+    .insights-period,
+    .metrics-actions,
+    .charts-controls {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .period-selector,
+    .chart-filter {
+        width: 100%;
+    }
+
+    .insight-item {
+        flex-wrap: wrap;
+    }
+
+    .item-action {
+        width: 100%;
+        margin-top: 12px;
+    }
+
+    .btn-explore,
+    .btn-open-thread,
+    .btn-view-doc,
+    .btn-view-all {
+        width: 100% !important;
+    }
+
+    /* Chart canvas containers */
+    .chart-canvas-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    canvas {
+        max-width: 100%;
+    }
+
+    /* Heatmap responsive */
+    .heatmap-grid {
+        font-size: 12px;
+    }
+
+    .heatmap-cell {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .dashboard-tabs {
+        padding: 4px !important;
+    }
+
+    .dashboard-tab {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+    }
+
+    .tab-icon {
+        font-size: 16px !important;
+    }
+
+    .item-stats {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 4px !important;
+    }
+
+    .recommendation-item {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .rec-content {
+        width: 100%;
+    }
+
+    .btn-rec-action {
+        width: 100%;
+    }
+
+    /* Reduce padding on small screens */
+    .metric-card,
+    .chart-container,
+    .insight-section {
+        padding: 16px !important;
+    }
+
+    /* Smaller text on mobile */
+    .metric-value {
+        font-size: 28px !important;
+    }
+
+    .metric-icon {
+        font-size: 36px !important;
+    }
+
+    /* Stack cost summary */
+    .cost-summary {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+    }
+
+    /* Trends grid */
+    .trends-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Distribution stats */
+    .chart-stats {
+        font-size: 12px;
+    }
+}
+
+/* Fix specific elements that might cause horizontal scroll */
+.section-content,
+.metrics-summary,
+.trends-grid,
+.heatmap-grid,
+.chart-stats {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Ensure all text doesn't overflow */
+.item-title,
+.rec-text,
+.trend-label,
+.stat-label {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}

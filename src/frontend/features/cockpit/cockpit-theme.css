@@ -1,0 +1,221 @@
+/**
+ * Dashboard Theme - Consistent Dark Theme
+ * Aligns all dashboard modules with the global ÉMERGENCE theme
+ */
+
+/* Override dashboard variables to use global dark theme */
+.dashboard-metrics,
+.dashboard-charts,
+.dashboard-insights,
+.dashboard-container {
+    /* Background colors */
+    --bg-card: var(--glass-bg);
+    --bg-secondary: rgba(255, 255, 255, 0.04);
+    --bg-hover: rgba(255, 255, 255, 0.08);
+    --bg-light: rgba(255, 255, 255, 0.06);
+
+    /* Text colors */
+    --text-primary: var(--color-text-primary);
+    --text-secondary: var(--color-text-secondary);
+    --text-tertiary: var(--color-text-muted);
+
+    /* Border colors */
+    --border-color: var(--border-color);
+    --border-light: rgba(255, 255, 255, 0.08);
+    --border-hover: rgba(255, 255, 255, 0.16);
+
+    /* Accent colors */
+    --accent-color: var(--color-primary);
+    --accent-light: var(--color-primary-hover);
+
+    /* Status colors */
+    --error-color: var(--color-error);
+    --error-bg: rgba(239, 68, 68, 0.1);
+    --error-border: rgba(239, 68, 68, 0.3);
+}
+
+/* Ensure parent containers don't clip tabs */
+#tab-content-analytics,
+.tab-content.active,
+.dashboard-view,
+.app-content {
+    overflow: visible !important;
+    min-height: auto !important;
+}
+
+/* Glass card effect for all dashboard cards */
+.metric-card,
+.chart-container,
+.insight-section,
+.summary-card,
+.api-key-item,
+.agent-config {
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border-color) !important;
+    box-shadow: var(--glass-shadow) !important;
+}
+
+.metric-card:hover,
+.chart-container:hover,
+.insight-section:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Fix button colors */
+.metrics-actions button,
+.charts-controls button,
+.header-actions button,
+.btn-refresh,
+.btn-save,
+.btn-reset,
+.btn-export,
+.btn-view-all,
+.btn-explore,
+.btn-open-thread,
+.btn-view-doc,
+.theme-option,
+.btn-danger,
+.btn-export-encrypted,
+.btn-clear-log,
+.btn-test-key,
+.btn-remove-key,
+.btn-toggle-visibility {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: var(--color-text-primary) !important;
+}
+
+.metrics-actions button:hover,
+.charts-controls button:hover,
+.header-actions button:hover,
+.btn-refresh:hover,
+.btn-save:hover,
+.btn-reset:hover,
+.btn-export:hover,
+.btn-view-all:hover,
+.btn-explore:hover,
+.btn-open-thread:hover,
+.btn-view-doc:hover,
+.theme-option:hover,
+.btn-test-key:hover,
+.btn-remove-key:hover,
+.btn-toggle-visibility:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    transform: translateY(-1px);
+}
+
+/* Primary action buttons */
+.btn-save,
+.btn-export {
+    background: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+}
+
+.btn-save:hover,
+.btn-export:hover {
+    background: var(--color-primary-hover) !important;
+}
+
+/* Danger buttons */
+.btn-danger {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border-color: var(--color-error) !important;
+    color: var(--color-error) !important;
+}
+
+.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Active states */
+.theme-option.active,
+.tab-button.active {
+    background: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+    color: white !important;
+}
+
+/* Fix select and input backgrounds */
+select,
+input[type="text"],
+input[type="password"],
+input[type="number"],
+textarea {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: var(--color-text-primary) !important;
+}
+
+select:focus,
+input:focus,
+textarea:focus {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--color-primary) !important;
+    outline: 2px solid var(--color-primary-focus-ring);
+    outline-offset: 2px;
+}
+
+/* Fix select dropdown options */
+select option {
+    background: #1a1a1a !important;
+    color: var(--color-text-primary) !important;
+    padding: 8px !important;
+}
+
+/* Period selector specific fixes */
+.period-selector,
+.chart-filter,
+.density-select,
+.language-select {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: var(--color-text-primary) !important;
+    padding: 10px 16px !important;
+    border-radius: 8px !important;
+}
+
+.period-selector option,
+.chart-filter option,
+.density-select option,
+.language-select option {
+    background: #1a1a1a !important;
+    color: white !important;
+}
+
+/* Fix scrollbar for dashboard sections */
+.dashboard-metrics,
+.dashboard-charts,
+.dashboard-insights {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.dashboard-metrics::-webkit-scrollbar,
+.dashboard-charts::-webkit-scrollbar,
+.dashboard-insights::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.dashboard-metrics::-webkit-scrollbar-track,
+.dashboard-charts::-webkit-scrollbar-track,
+.dashboard-insights::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.dashboard-metrics::-webkit-scrollbar-thumb,
+.dashboard-charts::-webkit-scrollbar-thumb,
+.dashboard-insights::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.dashboard-metrics::-webkit-scrollbar-thumb:hover,
+.dashboard-charts::-webkit-scrollbar-thumb:hover,
+.dashboard-insights::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}

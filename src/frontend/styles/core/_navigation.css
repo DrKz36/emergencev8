@@ -21,6 +21,8 @@
     flex-direction: column;
     gap: 0.5rem;
     width: 100%; /* S'assure que la liste prend toute la largeur */
+    flex: 1 1 auto;
+    overflow-y: auto;
 }
 
 .sidebar-auth-status {
@@ -30,6 +32,7 @@
     line-height: 1.3;
     color: var(--color-text-secondary);
     border-top: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
 }
 
 
@@ -44,6 +47,20 @@
     flex-direction: column;
     align-items: stretch;
     gap: 0.6rem;
+    flex-shrink: 0;
+}
+
+/* Hide settings container from sidebar layout (contains memory overlay) */
+#settings-container {
+    position: absolute;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+#settings-container .memory-overlay {
+    position: fixed;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 

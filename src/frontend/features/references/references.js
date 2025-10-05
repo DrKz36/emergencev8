@@ -107,6 +107,17 @@ export class ReferencesModule {
     this.container.innerHTML = this.render();
     this.viewer = this.container.querySelector('[data-role="references-viewer"]');
     this.container.addEventListener('click', this.onCardClick);
+
+    // Add tutorial button listener
+    const tutorialBtn = this.container.querySelector('[data-action="open-tutorial"]');
+    if (tutorialBtn) {
+      tutorialBtn.addEventListener('click', () => {
+        if (window.app && window.app.openTutorialMenu) {
+          window.app.openTutorialMenu();
+        }
+      });
+    }
+
     if (this.activeDocId) {
       this.loadDoc(this.activeDocId, { silentHighlight: true });
     }
@@ -127,8 +138,18 @@ export class ReferencesModule {
     return `
       <section class="references" aria-labelledby="references-title">
         <header class="references__header">
-          <h1 id="references-title" class="references__title">A propos</h1>
-          <p class="references__intro">Retrouvez la synthese technique et les reperes cle du projet Emergence.</p>
+          <div class="references__header-content">
+            <h1 id="references-title" class="references__title">A propos</h1>
+            <p class="references__intro">Retrouvez la synthese technique et les reperes cle du projet Emergence.</p>
+          </div>
+          <button type="button" class="references__tutorial-btn" data-action="open-tutorial" title="Ouvrir le tutoriel interactif">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <span>Tutoriel interactif</span>
+          </button>
         </header>
         ${agentsSection}
         <div class="references__body">
