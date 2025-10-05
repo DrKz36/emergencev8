@@ -57,6 +57,7 @@ const moduleLoaders = {
   memory: () => import('../features/memory/memory.js'),
   admin: () => import('../features/admin/admin.js'),
   preferences: () => import('../features/preferences/preferences.js'),
+  documentation: () => import('../features/documentation/documentation.js'),
 };
 
 export class App {

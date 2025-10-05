@@ -1,6 +1,6 @@
 # EMERGENCE V8
 
-Multi agent conversation stack (Anima, Neo, Nexus) with cockpit, retrieval augmented generation, and document tools.
+Multi agent conversation stack (Anima, Neo, Nexus) with cockpit, retrieval augmented generation, document tools, and interactive tutorial system.
 
 ## Local environment
 

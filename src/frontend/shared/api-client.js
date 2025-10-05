@@ -213,12 +213,33 @@ async function fetchApi(endpoint, options = {}) {
   const finalHeaders = { Accept: 'application/json', ...authHeaders, ...headers };
   const config = { method, headers: finalHeaders };
 
-  if (body) {
-    if (body instanceof FormData) {
+  if (body !== undefined && body !== null) {
+    const ensureHeader = (name, value) => {
+      const lowerName = name.toLowerCase();
+      const hasHeader = Object.keys(config.headers).some((key) => String(key).toLowerCase() === lowerName);
+      if (!hasHeader) {
+        config.headers[name] = value;
+      }
+    };
+
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    const isUrlSearchParams = typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams;
+    const isBlob = typeof Blob !== 'undefined' && body instanceof Blob;
+    const isArrayBuffer = typeof ArrayBuffer !== 'undefined'
+      && (body instanceof ArrayBuffer || (typeof ArrayBuffer.isView === 'function' && ArrayBuffer.isView(body)));
+
+    if (isFormData || isBlob || isArrayBuffer) {
       config.body = body;
-    } else {
+    } else if (isUrlSearchParams) {
+      config.body = body;
+      ensureHeader('Content-Type', 'application/x-www-form-urlencoded;charset=UTF-8');
+    } else if (typeof body === 'string') {
+      config.body = body;
+    } else if (typeof body === 'object') {
       config.body = JSON.stringify(body);
-      config.headers['Content-Type'] = 'application/json';
+      ensureHeader('Content-Type', 'application/json');
+    } else {
+      config.body = body;
     }
   }
 
@@ -231,6 +252,38 @@ async function fetchApi(endpoint, options = {}) {
 
 /* ------------------------------ API ----------------------------------- */
 export const api = {
+  request(endpoint, options = {}) {
+    const url = typeof endpoint === 'string' ? endpoint.trim() : '';
+    if (!url) {
+      const err = new Error('Endpoint requis.');
+      err.status = 400;
+      throw err;
+    }
+
+    const { query, method, headers, body, timeoutMs, signal } = options;
+    let finalUrl = url;
+
+    if (query && typeof query === 'object' && !Array.isArray(query)) {
+      const queryString = buildQuery(query);
+      if (queryString) {
+        if (finalUrl.includes('?')) {
+          const separator = finalUrl.endsWith('?') || finalUrl.endsWith('&') ? '' : '&';
+          finalUrl += separator + queryString.slice(1);
+        } else {
+          finalUrl += queryString;
+        }
+      }
+    }
+
+    const fetchOptions = {};
+    if (method !== undefined) fetchOptions.method = method;
+    if (headers !== undefined && headers !== null) fetchOptions.headers = headers;
+    if (body !== undefined) fetchOptions.body = body;
+    if (timeoutMs !== undefined) fetchOptions.timeoutMs = timeoutMs;
+    if (signal !== undefined) fetchOptions.signal = signal;
+
+    return fetchApi(finalUrl, fetchOptions);
+  },
   /* ------------------------ AUTH ----------------------- */
   authLogin: async ({ email, password, meta, signal } = {}) => {
     const safeEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';

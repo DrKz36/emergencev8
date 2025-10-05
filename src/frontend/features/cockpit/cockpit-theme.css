@@ -36,9 +36,9 @@
 
 /* Ensure parent containers don't clip tabs */
 #tab-content-analytics,
-.tab-content.active,
-.dashboard-view,
-.app-content {
+#tab-content-cockpit.active,
+#tab-content-cockpit,
+.dashboard-view {
     overflow: visible !important;
     min-height: auto !important;
 }

@@ -78,14 +78,18 @@ export class AuthAdminModule {
     this.total = 0;
     this.totalPages = 1;
     this.query = '';
+    this.roleFilter = 'all';
     this.hasMore = false;
     this.searchTimer = null;
 
     this.sessions = [];
     this.sessionFilter = 'active';
+    this.sessionSearchQuery = '';
+    this.sessionSearchTimer = null;
     this.sessionsContainer = null;
     this.sessionsContent = null;
     this.sessionsFilter = null;
+    this.sessionsSearchInput = null;
     this.sessionsRefreshButton = null;
   }
 
@@ -129,6 +133,7 @@ export class AuthAdminModule {
     this.generatedValueNode = null;
     this.statusSelect = null;
     this.searchInput = null;
+    this.roleFilterSelect = null;
     this.tableBody = null;
     this.prevPageButton = null;
     this.nextPageButton = null;
@@ -136,9 +141,11 @@ export class AuthAdminModule {
     this.sessionsContainer = null;
     this.sessionsContent = null;
     this.sessionsFilter = null;
+    this.sessionsSearchInput = null;
     this.sessionsRefreshButton = null;
     this.sessions = [];
     this.sessionFilter = 'active';
+    this.sessionSearchQuery = '';
   }
 
   cacheElements() {
@@ -157,6 +164,7 @@ export class AuthAdminModule {
     this.generatedValueNode = this.container.querySelector('[data-role="generated-password-value"]');
     this.statusSelect = this.container.querySelector('[data-role="status-filter"]');
     this.searchInput = this.container.querySelector('[data-role="input-search"]');
+    this.roleFilterSelect = this.container.querySelector('[data-role="role-filter"]');
     this.tableBody = this.container.querySelector('[data-role="allowlist-rows"]');
     this.prevPageButton = this.container.querySelector('[data-role="page-prev"]');
     this.nextPageButton = this.container.querySelector('[data-role="page-next"]');
@@ -164,6 +172,7 @@ export class AuthAdminModule {
     this.sessionsContainer = this.container.querySelector('[data-role="sessions-block"]');
     this.sessionsContent = this.container.querySelector('[data-role="sessions-content"]');
     this.sessionsFilter = this.container.querySelector('[data-role="sessions-filter"]');
+    this.sessionsSearchInput = this.container.querySelector('[data-role="sessions-search"]');
     this.sessionsRefreshButton = this.container.querySelector('[data-role="sessions-refresh"]');
     if (this.statusSelect) {
       this.statusSelect.value = this.status;
@@ -171,8 +180,14 @@ export class AuthAdminModule {
     if (this.searchInput) {
       this.searchInput.value = this.query;
     }
+    if (this.roleFilterSelect) {
+      this.roleFilterSelect.value = this.roleFilter;
+    }
     if (this.sessionsFilter) {
       this.sessionsFilter.value = this.sessionFilter;
+    }
+    if (this.sessionsSearchInput) {
+      this.sessionsSearchInput.value = this.sessionSearchQuery;
     }
   }
 
@@ -248,6 +263,15 @@ export class AuthAdminModule {
       this.listeners.push(() => this.searchInput.removeEventListener('input', onSearch));
     }
 
+    if (this.roleFilterSelect) {
+      const onRoleFilterChange = (event) => {
+        const value = event.target?.value || 'all';
+        this.handleRoleFilterChange(value);
+      };
+      this.roleFilterSelect.addEventListener('change', onRoleFilterChange);
+      this.listeners.push(() => this.roleFilterSelect.removeEventListener('change', onRoleFilterChange));
+    }
+
     if (this.prevPageButton) {
       const onPrev = (event) => {
         event.preventDefault();
@@ -286,6 +310,15 @@ export class AuthAdminModule {
       this.sessionsRefreshButton.addEventListener('click', onSessionsRefresh);
       this.listeners.push(() => this.sessionsRefreshButton.removeEventListener('click', onSessionsRefresh));
     }
+
+    if (this.sessionsSearchInput) {
+      const onSessionsSearch = (event) => {
+        const value = event.target?.value || '';
+        this.scheduleSessionsSearch(value);
+      };
+      this.sessionsSearchInput.addEventListener('input', onSessionsSearch);
+      this.listeners.push(() => this.sessionsSearchInput.removeEventListener('input', onSessionsSearch));
+    }
   }
 
   render() {
@@ -306,6 +339,10 @@ export class AuthAdminModule {
     const statusActive = t('admin.status_active') || 'Actives';
     const statusAll = t('admin.status_all') || 'Toutes';
     const statusRevoked = t('admin.status_revoked') || 'Révoquées';
+    const roleFilterLabel = t('admin.role_filter_label') || 'Rôle';
+    const roleFilterAll = t('admin.role_filter_all') || 'Tous';
+    const roleFilterMember = t('admin.role_filter_member') || 'Membres';
+    const roleFilterAdmin = t('admin.role_filter_admin') || 'Admins';
     const tableEmail = t('admin.table_email');
     const tableRole = t('admin.table_role');
     const tableNote = t('admin.table_note');
@@ -323,6 +360,8 @@ export class AuthAdminModule {
     const sessionsRefresh = t('admin.sessions_refresh') || 'Rafraîchir';
     const sessionsLoading = t('admin.sessions_loading') || 'Chargement des sessions...';
     const sessionsEmpty = t('admin.sessions_empty') || 'Aucune session trouvée.';
+    const sessionsSearchLabel = t('admin.sessions_search_label') || 'Rechercher';
+    const sessionsSearchPlaceholder = t('admin.sessions_search_placeholder') || 'Email ou ID session';
 
     return `
       <section class="auth-admin" data-role="auth-admin">
@@ -331,10 +370,12 @@ export class AuthAdminModule {
           <p class="auth-admin__subtitle">${subtitle}</p>
         </header>
         <section data-role="sessions-block">
+          <h3 class="auth-admin__section-title">${sessionsTitle}</h3>
           <div class="auth-admin__filters">
-            <div class="auth-admin__filter">
-              <span>${sessionsTitle}</span>
-            </div>
+            <label class="auth-admin__filter">
+              <span>${sessionsSearchLabel}</span>
+              <input data-role="sessions-search" type="search" autocomplete="off" placeholder="${sessionsSearchPlaceholder}" />
+            </label>
             <label class="auth-admin__filter">
               <span>${sessionsFilterLabel}</span>
               <select data-role="sessions-filter">
@@ -348,6 +389,7 @@ export class AuthAdminModule {
             <p class="auth-admin__muted">${sessionsLoading}</p>
           </div>
         </section>
+        <h3 class="auth-admin__section-title">Ajouter / Modifier</h3>
         <form data-role="allowlist-form" class="auth-admin__form">
           <div class="auth-admin__form-grid">
             <label class="auth-admin__field">
@@ -383,10 +425,19 @@ export class AuthAdminModule {
           </div>
           <code data-role="generated-password-value" class="auth-admin__generated-value"></code>
         </div>
+        <h3 class="auth-admin__section-title">Allowlist</h3>
         <div class="auth-admin__filters">
           <label class="auth-admin__filter">
             <span>${searchLabel}</span>
             <input data-role="input-search" type="search" autocomplete="off" placeholder="${searchPlaceholder}" />
+          </label>
+          <label class="auth-admin__filter">
+            <span>${roleFilterLabel}</span>
+            <select data-role="role-filter">
+              <option value="all">${roleFilterAll}</option>
+              <option value="member">${roleFilterMember}</option>
+              <option value="admin">${roleFilterAdmin}</option>
+            </select>
           </label>
           <label class="auth-admin__filter">
             <span>${statusLabel}</span>
@@ -541,6 +592,30 @@ export class AuthAdminModule {
     }, 300);
   }
 
+  handleRoleFilterChange(value) {
+    const normalized = (value || '').trim().toLowerCase();
+    const allowed = new Set(['all', 'member', 'admin']);
+    this.roleFilter = allowed.has(normalized) ? normalized : 'all';
+    if (this.roleFilterSelect && this.roleFilterSelect.value !== this.roleFilter) {
+      this.roleFilterSelect.value = this.roleFilter;
+    }
+    this.page = 1;
+    this.loadAllowlist({ page: 1 });
+  }
+
+  scheduleSessionsSearch(rawValue) {
+    const value = (rawValue || '').trim();
+    if (this.sessionSearchTimer) {
+      clearTimeout(this.sessionSearchTimer);
+      this.sessionSearchTimer = null;
+    }
+    this.sessionSearchTimer = setTimeout(() => {
+      this.sessionSearchTimer = null;
+      this.sessionSearchQuery = value;
+      this.renderSessions(this.sessions);
+    }, 300);
+  }
+
   getFormData() {
     const email = (this.emailInput?.value || '').trim().toLowerCase();
     const role = (this.roleSelect?.value || 'member').trim().toLowerCase();
@@ -660,17 +735,34 @@ export class AuthAdminModule {
       this.sessionsContent.innerHTML = `<p class="auth-admin__muted">${escapeHtml(emptyLabel)}</p>`;
       return;
     }
+
+    // Filtrer les sessions selon la recherche
+    let filteredItems = items;
+    const searchQuery = (this.sessionSearchQuery || '').trim().toLowerCase();
+    if (searchQuery) {
+      filteredItems = items.filter((item) => {
+        const email = (item?.email || '').toLowerCase();
+        const sessionId = (item?.id || '').toLowerCase();
+        const role = (item?.role || '').toLowerCase();
+        return email.includes(searchQuery) || sessionId.includes(searchQuery) || role.includes(searchQuery);
+      });
+    }
+
+    if (!filteredItems.length) {
+      this.sessionsContent.innerHTML = `<p class="auth-admin__muted">${escapeHtml(emptyLabel)}</p>`;
+      return;
+    }
     const statusActive = t('admin.sessions_status_active') || t('admin.status_active') || 'Active';
     const statusRevoked = t('admin.sessions_status_revoked') || t('admin.status_revoked') || 'Révoquée';
-    const sessionIdLabel = t('admin.sessions_table_id') || 'Session';
-    const emailLabel = t('admin.sessions_table_email') || t('admin.table_email') || 'Email';
-    const roleLabel = t('admin.sessions_table_role') || t('admin.table_role') || 'Rôle';
-    const ipLabel = t('admin.sessions_table_ip') || 'IP';
-    const issuedLabel = t('admin.sessions_table_issued') || 'Ouverte';
-    const expiresLabel = t('admin.sessions_table_expires') || 'Expire';
-    const statusLabel = t('admin.sessions_table_status') || t('admin.table_status') || 'Statut';
+    const sessionIdLabel = 'ID';
+    const emailLabel = 'Email';
+    const roleLabel = 'Rôle';
+    const ipLabel = 'IP';
+    const issuedLabel = 'Créé';
+    const expiresLabel = 'Expire';
+    const statusLabel = 'État';
 
-    const rows = items.map((item) => {
+    const rows = filteredItems.map((item) => {
       const email = escapeHtml(item?.email || '');
       const role = escapeHtml(item?.role || 'member');
       const sessionId = escapeHtml(item?.id || '');
@@ -785,12 +877,28 @@ export class AuthAdminModule {
       this.tableBody.innerHTML = `<tr><td colspan="6">${t('admin.table_empty') || 'Aucune entree'}</td></tr>`;
       return;
     }
+
+    // Filtrer par rôle si nécessaire
+    let filteredItems = items;
+    const roleFilter = (this.roleFilter || 'all').trim().toLowerCase();
+    if (roleFilter !== 'all') {
+      filteredItems = items.filter((item) => {
+        const itemRole = (item?.role || 'member').trim().toLowerCase();
+        return itemRole === roleFilter;
+      });
+    }
+
+    if (!filteredItems.length) {
+      this.tableBody.innerHTML = `<tr><td colspan="6">${t('admin.table_empty') || 'Aucune entrée'}</td></tr>`;
+      return;
+    }
+
     const actionLabel = t('admin.action_generate');
     const deleteLabel = t('admin.action_delete') || 'Supprimer';
     const neverLabel = t('admin.never') || 'Jamais';
     const activeLabel = t('admin.status_active') || 'Actives';
     const revokedLabel = t('admin.status_revoked') || 'Revoquees';
-    const rows = items.map((item) => {
+    const rows = filteredItems.map((item) => {
       const emailRaw = item?.email || '';
       const roleRaw = item?.role || 'member';
       const noteRaw = item?.note || '';

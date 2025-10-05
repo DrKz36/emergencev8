@@ -389,7 +389,7 @@ export class SettingsModels {
         try {
             await api.request('/api/settings/models', {
                 method: 'POST',
-                body: JSON.stringify(this.settings)
+                body: this.settings
             });
             this.showSuccess('Configuration sauvegardée avec succès');
         } catch (error) {
