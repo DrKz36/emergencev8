@@ -8,6 +8,71 @@
 
 ---
 
+## [2025-10-05 12:15] — Agent: Claude Code
+
+### Fichiers modifiés
+- [requirements.txt](requirements.txt) (ajout httpx)
+- [docs/architecture/30-Contracts.md](docs/architecture/30-Contracts.md) (retrait debates/export)
+- [src/frontend/core/app.js](src/frontend/core/app.js) (ajout conversations module)
+- [src/frontend/shared/constants.js](src/frontend/shared/constants.js) (ajout 5 WS event constants + EventBus events)
+- [src/frontend/core/websocket.js](src/frontend/core/websocket.js) (ajout WS event handlers)
+- [docs/architecture/10-Components.md](docs/architecture/10-Components.md) (documentation services/modules)
+- [src/frontend/components/tutorial/Tutorial.jsx](src/frontend/components/tutorial/Tutorial.jsx) (suppression doublon)
+- [package.json](package.json) (déplacement marked en devDependencies)
+- [docs/TUTORIAL_SYSTEM.md](docs/TUTORIAL_SYSTEM.md) (update références lignes)
+- [docs/passation.md](docs/passation.md) (cette entrée)
+
+### Contexte
+Application des corrections identifiées lors de l'audit complet du 2025-10-05.
+Score audit initial : 87.5/100 (3 critiques, 6 majeurs, 4 mineurs).
+Objectif : Corriger priorités P1-P3 pour atteindre ~95/100.
+
+### Actions réalisées
+
+**Phase 1 - Corrections Critiques** :
+1. ✅ Ajout `httpx>=0.24,<1` dans requirements.txt (ligne 53) - requis par VoiceService
+2. ✅ Retrait `POST /api/debates/export` de la doc (feature reportée Phase P3+)
+3. ✅ Référencement module conversations (app.js moduleLoaders ligne 53 + baseModules ligne 98-102)
+
+**Phase 2 - Corrections Majeures** :
+4. ✅ Ajout 5 constantes WS (WS_AUTH_REQUIRED, WS_MODEL_INFO, WS_MODEL_FALLBACK, WS_MEMORY_BANNER, WS_ANALYSIS_STATUS)
+5. ✅ Ajout EventBus events (MODEL_INFO_RECEIVED, MODEL_FALLBACK, MEMORY_BANNER_UPDATE, MEMORY_ANALYSIS_STATUS)
+6. ✅ Implémentation handlers WebSocket correspondants (websocket.js lignes 268-353)
+7. ✅ Documentation TimelineService, VoiceService, MetricsRouter (10-Components.md lignes 43-119)
+8. ✅ Documentation modules frontend (Timeline, Costs, Voice, Preferences) (10-Components.md lignes 37-117)
+
+**Phase 3 - Améliorations Mineures** :
+9. ✅ Suppression Tutorial.jsx (doublon obsolète, aucune référence trouvée)
+10. ✅ Déplacement `marked` vers devDependencies (utilisé via CDN dans debate-ui.js)
+11. ✅ Mise à jour TUTORIAL_SYSTEM.md (ajout note ligne numbers approximatifs + update ligne 150)
+12. ✅ Vérification docs/git-workflow.md (déjà présent, aucune action requise)
+
+### Tests
+- ✅ `npm run build` (succès en 756ms, bundle conversations présent)
+- ✅ Module conversations référencé dans moduleLoaders + baseModules
+- ✅ 5 constantes WS + handlers implémentés avec mapping payload correct
+- ✅ Documentation 10-Components.md cohérente (services backend + modules frontend)
+- ⏭️ Tests backend non exécutés (httpx à installer : `pip install -r requirements.txt`)
+
+### Prochaines actions recommandées
+1. **Installation dépendances** : `pip install -r requirements.txt` pour installer httpx
+2. **Tests backend** : `pytest tests/backend/ -v` pour valider aucune régression
+3. **QA manuelle approfondie** : Tester module conversations + handlers WS en conditions réelles
+4. **Tests intégration WS** : Valider handlers model_info/fallback/memory_banner avec backend réel
+5. **Monitoring** : Vérifier métriques Prometheus exposées correctement
+6. **Déploiement Cloud Run** : Rebuild image Docker + déploiement révision test
+7. **Audit de suivi** : Re-run audit dans 1 semaine pour valider score ~95/100
+
+### Blocages
+Aucun.
+
+### Notes
+- Décision export débats : retiré de doc (feature non prioritaire, reportée P3+)
+- Décision marked : déplacé en devDependencies (utilisé via CDN, non critique pour build)
+- Décision Tutorial.jsx : supprimé (doublon obsolète React port, aucun import trouvé)
+
+---
+
 ## [2025-10-04 16:39] — Agent: Claude Code
 
 ### Fichiers modifiés

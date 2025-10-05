@@ -41,11 +41,18 @@
 ## 🚧 Zones de travail en cours
 
 ### Claude Code (moi)
-- **Statut** : Setup config collaboration + tone casual
+- **Statut** : Corrections audit complet (Phase 1-3 terminées)
 - **Fichiers touchés** :
-  - `.claude/settings.local.json` (permissions all + env vars)
-  - `AGENT_SYNC.md` (ce fichier)
-- **Prochain chantier** : Intégration instructions + update AGENTS.md
+  - `requirements.txt` (ajout httpx)
+  - `docs/architecture/30-Contracts.md` (retrait debates/export)
+  - `src/frontend/core/app.js` (ajout conversations module)
+  - `src/frontend/shared/constants.js` + `websocket.js` (5 WS events + handlers)
+  - `docs/architecture/10-Components.md` (documentation services/modules)
+  - `src/frontend/components/tutorial/Tutorial.jsx` (suppression doublon)
+  - `package.json` (marked → devDependencies)
+  - `docs/TUTORIAL_SYSTEM.md` (update références lignes)
+  - `docs/passation.md` (entrée 2025-10-05 12:15)
+- **Prochain chantier** : QA manuelle + tests backend (pip install httpx) + déploiement Cloud Run
 
 ### Codex (cloud)
 - **Dernier sync** : 2025-10-06 09:30
