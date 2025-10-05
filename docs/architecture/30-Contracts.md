@@ -114,7 +114,7 @@
 > Persistance cloud : activer `EMERGENCE_FIRESTORE_PROJECT` + credentials Google (ou `GOOGLE_APPLICATION_CREDENTIALS`) pour répliquer les résultats dans Firestore ; sinon seul SQLite est alimenté.
 
 ### Débats
-- `POST /api/debates/export` → export texte d’un débat (`{ debate_id }`).
+<!-- Feature export débats : reportée à Phase P3+ selon roadmap -->
 
 ---
 

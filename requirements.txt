@@ -50,6 +50,7 @@ psutil>=5.9,<6
 
 # --- Monitoring ---
 prometheus-client>=0.20,<1
+httpx>=0.24,<1                   # Required by VoiceService (containers.py)
 
 # --- Tooling & QA ---
 pytest>=8.3,<9                   # ensure unit tests run in CI/local

@@ -264,7 +264,17 @@ export class WebSocketClient {
     this.websocket.onmessage = (ev) => {
       try {
         const msg = JSON.parse(ev.data);
-        if (msg?.type === 'ws:auth_required') { this.eventBus.emit?.('auth:missing', msg?.payload || null); return; }
+
+        // Auth required handler
+        if (msg?.type === 'ws:auth_required') {
+          console.warn('[WebSocket] Auth required:', msg?.payload);
+          this.eventBus.emit?.(EVENTS.AUTH_REQUIRED, {
+            reason: msg.payload?.reason || 'session_expired',
+            message: msg.payload?.message
+          });
+          this.close();
+          return;
+        }
 
         // TTFB métriques
         if (msg?.type === 'ws:chat_stream_start') {
@@ -272,15 +282,44 @@ export class WebSocketClient {
           try { const m = this.state?.get?.('chat.metrics') || {}; this.state?.set?.('chat.metrics', { ...m, ws_start_count: (m.ws_start_count || 0) + 1, last_ttfb_ms: ttfb }); } catch {}
         }
 
-        // Model info / fallback / memory banner
-        if (msg?.type === 'ws:model_info')  { try { this.state?.set?.('chat.modelInfo', msg.payload || {}); } catch {} this.eventBus.emit?.('chat:model_info', msg.payload || null); }
-        if (msg?.type === 'ws:model_fallback') { const p = msg.payload || {}; this.eventBus.emit?.('ui:toast', { kind: 'warning', text: `Fallback modèle → ${p.to_provider || '?'} / ${p.to_model || '?'}` }); this.eventBus.emit?.('chat:model_fallback', p); }
+        // Model info handler
+        if (msg?.type === 'ws:model_info') {
+          console.log('[WebSocket] Model info:', msg.payload);
+          try { this.state?.set?.('chat.modelInfo', msg.payload || {}); } catch {}
+          this.eventBus.emit?.(EVENTS.MODEL_INFO_RECEIVED, {
+            provider: msg.payload?.provider,
+            model: msg.payload?.model,
+            agent: msg.payload?.agent
+          });
+        }
+
+        // Model fallback handler
+        if (msg?.type === 'ws:model_fallback') {
+          const p = msg.payload || {};
+          console.warn('[WebSocket] Model fallback:', p);
+          this.eventBus.emit?.(EVENTS.MODEL_FALLBACK, {
+            from: p.from_provider,
+            to: p.to_provider,
+            reason: p.reason
+          });
+          const toastText = `Basculement vers ${p.to_provider || '?'} (${p.reason || 'unknown'})`;
+          this.eventBus.emit?.('ui:toast', { kind: 'warning', text: toastText });
+        }
+
         if (msg?.type === 'ws:chat_stream_end') {
           const meta = (msg.payload && msg.payload.meta) || null;
           if (meta) { try { this.state?.set?.('chat.lastMessageMeta', meta); } catch {} this.eventBus.emit?.('chat:last_message_meta', meta); }
         }
+
+        // Memory banner handler
         if (msg?.type === 'ws:memory_banner') {
           const p = msg.payload || {};
+          console.log('[WebSocket] Memory banner:', p);
+          this.eventBus.emit?.(EVENTS.MEMORY_BANNER_UPDATE, {
+            type: p.type,
+            content: p.content,
+            metadata: p.metadata
+          });
           try {
             const prev = this.state?.get?.('chat.memoryStats') || {};
             const ltmItems = Number.isFinite(p.ltm_items) ? Number(p.ltm_items) : 0;
@@ -301,6 +340,16 @@ export class WebSocketClient {
               this.eventBus.emit?.('ui:toast', { kind: 'info', text: label });
             }
           } catch { }
+        }
+
+        // Analysis status handler
+        if (msg?.type === 'ws:analysis_status') {
+          console.log('[WebSocket] Analysis status:', msg.payload);
+          this.eventBus.emit?.(EVENTS.MEMORY_ANALYSIS_STATUS, {
+            status: msg.payload?.status,
+            progress: msg.payload?.progress,
+            message: msg.payload?.message
+          });
         }
 
         // Dispatch générique

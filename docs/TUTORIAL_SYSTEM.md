@@ -1,5 +1,7 @@
 # Système de Tutoriel ÉMERGENCE V8
 
+> **Note** : Les numéros de lignes mentionnés dans ce document sont **approximatifs** et peuvent varier selon les évolutions du code. Utilisez-les comme repères, pas comme références exactes. Privilégiez la recherche par mot-clé (`grep`, Ctrl+F).
+
 ## Vue d'ensemble
 
 Le système de tutoriel d'ÉMERGENCE V8 fournit une expérience d'onboarding complète pour les nouveaux utilisateurs et une documentation exhaustive accessible à tout moment.
@@ -147,7 +149,13 @@ localStorage.removeItem('emergence_tutorial_completed');
 
 - `src/frontend/features/settings/settings-tutorial.js` - Module tutoriel
 - `src/frontend/features/settings/settings-tutorial.css` - Styles du module
-- `src/frontend/features/settings/settings-main.js` - Intégration (lignes 9, 19, 89-96, 121-125, 905-907)
+- `src/frontend/features/settings/settings-main.js` - Intégration module tutoriel
+  - Import : ligne ~9
+  - Loader : ligne ~19
+  - Navigation : lignes ~89-96
+  - Render : lignes ~121-125
+  - Init : lignes ~905-907
+  - **Note** : Numéros de lignes approximatifs, code sujet à évolution
 
 ## Personnalisation
 

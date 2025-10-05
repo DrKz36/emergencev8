@@ -51,11 +51,16 @@ export const EVENTS = {
 
   // Server push (chat & session)
   WS_SESSION_ESTABLISHED: 'ws:session_established',
+  WS_AUTH_REQUIRED: 'ws:auth_required',
   WS_CHAT_STREAM_START: 'ws:chat_stream_start',
   WS_CHAT_STREAM_CHUNK: 'ws:chat_stream_chunk',
   WS_CHAT_STREAM_END: 'ws:chat_stream_end',
+  WS_MODEL_INFO: 'ws:model_info',
+  WS_MODEL_FALLBACK: 'ws:model_fallback',
   WS_RAG_STATUS: 'ws:rag_status',
   WS_MESSAGE_PERSISTED: 'ws:message_persisted',
+  WS_MEMORY_BANNER: 'ws:memory_banner',
+  WS_ANALYSIS_STATUS: 'ws:analysis_status',
 
   // Server push (debate)
   WS_DEBATE_STARTED: 'ws:debate_started',
@@ -102,6 +107,10 @@ export const EVENTS = {
   AUTH_LOGIN_SUBMIT: 'auth:login:submit',
   AUTH_LOGIN_SUCCESS: 'auth:login:success',
   AUTH_LOGIN_ERROR: 'auth:login:error',
+  MODEL_INFO_RECEIVED: 'model:info',
+  MODEL_FALLBACK: 'model:fallback',
+  MEMORY_BANNER_UPDATE: 'memory:banner:update',
+  MEMORY_ANALYSIS_STATUS: 'memory:analysis:status',
   SHOW_MODAL: 'ui:show_modal',
   MODAL_OPEN: 'ui:modal_open',
   MODAL_CLOSE: 'ui:modal_close',

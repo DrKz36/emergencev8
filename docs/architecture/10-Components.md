@@ -34,9 +34,172 @@
 - **`features/debate/`** : configuration débat (agents, rounds, RAG), suivi temps réel des événements.
 - **`features/dashboard/`** : vue coûts + monitoring sessions/documents.
 
+## Modules Frontend Additionnels
+
+### Timeline Module
+
+**Fichier** : `src/frontend/features/timeline/timeline.js`
+**Styles** : `src/frontend/features/timeline/timeline.css`
+
+**Responsabilité** : Visualisation chronologique des événements.
+
+**Fonctionnalités** :
+- Affichage timeline interactive
+- Filtrage par type/agent/période
+- Liens vers conversations/documents
+
+**Événements consommés** :
+- `EVENTS.TIMELINE_UPDATE`
+
+**État** : ⚠️ Module présent, intégration partielle.
+
+---
+
+### Costs Module
+
+**Fichier** : `src/frontend/features/costs/costs.js`
+**UI** : `src/frontend/features/costs/costs-ui.js`
+**Styles** : `src/frontend/features/costs/costs.css`
+
+**Responsabilité** : Visualisation détaillée des coûts LLM.
+
+**Fonctionnalités** :
+- Graphiques coûts par agent/provider
+- Export CSV/JSON
+- Filtrage temporel
+
+**API** :
+- `GET /api/dashboard/costs/summary`
+- `GET /api/dashboard/costs/details`
+
+**État** : ✅ Module autonome, complément au Cockpit.
+
+---
+
+### Voice Module
+
+**Fichier** : `src/frontend/features/voice/voice.js`
+**README** : `src/frontend/features/voice/README.md`
+
+**Responsabilité** : Interface audio (micro, lecture).
+
+**Fonctionnalités** :
+- Enregistrement audio navigateur (MediaRecorder API)
+- Upload → transcription STT
+- Lecture synthèse TTS
+
+**Dépendances backend** :
+- `POST /api/voice/transcribe`
+- `POST /api/voice/synthesize`
+
+**État** : ✅ Module optionnel, activé si VoiceService configuré.
+
+---
+
+### Preferences Module
+
+**Fichier** : `src/frontend/features/preferences/preferences.js`
+**Styles** : `src/frontend/features/preferences/preferences.css`
+
+**Responsabilité** : Configuration utilisateur (modèles, UI, notifications).
+
+**Fonctionnalités** :
+- Sélection modèles IA par agent
+- Thème clair/sombre (future)
+- Préférences RAG (seuils, nb docs)
+- Notifications push
+
+**Stockage** :
+- LocalStorage (clé `emergence_preferences`)
+- Sync backend (future, endpoint `/api/users/preferences`)
+
+**État** : ✅ Module actif, référencé dans navigation.
+
+---
+
 ## Interfaces & Contrats
 - WebSocket frames et REST détaillés dans `30-Contracts.md` (chat, mémoire, débat, monitoring).
 - Les endpoints mémoire : `POST/GET /api/memory/tend-garden`, `POST /api/memory/clear` ; threads : `/api/threads` (liste, création auto, messages paginés).
+
+## Services Backend Additionnels
+
+### TimelineService
+
+**Fichier** : `src/backend/features/timeline/service.py`
+**Router** : `src/backend/features/timeline/router.py`
+**Modèles** : `src/backend/features/timeline/models.py`
+
+**Responsabilité** : Gestion de la chronologie des événements système.
+
+**Fonctionnalités** :
+- Enregistrement événements horodatés
+- Filtrage par type/période
+- Agrégation statistiques temporelles
+
+**Endpoints** :
+- `GET /api/timeline` - Liste événements
+- `POST /api/timeline/event` - Enregistrer événement
+- `GET /api/timeline/stats` - Statistiques
+
+**État** : ⚠️ Service présent mais peu documenté, à auditer.
+
+---
+
+### VoiceService
+
+**Fichier** : `src/backend/features/voice/service.py`
+**Router** : `src/backend/features/voice/router.py`
+**README** : `src/backend/features/voice/README.md`
+
+**Responsabilité** : Interface audio (Speech-to-Text, Text-to-Speech).
+
+**Fonctionnalités** :
+- STT : Transcription audio → texte
+- TTS : Synthèse texte → audio
+- Intégration providers externes (OpenAI Whisper, Google Cloud Speech)
+
+**Dépendances** :
+- `httpx` (requêtes async vers APIs externes)
+- `aiofiles` (gestion fichiers audio)
+
+**Endpoints** :
+- `POST /api/voice/transcribe` - Transcription audio
+- `POST /api/voice/synthesize` - Génération audio
+
+**État** : ✅ Service optionnel, activé si clés API configurées.
+
+---
+
+### MetricsRouter (Prometheus)
+
+**Fichier** : `src/backend/features/metrics/router.py`
+
+**Responsabilité** : Exposition métriques Prometheus pour observabilité.
+
+**Fonctionnalités** :
+- Endpoint `/api/metrics` (format Prometheus)
+- Métriques applicatives (requêtes, latence, erreurs)
+- Métriques métier (coûts LLM, tokens, débats)
+
+**Dépendances** :
+- `prometheus-client` (instrumentation)
+
+**Endpoints** :
+- `GET /api/metrics` - Export métriques Prometheus
+
+**Intégration** :
+```yaml
+# Prometheus config
+scrape_configs:
+  - job_name: 'emergence-app'
+    static_configs:
+      - targets: ['localhost:8000']
+    metrics_path: '/api/metrics'
+```
+
+**État** : ✅ Activé en production Cloud Run.
+
+---
 
 ## Qualité / Observabilité
 - Logs structurés (niveau service) + toasts front pour surfacer auth/token manquants.
