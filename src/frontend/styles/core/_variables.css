@@ -71,7 +71,7 @@
   --animation-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* === LAYOUT === */
-  --header-height: 60px; --sidebar-width: 280px; --mobile-nav-height: 64px; --max-content-width: 1600px;
+  --header-height: 56px; --sidebar-width: 258px; --mobile-nav-height: 64px; --max-content-width: 1600px;
 
   /* === Z === */
   --z-base: 0; --z-content: 1; --z-header: 10; --z-sidebar: 11; --z-modal-backdrop: 20; --z-modal-content: 21; --z-notification: 30;

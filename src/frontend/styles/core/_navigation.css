@@ -23,6 +23,7 @@
     width: 100%; /* S'assure que la liste prend toute la largeur */
     flex: 1 1 auto;
     overflow-y: auto;
+    align-items: center;
 }
 
 .sidebar-auth-status {
@@ -142,18 +143,20 @@
     display: flex;
     align-items: center;
     gap: 0.66rem;
-    padding: 0.55rem 0.66rem;
+    padding: 0.55rem 0.66rem 0.55rem 1rem;
     border-radius: var(--radius-md, 8px);
     cursor: pointer;
-    font-size: 0.675rem;
+    font-size: 0.854rem;
     font-weight: var(--weight-medium, 500);
     color: var(--color-text-secondary);
     background-color: transparent;
     border: none;
-    width: 100%;
+    width: 90%;
+    max-width: 220px;
     text-align: left;
     text-decoration: none; /* Enlève le soulignement des liens */
     transition: background-color 0.2s ease, color 0.2s ease;
+    margin-left: 8px;
 }
 
 .nav-link:hover {

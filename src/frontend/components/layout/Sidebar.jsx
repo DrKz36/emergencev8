@@ -32,7 +32,6 @@ export class Sidebar {
     const brandingHTML = `
       <div class="brand-block">
         ${brand.logo ? `<img src="${brand.logo}" alt="${brand.title}" class="brand-logo" />` : ''}
-        <h1 class="brand-title">${brand.title}</h1>
       </div>
     `;
 
@@ -208,8 +207,8 @@ export const SIDEBAR_STYLES = `
   min-height: 100vh;
   height: 100vh;
   align-items: center;
-  gap: 1rem;
-  width: var(--sidebar-width, 320px);
+  gap: 0.5rem;
+  width: var(--sidebar-width, 224px);
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -231,7 +230,7 @@ export const SIDEBAR_STYLES = `
 .brand-logo {
   width: auto;
   height: auto;
-  max-height: 44px;
+  max-height: 57px;
   object-fit: contain;
   filter: drop-shadow(0 0 22px rgba(56, 189, 248, 0.45));
   animation: emergenceLogoPulse 8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
@@ -296,7 +295,7 @@ export const SIDEBAR_STYLES = `
   border-radius: 0.75rem;
   background: transparent;
   color: rgba(148, 163, 184, 0.85);
-  font-size: 0.95rem;
+  font-size: 1.045rem;
   font-weight: 500;
   letter-spacing: 0.01em;
   cursor: pointer;

@@ -2,8 +2,8 @@
 /* V11.1 — Hotfix branding/sidebar (logo + gaps) & mobile compaction */
 
 :root{
-  --sidebar-w: 320px;
-  --sidebar-width: 320px;
+  --sidebar-w: 258px;
+  --sidebar-width: 258px;
   --header-height: 56px;
 }
 
@@ -42,21 +42,21 @@
   display:flex; align-items:center; justify-content:space-between;
   padding:0 12px;
   position:sticky; top:0; left:0; right:0;
-  z-index:20;
+  z-index:1100;
   background:rgba(11,15,26,.92) !important;
   backdrop-filter:blur(12px);
   border-bottom:1px solid rgba(255,255,255,.08);
   will-change:transform; backface-visibility:hidden; transform:translateZ(0);
 }
-.header-logo-title{ display:flex; align-items:center; gap:10px; }
+.header-logo-title{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
 .header-logo{ display:block; width:32px; height:32px; object-fit:contain; flex-shrink:0; }
 .header-title{
   font-size:16px; font-weight:600; line-height:1;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  flex:1 1 auto;
+  flex:0 0 auto;
   min-width:0;
 }
-.header-actions{ margin-left:auto; position:relative; display:flex; align-items:center; gap:8px; }
+.header-actions{ margin-left:auto; position:relative; display:flex; align-items:center; justify-content:flex-end; gap:8px; flex:0 0 auto; }
 
 .app-sidebar{ display:none; grid-area:sidebar; }
 .header-nav{ display:flex; gap:8px; }
@@ -91,7 +91,7 @@
     min-height:100vh;
     height: 100vh;
     align-items:center;
-    gap:12px;
+    gap:6px;
     position: sticky;
     top: 0;
     overflow-y: auto;
@@ -123,7 +123,7 @@
 .brand-block::after{ content:none; }
 
 .brand-logo{
-  width:auto; height:auto; max-height:44px; /* 🔧 48→44 */
+  width:auto; height:auto; max-height:68px; /* 🔧 57 × 1.2 = 68 */
   object-fit:contain; aspect-ratio:auto;
   margin-left:0; /* 🔧 pas de décalage */
   filter:drop-shadow(0 0 22px rgba(56,189,248,.45));
@@ -154,8 +154,9 @@
 /* ===== Sidebar nav ===== */
 .sidebar-nav{
   display:flex; flex-direction:column; gap:.25rem;
-  max-width:var(--sidebar-w); width:var(--sidebar-w);
+  max-width:100%; width:100%;
   overflow:hidden;
+  align-items:center;
 }
 
 /* ===== Mobile portrait ≤760px ===== */
@@ -220,7 +221,7 @@
 /* ===== MOBILE NAV INTEGRATION ===== */
 /* La MobileNav est définie dans components-modern.css */
 /* Ici on s'assure que l'app-content compense le padding */
-@media (max-width: 767px) and (orientation: portrait) {
+@media (max-width: 760px) and (orientation: portrait) {
   .app-content {
     padding-bottom: calc(var(--mobile-nav-height, 64px) + env(safe-area-inset-bottom, 0) + 1rem) !important;
   }

@@ -134,7 +134,11 @@ function setupMobileShell(appInstance, eventBus) {
   let brainToggle = document.getElementById('mobile-brain-toggle');
   const backdrop = document.getElementById('mobile-backdrop');
   const headerNavContainer = document.getElementById('app-header-nav');
-  const usingHeaderNav = !!(headerNavContainer && headerNavContainer.classList.contains('mobile-nav'));
+  const usingHeaderNav = !!(
+    headerNavContainer &&
+    (headerNavContainer.classList.contains('mobile-nav') ||
+     headerNavContainer.classList.contains('header-mobile-nav'))
+  );
   if (brainToggle) {
     try { brainToggle.remove(); } catch (_) {}
     brainToggle = null;
