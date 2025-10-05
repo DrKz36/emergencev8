@@ -5,6 +5,7 @@
 - Travailler dans un environnement controle (Python 3.11 + Node.js >= 18) et reproductible.
 - Synchroniser en continu la documentation et le code, en particulier pour l'architecture et la memoire/RAG.
 - Boucler chaque session par des tests pertinents, un diff relu et une passation claire des prochaines actions.
+- Conduire chaque tache ou serie de taches jusqu'a l'objectif defini sans solliciter de validation intermediaire de l'utilisateur, sauf blocage critique documente.
 
 ## Checklist express
 ### Lancement de session
@@ -16,6 +17,7 @@
 - Verifier que `git status` est propre et que l'environnement (virtualenv Python + Node.js) est pret.
 
 ### Pendant le developpement
+- Avancer sans interruption sur l'objectif confie en bouclant l'ensemble des taches identifiees avant de solliciter l'utilisateur, sauf dependance bloquante explicitement consignee.
 - Respecter la structure des dossiers et conventions etablies (`src/backend`, `src/frontend`, `docs`, ...).
 - Creer les tests/configurations necessaires pour tout nouveau fichier; ne deposez pas de travail partiel.
 - Tenir la documentation synchronisee des que des composants, responsabilites ou flux memoire/RAG evoluent.
