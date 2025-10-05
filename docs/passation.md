@@ -8,6 +8,68 @@
 
 ---
 
+## [2025-10-05 12:55] — Agent: Claude Code (Update: Déploiement Complété)
+
+### Fichiers modifiés supplémentaires
+- [AGENT_SYNC.md](../AGENT_SYNC.md) (mise à jour état déploiement)
+- [docs/deployments/2025-10-05-audit-fixes-deployment.md](deployments/2025-10-05-audit-fixes-deployment.md) (nouveau)
+- [docs/deployments/README.md](deployments/README.md) (nouveau)
+
+### Déploiement Cloud Run
+- **Révision** : `emergence-app-00266-jc4`
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251005-123837`
+- **URL** : https://emergence-app-486095406755.europe-west1.run.app
+- **Status** : ✅ Déployé avec succès (100% trafic, révision active)
+- **Build time** : ~6min (Docker image 13.3 GB)
+- **Deploy time** : ~3min (Cloud Run)
+
+### Actions complémentaires réalisées
+1. ✅ Push commits vers origin/main (4bad1fe, d5ee4a4)
+2. ✅ Build Docker image (platform linux/amd64, tag deploy-20251005-123837)
+3. ✅ Push image vers Artifact Registry (europe-west1-docker.pkg.dev)
+4. ✅ Deploy Cloud Run (révision 00266-jc4, allow-unauthenticated)
+5. ✅ Vérification révision active (status: True)
+6. ✅ Documentation déploiement complète (process, tests, checklist)
+7. ✅ README déploiements créé (guidelines, rollback, monitoring)
+8. ✅ AGENT_SYNC.md mis à jour (état déploiement + prochaines actions)
+
+### Tests post-déploiement
+- ⏭️ Health check manuel (à effectuer)
+- ⏭️ Test endpoints critiques (à effectuer)
+- ⏭️ Vérification métriques Prometheus /api/metrics (à effectuer)
+- ⏭️ QA module conversations + handlers WS (à effectuer)
+
+### Prochaines actions recommandées
+1. **QA Manuelle Cloud Run** :
+   - Tester https://emergence-app-486095406755.europe-west1.run.app/health
+   - Valider module conversations accessible
+   - Tester handlers WS (auth_required, model_info, model_fallback, memory_banner, analysis_status)
+
+2. **Monitoring** :
+   - Surveiller logs Cloud Run (première heure)
+   - Vérifier métriques Prometheus (/api/metrics)
+   - Alerter si erreurs 5xx ou latence p95 > 2s
+
+3. **Documentation** :
+   - Compléter QA findings dans docs/deployments/2025-10-05-audit-fixes-deployment.md
+   - Mettre à jour roadmap si nouvelles priorités identifiées
+
+4. **Audit Suivi** :
+   - Re-run audit complet dans 7 jours (2025-10-12)
+   - Valider score ~95/100 maintenu
+   - Identifier prochaines optimisations (Phase P4+)
+
+### Blocages
+Aucun.
+
+### Notes techniques
+- Image Docker 13.3 GB (torch + embeddings models)
+- Révision déployée sans variables d'environnement modifiées (conservées)
+- Allow-unauthenticated maintenu (auth gérée côté app)
+- Artifact Registry: layers cachées, push rapide (~2min)
+
+---
+
 ## [2025-10-05 12:15] — Agent: Claude Code
 
 ### Fichiers modifiés
