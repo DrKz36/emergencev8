@@ -18,6 +18,7 @@ import {
 import { api } from './shared/api-client.js';
 import { WS_CONFIG, EVENTS } from './shared/constants.js';
 import { notifications } from './shared/notifications.js';
+import { showWelcomePopupIfNeeded } from './shared/welcome-popup.js';
 
 const storeAuthToken = typeof storeAuthTokenImpl === 'function' ? storeAuthTokenImpl : () => null;
 const clearStoredAuth = typeof clearAuthImpl === 'function' ? clearAuthImpl : () => {};
@@ -1213,6 +1214,11 @@ class EmergenceClient {
     this.connectWs();
 
     this.eventBus?.emit?.(EVENTS.AUTH_RESTORED, { source });
+
+    // Show welcome popup if user hasn't dismissed it
+    if (source === 'startup' || source === 'storage') {
+      showWelcomePopupIfNeeded(this.eventBus);
+    }
   }
 
   ensureApp() {

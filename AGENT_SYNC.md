@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-05 12:50 CET (Claude Code - Déploiement)
+**Dernière mise à jour** : 2025-10-06 06:10 CEST (Codex - Déploiement)
 
 ---
 
@@ -17,29 +17,29 @@
 
 ---
 
-## 📍 État actuel du dépôt (2025-10-05)
+## 📍 État actuel du dépôt (2025-10-06)
 
 ### Branche active
 - **Branche courante** : `main`
 - **Derniers commits** :
-  - `d5ee4a4` docs: update passation and agent sync after audit fixes
-  - `4bad1fe` fix: apply audit corrections (critical + major + minor)
-  - `6c30f2e` feat: add comprehensive metrics tracking and documentation system
+  - `a6b1ee6` feat: refonte complète des personnalités des agents ANIMA, NEO et NEXUS
+  - `32e5382` feat: optimize sidebar layout and improve mobile navigation
+  - `67cbf32` feat: enrich Genesis section with comprehensive timeline and documentation
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
 - `codex` → SSH : `git@github.com:DrKz36/emergencev8.git`
 
 ### Déploiement Cloud Run
-- **Révision active** : `emergence-app-00266-jc4`
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251005-123837`
+- **Révision active** : `emergence-app-00268-9s8`
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251006-060538`
 - **URL** : https://emergence-app-486095406755.europe-west1.run.app
-- **Déployé** : 2025-10-05 12:45 CET
+- **Déployé** : 2025-10-06 06:06 CEST
 - **Trafic** : 100% sur nouvelle révision
-- **Documentation** : [docs/deployments/2025-10-05-audit-fixes-deployment.md](docs/deployments/2025-10-05-audit-fixes-deployment.md)
+- **Documentation** : [docs/deployments/2025-10-06-agents-ui-refresh.md](docs/deployments/2025-10-06-agents-ui-refresh.md)
 
 ### Working tree
-✅ Clean (tous changements commités et pushés)
+- ⚠️ Dirty (modifs front existantes + fichiers sources extraites)
 
 ---
 
@@ -71,22 +71,23 @@
 - **Actions recommandées** : `git fetch --all --prune` puis `git rebase origin/main` une fois réseau OK
 
 ### Codex (local)
-- **Dernier sync** : 2025-10-04 21:10
-- **Statut** : Build Docker + déploiement Cloud Run (révision 00265-6cb)
+- **Dernier sync** : 2025-10-06 06:10
+- **Statut** : Build Docker + déploiement Cloud Run (révision 00268-9s8)
 - **Fichiers touchés** :
-  - `requirements.txt` (ajout bloc Monitoring + `prometheus-client`)
-  - `docs/passation.md` (entrée session)
+  - `docs/deployments/2025-10-06-agents-ui-refresh.md`
+  - `docs/deployments/README.md`
+  - `docs/passation.md`
+  - `AGENT_SYNC.md`
 - **Tests** :
-  - `pytest tests/backend/features/test_concept_recall_tracker.py`
-  - Vérification santé Cloud Run (`/api/health`)
+  - ✅ `npm run build`
+  - ⚠️ `python -m pytest` (7 erreurs fixture `app` manquante)
+  - ⚠️ `ruff check` (28 erreurs E402/F401/F841)
+  - ⚠️ `mypy src` (12 erreurs de typage)
+  - ✅ `pwsh -File tests/run_all.ps1`
 - **Next** :
+  - QA front/WS sur Cloud Run `emergence-app-00268-9s8`
+  - Corriger suites `pytest`/`ruff`/`mypy`
   - Surveiller logs `severity>=ERROR`
-  - Lancer smoke WS Cloud Run
-  - Ajouter garde-fou CI pour dépendances metrics
-
----
-
-## 🔒 Règles anti-collision
 
 ### 1. Avant de coder (TOUS les agents)
 ```bash

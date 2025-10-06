@@ -382,6 +382,7 @@ body::before, body::after,
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
+    z-index: 1200 !important;
   }
 
   .header-title {
@@ -392,6 +393,7 @@ body::before, body::after,
     margin-left: auto !important;
     display: flex !important;
     align-items: center !important;
+    justify-content: flex-end !important;
   }
 
   .app-sidebar,
@@ -404,8 +406,9 @@ body::before, body::after,
     width: 44px !important;
     height: 44px !important;
     position: relative !important;
-    z-index: 1201 !important;
+    z-index: 1202 !important;
     display: flex !important;
+    margin-right: 0 !important;
   }
 
   .app-header .mobile-nav,
@@ -419,7 +422,7 @@ body::before, body::after,
     max-width: min(320px, calc(100% - 24px)) !important;
     max-height: calc(100vh - env(safe-area-inset-top, 0) - var(--header-height, 56px) - 24px) !important;
     transform-origin: top right !important;
-    z-index: 1200 !important;
+    z-index: 1201 !important;
     display: block !important;
   }
 

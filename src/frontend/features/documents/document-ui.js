@@ -71,7 +71,7 @@ export class DocumentsUI {
                         <section class="stats-section" aria-label="Statistiques des documents" style="margin-top: 24px;">
                             <h3 class="list-title">Statistiques</h3>
                             <div id="doc-stats-summary" class="doc-stats-summary" aria-live="polite" style="margin: 6px 0 10px;">
-                                Total : 0 &#8212; (aucune extension)
+                                Total : 0 - (aucune extension)
                             </div>
                             <div class="doc-stats-canvas-wrap" style="width:100%;max-width:100%;overflow:hidden;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));box-shadow:0 10px 30px rgba(0,0,0,.25) inset;">
                                 <canvas id="doc-stats-canvas" width="640" height="220" role="img" aria-label="R&#233;partition des documents par extension"></canvas>
@@ -202,12 +202,12 @@ export class DocumentsUI {
         const updateSummary = ({ total, exts }) => {
             if (!summaryEl) return;
             if (!total || exts.size === 0) {
-                summaryEl.textContent = 'Total : 0 &#8212; (aucune extension)';
+                summaryEl.textContent = 'Total : 0 - (aucune extension)';
                 return;
             }
             const top = Array.from(exts.entries()).sort((a,b) => b[1]-a[1]).slice(0, 3);
-            const topStr = top.map(([k,v]) => `${k}: ${v}`).join('  ');
-            summaryEl.textContent = `Total : ${total}  ${topStr}${exts.size > 3 ? '  ' : ''}`;
+            const topStr = top.map(([k,v]) => `${k}: ${v}`).join(' · ');
+            summaryEl.textContent = `Total : ${total} · ${topStr}${exts.size > 3 ? ' …' : ''}`;
         };
 
         const refreshStats = () => {

@@ -12,12 +12,12 @@ Chaque déploiement est documenté avec :
 - **Processus de déploiement** (commandes Docker/gcloud)
 - **Métriques** et impact (si applicable)
 - **Points de vérification** post-déploiement
-- **Prochaines actions** recommandées
 
 ## Déploiements Récents
 
 | Date | Révision | Image Tag | Description |
 |------|----------|-----------|-------------|
+| 2025-10-06 | `emergence-app-00268-9s8` | `deploy-20251006-060538` | Agents & UI refresh (personnalités, module documentation, responsive) |
 | 2025-10-05 | `emergence-app-00266-jc4` | `deploy-20251005-123837` | Corrections audit (13 fixes, score 87.5→95/100) |
 | 2025-10-04 | `emergence-app-00265-xxx` | `deploy-20251004-205347` | Ajout système métriques + Settings module |
 

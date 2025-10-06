@@ -47,7 +47,7 @@
 
 .mobile-nav-toggle {
   position: relative;
-  z-index: 1201;
+  z-index: 1202;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -92,7 +92,7 @@
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.75);
   max-height: calc(100vh - var(--header-height, 56px) - 24px);
   overflow-y: auto;
-  z-index: 1200;
+  z-index: 1201;
   backdrop-filter: blur(16px);
   opacity: 0;
   transform: translateY(-12px) scale(0.95);
@@ -248,7 +248,7 @@
   inset: 0;
   background: rgba(5, 10, 20, 0.75);
   backdrop-filter: blur(6px);
-  z-index: 1100;
+  z-index: 1199;
   display: none;
   opacity: 0;
   transition: opacity 0.2s ease;
