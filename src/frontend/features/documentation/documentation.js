@@ -4,6 +4,7 @@
  */
 
 import { TUTORIAL_GUIDES } from '../../components/tutorial/tutorialGuides.js';
+import { generateHymnHTML, initializeHymnSection } from './hymn-section.js';
 
 export class Documentation {
     constructor() {
@@ -16,19 +17,32 @@ export class Documentation {
      */
     async loadStyles() {
         // Check if styles are already loaded
-        const existingLink = document.querySelector('link[href*="documentation.css"]');
-        if (existingLink) {
-            return Promise.resolve();
+        const existingDocLink = document.querySelector('link[href*="documentation.css"]');
+        if (!existingDocLink) {
+            await new Promise((resolve, reject) => {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = '/src/frontend/features/documentation/documentation.css';
+                link.onload = () => resolve();
+                link.onerror = () => reject(new Error('Failed to load documentation CSS'));
+                document.head.appendChild(link);
+            });
         }
 
-        return new Promise((resolve, reject) => {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = '/src/frontend/features/documentation/documentation.css';
-            link.onload = () => resolve();
-            link.onerror = () => reject(new Error('Failed to load documentation CSS'));
-            document.head.appendChild(link);
-        });
+        // Load hymn CSS
+        const existingHymnLink = document.querySelector('link[href*="hymn.css"]');
+        if (!existingHymnLink) {
+            await new Promise((resolve, reject) => {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = '/src/frontend/features/hymn/hymn.css';
+                link.onload = () => resolve();
+                link.onerror = () => reject(new Error('Failed to load hymn CSS'));
+                document.head.appendChild(link);
+            });
+        }
+
+        return Promise.resolve();
     }
 
     init() {
@@ -46,6 +60,7 @@ export class Documentation {
             await this.loadStyles();
             this.render(container);
             this.attachEventListeners();
+            initializeHymnSection();
             this.initialized = true;
             console.log('[Documentation] Mounted successfully');
         } catch (error) {
@@ -120,6 +135,12 @@ export class Documentation {
                             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                         </svg>
                         Genèse
+                    </a>
+                    <a href="#hymn" class="doc-nav-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z"></path>
+                        </svg>
+                        Hymne
                     </a>
                 </div>
 
@@ -707,6 +728,8 @@ export class Documentation {
                             </div>
                         </div>
                     </section>
+
+                    ${generateHymnHTML()}
 
                     <!-- Genesis Section -->
                     <section id="genesis" class="doc-section">

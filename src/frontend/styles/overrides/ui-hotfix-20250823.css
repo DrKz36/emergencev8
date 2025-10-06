@@ -378,7 +378,7 @@ body::before, body::after,
 
   /* ===== NAV / BARRE MODULES ===== */
   .app-header{
-    padding: max(env(safe-area-inset-top), 10px) 12px 8px !important;
+    padding: max(env(safe-area-inset-top), 10px) 4px 8px 12px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
@@ -394,6 +394,9 @@ body::before, body::after,
     display: flex !important;
     align-items: center !important;
     justify-content: flex-end !important;
+    /* 🔧 Coller le bouton burger au bord droit */
+    padding-right: 0 !important;
+    gap: 4px !important;
   }
 
   .app-sidebar,
@@ -403,12 +406,22 @@ body::before, body::after,
   }
 
   .mobile-nav-toggle{
-    width: 44px !important;
-    height: 44px !important;
+    width: 48px !important;
+    height: 48px !important;
     position: relative !important;
     z-index: 1202 !important;
     display: flex !important;
     margin-right: 0 !important;
+    /* 🔧 Renforcement de la visibilité en mobile portrait */
+    background-color: rgba(59, 130, 246, 0.25) !important;
+    border: 2px solid rgba(59, 130, 246, 0.9) !important;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  }
+
+  /* 🔧 Lueur renforcée sur l'icône en mobile */
+  .mobile-nav-toggle svg {
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6)) !important;
   }
 
   .app-header .mobile-nav,
@@ -434,6 +447,41 @@ body::before, body::after,
     transform: translateY(0) scale(1) !important;
     pointer-events: auto !important;
     visibility: visible !important;
+  }
+
+  /* 🔧 Forcer la visibilité des liens de navigation en mobile */
+  .app-header .mobile-nav .nav-link,
+  .header-mobile-nav .nav-link {
+    color: rgba(226, 232, 240, 0.95) !important;
+    background: rgba(15, 23, 42, 0.5) !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    min-height: 48px !important;
+  }
+
+  .app-header .mobile-nav .nav-link:hover,
+  .header-mobile-nav .nav-link:hover {
+    background-color: rgba(59, 130, 246, 0.25) !important;
+    border-color: rgba(59, 130, 246, 0.5) !important;
+  }
+
+  .app-header .mobile-nav .nav-link.active,
+  .header-mobile-nav .nav-link.active {
+    background-color: rgba(59, 130, 246, 0.35) !important;
+    border-color: rgba(59, 130, 246, 0.7) !important;
+  }
+
+  /* 🔧 Assurer la visibilité du texte et des icônes */
+  .app-header .mobile-nav .nav-link .nav-text,
+  .app-header .mobile-nav .nav-link .nav-icon,
+  .header-mobile-nav .nav-link .nav-text,
+  .header-mobile-nav .nav-link .nav-icon {
+    color: rgba(226, 232, 240, 0.95) !important;
+  }
+
+  .app-header .mobile-nav .nav-link svg,
+  .header-mobile-nav .nav-link svg {
+    color: inherit !important;
+    stroke: currentColor !important;
   }
 
   @supports (inset: 0){

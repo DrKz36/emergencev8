@@ -219,16 +219,78 @@ export class CockpitMetrics {
     }
 
     /**
+     * Fetch all metrics from dashboard API
+     */
+    async fetchAllMetrics() {
+        try {
+            const token = this._getAuthToken();
+            const sessionId = this._getSessionId();
+
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            if (sessionId) {
+                headers['X-Session-Id'] = sessionId;
+            }
+
+            const response = await fetch('/api/dashboard/costs/summary', {
+                method: 'GET',
+                headers: headers
+            });
+
+            if (!response.ok) {
+                throw new Error(`Dashboard API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('[Cockpit] Error fetching dashboard data:', error);
+            // Return fallback empty data
+            return {
+                costs: {
+                    total_cost: 0,
+                    today_cost: 0,
+                    current_week_cost: 0,
+                    current_month_cost: 0
+                },
+                monitoring: {
+                    total_documents: 0,
+                    total_sessions: 0
+                },
+                raw_data: {
+                    documents: [],
+                    sessions: []
+                }
+            };
+        }
+    }
+
+    /**
      * Fetch messages metrics
      */
     async fetchMessagesMetrics() {
-        // Mock data - TODO: replace with actual API call when endpoint is ready
-        // const response = await fetch('/api/metrics/messages').then(r => r.json());
+        const data = await this.fetchAllMetrics();
+        const sessions = data.raw_data?.sessions || [];
+
+        // Calculate message stats from sessions
+        let totalMessages = 0;
+        sessions.forEach(session => {
+            if (session.message_count) {
+                totalMessages += session.message_count;
+            }
+        });
+
         return {
-            total: 1247,
-            today: 42,
-            week: 289,
-            month: 1105
+            total: totalMessages,
+            today: 0, // TODO: calculate from session dates
+            week: 0,
+            month: totalMessages
         };
     }
 
@@ -236,12 +298,13 @@ export class CockpitMetrics {
      * Fetch threads metrics
      */
     async fetchThreadsMetrics() {
-        // Mock data - TODO: replace with actual API call when endpoint is ready
-        // const response = await fetch('/api/metrics/threads').then(r => r.json());
+        const data = await this.fetchAllMetrics();
+        const sessions = data.raw_data?.sessions || [];
+
         return {
-            total: 78,
-            active: 12,
-            archived: 66
+            total: sessions.length,
+            active: sessions.filter(s => !s.archived).length,
+            archived: sessions.filter(s => s.archived).length
         };
     }
 
@@ -249,13 +312,12 @@ export class CockpitMetrics {
      * Fetch tokens metrics
      */
     async fetchTokensMetrics() {
-        // Mock data - TODO: replace with actual API call when endpoint is ready
-        // const response = await fetch('/api/metrics/tokens').then(r => r.json());
+        // TODO: Add tokens tracking in backend
         return {
-            total: 3456789,
-            input: 1234567,
-            output: 2222222,
-            avgPerMessage: 2771
+            total: 0,
+            input: 0,
+            output: 0,
+            avgPerMessage: 0
         };
     }
 
@@ -263,15 +325,42 @@ export class CockpitMetrics {
      * Fetch costs metrics
      */
     async fetchCostsMetrics() {
-        // Mock data - TODO: replace with actual API call when endpoint is ready
-        // const response = await fetch('/api/metrics/costs').then(r => r.json());
+        const data = await this.fetchAllMetrics();
+        const costs = data.costs || {};
+
         return {
-            total: 234.56,
-            today: 3.45,
-            week: 28.90,
-            month: 189.23,
-            avgPerMessage: 0.188
+            total: costs.total_cost || 0,
+            today: costs.today_cost || 0,
+            week: costs.current_week_cost || 0,
+            month: costs.current_month_cost || 0,
+            avgPerMessage: 0 // TODO: calculate
         };
+    }
+
+    /**
+     * Get auth token from storage
+     */
+    _getAuthToken() {
+        try {
+            return localStorage.getItem('emergence.id_token') ||
+                   localStorage.getItem('id_token') ||
+                   sessionStorage.getItem('emergence.id_token') ||
+                   sessionStorage.getItem('id_token');
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Get session ID from storage
+     */
+    _getSessionId() {
+        try {
+            const state = JSON.parse(localStorage.getItem('emergenceState-V14') || '{}');
+            return state.session?.id || state.websocket?.sessionId;
+        } catch (e) {
+            return null;
+        }
     }
 
     /**

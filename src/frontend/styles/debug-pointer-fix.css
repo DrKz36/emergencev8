@@ -66,11 +66,6 @@ a {
 }
 
 /* Seuls les overlays fermés doivent avoir pointer-events: none */
-.tutorial-overlay:not(.active) {
-  pointer-events: none !important;
-  display: none !important;
-}
-
 .memory-overlay:not(.active) {
   pointer-events: none !important;
 }

@@ -532,3 +532,36 @@ async def get_document_service(request: Request):
         raise HTTPException(status_code=503, detail="Service container indisponible.")
     return container.document_service()
 
+async def get_admin_dashboard_service(request: Request):
+    """Get admin dashboard service from container."""
+    container = getattr(request.app.state, "service_container", None)  # type: ignore
+    if container is None:
+        raise HTTPException(status_code=503, detail="Service container indisponible.")
+    provider = getattr(container, "admin_dashboard_service", None)
+    if provider is None:
+        raise HTTPException(status_code=503, detail="Admin dashboard service indisponible.")
+    try:
+        return provider()
+    except Exception as exc:
+        logger.debug("AdminDashboardService indisponible: %s", exc)
+        raise HTTPException(status_code=503, detail="AdminDashboardService indisponible.")
+
+async def get_user_role(request: Request) -> str:
+    """Extract user role from JWT claims or dev headers."""
+    dev_bypass = _has_dev_bypass(request.headers)
+    token = _extract_bearer_token_from_header(request.headers.get("Authorization"))
+
+    if token:
+        claims = await _get_claims_from_request(request)
+        role = _normalize_identifier(claims.get("role"))
+        if role:
+            return role.lower()
+
+    if dev_bypass or _is_global_dev_mode(request):
+        role_hdr = request.headers.get("X-User-Role")
+        if role_hdr:
+            return role_hdr.lower()
+
+    # Default to member if no role found
+    return "member"
+

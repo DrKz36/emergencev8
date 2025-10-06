@@ -71,24 +71,25 @@
 - **Actions recommandées** : `git fetch --all --prune` puis `git rebase origin/main` une fois réseau OK
 
 ### Codex (local)
-- **Dernier sync** : 2025-10-06 06:10
-- **Statut** : Build Docker + déploiement Cloud Run (révision 00268-9s8)
-- **Fichiers touchés** :
-  - `docs/deployments/2025-10-06-agents-ui-refresh.md`
-  - `docs/deployments/README.md`
+- **Dernier sync** : 2025-10-06 23:00
+- **Statut** : Burger menu mobile reparé; build front OK
+- **Fichiers touches** :
+  - `src/frontend/core/app.js`
+  - `src/frontend/main.js`
   - `docs/passation.md`
   - `AGENT_SYNC.md`
 - **Tests** :
-  - ✅ `npm run build`
-  - ⚠️ `python -m pytest` (7 erreurs fixture `app` manquante)
-  - ⚠️ `ruff check` (28 erreurs E402/F401/F841)
-  - ⚠️ `mypy src` (12 erreurs de typage)
-  - ✅ `pwsh -File tests/run_all.ps1`
+  - ok `npm run build` (warning importmap existant)
+  - a relancer `python -m pytest` (7 erreurs fixture `app`)
+  - a relancer `ruff check` (28 erreurs existantes)
+  - a relancer `mypy src` (12 erreurs existantes)
+  - non lance `pwsh -File tests/run_all.ps1`
 - **Next** :
-  - QA front/WS sur Cloud Run `emergence-app-00268-9s8`
-  - Corriger suites `pytest`/`ruff`/`mypy`
-  - Surveiller logs `severity>=ERROR`
-
+  - QA responsive mobile (<=760px) pour valider burger/backdrop/Escape.
+  - Rationaliser `mobile-menu-fix.css` et `ui-hotfix` une fois la nav validée.
+  - Traiter l'avertissement importmap dans `index.html` quand possible.
+- **Blocages** :
+  - `scripts/sync-workdir.ps1` echoue (working tree dirty; rebase impossible tant que les autres modifs front ne sont pas commit/stash).
 ### 1. Avant de coder (TOUS les agents)
 ```bash
 # Vérifier les remotes

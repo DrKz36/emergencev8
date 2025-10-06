@@ -54,28 +54,65 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background-color: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  color: rgba(226, 232, 240, 0.9);
+  /* 🔧 Amélioration contraste: fond bleu semi-transparent avec bordure visible */
+  background-color: rgba(59, 130, 246, 0.2);
+  border: 2px solid rgba(59, 130, 246, 0.8);
+  color: rgba(255, 255, 255, 1);
+  /* 🔧 Ajout d'une lueur pour améliorer la visibilité */
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.4),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
   margin: 0;
   padding: 0;
 }
 
 .mobile-nav-toggle:hover,
-.mobile-nav-toggle:focus,
+.mobile-nav-toggle:focus {
+  color: rgba(255, 255, 255, 1);
+  background-color: rgba(59, 130, 246, 0.35);
+  border-color: rgba(56, 189, 248, 1);
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.6),
+              inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transform: scale(1.08);
+}
+
+/* 🔧 État ouvert: rotation de l'icône pour feedback visuel */
 .mobile-nav-toggle[aria-expanded="true"] {
-  color: rgba(56, 189, 248, 1);
-  background-color: rgba(15, 23, 42, 0.85);
-  border-color: rgba(56, 189, 248, 0.5);
+  color: rgba(255, 255, 255, 1);
+  background-color: rgba(59, 130, 246, 0.45);
+  border-color: rgba(56, 189, 248, 1);
+  box-shadow: 0 0 28px rgba(56, 189, 248, 0.7),
+              inset 0 2px 8px rgba(0, 0, 0, 0.2);
   transform: scale(1.05);
+}
+
+/* 🔧 Amélioration accessibilité keyboard */
+.mobile-nav-toggle:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.8);
+  outline-offset: 4px;
+  border-color: rgba(56, 189, 248, 1);
+}
+
+/* 🔧 Feedback tactile au clic */
+.mobile-nav-toggle:active {
+  transform: scale(0.96);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5) inset;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
 .mobile-nav-toggle svg {
   width: 24px;
   height: 24px;
+  /* 🔧 Lueur autour de l'icône pour renforcer la visibilité */
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
+  transition: filter 0.25s ease;
+}
+
+.mobile-nav-toggle:hover svg,
+.mobile-nav-toggle[aria-expanded="true"] svg {
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
 }
 
 .app-header .mobile-nav {
@@ -87,13 +124,15 @@
   display: block;
   padding: 16px;
   border-radius: 20px;
+  /* 🔧 Amélioration contraste: fond plus opaque avec bordure bleue cohérente */
   background: rgba(11, 15, 26, 0.98);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.75);
+  border: 2px solid rgba(59, 130, 246, 0.4);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.85),
+              0 0 0 1px rgba(59, 130, 246, 0.2);
   max-height: calc(100vh - var(--header-height, 56px) - 24px);
   overflow-y: auto;
   z-index: 1201;
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(20px);
   opacity: 0;
   transform: translateY(-12px) scale(0.95);
   pointer-events: none;
@@ -135,33 +174,41 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 10.5px;
+  gap: 12px;
   width: 100%;
   height: auto;
-  padding: 10.5px 14px;
+  padding: 12px 16px;
   border-radius: 14px;
-  border: 1px solid transparent;
-  color: var(--color-text-primary);
-  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  /* 🔧 Amélioration de la visibilité des liens */
+  color: rgba(226, 232, 240, 0.95);
+  background: rgba(15, 23, 42, 0.4);
+  font-size: 0.95rem;
+  font-weight: 500;
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .app-header .mobile-nav .nav-link:hover {
-  color: var(--color-primary);
-  background-color: rgba(255, 255, 255, 0.08);
-  transform: translateX(2px);
+  color: rgba(255, 255, 255, 1);
+  background-color: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
+  transform: translateX(4px);
 }
 
 .app-header .mobile-nav .nav-link.active {
-  color: var(--color-primary);
-  background-color: rgba(37, 99, 235, 0.18);
-  border-color: rgba(37, 99, 235, 0.35);
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25);
+  color: rgba(255, 255, 255, 1);
+  background-color: rgba(59, 130, 246, 0.3);
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3),
+              0 4px 12px rgba(59, 130, 246, 0.25);
 }
 
 .app-header .mobile-nav .nav-link .nav-text {
   display: inline;
-  font-size: 0.64rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  /* 🔧 Assurer la visibilité du texte */
+  color: inherit;
 }
 
 .app-header .mobile-nav .nav-link .nav-icon {
@@ -169,6 +216,8 @@
   width: 24px;
   height: 24px;
   flex: 0 0 auto;
+  /* 🔧 Assurer la visibilité de l'icône */
+  color: inherit;
 }
 
 /* ========================= */
@@ -246,17 +295,28 @@
 .mobile-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(5, 10, 20, 0.75);
-  backdrop-filter: blur(6px);
+  /* 🔧 Fond semi-transparent amélioré */
+  background: rgba(5, 10, 20, 0.85);
+  backdrop-filter: blur(8px);
   z-index: 1199;
   display: none;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
 .mobile-backdrop:not([hidden]) {
   display: block;
   opacity: 1;
+  pointer-events: auto;
+}
+
+/* 🔧 Backdrop visible quand le menu est ouvert */
+body.mobile-nav-open .mobile-backdrop,
+body.mobile-menu-open .mobile-backdrop {
+  display: block;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 body.mobile-nav-open,

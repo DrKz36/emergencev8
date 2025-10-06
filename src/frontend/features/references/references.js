@@ -5,6 +5,15 @@
 
 const DOCS = [
   {
+    id: 'tutorial-guide',
+    title: 'Tutoriel pas-a-pas',
+    description: 'Guide statique pour prendre en main Emergence.',
+    path: '/docs/TUTORIAL_SYSTEM.md',
+    category: 'Guides',
+    cta: 'Lire le tutoriel',
+    showInList: true,
+  },
+  {
     id: 'tech-portrait',
     title: 'Portrait technique',
     description: 'Architecture actuelle, modules backend/frontend, flux memoire et chiffres cle.',
@@ -96,6 +105,7 @@ export class ReferencesModule {
     this.viewer = null;
     this.activeDocId = (DOCS.find((doc) => doc.showInList !== false) || {}).id || null;
     this.cache = new Map();
+    this.unsubscribeExternalDoc = null;
     this.onCardClick = this.onCardClick.bind(this);
   }
 
@@ -108,13 +118,14 @@ export class ReferencesModule {
     this.viewer = this.container.querySelector('[data-role="references-viewer"]');
     this.container.addEventListener('click', this.onCardClick);
 
-    // Add tutorial button listener
-    const tutorialBtn = this.container.querySelector('[data-action="open-tutorial"]');
-    if (tutorialBtn) {
-      tutorialBtn.addEventListener('click', () => {
-        if (window.app && window.app.openTutorialMenu) {
-          window.app.openTutorialMenu();
-        }
+    if (typeof this.unsubscribeExternalDoc === 'function') {
+      this.unsubscribeExternalDoc();
+    }
+    this.unsubscribeExternalDoc = null;
+
+    if (this.eventBus?.on) {
+      this.unsubscribeExternalDoc = this.eventBus.on('references:show-doc', (payload) => {
+        this.handleExternalDocRequest(payload);
       });
     }
 
@@ -124,11 +135,50 @@ export class ReferencesModule {
   }
 
   unmount() {
+    if (typeof this.unsubscribeExternalDoc === 'function') {
+      this.unsubscribeExternalDoc();
+    }
+    this.unsubscribeExternalDoc = null;
+
     if (!this.container) return;
     this.container.removeEventListener('click', this.onCardClick);
     this.container.innerHTML = '';
     this.container = null;
     this.viewer = null;
+  }
+
+  handleExternalDocRequest(payload) {
+    if (!payload) return;
+
+    let docId = null;
+    let anchor = null;
+    let silentHighlight = false;
+
+    if (typeof payload === 'string') {
+      docId = payload;
+    } else if (typeof payload === 'object') {
+      docId = payload.docId || null;
+      anchor = payload.anchor || null;
+      if (typeof payload.silentHighlight === 'boolean') {
+        silentHighlight = payload.silentHighlight;
+      }
+    } else {
+      return;
+    }
+
+    if (!docId) return;
+    const doc = getDocMeta(docId);
+    if (!doc) return;
+
+    this.activeDocId = doc.id;
+    if (this.container) {
+      this.updateActiveCards();
+    }
+
+    this.loadDoc(doc.id, {
+      anchor: anchor || undefined,
+      silentHighlight,
+    });
   }
 
   render() {
@@ -142,13 +192,13 @@ export class ReferencesModule {
             <h1 id="references-title" class="references__title">A propos</h1>
             <p class="references__intro">Retrouvez la synthese technique et les reperes cle du projet Emergence.</p>
           </div>
-          <button type="button" class="references__tutorial-btn" data-action="open-tutorial" title="Ouvrir le tutoriel interactif">
+          <button type="button" class="references__tutorial-btn" data-doc-id="tutorial-guide" title="Afficher le guide pas-a-pas">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
               <circle cx="12" cy="12" r="10"></circle>
               <path stroke-linecap="round" stroke-linejoin="round" d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
               <line x1="12" y1="17" x2="12.01" y2="17"></line>
             </svg>
-            <span>Tutoriel interactif</span>
+            <span>Tutoriel pas-a-pas</span>
           </button>
         </header>
         ${agentsSection}

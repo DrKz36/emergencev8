@@ -145,6 +145,10 @@ function setupMobileShell(appInstance, eventBus) {
     brainToggle = null;
   }
 
+  if (usingHeaderNav && (!appInstance || typeof appInstance.openMobileNav !== 'function')) {
+    try { appInstance?.setupMobileNav?.(); } catch (err) { console.warn('[mobile] Impossible de preparer la navigation mobile', err); }
+  }
+
   const memoryClosers = memoryOverlay ? memoryOverlay.querySelectorAll('[data-memory-close]') : [];
 
   const applyHeaderNavState = (expanded) => {
@@ -283,6 +287,22 @@ function setupMobileShell(appInstance, eventBus) {
         openMenu();
       }
     });
+  } else if (usingHeaderNav && menuToggle && menuToggle.dataset.mobileNavBound !== 'app') {
+    const handleToggleFallback = (event) => {
+      if (menuToggle.dataset.mobileNavBound === 'app') {
+        menuToggle.removeEventListener('click', handleToggleFallback);
+        return;
+      }
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      if (appInstance && typeof appInstance.toggleMobileNav === 'function') {
+        appInstance.toggleMobileNav();
+      } else {
+        const expanded = menuToggle.getAttribute('aria-expanded') === 'true';
+        applyHeaderNavState(!expanded);
+      }
+    };
+    menuToggle.addEventListener('click', handleToggleFallback, { passive: false });
   }
 
   brainToggle?.addEventListener('click', () => {
@@ -1215,10 +1235,10 @@ class EmergenceClient {
 
     this.eventBus?.emit?.(EVENTS.AUTH_RESTORED, { source });
 
-    // Show welcome popup if user hasn't dismissed it
-    if (source === 'startup' || source === 'storage') {
-      showWelcomePopupIfNeeded(this.eventBus);
-    }
+    // Welcome popup désactivé - voir welcome-popup.js
+    // if (source === 'startup' || source === 'storage') {
+    //   showWelcomePopupIfNeeded(this.eventBus);
+    // }
   }
 
   ensureApp() {

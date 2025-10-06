@@ -1,0 +1,559 @@
+/**
+ * Hymne d'Emergence - Styles
+ * Design baroque avec animations élégantes
+ */
+
+.hymn-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a1525 50%, #0f0a15 100%);
+    color: #e0d5c7;
+    padding: 2rem;
+    font-family: 'Garamond', 'Georgia', serif;
+}
+
+/* Header */
+.hymn-header {
+    text-align: center;
+    padding: 3rem 0 2rem;
+    position: relative;
+}
+
+.hymn-header::before {
+    content: '♪';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 2rem;
+    color: #d4af37;
+    opacity: 0.5;
+    animation: floatNote 3s ease-in-out infinite;
+}
+
+.hymn-title-wrapper {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.hymn-title {
+    font-size: 3rem;
+    font-weight: 400;
+    color: #d4af37;
+    margin: 0 0 0.5rem 0;
+    text-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+    letter-spacing: 0.1em;
+    font-style: italic;
+    animation: titleGlow 4s ease-in-out infinite;
+}
+
+.hymn-subtitle {
+    font-size: 1.5rem;
+    color: #c0a875;
+    margin: 0.5rem 0;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+}
+
+.hymn-description {
+    font-size: 1rem;
+    color: #a0907d;
+    margin: 1.5rem 0 0 0;
+    line-height: 1.6;
+    font-style: italic;
+}
+
+/* Content */
+.hymn-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 0;
+}
+
+/* Audio Player Section */
+.hymn-player-section {
+    margin-bottom: 4rem;
+}
+
+.audio-player-wrapper {
+    background: linear-gradient(145deg, #1a1520 0%, #251a2a 100%);
+    border: 2px solid #d4af37;
+    border-radius: 20px;
+    padding: 2.5rem;
+    position: relative;
+    box-shadow:
+        0 10px 40px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(212, 175, 55, 0.1);
+    max-width: 800px;
+    margin: 0 auto 2rem;
+}
+
+.audio-player-ornament {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, #d4af37 50%, transparent 100%);
+}
+
+.audio-player-ornament.top {
+    top: 15px;
+}
+
+.audio-player-ornament.bottom {
+    bottom: 15px;
+}
+
+.audio-player-ornament::before,
+.audio-player-ornament::after {
+    content: '◆';
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #d4af37;
+    font-size: 0.6rem;
+}
+
+.audio-player-ornament::before {
+    left: -15px;
+}
+
+.audio-player-ornament::after {
+    right: -15px;
+}
+
+.audio-controls {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.control-btn {
+    background: linear-gradient(145deg, #2a2030 0%, #352a3a 100%);
+    border: 2px solid #d4af37;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #d4af37;
+    flex-shrink: 0;
+}
+
+.control-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+    background: linear-gradient(145deg, #352a3a 0%, #2a2030 100%);
+}
+
+.control-btn:active {
+    transform: scale(0.95);
+}
+
+.control-btn.playing {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.control-btn svg {
+    width: 28px;
+    height: 28px;
+}
+
+.time-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+    color: #c0a875;
+    min-width: 100px;
+    flex-shrink: 0;
+}
+
+.time-separator {
+    color: #806030;
+}
+
+.progress-bar-container {
+    flex: 1;
+    position: relative;
+    min-width: 150px;
+}
+
+.progress-bar-bg {
+    height: 8px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #d4af37 0%, #aa8c2d 50%, #d4af37 100%);
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+}
+
+.seek-bar {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 20px;
+    transform: translateY(-50%);
+    opacity: 0;
+    cursor: pointer;
+    margin: 0;
+}
+
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.volume-btn {
+    width: 40px;
+    height: 40px;
+}
+
+.volume-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.volume-bar {
+    width: 80px;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.volume-bar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #d4af37;
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+}
+
+.volume-bar::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #d4af37;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+}
+
+/* Waveform Visualization */
+.waveform-visualization {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    border: 1px solid rgba(212, 175, 55, 0.1);
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#waveformCanvas {
+    width: 100%;
+    height: 100px;
+    display: block;
+}
+
+/* Lyrics Section */
+.hymn-lyrics-section {
+    background: rgba(26, 21, 32, 0.6);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 15px;
+    padding: 2.5rem;
+    backdrop-filter: blur(10px);
+}
+
+.lyrics-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.lyrics-header h2 {
+    font-size: 2rem;
+    color: #d4af37;
+    margin: 0;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+}
+
+.language-toggle {
+    display: flex;
+    gap: 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.5rem;
+    border-radius: 10px;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.lang-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: #a0907d;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Garamond', 'Georgia', serif;
+    font-size: 0.95rem;
+}
+
+.lang-btn:hover {
+    color: #d4af37;
+    background: rgba(212, 175, 55, 0.1);
+}
+
+.lang-btn.active {
+    background: linear-gradient(145deg, #2a2030 0%, #352a3a 100%);
+    border-color: #d4af37;
+    color: #d4af37;
+}
+
+/* Lyrics Content */
+.lyrics-content {
+    max-height: 600px;
+    overflow-y: auto;
+    padding-right: 1rem;
+}
+
+.lyrics-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.lyrics-content::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
+.lyrics-content::-webkit-scrollbar-thumb {
+    background: #d4af37;
+    border-radius: 4px;
+}
+
+.lyrics-content::-webkit-scrollbar-thumb:hover {
+    background: #c09d2d;
+}
+
+.lyrics-section {
+    margin-bottom: 3rem;
+    animation: fadeInUp 0.6s ease-out backwards;
+}
+
+.lyrics-section:nth-child(1) { animation-delay: 0.1s; }
+.lyrics-section:nth-child(2) { animation-delay: 0.2s; }
+.lyrics-section:nth-child(3) { animation-delay: 0.3s; }
+.lyrics-section:nth-child(4) { animation-delay: 0.4s; }
+.lyrics-section:nth-child(5) { animation-delay: 0.5s; }
+.lyrics-section:nth-child(6) { animation-delay: 0.6s; }
+.lyrics-section:nth-child(7) { animation-delay: 0.7s; }
+
+.section-title {
+    font-size: 1.1rem;
+    color: #c0a875;
+    margin: 0 0 1rem 0;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.verses-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.verses {
+    padding: 1.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    border-left: 3px solid #d4af37;
+}
+
+.latin-verses {
+    font-style: italic;
+}
+
+.verse-line {
+    margin: 0.5rem 0;
+    line-height: 1.8;
+    font-size: 1.1rem;
+    color: #e0d5c7;
+    transition: color 0.3s ease;
+}
+
+.verse-line:hover {
+    color: #d4af37;
+}
+
+.verse-line.empty {
+    margin: 0.25rem 0;
+    line-height: 1;
+}
+
+/* Animations */
+@keyframes titleGlow {
+    0%, 100% {
+        text-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+    }
+    50% {
+        text-shadow: 0 0 30px rgba(212, 175, 55, 0.5);
+    }
+}
+
+@keyframes floatNote {
+    0%, 100% {
+        transform: translateX(-50%) translateY(0);
+        opacity: 0.5;
+    }
+    50% {
+        transform: translateX(-50%) translateY(-10px);
+        opacity: 0.8;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 rgba(212, 175, 55, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hymn-container {
+        padding: 1rem;
+    }
+
+    .hymn-title {
+        font-size: 2rem;
+    }
+
+    .hymn-subtitle {
+        font-size: 1.2rem;
+    }
+
+    .audio-player-wrapper {
+        padding: 1.5rem;
+    }
+
+    .audio-controls {
+        gap: 1rem;
+    }
+
+    .control-btn {
+        width: 50px;
+        height: 50px;
+    }
+
+    .control-btn svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .time-info {
+        font-size: 0.9rem;
+        min-width: 90px;
+    }
+
+    .progress-bar-container {
+        width: 100%;
+        order: 10;
+    }
+
+    .volume-control {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .volume-bar {
+        flex: 1;
+        max-width: 150px;
+    }
+
+    .hymn-lyrics-section {
+        padding: 1.5rem;
+    }
+
+    .lyrics-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .language-toggle {
+        width: 100%;
+    }
+
+    .lang-btn {
+        flex: 1;
+        text-align: center;
+    }
+
+    .verse-line {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .hymn-title {
+        font-size: 1.5rem;
+    }
+
+    .hymn-subtitle {
+        font-size: 1rem;
+    }
+
+    .hymn-description {
+        font-size: 0.9rem;
+    }
+
+    .audio-player-wrapper {
+        padding: 1rem;
+    }
+
+    .lyrics-header h2 {
+        font-size: 1.5rem;
+    }
+}

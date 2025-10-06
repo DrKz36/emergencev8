@@ -1,9 +1,11 @@
 /**
  * @module features/admin/admin
- * @description Point d'entree du module Admin - encapsule AuthAdminModule et fournit l'API attendue par App.loadModule.
+ * @description Point d'entree du module Admin - Comprehensive administration interface
+ * V2.0 - Includes AuthAdminModule and AdminDashboard with tabbed navigation
  */
 
 import { AuthAdminModule } from './auth-admin-module.js';
+import { adminDashboard } from './admin-dashboard.js';
 
 export default class AdminModule {
   constructor(eventBus, state, options = {}) {
@@ -13,7 +15,9 @@ export default class AdminModule {
 
     this.container = null;
     this._initialized = false;
-    this._module = new AuthAdminModule(eventBus, state, options);
+    this._stylesLoaded = false;
+    this._authModule = new AuthAdminModule(eventBus, state, options);
+    this._currentView = 'dashboard'; // 'dashboard' or 'auth'
   }
 
   _isAdmin() {
@@ -26,33 +30,137 @@ export default class AdminModule {
     }
   }
 
+  async _loadStyles() {
+    if (this._stylesLoaded) return;
+
+    const cssPath = '/src/frontend/features/admin/admin-dashboard.css';
+    const existingLink = document.querySelector(`link[href="${cssPath}"]`);
+    if (existingLink) {
+      this._stylesLoaded = true;
+      return;
+    }
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = cssPath;
+    document.head.appendChild(link);
+
+    this._stylesLoaded = true;
+  }
+
   init() {
     if (this._initialized) return;
-    if (typeof this._module?.init === 'function') {
-      this._module.init();
+    if (typeof this._authModule?.init === 'function') {
+      this._authModule.init();
     }
     this._initialized = true;
   }
 
-  mount(container) {
+  async mount(container) {
     if (!container) return;
+
     if (!this._isAdmin()) {
-      container.innerHTML = '';
-      container.hidden = true;
-      container.setAttribute('aria-hidden', 'true');
+      container.innerHTML = `
+        <div class="admin-access-denied">
+          <div class="access-denied-content">
+            <div class="access-denied-icon">🔒</div>
+            <h2>Accès Refusé</h2>
+            <p>Vous devez disposer des privilèges administrateur pour accéder à cette section.</p>
+          </div>
+        </div>
+      `;
       return;
     }
 
     this.container = container;
-    if (typeof this._module?.mount === 'function') {
-      this._module.mount(container);
+
+    // Load CSS
+    await this._loadStyles();
+
+    // Render admin interface with tabs
+    container.innerHTML = `
+      <div class="admin-module-wrapper">
+        <div class="admin-navigation">
+          <button class="admin-nav-btn ${this._currentView === 'dashboard' ? 'active' : ''}"
+                  data-view="dashboard">
+            📊 Dashboard Global
+          </button>
+          <button class="admin-nav-btn ${this._currentView === 'auth' ? 'active' : ''}"
+                  data-view="auth">
+            🔐 Gestion Utilisateurs
+          </button>
+        </div>
+        <div class="admin-views">
+          <div id="admin-dashboard-view" class="admin-view ${this._currentView === 'dashboard' ? 'active' : ''}"></div>
+          <div id="admin-auth-view" class="admin-view ${this._currentView === 'auth' ? 'active' : ''}"></div>
+        </div>
+      </div>
+    `;
+
+    // Attach navigation handlers
+    container.querySelectorAll('.admin-nav-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const view = e.target.dataset.view;
+        this._switchView(view);
+      });
+    });
+
+    // Mount active view
+    await this._mountView(this._currentView);
+  }
+
+  async _switchView(view) {
+    if (this._currentView === view) return;
+
+    this._currentView = view;
+
+    // Update navigation buttons
+    this.container.querySelectorAll('.admin-nav-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.view === view);
+    });
+
+    // Update views
+    this.container.querySelectorAll('.admin-view').forEach(viewEl => {
+      viewEl.classList.toggle('active', viewEl.id === `admin-${view}-view`);
+    });
+
+    // Mount the new view
+    await this._mountView(view);
+  }
+
+  async _mountView(view) {
+    if (view === 'dashboard') {
+      const dashboardContainer = this.container.querySelector('#admin-dashboard-view');
+      if (dashboardContainer && !dashboardContainer.hasChildNodes()) {
+        await adminDashboard.init('admin-dashboard-view');
+      }
+    } else if (view === 'auth') {
+      const authContainer = this.container.querySelector('#admin-auth-view');
+      if (authContainer && !authContainer.hasChildNodes() && typeof this._authModule?.mount === 'function') {
+        this._authModule.mount(authContainer);
+      }
     }
   }
 
   unmount() {
-    if (typeof this._module?.unmount === 'function') {
-      this._module.unmount();
+    // Unmount dashboard
+    if (adminDashboard && typeof adminDashboard.destroy === 'function') {
+      try {
+        adminDashboard.destroy();
+      } catch (err) {
+        console.warn('[Admin] Error unmounting dashboard:', err);
+      }
     }
+
+    // Unmount auth module
+    if (typeof this._authModule?.unmount === 'function') {
+      try {
+        this._authModule.unmount();
+      } catch (err) {
+        console.warn('[Admin] Error unmounting auth module:', err);
+      }
+    }
+
     if (this.container) {
       this.container.innerHTML = '';
       this.container = null;

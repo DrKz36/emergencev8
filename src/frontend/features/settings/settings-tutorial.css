@@ -1,14 +1,16 @@
 /**
- * Settings Tutorial Styles
+ * Settings Tutorial Styles (static guides)
  */
 
 .settings-tutorial {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
     padding: 0;
 }
 
-/* Header */
 .settings-tutorial .settings-header {
-    margin-bottom: 32px;
+    margin-bottom: 8px;
 }
 
 .settings-tutorial .settings-header h2 {
@@ -26,578 +28,98 @@
     margin: 0;
 }
 
-/* Sections */
-.settings-tutorial .settings-sections {
+.tutorial-static-actions {
     display: flex;
-    flex-direction: column;
-    gap: 32px;
-}
-
-.settings-tutorial .settings-section {
-    background: rgba(11, 18, 32, 0.78);
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    border-radius: 16px;
-    padding: 28px;
-    box-shadow: 0 8px 24px rgba(8, 15, 35, 0.2);
-    backdrop-filter: blur(12px);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.settings-tutorial .settings-section:hover {
-    border-color: rgba(148, 163, 184, 0.25);
-    box-shadow: 0 12px 32px rgba(8, 15, 35, 0.3);
-}
-
-.settings-tutorial .settings-section h3 {
-    font-size: 20px;
-    font-weight: 600;
-    color: rgba(226, 232, 240, 0.98);
-    margin: 0 0 16px 0;
-    letter-spacing: -0.01em;
-}
-
-.settings-tutorial .section-description {
-    font-size: 15px;
-    line-height: 1.6;
-    color: rgba(226, 232, 240, 0.75);
-    margin: 0 0 24px 0;
-}
-
-/* Tutorial Launch Section */
-.tutorial-launch-section {
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(139, 92, 246, 0.12));
-    border-color: rgba(56, 189, 248, 0.3);
-}
-
-.tutorial-hero {
-    display: flex;
-    align-items: center;
-    gap: 28px;
-}
-
-.tutorial-hero-icon {
-    font-size: 80px;
-    flex-shrink: 0;
-    filter: drop-shadow(0 4px 16px rgba(56, 189, 248, 0.4));
-}
-
-.tutorial-hero-content h3 {
-    font-size: 24px;
-    font-weight: 700;
-    color: rgba(226, 232, 240, 0.98);
-    margin: 0 0 12px 0;
-}
-
-.tutorial-hero-content p {
-    font-size: 15px;
-    line-height: 1.7;
-    color: rgba(226, 232, 240, 0.85);
-    margin: 0 0 20px 0;
-}
-
-.btn-launch-tutorial {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 28px;
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.9), rgba(139, 92, 246, 0.9));
-    border: 1px solid rgba(56, 189, 248, 0.5);
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    color: white;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
-}
-
-.btn-launch-tutorial:hover {
-    background: linear-gradient(135deg, rgba(56, 189, 248, 1), rgba(139, 92, 246, 1));
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.4);
-}
-
-.btn-launch-tutorial:active {
-    transform: translateY(0);
-}
-
-.btn-launch-tutorial .btn-icon {
-    font-size: 18px;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-}
-
-/* Features Grid */
-.features-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 20px;
-}
-
-.feature-card {
-    display: flex;
-    align-items: flex-start;
-    gap: 18px;
-    padding: 22px;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(148, 163, 184, 0.15);
-    border-radius: 12px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-}
-
-.feature-card:hover {
-    background: rgba(15, 23, 42, 0.8);
-    border-color: rgba(56, 189, 248, 0.4);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(56, 189, 248, 0.2);
-}
-
-.feature-icon {
-    font-size: 36px;
-    flex-shrink: 0;
-    filter: drop-shadow(0 2px 8px rgba(56, 189, 248, 0.3));
-}
-
-.feature-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.feature-content h4 {
-    font-size: 17px;
-    font-weight: 600;
-    color: rgba(226, 232, 240, 0.95);
-    margin: 0;
-    letter-spacing: -0.01em;
-}
-
-.feature-content p {
-    font-size: 14px;
-    line-height: 1.6;
-    color: rgba(226, 232, 240, 0.75);
-    margin: 0 0 12px 0;
-}
-
-.btn-view-guide {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0;
-    background: transparent;
-    border: none;
-    font-size: 14px;
-    font-weight: 600;
-    color: rgba(56, 189, 248, 0.95);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.btn-view-guide:hover {
-    color: rgba(56, 189, 248, 1);
-    transform: translateX(4px);
-}
-
-/* Quick Tips Grid */
-.tips-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 18px;
-}
-
-.tip-card {
-    display: flex;
-    align-items: flex-start;
+    flex-wrap: wrap;
     gap: 16px;
-    padding: 20px;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(148, 163, 184, 0.15);
-    border-radius: 12px;
-    transition: all 0.2s ease;
-}
-
-.tip-card:hover {
-    background: rgba(15, 23, 42, 0.8);
-    border-color: rgba(148, 163, 184, 0.25);
-    transform: translateX(4px);
-}
-
-.tip-icon {
-    font-size: 28px;
-    flex-shrink: 0;
-}
-
-.tip-content h4 {
-    font-size: 15px;
-    font-weight: 600;
-    color: rgba(226, 232, 240, 0.95);
-    margin: 0 0 6px 0;
-}
-
-.tip-content p {
-    font-size: 14px;
-    line-height: 1.6;
-    color: rgba(226, 232, 240, 0.75);
-    margin: 0;
-}
-
-/* Keyboard Shortcuts */
-.shortcuts-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.shortcut-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    padding: 16px 20px;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(148, 163, 184, 0.15);
-    border-radius: 12px;
-    transition: all 0.2s ease;
-}
-
-.shortcut-item:hover {
-    background: rgba(15, 23, 42, 0.8);
-    border-color: rgba(148, 163, 184, 0.25);
-}
-
-.shortcut-keys {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-}
-
-.shortcut-keys kbd {
-    display: inline-block;
-    padding: 6px 12px;
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: rgba(226, 232, 240, 0.9);
-    font-family: 'Courier New', monospace;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.shortcut-description {
-    font-size: 14px;
-    color: rgba(226, 232, 240, 0.85);
-    text-align: right;
-}
-
-/* Guide Detail Modal */
-.guide-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
-    backdrop-filter: blur(8px);
-    animation: fadeIn 0.2s ease;
-}
-
-.guide-modal {
-    background: rgba(11, 18, 32, 0.98);
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    border-radius: 20px;
-    max-width: 900px;
-    width: 90%;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(20px);
-    overflow: hidden;
-}
-
-.guide-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 24px 28px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-    background: rgba(11, 18, 32, 0.98);
-}
-
-.guide-modal-title {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.guide-modal-icon {
-    font-size: 32px;
-    filter: drop-shadow(0 2px 8px rgba(56, 189, 248, 0.4));
-}
-
-.guide-modal-title h2 {
-    font-size: 24px;
-    font-weight: 700;
-    color: rgba(226, 232, 240, 0.98);
-    margin: 0;
-}
-
-.guide-modal-close {
-    background: transparent;
-    border: none;
-    font-size: 32px;
-    color: rgba(226, 232, 240, 0.7);
-    cursor: pointer;
-    padding: 0;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-}
-
-.guide-modal-close:hover {
-    background: rgba(226, 232, 240, 0.1);
-    color: rgba(226, 232, 240, 1);
-}
-
-.guide-modal-body {
-    padding: 32px;
-    overflow-y: auto;
-    flex: 1;
-    color: rgba(226, 232, 240, 0.85);
-}
-
-/* Guide Content Styles */
-.guide-modal-body .guide-section {
-    margin-bottom: 36px;
-}
-
-.guide-modal-body .guide-section:last-child {
-    margin-bottom: 0;
-}
-
-.guide-modal-body h3 {
-    font-size: 22px;
-    font-weight: 600;
-    color: rgba(226, 232, 240, 0.98);
-    margin: 0 0 16px 0;
-    padding-bottom: 12px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-}
-
-.guide-modal-body h4 {
-    font-size: 18px;
-    font-weight: 600;
-    color: rgba(56, 189, 248, 0.95);
-    margin: 20px 0 12px 0;
-}
-
-.guide-modal-body p {
-    font-size: 15px;
-    line-height: 1.7;
-    color: rgba(226, 232, 240, 0.85);
-    margin-bottom: 14px;
-}
-
-.guide-modal-body ul,
-.guide-modal-body ol {
-    padding-left: 24px;
-    margin: 12px 0;
-}
-
-.guide-modal-body li {
-    font-size: 15px;
-    line-height: 1.7;
-    color: rgba(226, 232, 240, 0.85);
     margin-bottom: 8px;
 }
 
-.guide-modal-body strong {
-    color: rgba(56, 189, 248, 0.95);
-    font-weight: 600;
-}
-
-.guide-modal-body code {
-    padding: 2px 8px;
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    border-radius: 4px;
-    font-size: 13px;
-    font-family: 'Courier New', monospace;
-    color: rgba(139, 92, 246, 0.95);
-}
-
-.guide-modal-body .guide-card {
-    padding: 20px;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(148, 163, 184, 0.15);
-    border-radius: 12px;
-    margin: 16px 0;
-}
-
-.guide-modal-body .guide-example {
-    padding: 18px;
-    background: rgba(56, 189, 248, 0.08);
-    border-left: 4px solid rgba(56, 189, 248, 0.5);
-    border-radius: 8px;
-    margin: 16px 0;
-}
-
-.guide-modal-body .guide-tip {
-    padding: 18px;
-    background: rgba(139, 92, 246, 0.08);
-    border-left: 4px solid rgba(139, 92, 246, 0.5);
-    border-radius: 8px;
-    margin: 16px 0;
-}
-
-.guide-modal-body kbd {
-    display: inline-block;
-    padding: 4px 8px;
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(226, 232, 240, 0.9);
-    font-family: 'Courier New', monospace;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.guide-modal-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 28px;
-    border-top: 1px solid rgba(148, 163, 184, 0.2);
-    background: rgba(11, 18, 32, 0.98);
-}
-
-.btn-close-guide {
-    padding: 10px 20px;
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    color: rgba(226, 232, 240, 0.85);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.btn-close-guide:hover {
-    background: rgba(15, 23, 42, 1);
-    border-color: rgba(148, 163, 184, 0.3);
-}
-
-.btn-launch-from-guide {
+.btn-open-doc {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.9), rgba(139, 92, 246, 0.9));
-    border: 1px solid rgba(56, 189, 248, 0.5);
-    border-radius: 8px;
-    font-size: 14px;
+    gap: 10px;
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    background: rgba(59, 130, 246, 0.15);
+    color: rgba(226, 232, 240, 0.95);
     font-weight: 600;
-    color: white;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.btn-launch-from-guide:hover {
-    background: linear-gradient(135deg, rgba(56, 189, 248, 1), rgba(139, 92, 246, 1));
+.btn-open-doc:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.25);
+    border-color: rgba(96, 165, 250, 0.6);
+}
+
+.btn-open-doc:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.btn-open-doc .btn-icon {
+    font-size: 1.2rem;
+}
+
+.tutorial-guides-list {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.tutorial-guide-card {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    background: rgba(11, 18, 32, 0.78);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.tutorial-guide-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+    border-color: rgba(59, 130, 246, 0.45);
 }
 
-/* Scrollbar Styling */
-.guide-modal-body::-webkit-scrollbar {
-    width: 8px;
+.tutorial-guide-card__icon {
+    font-size: 1.8rem;
+    line-height: 1;
 }
 
-.guide-modal-body::-webkit-scrollbar-track {
-    background: rgba(15, 23, 42, 0.4);
-    border-radius: 4px;
+.tutorial-guide-card__content h4 {
+    margin: 0 0 8px 0;
+    font-size: 1.05rem;
+    color: rgba(226, 232, 240, 0.95);
 }
 
-.guide-modal-body::-webkit-scrollbar-thumb {
-    background: rgba(56, 189, 248, 0.3);
-    border-radius: 4px;
-    transition: background 0.2s ease;
+.tutorial-guide-card__content p {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: rgba(203, 213, 225, 0.8);
 }
 
-.guide-modal-body::-webkit-scrollbar-thumb:hover {
-    background: rgba(56, 189, 248, 0.5);
+.tutorial-empty {
+    margin: 0;
+    font-size: 0.95rem;
+    color: rgba(148, 163, 184, 0.85);
 }
 
-/* Animations */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .tutorial-hero {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .tutorial-hero-icon {
-        font-size: 64px;
-    }
-
-    .features-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .tips-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .shortcut-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .shortcut-description {
-        text-align: left;
-    }
-
-    .guide-modal {
-        width: 95%;
-        max-height: 95vh;
-    }
-
-    .guide-modal-body {
-        padding: 20px;
-    }
-
-    .guide-modal-footer {
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .btn-close-guide,
-    .btn-launch-from-guide {
+@media (max-width: 640px) {
+    .btn-open-doc {
         width: 100%;
         justify-content: center;
+    }
+
+    .tutorial-guide-card {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }

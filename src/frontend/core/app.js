@@ -9,8 +9,6 @@ import { EVENTS } from '../shared/constants.js';
 import { api } from '../shared/api-client.js'; // + Threads API
 import { t } from '../shared/i18n.js';
 import { modals } from '../components/modals.js';
-import { Tutorial } from '../components/tutorial/Tutorial.js';
-import { TutorialMenu } from '../components/tutorial/TutorialMenu.js';
 
 const THREAD_ID_HEX_RE = /^[0-9a-f]{32}$/i;
 const THREAD_ID_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -19,8 +17,6 @@ const AUTH_ERROR_STATUSES = new Set([401, 403, 419, 440]);
 const THREAD_INACCESSIBLE_MARKER = 'thread non accessible pour cet utilisateur';
 const THREAD_INACCESSIBLE_CODES = new Set(['thread_not_accessible', 'thread_inaccessible']);
 const ONBOARDING_STORAGE_KEY = 'emergence.onboarding.v20250926';
-const TUTORIAL_STORAGE_KEY = 'emergence_tutorial_completed';
-
 function isNetworkError(error) {
   const status =
     error?.status ??
@@ -72,8 +68,6 @@ export class App {
     this.onboardingScheduled = false;
     this.onboardingRetryCount = 0;
 
-    this.tutorial = null;
-    this.tutorialMenu = null;
 
     this.dom = {
       appContainer: document.getElementById('app-container'),
@@ -87,6 +81,12 @@ export class App {
       memoryOverlay: document.getElementById('memory-overlay'),
       authStatus: document.getElementById('sidebar-auth-status'),
     };
+
+    this.openMobileNav = null;
+    this.closeMobileNav = null;
+    this.toggleMobileNav = null;
+    this.isMobileNavOpen = () => false;
+    this._mobileNavDetach = [];
 
     this.modules = {};
     this.baseModules = [
@@ -134,7 +134,6 @@ export class App {
       },
     ];
     this.activeModule = 'chat';
-    this.closeMobileNav = null;
     this._mobileNavSetup = false;
 
     if (this.state?.subscribe) {
@@ -170,7 +169,6 @@ export class App {
     this.renderNavigation();
     this.setupMobileNav();
     this.listenToNavEvents();
-    this.setupTutorial();
     this.bootstrapFeatures();
     this.initialized = true;
     this.handleRoleChange(this.state?.get?.('auth.role'));
@@ -295,53 +293,94 @@ export class App {
     }
   }
 
-  setupMobileNav() {
-    if (this._mobileNavSetup) return;
-    const toggle = this.dom.mobileNavToggle;
-    const navContainer = this.dom.headerNavContainer;
-    if (!toggle || !navContainer) return;
+  setupMobileNav(retryCount = 0) {
+    if (typeof document === 'undefined') return;
+
+    const toggle = document.getElementById('mobile-nav-toggle');
+    const navContainer = document.getElementById('app-header-nav');
+
+    if (!toggle || !navContainer) {
+      if (retryCount < 5) {
+        setTimeout(() => this.setupMobileNav(retryCount + 1), 50 * (retryCount + 1));
+      }
+      return;
+    }
+
+    if (Array.isArray(this._mobileNavDetach) && this._mobileNavDetach.length) {
+      this._mobileNavDetach.forEach((detach) => {
+        try { if (typeof detach === 'function') detach(); } catch (_) {}
+      });
+    }
+    this._mobileNavDetach = [];
+
+    this.dom.mobileNavToggle = toggle;
+    this.dom.headerNavContainer = navContainer;
 
     const applyState = (expanded) => {
-      toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-      navContainer.classList.toggle('is-open', expanded);
-      navContainer.setAttribute('aria-hidden', expanded ? 'false' : 'true');
-      if (typeof document !== 'undefined' && document.body) {
-        document.body.classList.toggle('mobile-nav-open', expanded);
-        document.body.classList.toggle('mobile-menu-open', expanded);
-        if (expanded) document.body.classList.remove('brain-panel-open');
-        try { window.dispatchEvent(new CustomEvent('emergence:mobile-menu-state', { detail: { open: expanded } })); } catch (_) {}
+      const isExpanded = !!expanded;
+      toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+      navContainer.classList.toggle('is-open', isExpanded);
+      navContainer.setAttribute('aria-hidden', isExpanded ? 'false' : 'true');
+      if (document.body) {
+        document.body.classList.toggle('mobile-nav-open', isExpanded);
+        document.body.classList.toggle('mobile-menu-open', isExpanded);
+        if (isExpanded) document.body.classList.remove('brain-panel-open');
+        if (typeof window !== 'undefined') {
+          try {
+            window.dispatchEvent(new CustomEvent('emergence:mobile-menu-state', { detail: { open: isExpanded } }));
+          } catch (_) {}
+        }
       }
     };
 
-    const closeNav = () => applyState(false);
-    const openNav = () => applyState(true);
+    const isExpanded = () => toggle.getAttribute('aria-expanded') === 'true';
 
-    toggle.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const expanded = toggle.getAttribute('aria-expanded') === 'true';
-      if (expanded) {
-        closeNav();
-      } else {
-        openNav();
+    const handleToggle = (event) => {
+      if (event) {
+        if (typeof event.preventDefault === 'function') event.preventDefault();
+        if (typeof event.stopPropagation === 'function') event.stopPropagation();
       }
-    });
+      applyState(!isExpanded());
+    };
 
-    document.addEventListener('click', (event) => {
-      if (!navContainer.classList.contains('is-open')) return;
-      if (navContainer.contains(event.target) || toggle.contains(event.target)) return;
-      closeNav();
-    });
+    const handleKeydown = (event) => {
+      if (!event) return;
+      const key = event.key;
+      if (key !== 'Enter' && key !== ' ') return;
+      handleToggle(event);
+    };
 
-    document.addEventListener('keydown', (event) => {
-      if (event.key !== 'Escape') return;
-      if (!navContainer.classList.contains('is-open')) return;
-      closeNav();
-    });
+    const handleDocumentClick = (event) => {
+      if (!isExpanded()) return;
+      const target = event?.target || null;
+      if (navContainer.contains(target) || toggle.contains(target)) return;
+      applyState(false);
+    };
+
+    const handleDocumentKeydown = (event) => {
+      if (event?.key !== 'Escape') return;
+      if (!isExpanded()) return;
+      applyState(false);
+    };
+
+    toggle.addEventListener('click', handleToggle, { passive: false });
+    toggle.addEventListener('keydown', handleKeydown, { passive: false });
+    document.addEventListener('click', handleDocumentClick);
+    document.addEventListener('keydown', handleDocumentKeydown);
+
+    this._mobileNavDetach.push(() => toggle.removeEventListener('click', handleToggle));
+    this._mobileNavDetach.push(() => toggle.removeEventListener('keydown', handleKeydown));
+    this._mobileNavDetach.push(() => document.removeEventListener('click', handleDocumentClick));
+    this._mobileNavDetach.push(() => document.removeEventListener('keydown', handleDocumentKeydown));
+
+    try { toggle.dataset.mobileNavBound = 'app'; } catch (_) {}
 
     applyState(false);
-    this.openMobileNav = openNav;
-    this.closeMobileNav = closeNav;
+
+    this.openMobileNav = () => applyState(true);
+    this.closeMobileNav = () => applyState(false);
+    this.toggleMobileNav = () => applyState(!isExpanded());
+    this.isMobileNavOpen = () => isExpanded();
     this._mobileNavSetup = true;
   }
 
@@ -667,53 +706,7 @@ export class App {
   scheduleOnboardingTour() {
     this.finishOnboarding(true);
   }
-
-  setupTutorial() {
-    // Créer l'instance du tutoriel interactif
-    this.tutorial = new Tutorial();
-
-    // Créer l'instance du menu de tutoriels
-    this.tutorialMenu = new TutorialMenu(() => this.openTutorial());
-
-    // Vérifier si c'est la première connexion
-    const hasSeenTutorial = localStorage.getItem(TUTORIAL_STORAGE_KEY);
-
-    // Attendre que l'utilisateur soit connecté avant d'afficher le tutoriel
-    if (!hasSeenTutorial) {
-      // Écouter l'événement threads:loaded qui indique que l'auth est OK
-      this.eventBus.on('threads:loaded', () => {
-        // Attendre un peu après le chargement pour que l'UI soit stable
-        setTimeout(() => {
-          this.openTutorial();
-        }, 1500);
-      });
-    }
-  }
-
-  openTutorial() {
-    if (this.tutorial) {
-      this.tutorial.open();
-    }
-  }
-
-  closeTutorial() {
-    if (this.tutorial) {
-      this.tutorial.close();
-    }
-  }
-
-  openTutorialMenu() {
-    if (this.tutorialMenu) {
-      this.tutorialMenu.open();
-    }
-  }
-
-  closeTutorialMenu() {
-    if (this.tutorialMenu) {
-      this.tutorialMenu.close();
-    }
-  }
-
 }
+
 
 

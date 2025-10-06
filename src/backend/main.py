@@ -47,6 +47,7 @@ def _import_router(dotted: str):
 # Routers REST/WS
 DOCUMENTS_ROUTER = _import_router("backend.features.documents.router")
 DASHBOARD_ROUTER = _import_router("backend.features.dashboard.router")
+ADMIN_DASHBOARD_ROUTER = _import_router("backend.features.dashboard.admin_router")
 DEBATE_ROUTER = _import_router("backend.features.debate.router")
 BENCHMARKS_ROUTER = _import_router("backend.features.benchmarks.router")
 CHAT_ROUTER = _import_router("backend.features.chat.router")  # ← WS ici
@@ -201,6 +202,7 @@ def create_app() -> FastAPI:
     _mount_router(DOCUMENTS_ROUTER, "/api/documents")
     _mount_router(DEBATE_ROUTER, "/api/debate")
     _mount_router(DASHBOARD_ROUTER, "/api/dashboard")
+    _mount_router(ADMIN_DASHBOARD_ROUTER, "/api")  # Admin routes at /api/admin/dashboard/*
     _mount_router(BENCHMARKS_ROUTER, "/api/benchmarks")
     _mount_router(THREADS_ROUTER, "/api/threads")
     _mount_router(MEMORY_ROUTER, "/api/memory")

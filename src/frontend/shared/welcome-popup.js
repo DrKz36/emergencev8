@@ -1,3 +1,5 @@
+import { EVENTS } from './constants.js';
+
 /**
  * Welcome Popup
  * Affiche un popup d'accueil avec lien vers le tutoriel
@@ -15,13 +17,8 @@ export class WelcomePopup {
      * Check if popup should be shown
      */
     shouldShow() {
-        try {
-            const dismissed = localStorage.getItem(STORAGE_KEY);
-            return !dismissed || dismissed !== 'true';
-        } catch (error) {
-            console.warn('[WelcomePopup] Error checking localStorage:', error);
-            return true;
-        }
+        // Tutoriel interactif désactivé au démarrage
+        return false;
     }
 
     /**
@@ -136,7 +133,7 @@ export class WelcomePopup {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                z-index: 10000;
+                z-index: 999999;
                 padding: 1rem;
                 animation: fadeIn 0.3s ease;
             }
@@ -355,10 +352,9 @@ export class WelcomePopup {
             const permanent = checkbox && checkbox.checked;
             this.dismiss(permanent);
 
-            // Navigate to documentation module
-            if (this.eventBus) {
-                this.eventBus.emit('module:show', 'documentation');
-            }
+            const moduleEvent = (EVENTS && EVENTS.MODULE_NAVIGATE) ? EVENTS.MODULE_NAVIGATE : 'app:navigate';
+            this.eventBus?.emit?.(moduleEvent, { moduleId: 'references' });
+            this.eventBus?.emit?.('references:show-doc', { docId: 'tutorial-guide' });
         });
 
         // Close on overlay click

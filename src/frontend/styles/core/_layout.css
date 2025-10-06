@@ -56,7 +56,17 @@
   flex:0 0 auto;
   min-width:0;
 }
-.header-actions{ margin-left:auto; position:relative; display:flex; align-items:center; justify-content:flex-end; gap:8px; flex:0 0 auto; }
+.header-actions{
+  margin-left:auto;
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex:0 0 auto;
+  /* 🔧 Assurer que le bouton burger soit bien collé à droite */
+  padding-right: 0;
+}
 
 .app-sidebar{ display:none; grid-area:sidebar; }
 .header-nav{ display:flex; gap:8px; }

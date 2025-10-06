@@ -35,8 +35,10 @@ from backend.features.chat.service import ChatService
 # --- Features optionnelles (tolérance à l’absence) ---
 try:
     from backend.features.dashboard.service import DashboardService  # type: ignore
+    from backend.features.dashboard.admin_service import AdminDashboardService  # type: ignore
 except Exception:  # pragma: no cover
     DashboardService = None  # type: ignore
+    AdminDashboardService = None  # type: ignore
 
 try:
     from backend.features.documents.service import DocumentService  # type: ignore
@@ -350,6 +352,13 @@ class AppContainer(containers.DeclarativeContainer):
     if DashboardService is not None:
         dashboard_service = providers.Singleton(
             DashboardService,
+            db_manager=db_manager,
+            cost_tracker=cost_tracker,
+        )
+
+    if AdminDashboardService is not None:
+        admin_dashboard_service = providers.Singleton(
+            AdminDashboardService,
             db_manager=db_manager,
             cost_tracker=cost_tracker,
         )

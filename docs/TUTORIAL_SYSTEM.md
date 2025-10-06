@@ -2,11 +2,39 @@
 
 > **Note** : Les numéros de lignes mentionnés dans ce document sont **approximatifs** et peuvent varier selon les évolutions du code. Utilisez-les comme repères, pas comme références exactes. Privilégiez la recherche par mot-clé (`grep`, Ctrl+F).
 
-## Vue d'ensemble
+> **Mise à jour 2025-10-06** : Le tutoriel interactif (overlay spotlight) a été retiré. Le système conserve uniquement les guides statiques accessibles via la section « À propos » et l'onglet Tutoriel des paramètres.
+
+## Vue d'ensemble 2025-10-06
+
+- Aucun composant JavaScript ne lance désormais de tutoriel interactif (suppression de Tutorial.js et TutorialMenu.js).
+- Les guides statiques restent centralisés dans src/frontend/components/tutorial/tutorialGuides.js et sont utilisés par :
+  - ReferencesModule (section « À propos ») via le bouton « Consulter le tutoriel » qui charge docs/TUTORIAL_SYSTEM.md.
+  - SettingsTutorial (onglet Paramètres) qui affiche désormais une vue statique renvoyant vers la documentation.
+- L'accès direct à la documentation se fait via docs/TUTORIAL_SYSTEM.md.
+
+### Composants actifs
+
+- src/frontend/components/tutorial/tutorialGuides.js
+- src/frontend/features/references/references.js
+- src/frontend/features/settings/settings-tutorial.js
+- docs/TUTORIAL_SYSTEM.md
+
+### Composants retirés
+
+- src/frontend/components/tutorial/Tutorial.js
+- src/frontend/components/tutorial/TutorialMenu.js
+- src/frontend/components/tutorial/Tutorial.css
+- src/frontend/components/tutorial/TutorialMenu.css
+- Gestion du flag mergence_tutorial_completed et des méthodes openTutorial* dans App.
+
+## Archive : tutoriel interactif (legacy)
+
+Les sections suivantes sont conservées pour référence historique et décrivent l'ancien tutoriel interactif.
+### Vue d'ensemble (legacy)
 
 Le système de tutoriel d'ÉMERGENCE V8 fournit une expérience d'onboarding complète pour les nouveaux utilisateurs et une documentation exhaustive accessible à tout moment.
 
-## Architecture
+### Architecture
 
 ### Composants
 
@@ -27,7 +55,7 @@ Le système de tutoriel d'ÉMERGENCE V8 fournit une expérience d'onboarding com
    - Consultation des guides
    - Astuces rapides et raccourcis clavier
 
-## Fonctionnalités
+### Fonctionnalités
 
 ### Tutoriel Interactif
 
@@ -104,7 +132,7 @@ Chaque guide s'ouvre dans un modal élégant :
 - Footer avec bouton "Lancer le tutoriel interactif"
 - Fermeture par X, bouton, overlay ou Échap
 
-## Utilisation
+### Utilisation
 
 ### Lancement du Tutoriel
 
@@ -136,7 +164,7 @@ Pour réinitialiser :
 localStorage.removeItem('emergence_tutorial_completed');
 ```
 
-## Fichiers
+### Fichiers
 
 ### Frontend Components
 
@@ -157,7 +185,7 @@ localStorage.removeItem('emergence_tutorial_completed');
   - Init : lignes ~905-907
   - **Note** : Numéros de lignes approximatifs, code sujet à évolution
 
-## Personnalisation
+### Personnalisation
 
 ### Ajouter une Étape au Tutoriel
 
@@ -201,7 +229,7 @@ Les styles suivent le design system ÉMERGENCE :
 - **Animations** : transitions 0.3s cubic-bezier
 - **Responsive** : breakpoint à 768px
 
-## Accessibilité
+### Accessibilité
 
 - **Navigation clavier** : Tab, Enter, Escape
 - **ARIA labels** : Boutons avec aria-label
@@ -209,14 +237,14 @@ Les styles suivent le design system ÉMERGENCE :
 - **Focus visible** : Outline sur focus
 - **Screen readers** : Sémantique HTML correcte
 
-## Performance
+### Performance
 
 - **Lazy loading** : Les guides ne sont chargés que lors de la consultation
 - **Optimisation DOM** : Création/destruction dynamique des modals
 - **CSS optimisé** : Utilisation de transform pour les animations
 - **Images** : Aucune image lourde, utilisation d'émojis
 
-## Maintenance
+### Maintenance
 
 ### Mise à jour du contenu
 
@@ -237,7 +265,7 @@ Vérifier :
 - ✅ Fermeture par X, bouton, overlay, Escape
 - ✅ Responsive mobile
 
-## Évolutions Futures
+### Évolutions Futures
 
 - [ ] Tracking analytics des étapes du tutoriel
 - [ ] Tutoriels contextuels (aide au survol)
@@ -248,7 +276,7 @@ Vérifier :
 - [ ] Mode sombre/clair pour les modals
 - [ ] Recherche dans les guides
 
-## Références
+### Références
 
 - **Design Pattern** : Guided Tour / Product Tour
 - **Inspiration** : Intro.js, Shepherd.js, Driver.js

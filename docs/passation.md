@@ -38,3 +38,52 @@
 - Aucun blocage bloquant, mais les échecs `pytest`/`ruff`/`mypy` restent à adresser.
 
 ---
+## [2025-10-06 22:10] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- `src/frontend/features/references/references.js`
+
+### Contexte
+- Reprise propre du module "A propos" après la suppression du tutoriel interactif.
+- Ajout du guide statique en tête de liste et raccordement à l'eventBus pour les ouvertures externes (WelcomePopup, navigation).
+
+### Actions réalisées
+1. Réintégré la version HEAD de `references.js` puis ajouté `tutorial-guide` dans `DOCS` et le bouton d'accès direct.
+2. Ajouté `handleExternalDocRequest`, la souscription `references:show-doc` (mount/unmount) et nettoyage du bouton interactif legacy.
+3. Vérifié les styles de debug (`debug-pointer-fix.css`) et le `WelcomePopup` (import `EVENTS`, émission `references:show-doc`).
+4. `npm run build` (succès, warning importmap existant).
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions recommandées
+1. Finaliser la refonte de la vue "A propos" (maquette, contenus restants à valider).
+2. Relancer les suites backend (`pytest`, `ruff`, `mypy`) avant validation architecte.
+3. Mettre à jour la documentation architecture si d'autres modules doc sont retouchés.
+
+### Blocages
+- `scripts/sync-workdir.ps1` échoue tant que les nombreuses modifications frontend existantes ne sont pas commit/stash (rebase impossible en dirty state).
+## [2025-10-06 20:44] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- src/frontend/core/app.js
+- src/frontend/main.js
+
+### Contexte
+- Remise en fonction du menu mobile : les clics sur le burger ne déclenchaient plus l'ouverture faute de binding fiable.
+
+### Actions réalisées
+1. Refondu setupMobileNav() pour re-sélectionner les éléments, purger/reposer les listeners et exposer open/close/toggle + isMobileNavOpen après binding.
+2. Ajouté une tentative de liaison depuis setupMobileShell() et un fallback sur le bouton lorsque l'attribut `data-mobile-nav-bound` n'est pas en place, en conservant la synchro classes/backdrop.
+3. Maintenu les événements mergence:mobile-menu-state pour garder la coordination avec le backdrop/brain panel.
+
+### Tests
+- ✅ 
+pm run build (warning importmap existant)
+
+### Prochaines actions recommandées
+1. QA responsive manuelle (≤760px) pour valider l'ouverture/fermeture via bouton, backdrop et touche Escape.
+2. Réduire les overrides CSS historiques (`mobile-menu-fix.css`/`ui-hotfix`) une fois le comportement stabilisé.
+
+### Blocages
+- Aucun.
