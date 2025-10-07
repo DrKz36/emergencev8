@@ -70,6 +70,18 @@ export async function fetchThreads(params = {}) {
   }
 }
 
+export async function fetchArchivedThreads(params = {}) {
+  try {
+    const response = await api.get('/api/threads/archived/list', params);
+    const items = Array.isArray(response?.items) ? response.items : [];
+    return items
+      .map((item) => normalizeRecord(item))
+      .filter(Boolean);
+  } catch (error) {
+    throw wrapError(error, 'Impossible de recuperer les threads archives.');
+  }
+}
+
 export async function fetchThreadDetail(id, options = {}) {
   const safeId = sanitizeThreadId(id);
   if (!safeId) {

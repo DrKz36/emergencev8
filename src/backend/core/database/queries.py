@@ -529,11 +529,21 @@ async def get_threads(
     *,
     user_id: Optional[str] = None,
     type_: Optional[str] = None,
+    include_archived: bool = False,
+    archived_only: bool = False,
     limit: int = 20,
     offset: int = 0,
 ) -> List[Dict[str, Any]]:
-    clauses: list[str] = ["archived = 0"]
+    clauses: list[str] = []
     params: list[Any] = []
+
+    # Gestion du filtrage par statut d'archivage
+    if archived_only:
+        clauses.append("archived = 1")
+    elif not include_archived:
+        clauses.append("archived = 0")
+    # Si include_archived=True et archived_only=False, pas de filtre (tous les threads)
+
     if user_id or session_id:
         scope_sql, scope_params = _build_scope_condition(user_id, session_id)
         clauses.append(scope_sql)
@@ -541,10 +551,18 @@ async def get_threads(
     if type_:
         clauses.append("type = ?")
         params.append(type_)
-    query = "SELECT * FROM threads"
+
+    # Utiliser la vue enrichie si disponible, sinon table threads
+    query = """
+        SELECT
+            t.*,
+            COALESCE(t.last_message_at, (SELECT MAX(m.created_at) FROM messages m WHERE m.thread_id = t.id)) as last_message_at,
+            COALESCE(t.message_count, (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id)) as message_count
+        FROM threads t
+    """
     if clauses:
         query += " WHERE " + " AND ".join(clauses)
-    query += " ORDER BY updated_at DESC LIMIT ? OFFSET ?"
+    query += " ORDER BY COALESCE(t.last_message_at, t.updated_at) DESC LIMIT ? OFFSET ?"
     params.extend([limit, offset])
     rows = await db.fetch_all(query, tuple(params))
     return [dict(r) for r in rows]

@@ -113,7 +113,7 @@
               0 0 0 1px rgba(59, 130, 246, 0.3) !important;
 
   backdrop-filter: blur(20px) !important;
-  z-index: 1201 !important;
+  z-index: 1600 !important;
 
   /* État fermé */
   opacity: 0 !important;
@@ -230,9 +230,9 @@
 .mobile-backdrop {
   position: fixed !important;
   inset: 0 !important;
-  background: rgba(5, 10, 20, 0.85) !important;
-  backdrop-filter: blur(8px) !important;
-  z-index: 1199 !important;
+  background: rgba(5, 10, 20, 0.45) !important;
+  backdrop-filter: none !important;
+  z-index: 900 !important;
   display: none !important;
   opacity: 0 !important;
   transition: opacity 0.3s ease !important;
@@ -255,6 +255,15 @@ body.mobile-menu-open .mobile-backdrop {
 body.mobile-nav-open,
 body.mobile-menu-open {
   overflow: hidden !important;
+}
+
+body.mobile-nav-open #app-header-nav,
+body.mobile-menu-open #app-header-nav {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translate3d(0, 0, 0) !important;
+  z-index: 1600 !important;
 }
 /* ===== ALIGNEMENT BURGER MOBILE - HOTFIX 2025-10-06 ===== */
 @media (max-width: 760px) and (orientation: portrait) {

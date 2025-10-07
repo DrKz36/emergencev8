@@ -27,6 +27,10 @@
 ### Cloture de session
 - Executer les tests/lint pertinents (`pytest`, `ruff`, `mypy`, `npm run build`, `pwsh -File tests/run_all.ps1` selon l'impact).
 - Relire `git diff` pour traquer secrets, artefacts ou changements involontaires.
+- **🔄 OBLIGATOIRE : Mettre à jour la documentation collaborative** :
+  - `AGENT_SYNC.md` (section "Claude Code" avec timestamp et fichiers touchés)
+  - `docs/passation.md` (nouvelle entrée complète en haut du fichier)
+  - Voir `.claude/instructions/doc-sync-routine.md` pour le format détaillé
 - Finaliser par `git add -A`, un commit explicite et `git push` (sauf instruction contraire) apres rebase sur la branche de reference.
 - Noter dans le compte-rendu les prochaines priorites et actions recommandees.
 

@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-06 06:10 CEST (Codex - Déploiement)
+**Dernière mise à jour** : 2025-10-07 06:30 CEST (Claude Code - Polish UI Dialogue)
 
 ---
 
@@ -46,23 +46,31 @@
 ## 🚧 Zones de travail en cours
 
 ### Claude Code (moi)
-- **Statut** : ✅ Déploiement Cloud Run terminé (révision 00266-jc4 active)
-- **Session complète** :
-  1. ✅ Corrections audit (13 fixes: 3 critiques + 6 majeurs + 4 mineurs)
-  2. ✅ Tests backend (8/8 passent, httpx v0.27.2 installé)
-  3. ✅ Build frontend (succès 756ms, bundle conversations généré)
-  4. ✅ Build Docker image (13.3 GB, push Artifact Registry)
-  5. ✅ Deploy Cloud Run (révision 00266-jc4, 100% trafic)
-  6. ✅ Documentation déploiement créée
+- **Statut** : ✅ Routine doc collaborative intégrée + Polish UI terminé
+- **Session 2025-10-07 (06:00-06:45)** :
+  1. ✅ Analyse et correction des marges latérales déséquilibrées (dialogue)
+  2. ✅ Correction largeur app-container (100vw, suppression marges excessives)
+  3. ✅ Harmonisation scrollbar (rgba(71,85,105,.45)) appliquée globalement
+  4. ✅ Optimisation responsive layout (compensation sidebar visuelle)
+  5. ✅ **Intégration routine doc collaborative automatique**
+  6. ✅ Documentation mise à jour (AGENT_SYNC.md, passation.md)
 - **Fichiers touchés** :
-  - `requirements.txt`, `package.json`
-  - `src/frontend/core/app.js`, `websocket.js`, `shared/constants.js`
-  - `docs/architecture/10-Components.md`, `30-Contracts.md`
-  - `docs/TUTORIAL_SYSTEM.md`, `docs/passation.md`
-  - `docs/deployments/2025-10-05-audit-fixes-deployment.md` (nouveau)
-  - `docs/deployments/README.md` (nouveau)
-  - `AGENT_SYNC.md` (ce fichier)
-- **Prochain chantier** : QA manuelle Cloud Run + monitoring métriques Prometheus
+  - `src/frontend/styles/core/_layout.css` (app-container width, app-content padding)
+  - `src/frontend/styles/core/reset.css` (scrollbar globale + body/html overflow fix)
+  - `src/frontend/features/chat/chat.css` (messages padding, chat-container width)
+  - `.claude/instructions/style-fr-cash.md` (routine doc ajoutée)
+  - `.claude/instructions/doc-sync-routine.md` (NOUVEAU - guide complet)
+  - `AGENTS.md` (checklist clôture mise à jour)
+  - `.git/hooks/pre-commit-docs-reminder.ps1` (NOUVEAU - hook optionnel)
+  - `docs/README-DOC-SYNC.md` (NOUVEAU - documentation système)
+- **Changements clés** :
+  - Scrollbar globale fine (8px) avec couleur harmonisée sur tous les modules
+  - App-container à 100vw (plus de largeur fixe)
+  - Padding dialogue équilibré visuellement (compense sidebar 258px)
+  - **Routine doc collaborative intégrée dans instructions Claude Code**
+  - Rappel automatique : "Mets à jour AGENT_SYNC.md et docs/passation.md"
+- **Tests effectués** : Analyse visuelle avec captures d'écran utilisateur
+- **Prochain chantier** : Tests responsives mobile + validation QA complète
 
 ### Codex (cloud)
 - **Dernier sync** : 2025-10-06 09:30
@@ -71,11 +79,10 @@
 - **Actions recommandées** : `git fetch --all --prune` puis `git rebase origin/main` une fois réseau OK
 
 ### Codex (local)
-- **Dernier sync** : 2025-10-06 23:00
-- **Statut** : Burger menu mobile reparé; build front OK
+- **Dernier sync** : 2025-10-07 03:19
+- **Statut** : Burger menu mobile interactif (backdrop clair); build front OK
 - **Fichiers touches** :
-  - `src/frontend/core/app.js`
-  - `src/frontend/main.js`
+  - `src/frontend/styles/overrides/mobile-menu-fix.css`
   - `docs/passation.md`
   - `AGENT_SYNC.md`
 - **Tests** :
@@ -86,7 +93,7 @@
   - non lance `pwsh -File tests/run_all.ps1`
 - **Next** :
   - QA responsive mobile (<=760px) pour valider burger/backdrop/Escape.
-  - Rationaliser `mobile-menu-fix.css` et `ui-hotfix` une fois la nav validée.
+  - Fusionner/rationaliser les overrides `mobile-menu-fix.css` & `ui-hotfix` après validation.
   - Traiter l'avertissement importmap dans `index.html` quand possible.
 - **Blocages** :
   - `scripts/sync-workdir.ps1` echoue (working tree dirty; rebase impossible tant que les autres modifs front ne sont pas commit/stash).

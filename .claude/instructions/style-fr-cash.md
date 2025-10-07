@@ -43,3 +43,24 @@
 
 ✅ Bon:
 "Le fichier existe pas. Je le crée ?"
+
+---
+
+## 🔄 Routine Documentation (IMPORTANT)
+
+**Après chaque session de modifications de code** :
+
+Tu dois TOUJOURS mettre à jour la doc collaborative pour Codex GPT. C'est pas optionnel.
+
+**Commande à te rappeler** :
+```
+Mets à jour AGENT_SYNC.md et docs/passation.md avec les changements de cette session
+```
+
+**Détails complets** : Voir `.claude/instructions/doc-sync-routine.md`
+
+**Fichiers concernés** :
+- `AGENT_SYNC.md` (section "Claude Code")
+- `docs/passation.md` (nouvelle entrée en haut)
+
+**Tu skip SEULEMENT si** : Lecture/analyse sans modif de code.

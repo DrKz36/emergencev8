@@ -44,6 +44,7 @@ async def list_threads(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
     type: Optional[str] = Query(default=None, pattern="^(chat|debate)$"),
+    include_archived: bool = Query(default=False, description="Inclure les conversations archivées"),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ):
@@ -52,6 +53,7 @@ async def list_threads(
         session_id=session.session_id,
         user_id=session.user_id,
         type_=type,
+        include_archived=include_archived,
         limit=limit,
         offset=offset,
     )
@@ -63,6 +65,7 @@ async def list_threads_no_slash(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
     type: Optional[str] = Query(default=None, pattern="^(chat|debate)$"),
+    include_archived: bool = Query(default=False),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ):
@@ -71,6 +74,7 @@ async def list_threads_no_slash(
         session_id=session.session_id,
         user_id=session.user_id,
         type_=type,
+        include_archived=include_archived,
         limit=limit,
         offset=offset,
     )
@@ -112,6 +116,27 @@ async def create_thread_no_slash(
     )
     thread = await queries.get_thread(db, tid, session.session_id, user_id=session.user_id)
     return {"id": tid, "thread": thread}
+
+# ---- Routes archives ----
+@router.get("/archived/list")
+async def list_archived_threads(
+    session: SessionContext = Depends(get_session_context),
+    db: DatabaseManager = Depends(get_db),
+    type: Optional[str] = Query(default=None, pattern="^(chat|debate)$"),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    """Liste uniquement les conversations archivées."""
+    items = await queries.get_threads(
+        db,
+        session_id=session.session_id,
+        user_id=session.user_id,
+        type_=type,
+        archived_only=True,
+        limit=limit,
+        offset=offset,
+    )
+    return {"items": items}
 
 # ---- DEBUG caché ----
 @router.get("/_debug/{thread_id}", include_in_schema=False)

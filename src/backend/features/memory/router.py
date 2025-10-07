@@ -600,6 +600,235 @@ async def clear_memory_post(
 
 # ========== Concept Recall API (Phase 4) ==========
 
+@router.get("/search")
+async def search_memory(
+    request: Request,
+    q: str = Query(..., min_length=3, description="Requête de recherche"),
+    limit: int = Query(10, ge=1, le=50, description="Nombre max de résultats"),
+    start_date: Optional[str] = Query(None, description="Date de début (ISO 8601)"),
+    end_date: Optional[str] = Query(None, description="Date de fin (ISO 8601)"),
+):
+    """
+    Recherche temporelle dans l'historique des messages.
+
+    Usage: GET /api/memory/search?q=containerization&limit=10&start_date=2025-01-01
+
+    Returns list of matching messages with timestamps and metadata.
+    """
+    container = _get_container(request)
+
+    # Get user_id from auth
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Initialize TemporalSearch
+    try:
+        from backend.core.temporal_search import TemporalSearch
+
+        temporal_search = TemporalSearch(db_manager=container.db_manager())
+    except Exception as e:
+        logger.error(f"[memory/search] Failed to initialize TemporalSearch: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal error initializing search")
+
+    # Execute search
+    try:
+        results = await temporal_search.search_messages(query=q, limit=limit)
+
+        # Filter by date range if provided
+        if start_date or end_date:
+            from datetime import datetime
+            filtered = []
+            for r in results:
+                created_at = r.get("created_at") or r.get("timestamp")
+                if not created_at:
+                    continue
+                try:
+                    msg_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                    if start_date:
+                        start_dt = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+                        if msg_dt < start_dt:
+                            continue
+                    if end_date:
+                        end_dt = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+                        if msg_dt > end_dt:
+                            continue
+                    filtered.append(r)
+                except Exception:
+                    continue
+            results = filtered
+
+    except Exception as e:
+        logger.error(f"[memory/search] Query failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Search failed: {e}")
+
+    return {
+        "query": q,
+        "results": results,
+        "count": len(results),
+        "filters": {
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+    }
+
+
+@router.get("/search/unified")
+async def unified_memory_search(
+    request: Request,
+    q: str = Query(..., min_length=3, description="Requête de recherche"),
+    limit: int = Query(10, ge=1, le=50, description="Nombre max de résultats par catégorie"),
+    include_archived: bool = Query(True, description="Inclure threads archivés"),
+    start_date: Optional[str] = Query(None, description="Date de début (ISO 8601)"),
+    end_date: Optional[str] = Query(None, description="Date de fin (ISO 8601)"),
+):
+    """
+    Recherche unifiée dans STM + LTM + threads + messages archivés.
+
+    Usage: GET /api/memory/search/unified?q=docker&limit=10
+
+    Returns:
+    {
+        "query": "docker",
+        "stm_summaries": [...],      # Résumés de sessions (STM)
+        "ltm_concepts": [...],        # Concepts vectoriels (LTM)
+        "threads": [...],             # Threads correspondants
+        "messages": [...],            # Messages archivés
+        "total_results": 42
+    }
+    """
+    container = _get_container(request)
+
+    # Get user_id from auth
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    results = {
+        "query": q,
+        "stm_summaries": [],
+        "ltm_concepts": [],
+        "threads": [],
+        "messages": [],
+        "total_results": 0,
+    }
+
+    # 1. Search STM (sessions with summaries)
+    try:
+        sessions = await queries.get_all_sessions_overview(
+            container.db_manager(), user_id=user_id
+        )
+        for sess in sessions:
+            summary = sess.get("summary") or ""
+            if q.lower() in summary.lower():
+                results["stm_summaries"].append({
+                    "session_id": sess.get("id"),
+                    "summary": summary,
+                    "created_at": sess.get("created_at"),
+                    "updated_at": sess.get("updated_at"),
+                    "concept_count": sess.get("concept_count", 0),
+                })
+                if len(results["stm_summaries"]) >= limit:
+                    break
+    except Exception as e:
+        logger.warning(f"[unified_search] STM search failed: {e}")
+
+    # 2. Search LTM (vector concepts)
+    try:
+        from backend.features.memory.concept_recall import ConceptRecallTracker
+
+        tracker = ConceptRecallTracker(
+            db_manager=container.db_manager(),
+            vector_service=container.vector_service(),
+            connection_manager=None,
+        )
+        ltm_results = await tracker.query_concept_history(
+            concept_text=q, user_id=user_id, limit=limit
+        )
+        results["ltm_concepts"] = ltm_results
+    except Exception as e:
+        logger.warning(f"[unified_search] LTM search failed: {e}")
+
+    # 3. Search threads (titles + metadata)
+    try:
+        from backend.core.database import queries as db_queries
+
+        all_threads = await db_queries.get_threads(
+            container.db_manager(),
+            session_id=None,
+            user_id=user_id,
+            include_archived=include_archived,
+            limit=100,  # Pre-fetch more for filtering
+        )
+        for thread in all_threads:
+            title = thread.get("title") or ""
+            meta = thread.get("meta") or {}
+            meta_str = str(meta) if isinstance(meta, dict) else ""
+            if q.lower() in title.lower() or q.lower() in meta_str.lower():
+                results["threads"].append({
+                    "thread_id": thread.get("id"),
+                    "title": title,
+                    "type": thread.get("type"),
+                    "archived": thread.get("archived"),
+                    "last_message_at": thread.get("last_message_at"),
+                    "message_count": thread.get("message_count"),
+                    "created_at": thread.get("created_at"),
+                })
+                if len(results["threads"]) >= limit:
+                    break
+    except Exception as e:
+        logger.warning(f"[unified_search] Threads search failed: {e}")
+
+    # 4. Search messages (TemporalSearch)
+    try:
+        from backend.core.temporal_search import TemporalSearch
+
+        temporal = TemporalSearch(db_manager=container.db_manager())
+        messages = await temporal.search_messages(query=q, limit=limit)
+
+        # Filter by date range if provided
+        if start_date or end_date:
+            from datetime import datetime
+
+            filtered = []
+            for msg in messages:
+                created_at = msg.get("created_at") or msg.get("timestamp")
+                if not created_at:
+                    continue
+                try:
+                    msg_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                    if start_date:
+                        start_dt = datetime.fromisoformat(
+                            start_date.replace("Z", "+00:00")
+                        )
+                        if msg_dt < start_dt:
+                            continue
+                    if end_date:
+                        end_dt = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+                        if msg_dt > end_dt:
+                            continue
+                    filtered.append(msg)
+                except Exception:
+                    continue
+            messages = filtered
+
+        results["messages"] = messages
+    except Exception as e:
+        logger.warning(f"[unified_search] Messages search failed: {e}")
+
+    # Calculate total
+    results["total_results"] = (
+        len(results["stm_summaries"])
+        + len(results["ltm_concepts"])
+        + len(results["threads"])
+        + len(results["messages"])
+    )
+
+    return results
+
+
 @router.get("/concepts/search")
 async def search_concepts(
     request: Request,

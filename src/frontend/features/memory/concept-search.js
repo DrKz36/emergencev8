@@ -50,10 +50,39 @@ async function getAuthHeaders() {
   return headers;
 }
 
-async function searchConcepts(query, limit = 10) {
+async function searchConcepts(query, limit = 10, options = {}) {
   const headers = await getAuthHeaders();
   const params = new URLSearchParams({ q: query, limit: String(limit) });
+
+  // Add date filters if provided
+  if (options.startDate) params.append('start_date', options.startDate);
+  if (options.endDate) params.append('end_date', options.endDate);
+  if (options.includeArchived !== undefined) params.append('include_archived', String(options.includeArchived));
+
   const url = `${API_BASE}/concepts/search?${params}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || `HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function searchUnified(query, limit = 10, options = {}) {
+  const headers = await getAuthHeaders();
+  const params = new URLSearchParams({ q: query, limit: String(limit) });
+
+  if (options.startDate) params.append('start_date', options.startDate);
+  if (options.endDate) params.append('end_date', options.endDate);
+  if (options.includeArchived !== undefined) params.append('include_archived', String(options.includeArchived));
+
+  const url = `${API_BASE}/search/unified?${params}`;
 
   const response = await fetch(url, {
     method: 'GET',
@@ -107,6 +136,23 @@ export class ConceptSearch {
             placeholder="Rechercher un concept (min. 3 caractères)..."
             aria-label="Rechercher des concepts"
           />
+          <div class="concept-search__filters">
+            <label class="concept-search__filter">
+              <input type="checkbox" data-role="include-archived" checked />
+              <span>Inclure archives</span>
+            </label>
+            <label class="concept-search__filter">
+              <span>De:</span>
+              <input type="date" data-role="start-date" />
+            </label>
+            <label class="concept-search__filter">
+              <span>À:</span>
+              <input type="date" data-role="end-date" />
+            </label>
+            <button type="button" class="concept-search__unified-btn" data-role="search-unified">
+              Recherche complète (STM+LTM+Messages)
+            </button>
+          </div>
         </div>
         <div class="concept-search__body">
           <p class="concept-search__error" data-role="concept-error" hidden></p>
