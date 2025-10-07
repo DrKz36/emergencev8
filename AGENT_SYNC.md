@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-07 14:45 CEST (Codex - align Dialogue padding vs sidebar)
+**Derniere mise a jour** : 2025-10-07 19:30 CEST (Codex - alignement marge droite)
 
 ---
 
@@ -79,24 +79,26 @@
 - **Actions recommandées** : `git fetch --all --prune` puis `git rebase origin/main` une fois réseau OK
 
 ### Codex (local)
-- **Dernier sync** : 2025-10-07 14:45
-- **Statut** : Padding Dialogue aligne sur la marge sidebar (desktop)
+- **Dernier sync** : 2025-10-07 19:30 CEST (Codex - alignement marge droite)
+- **Statut** : Marges gauche/droite synchronisées, overrides de centrage neutralisés sur Dialogue/Documents/Cockpit.
 - **Fichiers touchés** :
+  - `src/frontend/styles/core/_layout.css`
   - `src/frontend/styles/overrides/ui-hotfix-20250823.css`
-  - `AGENT_SYNC.md`
-  - `docs/passation.md`
+  - `src/frontend/features/threads/threads.css`
+  - `src/frontend/features/cockpit/cockpit-{metrics,charts,insights}.css`
+  - `src/frontend/features/documentation/documentation.css`
+  - `src/frontend/features/settings/settings-{ui,security}.css`
+  - `index.html` (ordre importmap / modulepreload)
 - **Tests** :
-  - ok `npm run build` (warning importmap existant)
-  - à relancer `python -m pytest` (7 erreurs fixture `app`)
-  - à relancer `ruff check` (28 erreurs existantes)
-  - à relancer `mypy src` (12 erreurs existantes)
-  - non lancé `pwsh -File tests/run_all.ps1`
+  - ok `npm run build` (warning importmap toujours présent)
 - **Next** :
-  - QA visuelle ≥1280px sur Dialogue + vérifier Conversations/Documents pour confirmer la symétrie.
-  - QA responsive mobile pour s'assurer que le padding mobile (`var(--page-gap)`) reste cohérent.
-  - Traiter l'avertissement importmap dans `index.html` quand possible.
+  - QA visuelle desktop (1280/1440/1920) + responsive 1024/768 sur Dialogue/Documents/Cockpit pour valider l'alignement.
+  - Contrôler Admin/Timeline/Memory pour repérer d'éventuels overrides de centrage restants.
+  - Planifier la correction de l'avertissement importmap dans `index.html`.
 - **Blocages** :
-  - `scripts/sync-workdir.ps1` échoue (working tree dirty; autres modifs front en attente de validation).
+  - `scripts/sync-workdir.ps1` échoue (working tree toujours dirty : fichiers admin/icons hors scope).
+  - Suites backend (`python -m pytest`, `ruff check`, `mypy src`) encore KO (sessions précédentes).
+  - `pwsh -File tests/run_all.ps1` non lancé sur cette branche.
 ### 1. Avant de coder (TOUS les agents)
 ```bash
 # Vérifier les remotes

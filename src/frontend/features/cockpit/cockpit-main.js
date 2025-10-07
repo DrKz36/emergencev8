@@ -6,6 +6,7 @@
 import { cockpitMetrics } from './cockpit-metrics.js';
 import { cockpitCharts } from './cockpit-charts.js';
 import { cockpitInsights } from './cockpit-insights.js';
+import { getIcon } from './cockpit-icons.js';
 
 export class Cockpit {
     constructor() {
@@ -43,15 +44,15 @@ export class Cockpit {
                 <!-- Cockpit Header -->
                 <div class="cockpit-header">
                     <div class="cockpit-title">
-                        <h1>📊 Cockpit</h1>
+                        <h1>${getIcon('cockpit')} Cockpit</h1>
                         <p class="cockpit-subtitle">Vue d'ensemble de votre activité</p>
                     </div>
                     <div class="cockpit-actions">
                         <button class="btn-refresh-all" title="Tout actualiser">
-                            🔄 Actualiser
+                            ${getIcon('refresh')} Actualiser
                         </button>
                         <button class="btn-export-report" title="Exporter le rapport">
-                            📥 Exporter
+                            ${getIcon('download')} Exporter
                         </button>
                     </div>
                 </div>
@@ -60,22 +61,22 @@ export class Cockpit {
                 <div class="cockpit-tabs">
                     <button class="cockpit-tab ${this.activeTab === 'overview' ? 'active' : ''}"
                             data-tab="overview">
-                        <span class="tab-icon">📊</span>
+                        <span class="tab-icon">${getIcon('cockpit')}</span>
                         <span class="tab-label">Vue d'ensemble</span>
                     </button>
                     <button class="cockpit-tab ${this.activeTab === 'metrics' ? 'active' : ''}"
                             data-tab="metrics">
-                        <span class="tab-icon">📈</span>
+                        <span class="tab-icon">${getIcon('barChart')}</span>
                         <span class="tab-label">Métriques</span>
                     </button>
                     <button class="cockpit-tab ${this.activeTab === 'charts' ? 'active' : ''}"
                             data-tab="charts">
-                        <span class="tab-icon">📉</span>
+                        <span class="tab-icon">${getIcon('pieChart')}</span>
                         <span class="tab-label">Graphiques</span>
                     </button>
                     <button class="cockpit-tab ${this.activeTab === 'insights' ? 'active' : ''}"
                             data-tab="insights">
-                        <span class="tab-icon">💡</span>
+                        <span class="tab-icon">${getIcon('lightbulb')}</span>
                         <span class="tab-label">Insights</span>
                     </button>
                 </div>
@@ -200,7 +201,7 @@ export class Cockpit {
         const refreshBtn = this.container.querySelector('.btn-refresh-all');
         if (refreshBtn) {
             refreshBtn.disabled = true;
-            refreshBtn.innerHTML = '⏳ Actualisation...';
+            refreshBtn.innerHTML = `${getIcon('clock')} Actualisation...`;
         }
 
         try {
@@ -208,16 +209,16 @@ export class Cockpit {
             await this.loadActiveView();
 
             if (refreshBtn) {
-                refreshBtn.innerHTML = '✓ Actualisé';
+                refreshBtn.innerHTML = `${getIcon('refresh')} Actualisé`;
                 setTimeout(() => {
-                    refreshBtn.innerHTML = '🔄 Actualiser';
+                    refreshBtn.innerHTML = `${getIcon('refresh')} Actualiser`;
                     refreshBtn.disabled = false;
                 }, 2000);
             }
         } catch (error) {
             console.error('Error refreshing cockpit:', error);
             if (refreshBtn) {
-                refreshBtn.innerHTML = '✗ Erreur';
+                refreshBtn.innerHTML = `${getIcon('alertTriangle')} Erreur`;
                 refreshBtn.disabled = false;
             }
         }

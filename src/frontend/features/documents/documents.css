@@ -7,8 +7,10 @@
 .documents-view-wrapper {
   width: 100%;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: clamp(20px, 3vw, 32px);
 }
 
 /* Carte principale */
@@ -25,6 +27,7 @@
   border-radius: var(--radius-xl);
   padding: var(--space-5);
   box-shadow: var(--glass-shadow, 0 10px 30px rgba(0,0,0,.35));
+  box-sizing: border-box;
 }
 
 /* En-tête carte */
@@ -40,7 +43,7 @@
 /* Upload */
 .upload-section {
   width: 100%;
-  max-width: 600px;
+  max-width: none;
   margin: 0 auto var(--space-6) auto;
   display: flex;
   flex-direction: column;

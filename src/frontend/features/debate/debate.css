@@ -54,10 +54,9 @@
     "topic topic"
     "attacker challenger"
     "rounds mediator";
-  max-width: 1480px;
   width: 100%;
-  margin: 0 auto;
-  justify-items: center;
+  margin: 0;
+  justify-items: stretch;
 }
 .form-group{ display:flex; flex-direction:column; align-items:center; gap:.65rem; }
 .form-group label{ color: var(--color-text-primary); font-weight:600; text-align:center; }
@@ -132,7 +131,7 @@
       "challenger"
       "rounds"
       "mediator";
-    max-width:720px; justify-items:stretch;
+    justify-items:stretch;
   }
   .debate-create-body .form-group:not(.form-topic){ width:100%; }
 }

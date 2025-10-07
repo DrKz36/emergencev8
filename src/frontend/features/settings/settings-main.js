@@ -3,6 +3,7 @@
  * Integrates all settings components (models, UI, security)
  */
 
+import { SettingsIcons, getIcon } from './settings-icons.js';
 import { settingsModels } from './settings-models.js';
 import { settingsUI } from './settings-ui.js';
 import { settingsSecurity } from './settings-security.js';
@@ -46,15 +47,15 @@ export class Settings {
                 <!-- Settings Header -->
                 <div class="settings-main-header">
                     <div class="settings-title">
-                        <h1>⚙️ Paramètres</h1>
+                        <h1>${getIcon('settings', 'header-icon')} Paramètres</h1>
                         <p class="settings-subtitle">Configuration et personnalisation</p>
                     </div>
                     <div class="settings-actions">
                         <button class="btn-reset-all" title="Tout réinitialiser">
-                            ↺ Réinitialiser tout
+                            ${getIcon('reset', 'btn-icon')} Réinitialiser tout
                         </button>
                         <button class="btn-save-all" title="Tout sauvegarder">
-                            💾 Tout sauvegarder
+                            ${getIcon('save', 'btn-icon')} Tout sauvegarder
                         </button>
                     </div>
                 </div>
@@ -72,7 +73,7 @@ export class Settings {
                 <div class="settings-nav">
                     <button class="settings-nav-item ${this.activeTab === 'models' ? 'active' : ''}"
                             data-tab="models">
-                        <span class="nav-icon">🤖</span>
+                        <span class="nav-icon">${SettingsIcons.robot}</span>
                         <div class="nav-content">
                             <span class="nav-label">Modèles IA</span>
                             <span class="nav-hint">Configuration des agents</span>
@@ -80,7 +81,7 @@ export class Settings {
                     </button>
                     <button class="settings-nav-item ${this.activeTab === 'ui' ? 'active' : ''}"
                             data-tab="ui">
-                        <span class="nav-icon">🎨</span>
+                        <span class="nav-icon">${SettingsIcons.palette}</span>
                         <div class="nav-content">
                             <span class="nav-label">Interface</span>
                             <span class="nav-hint">Thème et apparence</span>
@@ -88,7 +89,7 @@ export class Settings {
                     </button>
                     <button class="settings-nav-item ${this.activeTab === 'tutorial' ? 'active' : ''}"
                             data-tab="tutorial">
-                        <span class="nav-icon">🎓</span>
+                        <span class="nav-icon">${SettingsIcons.graduation}</span>
                         <div class="nav-content">
                             <span class="nav-label">Tutoriel</span>
                             <span class="nav-hint">Guides et documentation</span>
@@ -120,7 +121,7 @@ export class Settings {
                 <!-- Unsaved Changes Warning -->
                 ${this.hasUnsavedChanges ? `
                     <div class="unsaved-changes-bar">
-                        <span class="unsaved-icon">⚠️</span>
+                        <span class="unsaved-icon">${SettingsIcons.warning}</span>
                         <span class="unsaved-text">Vous avez des modifications non sauvegardées</span>
                         <div class="unsaved-actions">
                             <button class="btn-discard">Annuler</button>
@@ -142,7 +143,7 @@ export class Settings {
             <div class="settings-about">
                 <div class="about-sections">
                     <div class="about-section full-width">
-                        <h3>📋 Informations Système</h3>
+                        <h3>${getIcon('clipboard', 'section-icon')} Informations Système</h3>
                         <div class="about-info-grid">
                             <div class="info-item">
                                 <span class="info-label">Version:</span>
@@ -160,11 +161,11 @@ export class Settings {
                     </div>
 
                     <div class="about-section full-width">
-                        <h3>🔗 Liens Utiles</h3>
+                        <h3>${getIcon('link', 'section-icon')} Liens Utiles</h3>
                         <div class="about-links">
-                            <a href="#" class="about-link" data-action="documentation">📚 Documentation</a>
-                            <a href="#" class="about-link" data-action="support">💬 Support</a>
-                            <a href="#" class="about-link" data-action="bug-report">🐛 Signaler un bug</a>
+                            <a href="#" class="about-link" data-action="documentation">${getIcon('book', 'link-icon')} Documentation</a>
+                            <a href="#" class="about-link" data-action="support">${getIcon('messageCircle', 'link-icon')} Support</a>
+                            <a href="#" class="about-link" data-action="bug-report">${getIcon('bug', 'link-icon')} Signaler un bug</a>
                         </div>
                     </div>
 

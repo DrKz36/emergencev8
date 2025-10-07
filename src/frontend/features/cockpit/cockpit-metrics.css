@@ -3,9 +3,9 @@
  */
 
 .dashboard-metrics {
-    padding: 20px;
-    max-width: 1400px;
-    margin: 0 auto;
+    padding: var(--layout-block-gap, 24px) var(--module-inline-gap, 14px);
+    max-width: none;
+    margin: 0;
     width: 100%;
     overflow-x: hidden;
     box-sizing: border-box;

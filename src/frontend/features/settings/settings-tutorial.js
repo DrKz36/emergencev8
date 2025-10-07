@@ -3,6 +3,7 @@
  * Fournit les guides et ressources documentaires sans tutoriel interactif.
  */
 
+import { SettingsIcons, getIcon } from './settings-icons.js';
 import { TUTORIAL_GUIDES } from '../../components/tutorial/tutorialGuides.js';
 
 export class SettingsTutorial {
@@ -42,7 +43,7 @@ export class SettingsTutorial {
         this.container.innerHTML = `
             <section class="settings-tutorial">
                 <header class="settings-header">
-                    <h2>📚 Guides & tutoriels</h2>
+                    <h2>${getIcon('book', 'header-icon')} Guides & tutoriels</h2>
                     <p class="header-description">
                         Le tutoriel interactif a été retiré. Consulte la documentation statique directement depuis la section « À propos » ou via le guide détaillé ci-dessous.
                     </p>
@@ -50,7 +51,7 @@ export class SettingsTutorial {
 
                 <div class="tutorial-static-actions">
                     <a class="btn-open-doc" href="/docs/TUTORIAL_SYSTEM.md" target="_blank" rel="noopener">
-                        <span class="btn-icon">📖</span>
+                        <span class="btn-icon">${SettingsIcons.bookOpen}</span>
                         Ouvrir le tutoriel complet (documentation)
                     </a>
                 </div>

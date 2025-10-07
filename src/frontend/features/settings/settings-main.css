@@ -9,6 +9,56 @@
     overflow-x: hidden;
 }
 
+/* Settings Icons */
+.settings-icon,
+.settings-icon svg,
+.nav-icon svg,
+.header-icon svg,
+.btn-icon svg,
+.section-icon svg,
+.link-icon svg,
+.theme-icon svg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+}
+
+.settings-icon svg,
+.nav-icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.header-icon svg {
+    width: 2rem;
+    height: 2rem;
+    margin-right: 0.5rem;
+}
+
+.btn-icon svg {
+    width: 1rem;
+    height: 1rem;
+    margin-right: 0.375rem;
+}
+
+.section-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-right: 0.5rem;
+}
+
+.link-icon svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    margin-right: 0.5rem;
+}
+
+.theme-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
 /* Scrollbar styling for webkit browsers */
 .settings-container::-webkit-scrollbar {
     width: 8px;
@@ -45,6 +95,9 @@
     color: rgba(255, 255, 255, 0.98);
     margin: 0 0 8px 0;
     letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .settings-subtitle {
@@ -206,6 +259,13 @@
     position: relative;
     z-index: 1;
     filter: drop-shadow(0 2px 8px rgba(56, 189, 248, 0.3));
+    color: rgba(226, 232, 240, 0.95);
+}
+
+.nav-icon svg {
+    stroke: rgba(226, 232, 240, 0.95);
+    width: 2rem;
+    height: 2rem;
 }
 
 .nav-content {
@@ -246,8 +306,9 @@
 
 /* About Section */
 .settings-about {
-    max-width: 900px;
-    margin: 0 auto;
+    max-width: none;
+    width: 100%;
+    margin: 0;
 }
 
 .about-header {

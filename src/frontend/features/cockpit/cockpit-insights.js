@@ -4,6 +4,7 @@
  */
 
 import { api } from '../../shared/api-client.js';
+import { getIcon, getTrendIcon, getDocumentIcon } from './cockpit-icons.js';
 
 export class CockpitInsights {
     constructor() {
@@ -44,7 +45,7 @@ export class CockpitInsights {
         this.container.innerHTML = `
             <div class="cockpit-insights">
                 <div class="insights-header">
-                    <h2>💡 Insights & Analyse</h2>
+                    <h2>${getIcon('lightbulb')} Insights & Analyse</h2>
                     <div class="insights-period">
                         <span class="period-label">Période:</span>
                         <select class="period-selector">
@@ -60,7 +61,7 @@ export class CockpitInsights {
                     <!-- Top Concepts -->
                     <div class="insight-section top-concepts">
                         <div class="section-header">
-                            <h3>🔝 Top Concepts</h3>
+                            <h3>${getIcon('star')} Top Concepts</h3>
                             <span class="section-badge" id="concepts-count">0</span>
                         </div>
                         <div class="section-content" id="top-concepts-list">
@@ -76,7 +77,7 @@ export class CockpitInsights {
                     <!-- Top Threads -->
                     <div class="insight-section top-threads">
                         <div class="section-header">
-                            <h3>🧵 Top Threads</h3>
+                            <h3>${getIcon('thread')} Top Threads</h3>
                             <span class="section-badge" id="threads-count">0</span>
                         </div>
                         <div class="section-content" id="top-threads-list">
@@ -92,7 +93,7 @@ export class CockpitInsights {
                     <!-- Top Documents -->
                     <div class="insight-section top-documents">
                         <div class="section-header">
-                            <h3>📄 Top Documents</h3>
+                            <h3>${getIcon('file')} Top Documents</h3>
                             <span class="section-badge" id="documents-count">0</span>
                         </div>
                         <div class="section-content" id="top-documents-list">
@@ -108,7 +109,7 @@ export class CockpitInsights {
                     <!-- Trends & Patterns -->
                     <div class="insight-section trends-section">
                         <div class="section-header">
-                            <h3>📊 Tendances & Patterns</h3>
+                            <h3>${getIcon('trendingUp')} Tendances & Patterns</h3>
                         </div>
                         <div class="section-content" id="trends-content">
                             <div class="loading-state">Chargement...</div>
@@ -118,7 +119,7 @@ export class CockpitInsights {
                     <!-- Activity Heatmap -->
                     <div class="insight-section activity-section">
                         <div class="section-header">
-                            <h3>🔥 Carte de Chaleur d'Activité</h3>
+                            <h3>${getIcon('flame')} Carte de Chaleur d'Activité</h3>
                         </div>
                         <div class="section-content" id="activity-heatmap">
                             <div class="loading-state">Chargement...</div>
@@ -128,7 +129,7 @@ export class CockpitInsights {
                     <!-- Smart Recommendations -->
                     <div class="insight-section recommendations-section">
                         <div class="section-header">
-                            <h3>🎯 Recommandations Intelligentes</h3>
+                            <h3>${getIcon('target')} Recommandations Intelligentes</h3>
                         </div>
                         <div class="section-content" id="recommendations-list">
                             <div class="loading-state">Chargement...</div>
@@ -279,7 +280,7 @@ export class CockpitInsights {
                     <div class="item-stats">
                         <span class="stat-mentions">${concept.mentions} mentions</span>
                         <span class="stat-trend trend-${concept.trend}">
-                            ${this.getTrendIcon(concept.trend)} ${Math.abs(concept.growth)}%
+                            ${getTrendIcon(concept.trend)} ${Math.abs(concept.growth)}%
                         </span>
                     </div>
                 </div>
@@ -353,7 +354,7 @@ export class CockpitInsights {
         const html = this.insights.topDocuments.map(doc => `
             <div class="insight-item document-item">
                 <div class="item-rank">#${this.insights.topDocuments.indexOf(doc) + 1}</div>
-                <div class="item-icon">${this.getDocumentIcon(doc.type)}</div>
+                <div class="item-icon">${getDocumentIcon(doc.type)}</div>
                 <div class="item-content">
                     <div class="item-title">${doc.title}</div>
                     <div class="item-stats">
@@ -390,27 +391,27 @@ export class CockpitInsights {
         container.innerHTML = `
             <div class="trends-grid">
                 <div class="trend-card">
-                    <div class="trend-icon">📅</div>
+                    <div class="trend-icon">${getIcon('calendar')}</div>
                     <div class="trend-label">Jour le plus actif</div>
                     <div class="trend-value">${trends.mostActiveDay}</div>
                 </div>
                 <div class="trend-card">
-                    <div class="trend-icon">⏰</div>
+                    <div class="trend-icon">${getIcon('clock')}</div>
                     <div class="trend-label">Heure de pointe</div>
                     <div class="trend-value">${trends.peakHour}</div>
                 </div>
                 <div class="trend-card">
-                    <div class="trend-icon">📊</div>
+                    <div class="trend-icon">${getIcon('barChart')}</div>
                     <div class="trend-label">Moy. messages/jour</div>
                     <div class="trend-value">${trends.avgMessagesPerDay}</div>
                 </div>
                 <div class="trend-card">
-                    <div class="trend-icon">📈</div>
+                    <div class="trend-icon">${getIcon('trendingUp')}</div>
                     <div class="trend-label">Taux de croissance</div>
                     <div class="trend-value">+${trends.growthRate}%</div>
                 </div>
                 <div class="trend-card">
-                    <div class="trend-icon">🤖</div>
+                    <div class="trend-icon">${getIcon('robot')}</div>
                     <div class="trend-label">Agent le plus utilisé</div>
                     <div class="trend-value">${trends.topAgent}</div>
                 </div>
@@ -460,10 +461,10 @@ export class CockpitInsights {
         if (!container) return;
 
         const recommendations = [
-            { icon: '💡', text: 'Concept "Architecture Agent" est en forte croissance. Considérez créer une documentation dédiée.', priority: 'high' },
-            { icon: '⚠️', text: 'Thread "Tests système complet" est inactif depuis 4 jours. Relancer les tests?', priority: 'medium' },
-            { icon: '📚', text: 'Document "API-Documentation.md" est très consulté. Vérifier sa mise à jour.', priority: 'low' },
-            { icon: '🎯', text: 'Pic d\'activité détecté à 14h-15h. Optimiser les ressources à cette période.', priority: 'medium' }
+            { icon: getIcon('lightbulb'), text: 'Concept "Architecture Agent" est en forte croissance. Considérez créer une documentation dédiée.', priority: 'high' },
+            { icon: getIcon('alertTriangle'), text: 'Thread "Tests système complet" est inactif depuis 4 jours. Relancer les tests?', priority: 'medium' },
+            { icon: getIcon('book'), text: 'Document "API-Documentation.md" est très consulté. Vérifier sa mise à jour.', priority: 'low' },
+            { icon: getIcon('target'), text: 'Pic d\'activité détecté à 14h-15h. Optimiser les ressources à cette période.', priority: 'medium' }
         ];
 
         const html = recommendations.map((rec, index) => `
@@ -507,30 +508,6 @@ export class CockpitInsights {
         return data;
     }
 
-    /**
-     * Get trend icon
-     */
-    getTrendIcon(trend) {
-        const icons = {
-            up: '↗️',
-            down: '↘️',
-            stable: '→'
-        };
-        return icons[trend] || '→';
-    }
-
-    /**
-     * Get document icon
-     */
-    getDocumentIcon(type) {
-        const icons = {
-            markdown: '📝',
-            pdf: '📕',
-            text: '📄',
-            code: '💻'
-        };
-        return icons[type] || '📄';
-    }
 
     /**
      * Format time ago

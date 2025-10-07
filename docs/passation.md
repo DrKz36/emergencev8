@@ -1,3 +1,112 @@
+## [2025-10-07 19:30] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- `src/frontend/styles/overrides/ui-hotfix-20250823.css`
+- `docs/passation.md`
+- `AGENT_SYNC.md`
+
+### Contexte
+- Padding cote droit encore ~70px plus large que l'ecart a gauche entre la sidebar et le bloc principal sur Dialogue/Documents/Cockpit.
+- Objectif: laisser les modules principaux occuper toute la largeur utile avec la meme marge visuelle des deux cotes, y compris en responsive <=1024px.
+
+### Actions réalisées
+1. Retire le centrage force de `documents-view-wrapper` dans `ui-hotfix-20250823.css` et impose `width:100%` avec `padding-inline` conserve pour garder la symetrie.
+2. Reconfigure les overrides de `dashboard-grid` pour reprendre une grille `auto-fit` et applique `width:100%` sur `summary-card`, eliminant la bande vide a droite du Cockpit.
+3. Ajoute des medias queries (1024px / 920px paysage / 640px portrait) dans l'override afin de conserver le comportement responsive de reference.
+
+### Tests
+- ✅ `npm run build`
+
+### Résultats
+- Dialogue, Documents et Cockpit exploitent maintenant toute la largeur disponible avec une marge droite egale a l'ecart gauche (desktop et paliers <=1024px).
+
+### Prochaines actions recommandées
+1. QA visuelle (1280/1440/1920 et 1024/768) sur Dialogue/Documents/Cockpit pour confirmer l'alignement et l'absence d'artefacts.
+2. Controler rapidement Admin/Timeline/Memory afin de valider qu'aucun override residuel ne recentre le contenu.
+
+### Blocages
+- Aucun.
+
+## [2025-10-07 18:45] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- `src/frontend/styles/core/_layout.css`
+- `src/frontend/styles/overrides/ui-hotfix-20250823.css`
+- `src/frontend/features/threads/threads.css`
+- `src/frontend/features/cockpit/cockpit-metrics.css`
+- `src/frontend/features/cockpit/cockpit-charts.css`
+- `src/frontend/features/cockpit/cockpit-insights.css`
+- `src/frontend/features/documentation/documentation.css`
+- `src/frontend/features/settings/settings-ui.css`
+- `src/frontend/features/settings/settings-security.css`
+
+### Contexte
+- Suite au retour utilisateur : marge gauche encore trop large (alignée avec la track de scroll) malgré l’étirement précédent.
+- Objectif : réduire l’espacement gauche/droite de l’aire centrale et l’unifier pour tous les modules.
+
+### Actions réalisées
+1. Ajout d’une variable `--module-inline-gap` et réduction de `--layout-inline-gap` dans `_layout.css` pour maîtriser séparément l’espace global vs. espace module.
+2. Ajustement des overrides (`ui-hotfix`) et des modules clés (Conversations, Documents, Cockpit, Settings, Documentation) afin d’utiliser `--module-inline-gap` plutôt que le gap global.
+3. Mise à jour des media queries mobiles pour conserver un padding latéral réduit (10–16px) homogène.
+4. Correction de `index.html` : import map placé avant le `modulepreload` pour supprimer l’avertissement Vite.
+
+### Tests
+- ok `npm run build`
+- à relancer `python -m pytest`, `ruff check`, `mypy src`, `pwsh -File tests/run_all.ps1`
+
+### Prochaines actions recommandées
+1. QA visuelle 1280/1440/1920 + responsive <=1024px afin de confirmer la parité des marges latérales sur tous les modules.
+2. Vérifier les modules non encore ajustés (Admin, Timeline, etc.) si l’écosystème complet doit adopter `--module-inline-gap`.
+3. Programmer la résolution du warning importmap (`index.html`) dès qu’une fenêtre s’ouvre.
+
+### Blocages
+- Working tree toujours dirty (fichiers admin/icons hors du périmètre courant).
+- Warning importmap persistant (voir tâches précédentes).
+
+## [2025-10-07 18:05] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- `src/frontend/styles/core/_layout.css`
+- `src/frontend/styles/overrides/ui-hotfix-20250823.css`
+- `src/frontend/features/threads/threads.css`
+- `src/frontend/features/documents/documents.css`
+- `src/frontend/features/debate/debate.css`
+- `src/frontend/features/cockpit/cockpit-metrics.css`
+- `src/frontend/features/cockpit/cockpit-charts.css`
+- `src/frontend/features/cockpit/cockpit-insights.css`
+- `src/frontend/features/memory/concept-list.css`
+- `src/frontend/features/memory/concept-graph.css`
+- `src/frontend/features/memory/concept-search.css`
+- `src/frontend/features/settings/settings-main.css`
+- `src/frontend/features/settings/settings-ui.css`
+- `src/frontend/features/settings/settings-security.css`
+- `src/frontend/features/documentation/documentation.css`
+
+### Contexte
+- Audit complet de la largeur des modules : plusieurs écrans restaient limités à 880-1400px alors que l'espace central était disponible.
+- Objectif : harmoniser les marges/paddings et étirer chaque module sur toute la zone contenu (sidebar exclue) tout en conservant des marges fines.
+
+### Actions réalisées
+1. Ajout de variables `--layout-inline-gap` / `--layout-block-gap` et alignement des paddings `app-content` / `tab-content` pour fournir un cadre uniforme.
+2. Suppression des `max-width`/`margin: 0 auto` hérités sur Conversations, Documents, Débats, Cockpit, Mémoire, Réglages et Documentation + adaptation des cartes/wrappers.
+3. Harmonisation des paddings internes (threads panel, drop-zone documents, concept list/graph/search) et sécurisation des conteneurs en `width: 100%`.
+
+### Tests
+- ok `npm run build` (warning importmap toujours présent)
+- à relancer `python -m pytest` (fixture `app` manquante)
+- à relancer `ruff check`
+- à relancer `mypy src`
+- non lancé `pwsh -File tests/run_all.ps1`
+
+### Prochaines actions recommandées
+1. QA visuelle desktop (1280/1440/1920) et responsive ≤1024px pour vérifier absence de scroll horizontal et confort de lecture.
+2. Vérifier drop-zone documents et modales mémoire/concepts après élargissement pour s'assurer que l'UX reste fluide.
+3. Planifier la correction de l'avertissement importmap (`<script type="importmap">` avant preload/module) lorsque le slot sera libre.
+
+### Blocages
+- Working tree encore dirty (fichiers admin + icons hors périmètre, à laisser en l'état).
+- Warning importmap persistant côté build (suivi existant).
+
 ## [2025-10-07 14:45] - Agent: Codex (Frontend)
 
 ### Fichiers modifiés

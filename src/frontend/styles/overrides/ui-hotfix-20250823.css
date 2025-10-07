@@ -19,11 +19,11 @@
 
 #app-content { position: relative; z-index: 1; }
 
-.app-content  { padding: var(--page-gap); }
+.app-content  { padding: var(--page-gap) var(--layout-inline-gap, 16px); }
 
 @media (min-width: 768px) {
   .app-content  {
-    padding-inline: 20px;
+    padding-inline: var(--layout-inline-gap, 16px);
     padding-block: var(--page-gap);
   }
 }
@@ -499,20 +499,45 @@ body::before, body::after,
   }
 
   /* ===== DOCUMENTS â€” centrage strict ===== */
-  .documents-view-wrapper{ padding-left:12px !important; padding-right:12px !important; display:flex !important; }
+  .documents-view-wrapper{
+    padding-inline: var(--module-inline-gap, 12px) !important;
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:stretch !important;
+  }
   .documents-view-wrapper .card{
-    width:auto !important;
-    max-width: calc(100vw - 24px) !important;
-    margin-left:auto !important; margin-right:auto !important;
-    align-self:center !important;
+    width:100% !important;
+    max-width:none !important;
+    margin:0 !important;
+    align-self:stretch !important;
   }
 
   /* ===== COCKPIT â€” centrage ===== */
   .dashboard-grid{
-    grid-template-columns: min(calc(100vw - 24px), 520px) !important;
-    justify-content:center !important;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+    justify-content:stretch !important;
+    align-items:stretch !important;
   }
-  .summary-card{ max-width: calc(100vw - 24px) !important; margin: 0 auto !important; }
+  @media (max-width: 1024px) {
+    .dashboard-grid{
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+    }
+  }
+  @media (max-width: 920px) and (orientation: landscape) {
+    .dashboard-grid{
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+  }
+  @media (max-width: 640px) and (orientation: portrait) {
+    .dashboard-grid{
+      grid-template-columns: 1fr !important;
+    }
+  }
+  .summary-card{
+    max-width:none !important;
+    margin:0 !important;
+    width:100% !important;
+  }
 
   body.brain-panel-open #settings-container {
     display: flex;
@@ -1200,7 +1225,11 @@ body.brain-panel-open .memory-overlay {
   box-shadow: inset 0 0 4px rgba(15, 23, 42, .4);
 }
 @media (max-width: 480px){
-  :root{ --page-gap: 14px; }
+  :root{
+    --page-gap: 14px;
+    --layout-inline-gap: 12px;
+    --module-inline-gap: 10px;
+  }
 }
 
 

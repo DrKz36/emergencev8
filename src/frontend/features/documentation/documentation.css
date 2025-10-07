@@ -80,9 +80,11 @@
 
 /* Content */
 .doc-content {
-    padding: 0 32px 40px 32px;
-    max-width: 1400px;
-    margin: 0 auto;
+    padding: 0 var(--module-inline-gap, 14px) 40px var(--module-inline-gap, 14px);
+    max-width: none;
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* Sections */

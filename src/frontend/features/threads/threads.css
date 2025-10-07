@@ -1,10 +1,13 @@
 /* threads.css */
 .conversations-module {
   width: 100%;
-  padding: 32px 20px 48px;
-  justify-content: center;
+  padding-top: var(--layout-block-gap, 32px);
+  padding-bottom: max(var(--layout-block-gap, 32px), 48px);
+  padding-inline: var(--module-inline-gap, 14px);
+  justify-content: stretch;
   align-items: stretch;
   box-sizing: border-box;
+  gap: clamp(16px, 2vw, 28px);
 }
 
 .tab-content.active.conversations-module {
@@ -21,26 +24,31 @@
 
 @media (max-width: 768px) {
   .conversations-module {
-    padding: 24px 14px 32px;
+    padding-top: clamp(20px, 4vw, 28px);
+    padding-bottom: clamp(32px, 5.5vw, 40px);
+    padding-inline: var(--module-inline-gap, 12px);
   }
 }
 
 @media (max-width: 480px) {
   .conversations-module {
-    padding: 18px 12px 28px;
+    padding-top: 18px;
+    padding-bottom: 28px;
+    padding-inline: var(--module-inline-gap, 10px);
   }
 }
 
 .threads-panel {
   width: 100%;
-  max-width: 880px;
-  margin: 0 auto;
-  padding: 32px;
+  max-width: none;
+  margin: 0;
+  padding: clamp(24px, 2.8vw, 40px);
   border-radius: 28px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(11, 18, 32, 0.78);
   box-shadow: 0 24px 64px rgba(8, 15, 35, 0.35);
   backdrop-filter: blur(18px);
+  box-sizing: border-box;
 }
 
 .threads-panel__inner {
@@ -572,7 +580,7 @@
 
 @media (max-width: 960px) {
   .threads-panel {
-    padding: 24px;
+    padding: clamp(20px, 4.4vw, 28px);
     border-radius: 24px;
   }
 

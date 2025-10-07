@@ -3,6 +3,8 @@
  * Displays comprehensive usage statistics for messages, threads, tokens, and costs
  */
 
+import { getIcon } from './cockpit-icons.js';
+
 export class CockpitMetrics {
     constructor() {
         this.container = null;
@@ -37,14 +39,14 @@ export class CockpitMetrics {
         this.container.innerHTML = `
             <div class="cockpit-metrics">
                 <div class="metrics-header">
-                    <h2>📊 Métriques d'Utilisation</h2>
+                    <h2>${getIcon('barChart')} Métriques d'Utilisation</h2>
                     <div class="metrics-actions">
                         <button class="btn-refresh" title="Actualiser">
-                            <span class="icon">🔄</span>
+                            <span class="icon">${getIcon('refresh')}</span>
                             Actualiser
                         </button>
                         <button class="btn-export" title="Exporter les données">
-                            <span class="icon">📥</span>
+                            <span class="icon">${getIcon('download')}</span>
                             Exporter
                         </button>
                     </div>
@@ -53,7 +55,7 @@ export class CockpitMetrics {
                 <div class="metrics-grid">
                     <!-- Messages Metrics -->
                     <div class="metric-card messages-card">
-                        <div class="metric-icon">💬</div>
+                        <div class="metric-icon">${getIcon('message')}</div>
                         <div class="metric-content">
                             <h3>Messages</h3>
                             <div class="metric-main">
@@ -79,7 +81,7 @@ export class CockpitMetrics {
 
                     <!-- Threads Metrics -->
                     <div class="metric-card threads-card">
-                        <div class="metric-icon">🧵</div>
+                        <div class="metric-icon">${getIcon('thread')}</div>
                         <div class="metric-content">
                             <h3>Threads</h3>
                             <div class="metric-main">
@@ -105,7 +107,7 @@ export class CockpitMetrics {
 
                     <!-- Tokens Metrics -->
                     <div class="metric-card tokens-card">
-                        <div class="metric-icon">🎯</div>
+                        <div class="metric-icon">${getIcon('target')}</div>
                         <div class="metric-content">
                             <h3>Tokens</h3>
                             <div class="metric-main">
@@ -131,7 +133,7 @@ export class CockpitMetrics {
 
                     <!-- Costs Metrics -->
                     <div class="metric-card costs-card">
-                        <div class="metric-icon">💰</div>
+                        <div class="metric-icon">${getIcon('dollar')}</div>
                         <div class="metric-content">
                             <h3>Coûts</h3>
                             <div class="metric-main">

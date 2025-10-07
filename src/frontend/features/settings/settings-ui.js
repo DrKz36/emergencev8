@@ -3,6 +3,7 @@
  * Interface customization (theme, behavior, display preferences)
  */
 
+import { SettingsIcons, getIcon } from './settings-icons.js';
 import { api } from '../../shared/api-client.js';
 
 export class SettingsUI {
@@ -46,17 +47,17 @@ export class SettingsUI {
         this.container.innerHTML = `
             <div class="settings-ui">
                 <div class="settings-header">
-                    <h2>🎨 Personnalisation de l'Interface</h2>
+                    <h2>${getIcon('palette', 'header-icon')} Personnalisation de l'Interface</h2>
                     <div class="header-actions">
-                        <button class="btn-reset">↺ Réinitialiser</button>
-                        <button class="btn-save">💾 Sauvegarder</button>
+                        <button class="btn-reset">${getIcon('reset', 'btn-icon')} Réinitialiser</button>
+                        <button class="btn-save">${getIcon('save', 'btn-icon')} Sauvegarder</button>
                     </div>
                 </div>
 
                 <div class="settings-sections">
                     <!-- Theme Section -->
                     <div class="settings-section">
-                        <h3>🌙 Thème & Apparence</h3>
+                        <h3>${getIcon('moon', 'section-icon')} Thème & Apparence</h3>
                         <div class="settings-group">
                             <div class="setting-item">
                                 <label class="setting-label">
@@ -66,17 +67,17 @@ export class SettingsUI {
                                 <div class="theme-selector">
                                     <button class="theme-option ${this.settings.theme === 'light' ? 'active' : ''}"
                                             data-theme="light">
-                                        <span class="theme-icon">☀️</span>
+                                        <span class="theme-icon">${SettingsIcons.sun}</span>
                                         <span class="theme-name">Clair</span>
                                     </button>
                                     <button class="theme-option ${this.settings.theme === 'dark' ? 'active' : ''}"
                                             data-theme="dark">
-                                        <span class="theme-icon">🌙</span>
+                                        <span class="theme-icon">${SettingsIcons.moon}</span>
                                         <span class="theme-name">Sombre</span>
                                     </button>
                                     <button class="theme-option ${this.settings.theme === 'auto' ? 'active' : ''}"
                                             data-theme="auto">
-                                        <span class="theme-icon">🔄</span>
+                                        <span class="theme-icon">${SettingsIcons.refresh}</span>
                                         <span class="theme-name">Auto</span>
                                     </button>
                                 </div>

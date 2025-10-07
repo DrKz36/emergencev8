@@ -4,9 +4,9 @@
 
 .concept-graph {
   width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 32px;
+  max-width: none;
+  margin: 0;
+  padding: clamp(24px, 2.8vw, 40px);
   border-radius: 28px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(11, 18, 32, 0.78);

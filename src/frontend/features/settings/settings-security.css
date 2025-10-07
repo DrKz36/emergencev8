@@ -3,9 +3,11 @@
  */
 
 .settings-security {
-    padding: 20px;
-    max-width: 1000px;
-    margin: 0 auto;
+    padding: var(--layout-block-gap, 24px) var(--module-inline-gap, 14px);
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
 }
 
 /* Header (reuse from previous settings) */

@@ -4,6 +4,8 @@
  * V1.0 - Comprehensive admin analytics
  */
 
+import { AdminIcons, getIcon } from './admin-icons.js';
+
 export class AdminDashboard {
     constructor() {
         this.container = null;
@@ -52,7 +54,7 @@ export class AdminDashboard {
     renderAccessDenied() {
         this.container.innerHTML = `
             <div class="admin-access-denied">
-                <div class="access-denied-icon">🔒</div>
+                <div class="access-denied-icon">${AdminIcons.lock}</div>
                 <h2>Accès Refusé</h2>
                 <p>Vous devez être administrateur pour accéder à cette section.</p>
             </div>
@@ -68,12 +70,12 @@ export class AdminDashboard {
                 <!-- Header -->
                 <div class="admin-header">
                     <div class="admin-title">
-                        <h1>🔐 Administration</h1>
+                        <h1>${getIcon('shield', 'header-icon')} Administration</h1>
                         <p class="admin-subtitle">Vue d'ensemble globale du système</p>
                     </div>
                     <div class="admin-actions">
                         <button class="btn-refresh-admin" title="Actualiser">
-                            🔄 Actualiser
+                            ${getIcon('refresh', 'btn-icon')} Actualiser
                         </button>
                     </div>
                 </div>
@@ -82,17 +84,17 @@ export class AdminDashboard {
                 <div class="admin-tabs">
                     <button class="admin-tab ${this.activeView === 'global' ? 'active' : ''}"
                             data-view="global">
-                        <span class="tab-icon">📊</span>
+                        <span class="tab-icon">${AdminIcons.barChart}</span>
                         <span class="tab-label">Vue Globale</span>
                     </button>
                     <button class="admin-tab ${this.activeView === 'users' ? 'active' : ''}"
                             data-view="users">
-                        <span class="tab-icon">👥</span>
+                        <span class="tab-icon">${AdminIcons.users}</span>
                         <span class="tab-label">Utilisateurs</span>
                     </button>
                     <button class="admin-tab ${this.activeView === 'costs' ? 'active' : ''}"
                             data-view="costs">
-                        <span class="tab-icon">💰</span>
+                        <span class="tab-icon">${AdminIcons.dollarSign}</span>
                         <span class="tab-label">Coûts Détaillés</span>
                     </button>
                 </div>
@@ -125,7 +127,7 @@ export class AdminDashboard {
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3>Détails Utilisateur</h3>
-                            <button class="modal-close">✕</button>
+                            <button class="modal-close">${AdminIcons.x}</button>
                         </div>
                         <div id="user-details-content" class="modal-body"></div>
                     </div>
@@ -246,25 +248,25 @@ export class AdminDashboard {
         const monitoring = this.globalData.global_monitoring || {};
 
         statsContainer.innerHTML = `
-            <h3>📊 Statistiques Globales</h3>
+            <h3>${getIcon('barChart', 'section-icon')} Statistiques Globales</h3>
             <div class="admin-stats-grid">
                 <div class="admin-stat-card">
-                    <div class="stat-icon">👥</div>
+                    <div class="stat-icon">${AdminIcons.users}</div>
                     <div class="stat-value">${monitoring.total_users || 0}</div>
                     <div class="stat-label">Utilisateurs</div>
                 </div>
                 <div class="admin-stat-card">
-                    <div class="stat-icon">💬</div>
+                    <div class="stat-icon">${AdminIcons.messageCircle}</div>
                     <div class="stat-value">${monitoring.total_sessions || 0}</div>
                     <div class="stat-label">Sessions</div>
                 </div>
                 <div class="admin-stat-card">
-                    <div class="stat-icon">📄</div>
+                    <div class="stat-icon">${AdminIcons.files}</div>
                     <div class="stat-value">${monitoring.total_documents || 0}</div>
                     <div class="stat-label">Documents</div>
                 </div>
                 <div class="admin-stat-card highlight">
-                    <div class="stat-icon">💰</div>
+                    <div class="stat-icon">${AdminIcons.dollarSign}</div>
                     <div class="stat-value">$${(costs.total_cost || 0).toFixed(2)}</div>
                     <div class="stat-label">Coût Total</div>
                 </div>
@@ -290,7 +292,7 @@ export class AdminDashboard {
         const dateMetrics = this.globalData.date_metrics?.last_7_days || [];
         const chartHtml = this.renderCostsChart(dateMetrics);
         dateContainer.innerHTML = `
-            <h3>📈 Évolution des Coûts (7 derniers jours)</h3>
+            <h3>${getIcon('trendingUp', 'section-icon')} Évolution des Coûts (7 derniers jours)</h3>
             ${chartHtml}
         `;
     }
@@ -318,24 +320,24 @@ export class AdminDashboard {
                 <div class="user-info">
                     <div class="user-id">${user.user_id}</div>
                     <div class="user-stats">
-                        <span class="user-stat">💬 ${user.session_count} sessions</span>
-                        <span class="user-stat">📄 ${user.document_count} docs</span>
-                        <span class="user-stat">💰 $${user.total_cost.toFixed(2)}</span>
+                        <span class="user-stat">${getIcon('messageCircle', 'stat-icon')} ${user.session_count} sessions</span>
+                        <span class="user-stat">${getIcon('file', 'stat-icon')} ${user.document_count} docs</span>
+                        <span class="user-stat">${getIcon('dollarSign', 'stat-icon')} $${user.total_cost.toFixed(2)}</span>
                     </div>
                     ${user.last_activity ? `
                         <div class="user-activity">
-                            Dernière activité: ${new Date(user.last_activity).toLocaleDateString('fr-FR')}
+                            ${getIcon('clock', 'activity-icon')} Dernière activité: ${new Date(user.last_activity).toLocaleDateString('fr-FR')}
                         </div>
                     ` : ''}
                 </div>
                 <button class="btn-view-user" data-user-id="${user.user_id}">
-                    Voir détails →
+                    Voir détails ${getIcon('arrowRight', 'btn-icon')}
                 </button>
             </div>
         `).join('');
 
         usersContainer.innerHTML = `
-            <h3>👥 Utilisateurs (${users.length})</h3>
+            <h3>${getIcon('users', 'section-icon')} Utilisateurs (${users.length})</h3>
             <div class="admin-users-list">
                 ${usersHtml}
             </div>
@@ -374,7 +376,7 @@ export class AdminDashboard {
         `).join('');
 
         costsContainer.innerHTML = `
-            <h3>💰 Répartition des Coûts par Utilisateur</h3>
+            <h3>${getIcon('dollarSign', 'section-icon')} Répartition des Coûts par Utilisateur</h3>
             <div class="admin-costs-breakdown">
                 ${costsHtml}
             </div>
@@ -470,7 +472,7 @@ export class AdminDashboard {
                 </div>
 
                 <div class="user-details-section">
-                    <h5>💰 Coûts</h5>
+                    <h5>${getIcon('dollarSign', 'section-icon')} Coûts</h5>
                     <div class="details-grid">
                         <div class="detail-item">
                             <span class="detail-label">Total</span>
@@ -492,7 +494,7 @@ export class AdminDashboard {
                 </div>
 
                 <div class="user-details-section">
-                    <h5>💬 Sessions (${sessions.length})</h5>
+                    <h5>${getIcon('messageCircle', 'section-icon')} Sessions (${sessions.length})</h5>
                     <div class="sessions-list">
                         ${sessions.slice(0, 5).map(s => `
                             <div class="session-item">
@@ -505,7 +507,7 @@ export class AdminDashboard {
                 </div>
 
                 <div class="user-details-section">
-                    <h5>📄 Documents (${documents.length})</h5>
+                    <h5>${getIcon('files', 'section-icon')} Documents (${documents.length})</h5>
                     ${documents.length === 0 ? '<p>Aucun document</p>' : `
                         <div class="documents-list">
                             ${documents.slice(0, 5).map(d => `
@@ -520,7 +522,7 @@ export class AdminDashboard {
                 </div>
 
                 <div class="user-details-section">
-                    <h5>📊 Historique des Coûts (30 derniers jours)</h5>
+                    <h5>${getIcon('activity', 'section-icon')} Historique des Coûts (30 derniers jours)</h5>
                     ${history.length === 0 ? '<p>Aucun historique</p>' : `
                         <div class="cost-history-list">
                             ${history.slice(0, 10).map(h => `
@@ -557,15 +559,15 @@ export class AdminDashboard {
         const btn = this.container.querySelector('.btn-refresh-admin');
         if (btn) {
             btn.disabled = true;
-            btn.textContent = '⏳ Actualisation...';
+            btn.innerHTML = `${getIcon('clock', 'btn-icon')} Actualisation...`;
         }
 
         await this.loadGlobalData();
 
         if (btn) {
-            btn.textContent = '✓ Actualisé';
+            btn.innerHTML = `${getIcon('check', 'btn-icon')} Actualisé`;
             setTimeout(() => {
-                btn.textContent = '🔄 Actualiser';
+                btn.innerHTML = `${getIcon('refresh', 'btn-icon')} Actualiser`;
                 btn.disabled = false;
             }, 2000);
         }

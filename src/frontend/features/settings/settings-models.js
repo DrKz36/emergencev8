@@ -3,17 +3,18 @@
  * AI model configuration per agent with advanced parameters
  */
 
+import { SettingsIcons, getIcon } from './settings-icons.js';
 import { api } from '../../shared/api-client.js';
 
 export class SettingsModels {
     constructor() {
         this.container = null;
         this.agents = [
-            { id: 'orchestrator', name: 'Orchestrateur', icon: '🎯' },
-            { id: 'researcher', name: 'Chercheur', icon: '🔍' },
-            { id: 'developer', name: 'Développeur', icon: '💻' },
-            { id: 'reviewer', name: 'Reviewer', icon: '👁️' },
-            { id: 'tester', name: 'Testeur', icon: '🧪' }
+            { id: 'orchestrator', name: 'Orchestrateur', icon: SettingsIcons.target },
+            { id: 'researcher', name: 'Chercheur', icon: SettingsIcons.search },
+            { id: 'developer', name: 'Développeur', icon: SettingsIcons.code },
+            { id: 'reviewer', name: 'Reviewer', icon: SettingsIcons.eye },
+            { id: 'tester', name: 'Testeur', icon: SettingsIcons.flask }
         ];
         this.models = [
             { id: 'gpt-4', name: 'GPT-4', provider: 'OpenAI', cost: 0.03 },
@@ -49,20 +50,20 @@ export class SettingsModels {
         this.container.innerHTML = `
             <div class="settings-models">
                 <div class="settings-header">
-                    <h2>🤖 Configuration des Modèles IA</h2>
+                    <h2>${getIcon('robot', 'header-icon')} Configuration des Modèles IA</h2>
                     <div class="header-actions">
                         <button class="btn-reset" title="Réinitialiser aux valeurs par défaut">
-                            ↺ Réinitialiser
+                            ${getIcon('reset', 'btn-icon')} Réinitialiser
                         </button>
                         <button class="btn-save" title="Sauvegarder les modifications">
-                            💾 Sauvegarder
+                            ${getIcon('save', 'btn-icon')} Sauvegarder
                         </button>
                     </div>
                 </div>
 
                 <div class="settings-info">
                     <div class="info-card">
-                        <span class="info-icon">ℹ️</span>
+                        <span class="info-icon">${SettingsIcons.info}</span>
                         <div class="info-content">
                             <strong>Configuration par agent:</strong> Chaque agent peut utiliser un modèle différent
                             selon ses besoins (précision, vitesse, coût).
@@ -75,7 +76,7 @@ export class SettingsModels {
                 </div>
 
                 <div class="cost-estimate">
-                    <h3>💰 Estimation des Coûts</h3>
+                    <h3>${getIcon('dollarSign', 'section-icon')} Estimation des Coûts</h3>
                     <div class="cost-breakdown" id="cost-breakdown">
                         <div class="loading">Calcul en cours...</div>
                     </div>
