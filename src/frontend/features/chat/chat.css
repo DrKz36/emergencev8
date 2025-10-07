@@ -1,4 +1,13 @@
-/* src/frontend/features/chat/chat.css â€” V11.6 (Send button fixed, RAG styles, mobile ergonomics++) */
+/* src/frontend/features/chat/chat.css â€" V11.6 (Send button fixed, RAG styles, mobile ergonomics++) */
+
+/* Assure des marges égales gauche/droite pour le module Dialogue sur desktop */
+@media (min-width:768px){
+  #tab-content-chat{
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
 :root{
   --glass-bg: rgba(22,22,26,.55);
   --glass-blur: 18px;
@@ -47,11 +56,15 @@
   border:1px solid var(--glass-border-color);
   border-radius:var(--radius-xl);
   box-shadow: var(--glass-shadow);
-  display:flex; flex-direction:column; height:100%;
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  width:100%;
   min-height:0;
   overflow:hidden;
   position:relative;
   z-index:1;
+  box-sizing:border-box;
 }
 .chat-body{
   display:flex;

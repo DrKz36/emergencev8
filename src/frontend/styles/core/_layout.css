@@ -108,6 +108,16 @@
   }
   .app-content{ grid-area:content; padding:20px; }
 
+  .app-content .tab-content{
+    align-items:stretch;
+  }
+
+  .app-content .tab-content > .card{
+    width:100%;
+    max-width:none;
+    align-self:stretch;
+  }
+
   .brand-block{
     flex-direction:column;
     max-width:260px;
