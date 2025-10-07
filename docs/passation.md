@@ -1,3 +1,52 @@
+## [2025-10-07 14:45] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- `src/frontend/styles/overrides/ui-hotfix-20250823.css`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- Alignement du module Dialogue pour supprimer le décalage gauche résiduel causé par le padding global du hotfix UI.
+
+### Actions réalisées
+1. Restreint le padding horizontal de `.app-content` à 20px sur desktop via `ui-hotfix-20250823.css` tout en conservant `var(--page-gap)` pour le vertical.
+2. Vérifié que `#tab-content-chat` et `.chat-container` restent étirés à 100% (pas de régression constatée).
+3. `npm run build` exécuté (warning importmap attendu).
+
+### Tests
+- ✅ `npm run build` (warning importmap existant)
+
+### Prochaines actions recommandées
+1. QA visuelle ≥1280px sur Dialogue et modules Conversations/Documents pour confirmer la symétrie globale.
+2. QA responsive mobile afin de garantir que `var(--page-gap)` mobile n'introduit pas de régression.
+3. Traiter l'avertissement importmap dans `index.html` (remonter l'importmap avant le module script).
+
+### Blocages
+- `scripts/sync-workdir.ps1` échoue (working tree dirty partagé avec d'autres chantiers front).
+
+## [2025-10-07 12:20] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.css`
+
+### Contexte
+- Ajustement du module Dialogue pour supprimer la marge droite excessive en desktop et aligner la carte sur la largeur disponible.
+
+### Actions réalisées
+1. Forcé `#tab-content-chat` en flex colonne sans padding horizontal.
+2. Contraint `.chat-container` à `align-self: stretch` avec `width: 100%` et `max-width: none` pour éliminer tout centrage résiduel.
+
+### Tests
+- ✅ `npm run build` (warning importmap attendu)
+
+### Prochaines actions recommandées
+1. QA visuelle ≥1280px pour confirmer la symétrie gauche/droite.
+2. Étendre la vérification aux autres modules centraux (Conversations, Documents) si besoin.
+
+### Blocages
+- Aucun.
+
+---
 ## [2025-10-07 06:45] - Agent: Claude Code (Routine Doc Collaborative + Polish UI)
 
 ### Fichiers modifiés

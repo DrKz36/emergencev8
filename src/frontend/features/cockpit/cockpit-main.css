@@ -3,10 +3,7 @@
  */
 
 .dashboard-container {
-    padding: 20px;
-    max-width: 1600px;
-    margin: 0 auto;
-    min-height: 100vh;
+    min-height: auto;
     overflow: visible;
 }
 

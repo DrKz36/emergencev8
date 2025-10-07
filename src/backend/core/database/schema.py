@@ -503,9 +503,27 @@ async def run_migrations(db_manager: DatabaseManager, migrations_dir: str):
                 with open(filepath, 'r', encoding='utf-8') as f:
                     sql_script = f.read()
                 if sql_script.strip():
-                    for statement in sql_script.split(';'):
-                        if statement.strip():
-                            await db_manager.execute(statement)
+                    # Utiliser executescript pour supporter les triggers SQLite (BEGIN...END)
+                    conn = await db_manager._ensure_connection()
+                    try:
+                        await conn.executescript(sql_script)
+                        await conn.commit()
+                    except Exception as script_err:
+                        # Pour compatibilité: essayer statement par statement si executescript échoue
+                        if "duplicate column" in str(script_err).lower():
+                            logger.debug(f"[Migration] Colonnes déjà existantes, ignorées: {script_err}")
+                        else:
+                            # Fallback: exécuter statement par statement (anciennes migrations)
+                            for statement in sql_script.split(';'):
+                                stmt = statement.strip()
+                                if stmt:
+                                    try:
+                                        await db_manager.execute(statement)
+                                    except Exception as stmt_err:
+                                        if "duplicate column" in str(stmt_err).lower() and "alter table" in stmt.lower():
+                                            logger.debug(f"[Migration] Colonne déjà existante, ignorée: {stmt_err}")
+                                        else:
+                                            raise
                 await db_manager.execute(
                     "INSERT INTO migrations (filename, applied_at) VALUES (?, ?)",
                     (filename, datetime.now(timezone.utc).isoformat())

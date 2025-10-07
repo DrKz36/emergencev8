@@ -118,6 +118,25 @@
     align-self:stretch;
   }
 
+  /* Uniformisation de la largeur de tous les modules */
+  .app-content .tab-content > *,
+  .chat-container,
+  .cockpit-container,
+  .dashboard-container,
+  .settings-container,
+  .documents-view-wrapper,
+  .debate-view-wrapper,
+  .conversations-module,
+  .memory-page,
+  .admin-page {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
   .brand-block{
     flex-direction:column;
     max-width:260px;

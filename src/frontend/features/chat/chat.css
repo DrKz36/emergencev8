@@ -2,9 +2,16 @@
 
 /* Assure des marges égales gauche/droite pour le module Dialogue sur desktop */
 @media (min-width:768px){
-  #tab-content-chat{
-    padding-left: 0;
-    padding-right: 0;
+  #tab-content-chat.active{
+    flex-direction:column;
+    padding-left:0;
+    padding-right:0;
+  }
+  #tab-content-chat > .chat-container{
+    width:100%;
+    max-width:none;
+    margin-inline:0;
+    align-self:stretch;
   }
 }
 
@@ -65,6 +72,7 @@
   position:relative;
   z-index:1;
   box-sizing:border-box;
+  align-self:stretch;
 }
 .chat-body{
   display:flex;

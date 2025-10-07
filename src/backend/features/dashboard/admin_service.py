@@ -98,9 +98,9 @@ class AdminDashboardService:
                 FROM sessions
                 WHERE user_id IS NOT NULL
             """
-            async with self.db.connection() as conn:
-                cursor = await conn.execute(query)
-                rows = await cursor.fetchall()
+            conn = await self.db._ensure_connection()
+            cursor = await conn.execute(query)
+            rows = await cursor.fetchall()
 
             users_data = []
             for row in rows:
@@ -143,11 +143,11 @@ class AdminDashboardService:
                 FROM sessions
                 WHERE user_id = ?
             """
-            async with self.db.connection() as conn:
-                cursor = await conn.execute(query, (user_id,))
-                row = await cursor.fetchone()
-                if row and row[0]:
-                    return row[0]
+            conn = await self.db._ensure_connection()
+            cursor = await conn.execute(query, (user_id,))
+            row = await cursor.fetchone()
+            if row and row[0]:
+                return row[0]
         except Exception as e:
             logger.debug(f"Error getting last activity for {user_id}: {e}")
         return None
@@ -165,13 +165,13 @@ class AdminDashboardService:
 
                 query = """
                     SELECT COALESCE(SUM(total_cost), 0) as daily_total
-                    FROM cost_logs
+                    FROM costs
                     WHERE DATE(timestamp) = ?
                 """
-                async with self.db.connection() as conn:
-                    cursor = await conn.execute(query, (date_str,))
-                    row = await cursor.fetchone()
-                    daily_total = float(row[0]) if row else 0.0
+                conn = await self.db._ensure_connection()
+                cursor = await conn.execute(query, (date_str,))
+                row = await cursor.fetchone()
+                daily_total = float(row[0]) if row else 0.0
 
                 daily_costs.append({
                     "date": date_str,
@@ -246,14 +246,14 @@ class AdminDashboardService:
                     total_cost,
                     feature,
                     session_id
-                FROM cost_logs
+                FROM costs
                 WHERE user_id = ? AND timestamp >= ?
                 ORDER BY timestamp DESC
                 LIMIT 100
             """
-            async with self.db.connection() as conn:
-                cursor = await conn.execute(query, (user_id, cutoff_date.isoformat()))
-                rows = await cursor.fetchall()
+            conn = await self.db._ensure_connection()
+            cursor = await conn.execute(query, (user_id, cutoff_date.isoformat()))
+            rows = await cursor.fetchall()
 
             history = []
             for row in rows:

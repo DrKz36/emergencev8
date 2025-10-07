@@ -21,6 +21,13 @@
 
 .app-content  { padding: var(--page-gap); }
 
+@media (min-width: 768px) {
+  .app-content  {
+    padding-inline: 20px;
+    padding-block: var(--page-gap);
+  }
+}
+
 
 
 body::before, body::after,

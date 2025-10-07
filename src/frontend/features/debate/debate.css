@@ -3,14 +3,12 @@
 /* ===== Wrapper ===== */
 .debate-view-wrapper{
   font-size: clamp(1rem, 0.9rem + 0.35vw, 1.3rem);
-  padding-top: 32px;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
   min-height: 100%;
 }
 .debate-view-wrapper .card{
   width: 100%;
-  max-width: min(1200px, 96vw);
-  margin: 0 auto;
+  max-width: none;
   height: auto !important;
 }
 .debate-view-wrapper .card-body{

@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-07 06:30 CEST (Claude Code - Polish UI Dialogue)
+**Derniere mise a jour** : 2025-10-07 14:45 CEST (Codex - align Dialogue padding vs sidebar)
 
 ---
 
@@ -79,24 +79,24 @@
 - **Actions recommandées** : `git fetch --all --prune` puis `git rebase origin/main` une fois réseau OK
 
 ### Codex (local)
-- **Dernier sync** : 2025-10-07 03:19
-- **Statut** : Burger menu mobile interactif (backdrop clair); build front OK
-- **Fichiers touches** :
-  - `src/frontend/styles/overrides/mobile-menu-fix.css`
-  - `docs/passation.md`
+- **Dernier sync** : 2025-10-07 14:45
+- **Statut** : Padding Dialogue aligne sur la marge sidebar (desktop)
+- **Fichiers touchés** :
+  - `src/frontend/styles/overrides/ui-hotfix-20250823.css`
   - `AGENT_SYNC.md`
+  - `docs/passation.md`
 - **Tests** :
   - ok `npm run build` (warning importmap existant)
-  - a relancer `python -m pytest` (7 erreurs fixture `app`)
-  - a relancer `ruff check` (28 erreurs existantes)
-  - a relancer `mypy src` (12 erreurs existantes)
-  - non lance `pwsh -File tests/run_all.ps1`
+  - à relancer `python -m pytest` (7 erreurs fixture `app`)
+  - à relancer `ruff check` (28 erreurs existantes)
+  - à relancer `mypy src` (12 erreurs existantes)
+  - non lancé `pwsh -File tests/run_all.ps1`
 - **Next** :
-  - QA responsive mobile (<=760px) pour valider burger/backdrop/Escape.
-  - Fusionner/rationaliser les overrides `mobile-menu-fix.css` & `ui-hotfix` après validation.
+  - QA visuelle ≥1280px sur Dialogue + vérifier Conversations/Documents pour confirmer la symétrie.
+  - QA responsive mobile pour s'assurer que le padding mobile (`var(--page-gap)`) reste cohérent.
   - Traiter l'avertissement importmap dans `index.html` quand possible.
 - **Blocages** :
-  - `scripts/sync-workdir.ps1` echoue (working tree dirty; rebase impossible tant que les autres modifs front ne sont pas commit/stash).
+  - `scripts/sync-workdir.ps1` échoue (working tree dirty; autres modifs front en attente de validation).
 ### 1. Avant de coder (TOUS les agents)
 ```bash
 # Vérifier les remotes
