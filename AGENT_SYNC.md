@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-07 19:30 CEST (Codex - alignement marge droite)
+**Derniere mise a jour** : 2025-10-08 03:30 CEST (Claude Code - fix layout CSS Grid)
 
 ---
 
@@ -46,30 +46,24 @@
 ## 🚧 Zones de travail en cours
 
 ### Claude Code (moi)
-- **Statut** : ✅ Routine doc collaborative intégrée + Polish UI terminé
-- **Session 2025-10-07 (06:00-06:45)** :
-  1. ✅ Analyse et correction des marges latérales déséquilibrées (dialogue)
-  2. ✅ Correction largeur app-container (100vw, suppression marges excessives)
-  3. ✅ Harmonisation scrollbar (rgba(71,85,105,.45)) appliquée globalement
-  4. ✅ Optimisation responsive layout (compensation sidebar visuelle)
-  5. ✅ **Intégration routine doc collaborative automatique**
-  6. ✅ Documentation mise à jour (AGENT_SYNC.md, passation.md)
+- **Statut** : ✅ Fix CSS Grid layout + marges équilibrées - TERMINÉ
+- **Session 2025-10-08 (01:00-03:30)** :
+  1. ✅ Investigation marge droite excessive sur tous les modules
+  2. ✅ Identification problème : CSS Grid avec 3 enfants au lieu de 2 (app-header comptait dans la grille)
+  3. ✅ Fix `.app-header` retiré du flux Grid en desktop avec `position: absolute`
+  4. ✅ Ajustement padding `.app-content` : 16px gauche, 24px droite
+  5. ✅ Documentation complète dans AGENT_SYNC.md et passation.md
 - **Fichiers touchés** :
-  - `src/frontend/styles/core/_layout.css` (app-container width, app-content padding)
-  - `src/frontend/styles/core/reset.css` (scrollbar globale + body/html overflow fix)
-  - `src/frontend/features/chat/chat.css` (messages padding, chat-container width)
-  - `.claude/instructions/style-fr-cash.md` (routine doc ajoutée)
-  - `.claude/instructions/doc-sync-routine.md` (NOUVEAU - guide complet)
-  - `AGENTS.md` (checklist clôture mise à jour)
-  - `.git/hooks/pre-commit-docs-reminder.ps1` (NOUVEAU - hook optionnel)
-  - `docs/README-DOC-SYNC.md` (NOUVEAU - documentation système)
-- **Changements clés** :
-  - Scrollbar globale fine (8px) avec couleur harmonisée sur tous les modules
-  - App-container à 100vw (plus de largeur fixe)
-  - Padding dialogue équilibré visuellement (compense sidebar 258px)
-  - **Routine doc collaborative intégrée dans instructions Claude Code**
-  - Rappel automatique : "Mets à jour AGENT_SYNC.md et docs/passation.md"
-- **Tests effectués** : Analyse visuelle avec captures d'écran utilisateur
+  - `src/frontend/styles/core/_layout.css` (fix .app-header grid-area + position absolute, padding .app-content)
+  - `src/frontend/styles/overrides/ui-hotfix-20250823.css` (padding .app-content desktop)
+- **Problème résolu** :
+  - **Cause racine** : `.app-header` présent dans le DOM avec 3 enfants directs de `.app-container` causait un grid-template-columns erroné (257px 467px 0px 197px au lieu de 258px 1fr)
+  - **Solution** : `.app-header` forcé en `position: absolute` + `display: none !important` en desktop pour le retirer complètement du flux Grid
+  - **Résultat** : Contenu principal prend maintenant toute la largeur disponible avec marges équilibrées (16px gauche / 24px droite)
+- **Tests effectués** :
+  - Analyse DevTools (grid-template-columns vérifié)
+  - Validation visuelle sur Dialogue, Documents, Conversations, Débats, Mémoire
+  - npm run build ✅
 - **Prochain chantier** : Tests responsives mobile + validation QA complète
 
 ### Codex (cloud)

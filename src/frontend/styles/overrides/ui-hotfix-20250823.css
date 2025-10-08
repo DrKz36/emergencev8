@@ -19,12 +19,11 @@
 
 #app-content { position: relative; z-index: 1; }
 
-.app-content  { padding: var(--page-gap) var(--layout-inline-gap, 16px); }
+.app-content  { padding: var(--page-gap) 16px; }
 
 @media (min-width: 768px) {
   .app-content  {
-    padding-inline: var(--layout-inline-gap, 16px);
-    padding-block: var(--page-gap);
+    padding: var(--page-gap) 24px var(--page-gap) 16px;
   }
 }
 

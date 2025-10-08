@@ -1,3 +1,59 @@
+## [2025-10-08 03:30] - Agent: Claude Code (Frontend)
+
+### Fichiers modifiés
+- `src/frontend/styles/core/_layout.css`
+- `src/frontend/styles/overrides/ui-hotfix-20250823.css`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- Marge droite excessive persistante sur tous les modules (Dialogue, Documents, Conversations, Débats, Mémoire)
+- Après investigation approfondie avec DevTools : le problème venait du CSS Grid de `.app-container`
+- Le `grid-template-columns` affichait `257.992px 467.136px 0px 197.003px` (4 colonnes) au lieu de `258px 1fr` (2 colonnes)
+- Cause : `.app-header` présent dans le DOM en tant qu'enfant direct de `.app-container`, même en desktop où il devrait être caché
+
+### Actions réalisées
+1. **Diagnostic complet avec DevTools** :
+   - Vérifié `body` : padding-left/right = 0px ✅
+   - Vérifié `.app-content` : largeur seulement 467px au lieu de prendre tout l'espace ❌
+   - Vérifié `.app-container` : 3 enfants directs (header + sidebar + content) causant 4 colonnes Grid ❌
+
+2. **Fix CSS Grid dans `_layout.css`** (lignes 95-101) :
+   - Forcé `.app-header` en `position: absolute` pour le retirer du flux Grid
+   - Ajouté `display: none !important`, `visibility: hidden`, `grid-column: 1 / -1`
+   - Résultat : Grid fonctionne correctement avec 2 colonnes `258px 1fr`
+
+3. **Ajustement padding `.app-content`** :
+   - `_layout.css` ligne 114 : `padding: var(--layout-block-gap) 24px var(--layout-block-gap) 16px;`
+   - `ui-hotfix-20250823.css` ligne 26 : même padding pour desktop
+   - **16px à gauche** (petite marge vis-à-vis sidebar)
+   - **24px à droite** (marge confortable pour éviter collision avec scrollbar)
+
+4. **Suppression padding-inline des modules** :
+   - `_layout.css` ligne 142 : `padding-inline: 0 !important;` pour tous les modules
+   - Les modules héritent maintenant uniquement du padding de `.app-content`
+
+### Tests
+- ✅ `npm run build` (succès, aucune erreur)
+- ✅ Validation DevTools : `grid-template-columns` maintenant correct
+- ✅ Validation visuelle : Dialogue, Documents, Conversations, Débats, Mémoire - marges équilibrées
+
+### Résultats
+- **Problème résolu** : Le contenu principal occupe maintenant toute la largeur disponible
+- Grid CSS fonctionne correctement : sidebar (258px) + content (tout l'espace restant)
+- Marges équilibrées et harmonieuses : 16px gauche / 24px droite
+- Plus de marge droite excessive
+
+### Prochaines actions recommandées
+1. Tests responsives mobile (≤760px) pour valider le comportement
+2. QA visuelle sur différentes résolutions (1280/1440/1920/1024/768)
+3. Validation modules Admin, Timeline, Settings pour cohérence
+
+### Blocages
+- Aucun
+
+---
+
 ## [2025-10-07 19:30] - Agent: Codex (Frontend)
 
 ### Fichiers modifiés

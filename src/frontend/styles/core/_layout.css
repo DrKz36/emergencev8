@@ -92,7 +92,13 @@
     grid-template-rows:1fr;
     grid-template-areas:"sidebar content";
   }
-  .app-header{ display:none; }
+  .app-header{
+    display:none !important;
+    grid-column: 1 / -1;
+    grid-row: 1;
+    visibility: hidden;
+    position: absolute;
+  }
 
   .app-sidebar{
     grid-area:sidebar;
@@ -111,7 +117,7 @@
   }
   .app-content{
     grid-area:content;
-    padding: var(--layout-block-gap) var(--layout-inline-gap);
+    padding: var(--layout-block-gap) 24px var(--layout-block-gap) 16px;
   }
 
   .app-content .tab-content{
@@ -139,7 +145,7 @@
     max-width: none !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
-    padding-inline: var(--module-inline-gap) !important;
+    padding-inline: 0 !important;
     box-sizing: border-box;
   }
 
