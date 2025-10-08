@@ -92,7 +92,9 @@ class MemoryContextBuilder:
                 for r in weighted_results[:top_k]:
                     t = (r.get("text") or "").strip()
                     if t:
-                        lines.append(f"- {t}")
+                        # Enrichir avec métadonnées temporelles si disponibles
+                        temporal_hint = self._format_temporal_hint(r.get("metadata", {}))
+                        lines.append(f"- {t}{temporal_hint}")
 
                 if lines:
                     sections.append(("Connaissances pertinentes", "\n".join(lines)))
@@ -279,3 +281,48 @@ class MemoryContextBuilder:
 
     def extract_sensitive_tokens(self, text: str) -> List[str]:
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
+
+    def _format_temporal_hint(self, metadata: Dict[str, Any]) -> str:
+        """
+        Format temporal metadata for RAG context enrichment.
+
+        Returns hints like:
+        - " (1ère mention: 5 oct, 3 fois)"
+        - " (abordé le 8 oct à 14h32)"
+        - "" (empty if no temporal data)
+        """
+        if not isinstance(metadata, dict):
+            return ""
+
+        first_mentioned = metadata.get("first_mentioned_at") or metadata.get("created_at")
+        mention_count = metadata.get("mention_count", 1)
+
+        if not first_mentioned:
+            return ""
+
+        try:
+            # Parse ISO 8601 timestamp
+            from datetime import datetime
+            dt = datetime.fromisoformat(first_mentioned.replace("Z", "+00:00"))
+
+            # Format français naturel : "5 oct" ou "5 oct à 14h32"
+            day = dt.day
+            months = ["", "janv", "fév", "mars", "avr", "mai", "juin",
+                      "juil", "août", "sept", "oct", "nov", "déc"]
+            month = months[dt.month] if 1 <= dt.month <= 12 else str(dt.month)
+
+            date_str = f"{day} {month}"
+
+            # Ajouter heure si pertinent (pas minuit pile)
+            if dt.hour != 0 or dt.minute != 0:
+                date_str += f" à {dt.hour}h{dt.minute:02d}"
+
+            # Construire hint
+            if isinstance(mention_count, int) and mention_count > 1:
+                return f" (1ère mention: {date_str}, {mention_count} fois)"
+            else:
+                return f" (abordé le {date_str})"
+
+        except Exception as e:
+            logger.debug(f"[_format_temporal_hint] Parse error: {e}")
+            return ""
