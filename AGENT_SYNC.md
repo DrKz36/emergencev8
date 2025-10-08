@@ -69,12 +69,15 @@
 ## 🚧 Zones de travail en cours
 
 ### Claude Code (moi)
-- **Statut** : ✅ Dette mypy backend corrigée + scripts seeds/migrations validés - TERMINÉ
-- **Session 2025-10-08 (17:00-17:15)** :
+- **Statut** : ⚠️ Dette mypy corrigée, smoke tests OK, Docker build OK, déploiement Cloud Run BLOQUÉ (image 13.4GB trop lourde)
+- **Session 2025-10-08 (17:00-19:30)** :
   1. ✅ Correction dette mypy : 24 erreurs → 0 erreur
   2. ✅ Annotations types ajoutées : `middleware.py`, `alerts.py`, `chat/service.py`, `memory/router.py`, `benchmarks/persistence.py`, `benchmarks/service.py`, `concept_recall.py`
   3. ✅ Scripts seeds/migrations vérifiés : compatibles avec modèle commits explicites (AuthService.upsert_allowlist fait commit=True ligne 843)
-  4. ✅ Tests e2e : 6/6 OK, pas de régression
+  4. ✅ Smoke tests : 7/7 OK (seed_admin.py + backend health checks)
+  5. ✅ Docker build : image `deploy-20251008-110311` créée (13.4GB, **layer pip install = 7.9GB**)
+  6. ✅ Push registry GCP : `sha256:d8fa8e41eb25a99f14abb64b05d124c75da016b944e8ffb84607ac4020df700f`
+  7. ⚠️ Deploy Cloud Run : **ÉCHEC** - 3 révisions (00271, 00272, 00273) bloquées sur "Imported 16 of 17 layers" après 15+ minutes
 - **Fichiers modifiés** :
   - `src/backend/benchmarks/persistence.py` : `_serialize_run` non-static + cast `Mapping[str, Any]` pour Row
   - `src/backend/features/benchmarks/service.py` : type annotation `list[SQLiteBenchmarkResultSink | FirestoreBenchmarkResultSink]`
@@ -83,19 +86,30 @@
   - `src/backend/features/memory/concept_recall.py` : check `self.collection` before access
   - `src/backend/features/chat/service.py` : type annotations `ConceptRecallTracker | None`, `dict[str, Any]`, ajout params requis `ChatMessage`
   - `src/backend/features/memory/router.py` : type annotation `dict[str, Any]` + type ignore pour kwargs dynamiques
+  - `build_tag.txt` : tag image `IMAGE_TAG=deploy-20251008-110311`
 - **Tests effectués** :
   - ✅ `python -m mypy src/backend --ignore-missing-imports` → **Success: no issues found in 80 source files**
   - ✅ `python -m pytest tests/backend/e2e/test_user_journey.py -v` → 6/6 tests OK
+  - ✅ Smoke tests : `scripts/seed_admin.py` + uvicorn health checks → 7/7 OK
+  - ✅ Service actuel (00270) toujours healthy : `curl /api/health` → 200 OK
 - **Scripts seeds/migrations vérifiés** :
   - ✅ `scripts/seed_admin.py` : utilise `AuthService.upsert_allowlist` (commit géré en interne)
   - ✅ `scripts/seed_admin_password.py` : utilise `AuthService.upsert_allowlist` (commit géré en interne)
   - ✅ `scripts/run_migration.py` : appelle `commit()` explicite ligne 20 ✅
   - ✅ `AuthService._upsert_allowlist` ligne 843 : `commit=True` passé à `db.execute()`
-- **Problèmes résolus** :
-  - **Dette mypy** : 24 erreurs → 0 erreur (benchmarks, middleware, alerts, chat, memory, concept_recall)
+- **Problèmes identifiés** :
+  - **Dette mypy** : 24 erreurs → 0 erreur ✅
   - **Scripts seeds/migrations** : validation compatibilité commits explicites ✅
+  - ⚠️ **BLOQUEUR : Image Docker 13.4GB trop lourde pour Cloud Run** (layer pip install = 7.9GB, embedding model = 183MB)
+  - Cloud Run timeout lors import dernier layer après 15+ minutes
+  - Nécessite optimisation Dockerfile (multi-stage build, cache pip, slim base image)
+- **Révision Cloud Run actuelle** : `emergence-app-00270-zs6` (healthy, 100% trafic)
 - **Commits créés** :
   - (à venir) chore: correction dette mypy backend + vérification seeds/migrations
+- **Actions manuelles requises** :
+  1. Optimiser Dockerfile pour réduire taille image (<2GB cible)
+  2. Relancer build/push/deploy une fois Dockerfile optimisé
+  3. Vérifier nouvelle révision active et healthy
 
 **Sessions précédentes :**
 - **Session 2025-10-08 (16:33-16:43)** :

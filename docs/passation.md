@@ -1,4 +1,4 @@
-## [2025-10-08 17:15] - Agent: Claude Code (Dette Mypy Backend + Scripts Seeds/Migrations)
+## [2025-10-08 19:30] - Agent: Claude Code (Dette Mypy + Smoke Tests + Build Docker + Deploy BLOQUÉ)
 
 ### Fichiers modifiés
 - src/backend/benchmarks/persistence.py
@@ -8,45 +8,72 @@
 - src/backend/features/memory/concept_recall.py
 - src/backend/features/chat/service.py
 - src/backend/features/memory/router.py
+- build_tag.txt
 - AGENT_SYNC.md
 - docs/passation.md
 
 ### Contexte
-Après session 16:43 (dette ruff corrigée), restait 6 erreurs mypy identifiées lors session Codex 12:45 : benchmarks/persistence.py, features/benchmarks/service.py, middleware.py, alerts.py. Découverte réelle : 24 erreurs mypy (benchmarks, middleware, alerts, chat/service.py, memory/router.py, concept_recall.py). Session dédiée à corriger toutes les erreurs mypy + vérifier compatibilité scripts seeds/migrations avec commits explicites.
+Session complète : correction dette mypy → vérification seeds/migrations → smoke tests → build Docker → push GCP → tentative deploy Cloud Run. Découverte BLOQUEUR : image Docker 13.4GB trop lourde pour Cloud Run (timeout import dernier layer après 15+ minutes).
 
 ### Actions réalisées
 1. **Correction erreurs mypy** - 24 erreurs → 0 erreur :
-   - `benchmarks/persistence.py` : `_serialize_run` retiré de `@staticmethod` + ajout `cast(Mapping[str, Any], run)` pour type Row
-   - `features/benchmarks/service.py` : type annotation explicite `list[SQLiteBenchmarkResultSink | FirestoreBenchmarkResultSink]` pour sinks
-   - `core/middleware.py` : type annotations `dict[str, list[tuple[float, int]]]` pour request_counts + `list[str] | None` pour allowed_origins
-   - `core/alerts.py` : type annotation `str | None` pour webhook_url + check `if not self.webhook_url` avant post
-   - `features/memory/concept_recall.py` : check `if not self.collection` avant accès collection
-   - `features/chat/service.py` : type annotation `ConceptRecallTracker | None` déclarée avant assignation + `dict[str, Any]` pour start_payload/meta_payload + ajout params requis ChatMessage (cost, tokens, agents, use_rag)
-   - `features/memory/router.py` : type annotation `dict[str, Any]` pour results + `# type: ignore[arg-type]` pour kwargs dynamiques tend_the_garden
+   - `benchmarks/persistence.py` : `_serialize_run` non-static + `cast(Mapping[str, Any], run)` pour Row
+   - `features/benchmarks/service.py` : type annotation `list[SQLiteBenchmarkResultSink | FirestoreBenchmarkResultSink]`
+   - `core/middleware.py` : type annotations `dict[str, list[tuple[float, int]]]` + `list[str] | None`
+   - `core/alerts.py` : type annotation `str | None` + check `if not self.webhook_url` avant post
+   - `features/memory/concept_recall.py` : check `if not self.collection` avant accès
+   - `features/chat/service.py` : type annotations `ConceptRecallTracker | None`, `dict[str, Any]`, params requis ChatMessage
+   - `features/memory/router.py` : type annotation `dict[str, Any]` + `# type: ignore[arg-type]` kwargs dynamiques
 
 2. **Vérification scripts seeds/migrations** :
-   - `scripts/seed_admin.py` : utilise `AuthService.upsert_allowlist` (commit géré en interne ligne 843)
-   - `scripts/seed_admin_password.py` : idem, commit géré en interne
-   - `scripts/run_migration.py` : appelle `commit()` explicite ligne 20 ✅
-   - `AuthService._upsert_allowlist` ligne 843 : passe `commit=True` à `db.execute()` ✅
+   - `scripts/seed_admin.py` + `seed_admin_password.py` : commit géré par `AuthService.upsert_allowlist` ligne 843 ✅
+   - `scripts/run_migration.py` : `commit()` explicite ligne 20 ✅
+
+3. **Smoke tests** :
+   - `scripts/seed_admin.py` exécuté avec succès
+   - Backend uvicorn lancé : 7/7 health checks OK
+
+4. **Build Docker** :
+   - Tag : `deploy-20251008-110311`
+   - Taille : **13.4GB** (pip install = 7.9GB, embedding model = 183MB)
+   - Build terminé après ~6.5 minutes (run_in_background)
+
+5. **Push GCP registry** :
+   - Digest : `sha256:d8fa8e41eb25a99f14abb64b05d124c75da016b944e8ffb84607ac4020df700f`
+   - Push réussi vers `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app`
+
+6. **Tentative deploy Cloud Run** :
+   - 3 révisions créées : 00271-2kd, 00272-c46, 00273-bs2
+   - **ÉCHEC** : Toutes bloquées sur "Imported 16 of 17 layers" après 15+ minutes
+   - Cause : Image trop lourde, dernier layer (pip install 7.9GB) timeout lors import
 
 ### Tests
 - ✅ `python -m mypy src/backend --ignore-missing-imports` → **Success: no issues found in 80 source files**
-- ✅ `python -m pytest tests/backend/e2e/test_user_journey.py -v` → 6/6 tests OK (pas de régression)
+- ✅ `python -m pytest tests/backend/e2e/test_user_journey.py -v` → 6/6 tests OK
+- ✅ Smoke tests : `scripts/seed_admin.py` + uvicorn health checks → 7/7 OK
+- ✅ Service actuel (révision 00270) healthy : `curl /api/health` → 200 OK
 
 ### Résultats
 - **Dette mypy backend : 24 erreurs → 0 erreur** ✅
 - **Scripts seeds/migrations : compatibles commits explicites** ✅
-- Codebase backend entièrement typée et conforme standards mypy
-- Tests e2e toujours 100% fonctionnels
+- **Smoke tests : 7/7 OK** ✅
+- **Docker build : succès** ✅
+- **Push registry GCP : succès** ✅
+- **Deploy Cloud Run : ÉCHEC (image trop lourde)** ⚠️
 
 ### Prochaines actions recommandées
-1. Relancer smoke tests `pwsh -File tests/run_all.ps1` après correctifs credentials
-2. Build + déploiement Cloud Run si validation FG
-3. Cleanup dette notes (24 notes "untyped functions" dans intent_tracker.py, documents/parser.py, gardener.py - non bloquant)
+1. **PRIORITÉ : Optimiser Dockerfile** (cible <2GB) :
+   - Multi-stage build pour séparer build/runtime
+   - Base image slim (python:3.11-slim au lieu de python:3.11)
+   - Cache pip avec `--mount=type=cache` BuildKit
+   - Installation sélective dependencies (pas de dev deps en prod)
+   - Nettoyer apt cache après install système
+2. Relancer build/push/deploy avec Dockerfile optimisé
+3. Commit final après deploy réussi
 
 ### Blocages
-- Aucun
+- ⚠️ **BLOQUEUR : Image Docker 13.4GB incompatible Cloud Run** - Nécessite refactor Dockerfile avant nouveau deploy
+- Révision 00270 toujours active et healthy (pas d'impact prod)
 
 ---
 
