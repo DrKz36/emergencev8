@@ -811,11 +811,13 @@ class ChatService:
                 )
                 raise  # Propagate pour fallback analyzer
         elif provider == "openai":
+            # ⚠️ OpenAI exige que le prompt contienne "json" pour response_format=json_object
+            json_prompt = f"{prompt}\n\n**IMPORTANT: Réponds UNIQUEMENT en JSON valide.**"
             openai_resp = await self.openai_client.chat.completions.create(
                 model=model,
                 temperature=0,
                 response_format={"type": "json_object"},
-                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": json_prompt}],
             )
             content = (openai_resp.choices[0].message.content or "").strip()
             return json.loads(content) if content else {}
