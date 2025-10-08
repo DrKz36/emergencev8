@@ -239,71 +239,146 @@ class DebateService:
         turns: List[Dict] = []
 
         for r in range(1, rounds + 1):
-            await self._status(
-                session_id,
-                "round_attacker",
-                topic,
-                round_number=r,
-                agent_id=attacker,
-                role="attacker",
-                status_label="speaking",
-            )
-            prompt_attacker = self._build_turn_prompt(topic, turns, speaker="attacker", agent=attacker)
-            attacker_response = await self._say_once(
-                session_id,
-                attacker,
-                prompt_attacker,
-                use_rag=use_rag,
-                doc_ids=selected_doc_ids,
-            )
-            turn_a = {
-                "round": r,
-                "agent": attacker,
-                "text": attacker_response.get("text", ""),
-                "meta": {
-                    "role": "attacker",
-                    "provider": attacker_response.get("provider"),
-                    "model": attacker_response.get("model"),
-                    "fallback": attacker_response.get("fallback"),
-                    "cost": attacker_response.get("cost_info"),
-                },
-            }
-            turns.append(turn_a)
-            accumulate_cost(attacker, attacker_response.get("cost_info"))
-            await self._emit(session_id, "ws:debate_turn_update", {**turn_a, "speaker": "attacker"})
+            # ⚡ Optimisation Phase 2: Round 1 en parallèle (attacker + challenger indépendants)
+            if r == 1:
+                # Round 1: les deux agents parlent simultanément du même topic
+                await self._status(
+                    session_id,
+                    "round_attacker",
+                    topic,
+                    round_number=r,
+                    agent_id=attacker,
+                    role="attacker",
+                    status_label="speaking",
+                )
+                await self._status(
+                    session_id,
+                    "round_challenger",
+                    topic,
+                    round_number=r,
+                    agent_id=challenger,
+                    role="challenger",
+                    status_label="speaking",
+                )
 
-            await self._status(
-                session_id,
-                "round_challenger",
-                topic,
-                round_number=r,
-                agent_id=challenger,
-                role="challenger",
-                status_label="speaking",
-            )
-            prompt_challenger = self._build_turn_prompt(topic, turns, speaker="challenger", agent=challenger)
-            challenger_response = await self._say_once(
-                session_id,
-                challenger,
-                prompt_challenger,
-                use_rag=use_rag,
-                doc_ids=selected_doc_ids,
-            )
-            turn_c = {
-                "round": r,
-                "agent": challenger,
-                "text": challenger_response.get("text", ""),
-                "meta": {
-                    "role": "challenger",
-                    "provider": challenger_response.get("provider"),
-                    "model": challenger_response.get("model"),
-                    "fallback": challenger_response.get("fallback"),
-                    "cost": challenger_response.get("cost_info"),
-                },
-            }
-            turns.append(turn_c)
-            accumulate_cost(challenger, challenger_response.get("cost_info"))
-            await self._emit(session_id, "ws:debate_turn_update", {**turn_c, "speaker": "challenger"})
+                prompt_attacker = self._build_turn_prompt(topic, turns, speaker="attacker", agent=attacker)
+                prompt_challenger = self._build_turn_prompt(topic, turns, speaker="challenger", agent=challenger)
+
+                # Appels parallèles avec asyncio.gather
+                import asyncio
+                attacker_response, challenger_response = await asyncio.gather(
+                    self._say_once(session_id, attacker, prompt_attacker, use_rag=use_rag, doc_ids=selected_doc_ids),
+                    self._say_once(session_id, challenger, prompt_challenger, use_rag=use_rag, doc_ids=selected_doc_ids),
+                    return_exceptions=True
+                )
+
+                # Gérer les erreurs individuelles
+                if isinstance(attacker_response, Exception):
+                    logger.error(f"Erreur attacker round {r}: {attacker_response}", exc_info=attacker_response)
+                    raise attacker_response
+                if isinstance(challenger_response, Exception):
+                    logger.error(f"Erreur challenger round {r}: {challenger_response}", exc_info=challenger_response)
+                    raise challenger_response
+
+                turn_a = {
+                    "round": r,
+                    "agent": attacker,
+                    "text": attacker_response.get("text", ""),
+                    "meta": {
+                        "role": "attacker",
+                        "provider": attacker_response.get("provider"),
+                        "model": attacker_response.get("model"),
+                        "fallback": attacker_response.get("fallback"),
+                        "cost": attacker_response.get("cost_info"),
+                    },
+                }
+                turns.append(turn_a)
+                accumulate_cost(attacker, attacker_response.get("cost_info"))
+                await self._emit(session_id, "ws:debate_turn_update", {**turn_a, "speaker": "attacker"})
+
+                turn_c = {
+                    "round": r,
+                    "agent": challenger,
+                    "text": challenger_response.get("text", ""),
+                    "meta": {
+                        "role": "challenger",
+                        "provider": challenger_response.get("provider"),
+                        "model": challenger_response.get("model"),
+                        "fallback": challenger_response.get("fallback"),
+                        "cost": challenger_response.get("cost_info"),
+                    },
+                }
+                turns.append(turn_c)
+                accumulate_cost(challenger, challenger_response.get("cost_info"))
+                await self._emit(session_id, "ws:debate_turn_update", {**turn_c, "speaker": "challenger"})
+
+            else:
+                # Rounds suivants: séquentiel (challenger répond à attacker)
+                await self._status(
+                    session_id,
+                    "round_attacker",
+                    topic,
+                    round_number=r,
+                    agent_id=attacker,
+                    role="attacker",
+                    status_label="speaking",
+                )
+                prompt_attacker = self._build_turn_prompt(topic, turns, speaker="attacker", agent=attacker)
+                attacker_response = await self._say_once(
+                    session_id,
+                    attacker,
+                    prompt_attacker,
+                    use_rag=use_rag,
+                    doc_ids=selected_doc_ids,
+                )
+                turn_a = {
+                    "round": r,
+                    "agent": attacker,
+                    "text": attacker_response.get("text", ""),
+                    "meta": {
+                        "role": "attacker",
+                        "provider": attacker_response.get("provider"),
+                        "model": attacker_response.get("model"),
+                        "fallback": attacker_response.get("fallback"),
+                        "cost": attacker_response.get("cost_info"),
+                    },
+                }
+                turns.append(turn_a)
+                accumulate_cost(attacker, attacker_response.get("cost_info"))
+                await self._emit(session_id, "ws:debate_turn_update", {**turn_a, "speaker": "attacker"})
+
+                await self._status(
+                    session_id,
+                    "round_challenger",
+                    topic,
+                    round_number=r,
+                    agent_id=challenger,
+                    role="challenger",
+                    status_label="speaking",
+                )
+                prompt_challenger = self._build_turn_prompt(topic, turns, speaker="challenger", agent=challenger)
+                challenger_response = await self._say_once(
+                    session_id,
+                    challenger,
+                    prompt_challenger,
+                    use_rag=use_rag,
+                    doc_ids=selected_doc_ids,
+                )
+                turn_c = {
+                    "round": r,
+                    "agent": challenger,
+                    "text": challenger_response.get("text", ""),
+                    "meta": {
+                        "role": "challenger",
+                        "provider": challenger_response.get("provider"),
+                        "model": challenger_response.get("model"),
+                        "fallback": challenger_response.get("fallback"),
+                        "cost": challenger_response.get("cost_info"),
+                    },
+                }
+                turns.append(turn_c)
+                accumulate_cost(challenger, challenger_response.get("cost_info"))
+                await self._emit(session_id, "ws:debate_turn_update", {**turn_c, "speaker": "challenger"})
 
         await self._status(
             session_id,

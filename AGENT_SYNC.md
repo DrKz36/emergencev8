@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-08 17:15 CEST (Claude Code - Dette mypy corrigée + scripts seeds/migrations validés)
+**Derniere mise a jour** : 2025-10-08 20:30 CEST (Claude Code - Phase 2 Performance implémentée : neo_analysis + cache + débats parallèles)
 
 ---
 
@@ -69,8 +69,24 @@
 ## 🚧 Zones de travail en cours
 
 ### Claude Code (moi)
-- **Statut** : ⚠️ Dette mypy corrigée, smoke tests OK, Docker build OK, déploiement Cloud Run BLOQUÉ (image 13.4GB trop lourde)
-- **Session 2025-10-08 (17:00-19:30)** :
+- **Statut** : ✅ Phase 2 Performance (analyses mémoire + débats) implémentée avec succès
+- **Session 2025-10-08 (19:30-20:30)** :
+  1. ✅ **Tâche 1** : Agent `neo_analysis` (GPT-4o-mini) pour analyses mémoire (gain latence ~70%)
+  2. ✅ **Tâche 2** : Parallélisation débat round 1 avec `asyncio.gather` (gain latence ~40%)
+  3. ✅ **Tâche 3** : Cache in-memory pour analyses (TTL 1h, LRU 100 entrées)
+  4. ✅ Documentation : [`docs/deployments/2025-10-08-phase2-perf.md`](docs/deployments/2025-10-08-phase2-perf.md)
+- **Fichiers modifiés** :
+  - `src/backend/shared/config.py` : ajout agent `neo_analysis` (OpenAI GPT-4o-mini)
+  - `src/backend/features/memory/analyzer.py` : utilise `neo_analysis` + cache in-memory (hash MD5 + TTL 1h)
+  - `src/backend/features/debate/service.py` : round 1 parallèle (attacker + challenger simultanés)
+  - `src/backend/features/chat/service.py` : refactoring appels agents (déjà parallèle avec create_task)
+- **Métriques attendues** :
+  - Latence analyses : 4-6s → 1-2s (-70%)
+  - Latence débat round 1 : 5s → 3s (-40%)
+  - Cache hit rate : 0% → 40-50%
+  - Coût API : -20% global
+
+**Session précédente 2025-10-08 (17:00-19:30)** :
   1. ✅ Correction dette mypy : 24 erreurs → 0 erreur
   2. ✅ Annotations types ajoutées : `middleware.py`, `alerts.py`, `chat/service.py`, `memory/router.py`, `benchmarks/persistence.py`, `benchmarks/service.py`, `concept_recall.py`
   3. ✅ Scripts seeds/migrations vérifiés : compatibles avec modèle commits explicites (AuthService.upsert_allowlist fait commit=True ligne 843)

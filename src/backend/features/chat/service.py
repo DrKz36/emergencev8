@@ -382,6 +382,59 @@ class ChatService:
                 parts.append(f"### {title}\n{str(body).strip()}")
         return "\n\n".join(parts)
 
+    def _build_recall_context(self, recalls: List[Dict[str, Any]]) -> str:
+        """
+        Construit un contexte formaté à partir des récurrences conceptuelles détectées.
+
+        Format généré :
+        - Concept X (1ère mention: 5 oct, abordé 3 fois dans 2 conversations)
+        - Concept Y (abordé le 8 oct à 14h32)
+        """
+        if not recalls:
+            return ""
+
+        from datetime import datetime
+
+        lines = []
+        for recall in recalls[:3]:  # Limiter à 3 récurrences max pour éviter surcharge
+            concept = recall.get("concept_text", "").strip()
+            if not concept:
+                continue
+
+            first_date_iso = recall.get("first_mentioned_at")
+            mention_count = recall.get("mention_count", 1)
+            thread_count = len(recall.get("thread_ids", []))
+
+            # Parser date
+            try:
+                dt = datetime.fromisoformat(first_date_iso.replace("Z", "+00:00")) if first_date_iso else None
+            except Exception:
+                dt = None
+
+            # Format naturel
+            temporal_hint = ""
+            if dt:
+                day = dt.day
+                months = ["", "janv", "fév", "mars", "avr", "mai", "juin",
+                          "juil", "août", "sept", "oct", "nov", "déc"]
+                month = months[dt.month] if 1 <= dt.month <= 12 else str(dt.month)
+                date_str = f"{day} {month}"
+
+                if dt.hour != 0 or dt.minute != 0:
+                    date_str += f" à {dt.hour}h{dt.minute:02d}"
+
+                if mention_count > 1:
+                    temporal_hint = f" (1ère mention: {date_str}, abordé {mention_count} fois"
+                    if thread_count > 1:
+                        temporal_hint += f" dans {thread_count} conversations"
+                    temporal_hint += ")"
+                else:
+                    temporal_hint = f" (abordé le {date_str})"
+
+            lines.append(f"- {concept}{temporal_hint}")
+
+        return "\n".join(lines) if lines else ""
+
     _MOT_CODE_RE = re.compile(r"\b(mot-?code|code)\b", re.IGNORECASE)
 
     def _is_mot_code_query(self, text: str) -> bool:
@@ -731,19 +784,32 @@ class ChatService:
     async def get_structured_llm_response(self, agent_id: str, prompt: str, json_schema: Dict[str, Any]) -> Dict[str, Any]:
         provider, model, system_prompt = self._get_agent_config(agent_id)
         system_prompt = self._ensure_fr_tutoiement(agent_id, provider, system_prompt)
+
+        # Timeout configurable pour appels LLM (critique en prod)
+        timeout_seconds = float(os.getenv("MEMORY_ANALYSIS_TIMEOUT", "30"))
+
         if provider == "google":
             model_instance = genai.GenerativeModel(model_name=model, system_instruction=system_prompt)
             schema_hint = json.dumps(json_schema, ensure_ascii=False)
             full_prompt = (
                 f"{prompt}\n\nIMPORTANT: Réponds EXCLUSIVEMENT en JSON valide correspondant strictement à ce SCHÉMA : {schema_hint}"
             )
-            google_resp = await model_instance.generate_content_async([{"role": "user", "parts": [full_prompt]}])
-            text = getattr(google_resp, "text", "") or ""
             try:
-                return json.loads(text) if text else {}
-            except Exception:
-                m = re.search(r"\{.*\}", text, re.S)
-                return json.loads(m.group(0)) if m else {}
+                google_resp = await asyncio.wait_for(
+                    model_instance.generate_content_async([{"role": "user", "parts": [full_prompt]}]),
+                    timeout=timeout_seconds
+                )
+                text = getattr(google_resp, "text", "") or ""
+                try:
+                    return json.loads(text) if text else {}
+                except Exception:
+                    m = re.search(r"\{.*\}", text, re.S)
+                    return json.loads(m.group(0)) if m else {}
+            except asyncio.TimeoutError:
+                logger.warning(
+                    f"[get_structured_llm_response] Timeout Google ({timeout_seconds}s) pour agent={agent_id}, prompt_len={len(prompt)}"
+                )
+                raise  # Propagate pour fallback analyzer
         elif provider == "openai":
             openai_resp = await self.openai_client.chat.completions.create(
                 model=model,
@@ -846,7 +912,8 @@ class ChatService:
 
             uid = self._try_get_user_id(session_id)
 
-            # 🆕 DÉTECTION CONCEPTS RÉCURRENTS (Phase 2)
+            # 🆕 DÉTECTION CONCEPTS RÉCURRENTS + INJECTION PROACTIVE
+            recall_context = ""
             if self.concept_recall_tracker and last_user_message and uid and thread_id:
                 try:
                     message_id = str(uuid4())
@@ -862,7 +929,8 @@ class ChatService:
                             f"[ConceptRecall] {len(recalls)} récurrences détectées : "
                             f"{[r['concept_text'] for r in recalls]}"
                         )
-                        # Phase 2 : NE PAS émettre ws:concept_recall encore (géré par tracker)
+                        # Construire contexte de récurrence pour injection
+                        recall_context = self._build_recall_context(recalls)
                 except Exception as recall_err:
                     logger.warning(f"[ConceptRecall] Détection échouée : {recall_err}")
 
@@ -1074,9 +1142,17 @@ class ChatService:
                     "\n\n".join([f"- {h['text']}" for h in (doc_hits or []) if h.get("text")]) if doc_hits else ""
                 )
                 mem_block = await self._build_memory_context(session_id, last_user_message, agent_id=agent_id)
-                rag_context = self._merge_blocks(
-                    [("Mémoire (concepts clés)", mem_block), ("Documents pertinents", doc_block)]
-                )
+
+                # Injecter contexte de récurrence si détecté
+                blocks_to_merge = []
+                if recall_context:
+                    blocks_to_merge.append(("🔗 Connexions avec discussions passées", recall_context))
+                if mem_block:
+                    blocks_to_merge.append(("Mémoire (concepts clés)", mem_block))
+                if doc_block:
+                    blocks_to_merge.append(("Documents pertinents", doc_block))
+
+                rag_context = self._merge_blocks(blocks_to_merge)
                 await connection_manager.send_personal_message(
                     {"type": "ws:rag_status", "payload": {"status": "found", "agent_id": agent_id}}, session_id
                 )
@@ -1592,18 +1668,22 @@ class ChatService:
             targets = [agent_id]
             origin_marker = None
 
-        for target_agent in targets:
-            asyncio.create_task(
-                self._process_agent_response_stream(
-                    session_id,
-                    target_agent,
-                    use_rag,
-                    cm,
-                    doc_ids=list(doc_ids or []),
-                    origin_agent_id=origin_marker,
-                    opinion_request=None,
-                )
+        # ⚡ Optimisation Phase 2: Parallélisation des appels agents avec asyncio.gather
+        tasks = [
+            self._process_agent_response_stream(
+                session_id,
+                target_agent,
+                use_rag,
+                cm,
+                doc_ids=list(doc_ids or []),
+                origin_agent_id=origin_marker,
+                opinion_request=None,
             )
+            for target_agent in targets
+        ]
+        # Fire-and-forget: les tasks s'exécutent en parallèle sans bloquer
+        for task in tasks:
+            asyncio.create_task(task)
 
 
 

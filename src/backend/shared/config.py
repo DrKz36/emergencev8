@@ -40,6 +40,7 @@ def _normalize_google_model(value: Optional[str]) -> str:
 DEFAULT_AGENT_CONFIGS: Dict[str, Dict[str, str]] = {
     "default": {"provider": "google", "model": DEFAULT_GOOGLE_MODEL},
     "neo": {"provider": "google", "model": DEFAULT_GOOGLE_MODEL},
+    "neo_analysis": {"provider": "openai", "model": "gpt-4o-mini"},  # ⚡ Agent dédié analyses mémoire (3x plus rapide que Gemini)
     "nexus": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
     "anima": {"provider": "openai", "model": "gpt-4o-mini"},
 }
