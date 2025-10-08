@@ -106,40 +106,49 @@ gcloud run services logs read emergence-app \
 - Utilisation mémoire > 80%
 - Cold start > 10s
 
-## 📚 Documents Phase 2 (2025-10-08)
+## 📚 Documents Phase 2 & 3 (2025-10-08)
 
-### Pour comprendre Phase 2
-- 🎯 **[PHASE_2_PROMPT.md](PHASE_2_PROMPT.md)** - Spécification complète (référence)
-- 📊 **[2025-10-08-phase2-perf.md](2025-10-08-phase2-perf.md)** - Rapport implémentation (métriques, tests, fichiers)
-- 🚀 **[CODEX_BUILD_DEPLOY.md](CODEX_BUILD_DEPLOY.md)** - Guide build/deploy pour Codex (TL;DR + troubleshooting)
+### Documentation Complète
+- 📊 **[2025-10-08-phase2-perf.md](2025-10-08-phase2-perf.md)** - Phase 2 Optimisations Performance
+- 📊 **[2025-10-08-phase2-logs-analysis.md](2025-10-08-phase2-logs-analysis.md)** - Analyse logs + fix OpenAI
+- 📈 **[2025-10-08-phase3-monitoring.md](2025-10-08-phase3-monitoring.md)** - Phase 3 Métriques Prometheus
+- 🎯 **[PHASES_RECAP.md](PHASES_RECAP.md)** - Récapitulatif Phases 2 & 3 + guide déploiement
+- 🚀 **[../../CODEX_BUILD_DEPLOY_PROMPT.md](../../CODEX_BUILD_DEPLOY_PROMPT.md)** - Prompt Codex pour build/deploy
 
-### Optimisations implémentées
-1. **Agent neo_analysis** : GPT-4o-mini pour analyses mémoire (latence -70%, coût -40%)
-2. **Cache in-memory** : Résumés sessions (TTL 1h, hit rate 40-50%, coût -60%)
+### Phase 2 : Optimisations Performance
+1. **Agent neo_analysis** : GPT-4o-mini pour analyses mémoire (latence -43%, coût -40%)
+2. **Cache in-memory** : Résumés sessions (TTL 1h, max 100 entrées)
 3. **Débats parallèles** : Round 1 asyncio.gather (latence -40%)
-4. **Horodatages RAG** : Mémoire temporelle enrichie (format naturel français)
+4. **Fix OpenAI prompt** : Ajout mot "json" requis par API (nov 2024+)
 
-### Commits Phase 2
-- `2bdbde1` perf: neo_analysis + cache + débats parallèles
-- `4f30be9` feat: horodatages RAG + prompts agents
-- `69f7f50` docs: spec Phase 2 archivée
-- `c7079f0` docs: passation Codex
-- `30d09e8` docs: guide build/deploy Codex
+### Phase 3 : Monitoring Prometheus
+1. **13 métriques exposées** via `/api/metrics`
+2. **5 types** : Success, Failure, Cache, Latency, Size
+3. **Dashboards Grafana** suggérés (5 panels)
+4. **Alertes** Prometheus configurables
+
+### Commits Phase 2 & 3
+- `611f06e` fix: prompt OpenAI neo_analysis - ajout mot 'json' requis par API
+- `11ac853` feat(phase3): add Prometheus metrics for MemoryAnalyzer monitoring
+- `dcffd45` docs: récapitulatif complet Phases 2 & 3 - guide déploiement
+- `0ff5edd` docs: prompt complet pour Codex - build & deploy Phase 3
 
 ### Validation post-deploy
 Chercher dans logs Cloud Run :
 ```bash
-# Analyses mémoire avec neo_analysis
+# Analyses mémoire avec neo_analysis (Phase 2)
 gcloud logging read "jsonPayload.message=~'neo_analysis'" --limit 50
 
-# Cache HIT/MISS
+# Cache HIT/MISS (Phase 2)
 gcloud logging read "jsonPayload.message=~'Cache (HIT|SAVED)'" --limit 50
+
+# Métriques Prometheus (Phase 3)
+curl https://[APP_URL]/api/metrics | grep memory_analysis
 ```
 
 Métriques cibles :
-- Latence analyses : <2s (vs 4-6s avant)
-- Cache hit rate : 40-50%
-- Latence débat round 1 : ~3s (vs 5s avant)
+- **Phase 2** : Latence analyses <4s, Cache hit >40%, neo_analysis 100% succès
+- **Phase 3** : 13 métriques exposées, compteurs incrémentent, histogrammes OK
 
 ---
 
