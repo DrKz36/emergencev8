@@ -1,0 +1,132 @@
+/* RAG Power Button - V3.0 - Même hauteur que les sélecteurs, rouge/vert */
+
+/* Layout du header chat */
+.chat-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.chat-header-left .agent-selector {
+  display: flex;
+  align-items: center;
+}
+
+/* Container RAG avec label */
+.rag-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Bouton RAG - Même taille que les sélecteurs d'agents */
+.rag-power {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(239, 68, 68, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(185, 28, 28, 0.1));
+  color: #ef4444;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* État ON - Vert */
+.rag-power[aria-checked="true"] {
+  border-color: rgba(34, 197, 94, 0.6);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(22, 163, 74, 0.15));
+  color: #22c55e;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);
+}
+
+/* État OFF - Rouge */
+.rag-power[aria-checked="false"] {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(185, 28, 28, 0.1));
+  color: #ef4444;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+/* Hover */
+.rag-power:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px currentColor;
+}
+
+/* Actif au clic */
+.rag-power:active {
+  transform: scale(0.95);
+}
+
+/* Label RAG */
+.rag-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  user-select: none;
+}
+
+/* Accessibilité - focus visible */
+.rag-power:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Bouton mobile caché par défaut */
+.rag-control--mobile {
+  display: none;
+}
+
+/* ===== RESPONSIVE - Mobile portrait ===== */
+@media (max-width: 760px) and (orientation: portrait) {
+  /* Cacher le bouton RAG du header-left en mobile portrait */
+  .chat-header-left .rag-control {
+    display: none !important;
+  }
+
+  /* Afficher le bouton RAG dans les actions du header-right */
+  .chat-header-right .rag-control--mobile {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .chat-header-right .rag-power {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .chat-header-right .rag-power svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .chat-header-right .rag-label {
+    font-size: 0.7rem;
+  }
+}
+
+/* Très petits écrans */
+@media (max-width: 380px) {
+  .chat-header-right .rag-power {
+    width: 32px;
+    height: 32px;
+  }
+
+  .chat-header-right .rag-power svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .chat-header-right .rag-label {
+    font-size: 0.65rem;
+  }
+}

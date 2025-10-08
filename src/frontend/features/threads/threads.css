@@ -3,7 +3,7 @@
   width: 100%;
   padding-top: var(--layout-block-gap, 32px);
   padding-bottom: max(var(--layout-block-gap, 32px), 48px);
-  padding-inline: var(--module-inline-gap, 14px);
+  padding-inline: clamp(24px, 3vw, 40px);
   justify-content: stretch;
   align-items: stretch;
   box-sizing: border-box;
@@ -26,7 +26,7 @@
   .conversations-module {
     padding-top: clamp(20px, 4vw, 28px);
     padding-bottom: clamp(32px, 5.5vw, 40px);
-    padding-inline: var(--module-inline-gap, 12px);
+    padding-inline: clamp(20px, 2.5vw, 32px);
   }
 }
 
@@ -34,7 +34,7 @@
   .conversations-module {
     padding-top: 18px;
     padding-bottom: 28px;
-    padding-inline: var(--module-inline-gap, 10px);
+    padding-inline: 16px;
   }
 }
 
@@ -42,7 +42,7 @@
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: clamp(24px, 2.8vw, 40px);
+  padding: clamp(32px, 3.5vw, 48px);
   border-radius: 28px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(11, 18, 32, 0.78);
@@ -110,7 +110,10 @@
 
 /* Rename functionality */
 .threads-panel__rename {
-  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
   border-radius: 8px;
   border: 1px solid rgba(148, 163, 184, 0.2);
   background: rgba(15, 23, 42, 0.5);
@@ -118,6 +121,12 @@
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.threads-panel__rename svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
 }
 
 .threads-panel__rename:hover:not(:disabled) {
@@ -294,6 +303,13 @@
   text-align: left;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
+}
+
+.threads-context-menu__item svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  flex-shrink: 0;
 }
 
 .threads-context-menu__item:hover {

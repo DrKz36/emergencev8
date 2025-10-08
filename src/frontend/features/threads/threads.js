@@ -1075,16 +1075,33 @@ export class ThreadsPanel {
 
     menu.innerHTML = `
       <button type="button" class="threads-context-menu__item" data-action="context-rename" data-thread-id="${escapeHtml(this.contextMenuId)}">
-        ✏️ Renommer
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+        </svg>
+        Renommer
       </button>
       <button type="button" class="threads-context-menu__item" data-action="context-export" data-thread-id="${escapeHtml(this.contextMenuId)}">
-        💾 Exporter
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Exporter
       </button>
       <button type="button" class="threads-context-menu__item" data-action="context-archive" data-thread-id="${escapeHtml(this.contextMenuId)}">
-        📦 Archiver
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="21 8 21 21 3 21 3 8"></polyline>
+          <rect x="1" y="3" width="22" height="5"></rect>
+          <line x1="10" y1="12" x2="14" y2="12"></line>
+        </svg>
+        Archiver
       </button>
       <button type="button" class="threads-context-menu__item threads-context-menu__item--danger" data-action="context-delete" data-thread-id="${escapeHtml(this.contextMenuId)}">
-        🗑️ Supprimer
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        Supprimer
       </button>
     `;
 
@@ -1200,7 +1217,11 @@ export class ThreadsPanel {
         `
         : `
           <div class="threads-panel__actions">
-            <button type="button" class="threads-panel__rename" data-action="rename" data-thread-id="${escapeHtml(id)}" title="Renommer"${(isArchiving || isDeleting) ? ' disabled' : ''}>✏️</button>
+            <button type="button" class="threads-panel__rename" data-action="rename" data-thread-id="${escapeHtml(id)}" title="Renommer"${(isArchiving || isDeleting) ? ' disabled' : ''}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+              </svg>
+            </button>
             <button type="button" class="${archiveClasses.join(' ')}" data-action="archive" data-thread-id="${escapeHtml(id)}"${(isArchiving || isDeleting) ? ' disabled' : ''}>Archiver</button>
             <button type="button" class="${deleteClasses.join(' ')}" data-action="delete" data-thread-id="${escapeHtml(id)}"${isDeleting ? ' disabled' : ''}>Supprimer</button>
           </div>

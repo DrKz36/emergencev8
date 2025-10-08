@@ -55,20 +55,17 @@ export class DebateUI {
     return `
       <div class="debate-view-wrapper">
         <div class="card">
-          <div class="card-header timeline-header">
-            <div class="title-center">
-              <div class="debate-title">Sujet du Débat</div>
-              <div class="debate-topic muted">—</div>
-            </div>
-            <div class="debate-status">${this._html(statusText)}</div>
+          <div class="card-header debate-create-header">
+            <h2 class="debate-title">Sujet du débat</h2>
+            <p class="debate-subtitle">${this._html(statusText)}</p>
           </div>
 
           <div class="card-body">
             <div class="debate-create-body">
               <div class="form-group form-topic">
-                <label for="debate-topic">Sujet du Débat</label>
+                <label for="debate-topic">Sujet du débat</label>
                 <textarea id="debate-topic" class="input-text" rows="4"
-                  placeholder="Ex: L’IA peut-elle développer une conscience authentique ?"></textarea>
+                  placeholder="Ex: L'IA peut-elle développer une conscience authentique ?"></textarea>
               </div>
 
               <div class="form-group form-attacker">
@@ -81,31 +78,29 @@ export class DebateUI {
                 ${segChallenger}
               </div>
 
-              <div class="form-group form-mediator">
-                <label>Médiateur (synthèse finale)</label>
-                ${segMediator}
-              </div>
-
               <div class="form-group form-rounds">
                 <label>Nombre de tours</label>
                 ${roundsTabs}
               </div>
 
-              <div class="form-group form-rag">
-                <label>RAG</label>
-                <button type="button" id="rag-power" class="rag-power toggle-metal" role="switch" aria-checked="true" aria-label="Activer ou desactiver le RAG" title="Activer/Desactiver RAG">
-                  <svg class="power-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                    <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-                    <path d="M5.5 7a8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-                  </svg>
-                </button>
-                <span id="rag-label" class="rag-label">RAG actif</span>
-              </div>
-
-              <div class="action-center">
-                <button class="button button-primary" id="debate-start">Lancer le débat</button>
+              <div class="form-group form-mediator">
+                <label>Médiateur (synthèse finale)</label>
+                ${segMediator}
               </div>
             </div>
+          </div>
+
+          <div class="card-footer debate-create-footer">
+            <div class="rag-control">
+              <button type="button" id="rag-power" class="rag-power" role="switch" aria-checked="true" aria-label="Activer ou désactiver le RAG" title="Activer/Désactiver RAG">
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                  <path d="M12 3v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                  <path d="M5.5 7a8 8 0 1 0 13 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                </svg>
+              </button>
+              <span id="rag-label" class="rag-label">RAG actif</span>
+            </div>
+            <button class="button button-primary" id="debate-start">Lancer le débat</button>
           </div>
         </div>
       </div>`;
@@ -113,8 +108,6 @@ export class DebateUI {
 
   _bindCreateEvents(root) {
     const topicEl = root.querySelector('#debate-topic');
-    const headerTopic = root.querySelector('.debate-topic');
-    topicEl?.addEventListener('input', () => { headerTopic.textContent = topicEl.value.trim() || '—'; });
 
     const ragBtn = root.querySelector('#rag-power');
     const ragLabel = root.querySelector('#rag-label');
