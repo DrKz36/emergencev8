@@ -413,11 +413,11 @@ function initializeWaveform() {
             const height = baseHeight + (isPlaying ? Math.sin(Date.now() * bar.speed + i) * 10 : 0);
             const y = (canvas.height - height) / 2;
 
-            // Gradient
+            // Gradient - Utilise les couleurs primaires de l'app
             const gradient = ctx.createLinearGradient(x, y, x, y + height);
-            gradient.addColorStop(0, '#d4af37');
-            gradient.addColorStop(0.5, '#aa8c2d');
-            gradient.addColorStop(1, '#d4af37');
+            gradient.addColorStop(0, '#00aaff');
+            gradient.addColorStop(0.5, '#33bbff');
+            gradient.addColorStop(1, '#00aaff');
 
             ctx.fillStyle = gradient;
             ctx.fillRect(x + barWidth * 0.2, y, barWidth * 0.6, height);
