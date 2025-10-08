@@ -89,7 +89,7 @@
 - `POST /api/auth/admin/sessions/revoke` -> 200 `{ updated:1 }` (révoque `id`).
 
 ### Threads & messages
-- `GET /api/threads?type=chat&limit=1` → `{ items:[{id,type,created_at,last_message_at}] }`
+- `GET /api/threads?type=chat&limit=1` → `{ items:[{id,type,created_at,last_message_at,message_count,archival_reason,archived_at}] }`
 - `POST /api/threads` → crée un thread chat (payload optionnel `{ "type": "chat", "title": "…" }`).
 - `DELETE /api/threads/{id}` → 204 (cascade: messages + documents associés).
 - `GET /api/threads/{id}/messages?limit=50&before=cursor` → pagination descendante, messages `{ id, role, agent, content, created_at, rag_sources[] }`.
@@ -134,7 +134,6 @@
 - Révocation : `auth_sessions.revoked_at` + liste en mémoire purgée toutes les 5 minutes.
 - Les claims enrichis exposent `session_revoked` et `revoked_at` le cas échéant; le handshake WS refuse une session révoquée.
 - OTP futur : champs réservés (`otp_secret`, `otp_expires_at`, `otp_channel`) pour SMS/OTP; routes resteront compatibles.
-
 
 
 

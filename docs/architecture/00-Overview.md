@@ -20,9 +20,10 @@
   - Couches : `main.py` (DI + migrations + routers), `containers.py` (`ServiceContainer`), routers REST (`/api/auth`, `/api/threads`, `/api/memory`, `/api/documents`, `/api/dashboard`, `/api/debates`), router WS (`chat.router`), services (`AuthService`, `ChatService`, `MemoryAnalyzer`, `MemoryGardener`, `DocumentService`, `DebateService`, `DashboardService`).
   - Responsabilités : Auth locale (allowlist email + mot de passe, JWT 7j, interface admin), gestion des sessions, orchestration multi-agents avec fallback fournisseur, consolidation mémoire, ingestion documents, diffusion WS, exposition du module benchmarks (ARE/Gaia2) et persistance des résultats.
 - **Stockages & ressources partagées**
-  - **SQLite app** : threads, messages, coûts, documents, mémoire STM/LTM, tables auth (`auth_allowlist`, `auth_sessions`, `auth_audit_log`).
-  - **Vector DB (Chroma)** : collection `emergence_knowledge` pour chunks documents + faits mémoire (auto-reset en cas de corruption, backup automatique).
-  - **Modèles SentenceTransformer** : embeddings pour RAG et mémoire.
+- **SQLite app** : threads, messages, coûts, documents, mémoire STM/LTM, tables auth (`auth_allowlist`, `auth_sessions`, `auth_audit_log`).
+- **Vector DB (Chroma)** : collection `emergence_knowledge` pour chunks documents + faits mémoire (auto-reset en cas de corruption, backup automatique).
+- **Modèles SentenceTransformer** : embeddings pour RAG et mémoire.
+- **DatabaseManager** : connexion asynchrone unique (aiosqlite) ; toute écriture nécessite désormais un commit explicite (`await db.execute(..., commit=True)` ou `await db.commit()`) pour éviter des rollbacks implicites dans les tests.
 
 ## 3) Invariants & Qualité
 - **Auth & WS** : aucun accès API critique ni WS sans JWT valide. Le handshake rejette (4401/1008) si token manquant et le front relaie `auth:missing` vers le toast déconnexion. La route `/api/auth/dev/login` reste limitée aux environnements où `AUTH_DEV_MODE=1` et renvoie 404 lorsque le flag vaut 0 (prod/staging).
@@ -41,4 +42,3 @@
 - Bootstrap : `ensureCurrentThread()` puis `WebSocketClient.connect()` recuperent le thread actif et ouvrent la connexion temps reel sur `/ws/{session_id}`.
 - Suppression : `ThreadsPanel.handleDelete` appelle `threads-service.deleteThread()` qui cible la session courante et cascade sur messages + documents via `queries.delete_thread(...)`.
 - Logout : `POST /api/auth/logout` + `SessionManager.handle_session_revocation()` purgent cookies, etat front et connexions WS; tout nouvel identifiant relance la sequence.
-

@@ -24,7 +24,7 @@ class DatabaseManager:
         logger.info(f"DatabaseManager (Async) V23.1 initialisé pour : {self.db_path}")
 
     async def connect(self):
-        if self.connection is None or self.connection._conn is None:
+        if not self.is_connected():
             try:
                 self.connection = await aiosqlite.connect(self.db_path)
                 self.connection.row_factory = aiosqlite.Row
@@ -41,30 +41,51 @@ class DatabaseManager:
             self.connection = None
             logger.info("Connexion aiosqlite fermée.")
 
+    async def close(self) -> None:
+        """Alias explicite pour compat tests externes."""
+        await self.disconnect()
+
+    def is_connected(self) -> bool:
+        conn = self.connection
+        if conn is None:
+            return False
+        if getattr(conn, "_conn", None) is None:
+            return False
+        if getattr(conn, "_closed", False):
+            return False
+        return True
+
     async def _ensure_connection(self) -> aiosqlite.Connection:
-        if self.connection is None:
-            await self.connect()
-        if self.connection is None:
+        if not self.is_connected():
             raise RuntimeError("Database connection is not available.")
+        assert self.connection is not None  # pour mypy
         return self.connection
 
     async def execute(
         self,
         query: str,
         params: Optional[Tuple[Any, ...]] = None,
-    ) -> None:
+        *,
+        commit: bool = False,
+    ) -> aiosqlite.Cursor:
         conn = await self._ensure_connection()
-        await conn.execute(query, params or ())
-        await conn.commit()
+        cursor = await conn.execute(query, params or ())
+        if commit:
+            await conn.commit()
+        return cursor
 
     async def executemany(
         self,
         query: str,
         params: Iterable[Tuple[Any, ...]],
-    ) -> None:
+        *,
+        commit: bool = False,
+    ) -> aiosqlite.Cursor:
         conn = await self._ensure_connection()
-        await conn.executemany(query, params)
-        await conn.commit()
+        cursor = await conn.executemany(query, params)
+        if commit:
+            await conn.commit()
+        return cursor
 
     async def fetch_one(
         self,
@@ -86,6 +107,25 @@ class DatabaseManager:
             await cursor.execute(query, params or ())
             rows = await cursor.fetchall()
         return list(rows)
+
+    async def commit(self) -> None:
+        conn = await self._ensure_connection()
+        await conn.commit()
+
+    async def rollback(self) -> None:
+        conn = await self._ensure_connection()
+        await conn.rollback()
+
+    async def initialize(self, migrations_dir: Optional[str] = None) -> None:
+        """
+        Convenience helper used by tests to provision an in-memory database.
+        """
+        from .schema import initialize_database  # import local pour éviter cycles
+
+        default_dir = (
+            Path(__file__).resolve().parent / "migrations"
+        )
+        await initialize_database(self, str(migrations_dir or default_dir))
 
     # --------- AJOUT POUR TemporalSearch ---------
     async def search_messages(

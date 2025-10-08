@@ -1278,6 +1278,7 @@ class MemoryGardener:
                 await self.db.execute(
                     "INSERT INTO monitoring (event_type, event_details, timestamp) VALUES (?, ?, ?)",
                     ("memory_preference", json.dumps(details, ensure_ascii=False), now),
+                    commit=True,
                 )
             except Exception as exc:
                 logger.warning(
@@ -1436,6 +1437,7 @@ class MemoryGardener:
                 await self.db.execute(
                     "INSERT INTO monitoring (event_type, event_details, timestamp) VALUES (?, ?, ?)",
                     ("knowledge_concept", json.dumps(details, ensure_ascii=False), now),
+                    commit=True,
                 )
             except Exception as e:
                 logger.warning(
@@ -1466,6 +1468,7 @@ class MemoryGardener:
                 await self.db.execute(
                     "INSERT INTO monitoring (event_type, event_details, timestamp) VALUES (?, ?, ?)",
                     ("knowledge_fact", json.dumps(rec, ensure_ascii=False), now),
+                    commit=True,
                 )
             except Exception as e:
                 logger.warning(
@@ -1574,7 +1577,7 @@ class MemoryGardener:
         try:
             params = [(now, sid) for sid in session_ids]
             await self.db.executemany(
-                "UPDATE sessions SET updated_at = ? WHERE id = ?", params
+                "UPDATE sessions SET updated_at = ? WHERE id = ?", params, commit=True
             )
         except Exception as e:
             logger.warning(
@@ -1620,6 +1623,7 @@ class MemoryGardener:
                         ),
                         now_iso,
                     ),
+                    commit=True,
                 )
             except Exception as e:
                 logger.warning(f"Trace vieillissement vide KO: {e}", exc_info=True)
@@ -1766,6 +1770,7 @@ class MemoryGardener:
                     json.dumps(stats_payload, ensure_ascii=False),
                     now_iso,
                 ),
+                commit=True,
             )
             logger.info(
                 f"Vieillissement applique: total={len(ids)} | decayed={len(updates_ids)} | deleted={len(delete_ids)} | base={self.base_decay:.3f}"

@@ -1,9 +1,31 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from typing import Any, Optional, Sequence
 
 from pydantic import BaseModel, Field
+
+
+class UserRole(str, Enum):
+    ADMIN = "admin"
+    MEMBER = "member"
+    GUEST = "guest"
+    TESTER = "tester"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class User:
+    id: str
+    username: str
+    email: str
+    role: UserRole = UserRole.MEMBER
+    is_active: bool = True
+    created_at: Optional[datetime] = None
 
 
 class AuthConfig(BaseModel):
@@ -11,6 +33,7 @@ class AuthConfig(BaseModel):
     issuer: str
     audience: str
     token_ttl_seconds: int = Field(default=7 * 24 * 60 * 60)
+    algorithm: str = "HS256"
     admin_emails: set[str] = Field(default_factory=set)
     dev_mode: bool = False
     dev_default_email: Optional[str] = None

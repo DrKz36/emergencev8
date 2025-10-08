@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-08 07:15 CEST (Claude Code - fix navigation menu mobile)
+**Derniere mise a jour** : 2025-10-08 12:45 CEST (Codex - Backend stabilisation tests)
 
 ---
 
@@ -22,24 +22,24 @@
 ### Branche active
 - **Branche courante** : `main`
 - **Derniers commits** :
+  - `b45cfd8` docs: mise à jour AGENT_SYNC.md - session fix navigation menu mobile
   - `98d9fb3` docs: mise à jour documentation sessions et déploiement
   - `cec2a0f` fix: correction navigation menu mobile - backdrop bloquait les clics
-  - `da5b625` feat: harmonisation UI cockpit et hymne avec design system
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
 - `codex` → SSH : `git@github.com:DrKz36/emergencev8.git`
 
 ### Déploiement Cloud Run
-- **Révision active** : `emergence-app-00269-5qs`
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251008-064424`
+- **Révision active** : `emergence-app-00270-zs6`
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251008-082149`
 - **URL** : https://emergence-app-486095406755.europe-west1.run.app
-- **Déployé** : 2025-10-08 06:46 CEST
+- **Déployé** : 2025-10-08 08:22 CEST
 - **Trafic** : 100% sur nouvelle révision
-- **Documentation** : [docs/deployments/2025-10-08-cloud-run-refresh.md](docs/deployments/2025-10-08-cloud-run-refresh.md)
+- **Documentation** : [docs/deployments/2025-10-08-cloud-run-revision-00270.md](docs/deployments/2025-10-08-cloud-run-revision-00270.md)
 
 ### Working tree
-- ✅ Clean (aucune modification locale)
+- ⚠️ Dirty (backend refactor en cours : requirements + core DB + auth/memory services + docs/passation/AGENT_SYNC)
 
 ---
 
@@ -90,25 +90,25 @@
 - **Actions recommandées** : `git fetch --all --prune` puis `git rebase origin/main` une fois réseau OK
 
 ### Codex (local)
-- **Dernier sync** : 2025-10-08 06:46 CEST (Codex - déploiement Cloud Run)
-- **Statut** : Build & déploiement production alignés sur `main` + documentation mise à jour.
-- **Session 2025-10-08 (06:05-06:45)** :
-  1. Construction image Docker `deploy-20251008-064424` (`docker build --platform linux/amd64`).
-  2. Push vers Artifact Registry + déploiement Cloud Run → révision `emergence-app-00269-5qs`.
-  3. Vérifications post-déploiement (`/api/health`, `/api/metrics`) et création du rapport `docs/deployments/2025-10-08-cloud-run-refresh.md`.
-  4. Synchronisation documentation (`AGENT_SYNC.md`, `docs/deployments/README.md`, passation en cours).
-- **Tests** :
-  - ✅ `npm run build`
-  - ⚠️ `python -m pytest` — échec collecte (`ImportError: User` dans `backend.features.auth.models`)
-  - ⚠️ `pwsh -File tests/run_all.ps1` — identifiants smoke manquants (`Login failed for gonzalefernando@gmail.com`)
+- **Dernier sync** : 2025-10-08 12:45 CEST (backend stabilisation en cours)
+- **Statut** : Gestionnaire SQLite refactoré, schéma threads enrichi (`last_message_at`, `message_count`, `archival_reason`, `archived_at`), fixtures pytest corrigées.
+- **Session 2025-10-08 (11:00-12:45)** :
+  1. Refactor `DatabaseManager` (commit explicite, helpers `initialize/is_connected`) + propagation commits dans `schema.py`, `queries.py`, backfill Auth/Mémoire.
+  2. Migration threads : colonnes et incrément atomique `message_count` lors de `add_message`.
+  3. Refactor des fixtures (`tests/backend/features|e2e|security/conftest.py`) avec shim httpx/TestClient + stub VectorService.
+  4. Documentation mise à jour (`docs/architecture/00-Overview.md`, `docs/architecture/30-Contracts.md`).
+- **Tests ciblés** :
+  - ✅ `.venv\\Scripts\\python.exe -m pytest src/backend/tests/test_database_manager.py`
+  - ✅ `.venv\\Scripts\\python.exe -m pytest tests/backend/features/test_memory_concept_search.py`
+  - ✅ `.venv\\Scripts\\python.exe -m pytest tests/test_memory_archives.py::TestDatabaseMigrations::test_message_count_trigger_insert`
+  - ⚠️ `.venv\\Scripts\\python.exe -m pytest tests/backend/e2e/test_user_journey.py::TestCompleteUserJourney::test_new_user_onboarding_to_chat` (422 sur mock `/api/auth/register`)
 - **Next** :
-  - QA visuelle cockpit/hymne (desktop + responsive) pour confirmer l'intégration des derniers correctifs CSS.
-  - Corriger la fixture `backend.features.auth.models.User` ou adapter les tests `pytest`.
-  - Fournir des identifiants smoke-tests ou mock pour permettre `tests/run_all.ps1`.
-  - (héritage) Traiter le warning importmap dans `index.html` dès que les styles seront validés.
+  1. Corriger la fixture e2e pour que `POST /api/auth/register` retourne 200 ou ajuster l’assertion.
+  2. Relancer la suite e2e complète (`tests/backend/e2e`) après correctif.
+  3. Vérifier scripts seeds/migrations vis-à-vis du nouveau modèle de commits explicites.
 - **Blocages** :
-  - Tests backend encore KO (import manquant) — nécessite investigation dédiée.
-  - Pas d'identifiants smoke disponibles pour `tests/run_all.ps1`.
+  - Tests e2e encore KO (mock register trop strict).
+  - Hep : suites `ruff`, `mypy`, smoke restent à remettre dans la boucle après correction e2e.
 ### 1. Avant de coder (TOUS les agents)
 ```bash
 # Vérifier les remotes

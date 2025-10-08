@@ -177,6 +177,7 @@ async def _apply_placeholder_aliases(
             await db.execute(
                 f"UPDATE {table} SET {column} = ? WHERE {column} = ?",
                 (resolved, placeholder),
+                commit=True,
             )
             placeholder_updates += count
             total_updated += count
@@ -206,6 +207,8 @@ async def _backfill_from_threads(db: DatabaseManager) -> None:
                   AND threads.user_id <> ''
            )
         """
+        ,
+        commit=True,
     )
     await db.execute(
         """
@@ -224,6 +227,8 @@ async def _backfill_from_threads(db: DatabaseManager) -> None:
                   AND threads.user_id <> ''
            )
         """
+        ,
+        commit=True,
     )
 
 
@@ -245,6 +250,8 @@ async def _backfill_document_chunks(db: DatabaseManager) -> None:
                   AND documents.user_id <> ''
            )
         """
+        ,
+        commit=True,
     )
 
 
@@ -285,4 +292,3 @@ async def run_user_scope_backfill(db: DatabaseManager) -> None:
             )
     except Exception as exc:
         logger.warning("User scope backfill failed: %s", exc, exc_info=True)
-

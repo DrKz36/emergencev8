@@ -1,19 +1,27 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
-import os
 import logging
+import os
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 from uuid import uuid4
 
-import jwt
 import bcrypt
+import jwt
 
 from backend.core.database.manager import DatabaseManager
 
-from .models import AllowlistEntry, AuthConfig, LoginResponse, SessionInfo
+from .models import (
+    AllowlistEntry,
+    AuthConfig,
+    LoginResponse,
+    SessionInfo,
+    User,
+    UserRole,
+)
 from .rate_limiter import RateLimiterConfig, RateLimitExceeded, SlidingWindowRateLimiter
 
 logger = logging.getLogger("emergence.auth")
@@ -30,12 +38,56 @@ class AuthService:
     def __init__(
         self,
         db_manager: DatabaseManager,
-        config: AuthConfig,
+        config: Optional[AuthConfig | Mapping[str, Any]] = None,
         rate_limiter: Optional[SlidingWindowRateLimiter] = None,
     ) -> None:
         self.db = db_manager
-        self.config = config
+        resolved_config = self._resolve_config(config)
+        self.config = resolved_config
+        self.jwt_algorithm = resolved_config.algorithm or "HS256"
+        self.access_token_expire_minutes = max(1, resolved_config.token_ttl_seconds // 60)
         self.rate_limiter = rate_limiter or SlidingWindowRateLimiter(RateLimiterConfig())
+
+    def _resolve_config(self, config: Optional[AuthConfig | Mapping[str, Any]]) -> AuthConfig:
+        payload: AuthConfig | Mapping[str, Any] | None = config
+        if payload is None:
+            payload = build_auth_config_from_env()
+        if isinstance(payload, AuthConfig):
+            return payload
+        if isinstance(payload, Mapping):
+            return self._config_from_mapping(payload)
+        raise TypeError("Unsupported auth configuration payload.")
+
+    @staticmethod
+    def _config_from_mapping(payload: Mapping[str, Any]) -> AuthConfig:
+        secret = payload.get("jwt_secret") or payload.get("secret") or payload.get("secret_key") or "change-me"
+        issuer = payload.get("jwt_issuer") or payload.get("issuer") or "emergence.local"
+        audience = payload.get("jwt_audience") or payload.get("audience") or "emergence-app"
+        algorithm = payload.get("jwt_algorithm") or payload.get("algorithm") or "HS256"
+        ttl_minutes = payload.get("access_token_expire_minutes")
+        if ttl_minutes is None:
+            ttl_seconds = int(payload.get("token_ttl_seconds", 7 * 24 * 60 * 60))
+        else:
+            ttl_seconds = max(60, int(ttl_minutes) * 60)
+        admin_emails_raw = payload.get("admin_emails") or payload.get("allowlist", [])
+        if isinstance(admin_emails_raw, str):
+            admin_emails_iter = [email.strip() for email in admin_emails_raw.split(",")]
+        else:
+            admin_emails_iter = list(admin_emails_raw)
+        admin_emails = {str(email).strip().lower() for email in admin_emails_iter if str(email).strip()}
+        dev_mode = bool(payload.get("dev_mode") or payload.get("enable_dev_mode"))
+        dev_default_email_raw = payload.get("dev_default_email") or payload.get("dev_email")
+        dev_default_email = str(dev_default_email_raw).strip().lower() or None if dev_default_email_raw else None
+        return AuthConfig(
+            secret=secret,
+            issuer=issuer,
+            audience=audience,
+            token_ttl_seconds=ttl_seconds,
+            algorithm=algorithm,
+            admin_emails=admin_emails,
+            dev_mode=dev_mode,
+            dev_default_email=dev_default_email,
+        )
 
     # ------------------------------------------------------------------
     async def bootstrap(self) -> None:
@@ -86,6 +138,225 @@ class AuthService:
         )
         await self.rate_limiter.reset(normalized, ip_address)
         return session_response
+
+    def hash_password(self, password: str) -> str:
+        try:
+            self._validate_password_strength(password)
+        except AuthError as exc:
+            raise ValueError(str(exc)) from exc
+        return self._hash_password(password)
+
+    def verify_password(self, password: str, password_hash: str) -> bool:
+        return self._verify_password(password, password_hash)
+
+    def create_access_token(self, user_id: str, role: UserRole | str, expires_minutes: Optional[int] = None) -> str:
+        if not user_id:
+            raise ValueError("user_id must not be empty.")
+        role_value = self._coerce_role(role).value
+        minutes = self.access_token_expire_minutes if expires_minutes is None else max(1, int(expires_minutes))
+        issued_at = self._now()
+        expires_at = issued_at + timedelta(minutes=minutes)
+        payload = {
+            "iss": self.config.issuer,
+            "aud": self.config.audience,
+            "sub": user_id,
+            "role": role_value,
+            "iat": int(issued_at.timestamp()),
+            "exp": int(expires_at.timestamp()),
+        }
+        token = jwt.encode(payload, self.config.secret, algorithm=self.jwt_algorithm)
+        if isinstance(token, bytes):
+            token = token.decode("utf-8")
+        return token
+
+    def decode_token(self, token: str) -> Optional[dict[str, Any]]:
+        if not token or not isinstance(token, str):
+            return None
+        try:
+            return jwt.decode(
+                token,
+                self.config.secret,
+                algorithms=[self.jwt_algorithm],
+                audience=self.config.audience,
+                options={"verify_aud": bool(self.config.audience)},
+            )
+        except jwt.PyJWTError:
+            return None
+
+    async def register_user(
+        self,
+        username: str,
+        email: str,
+        password: str,
+        role: Optional[UserRole | str] = None,
+    ) -> User:
+        normalized_username = (username or "").strip()
+        if not normalized_username:
+            raise ValueError("username must not be empty.")
+        normalized_email = self._normalize_email(email)
+        if not normalized_email:
+            raise ValueError("email must not be empty.")
+        try:
+            self._validate_password_strength(password)
+        except AuthError as exc:
+            raise ValueError(str(exc)) from exc
+
+        existing_user = await self._fetch_user_by_username(normalized_username)
+        if existing_user:
+            raise ValueError("Username already exists.")
+
+        existing_email = await self._fetch_user_by_email(normalized_email)
+        if existing_email:
+            raise ValueError("Email already registered.")
+
+        hashed_password = self._hash_password(password)
+        user_id = str(uuid4())
+        now_dt = self._now()
+        role_enum = self._coerce_role(role)
+
+        try:
+            await self.db.execute(
+                """
+                INSERT INTO auth_users (id, username, email, password_hash, role, is_active, created_at)
+                VALUES (?, ?, ?, ?, ?, 1, ?)
+                """,
+                (
+                    user_id,
+                    normalized_username,
+                    normalized_email,
+                    hashed_password,
+                    role_enum.value,
+                    now_dt.isoformat(),
+                ),
+                commit=True,
+            )
+        except Exception as exc:
+            logger.debug("auth_users insert skipped or failed (non blocking): %s", exc, exc_info=True)
+
+        try:
+            await self._upsert_allowlist(
+                normalized_email,
+                role_enum.value,
+                note="register",
+                actor="auth-service",
+                password_hash=hashed_password,
+                password_updated_at=now_dt.isoformat(),
+            )
+        except Exception as exc:
+            logger.warning("Allowlist upsert failed during register_user: %s", exc)
+
+        return User(
+            id=user_id,
+            username=normalized_username,
+            email=normalized_email,
+            role=role_enum,
+            is_active=True,
+            created_at=now_dt,
+        )
+
+    async def authenticate(self, username_or_email: str, password: str) -> Optional[User]:
+        candidate = (username_or_email or "").strip()
+        if not candidate or not password:
+            return None
+
+        user_row = await self._fetch_user_by_username(candidate)
+        if not user_row:
+            user_row = await self._fetch_user_by_email(candidate)
+
+        if user_row:
+            hashed = user_row.get("password_hash") or user_row.get("password")
+            if hashed and self._verify_password(password, str(hashed)):
+                return self._row_to_user(user_row)
+            return None
+
+        normalized_email = self._normalize_email(candidate)
+        allow_row = await self._get_allowlist_row(normalized_email)
+        if allow_row and allow_row.get("password_hash"):
+            if self._verify_password(password, allow_row["password_hash"]):
+                return User(
+                    id=self._hash_subject(normalized_email),
+                    username=normalized_email,
+                    email=normalized_email,
+                    role=self._coerce_role(allow_row.get("role")),
+                    is_active=allow_row.get("revoked_at") is None,
+                    created_at=self._parse_dt(allow_row.get("created_at")),
+                )
+        return None
+
+    def has_permission(self, role: UserRole | str, resource: str) -> bool:
+        normalized_role = self._coerce_role(role)
+        if normalized_role is UserRole.ADMIN:
+            return True
+        resource_key = (resource or "").strip().lower()
+        role_permissions: dict[str, set[str]] = {
+            UserRole.MEMBER.value: {"chat", "cockpit", "memory", "documents"},
+            UserRole.TESTER.value: {"chat", "cockpit", "memory", "experiments"},
+            UserRole.GUEST.value: {"memory"},
+        }
+        allowed = role_permissions.get(normalized_role.value, set())
+        return resource_key in allowed
+
+    def _coerce_role(self, role: Optional[UserRole | str]) -> UserRole:
+        if isinstance(role, UserRole):
+            return role
+        if not role:
+            return UserRole.MEMBER
+        candidate = str(role).strip().lower()
+        for enum_role in UserRole:
+            if enum_role.value == candidate or enum_role.name.lower() == candidate:
+                return enum_role
+        return UserRole.MEMBER
+
+    async def _fetch_user_by_username(self, username: str) -> Optional[dict[str, Any]]:
+        if not username:
+            return None
+        try:
+            return await self._fetch_one_dict(
+                """
+                SELECT id, username, email, password_hash, role, is_active, created_at
+                FROM auth_users
+                WHERE LOWER(username) = LOWER(?)
+                """,
+                (username,),
+            )
+        except Exception as exc:
+            logger.debug("auth_users lookup by username failed: %s", exc, exc_info=True)
+            return None
+
+    async def _fetch_user_by_email(self, email: str) -> Optional[dict[str, Any]]:
+        normalized = self._normalize_email(email)
+        if not normalized:
+            return None
+        try:
+            return await self._fetch_one_dict(
+                """
+                SELECT id, username, email, password_hash, role, is_active, created_at
+                FROM auth_users
+                WHERE LOWER(email) = ?
+                """,
+                (normalized,),
+            )
+        except Exception as exc:
+            logger.debug("auth_users lookup by email failed: %s", exc, exc_info=True)
+            return None
+
+    def _row_to_user(self, row: Mapping[str, Any]) -> User:
+        email = self._normalize_email(str(row.get("email") or ""))
+        username = str(row.get("username") or email or "user")
+        user_id = str(row.get("id") or self._hash_subject(email or username))
+        created_raw = row.get("created_at")
+        created_at = self._parse_dt(created_raw) if created_raw else None
+        is_active_raw = row.get("is_active")
+        is_active = bool(is_active_raw) if is_active_raw is not None else True
+        role_value = row.get("role")
+        return User(
+            id=user_id,
+            username=username,
+            email=email or username,
+            role=self._coerce_role(role_value),
+            is_active=is_active,
+            created_at=created_at,
+        )
 
     async def _issue_session(
         self,
@@ -140,6 +411,7 @@ class AuthService:
                 expires_at.isoformat(),
                 json.dumps(session_meta) if session_meta else None,
             ),
+            commit=True,
         )
 
         audit_meta: dict[str, Any] = {"session_id": session_id}
@@ -212,6 +484,7 @@ class AuthService:
         await self.db.execute(
             "UPDATE auth_sessions SET revoked_at = ?, revoked_by = ? WHERE id = ?",
             (self._now().isoformat(), actor, session_id),
+            commit=True,
         )
         await self._write_audit(
             "logout",
@@ -231,6 +504,7 @@ class AuthService:
         await self.db.execute(
             "UPDATE auth_sessions SET revoked_at = ?, revoked_by = ? WHERE id = ?",
             (self._now().isoformat(), actor, session_id),
+            commit=True,
         )
         await self._write_audit(
             "session:revoke",
@@ -251,6 +525,7 @@ class AuthService:
         await self.db.execute(
             "UPDATE auth_sessions SET revoked_at = ?, revoked_by = ? WHERE email = ? AND revoked_at IS NULL",
             (self._now().isoformat(), actor, normalized),
+            commit=True,
         )
         await self._write_audit("session:revoke_all", email=normalized, actor=actor)
         return len(rows)
@@ -518,6 +793,7 @@ class AuthService:
         await self.db.execute(
             "UPDATE auth_allowlist SET revoked_at = ?, revoked_by = ? WHERE email = ?",
             (self._now().isoformat(), actor, normalized),
+            commit=True,
         )
         await self.revoke_sessions_for_email(normalized, actor=actor)
         await self._write_audit("allowlist:remove", email=normalized, actor=actor)
@@ -564,6 +840,7 @@ class AuthService:
                 END
             """,
             (email, role, note, now, actor, password_hash, password_updated_at),
+            commit=True,
         )
 
     async def _get_allowlist_row(self, email: str) -> Optional[dict[str, Any]]:
@@ -590,6 +867,7 @@ class AuthService:
                     json.dumps(metadata) if metadata else None,
                     self._now().isoformat(),
                 ),
+                commit=True,
             )
         except Exception as exc:
             logger.warning("Auth audit log failure: %s", exc)
@@ -606,14 +884,39 @@ class AuthService:
         except TypeError:
             return (params,)  # type: ignore[arg-type]
 
-    async def _fetch_one_dict(self, query: str, params: Sequence[Any] | None = None) -> Optional[dict[str, Any]]:
+    async def _db_fetchone(self, query: str, params: Sequence[Any] | None = None):
         tuple_params = self._prepare_params(params)
-        row = await self.db.fetch_one(query, tuple_params)
+        fetch_one = getattr(self.db, "fetch_one", None)
+        if callable(fetch_one):
+            return await fetch_one(query, tuple_params)
+        fetchone = getattr(self.db, "fetchone", None)
+        if callable(fetchone):
+            result = fetchone(query, tuple_params)
+            if inspect.isawaitable(result):
+                return await result
+            return result
+        return None
+
+    async def _db_fetchall(self, query: str, params: Sequence[Any] | None = None) -> list[Any]:
+        tuple_params = self._prepare_params(params)
+        fetch_all = getattr(self.db, "fetch_all", None)
+        if callable(fetch_all):
+            rows = await fetch_all(query, tuple_params)
+            return list(rows or [])
+        fetchall = getattr(self.db, "fetchall", None)
+        if callable(fetchall):
+            result = fetchall(query, tuple_params)
+            if inspect.isawaitable(result):
+                result = await result
+            return list(result or [])
+        return []
+
+    async def _fetch_one_dict(self, query: str, params: Sequence[Any] | None = None) -> Optional[dict[str, Any]]:
+        row = await self._db_fetchone(query, params)
         return self._row_to_dict(row)
 
     async def _fetch_all_dicts(self, query: str, params: Sequence[Any] | None = None) -> list[dict[str, Any]]:
-        tuple_params = self._prepare_params(params)
-        rows = await self.db.fetch_all(query, tuple_params)
+        rows = await self._db_fetchall(query, params)
         return [d for d in (self._row_to_dict(r) for r in rows or []) if d]
 
     def _row_to_dict(self, row) -> Optional[dict[str, Any]]:
@@ -710,13 +1013,14 @@ def build_auth_config_from_env() -> AuthConfig:
     dev_mode = str(os.getenv("AUTH_DEV_MODE", "0")).strip().lower() in TRUTHY
     dev_default_email_raw = os.getenv("AUTH_DEV_DEFAULT_EMAIL", "") or ""
     dev_default_email = dev_default_email_raw.strip().lower() or None
+    algorithm = os.getenv("AUTH_JWT_ALGORITHM", "HS256") or "HS256"
     return AuthConfig(
         secret=secret,
         issuer=issuer,
         audience=audience,
         token_ttl_seconds=ttl_days * 24 * 60 * 60,
+        algorithm=algorithm,
         admin_emails=admin_emails,
         dev_mode=dev_mode,
         dev_default_email=dev_default_email,
     )
-

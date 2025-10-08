@@ -1,3 +1,97 @@
+## [2025-10-08 12:45] - Agent: Codex (Backend Stabilisation)
+
+### Fichiers modifiés
+- equirements.txt
+- src/backend/core/database/manager.py
+- src/backend/core/database/schema.py
+- src/backend/core/database/queries.py
+- src/backend/core/database/backfill.py
+- src/backend/features/auth/models.py
+- src/backend/features/auth/service.py
+- src/backend/features/memory/gardener.py
+- src/backend/features/memory/router.py
+- 	ests/backend/features/conftest.py
+- 	ests/backend/e2e/conftest.py
+- 	ests/backend/security/conftest.py
+- docs/architecture/00-Overview.md
+- docs/architecture/30-Contracts.md
+- docs/passation.md
+- AGENT_SYNC.md
+
+### Contexte
+Stabilisation backend après la cascade d’erreurs pytest : fiabilisation du gestionnaire SQLite, enrichissement des threads et adaptation des services/tests dépendants.
+
+### Actions réalisées
+1. Refactor DatabaseManager (commit/rollback explicites, helpers initialize/is_connected) et propagation des commits sur le schéma, le backfill et les services Auth/Mémoire.
+2. Migration threads : colonnes rchival_reason, rchived_at, last_message_at, message_count + incrément atomique côté dd_message.
+3. Refactor tests (shim httpx/TestClient, stub VectorService en mémoire) et documentation architecture (commit explicite + payload threads enrichi).
+
+### Tests
+- ✅ .venv\Scripts\python.exe -m pytest src/backend/tests/test_auth_service.py::TestPasswordHashing::test_hash_password
+- ✅ .venv\Scripts\python.exe -m pytest src/backend/tests/test_database_manager.py
+- ✅ .venv\Scripts\python.exe -m pytest tests/test_memory_archives.py::TestDatabaseMigrations::test_threads_new_columns_exist
+- ✅ .venv\Scripts\python.exe -m pytest tests/test_memory_archives.py::TestDatabaseMigrations::test_message_count_trigger_insert
+- ✅ .venv\Scripts\python.exe -m pytest tests/backend/features/test_memory_concept_search.py
+- ⚠️ .venv\Scripts\python.exe -m pytest tests/backend/e2e/test_user_journey.py::TestCompleteUserJourney::test_new_user_onboarding_to_chat (422 faute de mock register incomplet)
+
+### Résultats
+- DatabaseManager fonctionne en mode transactionnel explicite ; les tests BDD passent à 100 %.
+- Threads exposent des métadonnées cohérentes (last_message_at, message_count) et les tests archives/migrations les valident.
+- Fixtures backend (features/e2e/security) compatibles httpx≥0.27, concept search autonome sans vecteur réel.
+- Documentation architecture mise à jour (commit explicite SQLite + payload threads enrichi).
+
+### Prochaines actions recommandées
+1. Corriger la fixture e2e (/api/auth/register) pour renvoyer 200 ou adapter l’assertion.
+2. Relancer la suite e2e complète après correctif.
+3. Vérifier les scripts seeds/migrations vis-à-vis du nouveau modèle de commits explicites.
+
+### Blocages
+- Tests e2e toujours KO tant que uth_app_factory mocke egister avec un succès (actuellement retourne 422).
+
+## [2025-10-08 08:24] - Agent: Codex (Déploiement Cloud Run 00270)
+
+### Fichiers modifiés
+- `docs/deployments/2025-10-08-cloud-run-revision-00270.md`
+- `docs/deployments/README.md`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+- `arborescence_synchronisee_20251008.txt`
+
+### Contexte
+- Reconstruction de l'image Docker depuis `main` pour déployer une nouvelle révision Cloud Run.
+- Alignement documentation déploiement + synchronisation inter-agents après correctifs menu mobile.
+
+### Actions réalisées
+1. Build Docker `deploy-20251008-082149` (`docker build --platform linux/amd64`) puis push Artifact Registry.
+2. Déploiement Cloud Run `emergence-app-00270-zs6` (100 % trafic) via `gcloud run deploy`.
+3. Vérifications post-déploiement (`/api/health`, `/api/metrics`, `gcloud run revisions list`).
+4. Mise à jour documentation (`docs/deployments/README.md`, rapport 00270, `AGENT_SYNC.md`, passation).
+5. Snapshot ARBO-LOCK `arborescence_synchronisee_20251008.txt`.
+
+### Tests
+- ✅ `npm run build`
+- ⚠️ `.venv\Scripts\python.exe -m pytest` — `ModuleNotFoundError: No module named 'backend'` + `pytest_asyncio` manquant (dette existante).
+- ⚠️ `.venv\Scripts\python.exe -m ruff check` — 52 erreurs (imports mal ordonnés, imports/variables inutilisés).
+- ⚠️ `.venv\Scripts\python.exe -m mypy src` — 27 erreurs (BenchmarksRepository, AuthService, MemoryGardener, ChatService…).
+- ⚠️ `pwsh -File tests/run_all.ps1` — login smoke KO (`Login failed for gonzalefernando@gmail.com`), credentials manquants.
+
+### Résultats
+- Image `deploy-20251008-082149` disponible dans Artifact Registry.
+- Révision Cloud Run active : `emergence-app-00270-zs6` (100 % trafic).
+- Healthcheck `/api/health` et `/api/metrics` → 200.
+- Documentation déploiement synchronisée (rapport, README, AGENT_SYNC).
+
+### Prochaines actions recommandées
+1. Corriger la résolution du package `backend` dans la suite `pytest` + intégrer `pytest_asyncio`.
+2. S'attaquer à la dette `ruff`/`mypy` (imports, annotations middleware/alerts/memory/chat).
+3. Fournir des identifiants smoke-tests ou stub pour `tests/run_all.ps1`.
+4. QA responsive ciblée pour valider le menu hamburger post-déploiement.
+
+### Blocages
+- Suite tests backend et smoke toujours KO (module path + credentials), non traités dans cette session.
+
+---
+
 ## [2025-10-08 06:46] - Agent: Codex (Déploiement Cloud Run 00269-5qs)
 
 ### Fichiers modifiés

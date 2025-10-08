@@ -173,6 +173,7 @@ async def _bootstrap_row_for_fk_table(
     await db.execute(
         f"INSERT OR IGNORE INTO {table} ({cols_clause}) VALUES ({placeholders})",
         tuple(insert_vals),
+        commit=True,
     )
     logger.info(f"[DDL] Bootstrap '{table}'({pk_col}='{pk_value}') assurÃ©.")
 
@@ -250,6 +251,7 @@ async def add_cost_log(
             total_cost,
             feature,
         ),
+        commit=True,
     )
 
 
@@ -314,6 +316,7 @@ async def insert_document(
     await db.execute(
         "INSERT INTO documents (filename, filepath, status, uploaded_at, session_id, user_id) VALUES (?, ?, ?, ?, ?, ?)",
         (filename, filepath, status, uploaded_at, normalized_session, user_value),
+        commit=True,
     )
     row = await db.fetch_one("SELECT last_insert_rowid() AS id")
     if row is None:
@@ -333,6 +336,7 @@ async def update_document_processing_info(
     await db.execute(
         f"UPDATE documents SET char_count = ?, chunk_count = ?, status = ? WHERE id = ? AND {scope_sql}",
         (char_count, chunk_count, status, doc_id, *scope_params),
+        commit=True,
     )
 async def set_document_error_status(
     db: DatabaseManager, doc_id: int, session_id: Optional[str], error_message: str, *, user_id: Optional[str] = None
@@ -341,6 +345,7 @@ async def set_document_error_status(
     await db.execute(
         f"UPDATE documents SET status = 'error', error_message = ? WHERE id = ? AND {scope_sql}",
         (error_message, doc_id, *scope_params),
+        commit=True,
     )
 async def insert_document_chunks(
     db: DatabaseManager,
@@ -367,6 +372,7 @@ async def insert_document_chunks(
     await db.executemany(
         "INSERT INTO document_chunks (id, document_id, chunk_index, content, session_id, user_id) VALUES (?, ?, ?, ?, ?, ?)",
         payload,
+        commit=True,
     )
 async def get_all_documents(
     db: DatabaseManager,
@@ -420,14 +426,17 @@ async def delete_document(
     await db.execute(
         f"DELETE FROM documents WHERE id = ? AND {scope_sql}",
         params,
+        commit=True,
     )
     await db.execute(
         f"DELETE FROM document_chunks WHERE document_id = ? AND {scope_sql}",
         params,
+        commit=True,
     )
     await db.execute(
         f"DELETE FROM thread_docs WHERE doc_id = ? AND {scope_sql}",
         params,
+        commit=True,
     )
     return True
 # ------------------- Sessions (existant) ------------------- #
@@ -485,6 +494,7 @@ async def update_session_analysis_data(
             datetime.now(timezone.utc).isoformat(),
             session_id,
         ),
+        commit=True,
     )
     logger.info(f"DonnÃ©es d'analyse pour la session {session_id} mises Ã  jour en BDD.")
 
@@ -521,6 +531,7 @@ async def create_thread(
             now,
             now,
         ),
+        commit=True,
     )
     return thread_id
 async def get_threads(
@@ -626,6 +637,7 @@ async def update_thread(
     await db.execute(
         f"UPDATE threads SET {', '.join(fields)} WHERE id = ? AND {scope_sql}",
         tuple(params),
+        commit=True,
     )
 async def delete_thread(
     db: DatabaseManager,
@@ -642,14 +654,17 @@ async def delete_thread(
     await db.execute(
         f"DELETE FROM thread_docs WHERE thread_id = ? AND {scope_sql}",
         (thread_id, *scope_params),
+        commit=True,
     )
     await db.execute(
         f"DELETE FROM messages WHERE thread_id = ? AND {scope_sql}",
         (thread_id, *scope_params),
+        commit=True,
     )
     await db.execute(
         f"DELETE FROM threads WHERE id = ? AND {scope_sql}",
         (thread_id, *scope_params),
+        commit=True,
     )
     return True
 # -- Messages --
@@ -720,6 +735,7 @@ async def add_message(
         await db.execute(
             f"INSERT INTO messages ({', '.join(cols)}) VALUES ({placeholders})",
             tuple(vals),
+            commit=True,
         )
         row = await db.fetch_one("SELECT last_insert_rowid() AS id")
         persisted_id = str(row["id"]) if row and "id" in row.keys() else None
@@ -735,13 +751,19 @@ async def add_message(
         await db.execute(
             f"INSERT INTO messages ({', '.join(cols)}) VALUES ({placeholders})",
             tuple(vals),
+            commit=True,
         )
         persisted_id = assigned_id
 
     scope_sql, scope_params = _build_scope_condition(user_id, session_id)
     await db.execute(
-        f"UPDATE threads SET updated_at = ? WHERE id = ? AND {scope_sql}",
-        (now, thread_id, *scope_params),
+        f"""
+        UPDATE threads
+        SET updated_at = ?, last_message_at = ?, message_count = COALESCE(message_count, 0) + 1
+        WHERE id = ? AND {scope_sql}
+        """,
+        (now, now, thread_id, *scope_params),
+        commit=True,
     )
     return {"id": persisted_id, "created_at": now}
 async def get_messages(
@@ -786,6 +808,7 @@ async def set_thread_docs(
     await db.execute(
         f"DELETE FROM thread_docs WHERE thread_id = ? AND {scope_sql}",
         (thread_id, *scope_params),
+        commit=True,
     )
     params = [
         (thread_id, int(d), normalized_session, user_value, weight, now)
@@ -798,6 +821,7 @@ async def set_thread_docs(
             VALUES (?, ?, ?, ?, ?, ?)
             """,
             params,
+            commit=True,
         )
 async def append_thread_docs(
     db: DatabaseManager,
@@ -827,6 +851,7 @@ async def append_thread_docs(
                 last_used_at = excluded.last_used_at
             """,
             params,
+            commit=True,
         )
 async def get_thread_docs(
     db: DatabaseManager,

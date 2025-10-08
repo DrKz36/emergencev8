@@ -200,6 +200,7 @@ async def _purge_stm(db_manager, session_id: str) -> bool:
              WHERE id = ?
             """,
             (session_id,),
+            commit=True,
         )
         return True
     except Exception as e:

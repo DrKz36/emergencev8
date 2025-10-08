@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -9,6 +10,12 @@ ROOT_DIR = Path(__file__).resolve().parents[3]
 SRC_DIR = ROOT_DIR / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
+
+_httpx_init = httpx.Client.__init__
+if "app" not in _httpx_init.__code__.co_varnames:
+    def _httpx_init_compat(self, *args, app=None, **kwargs):
+        return _httpx_init(self, *args, **kwargs)
+    httpx.Client.__init__ = _httpx_init_compat  # type: ignore[assignment]
 
 
 @pytest.fixture
