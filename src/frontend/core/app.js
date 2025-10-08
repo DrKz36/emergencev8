@@ -290,6 +290,21 @@ export class App {
         '</li>';
       }).join('');
       this.dom.headerNav.innerHTML = headerNavItemsHTML;
+
+      // Ajouter un listener direct sur chaque lien pour garantir la capture
+      const links = this.dom.headerNav.querySelectorAll('.nav-link');
+      links.forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.showModule(link.dataset.moduleId);
+          // Fermer le menu après navigation
+          setTimeout(() => {
+            if (this.closeMobileNav) this.closeMobileNav();
+          }, 50);
+        }, { capture: true });
+      });
+
     }
   }
 
@@ -316,9 +331,12 @@ export class App {
     this.dom.mobileNavToggle = toggle;
     this.dom.headerNavContainer = navContainer;
 
+    // Référence qui sera mise à jour après le clonage
+    let activeToggle = toggle;
+
     const applyState = (expanded) => {
       const isExpanded = !!expanded;
-      toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+      activeToggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
       navContainer.classList.toggle('is-open', isExpanded);
       navContainer.setAttribute('aria-hidden', isExpanded ? 'false' : 'true');
       if (document.body) {
@@ -333,7 +351,7 @@ export class App {
       }
     };
 
-    const isExpanded = () => toggle.getAttribute('aria-expanded') === 'true';
+    const isExpanded = () => activeToggle.getAttribute('aria-expanded') === 'true';
 
     const handleToggle = (event) => {
       if (event) {
@@ -353,7 +371,14 @@ export class App {
     const handleDocumentClick = (event) => {
       if (!isExpanded()) return;
       const target = event?.target || null;
-      if (navContainer.contains(target) || toggle.contains(target)) return;
+      const navLink = target?.closest?.('.nav-link');
+      const isInNav = navContainer.contains(target);
+      const isInToggle = activeToggle.contains(target);
+      // Si on a cliqué sur un lien de navigation, laisser le listener du lien gérer la navigation
+      if (navLink && navLink.dataset.moduleId) {
+        return;
+      }
+      if (isInNav || isInToggle) return;
       applyState(false);
     };
 
@@ -363,17 +388,25 @@ export class App {
       applyState(false);
     };
 
-    toggle.addEventListener('click', handleToggle, { passive: false });
-    toggle.addEventListener('keydown', handleKeydown, { passive: false });
+    // Marquer le toggle comme lié AVANT d'ajouter les écouteurs
+    // Cela empêche les écouteurs fallback dans main.js de se réattacher
+    try { toggle.dataset.mobileNavBound = 'app'; } catch (_) {}
+
+    // Cloner et remplacer le toggle pour retirer tous les anciens écouteurs
+    const newToggle = toggle.cloneNode(true);
+    toggle.parentNode.replaceChild(newToggle, toggle);
+    this.dom.mobileNavToggle = newToggle;
+    activeToggle = newToggle;
+
+    newToggle.addEventListener('click', handleToggle, { passive: false });
+    newToggle.addEventListener('keydown', handleKeydown, { passive: false });
     document.addEventListener('click', handleDocumentClick);
     document.addEventListener('keydown', handleDocumentKeydown);
 
-    this._mobileNavDetach.push(() => toggle.removeEventListener('click', handleToggle));
-    this._mobileNavDetach.push(() => toggle.removeEventListener('keydown', handleKeydown));
+    this._mobileNavDetach.push(() => newToggle.removeEventListener('click', handleToggle));
+    this._mobileNavDetach.push(() => newToggle.removeEventListener('keydown', handleKeydown));
     this._mobileNavDetach.push(() => document.removeEventListener('click', handleDocumentClick));
     this._mobileNavDetach.push(() => document.removeEventListener('keydown', handleDocumentKeydown));
-
-    try { toggle.dataset.mobileNavBound = 'app'; } catch (_) {}
 
     applyState(false);
 
@@ -404,12 +437,11 @@ export class App {
       const link = e.target.closest('.nav-link');
       if (!link || !link.dataset.moduleId) return;
       e.preventDefault();
-
+      e.stopPropagation();
       this.showModule(link.dataset.moduleId);
     };
     root.addEventListener('click', handleNavClick);
     this.dom.header?.addEventListener('click', handleNavClick);
-    this.dom.headerNavContainer?.addEventListener('click', handleNavClick);
 
     const navigateEvent = (EVENTS && EVENTS.MODULE_NAVIGATE) ? EVENTS.MODULE_NAVIGATE : 'app:navigate';
     this.eventBus.on?.(navigateEvent, (payload) => {

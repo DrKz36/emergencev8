@@ -249,7 +249,7 @@ body.mobile-nav-open .mobile-backdrop,
 body.mobile-menu-open .mobile-backdrop {
   display: block !important;
   opacity: 1 !important;
-  pointer-events: auto !important;
+  pointer-events: none !important;
 }
 
 body.mobile-nav-open,
@@ -262,6 +262,7 @@ body.mobile-menu-open #app-header-nav {
   opacity: 1 !important;
   visibility: visible !important;
   pointer-events: auto !important;
+  z-index: 1000 !important;
   transform: translate3d(0, 0, 0) !important;
   z-index: 1600 !important;
 }
