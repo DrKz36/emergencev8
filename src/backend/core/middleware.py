@@ -147,7 +147,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, requests_per_minute: int = 60):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
-        self.request_counts = {}  # {ip: [(timestamp, count)]}
+        self.request_counts: dict[str, list[tuple[float, int]]] = {}  # {ip: [(timestamp, count)]}
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         client_ip = request.client.host if request.client else "unknown"
@@ -200,7 +200,7 @@ class CORSSecurityMiddleware(BaseHTTPMiddleware):
     Middleware CORS avec validation stricte
     """
 
-    def __init__(self, app: ASGIApp, allowed_origins: list[str] = None):
+    def __init__(self, app: ASGIApp, allowed_origins: list[str] | None = None):
         super().__init__(app)
         self.allowed_origins = allowed_origins or [
             "http://localhost:3000",

@@ -7,7 +7,7 @@ import logging
 import os
 import statistics
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
 from .agentarch_runner import BenchmarkMatrixResult, BenchmarkRunResult, BenchmarkResultSink
 from ..core.database.manager import DatabaseManager
@@ -196,13 +196,12 @@ class BenchmarksRepository:
                             else 0.0
                         ),
                     },
-                    "runs": [self._serialize_run(run) for run in runs],
+                    "runs": [self._serialize_run(cast(Mapping[str, Any], run)) for run in runs],
                 }
             )
         return results
 
-    @staticmethod
-    def _serialize_run(row: Mapping[str, Any]) -> Dict[str, Any]:
+    def _serialize_run(self, row: Mapping[str, Any]) -> Dict[str, Any]:
         return {
             "id": row["id"],
             "slug": row["slug"],

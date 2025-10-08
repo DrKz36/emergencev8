@@ -63,7 +63,7 @@ class BenchmarksService:
             matrix_id=matrix_id,
             scenario_id=scenario.id,
         )
-        sinks = [sqlite_sink]
+        sinks: list[SQLiteBenchmarkResultSink | FirestoreBenchmarkResultSink] = [sqlite_sink]
         if self._firestore_client is not None:
             sinks.append(
                 FirestoreBenchmarkResultSink(

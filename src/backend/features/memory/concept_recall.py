@@ -181,6 +181,8 @@ class ConceptRecallTracker:
 
             try:
                 # Récupérer métadonnées actuelles
+                if not self.collection:
+                    continue
                 existing = self.collection.get(ids=[vector_id], include=["metadatas"])
                 if not existing or not existing.get("metadatas"):
                     continue

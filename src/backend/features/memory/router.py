@@ -394,14 +394,14 @@ async def tend_garden_endpoint(
             except Exception as exc:  # pragma: no cover - diagnostic path
                 logger.debug("[memory] unable to infer session from thread %s: %s", thread_id, exc)
 
-        call_kwargs = {
+        call_kwargs: dict[str, Any] = {
             'thread_id': thread_id,
             'session_id': resolved_session_id,
             'agent_id': agent_id,
         }
         if _supports_kwarg(gardener.tend_the_garden, 'user_id'):
             call_kwargs['user_id'] = user_id
-        report = await gardener.tend_the_garden(**call_kwargs)
+        report = await gardener.tend_the_garden(**call_kwargs)  # type: ignore[arg-type]
         if report.get("status") == "error":
             raise HTTPException(
                 status_code=500, detail=report.get("message", "Erreur interne")
@@ -435,10 +435,10 @@ async def tend_garden_get(
 
     if use_fallback:
         gardener = _get_gardener_from_request(request)
-        call_kwargs = {}
+        call_kwargs: dict[str, Any] = {}
         if _supports_kwarg(gardener.tend_the_garden, 'user_id'):
             call_kwargs['user_id'] = user_id
-        report = await gardener.tend_the_garden(**call_kwargs)
+        report = await gardener.tend_the_garden(**call_kwargs)  # type: ignore[arg-type]
         return {
             "status": report.get("status", "success"),
             "summaries": [],
@@ -707,7 +707,7 @@ async def unified_memory_search(
     except HTTPException:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    results = {
+    results: dict[str, Any] = {
         "query": q,
         "stm_summaries": [],
         "ltm_concepts": [],

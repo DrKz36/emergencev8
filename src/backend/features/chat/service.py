@@ -114,6 +114,7 @@ class ChatService:
         # ConceptRecallTracker pour détection concepts récurrents
         db_manager = getattr(session_manager, "db_manager", None)
         connection_manager = getattr(session_manager, "connection_manager", None)
+        self.concept_recall_tracker: ConceptRecallTracker | None
         if db_manager and vector_service:
             self.concept_recall_tracker = ConceptRecallTracker(
                 db_manager=db_manager,
@@ -794,7 +795,7 @@ class ChatService:
         is_broadcast = origin == "global"
 
         try:
-            start_payload = {"agent_id": agent_id, "id": temp_message_id}
+            start_payload: dict[str, Any] = {"agent_id": agent_id, "id": temp_message_id}
             if opinion_request:
                 opinion_meta = dict(opinion_request.get("opinion_meta") or {})
                 if opinion_request.get("source_agent_id") is not None:
@@ -807,7 +808,8 @@ class ChatService:
                     opinion_meta.setdefault("request_note_id", opinion_meta.get("request_id"))
                 opinion_meta.setdefault("reviewer_agent_id", agent_id)
                 opinion_meta.setdefault("agent_id", agent_id)
-                start_payload["meta"] = {"opinion": opinion_meta}
+                meta_payload: dict[str, Any] = {"opinion": opinion_meta}
+                start_payload["meta"] = meta_payload
             if is_broadcast:
                 start_payload["broadcast_origin"] = origin
             await connection_manager.send_personal_message(
@@ -1752,6 +1754,10 @@ class ChatService:
             agent=target,
             content=request_display,
             timestamp=datetime.now(timezone.utc).isoformat(),
+            cost=None,
+            tokens=None,
+            agents=None,
+            use_rag=False,
         )
         user_note.meta = {
             "opinion_request": {

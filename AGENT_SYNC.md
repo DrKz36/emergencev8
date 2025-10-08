@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-08 16:43 CEST (Claude Code - Dette technique ruff corrigée)
+**Derniere mise a jour** : 2025-10-08 17:15 CEST (Claude Code - Dette mypy corrigée + scripts seeds/migrations validés)
 
 ---
 
@@ -69,7 +69,35 @@
 ## 🚧 Zones de travail en cours
 
 ### Claude Code (moi)
-- **Statut** : ✅ Dette technique ruff corrigée - TERMINÉ
+- **Statut** : ✅ Dette mypy backend corrigée + scripts seeds/migrations validés - TERMINÉ
+- **Session 2025-10-08 (17:00-17:15)** :
+  1. ✅ Correction dette mypy : 24 erreurs → 0 erreur
+  2. ✅ Annotations types ajoutées : `middleware.py`, `alerts.py`, `chat/service.py`, `memory/router.py`, `benchmarks/persistence.py`, `benchmarks/service.py`, `concept_recall.py`
+  3. ✅ Scripts seeds/migrations vérifiés : compatibles avec modèle commits explicites (AuthService.upsert_allowlist fait commit=True ligne 843)
+  4. ✅ Tests e2e : 6/6 OK, pas de régression
+- **Fichiers modifiés** :
+  - `src/backend/benchmarks/persistence.py` : `_serialize_run` non-static + cast `Mapping[str, Any]` pour Row
+  - `src/backend/features/benchmarks/service.py` : type annotation `list[SQLiteBenchmarkResultSink | FirestoreBenchmarkResultSink]`
+  - `src/backend/core/middleware.py` : type annotations `dict[str, list[tuple[float, int]]]` + `list[str] | None`
+  - `src/backend/core/alerts.py` : type annotation `str | None` + check `webhook_url` before post
+  - `src/backend/features/memory/concept_recall.py` : check `self.collection` before access
+  - `src/backend/features/chat/service.py` : type annotations `ConceptRecallTracker | None`, `dict[str, Any]`, ajout params requis `ChatMessage`
+  - `src/backend/features/memory/router.py` : type annotation `dict[str, Any]` + type ignore pour kwargs dynamiques
+- **Tests effectués** :
+  - ✅ `python -m mypy src/backend --ignore-missing-imports` → **Success: no issues found in 80 source files**
+  - ✅ `python -m pytest tests/backend/e2e/test_user_journey.py -v` → 6/6 tests OK
+- **Scripts seeds/migrations vérifiés** :
+  - ✅ `scripts/seed_admin.py` : utilise `AuthService.upsert_allowlist` (commit géré en interne)
+  - ✅ `scripts/seed_admin_password.py` : utilise `AuthService.upsert_allowlist` (commit géré en interne)
+  - ✅ `scripts/run_migration.py` : appelle `commit()` explicite ligne 20 ✅
+  - ✅ `AuthService._upsert_allowlist` ligne 843 : `commit=True` passé à `db.execute()`
+- **Problèmes résolus** :
+  - **Dette mypy** : 24 erreurs → 0 erreur (benchmarks, middleware, alerts, chat, memory, concept_recall)
+  - **Scripts seeds/migrations** : validation compatibilité commits explicites ✅
+- **Commits créés** :
+  - (à venir) chore: correction dette mypy backend + vérification seeds/migrations
+
+**Sessions précédentes :**
 - **Session 2025-10-08 (16:33-16:43)** :
   1. ✅ Correction E402 (imports non top-level) : containers.py imports remontés après stdlib/tiers, tests conftest.py avec `# noqa: E402`
   2. ✅ Correction F841 (variables inutilisées) : préfixe `_` sur variables auth check, suppression assignations inutiles dans tests

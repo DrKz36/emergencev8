@@ -14,7 +14,7 @@ SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 class SlackAlerter:
     """Gestionnaire d'alertes Slack"""
 
-    def __init__(self, webhook_url: str = None):
+    def __init__(self, webhook_url: str | None = None):
         self.webhook_url = webhook_url or SLACK_WEBHOOK_URL
         self.enabled = bool(self.webhook_url)
 
@@ -65,6 +65,8 @@ class SlackAlerter:
         }
 
         try:
+            if not self.webhook_url:
+                return
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     self.webhook_url,
