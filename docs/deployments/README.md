@@ -15,13 +15,14 @@ Chaque déploiement est documenté avec :
 
 ## Déploiements Récents
 
-| Date | Révision | Image Tag | Description |
-|------|----------|-----------|-------------|
-| 2025-10-08 | `emergence-app-00270-zs6` | `deploy-20251008-082149` | Cloud Run refresh (menu mobile confirmé) |
-| 2025-10-08 | `emergence-app-00269-5qs` | `deploy-20251008-064424` | Cloud Run refresh (harmonisation UI cockpit/hymne) |
-| 2025-10-06 | `emergence-app-00268-9s8` | `deploy-20251006-060538` | Agents & UI refresh (personnalités, module documentation, responsive) |
-| 2025-10-05 | `emergence-app-00266-jc4` | `deploy-20251005-123837` | Corrections audit (13 fixes, score 87.5→95/100) |
-| 2025-10-04 | `emergence-app-00265-xxx` | `deploy-20251004-205347` | Ajout système métriques + Settings module |
+| Date | Révision | Image Tag | Description | Statut |
+|------|----------|-----------|-------------|--------|
+| 2025-10-08 | ⏳ *en attente* | ⏳ *Codex build/deploy* | **Phase 2 Performance** : neo_analysis + cache + débats parallèles ([détails](2025-10-08-phase2-perf.md)) | 🚧 Prêt pour deploy |
+| 2025-10-08 | `emergence-app-00270-zs6` | `deploy-20251008-082149` | Cloud Run refresh (menu mobile confirmé) | ✅ Active (100%) |
+| 2025-10-08 | `emergence-app-00269-5qs` | `deploy-20251008-064424` | Cloud Run refresh (harmonisation UI cockpit/hymne) | ⏸️ Archived |
+| 2025-10-06 | `emergence-app-00268-9s8` | `deploy-20251006-060538` | Agents & UI refresh (personnalités, module documentation, responsive) | ⏸️ Archived |
+| 2025-10-05 | `emergence-app-00266-jc4` | `deploy-20251005-123837` | Corrections audit (13 fixes, score 87.5→95/100) | ⏸️ Archived |
+| 2025-10-04 | `emergence-app-00265-xxx` | `deploy-20251004-205347` | Ajout système métriques + Settings module | ⏸️ Archived |
 
 ## Convention de Nommage
 
@@ -104,6 +105,43 @@ gcloud run services logs read emergence-app \
 - Latence p95 > 2s
 - Utilisation mémoire > 80%
 - Cold start > 10s
+
+## 📚 Documents Phase 2 (2025-10-08)
+
+### Pour comprendre Phase 2
+- 🎯 **[PHASE_2_PROMPT.md](PHASE_2_PROMPT.md)** - Spécification complète (référence)
+- 📊 **[2025-10-08-phase2-perf.md](2025-10-08-phase2-perf.md)** - Rapport implémentation (métriques, tests, fichiers)
+- 🚀 **[CODEX_BUILD_DEPLOY.md](CODEX_BUILD_DEPLOY.md)** - Guide build/deploy pour Codex (TL;DR + troubleshooting)
+
+### Optimisations implémentées
+1. **Agent neo_analysis** : GPT-4o-mini pour analyses mémoire (latence -70%, coût -40%)
+2. **Cache in-memory** : Résumés sessions (TTL 1h, hit rate 40-50%, coût -60%)
+3. **Débats parallèles** : Round 1 asyncio.gather (latence -40%)
+4. **Horodatages RAG** : Mémoire temporelle enrichie (format naturel français)
+
+### Commits Phase 2
+- `2bdbde1` perf: neo_analysis + cache + débats parallèles
+- `4f30be9` feat: horodatages RAG + prompts agents
+- `69f7f50` docs: spec Phase 2 archivée
+- `c7079f0` docs: passation Codex
+- `30d09e8` docs: guide build/deploy Codex
+
+### Validation post-deploy
+Chercher dans logs Cloud Run :
+```bash
+# Analyses mémoire avec neo_analysis
+gcloud logging read "jsonPayload.message=~'neo_analysis'" --limit 50
+
+# Cache HIT/MISS
+gcloud logging read "jsonPayload.message=~'Cache (HIT|SAVED)'" --limit 50
+```
+
+Métriques cibles :
+- Latence analyses : <2s (vs 4-6s avant)
+- Cache hit rate : 40-50%
+- Latence débat round 1 : ~3s (vs 5s avant)
+
+---
 
 ## Checklist Pré-Déploiement
 
