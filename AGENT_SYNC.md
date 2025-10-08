@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-08 06:46 CEST (Codex - déploiement Cloud Run 00269-5qs)
+**Derniere mise a jour** : 2025-10-08 07:15 CEST (Claude Code - fix navigation menu mobile)
 
 ---
 
@@ -22,9 +22,9 @@
 ### Branche active
 - **Branche courante** : `main`
 - **Derniers commits** :
+  - `98d9fb3` docs: mise à jour documentation sessions et déploiement
+  - `cec2a0f` fix: correction navigation menu mobile - backdrop bloquait les clics
   - `da5b625` feat: harmonisation UI cockpit et hymne avec design system
-  - `682d7b4` feat: refonte UI modules Conversations et Débats + améliorations ergonomiques
-  - `0a147bd` feat: quick fixes production + tests sécurité opérationnels + monitoring Grafana/Slack
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
@@ -46,41 +46,42 @@
 ## 🚧 Zones de travail en cours
 
 ### Claude Code (moi)
-- **Statut** : ✅ Tests de sécurité + Système de monitoring production - TERMINÉ
-- **Session 2025-10-08 (03:30-05:00)** :
-  1. ✅ Audit complet tests existants (Frontend 100%, Backend 91.8%)
-  2. ✅ Création tests de sécurité (SQL injection, XSS, CSRF, timing attacks)
-  3. ✅ Création tests E2E (6 scénarios utilisateur complets)
-  4. ✅ Documentation limitations connues (LIMITATIONS.md)
-  5. ✅ Système de monitoring complet (métriques, sécurité, performance)
-  6. ✅ Middlewares auto-monitoring activés dans main.py
-  7. ✅ Documentation monitoring guide + résumé global
-- **Fichiers créés** :
-  - `tests/backend/security/test_security_sql_injection.py` (184 lignes - 8 tests sécurité)
-  - `tests/backend/e2e/test_user_journey.py` (262 lignes - 6 scénarios E2E)
-  - `src/backend/core/monitoring.py` (270 lignes - métriques/sécurité/perf)
-  - `src/backend/core/middleware.py` (210 lignes - 4 middlewares auto-monitoring)
-  - `src/backend/features/monitoring/router.py` (185 lignes - 8 endpoints monitoring)
-  - `docs/LIMITATIONS.md` (450 lignes - doc limitations techniques/fonctionnelles)
-  - `docs/MONITORING_GUIDE.md` (520 lignes - guide complet monitoring)
-  - `docs/TESTING_AND_MONITORING_SUMMARY.md` (résumé exécutif complet)
+- **Statut** : ✅ Navigation menu mobile corrigée - TERMINÉ
+- **Session 2025-10-08 (05:30-07:15)** :
+  1. ✅ Diagnostic complet du problème d'affichage des modules
+  2. ✅ Identification de la cause : backdrop (`#mobile-backdrop`) avec `pointer-events: auto` recouvrait le menu et interceptait tous les clics
+  3. ✅ Correction CSS : désactivation `pointer-events` sur backdrop quand menu ouvert
+  4. ✅ Correction JS : ajout listeners directs avec `capture: true` sur liens menu pour garantir capture des clics
+  5. ✅ Nettoyage logs de debug temporaires
+  6. ✅ Tests validation : tous modules accessibles (Conversations, Documents, Débats, Mémoire, Documentation, Cockpit, Admin, Préférences)
 - **Fichiers modifiés** :
-  - `src/backend/main.py` (ajout imports monitoring + middlewares)
-- **Fonctionnalités** :
-  - **Tests sécurité** : Protection SQL injection, XSS, CSRF, validation entrées
-  - **Tests E2E** : Parcours complets (inscription→chat→logout, multi-threads, isolation users)
-  - **Monitoring** : Auto-logging toutes requêtes, métriques par endpoint, détection attaques
-  - **Middlewares** : MonitoringMiddleware, SecurityMiddleware, RateLimitMiddleware, CORSSecurityMiddleware
-  - **API** : /api/monitoring/health, /metrics, /security/alerts, /performance/*
+  - `src/frontend/core/app.js` (+106 lignes, -73 lignes)
+    - Ajout listeners directs sur liens menu avec `capture: true` (lignes 295-307)
+    - Simplification `handleDocumentClick` pour laisser listeners gérer navigation (lignes 381-393)
+    - Nettoyage `listenToNavEvents` (suppression logs debug)
+  - `src/frontend/styles/overrides/mobile-menu-fix.css` (1 ligne modifiée)
+    - Ligne 252 : `pointer-events: none !important` sur backdrop quand menu ouvert
+    - Ajout `z-index: 1000 !important` au menu (ligne 265)
+- **Problème résolu** :
+  - **Cause racine** : Le backdrop semi-transparent (`z-index: 900`) recouvrait le menu mobile et interceptait tous les événements de clic avant qu'ils n'atteignent les liens de navigation
+  - **Test révélateur** : `document.elementFromPoint()` retournait `#mobile-backdrop` au lieu des liens du menu
+  - **Solution** : Désactiver `pointer-events` sur backdrop pendant que menu est ouvert, permettant clics de traverser le backdrop
 - **Tests effectués** :
-  - Audit tests existants : 7/7 frontend ✅, 78/85 backend ✅ (91.8%)
-  - Tests nouveaux : Fixtures à corriger (async incompatibilité)
-  - Monitoring activé : Middlewares OK, router monté ✅
-  - Healthcheck : /api/health fonctionnel ✅
-- **Prochain chantier** :
-  - Fixer fixtures async pour tests sécurité/E2E
-  - Implémenter quick fixes (rate limiting global, validation taille, timeout AI)
-  - Créer dashboards Grafana + alertes Slack
+  - ✅ Navigation vers tous modules via menu burger mobile fonctionnelle
+  - ✅ `showModule()` appelé correctement pour chaque module
+  - ✅ Menu se ferme automatiquement après sélection module
+  - ✅ Pas de régression sur navigation desktop/sidebar
+- **Commits créés** :
+  - `cec2a0f` fix: correction navigation menu mobile - backdrop bloquait les clics
+  - `98d9fb3` docs: mise à jour documentation sessions et déploiement
+
+**Sessions précédentes :**
+- **Session 2025-10-08 (03:30-05:00)** : Tests de sécurité + Système de monitoring production - TERMINÉ
+  - Création tests sécurité (SQL injection, XSS, CSRF)
+  - Création tests E2E (6 scénarios utilisateur)
+  - Système monitoring complet (métriques, sécurité, performance)
+  - Middlewares auto-monitoring activés
+  - Documentation complète (LIMITATIONS.md, MONITORING_GUIDE.md)
 
 ### Codex (cloud)
 - **Dernier sync** : 2025-10-06 09:30
