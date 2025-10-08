@@ -1,5 +1,5 @@
 # src/backend/features/memory/analyzer.py
-# V3.5 - Phase 2: neo_analysis (GPT-4o-mini) + cache in-memory pour optimiser perf
+# V3.6 - Phase 3: Métriques Prometheus pour monitoring performance
 import logging
 import hashlib
 import json
@@ -11,6 +11,49 @@ if TYPE_CHECKING:
     from backend.core.database.manager import DatabaseManager
 
 from backend.core.database import queries
+
+# ⚡ Métriques Prometheus (Phase 3)
+try:
+    from prometheus_client import Counter, Histogram, Gauge
+
+    # Compteurs succès/échec par provider
+    ANALYSIS_SUCCESS_TOTAL = Counter(
+        "memory_analysis_success_total",
+        "Nombre total d'analyses réussies",
+        ["provider"]  # neo_analysis, nexus, anima
+    )
+    ANALYSIS_FAILURE_TOTAL = Counter(
+        "memory_analysis_failure_total",
+        "Nombre total d'analyses échouées",
+        ["provider", "error_type"]
+    )
+
+    # Cache metrics
+    CACHE_HITS_TOTAL = Counter(
+        "memory_analysis_cache_hits_total",
+        "Nombre total de cache hits"
+    )
+    CACHE_MISSES_TOTAL = Counter(
+        "memory_analysis_cache_misses_total",
+        "Nombre total de cache misses"
+    )
+    CACHE_SIZE = Gauge(
+        "memory_analysis_cache_size",
+        "Taille actuelle du cache in-memory"
+    )
+
+    # Latence analyses
+    ANALYSIS_DURATION_SECONDS = Histogram(
+        "memory_analysis_duration_seconds",
+        "Durée des analyses mémoire",
+        ["provider"],
+        buckets=[0.5, 1.0, 2.0, 4.0, 6.0, 10.0, 15.0, 20.0, 30.0]
+    )
+
+    PROMETHEUS_AVAILABLE = True
+except ImportError:
+    PROMETHEUS_AVAILABLE = False
+    logger.warning("Prometheus client non disponible - métriques désactivées")
 
 logger = logging.getLogger(__name__)
 
@@ -167,25 +210,41 @@ class MemoryAnalyzer:
                 cached_data, cached_at = _ANALYSIS_CACHE[cache_key]
                 if datetime.now() - cached_at < timedelta(hours=1):
                     logger.info(f"[MemoryAnalyzer] Cache HIT pour session {session_id} (hash={history_hash})")
+                    # 📊 Métrique cache HIT
+                    if PROMETHEUS_AVAILABLE:
+                        CACHE_HITS_TOTAL.inc()
                     return cached_data
                 else:
                     # Cache expiré
                     del _ANALYSIS_CACHE[cache_key]
                     logger.debug(f"[MemoryAnalyzer] Cache EXPIRED pour session {session_id}")
 
+        # 📊 Métrique cache MISS
+        if PROMETHEUS_AVAILABLE and persist and not force:
+            CACHE_MISSES_TOTAL.inc()
+
         analysis_result: Dict[str, Any] = {}
         primary_error: Optional[Exception] = None
         provider_used = "neo_analysis"
+        start_time = datetime.now()
 
         # Tentative primaire : neo_analysis (GPT-4o-mini - rapide pour JSON)
         try:
             analysis_result = await chat_service.get_structured_llm_response(
                 agent_id="neo_analysis", prompt=prompt, json_schema=ANALYSIS_JSON_SCHEMA
             )
+            # 📊 Métriques succès
+            if PROMETHEUS_AVAILABLE:
+                duration = (datetime.now() - start_time).total_seconds()
+                ANALYSIS_DURATION_SECONDS.labels(provider="neo_analysis").observe(duration)
+                ANALYSIS_SUCCESS_TOTAL.labels(provider="neo_analysis").inc()
             logger.info(f"[MemoryAnalyzer] Analyse réussie avec neo_analysis pour session {session_id}")
         except Exception as e:
             primary_error = e
             error_type = type(e).__name__
+            # 📊 Métriques échec
+            if PROMETHEUS_AVAILABLE:
+                ANALYSIS_FAILURE_TOTAL.labels(provider="neo_analysis", error_type=error_type).inc()
             logger.warning(
                 f"[MemoryAnalyzer] Analyse neo_analysis échouée ({error_type}) pour session {session_id} — fallback Nexus",
                 exc_info=True,
@@ -194,22 +253,40 @@ class MemoryAnalyzer:
         # Fallback 1 : Nexus (Anthropic - plus fiable)
         if not analysis_result:
             provider_used = "nexus"
+            start_time = datetime.now()
             try:
                 analysis_result = await chat_service.get_structured_llm_response(
                     agent_id="nexus", prompt=prompt, json_schema=ANALYSIS_JSON_SCHEMA
                 )
+                # 📊 Métriques succès Nexus
+                if PROMETHEUS_AVAILABLE:
+                    duration = (datetime.now() - start_time).total_seconds()
+                    ANALYSIS_DURATION_SECONDS.labels(provider="nexus").observe(duration)
+                    ANALYSIS_SUCCESS_TOTAL.labels(provider="nexus").inc()
                 logger.info(f"[MemoryAnalyzer] Fallback Nexus réussi pour session {session_id}")
             except Exception as e:
+                # 📊 Métriques échec Nexus
+                if PROMETHEUS_AVAILABLE:
+                    ANALYSIS_FAILURE_TOTAL.labels(provider="nexus", error_type=type(e).__name__).inc()
                 logger.warning(f"[MemoryAnalyzer] Fallback Nexus échoué ({type(e).__name__}) — tentative Anima", exc_info=True)
 
                 # Fallback 2 : Anima (OpenAI - dernière chance)
                 provider_used = "anima"
+                start_time = datetime.now()
                 try:
                     analysis_result = await chat_service.get_structured_llm_response(
                         agent_id="anima", prompt=prompt, json_schema=ANALYSIS_JSON_SCHEMA
                     )
+                    # 📊 Métriques succès Anima
+                    if PROMETHEUS_AVAILABLE:
+                        duration = (datetime.now() - start_time).total_seconds()
+                        ANALYSIS_DURATION_SECONDS.labels(provider="anima").observe(duration)
+                        ANALYSIS_SUCCESS_TOTAL.labels(provider="anima").inc()
                     logger.info(f"[MemoryAnalyzer] Fallback Anima réussi pour session {session_id}")
                 except Exception as final_error:
+                    # 📊 Métriques échec Anima
+                    if PROMETHEUS_AVAILABLE:
+                        ANALYSIS_FAILURE_TOTAL.labels(provider="anima", error_type=type(final_error).__name__).inc()
                     logger.error(
                         f"[MemoryAnalyzer] Tous fallbacks échoués pour session {session_id}: {final_error}",
                         exc_info=True
@@ -270,6 +347,10 @@ class MemoryAnalyzer:
                 oldest_key = min(_ANALYSIS_CACHE.keys(), key=lambda k: _ANALYSIS_CACHE[k][1])
                 del _ANALYSIS_CACHE[oldest_key]
                 logger.debug(f"[MemoryAnalyzer] Cache cleanup: removed oldest entry {oldest_key}")
+
+            # 📊 Métrique taille cache
+            if PROMETHEUS_AVAILABLE:
+                CACHE_SIZE.set(len(_ANALYSIS_CACHE))
 
         await self._notify(
             session_id, {"session_id": session_id, "status": "completed", "provider": provider_used}
