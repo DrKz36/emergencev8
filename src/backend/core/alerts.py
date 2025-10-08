@@ -4,7 +4,6 @@ Permet d'envoyer des alertes critiques/warning/info
 """
 
 import os
-import asyncio
 from datetime import datetime, timezone
 from typing import Literal
 import httpx

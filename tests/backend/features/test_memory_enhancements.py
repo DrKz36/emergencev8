@@ -1,6 +1,6 @@
 # tests/backend/features/test_memory_enhancements.py
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock
 from datetime import datetime, timezone, timedelta
 
 from backend.features.chat.memory_ctx import MemoryContextBuilder

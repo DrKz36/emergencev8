@@ -4,7 +4,7 @@ Admin Dashboard Router - Endpoints for global statistics
 V1.0 - Admin-only access to global data
 """
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Any, Dict
 
 from backend.features.dashboard.admin_service import AdminDashboardService

@@ -1,3 +1,56 @@
+## [2025-10-08 16:33] - Agent: Claude Code (Tests E2E Backend)
+
+### Fichiers modifiés
+- tests/backend/e2e/conftest.py
+- tests/backend/e2e/test_user_journey.py
+
+### Contexte
+Reprise du blocage laissé par Codex (12:45) : tests e2e échouaient avec erreur 422 sur `/api/auth/register`. Le mock auth était incomplet (pas de gestion dict JSON, pas d'invalidation token, pas d'isolation users).
+
+### Actions réalisées
+1. **Correction endpoints mock FastAPI** :
+   - Endpoints `/api/auth/register`, `/api/auth/login`, `/api/threads`, `/api/chat` acceptent maintenant `body: dict` au lieu de paramètres individuels
+   - Fix retour erreurs : `raise HTTPException(status_code=X)` au lieu de `return (dict, int)`
+
+2. **Amélioration authentification mock** :
+   - Ajout helper `get_current_user()` pour extraire et valider token depuis header Authorization
+   - Gestion invalidation token : ajout `_invalidated_tokens` set, vérification dans `get_current_user()`
+   - Génération token UUID unique par login (`token_{user_id}_{uuid}`) pour éviter collision après logout/re-login
+
+3. **Isolation users** :
+   - Ajout `user_id` dans threads lors de création
+   - Filtrage threads par `user_id` dans `GET /api/threads`
+   - Vérification ownership dans `GET /api/threads/{thread_id}/messages` et `POST /api/chat`
+
+4. **Auto-fix ruff** : 23 erreurs corrigées (imports inutilisés : asyncio, math, patch, pytest)
+
+### Tests
+- ✅ `python -m pytest tests/backend/e2e/test_user_journey.py -v` → **6/6 tests OK**
+  - ✅ test_new_user_onboarding_to_chat (register → login → thread → chat → logout → token invalidé)
+  - ✅ test_user_manages_multiple_conversations (3 threads isolés)
+  - ✅ test_conversation_with_memory_recall (historique messages)
+  - ✅ test_graceful_degradation_on_ai_failure (pas de 500)
+  - ✅ test_data_survives_session (persistence cross-session, re-login avec nouveau token)
+  - ✅ test_multiple_users_isolated (2 users ne voient pas les threads de l'autre)
+- ✅ `python -m ruff check --fix src/backend tests/backend` → 23 erreurs auto-fixées
+- ⚠️ Dette restante : 22 erreurs ruff (E402 imports non top-level, F841 variables inutilisées, E722 bare except) + 6 erreurs mypy (benchmarks, middleware, alerts) - existante avant session
+
+### Résultats
+- **Blocage Codex résolu** : Tests e2e passent à 100% (0 → 6/6)
+- Mock auth robuste : token invalidation + isolation users + gestion erreurs HTTP correcte
+- Codebase plus propre : 23 imports inutilisés supprimés
+
+### Prochaines actions recommandées
+1. Corriger dette ruff restante (E402 imports containers.py, F841 variables inutilisées router.py/test_*.py, E722 bare except security/conftest.py)
+2. Corriger dette mypy (benchmarks/persistence.py, features/benchmarks/service.py, middleware.py, alerts.py)
+3. Vérifier scripts seeds/migrations avec nouveau modèle commits explicites (action laissée par Codex)
+4. Relancer smoke tests `pwsh -File tests/run_all.ps1` après correctifs credentials
+
+### Blocages
+- Aucun
+
+---
+
 ## [2025-10-08 12:45] - Agent: Codex (Backend Stabilisation)
 
 ### Fichiers modifiés

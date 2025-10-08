@@ -3,10 +3,10 @@ Tests pour SessionManager - Composant critique de gestion des sessions
 """
 import pytest
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from backend.core.session_manager import SessionManager
-from backend.shared.models import Session, ChatMessage, Role
+from backend.shared.models import ChatMessage, Role
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@
 Router pour les endpoints de monitoring et healthcheck
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from typing import Dict, Any
 import psutil
 import platform

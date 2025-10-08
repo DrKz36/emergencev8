@@ -5,7 +5,6 @@ Phase 1: Verify temporal tracking metadata (first_mentioned_at, mention_count, t
 
 import pytest
 import pytest_asyncio
-import asyncio
 import json
 import os
 from datetime import datetime, timezone

@@ -6,7 +6,7 @@ Centralise logging, métriques et alertes
 import logging
 import time
 from functools import wraps
-from typing import Optional, Callable, Any
+from typing import Optional, Callable
 from datetime import datetime, timezone
 from collections import defaultdict
 from pathlib import Path
@@ -225,7 +225,7 @@ class SecurityMonitor:
             if pattern.lower() in input_string.lower():
                 self.suspicious_patterns["sql_injection"] += 1
                 logger.warning(
-                    f"SECURITY: Possible SQL injection attempt detected",
+                    "SECURITY: Possible SQL injection attempt detected",
                     extra={
                         "input": input_string[:100],
                         "pattern": pattern,
@@ -249,7 +249,7 @@ class SecurityMonitor:
             if pattern.lower() in input_string.lower():
                 self.suspicious_patterns["xss"] += 1
                 logger.warning(
-                    f"SECURITY: Possible XSS attempt detected",
+                    "SECURITY: Possible XSS attempt detected",
                     extra={
                         "input": input_string[:100],
                         "pattern": pattern,
@@ -263,7 +263,7 @@ class SecurityMonitor:
         """Vérifie la taille de l'input"""
         if len(input_string) > max_size:
             logger.warning(
-                f"SECURITY: Oversized input detected",
+                "SECURITY: Oversized input detected",
                 extra={
                     "size": len(input_string),
                     "max_allowed": max_size,
@@ -301,7 +301,7 @@ class PerformanceMonitor:
         })
 
         logger.warning(
-            f"PERFORMANCE: Slow database query detected",
+            "PERFORMANCE: Slow database query detected",
             extra={
                 "query": query[:200],
                 "duration": duration,
@@ -319,7 +319,7 @@ class PerformanceMonitor:
         # Alerte si >10s
         if duration > 10.0:
             logger.error(
-                f"PERFORMANCE: AI response timeout risk",
+                "PERFORMANCE: AI response timeout risk",
                 extra={
                     "duration": duration,
                     "model": model,

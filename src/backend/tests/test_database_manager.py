@@ -4,7 +4,6 @@ Tests pour DatabaseManager - Gestion de la base de données SQLite
 import pytest
 import aiosqlite
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
 import tempfile
 import os
 

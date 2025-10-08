@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import time
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from datetime import datetime, timezone
 
 from backend.core.database.manager import DatabaseManager

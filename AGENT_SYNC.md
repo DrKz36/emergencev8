@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-08 12:45 CEST (Codex - Backend stabilisation tests)
+**Derniere mise a jour** : 2025-10-08 17:10 CEST (Codex - Procédure build/deploy documentée)
 
 ---
 
@@ -37,6 +37,29 @@
 - **Déployé** : 2025-10-08 08:22 CEST
 - **Trafic** : 100% sur nouvelle révision
 - **Documentation** : [docs/deployments/2025-10-08-cloud-run-revision-00270.md](docs/deployments/2025-10-08-cloud-run-revision-00270.md)
+- **Service Cloud Run** : `emergence-app`
+- **Projet GCP** : `emergence-469005`
+- **Région** : `europe-west1`
+- **Registry** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app`
+
+#### Procédure build & déploiement rapide
+- **Prérequis** : `gcloud auth login`, `gcloud auth configure-docker europe-west1-docker.pkg.dev`, Docker configuré pour `linux/amd64`.
+- **Commandes** :
+  ```bash
+  timestamp=$(date +%Y%m%d-%H%M%S)
+  docker build --platform linux/amd64 \
+    -t europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp .
+
+  docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp
+
+  gcloud run deploy emergence-app \
+    --image europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp \
+    --project emergence-469005 \
+    --region europe-west1 \
+    --platform managed \
+    --allow-unauthenticated
+  ```
+- **Post-déploiement** : `gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005`, vérifier `/api/health` et `/api/metrics`.
 
 ### Working tree
 - ⚠️ Dirty (backend refactor en cours : requirements + core DB + auth/memory services + docs/passation/AGENT_SYNC)
@@ -46,7 +69,33 @@
 ## 🚧 Zones de travail en cours
 
 ### Claude Code (moi)
-- **Statut** : ✅ Navigation menu mobile corrigée - TERMINÉ
+- **Statut** : ✅ Tests e2e backend corrigés - TERMINÉ
+- **Session 2025-10-08 (16:00-16:33)** :
+  1. ✅ Correction fixture e2e `/api/auth/register` : accepte `dict` au lieu de paramètres individuels, fix HTTPException au lieu de tuple (dict, int)
+  2. ✅ Amélioration mock auth : invalidation token après logout, isolation users (user_id), génération token UUID unique par login
+  3. ✅ 6/6 tests e2e passent (test_new_user_onboarding_to_chat, test_user_manages_multiple_conversations, test_conversation_with_memory_recall, test_graceful_degradation_on_ai_failure, test_data_survives_session, test_multiple_users_isolated)
+  4. ✅ Auto-fix ruff : 23 erreurs corrigées (imports inutilisés)
+- **Fichiers modifiés** :
+  - `tests/backend/e2e/conftest.py` (+70 lignes, -40 lignes)
+    - Fix endpoints mock : body dict au lieu de paramètres individuels
+    - Ajout helper `get_current_user()` avec vérification auth
+    - Ajout invalidation token + filtrage threads par user_id
+    - Token UUID unique pour éviter collision après logout/re-login
+  - `tests/backend/e2e/test_user_journey.py` (+1 ligne)
+    - Ajout assertion status_code 200 pour debug
+- **Tests effectués** :
+  - ✅ `python -m pytest tests/backend/e2e/test_user_journey.py -v` → 6/6 tests OK
+  - ✅ `python -m ruff check --fix src/backend tests/backend` → 23 erreurs auto-fixées
+  - ⚠️ Dette restante : 22 erreurs ruff (E402 imports, F841 variables inutilisées, E722 bare except) - existante avant session
+  - ⚠️ Dette mypy : 6 erreurs (benchmarks, middleware, alerts) - existante avant session
+- **Problème résolu** :
+  - **Blocage Codex** : Mock `/api/auth/register` retournait 422 au lieu de 200 → endpoints FastAPI attendaient `dict` JSON
+  - **Isolation users** : Threads partagés entre users → ajout `user_id` + filtrage par user
+  - **Token invalidé après re-login** : Token fixe `token_{user_id}` → génération UUID unique par login
+- **Commits créés** :
+  - (à venir) fix: tests e2e backend - mock auth + isolation users
+
+**Sessions précédentes :**
 - **Session 2025-10-08 (05:30-07:15)** :
   1. ✅ Diagnostic complet du problème d'affichage des modules
   2. ✅ Identification de la cause : backdrop (`#mobile-backdrop`) avec `pointer-events: auto` recouvrait le menu et interceptait tous les clics

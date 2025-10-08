@@ -2,11 +2,11 @@
 Tests pour AuthService - Authentification et autorisation
 """
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.features.auth.service import AuthService
-from backend.features.auth.models import User, UserRole
+from backend.features.auth.models import UserRole
 
 
 @pytest.fixture

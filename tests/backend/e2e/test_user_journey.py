@@ -3,7 +3,6 @@ Tests E2E - Parcours utilisateur complets
 Simule des scénarios réels d'utilisation de l'application
 """
 
-import pytest
 from fastapi.testclient import TestClient
 import time
 
@@ -221,6 +220,7 @@ class TestDataPersistence:
             headers={"Authorization": f"Bearer {token2}"},
         )
 
+        assert threads_response.status_code == 200, f"Erreur récupération threads: {threads_response.status_code} - {threads_response.text}"
         threads = threads_response.json()
         thread_ids = [t["id"] for t in threads]
         assert thread_id in thread_ids, "Thread perdu entre sessions"

@@ -3,7 +3,6 @@ Tests de sécurité - Injection SQL
 Vérifie que l'application est protégée contre les injections SQL
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 
