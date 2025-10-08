@@ -56,6 +56,7 @@ MEMORY_ROUTER = _import_router("backend.features.memory.router")
 AUTH_ROUTER = _import_router("backend.features.auth.router")
 DEV_AUTH_ROUTER = _import_router("backend.features.dev_auth.router")  # optionnel
 METRICS_ROUTER = _import_router("backend.features.metrics.router")  # Prometheus metrics
+MONITORING_ROUTER = _import_router("backend.features.monitoring.router")  # Monitoring & observability
 
 
 def _migrations_dir() -> str:
@@ -142,6 +143,18 @@ def create_app() -> FastAPI:
     # 🔒 Redirige automatiquement /route ↔ /route/
     app.router.redirect_slashes = True
 
+    # Monitoring middlewares (première couche)
+    try:
+        from backend.core.middleware import (
+            MonitoringMiddleware,
+            SecurityMiddleware,
+        )
+        app.add_middleware(MonitoringMiddleware)
+        app.add_middleware(SecurityMiddleware)
+        logger.info("Monitoring middlewares activés")
+    except Exception as e:
+        logger.warning(f"Monitoring middlewares non activés: {e}")
+
     # CORS d'abord...
     app.add_middleware(
         CORSMiddleware,
@@ -209,6 +222,7 @@ def create_app() -> FastAPI:
     _mount_router(AUTH_ROUTER)
     _mount_router(DEV_AUTH_ROUTER)  # éventuel
     _mount_router(METRICS_ROUTER, "/api")  # Prometheus metrics at /api/metrics
+    _mount_router(MONITORING_ROUTER)  # Monitoring endpoints at /api/monitoring/*
 
     # ⚠️ WS: **uniquement** features.chat.router (déclare /ws/{session_id})
     _mount_router(CHAT_ROUTER)  # pas de prefix → garde /ws/{session_id}
