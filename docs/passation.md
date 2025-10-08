@@ -1,3 +1,43 @@
+## [2025-10-08 06:46] - Agent: Codex (Déploiement Cloud Run 00269-5qs)
+
+### Fichiers modifiés
+- `docs/deployments/2025-10-08-cloud-run-refresh.md`
+- `docs/deployments/README.md`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- Demande FG : construire une nouvelle image Docker et déployer une révision Cloud Run à partir de `main`.
+- Objectif secondaire : garder la documentation de déploiement et la synchronisation inter-agents alignées.
+
+### Actions réalisées
+1. Génération du tag `deploy-20251008-064424`, build `docker` (linux/amd64) et push vers Artifact Registry.
+2. Déploiement Cloud Run via `gcloud run deploy emergence-app` → nouvelle révision active `emergence-app-00269-5qs`.
+3. Vérifications post-déploiement (`/api/health`, `/api/metrics`) + création du rapport `docs/deployments/2025-10-08-cloud-run-refresh.md`.
+4. Mise à jour de `AGENT_SYNC.md`, `docs/deployments/README.md` et préparation de cette passation.
+
+### Tests
+- ✅ `npm run build`
+- ⚠️ `python -m pytest` (ImportError `User` dans `backend.features.auth.models`)
+- ⚠️ `pwsh -File tests/run_all.ps1` (identifiants smoke-tests manquants)
+- ✅ Vérifications en production : `/api/health`, `/api/metrics`
+
+### Résultats
+- Révision `emergence-app-00269-5qs` déployée, trafic 100%.
+- Image Artifact Registry alignée : `deploy-20251008-064424`.
+- Documentation de déploiement et synchronisation mises à jour.
+
+### Prochaines actions recommandées
+1. Corriger les erreurs `pytest` (import `User`) et rétablir l'exécution complète de la suite backend.
+2. Fournir/automatiser les identifiants pour `tests/run_all.ps1` afin de rétablir la routine smoke.
+3. Effectuer une QA visuelle cockpit/hymne + suivi du warning importmap sur `index.html`.
+
+### Blocages
+- Tests backend bloqués par l'import `backend.features.auth.models.User`.
+- Pas de credentials smoke-tests disponibles pour `tests/run_all.ps1`.
+
+---
+
 ## [2025-10-08 03:30] - Agent: Claude Code (Frontend)
 
 ### Fichiers modifiés
@@ -443,5 +483,4 @@ pm run build (warning importmap existant)
 
 ### Blocages
 - Aucun.
-
 

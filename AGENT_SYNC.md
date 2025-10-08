@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-08 05:00 CEST (Claude Code - tests sécurité + monitoring production)
+**Derniere mise a jour** : 2025-10-08 06:46 CEST (Codex - déploiement Cloud Run 00269-5qs)
 
 ---
 
@@ -17,29 +17,29 @@
 
 ---
 
-## 📍 État actuel du dépôt (2025-10-06)
+## 📍 État actuel du dépôt (2025-10-08)
 
 ### Branche active
 - **Branche courante** : `main`
 - **Derniers commits** :
-  - `a6b1ee6` feat: refonte complète des personnalités des agents ANIMA, NEO et NEXUS
-  - `32e5382` feat: optimize sidebar layout and improve mobile navigation
-  - `67cbf32` feat: enrich Genesis section with comprehensive timeline and documentation
+  - `da5b625` feat: harmonisation UI cockpit et hymne avec design system
+  - `682d7b4` feat: refonte UI modules Conversations et Débats + améliorations ergonomiques
+  - `0a147bd` feat: quick fixes production + tests sécurité opérationnels + monitoring Grafana/Slack
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
 - `codex` → SSH : `git@github.com:DrKz36/emergencev8.git`
 
 ### Déploiement Cloud Run
-- **Révision active** : `emergence-app-00268-9s8`
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251006-060538`
+- **Révision active** : `emergence-app-00269-5qs`
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251008-064424`
 - **URL** : https://emergence-app-486095406755.europe-west1.run.app
-- **Déployé** : 2025-10-06 06:06 CEST
+- **Déployé** : 2025-10-08 06:46 CEST
 - **Trafic** : 100% sur nouvelle révision
-- **Documentation** : [docs/deployments/2025-10-06-agents-ui-refresh.md](docs/deployments/2025-10-06-agents-ui-refresh.md)
+- **Documentation** : [docs/deployments/2025-10-08-cloud-run-refresh.md](docs/deployments/2025-10-08-cloud-run-refresh.md)
 
 ### Working tree
-- ⚠️ Dirty (modifs front existantes + fichiers sources extraites)
+- ✅ Clean (aucune modification locale)
 
 ---
 
@@ -89,26 +89,25 @@
 - **Actions recommandées** : `git fetch --all --prune` puis `git rebase origin/main` une fois réseau OK
 
 ### Codex (local)
-- **Dernier sync** : 2025-10-07 19:30 CEST (Codex - alignement marge droite)
-- **Statut** : Marges gauche/droite synchronisées, overrides de centrage neutralisés sur Dialogue/Documents/Cockpit.
-- **Fichiers touchés** :
-  - `src/frontend/styles/core/_layout.css`
-  - `src/frontend/styles/overrides/ui-hotfix-20250823.css`
-  - `src/frontend/features/threads/threads.css`
-  - `src/frontend/features/cockpit/cockpit-{metrics,charts,insights}.css`
-  - `src/frontend/features/documentation/documentation.css`
-  - `src/frontend/features/settings/settings-{ui,security}.css`
-  - `index.html` (ordre importmap / modulepreload)
+- **Dernier sync** : 2025-10-08 06:46 CEST (Codex - déploiement Cloud Run)
+- **Statut** : Build & déploiement production alignés sur `main` + documentation mise à jour.
+- **Session 2025-10-08 (06:05-06:45)** :
+  1. Construction image Docker `deploy-20251008-064424` (`docker build --platform linux/amd64`).
+  2. Push vers Artifact Registry + déploiement Cloud Run → révision `emergence-app-00269-5qs`.
+  3. Vérifications post-déploiement (`/api/health`, `/api/metrics`) et création du rapport `docs/deployments/2025-10-08-cloud-run-refresh.md`.
+  4. Synchronisation documentation (`AGENT_SYNC.md`, `docs/deployments/README.md`, passation en cours).
 - **Tests** :
-  - ok `npm run build` (warning importmap toujours présent)
+  - ✅ `npm run build`
+  - ⚠️ `python -m pytest` — échec collecte (`ImportError: User` dans `backend.features.auth.models`)
+  - ⚠️ `pwsh -File tests/run_all.ps1` — identifiants smoke manquants (`Login failed for gonzalefernando@gmail.com`)
 - **Next** :
-  - QA visuelle desktop (1280/1440/1920) + responsive 1024/768 sur Dialogue/Documents/Cockpit pour valider l'alignement.
-  - Contrôler Admin/Timeline/Memory pour repérer d'éventuels overrides de centrage restants.
-  - Planifier la correction de l'avertissement importmap dans `index.html`.
+  - QA visuelle cockpit/hymne (desktop + responsive) pour confirmer l'intégration des derniers correctifs CSS.
+  - Corriger la fixture `backend.features.auth.models.User` ou adapter les tests `pytest`.
+  - Fournir des identifiants smoke-tests ou mock pour permettre `tests/run_all.ps1`.
+  - (héritage) Traiter le warning importmap dans `index.html` dès que les styles seront validés.
 - **Blocages** :
-  - `scripts/sync-workdir.ps1` échoue (working tree toujours dirty : fichiers admin/icons hors scope).
-  - Suites backend (`python -m pytest`, `ruff check`, `mypy src`) encore KO (sessions précédentes).
-  - `pwsh -File tests/run_all.ps1` non lancé sur cette branche.
+  - Tests backend encore KO (import manquant) — nécessite investigation dédiée.
+  - Pas d'identifiants smoke disponibles pour `tests/run_all.ps1`.
 ### 1. Avant de coder (TOUS les agents)
 ```bash
 # Vérifier les remotes
