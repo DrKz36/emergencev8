@@ -1,4 +1,4 @@
-# V1.0 — Provider streaming + anti-429 (OpenAI / Gemini / Anthropic)
+# V1.0 — Provider streaming + anti-429 (OpenAI / Gemini / Anthropic) + Timeout
 from __future__ import annotations
 import asyncio
 import logging
@@ -10,6 +10,9 @@ from anthropic import AsyncAnthropic
 from .pricing import MODEL_PRICING
 
 logger = logging.getLogger(__name__)
+
+# Timeout global pour les requêtes AI (30 secondes)
+AI_REQUEST_TIMEOUT = 30.0
 
 
 class LLMStreamer:
@@ -82,8 +85,16 @@ class LLMStreamer:
             )
         else:
             raise ValueError(f"Fournisseur LLM non supporté: {provider}")
-        async for chunk in streamer:
-            yield chunk
+
+        # Wrapper avec timeout pour éviter requêtes qui pendent indéfiniment
+        try:
+            async with asyncio.timeout(AI_REQUEST_TIMEOUT):
+                async for chunk in streamer:
+                    yield chunk
+        except asyncio.TimeoutError:
+            logger.error(f"Timeout AI request après {AI_REQUEST_TIMEOUT}s (provider={provider}, model={model})")
+            cost_info_container["__error__"] = "timeout"
+            yield f"\n\n[Erreur: La requête a expiré après {AI_REQUEST_TIMEOUT}s]"
 
     async def _get_openai_stream(
         self, model, system_prompt, history, cost_info_container

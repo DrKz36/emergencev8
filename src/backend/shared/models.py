@@ -53,7 +53,7 @@ class ChatMessage(BaseModel):
     session_id: str = Field(..., description="ID de la session à laquelle le message appartient")
     role: Role = Field(..., description="Rôle de l'auteur du message (user ou assistant)")
     agent: str = Field(..., description="Agent concerné (ex: 'anima', 'neo', ou 'user')")
-    content: str = Field(..., description="Contenu textuel du message")
+    content: str = Field(..., max_length=50000, description="Contenu textuel du message (max 50KB)")
     timestamp: str = Field(..., description="Horodatage ISO 8601 du message")
     cost: Optional[float] = Field(None, description="Coût associé à la génération de ce message (si assistant)")
     tokens: Optional[Dict[str, Any]] = Field(None, description="Détail des tokens utilisés (input, output)")

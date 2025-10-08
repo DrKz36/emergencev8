@@ -11,8 +11,8 @@ import time
 class TestCompleteUserJourney:
     """Parcours utilisateur complet du début à la fin"""
 
-    @pytest.mark.asyncio
-    async def test_new_user_onboarding_to_chat(self, auth_app_factory):
+    
+    def test_new_user_onboarding_to_chat(self, auth_app_factory):
         """
         Scénario: Nouvel utilisateur s'inscrit et utilise le chat
         1. Inscription
@@ -91,8 +91,8 @@ class TestCompleteUserJourney:
 class TestMultiThreadConversation:
     """Test de gestion de conversations multi-threads"""
 
-    @pytest.mark.asyncio
-    async def test_user_manages_multiple_conversations(self, client, authenticated_user):
+    
+    def test_user_manages_multiple_conversations(self, client, authenticated_user):
         """
         Scénario: Utilisateur jongle entre plusieurs conversations
         """
@@ -128,8 +128,8 @@ class TestMultiThreadConversation:
 class TestMemoryAndContext:
     """Test de la mémoire et du contexte conversationnel"""
 
-    @pytest.mark.asyncio
-    async def test_conversation_with_memory_recall(self, client, authenticated_user):
+    
+    def test_conversation_with_memory_recall(self, client, authenticated_user):
         """
         Scénario: L'IA se souvient des informations précédentes
         """
@@ -165,8 +165,8 @@ class TestMemoryAndContext:
 class TestErrorRecovery:
     """Test de récupération d'erreurs"""
 
-    @pytest.mark.asyncio
-    async def test_graceful_degradation_on_ai_failure(self, client, authenticated_user):
+    
+    def test_graceful_degradation_on_ai_failure(self, client, authenticated_user):
         """
         Scénario: L'application gère gracieusement les erreurs de l'IA
         """
@@ -187,8 +187,8 @@ class TestErrorRecovery:
 class TestDataPersistence:
     """Test de persistence des données"""
 
-    @pytest.mark.asyncio
-    async def test_data_survives_session(self, auth_app_factory):
+    
+    def test_data_survives_session(self, auth_app_factory):
         """
         Scénario: Les données persistent entre sessions
         """
@@ -229,8 +229,8 @@ class TestDataPersistence:
 class TestConcurrentUsers:
     """Test d'utilisation concurrente"""
 
-    @pytest.mark.asyncio
-    async def test_multiple_users_isolated(self, auth_app_factory):
+    
+    def test_multiple_users_isolated(self, auth_app_factory):
         """
         Scénario: Deux utilisateurs ne voient pas les données de l'autre
         """

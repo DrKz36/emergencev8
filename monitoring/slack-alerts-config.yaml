@@ -1,0 +1,95 @@
+# Configuration des alertes Slack pour Emergence
+# À utiliser avec Prometheus Alertmanager ou directement dans le code
+
+slack_webhook_url: "${SLACK_WEBHOOK_URL}"  # À définir dans .env
+channel: "#emergence-alerts"
+username: "Emergence Monitoring"
+icon_emoji: ":robot_face:"
+
+# Alertes critiques (notification immédiate)
+critical_alerts:
+  - name: "HighErrorRate"
+    condition: "error_rate > 5%"
+    message: |
+      🔥 **CRITICAL: Taux d'erreur élevé**
+      - Taux d'erreur: {{value}}%
+      - Seuil: 5%
+      - Actions: Vérifier logs, rollback si nécessaire
+
+  - name: "AITimeout"
+    condition: "ai_timeout_total > 0"
+    message: |
+      ⏱️ **CRITICAL: Timeout AI détecté**
+      - Provider: {{provider}}
+      - Model: {{model}}
+      - Durée: {{duration}}s
+      - Actions: Vérifier connexion API, augmenter timeout si nécessaire
+
+  - name: "SQLInjectionAttempt"
+    condition: "sql_injection_attempts_total > 0"
+    message: |
+      🚨 **SECURITY ALERT: Tentative d'injection SQL**
+      - IP: {{source_ip}}
+      - Endpoint: {{endpoint}}
+      - Payload: {{payload}}
+      - Actions: Bloquer IP, analyser pattern
+
+  - name: "BruteForceLogin"
+    condition: "failed_login_attempts > 5 in 5min"
+    message: |
+      🔒 **SECURITY ALERT: Brute force détecté**
+      - Email: {{email}}
+      - IP: {{source_ip}}
+      - Tentatives: {{attempts}}
+      - Actions: Bloquer IP, activer 2FA
+
+# Alertes warning (notification groupée)
+warning_alerts:
+  - name: "SlowResponse"
+    condition: "p95_latency > 2s"
+    message: |
+      ⚠️ **WARNING: Latence élevée**
+      - P95 latency: {{value}}s
+      - Endpoint: {{endpoint}}
+      - Actions: Investiguer performance
+
+  - name: "RateLimitExceeded"
+    condition: "rate_limit_exceeded > 100 in 1min"
+    message: |
+      ⚠️ **WARNING: Rate limit fréquemment dépassé**
+      - IP: {{source_ip}}
+      - Nombre: {{count}}
+      - Actions: Vérifier si abuse ou augmenter limite
+
+  - name: "SlowQuery"
+    condition: "query_duration > 1s"
+    message: |
+      ⚠️ **WARNING: Requête DB lente**
+      - Durée: {{duration}}s
+      - Query: {{query}}
+      - Actions: Optimiser query ou ajouter index
+
+# Alertes info (notification quotidienne)
+info_alerts:
+  - name: "DailyStats"
+    condition: "cron: 0 9 * * *"  # Tous les jours à 9h
+    message: |
+      📊 **Rapport quotidien Emergence**
+      - Requêtes totales: {{total_requests}}
+      - Utilisateurs actifs: {{active_users}}
+      - Taux d'erreur: {{error_rate}}%
+      - Temps de réponse moyen: {{avg_response_time}}s
+      - Top 3 endpoints: {{top_endpoints}}
+
+# Configuration de groupement
+grouping:
+  interval: "5m"  # Grouper alertes sur 5min
+  max_alerts: 10  # Maximum 10 alertes par notification
+
+# Configuration de récupération
+recovery:
+  send_resolved: true
+  message: |
+    ✅ **RESOLVED: {{alert_name}}**
+    - Durée: {{duration}}
+    - Résolu à: {{resolved_at}}
