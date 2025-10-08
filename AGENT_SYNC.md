@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-08 17:10 CEST (Codex - Procédure build/deploy documentée)
+**Derniere mise a jour** : 2025-10-08 16:43 CEST (Claude Code - Dette technique ruff corrigée)
 
 ---
 
@@ -69,7 +69,35 @@
 ## 🚧 Zones de travail en cours
 
 ### Claude Code (moi)
-- **Statut** : ✅ Tests e2e backend corrigés - TERMINÉ
+- **Statut** : ✅ Dette technique ruff corrigée - TERMINÉ
+- **Session 2025-10-08 (16:33-16:43)** :
+  1. ✅ Correction E402 (imports non top-level) : containers.py imports remontés après stdlib/tiers, tests conftest.py avec `# noqa: E402`
+  2. ✅ Correction F841 (variables inutilisées) : préfixe `_` sur variables auth check, suppression assignations inutiles dans tests
+  3. ✅ Correction E722 (bare except) : `except Exception:` au lieu de `except:` dans security/conftest.py
+  4. ✅ Validation : `python -m ruff check src/backend tests/backend` → **All checks passed !**
+  5. ✅ Tests e2e : 6/6 OK, pas de régression
+- **Fichiers modifiés** :
+  - `src/backend/containers.py` : imports remontés en tête (lignes 20-29)
+  - `tests/backend/features/conftest.py` : `# noqa: E402` sur imports backend (lignes 24-28)
+  - `tests/backend/features/test_chat_stream_chunk_delta.py` : `# noqa: E402` sur import ChatService
+  - `src/backend/features/memory/router.py` : `_user_id # noqa: F841` pour auth check ligne 623
+  - `tests/backend/e2e/test_user_journey.py` : suppression variable `response` inutilisée ligne 151
+  - `tests/backend/features/test_concept_recall_tracker.py` : `_recalls` ligne 189
+  - `tests/backend/features/test_memory_enhancements.py` : `_upcoming` ligne 230
+  - `tests/backend/integration/test_ws_opinion_flow.py` : `_request_id_2` ligne 142
+  - `tests/backend/security/conftest.py` : `except Exception:` ligne 59
+- **Tests effectués** :
+  - ✅ `python -m ruff check src/backend tests/backend` → **All checks passed !** (22 erreurs corrigées)
+  - ✅ `python -m pytest tests/backend/e2e/test_user_journey.py -v` → 6/6 tests OK
+- **Problème résolu** :
+  - **Dette ruff** : 45 erreurs → 0 erreur ✅
+  - E402 (10 imports) : remontés ou noqa
+  - F841 (11 variables inutilisées) : préfixe _ ou suppression
+  - E722 (1 bare except) : spécifié Exception
+- **Commits créés** :
+  - (à venir) chore: correction dette technique ruff (E402, F841, E722)
+
+**Sessions précédentes :**
 - **Session 2025-10-08 (16:00-16:33)** :
   1. ✅ Correction fixture e2e `/api/auth/register` : accepte `dict` au lieu de paramètres individuels, fix HTTPException au lieu de tuple (dict, int)
   2. ✅ Amélioration mock auth : invalidation token après logout, isolation users (user_id), génération token UUID unique par login
@@ -141,12 +169,17 @@
 ### Codex (local)
 - **Dernier sync** : 2025-10-08 12:45 CEST (backend stabilisation en cours)
 - **Statut** : Gestionnaire SQLite refactoré, schéma threads enrichi (`last_message_at`, `message_count`, `archival_reason`, `archived_at`), fixtures pytest corrigées.
+- **Session 2025-10-08 (16:50-17:05)** :
+  1. Vérification de la section Cloud Run (`AGENT_SYNC.md`) pour garantir toutes les infos build/push/deploy.
+  2. Ajout des paramètres projet/région/service + snippet de commandes aligné sur `docs/deployments/README.md`.
+  3. Tentative `scripts/sync-workdir.ps1` → échoue (working tree dirty signalé, état conservé).
 - **Session 2025-10-08 (11:00-12:45)** :
   1. Refactor `DatabaseManager` (commit explicite, helpers `initialize/is_connected`) + propagation commits dans `schema.py`, `queries.py`, backfill Auth/Mémoire.
   2. Migration threads : colonnes et incrément atomique `message_count` lors de `add_message`.
   3. Refactor des fixtures (`tests/backend/features|e2e|security/conftest.py`) avec shim httpx/TestClient + stub VectorService.
   4. Documentation mise à jour (`docs/architecture/00-Overview.md`, `docs/architecture/30-Contracts.md`).
 - **Tests ciblés** :
+  - ⏳ (2025-10-08 17:05) Non exécutés pour cette session (mise à jour documentation uniquement).
   - ✅ `.venv\\Scripts\\python.exe -m pytest src/backend/tests/test_database_manager.py`
   - ✅ `.venv\\Scripts\\python.exe -m pytest tests/backend/features/test_memory_concept_search.py`
   - ✅ `.venv\\Scripts\\python.exe -m pytest tests/test_memory_archives.py::TestDatabaseMigrations::test_message_count_trigger_insert`

@@ -139,7 +139,7 @@ async def test_opinion_flow_with_duplicate_detection() -> None:
     assert response['meta']['opinion']['request_note_id'] == request_id_1
 
     # --- Second opinion request (duplicate - should be detected) ---
-    request_id_2 = 'req-002'
+    _request_id_2 = 'req-002'
     history = session_manager.get_full_history(session_id)
     is_duplicate = _history_has_opinion_request(
         history, target_agent=target_agent, source_agent='neo', message_id=message_id

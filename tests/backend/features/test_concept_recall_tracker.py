@@ -186,7 +186,7 @@ async def test_update_mention_metadata(vector_service, tracker):
     )
 
     # Act: Detect recurrence in new thread
-    recalls = await tracker.detect_recurring_concepts(
+    _recalls = await tracker.detect_recurring_concepts(
         message_text="Kubernetes orchestration setup",
         user_id="user_123",
         thread_id="thread_2",

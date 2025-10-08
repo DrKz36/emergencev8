@@ -1,3 +1,88 @@
+## [2025-10-08 17:10] - Agent: Codex (Procédure Cloud Run Doc)
+
+### Fichiers modifiés
+- AGENT_SYNC.md
+
+### Contexte
+- Vérification demandée : garantir que `AGENT_SYNC.md` contient toutes les informations nécessaires pour builder une nouvelle image Docker et déployer une révision Cloud Run.
+- Alignement avec la procédure officielle documentée dans `docs/deployments/README.md`.
+
+### Actions réalisées
+1. Lecture des consignes obligatoires (`AGENT_SYNC.md`, `AGENTS.md`, `docs/passation.md`), puis tentative de `scripts/sync-workdir.ps1` (arrêt contrôlé : dépôt dirty déjà signalé).
+2. Audit de la section Cloud Run (révision/image/URL) et identification des informations manquantes (service, projet, région, registry, commandes).
+3. Ajout d'un bloc "Procédure build & déploiement rapide" avec prérequis + commandes `docker build`, `docker push`, `gcloud run deploy` + post-checks.
+4. Mise à jour de la section "Codex (local)" dans `AGENT_SYNC.md` pour tracer la session doc-only.
+
+### Tests
+- ⏳ Non exécutés (mise à jour documentation uniquement).
+
+### Résultats
+- `AGENT_SYNC.md` fournit maintenant un guide opérationnel complet pour builder/pusher/déployer une nouvelle révision Cloud Run.
+- Journal inter-agents enrichi (session Codex documentée) pour faciliter la reprise.
+
+### Prochaines actions recommandées
+1. Rerun `scripts/sync-workdir.ps1` après commit du refactor backend pour rétablir la routine de sync.
+2. Relancer les suites `pytest`, `ruff`, `mypy`, smoke dès que la base backend est stabilisée (dette pré-existante).
+
+### Blocages
+- Working tree toujours dirty (refactor backend en cours) → empêche la sync automatique tant que les commits ne sont pas poussés.
+
+---
+
+## [2025-10-08 16:43] - Agent: Claude Code (Dette Technique Ruff)
+
+### Fichiers modifiés
+- src/backend/containers.py
+- tests/backend/features/conftest.py
+- tests/backend/features/test_chat_stream_chunk_delta.py
+- src/backend/features/memory/router.py
+- tests/backend/e2e/test_user_journey.py
+- tests/backend/features/test_concept_recall_tracker.py
+- tests/backend/features/test_memory_enhancements.py
+- tests/backend/integration/test_ws_opinion_flow.py
+- tests/backend/security/conftest.py
+
+### Contexte
+Après session 16:33 (tests e2e corrigés), restait 22 erreurs ruff (E402 imports non top-level, F841 variables inutilisées, E722 bare except). Codex avait laissé cette dette technique existante (passation 12:45). Session dédiée à nettoyer complètement la codebase backend.
+
+### Actions réalisées
+1. **Correction E402 (imports non top-level)** - 10 erreurs :
+   - `containers.py` : déplacé imports backend (lignes 23-33) en haut du fichier après imports stdlib/tiers (lignes 20-29)
+   - `tests/backend/features/conftest.py` : ajout `# noqa: E402` sur imports backend (lignes 24-28) car nécessite `sys.path` modifié avant
+   - `test_chat_stream_chunk_delta.py` : ajout `# noqa: E402` sur import ChatService (ligne 9)
+
+2. **Correction F841 (variables inutilisées)** - 11 erreurs :
+   - `memory/router.py` ligne 623 : `user_id` → `_user_id # noqa: F841` (auth check, variable intentionnellement inutilisée)
+   - `test_user_journey.py` ligne 151 : suppression assignation `response` inutilisée dans test memory recall
+   - `test_concept_recall_tracker.py` ligne 189 : `recalls` → `_recalls`
+   - `test_memory_enhancements.py` ligne 230 : `upcoming` → `_upcoming`
+   - `test_ws_opinion_flow.py` ligne 142 : `request_id_2` → `_request_id_2`
+
+3. **Correction E722 (bare except)** - 1 erreur :
+   - `tests/backend/security/conftest.py` ligne 59 : `except:` → `except Exception:`
+
+### Tests
+- ✅ `python -m ruff check src/backend tests/backend` → **All checks passed !** (22 erreurs corrigées)
+- ✅ `python -m pytest tests/backend/e2e/test_user_journey.py -v` → 6/6 tests OK (pas de régression)
+
+### Résultats
+- **Dette ruff backend : 45 erreurs → 0 erreur** ✅
+  - Session 16:00-16:33 : 23 erreurs auto-fixées (imports inutilisés)
+  - Session 16:33-16:43 : 22 erreurs manuellement corrigées (E402, F841, E722)
+- Codebase backend propre et conforme aux standards ruff
+- Tests e2e toujours 100% fonctionnels
+
+### Prochaines actions recommandées
+1. Corriger dette mypy backend (6 erreurs : benchmarks/persistence.py, features/benchmarks/service.py, middleware.py, alerts.py)
+2. Vérifier scripts seeds/migrations avec commits explicites (action laissée par Codex 12:45)
+3. Relancer smoke tests `pwsh -File tests/run_all.ps1` après correctifs credentials
+4. Build + déploiement Cloud Run si validation FG
+
+### Blocages
+- Aucun
+
+---
+
 ## [2025-10-08 16:33] - Agent: Claude Code (Tests E2E Backend)
 
 ### Fichiers modifiés
@@ -630,4 +715,3 @@ pm run build (warning importmap existant)
 
 ### Blocages
 - Aucun.
-

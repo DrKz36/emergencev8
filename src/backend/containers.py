@@ -17,22 +17,20 @@ from typing import Optional
 from dependency_injector import containers, providers
 import httpx
 
-logger = logging.getLogger(__name__)
-
-# --- Services principaux ---
 from backend.shared.config import Settings
 from backend.core.database.manager import DatabaseManager
 from backend.core.cost_tracker import CostTracker
 from backend.core.session_manager import SessionManager
 from backend.core.websocket import ConnectionManager
-
 from backend.features.auth.service import AuthService, build_auth_config_from_env
 from backend.features.auth.rate_limiter import SlidingWindowRateLimiter
-from backend.features.memory.vector_service import VectorService  # persist_directory + embed_model_name
+from backend.features.memory.vector_service import VectorService
 from backend.features.memory.analyzer import MemoryAnalyzer
 from backend.features.chat.service import ChatService
 
-# --- Features optionnelles (tolérance à l’absence) ---
+logger = logging.getLogger(__name__)
+
+# --- Features optionnelles (tolérance à l'absence) ---
 try:
     from backend.features.dashboard.service import DashboardService  # type: ignore
     from backend.features.dashboard.admin_service import AdminDashboardService  # type: ignore

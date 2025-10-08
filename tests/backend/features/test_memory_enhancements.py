@@ -227,7 +227,7 @@ class TestIntentTracker:
     async def test_check_expiring_intents(self, intent_tracker):
         """Test détection des intentions expirantes."""
         now = datetime.now(timezone.utc)
-        upcoming = now + timedelta(days=3)
+        _upcoming = now + timedelta(days=3)
 
         collection = Mock()
         collection.get = Mock(

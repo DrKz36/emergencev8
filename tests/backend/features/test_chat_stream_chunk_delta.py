@@ -6,7 +6,7 @@ SRC_DIR = ROOT_DIR / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from backend.features.chat.service import ChatService
+from backend.features.chat.service import ChatService  # noqa: E402
 
 
 def test_compute_chunk_delta_returns_initial_chunk():

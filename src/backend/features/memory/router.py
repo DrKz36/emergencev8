@@ -620,7 +620,7 @@ async def search_memory(
 
     # Get user_id from auth
     try:
-        user_id = await shared_dependencies.get_user_id(request)
+        _user_id = await shared_dependencies.get_user_id(request)  # noqa: F841
     except HTTPException:
         raise HTTPException(status_code=401, detail="Authentication required")
 

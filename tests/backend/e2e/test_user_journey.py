@@ -148,7 +148,7 @@ class TestMemoryAndContext:
         )
 
         # 2. Demander un rappel plus tard
-        response = client.post(
+        client.post(
             "/api/chat",
             json={
                 "message": "Quel est mon prénom et mon métier?",

@@ -56,7 +56,7 @@ def client(auth_app_factory):
                 return Response(status_code=422, content='{"error": "Invalid input"}')
 
             return Response(status_code=401, content='{"error": "Unauthorized"}')
-        except:
+        except Exception:
             return Response(status_code=400, content='{"error": "Bad request"}')
 
     @app.post("/api/auth/register")
