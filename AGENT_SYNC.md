@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-08 20:30 CEST (Claude Code - Phase 2 Performance implémentée : neo_analysis + cache + débats parallèles)
+**Derniere mise a jour** : 2025-10-08 12:25 CEST (Codex - Déploiement Phase 2 en production)
 
 ---
 
@@ -22,21 +22,21 @@
 ### Branche active
 - **Branche courante** : `main`
 - **Derniers commits** :
-  - `b45cfd8` docs: mise à jour AGENT_SYNC.md - session fix navigation menu mobile
-  - `98d9fb3` docs: mise à jour documentation sessions et déploiement
-  - `cec2a0f` fix: correction navigation menu mobile - backdrop bloquait les clics
+  - `b5a0caa` docs: index Phase 2 dans README deployments + checklist validation
+  - `30d09e8` docs: guide build/deploy Cloud Run complet pour Codex (troubleshooting + logs Phase 2)
+  - `c7079f0` docs: passation Phase 2 + instructions build/deploy pour Codex
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
 - `codex` → SSH : `git@github.com:DrKz36/emergencev8.git`
 
 ### Déploiement Cloud Run
-- **Révision active** : `emergence-app-00270-zs6`
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251008-082149`
+- **Révision active** : `emergence-app-00274-m4w`
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251008-121131`
 - **URL** : https://emergence-app-486095406755.europe-west1.run.app
-- **Déployé** : 2025-10-08 08:22 CEST
+- **Déployé** : 2025-10-08 12:11 CEST
 - **Trafic** : 100% sur nouvelle révision
-- **Documentation** : [docs/deployments/2025-10-08-cloud-run-revision-00270.md](docs/deployments/2025-10-08-cloud-run-revision-00270.md)
+- **Documentation** : [docs/deployments/2025-10-08-cloud-run-revision-00274.md](docs/deployments/2025-10-08-cloud-run-revision-00274.md)
 - **Service Cloud Run** : `emergence-app`
 - **Projet GCP** : `emergence-469005`
 - **Région** : `europe-west1`
@@ -62,7 +62,7 @@
 - **Post-déploiement** : `gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005`, vérifier `/api/health` et `/api/metrics`.
 
 ### Working tree
-- ⚠️ Dirty (backend refactor en cours : requirements + core DB + auth/memory services + docs/passation/AGENT_SYNC)
+- ⚠️ Dirty (docs déploiement 00274 + AGENT_SYNC + passation en cours)
 
 ---
 
@@ -224,13 +224,13 @@
 - **Blocage** : Accès réseau GitHub (HTTP 403)
 - **Actions recommandées** : `git fetch --all --prune` puis `git rebase origin/main` une fois réseau OK
 
-### Codex (local)
-- **Dernier sync** : 2025-10-08 12:45 CEST (backend stabilisation en cours)
-- **Statut** : Gestionnaire SQLite refactoré, schéma threads enrichi (`last_message_at`, `message_count`, `archival_reason`, `archived_at`), fixtures pytest corrigées.
-- **Session 2025-10-08 (16:50-17:05)** :
-  1. Vérification de la section Cloud Run (`AGENT_SYNC.md`) pour garantir toutes les infos build/push/deploy.
-  2. Ajout des paramètres projet/région/service + snippet de commandes aligné sur `docs/deployments/README.md`.
-  3. Tentative `scripts/sync-workdir.ps1` → échoue (working tree dirty signalé, état conservé).
+- **Dernier sync** : 2025-10-08 12:25 CEST (Phase 2 déployée)
+- **Statut** : Image `deploy-20251008-121131` construite/poussée, révision Cloud Run `emergence-app-00274-m4w` active (100% trafic).
+- **Session 2025-10-08 (11:45-12:25)** :
+  1. Lecture passation/roadmap + vérification gcloud (`gcloud config get-value project`, `gcloud auth configure-docker`).
+  2. Build Docker `deploy-20251008-121131` (`docker build --platform linux/amd64 ...`) puis push Artifact Registry.
+  3. `gcloud run deploy emergence-app --image ...:deploy-20251008-121131` → révision `00274-m4w`, santé `/api/health` et `/api/metrics` = 200.
+  4. Documentation mise à jour : `docs/deployments/README.md`, `docs/deployments/2025-10-08-cloud-run-revision-00274.md`, `AGENT_SYNC.md`, entrée passation.
 - **Session 2025-10-08 (11:00-12:45)** :
   1. Refactor `DatabaseManager` (commit explicite, helpers `initialize/is_connected`) + propagation commits dans `schema.py`, `queries.py`, backfill Auth/Mémoire.
   2. Migration threads : colonnes et incrément atomique `message_count` lors de `add_message`.

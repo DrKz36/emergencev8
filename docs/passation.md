@@ -1,3 +1,33 @@
+## [2025-10-08 12:30] - Agent: Codex (Déploiement Phase 2 Prod)
+
+### Fichiers modifiés
+- docs/deployments/2025-10-08-cloud-run-revision-00274.md (nouveau rapport de déploiement)
+- docs/deployments/README.md (tableau révisions mis à jour)
+- AGENT_SYNC.md (section Cloud Run + sessions Codex)
+- docs/passation.md (entrée courante)
+
+### Contexte
+Concrétisation du déploiement Phase 2 Performance en production : construction d'une nouvelle image Docker `deploy-20251008-121131`, push dans Artifact Registry puis déploiement Cloud Run révision `emergence-app-00274-m4w`. Vérifications health/metrics OK et documentation de déploiement mise à jour.
+
+### Actions réalisées
+1. Lecture AGENT_SYNC / CODEV / passation + vérifications `gcloud config get-value project` et `gcloud auth configure-docker europe-west1-docker.pkg.dev`.
+2. Construction de l'image `deploy-20251008-121131` (`docker build --platform linux/amd64 ...`) et push sur Artifact Registry.
+3. Déploiement Cloud Run (`gcloud run deploy emergence-app --image ...:deploy-20251008-121131`) → révision `00274-m4w` active 100% trafic.
+4. Sanity checks prod (`/api/health`, `/api/metrics`, `gcloud run revisions list`) + création du rapport `docs/deployments/2025-10-08-cloud-run-revision-00274.md`.
+
+### Tests
+- ⚠️ `pwsh -File scripts/sync-workdir.ps1` → échoue (smoke login nécessite `EMERGENCE_SMOKE_EMAIL/EMERGENCE_SMOKE_PASSWORD`). Dette existante.
+- ✅ `Invoke-WebRequest https://emergence-app-486095406755.europe-west1.run.app/api/health` → 200.
+- ✅ `Invoke-WebRequest https://emergence-app-486095406755.europe-west1.run.app/api/metrics` → 200 (`Metrics disabled` attendu).
+
+### Prochaines actions recommandées
+1. Monitorer les logs Cloud Run (`MemoryAnalyzer` + `Cache (HIT|SAVED)` + `debate`) pour confronter latences/ratios aux objectifs Phase 2.
+2. Préparer un rapport métriques Phase 2 (latence analyses, hit rate cache, latence débats) dès que suffisamment de trafic est collecté.
+3. Fournir des identifiants smoke-tests pour rétablir `tests/run_all.ps1` dans `scripts/sync-workdir.ps1`.
+
+### Blocages
+- Pas d'accès aux identifiants smoke-tests → `tests/run_all.ps1` reste KO dans le script de sync.
+
 ## [2025-10-08 20:45] - Agent: Claude Code (Phase 2 Optimisation Performance - TERMINÉ ✅)
 
 ### Fichiers modifiés

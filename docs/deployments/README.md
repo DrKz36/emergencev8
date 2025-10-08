@@ -17,8 +17,8 @@ Chaque déploiement est documenté avec :
 
 | Date | Révision | Image Tag | Description | Statut |
 |------|----------|-----------|-------------|--------|
-| 2025-10-08 | ⏳ *en attente* | ⏳ *Codex build/deploy* | **Phase 2 Performance** : neo_analysis + cache + débats parallèles ([détails](2025-10-08-phase2-perf.md)) | 🚧 Prêt pour deploy |
-| 2025-10-08 | `emergence-app-00270-zs6` | `deploy-20251008-082149` | Cloud Run refresh (menu mobile confirmé) | ✅ Active (100%) |
+| 2025-10-08 | `emergence-app-00274-m4w` | `deploy-20251008-121131` | **Phase 2 Performance** en production (neo_analysis, cache mémoire, débats parallèles) ([rapport](2025-10-08-cloud-run-revision-00274.md)) | ✅ Active (100%) |
+| 2025-10-08 | `emergence-app-00270-zs6` | `deploy-20251008-082149` | Cloud Run refresh (menu mobile confirmé) | ⏸️ Archived |
 | 2025-10-08 | `emergence-app-00269-5qs` | `deploy-20251008-064424` | Cloud Run refresh (harmonisation UI cockpit/hymne) | ⏸️ Archived |
 | 2025-10-06 | `emergence-app-00268-9s8` | `deploy-20251006-060538` | Agents & UI refresh (personnalités, module documentation, responsive) | ⏸️ Archived |
 | 2025-10-05 | `emergence-app-00266-jc4` | `deploy-20251005-123837` | Corrections audit (13 fixes, score 87.5→95/100) | ⏸️ Archived |
