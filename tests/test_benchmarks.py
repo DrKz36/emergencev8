@@ -7,16 +7,16 @@ SRC_DIR = ROOT_DIR / 'src'
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-
-from backend.benchmarks import (
+# Imports après sys.path modification (nécessaire pour trouver backend.*)
+from backend.benchmarks import (  # noqa: E402
     AgentTopology,
     OrchestrationMode,
     MemoryMode,
     BenchmarksRepository,
 )
-from backend.features.benchmarks.service import BenchmarksService
-from backend.core.database.manager import DatabaseManager
-from backend.core.database import schema
+from backend.features.benchmarks.service import BenchmarksService  # noqa: E402
+from backend.core.database.manager import DatabaseManager  # noqa: E402
+from backend.core.database import schema  # noqa: E402
 
 MIGRATIONS_DIR = Path('src/backend/core/migrations').resolve()
 
