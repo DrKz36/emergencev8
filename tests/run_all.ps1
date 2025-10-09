@@ -62,6 +62,7 @@ try {
     Write-Host "Documents avec slash FAILED: $_"
 }
 
+$uploadDocId = $null
 Write-Host "`n=== [4] Upload fichier test_upload.txt via curl.exe ==="
 $repoPath = (Get-Location).Path
 $testFile = Join-Path $repoPath 'test_upload.txt'
@@ -85,14 +86,42 @@ try {
         throw "curl exit code $LASTEXITCODE"
     }
     Write-Host "Reponse upload : $uploadResp"
+    try {
+        $uploadJson = $uploadResp | ConvertFrom-Json
+        if ($uploadJson -is [System.Collections.IEnumerable]) {
+            foreach ($entry in $uploadJson) {
+                if ($null -eq $entry) { continue }
+                if ($entry.id) {
+                    $uploadDocId = [string]$entry.id
+                    break
+                }
+                if ($entry.document -and $entry.document.id) {
+                    $uploadDocId = [string]$entry.document.id
+                    break
+                }
+            }
+        } elseif ($uploadJson.id) {
+            $uploadDocId = [string]$uploadJson.id
+        } elseif ($uploadJson.document -and $uploadJson.document.id) {
+            $uploadDocId = [string]$uploadJson.document.id
+        }
+        if ($uploadDocId) {
+            Write-Host ("Document upload ID detecte: {0}" -f $uploadDocId)
+        } else {
+            Write-Host "Impossible de detecter l'ID du document upload (reponse non standard)."
+        }
+    } catch {
+        Write-Host "Parse upload JSON FAILED: $_"
+    }
 } catch {
     Write-Host "Upload FAILED: $_"
 }
 
-Write-Host "`n=== [5] Suppression du document ID=1 (si existe) ==="
+Write-Host "`n=== [5] Suppression du document cree (si detecte) ==="
 try {
-    Invoke-RestMethod -Uri "$resolvedBase/api/documents/1" -Method DELETE -Headers $commonHeaders -TimeoutSec 20 | Out-Null
-    Write-Host "Suppression du document 1 OK (si existait)."
+    $targetDocId = if ($uploadDocId) { $uploadDocId } else { "1" }
+    Invoke-RestMethod -Uri "$resolvedBase/api/documents/$targetDocId" -Method DELETE -Headers $commonHeaders -TimeoutSec 20 | Out-Null
+    Write-Host ("Suppression du document {0} OK (si existait)." -f $targetDocId)
 } catch {
     Write-Host "Suppression FAILED (peut etre normal si ID=1 n'existe pas): $_"
 }
@@ -124,4 +153,3 @@ try {
     Write-Host "benchmarks pytest FAILED: $_"
 }
 Write-Host "`n=== Tests termines ==="
-

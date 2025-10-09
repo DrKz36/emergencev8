@@ -190,12 +190,62 @@ rate(concept_recall_vector_search_duration_seconds_count[5m])
 curl -s https://emergence-app-47nct44nma-ew.a.run.app/api/metrics | grep memory_analysis
 ```
 
-### Script validation automatique
+### Script validation automatique (cockpit unifié)
 
 ```bash
-# Exécuter: python qa_metrics_validation.py
-# Note: Nécessite AUTH_DEV_MODE=1 ou credentials valides
+python qa_metrics_validation.py \
+  --base-url https://emergence-app-47nct44nma-ew.a.run.app \
+  --login-email gonzalefernando@gmail.com \
+  --login-password '***' \
+  --trigger-memory \
+  --json-output qa-report.json
 ```
+
+- Enchaîne la stimulation des métriques Prometheus + scénario timeline + analyse mémoire.
+- Imprime un résumé console et écrit un rapport JSON (`qa-report.json`) pour la revue FG.
+- Options clefs : `--skip-timeline`, `--skip-metrics`, `--chat-prompts ...`, `--use-rag`, `--force-read-only-probe`.
+
+### Scénario timeline cockpit (mode standalone)
+
+```bash
+python scripts/qa/qa_timeline_scenario.py \
+  --base-url https://emergence-app-47nct44nma-ew.a.run.app \
+  --login-email gonzalefernando@gmail.com \
+  --login-password '***' \
+  --agent anima
+```
+
+- Wrapper `qa_metrics_validation.py --skip-metrics`, conserve la CLI historique.
+- Échoue si les deltas `messages`, `tokens` ou `costs` restent nuls.
+- Paramètres propagés : `--timeline-period 30d`, `--use-rag`, `--ws-timeout`, `--json-output`.
+
+### Routine planifiée (timeline + smoke suite)
+
+```powershell
+pwsh -File scripts/qa/run_cockpit_qa.ps1 `
+  -BaseUrl https://emergence-app-47nct44nma-ew.a.run.app `
+  -LoginEmail gonzalefernando@gmail.com `
+  -LoginPassword '***' `
+  -TriggerMemory `
+  -RunCleanup
+```
+
+- Enchaîne `qa_metrics_validation.py`, `tests/run_all.ps1` puis `purge_test_documents.py`.
+- Programmable via Windows Task Scheduler (quotidien 07:30) ou cron (`0 6 * * * pwsh …`).
+- Permet `-SkipTimeline`, `-SkipMetrics`, `-SkipTests`, `-UseRag`, `-RunCleanup`.
+
+### Nettoyage automatisé des artefacts QA
+
+```bash
+python scripts/qa/purge_test_documents.py \
+  --base-url https://emergence-app-47nct44nma-ew.a.run.app \
+  --pattern test_upload \
+  --dry-run
+```
+
+- Supprime les documents dont le nom contient `pattern` (ID filtrable via `--min-id`).
+- Fallback `/api/auth/dev/login` disponible sauf `--no-dev-login`.
+- Intégré par défaut dans `run_cockpit_qa.ps1 -RunCleanup`.
 
 ### Logs Cloud Run
 
@@ -214,7 +264,7 @@ gcloud logging read \
 
 1. ✅ **Déploiement**: Métriques actives en prod
 2. ✅ **Dashboard**: JSON Grafana créé
-3. ⏸️ **QA fonctionnelle**: Nécessite trafic utilisateur réel pour incrémenter compteurs
+3. ✅ **QA fonctionnelle**: `qa_metrics_validation.py` (fallback bypass) + `qa_timeline_scenario.py` (auth complète) pour alimenter cockpit
 4. ⏸️ **Alerting**: Configurer alerts Prometheus/Alertmanager
 5. ⏸️ **SLO**: Définir objectifs (ex: p95 latency < 5s, cache hit > 40%)
 

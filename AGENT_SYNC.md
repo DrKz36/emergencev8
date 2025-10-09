@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-09 05:40 CEST (Codex - metrics001 actif + Prometheus)
+**Derniere mise a jour** : 2025-10-09 10:15 CEST (Codex - QA cockpit unifié + purge artefacts)
 
 ---
 
@@ -31,13 +31,15 @@
 - `codex` → SSH : `git@github.com:DrKz36/emergencev8.git`
 
 ### Déploiement Cloud Run
-- **Révision active** : `emergence-app-metrics001`
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:c1aa10d52884aab51516008511ad5b4c6b8d634c6406a9866aae2a939bcebc86`
+- **Révision active** : `emergence-app-phase3b`
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:4c0a5159057ac5adcd451b647110bfafbc0566a701452f90486e66f93d8dbf17`
 - **URL principale** : https://emergence-app-47nct44nma-ew.a.run.app
 - **Alias historique** : https://emergence-app-486095406755.europe-west1.run.app
-- **Déployé** : 2025-10-09 05:25 CEST (trafic 100 %)
-- **Trafic** : 100% sur `metrics001` (alias canary conservé)
-- **Documentation** : [docs/deployments/2025-10-09-activation-metrics-phase3.md](docs/deployments/2025-10-09-activation-metrics-phase3.md)
+- **Déployé** : 2025-10-09 07:47 CEST (trafic 100 %)
+- **Trafic** : 100% sur `phase3b` (alias canary conservé)
+- **Documentation** :
+  - [docs/deployments/2025-10-09-deploy-cockpit-phase3.md](docs/deployments/2025-10-09-deploy-cockpit-phase3.md)
+  - [docs/deployments/2025-10-09-activation-metrics-phase3.md](docs/deployments/2025-10-09-activation-metrics-phase3.md)
 - **Service Cloud Run** : `emergence-app`
 - **Projet GCP** : `emergence-469005`
 - **Région** : `europe-west1`
@@ -63,7 +65,7 @@
 - **Post-déploiement** : `gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005`, vérifier `/api/health` et `/api/metrics`.
 
 ### Working tree
-- ⚠️ Dirty (rapport metrics Phase 3 + doc sync) — laisser intacts les changements backend/dashboard déjà présents
+- ⚠️ Dirty (correctif timeline + qa script + docs session en cours) — laisser intacts les changements backend/dashboard déjà présents
 
 ---
 
@@ -294,8 +296,31 @@
   - Documentation complète (LIMITATIONS.md, MONITORING_GUIDE.md)
 
 ### Codex (cloud)
-- **Dernier sync** : 2025-10-09 05:40 CEST (révision metrics001 en production, métriques actives)
-- **Statut** : Revision `emergence-app-metrics001` (image `deploy-20251008-183707`) sert 100 % du trafic. Prometheus expose les 13 métriques Phase 3 depuis `/api/metrics` (hosts legacy + nouveau). Documentation et passation synchronisées.
+- **Dernier sync** : 2025-10-09 10:10 CEST (scripts QA cockpit unifiés, purge automatisée OK)
+- **Statut** : Révision `emergence-app-phase3b` stable (timeline service LEFT JOIN). QA combinée via `qa_metrics_validation.py` + routine `run_cockpit_qa.ps1`. Script de purge documents disponible (`scripts/qa/purge_test_documents.py`).
+- **Session 2025-10-09 (09:00-10:10)** :
+  1. ✅ Fusion `qa_metrics_validation.py` + scénario timeline (CLI `--login-email/--login-password`, rapport JSON, lecture seule fallback).
+  2. ✅ Stub `scripts/qa/qa_timeline_scenario.py` (compatibilité), orchestration `scripts/qa/run_cockpit_qa.ps1`, purge ciblée `scripts/qa/purge_test_documents.py`.
+  3. ✅ `tests/run_all.ps1` : suppression automatique du document uploadé (parsing ID).
+  4. ✅ Documentation : `docs/monitoring/prometheus-phase3-setup.md` (nouvelle routine), `docs/qa/cockpit-qa-playbook.md` (snapshot clean + planification).
+  5. ✅ Vérifs locales : `python qa_metrics_validation.py --skip-metrics --skip-timeline`, `ruff check qa_metrics_validation.py scripts/qa`, `python -m compileall qa_metrics_validation.py scripts/qa`, `python -m pytest`, `mypy src`, `npm run build`.
+- **Session 2025-10-09 (08:05-08:35)** :
+  1. ✅ Ajout script `scripts/qa/qa_timeline_scenario.py` (login password, WebSocket JWT, timeline delta assert + sortie JSON).
+  2. ✅ Exécution QA timeline sur `emergence-app-phase3b` : messages +2, tokens +2403, coût +0.000424 → timelines cockpit 7d alimentées (agent `anima`).
+  3. ✅ `pwsh -File tests/run_all.ps1 -BaseUrl https://emergence-app-47nct44nma-ew.a.run.app -SmokeEmail/-SmokePassword` (succès complet, upload doc id=44, benchmarks/memory_clear OK).
+  4. ✅ Batteries qualité locales : `npm run build`, `python -m pytest`, `ruff check`, `python -m mypy src` (tous verts, warnings pydantic/starlette informatifs).
+  5. ✅ Doc sync amorcée (`AGENT_SYNC.md`, `docs/passation.md`, ajout note monitoring timeline) + relevé QA pour prochain brief FG.
+- **Next (Codex)** :
+  1. QA end-to-end distante (`scripts/qa/run_cockpit_qa.ps1 -TriggerMemory`) avec credentials prod avant validation FG.
+  2. Archiver `qa-report.json` + log smoke dans `docs/monitoring/snapshots/` (préparer bundle commit/push).
+  3. Brancher la routine planifiée (Task Scheduler + cron) et ajouter badge de statut dans `README`.
+- **Session 2025-10-09 (06:30-07:55)** :
+  1. Lecture consignes (AGENT_SYNC, AGENTS, CODEV_PROTOCOL, docs/passation x3, architecture, Memoire, Roadmap, PROMPT_CODEX_DEPLOY_PHASE3). `pwsh -File scripts/sync-workdir.ps1` → échec attendu (smoke credentials requis).
+  2. Tests locaux : `npm run build`, `.venv\\...python -m pytest`, `ruff check`, `mypy src` (tous ✅), ajout `types-psutil` dans `requirements.txt`.
+  3. Build & push `cockpit-phase3-20251009-070747`, déploiement `emergence-app-cockpit-phase3`, bascule trafic → détection erreurs SQL `near \"LEFT\"` sur `/api/dashboard/timeline/*`.
+  4. Correctif backend : refactor `TimelineService` (filtres injectés dans les `LEFT JOIN`), mise à jour `qa_metrics_validation.py` (fallback bypass) + rebuild image `cockpit-phase3-20251009-073931`.
+  5. Déploiement Cloud Run `emergence-app-phase3b`, routage 100 % trafic, conservation alias canary `00279-kub` (0 %).
+  6. Validation prod : healthcheck, metrics, timelines 7d/30d (payload 200), `gcloud logging read` (plus d'erreurs timeline), QA script fallback lecture seule OK. Création `docs/deployments/2025-10-09-deploy-cockpit-phase3.md`, mise à jour `docs/deployments/README.md`, `AGENT_SYNC.md`, `docs/passation.md`.
 - **Session 2025-10-09 (04:40-05:40)** :
   1. Lecture consignes (AGENT_SYNC, AGENTS, CODEV_PROTOCOL, docs/passation, `PROMPT_CODEX_ENABLE_METRICS.md`, doc architecture/mémoire).
   2. Vérifications environnement : `python --version`, `node --version`, `npm --version`, `gcloud auth list`, `git status`, `git fetch --all --prune`, `git rebase origin/main`.

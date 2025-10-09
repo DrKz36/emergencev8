@@ -1,3 +1,93 @@
+## [2025-10-09 08:45] - Agent: Codex (QA timeline + smoke)
+
+### Fichiers modifiés
+- scripts/qa/qa_timeline_scenario.py (nouveau scénario QA authentifié + vérification timeline)
+- docs/monitoring/prometheus-phase3-setup.md (ajout guide scénario timeline cockpit + mise à jour étapes QA)
+- AGENT_SYNC.md (section Codex cloud + horodatage)
+- docs/passation.md (entrée courante)
+
+### Contexte
+- Garantir que le cockpit Phase 3 dispose de données non nulles (messages/tokens/coûts) sur la révision `emergence-app-phase3b`.
+- Automatiser un flux QA complet (smoke PowerShell + batteries locales) avant revue finale FG.
+
+### Actions réalisées
+1. Création du script `scripts/qa/qa_timeline_scenario.py` : login email/password, connexion WebSocket JWT, envoi `chat.message`, comparaison timelines `/api/dashboard/timeline/*`, export JSON détaillé.
+2. Exécution du scénario sur prod (`anima`, thread `4e423e61d0784f91bfad57302a756563`) → delta messages +2, tokens +2403, cost +0.0004239 (date 2025-10-09).
+3. `pwsh -File tests/run_all.ps1 -BaseUrl https://emergence-app-47nct44nma-ew.a.run.app -SmokeEmail/-SmokePassword` (santé OK, dashboard summary, upload doc id=44, pytest ciblés OK).
+4. Relance complète qualité locale : `npm run build`, `python -m pytest`, `ruff check`, `python -m mypy src` (tous ✅, warnings Pydantic/FastAPI connus).
+5. Documentation synchronisée : ajout section QA timeline dans `docs/monitoring/prometheus-phase3-setup.md`, mise à jour `AGENT_SYNC.md`, présente passation.
+
+### Tests
+- ✅ `python scripts/qa/qa_timeline_scenario.py --base-url https://emergence-app-47nct44nma-ew.a.run.app --email gonzalefernando@gmail.com --password ********`
+- ✅ `pwsh -File tests/run_all.ps1 -BaseUrl https://emergence-app-47nct44nma-ew.a.run.app -SmokeEmail gonzalefernando@gmail.com -SmokePassword ********`
+- ✅ `npm run build`
+- ✅ `python -m pytest`
+- ✅ `ruff check`
+- ✅ `python -m mypy src`
+
+### Résultats
+- Cockpit 7d (2025-10-09) : `messages=2`, `tokens.total=2403`, `cost=0.0004239`, agent `anima` confirmé dans `ws_completions`.
+- Smoke PowerShell vert (health/dashboard/documents/upload+delete, pytest mémoire & benchmarks).
+- Suites locales au vert ; aucun échec bloquant restant.
+
+### Prochaines actions recommandées
+1. Étendre `qa_metrics_validation.py` pour réutiliser le scénario authentifié (`qa_timeline_scenario`) et publier un rapport consolidé.
+2. Purger/archiver les documents `test_upload.txt` (IDs 41-44) générés par les smoke tests automatisés.
+3. Préparer le bundle commit/push et solliciter FG pour revue finale de la phase 3b.
+
+### Blocages
+- Aucun.
+
+## [2025-10-09 07:55] - Agent: Codex (Déploiement Cockpit Phase 3)
+
+### Fichiers modifiés
+- build_tag.txt
+- docs/deployments/2025-10-09-deploy-cockpit-phase3.md
+- docs/deployments/README.md
+- AGENT_SYNC.md
+- docs/passation.md (entrée courante)
+- qa_metrics_validation.py
+- requirements.txt
+- src/backend/features/dashboard/timeline_service.py
+
+### Contexte
+Correction du SQL des endpoints timeline en production (logs `Erreur get_activity_timeline: near "LEFT": syntax error`) et déploiement d’une image Phase 3 patchée avec validations cockpit/Prometheus.
+
+### Actions réalisées
+1. Lecture consignes (AGENT_SYNC, AGENTS, CODEV_PROTOCOL, docs/passation x3, architecture, Mémoire, roadmap, prompt Phase3) + `scripts/sync-workdir.ps1` (échec attendu tests smoke) + `git status/log`.
+2. Exécution `npm run build`, `.venv\\Scripts\\python.exe -m pytest`, `ruff check`, `mypy src` (tous ✅) et installation `types-psutil`.
+3. Build/push `cockpit-phase3-20251009-070747`, déploiement `emergence-app-cockpit-phase3`, routage 100 %, détection des erreurs SQL timeline via `gcloud logging read`.
+4. Correctif backend `TimelineService` (filtres injectés dans les clauses `LEFT JOIN`), amélioration `qa_metrics_validation.py` (fallback bypass) et mise à jour `requirements.txt`.
+5. Rebuild/push `cockpit-phase3-20251009-073931`, déploiement Cloud Run révision `emergence-app-phase3b`, bascule trafic 100 % (canary conservé à 0 %).
+6. Validations prod (`/api/health`, `/api/metrics`, `/api/dashboard/timeline/*` via bypass, `gcloud logging read`, QA script fallback) + création/MAJ documentation (`docs/deployments/README.md`, rapport Phase3b, AGENT_SYNC, présente entrée).
+
+### Tests
+- ✅ `npm run build`
+- ✅ `.venv\\Scripts\\python.exe -m pytest`
+- ✅ `.venv\\Scripts\\ruff.exe check`
+- ✅ `.venv\\Scripts\\python.exe -m mypy src`
+- ✅ `.venv\\Scripts\\python.exe qa_metrics_validation.py` (fallback bypass)
+- ✅ `curl https://emergence-app-47nct44nma-ew.a.run.app/api/health`
+- ✅ `curl -H "x-dev-bypass: 1" -H "x-user-id: codex" https://…/api/dashboard/timeline/{activity,costs,tokens}?period=7d`
+- ✅ `gcloud logging read … revision_name=emergence-app-phase3b`
+- ✅ `gcloud run revisions list --service emergence-app --region europe-west1`
+
+### Résultats
+- Révision active `emergence-app-phase3b` (digest `sha256:4c0a5159057ac5adcd451b647110bfafbc0566a701452f90486e66f93d8dbf17`), trafic 100 %.
+- Endpoints timeline répondent 200 sans erreur SQL (payloads vides attendus pour l’utilisateur bypass).
+- Endpoint `/api/metrics` expose les 13 métriques Phase 3 (74 occurrences `concept_recall*`).
+- Script `qa_metrics_validation.py` compatible prod sans dev login (lecture seule + heads-up).
+- `build_tag.txt` mis à jour `cockpit-phase3-20251009-073931`.
+
+### Prochaines actions recommandées
+1. Déclencher un scénario QA authentifié pour générer messages/tokens et alimenter les timelines.
+2. Automatiser `tests/run_all.ps1` (stockage sécurisé des `EMERGENCE_SMOKE_EMAIL/PASSWORD`).
+3. Actualiser le dashboard Grafana/alerting pour pointer sur la révision phase3b.
+4. Préparer la revue/commit final (valider FG avant push) et nettoyer les images Artifacts obsolètes.
+
+### Blocages
+- `AUTH_DEV_MODE=0` en production → impossible de générer un token applicatif ; validations cockpit faites via headers `x-dev-bypass`.
+- `tests/run_all.ps1` toujours bloqué sans identifiants smoke (dette existante, non modifiée).
 ## [2025-10-09 06:50] - Agent: Claude Code (Validation Cockpit Métriques Phase 3)
 
 ### Fichiers modifiés
@@ -1105,3 +1195,46 @@ pm run build (warning importmap existant)
 
 ### Blocages
 - Aucun.
+
+## [2025-10-09 10:20] - Agent: Codex (QA cockpit unifié)
+
+### Fichiers modifiés
+- `qa_metrics_validation.py`
+- `scripts/qa/qa_timeline_scenario.py`
+- `scripts/qa/purge_test_documents.py`
+- `scripts/qa/run_cockpit_qa.ps1`
+- `tests/run_all.ps1`
+- `docs/monitoring/prometheus-phase3-setup.md`
+- `docs/qa/cockpit-qa-playbook.md`
+- `AGENT_SYNC.md`
+
+### Contexte
+- Fusion du scénario timeline dans la validation métriques pour produire un rapport unique avant revue FG.
+- Ajout des outils de purge et d'orchestration QA afin d'éviter l'accumulation des documents `test_upload.txt` et préparer un snapshot reproductible.
+
+### Actions réalisées
+1. Refactor complet `qa_metrics_validation.py` : authentification email/dev, scénario timeline WebSocket, rapport JSON + flags `--skip-*`.
+2. Création scripts auxiliaires (`qa_timeline_scenario.py` wrapper, `purge_test_documents.py`, `run_cockpit_qa.ps1`) et nettoyage auto de `tests/run_all.ps1`.
+3. Documentation synchronisée (`docs/monitoring/prometheus-phase3-setup.md`, nouveau `docs/qa/cockpit-qa-playbook.md`) + mise à jour `AGENT_SYNC.md`.
+
+### Tests
+- ✅ `python qa_metrics_validation.py --skip-metrics --skip-timeline`
+- ✅ `ruff check qa_metrics_validation.py scripts/qa` puis `ruff check`
+- ✅ `python -m compileall qa_metrics_validation.py scripts/qa`
+- ✅ `python -m pytest`
+- ✅ `mypy src`
+- ✅ `npm run build`
+- ⏳ `tests/run_all.ps1` + `qa_metrics_validation.py` complets côté prod (besoin credentials)
+
+### Résultats
+- QA cockpit regroupée dans un seul script configurable (CLI + wrapper) avec export JSON.
+- Routine PowerShell `run_cockpit_qa.ps1` + purge automatisée pour garder la base propre.
+- Documentation et consignes snapshot alignées (playbook QA + monitoring).
+
+### Prochaines actions recommandées
+1. Lancer `scripts/qa/run_cockpit_qa.ps1 -TriggerMemory -RunCleanup` sur l'environnement prod (credentials FG).
+2. Archiver le rapport JSON et les logs smoke sous `docs/monitoring/snapshots/` avant revue FG.
+3. Activer une tâche planifiée (Task Scheduler ou cron) pour exécuter la routine chaque matin (07:30 CEST).
+
+### Blocages
+- Besoin d'identifiants prod pour valider le scénario complet (`qa_metrics_validation.py` + `tests/run_all.ps1`) côté Cloud Run.

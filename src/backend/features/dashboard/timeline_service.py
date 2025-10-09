@@ -39,20 +39,22 @@ class TimelineService:
         days = self._parse_period(period)
 
         # Construire les conditions de filtrage
-        conditions = []
-        params = []
+        date_field = "created_at"  # champ de référence pour les messages
+        message_filters = [f"date(m.{date_field}) = dates.date"]
+        thread_filters = ["date(t.created_at) = dates.date"]
+        params: List[Any] = []
 
         if session_id:
-            conditions.append("m.session_id = ?")
-            params.append(session_id)
+            message_filters.append("m.session_id = ?")
+            thread_filters.append("t.session_id = ?")
+            params.extend([session_id, session_id])
         elif user_id:
-            conditions.append("m.user_id = ?")
-            params.append(user_id)
+            message_filters.append("m.user_id = ?")
+            thread_filters.append("t.user_id = ?")
+            params.extend([user_id, user_id])
 
-        where_clause = f" WHERE {' AND '.join(conditions)}" if conditions else ""
-
-        # Détecter le champ de date (created_at ou timestamp)
-        date_field = "created_at"  # Par défaut V6
+        message_join = " LEFT JOIN messages m ON " + " AND ".join(message_filters)
+        thread_join = " LEFT JOIN threads t ON " + " AND ".join(thread_filters)
 
         query = f"""
             WITH RECURSIVE dates(date) AS (
@@ -67,19 +69,11 @@ class TimelineService:
                 COALESCE(COUNT(DISTINCT m.id), 0) as messages,
                 COALESCE(COUNT(DISTINCT t.id), 0) as threads
             FROM dates
-            LEFT JOIN messages m ON date(m.{date_field}) = dates.date {where_clause}
-            LEFT JOIN threads t ON date(t.created_at) = dates.date
-                {"AND t.user_id = ?" if user_id and not session_id else ""}
-                {"AND t.session_id = ?" if session_id else ""}
+            {message_join}
+            {thread_join}
             GROUP BY dates.date
             ORDER BY dates.date ASC
         """
-
-        # Ajouter params supplémentaires pour threads si nécessaire
-        if user_id and not session_id:
-            params.append(user_id)
-        if session_id:
-            params.append(session_id)
 
         try:
             rows = await self.db.fetch_all(query, tuple(params) if params else ())
@@ -103,17 +97,17 @@ class TimelineService:
         """
         days = self._parse_period(period)
 
-        conditions = []
-        params = []
+        cost_filters = ["date(c.timestamp) = dates.date"]
+        params: List[Any] = []
 
         if session_id:
-            conditions.append("session_id = ?")
+            cost_filters.append("c.session_id = ?")
             params.append(session_id)
         elif user_id:
-            conditions.append("user_id = ?")
+            cost_filters.append("c.user_id = ?")
             params.append(user_id)
 
-        where_clause = f" WHERE {' AND '.join(conditions)}" if conditions else ""
+        cost_join = " LEFT JOIN costs c ON " + " AND ".join(cost_filters)
 
         query = f"""
             WITH RECURSIVE dates(date) AS (
@@ -127,7 +121,7 @@ class TimelineService:
                 dates.date as date,
                 COALESCE(SUM(c.total_cost), 0) as cost
             FROM dates
-            LEFT JOIN costs c ON date(c.timestamp) = dates.date{where_clause}
+            {cost_join}
             GROUP BY dates.date
             ORDER BY dates.date ASC
         """
@@ -154,17 +148,17 @@ class TimelineService:
         """
         days = self._parse_period(period)
 
-        conditions = []
-        params = []
+        token_filters = ["date(c.timestamp) = dates.date"]
+        params: List[Any] = []
 
         if session_id:
-            conditions.append("session_id = ?")
+            token_filters.append("c.session_id = ?")
             params.append(session_id)
         elif user_id:
-            conditions.append("user_id = ?")
+            token_filters.append("c.user_id = ?")
             params.append(user_id)
 
-        where_clause = f" WHERE {' AND '.join(conditions)}" if conditions else ""
+        token_join = " LEFT JOIN costs c ON " + " AND ".join(token_filters)
 
         query = f"""
             WITH RECURSIVE dates(date) AS (
@@ -180,7 +174,7 @@ class TimelineService:
                 COALESCE(SUM(c.output_tokens), 0) as output,
                 COALESCE(SUM(c.input_tokens + c.output_tokens), 0) as total
             FROM dates
-            LEFT JOIN costs c ON date(c.timestamp) = dates.date{where_clause}
+            {token_join}
             GROUP BY dates.date
             ORDER BY dates.date ASC
         """
