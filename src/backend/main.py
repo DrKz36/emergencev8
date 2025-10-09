@@ -174,8 +174,26 @@ def create_app() -> FastAPI:
     async def _on_startup():
         await _startup(container)
 
+        # 🔧 Démarrer MemoryTaskQueue (P1.1)
+        try:
+            from backend.features.memory.task_queue import get_memory_queue
+            queue = get_memory_queue()
+            await queue.start()
+            logger.info("MemoryTaskQueue started")
+        except Exception as e:
+            logger.warning(f"MemoryTaskQueue startup failed: {e}")
+
     @app.on_event("shutdown")
     async def _on_shutdown():
+        # 🔧 Arrêter MemoryTaskQueue (P1.1)
+        try:
+            from backend.features.memory.task_queue import get_memory_queue
+            queue = get_memory_queue()
+            await queue.stop()
+            logger.info("MemoryTaskQueue stopped")
+        except Exception as e:
+            logger.warning(f"MemoryTaskQueue shutdown failed: {e}")
+
         try:
             await container.db_manager().disconnect()
         except Exception:

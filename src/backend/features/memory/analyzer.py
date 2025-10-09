@@ -2,7 +2,7 @@
 # V3.6 - Phase 3: Métriques Prometheus pour monitoring performance
 import logging
 import hashlib
-from typing import Dict, Any, List, Optional, TYPE_CHECKING
+from typing import Dict, Any, List, Optional, TYPE_CHECKING, Callable
 from datetime import datetime, timedelta
 
 if TYPE_CHECKING:
@@ -370,3 +370,29 @@ class MemoryAnalyzer:
     async def analyze_history(self, session_id: str, history: List[Dict[str, Any]]):
         """Mode «thread-only» : renvoie le résultat sans écrire dans la table sessions."""
         return await self._analyze(session_id, history, persist=False, force=False)
+
+    async def analyze_session_async(
+        self,
+        session_id: str,
+        force: bool = False,
+        callback: Callable = None
+    ) -> None:
+        """
+        Version asynchrone non-bloquante de analyze_session_for_concepts.
+        Enqueue tâche dans MemoryTaskQueue.
+
+        Args:
+            session_id: ID session à analyser
+            force: Forcer nouvelle analyse
+            callback: Fonction appelée avec résultat
+        """
+        from backend.features.memory.task_queue import get_memory_queue
+
+        queue = get_memory_queue()
+        await queue.enqueue(
+            task_type="analyze",
+            payload={"session_id": session_id, "force": force},
+            callback=callback
+        )
+
+        logger.info(f"Analyse session {session_id} enqueued (async)")
