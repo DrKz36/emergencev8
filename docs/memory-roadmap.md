@@ -32,9 +32,26 @@ Ce document synthétise l'état actuel et la trajectoire de la mémoire d'Emerge
    - [FAIT] Route REST `/api/memory/sync-stm` pour reconstituer la STM et hydrater SessionManager.
    - [FAIT] Injection de l'historique restauré dans le flux UI (`ws:session_restored`).
 
-### P1 — Hors boucle WS & enrichissement conceptuel
-- Déporter `MemoryAnalyzer` et `MemoryGardener` dans une file de tâches (worker/scheduler) pour éviter de bloquer l'event loop.
-- Étendre l'extraction de faits (préférences explicites, intentions, projets) via pipeline hybride règles + LLM, puis vectoriser dans la collection dédiée du store mémoire.
+### P1 — Hors boucle WS & enrichissement conceptuel ✅ COMPLÉTÉ (2025-10-09)
+- ✅ **P1.1 - Déportation asynchrone** : `MemoryTaskQueue` avec workers asyncio pour éviter blocage event loop WebSocket
+  - `task_queue.py` (195 lignes) : file asyncio.Queue avec 2 workers background
+  - `analyze_session_async()` non-bloquante dans `MemoryAnalyzer`
+  - Lifecycle startup/shutdown dans `main.py`
+  - Tests unitaires : 5/5 passent
+- ✅ **P1.2 - Extension extraction de faits** : Pipeline hybride préférences/intentions/contraintes
+  - `preference_extractor.py` (273 lignes) : `PreferenceExtractor` modulaire
+  - Filtrage lexical (réduction >70% appels LLM) + classification LLM (gpt-4o-mini via ChatService)
+  - Normalisation : topic, action, timeframe, sentiment, confidence, entities
+  - Déduplication par `(user_sub, topic, type)`
+  - Tests unitaires : 8/8 passent
+- ✅ **P1.3 - Instrumentation métriques** : 5 nouvelles métriques Prometheus préférences
+  - `memory_preferences_extracted_total{type}`
+  - `memory_preferences_confidence` (histogram)
+  - `memory_preferences_extraction_duration_seconds` (histogram)
+  - `memory_preferences_lexical_filtered_total`
+  - `memory_preferences_llm_calls_total`
+- ✅ **Métriques cache** (Phase 3 existantes) : hits, misses, size
+- ✅ **Commit** : `588c5dc` feat(P1): enrichissement mémoire (862 lignes, 6 fichiers)
 - [FAIT] Mécanisme d'oubli par vitalité (décroissance périodique + purge sous seuil).
 
 ### P2 — Réactivité proactive & UX
@@ -58,11 +75,16 @@ Ce document synthétise l'état actuel et la trajectoire de la mémoire d'Emerge
 | Proactivité concepts | Compteurs + événements à concevoir (P2) | ⏳ à faire |
 
 ## Prochaines étapes immédiates
-- [FAIT] Synchronisation STM côté backend (hydratation `SessionManager` + push `ws:session_restored`).
-- [FAIT] Vectorisation déportée via tâche asynchrone (`asyncio.to_thread`).
-- [FAIT] Décroissance vitalité + purge via `MemoryGardener._decay_knowledge` (journalisation métriques).
-- [FAIT] Calibrage vitalite + export metriques (events vitality_*, age_days, bucket_counts) + overrides MEMORY_DECAY_*.
-- [VALIDÉ] Extension `MemoryGardener` pour analyser préférences et intentions en plus des `mot-code` (voir la spécification détaillée ci-dessous).
+- ✅ [FAIT] Synchronisation STM côté backend (hydratation `SessionManager` + push `ws:session_restored`).
+- ✅ [FAIT] Vectorisation déportée via tâche asynchrone (`asyncio.to_thread`).
+- ✅ [FAIT] Décroissance vitalité + purge via `MemoryGardener._decay_knowledge` (journalisation métriques).
+- ✅ [FAIT] Calibrage vitalite + export metriques (events vitality_*, age_days, bucket_counts) + overrides MEMORY_DECAY_*.
+- ✅ [FAIT - P1 complété 2025-10-09] Extension extraction préférences/intentions avec `PreferenceExtractor` modulaire
+  - Pipeline hybride : filtrage lexical + classification LLM + normalisation
+  - Déportation analyses via `MemoryTaskQueue` (workers asyncio)
+  - 8 nouvelles métriques Prometheus (5 préférences + 3 cache)
+  - Tests : 15/15 passent (7 existants + 8 nouveaux P1)
+- ⏳ [NEXT - P2] Réactivité proactive : suggestions contextuelles `ws:proactive_hint` basées sur préférences capturées
 
 ## Spécification détaillée — Extension MemoryGardener (préférences & intentions)
 - [FAIT] Normalisation des cles JSON du classifieur (prevention de la localisation des champs).
@@ -101,4 +123,9 @@ Capturer et capitaliser les préférences explicites (goûts, contraintes, canau
 - Revue hebdomadaire des extraits capturés (échantillon aléatoire de 20) pour ajuster les règles lexicales et le prompt LLM.
 
 ---
-Derniere mise a jour : texte actualise automatiquement suite aux travaux du __2025-09-20__.
+**Derniere mise a jour** : 2025-10-09 (Phase P1 complétée - déportation async + extraction préférences + métriques)
+
+**Historique** :
+- 2025-10-09 : Phase P1 complétée (MemoryTaskQueue, PreferenceExtractor, 8 métriques Prometheus)
+- 2025-09-20 : Calibrage vitalité + métriques decay
+- Phase P0 : Persistance cross-device + restauration STM

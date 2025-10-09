@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-09 10:15 CEST (Codex - QA cockpit unifié + purge artefacts)
+**Derniere mise a jour** : 2025-10-09 09:30 CEST (Claude Code - Phase P1 enrichissement mémoire complète)
 
 ---
 
@@ -22,9 +22,9 @@
 ### Branche active
 - **Branche courante** : `main`
 - **Derniers commits** :
-  - `67f2d5a` docs: index déploiements mis à jour avec Phases 2 & 3
-  - `0ff5edd` docs: prompt complet pour Codex - build & deploy Phase 3
-  - `dcffd45` docs: récapitulatif complet Phases 2 & 3 - guide déploiement
+  - `588c5dc` feat(P1): enrichissement mémoire - déportation async + extraction préférences + métriques
+  - `6a11fb4` docs: NEXT_SESSION_PROMPT mis à jour - priorité P1 mémoire
+  - `6c032b1` qa: unify cockpit QA workflow and cleanup timelines
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
@@ -72,7 +72,44 @@
 ## 🚧 Zones de travail en cours
 
 ### Claude Code (moi)
-- **Statut** : ✅ Métriques coûts enrichies Phase 3 + Dette technique résolue (Tests 154/154)
+- **Statut** : ✅ Phase P1 enrichissement mémoire COMPLÉTÉE (déportation async + extraction préférences + métriques)
+- **Session 2025-10-09 (08:30-09:30)** :
+  1. ✅ **P1.1 - Déportation asynchrone** (3-4h)
+     - Création `src/backend/features/memory/task_queue.py` (195 lignes) : `MemoryTaskQueue` avec workers asyncio
+     - Méthode `analyze_session_async()` non-bloquante dans `analyzer.py`
+     - Lifecycle startup/shutdown dans `main.py` (Workers 0 & 1 démarrent/arrêtent proprement)
+     - Tests unitaires `tests/memory/test_task_queue.py` (5/5 passent)
+  2. ✅ **P1.2 - Extension extraction de faits** (6-8h)
+     - Création `src/backend/features/memory/preference_extractor.py` (273 lignes) : `PreferenceExtractor` modulaire
+     - Pipeline hybride : filtrage lexical + classification LLM (gpt-4o-mini via ChatService) + normalisation
+     - Extraction préférences/intentions/contraintes (au-delà des "mot-code")
+     - Tests unitaires `tests/memory/test_preference_extractor.py` (8/8 passent)
+  3. ✅ **P1.3 - Instrumentation métriques** (1-2h)
+     - 5 nouvelles métriques Prometheus préférences (extracted_total, confidence, duration, lexical_filtered, llm_calls)
+     - Métriques cache existantes (3) confirmées en prod Phase 3
+  4. ✅ **Tests & qualité**
+     - Suite complète mémoire : 15/15 tests passent
+     - ruff check : All checks passed
+     - Serveur local : MemoryTaskQueue démarre correctement (Workers 0 & 1)
+     - /api/health : OK, /api/metrics : Prometheus exposé
+  5. ✅ **Commit créé** : `588c5dc` feat(P1): enrichissement mémoire - déportation async + extraction préférences + métriques
+     - 6 files changed, 862 insertions(+)
+- **Fichiers modifiés** :
+  - `src/backend/features/memory/task_queue.py` (nouveau, 195 lignes)
+  - `src/backend/features/memory/preference_extractor.py` (nouveau, 273 lignes)
+  - `src/backend/features/memory/analyzer.py` (+28 lignes)
+  - `src/backend/main.py` (+16 lignes)
+  - `tests/memory/test_task_queue.py` (nouveau, 110 lignes)
+  - `tests/memory/test_preference_extractor.py` (nouveau, 243 lignes)
+- **Métriques** :
+  - Tests mémoire : 7/7 → 15/15 (+8 tests P1)
+  - Couverture P1 : déportation async + extraction enrichie + métriques Prometheus
+  - Architecture : Event loop WebSocket préservé (analyses déportées en background)
+- **Next** :
+  1. Phase P2 - Réactivité proactive (prochaine session) : suggestions contextuelles `ws:proactive_hint`
+  2. Build + deploy Cloud Run avec P1 (après validation FG)
+  3. Valider métriques préférences en production (post-déploiement)
+
 - **Session 2025-10-09 (06:00-08:30)** :
   1. ✅ **Correction 5 tests API `test_memory_archives.py`** : 149/154 → 154/154 tests passants
      - Fix fixture `vector_service` : `:memory:` → dossier temporaire réel (`tmp_path`)
