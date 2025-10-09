@@ -50,7 +50,7 @@ class DummyDBManager:
     def __init__(self):
         self.events = []
 
-    async def execute(self, query: str, params=None):
+    async def execute(self, query: str, params=None, commit=True):
         self.events.append((query, params))
 
 

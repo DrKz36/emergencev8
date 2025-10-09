@@ -14,8 +14,10 @@ def mock_db_manager():
     """Mock DatabaseManager"""
     db = MagicMock()
     db.execute = AsyncMock()
-    db.fetchone = AsyncMock()
-    db.fetchall = AsyncMock()
+    db.fetchone = AsyncMock(return_value=None)
+    db.fetch_one = AsyncMock(return_value=None)
+    db.fetchall = AsyncMock(return_value=[])
+    db.fetch_all = AsyncMock(return_value=[])
     db.commit = AsyncMock()
     return db
 
@@ -147,20 +149,16 @@ class TestUserRegistration:
         assert user.role in [UserRole.MEMBER, UserRole.GUEST, UserRole.TESTER]
 
     @pytest.mark.asyncio
-    async def test_register_duplicate_username(self, auth_service, mock_db_manager):
+    async def test_register_duplicate_username(self, auth_service):
         """Vérifie le rejet d'un nom d'utilisateur existant"""
         username = "existinguser"
         email = "new@example.com"
         password = "Password123"
 
         # Mock: utilisateur existe déjà
-        mock_db_manager.fetchone = AsyncMock(return_value={
-            "id": "existing-id",
-            "username": username
-        })
-
-        with pytest.raises((ValueError, Exception)):
-            await auth_service.register_user(username, email, password)
+        with patch.object(auth_service, '_fetch_user_by_username', AsyncMock(return_value={"id": "existing-id", "username": username})):
+            with pytest.raises(ValueError, match="Username already exists"):
+                await auth_service.register_user(username, email, password)
 
     @pytest.mark.asyncio
     async def test_register_weak_password(self, auth_service):
@@ -191,13 +189,15 @@ class TestUserAuthentication:
         hashed_password = auth_service.hash_password(password)
 
         # Mock: utilisateur existe en BDD
-        mock_db_manager.fetchone = AsyncMock(return_value={
+        user_row = {
             "id": "user-123",
             "username": username,
             "password_hash": hashed_password,
             "role": "member",
             "is_active": True
-        })
+        }
+        mock_db_manager.fetch_one = AsyncMock(return_value=user_row)
+        mock_db_manager.fetchone = AsyncMock(return_value=user_row)
 
         user = await auth_service.authenticate(username, password)
 

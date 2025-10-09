@@ -300,9 +300,20 @@ def test_user():
 def test_user_token():
     # Générer token JWT valide pour tests
     import jwt
+    import os
+    from datetime import datetime, timedelta, timezone
 
-    payload = {"sub": "test_user_123", "role": "member"}
-    return jwt.encode(payload, "test_secret", algorithm="HS256")
+    secret = os.getenv("AUTH_JWT_SECRET", "change-me")
+    payload = {
+        "sub": "test_user_123",
+        "role": "member",
+        "email": "test@example.com",
+        "iss": "emergence.local",
+        "aud": "emergence-app",
+        "iat": int(datetime.now(timezone.utc).timestamp()),
+        "exp": int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp())
+    }
+    return jwt.encode(payload, secret, algorithm="HS256")
 
 
 @pytest.fixture
@@ -319,13 +330,21 @@ async def db_manager():
 async def vector_service():
     from backend.features.memory.vector_service import VectorService
 
-    vs = VectorService(persist_directory=None)  # Mode mémoire
+    vs = VectorService(
+        persist_directory=":memory:",
+        embed_model_name="all-MiniLM-L6-v2"
+    )
     return vs
 
 
 @pytest.fixture
 def client():
+    import os
     from fastapi.testclient import TestClient
     from backend.main import app
+
+    # Activer mode dev pour contourner auth stricte dans tests
+    os.environ["AUTH_DEV_MODE"] = "1"
+    os.environ["AUTH_ADMIN_EMAILS"] = "test@example.com"
 
     return TestClient(app)
