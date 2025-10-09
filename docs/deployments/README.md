@@ -17,7 +17,8 @@ Chaque déploiement est documenté avec :
 
 | Date | Révision | Image Tag | Description | Statut |
 |------|----------|-----------|-------------|--------|
-| 2025-10-08 | `emergence-app-00275-2jb` | `deploy-20251008-183707` | Rebuild image Phases 2 & 3 + redeploy Cloud Run (health + metrics OK) ([rapport](2025-10-08-cloud-run-revision-00275.md)) | ✅ Active (100%) |
+| 2025-10-09 | `emergence-app-metrics001` | `deploy-20251008-183707` | Activation `CONCEPT_RECALL_METRICS_ENABLED` + routage 100 % (Prometheus Phase 3) ([rapport](2025-10-09-activation-metrics-phase3.md)) | ✅ Active (100%) |
+| 2025-10-08 | `emergence-app-00275-2jb` | `deploy-20251008-183707` | Rebuild image Phases 2 & 3 + redeploy Cloud Run (health + metrics OK) ([rapport](2025-10-08-cloud-run-revision-00275.md)) | ⏸️ Archived |
 | 2025-10-08 | `emergence-app-00274-m4w` | `deploy-20251008-121131` | **Phase 2 Performance** en production (neo_analysis, cache mémoire, débats parallèles) ([rapport](2025-10-08-cloud-run-revision-00274.md)) | ⏸️ Archived |
 | 2025-10-08 | `emergence-app-00270-zs6` | `deploy-20251008-082149` | Cloud Run refresh (menu mobile confirmé) | ⏸️ Archived |
 | 2025-10-08 | `emergence-app-00269-5qs` | `deploy-20251008-064424` | Cloud Run refresh (harmonisation UI cockpit/hymne) | ⏸️ Archived |
