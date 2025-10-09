@@ -1,3 +1,36 @@
+## [2025-10-08 18:45] - Agent: Codex (Déploiement Cloud Run révision 00275)
+
+### Fichiers modifiés
+- build_tag.txt
+- docs/deployments/2025-10-08-cloud-run-revision-00275.md (nouveau)
+- docs/deployments/README.md
+- AGENT_SYNC.md
+- docs/passation.md (entrée courante)
+
+### Contexte
+Rebuild et déploiement Cloud Run pour livrer l'image `deploy-20251008-183707` (Phases 2 & 3) et activer la révision `emergence-app-00275-2jb`. Alignement de la documentation (rapport déploiement, historique, synchronisation inter-agents).
+
+### Actions réalisées
+1. Lecture consignes (AGENT_SYNC, CODEV_PROTOCOL, docs/passation x3, CODEX_BUILD_DEPLOY_PROMPT) + exécution `pwsh -File scripts/sync-workdir.ps1` (échoue sur `tests/run_all.ps1` faute d'identifiants smoke).
+2. Mise à jour `build_tag.txt` → `deploy-20251008-183707`, build Docker (`docker build --platform linux/amd64 ...`) puis push Artifact Registry.
+3. Déploiement Cloud Run (`gcloud run deploy emergence-app --image ...:deploy-20251008-183707`) → révision `00275-2jb` active (100 % trafic).
+4. Vérifications manuelles : `curl` sur `/api/health` et `/api/metrics`, `gcloud run revisions list`.
+5. Documentation : création rapport `docs/deployments/2025-10-08-cloud-run-revision-00275.md`, mise à jour `docs/deployments/README.md`, `AGENT_SYNC.md`, saisie passation.
+
+### Tests
+- ✅ `pwsh -File tests/run_all.ps1` (backend local actif, identifiants smoke fournis)
+- ✅ `curl https://emergence-app-486095406755.europe-west1.run.app/api/health`
+- ✅ `curl https://emergence-app-486095406755.europe-west1.run.app/api/metrics`
+- ✅ `gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005`
+
+### Prochaines actions recommandées
+1. Collecter les métriques production pour Phase 2/3 (latence analyses, hit rate cache, débats) via logs Cloud Run.
+2. Pérenniser les identifiants smoke-tests (stockage sécurisé, automatisation éventuelle pour la sync).
+3. Préparer un rapport métriques Phase 2/3 dès qu'un volume suffisant de données est disponible.
+
+### Blocages
+- Aucun (veille à protéger les identifiants smoke-tests partagés).
+
 ## [2025-10-08 12:30] - Agent: Codex (Déploiement Phase 2 Prod)
 
 ### Fichiers modifiés
@@ -389,7 +422,8 @@ Reprise du blocage laissé par Codex (12:45) : tests e2e échouaient avec erreur
 ## [2025-10-08 12:45] - Agent: Codex (Backend Stabilisation)
 
 ### Fichiers modifiés
-- equirements.txt
+- 
+equirements.txt
 - src/backend/core/database/manager.py
 - src/backend/core/database/schema.py
 - src/backend/core/database/queries.py
@@ -434,7 +468,8 @@ Stabilisation backend après la cascade d’erreurs pytest : fiabilisation du ge
 3. Vérifier les scripts seeds/migrations vis-à-vis du nouveau modèle de commits explicites.
 
 ### Blocages
-- Tests e2e toujours KO tant que uth_app_factory mocke egister avec un succès (actuellement retourne 422).
+- Tests e2e toujours KO tant que uth_app_factory mocke 
+egister avec un succès (actuellement retourne 422).
 
 ## [2025-10-08 08:24] - Agent: Codex (Déploiement Cloud Run 00270)
 

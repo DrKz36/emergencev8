@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-08 12:25 CEST (Codex - Déploiement Phase 2 en production)
+**Derniere mise a jour** : 2025-10-08 18:45 CEST (Codex - Cloud Run révision 00275 déployée)
 
 ---
 
@@ -22,21 +22,21 @@
 ### Branche active
 - **Branche courante** : `main`
 - **Derniers commits** :
-  - `b5a0caa` docs: index Phase 2 dans README deployments + checklist validation
-  - `30d09e8` docs: guide build/deploy Cloud Run complet pour Codex (troubleshooting + logs Phase 2)
-  - `c7079f0` docs: passation Phase 2 + instructions build/deploy pour Codex
+  - `67f2d5a` docs: index déploiements mis à jour avec Phases 2 & 3
+  - `0ff5edd` docs: prompt complet pour Codex - build & deploy Phase 3
+  - `dcffd45` docs: récapitulatif complet Phases 2 & 3 - guide déploiement
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
 - `codex` → SSH : `git@github.com:DrKz36/emergencev8.git`
 
 ### Déploiement Cloud Run
-- **Révision active** : `emergence-app-00274-m4w`
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251008-121131`
+- **Révision active** : `emergence-app-00275-2jb`
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251008-183707`
 - **URL** : https://emergence-app-486095406755.europe-west1.run.app
-- **Déployé** : 2025-10-08 12:11 CEST
+- **Déployé** : 2025-10-08 18:37 CEST
 - **Trafic** : 100% sur nouvelle révision
-- **Documentation** : [docs/deployments/2025-10-08-cloud-run-revision-00274.md](docs/deployments/2025-10-08-cloud-run-revision-00274.md)
+- **Documentation** : [docs/deployments/2025-10-08-cloud-run-revision-00275.md](docs/deployments/2025-10-08-cloud-run-revision-00275.md)
 - **Service Cloud Run** : `emergence-app`
 - **Projet GCP** : `emergence-469005`
 - **Région** : `europe-west1`
@@ -62,7 +62,7 @@
 - **Post-déploiement** : `gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005`, vérifier `/api/health` et `/api/metrics`.
 
 ### Working tree
-- ⚠️ Dirty (docs déploiement 00274 + AGENT_SYNC + passation en cours)
+- ⚠️ Dirty (docs déploiement 00275 + AGENT_SYNC + passation en cours)
 
 ---
 
@@ -219,13 +219,25 @@
   - Documentation complète (LIMITATIONS.md, MONITORING_GUIDE.md)
 
 ### Codex (cloud)
-- **Dernier sync** : 2025-10-06 09:30
-- **Fichiers touchés** : `docs/passation.md` (ajout remote config)
-- **Blocage** : Accès réseau GitHub (HTTP 403)
-- **Actions recommandées** : `git fetch --all --prune` puis `git rebase origin/main` une fois réseau OK
+- **Dernier sync** : 2025-10-08 18:45 CEST (Cloud Run révision 00275 en production)
+- **Statut** : Image `deploy-20251008-183707` en production, révision `emergence-app-00275-2jb` sert 100 % du trafic. Documentation (`AGENT_SYNC.md`, `docs/deployments/README.md`, rapport 00275, passation) en cours de finalisation.
+- **Session 2025-10-08 (18:00-18:45)** :
+  1. Lecture consignes (AGENT_SYNC, CODEV_PROTOCOL, docs/passation x3, CODEX_BUILD_DEPLOY_PROMPT) + `pwsh -File scripts/sync-workdir.ps1` (échoue sur `tests/run_all.ps1` faute d'identifiants smoke).
+  2. Mise à jour `build_tag.txt` → `deploy-20251008-183707`, build Docker (`docker build --platform linux/amd64 ...`) puis push Artifact Registry.
+  3. Déploiement Cloud Run (`gcloud run deploy emergence-app --image ...:deploy-20251008-183707`) → révision `00275-2jb`, santé `/api/health` OK, `/api/metrics` retourne `# Metrics disabled`.
+  4. Documentation : création `docs/deployments/2025-10-08-cloud-run-revision-00275.md`, mise à jour `docs/deployments/README.md`, `AGENT_SYNC.md`, saisie passation (en cours).
+- **Tests / vérifications** :
+  - ✅ `pwsh -File tests/run_all.ps1` (backend local en marche, identifiants smoke fournis)
+  - ✅ `curl https://emergence-app-486095406755.europe-west1.run.app/api/health`
+  - ✅ `curl https://emergence-app-486095406755.europe-west1.run.app/api/metrics`
+  - ✅ `gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005`
+- **Next** :
+  1. Collecter et analyser les métriques Phase 2/3 en production (logs `MemoryAnalyzer`, `Cache (HIT|SAVED)`, `debate` pour latences).
+  2. Documenter/protéger les identifiants smoke-tests (actuellement fournis manuellement) puis automatiser leur chargement sécurisé si possible.
+  3. Préparer un rapport synthétique des métriques (latence analyses, hit rate cache, débats) après collecte.
 
-- **Dernier sync** : 2025-10-08 12:25 CEST (Phase 2 déployée)
-- **Statut** : Image `deploy-20251008-121131` construite/poussée, révision Cloud Run `emergence-app-00274-m4w` active (100% trafic).
+**Sessions précédentes :**
+- **Dernier sync** : 2025-10-06 09:30 — `docs/passation.md` (ajout remote config) — Blocage HTTP 403 GitHub (attente réseau).
 - **Session 2025-10-08 (11:45-12:25)** :
   1. Lecture passation/roadmap + vérification gcloud (`gcloud config get-value project`, `gcloud auth configure-docker`).
   2. Build Docker `deploy-20251008-121131` (`docker build --platform linux/amd64 ...`) puis push Artifact Registry.
