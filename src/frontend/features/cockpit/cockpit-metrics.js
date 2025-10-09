@@ -278,21 +278,15 @@ export class CockpitMetrics {
      */
     async fetchMessagesMetrics() {
         const data = await this.fetchAllMetrics();
-        const sessions = data.raw_data?.sessions || [];
 
-        // Calculate message stats from sessions
-        let totalMessages = 0;
-        sessions.forEach(session => {
-            if (session.message_count) {
-                totalMessages += session.message_count;
-            }
-        });
+        // Utiliser les données messages de l'API (ajoutées en Phase 1)
+        const messages = data.messages || {};
 
         return {
-            total: totalMessages,
-            today: 0, // TODO: calculate from session dates
-            week: 0,
-            month: totalMessages
+            total: messages.total || 0,
+            today: messages.today || 0,
+            week: messages.week || 0,
+            month: messages.month || 0
         };
     }
 
@@ -314,12 +308,16 @@ export class CockpitMetrics {
      * Fetch tokens metrics
      */
     async fetchTokensMetrics() {
-        // TODO: Add tokens tracking in backend
+        const data = await this.fetchAllMetrics();
+
+        // Utiliser les données tokens de l'API (ajoutées en Phase 1)
+        const tokens = data.tokens || {};
+
         return {
-            total: 0,
-            input: 0,
-            output: 0,
-            avgPerMessage: 0
+            total: tokens.total || 0,
+            input: tokens.input || 0,
+            output: tokens.output || 0,
+            avgPerMessage: tokens.avgPerMessage || 0
         };
     }
 
@@ -329,13 +327,19 @@ export class CockpitMetrics {
     async fetchCostsMetrics() {
         const data = await this.fetchAllMetrics();
         const costs = data.costs || {};
+        const messages = data.messages || {};
+
+        // Calculer le coût moyen par message
+        const totalMessages = messages.total || 0;
+        const totalCost = costs.total_cost || 0;
+        const avgPerMessage = totalMessages > 0 ? totalCost / totalMessages : 0;
 
         return {
-            total: costs.total_cost || 0,
+            total: totalCost,
             today: costs.today_cost || 0,
             week: costs.current_week_cost || 0,
             month: costs.current_month_cost || 0,
-            avgPerMessage: 0 // TODO: calculate
+            avgPerMessage: avgPerMessage
         };
     }
 

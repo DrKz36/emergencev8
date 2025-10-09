@@ -70,8 +70,8 @@
 ## 🚧 Zones de travail en cours
 
 ### Claude Code (moi)
-- **Statut** : ✅ Dette technique résolue - Tests 154/154 + Ruff clean + Mypy 0 erreur
-- **Session 2025-10-09 (06:00-07:30)** :
+- **Statut** : ✅ Métriques coûts enrichies Phase 3 + Dette technique résolue (Tests 154/154)
+- **Session 2025-10-09 (06:00-08:30)** :
   1. ✅ **Correction 5 tests API `test_memory_archives.py`** : 149/154 → 154/154 tests passants
      - Fix fixture `vector_service` : `:memory:` → dossier temporaire réel (`tmp_path`)
      - Fix fixture `client` : TestClient context manager pour déclencher startup/shutdown
@@ -85,7 +85,13 @@
      - `pip install types-psutil` : résolution 3 erreurs stubs manquants
      - `src/backend/features/debate/service.py` : type narrowing après `asyncio.gather` avec cast
      - Mypy : 21 erreurs → 0 erreur (100% clean)
-  4. ✅ Documentation session dans `AGENT_SYNC.md`
+  4. ✅ **Métriques coûts enrichies + Timeline dashboard** : Phase 3 monitoring
+     - Migration costs : colonnes user_id/session_id + indexes + vue agrégée
+     - TimelineService : graphiques temporels (activité, coûts, tokens par jour)
+     - Dashboard enrichi : messages/tokens par période (today/week/month)
+     - Nouveaux endpoints API : /timeline/activity, /timeline/costs, /timeline/tokens
+  5. ✅ Nettoyage fichiers temporaires de debug (4 fichiers supprimés)
+  6. ✅ Documentation session dans `AGENT_SYNC.md`
 - **Fichiers modifiés** :
   - `tests/test_memory_archives.py` (+20 lignes, -28 lignes)
     - Fixture `vector_service` : utilise `tmp_path` au lieu de `:memory:` (erreur Windows)
@@ -100,6 +106,27 @@
   - `src/backend/features/debate/service.py` (+13 lignes, -8 lignes)
     - Import `cast` depuis typing
     - Type narrowing après `asyncio.gather` avec cast explicite pour mypy
+  - `src/backend/core/database/queries.py` (+175 lignes, -30 lignes)
+    - get_messages_by_period() : comptage messages par période
+    - get_tokens_summary() : agrégation tokens avec moyenne par message
+    - _build_costs_where_clause() : vérification dynamique colonnes existantes
+    - get_all_sessions_overview() : filtrage par session + LEFT JOIN messages
+  - `src/backend/features/dashboard/service.py` (+27 lignes)
+    - Intégration messages/tokens dans get_dashboard_data()
+  - `src/backend/features/dashboard/router.py` (+123 lignes)
+    - Nouveaux endpoints : /timeline/activity, /costs, /tokens, /distribution
+    - Endpoint /costs/summary/session/{session_id} pour filtrage strict
+  - `src/backend/features/dashboard/timeline_service.py` (nouveau, 261 lignes)
+    - Service dédié aux graphiques temporels
+    - Support périodes 7d/30d/90d/1y avec génération dates
+  - `src/backend/containers.py` (+11 lignes)
+    - Provider timeline_service ajouté au DI container
+  - `src/backend/shared/dependencies.py` (+7 lignes)
+    - get_timeline_service() pour injection dépendances
+  - `src/backend/core/database/migrations/20251009_enrich_costs.sql` (nouveau)
+    - ALTER TABLE costs : colonnes session_id/user_id
+    - Indexes optimisation : idx_costs_session, idx_costs_user, idx_costs_user_session
+    - Vue v_costs_summary : agrégations pré-calculées
 - **Tests effectués** :
   - ✅ `python -m pytest tests/test_memory_archives.py -v` → **10/10 tests passants** (5 échecs corrigés)
   - ✅ `python -m ruff check` → **5 erreurs E402 corrigées** (reste 2 F401/F841 non critiques dans qa_metrics_validation.py)
@@ -111,10 +138,12 @@
 - **Commits créés** :
   - `9467394` fix: tests intégration API memory archives (5 échecs résolus) + qualité code
   - `c26c2b2` chore: correction dette technique mypy - 21 erreurs résolues
+  - `604503d` docs: sync session stabilisation tests + qualité code
+  - `625b295` feat: métriques coûts enrichies + timeline dashboard (Phase 3)
 - **Next** :
-  1. Vérifier suite complète pytest pour valider stabilité globale
-  2. Mettre à jour AGENT_SYNC.md avec session complète
-  3. Reprendre monitoring Prometheus Phase 3 en production
+  1. Prêt pour commit/push global avec implémentation mémoire (coordination avec autre session)
+  2. Build + deploy nouvelle révision Cloud Run avec métriques enrichies
+  3. Valider métriques Prometheus + graphiques Grafana en production
 
 - **Session 2025-10-08 (19:30-20:30)** :
   1. ✅ **Tâche 1** : Agent `neo_analysis` (GPT-4o-mini) pour analyses mémoire (gain latence ~70%)
