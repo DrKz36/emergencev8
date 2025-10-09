@@ -2,7 +2,6 @@
 # V3.6 - Phase 3: Métriques Prometheus pour monitoring performance
 import logging
 import hashlib
-import json
 from typing import Dict, Any, List, Optional, TYPE_CHECKING
 from datetime import datetime, timedelta
 
@@ -53,9 +52,11 @@ try:
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
-    logger.warning("Prometheus client non disponible - métriques désactivées")
 
 logger = logging.getLogger(__name__)
+
+if not PROMETHEUS_AVAILABLE:
+    logger.warning("Prometheus client non disponible - métriques désactivées")
 
 # ⚡ Cache in-memory pour analyses (TTL 1h)
 _ANALYSIS_CACHE: Dict[str, tuple[Dict[str, Any], datetime]] = {}

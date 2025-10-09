@@ -2,7 +2,7 @@
 # Tests validation corrections audit mémoire v2.0
 
 import pytest
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 class TestArchivedThreadsAccess:
@@ -14,7 +14,7 @@ class TestArchivedThreadsAccess:
         from backend.core.database import queries
 
         # Créer thread actif
-        active_id = await queries.create_thread(
+        _ = await queries.create_thread(
             db_manager,
             session_id=None,
             user_id=test_user,
