@@ -1,5 +1,5 @@
 # src/backend/features/memory/analyzer.py
-# V3.6 - Phase 3: Métriques Prometheus pour monitoring performance
+# V3.7 - Phase P1: Extraction préférences/intentions + enrichissement mémoire
 import logging
 import hashlib
 from typing import Dict, Any, List, Optional, TYPE_CHECKING, Callable
@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from backend.core.database.manager import DatabaseManager
 
 from backend.core.database import queries
+from backend.features.memory.preference_extractor import PreferenceExtractor
 
 # ⚡ Métriques Prometheus (Phase 3)
 try:
@@ -109,12 +110,15 @@ class MemoryAnalyzer:
         self.db_manager = db_manager
         self.chat_service = chat_service
         self.is_ready = self.chat_service is not None
-        logger.info(f"MemoryAnalyzer V3.4 initialisé. Prêt: {self.is_ready}")
+        self.preference_extractor: Optional[PreferenceExtractor] = None
+        logger.info(f"MemoryAnalyzer V3.7 (P1) initialisé. Prêt: {self.is_ready}")
 
     def set_chat_service(self, chat_service: "ChatService"):
         self.chat_service = chat_service
         self.is_ready = True
-        logger.info("ChatService injecté dans MemoryAnalyzer. L'analyseur est prêt.")
+        # Initialiser PreferenceExtractor avec le chat_service (pour appels LLM)
+        self.preference_extractor = PreferenceExtractor(llm_client=chat_service)
+        logger.info("ChatService injecté dans MemoryAnalyzer. L'analyseur et PreferenceExtractor sont prêts.")
 
     def _ensure_ready(self):
         if not self.chat_service:
@@ -352,6 +356,50 @@ class MemoryAnalyzer:
             # 📊 Métrique taille cache
             if PROMETHEUS_AVAILABLE:
                 CACHE_SIZE.set(len(_ANALYSIS_CACHE))
+
+        # ⚡ Phase P1: Extraction préférences/intentions
+        if persist and self.preference_extractor and analysis_result:
+            try:
+                # Récupérer user_sub depuis session metadata ou context
+                user_sub = None
+                try:
+                    session_manager = getattr(chat_service, "session_manager", None)
+                    if session_manager:
+                        sess = session_manager.get_session(session_id)
+                        user_sub = getattr(sess, "user_id", None)
+                except Exception:
+                    pass
+
+                if user_sub:
+                    # Extraire préférences depuis l'historique
+                    preferences = await self.preference_extractor.extract(
+                        messages=history,
+                        user_sub=user_sub,
+                        thread_id=session_id
+                    )
+
+                    if preferences:
+                        logger.info(
+                            f"[PreferenceExtractor] Extracted {len(preferences)} preferences/intents "
+                            f"for session {session_id}"
+                        )
+                        # TODO P1.2: Sauvegarder dans Firestore collection memory_preferences_{user_sub}
+                        # Pour l'instant, juste logger
+                        for pref in preferences:
+                            logger.debug(
+                                f"  [{pref.type}] {pref.topic}: {pref.text[:60]}... "
+                                f"(confidence={pref.confidence:.2f})"
+                            )
+                    else:
+                        logger.debug(f"[PreferenceExtractor] No preferences found in session {session_id}")
+                else:
+                    logger.warning(f"[PreferenceExtractor] Cannot extract: user_sub not found for session {session_id}")
+
+            except Exception as pref_error:
+                logger.error(
+                    f"[PreferenceExtractor] Failed to extract preferences for session {session_id}: {pref_error}",
+                    exc_info=True
+                )
 
         await self._notify(
             session_id, {"session_id": session_id, "status": "completed", "provider": provider_used}

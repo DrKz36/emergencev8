@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-09 10:05 CEST (Codex - Déploiement Phase P1 mémoire + vérif prod)
+**Derniere mise a jour** : 2025-10-09 19:50 CEST (Claude Code - Hotfix P1.1 PreferenceExtractor integration)
 
 ---
 
@@ -72,6 +72,67 @@
 ---
 
 ## 🚧 Zones de travail en cours
+
+### Claude Code - Session 2025-10-09 19:15-19:50 (Hotfix P1.1)
+- **Statut** : ✅ Correctif critique P1.1 complété - PreferenceExtractor intégré
+- **Fichiers modifiés** :
+  - `src/backend/features/memory/analyzer.py` (intégration PreferenceExtractor)
+  - `docs/deployments/2025-10-09-hotfix-p1.1-preference-integration.md` (documentation complète)
+  - `AGENT_SYNC.md` (mise à jour courante)
+  - `docs/passation.md` (à mettre à jour)
+- **Problème critique découvert** :
+  - `PreferenceExtractor` existait mais **n'était jamais appelé** lors consolidations mémoire
+  - Métriques `memory_preferences_*` impossibles en production
+  - Phase P1 partiellement déployée (infrastructure OK, extraction non branchée)
+- **Actions réalisées** :
+  1. Intégration PreferenceExtractor dans analyzer.py (4 points d'intégration)
+  2. Tests validation : 15/15 memory tests, mypy/ruff clean
+  3. Documentation hotfix complète avec procédure déploiement
+- **Tests** :
+  - ✅ pytest tests/memory/ : 15/15 passed
+  - ✅ mypy analyzer.py : Success
+  - ✅ ruff analyzer.py : All checks passed
+- **Prêt pour déploiement** :
+  - Commit message prêt
+  - Tag suggéré : `p1.1-hotfix-YYYYMMDD-HHMMSS`
+  - Révision suffix : `p1-1-hotfix`
+
+### Claude Code - Session 2025-10-09 18:15-18:50 (Validation P1)
+- **Statut** : ✅ Validation P1 partielle + Documentation métriques complète
+- **Fichiers touchés** :
+  - `scripts/qa/trigger_preferences_extraction.py` (nouveau)
+  - `scripts/qa/.env.qa` (credentials temporaires)
+  - `docs/monitoring/prometheus-p1-metrics.md` (nouveau, 400 lignes)
+  - `AGENT_SYNC.md` (mise à jour courante)
+  - `docs/passation.md` (à mettre à jour)
+- **Actions réalisées** :
+  1. Relecture docs session P1 ([NEXT_SESSION_PROMPT.md](NEXT_SESSION_PROMPT.md), [SESSION_SUMMARY_20251009.md](SESSION_SUMMARY_20251009.md), [docs/passation.md](docs/passation.md))
+  2. Vérification métriques production `/api/metrics` :
+     - ✅ Phase 3 visibles : `memory_analysis_*` (7 success, 6 misses, 1 hit), `concept_recall_*`
+     - ⚠️ Phase P1 absentes : `memory_preferences_*` (extracteur non déclenché, attendu)
+  3. Vérification logs Workers P1 Cloud Run :
+     - ✅ `MemoryTaskQueue started with 2 workers` (2025-10-09 12:09:24)
+     - ✅ Révision `emergence-app-p1memory` opérationnelle
+  4. Création script QA `scripts/qa/trigger_preferences_extraction.py` :
+     - Login + création thread + 5 messages préférences + consolidation
+     - ⚠️ Bloqué : credentials smoke obsolètes (401 Unauthorized)
+  5. **Documentation complète métriques P1** : `docs/monitoring/prometheus-p1-metrics.md` (400 lignes) :
+     - 5 métriques P1 détaillées (description, queries PromQL, alertes)
+     - 5 panels Grafana suggérés (extraction rate, confidence, latency, efficiency, by type)
+     - Troubleshooting, coûts estimés, références
+- **Tests / checks** :
+  - ✅ Logs Cloud Run Workers P1
+  - ✅ Métriques Phase 3 production
+  - ⚠️ Extraction P1 non déclenchée (credentials requis)
+- **Observations** :
+  - P1 déployé et opérationnel (Workers OK, métriques instrumentées)
+  - Validation fonctionnelle requiert credentials smoke valides
+  - Documentation complète permet setup Grafana immédiat après extraction
+- **Actions à suivre** :
+  1. Obtenir credentials smoke valides ou utiliser compte test
+  2. Déclencher extraction via `scripts/qa/trigger_preferences_extraction.py`
+  3. Vérifier métriques `memory_preferences_*` apparaissent
+  4. Ajouter panels Grafana selon `docs/monitoring/prometheus-p1-metrics.md`
 
 ### Codex (CLI) - Session 2025-10-09 08:30-10:05
 - **Statut** : ✅ Build/push image `deploy-p1-20251009-094822`, déploiement Cloud Run `emergence-app-p1memory`, docs synchronisées.

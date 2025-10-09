@@ -1,3 +1,154 @@
+## [2025-10-09 19:50] - Agent: Claude Code (Hotfix P1.1 - Intégration PreferenceExtractor)
+
+### Fichiers modifiés
+- src/backend/features/memory/analyzer.py (intégration PreferenceExtractor)
+- docs/deployments/2025-10-09-hotfix-p1.1-preference-integration.md (nouveau)
+- AGENT_SYNC.md
+- docs/passation.md (entrée courante)
+
+### Contexte
+- **Problème critique découvert** : PreferenceExtractor existait mais n'était jamais appelé lors des consolidations mémoire
+- Phase P1 était partiellement déployée (infrastructure OK, extraction non branchée)
+- Métriques `memory_preferences_*` impossibles à voir en production
+
+### Actions réalisées
+1. **Diagnostic complet** :
+   - Vérification logs Cloud Run : aucun log PreferenceExtractor
+   - Vérification code analyzer.py : aucun import ni appel PreferenceExtractor
+   - Test consolidation avec simple_preference_test.py : succès mais pas d'extraction
+
+2. **Intégration PreferenceExtractor** dans analyzer.py (4 points) :
+   - Import module (ligne 13)
+   - Déclaration attribut `self.preference_extractor` dans `__init__` (ligne 113)
+   - Instanciation dans `set_chat_service()` (ligne 120)
+   - Appel `extract()` après analyse sémantique (lignes 360-402)
+
+3. **Implémentation extraction** :
+   - Récupération `user_sub` depuis `session.user_id` via session_manager
+   - Appel `await self.preference_extractor.extract(messages, user_sub, thread_id)`
+   - Log préférences extraites (debug)
+   - Métriques Prometheus incrémentées automatiquement
+   - Fallback graceful si extraction échoue (analyse sémantique non impactée)
+
+4. **Documentation hotfix complète** :
+   - Rapport détaillé : [docs/deployments/2025-10-09-hotfix-p1.1-preference-integration.md](../deployments/2025-10-09-hotfix-p1.1-preference-integration.md)
+   - Procédure build/deploy avec tag `p1.1-hotfix`
+   - Critères succès et validation post-déploiement
+
+### Tests
+- ✅ pytest tests/memory/ : 15/15 passed (incluant 8 tests PreferenceExtractor)
+- ✅ mypy src/backend/features/memory/analyzer.py : Success
+- ✅ ruff check analyzer.py : All checks passed
+
+### Résultats
+- **PreferenceExtractor maintenant intégré** dans cycle consolidation mémoire
+- **Métriques P1 déclenchables** après déploiement hotfix
+- **Tests passent** : aucune régression
+- **Code propre** : mypy + ruff OK
+
+### Prochaines actions recommandées
+1. **Déployer hotfix P1.1** :
+   ```bash
+   # Commit
+   git add src/backend/features/memory/analyzer.py docs/deployments/
+   git commit -m "fix(P1.1): integrate PreferenceExtractor in memory consolidation"
+
+   # Build + Push + Deploy
+   docker build --platform linux/amd64 -t ...:p1.1-hotfix-YYYYMMDD-HHMMSS .
+   docker push ...:p1.1-hotfix-YYYYMMDD-HHMMSS
+   gcloud run deploy ... --revision-suffix p1-1-hotfix
+   gcloud run services update-traffic ... p1-1-hotfix=100
+   ```
+
+2. **Validation post-déploiement** :
+   - Vérifier logs "PreferenceExtractor: Extracted X preferences"
+   - Déclencher consolidation test via `scripts/qa/simple_preference_test.py`
+   - Vérifier métriques `memory_preferences_*` apparaissent dans `/api/metrics`
+   - Confirmer extraction fonctionne en production
+
+3. **Setup Grafana** :
+   - Ajouter 5 panels selon [docs/monitoring/prometheus-p1-metrics.md](../monitoring/prometheus-p1-metrics.md)
+   - Configurer alertes (extraction rate, confidence, latency)
+
+### Blocages
+- Aucun - Correctif prêt pour déploiement immédiat
+
+### Notes techniques
+- **user_sub récupération** : Depuis `session.user_id` via session_manager
+- **Persistence Firestore** : TODO P1.2 (pour l'instant logs uniquement)
+- **Fallback graceful** : Si extraction échoue, analyse sémantique continue normalement
+- **Métriques auto** : Incrémentées par PreferenceExtractor (pas de code additionnel)
+
+---
+
+## [2025-10-09 18:50] - Agent: Claude Code (Validation P1 partielle + Documentation métriques)
+
+### Fichiers modifiés
+- scripts/qa/trigger_preferences_extraction.py (nouveau)
+- scripts/qa/.env.qa (credentials temporaires)
+- docs/monitoring/prometheus-p1-metrics.md (nouveau, 400 lignes)
+- AGENT_SYNC.md
+- docs/passation.md (entrée courante)
+
+### Contexte
+- Mission immédiate : Validation fonctionnelle P1 en production selon [NEXT_SESSION_PROMPT.md](../NEXT_SESSION_PROMPT.md)
+- Objectif : Déclencher extraction préférences pour valider métriques P1 + documenter setup Grafana
+
+### Actions réalisées
+1. **Lecture docs session P1** : [NEXT_SESSION_PROMPT.md](../NEXT_SESSION_PROMPT.md), [SESSION_SUMMARY_20251009.md](../SESSION_SUMMARY_20251009.md), dernières entrées passation
+2. **Vérification métriques production** (`/api/metrics`) :
+   - ✅ Phase 3 visibles : `memory_analysis_success_total=7`, `memory_analysis_cache_hits=1`, `memory_analysis_cache_misses=6`, `concept_recall_*`
+   - ⚠️ Phase P1 absentes : `memory_preferences_*` (extracteur non déclenché, comportement attendu)
+3. **Vérification logs Workers P1** (`gcloud logging read`) :
+   - ✅ `MemoryTaskQueue started with 2 workers` (2025-10-09 12:09:24 UTC)
+   - ✅ Révision `emergence-app-p1memory` opérationnelle
+4. **Création script QA** : `scripts/qa/trigger_preferences_extraction.py` :
+   - Login email/password + création thread
+   - 5 messages avec préférences explicites (Python, FastAPI, jQuery, Claude, TypeScript)
+   - Déclenchement consolidation mémoire via `POST /api/memory/tend-garden`
+   - ⚠️ **Bloqué** : Credentials smoke obsolètes (401 Unauthorized avec `gonzalefernando@gmail.com`)
+5. **Documentation complète métriques P1** : [docs/monitoring/prometheus-p1-metrics.md](../monitoring/prometheus-p1-metrics.md) (400 lignes) :
+   - 5 métriques P1 détaillées (counter, histogram, description, queries PromQL)
+   - 5 panels Grafana suggérés (extraction rate, confidence distribution, latency, efficiency, by type)
+   - Troubleshooting (métriques absentes, latency haute, confidence faible)
+   - Coûts estimés (~$0.20/mois pour 500 msg/jour, 30% LLM)
+   - Références code, tests, docs
+
+### Tests
+- ✅ Logs Cloud Run : Workers P1 opérationnels
+- ✅ Métriques Phase 3 : visibles et fonctionnelles
+- ⚠️ Extraction P1 : non déclenchée (credentials requis)
+- ⚠️ Script QA : bloqué sur authentification
+
+### Résultats
+- **P1 déployé et opérationnel** : MemoryTaskQueue avec 2 workers, code instrumenté
+- **Métriques instrumentées** : `memory_preferences_*` prêtes, en attente du premier déclenchement
+- **Documentation Grafana complète** : Panels et alertes prêts à être configurés
+- **Script QA créé** : `scripts/qa/trigger_preferences_extraction.py` prêt (nécessite credentials valides)
+
+### Prochaines actions recommandées
+1. **Obtenir credentials smoke valides** :
+   - Vérifier avec FG ou utiliser compte test dédié
+   - Mettre à jour `.env.qa` ou variables environnement
+2. **Déclencher extraction** :
+   - Exécuter `python scripts/qa/trigger_preferences_extraction.py`
+   - Ou créer conversation manuellement via UI + POST `/api/memory/tend-garden`
+3. **Vérifier métriques P1 apparaissent** :
+   - `curl .../api/metrics | grep memory_preferences`
+   - Vérifier logs : `gcloud logging read 'textPayload:PreferenceExtractor' --limit 20`
+4. **Setup Grafana** :
+   - Ajouter 5 panels selon `docs/monitoring/prometheus-p1-metrics.md`
+   - Configurer alertes (extraction rate, confidence, latency)
+5. **QA automatisée complète** :
+   - `python qa_metrics_validation.py --trigger-memory` (après credentials)
+   - `pwsh tests/run_all.ps1` avec smoke tests
+
+### Blocages
+- ⚠️ Credentials smoke obsolètes : `gonzalefernando@gmail.com` retourne 401
+- Alternative : Utiliser compte test ou créer utilisateur dédié QA
+
+---
+
 ## [2025-10-09 10:05] - Agent: Codex (Déploiement P1 mémoire)
 
 ### Fichiers modifiés
