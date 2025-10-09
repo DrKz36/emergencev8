@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from backend.core.websocket import ConnectionManager
 
@@ -266,19 +266,24 @@ class DebateService:
 
                 # Appels parallèles avec asyncio.gather
                 import asyncio
-                attacker_response, challenger_response = await asyncio.gather(
+                results = await asyncio.gather(
                     self._say_once(session_id, attacker, prompt_attacker, use_rag=use_rag, doc_ids=selected_doc_ids),
                     self._say_once(session_id, challenger, prompt_challenger, use_rag=use_rag, doc_ids=selected_doc_ids),
                     return_exceptions=True
                 )
+                attacker_response_raw, challenger_response_raw = results
 
                 # Gérer les erreurs individuelles
-                if isinstance(attacker_response, Exception):
-                    logger.error(f"Erreur attacker round {r}: {attacker_response}", exc_info=attacker_response)
-                    raise attacker_response
-                if isinstance(challenger_response, Exception):
-                    logger.error(f"Erreur challenger round {r}: {challenger_response}", exc_info=challenger_response)
-                    raise challenger_response
+                if isinstance(attacker_response_raw, Exception):
+                    logger.error(f"Erreur attacker round {r}: {attacker_response_raw}", exc_info=attacker_response_raw)
+                    raise attacker_response_raw
+                if isinstance(challenger_response_raw, Exception):
+                    logger.error(f"Erreur challenger round {r}: {challenger_response_raw}", exc_info=challenger_response_raw)
+                    raise challenger_response_raw
+
+                # Type narrowing après vérification des exceptions (cast pour mypy)
+                attacker_response: Dict[str, Any] = cast(Dict[str, Any], attacker_response_raw)
+                challenger_response: Dict[str, Any] = cast(Dict[str, Any], challenger_response_raw)
 
                 turn_a = {
                     "round": r,
