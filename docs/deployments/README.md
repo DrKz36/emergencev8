@@ -17,6 +17,7 @@ Chaque déploiement est documenté avec :
 
 | Date | Révision | Image Tag | Description | Statut |
 |------|----------|-----------|-------------|--------|
+| 2025-10-09 | `emergence-app-p1memory` | `deploy-p1-20251009-094822` | Phase P1 mémoire (queue async, préférences, instrumentation) ([rapport](2025-10-09-deploy-p1-memory.md)) | ✅ Active (100%) |
 | 2025-10-09 | `emergence-app-phase3b` | `cockpit-phase3-20251009-073931` | Fix timeline SQL + redeploy cockpit Phase 3 ([rapport](2025-10-09-deploy-cockpit-phase3.md)) | ✅ Active (100%) |
 | 2025-10-09 | `emergence-app-metrics001` | `deploy-20251008-183707` | Activation `CONCEPT_RECALL_METRICS_ENABLED` + routage 100 % (Prometheus Phase 3) ([rapport](2025-10-09-activation-metrics-phase3.md)) | ✅ Active (100%) |
 | 2025-10-08 | `emergence-app-00275-2jb` | `deploy-20251008-183707` | Rebuild image Phases 2 & 3 + redeploy Cloud Run (health + metrics OK) ([rapport](2025-10-08-cloud-run-revision-00275.md)) | ⏸️ Archived |

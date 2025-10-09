@@ -1,3 +1,47 @@
+## [2025-10-09 10:05] - Agent: Codex (Déploiement P1 mémoire)
+
+### Fichiers modifiés
+- build_tag.txt
+- src/backend/features/memory/analyzer.py
+- docs/deployments/2025-10-09-deploy-p1-memory.md
+- docs/deployments/README.md
+- AGENT_SYNC.md
+- docs/passation.md (entrée courante)
+
+### Contexte
+- Application du prompt `PROMPT_CODEX_DEPLOY_P1.md` pour publier la phase P1 mémoire (queue asynchrone, extracteur préférences, instrumentation Prometheus).
+- Objectif : livrer une image stable, basculer le trafic Cloud Run sur la révision `p1memory` et documenter le run.
+
+### Actions réalisées
+1. Lecture consignes live (AGENT_SYNC, AGENTS, CODEV_PROTOCOL, docs/passation, architecture, roadmap stratégique, docs/Memoire) + `scripts/sync-workdir.ps1` (échec attendu sur smoke faute de credentials).
+2. Batterie locale : `npm run build`, `.venv\Scripts\python.exe -m pytest`, `ruff check`, `mypy src` (signature `analyze_session_async` corrigée pour mypy).
+3. Génération tag `deploy-p1-20251009-094822` (`build_tag.txt`), build Docker linux/amd64, push Artifact Registry + vérification via `gcloud artifacts docker images list`.
+4. `gcloud run deploy emergence-app ... --revision-suffix p1memory --env-vars-file env.yaml` puis `gcloud run services update-traffic emergence-app-p1memory=100`.
+5. Vérifs prod : `Invoke-RestMethod /api/health`, `Invoke-WebRequest /api/metrics`, login admin + création thread QA, `POST /api/threads/{id}/messages`, `POST /api/memory/tend-garden`, relevé logs `MemoryTaskQueue started`.
+6. Documentation : nouveau rapport `docs/deployments/2025-10-09-deploy-p1-memory.md`, mise à jour `docs/deployments/README.md`, synchronisation `AGENT_SYNC.md`.
+
+### Tests
+- ✅ `npm run build`
+- ✅ `.venv\Scripts\python.exe -m pytest`
+- ✅ `.venv\Scripts\ruff.exe check`
+- ✅ `.venv\Scripts\python.exe -m mypy src`
+- ⚠️ `tests/run_all.ps1` non relancé (besoin credentials smoke prod)
+
+### Résultats
+- Révision Cloud Run active `emergence-app-p1memory` (digest `sha256:883d85d093cab8ae2464d24c14d54e92b65d3c7da9c975bcb1d65b534ad585b5`) routée à 100 %.
+- Health check prod 200, endpoints mémoire fonctionnels (consolidation thread QA ok).
+- `MemoryTaskQueue` initialisée avec 2 workers (logs Cloud Run confirmés).
+- `/api/metrics` expose `memory_analysis_*` & `concept_recall_*`; compteurs `memory_preferences_*` pas encore présents (probablement en attente d’un run extracteur réel).
+
+### Prochaines actions recommandées
+1. Lancer `python qa_metrics_validation.py --base-url https://emergence-app-47nct44nma-ew.a.run.app --trigger-memory` (avec credentials prod) pour activer/incrémenter `memory_preferences_*`.
+2. Rejouer `pwsh -File tests/run_all.ps1` avec identifiants smoke afin de valider le bundle complet post-déploiement.
+3. Ajouter un snapshot métriques Prometheus P1 (`docs/monitoring/prometheus-phase3-setup.md`) dès que les compteurs préférences auront des valeurs.
+
+### Blocages
+- Credentials smoke non injectés => `tests/run_all.ps1` et scénario QA complet non exécutés (documenté dans AGENT_SYNC).
+- `memory_preferences_*` absent dans `/api/metrics` tant que l’extracteur n’a pas tourné (prévu via action 1).
+
 ## [2025-10-09 08:45] - Agent: Codex (QA timeline + smoke)
 
 ### Fichiers modifiés

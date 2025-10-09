@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-09 17:00 CEST (Claude Code - Validation Cockpit Phase 3 + Prompt Next Features)
+**Derniere mise a jour** : 2025-10-09 10:05 CEST (Codex - Déploiement Phase P1 mémoire + vérif prod)
 
 ---
 
@@ -22,23 +22,24 @@
 ### Branche active
 - **Branche courante** : `main`
 - **Derniers commits** :
+  - `85d7ece` docs: prompt complet déploiement Phase P1 mémoire pour Codex
+  - `666c211` docs: sync AGENT_SYNC session validation cockpit Phase 3
+  - `4bde612` docs: sync Phase P1 enrichissement mémoire (AGENT_SYNC + roadmap)
   - `6410f3c` feat: prompt complet prochaines améliorations cockpit
-  - `588c5dc` feat(P1): enrichissement mémoire - déportation async + extraction préférences + métriques
-  - `78e0643` docs: validation complète cockpit Phase 3 + prompt deploy Codex
-  - `c951a09` docs: prompt debug cockpit - validation métriques Phase 3
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
 - `codex` → SSH : `git@github.com:DrKz36/emergencev8.git`
 
 ### Déploiement Cloud Run
-- **Révision active** : `emergence-app-phase3b`
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:4c0a5159057ac5adcd451b647110bfafbc0566a701452f90486e66f93d8dbf17`
+- **Révision active** : `emergence-app-p1memory`
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:883d85d093cab8ae2464d24c14d54e92b65d3c7da9c975bcb1d65b534ad585b5`
 - **URL principale** : https://emergence-app-47nct44nma-ew.a.run.app
 - **Alias historique** : https://emergence-app-486095406755.europe-west1.run.app
-- **Déployé** : 2025-10-09 07:47 CEST (trafic 100 %)
-- **Trafic** : 100% sur `phase3b` (alias canary conservé)
+- **Déployé** : 2025-10-09 09:52 CEST (trafic 100 %)
+- **Trafic** : 100% sur `p1memory` (alias canary conservé)
 - **Documentation** :
+  - [docs/deployments/2025-10-09-deploy-p1-memory.md](docs/deployments/2025-10-09-deploy-p1-memory.md)
   - [docs/deployments/2025-10-09-deploy-cockpit-phase3.md](docs/deployments/2025-10-09-deploy-cockpit-phase3.md)
   - [docs/deployments/2025-10-09-activation-metrics-phase3.md](docs/deployments/2025-10-09-activation-metrics-phase3.md)
 - **Service Cloud Run** : `emergence-app`
@@ -71,6 +72,39 @@
 ---
 
 ## 🚧 Zones de travail en cours
+
+### Codex (CLI) - Session 2025-10-09 08:30-10:05
+- **Statut** : ✅ Build/push image `deploy-p1-20251009-094822`, déploiement Cloud Run `emergence-app-p1memory`, docs synchronisées.
+- **Fichiers touchés** :
+  - `build_tag.txt`
+  - `src/backend/features/memory/analyzer.py`
+  - `docs/deployments/2025-10-09-deploy-p1-memory.md`
+  - `docs/deployments/README.md`
+  - `AGENT_SYNC.md`
+  - `docs/passation.md` *(à venir en fin de session)*
+- **Actions réalisées** :
+  1. Lecture consignes (AGENT_SYNC, AGENTS, CODEV_PROTOCOL, docs/passation, architecture, roadmap, mémoire) + `scripts/sync-workdir.ps1` (échec attendu faute de credentials smoke).
+  2. Qualité locale : `npm run build`, `pytest` (165 tests), `ruff check`, `mypy src` (fix signature `analyze_session_async`).
+  3. Build Docker linux/amd64 + push tag `deploy-p1-20251009-094822`, vérification Artifact Registry.
+  4. `gcloud run deploy … --revision-suffix p1memory` puis `gcloud run services update-traffic … emergence-app-p1memory=100`.
+  5. Vérifications prod : `Invoke-RestMethod /api/health`, `/api/metrics`, création thread + message QA, `POST /api/memory/tend-garden`, lecture logs `MemoryTaskQueue`.
+  6. Documentation : nouveau rapport `docs/deployments/2025-10-09-deploy-p1-memory.md`, mise à jour `docs/deployments/README.md`, présente section.
+- **Tests / checks** :
+  - ✅ `npm run build`
+  - ✅ `.venv\Scripts\python.exe -m pytest`
+  - ✅ `.venv\Scripts\ruff.exe check`
+  - ✅ `.venv\Scripts\python.exe -m mypy src`
+  - ⚠️ `tests/run_all.ps1` non relancé (login smoke protégé)
+- **Observations** :
+  - `MemoryTaskQueue started with 2 workers` confirmé dans Cloud Logging.
+  - `memory_analysis_*` métriques disponibles ; `memory_preferences_*` absentes tant que l’extracteur n’a pas tourné (voir actions à suivre).
+  - Token admin revalidé via `/api/auth/login`, sessions/threads créés pour QA ciblée.
+- **Next** :
+  1. Lancer `python qa_metrics_validation.py --base-url … --login-email … --trigger-memory` pour forcer l’apparition des compteurs `memory_preferences_*`.
+  2. Exécuter `tests/run_all.ps1` avec identifiants smoke ou via bypass lorsqu’ils seront disponibles.
+  3. Surveiller logs `memory.preference_pipeline` et enrichir Grafana Prometheus avec les compteurs P1.
+- **Blocages** :
+  - Manque de credentials/stack local pour exécuter `tests/run_all.ps1` et le scénario QA complet (documenté ici et dans passation).
 
 ### Claude Code (moi) - Session actuelle
 - **Statut** : ✅ **VALIDATION COCKPIT PHASE 3 COMPLÉTÉE** + Prompt next features créé

@@ -375,7 +375,7 @@ class MemoryAnalyzer:
         self,
         session_id: str,
         force: bool = False,
-        callback: Callable = None
+        callback: Optional[Callable[..., Any]] = None
     ) -> None:
         """
         Version asynchrone non-bloquante de analyze_session_for_concepts.
