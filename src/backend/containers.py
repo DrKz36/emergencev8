@@ -354,6 +354,16 @@ class AppContainer(containers.DeclarativeContainer):
             cost_tracker=cost_tracker,
         )
 
+    # TimelineService pour les graphiques dashboard
+    try:
+        from backend.features.dashboard.timeline_service import TimelineService  # type: ignore
+        timeline_service = providers.Singleton(
+            TimelineService,
+            db_manager=db_manager,
+        )
+    except Exception:  # pragma: no cover
+        pass
+
     if AdminDashboardService is not None:
         admin_dashboard_service = providers.Singleton(
             AdminDashboardService,

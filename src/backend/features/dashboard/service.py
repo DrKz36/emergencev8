@@ -105,17 +105,36 @@ class DashboardService:
 
             try:
                 documents_raw = await db_queries.get_all_documents(
-                    self.db, session_id=None, user_id=user_id
+                    self.db, session_id=session_id, user_id=user_id
                 )
             except Exception as e:
                 logger.warning(f"[dashboard] get_all_documents KO: {e}")
                 documents_raw = []
 
             try:
-                sessions_raw = await db_queries.get_all_sessions_overview(self.db, user_id=user_id)
+                sessions_raw = await db_queries.get_all_sessions_overview(
+                    self.db, user_id=user_id, session_id=session_id
+                )
             except Exception as e:
                 logger.warning(f"[dashboard] get_all_sessions_overview KO: {e}")
                 sessions_raw = []
+
+            # Récupération des messages et tokens par période
+            try:
+                messages_by_period = await db_queries.get_messages_by_period(
+                    self.db, user_id=user_id, session_id=session_id
+                )
+            except Exception as e:
+                logger.warning(f"[dashboard] get_messages_by_period KO: {e}")
+                messages_by_period = {"total": 0, "today": 0, "week": 0, "month": 0}
+
+            try:
+                tokens_summary = await db_queries.get_tokens_summary(
+                    self.db, user_id=user_id, session_id=session_id
+                )
+            except Exception as e:
+                logger.warning(f"[dashboard] get_tokens_summary KO: {e}")
+                tokens_summary = {"total": 0, "input": 0, "output": 0, "avgPerMessage": 0}
 
             documents_raw = self._coerce_list(documents_raw)
             sessions_raw = self._coerce_list(sessions_raw)
@@ -140,6 +159,8 @@ class DashboardService:
                 "costs": costs_formatted,
                 "monitoring": monitoring_formatted,
                 "thresholds": thresholds_formatted,
+                "messages": messages_by_period,
+                "tokens": tokens_summary,
                 "raw_data": {
                     "documents": documents_raw,
                     "sessions": sessions_raw,
@@ -161,5 +182,7 @@ class DashboardService:
                 },
                 "monitoring": {"total_documents": 0, "total_sessions": 0},
                 "thresholds": {"daily_threshold": 1.0, "weekly_threshold": 1.0, "monthly_threshold": 1.0},
+                "messages": {"total": 0, "today": 0, "week": 0, "month": 0},
+                "tokens": {"total": 0, "input": 0, "output": 0, "avgPerMessage": 0},
                 "raw_data": {"documents": [], "sessions": []},
             }

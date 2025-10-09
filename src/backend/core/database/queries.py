@@ -255,19 +255,34 @@ async def add_cost_log(
     )
 
 
-def _build_costs_where_clause(
-    user_id: Optional[str], session_id: Optional[str]
+async def _build_costs_where_clause(
+    db: DatabaseManager,
+    user_id: Optional[str],
+    session_id: Optional[str]
 ) -> tuple[str, tuple[Any, ...]]:
+    """
+    Construit la clause WHERE pour la table costs.
+    Note: La table costs n'a PAS de colonnes user_id/session_id dans le schéma actuel.
+    Cette fonction vérifie si ces colonnes existent avant de les utiliser.
+    """
     clauses: list[str] = []
     params: list[Any] = []
+
+    # Vérifier si la table costs a les colonnes user_id/session_id
+    has_user_id = await _table_has_column(db, "costs", "user_id")
+    has_session_id = await _table_has_column(db, "costs", "session_id")
+
     normalized_user = _normalize_scope_identifier(user_id)
     normalized_session = _normalize_scope_identifier(session_id)
-    if normalized_user:
+
+    if normalized_user and has_user_id:
         clauses.append("user_id = ?")
         params.append(normalized_user)
-    if normalized_session:
+
+    if normalized_session and has_session_id:
         clauses.append("session_id = ?")
         params.append(normalized_session)
+
     if not clauses:
         return "", tuple()
     return " WHERE " + " AND ".join(clauses), tuple(params)
@@ -279,7 +294,7 @@ async def get_costs_summary(
     user_id: Optional[str] = None,
     session_id: Optional[str] = None,
 ) -> Dict[str, float]:
-    where_clause, params = _build_costs_where_clause(user_id, session_id)
+    where_clause, params = await _build_costs_where_clause(db, user_id, session_id)
     query = f"""
         SELECT
             SUM(total_cost) AS total_cost,
@@ -297,6 +312,98 @@ async def get_costs_summary(
             "this_month": row["month_cost"] or 0.0,
         }
     return {"total": 0.0, "today": 0.0, "this_week": 0.0, "this_month": 0.0}
+
+
+async def get_messages_by_period(
+    db: DatabaseManager,
+    *,
+    user_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> Dict[str, int]:
+    """
+    Retourne le nombre de messages par période (today, week, month, total).
+    Filtre par user_id et/ou session_id si fournis.
+    """
+    scope_conditions = []
+    params = []
+
+    if session_id:
+        scope_conditions.append("session_id = ?")
+        params.append(session_id)
+
+    if user_id:
+        scope_conditions.append("user_id = ?")
+        params.append(user_id)
+
+    where_clause = ""
+    if scope_conditions:
+        where_clause = " WHERE " + " AND ".join(scope_conditions)
+
+    # Détection du schéma: utiliser created_at ou timestamp
+    has_created_at = await _table_has_column(db, "messages", "created_at")
+    has_timestamp = await _table_has_column(db, "messages", "timestamp")
+
+    date_field = "created_at" if has_created_at else ("timestamp" if has_timestamp else "created_at")
+
+    query = f"""
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN date({date_field}) = date('now','localtime') THEN 1 ELSE 0 END) AS today,
+            SUM(CASE WHEN strftime('%Y-%W', {date_field}) = strftime('%Y-%W','now','localtime') THEN 1 ELSE 0 END) AS week,
+            SUM(CASE WHEN strftime('%Y-%m', {date_field}) = strftime('%Y-%m','now','localtime') THEN 1 ELSE 0 END) AS month
+        FROM messages{where_clause}
+    """
+
+    row = await db.fetch_one(query, tuple(params) if params else ())
+    if row:
+        return {
+            "total": int(row["total"] or 0),
+            "today": int(row["today"] or 0),
+            "week": int(row["week"] or 0),
+            "month": int(row["month"] or 0),
+        }
+    return {"total": 0, "today": 0, "week": 0, "month": 0}
+
+
+async def get_tokens_summary(
+    db: DatabaseManager,
+    *,
+    user_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Retourne un résumé des tokens utilisés (input, output, total, moyenne par message).
+    Agrège depuis la table costs.
+    """
+    where_clause, params = await _build_costs_where_clause(db, user_id, session_id)
+
+    query = f"""
+        SELECT
+            COALESCE(SUM(input_tokens), 0) AS total_input,
+            COALESCE(SUM(output_tokens), 0) AS total_output,
+            COUNT(*) AS request_count
+        FROM costs{where_clause}
+    """
+
+    row = await db.fetch_one(query, params)
+
+    if row:
+        total_input = int(row["total_input"] or 0)
+        total_output = int(row["total_output"] or 0)
+        total = total_input + total_output
+        request_count = int(row["request_count"] or 0)
+
+        # Calculer moyenne par message
+        avg_per_message = total / request_count if request_count > 0 else 0
+
+        return {
+            "total": total,
+            "input": total_input,
+            "output": total_output,
+            "avgPerMessage": round(avg_per_message, 2),
+        }
+
+    return {"total": 0, "input": 0, "output": 0, "avgPerMessage": 0}
 
 
 # ------------------- Documents (existant) ------------------- #
@@ -449,28 +556,46 @@ async def get_session_by_id(
 async def get_all_sessions_overview(
     db: DatabaseManager,
     user_id: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
+    """
+    Récupère un aperçu des sessions avec comptage des messages.
+    Si session_id est fourni, retourne uniquement cette session.
+    """
+    # Construction de la requête avec LEFT JOIN pour compter les messages
+    base_query = """
+        SELECT
+            s.id,
+            s.created_at,
+            s.updated_at,
+            s.summary,
+            COALESCE(json_array_length(s.extracted_concepts), 0) as concept_count,
+            COALESCE(json_array_length(s.extracted_entities), 0) as entity_count,
+            COUNT(DISTINCT m.id) as message_count
+        FROM sessions s
+        LEFT JOIN messages m ON (m.session_id = s.id OR m.user_id = s.user_id)
+    """
+
+    # Conditions WHERE
+    conditions = []
+    params = []
+
+    if session_id:
+        conditions.append("s.id = ?")
+        params.append(session_id)
+
     if user_id:
-        rows = await db.fetch_all(
-            """
-            SELECT id, created_at, updated_at, summary,
-                   json_array_length(extracted_concepts) as concept_count,
-                   json_array_length(extracted_entities) as entity_count
-            FROM sessions
-            WHERE user_id = ?
-            ORDER BY updated_at DESC
-            """,
-            (user_id,),
-        )
-    else:
-        rows = await db.fetch_all(
-            """
-            SELECT id, created_at, updated_at, summary,
-                   json_array_length(extracted_concepts) as concept_count,
-                   json_array_length(extracted_entities) as entity_count
-            FROM sessions ORDER BY updated_at DESC
-            """
-        )
+        conditions.append("s.user_id = ?")
+        params.append(user_id)
+
+    where_clause = ""
+    if conditions:
+        where_clause = " WHERE " + " AND ".join(conditions)
+
+    # Groupement et tri
+    query = base_query + where_clause + " GROUP BY s.id ORDER BY s.updated_at DESC"
+
+    rows = await db.fetch_all(query, tuple(params) if params else ())
     return [dict(r) for r in rows]
 
 

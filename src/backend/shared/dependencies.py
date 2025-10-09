@@ -514,6 +514,13 @@ async def get_dashboard_service(request: Request):
         raise HTTPException(status_code=503, detail="Service container indisponible.")
     return container.dashboard_service()
 
+async def get_timeline_service(request: Request):
+    """Retourne le TimelineService pour les endpoints de graphiques."""
+    container = getattr(request.app.state, "service_container", None)  # type: ignore
+    if container is None:
+        raise HTTPException(status_code=503, detail="Service container indisponible.")
+    return container.timeline_service()
+
 async def get_benchmarks_service(request: Request):
     container = getattr(request.app.state, "service_container", None)  # type: ignore[attr-defined]
     if container is None:
