@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-09 09:30 CEST (Claude Code - Phase P1 enrichissement mémoire complète)
+**Derniere mise a jour** : 2025-10-09 17:00 CEST (Claude Code - Validation Cockpit Phase 3 + Prompt Next Features)
 
 ---
 
@@ -22,9 +22,10 @@
 ### Branche active
 - **Branche courante** : `main`
 - **Derniers commits** :
+  - `6410f3c` feat: prompt complet prochaines améliorations cockpit
   - `588c5dc` feat(P1): enrichissement mémoire - déportation async + extraction préférences + métriques
-  - `6a11fb4` docs: NEXT_SESSION_PROMPT mis à jour - priorité P1 mémoire
-  - `6c032b1` qa: unify cockpit QA workflow and cleanup timelines
+  - `78e0643` docs: validation complète cockpit Phase 3 + prompt deploy Codex
+  - `c951a09` docs: prompt debug cockpit - validation métriques Phase 3
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
@@ -65,13 +66,144 @@
 - **Post-déploiement** : `gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005`, vérifier `/api/health` et `/api/metrics`.
 
 ### Working tree
-- ⚠️ Dirty (correctif timeline + qa script + docs session en cours) — laisser intacts les changements backend/dashboard déjà présents
+- ✅ Clean (tous commits pushés : `6410f3c`, `78e0643`, `588c5dc`)
 
 ---
 
 ## 🚧 Zones de travail en cours
 
-### Claude Code (moi)
+### Claude Code (moi) - Session actuelle
+- **Statut** : ✅ **VALIDATION COCKPIT PHASE 3 COMPLÉTÉE** + Prompt next features créé
+- **Session 2025-10-09 (14:00-17:00)** : Validation exhaustive cockpit + documentation
+
+  **Contexte** : Suite à la demande de validation du prompt `PROMPT_DEBUG_COCKPIT_METRICS.md`
+
+  1. ✅ **Démarrage backend local + Validation API** (1h)
+     - Backend démarré : `uvicorn main:app --reload` (port 8000)
+     - Auth dev configurée : `AUTH_DEV_MODE=1` dans `.env`
+     - Test `/api/dashboard/costs/summary` : ✅ 200 OK
+       - Métriques enrichies validées :
+         - Messages : {total: 170, today: 0, week: 20, month: 154}
+         - Tokens : {total: 404438, input: 392207, output: 12231, avgPerMessage: 7095.4}
+         - Costs : {total_cost: 0.08543845, today: 0.0, week: 0.005057, month: 0.0849598}
+         - Monitoring : {total_documents: 3, total_sessions: 31}
+     - Test timeline endpoints : ✅ Tous fonctionnels
+       - `/timeline/activity?period=30d` : array vide (données anciennes)
+       - `/timeline/costs?period=30d` : 8 entrées (2025-09-30 à 2025-10-08)
+       - `/timeline/tokens?period=30d` : 8 entrées (input/output par jour)
+     - **Issue découverte** : Headers case-sensitive
+       - ❌ `X-Dev-Bypass: 1` → 401
+       - ✅ `x-dev-bypass: 1` → 200 OK
+       - Solution documentée dans prompt
+
+  2. ✅ **Validation Filtrage Session** (30min)
+     - Test header `x-session-id: 7d0df98b-863e-4784-8376-6220a67c2054`
+       - Résultats filtrés : 34 messages (vs 170 total)
+       - Tokens filtrés : 78,811 (vs 404,438 total)
+       - Costs filtrés : 0.01245525€ (vs 0.08543845€ total)
+     - Test endpoint dédié `/costs/summary/session/{session_id}` : ✅ Fonctionne
+     - Résultats identiques entre header et endpoint dédié
+
+  3. ✅ **Validation Calculs vs BDD** (30min)
+     - Requêtes SQL directes via Python sqlite3
+     - Comparaison API vs DB : **100% match**
+       | Métrique | Base de Données | API | Match |
+       |----------|-----------------|-----|-------|
+       | Messages total | 170 | 170 | ✅ |
+       | Tokens total | 404,438 | 404,438 | ✅ |
+       | Tokens input | 392,207 | 392,207 | ✅ |
+       | Tokens output | 12,231 | 12,231 | ✅ |
+       | Costs total | 0.08543845 | 0.08543845 | ✅ |
+       | Avg tokens/msg | 7095.4 | 7095.4 | ✅ |
+     - Validation session filtrée : 34 messages, 78811 tokens (100% match)
+
+  4. ✅ **Tests & Qualité Code** (15min)
+     - pytest : `45/45 passants` ✅
+       - test_auth_service.py : 16/16
+       - test_database_manager.py : 14/14
+       - test_session_manager.py : 14/14
+       - test_stream_yield.py : 1/1
+     - mypy : `0 erreur` ✅ (type safety validée)
+     - ruff : `All checks passed!` ✅ (linting OK)
+
+  5. ✅ **Documentation Complète Créée** (2h)
+     - **`PROMPT_CODEX_DEPLOY_PHASE3.md`** (935 lignes) : Guide deploy production
+       - Build Docker multi-stage
+       - Push Artifact Registry
+       - Deploy Cloud Run avec env.yaml
+       - Validations post-deploy (5 vérifications)
+       - Rollback plan détaillé
+       - Checklist complète pré/pendant/post déploiement
+     - **`NEXT_SESSION_PROMPT.md`** : Instructions prochaine session
+       - Résumé état cockpit validé
+       - 2 options deploy (build nouveau vs utiliser image existante)
+       - Commandes validation post-deploy
+     - **`docs/passation.md`** : Entrée validation avec résultats complets
+       - Contexte, actions réalisées, tests, résultats clés
+       - Note technique headers case-sensitive
+       - Prochaines actions recommandées
+     - Mise à jour `docs/deployments/README.md`
+
+  6. ✅ **Prompt Prochaines Features Cockpit** (2h)
+     - **`PROMPT_COCKPIT_NEXT_FEATURES.md`** (1052 lignes) : Guide améliorations
+       - 🔴 **P1 - Graphiques Timeline interactifs** (3-4h)
+         - Chart.js intégration complète (code fourni)
+         - 3 graphiques : activity, costs, tokens
+         - Sélecteur période (7d/30d/90d/1y)
+         - Styles CSS complets
+       - 🟡 **P2 - Filtres avancés** (2-3h)
+         - Filtrage agent (anima/neo/nexus)
+         - Filtrage session (dropdown)
+         - Filtrage dates (date picker)
+         - Nouveaux endpoints backend
+       - 🟢 **P3 - Export données** (1-2h)
+         - Export CSV/JSON/PDF (code complet)
+         - jsPDF intégration
+         - Menu export avec icônes
+       - 🔵 **P4 - Comparaisons & Insights** (2-3h)
+         - Comparaison périodes vs périodes
+         - 5 types insights automatiques
+         - Détection trends (up/down/stable)
+       - Tests unitaires + E2E (Jest, Playwright)
+       - Checklist implémentation complète
+       - Guide design & UX
+
+  7. ✅ **Commits & Push** (15min)
+     - `78e0643` : docs: validation complète cockpit Phase 3 + prompt deploy Codex
+       - 5 files changed, 708 insertions(+)
+       - NEXT_SESSION_PROMPT.md, PROMPT_CODEX_DEPLOY_PHASE3.md, docs/passation.md
+     - `6410f3c` : feat: prompt complet prochaines améliorations cockpit
+       - 1 file changed, 1052 insertions(+)
+       - PROMPT_COCKPIT_NEXT_FEATURES.md
+
+- **Fichiers créés** :
+  - `PROMPT_CODEX_DEPLOY_PHASE3.md` (935 lignes)
+  - `PROMPT_COCKPIT_NEXT_FEATURES.md` (1052 lignes)
+  - `NEXT_SESSION_PROMPT.md` (guidance prochaine session)
+  - `docs/deployments/2025-10-09-activation-metrics-phase3.md` (validation)
+
+- **Fichiers mis à jour** :
+  - `docs/passation.md` (nouvelle entrée session)
+  - `docs/deployments/README.md` (statut déploiements)
+
+- **État Cockpit Phase 3** :
+  - ✅ API endpoints validés (100% fonctionnels)
+  - ✅ Métriques enrichies confirmées (messages, tokens, costs)
+  - ✅ Timeline endpoints opérationnels (activity, costs, tokens)
+  - ✅ Filtrage session validé (header + endpoint dédié)
+  - ✅ Calculs 100% cohérents avec BDD
+  - ✅ Tests complets passants (45/45)
+  - ✅ Qualité code clean (mypy, ruff)
+  - ✅ Documentation complète (deploy + next features)
+  - ⏳ Prêt pour déploiement production (Codex)
+
+- **Prochaines étapes recommandées** :
+  1. Deploy production via Codex (utiliser `PROMPT_CODEX_DEPLOY_PHASE3.md`)
+  2. Validation post-deploy en production
+  3. Implémentation features avancées (utiliser `PROMPT_COCKPIT_NEXT_FEATURES.md`)
+     - Priorité : Graphiques Timeline interactifs (P1, 3-4h)
+
+### Claude Code (session précédente)
 - **Statut** : ✅ Phase P1 enrichissement mémoire COMPLÉTÉE (déportation async + extraction préférences + métriques)
 - **Session 2025-10-09 (08:30-09:30)** :
   1. ✅ **P1.1 - Déportation asynchrone** (3-4h)
