@@ -271,10 +271,17 @@
   - Tests mémoire : 7/7 → 15/15 (+8 tests P1)
   - Couverture P1 : déportation async + extraction enrichie + métriques Prometheus
   - Architecture : Event loop WebSocket préservé (analyses déportées en background)
+- **Tests production (révision Phase 3 - avant P1)** :
+  - ✅ Analyse logs `downloaded-logs-20251009-181542.json` (326 entrées, 56 minutes)
+  - ✅ Révision 00275 stable : 0 erreur, startup 3s, health 13/13 OK
+  - ✅ MemoryAnalyzer V3.4 + VectorService CHROMA opérationnels
+  - ✅ Métriques Prometheus Phase 3 exposées (cache + concept_recall)
+  - ❌ Pas de MemoryTaskQueue (normal, P1 pas déployé)
+  - 📄 Rapport : `docs/monitoring/production-logs-analysis-20251009.md`
 - **Next** :
   1. Phase P2 - Réactivité proactive (prochaine session) : suggestions contextuelles `ws:proactive_hint`
-  2. Build + deploy Cloud Run avec P1 (après validation FG)
-  3. Valider métriques préférences en production (post-déploiement)
+  2. Build + deploy Cloud Run avec P1 (validation FG → Codex)
+  3. Valider métriques préférences P1 en production (post-déploiement)
 
 - **Session 2025-10-09 (06:00-08:30)** :
   1. ✅ **Correction 5 tests API `test_memory_archives.py`** : 149/154 → 154/154 tests passants
