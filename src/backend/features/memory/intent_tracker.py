@@ -1,5 +1,6 @@
 # intent_tracker.py - Suivi et expiration des intentions
 import logging
+import asyncio
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone, timedelta
 import re
@@ -63,6 +64,8 @@ class IntentTracker:
         self.vector_service = vector_service
         self.connection_manager = connection_manager
         self.reminder_counts: Dict[str, int] = {}  # Track reminder count per intent
+        # 🔒 Lock pour accès concurrent aux compteurs (Bug #3 fix)
+        self._reminder_lock = asyncio.Lock()
 
     def parse_timeframe(self, text: str) -> Optional[datetime]:
         """
@@ -96,6 +99,22 @@ class IntentTracker:
                     continue
 
         return None
+
+    async def increment_reminder(self, intent_id: str) -> int:
+        """Incrémente compteur de rappel de manière thread-safe"""
+        async with self._reminder_lock:
+            self.reminder_counts[intent_id] = self.reminder_counts.get(intent_id, 0) + 1
+            return self.reminder_counts[intent_id]
+
+    async def get_reminder_count(self, intent_id: str) -> int:
+        """Récupère compteur de rappel de manière thread-safe"""
+        async with self._reminder_lock:
+            return self.reminder_counts.get(intent_id, 0)
+
+    async def delete_reminder(self, intent_id: str):
+        """Supprime compteur de rappel de manière thread-safe"""
+        async with self._reminder_lock:
+            self.reminder_counts.pop(intent_id, None)
 
     async def check_expiring_intents(
         self, user_id: str, lookahead_days: int = 7
@@ -213,10 +232,8 @@ class IntentTracker:
                         session_id,
                     )
 
-                    # Increment reminder count
-                    self.reminder_counts[intent["id"]] = (
-                        intent["reminder_count"] + 1
-                    )
+                    # Increment reminder count (thread-safe)
+                    await self.increment_reminder(intent["id"])
                     sent_count += 1
 
                     logger.info(
@@ -248,16 +265,21 @@ class IntentTracker:
 
             purged = 0
 
-            # Find intents to purge
-            for intent_id, count in list(self.reminder_counts.items()):
-                if count >= 3:
-                    try:
-                        col.delete(ids=[intent_id])
-                        del self.reminder_counts[intent_id]
-                        purged += 1
-                        logger.info(f"Intention {intent_id} purgée (3+ rappels ignorés)")
-                    except Exception as e:
-                        logger.warning(f"Erreur purge intention {intent_id}: {e}")
+            # Find intents to purge (thread-safe copy)
+            async with self._reminder_lock:
+                intents_to_purge = [
+                    intent_id for intent_id, count in self.reminder_counts.items() if count >= 3
+                ]
+
+            # Purge intents (outside lock to avoid long hold)
+            for intent_id in intents_to_purge:
+                try:
+                    col.delete(ids=[intent_id])
+                    await self.delete_reminder(intent_id)  # Thread-safe delete
+                    purged += 1
+                    logger.info(f"Intention {intent_id} purgée (3+ rappels ignorés)")
+                except Exception as e:
+                    logger.warning(f"Erreur purge intention {intent_id}: {e}")
 
             return purged
 
@@ -265,8 +287,7 @@ class IntentTracker:
             logger.error(f"Erreur purge intentions ignorées: {e}")
             return 0
 
-    def mark_intent_completed(self, intent_id: str) -> None:
-        """Mark intent as completed (remove from reminder tracking)."""
-        if intent_id in self.reminder_counts:
-            del self.reminder_counts[intent_id]
-            logger.info(f"Intention {intent_id} marquée comme complétée")
+    async def mark_intent_completed(self, intent_id: str) -> None:
+        """Mark intent as completed (remove from reminder tracking) - thread-safe."""
+        await self.delete_reminder(intent_id)
+        logger.info(f"Intention {intent_id} marquée comme complétée")

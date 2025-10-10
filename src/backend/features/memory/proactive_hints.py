@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 import logging
 import hashlib
+import asyncio
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
@@ -67,10 +68,12 @@ class ConceptTracker:
         self._concept_counters: Dict[str, int] = {}  # {user_id:concept: count}
         self._last_reset: Dict[str, datetime] = {}  # {user_id:concept: timestamp}
         self._reset_window = timedelta(hours=24)  # Reset counters after 24h
+        # 🔒 Lock pour accès concurrent aux compteurs (Bug #3 fix)
+        self._counter_lock = asyncio.Lock()
 
-    def track_mention(self, user_id: str, concept: str) -> int:
+    async def track_mention(self, user_id: str, concept: str) -> int:
         """
-        Track concept mention and return current count.
+        Track concept mention and return current count (thread-safe).
 
         Auto-resets counter after 24h of inactivity.
 
@@ -81,30 +84,32 @@ class ConceptTracker:
         Returns:
             Current count for this concept (after increment)
         """
-        key = f"{user_id}:{concept}"
-        now = datetime.now()
+        async with self._counter_lock:
+            key = f"{user_id}:{concept}"
+            now = datetime.now()
 
-        # Check if counter needs reset (24h expired)
-        last_reset = self._last_reset.get(key)
-        if last_reset and (now - last_reset) > self._reset_window:
+            # Check if counter needs reset (24h expired)
+            last_reset = self._last_reset.get(key)
+            if last_reset and (now - last_reset) > self._reset_window:
+                self._concept_counters[key] = 0
+                logger.debug(f"[ConceptTracker] Reset counter for {key} (24h expired)")
+
+            # Increment counter
+            self._concept_counters[key] = self._concept_counters.get(key, 0) + 1
+            self._last_reset[key] = now
+
+            count = self._concept_counters[key]
+            logger.debug(f"[ConceptTracker] {key} mentioned {count} times")
+
+            return count
+
+    async def reset_counter(self, user_id: str, concept: str) -> None:
+        """Reset counter for specific concept (after hint emitted) - thread-safe."""
+        async with self._counter_lock:
+            key = f"{user_id}:{concept}"
             self._concept_counters[key] = 0
-            logger.debug(f"[ConceptTracker] Reset counter for {key} (24h expired)")
-
-        # Increment counter
-        self._concept_counters[key] = self._concept_counters.get(key, 0) + 1
-        self._last_reset[key] = now
-
-        count = self._concept_counters[key]
-        logger.debug(f"[ConceptTracker] {key} mentioned {count} times")
-
-        return count
-
-    def reset_counter(self, user_id: str, concept: str) -> None:
-        """Reset counter for specific concept (after hint emitted)."""
-        key = f"{user_id}:{concept}"
-        self._concept_counters[key] = 0
-        self._last_reset[key] = datetime.now()
-        logger.debug(f"[ConceptTracker] Counter reset for {key}")
+            self._last_reset[key] = datetime.now()
+            logger.debug(f"[ConceptTracker] Counter reset for {key}")
 
 
 class ProactiveHintEngine:
@@ -171,7 +176,7 @@ class ProactiveHintEngine:
 
             # Strategy 1: Check concept recurrence → preference reminders
             for concept in concepts[:5]:  # Limit to top 5 concepts
-                count = self.concept_tracker.track_mention(user_id, concept)
+                count = await self.concept_tracker.track_mention(user_id, concept)
 
                 if count >= self.recurrence_threshold:
                     # Fetch related preferences
@@ -186,7 +191,7 @@ class ProactiveHintEngine:
 
                         if hint and hint.relevance_score >= self.min_relevance_score:
                             hints.append(hint)
-                            self.concept_tracker.reset_counter(user_id, concept)
+                            await self.concept_tracker.reset_counter(user_id, concept)
 
                             # Metrics
                             if PROMETHEUS_AVAILABLE:
@@ -333,7 +338,7 @@ class ProactiveHintEngine:
         hint = ProactiveHint(
             id=hint_id,
             type="preference_reminder",
-            title=f"Rappel: Préférence détectée",
+            title="Rappel: Préférence détectée",
             message=(
                 f"💡 Tu as mentionné '{concept}' {count} fois. "
                 f"Rappel de ta préférence: {pref_text}"

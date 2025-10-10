@@ -2,6 +2,7 @@
 # V3.7 - Phase P1: Extraction préférences/intentions + enrichissement mémoire
 import logging
 import hashlib
+import asyncio
 from typing import Dict, Any, List, Optional, TYPE_CHECKING, Callable
 from datetime import datetime, timedelta
 
@@ -68,6 +69,8 @@ if not PROMETHEUS_AVAILABLE:
 
 # ⚡ Cache in-memory pour analyses (TTL 1h)
 _ANALYSIS_CACHE: Dict[str, tuple[Dict[str, Any], datetime]] = {}
+MAX_CACHE_SIZE = 100
+EVICTION_THRESHOLD = 80  # Éviction agressive quand >80 entrées
 
 ANALYSIS_PROMPT_TEMPLATE = """
 Analyse la conversation suivante et extrais les informations clés.
@@ -118,6 +121,8 @@ class MemoryAnalyzer:
         self.chat_service = chat_service
         self.is_ready = self.chat_service is not None
         self.preference_extractor: Optional[PreferenceExtractor] = None
+        # 🔒 Lock pour accès concurrent au cache (Bug #3 fix)
+        self._cache_lock = asyncio.Lock()
         logger.info(f"MemoryAnalyzer V3.7 (P1) initialisé. Prêt: {self.is_ready}")
 
     def set_chat_service(self, chat_service: "ChatService"):
@@ -126,6 +131,43 @@ class MemoryAnalyzer:
         # Initialiser PreferenceExtractor avec le chat_service (pour appels LLM)
         self.preference_extractor = PreferenceExtractor(llm_client=chat_service)
         logger.info("ChatService injecté dans MemoryAnalyzer. L'analyseur et PreferenceExtractor sont prêts.")
+
+    async def _get_from_cache(self, key: str) -> Optional[tuple[Dict[str, Any], datetime]]:
+        """Récupère entrée du cache de manière thread-safe"""
+        async with self._cache_lock:
+            return _ANALYSIS_CACHE.get(key)
+
+    async def _put_in_cache(self, key: str, value: Dict[str, Any], timestamp: datetime):
+        """Ajoute entrée au cache de manière thread-safe avec éviction agressive"""
+        async with self._cache_lock:
+            _ANALYSIS_CACHE[key] = (value, timestamp)
+
+            # Éviction agressive (sous lock pour thread-safety)
+            if len(_ANALYSIS_CACHE) > EVICTION_THRESHOLD:
+                # Trier par timestamp et garder les 50 plus récents
+                sorted_keys = sorted(
+                    _ANALYSIS_CACHE.keys(),
+                    key=lambda k: _ANALYSIS_CACHE[k][1],
+                    reverse=True
+                )
+                # Supprimer les anciennes entrées (garder top 50)
+                entries_to_remove = len(sorted_keys) - 50
+                if entries_to_remove > 0:
+                    for k in sorted_keys[50:]:
+                        del _ANALYSIS_CACHE[k]
+                    logger.info(
+                        f"[MemoryAnalyzer] Cache éviction: {entries_to_remove} entrées "
+                        f"supprimées (cache size: {len(_ANALYSIS_CACHE)})"
+                    )
+
+            # 📊 Métrique taille cache
+            if PROMETHEUS_AVAILABLE:
+                CACHE_SIZE.set(len(_ANALYSIS_CACHE))
+
+    async def _remove_from_cache(self, key: str):
+        """Supprime entrée du cache de manière thread-safe"""
+        async with self._cache_lock:
+            _ANALYSIS_CACHE.pop(key, None)
 
     def _ensure_ready(self):
         if not self.chat_service:
@@ -212,15 +254,16 @@ class MemoryAnalyzer:
 
         prompt = ANALYSIS_PROMPT_TEMPLATE.format(conversation_text=conversation_text)
 
-        # ⚡ Cache Layer: éviter recalculs inutiles
+        # ⚡ Cache Layer: éviter recalculs inutiles (thread-safe avec lock)
         cache_key = None
         if persist and not force:
             history_hash = hashlib.md5(conversation_text.encode()).hexdigest()[:8]
             cache_key = f"memory_analysis:{session_id}:{history_hash}"
 
-            # Check cache validity (TTL 1h)
-            if cache_key in _ANALYSIS_CACHE:
-                cached_data, cached_at = _ANALYSIS_CACHE[cache_key]
+            # Check cache validity (TTL 1h) - thread-safe
+            cached_entry = await self._get_from_cache(cache_key)
+            if cached_entry:
+                cached_data, cached_at = cached_entry
                 if datetime.now() - cached_at < timedelta(hours=1):
                     logger.info(f"[MemoryAnalyzer] Cache HIT pour session {session_id} (hash={history_hash})")
                     # 📊 Métrique cache HIT
@@ -228,8 +271,8 @@ class MemoryAnalyzer:
                         CACHE_HITS_TOTAL.inc()
                     return cached_data
                 else:
-                    # Cache expiré
-                    del _ANALYSIS_CACHE[cache_key]
+                    # Cache expiré - supprimer de manière thread-safe
+                    await self._remove_from_cache(cache_key)
                     logger.debug(f"[MemoryAnalyzer] Cache EXPIRED pour session {session_id}")
 
         # 📊 Métrique cache MISS
@@ -350,20 +393,10 @@ class MemoryAnalyzer:
                 f"Impossible de mettre à jour les métadonnées de session {session_id}: {meta_err}"
             )
 
-        # ⚡ Save to cache (après analyse réussie)
+        # ⚡ Save to cache (après analyse réussie) - thread-safe
         if analysis_result and cache_key and persist:
-            _ANALYSIS_CACHE[cache_key] = (analysis_result, datetime.now())
+            await self._put_in_cache(cache_key, analysis_result, datetime.now())
             logger.info(f"[MemoryAnalyzer] Cache SAVED pour session {session_id} (key={cache_key})")
-
-            # Cleanup: limiter taille cache (max 100 entrées)
-            if len(_ANALYSIS_CACHE) > 100:
-                oldest_key = min(_ANALYSIS_CACHE.keys(), key=lambda k: _ANALYSIS_CACHE[k][1])
-                del _ANALYSIS_CACHE[oldest_key]
-                logger.debug(f"[MemoryAnalyzer] Cache cleanup: removed oldest entry {oldest_key}")
-
-            # 📊 Métrique taille cache
-            if PROMETHEUS_AVAILABLE:
-                CACHE_SIZE.set(len(_ANALYSIS_CACHE))
 
         # ⚡ Phase P1: Extraction préférences/intentions
         if persist and self.preference_extractor and analysis_result:

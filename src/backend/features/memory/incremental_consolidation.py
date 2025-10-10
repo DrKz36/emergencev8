@@ -1,5 +1,6 @@
 # incremental_consolidation.py - Consolidation incrémentale de la mémoire
 import logging
+import asyncio
 from typing import Dict, Any, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,24 @@ class IncrementalConsolidator:
         self.db_manager = db_manager
         self.consolidation_threshold = consolidation_threshold
         self.message_counters: Dict[str, int] = {}
+        # 🔒 Lock pour accès concurrent aux compteurs (Bug #3 fix)
+        self._counter_lock = asyncio.Lock()
+
+    async def increment_counter(self, key: str) -> int:
+        """Incrémente compteur de manière thread-safe"""
+        async with self._counter_lock:
+            self.message_counters[key] = self.message_counters.get(key, 0) + 1
+            return self.message_counters[key]
+
+    async def get_counter(self, key: str) -> int:
+        """Récupère compteur de manière thread-safe"""
+        async with self._counter_lock:
+            return self.message_counters.get(key, 0)
+
+    async def reset_counter(self, key: str):
+        """Remet compteur à zéro de manière thread-safe"""
+        async with self._counter_lock:
+            self.message_counters[key] = 0
 
     async def check_and_consolidate(
         self, session_id: str, thread_id: str, recent_messages: List[Dict[str, Any]]
@@ -42,18 +61,16 @@ class IncrementalConsolidator:
         Returns:
             Consolidation result dict if triggered, None otherwise
         """
-        # Increment message counter for this thread
+        # Increment message counter for this thread (thread-safe)
         counter_key = f"{session_id}:{thread_id}"
-        self.message_counters[counter_key] = (
-            self.message_counters.get(counter_key, 0) + 1
-        )
+        counter_value = await self.increment_counter(counter_key)
 
         # Check if threshold reached
-        if self.message_counters[counter_key] < self.consolidation_threshold:
+        if counter_value < self.consolidation_threshold:
             return None
 
-        # Reset counter
-        self.message_counters[counter_key] = 0
+        # Reset counter (thread-safe)
+        await self.reset_counter(counter_key)
 
         logger.info(
             f"Seuil de consolidation atteint pour {counter_key}. "
@@ -162,9 +179,3 @@ class IncrementalConsolidator:
         except Exception as e:
             logger.error(f"Micro-consolidation échouée pour {session_id}: {e}")
             return {"status": "error", "error": str(e)}
-
-    def reset_counter(self, session_id: str, thread_id: str) -> None:
-        """Reset message counter for a specific thread."""
-        counter_key = f"{session_id}:{thread_id}"
-        if counter_key in self.message_counters:
-            del self.message_counters[counter_key]

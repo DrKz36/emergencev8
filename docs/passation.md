@@ -1,3 +1,102 @@
+## [2025-10-10 10:25] - Agent: Claude Code (Bugs Critiques P0 #2 et #3 - Résolu)
+
+### Fichiers modifiés
+- `src/backend/features/memory/analyzer.py` — éviction agressive cache + locks asyncio
+- `src/backend/features/memory/incremental_consolidation.py` — locks compteurs
+- `src/backend/features/memory/proactive_hints.py` — locks ConceptTracker
+- `src/backend/features/memory/intent_tracker.py` — locks reminder_counts
+- `tests/backend/features/test_memory_cache_eviction.py` — 7 tests éviction cache (NOUVEAU)
+- `tests/backend/features/test_memory_concurrency.py` — 9 tests concurrence (NOUVEAU)
+- `docs/passation.md` — nouvelle entrée (cette section)
+
+### Contexte
+Suite à l'audit complet EMERGENCE V8 (2025-10-10), correction des **2 derniers bugs critiques P0** :
+- **Bug #2** : Fuite mémoire dans cache d'analyse (éviction 1 seul élément au lieu de 50+)
+- **Bug #3** : Race conditions sur dictionnaires partagés (absence locks asyncio)
+
+**Impact si non corrigés** :
+- Bug #2 : OOM (Out of Memory) en production avec burst >200 consolidations
+- Bug #3 : Corruption données + comportement non déterministe avec analyses concurrentes
+
+### Actions Complétées
+
+**1. Bug #2 : Fuite Mémoire Cache (45 min)** ✅
+- ✅ Ajouté constantes `MAX_CACHE_SIZE = 100` et `EVICTION_THRESHOLD = 80` (analyzer.py:71-72)
+- ✅ Implémenté éviction agressive : garde top 50 entrées récentes au lieu de supprimer 1 seule (analyzer.py:141-165)
+- ✅ Ajouté logs éviction : `"Cache éviction: X entrées supprimées"` pour observabilité
+- ✅ Créé méthodes thread-safe `_get_from_cache()`, `_put_in_cache()`, `_remove_from_cache()`
+- ✅ Ajouté 7 tests éviction cache (test_memory_cache_eviction.py) : tous passent ✅
+
+**2. Bug #3 : Locks Dictionnaires Partagés (90 min)** ✅
+
+**2.1 MemoryAnalyzer (analyzer.py)**
+- ✅ Ajouté `self._cache_lock = asyncio.Lock()` (ligne 125)
+- ✅ Créé méthodes `_get_from_cache()`, `_put_in_cache()`, `_remove_from_cache()` avec locks
+- ✅ Remplacé tous accès directs `_ANALYSIS_CACHE` par méthodes lockées
+
+**2.2 IncrementalConsolidator (incremental_consolidation.py)**
+- ✅ Ajouté `self._counter_lock = asyncio.Lock()` (ligne 32)
+- ✅ Créé méthodes `increment_counter()`, `get_counter()`, `reset_counter()` avec locks
+- ✅ Remplacé accès directs `self.message_counters` par méthodes lockées
+- ✅ Supprimé ancienne méthode `reset_counter()` synchrone (conflit)
+
+**2.3 ProactiveHintEngine (proactive_hints.py)**
+- ✅ Ajouté `self._counter_lock = asyncio.Lock()` dans `ConceptTracker` (ligne 72)
+- ✅ Converti `track_mention()` en async avec lock
+- ✅ Converti `reset_counter()` en async avec lock
+- ✅ Mis à jour appelants (lignes 179, 194) avec `await`
+
+**2.4 IntentTracker (intent_tracker.py)**
+- ✅ Ajouté `self._reminder_lock = asyncio.Lock()` (ligne 68)
+- ✅ Créé méthodes `increment_reminder()`, `get_reminder_count()`, `delete_reminder()`
+- ✅ Refactorisé `purge_ignored_intents()` pour copy thread-safe avant itération
+- ✅ Converti `mark_intent_completed()` en async thread-safe
+
+**3. Tests & Validation (30 min)** ✅
+```bash
+# Tests éviction cache
+pytest tests/backend/features/test_memory_cache_eviction.py -v
+# Résultat : 7/7 PASSED ✅
+
+# Tests concurrence
+pytest tests/backend/features/test_memory_concurrency.py -v
+# Résultat : 9/9 PASSED ✅
+
+# Vérification style
+ruff check src/backend/features/memory/
+# Résultat : All checks passed! ✅
+
+# Vérification types
+mypy src/backend/features/memory/analyzer.py \
+     src/backend/features/memory/incremental_consolidation.py \
+     src/backend/features/memory/proactive_hints.py \
+     src/backend/features/memory/intent_tracker.py
+# Résultat : Success: no issues found in 4 source files ✅
+```
+
+### Résultats
+
+✅ **Bugs P0 #2 et #3 RÉSOLUS**
+- ✅ 16/16 tests passent (7 éviction + 9 concurrence)
+- ✅ Ruff + Mypy validés sans erreur
+- ✅ Éviction agressive implémentée (garde 50 au lieu de 1)
+- ✅ Locks `asyncio.Lock()` sur 4 fichiers (analyzer, consolidator, hints, intent_tracker)
+- ✅ 0 bugs critiques P0 restants (1/1 résolu le matin, 2/2 maintenant)
+
+### Statut Final Post-Audit
+
+**Bugs Critiques :**
+- ✅ Bug #1 (PreferenceExtractor user_id) : RÉSOLU (09:40)
+- ✅ Bug #2 (Fuite mémoire cache) : RÉSOLU (10:25)
+- ✅ Bug #3 (Race conditions locks) : RÉSOLU (10:25)
+
+**Prochaines Priorités :**
+1. Bugs P1-P2 non critiques (7 identifiés dans audit)
+2. Nettoyage projet (~13 Mo fichiers obsolètes)
+3. Mise à jour documentation (incohérences Section 5 audit)
+
+---
+
 ## [2025-10-10 09:40] - Agent: Claude Code (Fix Critique PreferenceExtractor - Résolu)
 
 ### Fichiers modifiés
