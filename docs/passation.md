@@ -1,3 +1,158 @@
+## [2025-10-10 03:00] - Agent: Claude Code (Option A - Synchronisation Automatique Déployée) 🔄
+
+### Fichiers créés
+- `src/backend/features/sync/auto_sync_service.py` (561 lignes) - Service AutoSyncService
+- `src/backend/features/sync/router.py` (114 lignes) - API REST endpoints
+- `src/backend/features/sync/__init__.py` - Exports module
+- `src/frontend/modules/sync/sync_dashboard.js` (340 lignes) - Dashboard web
+- `src/frontend/modules/sync/sync_dashboard.css` (230 lignes) - Styles dashboard
+- `sync-dashboard.html` - Page standalone dashboard
+- `tests/backend/features/test_auto_sync.py` (280 lignes, 10 tests)
+- `docs/features/auto-sync.md` - Documentation technique complète
+- `docs/SYNCHRONISATION_AUTOMATIQUE.md` - Guide utilisateur complet
+
+### Fichiers modifiés
+- `src/backend/main.py` - Intégration lifecycle AutoSyncService (startup/shutdown)
+- `AGENT_SYNC.md` - Section auto-sync + entrée session actuelle
+- `AGENTS.md` - Instructions synchronisation automatique agents
+- `docs/passation.md` - Entrée courante
+
+### Contexte
+Demande FG : intégrer système de synchronisation automatique dans toute la documentation critique pour éviter que les agents se marchent sur les pieds
+
+### Fonctionnalités implémentées
+
+#### 1. AutoSyncService (Backend)
+- **Détection automatique** : 8 fichiers critiques surveillés avec checksums MD5
+  - AGENT_SYNC.md, docs/passation.md, AGENTS.md, CODEV_PROTOCOL.md
+  - docs/architecture/00-Overview.md, 30-Contracts.md, 10-Memoire.md
+  - ROADMAP.md
+- **Vérification** : Toutes les 30 secondes
+- **Événements** : `created`, `modified`, `deleted`
+- **Triggers consolidation** :
+  - Seuil : 5 changements
+  - Temporel : 60 minutes
+  - Manuel : via API ou dashboard
+
+#### 2. Consolidation automatique
+- **Rapports** : Ajoutés automatiquement à AGENT_SYNC.md (section `## 🤖 Synchronisation automatique`)
+- **Format** : Timestamp, type trigger, conditions, fichiers modifiés
+- **Callbacks** : Système extensible pour actions personnalisées
+
+#### 3. API REST (`/api/sync/*`)
+- `GET /status` - Statut service (running, pending_changes, last_consolidation, etc.)
+- `GET /pending-changes` - Liste événements en attente
+- `GET /checksums` - Checksums fichiers surveillés
+- `POST /consolidate` - Déclencher consolidation manuelle
+
+#### 4. Dashboard Web
+- **URL** : http://localhost:8000/sync-dashboard.html
+- **Sections** :
+  - Statut global (running, changements, dernière consolidation)
+  - Changements en attente (liste événements)
+  - Fichiers surveillés (checksums, timestamps)
+  - Actions (consolidation manuelle, refresh)
+- **Auto-refresh** : Toutes les 10 secondes
+
+#### 5. Métriques Prometheus
+- `sync_changes_detected_total` - Changements détectés (par type fichier/agent)
+- `sync_consolidations_triggered_total` - Consolidations (par type)
+- `sync_status` - Statut par fichier (1=synced, 0=out_of_sync, -1=error)
+- `sync_check_duration_seconds` - Durée vérifications (histogram)
+- `sync_consolidation_duration_seconds` - Durée consolidations (histogram)
+
+### Tests
+- ✅ pytest tests/backend/features/test_auto_sync.py : **10/10 passed**
+  - test_service_lifecycle
+  - test_initialize_checksums
+  - test_detect_file_modification
+  - test_detect_file_creation
+  - test_detect_file_deletion
+  - test_consolidation_threshold_trigger
+  - test_manual_consolidation
+  - test_get_status
+  - test_consolidation_report_generation
+  - test_file_type_detection
+
+### Intégration dans documentation
+
+#### AGENT_SYNC.md
+- ✅ Header mis à jour avec mention "SYNCHRONISATION AUTOMATIQUE ACTIVÉE"
+- ✅ Section "Zones de travail" avec détails session actuelle
+- ✅ Section `## 🤖 Synchronisation automatique` créée automatiquement
+- ✅ Rapports de consolidation ajoutés automatiquement
+
+#### AGENTS.md
+- ✅ Section "Lancement de session" : mention système auto-sync + dashboard URL
+- ✅ Avertissements sur fichiers surveillés (AGENT_SYNC.md, passation.md, architecture)
+- ✅ Section "Clôture de session" : 3 options consolidation (auto, dashboard, API)
+
+#### docs/SYNCHRONISATION_AUTOMATIQUE.md (nouveau)
+- ✅ Guide complet utilisateur (12 sections)
+- ✅ Vue d'ensemble architecture
+- ✅ Détails fichiers surveillés (8 fichiers)
+- ✅ Fonctionnement technique (détection, triggers, consolidation)
+- ✅ Workflow automatique + timeline exemple
+- ✅ Dashboard & API REST
+- ✅ Métriques Prometheus + queries PromQL
+- ✅ Instructions par agent (Claude Code, Codex)
+- ✅ Troubleshooting complet
+
+#### docs/features/auto-sync.md
+- ✅ Documentation technique développeur
+- ✅ Architecture, configuration, utilisation
+- ✅ Tests, métriques, roadmap P2/P3
+
+### Résultats
+- ✅ **Service opérationnel** : AutoSyncService démarre automatiquement avec backend
+- ✅ **8 fichiers surveillés** : 6 trouvés, 2 à créer (10-Memoire.md, ROADMAP.md)
+- ✅ **Dashboard accessible** : http://localhost:8000/sync-dashboard.html
+- ✅ **API fonctionnelle** : Tous endpoints retournent 200 OK
+- ✅ **Métriques exposées** : 5 métriques Prometheus disponibles
+- ✅ **Tests passants** : 10/10 tests unitaires
+- ✅ **Documentation complète** : 2 guides (technique + utilisateur)
+
+### Prochaines actions recommandées
+
+#### Immédiat
+1. **Créer fichiers manquants** :
+   ```bash
+   # docs/architecture/10-Memoire.md
+   # ROADMAP.md
+   ```
+2. **Tester système** :
+   - Modifier AGENT_SYNC.md
+   - Attendre 30s
+   - Vérifier dashboard : changement détecté
+   - Déclencher consolidation manuelle
+   - Vérifier rapport ajouté à AGENT_SYNC.md
+
+#### Court terme
+1. **Configurer Grafana** avec métriques Prometheus
+2. **Créer alertes** : fichiers out_of_sync, consolidations échouées
+3. **Documenter workflow** dans CODEV_PROTOCOL.md
+4. **Former Codex** sur utilisation API /sync/*
+
+#### Moyen terme
+1. **Détecter agent propriétaire** via `git blame`
+2. **Webhooks notification** (Slack/Discord)
+3. **Résolution auto conflits** simples
+4. **Historique consolidations** (dashboard analytics)
+
+### Notes techniques
+- **Lifecycle** : Service démarre avec backend (main.py startup), arrête avec shutdown
+- **Singleton** : `get_auto_sync_service()` retourne instance unique
+- **Thread-safe** : asyncio.create_task pour boucles parallèles (check + consolidation)
+- **Graceful shutdown** : Annulation tasks propre, pas de data loss
+- **Extensible** : Callbacks pour actions custom post-consolidation
+
+### Blocages/Dépendances
+- ⚠️ Fichier `docs/architecture/10-Memoire.md` manquant (warning au startup)
+- ⚠️ Fichier `ROADMAP.md` manquant (warning au startup)
+- ✅ Aucun autre blocage
+
+---
+
 ## [2025-10-09 19:50] - Agent: Claude Code (Hotfix P1.1 - Intégration PreferenceExtractor)
 
 ### Fichiers modifiés

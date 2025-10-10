@@ -9,10 +9,17 @@
 
 ## Checklist express
 ### Lancement de session
+- **🔄 NOUVEAU - SYNCHRONISATION AUTOMATIQUE ACTIVÉE** :
+  - Le système AutoSyncService surveille automatiquement 8 fichiers critiques
+  - Dashboard disponible : http://localhost:8000/sync-dashboard.html
+  - Vérifier le statut de sync avant de commencer : `curl http://localhost:8000/api/sync/status`
 - **OBLIGATOIRE** : Lire `AGENT_SYNC.md` (etat sync inter-agents) AVANT toute action de code.
+  - ⚠️ Ce fichier est maintenant surveillé automatiquement - toute modification sera détectée
 - Lire integralement ce fichier ainsi que tout `AGENTS.md` specifique au dossier courant.
 - Consulter `docs/passation.md` (3 dernieres entrees minimum) pour contexte recent.
+  - ⚠️ Ce fichier est maintenant surveillé automatiquement
 - Consulter les references clefs : `docs/architecture/`, `docs/Roadmap Strategique.txt`, `docs/Memoire.md`.
+  - ⚠️ Fichiers architecture surveillés automatiquement : 00-Overview.md, 30-Contracts.md, 10-Memoire.md
 - Lancer `pwsh -File scripts/sync-workdir.ps1` (option par defaut) ou realiser l'equivalent manuel (`git fetch --all --prune`, rebase, tests rapides).
 - Verifier que `git status` est propre et que l'environnement (virtualenv Python + Node.js) est pret.
 - Verifier que Codex/Copilot est configure en auto-completion auto-apply (settings VS Code/Windsurf) pour eviter les demandes d'approbation.
@@ -29,8 +36,15 @@
 - Relire `git diff` pour traquer secrets, artefacts ou changements involontaires.
 - **🔄 OBLIGATOIRE : Mettre à jour la documentation collaborative** :
   - `AGENT_SYNC.md` (section "Claude Code" avec timestamp et fichiers touchés)
+    - ⚠️ Surveillé automatiquement - la modification sera détectée et consolidée
   - `docs/passation.md` (nouvelle entrée complète en haut du fichier)
-  - Voir `.claude/instructions/doc-sync-routine.md` pour le format détaillé
+    - ⚠️ Surveillé automatiquement - la modification sera détectée et consolidée
+  - Voir `docs/SYNCHRONISATION_AUTOMATIQUE.md` pour le fonctionnement complet
+- **🔄 NOUVEAU - Consolidation automatique** :
+  - Option 1 : Laisser le système consolider automatiquement (seuil 5 changements ou 60 min)
+  - Option 2 : Déclencher manuellement via dashboard : http://localhost:8000/sync-dashboard.html
+  - Option 3 : Déclencher via API : `curl -X POST http://localhost:8000/api/sync/consolidate`
+  - Les rapports de consolidation sont ajoutés automatiquement à `AGENT_SYNC.md`
 - Finaliser par `git add -A`, un commit explicite et `git push` (sauf instruction contraire) apres rebase sur la branche de reference.
 - Noter dans le compte-rendu les prochaines priorites et actions recommandees.
 

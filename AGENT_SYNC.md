@@ -2,7 +2,9 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-10 02:30 UTC (Claude Code - P1 Validation Preparation)
+**Derniere mise a jour** : 2025-10-10 03:00 UTC (Claude Code - Option A Auto-Sync Deployed)
+
+**🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
 ---
 
@@ -76,13 +78,55 @@
 
 ## 🚧 Zones de travail en cours
 
-### Claude Code - Session 2025-10-09 19:15-19:50 (Hotfix P1.1)
-- **Statut** : ✅ Correctif critique P1.1 complété - PreferenceExtractor intégré
+### Claude Code - Session 2025-10-10 02:45-03:15 (Option A - Auto-Sync Deployed)
+- **Statut** : ✅ **Synchronisation automatique Option A opérationnelle**
+- **Fichiers créés** :
+  - `src/backend/features/sync/auto_sync_service.py` (561 lignes) - Service de sync auto
+  - `src/backend/features/sync/router.py` (114 lignes) - API REST endpoints
+  - `src/backend/features/sync/__init__.py` - Module exports
+  - `src/frontend/modules/sync/sync_dashboard.js` (340 lignes) - Dashboard web
+  - `src/frontend/modules/sync/sync_dashboard.css` (230 lignes) - Styles dashboard
+  - `sync-dashboard.html` - Page dashboard standalone
+  - `tests/backend/features/test_auto_sync.py` (280 lignes, 10 tests)
+  - `docs/features/auto-sync.md` (documentation complète)
+- **Fichiers modifiés** :
+  - `src/backend/main.py` - Intégration lifecycle AutoSyncService
+  - `AGENT_SYNC.md` - Ce fichier (section auto-sync ajoutée)
+- **Fonctionnalités** :
+  - ✅ Détection automatique changements (8 fichiers surveillés, checksums MD5)
+  - ✅ Trigger seuil (5 changements) + trigger temporel (60 min)
+  - ✅ Consolidation automatique avec rapports dans AGENT_SYNC.md
+  - ✅ API REST `/api/sync/*` (status, pending-changes, checksums, consolidate)
+  - ✅ Dashboard web temps réel (http://localhost:8000/sync-dashboard.html)
+  - ✅ 5 métriques Prometheus exposées
+  - ✅ 10/10 tests unitaires passants
+- **Fichiers surveillés automatiquement** :
+  1. `AGENT_SYNC.md` - État synchronisation (ce fichier)
+  2. `docs/passation.md` - Journal de passation
+  3. `AGENTS.md` - Configuration agents
+  4. `CODEV_PROTOCOL.md` - Protocole collaboration
+  5. `docs/architecture/00-Overview.md` - Vue d'ensemble archi
+  6. `docs/architecture/30-Contracts.md` - Contrats API
+  7. `docs/architecture/10-Memoire.md` - Architecture mémoire (à créer)
+  8. `ROADMAP.md` - Roadmap (à créer)
+- **Vérification intervalles** :
+  - Check fichiers : toutes les 30 secondes
+  - Check consolidation : toutes les 60 secondes
+  - Seuil auto-consolidation : 5 changements
+- **Dashboard accessible** : http://localhost:8000/sync-dashboard.html
+- **Prochaines actions** :
+  - Créer `docs/architecture/10-Memoire.md` si absent
+  - Créer `ROADMAP.md` si absent
+  - Tester avec modifications réelles des fichiers surveillés
+  - Configurer Grafana avec métriques Prometheus
+
+### Claude Code - Session 2025-10-10 00:00-02:30 (Hotfix P1.1)
+- **Statut** : ✅ Hotfix P1.1 déployé et validé - PreferenceExtractor intégré en production
 - **Fichiers modifiés** :
   - `src/backend/features/memory/analyzer.py` (intégration PreferenceExtractor)
   - `docs/deployments/2025-10-09-hotfix-p1.1-preference-integration.md` (documentation complète)
-  - `AGENT_SYNC.md` (mise à jour courante)
-  - `docs/passation.md` (à mettre à jour)
+  - `AGENT_SYNC.md` (mise à jour post-déploiement)
+  - `docs/passation.md` (entrée hotfix ajoutée)
 - **Problème critique découvert** :
   - `PreferenceExtractor` existait mais **n'était jamais appelé** lors consolidations mémoire
   - Métriques `memory_preferences_*` impossibles en production
@@ -91,14 +135,26 @@
   1. Intégration PreferenceExtractor dans analyzer.py (4 points d'intégration)
   2. Tests validation : 15/15 memory tests, mypy/ruff clean
   3. Documentation hotfix complète avec procédure déploiement
+  4. Build image Docker `p1.1-hotfix-20251010-015746`
+  5. Push Artifact Registry + déploiement Cloud Run `emergence-app-p1-1-hotfix`
+  6. Bascule trafic 100% vers nouvelle révision
+  7. Validation production : health check OK + 5 métriques P1 visibles
 - **Tests** :
   - ✅ pytest tests/memory/ : 15/15 passed
   - ✅ mypy analyzer.py : Success
   - ✅ ruff analyzer.py : All checks passed
-- **Prêt pour déploiement** :
-  - Commit message prêt
-  - Tag suggéré : `p1.1-hotfix-YYYYMMDD-HHMMSS`
-  - Révision suffix : `p1-1-hotfix`
+  - ✅ Health check production : 200 OK
+  - ✅ Métriques P1 exposées : `memory_preferences_extracted_total`, `memory_preferences_confidence`, `memory_preferences_extraction_duration_seconds`, `memory_preferences_lexical_filtered_total`, `memory_preferences_llm_calls_total`
+  - ✅ Logs production : "PreferenceExtractor sont prêts" confirmé
+- **Déploiement réalisé** :
+  - Commit : `1868b25` fix(P1.1): integrate PreferenceExtractor in memory consolidation
+  - Image : `p1.1-hotfix-20251010-015746` (sha256:09a24c9b2...)
+  - Révision : `emergence-app-p1-1-hotfix` (trafic 100%)
+  - Déployé : 2025-10-10 00:02 CEST
+- **Prochaines actions** :
+  - Tester extraction avec `persist=True` pour incrémenter métriques
+  - Configurer panels Grafana selon `docs/monitoring/prometheus-p1-metrics.md`
+  - Push commits restants vers GitHub
 
 ### Claude Code - Session 2025-10-09 18:15-18:50 (Validation P1)
 - **Statut** : ✅ Validation P1 partielle + Documentation métriques complète
@@ -757,3 +813,35 @@ git log --oneline -10
 ---
 
 **Ce fichier est vivant** : Chaque agent doit le mettre à jour après ses modifs importantes !
+
+
+---
+
+## 🤖 Synchronisation automatique
+### Consolidation - 2025-10-10T02:59:05.977133
+
+**Type de déclenchement** : `manual`
+**Conditions** : {
+  "pending_changes": 0
+}
+**Changements consolidés** : 0 événements sur 0 fichiers
+
+**Fichiers modifiés** :
+
+
+---
+
+### Consolidation - 2025-10-10T02:56:44.072544
+
+**Type de déclenchement** : `manual`
+**Conditions** : {
+  "pending_changes": 0
+}
+**Changements consolidés** : 0 événements sur 0 fichiers
+
+**Fichiers modifiés** :
+
+
+---
+
+

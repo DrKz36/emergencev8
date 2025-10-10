@@ -57,6 +57,7 @@ AUTH_ROUTER = _import_router("backend.features.auth.router")
 DEV_AUTH_ROUTER = _import_router("backend.features.dev_auth.router")  # optionnel
 METRICS_ROUTER = _import_router("backend.features.metrics.router")  # Prometheus metrics
 MONITORING_ROUTER = _import_router("backend.features.monitoring.router")  # Monitoring & observability
+SYNC_ROUTER = _import_router("backend.features.sync.router")  # Auto-sync inter-agents
 
 
 def _migrations_dir() -> str:
@@ -183,6 +184,15 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.warning(f"MemoryTaskQueue startup failed: {e}")
 
+        # 🔧 Démarrer AutoSyncService (Option A)
+        try:
+            from backend.features.sync.auto_sync_service import get_auto_sync_service
+            sync_service = get_auto_sync_service()
+            await sync_service.start()
+            logger.info("AutoSyncService started")
+        except Exception as e:
+            logger.warning(f"AutoSyncService startup failed: {e}")
+
     @app.on_event("shutdown")
     async def _on_shutdown():
         # 🔧 Arrêter MemoryTaskQueue (P1.1)
@@ -193,6 +203,15 @@ def create_app() -> FastAPI:
             logger.info("MemoryTaskQueue stopped")
         except Exception as e:
             logger.warning(f"MemoryTaskQueue shutdown failed: {e}")
+
+        # 🔧 Arrêter AutoSyncService (Option A)
+        try:
+            from backend.features.sync.auto_sync_service import get_auto_sync_service
+            sync_service = get_auto_sync_service()
+            await sync_service.stop()
+            logger.info("AutoSyncService stopped")
+        except Exception as e:
+            logger.warning(f"AutoSyncService shutdown failed: {e}")
 
         try:
             await container.db_manager().disconnect()
@@ -243,6 +262,7 @@ def create_app() -> FastAPI:
     _mount_router(DEV_AUTH_ROUTER)  # éventuel
     _mount_router(METRICS_ROUTER, "/api")  # Prometheus metrics at /api/metrics
     _mount_router(MONITORING_ROUTER)  # Monitoring endpoints at /api/monitoring/*
+    _mount_router(SYNC_ROUTER, "/api")  # Auto-sync endpoints at /api/sync/*
 
     # ⚠️ WS: **uniquement** features.chat.router (déclare /ws/{session_id})
     _mount_router(CHAT_ROUTER)  # pas de prefix → garde /ws/{session_id}
