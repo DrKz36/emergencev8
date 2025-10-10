@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-09 19:50 CEST (Claude Code - Hotfix P1.1 PreferenceExtractor integration)
+**Derniere mise a jour** : 2025-10-10 02:30 UTC (Claude Code - P1 Validation Preparation)
 
 ---
 
@@ -22,23 +22,25 @@
 ### Branche active
 - **Branche courante** : `main`
 - **Derniers commits** :
+  - `1868b25` fix(P1.1): integrate PreferenceExtractor in memory consolidation
+  - `3dd9c1f` docs(P1): validation preparation - guide, metrics baseline, QA script
   - `85d7ece` docs: prompt complet déploiement Phase P1 mémoire pour Codex
   - `666c211` docs: sync AGENT_SYNC session validation cockpit Phase 3
-  - `4bde612` docs: sync Phase P1 enrichissement mémoire (AGENT_SYNC + roadmap)
-  - `6410f3c` feat: prompt complet prochaines améliorations cockpit
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
 - `codex` → SSH : `git@github.com:DrKz36/emergencev8.git`
 
 ### Déploiement Cloud Run
-- **Révision active** : `emergence-app-p1memory`
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:883d85d093cab8ae2464d24c14d54e92b65d3c7da9c975bcb1d65b534ad585b5`
+- **Révision active** : `emergence-app-p1-1-hotfix`
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:09a24c9b2fe5b345454bad5a7ba01a2d655ab339ad5b358343b84f0a09a3339f`
+- **Tag image** : `p1.1-hotfix-20251010-015746`
 - **URL principale** : https://emergence-app-47nct44nma-ew.a.run.app
 - **Alias historique** : https://emergence-app-486095406755.europe-west1.run.app
-- **Déployé** : 2025-10-09 09:52 CEST (trafic 100 %)
-- **Trafic** : 100% sur `p1memory` (alias canary conservé)
+- **Déployé** : 2025-10-10 00:02 CEST (trafic 100 %)
+- **Trafic** : 100% sur `p1-1-hotfix` (alias canary conservé)
 - **Documentation** :
+  - [docs/deployments/2025-10-09-hotfix-p1.1-preference-integration.md](docs/deployments/2025-10-09-hotfix-p1.1-preference-integration.md)
   - [docs/deployments/2025-10-09-deploy-p1-memory.md](docs/deployments/2025-10-09-deploy-p1-memory.md)
   - [docs/deployments/2025-10-09-deploy-cockpit-phase3.md](docs/deployments/2025-10-09-deploy-cockpit-phase3.md)
   - [docs/deployments/2025-10-09-activation-metrics-phase3.md](docs/deployments/2025-10-09-activation-metrics-phase3.md)
@@ -67,7 +69,8 @@
 - **Post-déploiement** : `gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005`, vérifier `/api/health` et `/api/metrics`.
 
 ### Working tree
-- ✅ Clean (tous commits pushés : `6410f3c`, `78e0643`, `588c5dc`)
+- ⚠️ Modification non commitée : `AGENT_SYNC.md` (mise à jour post-déploiement P1.1)
+- Derniers commits : `1868b25`, `3dd9c1f`, `9f3c7a1`
 
 ---
 
