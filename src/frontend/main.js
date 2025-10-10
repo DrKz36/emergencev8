@@ -742,6 +742,15 @@ function mountAuthBadge(eventBus) {
   eventBus.on?.(EVENTS.MODULE_SHOW, () => setTimeout(attach, 0));
   eventBus.on?.('ui:auth:host-changed', () => setTimeout(attach, 0));
 
+  // FIX: Écouter les mises à jour d'état d'authentification
+  eventBus.on?.(EVENTS.AUTH_STATE_UPDATED || 'auth:state:updated', (payload) => {
+    if (payload && payload.connected) {
+      setLogged(true);
+      setConnected(true);
+      setAlert('');
+    }
+  });
+
   // Sync multi-onglets (une seule fois)
   try {
     if (!window.__em_auth_listeners__) {
@@ -766,7 +775,10 @@ function mountAuthBadge(eventBus) {
     }
   } catch {}
 
-  setLogged(hasToken()); setConnected(false);
+  // FIX: Initialiser correctement l'état connecté basé sur le token
+  const initialHasToken = hasToken();
+  setLogged(initialHasToken);
+  setConnected(initialHasToken); // Si on a un token, on est potentiellement connecté
   attach();
   return { setLogged, setConnected, attach, setAlert };
 }
@@ -910,8 +922,13 @@ class EmergenceClient {
       const isLogged = !!rawHasToken;
       try { this.badge?.setLogged?.(isLogged); }
       catch (err) { console.warn('[main] Impossible de synchroniser le badge (logged)', err); }
+      // FIX: Mise à jour explicite de l'état connecté basé sur le token
       if (!isLogged) {
         try { this.badge?.setConnected?.(false); }
+        catch (err) { console.warn('[main] Impossible de synchroniser le badge (connected)', err); }
+      } else {
+        // Si on a un token, on est potentiellement connecté (en attente de la WebSocket)
+        try { this.badge?.setConnected?.(true); }
         catch (err) { console.warn('[main] Impossible de synchroniser le badge (connected)', err); }
       }
     };
@@ -1003,7 +1020,16 @@ class EmergenceClient {
       devAutoLogged = await this.tryDevAutoLogin();
     }
 
+    // FIX: Mettre à jour l'état du badge après le dev auto-login
+    if (devAutoLogged || this.devAutoLogged) {
+      this.badge?.setLogged?.(true);
+      this.badge?.setConnected?.(true);
+    }
+
     if (hasToken()) {
+      // FIX: Synchroniser le badge immédiatement après détection du token
+      this.badge?.setLogged?.(true);
+      this.badge?.setConnected?.(true);
       if (!devAutoLogged && !this.devAutoLogged) {
         this.handleTokenAvailable('startup');
       }
@@ -1217,6 +1243,13 @@ class EmergenceClient {
 
     try { this.app?.handleRoleChange?.(normalizedRole); }
     catch (err) { console.warn('[main] Impossible de rafraichir la navigation (refreshSessionRole)', err); }
+
+    // FIX: Mettre à jour le badge après le refresh de session
+    try {
+      this.badge?.setLogged?.(true);
+      this.badge?.setConnected?.(true);
+    }
+    catch (err) { console.warn('[main] Impossible de mettre à jour le badge après refreshSessionRole', err); }
   }
 
   async handleTokenAvailable(source = 'unknown') {
@@ -1245,7 +1278,8 @@ class EmergenceClient {
     try { this.state?.set?.('chat.authRequired', false); }
     catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=false', err); }
     this.badge?.setLogged(true);
-    this.badge?.setConnected(false);
+    // FIX: Ne pas réinitialiser à false, garder à true si on a un token
+    this.badge?.setConnected(true);
 
     this.ensureApp();
     this.connectWs();

@@ -249,6 +249,17 @@ export class App {
     const label = roleLabels[normalizedRole] || normalizedRole;
     const emailPart = email ? ` (${email})` : '';
     target.innerHTML = `Vous êtes connecté en tant que <strong>${label}</strong>${emailPart}`;
+
+    // FIX: Émettre un événement pour notifier l'UI du changement d'état
+    try {
+      this.eventBus?.emit?.(EVENTS.AUTH_STATE_UPDATED || 'auth:state:updated', {
+        role: normalizedRole,
+        email: email,
+        connected: true
+      });
+    } catch (err) {
+      console.warn('[App] Impossible d\'émettre auth:state:updated', err);
+    }
   }
 
   renderNavigation() {
