@@ -1,0 +1,460 @@
+/**
+ * Proactive Hints UI Styles - Sprint P3
+ *
+ * Styles pour:
+ * - ProactiveHintsUI banners (top-right, animations, actions)
+ * - MemoryDashboard (stats cards, preferences, concepts)
+ */
+
+/* ========== Proactive Hints Banner ========== */
+
+.proactive-hint-banner {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 400px;
+  max-width: 90vw;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10000; /* Above modals (9999) */
+}
+
+.proactive-hint-banner.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.proactive-hint-banner.dismissing {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+/* Type variants (gradient backgrounds) */
+.proactive-hint-banner.hint-preference_reminder {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.proactive-hint-banner.hint-intent_followup {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.proactive-hint-banner.hint-constraint_warning {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+/* Icon */
+.hint-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* Content */
+.hint-content {
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
+}
+
+.hint-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.hint-message {
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 8px;
+  word-wrap: break-word;
+}
+
+.hint-meta {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.hint-relevance {
+  font-weight: 500;
+}
+
+/* Actions */
+.hint-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.hint-actions button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.hint-action-primary {
+  background: rgba(255, 255, 255, 0.9);
+  color: #667eea;
+  font-weight: 600;
+}
+
+.hint-action-primary:hover {
+  background: white;
+  transform: translateY(-1px);
+}
+
+.hint-action-snooze,
+.hint-action-dismiss {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.hint-action-snooze:hover,
+.hint-action-dismiss:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Stacking multiple hints (vertical offset) */
+.proactive-hint-banner:nth-child(2) {
+  top: 130px;
+}
+
+.proactive-hint-banner:nth-child(3) {
+  top: 240px;
+}
+
+.proactive-hint-banner:nth-child(4) {
+  top: 350px;
+}
+
+/* Responsive (mobile) */
+@media (max-width: 768px) {
+  .proactive-hint-banner {
+    width: calc(100vw - 40px);
+    right: 20px;
+    left: 20px;
+    top: 10px;
+  }
+
+  .proactive-hint-banner:nth-child(2) {
+    top: 120px;
+  }
+
+  .proactive-hint-banner:nth-child(3) {
+    top: 230px;
+  }
+}
+
+/* ========== Memory Dashboard ========== */
+
+.memory-dashboard {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 400px;
+}
+
+.memory-dashboard h2 {
+  font-size: 28px;
+  margin-bottom: 24px;
+  color: var(--text-primary, #2d3748);
+  font-weight: 700;
+}
+
+/* Loading state */
+.memory-dashboard.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.loader-container {
+  text-align: center;
+}
+
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-left-color: #667eea;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error state */
+.memory-dashboard.error {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.memory-dashboard.error h2 {
+  color: #e53e3e;
+}
+
+.error-detail {
+  color: #718096;
+  margin: 16px 0;
+  font-size: 14px;
+}
+
+.btn-retry {
+  padding: 10px 20px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-retry:hover {
+  background: #5a67d8;
+}
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #718096;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary, #2d3748);
+}
+
+/* Dashboard sections */
+.dashboard-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-section h3 {
+  font-size: 20px;
+  margin-bottom: 16px;
+  color: var(--text-primary, #2d3748);
+  font-weight: 600;
+}
+
+.empty-state {
+  color: #a0aec0;
+  font-style: italic;
+  padding: 20px 0;
+  text-align: center;
+}
+
+/* Preferences breakdown */
+.preferences-breakdown {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-preference {
+  background: #e6fffa;
+  color: #047857;
+}
+
+.badge-intent {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge-constraint {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Preferences list */
+.preferences-list,
+.concepts-list {
+  border-top: 1px solid #e2e8f0;
+}
+
+.preference-item,
+.concept-item {
+  padding: 12px 0;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.preference-item:hover,
+.concept-item:hover {
+  background: #f7fafc;
+  padding-left: 8px;
+  padding-right: 8px;
+  margin-left: -8px;
+  margin-right: -8px;
+  border-radius: 6px;
+}
+
+.preference-item:last-child,
+.concept-item:last-child {
+  border-bottom: none;
+}
+
+.preference-content,
+.concept-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.preference-topic,
+.concept-text {
+  font-weight: 600;
+  color: var(--text-primary, #2d3748);
+  font-size: 14px;
+}
+
+.preference-confidence {
+  padding: 2px 8px;
+  background: #e6fffa;
+  color: #047857;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.concept-mentions {
+  padding: 2px 8px;
+  background: #e0e7ff;
+  color: #3730a3;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.preference-meta,
+.concept-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.preference-date,
+.concept-date {
+  font-size: 12px;
+  color: #718096;
+}
+
+/* Dark theme support (if app has dark mode) */
+@media (prefers-color-scheme: dark) {
+  .memory-dashboard h2,
+  .dashboard-section h3,
+  .preference-topic,
+  .concept-text,
+  .stat-value {
+    color: #e2e8f0;
+  }
+
+  .stat-card,
+  .dashboard-section {
+    background: #2d3748;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .preference-item:hover,
+  .concept-item:hover {
+    background: #1a202c;
+  }
+
+  .preferences-list,
+  .concepts-list,
+  .preference-item,
+  .concept-item {
+    border-color: #4a5568;
+  }
+}
+
+/* Responsive (mobile) */
+@media (max-width: 768px) {
+  .memory-dashboard {
+    padding: 16px;
+  }
+
+  .memory-dashboard h2 {
+    font-size: 24px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-section {
+    padding: 16px;
+  }
+
+  .preference-content,
+  .concept-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .preference-meta,
+  .concept-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

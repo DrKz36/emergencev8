@@ -8,6 +8,7 @@
 /* === COMPOSANTS MODERNISÉS === */
 @import './components-modern.css';
 @import './components/rag-power-button.css';
+@import './components/proactive-hints.css';
 
 /* --- Card --- */
 .card {

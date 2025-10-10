@@ -72,14 +72,38 @@ Ce document synthétise l'état actuel et la trajectoire de la mémoire d'Emerge
   - ✅ 2 métriques Prometheus (hints_generated, hints_relevance)
   - ✅ Tests : 16/16 passants (0.10s)
   - ✅ Commits : `5ce75ce` + `7fd4674` feat(P2 Sprint2): ProactiveHints backend
-- ✅ **Gains cumulés P2** :
+- ✅ **P2 Sprint 3 - Frontend UI + Dashboard** : Interface utilisateur hints proactifs ✅ COMPLÉTÉ (2025-10-10)
+  - ✅ ProactiveHintsUI component (330 lignes JavaScript)
+    - Event listener `ws:proactive_hint`
+    - Affichage banners (max 3 simultanés, tri relevance)
+    - Actions : Appliquer, Ignorer, Snooze (1h localStorage)
+    - Auto-dismiss 10s
+    - 3 types visuels (💡 preference, 📋 intent, ⚠️ constraint)
+  - ✅ MemoryDashboard component (280 lignes JavaScript)
+    - Fetch endpoint `GET /api/memory/user/stats`
+    - 3 sections : Stats globales, Préférences (top 10), Concepts (top 10)
+    - Format dates relatif ("il y a X jours")
+    - Loading/error states
+  - ✅ Styles CSS complets (400+ lignes proactive-hints.css)
+    - Animations smooth (slide-in/out, cubic-bezier)
+    - Responsive design (mobile < 768px)
+    - Dark theme support
+    - Gradient backgrounds par type
+  - ✅ Backend endpoint `GET /api/memory/user/stats` (120 lignes Python)
+    - Fetch preferences, concepts depuis ChromaDB
+    - Database stats (sessions, threads, LTM size)
+    - Error handling gracieux
+  - ✅ Intégration main.js (initialisation globale ProactiveHintsUI)
+  - ✅ Tests E2E Playwright : 10 tests passants
+    - Display hint banner, dismiss, snooze, max 3 hints
+    - Apply hint to chat input, auto-dismiss
+    - Dashboard render, loading/error states
+- ✅ **Gains cumulés Phase P2 complète** :
   - Performance : -71% latence (120ms → 35ms), -50% queries, 100% cache hit rate
-  - Features : 3-5 hints/session, système proactif vs 100% réactif
-  - Qualité : 21 nouveaux tests (tous passants), 0 erreurs mypy
-- 🔄 **P2 Sprint 3 (À FAIRE)** : Frontend UI + Dashboard
-  - [ ] Composant ProactiveHintsUI (affichage banners, actions)
-  - [ ] Dashboard mémoire utilisateur
-  - [ ] Tests E2E Playwright
+  - Features : 3-5 hints/session, système proactif vs 100% réactif, UI interactive
+  - Qualité : 31 nouveaux tests (21 backend + 10 E2E), 0 erreurs mypy
+  - Frontend : 2 composants UI (610 lignes JS), 400+ lignes CSS, 1 endpoint API
+  - Documentation : 4 docs status + MEMORY_CAPABILITIES.md mis à jour
 
 ### P3 — Gouvernance & Observabilité
 - Journaliser la durée des consolidations et la taille des lots injectés pour suivre le coût / perf.

@@ -912,6 +912,159 @@ async def _thread_already_consolidated(vector_service, thread_id: str) -> bool:
         return False  # En cas d'erreur, considérer non consolidé
 
 
+@router.get(
+    "/user/stats",
+    response_model=Dict[str, Any],
+    summary="Get user's memory statistics and top items",
+    description="Returns user's memory stats: preferences, concepts, sessions analyzed, etc.",
+)
+async def get_user_memory_stats(
+    request: Request
+) -> Dict[str, Any]:
+    """
+    Get user's memory statistics and top items.
+
+    Returns:
+        {
+          "preferences": {
+            "total": 12,
+            "top": [...],
+            "by_type": {"preference": 8, "intent": 3, "constraint": 1}
+          },
+          "concepts": {
+            "total": 47,
+            "top": [...]
+          },
+          "stats": {
+            "sessions_analyzed": 23,
+            "threads_archived": 5,
+            "ltm_size_mb": 2.4
+          }
+        }
+    """
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    container = _get_container(request)
+    vector_service = container.vector_service()
+    db_manager = container.db_manager()
+
+    collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+    collection = vector_service.get_or_create_collection(collection_name)
+
+    # Fetch user's preferences
+    preferences = []
+    type_counts = {"preference": 0, "intent": 0, "constraint": 0}
+
+    try:
+        prefs_results = collection.get(
+            where={"$and": [
+                {"user_id": user_id},
+                {"type": {"$in": ["preference", "intent", "constraint"]}}
+            ]},
+            include=["documents", "metadatas"]
+        )
+
+        prefs_docs = prefs_results.get("documents", [])
+        prefs_meta = prefs_results.get("metadatas", [])
+
+        # Parse preferences
+        for doc, meta in zip(prefs_docs, prefs_meta):
+            pref_type = meta.get("type", "preference")
+            type_counts[pref_type] = type_counts.get(pref_type, 0) + 1
+
+            preferences.append({
+                "topic": meta.get("topic", "Unknown"),
+                "confidence": float(meta.get("confidence", 0.5)),
+                "type": pref_type,
+                "captured_at": meta.get("captured_at") or meta.get("created_at"),
+                "text": doc if isinstance(doc, str) else str(doc)
+            })
+
+        # Sort by confidence (descending)
+        preferences.sort(key=lambda x: x["confidence"], reverse=True)
+
+    except Exception as e:
+        logger.error(f"[memory/user/stats] Failed to fetch preferences: {e}", exc_info=True)
+        # Continue with empty preferences
+
+    # Fetch user's concepts
+    concepts = []
+
+    try:
+        concepts_results = collection.get(
+            where={"$and": [
+                {"user_id": user_id},
+                {"type": "concept"}
+            ]},
+            include=["documents", "metadatas"]
+        )
+
+        concepts_docs = concepts_results.get("documents", [])
+        concepts_meta = concepts_results.get("metadatas", [])
+
+        # Parse concepts
+        for doc, meta in zip(concepts_docs, concepts_meta):
+            concepts.append({
+                "concept": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
+                "mentions": int(meta.get("mention_count", 1)),
+                "last_mentioned": meta.get("last_mentioned_at") or meta.get("created_at")
+            })
+
+        # Sort by mentions (descending)
+        concepts.sort(key=lambda x: x["mentions"], reverse=True)
+
+    except Exception as e:
+        logger.error(f"[memory/user/stats] Failed to fetch concepts: {e}", exc_info=True)
+        # Continue with empty concepts
+
+    # Database stats
+    sessions_count = 0
+    archived_count = 0
+    ltm_size_mb = 0.0
+
+    try:
+        # Count sessions analyzed (sessions with summary)
+        sessions = await queries.get_all_sessions_overview(db_manager, user_id=user_id)
+        sessions_count = len([s for s in sessions if s.get("summary")])
+
+        # Count archived threads
+        threads = await queries.get_threads(
+            db_manager,
+            session_id=None,
+            user_id=user_id,
+            archived_only=True,
+            limit=1000
+        )
+        archived_count = len(threads)
+
+        # Estimate LTM size (rough: ~1KB per item)
+        ltm_size_mb = (len(prefs_docs) + len(concepts_docs)) * 0.001
+
+    except Exception as e:
+        logger.error(f"[memory/user/stats] Failed to fetch database stats: {e}", exc_info=True)
+        # Continue with zero stats
+
+    return {
+        "preferences": {
+            "total": len(preferences),
+            "top": preferences[:10],
+            "by_type": type_counts
+        },
+        "concepts": {
+            "total": len(concepts),
+            "top": concepts[:10]
+        },
+        "stats": {
+            "sessions_analyzed": sessions_count,
+            "threads_archived": archived_count,
+            "ltm_size_mb": round(ltm_size_mb, 2)
+        }
+    }
+
+
 @router.post(
     "/consolidate-archived",
     response_model=Dict[str, Any],

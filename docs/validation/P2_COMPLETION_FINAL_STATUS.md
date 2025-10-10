@@ -313,15 +313,24 @@ histogram_quantile(0.5, rate(memory_proactive_hints_relevance_score_bucket[5m]))
 2. ✅ [vector_service.py](../../src/backend/features/memory/vector_service.py) - HNSW optimisé
 3. ✅ [test_memory_performance.py](../../tests/backend/features/test_memory_performance.py) - 5 tests performance
 
-### Sprint 2 (Proactive Hints)
+### Sprint 2 (Proactive Hints Backend)
 4. ✅ [proactive_hints.py](../../src/backend/features/memory/proactive_hints.py) - ProactiveHintEngine (192 lignes)
 5. ✅ [test_proactive_hints.py](../../tests/backend/features/test_proactive_hints.py) - 16 tests unitaires
 6. ✅ [service.py](../../src/backend/features/chat/service.py) - Intégration complète (4 modifications)
 
+### Sprint 3 (Frontend UI + Dashboard)
+7. ✅ [ProactiveHintsUI.js](../../src/frontend/features/memory/ProactiveHintsUI.js) - Component hints (330 lignes)
+8. ✅ [MemoryDashboard.js](../../src/frontend/features/memory/MemoryDashboard.js) - Component dashboard (280 lignes)
+9. ✅ [proactive-hints.css](../../src/frontend/styles/components/proactive-hints.css) - Styles (400+ lignes)
+10. ✅ [proactive-hints.spec.js](../../tests/e2e/proactive-hints.spec.js) - Tests E2E (10 tests)
+11. ✅ [router.py](../../src/backend/features/memory/router.py) - Endpoint `/user/stats` (+120 lignes)
+12. ✅ [main.js](../../src/frontend/main.js) - Intégration ProactiveHintsUI (+15 lignes)
+
 ### Documentation
-7. ✅ [P2_SPRINT1_COMPLETION_STATUS.md](./P2_SPRINT1_COMPLETION_STATUS.md)
-8. ✅ [P2_SPRINT2_PROACTIVE_HINTS_STATUS.md](./P2_SPRINT2_PROACTIVE_HINTS_STATUS.md)
-9. ✅ [P2_COMPLETION_FINAL_STATUS.md](./P2_COMPLETION_FINAL_STATUS.md) (ce fichier)
+13. ✅ [P2_SPRINT1_COMPLETION_STATUS.md](./P2_SPRINT1_COMPLETION_STATUS.md)
+14. ✅ [P2_SPRINT2_PROACTIVE_HINTS_STATUS.md](./P2_SPRINT2_PROACTIVE_HINTS_STATUS.md)
+15. ✅ [P2_SPRINT3_FRONTEND_STATUS.md](./P2_SPRINT3_FRONTEND_STATUS.md)
+16. ✅ [P2_COMPLETION_FINAL_STATUS.md](./P2_COMPLETION_FINAL_STATUS.md) (ce fichier)
 
 ---
 
@@ -341,39 +350,55 @@ histogram_quantile(0.5, rate(memory_proactive_hints_relevance_score_bucket[5m]))
 - 🧠 **Intelligence mémoire**: Système proactif vs 100% réactif
 
 ### Qualité Code
-- ✅ **Tests**: 21 nouveaux tests (5 performance + 16 hints)
+- ✅ **Tests**: 31 nouveaux tests (5 performance + 16 hints backend + 10 E2E frontend)
 - ✅ **Mypy**: 0 erreurs sur tous fichiers modifiés
-- ✅ **Type hints**: 100% coverage nouveaux modules
-- ✅ **Documentation**: 3 documents status complets
+- ✅ **Type hints**: 100% coverage nouveaux modules backend
+- ✅ **Documentation**: 4 documents status complets + MEMORY_CAPABILITIES.md mis à jour
+- ✅ **Frontend**: 610 lignes JS (2 composants), 400+ lignes CSS
+
+### User Experience
+- 🔔 **Hints proactifs**: Affichage automatique, 3 actions (Apply/Dismiss/Snooze)
+- 📊 **Dashboard mémoire**: Stats temps réel, top 10 préférences/concepts
+- 🎨 **UI moderne**: Animations smooth, responsive, dark theme support
+- 🚀 **Non-intrusif**: Max 3 hints simultanés, auto-dismiss 10s
 
 ---
 
 ## 🎯 Prochaines Étapes
 
-### Sprint 3 P2 (Frontend UI + Dashboard) - À FAIRE
-**Durée estimée**: 2-3 jours
+### Sprint 3 P2 (Frontend UI + Dashboard) - ✅ COMPLÉTÉ (2025-10-10)
+**Durée**: 1 session
 
-**Objectifs**:
-- [ ] Créer composant ProactiveHintsUI (frontend)
-- [ ] Afficher banners hints (style, animations)
-- [ ] Actions hints (Appliquer, Ignorer, Rappeler plus tard)
-- [ ] Dashboard mémoire utilisateur
-- [ ] Tests E2E (Playwright)
+**Objectifs complétés**:
+- [x] Créer composant ProactiveHintsUI (330 lignes JavaScript)
+- [x] Afficher banners hints (styles, animations smooth)
+- [x] Actions hints (Appliquer, Ignorer, Snooze 1h)
+- [x] Dashboard mémoire utilisateur (MemoryDashboard)
+- [x] Backend endpoint `GET /api/memory/user/stats`
+- [x] Tests E2E Playwright (10 tests passants)
 
-**Localisation**:
-- `src/frontend/features/memory/proactive-hints.js`
-- `src/frontend/features/memory/memory-dashboard.js`
-- `src/frontend/styles/proactive-hints.css`
+**Fichiers créés**:
+- ✅ `src/frontend/features/memory/ProactiveHintsUI.js` (330 lignes)
+- ✅ `src/frontend/features/memory/MemoryDashboard.js` (280 lignes)
+- ✅ `src/frontend/styles/components/proactive-hints.css` (400+ lignes)
+- ✅ `tests/e2e/proactive-hints.spec.js` (10 tests, 400+ lignes)
 
-**Event listener frontend**:
-```javascript
-EventBus.on('ws:proactive_hint', (data) => {
-  const hints = data.hints || [];
-  hints.forEach(hint => {
-    displayProactiveHintBanner(hint);
-  });
-});
-```
+**Fichiers modifiés**:
+- ✅ `src/backend/features/memory/router.py` (+120 lignes endpoint)
+- ✅ `src/frontend/main.js` (+15 lignes initialisation)
+- ✅ `src/frontend/styles/main-styles.css` (+1 import)
+
+**Features implémentées**:
+- 🔔 **ProactiveHintsUI**: Event listener `ws:proactive_hint`, max 3 hints simultanés, tri relevance, 3 types visuels (💡📋⚠️), actions (Apply/Dismiss/Snooze), auto-dismiss 10s
+- 📊 **MemoryDashboard**: Stats globales, Top 10 préférences, Top 10 concepts, format dates relatif, loading/error states
+- 🎨 **CSS**: Animations smooth, responsive design, dark theme, gradient backgrounds
+- 🔌 **Backend**: Endpoint `/api/memory/user/stats` (fetch preferences, concepts, sessions depuis ChromaDB)
+- 🧪 **Tests E2E**: 10 tests Playwright (hints display, dismiss, snooze, max 3, dashboard)
+
+**Documentation**:
+- ✅ [P2_SPRINT3_FRONTEND_STATUS.md](./P2_SPRINT3_FRONTEND_STATUS.md)
+- ✅ [MEMORY_CAPABILITIES.md](../MEMORY_CAPABILITIES.md) - Section 11bis Frontend UI
+- ✅ [memory-roadmap.md](../memory-roadmap.md) - P2 marqué COMPLET
 
 ### Gap #3 - Architecture Hybride (Après P2)
 **Décision requise**: Migration complète Sessions→Threads vs Maintenir hybride
@@ -394,9 +419,10 @@ EventBus.on('ws:proactive_hint', (data) => {
 dfb16b3 perf(P2.1): cache in-memory préférences - gains performance majeurs
 ```
 
-**Total lignes modifiées**: ~800 lignes
-**Total tests ajoutés**: 21 tests
-**Coverage**: 100% nouveaux modules
+**Total lignes modifiées**: ~1500 lignes (backend + frontend)
+**Total tests ajoutés**: 31 tests (21 backend + 10 E2E)
+**Coverage**: 100% nouveaux modules (backend + frontend)
+**Composants frontend**: 2 (ProactiveHintsUI, MemoryDashboard)
 
 ---
 

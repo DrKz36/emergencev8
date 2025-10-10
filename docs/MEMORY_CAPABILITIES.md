@@ -609,6 +609,121 @@ async def test_unified_search():
 
 ---
 
+## 🎨 11bis. INTERFACE UTILISATEUR HINTS PROACTIFS
+
+### **ProactiveHintsUI Component**
+
+**Fichier**: [ProactiveHintsUI.js](../src/frontend/features/memory/ProactiveHintsUI.js)
+
+**Fonctionnalités**:
+- Affichage banners hints (top-right, non-intrusif)
+- 3 types visuels:
+  - 💡 `preference_reminder` (gradient bleu-violet)
+  - 📋 `intent_followup` (gradient rose)
+  - ⚠️ `constraint_warning` (gradient orange-jaune)
+- Actions utilisateur:
+  - ✅ **Appliquer** : Copie préférence dans input chat
+  - ❌ **Ignorer** : Ferme immédiatement
+  - 🕐 **Plus tard** : Snooze 1h (localStorage)
+- Auto-dismiss après 10s
+- Max 3 hints simultanés (tri par `relevance_score` descendant)
+
+**Event WebSocket**: `ws:proactive_hint`
+
+**Payload structure**:
+```javascript
+{
+  hints: [{
+    id: "hint_abc123",
+    type: "preference_reminder",
+    title: "Rappel: Préférence détectée",
+    message: "💡 Tu as mentionné 'python' 3 fois. Rappel: I prefer Python for scripting",
+    relevance_score: 0.85,
+    action_label: "Appliquer",
+    action_payload: { preference: "I prefer Python for scripting" }
+  }]
+}
+```
+
+**Usage example**:
+```javascript
+import { EventBus } from './core/event-bus.js';
+
+const eventBus = EventBus.getInstance();
+eventBus.emit('ws:proactive_hint', {
+  hints: [/* ... */]
+});
+```
+
+### **MemoryDashboard Component**
+
+**Fichier**: [MemoryDashboard.js](../src/frontend/features/memory/MemoryDashboard.js)
+
+**Sections**:
+1. **Stats globales**: Sessions analysées, Threads archivés, Taille LTM
+2. **Top 10 préférences**: Confiance, Type, Date capture
+3. **Top 10 concepts**: Mentions, Dernière mention
+
+**Endpoint API**: `GET /api/memory/user/stats`
+
+**Route**: `/memory` (configurable)
+
+**Response format**:
+```json
+{
+  "preferences": {
+    "total": 12,
+    "top": [
+      {"topic": "python", "confidence": 0.92, "type": "preference", "captured_at": "2025-10-05T10:00:00Z"}
+    ],
+    "by_type": {"preference": 8, "intent": 3, "constraint": 1}
+  },
+  "concepts": {
+    "total": 47,
+    "top": [
+      {"concept": "containerization", "mentions": 5, "last_mentioned": "2025-10-07T09:15:00Z"}
+    ]
+  },
+  "stats": {
+    "sessions_analyzed": 23,
+    "threads_archived": 5,
+    "ltm_size_mb": 2.4
+  }
+}
+```
+
+### **Styles CSS**
+
+**Fichier**: [proactive-hints.css](../src/frontend/styles/components/proactive-hints.css)
+
+**Features**:
+- Animations smooth (slide-in/out, cubic-bezier easing)
+- Responsive design (mobile < 768px)
+- Dark theme support (`prefers-color-scheme: dark`)
+- Stacking hints avec offset vertical
+- Loading/error states pour dashboard
+
+### **Tests E2E**
+
+**Fichier**: [proactive-hints.spec.js](../tests/e2e/proactive-hints.spec.js)
+
+**Coverage**:
+- ✅ Display hint banner (event `ws:proactive_hint`)
+- ✅ Dismiss hint (animation + removal)
+- ✅ Snooze hint (localStorage persistence)
+- ✅ Max 3 hints enforcement
+- ✅ Apply hint to chat input
+- ✅ Auto-dismiss after 10s
+- ✅ Dashboard render with mock API
+- ✅ Loading/error states
+
+**Run tests**:
+```bash
+npx playwright test tests/e2e/proactive-hints.spec.js
+```
+
+---
+
 ## 📞 SUPPORT
 
 **Problèmes connus :** [GitHub Issues](https://github.com/emergence/issues)
@@ -617,7 +732,7 @@ async def test_unified_search():
 
 ---
 
-**Dernière mise à jour :** 2025-10-10 (Phase P2 complétée)
+**Dernière mise à jour :** 2025-10-10 (Phase P2 Sprint 3 complétée)
 **Auteur :** Équipe EMERGENCE
 **Licence :** Voir LICENSE
 
@@ -628,9 +743,11 @@ async def test_unified_search():
 ### Documentation
 - [P2_COMPLETION_FINAL_STATUS.md](validation/P2_COMPLETION_FINAL_STATUS.md) - Résumé complet Phase P2
 - [P2_SPRINT1_COMPLETION_STATUS.md](validation/P2_SPRINT1_COMPLETION_STATUS.md) - Sprint 1 (Performance)
-- [P2_SPRINT2_PROACTIVE_HINTS_STATUS.md](validation/P2_SPRINT2_PROACTIVE_HINTS_STATUS.md) - Sprint 2 (Hints)
+- [P2_SPRINT2_PROACTIVE_HINTS_STATUS.md](validation/P2_SPRINT2_PROACTIVE_HINTS_STATUS.md) - Sprint 2 (Hints backend)
+- [P2_SPRINT3_FRONTEND_STATUS.md](validation/P2_SPRINT3_FRONTEND_STATUS.md) - Sprint 3 (Frontend UI)
 - [MEMORY_P2_PERFORMANCE_PLAN.md](optimizations/MEMORY_P2_PERFORMANCE_PLAN.md) - Plan détaillé P2
 
 ### Tests
 - [test_memory_performance.py](../tests/backend/features/test_memory_performance.py) - 5 tests performance
-- [test_proactive_hints.py](../tests/backend/features/test_proactive_hints.py) - 16 tests hints
+- [test_proactive_hints.py](../tests/backend/features/test_proactive_hints.py) - 16 tests hints backend
+- [proactive-hints.spec.js](../tests/e2e/proactive-hints.spec.js) - 10 tests E2E frontend

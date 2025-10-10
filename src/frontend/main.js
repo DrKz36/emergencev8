@@ -19,6 +19,7 @@ import { api } from './shared/api-client.js';
 import { WS_CONFIG, EVENTS } from './shared/constants.js';
 import { notifications } from './shared/notifications.js';
 import { showWelcomePopupIfNeeded } from './shared/welcome-popup.js';
+import { ProactiveHintsUI } from './features/memory/ProactiveHintsUI.js';
 
 const storeAuthToken = typeof storeAuthTokenImpl === 'function' ? storeAuthTokenImpl : () => null;
 const clearStoredAuth = typeof clearAuthImpl === 'function' ? clearAuthImpl : () => {};
@@ -1361,6 +1362,24 @@ try {
   console.log('[Notifications] Système initialisé');
 } catch (err) {
   console.error('[Notifications] Erreur initialisation:', err);
+}
+
+/* ---------- Init ProactiveHintsUI (Sprint P3) ---------- */
+try {
+  // Create container for proactive hints
+  let hintsContainer = document.getElementById('proactive-hints-container');
+  if (!hintsContainer) {
+    hintsContainer = document.createElement('div');
+    hintsContainer.id = 'proactive-hints-container';
+    hintsContainer.className = 'proactive-hints-container';
+    document.body.appendChild(hintsContainer);
+  }
+
+  // Initialize ProactiveHintsUI
+  window.__proactiveHintsUI = new ProactiveHintsUI(hintsContainer);
+  console.info('[ProactiveHintsUI] Initialized globally');
+} catch (err) {
+  console.error('[ProactiveHintsUI] Initialization error:', err);
 }
 
 /* ---------- Boot guard : éviter tout second bootstrap involontaire ---------- */
