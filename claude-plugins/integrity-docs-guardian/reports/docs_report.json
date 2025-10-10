@@ -1,0 +1,78 @@
+{
+  "timestamp": "2025-10-10T07:59:52.231882",
+  "commit_hash": "a3197fbdc857404063811519ba99a5001b628829",
+  "commit_message": "deploy: release p2 sprint3 revision",
+  "status": "needs_update",
+  "changes_detected": {
+    "backend": [
+      "src/backend/features/memory/concept_recall.py",
+      "src/backend/features/memory/concept_recall_metrics.py"
+    ],
+    "frontend": [],
+    "docs": [
+      "AGENT_SYNC.md",
+      "docs/deployments/2025-10-09-activation-metrics-phase3.md",
+      "docs/deployments/2025-10-09-validation-phase3-complete.md",
+      "docs/deployments/2025-10-10-deploy-p2-sprint3.md",
+      "docs/features/concept-recall-metrics-implementation.md",
+      "docs/passation.md"
+    ],
+    "other": []
+  },
+  "documentation_gaps": [
+    {
+      "severity": "high",
+      "file": "src/backend/features/memory/concept_recall.py",
+      "issue": "Feature module 'memory' modified",
+      "affected_docs": [
+        "docs/backend/memory.md",
+        "README.md"
+      ],
+      "recommendation": "Ensure memory feature is documented"
+    },
+    {
+      "severity": "high",
+      "file": "src/backend/features/memory/concept_recall_metrics.py",
+      "issue": "Feature module 'memory' modified",
+      "affected_docs": [
+        "docs/backend/memory.md",
+        "README.md"
+      ],
+      "recommendation": "Ensure memory feature is documented"
+    }
+  ],
+  "proposed_updates": [
+    {
+      "file": "docs/backend/memory.md",
+      "action": "update_section",
+      "reason": "2 related change(s) detected",
+      "related_changes": [
+        "src/backend/features/memory/concept_recall.py",
+        "src/backend/features/memory/concept_recall_metrics.py"
+      ],
+      "recommendation": "Ensure memory feature is documented"
+    },
+    {
+      "file": "README.md",
+      "action": "update_section",
+      "reason": "2 related change(s) detected",
+      "related_changes": [
+        "src/backend/features/memory/concept_recall.py",
+        "src/backend/features/memory/concept_recall_metrics.py"
+      ],
+      "recommendation": "Ensure memory feature is documented"
+    }
+  ],
+  "statistics": {
+    "files_changed": 8,
+    "backend_files": 2,
+    "frontend_files": 0,
+    "docs_files": 6,
+    "gaps_found": 2,
+    "high_severity": 2,
+    "medium_severity": 0,
+    "low_severity": 0,
+    "updates_proposed": 2
+  },
+  "summary": "2 documentation gap(s) found, 2 update(s) proposed"
+}

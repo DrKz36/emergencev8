@@ -1,0 +1,205 @@
+{
+  "metadata": {
+    "timestamp": "2025-10-10T08:00:04.433011",
+    "commit_hash": "a3197fbdc857404063811519ba99a5001b628829",
+    "commit_message": "deploy: release p2 sprint3 revision",
+    "nexus_version": "1.0.0"
+  },
+  "executive_summary": {
+    "status": "warning",
+    "total_issues": 2,
+    "critical": 0,
+    "warnings": 2,
+    "info": 0,
+    "headline": "⚠️  2 warning(s) found - review recommended"
+  },
+  "agent_status": {
+    "anima": {
+      "status": "needs_update",
+      "issues_found": 2,
+      "updates_proposed": 2,
+      "summary": "2 documentation gap(s) found, 2 update(s) proposed"
+    },
+    "neo": {
+      "status": "ok",
+      "issues_found": 0,
+      "critical": 0,
+      "warnings": 0,
+      "summary": "0 critical, 0 warning(s), 0 total issue(s) found"
+    }
+  },
+  "priority_actions": [
+    {
+      "priority": "P1",
+      "agent": "anima",
+      "category": "documentation",
+      "title": "Feature module 'memory' modified",
+      "description": "Feature module 'memory' modified",
+      "affected_files": [
+        "docs/backend/memory.md",
+        "README.md"
+      ],
+      "recommendation": "Ensure memory feature is documented",
+      "estimated_effort": "5 minutes",
+      "owner": "docs-team"
+    },
+    {
+      "priority": "P1",
+      "agent": "anima",
+      "category": "documentation",
+      "title": "Feature module 'memory' modified",
+      "description": "Feature module 'memory' modified",
+      "affected_files": [
+        "docs/backend/memory.md",
+        "README.md"
+      ],
+      "recommendation": "Ensure memory feature is documented",
+      "estimated_effort": "5 minutes",
+      "owner": "docs-team"
+    }
+  ],
+  "full_reports": {
+    "anima": {
+      "timestamp": "2025-10-10T07:59:52.231882",
+      "commit_hash": "a3197fbdc857404063811519ba99a5001b628829",
+      "commit_message": "deploy: release p2 sprint3 revision",
+      "status": "needs_update",
+      "changes_detected": {
+        "backend": [
+          "src/backend/features/memory/concept_recall.py",
+          "src/backend/features/memory/concept_recall_metrics.py"
+        ],
+        "frontend": [],
+        "docs": [
+          "AGENT_SYNC.md",
+          "docs/deployments/2025-10-09-activation-metrics-phase3.md",
+          "docs/deployments/2025-10-09-validation-phase3-complete.md",
+          "docs/deployments/2025-10-10-deploy-p2-sprint3.md",
+          "docs/features/concept-recall-metrics-implementation.md",
+          "docs/passation.md"
+        ],
+        "other": []
+      },
+      "documentation_gaps": [
+        {
+          "severity": "high",
+          "file": "src/backend/features/memory/concept_recall.py",
+          "issue": "Feature module 'memory' modified",
+          "affected_docs": [
+            "docs/backend/memory.md",
+            "README.md"
+          ],
+          "recommendation": "Ensure memory feature is documented"
+        },
+        {
+          "severity": "high",
+          "file": "src/backend/features/memory/concept_recall_metrics.py",
+          "issue": "Feature module 'memory' modified",
+          "affected_docs": [
+            "docs/backend/memory.md",
+            "README.md"
+          ],
+          "recommendation": "Ensure memory feature is documented"
+        }
+      ],
+      "proposed_updates": [
+        {
+          "file": "docs/backend/memory.md",
+          "action": "update_section",
+          "reason": "2 related change(s) detected",
+          "related_changes": [
+            "src/backend/features/memory/concept_recall.py",
+            "src/backend/features/memory/concept_recall_metrics.py"
+          ],
+          "recommendation": "Ensure memory feature is documented"
+        },
+        {
+          "file": "README.md",
+          "action": "update_section",
+          "reason": "2 related change(s) detected",
+          "related_changes": [
+            "src/backend/features/memory/concept_recall.py",
+            "src/backend/features/memory/concept_recall_metrics.py"
+          ],
+          "recommendation": "Ensure memory feature is documented"
+        }
+      ],
+      "statistics": {
+        "files_changed": 8,
+        "backend_files": 2,
+        "frontend_files": 0,
+        "docs_files": 6,
+        "gaps_found": 2,
+        "high_severity": 2,
+        "medium_severity": 0,
+        "low_severity": 0,
+        "updates_proposed": 2
+      },
+      "summary": "2 documentation gap(s) found, 2 update(s) proposed"
+    },
+    "neo": {
+      "timestamp": "2025-10-10T07:59:58.477030",
+      "commit_hash": "a3197fbdc857404063811519ba99a5001b628829",
+      "commit_message": "deploy: release p2 sprint3 revision",
+      "status": "ok",
+      "backend_changes": {
+        "files": [
+          "src/backend/features/memory/concept_recall.py",
+          "src/backend/features/memory/concept_recall_metrics.py"
+        ],
+        "endpoints_added": [],
+        "endpoints_modified": [],
+        "endpoints_removed": [],
+        "schemas_changed": []
+      },
+      "frontend_changes": {
+        "files": [],
+        "api_calls_added": [],
+        "api_calls_modified": [],
+        "api_calls_removed": []
+      },
+      "issues": [],
+      "openapi_validation": {
+        "status": "ok",
+        "endpoints_count": 15,
+        "schemas_count": 6
+      },
+      "statistics": {
+        "backend_files_changed": 2,
+        "frontend_files_changed": 0,
+        "issues_found": 0,
+        "critical": 0,
+        "warnings": 0,
+        "info": 0
+      },
+      "summary": "0 critical, 0 warning(s), 0 total issue(s) found"
+    }
+  },
+  "statistics": {
+    "total_files_changed": 8,
+    "backend_files": 2,
+    "frontend_files": 0,
+    "docs_files": 6,
+    "issues_by_severity": {
+      "critical": 0,
+      "warning": 2,
+      "info": 0
+    },
+    "issues_by_category": {
+      "integrity": 0,
+      "documentation": 2
+    }
+  },
+  "recommendations": {
+    "immediate": [
+      "None - all checks passed"
+    ],
+    "short_term": [
+      "Feature module 'memory' modified",
+      "Feature module 'memory' modified"
+    ],
+    "long_term": [
+      "Consider implementing documentation-first workflow"
+    ]
+  }
+}
