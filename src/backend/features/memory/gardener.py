@@ -1059,12 +1059,17 @@ class MemoryGardener:
     ) -> int:
         if not records:
             return 0
+
+        # Bug #6 (P1): Batch fetch toutes les préférences existantes en 1 seule requête
+        preference_ids = [r["id"] for r in records]
+        existing_prefs = await self._get_existing_preferences_batch(preference_ids)
+
         inserted = 0
         vector_items: List[Dict[str, Any]] = []
         sql_payload: List[Dict[str, Any]] = []
         to_notify: List[Dict[str, Any]] = []
         for record in records:
-            existing = await self._get_existing_preference_record(record["id"])
+            existing = existing_prefs.get(record["id"])
             existing_meta = (existing or {}).get("metadata") or {}
             prev_conf = float(existing_meta.get("confidence", 0.0) or 0.0)
             prev_occ = int(existing_meta.get("occurrences", 1) or 1)
@@ -1171,6 +1176,64 @@ class MemoryGardener:
         for record in to_notify:
             await self._emit_preference_banner(session_id, record)
         return inserted
+
+    async def _get_existing_preferences_batch(
+        self, preference_ids: List[str]
+    ) -> Dict[str, Optional[Dict[str, Any]]]:
+        """Récupère plusieurs préférences existantes en une seule requête batch.
+
+        Optimisation Bug #6 (P1): Batch fetch pour éviter N+1 requêtes.
+
+        Args:
+            preference_ids: Liste des IDs de préférences à récupérer
+
+        Returns:
+            Dict mapping {id: {metadata, document}} ou {id: None} si non trouvé
+        """
+        if not preference_ids:
+            return {}
+
+        try:
+            result = await asyncio.to_thread(
+                self.preference_collection.get,
+                ids=preference_ids,
+                include=["metadatas", "documents"]
+            )
+        except Exception as e:
+            logger.warning(f"[Gardener] Erreur batch fetch préférences: {e}")
+            return {pid: None for pid in preference_ids}
+
+        if not result:
+            return {pid: None for pid in preference_ids}
+
+        # Normaliser les résultats
+        ids = result.get("ids") or []
+        metadatas = result.get("metadatas") or []
+        documents = result.get("documents") or []
+
+        # Unwrap si nested (certaines versions ChromaDB retournent [[]])
+        if ids and isinstance(ids[0], list):
+            ids = ids[0]
+        if metadatas and isinstance(metadatas[0], list):
+            metadatas = metadatas[0]
+        if documents and isinstance(documents[0], list):
+            documents = documents[0]
+
+        # Construire dict {id: metadata}
+        existing = {}
+        for i, pref_id in enumerate(ids):
+            existing[pref_id] = {
+                "id": pref_id,
+                "metadata": metadatas[i] if i < len(metadatas) else {},
+                "document": documents[i] if i < len(documents) else ""
+            }
+
+        # Remplir les IDs manquants avec None
+        for pref_id in preference_ids:
+            if pref_id not in existing:
+                existing[pref_id] = None
+
+        return existing
 
     async def _get_existing_preference_record(
         self, record_id: str

@@ -331,6 +331,12 @@ async def analyze_session_endpoint(
             status_code=500, detail="Analyse mÃ©moire impossible pour cette session."
         )
 
+    # Invalider cache préférences après extraction (Bug #5 P1)
+    if user_id:
+        memory_ctx = getattr(request.app.state, "memory_context", None)
+        if memory_ctx and hasattr(memory_ctx, "invalidate_preferences_cache"):
+            memory_ctx.invalidate_preferences_cache(user_id)
+
     updated_meta = session_manager.get_session_metadata(session_id)
     has_summary = bool((analysis or {}).get("summary")) or bool(
         updated_meta.get("summary")
@@ -411,6 +417,12 @@ async def tend_garden_endpoint(
         if _supports_kwarg(gardener.tend_the_garden, 'user_id'):
             call_kwargs['user_id'] = user_id
         report = await gardener.tend_the_garden(**call_kwargs)  # type: ignore[arg-type]
+
+        # Invalider cache préférences après jardinage (Bug #5 P1)
+        memory_ctx = getattr(request.app.state, "memory_context", None)
+        if memory_ctx and hasattr(memory_ctx, "invalidate_preferences_cache") and user_id:
+            memory_ctx.invalidate_preferences_cache(user_id)
+
         if report.get("status") == "error":
             raise HTTPException(
                 status_code=500, detail=report.get("message", "Erreur interne")

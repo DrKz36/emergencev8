@@ -206,6 +206,19 @@ class MemoryContextBuilder:
         if expired_keys:
             logger.debug(f"[Cache GC] Removed {len(expired_keys)} expired entries")
 
+    def invalidate_preferences_cache(self, user_id: str) -> None:
+        """Invalide le cache préférences pour un utilisateur donné.
+
+        Appelée après mise à jour des préférences (analyse mémoire ou jardinage)
+        pour forcer le rechargement depuis ChromaDB au prochain accès.
+
+        Args:
+            user_id: Identifiant de l'utilisateur
+        """
+        if user_id in self._prefs_cache:
+            del self._prefs_cache[user_id]
+            logger.info(f"[MemoryContext] Cache préférences invalidé pour user {user_id[:8]}...")
+
     def _apply_temporal_weighting(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Apply temporal weighting to boost recent and frequently used items."""
         import datetime

@@ -1,141 +1,30 @@
 {
-  "timestamp": "2025-10-10T09:44:32.755922",
-  "commit_hash": "31b6fc38ede3ae53a1849ca081d699b65a1d326b",
-  "commit_message": "fix(memory): rÃ©solution critique PreferenceExtractor - passage user_id + dÃ©ploiement production\n\n# ProblÃ¨me RÃ©solu\nAnomalie critique : PreferenceExtractor ne recevait jamais user_sub/user_id,\nbloquant complÃ¨tement l'extraction de prÃ©fÃ©rences en production\n(memory_preferences_extracted_total = 0).\n\n# Cause Racine\nanalyze_session_for_concepts() ne recevait pas user_id en paramÃ¨tre.\nWorkaround via session_manager.get_session() Ã©chouait en production.\n\n# Solution ImplÃ©mentÃ©e\nPassage explicite de user_id Ã  travers toute la chaÃ®ne d'appels:\n- Ajout paramÃ¨tre user_id Ã  _analyze() et analyze_session_for_concepts()\n- Suppression workaround buguÃ©\n- Mise Ã  jour 4 appelants: router, gardener, task_queue, post_session\n- RÃ©cupÃ©ration user_id depuis auth request avec fallback\n\n# Fichiers Backend ModifiÃ©s\n- src/backend/features/memory/analyzer.py (+7/-10 lignes)\n- src/backend/features/memory/router.py (+8 lignes)\n- src/backend/features/memory/gardener.py (+2 lignes)\n- src/backend/features/memory/task_queue.py (+3 lignes)\n- src/backend/features/chat/post_session.py (+13 lignes)\n\n# Tests & Validation\n- âœ… 22/22 tests prÃ©fÃ©rences passants\n- âœ… 10/10 tests memory_enhancements passants\n- âœ… Mypy: 0 erreur\n- âœ… Ruff: All checks passed\n\n# DÃ©ploiement Production\n- RÃ©vision: emergence-app-00350-wic\n- Tag Docker: fix-preferences-20251010-090040\n- Digest: sha256:051a6eeac4a8fea2eaa95bf70eb8525d33dccaddd9c52454348852e852b0103f\n- Trafic: 100% sur nouvelle rÃ©vision\n- Validation: Aucun warning \"no user identifier\" depuis dÃ©ploiement\n\n# Documentation\n- docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md - rÃ©solution anomalie #1\n- docs/passation.md - nouvelle entrÃ©e fix critique\n- AGENT_SYNC.md - mise Ã  jour Ã©tat dÃ©ploiement\n\n# Autres Fichiers\nInclus dans ce commit: Guardian plugins, rapports, scripts (sessions prÃ©cÃ©dentes)\n\nðŸ¤– Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
-  "status": "needs_update",
+  "timestamp": "2025-10-10T11:07:51.143696",
+  "commit_hash": "f2536a5e99b0a999788836591aa371d0d7e00b1e",
+  "commit_message": "docs: ajout prompts et rÃ©capitulatif session P0 fixes\n\nProchaines sessions suggÃ©rÃ©es :\n- PROMPT_NEXT_SESSION_P1_FIXES.md : correction 7 bugs P1-P2 (4-6h)\n- PROMPT_NEXT_SESSION_CLEANUP.md : nettoyage ~13 Mo obsolÃ¨tes (2-3h)\n\nRÃ©capitulatif session actuelle :\n- SESSION_RECAP_P0_FIXES_20251010.md : bugs P0 #2 et #3 rÃ©solus\n\nðŸ¤– Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "status": "ok",
   "changes_detected": {
-    "backend": [
-      "src/backend/features/chat/post_session.py",
-      "src/backend/features/memory/analyzer.py",
-      "src/backend/features/memory/gardener.py",
-      "src/backend/features/memory/router.py",
-      "src/backend/features/memory/task_queue.py"
-    ],
+    "backend": [],
     "frontend": [],
     "docs": [
-      ".claude/commands/check_prod.md",
-      ".claude/commands/sync_all.md",
-      "AGENT_SYNC.md",
-      "ORCHESTRATEUR_IMPLEMENTATION.md",
-      "PRODGUARDIAN_IMPLEMENTATION.md",
-      "claude-plugins/integrity-docs-guardian/Claude.md",
-      "claude-plugins/integrity-docs-guardian/ORCHESTRATEUR_README.md",
-      "claude-plugins/integrity-docs-guardian/PRODGUARDIAN_README.md",
-      "claude-plugins/integrity-docs-guardian/PRODGUARDIAN_SETUP.md",
-      "claude-plugins/integrity-docs-guardian/agents/prodguardian.md",
-      "docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md",
-      "docs/passation.md"
+      "PROMPT_NEXT_SESSION_CLEANUP.md",
+      "PROMPT_NEXT_SESSION_P1_FIXES.md",
+      "SESSION_RECAP_P0_FIXES_20251010.md"
     ],
-    "other": [
-      "claude-plugins/integrity-docs-guardian/hooks/post-commit.sh",
-      "claude-plugins/integrity-docs-guardian/reports/docs_report.json",
-      "claude-plugins/integrity-docs-guardian/reports/global_report.json",
-      "claude-plugins/integrity-docs-guardian/reports/integrity_report.json",
-      "claude-plugins/integrity-docs-guardian/reports/prod_report.json",
-      "claude-plugins/integrity-docs-guardian/reports/unified_report.json",
-      "claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py",
-      "claude-plugins/integrity-docs-guardian/scripts/merge_reports.py",
-      "claude-plugins/integrity-docs-guardian/scripts/sync_all.sh"
-    ]
+    "other": []
   },
-  "documentation_gaps": [
-    {
-      "severity": "high",
-      "file": "src/backend/features/chat/post_session.py",
-      "issue": "Feature module 'chat' modified",
-      "affected_docs": [
-        "docs/backend/chat.md",
-        "README.md"
-      ],
-      "recommendation": "Ensure chat feature is documented"
-    },
-    {
-      "severity": "high",
-      "file": "src/backend/features/memory/analyzer.py",
-      "issue": "Feature module 'memory' modified",
-      "affected_docs": [
-        "docs/backend/memory.md",
-        "README.md"
-      ],
-      "recommendation": "Ensure memory feature is documented"
-    },
-    {
-      "severity": "high",
-      "file": "src/backend/features/memory/gardener.py",
-      "issue": "Feature module 'memory' modified",
-      "affected_docs": [
-        "docs/backend/memory.md",
-        "README.md"
-      ],
-      "recommendation": "Ensure memory feature is documented"
-    },
-    {
-      "severity": "high",
-      "file": "src/backend/features/memory/router.py",
-      "issue": "Feature module 'memory' modified",
-      "affected_docs": [
-        "docs/backend/memory.md",
-        "README.md"
-      ],
-      "recommendation": "Ensure memory feature is documented"
-    },
-    {
-      "severity": "high",
-      "file": "src/backend/features/memory/task_queue.py",
-      "issue": "Feature module 'memory' modified",
-      "affected_docs": [
-        "docs/backend/memory.md",
-        "README.md"
-      ],
-      "recommendation": "Ensure memory feature is documented"
-    }
-  ],
-  "proposed_updates": [
-    {
-      "file": "docs/backend/chat.md",
-      "action": "update_section",
-      "reason": "1 related change(s) detected",
-      "related_changes": [
-        "src/backend/features/chat/post_session.py"
-      ],
-      "recommendation": "Ensure chat feature is documented"
-    },
-    {
-      "file": "README.md",
-      "action": "update_section",
-      "reason": "5 related change(s) detected",
-      "related_changes": [
-        "src/backend/features/chat/post_session.py",
-        "src/backend/features/memory/analyzer.py",
-        "src/backend/features/memory/gardener.py",
-        "src/backend/features/memory/router.py",
-        "src/backend/features/memory/task_queue.py"
-      ],
-      "recommendation": "Ensure chat feature is documented"
-    },
-    {
-      "file": "docs/backend/memory.md",
-      "action": "update_section",
-      "reason": "4 related change(s) detected",
-      "related_changes": [
-        "src/backend/features/memory/analyzer.py",
-        "src/backend/features/memory/gardener.py",
-        "src/backend/features/memory/router.py",
-        "src/backend/features/memory/task_queue.py"
-      ],
-      "recommendation": "Ensure memory feature is documented"
-    }
-  ],
+  "documentation_gaps": [],
+  "proposed_updates": [],
   "statistics": {
-    "files_changed": 26,
-    "backend_files": 5,
+    "files_changed": 3,
+    "backend_files": 0,
     "frontend_files": 0,
-    "docs_files": 12,
-    "gaps_found": 5,
-    "high_severity": 5,
+    "docs_files": 3,
+    "gaps_found": 0,
+    "high_severity": 0,
     "medium_severity": 0,
     "low_severity": 0,
-    "updates_proposed": 3
+    "updates_proposed": 0
   },
-  "summary": "5 documentation gap(s) found, 3 update(s) proposed"
+  "summary": "0 documentation gap(s) found, 0 update(s) proposed"
 }

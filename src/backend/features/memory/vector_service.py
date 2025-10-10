@@ -761,15 +761,40 @@ class VectorService:
                 f"Echec update metadatas '{collection.name}': {e}", exc_info=True
             )
 
+    def _is_filter_empty(self, where_filter: Dict[str, Any]) -> bool:
+        """Vérifie récursivement si un filtre est vide ou sans critères valides."""
+        if not where_filter:
+            return True
+
+        # Vérifier opérateurs logiques ($and, $or, $not)
+        for op in ["$and", "$or"]:
+            if op in where_filter:
+                values = where_filter[op]
+                if isinstance(values, list):
+                    # Liste vide → filtre vide
+                    if not values:
+                        return True
+                    # Si toutes les sous-conditions sont vides → filtre vide
+                    if all(self._is_filter_empty(v) if isinstance(v, dict) else False for v in values):
+                        return True
+
+        # Vérifier si toutes les valeurs sont None
+        non_operator_keys = [k for k in where_filter.keys() if not k.startswith("$")]
+        if non_operator_keys and all(where_filter[k] is None for k in non_operator_keys):
+            return True
+
+        return False
+
     def delete_vectors(
         self, collection: Collection, where_filter: Dict[str, Any]
     ) -> None:
         self._ensure_inited()
-        if not where_filter:
-            logger.warning(
-                f"Suppression annulée sur '{collection.name}' (pas de filtre)."
+        if self._is_filter_empty(where_filter):
+            logger.error(
+                f"[VectorService] Suppression refusée sur '{collection.name}': "
+                f"filtre vide ou invalide (protection suppression globale)"
             )
-            return
+            raise ValueError("Cannot delete with empty or invalid filter (global deletion protection)")
         try:
             if self.backend == "qdrant":
                 collection_name = getattr(collection, "name", str(collection))

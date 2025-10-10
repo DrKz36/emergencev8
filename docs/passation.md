@@ -1,3 +1,84 @@
+## [2025-10-10 14:30] - Agent: Claude Code (Bugs P1 #4-#6 + Nettoyage Projet - Résolu)
+
+### Fichiers modifiés
+- `src/backend/features/memory/vector_service.py` — validation récursive where_filter (Bug #4)
+- `src/backend/features/chat/memory_ctx.py` — invalidation cache préférences (Bug #5)
+- `src/backend/features/memory/router.py` — appels invalidation cache (Bug #5)
+- `src/backend/features/memory/gardener.py` — batch fetch préférences (Bug #6)
+- `tests/backend/features/test_vector_service_safety.py` — 20 tests protection suppression globale (NOUVEAU)
+- `tests/backend/features/test_memory_ctx_cache.py` — 8 tests invalidation cache (NOUVEAU)
+- `tests/backend/features/test_gardener_batch.py` — 11 tests batch fetch (NOUVEAU)
+- `docs/archive/` — 6 prompts + sessions archivés
+
+### Contexte
+Suite à la résolution complète des bugs P0, correction des **3 bugs non-critiques P1** identifiés dans l'audit complet + nettoyage du projet.
+
+### Actions Complétées
+
+**1. Bug #4 : Validation récursive where_filter (P1 - 30min)** ✅
+- **Problème** : Protection contre suppression globale inefficace (`{"$and": [{"user_id": None}]}` accepté)
+- ✅ Ajouté méthode `_is_filter_empty()` avec validation récursive (vector_service.py:764-786)
+- ✅ Vérifie opérateurs logiques `$and`, `$or` et leurs sous-conditions
+- ✅ Détecte filtres avec toutes valeurs `None` ou listes vides
+- ✅ Modifié `delete_vectors()` pour lever `ValueError` si filtre invalide (ligne 789-794)
+- ✅ 20 tests créés : 100% passent ✅
+
+**2. Bug #5 : Invalidation cache préférences (P1 - 45min)** ✅
+- **Problème** : Cache préférences invalidé uniquement par TTL (5min) → utilisateur voit ancienne version
+- ✅ Ajouté méthode `invalidate_preferences_cache(user_id)` (memory_ctx.py:209-220)
+- ✅ Appel invalidation dans `/api/memory/analyze` après extraction (router.py:334-338)
+- ✅ Appel invalidation dans `/api/memory/tend-garden` après jardinage (router.py:421-424)
+- ✅ 8 tests workflow complet : 100% passent ✅
+
+**3. Bug #6 : Batch fetch préférences N+1 (P1 - 60min)** ✅
+- **Problème** : 50 préférences → 50 requêtes ChromaDB séquentielles (~1.75s au lieu de <100ms)
+- ✅ Ajouté méthode `_get_existing_preferences_batch(ids)` (gardener.py:1175-1231)
+- ✅ Récupère toutes préférences en 1 seule requête batch ChromaDB
+- ✅ Gère unwrapping résultats nested + IDs manquants
+- ✅ Modifié `_store_preference_records()` pour batch fetch au début (ligne 1063-1065)
+- ✅ 11 tests performance + correctness : 100% passent ✅
+
+**4. Nettoyage Projet (~2.4 Mo)** ✅
+- ✅ Supprimé 766 dossiers `__pycache__` (~2 Mo)
+- ✅ Archivé 6 prompts obsolètes dans `docs/archive/prompts/`
+- ✅ Archivé récapitulatifs sessions dans `docs/archive/sessions/`
+- ✅ Structure archive créée : `docs/archive/{prompts,sessions,reports}/`
+
+### Résultats Tests
+- **Tests P1 créés** : 39 tests (20 + 8 + 11)
+- **Résultat** : **39/39 PASSED** ✅
+- **Temps** : 6.41s
+- **Couverture** : Bugs #4-#6 couverts à 100%
+
+### Validation Qualité Code
+- **Ruff** : `All checks passed!` ✅
+- **Mypy** : `Success: no issues found` ✅
+
+### Commits
+```bash
+# À créer par développeur humain :
+git add -A
+git commit -m "fix(memory): résolution bugs P1 #4-#6 + nettoyage projet
+
+- Bug #4 (P1): Validation récursive where_filter (protection suppression globale)
+- Bug #5 (P1): Invalidation cache préférences après mise à jour
+- Bug #6 (P1): Batch fetch préférences (optimisation N+1 → 1 requête)
+- Nettoyage: 766 __pycache__ supprimés + 6 prompts archivés
+
+Tests: 39/39 PASSED (20 safety + 8 cache + 11 batch)
+Validation: Ruff + Mypy OK
+"
+```
+
+### Statut Post-Session
+✅ **Tous les bugs critiques P0** : 100% résolus (session précédente)
+✅ **Tous les bugs non-critiques P1** : 100% résolus (cette session)
+⏳ **Bugs P2 restants** : #7-#10 (métadonnées, retry, timeout, pagination) — non bloquants
+
+**Prochaine priorité recommandée** : Déploiement production (tous fixes P0/P1) puis bugs P2 si souhaité.
+
+---
+
 ## [2025-10-10 10:25] - Agent: Claude Code (Bugs Critiques P0 #2 et #3 - Résolu)
 
 ### Fichiers modifiés
