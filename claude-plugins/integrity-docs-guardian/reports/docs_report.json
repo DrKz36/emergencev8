@@ -1,23 +1,28 @@
 {
-  "timestamp": "2025-10-10T12:20:54.625442",
-  "commit_hash": "9b13afa75f445f077f8685542360e4f1b838109a",
-  "commit_message": "docs(sync): rÃ©sumÃ© final session configuration GPT Codex cloud\n\nRÃ©sumÃ© complet de la session de rÃ©solution :\n- Diagnostic problÃ¨me synchronisation\n- Solution workflow via patches Git\n- 7 fichiers documentation crÃ©Ã©s (2050 lignes)\n- Scripts automatisation (init + validation + export)\n- 2 commits dÃ©ployÃ©s sur GitHub\n- Instructions complÃ¨tes pour GPT Codex cloud\n- Demande feedback environnement\n\nStatut : âœ… PROBLÃˆME RÃ‰SOLU COMPLÃˆTEMENT\nPrÃªt pour utilisation immÃ©diate\n\nðŸ¤– Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "timestamp": "2025-10-10T12:23:33.507323",
+  "commit_hash": "d26c8e2b4df840f0dabae923ea172b184a9c0dfe",
+  "commit_message": "fix(frontend): amÃ©lioration synchronisation Ã©tat authentification badge\n\nCorrections UI badge authentification :\n\n1. src/frontend/core/app.js :\n   - Ã‰mission Ã©vÃ©nement AUTH_STATE_UPDATED aprÃ¨s handleRoleChange\n   - Notification UI du changement d'Ã©tat connexion\n   - Meilleure propagation Ã©tat authentification\n\n2. src/frontend/main.js :\n   - Ã‰coute AUTH_STATE_UPDATED dans mountAuthBadge\n   - Initialisation correcte Ã©tat connectÃ© basÃ© sur token\n   - Mise Ã  jour badge aprÃ¨s dev auto-login\n   - Synchronisation badge aprÃ¨s refreshSessionRole\n   - Gestion cohÃ©rente setLogged + setConnected\n\n3. claude-plugins/integrity-docs-guardian/reports :\n   - Rapports auto-gÃ©nÃ©rÃ©s post-commit prÃ©cÃ©dents\n\nImpact :\nâœ… Badge authentification synchronisÃ© correctement\nâœ… Ã‰tat connectÃ© reflÃ¨te prÃ©sence token\nâœ… UX amÃ©liorÃ©e (feedback visuel immÃ©diat)\n\nNote : Modifications non liÃ©es Ã  la synchronisation GPT Codex cloud\n(fixes authentification frontend en cours avant session sync)\n\nðŸ¤– Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
   "status": "ok",
   "changes_detected": {
     "backend": [],
-    "frontend": [],
-    "docs": [
-      "docs/RESUME_FINAL_SYNCHRONISATION.md"
+    "frontend": [
+      "src/frontend/core/app.js",
+      "src/frontend/main.js"
     ],
-    "other": []
+    "docs": [],
+    "other": [
+      "claude-plugins/integrity-docs-guardian/reports/docs_report.json",
+      "claude-plugins/integrity-docs-guardian/reports/integrity_report.json",
+      "claude-plugins/integrity-docs-guardian/reports/unified_report.json"
+    ]
   },
   "documentation_gaps": [],
   "proposed_updates": [],
   "statistics": {
-    "files_changed": 1,
+    "files_changed": 5,
     "backend_files": 0,
-    "frontend_files": 0,
-    "docs_files": 1,
+    "frontend_files": 2,
+    "docs_files": 0,
     "gaps_found": 0,
     "high_severity": 0,
     "medium_severity": 0,

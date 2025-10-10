@@ -1,5 +1,7 @@
 {
-  "timestamp": "2025-10-10T12:20:54.720598",
+  "timestamp": "2025-10-10T12:23:33.653638",
+  "commit_hash": "d26c8e2b4df840f0dabae923ea172b184a9c0dfe",
+  "commit_message": "fix(frontend): amÃ©lioration synchronisation Ã©tat authentification badge\n\nCorrections UI badge authentification :\n\n1. src/frontend/core/app.js :\n   - Ã‰mission Ã©vÃ©nement AUTH_STATE_UPDATED aprÃ¨s handleRoleChange\n   - Notification UI du changement d'Ã©tat connexion\n   - Meilleure propagation Ã©tat authentification\n\n2. src/frontend/main.js :\n   - Ã‰coute AUTH_STATE_UPDATED dans mountAuthBadge\n   - Initialisation correcte Ã©tat connectÃ© basÃ© sur token\n   - Mise Ã  jour badge aprÃ¨s dev auto-login\n   - Synchronisation badge aprÃ¨s refreshSessionRole\n   - Gestion cohÃ©rente setLogged + setConnected\n\n3. claude-plugins/integrity-docs-guardian/reports :\n   - Rapports auto-gÃ©nÃ©rÃ©s post-commit prÃ©cÃ©dents\n\nImpact :\nâœ… Badge authentification synchronisÃ© correctement\nâœ… Ã‰tat connectÃ© reflÃ¨te prÃ©sence token\nâœ… UX amÃ©liorÃ©e (feedback visuel immÃ©diat)\n\nNote : Modifications non liÃ©es Ã  la synchronisation GPT Codex cloud\n(fixes authentification frontend en cours avant session sync)\n\nðŸ¤– Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
   "status": "ok",
   "backend_changes": {
     "files": [],
@@ -9,7 +11,10 @@
     "schemas_changed": []
   },
   "frontend_changes": {
-    "files": [],
+    "files": [
+      "src/frontend/core/app.js",
+      "src/frontend/main.js"
+    ],
     "api_calls_added": [],
     "api_calls_modified": [],
     "api_calls_removed": []
@@ -22,11 +27,11 @@
   },
   "statistics": {
     "backend_files_changed": 0,
-    "frontend_files_changed": 0,
+    "frontend_files_changed": 2,
     "issues_found": 0,
     "critical": 0,
     "warnings": 0,
     "info": 0
   },
-  "summary": "No changes detected"
+  "summary": "0 critical, 0 warning(s), 0 total issue(s) found"
 }
