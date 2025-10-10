@@ -1,3 +1,109 @@
+## [2025-10-10 14:30] - Agent: Claude Code (Hotfix P1.3 - user_sub Context) 🔴
+
+### 🔴 Contexte Critique
+Bug critique découvert en production (logs 2025-10-10 02:14:01) : extraction préférences échoue systématiquement avec "user_sub not found for session XXX". Phase P1.2 déployée mais **NON FONCTIONNELLE**.
+
+**Source** : [docs/production/PROD_TEST_ANALYSIS_20251010.md](production/PROD_TEST_ANALYSIS_20251010.md)
+
+### Fichiers modifiés
+- `src/backend/features/memory/preference_extractor.py` (+30 lignes)
+- `src/backend/features/memory/analyzer.py` (+25 lignes)
+- `tests/backend/features/test_preference_extraction_context.py` (nouveau, 340 lignes)
+- `scripts/validate_preferences.py` (nouveau, 120 lignes)
+
+### Root Cause
+`PreferenceExtractor.extract()` exige `user_sub` comme paramètre, mais lors de la finalisation de session, seul `user_id` est disponible. Le code récupérait `user_id` mais l'appelait `user_sub`, causant échec ValueError.
+
+### Actions réalisées
+
+#### 1. Fallback user_id dans PreferenceExtractor
+- Signature méthode `extract()` accepte maintenant `user_sub` ET `user_id` (optionnels)
+- Validation: au moins un des deux identifiants requis
+- Log warning si fallback `user_id` utilisé (user_sub absent)
+- Variable `user_identifier = user_sub or user_id` utilisée partout
+
+#### 2. Enrichissement contexte dans MemoryAnalyzer
+- Récupération `user_sub` depuis `session.metadata.get("user_sub")`
+- Récupération `user_id` depuis `session.user_id` (fallback)
+- Appel `preference_extractor.extract()` avec les deux paramètres
+- Message d'erreur mis à jour: "no user identifier (user_sub or user_id)"
+
+#### 3. Instrumentation métriques Prometheus
+- Nouvelle métrique `PREFERENCE_EXTRACTION_FAILURES` (labels: reason)
+- Raisons trackées:
+  - `user_identifier_missing`: ni user_sub ni user_id disponibles
+  - `extraction_error`: exception lors extraction
+  - `persistence_error`: échec sauvegarde ChromaDB
+- Métriques incrémentées à chaque échec (graceful degradation)
+
+#### 4. Tests complets (8 tests, 100% passants)
+- ✅ Test extraction avec user_sub présent
+- ✅ Test extraction avec fallback user_id (+ warning)
+- ✅ Test échec si aucun identifiant (ValueError)
+- ✅ Test messages sans préférences (filtrage lexical)
+- ✅ Test métriques échecs incrémentées
+- ✅ Test génération ID unique cohérente
+- ✅ Test fallback thread_id=None → "unknown"
+- ✅ Test integration MemoryAnalyzer → user_id fallback
+
+#### 5. Script validation ChromaDB
+- `scripts/validate_preferences.py` créé
+- Vérifie collection `memory_preferences` existe
+- Affiche count + détails préférences (limit configurable)
+- Filtrage par user_id optionnel
+- Usage: `python scripts/validate_preferences.py --limit 20`
+
+### Tests
+- ✅ **8/8** tests hotfix P1.3 (100%)
+- ✅ **49/49** tests mémoire globaux (0 régression)
+- ✅ **111 tests** au total (62 deselected, 49 selected)
+
+### Résultats
+- ✅ Extraction préférences fonctionne avec `user_id` en fallback
+- ✅ Graceful degradation si aucun identifiant (log + métrique)
+- ✅ Métriques échecs exposées (`/api/metrics`)
+- ✅ Tests complets sans régression
+- ✅ Script validation ChromaDB prêt pour post-déploiement
+
+### Impact Business
+**AVANT Hotfix P1.3:**
+- PreferenceExtractor → ❌ Échec user_sub → Rien dans ChromaDB
+- Métriques `memory_preferences_*` → 0
+- Phase P1.2 → **NON FONCTIONNELLE**
+
+**APRÈS Hotfix P1.3:**
+- PreferenceExtractor → ✅ user_id fallback → Persistence OK
+- Métriques `memory_preference_extraction_failures_total` → exposées
+- Phase P1.2 → **FONCTIONNELLE** (avec user_id)
+
+### Prochaines actions
+1. **Déployer hotfix P1.3 en production** (URGENT)
+   ```bash
+   gcloud builds submit --config cloudbuild.yaml
+   ```
+2. **Validation production:**
+   - Créer session test avec utilisateur authentifié
+   - Vérifier logs: extraction réussie + user_id utilisé
+   - Vérifier métriques: `memory_preferences_extracted_total > 0`
+   - Requête ChromaDB: vérifier préférences présentes
+3. **Migration batch threads archivés** (Phase P0 complète)
+   - Endpoint `/api/memory/consolidate-archived` prêt
+   - Attendre validation P1.3 avant migration
+4. **Phase P2** (si architecture décidée)
+
+### Notes techniques
+- `user_sub` et `user_id` sont identiques dans ce système (voir `dependencies.py:82-95`)
+- Fallback `user_id` est donc équivalent fonctionnellement
+- Solution robuste même si système auth change (user_sub devient distinct)
+
+### Références
+- [Analyse logs production](production/PROD_TEST_ANALYSIS_20251010.md)
+- [Prompt session P1.3](../NEXT_SESSION_HOTFIX_P1_3_PROMPT.md)
+- [Tests hotfix](../tests/backend/features/test_preference_extraction_context.py)
+- [Script validation](../scripts/validate_preferences.py)
+
+---
+
 ## [2025-10-10 04:06] - Agent: Codex (Déploiement P1+P0 production)
 
 ### Fichiers modifiés

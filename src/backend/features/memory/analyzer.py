@@ -50,6 +50,13 @@ try:
         buckets=[0.5, 1.0, 2.0, 4.0, 6.0, 10.0, 15.0, 20.0, 30.0]
     )
 
+    # 🆕 HOTFIX P1.3: Métriques échecs extraction préférences
+    PREFERENCE_EXTRACTION_FAILURES = Counter(
+        "memory_preference_extraction_failures_total",
+        "Échecs extraction préférences",
+        ["reason"]  # "user_identifier_missing", "extraction_error", "persistence_error"
+    )
+
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
@@ -360,28 +367,36 @@ class MemoryAnalyzer:
         # ⚡ Phase P1: Extraction préférences/intentions
         if persist and self.preference_extractor and analysis_result:
             try:
-                # Récupérer user_sub depuis session metadata ou context
+                # 🆕 HOTFIX P1.3: Récupérer user_sub ET user_id depuis session
                 user_sub = None
+                user_id = None
                 try:
                     session_manager = getattr(chat_service, "session_manager", None)
                     if session_manager:
                         sess = session_manager.get_session(session_id)
-                        user_sub = getattr(sess, "user_id", None)
-                except Exception:
+                        if sess:
+                            # Essayer user_sub depuis metadata
+                            user_sub = getattr(sess, "metadata", {}).get("user_sub")
+                            # Fallback sur user_id
+                            user_id = getattr(sess, "user_id", None)
+                except Exception as e:
+                    logger.debug(f"[PreferenceExtractor] Error getting user context: {e}")
                     pass
 
-                if user_sub:
+                # 🆕 HOTFIX P1.3: Accepter user_id en fallback si user_sub absent
+                if user_sub or user_id:
                     # Extraire préférences depuis l'historique
                     preferences = await self.preference_extractor.extract(
                         messages=history,
                         user_sub=user_sub,
+                        user_id=user_id,
                         thread_id=session_id
                     )
 
                     if preferences:
                         logger.info(
                             f"[PreferenceExtractor] Extracted {len(preferences)} preferences/intents "
-                            f"for session {session_id}"
+                            f"for session {session_id} (user_sub={user_sub}, user_id={user_id})"
                         )
 
                         # ✅ P1.2: Sauvegarder dans ChromaDB (emergence_knowledge collection)
@@ -401,6 +416,11 @@ class MemoryAnalyzer:
                                 f"[PreferenceExtractor] Failed to save preferences to ChromaDB: {save_error}",
                                 exc_info=True
                             )
+                            # 📊 Incrémenter métrique échec persistence
+                            if PROMETHEUS_AVAILABLE:
+                                PREFERENCE_EXTRACTION_FAILURES.labels(
+                                    reason="persistence_error"
+                                ).inc()
                             # Continue sans bloquer (graceful degradation)
 
                         # Logging détaillé pour debug
@@ -412,13 +432,27 @@ class MemoryAnalyzer:
                     else:
                         logger.debug(f"[PreferenceExtractor] No preferences found in session {session_id}")
                 else:
-                    logger.warning(f"[PreferenceExtractor] Cannot extract: user_sub not found for session {session_id}")
+                    # 🆕 HOTFIX P1.3: Message d'erreur mis à jour + métrique
+                    logger.warning(
+                        f"[PreferenceExtractor] Cannot extract: no user identifier "
+                        f"(user_sub or user_id) found for session {session_id}"
+                    )
+                    # 📊 Incrémenter métrique échec
+                    if PROMETHEUS_AVAILABLE:
+                        PREFERENCE_EXTRACTION_FAILURES.labels(
+                            reason="user_identifier_missing"
+                        ).inc()
 
             except Exception as pref_error:
                 logger.error(
                     f"[PreferenceExtractor] Failed to extract preferences for session {session_id}: {pref_error}",
                     exc_info=True
                 )
+                # 📊 Incrémenter métrique échec extraction
+                if PROMETHEUS_AVAILABLE:
+                    PREFERENCE_EXTRACTION_FAILURES.labels(
+                        reason="extraction_error"
+                    ).inc()
 
         await self._notify(
             session_id, {"session_id": session_id, "status": "completed", "provider": provider_used}

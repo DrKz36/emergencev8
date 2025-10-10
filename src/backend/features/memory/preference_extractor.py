@@ -111,19 +111,37 @@ class PreferenceExtractor:
         self.stats = {"extracted": 0, "filtered": 0, "classified": 0}
 
     async def extract(
-        self, messages: List[Dict], user_sub: str, thread_id: str
+        self, messages: List[Dict], user_sub: str = None, thread_id: str = None, user_id: str = None
     ) -> List[PreferenceRecord]:
         """
         Extrait préférences/intentions depuis messages.
 
         Args:
             messages: Liste messages (role, content, id)
-            user_sub: ID utilisateur
+            user_sub: ID utilisateur (prioritaire)
+            user_id: ID utilisateur (fallback si user_sub absent)
             thread_id: ID thread
 
         Returns:
             Liste PreferenceRecord avec confidence > 0.6
+
+        Raises:
+            ValueError: Si ni user_sub ni user_id fournis
         """
+        # 🆕 HOTFIX P1.3: Fallback user_sub → user_id
+        user_identifier = user_sub or user_id
+        if not user_identifier:
+            raise ValueError(
+                f"Cannot extract preferences: no user identifier (user_sub or user_id) provided"
+            )
+
+        # 🆕 LOG warning si fallback utilisé
+        if not user_sub and user_id:
+            logger.warning(
+                f"[PreferenceExtractor] user_sub missing, using user_id={user_id} as fallback "
+                f"(thread_id={thread_id})"
+            )
+
         start_time = datetime.utcnow()
         records = []
 
@@ -161,7 +179,7 @@ class PreferenceExtractor:
             # Étape 3 : Normalisation
             record = PreferenceRecord(
                 id=PreferenceRecord.generate_id(
-                    user_sub, classification["topic"], classification["type"]
+                    user_identifier, classification["topic"], classification["type"]
                 ),
                 type=classification["type"],
                 topic=classification["topic"],
@@ -172,7 +190,7 @@ class PreferenceExtractor:
                 confidence=classification["confidence"],
                 entities=classification.get("entities", []),
                 source_message_id=msg_id,
-                thread_id=thread_id,
+                thread_id=thread_id or "unknown",
                 captured_at=datetime.utcnow().isoformat(),
             )
 

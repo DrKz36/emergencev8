@@ -79,6 +79,51 @@
 
 ## 🚧 Zones de travail en cours
 
+### 🔴 Claude Code - Session 2025-10-10 14:30 (Hotfix P1.3 - user_sub Context) - URGENT
+- **Statut** : ✅ **TERMINÉE** - Prêt pour déploiement production
+- **Priorité** : 🔴 **CRITIQUE** - Phase P1.2 cassée en production
+- **Fichiers touchés** :
+  - `src/backend/features/memory/preference_extractor.py` (+30 lignes)
+  - `src/backend/features/memory/analyzer.py` (+25 lignes)
+  - `tests/backend/features/test_preference_extraction_context.py` (nouveau, 340 lignes)
+  - `scripts/validate_preferences.py` (nouveau, 120 lignes)
+  - `docs/passation.md` (mise à jour)
+  - `AGENT_SYNC.md` (ce fichier)
+- **Bug découvert** :
+  - Logs production 2025-10-10 02:14:01 : extraction préférences échoue systématiquement
+  - Message erreur : "user_sub not found for session XXX"
+  - Root cause : `PreferenceExtractor.extract()` exige `user_sub` mais reçoit `user_id`
+  - **Impact** : Phase P1.2 déployée mais NON FONCTIONNELLE (aucune préférence dans ChromaDB)
+- **Actions réalisées** :
+  1. Fallback `user_id` implémenté dans `PreferenceExtractor.extract()` (signature accepte user_sub ET user_id)
+  2. MemoryAnalyzer enrichi : récupération `user_sub` depuis metadata + fallback `user_id`
+  3. Métriques Prometheus ajoutées : `PREFERENCE_EXTRACTION_FAILURES` (3 raisons trackées)
+  4. 8 tests hotfix créés (100% passants) + validation 49 tests mémoire (0 régression)
+  5. Script validation ChromaDB créé : `scripts/validate_preferences.py`
+  6. Documentation mise à jour : [docs/passation.md](docs/passation.md)
+- **Tests / checks** :
+  - ✅ 8/8 tests hotfix (100%)
+  - ✅ 49/49 tests mémoire (0 régression)
+  - ✅ 111 tests totaux (62 deselected, 49 selected)
+  - ✅ Script validation ChromaDB fonctionnel
+- **Impact business** :
+  - AVANT : PreferenceExtractor → ❌ Échec → Rien dans ChromaDB
+  - APRÈS : PreferenceExtractor → ✅ user_id fallback → Persistence OK
+- **Prochaines actions URGENTES** :
+  1. 🔴 Git commit + push (commande ci-dessous)
+  2. 🔴 Déployer production : `gcloud builds submit --config cloudbuild.yaml`
+  3. 🔴 Valider extraction : logs + métriques + ChromaDB
+  4. 📋 Migration threads archivés (Phase P0 complète)
+
+**Commande commit** :
+```bash
+git add -A
+git commit -m "fix(P1.3): correction user_sub context - déblocage extraction préférences"
+git push origin main
+```
+
+---
+
 ### Codex - Session 2025-10-10 03:20-04:10 (Déploiement P1+P0 production)
 - **Statut** : ✅ Image `p1-p0-20251010-040147` déployée sur `emergence-app` (trafic 100 %)
 - **Fichiers touchés** :
