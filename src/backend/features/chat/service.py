@@ -37,6 +37,7 @@ from backend.core.database import queries
 
 from backend.features.memory.gardener import MemoryGardener
 from backend.features.memory.concept_recall import ConceptRecallTracker
+from backend.features.memory.proactive_hints import ProactiveHintEngine
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +126,15 @@ class ChatService:
         else:
             self.concept_recall_tracker = None
             logger.warning("ConceptRecallTracker NON initialisé (db_manager ou vector_service manquant)")
+
+        # ProactiveHintEngine (P2 Sprint 2) - génère suggestions contextuelles
+        self.hint_engine: ProactiveHintEngine | None
+        if vector_service:
+            self.hint_engine = ProactiveHintEngine(vector_service=vector_service)
+            logger.info("ProactiveHintEngine initialisé (P2 Sprint 2)")
+        else:
+            self.hint_engine = None
+            logger.warning("ProactiveHintEngine NON initialisé (vector_service manquant)")
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
         self.broadcast_agents = self._compute_broadcast_agents()
@@ -488,6 +498,51 @@ class ChatService:
         except Exception:
             pass
         return ""
+
+    async def _emit_proactive_hints_if_any(
+        self,
+        session_id: str,
+        user_id: str,
+        user_message: str,
+        connection_manager: ConnectionManager
+    ) -> None:
+        """
+        Generate and emit proactive hints after agent response (P2 Sprint 2).
+
+        Args:
+            session_id: Current session ID
+            user_id: User identifier
+            user_message: Last user message text
+            connection_manager: WebSocket connection manager
+        """
+        if not self.hint_engine:
+            return
+
+        try:
+            hints = await self.hint_engine.generate_hints(
+                user_id=user_id,
+                current_context={"message": user_message}
+            )
+
+            if hints:
+                await connection_manager.send_personal_message(
+                    {
+                        "type": "ws:proactive_hint",
+                        "payload": {
+                            "hints": [h.to_dict() for h in hints]
+                        }
+                    },
+                    session_id
+                )
+
+                logger.info(
+                    f"[ProactiveHints] Emitted {len(hints)} hints for session {session_id[:8]} "
+                    f"(types: {[h.type for h in hints]})"
+                )
+
+        except Exception as e:
+            logger.error(f"[ProactiveHints] Failed to emit hints: {e}", exc_info=True)
+            # Non-blocking: don't fail main flow
 
     async def _build_memory_context(
         self, session_id: str, last_user_message: str, top_k: int = 5, agent_id: Optional[str] = None
@@ -1446,6 +1501,17 @@ class ChatService:
                         )
                     except Exception:
                         pass
+
+            # 🆕 P2 Sprint 2: Emit proactive hints after agent response
+            if uid and last_user_message:
+                asyncio.create_task(
+                    self._emit_proactive_hints_if_any(
+                        session_id=session_id,
+                        user_id=uid,
+                        user_message=last_user_message,
+                        connection_manager=connection_manager
+                    )
+                )
 
         except Exception as e:
             logger.error(f"Erreur streaming {agent_id}: {e}", exc_info=True)
