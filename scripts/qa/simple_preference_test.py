@@ -3,7 +3,7 @@
 
 import asyncio
 import json
-import sys
+import os
 from pathlib import Path
 
 import httpx
@@ -11,19 +11,16 @@ import httpx
 # Load credentials
 env_file = Path(__file__).parent / ".env.qa"
 if env_file.exists():
-    import os
     for line in env_file.read_text().splitlines():
         if "=" in line and not line.startswith("#"):
             key, value = line.split("=", 1)
             os.environ.setdefault(key.strip(), value.strip())
-
-import os
 BASE_URL = "https://emergence-app-47nct44nma-ew.a.run.app"
 EMAIL = os.environ.get("EMERGENCE_SMOKE_EMAIL", "")
 PASSWORD = os.environ.get("EMERGENCE_SMOKE_PASSWORD", "")
 
 async def main():
-    print(f"[P1 Simple Test]")
+    print("[P1 Simple Test]")
     print(f"Base URL: {BASE_URL}")
     print(f"Email: {EMAIL}\n")
 
@@ -83,8 +80,8 @@ async def main():
 
         print("[SUCCESS] Check metrics now:")
         print(f"  curl {BASE_URL}/api/metrics | grep memory_preferences")
-        print(f"\n[SUCCESS] Check logs:")
-        print(f"  gcloud logging read 'textPayload:PreferenceExtractor' --limit 20")
+        print("\n[SUCCESS] Check logs:")
+        print("  gcloud logging read 'textPayload:PreferenceExtractor' --limit 20")
 
 if __name__ == "__main__":
     asyncio.run(main())

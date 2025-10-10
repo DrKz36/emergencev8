@@ -10,7 +10,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import httpx
 import websockets
@@ -129,7 +129,7 @@ async def trigger_memory_consolidation(
 
 async def main() -> int:
     """Main QA flow."""
-    print(f"[P1 QA] Preference Extraction")
+    print("[P1 QA] Preference Extraction")
     print(f"Base URL: {BASE_URL}")
     print(f"Email: {LOGIN_EMAIL}")
 
@@ -155,18 +155,18 @@ async def main() -> int:
         print("[OK] All messages sent")
 
         # 4. Trigger consolidation
-        print(f"\n[4/4] Triggering memory consolidation...")
+        print("\n[4/4] Triggering memory consolidation...")
         result = await trigger_memory_consolidation(token, thread_id, user_sub)
-        print(f"[OK] Consolidation triggered")
+        print("[OK] Consolidation triggered")
         print(f"Result: {json.dumps(result, indent=2)}")
 
         print("\n[SUCCESS] QA P1 completed successfully!")
-        print(f"\nNext steps:")
+        print("\nNext steps:")
         print(
             f"   1. Check metrics: curl {BASE_URL}/api/metrics | grep memory_preferences"
         )
         print(
-            f"   2. Check logs: gcloud logging read 'textPayload:PreferenceExtractor' --limit 20"
+            "   2. Check logs: gcloud logging read 'textPayload:PreferenceExtractor' --limit 20"
         )
         print(f"   3. Thread ID for verification: {thread_id}")
 

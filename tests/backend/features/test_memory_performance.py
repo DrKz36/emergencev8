@@ -11,9 +11,7 @@ Run:
 """
 import pytest
 import time
-import asyncio
-from typing import Dict, Any, List
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 # Performance targets (P2 Sprint 1)
 TARGET_QUERY_LATENCY_MS = 50  # Target: <50ms with optimized HNSW
@@ -159,7 +157,7 @@ class TestPreferenceCachePerformance:
 
         for i in range(total_calls):
             # First call = cache miss, subsequent = hits (within 5min TTL)
-            prefs = builder._fetch_active_preferences_cached(mock_collection, "user_123")
+            _ = builder._fetch_active_preferences_cached(mock_collection, "user_123")
 
             # Check if cache was hit (collection.get called only once)
             if mock_collection.get.call_count == 1:

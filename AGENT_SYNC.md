@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-10 18:30 UTC (Claude Code - Analyse Cockpit + Roadmap P2 Mémoire)
+**Derniere mise a jour** : 2025-10-10 08:45 UTC (Claude Code - Post-P2 Sprint 3 Monitoring + Anomalies)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -73,12 +73,54 @@
 - **Post-déploiement** : `gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005`, vérifier `/api/health` et `/api/metrics`.
 
 ### Working tree
-- ⚠️ Modifications non commitées : `AGENT_SYNC.md`, `docs/deployments/2025-10-10-deploy-p1-p0.md`, `docs/deployments/README.md`, `docs/passation.md` (session Codex en cours)
+- ⚠️ Modifications non commitées :
+  - `AGENT_SYNC.md` — mise à jour état post-P2 Sprint 3
+  - `docs/passation.md` — nouvelle entrée session monitoring
+  - `docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md` — rapport anomalies (nouveau)
+  - `scripts/qa/simple_preference_test.py` — fix ruff E402
+  - `tests/backend/features/test_memory_performance.py` — fix ruff F841
 - Derniers commits : `654425a`, `0c95f9f`, `bba5bf1`
 
 ---
 
 ## 🚧 Zones de travail en cours
+
+### 🔴 Claude Code - Session 2025-10-10 08:35 (Post-P2 Sprint 3 Monitoring + Anomalies)
+- **Statut** : ✅ **MONITORING TERMINÉ** - 🔴 **ANOMALIE CRITIQUE DÉTECTÉE**
+- **Priorité** : 🔴 **CRITIQUE** - PreferenceExtractor ne fonctionne pas en production
+- **Fichiers touchés** :
+  - `scripts/qa/simple_preference_test.py` (fix ruff E402 - import order)
+  - `tests/backend/features/test_memory_performance.py` (fix ruff F841 - unused variable)
+  - `docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md` (nouveau, 520 lignes - rapport détaillé)
+  - `docs/passation.md` (nouvelle entrée session monitoring)
+  - `AGENT_SYNC.md` (mise à jour état)
+- **Actions complétées** :
+  1. ✅ Correction ruff lint errors : 18 erreurs → 0 (`All checks passed!`)
+  2. ✅ Exécution script QA production : thread créé, 5 messages préférences envoyés
+  3. ✅ Surveillance métriques Prometheus : concept_recall (0.75 ✅), memory_preferences (0 🔴)
+  4. ✅ Analyse logs Cloud Run : 7+ warnings "user identifier missing"
+  5. ✅ Documentation complète anomalies + baseline métriques
+- **Anomalies détectées** :
+  - 🔴 **CRITIQUE** : `[PreferenceExtractor] Cannot extract: no user identifier (user_sub or user_id) found`
+    - Impact : métriques `memory_preferences_*` restent à zéro, aucune préférence persistée
+    - Hypothèse : user_sub non passé lors de `analyze_session_for_concepts()` ou sessions anonymes
+    - Action requise : vérifier appel `PreferenceExtractor.extract()` dans `analyzer.py`
+  - 🟡 WebSocket timeout script QA : messages envoyés mais pas de réponse assistant
+- **Métriques baseline (2025-10-10 08:35 UTC)** :
+  - `concept_recall_system_info{similarity_threshold="0.75"}` = 1.0 ✅
+  - `concept_recall_similarity_score_count` = 0.0 🟡 (aucune détection)
+  - `memory_preferences_extracted_total` = 0.0 🔴 (anomalie user_sub)
+  - `memory_analysis_success_total{provider="neo_analysis"}` = 2.0 ✅
+- **Prochaines actions URGENTES** :
+  1. 🔴 Corriger passage user_sub au PreferenceExtractor (src/backend/features/memory/analyzer.py)
+  2. 🔴 Ajouter fallback : user_sub → user_id si absent
+  3. 🟡 Augmenter timeout WebSocket dans script QA
+  4. 🟢 Re-exécuter script QA après fixes
+  5. 🟢 Valider métriques `memory_preferences_*` non-zero
+- **Documentation** : [docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md](docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md)
+- **Blocage** : 🔴 PreferenceExtractor ne fonctionne pas en production → priorité absolue
+
+---
 
 ### 🟢 Claude Code - Session 2025-10-10 16:45 (Optimisations Performance Frontend)
 - **Statut** : ✅ **TERMINÉE** - Optimisations implémentées et testées

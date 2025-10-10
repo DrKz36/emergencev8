@@ -1,3 +1,119 @@
+## [2025-10-10 08:35] - Agent: Claude Code (Post-P2 Sprint 3 - Monitoring & Anomalies)
+
+### Fichiers modifiés
+- `scripts/qa/simple_preference_test.py` — fix import `os` (E402)
+- `tests/backend/features/test_memory_performance.py` — fix variable `prefs` non utilisée (F841)
+- `docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md` — nouveau rapport monitoring détaillé
+- `docs/passation.md` — mise à jour prochaines actions + blocages
+
+### Contexte
+Suite au déploiement P2 Sprint 3 (révision `emergence-app-00348-rih`, seuil Concept Recall 0.75), exécution des priorités post-déploiement :
+1. ✅ Correction lint errors ruff (18 erreurs → 0)
+2. ✅ Exécution script QA extraction préférences production
+3. ✅ Surveillance métriques Prometheus + logs Cloud Run
+4. 🔴 **Anomalie critique détectée** : PreferenceExtractor ne reçoit pas user_sub/user_id
+
+### Actions Complétées
+
+**1. Ruff Lint Fixes** :
+- ✅ 16 erreurs auto-fix (`--fix`)
+- ✅ 2 erreurs manuelles (E402 import order, F841 unused variable)
+- ✅ Résultat : `All checks passed!`
+
+**2. Script QA Production** :
+```bash
+$ cd scripts/qa && python trigger_preferences_extraction.py
+[SUCCESS] QA P1 completed successfully!
+Thread ID: 5fc49632aa14440cb1ffa16c092fee42
+Messages sent: 5 (préférences Python/FastAPI/jQuery/Claude/TypeScript)
+```
+- ✅ Login réussi
+- ✅ Thread créé
+- ⚠️ WebSocket timeout (pas de réponse assistant)
+- ⚠️ Consolidation : "Aucun nouvel item"
+
+**3. Métriques Prometheus** :
+```promql
+# Concept Recall
+concept_recall_system_info{similarity_threshold="0.75"} = 1.0  ✅
+concept_recall_similarity_score_count = 0.0  🟡 (aucune détection)
+
+# Memory Preferences
+memory_preferences_extracted_total = 0.0  🔴 ANOMALIE
+memory_preferences_confidence_count = 0.0  🔴
+
+# Memory Analysis
+memory_analysis_success_total{provider="neo_analysis"} = 2.0  ✅
+```
+
+**4. Logs Cloud Run** :
+- ✅ ConceptRecallTracker initialisé correctement
+- ✅ ConceptRecallMetrics collection enabled
+- 🔴 **7+ warnings** : `[PreferenceExtractor] Cannot extract: no user identifier (user_sub or user_id) found`
+
+### Anomalies Détectées
+
+#### 🔴 Anomalie #1 : User Identifier Manquant (CRITIQUE)
+
+**Symptôme** :
+```
+WARNING [backend.features.memory.analyzer] [PreferenceExtractor]
+Cannot extract: no user identifier (user_sub or user_id) found for session XXX
+```
+
+**Impact** :
+- ❌ Extraction préférences bloquée
+- ❌ Métriques `memory_preferences_*` restent à zéro
+- ❌ Pas de préférences persistées dans ChromaDB
+
+**Hypothèses** :
+1. Sessions anonymes/non-authentifiées (user_sub absent)
+2. Bug mapping user_sub (non passé lors de `analyze_session_for_concepts()`)
+3. Mismatch Thread API vs Session API
+
+**Action Requise** :
+- 🔧 Vérifier appel `PreferenceExtractor.extract()` dans `src/backend/features/memory/analyzer.py`
+- 🔧 Assurer passage `user_sub` ou `user_id` depuis `ChatService`
+- 🔧 Ajouter fallback : si `user_sub` absent, utiliser `user_id` du thread
+
+#### 🟡 Anomalie #2 : WebSocket Timeout (Script QA)
+
+**Symptôme** : Messages envoyés mais pas de réponse assistant → consolidation vide
+
+**Action Requise** :
+- 🔧 Augmenter timeout WebSocket dans script QA
+- 🔧 Vérifier logs backend pour thread `5fc49632aa14440cb1ffa16c092fee42`
+
+### Métriques Baseline (État Initial)
+
+**À t=0 (2025-10-10 08:35 UTC)** :
+
+| Métrique | Valeur | Statut |
+|----------|--------|--------|
+| `concept_recall_similarity_score_count` | 0.0 | 🟡 Aucune détection |
+| `memory_preferences_extracted_total` | 0.0 | 🔴 Anomalie user_sub |
+| `memory_analysis_success_total` | 2.0 | ✅ OK |
+| `concept_recall_system_info{similarity_threshold}` | 0.75 | ✅ Config OK |
+
+### Prochaines actions recommandées
+1. 🔴 **URGENT** - Corriger passage user_sub au PreferenceExtractor (anomalie #1)
+2. 🟡 Augmenter timeout WebSocket dans script QA (anomalie #2)
+3. 🟢 Re-exécuter script QA après fixes
+4. 🟢 Valider métriques `memory_preferences_*` non-zero
+5. 🟢 Monitoring continu (refresh toutes les 6h)
+
+### Blocages
+- 🔴 **CRITIQUE** : PreferenceExtractor ne fonctionne pas en production (user_sub manquant)
+- Détails complets : [docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md](monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md)
+
+### Tests
+- ✅ `ruff check scripts/qa/*.py tests/backend/features/test_memory_performance.py` → All checks passed!
+- ✅ Script QA exécuté (avec anomalies)
+- ✅ Métriques Prometheus vérifiées
+- ✅ Logs Cloud Run analysés (7+ warnings user_sub)
+
+---
+
 ## [2025-10-10 07:45] - Agent: Codex (Déploiement P2 Sprint 3)
 
 ### Fichiers modifiés
@@ -24,12 +140,14 @@
 - ✅ Vérifications production : `curl /api/health`, `Invoke-RestMethod /api/memory/user/stats`, `curl /api/metrics`, `curl -I /`
 
 ### Prochaines actions recommandées
-1. Nettoyer `scripts/qa/*.py` et tests legacy (`test_memory_performance.py`) pour rétablir un `ruff check` propre.
-2. Lancer le script QA préférences (`scripts/qa/trigger_preferences_extraction.py`) en prod afin de peupler les compteurs `memory_preferences_*` et vérifier la réactivité du dashboard mémoire.
-3. Surveiller Prometheus (`concept_recall_similarity_score`, `concept_recall_system_info`) et Cloud Logging sur les 24 prochaines heures ; rollback via tag `p2-sprint3` prêt si anomalie détectée.
+1. ✅ **TERMINÉ** - Nettoyer `scripts/qa/*.py` et tests legacy (`test_memory_performance.py`) pour rétablir un `ruff check` propre.
+2. ✅ **TERMINÉ** - Lancer le script QA préférences (`scripts/qa/trigger_preferences_extraction.py`) en prod afin de peupler les compteurs `memory_preferences_*` et vérifier la réactivité du dashboard mémoire.
+3. ✅ **EN COURS** - Surveiller Prometheus (`concept_recall_similarity_score`, `concept_recall_system_info`) et Cloud Logging sur les 24 prochaines heures ; rollback via tag `p2-sprint3` prêt si anomalie détectée.
+4. 🔴 **ANOMALIE DÉTECTÉE** - Corriger passage `user_sub` au PreferenceExtractor (voir rapport monitoring).
 
 ### Blocages
-- Aucun blocage fonctionnel. Linter `ruff` toujours rouge (dette connue script QA).
+- 🔴 **Anomalie Critique** : `PreferenceExtractor` ne reçoit pas `user_sub`/`user_id` → métriques `memory_preferences_*` restent à zéro.
+- Voir détails : [docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md](monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md)
 
 ## [2025-10-10 19:30] - Agent: Claude Code (Phase P2.1 - Cache Préférences In-Memory) 🚀
 
