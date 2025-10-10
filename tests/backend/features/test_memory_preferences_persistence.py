@@ -4,13 +4,12 @@ Phase P1.2 - Validation workflow extraction → sauvegarde → récupération
 """
 
 import pytest
-from unittest.mock import Mock, AsyncMock, MagicMock
+from unittest.mock import Mock, AsyncMock
 from datetime import datetime, timezone
-from typing import List, Dict, Any
 
 # Import des modules à tester
 from backend.features.memory.analyzer import MemoryAnalyzer
-from backend.features.memory.preference_extractor import PreferenceExtractor, PreferenceRecord
+from backend.features.memory.preference_extractor import PreferenceRecord
 
 
 @pytest.fixture

@@ -3,7 +3,6 @@
 import asyncio
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -11,7 +10,6 @@ from backend.features.sync.auto_sync_service import (
     AutoSyncService,
     ConsolidationTrigger,
     FileChecksum,
-    SyncEvent,
 )
 
 

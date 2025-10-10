@@ -7,7 +7,7 @@ Version P1.2 - Module autonome pour extraction enrichie au-delà des "mot-code"
 
 import logging
 import hashlib
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
@@ -111,7 +111,7 @@ class PreferenceExtractor:
         self.stats = {"extracted": 0, "filtered": 0, "classified": 0}
 
     async def extract(
-        self, messages: List[Dict], user_sub: str = None, thread_id: str = None, user_id: str = None
+        self, messages: List[Dict], user_sub: Optional[str] = None, thread_id: Optional[str] = None, user_id: Optional[str] = None
     ) -> List[PreferenceRecord]:
         """
         Extrait préférences/intentions depuis messages.
@@ -132,7 +132,7 @@ class PreferenceExtractor:
         user_identifier = user_sub or user_id
         if not user_identifier:
             raise ValueError(
-                f"Cannot extract preferences: no user identifier (user_sub or user_id) provided"
+                "Cannot extract preferences: no user identifier (user_sub or user_id) provided"
             )
 
         # 🆕 LOG warning si fallback utilisé

@@ -326,7 +326,8 @@ class AutoSyncService:
                 sync_status.labels(file_path=rel_path).set(0)  # out_of_sync
                 sync_changes_detected.labels(file_type=self._get_file_type(rel_path), agent=event.agent_owner or "unknown").inc()
 
-                logger.info("File modified: %s (checksum: %s -> %s)", rel_path, event.old_checksum[:8], new_checksum[:8])
+                old_chk_display = event.old_checksum[:8] if event.old_checksum else "None"
+                logger.info("File modified: %s (checksum: %s -> %s)", rel_path, old_chk_display, new_checksum[:8])
 
     def _get_file_type(self, rel_path: str) -> str:
         """Retourne le type de fichier pour les métriques."""

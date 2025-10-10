@@ -4,12 +4,11 @@ Phase P0 - Résolution Gap #1
 """
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime, timezone
-from typing import List, Dict, Any
 
 # Import des modules à tester
-from backend.features.memory.task_queue import MemoryTaskQueue, get_memory_queue
+from backend.features.memory.task_queue import MemoryTaskQueue
 
 
 @pytest.fixture
@@ -97,7 +96,7 @@ def sample_archived_threads():
 @pytest.mark.asyncio
 async def test_consolidate_archived_endpoint_success(mock_gardener, sample_archived_threads, mock_vector_service):
     """Test endpoint /consolidate-archived - succès."""
-    from backend.features.memory.router import consolidate_archived_threads, _get_container
+    from backend.features.memory.router import consolidate_archived_threads
 
     # Mock request
     mock_request = Mock()
@@ -326,7 +325,7 @@ async def test_update_thread_no_trigger_if_already_archived():
             with patch("backend.features.memory.task_queue.get_memory_queue", return_value=mock_queue):
                 payload = ThreadUpdate(archived=True)
 
-                result = await update_thread(
+                await update_thread(
                     thread_id="thread_1",
                     payload=payload,
                     session=mock_session,

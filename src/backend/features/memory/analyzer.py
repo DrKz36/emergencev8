@@ -385,6 +385,11 @@ class MemoryAnalyzer:
 
                 # 🆕 HOTFIX P1.3: Accepter user_id en fallback si user_sub absent
                 if user_sub or user_id:
+                    # Identifier utilisateur (priorité user_sub)
+                    user_identifier = user_sub if user_sub else user_id
+                    if not user_identifier:
+                        raise ValueError("user_identifier cannot be None")
+
                     # Extraire préférences depuis l'historique
                     preferences = await self.preference_extractor.extract(
                         messages=history,
@@ -403,7 +408,7 @@ class MemoryAnalyzer:
                         try:
                             saved_count = await self._save_preferences_to_vector_db(
                                 preferences=preferences,
-                                user_id=user_sub,
+                                user_id=user_identifier,
                                 thread_id=session_id,
                                 session_id=session_id
                             )
