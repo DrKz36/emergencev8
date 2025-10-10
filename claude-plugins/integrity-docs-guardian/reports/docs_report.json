@@ -1,30 +1,128 @@
 {
-  "timestamp": "2025-10-10T11:07:51.143696",
-  "commit_hash": "f2536a5e99b0a999788836591aa371d0d7e00b1e",
-  "commit_message": "docs: ajout prompts et rÃ©capitulatif session P0 fixes\n\nProchaines sessions suggÃ©rÃ©es :\n- PROMPT_NEXT_SESSION_P1_FIXES.md : correction 7 bugs P1-P2 (4-6h)\n- PROMPT_NEXT_SESSION_CLEANUP.md : nettoyage ~13 Mo obsolÃ¨tes (2-3h)\n\nRÃ©capitulatif session actuelle :\n- SESSION_RECAP_P0_FIXES_20251010.md : bugs P0 #2 et #3 rÃ©solus\n\nðŸ¤– Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
-  "status": "ok",
+  "timestamp": "2025-10-10T11:27:03.035291",
+  "commit_hash": "3ec779795013e030fd18b104a620d2c5531575ae",
+  "commit_message": "fix(memory): rÃ©solution bugs P1 #4-#6 + nettoyage projet\n\n- Bug #4 (P1): Validation rÃ©cursive where_filter (protection suppression globale)\n- Bug #5 (P1): Invalidation cache prÃ©fÃ©rences aprÃ¨s mise Ã  jour\n- Bug #6 (P1): Batch fetch prÃ©fÃ©rences (optimisation N+1 â†’ 1 requÃªte)\n- Nettoyage: 766 __pycache__ supprimÃ©s + 6 prompts archivÃ©s\n\nðŸ¤– Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "status": "needs_update",
   "changes_detected": {
-    "backend": [],
+    "backend": [
+      "src/backend/features/chat/memory_ctx.py",
+      "src/backend/features/memory/gardener.py",
+      "src/backend/features/memory/router.py",
+      "src/backend/features/memory/vector_service.py"
+    ],
     "frontend": [],
     "docs": [
-      "PROMPT_NEXT_SESSION_CLEANUP.md",
-      "PROMPT_NEXT_SESSION_P1_FIXES.md",
-      "SESSION_RECAP_P0_FIXES_20251010.md"
+      "docs/archive/prompts/AUDIT_FIXES_PROMPT.md",
+      "docs/archive/prompts/CODEX_BUILD_DEPLOY_PROMPT.md",
+      "docs/archive/prompts/CODEX_PR_PROMPT.md",
+      "docs/archive/prompts/CODEX_SYNC_UPDATE_PROMPT.md",
+      "docs/archive/prompts/NEXT_SESSION_CONCEPT_RECALL.md",
+      "docs/archive/prompts/NEXT_SESSION_HOTFIX_P1_3_PROMPT.md",
+      "docs/archive/prompts/NEXT_SESSION_MEMORY_P0_PROMPT.md",
+      "docs/archive/prompts/NEXT_SESSION_P0_PROMPT.md",
+      "docs/archive/prompts/NEXT_SESSION_PROMPT.md",
+      "docs/archive/prompts/PROMPT_DOCKER_BUILD_DEPLOY.md",
+      "docs/archive/prompts/PROMPT_NEXT_SESSION.md",
+      "docs/archive/prompts/PROMPT_NEXT_SESSION_MEMORY_P2.md",
+      "docs/archive/prompts/PROMPT_NEXT_SESSION_SPRINT_P3_FRONTEND.md",
+      "docs/archive/sessions/SESSION_RECAP_P0_FIXES_20251010.md",
+      "docs/passation.md"
     ],
-    "other": []
+    "other": [
+      "claude-plugins/integrity-docs-guardian/reports/docs_report.json",
+      "claude-plugins/integrity-docs-guardian/reports/integrity_report.json",
+      "claude-plugins/integrity-docs-guardian/reports/unified_report.json",
+      "tests/backend/features/test_gardener_batch.py",
+      "tests/backend/features/test_memory_ctx_cache.py",
+      "tests/backend/features/test_vector_service_safety.py"
+    ]
   },
-  "documentation_gaps": [],
-  "proposed_updates": [],
+  "documentation_gaps": [
+    {
+      "severity": "high",
+      "file": "src/backend/features/chat/memory_ctx.py",
+      "issue": "Feature module 'chat' modified",
+      "affected_docs": [
+        "docs/backend/chat.md",
+        "README.md"
+      ],
+      "recommendation": "Ensure chat feature is documented"
+    },
+    {
+      "severity": "high",
+      "file": "src/backend/features/memory/gardener.py",
+      "issue": "Feature module 'memory' modified",
+      "affected_docs": [
+        "docs/backend/memory.md",
+        "README.md"
+      ],
+      "recommendation": "Ensure memory feature is documented"
+    },
+    {
+      "severity": "high",
+      "file": "src/backend/features/memory/router.py",
+      "issue": "Feature module 'memory' modified",
+      "affected_docs": [
+        "docs/backend/memory.md",
+        "README.md"
+      ],
+      "recommendation": "Ensure memory feature is documented"
+    },
+    {
+      "severity": "high",
+      "file": "src/backend/features/memory/vector_service.py",
+      "issue": "Feature module 'memory' modified",
+      "affected_docs": [
+        "docs/backend/memory.md",
+        "README.md"
+      ],
+      "recommendation": "Ensure memory feature is documented"
+    }
+  ],
+  "proposed_updates": [
+    {
+      "file": "docs/backend/chat.md",
+      "action": "update_section",
+      "reason": "1 related change(s) detected",
+      "related_changes": [
+        "src/backend/features/chat/memory_ctx.py"
+      ],
+      "recommendation": "Ensure chat feature is documented"
+    },
+    {
+      "file": "README.md",
+      "action": "update_section",
+      "reason": "4 related change(s) detected",
+      "related_changes": [
+        "src/backend/features/chat/memory_ctx.py",
+        "src/backend/features/memory/gardener.py",
+        "src/backend/features/memory/router.py",
+        "src/backend/features/memory/vector_service.py"
+      ],
+      "recommendation": "Ensure chat feature is documented"
+    },
+    {
+      "file": "docs/backend/memory.md",
+      "action": "update_section",
+      "reason": "3 related change(s) detected",
+      "related_changes": [
+        "src/backend/features/memory/gardener.py",
+        "src/backend/features/memory/router.py",
+        "src/backend/features/memory/vector_service.py"
+      ],
+      "recommendation": "Ensure memory feature is documented"
+    }
+  ],
   "statistics": {
-    "files_changed": 3,
-    "backend_files": 0,
+    "files_changed": 25,
+    "backend_files": 4,
     "frontend_files": 0,
-    "docs_files": 3,
-    "gaps_found": 0,
-    "high_severity": 0,
+    "docs_files": 15,
+    "gaps_found": 4,
+    "high_severity": 4,
     "medium_severity": 0,
     "low_severity": 0,
-    "updates_proposed": 0
+    "updates_proposed": 3
   },
-  "summary": "0 documentation gap(s) found, 0 update(s) proposed"
+  "summary": "4 documentation gap(s) found, 3 update(s) proposed"
 }

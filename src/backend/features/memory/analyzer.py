@@ -285,9 +285,13 @@ class MemoryAnalyzer:
         start_time = datetime.now()
 
         # Tentative primaire : neo_analysis (GPT-4o-mini - rapide pour JSON)
+        # Bug #9 (P2): Timeout 30s pour éviter blocage indéfini
         try:
-            analysis_result = await chat_service.get_structured_llm_response(
-                agent_id="neo_analysis", prompt=prompt, json_schema=ANALYSIS_JSON_SCHEMA
+            analysis_result = await asyncio.wait_for(
+                chat_service.get_structured_llm_response(
+                    agent_id="neo_analysis", prompt=prompt, json_schema=ANALYSIS_JSON_SCHEMA
+                ),
+                timeout=30.0
             )
             # 📊 Métriques succès
             if PROMETHEUS_AVAILABLE:
@@ -311,8 +315,11 @@ class MemoryAnalyzer:
             provider_used = "nexus"
             start_time = datetime.now()
             try:
-                analysis_result = await chat_service.get_structured_llm_response(
-                    agent_id="nexus", prompt=prompt, json_schema=ANALYSIS_JSON_SCHEMA
+                analysis_result = await asyncio.wait_for(
+                    chat_service.get_structured_llm_response(
+                        agent_id="nexus", prompt=prompt, json_schema=ANALYSIS_JSON_SCHEMA
+                    ),
+                    timeout=30.0
                 )
                 # 📊 Métriques succès Nexus
                 if PROMETHEUS_AVAILABLE:

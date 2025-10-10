@@ -258,65 +258,81 @@ Message : "{text}"
 Réponds UNIQUEMENT en JSON valide :
 {{"type": "...", "topic": "...", "action": "...", "timeframe": "...", "sentiment": "...", "confidence": 0.0, "entities": []}}"""
 
-        try:
-            # Appel LLM (utilise ChatService si disponible)
-            if hasattr(self.llm, "get_structured_llm_response"):
-                # Via ChatService
-                schema = {
-                    "type": "object",
-                    "properties": {
-                        "type": {"type": "string"},
-                        "topic": {"type": "string"},
-                        "action": {"type": "string"},
-                        "timeframe": {"type": "string"},
-                        "sentiment": {"type": "string"},
-                        "confidence": {"type": "number"},
-                        "entities": {"type": "array", "items": {"type": "string"}},
-                    },
-                    "required": [
-                        "type",
-                        "topic",
-                        "action",
-                        "timeframe",
-                        "sentiment",
-                        "confidence",
-                        "entities",
-                    ],
+        # Bug #8 (P2): Retry logic pour robustesse
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                # Appel LLM (utilise ChatService si disponible)
+                if hasattr(self.llm, "get_structured_llm_response"):
+                    # Via ChatService
+                    schema = {
+                        "type": "object",
+                        "properties": {
+                            "type": {"type": "string"},
+                            "topic": {"type": "string"},
+                            "action": {"type": "string"},
+                            "timeframe": {"type": "string"},
+                            "sentiment": {"type": "string"},
+                            "confidence": {"type": "number"},
+                            "entities": {"type": "array", "items": {"type": "string"}},
+                        },
+                        "required": [
+                            "type",
+                            "topic",
+                            "action",
+                            "timeframe",
+                            "sentiment",
+                            "confidence",
+                            "entities",
+                        ],
+                    }
+                    result = await self.llm.get_structured_llm_response(
+                        agent_id="neo_analysis", prompt=prompt, json_schema=schema
+                    )
+                else:
+                    # Fallback : appel direct (mock ou autre client)
+                    import json
+
+                    response = await self.llm.generate(
+                        prompt=prompt,
+                        model="gpt-4o-mini",
+                        temperature=0.1,
+                        response_format="json",
+                    )
+                    result = json.loads(response)
+
+                # Normalisation clés (prévention localisation)
+                return {
+                    "type": result.get("type", "neutral"),
+                    "topic": result.get("topic", "unknown"),
+                    "action": result.get("action", ""),
+                    "timeframe": result.get("timeframe", "ongoing"),
+                    "sentiment": result.get("sentiment", "neutral"),
+                    "confidence": float(result.get("confidence", 0.5)),
+                    "entities": result.get("entities", []),
                 }
-                result = await self.llm.get_structured_llm_response(
-                    agent_id="neo_analysis", prompt=prompt, json_schema=schema
-                )
-            else:
-                # Fallback : appel direct (mock ou autre client)
-                import json
 
-                response = await self.llm.generate(
-                    prompt=prompt,
-                    model="gpt-4o-mini",
-                    temperature=0.1,
-                    response_format="json",
-                )
-                result = json.loads(response)
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    # Backoff exponentiel: 1s, 2s
+                    import asyncio
+                    wait_time = 2 ** attempt
+                    logger.warning(
+                        f"LLM classification attempt {attempt + 1}/{max_retries} failed: {e}. "
+                        f"Retrying in {wait_time}s..."
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    # Dernière tentative échouée
+                    logger.error(f"LLM classification failed after {max_retries} attempts: {e}", exc_info=True)
 
-            # Normalisation clés (prévention localisation)
-            return {
-                "type": result.get("type", "neutral"),
-                "topic": result.get("topic", "unknown"),
-                "action": result.get("action", ""),
-                "timeframe": result.get("timeframe", "ongoing"),
-                "sentiment": result.get("sentiment", "neutral"),
-                "confidence": float(result.get("confidence", 0.5)),
-                "entities": result.get("entities", []),
-            }
-
-        except Exception as e:
-            logger.error(f"LLM classification failed: {e}", exc_info=True)
-            return {
-                "type": "neutral",
-                "topic": "unknown",
-                "action": "",
-                "timeframe": "ongoing",
-                "sentiment": "neutral",
-                "confidence": 0.0,
-                "entities": [],
-            }
+        # Fallback si boucle se termine sans succès (ne devrait jamais arriver)
+        return {
+            "type": "neutral",
+            "topic": "unknown",
+            "action": "",
+            "timeframe": "ongoing",
+            "sentiment": "neutral",
+            "confidence": 0.0,
+            "entities": [],
+        }

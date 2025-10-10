@@ -760,7 +760,7 @@ class MemoryGardener:
             if all_concepts and not await self._any_vectors_for_session_type(
                 tid, "concept"
             ):
-                concept_stub: Dict[str, Any] = {"id": tid, "user_id": uid, "themes": []}
+                concept_stub: Dict[str, Any] = {"id": tid, "user_id": uid, "thread_id": tid, "themes": []}
                 await self._record_concepts_in_sql(all_concepts, concept_stub, uid)
                 await self._vectorize_concepts(all_concepts, concept_stub, uid)
                 new_items_count += len(all_concepts)
@@ -1220,7 +1220,7 @@ class MemoryGardener:
             documents = documents[0]
 
         # Construire dict {id: metadata}
-        existing = {}
+        existing: Dict[str, Optional[Dict[str, Any]]] = {}
         for i, pref_id in enumerate(ids):
             existing[pref_id] = {
                 "id": pref_id,
@@ -1651,30 +1651,58 @@ class MemoryGardener:
     async def _decay_knowledge(self):
         now_dt = datetime.now(timezone.utc)
         now_iso = now_dt.isoformat()
-        try:
-            snapshot = self.knowledge_collection.get(include=["metadatas"])
-        except Exception as e:
-            logger.warning(f"[decay] collection read failed: {e}", exc_info=True)
-            snapshot = {}
 
-        raw_ids = snapshot.get("ids") if isinstance(snapshot, dict) else []
-        raw_metas = snapshot.get("metadatas") if isinstance(snapshot, dict) else []
+        # Bug #10 (P2): Pagination ChromaDB pour éviter OOM sur collections volumineuses
+        PAGE_SIZE = 1000  # Charger par lots de 1000 vecteurs
+        offset = 0
+        all_ids: List[str] = []
+        all_metadatas: List[Dict[str, Any]] = []
 
-        ids: List[str] = []
-        if isinstance(raw_ids, list):
-            for chunk in raw_ids:
-                if isinstance(chunk, list):
-                    ids.extend([x for x in chunk if isinstance(x, str)])
-                elif isinstance(chunk, str):
-                    ids.append(chunk)
+        while True:
+            try:
+                snapshot = self.knowledge_collection.get(
+                    include=["metadatas"],
+                    limit=PAGE_SIZE,
+                    offset=offset
+                )
+            except Exception as e:
+                logger.warning(f"[decay] collection read failed at offset {offset}: {e}", exc_info=True)
+                break
 
-        metadatas: List[Dict[str, Any]] = []
-        if isinstance(raw_metas, list):
-            for chunk in raw_metas:
-                if isinstance(chunk, list):
-                    metadatas.extend([m if isinstance(m, dict) else {} for m in chunk])
-                elif isinstance(chunk, dict):
-                    metadatas.append(chunk)
+            raw_ids = snapshot.get("ids") if isinstance(snapshot, dict) else []
+            raw_metas = snapshot.get("metadatas") if isinstance(snapshot, dict) else []
+
+            # Parse page IDs
+            page_ids: List[str] = []
+            if isinstance(raw_ids, list):
+                for chunk in raw_ids:
+                    if isinstance(chunk, list):
+                        page_ids.extend([x for x in chunk if isinstance(x, str)])
+                    elif isinstance(chunk, str):
+                        page_ids.append(chunk)
+
+            # Parse page metadatas
+            page_metadatas: List[Dict[str, Any]] = []
+            if isinstance(raw_metas, list):
+                for chunk in raw_metas:
+                    if isinstance(chunk, list):
+                        page_metadatas.extend([m if isinstance(m, dict) else {} for m in chunk])
+                    elif isinstance(chunk, dict):
+                        page_metadatas.append(chunk)
+
+            # Accumuler
+            all_ids.extend(page_ids)
+            all_metadatas.extend(page_metadatas)
+
+            # Si moins de PAGE_SIZE résultats, on a fini
+            if len(page_ids) < PAGE_SIZE:
+                break
+
+            offset += PAGE_SIZE
+            logger.debug(f"[decay] Loaded {len(all_ids)} total vectors (page size={PAGE_SIZE}, offset={offset})")
+
+        ids = all_ids
+        metadatas = all_metadatas
 
         if not ids:
             try:
