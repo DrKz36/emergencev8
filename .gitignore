@@ -75,6 +75,9 @@ pnpm-lock.yaml
 .sync/sync_history.db
 .sync/sync_history.json
 
+# --- Guardian reports (générés automatiquement par hooks)
+claude-plugins/integrity-docs-guardian/reports/*.json
+
 # --- Exceptions utiles
 !assets/**
 !*.ico
