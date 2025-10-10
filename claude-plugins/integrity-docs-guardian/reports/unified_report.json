@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "timestamp": "2025-10-10T08:24:23.441451",
-    "commit_hash": "db1d6559c9faf4347b8b8c70de85a0d5ac160742",
-    "commit_message": "feat: plugin Guardian d'IntÃ©gritÃ© avec Anima/Neo/Nexus - version FR automatisÃ©e",
+    "timestamp": "2025-10-10T08:25:46.529109",
+    "commit_hash": "e9e194486ebf07f9cce6090d83aec8031e2165e7",
+    "commit_message": "fix(guardian): correction des chemins hooks + ajout doc d'activation complÃ¨te",
     "nexus_version": "1.0.0"
   },
   "executive_summary": {
@@ -31,41 +31,33 @@
   "priority_actions": [],
   "full_reports": {
     "anima": {
-      "timestamp": "2025-10-10T08:24:23.239936",
-      "commit_hash": "db1d6559c9faf4347b8b8c70de85a0d5ac160742",
-      "commit_message": "feat: plugin Guardian d'IntÃ©gritÃ© avec Anima/Neo/Nexus - version FR automatisÃ©e",
+      "timestamp": "2025-10-10T08:25:46.335587",
+      "commit_hash": "e9e194486ebf07f9cce6090d83aec8031e2165e7",
+      "commit_message": "fix(guardian): correction des chemins hooks + ajout doc d'activation complÃ¨te",
       "status": "ok",
       "changes_detected": {
         "backend": [],
         "frontend": [],
         "docs": [
-          "claude-plugins/integrity-docs-guardian/Claude.md",
-          "claude-plugins/integrity-docs-guardian/DEMARRAGE_RAPIDE.md",
-          "claude-plugins/integrity-docs-guardian/LISEZMOI.md",
-          "claude-plugins/integrity-docs-guardian/QUICKSTART.md",
-          "claude-plugins/integrity-docs-guardian/README.md",
-          "claude-plugins/integrity-docs-guardian/agents/anima_dockeeper.md",
-          "claude-plugins/integrity-docs-guardian/agents/neo_integritywatcher.md",
-          "claude-plugins/integrity-docs-guardian/agents/nexus_coordinator.md"
+          "PROMPT_COCKPIT_DEBUG_IMPLEMENTATION.md",
+          "PROMPT_NEXT_SESSION_MEMORY_P2.md",
+          "claude-plugins/integrity-docs-guardian/ACTIVATION_COMPLETE.md",
+          "docs/validation/P0_GAPS_RESOLUTION_STATUS.md"
         ],
         "other": [
           "claude-plugins/integrity-docs-guardian/hooks/post-commit.sh",
-          "claude-plugins/integrity-docs-guardian/hooks/pre-commit.sh",
           "claude-plugins/integrity-docs-guardian/reports/docs_report.json",
           "claude-plugins/integrity-docs-guardian/reports/integrity_report.json",
-          "claude-plugins/integrity-docs-guardian/reports/unified_report.json",
-          "claude-plugins/integrity-docs-guardian/scripts/check_integrity.py",
-          "claude-plugins/integrity-docs-guardian/scripts/generate_report.py",
-          "claude-plugins/integrity-docs-guardian/scripts/scan_docs.py"
+          "claude-plugins/integrity-docs-guardian/reports/unified_report.json"
         ]
       },
       "documentation_gaps": [],
       "proposed_updates": [],
       "statistics": {
-        "files_changed": 16,
+        "files_changed": 8,
         "backend_files": 0,
         "frontend_files": 0,
-        "docs_files": 8,
+        "docs_files": 4,
         "gaps_found": 0,
         "high_severity": 0,
         "medium_severity": 0,
@@ -75,7 +67,7 @@
       "summary": "0 documentation gap(s) found, 0 update(s) proposed"
     },
     "neo": {
-      "timestamp": "2025-10-10T08:24:23.348176",
+      "timestamp": "2025-10-10T08:25:46.439266",
       "status": "ok",
       "backend_changes": {
         "files": [],
@@ -108,10 +100,10 @@
     }
   },
   "statistics": {
-    "total_files_changed": 16,
+    "total_files_changed": 8,
     "backend_files": 0,
     "frontend_files": 0,
-    "docs_files": 8,
+    "docs_files": 4,
     "issues_by_severity": {
       "critical": 0,
       "warning": 0,
