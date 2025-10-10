@@ -34,14 +34,15 @@
 - `codex` → SSH : `git@github.com:DrKz36/emergencev8.git`
 
 ### Déploiement Cloud Run
-- **Révision active** : `emergence-app-p1-p0-20251010-040147`
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:28539718d838b238f136afe6bfdae6288bd82a7e2fba79f8c13edd416b0ff4f0`
-- **Tag image** : `p1-p0-20251010-040147`
+- **Révision active** : `emergence-app-00348-rih`
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:d15ae3f77822b662ee02f9903aeb7254700dbc37c5e802cf46443541edaf4340`
+- **Tag image** : `p2-sprint3`
 - **URL principale** : https://emergence-app-47nct44nma-ew.a.run.app
 - **Alias historique** : https://emergence-app-486095406755.europe-west1.run.app
-- **Déployé** : 2025-10-10 04:03 CEST (trafic 100 %)
-- **Trafic** : 100% sur `p1-p0-20251010-040147` (`canary` conservé sur `emergence-app-00279-kub`)
+- **Déployé** : 2025-10-10 07:37 CEST (trafic 100 %)
+- **Trafic** : 100% sur `emergence-app-00348-rih` (`tag p2-sprint3`, `canary` conservé sur `emergence-app-00279-kub`)
 - **Documentation** :
+  - [docs/deployments/2025-10-10-deploy-p2-sprint3.md](docs/deployments/2025-10-10-deploy-p2-sprint3.md)
   - [docs/deployments/2025-10-10-deploy-p1-p0.md](docs/deployments/2025-10-10-deploy-p1-p0.md)
   - [docs/deployments/2025-10-09-hotfix-p1.1-preference-integration.md](docs/deployments/2025-10-09-hotfix-p1.1-preference-integration.md)
   - [docs/deployments/2025-10-09-deploy-p1-memory.md](docs/deployments/2025-10-09-deploy-p1-memory.md)

@@ -90,7 +90,7 @@ memory_analysis_cache_hits_total 0.0
 # TYPE memory_analysis_duration_seconds histogram
 # HELP concept_recall_similarity_score Distribution of similarity scores for detected concepts
 # TYPE concept_recall_similarity_score histogram
-concept_recall_system_info{collection_name="emergence_knowledge",max_recalls_per_message="3",similarity_threshold="0.5",version="1.0"} 1.0
+concept_recall_system_info{collection_name="emergence_knowledge",max_recalls_per_message="3",similarity_threshold="0.75",version="1.0"} 1.0
 ```
 
 > L’endpoint renvoie également les compteurs génériques Python (`python_gc_*`, `process_*`) exposés par `prometheus-client`.

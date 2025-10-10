@@ -1,3 +1,36 @@
+## [2025-10-10 07:45] - Agent: Codex (Déploiement P2 Sprint 3)
+
+### Fichiers modifiés
+- `src/backend/features/memory/concept_recall.py` — seuil Concept Recall relevé à 0.75
+- `src/backend/features/memory/concept_recall_metrics.py` — métriques Prometheus alignées (buckets + seuil)
+- `docs/features/concept-recall-metrics-implementation.md` — documentation seuil/buckets mise à jour
+- `docs/deployments/2025-10-09-activation-metrics-phase3.md` — extrait métriques corrigé
+- `docs/deployments/2025-10-09-validation-phase3-complete.md` — extrait métriques corrigé
+- `docs/deployments/2025-10-10-deploy-p2-sprint3.md` — nouveau journal de déploiement
+- `AGENT_SYNC.md` — état Cloud Run actualisé (révision `emergence-app-00348-rih`)
+
+### Contexte
+- Build Docker `p2-sprint3`, push vers Artifact Registry (`sha256:d15ae3f77822b662ee02f9903aeb7254700dbc37c5e802cf46443541edaf4340`) puis déploiement Cloud Run (`emergence-app-00348-rih`, tag `p2-sprint3`, trafic 100 %).
+- Correction Concept Recall : seuil relevé à 0.75 pour supprimer les faux positifs détectés par `test_similarity_threshold_filtering`.
+- Synchronisation documentation & métriques (Prometheus expose désormais `similarity_threshold="0.75"`).
+- Post-déploiement : validation `api/health`, `api/memory/user/stats`, `api/metrics`, logs Cloud Run (`gcloud run services logs read`), trafic basculé via `gcloud run services update-traffic --to-tags p2-sprint3=100`.
+
+### Tests
+- ✅ `.\\.venv\\Scripts\\python -m pytest`
+- ✅ `.\\.venv\\Scripts\\python -m pytest tests/backend/features/test_concept_recall_tracker.py`
+- ✅ `.\\.venv\\Scripts\\python -m mypy src`
+- ✅ `npm run build`
+- ⚠️ `.\\.venv\\Scripts\\python -m ruff check` → échecs historiques (imports inutilisés + f-strings vides dans `scripts/qa/*`, `tests/backend/features/test_memory_performance.py`)
+- ✅ Vérifications production : `curl /api/health`, `Invoke-RestMethod /api/memory/user/stats`, `curl /api/metrics`, `curl -I /`
+
+### Prochaines actions recommandées
+1. Nettoyer `scripts/qa/*.py` et tests legacy (`test_memory_performance.py`) pour rétablir un `ruff check` propre.
+2. Lancer le script QA préférences (`scripts/qa/trigger_preferences_extraction.py`) en prod afin de peupler les compteurs `memory_preferences_*` et vérifier la réactivité du dashboard mémoire.
+3. Surveiller Prometheus (`concept_recall_similarity_score`, `concept_recall_system_info`) et Cloud Logging sur les 24 prochaines heures ; rollback via tag `p2-sprint3` prêt si anomalie détectée.
+
+### Blocages
+- Aucun blocage fonctionnel. Linter `ruff` toujours rouge (dette connue script QA).
+
 ## [2025-10-10 19:30] - Agent: Claude Code (Phase P2.1 - Cache Préférences In-Memory) 🚀
 
 ### Contexte
@@ -2195,3 +2228,4 @@ pm run build (warning importmap existant)
 
 ### Blocages
 - Besoin d'identifiants prod pour valider le scénario complet (`qa_metrics_validation.py` + `tests/run_all.ps1`) côté Cloud Run.
+

@@ -41,7 +41,7 @@ EVENTS_EMITTED_TOTAL = Counter(
 SIMILARITY_SCORE = Histogram(
     'concept_recall_similarity_score',
     'Distribution of similarity scores for detected concepts',
-    buckets=[0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    buckets=[0.5, 0.75, 0.8, 0.9, 1.0]
 )
 
 DETECTION_LATENCY = Histogram(
@@ -121,7 +121,7 @@ SYSTEM_INFO = Info(
 if METRICS_ENABLED:
     SYSTEM_INFO.info({
         'version': '1.0',
-        'similarity_threshold': '0.5',
+        'similarity_threshold': '0.75',
         'max_recalls_per_message': '3',
         'collection_name': 'emergence_knowledge',
     })
@@ -148,12 +148,10 @@ def _get_similarity_range(score: float) -> str:
         return "0.9-1.0"
     elif score >= 0.8:
         return "0.8-0.9"
-    elif score >= 0.7:
-        return "0.7-0.8"
-    elif score >= 0.6:
-        return "0.6-0.7"
+    elif score >= 0.75:
+        return "0.75-0.8"
     else:
-        return "0.5-0.6"
+        return "0.5-0.75"
 
 
 def _get_thread_count_range(count: int) -> str:

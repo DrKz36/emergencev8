@@ -155,7 +155,7 @@ curl -s https://emergence-app-486095406755.europe-west1.run.app/api/metrics | \
 memory_analysis_success_total{provider="neo_analysis"} 2.0
 memory_analysis_duration_seconds_bucket{provider="neo_analysis",le="2.0"} 1.0
 memory_analysis_duration_seconds_bucket{provider="neo_analysis",le="5.0"} 2.0
-concept_recall_system_info{collection_name="emergence_knowledge",similarity_threshold="0.5"} 1.0
+concept_recall_system_info{collection_name="emergence_knowledge",similarity_threshold="0.75"} 1.0
 ```
 
 ---

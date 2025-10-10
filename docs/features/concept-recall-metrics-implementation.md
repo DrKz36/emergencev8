@@ -16,7 +16,7 @@ Système de métriques Prometheus pour monitorer l'efficacité et les performanc
 - **Description** : Nombre total de détections de concepts récurrents
 - **Labels** :
   - `user_id_hash` : Hash SHA256 du user_id (8 premiers chars, privacy)
-  - `similarity_range` : Plage de score (0.5-0.6, 0.6-0.7, 0.7-0.8, 0.8-0.9, 0.9-1.0)
+  - `similarity_range` : Plage de score (0.5-0.75, 0.75-0.8, 0.8-0.9, 0.9-1.0)
 
 #### `concept_recall_events_emitted_total` (Counter)
 - **Description** : Nombre d'événements WebSocket `ws:concept_recall` émis
@@ -24,7 +24,7 @@ Système de métriques Prometheus pour monitorer l'efficacité et les performanc
 
 #### `concept_recall_similarity_score` (Histogram)
 - **Description** : Distribution des scores de similarité
-- **Buckets** : [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+- **Buckets** : [0.5, 0.75, 0.8, 0.9, 1.0]
 
 #### `concept_recall_detection_latency_seconds` (Histogram)
 - **Description** : Temps total de détection (recherche vectorielle + filtrage)
@@ -73,7 +73,7 @@ Système de métriques Prometheus pour monitorer l'efficacité et les performanc
 - **Description** : Informations système
 - **Labels** :
   - `version` : 1.0
-  - `similarity_threshold` : 0.5
+  - `similarity_threshold` : 0.75
   - `max_recalls_per_message` : 3
   - `collection_name` : emergence_knowledge
 

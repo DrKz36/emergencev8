@@ -26,7 +26,7 @@ class ConceptRecallTracker:
     """
 
     COLLECTION_NAME = "emergence_knowledge"
-    SIMILARITY_THRESHOLD = 0.5  # Seuil de détection (cosine similarity)
+    SIMILARITY_THRESHOLD = 0.75  # Seuil de détection (cosine similarity)
     MAX_RECALLS_PER_MESSAGE = 3  # Limite de rappels par message pour éviter spam
 
     def __init__(
