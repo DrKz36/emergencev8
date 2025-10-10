@@ -491,6 +491,16 @@ function installEventBusGuards(eventBus) {
 
       if (inFlight) {
         console.warn('[Guard/WS] ui:chat:send ignoré (stream en cours).');
+        // Show user feedback
+        try {
+          if (origEmit) {
+            origEmit('ui:notification:show', {
+              type: 'info',
+              message: '\u23f3 R\u00e9ponse en cours... Veuillez patienter.',
+              duration: 2000
+            });
+          }
+        } catch {}
         return;
       }
       if (uid && uid === lastWsUid && (now - lastWsAt) < WS_DEDUP_MS) {
@@ -794,7 +804,13 @@ function createAuthRecorder() {
         else if (type === 'missing') bucket.missingCount = (bucket.missingCount || 0) + 1;
         else if (type === 'restored') bucket.restoredCount = (bucket.restoredCount || 0) + 1;
 
-        if (typeof console !== 'undefined' && typeof console.info === 'function') {
+        // Deduplicate: only log first occurrence during app lifecycle
+        const isFirstOfType = (
+          (type === 'required' && bucket.requiredCount === 1) ||
+          (type === 'missing' && bucket.missingCount === 1) ||
+          (type === 'restored' && bucket.restoredCount === 1)
+        );
+        if (typeof console !== 'undefined' && typeof console.info === 'function' && isFirstOfType) {
           const label = type === 'required'
             ? '[AuthTrace] AUTH_REQUIRED'
             : (type === 'missing' ? '[AuthTrace] AUTH_MISSING' : '[AuthTrace] AUTH_RESTORED');
@@ -1269,10 +1285,16 @@ class EmergenceClient {
       this.eventBus.on?.('memory:center:state', () => {
         try { this.memoryCenter.refresh(); } catch (e) { console.error('[Memory] refresh failed', e); }
       });
+      // Debounced memory refresh to prevent spam
+      let memoryRefreshTimeout = null;
       this.eventBus.on?.('memory:center:history', (payload = {}) => {
         try {
-          const items = Array.isArray(payload.items) ? payload.items : [];
-          console.log('[MemoryCenter] history refresh', { count: items.length, first: items[0]?.session_id || null, ts: new Date().toISOString() });
+          if (memoryRefreshTimeout) clearTimeout(memoryRefreshTimeout);
+          memoryRefreshTimeout = setTimeout(() => {
+            const items = Array.isArray(payload.items) ? payload.items : [];
+            console.log('[MemoryCenter] history refresh (debounced)', { count: items.length, first: items[0]?.session_id || null, ts: new Date().toISOString() });
+            memoryRefreshTimeout = null;
+          }, 300);
         } catch (err) {
           console.warn('[MemoryCenter] history instrumentation failed', err);
         }

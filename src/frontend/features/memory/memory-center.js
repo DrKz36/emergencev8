@@ -4,7 +4,7 @@
 import { api } from '../../shared/api-client.js';
 
 const HISTORY_LIMIT = 20;
-const DEFAULT_HISTORY_INTERVAL = 15000;
+const DEFAULT_HISTORY_INTERVAL = 20000; // Increased from 15s to 20s to reduce polling frequency
 
 const dateFormatter = typeof Intl !== 'undefined'
   ? new Intl.DateTimeFormat('fr-FR', {

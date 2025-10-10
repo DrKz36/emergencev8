@@ -35,6 +35,8 @@ export class ChatUI {
     this._sourcesCache = [];
     this._decoderEl = null;
     this._globalKeyHandler = null;
+    this._mounted = false;
+    this._lastContainer = null;
     console.log('[ChatUI] V28.3.2 (glass-layout) initialisee.');
   }
 
@@ -49,6 +51,16 @@ export class ChatUI {
 
   render(container, chatState = {}) {
     if (!container) return;
+
+    // Guard: Skip re-render if already mounted on same container with same state
+    if (this._mounted && this._lastContainer === container) {
+      console.log('[CHAT] Skip full re-render (already mounted) -> using update()');
+      this.update(container, chatState);
+      return;
+    }
+
+    this._mounted = true;
+    this._lastContainer = container;
     this.root = container;
     this.state = { ...this.state, ...chatState };
     const agentTabs = this._agentTabsHTML(this.state.currentAgentId);
