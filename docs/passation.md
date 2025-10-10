@@ -1,3 +1,147 @@
+## [2025-10-10 14:30] - Agent: Claude Code (Phase P1.2 - Persistance Préférences LTM) ✅
+
+### Fichiers créés
+- `docs/architecture/MEMORY_LTM_GAPS_ANALYSIS.md` (450+ lignes) - Analyse exhaustive 3 gaps critiques
+- `tests/backend/features/test_memory_preferences_persistence.py` (520 lignes, 10 tests)
+- `SESSION_P1_2_RECAP.txt` - Résumé complet session
+- `NEXT_SESSION_P0_PROMPT.md` - Prompt prochaine session (Phase P0)
+
+### Fichiers modifiés
+- `src/backend/features/memory/analyzer.py` (+90 lignes) - Méthode _save_preferences_to_vector_db()
+
+### Contexte
+**Problème utilisateur** : "Les conversations archivées ne sont jamais évoquées et les concepts ne ressortent pas"
+
+**Diagnostic** : 3 gaps critiques identifiés dans système mémoire LTM :
+1. ❌ Gap #1 (P0): Threads archivés JAMAIS consolidés dans ChromaDB
+2. ❌ Gap #2 (P1): Préférences extraites mais JAMAIS persistées → **RÉSOLU**
+3. ⚠️ Gap #3 (P2): Architecture hybride Session/Thread incohérente
+
+### Fonctionnalités implémentées - Phase P1
+
+#### 1. Documentation complète gaps mémoire
+- **MEMORY_LTM_GAPS_ANALYSIS.md** (450+ lignes)
+  - Analyse détaillée 3 gaps avec preuves code
+  - Workflow actuel vs attendu pour chaque gap
+  - Impact utilisateur (tableaux comparatifs)
+  - Plan d'action priorisé P1 → P0 → P2
+  - Métriques succès + commandes validation
+  - Checklist implémentation complète
+
+#### 2. Persistance préférences dans ChromaDB
+- **Nouvelle méthode** `_save_preferences_to_vector_db()` (analyzer.py:441-527)
+  - Sauvegarde dans collection `emergence_knowledge`
+  - Format documents: `"topic: text"` (compatible `_fetch_active_preferences`)
+  - Métadonnées enrichies: `user_id`, `type`, `topic`, `confidence`, `created_at`, `thread_id`, `session_id`, `source`, `sentiment`, `timeframe`
+  - Génération ID unique MD5 : `pref_{user_id[:8]}_{hash}`
+  - Déduplication automatique (même user + type + text → même ID)
+  - Graceful degradation si VectorService absent
+  - Gestion erreurs par préférence (continue si échec partiel)
+
+- **Intégration workflow** (analyzer.py:387-404)
+  - Remplacement TODO P1.2 ligne 386
+  - Appel automatique après extraction préférences
+  - Logging succès/échec avec compteurs
+  - Try/except sans bloquer consolidation
+
+#### 3. Tests complets (10 nouveaux, 100% passants)
+- **Tests unitaires sauvegarde** (5):
+  - `test_save_preferences_to_vector_db_success` : Vérifie format doc/metadata/IDs
+  - `test_save_preferences_empty_list` : Retour 0 si vide
+  - `test_save_preferences_no_vector_service` : Graceful degradation
+  - `test_save_preferences_partial_failure` : Continue si échec partiel
+  - `test_save_preferences_unique_ids` : Déduplication
+
+- **Tests intégration** (3):
+  - `test_integration_extraction_and_persistence` : Workflow complet
+  - `test_integration_fetch_active_preferences` : Récupération via `_fetch_active_preferences()`
+  - `test_integration_preferences_in_context_rag` : Injection contexte RAG
+
+- **Tests edge cases** (2):
+  - `test_save_preferences_with_special_characters` : Émojis, accents
+  - `test_save_preferences_without_topic` : Fallback "general"
+
+### Tests
+- ✅ pytest tests/backend/features/test_memory_preferences_persistence.py : **10/10 passed**
+- ✅ pytest tests/backend/features/test_memory*.py : **38/38 passed** (0 régression)
+
+### Intégration workflow
+
+**AVANT (Gap #2)** :
+```
+User: "Je préfère Python"
+→ PreferenceExtractor.extract() ✅
+→ logger.debug() ✅
+→ ❌ PERDU (jamais sauvegardé)
+→ _fetch_active_preferences() retourne vide
+→ ❌ Agent ne rappelle jamais
+```
+
+**APRÈS (P1.2 complétée)** :
+```
+User: "Je préfère Python"
+→ PreferenceExtractor.extract() ✅
+→ _save_preferences_to_vector_db() ✅ NOUVEAU
+→ ChromaDB emergence_knowledge ✅ PERSISTÉ
+→ _fetch_active_preferences() récupère (confidence >= 0.6) ✅
+→ Injection contexte RAG ✅
+→ ✅ Agent rappelle: "Tu préfères Python"
+```
+
+### Résultats
+- ✅ **Gap #2 (P1) RÉSOLU** : Préférences maintenant persistées dans ChromaDB
+- ✅ **Tests complets** : 38/38 memory tests passants (10 nouveaux + 28 existants)
+- ✅ **Documentation exhaustive** : MEMORY_LTM_GAPS_ANALYSIS.md créé
+- ✅ **Workflow validé** : Extraction → Sauvegarde → Récupération → Injection contexte
+- ✅ **Commit/push** : Commit `40ee8dc` feat(P1.2): persistence préférences dans ChromaDB
+
+### Prochaines actions recommandées
+
+#### Immédiat - Phase P0 (90-120 min)
+**Objectif** : Résoudre Gap #1 - Consolidation threads archivés dans LTM
+
+**Prompt créé** : `NEXT_SESSION_P0_PROMPT.md` (guide complet implémentation)
+
+**À implémenter** :
+1. Endpoint `POST /api/memory/consolidate-archived` (batch consolidation)
+2. Hook archivage → consolidation async dans `PATCH /api/threads/{id}`
+3. Support task_type "consolidate_thread" dans MemoryTaskQueue
+4. Tests complets (8+ tests)
+5. Validation locale
+
+**Fichiers impactés** :
+- `src/backend/features/memory/router.py` (+60 lignes)
+- `src/backend/features/threads/router.py` (+20 lignes)
+- `src/backend/features/memory/task_queue.py` (+40 lignes)
+- `tests/backend/features/test_memory_archived_consolidation.py` (nouveau, ~250 lignes)
+
+#### Court terme
+1. **Déployer P1+P0 ensemble** en production (après implémentation P0)
+2. **Déclencher consolidation batch** threads archivés existants via endpoint
+3. **Valider métriques Prometheus** production :
+   - `memory_preferences_extracted_total` doit augmenter
+   - Nouveaux concepts dans ChromaDB (threads archivés)
+4. **Configurer Grafana** panels préférences selon `docs/monitoring/prometheus-p1-metrics.md`
+
+#### Moyen terme
+1. **Phase P2** : Harmonisation architecture Session/Thread (décision FG requise)
+2. **Migration données** : Consolider sessions legacy vers threads modernes
+3. **Optimisation** : Indexation ChromaDB, filtres avancés (topic, timeframe, sentiment)
+
+### Notes techniques
+- **Format documents ChromaDB** : Compatible avec `_fetch_active_preferences()` existant → 0 breaking change
+- **Déduplication MD5** : `pref_{user_id[:8]}_{hash}` évite doublons consolidations multiples
+- **Graceful degradation** : Aucun échec bloquant si ChromaDB indisponible
+- **Métadonnées extensibles** : Prêt filtres avancés futurs (topic, sentiment, timeframe)
+- **Architecture testée** : 38/38 tests memory validés, 0 régression
+
+### Blocages/Dépendances
+- ✅ Aucun blocage Phase P1
+- ⚠️ Gap #1 (threads archivés) reste à résoudre → Phase P0 suivante
+- ⚠️ Gap #3 (Session/Thread) requiert décision architecture → Phase P2 reportée
+
+---
+
 ## [2025-10-10 03:00] - Agent: Claude Code (Option A - Synchronisation Automatique Déployée) 🔄
 
 ### Fichiers créés
