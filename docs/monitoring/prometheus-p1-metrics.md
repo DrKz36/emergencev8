@@ -28,14 +28,14 @@
 - `memory_analysis_cache_size` : 6 entrées
 - `concept_recall_*` : histogrammes instrumentés
 
-⚠️ **Métriques P1** (non visibles)
-- `memory_preferences_extracted_total{type}`
-- `memory_preferences_confidence`
-- `memory_preferences_extraction_duration_seconds`
-- `memory_preferences_lexical_filtered_total`
-- `memory_preferences_llm_calls_total`
+✅ **Métriques P1** (instrumentées et visibles - baseline confirmé 2025-10-09)
+- `memory_preferences_extracted_total{type}` : 0.0 (counter initialisé)
+- `memory_preferences_confidence` : 0.0 count, buckets créés [0.5-1.0]
+- `memory_preferences_extraction_duration_seconds` : 0.0 count, buckets créés [0.1-5.0]
+- `memory_preferences_lexical_filtered_total` : 0.0 (counter initialisé)
+- `memory_preferences_llm_calls_total` : 0.0 (counter initialisé)
 
-**Cause** : Les compteurs préférences n'apparaissent qu'après le premier déclenchement de `PreferenceExtractor`.
+**État** : Toutes les métriques sont instrumentées avec `_created` timestamps (1.760054488e+09). Compteurs à zéro attendu (extracteur non déclenché).
 
 ---
 
@@ -275,8 +275,9 @@ sum by (type) (increase(memory_preferences_extracted_total[24h]))
 - [x] **Révision déployée** : `emergence-app-p1memory` active (100% trafic)
 - [x] **Workers démarrés** : Logs "MemoryTaskQueue started with 2 workers"
 - [x] **Métriques Phase 3 visibles** : `memory_analysis_*`, `concept_recall_*` OK
-- [ ] **Métriques P1 visibles** : `memory_preferences_*` (après extraction)
+- [x] **Métriques P1 instrumentées** : `memory_preferences_*` visibles (baseline 0.0)
 - [ ] **Extraction déclenchée** : Conversation test + consolidation
+- [ ] **Métriques P1 incrémentées** : Vérifier compteurs >0 après extraction
 - [ ] **Logs PreferenceExtractor** : Vérifier extraction dans Cloud Run logs
 - [ ] **Dashboard Grafana** : Panels P1 ajoutés
 
