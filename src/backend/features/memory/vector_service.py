@@ -592,13 +592,44 @@ class VectorService:
         self._qdrant_delete(collection_name, where_filter, ids)
 
     # ---------- API publique ----------
-    def get_or_create_collection(self, name: str):
+    def get_or_create_collection(
+        self,
+        name: str,
+        metadata: Optional[Dict[str, Any]] = None
+    ):
+        """
+        Get or create a ChromaDB collection with optimized HNSW parameters.
+
+        Args:
+            name: Collection name
+            metadata: Optional collection metadata (HNSW config, etc.)
+                     Default: Optimized for LTM queries (M=16, space=cosine)
+
+        Returns:
+            Collection object (ChromaDB or QdrantCollectionAdapter)
+        """
         self._ensure_inited()
         if self.backend == "qdrant":
             return QdrantCollectionAdapter(self, name)
+
+        # Default optimized metadata for LTM collections (P2 performance)
+        if metadata is None:
+            metadata = {
+                "hnsw:space": "cosine",  # Cosine similarity (standard for embeddings)
+                "hnsw:M": 16,  # Connections per node (balance precision/speed)
+                # Note: ChromaDB v0.4+ auto-optimizes metadata filters (user_id, type, confidence)
+                # No explicit index creation needed
+            }
+
         try:
-            collection = self.client.get_or_create_collection(name=name)  # type: ignore[union-attr]
-            logger.info(f"Collection '{name}' chargée/créée avec succès.")
+            collection = self.client.get_or_create_collection(  # type: ignore[union-attr]
+                name=name,
+                metadata=metadata
+            )
+            logger.info(
+                f"Collection '{name}' chargée/créée avec HNSW optimisé "
+                f"(M={metadata.get('hnsw:M', 'default')}, space={metadata.get('hnsw:space', 'default')})"
+            )
             return collection
         except Exception as e:
             logger.error(

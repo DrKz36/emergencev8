@@ -153,6 +153,25 @@ class LLMStreamer:
                 return (_mk_model(),)
 
             (_model,) = await self.with_rate_limit_retries("google", _op)
+
+            # COUNT TOKENS INPUT (avant génération)
+            input_tokens = 0
+            try:
+                # Construire prompt complet pour count_tokens
+                prompt_parts = [system_prompt]
+                for msg in history:
+                    content = msg.get("content", "")
+                    if content:
+                        prompt_parts.append(content)
+
+                # Compter tokens input
+                input_tokens = _model.count_tokens(prompt_parts).total_tokens
+                logger.debug(f"[Gemini] Input tokens: {input_tokens}")
+            except Exception as e:
+                logger.warning(f"[Gemini] Failed to count input tokens: {e}")
+
+            # Stream response et accumuler texte
+            full_response_text = ""
             resp = await _model.generate_content_async(
                 history, stream=True, generation_config={"temperature": 0.4}
             )
@@ -172,12 +191,28 @@ class LLMStreamer:
                                 ]
                             )
                     if text:
+                        full_response_text += text
                         yield text
                 except Exception:
                     pass
-            cost_info_container.setdefault("input_tokens", 0)
-            cost_info_container.setdefault("output_tokens", 0)
-            cost_info_container.setdefault("total_cost", 0.0)
+
+            # COUNT TOKENS OUTPUT (après génération)
+            output_tokens = 0
+            try:
+                output_tokens = _model.count_tokens(full_response_text).total_tokens
+                logger.debug(f"[Gemini] Output tokens: {output_tokens}")
+            except Exception as e:
+                logger.warning(f"[Gemini] Failed to count output tokens: {e}")
+
+            # CALCUL COÛT
+            pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
+            total_cost = (input_tokens * pricing["input"]) + (output_tokens * pricing["output"])
+
+            cost_info_container.update({
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "total_cost": total_cost,
+            })
         except Exception as e:
             logger.error(f"Gemini stream error: {e}", exc_info=True)
             cost_info_container["__error__"] = "provider_error"
