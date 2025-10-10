@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-10 09:45 UTC (Claude Code - Fix Critique PreferenceExtractor RÉSOLU)
+**Derniere mise a jour** : 2025-10-10 09:54 UTC (Codex - Prompt synchronisation GitHub)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -18,6 +18,15 @@
 5. `git status` + `git log --oneline -10` — état Git
 
 ---
+
+### ✅ Synchronisation Cloud ↔ Local ↔ GitHub (RÉSOLU - 2025-10-10)
+- ✅ **Machine locale** : Remotes `origin` et `codex` configurés et opérationnels
+- ⚠️ **Environnement cloud GPT Codex** : Aucun remote (attendu et normal)
+- ✅ **Solution** : Workflow de synchronisation via patches Git documenté
+- 📚 **Documentation** :
+  - [docs/CLOUD_LOCAL_SYNC_WORKFLOW.md](docs/CLOUD_LOCAL_SYNC_WORKFLOW.md) — Guide complet 3 méthodes
+  - [docs/GPT_CODEX_CLOUD_INSTRUCTIONS.md](docs/GPT_CODEX_CLOUD_INSTRUCTIONS.md) — Instructions pour agent cloud
+  - [prompts/local_agent_github_sync.md](prompts/local_agent_github_sync.md) — Résumé workflow
 
 ## 📍 État actuel du dépôt (2025-10-09)
 
