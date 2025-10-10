@@ -1,0 +1,290 @@
+================================================================================
+SESSION P0 - CONSOLIDATION THREADS ARCHIVÉS
+Date: 2025-10-10
+Durée: ~90 minutes
+Agent: Claude Code (Sonnet 4.5)
+Objectif: Résolution Gap #1 - Threads archivés jamais consolidés dans LTM
+================================================================================
+
+## 🎯 RÉSULTAT FINAL
+
+✅ **SUCCÈS COMPLET** - Gap #1 résolu
+
+**Tests**: 48/48 passed (38 existants + 10 nouveaux P0)
+**Régression**: 0 échec
+**Performance**: Consolidation async non-bloquante
+
+
+## 📋 CONTEXTE SESSION
+
+### Problème Utilisateur (Gap #1)
+> "Quand je demande aux agents de quoi nous avons parlé, les conversations
+> archivées ne sont jamais évoquées."
+
+### Cause Racine
+Threads archivés (`archived = 1`) systématiquement exclus de consolidation
+mémoire → concepts JAMAIS ajoutés à ChromaDB/LTM.
+
+### Workflow AVANT (Problématique)
+```
+1. User archive conversation → UPDATE threads SET archived = 1
+2. Consolidation POST /api/memory/tend-garden
+   └─> queries.get_threads(include_archived=False)  ← Exclut archivés
+3. Extraction concepts → Analyse uniquement threads actifs
+4. ChromaDB (LTM) → ❌ Ne contient JAMAIS concepts archivés
+```
+
+### Workflow APRÈS (Implémenté)
+```
+1. User archive conversation → UPDATE threads SET archived = 1
+   └─> 🆕 TRIGGER: Consolidation async enqueued
+2. MemoryTaskQueue.enqueue(type="consolidate_thread", thread_id=...)
+3. gardener._tend_single_thread(thread_id, include_archived=True)
+4. Extraction concepts → Analyse thread archivé
+5. ChromaDB (LTM) → ✅ Concepts archivés sauvegardés
+```
+
+
+## 🛠️ FICHIERS MODIFIÉS
+
+### 1. src/backend/features/memory/router.py (+120 lignes)
+
+**Ajouts**:
+- ✅ Endpoint `POST /api/memory/consolidate-archived`
+  - Consolide threads archivés en batch (limit 100 par défaut)
+  - Skip threads déjà consolidés (vérification ChromaDB)
+  - Support `force=true` pour reconsolidation
+  - Gestion erreurs partielles (continue traitement)
+
+- ✅ Helper `_thread_already_consolidated(vector_service, thread_id)`
+  - Vérifie présence concepts dans ChromaDB
+  - Retourne True si >= 1 concept trouvé
+
+**Endpoints**:
+```python
+POST /api/memory/consolidate-archived
+Body: {
+  "limit": 100,        # Max threads à traiter
+  "force": false       # Forcer reconsolidation si déjà fait
+}
+Response: {
+  "status": "success",
+  "consolidated_count": 42,
+  "skipped_count": 3,
+  "total_archived": 45,
+  "errors": []
+}
+```
+
+### 2. src/backend/features/threads/router.py (+25 lignes)
+
+**Version**: V1.5 → V1.6 (Hook consolidation automatique)
+
+**Changements**:
+- ✅ Import `logging`
+- ✅ Hook dans `update_thread()` (PATCH /api/threads/{id})
+  - Détecte transition `archived: False → True`
+  - Enqueue tâche `consolidate_thread` dans MemoryTaskQueue
+  - Graceful degradation si queue échoue (ne bloque pas archivage)
+  - Logging détaillé
+
+**Code Hook**:
+```python
+# Ligne 177-212
+if payload.archived and not was_archived:
+    try:
+        from backend.features.memory.task_queue import get_memory_queue
+        queue = get_memory_queue()
+        await queue.enqueue(
+            task_type="consolidate_thread",
+            payload={
+                "thread_id": thread_id,
+                "session_id": session.session_id,
+                "user_id": session.user_id,
+                "reason": "archiving"
+            }
+        )
+        logger.info(f"[Thread Archiving] Consolidation enqueued for thread {thread_id}")
+    except Exception as e:
+        logger.warning(f"[Thread Archiving] Failed to enqueue consolidation: {e}")
+```
+
+### 3. src/backend/features/memory/task_queue.py (+60 lignes)
+
+**Changements**:
+- ✅ Docstring mise à jour (exemple `consolidate_thread`)
+- ✅ MemoryTask.task_type: "analyze" | "garden" | "consolidate_thread"
+- ✅ `_process_task()`: Handler `elif task_type == "consolidate_thread"`
+- ✅ Nouvelle méthode `_run_thread_consolidation(payload)`
+  - Récupère ServiceContainer + MemoryGardener
+  - Appelle `gardener._tend_single_thread(thread_id, session_id, user_id)`
+  - Logging détaillé (début, résultat, concepts créés)
+  - Callback support
+
+**Méthode**:
+```python
+async def _run_thread_consolidation(self, payload: dict):
+    """
+    Phase P0: Consolide un thread archivé dans LTM.
+
+    Payload:
+        - thread_id (required)
+        - session_id (optional)
+        - user_id (optional)
+        - reason (optional): "archiving", "manual", etc.
+    """
+    # ... implémentation ...
+```
+
+### 4. tests/backend/features/test_memory_archived_consolidation.py (NOUVEAU, 465 lignes)
+
+**Tests créés**: 10 tests (100% passants)
+
+#### Tests Endpoint `/consolidate-archived` (4 tests)
+1. ✅ `test_consolidate_archived_endpoint_success`
+   - Consolidation 3 threads archivés → succès
+2. ✅ `test_consolidate_archived_endpoint_no_archived_threads`
+   - Aucun thread archivé → consolidated_count=0
+3. ✅ `test_consolidate_archived_endpoint_partial_failure`
+   - 1 thread échoue → continue avec les autres (2 succès)
+4. ✅ `test_consolidate_archived_skips_already_consolidated`
+   - Thread déjà dans ChromaDB → skippé (force=false)
+
+#### Tests Hook Archivage (2 tests)
+5. ✅ `test_update_thread_hook_logic`
+   - Logique conditionnelle hook (4 scénarios)
+6. ✅ `test_update_thread_no_trigger_if_already_archived`
+   - Thread déjà archivé → NE déclenche PAS consolidation
+
+#### Tests MemoryTaskQueue (2 tests)
+7. ✅ `test_task_queue_consolidate_thread_type`
+   - Enqueue task_type="consolidate_thread" → processé
+8. ✅ `test_task_queue_consolidate_thread_saves_concepts`
+   - Consolidation appelle `gardener._tend_single_thread()`
+   - Retourne result avec `new_concepts=10`
+
+#### Tests Helper (2 tests)
+9. ✅ `test_thread_already_consolidated_returns_true`
+   - ChromaDB contient concepts thread → True
+10. ✅ `test_thread_already_consolidated_returns_false`
+    - ChromaDB vide pour thread → False
+
+
+## 📊 MÉTRIQUES TESTS
+
+### Avant Session P0
+- Tests mémoire: **38/38** passed
+- Fichiers tests: 4 fichiers
+- Coverage: Préférences, gardener, concept search, clear
+
+### Après Session P0
+- Tests mémoire: **48/48** passed ✅
+- Fichiers tests: **5 fichiers** (+1 nouveau)
+- Coverage: **P1 + P0** (préférences + consolidation archivés)
+- Régression: **0 échec** ✅
+
+### Détail Tests P0
+```
+test_memory_archived_consolidation.py::test_consolidate_archived_endpoint_success PASSED
+test_memory_archived_consolidation.py::test_consolidate_archived_endpoint_no_archived_threads PASSED
+test_memory_archived_consolidation.py::test_consolidate_archived_endpoint_partial_failure PASSED
+test_memory_archived_consolidation.py::test_consolidate_archived_skips_already_consolidated PASSED
+test_memory_archived_consolidation.py::test_update_thread_hook_logic PASSED
+test_memory_archived_consolidation.py::test_update_thread_no_trigger_if_already_archived PASSED
+test_memory_archived_consolidation.py::test_task_queue_consolidate_thread_type PASSED
+test_memory_archived_consolidation.py::test_task_queue_consolidate_thread_saves_concepts PASSED
+test_memory_archived_consolidation.py::test_thread_already_consolidated_returns_true PASSED
+test_memory_archived_consolidation.py::test_thread_already_consolidated_returns_false PASSED
+```
+
+
+## ✅ CRITÈRES SUCCÈS - VALIDATION
+
+### Tests
+- [x] 10 nouveaux tests consolidation archivés (100% passants)
+- [x] 48 tests mémoire globaux (0 régression)
+- [x] Tests threads OK (0 régression)
+
+### Fonctionnel
+- [x] Endpoint `/consolidate-archived` retourne 200 OK
+- [x] PATCH thread avec `archived=true` déclenche consolidation async
+- [x] Logs backend montrent "[Thread Archiving] Consolidation enqueued"
+- [x] Logs backend montrent "[MemoryTaskQueue] Consolidating archived thread"
+- [x] Logs backend montrent "[MemoryTaskQueue] Thread ... consolidated: X concepts"
+
+### Architecture
+- [x] Hook non-bloquant (try/except, ne bloque pas archivage)
+- [x] Queue async (MemoryTaskQueue)
+- [x] Skip threads déjà consolidés (optimisation)
+- [x] Support batch (endpoint `/consolidate-archived`)
+
+
+## 🚀 IMPACT UTILISATEUR
+
+### AVANT P0
+❌ Threads archivés → "Amnésie complète"
+❌ Recherche vectorielle incomplète
+❌ Agents ne se souviennent pas des conversations passées
+
+### APRÈS P0
+✅ Threads archivés → Consolidation automatique lors archivage
+✅ Concepts archivés sauvegardés dans ChromaDB/LTM
+✅ Recherche vectorielle complète (actifs + archivés)
+✅ Agents ont accès à tout l'historique utilisateur
+
+
+## 🎯 PROCHAINES ÉTAPES
+
+### Déploiement Production
+1. **Merge P1+P0** dans branche main
+2. **Déployer** backend production
+3. **Migration batch** threads archivés existants:
+   ```bash
+   curl -X POST http://localhost:8000/api/memory/consolidate-archived \
+     -H "x-dev-bypass: 1" -H "x-user-id: USER_ID" \
+     -H "Content-Type: application/json" \
+     -d '{"limit": 1000, "force": false}'
+   ```
+4. **Valider métriques** Prometheus:
+   - Nombre concepts LTM augmente
+   - Latence archivage < 200ms (hook async)
+   - Queue processing time < 5s/thread
+
+### Phase P2 (Optionnel)
+Si décision architecture prise:
+→ Harmonisation Session/Thread (Gap #3)
+
+
+## 📝 NOTES TECHNIQUES
+
+### Points d'Attention Production
+
+1. **Performance Batch**
+   - Limite 100 threads/requête (configurable)
+   - Pagination si > 100 threads archivés
+   - Monitoring queue size
+
+2. **Race Conditions**
+   - Vérification `archived=1` avant consolidation
+   - Check `_thread_already_consolidated()` pour éviter doublons
+
+3. **Échec Consolidation**
+   - Try/except autour hook (ne bloque jamais archivage)
+   - Erreurs loggées mais continuent traitement batch
+   - Retry manuel possible avec endpoint batch
+
+4. **Monitoring**
+   - Logs `[Thread Archiving]` → trigger hook
+   - Logs `[MemoryTaskQueue]` → exécution consolidation
+   - Métriques ChromaDB collection size
+
+### Dépendances Validées
+- ✅ Phase P1.2 complétée (préférences persistées)
+- ✅ MemoryTaskQueue opérationnel
+- ✅ `gardener._tend_single_thread()` existe et fonctionne
+- ✅ ChromaDB collection `emergence_knowledge` configurée
+
+
+================================================================================
+FIN SESSION P0 - READY FOR DEPLOYMENT
+================================================================================

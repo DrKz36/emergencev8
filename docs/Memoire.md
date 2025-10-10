@@ -1,5 +1,17 @@
 # Mémoire progressive — ÉMERGENCE V8
 
+> **📊 Dernière mise à jour:** 2025-10-10 (post-audit complet)
+>
+> **⚠️ Bugs critiques identifiés:**
+> - Bug #2 P0: Fuite mémoire cache (éviction insuffisante)
+> - Bug #3 P0: Race conditions (absence locks dictionnaires partagés)
+> - **Voir:** [AUDIT_COMPLET_EMERGENCE_V8_20251010.md](../AUDIT_COMPLET_EMERGENCE_V8_20251010.md) Section 1
+>
+> **Incohérences corrigées:**
+> - ✅ `X-Session-Id` n'est pas obligatoire (fallback sur query params et state)
+> - ✅ `MemoryTaskQueue` maintenant documenté (Section 2.Backend)
+> - ✅ ConceptRecall `similarity_threshold` documenté (Section 8)
+
 ## 0. Table des matières cible
 - 1. Objectifs & portée
 - 2. Architecture technique
@@ -37,9 +49,18 @@
 - **`VectorService`**
   - Stocke les embeddings mémoire dans la collection `emergence_knowledge` (partagée avec les documents).
   - Surveille la corruption SQLite → backup + reset auto (`vector_store_backup_*`).
+- **`MemoryTaskQueue`** (features/memory/task_queue.py)
+  - **Nouveau** : Gère consolidations asynchrones en arrière-plan (non-blocking).
+  - File d'attente pour analyses mémoire (évite surcharge si burst de messages).
+  - Récupère `user_id` depuis session et passe à `analyze_session_for_concepts()`.
+  - Statut: ✅ Actif, utilisé par post_session.py pour consolidation différée.
 - **Isolation par session**
   - `SessionManager.ensure_session()` transmet le `session_id` a `MemoryGardener` et `MemoryAnalyzer`; toutes les requetes SQLite utilisent ce champ (memory_sessions, memory_items, thread_docs, messages).
-  - Les endpoints `POST /api/memory/*` exigent `X-Session-Id`; les evenements WS transportent `session_id` pour l'audit des consolidations/purges.
+  - **Session ID résolution** : Les endpoints `/api/memory/*` résolvent `session_id` via 3 méthodes (ordre de priorité):
+    1. Header `X-Session-Id` (recommandé)
+    2. Query param `session_id` (fallback)
+    3. `request.state.session_id` (injecté par middleware)
+  - Les événements WS transportent `session_id` pour l'audit des consolidations/purges.
 #### Améliorations mémoire (2025-10-04)
 
 - **`MemoryContextBuilder`** (features/chat/memory_ctx.py) — Contexte enrichi
@@ -137,6 +158,15 @@
      2. Recherche vectorielle sur connaissances
      3. Pondération temporelle (boost récent + fréquent)
    - Injection sections structurées : "Préférences actives" + "Connaissances pertinentes"
+
+9. **ConceptRecall - Détection concepts récurrents**
+   - **Module** : `features/memory/concept_recall.py` (ConceptRecallTracker)
+   - **Seuil similarité** : `SIMILARITY_THRESHOLD = 0.75` (configurable)
+   - **Fonctionnement** : Compare message utilisateur avec concepts déjà vus (recherche vectorielle)
+   - **Déclenchement** : Si similarité >= 0.75 → concept détecté comme récurrent
+   - **Action** : Émet suggestion proactive ou renforce contexte mémoire
+   - **Métriques** : `concept_recall_similarity_score` (Prometheus) pour monitoring
+   - **Documentation complète** : Voir [docs/architecture/CONCEPT_RECALL.md](architecture/CONCEPT_RECALL.md)
 
 
 ## 4. Observabilité & tests

@@ -1,0 +1,169 @@
+=== HANDOFF SESSION AUDIT - 2025-10-10 ===
+
+Agent: Claude Code
+Durée: ~3 heures
+Tâche: Audit complet + Mise à jour documentation + Nettoyage projet
+
+=== TRAVAIL RÉALISÉ ===
+
+1. AUDIT COMPLET EMERGENCE V8 ✅
+   - Analyse complète: 158 fichiers (87 Python + 71 JS)
+   - ~20,000 lignes de code auditées
+   - 232 tests pytest identifiés
+   - Rapport: AUDIT_COMPLET_EMERGENCE_V8_20251010.md (50+ pages)
+
+2. BUGS IDENTIFIÉS 🔴
+   Critiques (P0):
+   - ✅ Bug #1 RÉSOLU: Race condition user_id (PreferenceExtractor) - déployé 2025-10-10
+   - ⚠️ Bug #2: Fuite mémoire cache analyzer (éviction insuffisante)
+   - ⚠️ Bug #3: Absence locks dictionnaires partagés (race conditions)
+
+   Non-critiques (P1-P2): 7 bugs identifiés avec corrections détaillées
+
+3. PROBLÈMES ARCHITECTURAUX 🏗️
+   - ChatService trop volumineuse (2021 lignes, 10+ responsabilités)
+   - Injection circulaire SessionManager ↔ ConnectionManager
+   - Core dépend de Features (violation layering)
+   - Feature Memory surchargée (6+ services)
+
+4. DOCUMENTS CRÉÉS 📝
+   ✅ AUDIT_COMPLET_EMERGENCE_V8_20251010.md - Rapport audit complet
+   ✅ CLEANUP_PLAN_20251010.md - Plan nettoyage détaillé
+   ✅ PROMPT_NEXT_SESSION_AUDIT_FIXES_P0.md - Prompt corrections bugs P0
+   ✅ cleanup.sh - Script automatisé nettoyage
+
+5. DOCUMENTATION MISE À JOUR 📚
+   ✅ README.md - Ajout section audit + score maintenabilité
+   ✅ docs/architecture/00-Overview.md - Corrections incohérences
+   ✅ docs/Memoire.md - Ajout MemoryTaskQueue + ConceptRecall + corrections
+
+6. NETTOYAGE PROJET 🧹
+   Supprimé (~13 Mo):
+   - Logs obsolètes: backend*.log, *.err.log
+   - Arborescences: 20251003, 20251004 (gardé 20251008)
+   - OpenAPI dupliqués: canary, custom, run
+   - tmp_tests/
+   - Fichiers temporaires: body.json, id_token.txt, placeholder.tmp
+
+   Archivé (docs/archive/): 23 fichiers
+   - 9 prompts obsolètes → docs/archive/prompts/
+   - 7 sessions recap → docs/archive/sessions/
+   - 7 rapports terminés → docs/archive/reports/
+
+7. PROMPTS ACTIFS CONSERVÉS ✅
+   - PROMPT_NEXT_SESSION.md (template standard)
+   - PROMPT_NEXT_SESSION_AUDIT_FIXES_P0.md ⚠️ PRIORITÉ
+   - PROMPT_DOCKER_BUILD_DEPLOY.md
+   - PROMPT_NEXT_SESSION_MEMORY_P2.md
+   - PROMPT_NEXT_SESSION_SPRINT_P3_FRONTEND.md
+
+=== ÉTAT DU PROJET ===
+
+Score maintenabilité: 47/100 → Cible 80/100 (6 mois)
+
+Bugs critiques: 2 P0 restants (fuite mémoire + race conditions)
+
+Tests: 232 tests pytest présents
+
+Architecture: Fonctionnelle mais dette technique notable
+
+Documentation: Cohérente et à jour (post-nettoyage)
+
+=== PROCHAINES ACTIONS PRIORITAIRES ===
+
+🔴 URGENT - Phase 1 Stabilisation (2-3 semaines):
+
+1. Corriger Bug #2 P0: Fuite mémoire cache
+   - Fichier: src/backend/features/memory/analyzer.py:70, 358-362
+   - Solution: Éviction agressive (garder top 50 au lieu de supprimer 1)
+   - Prompt: PROMPT_NEXT_SESSION_AUDIT_FIXES_P0.md
+   - Durée: 45 min
+
+2. Corriger Bug #3 P0: Locks dictionnaires partagés
+   - Fichiers: analyzer.py, incremental_consolidation.py, proactive_hints.py, intent_tracker.py
+   - Solution: Ajouter asyncio.Lock() sur accès dictionnaires
+   - Prompt: PROMPT_NEXT_SESSION_AUDIT_FIXES_P0.md
+   - Durée: 90 min
+
+3. Corriger bugs P1-P2 (7 bugs)
+   - Voir: AUDIT_COMPLET_EMERGENCE_V8_20251010.md Section 2
+   - Durée: 1-2 jours
+
+4. Tests validation
+   - Exécuter: pytest tests/backend/features/ -v
+   - Vérifier: npm run build
+   - Couverture: viser 80%
+
+🟡 Phase 2 Découplage (4-6 semaines):
+   - Résoudre injection circulaire SessionManager ↔ ConnectionManager
+   - Extraire ProviderService de ChatService
+   - Unifier modèles (content vs message)
+
+🔵 Phase 3-4 Restructuration + Optimisation (10+ semaines):
+   - Décomposer ChatService en 5+ services
+   - Réorganiser feature/memory
+   - Contrats OpenAPI TypeScript
+   - Performance audit
+
+=== COMMANDES RAPIDES ===
+
+# Vérifier structure projet
+git status
+
+# Voir prompts actifs
+ls -1 PROMPT_*.md
+
+# Voir documentation mise à jour
+ls -lh AUDIT_COMPLET_EMERGENCE_V8_20251010.md README.md docs/Memoire.md
+
+# Voir archive
+ls -R docs/archive/
+
+# Lancer tests
+pytest tests/backend/features/ -v
+npm run build
+
+# Prochaine session (bugs P0)
+# Lire: PROMPT_NEXT_SESSION_AUDIT_FIXES_P0.md
+# Durée: 2-3 heures
+# Livrables: Bug #2 et #3 résolus + tests
+
+=== MÉTRIQUES SESSION ===
+
+Fichiers créés: 5
+Fichiers modifiés: 3
+Fichiers supprimés: ~20
+Fichiers archivés: 23
+Lignes audit: ~2500 (rapport)
+Temps total: ~3 heures
+Gain espace: ~13 Mo
+
+=== NOTES IMPORTANTES ===
+
+⚠️ Bug #1 (PreferenceExtractor user_id) RÉSOLU et déployé en production
+   Révision: emergence-app-00350-wic
+   Date: 2025-10-10 07:36 UTC
+
+⚠️ Bugs #2 et #3 CRITIQUES - À corriger avant montée en charge
+
+✅ Documentation cohérente et à jour
+✅ Projet nettoyé (~13 Mo libérés)
+✅ Prompts organisés et actualisés
+✅ Roadmap claire (Phases 1-4 sur 6 mois)
+
+=== RESSOURCES ===
+
+Audit complet: AUDIT_COMPLET_EMERGENCE_V8_20251010.md
+Plan nettoyage: CLEANUP_PLAN_20251010.md
+Prompt fixes P0: PROMPT_NEXT_SESSION_AUDIT_FIXES_P0.md
+Architecture: docs/architecture/
+Mémoire: docs/Memoire.md
+Tests: TESTING.md
+Monitoring: docs/MONITORING_GUIDE.md
+
+=== FIN HANDOFF ===
+
+Date: 2025-10-10
+Session: Audit complet + Documentation + Nettoyage
+Statut: ✅ Terminé avec succès
+Prochaine action: Corriger bugs P0 (PROMPT_NEXT_SESSION_AUDIT_FIXES_P0.md)

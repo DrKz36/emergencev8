@@ -26,6 +26,12 @@
 - **DatabaseManager** : connexion asynchrone unique (aiosqlite) ; toute écriture nécessite désormais un commit explicite (`await db.execute(..., commit=True)` ou `await db.commit()`) pour éviter des rollbacks implicites dans les tests.
 
 ## 3) Invariants & Qualité
+
+> **⚠️ Note importante (Audit 2025-10-10):**
+> - **`api.py` EST utilisé** contrairement à ce qui était documenté (ligne 15 définit `api_router`)
+> - **Bugs critiques identifiés:** Voir [AUDIT_COMPLET_EMERGENCE_V8_20251010.md](../../AUDIT_COMPLET_EMERGENCE_V8_20251010.md)
+> - **Score maintenabilité actuel:** 47/100 (Cible: 80/100 dans 6 mois)
+
 - **Auth & WS** : aucun accès API critique ni WS sans JWT valide. Le handshake rejette (4401/1008) si token manquant et le front relaie `auth:missing` vers le toast déconnexion. La route `/api/auth/dev/login` reste limitée aux environnements où `AUTH_DEV_MODE=1` et renvoie 404 lorsque le flag vaut 0 (prod/staging).
 - **Session isolation** : chaque session auth fournit un identifiant unique ; le front remet a zero l'etat via StateManager.resetForSession() et envoie `X-Session-Id` sur chaque requête REST ; toutes les queries backend filtrent par `session_id`.
 - **Thread bootstrap** : a l'ouverture, le front garantit un thread `type=chat` (REST) puis hydrate les messages (limite 50). Si `GET /api/threads/{id}` renvoie 403 ou 404, l'app regenere un thread `type=chat` et relance le chargement sans dupliquer les toasts.

@@ -2,6 +2,12 @@
 
 Multi agent conversation stack (Anima, Neo, Nexus) with cockpit, retrieval augmented generation, document tools, and interactive tutorial system.
 
+> **📊 Dernier audit complet:** 2025-10-10 | [Voir le rapport](AUDIT_COMPLET_EMERGENCE_V8_20251010.md)
+>
+> **Score maintenabilité:** 47/100 → Cible 80/100 (roadmap 6 mois)
+>
+> **Bugs critiques:** 2 P0 en cours de correction | [Prompt fixes](PROMPT_NEXT_SESSION_AUDIT_FIXES_P0.md)
+
 ## Local environment
 
 The project targets Python 3.11 and Node.js 18 or newer. Always isolate work inside a virtual environment and a dedicated node installation to keep parity with CI.
@@ -132,3 +138,23 @@ Emergence V8 utilise une approche collaborative avec plusieurs agents IA (Claude
 **Consignes agents** : voir [`AGENTS.md`](AGENTS.md) (section 13) et [`CODex_GUIDE.md`](CODex_GUIDE.md) (section 11)
 
 **Journal de passation** : [`docs/passation.md`](docs/passation.md) (contexte récent, blocages, prochaines actions)
+
+---
+
+## 📚 Documentation Clé
+
+- **[Audit Complet 2025-10-10](AUDIT_COMPLET_EMERGENCE_V8_20251010.md)** - Rapport audit global (bugs, architecture, optimisations)
+- **[Plan de Nettoyage](CLEANUP_PLAN_20251010.md)** - Script suppression ~13 Mo fichiers obsolètes
+- **[Architecture Overview](docs/architecture/00-Overview.md)** - Vue C4 Contexte & Conteneurs
+- **[Architecture Components](docs/architecture/10-Components.md)** - Détail composants backend/frontend
+- **[Mémoire Progressive](docs/Memoire.md)** - Système STM/LTM complet
+- **[Testing Guide](TESTING.md)** - Guide tests (232 tests pytest)
+- **[Monitoring Guide](docs/MONITORING_GUIDE.md)** - Prometheus + observabilité
+
+### Prompts Agents Actifs
+
+- **[Corrections Bugs P0](PROMPT_NEXT_SESSION_AUDIT_FIXES_P0.md)** - ⚠️ **PRIORITÉ** : Fuite mémoire + Race conditions
+- **[Session Générique](PROMPT_NEXT_SESSION.md)** - Template sessions standard
+- **[Déploiement Docker](PROMPT_DOCKER_BUILD_DEPLOY.md)** - Build + push Cloud Run
+- **[Mémoire P2](PROMPT_NEXT_SESSION_MEMORY_P2.md)** - Améliorations mémoire phase 2
+- **[Frontend P3](PROMPT_NEXT_SESSION_SPRINT_P3_FRONTEND.md)** - Améliorations UI/UX phase 3
