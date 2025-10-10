@@ -487,7 +487,7 @@ def main():
     print(f"User Sub:     {report.user_sub or 'N/A'}")
     print(f"Messages:     {report.messages_sent}")
     print(f"Consolidation: {'Triggered' if report.consolidation_triggered else 'Skipped'}")
-    print(f"\nStatus:       {'✅ SUCCESS' if report.success else '❌ FAILED'}")
+    print(f"\nStatus:       {'[OK] SUCCESS' if report.success else '[FAILED] FAILED'}")
     print("\nMetrics Delta:")
     print(f"  Preferences:  {report.metrics_delta.extracted_preference:+.0f}")
     print(f"  Intents:      {report.metrics_delta.extracted_intent:+.0f}")

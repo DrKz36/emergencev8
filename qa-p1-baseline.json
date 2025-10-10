@@ -1,0 +1,49 @@
+{
+  "timestamp": "2025-10-10T00:24:21.223734+00:00",
+  "base_url": "https://emergence-app-486095406755.europe-west1.run.app",
+  "thread_id": null,
+  "user_sub": null,
+  "metrics_before": {
+    "extracted_preference": 0.0,
+    "extracted_intent": 0.0,
+    "extracted_constraint": 0.0,
+    "confidence_count": 0.0,
+    "confidence_sum": 0.0,
+    "extraction_count": 0.0,
+    "extraction_sum": 0.0,
+    "lexical_filtered": 0.0,
+    "llm_calls": 0.0
+  },
+  "metrics_after": {
+    "extracted_preference": 0.0,
+    "extracted_intent": 0.0,
+    "extracted_constraint": 0.0,
+    "confidence_count": 0.0,
+    "confidence_sum": 0.0,
+    "extraction_count": 0.0,
+    "extraction_sum": 0.0,
+    "lexical_filtered": 0.0,
+    "llm_calls": 0.0
+  },
+  "metrics_delta": {
+    "extracted_preference": 0.0,
+    "extracted_intent": 0.0,
+    "extracted_constraint": 0.0,
+    "confidence_count": 0.0,
+    "confidence_sum": 0.0,
+    "extraction_count": 0.0,
+    "extraction_sum": 0.0,
+    "lexical_filtered": 0.0,
+    "llm_calls": 0.0
+  },
+  "success": true,
+  "errors": [],
+  "messages_sent": 0,
+  "consolidation_triggered": false,
+  "validation": {
+    "extracted_total": 0.0,
+    "average_confidence": 0.0,
+    "average_duration_seconds": 0.0,
+    "filtering_rate_percent": 0.0
+  }
+}
