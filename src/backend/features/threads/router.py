@@ -1,6 +1,7 @@
 # src/backend/features/threads/router.py
-# V1.5 — Retrait du prefix interne (montage géré par main.py) + alias GET/POST sans slash conservés
+# V1.6 — Hook consolidation automatique lors archivage (Phase P0)
 from typing import List, Optional, Dict, Any
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
@@ -9,6 +10,7 @@ from backend.core.database import queries
 from backend.shared.dependencies import get_session_context, SessionContext
 
 router = APIRouter(tags=["Threads"])  # ← plus de prefix ici (monté par main.py)
+logger = logging.getLogger(__name__)
 
 def get_db(request: Request) -> DatabaseManager:
     return request.app.state.service_container.db_manager()
@@ -168,8 +170,14 @@ async def update_thread(
     session: SessionContext = Depends(get_session_context),
     db: DatabaseManager = Depends(get_db),
 ):
-    if not await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id):
+    thread_before = await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id)
+    if not thread_before:
         raise HTTPException(status_code=404, detail="Thread introuvable")
+
+    # Récupérer état archivage AVANT mise à jour
+    was_archived = thread_before.get("archived", False)
+
+    # Appliquer mise à jour
     await queries.update_thread(
         db,
         thread_id,
@@ -180,6 +188,29 @@ async def update_thread(
         archived=payload.archived,
         meta=payload.meta,
     )
+
+    # 🆕 NOUVEAU (Phase P0): Hook consolidation automatique lors archivage
+    if payload.archived and not was_archived:
+        try:
+            from backend.features.memory.task_queue import get_memory_queue
+
+            queue = get_memory_queue()
+            await queue.enqueue(
+                task_type="consolidate_thread",
+                payload={
+                    "thread_id": thread_id,
+                    "session_id": session.session_id,
+                    "user_id": session.user_id,
+                    "reason": "archiving"
+                }
+            )
+
+            logger.info(f"[Thread Archiving] Consolidation enqueued for thread {thread_id}")
+
+        except Exception as e:
+            # Ne pas bloquer l'archivage si consolidation échoue
+            logger.warning(f"[Thread Archiving] Failed to enqueue consolidation: {e}")
+
     thread = await queries.get_thread(db, thread_id, session.session_id, user_id=session.user_id)
     return {"thread": thread}
 

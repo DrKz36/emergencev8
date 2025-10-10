@@ -880,3 +880,133 @@ async def search_concepts(
         "results": results,
         "count": len(results),
     }
+
+
+async def _thread_already_consolidated(vector_service, thread_id: str) -> bool:
+    """
+    Vérifie si thread déjà consolidé en cherchant concepts dans ChromaDB.
+
+    Returns:
+        True si au moins 1 concept du thread existe dans ChromaDB
+    """
+    try:
+        collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+        collection = vector_service.get_or_create_collection(collection_name)
+
+        # Chercher concepts avec thread_id dans metadata
+        result = collection.get(
+            where={"thread_id": thread_id},
+            limit=1
+        )
+
+        # Si au moins 1 concept trouvé, thread déjà consolidé
+        ids = result.get("ids") or []
+        if isinstance(ids, list) and len(ids) > 0:
+            if isinstance(ids[0], list):
+                return len(ids[0]) > 0
+            return True
+        return False
+
+    except Exception as e:
+        logger.warning(f"[consolidate_archived] Check failed for thread {thread_id}: {e}")
+        return False  # En cas d'erreur, considérer non consolidé
+
+
+@router.post(
+    "/consolidate-archived",
+    response_model=Dict[str, Any],
+    summary="Consolide threads archivés dans LTM (batch)",
+    description="Consolide tous threads archivés non encore traités. Utile pour migration ou rattrapage batch.",
+)
+async def consolidate_archived_threads(
+    request: Request,
+    data: Dict[str, Any] = Body(default={})
+) -> Dict[str, Any]:
+    """
+    Consolide tous les threads archivés non encore traités.
+    Utile pour migration ou rattrapage batch.
+
+    Body params:
+    - user_id (optional): Limiter à un utilisateur
+    - limit (optional): Nombre max threads (défaut 100)
+    - force (optional): Forcer reconsolidation même si déjà fait
+
+    Returns:
+    - status: "success" | "error"
+    - consolidated_count: Nombre threads consolidés
+    - skipped_count: Nombre threads déjà consolidés
+    - errors: Liste erreurs éventuelles
+    """
+    user_id = await shared_dependencies.get_user_id(request)
+    container = _get_container(request)
+    gardener = _get_gardener_from_request(request)
+
+    limit = data.get("limit", 100)
+    force = data.get("force", False)
+
+    # Récupérer tous threads archivés
+    db = gardener.db
+    try:
+        threads = await queries.get_threads(
+            db,
+            session_id=None,  # Tous sessions
+            user_id=user_id,
+            archived_only=True,
+            limit=limit
+        )
+    except Exception as e:
+        logger.error(f"[consolidate_archived] Failed to fetch archived threads: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to fetch archived threads: {e}")
+
+    consolidated = 0
+    skipped = 0
+    errors = []
+
+    logger.info(f"[consolidate_archived] Processing {len(threads)} archived threads (force={force})")
+
+    for thread in threads:
+        thread_id = thread.get("id")
+        if not thread_id:
+            continue
+
+        try:
+            # Vérifier si déjà consolidé (concepts dans ChromaDB)
+            if not force and await _thread_already_consolidated(container.vector_service(), thread_id):
+                skipped += 1
+                logger.debug(f"[consolidate_archived] Thread {thread_id} already consolidated, skipping")
+                continue
+
+            # Consolider thread
+            result = await gardener._tend_single_thread(
+                thread_id=thread_id,
+                session_id=thread.get("session_id"),
+                user_id=thread.get("user_id")
+            )
+
+            new_concepts = result.get("new_concepts", 0)
+            if new_concepts > 0:
+                consolidated += 1
+                logger.info(f"[consolidate_archived] Thread {thread_id} consolidated: {new_concepts} concepts")
+            else:
+                skipped += 1
+                logger.debug(f"[consolidate_archived] Thread {thread_id} produced no concepts")
+
+        except Exception as e:
+            logger.error(f"[consolidate_archived] Error consolidating thread {thread_id}: {e}", exc_info=True)
+            errors.append({
+                "thread_id": thread_id,
+                "error": str(e)
+            })
+
+    logger.info(
+        f"[consolidate_archived] Batch completed: "
+        f"{consolidated} consolidated, {skipped} skipped, {len(errors)} errors"
+    )
+
+    return {
+        "status": "success",
+        "consolidated_count": consolidated,
+        "skipped_count": skipped,
+        "total_archived": len(threads),
+        "errors": errors
+    }

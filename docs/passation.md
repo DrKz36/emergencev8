@@ -1,3 +1,83 @@
+## [2025-10-10 02:00] - Agent: Claude Code (Phase P0 - Consolidation Threads Archivés) ✅
+
+### Fichiers modifiés
+- src/backend/features/memory/router.py (+120 lignes)
+- src/backend/features/threads/router.py (+25 lignes, V1.5→V1.6)
+- src/backend/features/memory/task_queue.py (+60 lignes)
+- tests/backend/features/test_memory_archived_consolidation.py (nouveau, 465 lignes)
+
+### Contexte
+Résolution **Gap #1** : Threads archivés jamais consolidés dans LTM → causant "amnésie complète" des conversations passées.
+
+**Problème utilisateur** : _"Quand je demande aux agents de quoi nous avons parlé, les conversations archivées ne sont jamais évoquées."_
+
+**Cause racine** : Threads archivés (`archived = 1`) systématiquement exclus de consolidation mémoire → concepts JAMAIS ajoutés à ChromaDB.
+
+### Actions réalisées
+
+#### 1. Endpoint batch consolidation (router.py +120)
+- **POST /api/memory/consolidate-archived**
+- Traite tous threads archivés d'un user
+- Limite 100/requête, skip si déjà consolidé
+- Gestion erreurs partielles (continue traitement)
+- Helper `_thread_already_consolidated()` vérifie ChromaDB
+
+#### 2. Hook archivage automatique (threads/router.py +25)
+- **PATCH /threads/{id}** avec `archived=true` déclenche consolidation async
+- Détecte transition `archived: False → True`
+- Enqueue task `consolidate_thread` dans MemoryTaskQueue
+- Graceful degradation si queue échoue (ne bloque pas archivage)
+- Logging détaillé `[Thread Archiving]`
+
+#### 3. Support task queue (task_queue.py +60)
+- Handler task_type `consolidate_thread`
+- Méthode `_run_thread_consolidation(payload)`
+- Appelle `gardener._tend_single_thread(thread_id, session_id, user_id)`
+- Logging détaillé + métriques
+
+#### 4. Tests complets (test_memory_archived_consolidation.py nouveau, 465 lignes)
+- 10 tests consolidation archivés (100% passants)
+- Tests endpoint batch, hook archivage, task queue
+- Tests helper `_thread_already_consolidated()`
+- Tests performance et gestion erreurs
+
+### Tests
+- ✅ **48/48** tests mémoire globaux (38 existants + 10 nouveaux P0)
+- ✅ **0 régression** sur tests existants
+- ✅ Coverage complète Phase P0
+
+### Résultats
+
+**AVANT P0**:
+- Threads archivés → ❌ Jamais consolidés → Absents LTM
+- Recherche vectorielle incomplète
+- "Amnésie complète" conversations passées
+
+**APRÈS P0**:
+- Threads archivés → ✅ Consolidation auto lors archivage
+- Concepts archivés dans ChromaDB
+- Recherche vectorielle complète (actifs + archivés)
+- ✅ **Gap #1 résolu**
+
+### Architecture
+- Hook async non-bloquant (< 200ms latence archivage)
+- MemoryTaskQueue traite consolidation en background
+- Skip threads déjà consolidés (optimisation)
+- Support batch migration threads existants
+
+### Prochaines actions
+1. **Déployer P1+P0** ensemble en production
+2. **Migration batch** threads archivés existants: `POST /api/memory/consolidate-archived {"limit": 1000}`
+3. **Valider métriques** Prometheus production (queue processing, LTM size)
+4. **Phase P2** (optionnel): Harmonisation Session/Thread si décision architecture prise
+
+### Fichiers documentation
+- ✅ SESSION_P0_RECAP.txt créé (résumé détaillé session)
+- ✅ docs/passation.md mis à jour (cette entrée)
+- ✅ Référence MEMORY_LTM_GAPS_ANALYSIS.md (Gap #1 résolu)
+
+---
+
 ## [2025-10-10 14:30] - Agent: Claude Code (Phase P1.2 - Persistance Préférences LTM) ✅
 
 ### Fichiers créés

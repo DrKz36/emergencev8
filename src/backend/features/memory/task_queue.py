@@ -6,6 +6,7 @@ Usage:
     queue = get_memory_queue()
     await queue.start()
     await queue.enqueue("analyze", {"session_id": "..."})
+    await queue.enqueue("consolidate_thread", {"thread_id": "...", "session_id": "...", "user_id": "..."})
 """
 
 import asyncio
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 class MemoryTask:
     """Tâche d'analyse/jardinage mémoire"""
 
-    task_type: str  # "analyze" | "garden"
+    task_type: str  # "analyze" | "garden" | "consolidate_thread"
     payload: dict
     callback: Callable | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)
@@ -105,6 +106,9 @@ class MemoryTaskQueue:
                 result = await self._run_analysis(task.payload)
             elif task.task_type == "garden":
                 result = await self._run_gardening(task.payload)
+            elif task.task_type == "consolidate_thread":
+                # 🆕 NOUVEAU (Phase P0): Consolidation thread archivé
+                result = await self._run_thread_consolidation(task.payload)
             else:
                 logger.warning(f"Unknown task type: {task.task_type}")
                 return
@@ -160,6 +164,61 @@ class MemoryTaskQueue:
 
         await gardener.garden_thread(thread_id, user_sub=user_sub)
         return {"status": "gardened", "thread_id": thread_id}
+
+    async def _run_thread_consolidation(self, payload: dict):
+        """
+        🆕 Phase P0: Consolide un thread archivé dans LTM.
+
+        Payload:
+            - thread_id (required): ID du thread à consolider
+            - session_id (optional): Session ID associée
+            - user_id (optional): User ID propriétaire
+            - reason (optional): Raison de la consolidation ("archiving", "manual", etc.)
+        """
+        from backend.containers import ServiceContainer
+        from backend.features.memory.gardener import MemoryGardener
+
+        thread_id = payload.get("thread_id")
+        session_id = payload.get("session_id")
+        user_id = payload.get("user_id")
+        reason = payload.get("reason", "manual")
+
+        if not thread_id:
+            logger.warning("[MemoryTaskQueue] consolidate_thread sans thread_id")
+            return {"status": "error", "message": "Missing thread_id"}
+
+        # Récupérer gardener depuis container
+        container = ServiceContainer()
+        gardener = MemoryGardener(
+            db_manager=container.db_manager(),
+            vector_service=container.vector_service(),
+            memory_analyzer=container.memory_analyzer()
+        )
+
+        # Consolider thread
+        logger.info(
+            f"[MemoryTaskQueue] Consolidating archived thread {thread_id} "
+            f"(reason: {reason})"
+        )
+
+        result = await gardener._tend_single_thread(
+            thread_id=thread_id,
+            session_id=session_id,
+            user_id=user_id
+        )
+
+        new_concepts = result.get("new_concepts", 0)
+        logger.info(
+            f"[MemoryTaskQueue] Thread {thread_id} consolidated: "
+            f"{new_concepts} new concepts"
+        )
+
+        return {
+            "status": "consolidated",
+            "thread_id": thread_id,
+            "new_concepts": new_concepts,
+            "result": result
+        }
 
 
 # Singleton global
