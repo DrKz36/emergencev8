@@ -54,10 +54,32 @@ Ce document synthétise l'état actuel et la trajectoire de la mémoire d'Emerge
 - ✅ **Commit** : `588c5dc` feat(P1): enrichissement mémoire (862 lignes, 6 fichiers)
 - [FAIT] Mécanisme d'oubli par vitalité (décroissance périodique + purge sous seuil).
 
-### P2 — Réactivité proactive & UX
-- Maintenir un compteur de vivacité par concept et déclencher des événements `ws:proactive_hint` lorsque des seuils sont franchis.
-- Côté UI, afficher un bandeau ou un bouton contextuel pour rappeler un souvenir ou proposer une action.
-- Envoyer `thread_id` au endpoint `/api/memory/tend-garden` pour éviter les consolidations globales.
+### P2 — Performance & Réactivité proactive ✅ COMPLÉTÉ (2025-10-10)
+- ✅ **P2 Sprint 1 - Optimisations Performance** : -71% latence contexte LTM
+  - ✅ Fix critique coûts Gemini (count_tokens avant/après génération)
+  - ✅ Configuration HNSW ChromaDB optimisée (M=16, cosine) → -82.5% latence queries
+  - ✅ Cache in-memory préférences (5min TTL) → 100% hit rate
+  - ✅ Tests performance : 5/5 passent (benchmarks latence, cache, batch)
+  - ✅ Commit : `8205e3b` perf(P2.1): fix Gemini costs + HNSW optimization
+- ✅ **P2 Sprint 2 - Proactive Hints Backend** : Suggestions contextuelles opérationnelles
+  - ✅ ProactiveHintEngine créé (192 lignes, 100% typed)
+  - ✅ ConceptTracker : compteur récurrence concepts (trigger at 3 mentions)
+  - ✅ Intégration ChatService complète (4 modifications)
+    - Initialisation hint_engine dans __init__
+    - Méthode _emit_proactive_hints_if_any() (44 lignes)
+    - Appel asyncio.create_task après réponse agent
+  - ✅ Event WebSocket `ws:proactive_hint` implémenté
+  - ✅ 2 métriques Prometheus (hints_generated, hints_relevance)
+  - ✅ Tests : 16/16 passants (0.10s)
+  - ✅ Commits : `5ce75ce` + `7fd4674` feat(P2 Sprint2): ProactiveHints backend
+- ✅ **Gains cumulés P2** :
+  - Performance : -71% latence (120ms → 35ms), -50% queries, 100% cache hit rate
+  - Features : 3-5 hints/session, système proactif vs 100% réactif
+  - Qualité : 21 nouveaux tests (tous passants), 0 erreurs mypy
+- 🔄 **P2 Sprint 3 (À FAIRE)** : Frontend UI + Dashboard
+  - [ ] Composant ProactiveHintsUI (affichage banners, actions)
+  - [ ] Dashboard mémoire utilisateur
+  - [ ] Tests E2E Playwright
 
 ### P3 — Gouvernance & Observabilité
 - Journaliser la durée des consolidations et la taille des lots injectés pour suivre le coût / perf.
@@ -75,16 +97,25 @@ Ce document synthétise l'état actuel et la trajectoire de la mémoire d'Emerge
 | Proactivité concepts | Compteurs + événements à concevoir (P2) | ⏳ à faire |
 
 ## Prochaines étapes immédiates
-- ✅ [FAIT] Synchronisation STM côté backend (hydratation `SessionManager` + push `ws:session_restored`).
-- ✅ [FAIT] Vectorisation déportée via tâche asynchrone (`asyncio.to_thread`).
-- ✅ [FAIT] Décroissance vitalité + purge via `MemoryGardener._decay_knowledge` (journalisation métriques).
-- ✅ [FAIT] Calibrage vitalite + export metriques (events vitality_*, age_days, bucket_counts) + overrides MEMORY_DECAY_*.
-- ✅ [FAIT - P1 complété 2025-10-09] Extension extraction préférences/intentions avec `PreferenceExtractor` modulaire
+- ✅ [FAIT - P0] Synchronisation STM côté backend (hydratation `SessionManager` + push `ws:session_restored`)
+- ✅ [FAIT - P0] Vectorisation déportée via tâche asynchrone (`asyncio.to_thread`)
+- ✅ [FAIT - P0] Décroissance vitalité + purge via `MemoryGardener._decay_knowledge`
+- ✅ [FAIT - P0] Calibrage vitalite + export metriques (vitality_*, age_days, bucket_counts)
+- ✅ [FAIT - P1 complété 2025-10-09] Extension extraction préférences/intentions
   - Pipeline hybride : filtrage lexical + classification LLM + normalisation
   - Déportation analyses via `MemoryTaskQueue` (workers asyncio)
   - 8 nouvelles métriques Prometheus (5 préférences + 3 cache)
-  - Tests : 15/15 passent (7 existants + 8 nouveaux P1)
-- ⏳ [NEXT - P2] Réactivité proactive : suggestions contextuelles `ws:proactive_hint` basées sur préférences capturées
+  - Tests : 15/15 passent
+- ✅ [FAIT - P2 Sprint 1 complété 2025-10-10] Optimisations performance
+  - Fix coûts Gemini + HNSW ChromaDB optimisé + cache préférences
+  - Gains : -71% latence, 100% cache hit rate, -50% queries
+  - Tests : 5/5 performance benchmarks
+- ✅ [FAIT - P2 Sprint 2 complété 2025-10-10] Réactivité proactive backend
+  - ProactiveHintEngine + intégration ChatService
+  - Event `ws:proactive_hint` + métriques Prometheus
+  - Tests : 16/16 hints tests passants
+- ⏳ [NEXT - P2 Sprint 3] Frontend UI hints proactifs + Dashboard mémoire utilisateur
+- ⏳ [APRÈS P2] Gap #3 : Décision architecture hybride Sessions/Threads (migration vs maintien)
 
 ## Spécification détaillée — Extension MemoryGardener (préférences & intentions)
 - [FAIT] Normalisation des cles JSON du classifieur (prevention de la localisation des champs).
@@ -123,9 +154,19 @@ Capturer et capitaliser les préférences explicites (goûts, contraintes, canau
 - Revue hebdomadaire des extraits capturés (échantillon aléatoire de 20) pour ajuster les règles lexicales et le prompt LLM.
 
 ---
-**Derniere mise a jour** : 2025-10-09 (Phase P1 complétée - déportation async + extraction préférences + métriques)
+**Derniere mise a jour** : 2025-10-10 (Phase P2 Sprints 1+2 complétés - performance + hints proactifs backend)
 
 **Historique** :
+- 2025-10-10 : Phase P2 Sprint 1+2 complétés
+  - Sprint 1 : Optimisations performance (-71% latence, 100% cache hit rate, fix coûts Gemini)
+  - Sprint 2 : ProactiveHintEngine backend + intégration ChatService (16 tests)
+  - Documentation : 3 nouveaux docs status (P2_COMPLETION_FINAL_STATUS.md + 2 sprints)
 - 2025-10-09 : Phase P1 complétée (MemoryTaskQueue, PreferenceExtractor, 8 métriques Prometheus)
 - 2025-09-20 : Calibrage vitalité + métriques decay
 - Phase P0 : Persistance cross-device + restauration STM
+
+**Références Phase P2** :
+- [P2_COMPLETION_FINAL_STATUS.md](validation/P2_COMPLETION_FINAL_STATUS.md) - Résumé complet
+- [P2_SPRINT1_COMPLETION_STATUS.md](validation/P2_SPRINT1_COMPLETION_STATUS.md) - Sprint 1 détails
+- [P2_SPRINT2_PROACTIVE_HINTS_STATUS.md](validation/P2_SPRINT2_PROACTIVE_HINTS_STATUS.md) - Sprint 2 détails
+- [MEMORY_P2_PERFORMANCE_PLAN.md](optimizations/MEMORY_P2_PERFORMANCE_PLAN.md) - Plan P2 original
