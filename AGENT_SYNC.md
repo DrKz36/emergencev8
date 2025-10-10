@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-10 03:00 UTC (Claude Code - Option A Auto-Sync Deployed)
+**Derniere mise a jour** : 2025-10-10 18:30 UTC (Claude Code - Analyse Cockpit + Roadmap P2 Mémoire)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -1082,3 +1082,53 @@ git log --oneline -10
 ---
 
 
+
+---
+
+### 🔵 Claude Code - Session 2025-10-10 18:30 (Analyse Cockpit + Roadmap P2 Mémoire)
+- **Statut** : ✅ **DOCUMENTATION COMPLÉTÉE** - Prêt pour implémentation P2 puis Sprint 0
+- **Priorité** : 🟡 **PLANIFICATION** - Roadmap claire pour prochaines étapes
+- **Fichiers créés** :
+  - `docs/cockpit/COCKPIT_GAPS_AND_FIXES.md` (nouveau, ~450 lignes) - Analyse complète gaps cockpit + plan d'action
+  - `docs/cockpit/SPRINT0_CHECKLIST.md` (nouveau, ~600 lignes) - Checklist détaillée Sprint 0 (3 actions)
+- **Fichiers modifiés** :
+  - `docs/optimizations/MEMORY_P2_PERFORMANCE_PLAN.md` - Ajout note priorité P2 > Sprint 0
+  - `AGENT_SYNC.md` - Mise à jour session courante
+- **Analyse réalisée** :
+  - ✅ **Backend Cockpit** : 85% complet (router, service, timeline, cost_tracker OK)
+  - ❌ **Frontend Dashboard User** : 0% - MANQUANT (seul admin dashboard existe)
+  - ❌ **Coûts Gemini** : 0$ trackés (API ne retourne pas usage → besoin count_tokens())
+  - ❌ **Métriques Prometheus Coûts** : 0 métriques (Phase 3 = mémoire uniquement)
+- **Plan Validé** :
+  1. **PRIORITÉ #1 : P2 Mémoire** (6-9 jours) :
+     - Sprint 1 : Indexation ChromaDB + Cache préférences (2-3j)
+     - Sprint 2 : Batch prefetch + Proactive hints backend (2-3j)
+     - Sprint 3 : Proactive hints UI + Dashboard mémoire (2-3j)
+  2. **PRIORITÉ #2 : Sprint 0 Cockpit** (1-2 jours après P2) :
+     - Action #1 : Frontend Dashboard UI (4-6h) - `src/frontend/features/dashboard/`
+     - Action #2 : Fix coûts Gemini count_tokens() (1-2h) - `llm_stream.py:142-184`
+     - Action #3 : Métriques Prometheus coûts (2-3h) - `cost_tracker.py` + background task
+- **Documentation créée** :
+  - 📊 **[docs/cockpit/COCKPIT_GAPS_AND_FIXES.md](docs/cockpit/COCKPIT_GAPS_AND_FIXES.md)** :
+    - Analyse complète état cockpit (85% backend, 0% frontend user)
+    - 3 gaps critiques identifiés + impact business
+    - Code complet Actions #1-3 (dashboard-ui.js, fix Gemini, métriques Prometheus)
+    - Requêtes PromQL + alertes recommandées
+    - Intégration main.js + index.html
+  - ✅ **[docs/cockpit/SPRINT0_CHECKLIST.md](docs/cockpit/SPRINT0_CHECKLIST.md)** :
+    - Checklist détaillée 3 actions (60+ items)
+    - Tests E2E (3 scénarios)
+    - KPIs succès (7 critères)
+    - Timeline (1.5 jours)
+  - 🧠 **[docs/optimizations/MEMORY_P2_PERFORMANCE_PLAN.md](docs/optimizations/MEMORY_P2_PERFORMANCE_PLAN.md)** :
+    - Note ajoutée : priorité P2 > Sprint 0
+    - Référence croisée COCKPIT_GAPS_AND_FIXES.md
+- **Prochaines actions URGENTES** :
+  1. 🟢 **Implémenter P2 Mémoire** (suivre `MEMORY_P2_PERFORMANCE_PLAN.md`)
+     - Start Sprint 1 : Indexation ChromaDB + Cache préférences
+     - Fichiers: `src/backend/features/chat/memory_ctx.py`, `vector_service.py`
+  2. 🟠 **Ensuite Sprint 0 Cockpit** (suivre `SPRINT0_CHECKLIST.md` + `COCKPIT_GAPS_AND_FIXES.md`)
+     - Action #1 : Créer `src/frontend/features/dashboard/` (dashboard-ui.js + CSS)
+     - Action #2 : Modifier `llm_stream.py` (count_tokens Gemini)
+     - Action #3 : Modifier `cost_tracker.py` (métriques Prometheus)
+  3. 📋 Mise à jour `AGENT_SYNC.md` + `docs/passation.md` au fur et à mesure

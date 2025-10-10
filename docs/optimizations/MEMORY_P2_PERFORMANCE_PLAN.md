@@ -3,6 +3,20 @@
 **Date** : 2025-10-10
 **Agent** : Claude Code
 **Objectif** : Rendre la mémoire LTM plus performante et proactive
+**Statut** : 📋 PRÊT POUR IMPLÉMENTATION
+
+---
+
+## ⚠️ NOTE IMPORTANTE
+
+**Ce plan P2 Mémoire est PRIORITAIRE sur le Sprint 0 Cockpit.**
+
+Pour les fixes cockpit (UI dashboard, coûts Gemini, métriques Prometheus), voir :
+→ **[docs/cockpit/COCKPIT_GAPS_AND_FIXES.md](../cockpit/COCKPIT_GAPS_AND_FIXES.md)**
+
+Timeline :
+1. **P2 Mémoire** (ce document) : 6-9 jours
+2. **Sprint 0 Cockpit** : 1-2 jours après P2
 
 ---
 
