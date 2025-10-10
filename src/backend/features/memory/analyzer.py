@@ -383,8 +383,27 @@ class MemoryAnalyzer:
                             f"[PreferenceExtractor] Extracted {len(preferences)} preferences/intents "
                             f"for session {session_id}"
                         )
-                        # TODO P1.2: Sauvegarder dans Firestore collection memory_preferences_{user_sub}
-                        # Pour l'instant, juste logger
+
+                        # ✅ P1.2: Sauvegarder dans ChromaDB (emergence_knowledge collection)
+                        try:
+                            saved_count = await self._save_preferences_to_vector_db(
+                                preferences=preferences,
+                                user_id=user_sub,
+                                thread_id=session_id,
+                                session_id=session_id
+                            )
+                            logger.info(
+                                f"[PreferenceExtractor] Saved {saved_count}/{len(preferences)} "
+                                f"preferences to ChromaDB for user {user_sub}"
+                            )
+                        except Exception as save_error:
+                            logger.error(
+                                f"[PreferenceExtractor] Failed to save preferences to ChromaDB: {save_error}",
+                                exc_info=True
+                            )
+                            # Continue sans bloquer (graceful degradation)
+
+                        # Logging détaillé pour debug
                         for pref in preferences:
                             logger.debug(
                                 f"  [{pref.type}] {pref.topic}: {pref.text[:60]}... "
@@ -418,6 +437,94 @@ class MemoryAnalyzer:
     async def analyze_history(self, session_id: str, history: List[Dict[str, Any]]):
         """Mode «thread-only» : renvoie le résultat sans écrire dans la table sessions."""
         return await self._analyze(session_id, history, persist=False, force=False)
+
+    async def _save_preferences_to_vector_db(
+        self,
+        preferences: List[Any],
+        user_id: str,
+        thread_id: str,
+        session_id: str
+    ) -> int:
+        """
+        Sauvegarde les préférences extraites dans ChromaDB (collection emergence_knowledge).
+
+        Args:
+            preferences: Liste de PreferenceItem extraits
+            user_id: ID utilisateur propriétaire
+            thread_id: ID thread source
+            session_id: ID session source
+
+        Returns:
+            Nombre de préférences sauvegardées avec succès
+
+        Raises:
+            Exception: Si VectorService non disponible ou erreur ChromaDB
+        """
+        if not preferences:
+            return 0
+
+        # Récupérer VectorService depuis ChatService
+        vector_service = getattr(self.chat_service, "vector_service", None)
+        if not vector_service:
+            logger.warning("[PreferenceExtractor] VectorService non disponible, sauvegarde impossible")
+            return 0
+
+        import os
+        from datetime import datetime, timezone
+
+        knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
+        collection = vector_service.get_or_create_collection(knowledge_name)
+
+        saved_count = 0
+        timestamp_iso = datetime.now(timezone.utc).isoformat()
+
+        for pref in preferences:
+            try:
+                # Format document texte (compatible _fetch_active_preferences)
+                # Format: "topic: preference_text"
+                doc_text = f"{pref.topic}: {pref.text}" if pref.topic else pref.text
+
+                # Métadonnées enrichies pour filtrage et tri
+                metadata = {
+                    "user_id": user_id,
+                    "type": pref.type,  # "preference" | "intent" | "constraint"
+                    "topic": pref.topic or "general",
+                    "confidence": float(pref.confidence),
+                    "created_at": timestamp_iso,
+                    "thread_id": thread_id,
+                    "session_id": session_id,
+                    "source": "preference_extractor_v1.2",
+                    "sentiment": getattr(pref, "sentiment", "neutral"),
+                    "timeframe": getattr(pref, "timeframe", ""),
+                }
+
+                # Générer ID unique basé sur contenu + user
+                content_hash = hashlib.md5(
+                    f"{user_id}:{pref.type}:{pref.text}".encode("utf-8")
+                ).hexdigest()[:12]
+                doc_id = f"pref_{user_id[:8]}_{content_hash}"
+
+                # Ajouter au ChromaDB
+                vector_service.add_documents(
+                    collection=collection,
+                    documents=[doc_text],
+                    metadatas=[metadata],
+                    ids=[doc_id]
+                )
+
+                saved_count += 1
+                logger.debug(
+                    f"[PreferenceExtractor] Saved preference {doc_id}: "
+                    f"{pref.type} (confidence={pref.confidence:.2f})"
+                )
+
+            except Exception as doc_error:
+                logger.warning(
+                    f"[PreferenceExtractor] Failed to save preference '{pref.text[:30]}...': {doc_error}"
+                )
+                # Continue avec les autres préférences
+
+        return saved_count
 
     async def analyze_session_async(
         self,
