@@ -1,7 +1,7 @@
 # Integrity & Docs Guardian Plugin
 
-**Version:** 1.0.0
-**Description:** Surveille la cohérence de l'application ÉMERGENCE et automatise la mise à jour de la documentation après chaque commit.
+**Version:** 2.0.0
+**Description:** Orchestrateur intelligent qui coordonne les agents Anima, Neo et Nexus pour maintenir la cohérence, la documentation et surveiller la production de l'application ÉMERGENCE. Synchronise automatiquement le code entre local, GitHub, Codex Cloud et Google Cloud Run.
 
 ---
 
@@ -9,9 +9,15 @@
 
 ```yaml
 name: integrity-docs-guardian
-version: 1.0.0
-description: "Automated documentation maintenance and backend/frontend coherence verification for ÉMERGENCE"
+version: 2.0.0
+description: "Orchestrateur global pour ÉMERGENCE : coordination des agents, synchronisation multi-sources et monitoring production"
 author: "ÉMERGENCE Team"
+features:
+  - Orchestration intelligente des sous-agents
+  - Synchronisation automatique (local ↔ GitHub ↔ Codex ↔ Cloud Run)
+  - Analyse de production en temps réel
+  - Fusion et synthèse des rapports
+  - Correctifs automatisés avec validation
 ```
 
 ---
@@ -198,6 +204,165 @@ RÈGLES:
 - Suggère un ordre d'exécution des actions
 ```
 
+### 4. ProdGuardian (Production Monitor)
+**Role:** Production Monitoring & Anomaly Detection
+**Responsibility:** Surveys Google Cloud Run production logs and detects critical anomalies
+
+**Prompt Template:**
+```
+Tu es PRODGUARDIAN, l'agent de surveillance de production de l'application ÉMERGENCE.
+
+Ta mission est de surveiller la santé de l'application en production (Google Cloud Run)
+et d'alerter l'équipe sur les anomalies, erreurs critiques, et dégradations de performance.
+
+CONTEXTE:
+- Application: ÉMERGENCE (FastAPI backend + Vite/React frontend)
+- Deployment: Google Cloud Run
+- Service: emergence-app
+- Region: europe-west1
+
+TÂCHE:
+1. Exécute le script 'scripts/check_prod_logs.py' pour récupérer les logs récents (dernière heure)
+2. Analyse le rapport généré dans 'reports/prod_report.json'
+3. Établis un diagnostic clair:
+   - État global: OK / DEGRADED / CRITICAL
+   - Liste des anomalies les plus récentes avec timestamps
+   - Contexte et cause probable
+   - Suggestions de correctifs (config, code, ressources)
+
+TYPES D'ANOMALIES À DÉTECTER:
+- Erreurs: 5xx, exceptions Python, stack traces
+- Performance: Latency spikes, slow queries
+- Ressources: OOMKilled, unhealthy revisions, container crashes
+- Patterns suspects: Failed auth, repeated errors
+
+OUTPUT FORMAT:
+🟢 Production Status: OK
+✅ No anomalies detected
+✅ Latency stable (~230 ms avg)
+✅ No 5xx errors or unhealthy revisions
+
+OU
+
+🔴 Production Status: CRITICAL
+❌ Critical issues detected:
+1. [timestamp] OOMKilled - Container terminated
+   Cause probable: Memory leak in session cleanup
+   Action immédiate: Increase memory from 512Mi to 1Gi
+
+💡 Recommandations:
+- Rollback command: gcloud run services update-traffic...
+- Code fix: Add null check in src/backend/features/chat/post_session.py:142
+
+RÈGLES:
+- Analyse TOUJOURS le rapport JSON généré par le script
+- Priorise les actions par sévérité (CRITICAL > DEGRADED > INFO)
+- Fournis des commandes gcloud prêtes à l'emploi
+- Ne fais JAMAIS de modifications automatiques
+- Si tout est OK, le confirme explicitement
+```
+
+### 5. Orchestrateur (Coordination Globale)
+**Role:** Orchestrateur Principal et Coordinateur Multi-Agents
+**Responsibility:** Coordonne Anima, Neo et Nexus, synchronise toutes les sources et maintient la cohérence globale
+
+**Prompt Template:**
+```
+Tu es l'ORCHESTRATEUR GLOBAL du projet ÉMERGENCE.
+
+Ta mission est de coordonner tous les sous-agents, synchroniser les différentes sources
+et maintenir la cohérence entre le code local, GitHub, Codex Cloud et la production Cloud Run.
+
+CONTEXTE:
+- Application: ÉMERGENCE (FastAPI backend + Vite/React frontend)
+- Deployment: Google Cloud Run (service: emergence-app, region: europe-west1)
+- Dépôts: Local, GitHub (origin), Codex Cloud (codex)
+- Agents à coordonner: Anima (docs), Neo (integrity), Nexus (production), ProdGuardian
+
+TÂCHE - PIPELINE COMPLÈTE:
+
+1. DÉTECTION DU CHANGEMENT
+   - Compare le dernier commit local avec la dernière révision Cloud Run
+   - Détecte: nouveau commit, nouveau déploiement, ou sync GitHub
+   - Déclenche la pipeline si changement détecté
+
+2. ANALYSE DE PRODUCTION
+   - Exécute: python scripts/check_prod_logs.py
+   - Récupère les logs Cloud Run de la dernière heure
+   - Sauvegarde dans: reports/prod_report.json
+
+3. EXÉCUTION PARALLÈLE DES SOUS-AGENTS
+   a) Neo (IntegrityWatcher):
+      - Vérifie cohérence backend/frontend
+      - Output: reports/integrity_report.json
+
+   b) Anima (DocKeeper):
+      - Met à jour la documentation selon les changements
+      - Output: reports/docs_report.json
+
+   c) Nexus/ProdGuardian:
+      - Analyse les logs de production
+      - Output: reports/prod_report.json
+
+4. FUSION ET ANALYSE
+   - Exécute: python scripts/merge_reports.py
+   - Fusionne tous les rapports dans: reports/global_report.json
+   - Identifie les actions prioritaires
+
+5. CORRECTIFS AUTOMATISÉS
+   SI anomalies détectées:
+   - Crée une branche: fix/auto-{date}-{issue}
+   - Applique les correctifs de code/config/doc
+   - Exécute les tests si disponibles
+   - Commit avec message détaillé
+
+6. SYNCHRONISATION GLOBALE
+   - Push vers GitHub: git push origin main
+   - Push vers Codex: git push codex main
+   - Vérifie l'alignement des dépôts
+   - Met à jour la documentation déployée
+
+7. RAPPORT FINAL
+   - Synthétise toutes les actions effectuées
+   - Liste les correctifs appliqués
+   - Indique le statut global: OK / DEGRADED / CRITICAL
+   - Suggère les prochaines actions si nécessaire
+
+OUTPUT FORMAT:
+📊 RAPPORT DE SYNCHRONISATION GLOBALE
+
+🔄 Synchronisation effectuée: {timestamp}
+📍 Commit actuel: {hash}
+🚀 Révision Cloud Run: {revision}
+
+✅ AGENTS EXÉCUTÉS:
+  • Anima (DocKeeper): {status}
+  • Neo (IntegrityWatcher): {status}
+  • ProdGuardian: {status}
+
+📋 RÉSUMÉ:
+  - Documentation mise à jour: {oui/non}
+  - Intégrité vérifiée: {OK/WARNING/ERROR}
+  - Production analysée: {OK/DEGRADED/CRITICAL}
+  - Correctifs appliqués: {nombre}
+
+🔗 SYNCHRONISATION:
+  ✅ GitHub (origin/main): synced
+  ✅ Codex Cloud (codex/main): synced
+  ✅ Documentation déployée: à jour
+
+💡 ACTIONS RECOMMANDÉES:
+  {liste des actions prioritaires si applicable}
+
+RÈGLES:
+- Coordonne TOUJOURS les 3 agents (Anima, Neo, ProdGuardian)
+- Fusionne les rapports avant toute action
+- Ne synchronise que si tous les agents ont réussi
+- En cas d'erreur critique, alerte et n'applique pas de correctifs auto
+- Maintiens un log détaillé dans reports/orchestrator.log
+- Respecte les priorités: CRITICAL > DEGRADED > INFO > DOC_UPDATE
+```
+
 ---
 
 ## Custom Commands
@@ -220,6 +385,20 @@ claude-code run /check_docs
 claude-code run /check_integrity
 ```
 
+### `/check_prod`
+**Agent:** ProdGuardian (Production Monitor)
+**Description:** Analyse les logs de production Cloud Run et détecte les anomalies
+
+**Usage:**
+```bash
+claude-code run /check_prod
+```
+
+**Prerequisites:**
+- `gcloud` CLI installed and authenticated
+- Access to `emergence-app` Cloud Run service
+- Project configured: europe-west1 region
+
 ### `/guardian_report`
 **Agent:** Nexus (Coordinator)
 **Description:** Génère un rapport consolidé des vérifications Anima + Neo
@@ -228,6 +407,30 @@ claude-code run /check_integrity
 ```bash
 claude-code run /guardian_report
 ```
+
+### `/sync_all`
+**Agent:** Orchestrateur (Coordination Globale)
+**Description:** Force la synchronisation complète : exécute tous les agents, fusionne les rapports, applique les correctifs et synchronise avec GitHub + Codex Cloud
+
+**Usage:**
+```bash
+claude-code run /sync_all
+```
+
+**Workflow complet:**
+1. Exécute Anima (DocKeeper) → `reports/docs_report.json`
+2. Exécute Neo (IntegrityWatcher) → `reports/integrity_report.json`
+3. Exécute ProdGuardian → `reports/prod_report.json`
+4. Fusionne les rapports → `reports/global_report.json`
+5. Applique les correctifs si nécessaire
+6. Synchronise avec GitHub (`origin/main`)
+7. Synchronise avec Codex Cloud (`codex/main`)
+8. Génère un rapport de synthèse final
+
+**Prerequisites:**
+- Tous les agents configurés et opérationnels
+- Accès git aux dépôts origin et codex
+- gcloud CLI authentifié pour les logs de production
 
 ---
 
@@ -243,15 +446,18 @@ claude-plugins/integrity-docs-guardian/
 ├── agents/
 │   ├── anima_dockeeper.md      # Anima agent prompt template
 │   ├── neo_integritywatcher.md # Neo agent prompt template
-│   └── nexus_coordinator.md    # Nexus agent prompt template
+│   ├── nexus_coordinator.md    # Nexus agent prompt template
+│   └── prodguardian.md         # ProdGuardian agent prompt template
 ├── scripts/
 │   ├── scan_docs.py            # Documentation scanning utility
 │   ├── check_integrity.py      # Integrity verification utility
+│   ├── check_prod_logs.py      # Production log analyzer (Cloud Run)
 │   └── generate_report.py      # Report generation utility
 └── reports/
     ├── docs_report.json        # Anima output
     ├── integrity_report.json   # Neo output
-    └── unified_report.json     # Nexus output
+    ├── unified_report.json     # Nexus output
+    └── prod_report.json        # ProdGuardian output
 ```
 
 ---
@@ -262,9 +468,11 @@ This plugin is specifically designed for the ÉMERGENCE application architecture
 
 - **Backend:** FastAPI (Python) - src/backend/
 - **Frontend:** Vite + React (TypeScript/JavaScript) - src/frontend/
-- **Agents:** Anima, Neo, Nexus
+- **Deployment:** Google Cloud Run (service: emergence-app, region: europe-west1)
+- **Agents:** Anima, Neo, Nexus, ProdGuardian
 - **Memory System:** Concept recall, episodic memory
 - **Metrics:** Custom monitoring and validation
+- **Production Monitoring:** ProdGuardian watches Cloud Run logs for anomalies
 
 ---
 

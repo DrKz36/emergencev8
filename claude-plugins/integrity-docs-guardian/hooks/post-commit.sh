@@ -71,6 +71,26 @@ else
 fi
 
 echo ""
+
+# Étape 4 (Optionnelle): Lancer ProdGuardian - Vérification production
+# Active cette étape en définissant: export ENABLE_PROD_CHECK=1
+if [ "$ENABLE_PROD_CHECK" = "1" ]; then
+    echo "🚀 [4/4] Lancement de ProdGuardian (Production Monitor)..."
+    if command -v python &> /dev/null && command -v gcloud &> /dev/null; then
+        python "$SCRIPTS_DIR/check_prod_logs.py"
+        if [ $? -eq 0 ]; then
+            echo "   ✅ ProdGuardian terminé - Production OK"
+        elif [ $? -eq 1 ]; then
+            echo "   ⚠️  ProdGuardian - Production DEGRADED (voir reports/prod_report.json)"
+        elif [ $? -eq 2 ]; then
+            echo "   🔴 ProdGuardian - Production CRITICAL (voir reports/prod_report.json)"
+        fi
+    else
+        echo "   ⚠️  Python ou gcloud CLI introuvable, ProdGuardian skip"
+    fi
+    echo ""
+fi
+
 echo "============================================================="
 echo "✅ Vérification Guardian d'Intégrité terminée!"
 echo ""
@@ -83,4 +103,12 @@ if [ -f "$REPORTS_DIR/unified_report.json" ]; then
     else
         echo "   (installe 'jq' pour un résumé formaté)"
     fi
+fi
+
+# Note sur ProdGuardian
+if [ "$ENABLE_PROD_CHECK" != "1" ]; then
+    echo ""
+    echo "💡 Astuce: Pour vérifier la production après chaque commit:"
+    echo "   export ENABLE_PROD_CHECK=1"
+    echo "   Ou utilisez: claude-code run /check_prod"
 fi

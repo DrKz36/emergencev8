@@ -144,12 +144,14 @@ class MemoryTaskQueue:
         try:
             session = session_manager.get_session(session_id)
             history = getattr(session, "history", [])
+            # ✅ FIX CRITIQUE P2 Sprint 3: Extraire user_id depuis session
+            user_id = getattr(session, "user_id", None)
         except Exception as e:
             logger.error(f"Failed to get history for session {session_id}: {e}")
             return {"status": "error", "session_id": session_id}
 
         result = await analyzer.analyze_session_for_concepts(
-            session_id, history=history, force=force
+            session_id, history=history, force=force, user_id=user_id
         )
         return {"status": "completed", "session_id": session_id, "result": result}
 

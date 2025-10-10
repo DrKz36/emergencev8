@@ -308,9 +308,18 @@ async def analyze_session_endpoint(
             "metadata": metadata,
         }
 
+    # ✅ FIX CRITIQUE P2 Sprint 3: Récupérer user_id depuis request auth
+    user_id: Optional[str] = None
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        # Si pas d'auth, essayer de récupérer depuis session
+        if hasattr(session_manager, "get_user_id_for_session"):
+            user_id = session_manager.get_user_id_for_session(session_id)
+
     try:
         analysis = await analyzer.analyze_session_for_concepts(
-            session_id, history, force=force
+            session_id, history, force=force, user_id=user_id
         )
     except HTTPException:
         raise

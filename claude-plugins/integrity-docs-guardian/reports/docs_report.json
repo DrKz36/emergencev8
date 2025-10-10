@@ -1,28 +1,27 @@
 {
-  "timestamp": "2025-10-10T08:25:46.335587",
-  "commit_hash": "e9e194486ebf07f9cce6090d83aec8031e2165e7",
-  "commit_message": "fix(guardian): correction des chemins hooks + ajout doc d'activation complÃ¨te",
+  "timestamp": "2025-10-10T08:45:26.601784",
+  "commit_hash": "96c60721f8041d78495e6086521db93b1141bf48",
+  "commit_message": "chore(monitoring): post-P2 Sprint 3 monitoring + anomalie critique PreferenceExtractor\n\n- Fix ruff lint errors (18 â†’ 0): scripts/qa/*.py + test_memory_performance.py\n  - simple_preference_test.py: fix E402 import order (os moved to top)\n  - trigger_preferences_extraction.py: remove unused imports + f-strings\n  - test_memory_performance.py: fix F841 unused variable (prefs â†’ _)\n\n- Execute trigger_preferences_extraction.py on production\n  - Thread created: 5fc49632aa14440cb1ffa16c092fee42\n  - 5 preference messages sent (Python/FastAPI/jQuery/Claude/TypeScript)\n  - WebSocket timeout observed (no assistant response)\n  - Consolidation result: no new items\n\n- Monitor Prometheus metrics + Cloud Run logs\n  - concept_recall_system_info{similarity_threshold=\"0.75\"} = 1.0 âœ…\n  - concept_recall_similarity_score_count = 0.0 ðŸŸ¡ (no detections yet)\n  - memory_preferences_extracted_total = 0.0 ðŸ”´ ANOMALY\n  - memory_analysis_success_total = 2.0 âœ…\n  - Cloud Run logs: 7+ warnings 'user identifier missing'\n\nðŸ”´ CRITICAL ANOMALY DETECTED: PreferenceExtractor not functional\n\nSymptom:\n  [PreferenceExtractor] Cannot extract: no user identifier (user_sub or user_id) found\n\nImpact:\n  - memory_preferences_* metrics remain at zero\n  - No preferences persisted to ChromaDB since P2 Sprint 3 deploy\n  - 7+ sessions affected in last 24h\n\nRoot cause hypothesis:\n  - user_sub/user_id not passed to PreferenceExtractor.extract()\n  - Sessions anonymous/unauthenticated\n  - Thread API vs Session API mismatch\n\nDocs created:\n  - docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md (520 lines)\n    - Detailed anomaly analysis\n    - Prometheus metrics baseline (2025-10-10 08:35 UTC)\n    - Priority recommendations + corrective actions\n\n  - PROMPT_FIX_PREFERENCE_EXTRACTOR_CRITICAL.md (850+ lines)\n    - Complete fix guide for next agent (6 steps, 1-2h)\n    - Diagnostic procedures + implementation options\n    - Tests/validation + production deployment\n    - Rollback procedures + success criteria checklist\n\n  - docs/passation.md: new session entry (2025-10-10 08:35)\n    - Actions completed + anomalies detected\n    - Metrics baseline + next urgent actions\n\n  - AGENT_SYNC.md: updated work zones\n    - Session monitoring + critical anomaly\n    - Modified files list + next actions\n\nNext urgent actions:\n  1. ðŸ”´ Fix user_sub passage to PreferenceExtractor (analyzer.py)\n  2. ðŸ”´ Add fallback: user_sub â†’ user_id if missing\n  3. ðŸŸ¡ Increase WebSocket timeout in QA script\n  4. ðŸŸ¢ Re-run QA script after fixes\n  5. ðŸŸ¢ Validate memory_preferences_* metrics > 0\n\nSee: PROMPT_FIX_PREFERENCE_EXTRACTOR_CRITICAL.md for complete fix guide\n\nTests:\n  âœ… ruff check (All checks passed!)\n  âœ… QA script executed (with anomalies)\n  âœ… Prometheus metrics verified\n  âœ… Cloud Run logs analyzed\n\nðŸš€ Generated with Claude Code\nhttps://claude.com/claude-code\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
   "status": "ok",
   "changes_detected": {
     "backend": [],
     "frontend": [],
     "docs": [
-      "PROMPT_COCKPIT_DEBUG_IMPLEMENTATION.md",
-      "PROMPT_NEXT_SESSION_MEMORY_P2.md",
-      "claude-plugins/integrity-docs-guardian/ACTIVATION_COMPLETE.md",
-      "docs/validation/P0_GAPS_RESOLUTION_STATUS.md"
+      "AGENT_SYNC.md",
+      "PROMPT_FIX_PREFERENCE_EXTRACTOR_CRITICAL.md",
+      "docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md",
+      "docs/passation.md"
     ],
     "other": [
-      "claude-plugins/integrity-docs-guardian/hooks/post-commit.sh",
-      "claude-plugins/integrity-docs-guardian/reports/docs_report.json",
-      "claude-plugins/integrity-docs-guardian/reports/integrity_report.json",
-      "claude-plugins/integrity-docs-guardian/reports/unified_report.json"
+      "scripts/qa/simple_preference_test.py",
+      "scripts/qa/trigger_preferences_extraction.py",
+      "tests/backend/features/test_memory_performance.py"
     ]
   },
   "documentation_gaps": [],
   "proposed_updates": [],
   "statistics": {
-    "files_changed": 8,
+    "files_changed": 7,
     "backend_files": 0,
     "frontend_files": 0,
     "docs_files": 4,

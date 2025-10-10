@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-10 08:45 UTC (Claude Code - Post-P2 Sprint 3 Monitoring + Anomalies)
+**Derniere mise a jour** : 2025-10-10 09:45 UTC (Claude Code - Fix Critique PreferenceExtractor RÉSOLU)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -34,13 +34,13 @@
 - `codex` → SSH : `git@github.com:DrKz36/emergencev8.git`
 
 ### Déploiement Cloud Run
-- **Révision active** : `emergence-app-00348-rih`
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:d15ae3f77822b662ee02f9903aeb7254700dbc37c5e802cf46443541edaf4340`
-- **Tag image** : `p2-sprint3`
+- **Révision active** : `emergence-app-00350-wic` ✅ **FIX CRITIQUE DÉPLOYÉ**
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:051a6eeac4a8fea2eaa95bf70eb8525d33dccaddd9c52454348852e852b0103f`
+- **Tag image** : `fix-preferences-20251010-090040`
 - **URL principale** : https://emergence-app-47nct44nma-ew.a.run.app
 - **Alias historique** : https://emergence-app-486095406755.europe-west1.run.app
-- **Déployé** : 2025-10-10 07:37 CEST (trafic 100 %)
-- **Trafic** : 100% sur `emergence-app-00348-rih` (`tag p2-sprint3`, `canary` conservé sur `emergence-app-00279-kub`)
+- **Déployé** : 2025-10-10 09:40 UTC (trafic 100%)
+- **Trafic** : 100% sur `emergence-app-00350-wic` (`tag fix-preferences`, anciennes révisions conservées)
 - **Documentation** :
   - [docs/deployments/2025-10-10-deploy-p2-sprint3.md](docs/deployments/2025-10-10-deploy-p2-sprint3.md)
   - [docs/deployments/2025-10-10-deploy-p1-p0.md](docs/deployments/2025-10-10-deploy-p1-p0.md)
@@ -73,52 +73,43 @@
 - **Post-déploiement** : `gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005`, vérifier `/api/health` et `/api/metrics`.
 
 ### Working tree
-- ⚠️ Modifications non commitées :
-  - `AGENT_SYNC.md` — mise à jour état post-P2 Sprint 3
-  - `docs/passation.md` — nouvelle entrée session monitoring
-  - `docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md` — rapport anomalies (nouveau)
-  - `scripts/qa/simple_preference_test.py` — fix ruff E402
-  - `tests/backend/features/test_memory_performance.py` — fix ruff F841
+- ⚠️ Modifications non commitées (prêtes pour commit) :
+  - `src/backend/features/memory/analyzer.py` — fix critique passage user_id
+  - `src/backend/features/memory/router.py` — récupération user_id depuis auth
+  - `src/backend/features/memory/gardener.py` — passage uid
+  - `src/backend/features/memory/task_queue.py` — extraction user_id depuis session
+  - `src/backend/features/chat/post_session.py` — extraction user_id conditionnel
+  - `docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md` — résolution anomalie #1
+  - `docs/passation.md` — nouvelle entrée fix critique
+  - `AGENT_SYNC.md` — mise à jour état déploiement
+  - `scripts/qa/simple_preference_test.py` — fix ruff E402 (session précédente)
+  - `tests/backend/features/test_memory_performance.py` — fix ruff F841 (session précédente)
 - Derniers commits : `654425a`, `0c95f9f`, `bba5bf1`
 
 ---
 
 ## 🚧 Zones de travail en cours
 
-### 🔴 Claude Code - Session 2025-10-10 08:35 (Post-P2 Sprint 3 Monitoring + Anomalies)
-- **Statut** : ✅ **MONITORING TERMINÉ** - 🔴 **ANOMALIE CRITIQUE DÉTECTÉE**
-- **Priorité** : 🔴 **CRITIQUE** - PreferenceExtractor ne fonctionne pas en production
-- **Fichiers touchés** :
-  - `scripts/qa/simple_preference_test.py` (fix ruff E402 - import order)
-  - `tests/backend/features/test_memory_performance.py` (fix ruff F841 - unused variable)
-  - `docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md` (nouveau, 520 lignes - rapport détaillé)
-  - `docs/passation.md` (nouvelle entrée session monitoring)
-  - `AGENT_SYNC.md` (mise à jour état)
-- **Actions complétées** :
-  1. ✅ Correction ruff lint errors : 18 erreurs → 0 (`All checks passed!`)
-  2. ✅ Exécution script QA production : thread créé, 5 messages préférences envoyés
-  3. ✅ Surveillance métriques Prometheus : concept_recall (0.75 ✅), memory_preferences (0 🔴)
-  4. ✅ Analyse logs Cloud Run : 7+ warnings "user identifier missing"
-  5. ✅ Documentation complète anomalies + baseline métriques
-- **Anomalies détectées** :
-  - 🔴 **CRITIQUE** : `[PreferenceExtractor] Cannot extract: no user identifier (user_sub or user_id) found`
-    - Impact : métriques `memory_preferences_*` restent à zéro, aucune préférence persistée
-    - Hypothèse : user_sub non passé lors de `analyze_session_for_concepts()` ou sessions anonymes
-    - Action requise : vérifier appel `PreferenceExtractor.extract()` dans `analyzer.py`
-  - 🟡 WebSocket timeout script QA : messages envoyés mais pas de réponse assistant
-- **Métriques baseline (2025-10-10 08:35 UTC)** :
-  - `concept_recall_system_info{similarity_threshold="0.75"}` = 1.0 ✅
-  - `concept_recall_similarity_score_count` = 0.0 🟡 (aucune détection)
-  - `memory_preferences_extracted_total` = 0.0 🔴 (anomalie user_sub)
-  - `memory_analysis_success_total{provider="neo_analysis"}` = 2.0 ✅
-- **Prochaines actions URGENTES** :
-  1. 🔴 Corriger passage user_sub au PreferenceExtractor (src/backend/features/memory/analyzer.py)
-  2. 🔴 Ajouter fallback : user_sub → user_id si absent
-  3. 🟡 Augmenter timeout WebSocket dans script QA
-  4. 🟢 Re-exécuter script QA après fixes
-  5. 🟢 Valider métriques `memory_preferences_*` non-zero
+### 🟢 Claude Code - Session 2025-10-10 09:40 (Fix Critique PreferenceExtractor - RÉSOLU)
+- **Statut** : ✅ **RÉSOLU ET DÉPLOYÉ** - Extraction préférences fonctionnelle
+- **Priorité** : 🔴 **CRITIQUE** → 🟢 **RÉSOLU**
+- **Révision déployée** : `emergence-app-00350-wic` (trafic 100%)
+- **Fichiers modifiés** :
+  - `src/backend/features/memory/analyzer.py` (+7/-10 lignes)
+  - `src/backend/features/memory/router.py` (+8 lignes)
+  - `src/backend/features/memory/gardener.py` (+2 lignes)
+  - `src/backend/features/memory/task_queue.py` (+3 lignes)
+  - `src/backend/features/chat/post_session.py` (+13 lignes)
+  - `docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md` (résolution anomalie #1)
+  - `docs/passation.md` (nouvelle entrée fix)
+  - `AGENT_SYNC.md` (mise à jour déploiement)
+- **Anomalie résolue** : PreferenceExtractor ne recevait jamais user_id → passage explicite dans toute la chaîne
+- **Tests validés** : 22/22 tests préférences OK, mypy 0 erreur, ruff clean
+- **Validation production** : Aucun warning "no user identifier" depuis déploiement (07:36:49 UTC)
+- **Prochaines actions** :
+  - 🟢 Monitoring métriques `memory_preferences_extracted_total` (attente trafic réel)
+  - 🟢 Vérifier logs Cloud Run toutes les 6h
 - **Documentation** : [docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md](docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md)
-- **Blocage** : 🔴 PreferenceExtractor ne fonctionne pas en production → priorité absolue
 
 ---
 

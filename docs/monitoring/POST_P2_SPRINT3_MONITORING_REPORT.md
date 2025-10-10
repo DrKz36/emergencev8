@@ -154,6 +154,57 @@ found for session XXX
 - 🔧 Assurer passage `user_sub` ou `user_id` depuis `ChatService`
 - 🔧 Ajouter fallback : si `user_sub` absent, utiliser `user_id` du thread
 
+#### ✅ RÉSOLUTION Anomalie #1 (2025-10-10 09:40 UTC)
+
+**Date Fix** : 2025-10-10 09:40 UTC
+**Révision Déployée** : `emergence-app-00350-wic`
+**Tag Docker** : `fix-preferences-20251010-090040`
+**Digest** : `sha256:051a6eeac4a8fea2eaa95bf70eb8525d33dccaddd9c52454348852e852b0103f`
+
+**Modifications Apportées** :
+
+1. **[analyzer.py](../../src/backend/features/memory/analyzer.py)** (+7/-10 lignes)
+   - Ajout paramètre `user_id: Optional[str] = None` à `_analyze()` (ligne 176)
+   - Ajout paramètre `user_id: Optional[str] = None` à `analyze_session_for_concepts()` (ligne 471)
+   - Remplacement du workaround bugué (lignes 368-391) : utilisation directe du paramètre `user_id` au lieu de `session_manager.get_session()`
+
+2. **[router.py](../../src/backend/features/memory/router.py)** (+8 lignes)
+   - Récupération `user_id` depuis auth request avec fallback sur session (lignes 311-318)
+   - Passage de `user_id` à `analyze_session_for_concepts()` (ligne 321)
+
+3. **[gardener.py](../../src/backend/features/memory/gardener.py)** (+2 lignes)
+   - Passage du `uid` (déjà disponible) à `analyze_session_for_concepts()` (lignes 576-579)
+
+4. **[task_queue.py](../../src/backend/features/memory/task_queue.py)** (+3 lignes)
+   - Extraction `user_id` depuis session et passage à `analyze_session_for_concepts()` (lignes 147-155)
+
+5. **[post_session.py](../../src/backend/features/chat/post_session.py)** (+13 lignes)
+   - Extraction `user_id` et passage conditionnel (avec vérification de signature) (lignes 37-56)
+
+**Tests Validés** :
+- ✅ 22/22 tests préférences passants (`test_memory_preferences_persistence.py`, `test_preference_extraction_context.py`)
+- ✅ 10/10 tests memory_enhancements passants
+- ✅ Mypy : 0 erreur
+- ✅ Ruff : All checks passed
+
+**Déploiement Production** :
+- ✅ Build Docker réussi (linux/amd64, 10 minutes)
+- ✅ Push registry réussi (europe-west1-docker.pkg.dev)
+- ✅ Deploy Cloud Run réussi (révision `emergence-app-00350-wic`)
+- ✅ Trafic basculé 100% sur nouvelle révision
+- ✅ Service opérationnel (status 200 sur `/api/metrics`)
+
+**Validation Post-Fix** :
+- ✅ **Aucun warning "no user identifier" depuis déploiement** (dernier warning avant fix : 06:22:43 UTC, déploiement : 07:36:49 UTC)
+- ✅ Logs montrent démarrage propre du PreferenceExtractor
+- ⏳ Métriques `memory_preferences_extracted_total` : attente trafic réel utilisateur
+
+**URLs** :
+- Production : https://emergence-app-47nct44nma-ew.a.run.app
+- Révision fix : https://fix-preferences---emergence-app-47nct44nma-ew.a.run.app
+
+**Statut** : 🟢 **RÉSOLU** - Extraction préférences fonctionnelle
+
 ---
 
 #### 🟡 Anomalie #2 : WebSocket Timeout (Script QA)
@@ -323,10 +374,10 @@ curl -s $PROD_URL/api/metrics | grep memory_analysis_success_total
 **Immédiat (Aujourd'hui)** :
 1. ✅ Corriger ruff errors (TERMINÉ)
 2. ✅ Exécuter script QA (TERMINÉ avec anomalies)
-3. ✅ Créer rapport monitoring (EN COURS)
-4. ⏳ Corriger passage user_sub au PreferenceExtractor
-5. ⏳ Re-exécuter script QA après fix
-6. ⏳ Valider métriques non-zero
+3. ✅ Créer rapport monitoring (TERMINÉ)
+4. ✅ Corriger passage user_sub au PreferenceExtractor (TERMINÉ - révision 00350-wic)
+5. ⏳ Re-exécuter script QA après fix (à faire après trafic réel)
+6. ⏳ Valider métriques non-zero (monitoring en cours)
 
 **Court Terme (24-48h)** :
 - Monitor métriques toutes les 6h

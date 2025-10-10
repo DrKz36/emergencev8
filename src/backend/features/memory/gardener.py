@@ -573,8 +573,9 @@ class MemoryGardener:
                 facts = self._extract_facts_from_history(history)
 
                 if not concepts and history:
+                    # ✅ FIX CRITIQUE P2 Sprint 3: Passer user_id pour extraction préférences
                     await self.analyzer.analyze_session_for_concepts(
-                        session_id=sid, history=history
+                        session_id=sid, history=history, user_id=uid
                     )
                     db_row = await self.db.fetch_one(
                         "SELECT extracted_concepts, extracted_entities, user_id FROM sessions WHERE id = ?",

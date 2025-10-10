@@ -173,6 +173,7 @@ class MemoryAnalyzer:
         history: List[Dict[str, Any]],
         persist: bool = True,
         force: bool = False,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         self._ensure_ready()
         chat_service = self.chat_service
@@ -367,23 +368,26 @@ class MemoryAnalyzer:
         # ⚡ Phase P1: Extraction préférences/intentions
         if persist and self.preference_extractor and analysis_result:
             try:
-                # 🆕 HOTFIX P1.3: Récupérer user_sub ET user_id depuis session
-                user_sub = None
-                user_id = None
-                try:
-                    session_manager = getattr(chat_service, "session_manager", None)
-                    if session_manager:
-                        sess = session_manager.get_session(session_id)
-                        if sess:
-                            # Essayer user_sub depuis metadata
-                            user_sub = getattr(sess, "metadata", {}).get("user_sub")
-                            # Fallback sur user_id
-                            user_id = getattr(sess, "user_id", None)
-                except Exception as e:
-                    logger.debug(f"[PreferenceExtractor] Error getting user context: {e}")
-                    pass
+                # ✅ FIX CRITIQUE P2 Sprint 3: Utiliser user_id passé en paramètre
+                # (plus de workaround via session_manager qui échoue en production)
+                user_sub = user_id  # user_id peut être user_sub ou user_id selon l'appelant
 
-                # 🆕 HOTFIX P1.3: Accepter user_id en fallback si user_sub absent
+                # Si user_id n'est pas fourni, essayer de le récupérer depuis session (fallback)
+                if not user_id:
+                    try:
+                        session_manager = getattr(chat_service, "session_manager", None)
+                        if session_manager:
+                            sess = session_manager.get_session(session_id)
+                            if sess:
+                                # Essayer user_sub depuis metadata
+                                user_sub = getattr(sess, "metadata", {}).get("user_sub")
+                                # Fallback sur user_id
+                                if not user_sub:
+                                    user_id = getattr(sess, "user_id", None)
+                    except Exception as e:
+                        logger.debug(f"[PreferenceExtractor] Error getting user context from session: {e}")
+
+                # Vérifier qu'on a au moins un identifiant utilisateur
                 if user_sub or user_id:
                     # Identifier utilisateur (priorité user_sub)
                     user_identifier = user_sub if user_sub else user_id
@@ -468,10 +472,10 @@ class MemoryAnalyzer:
         return analysis_result
 
     async def analyze_session_for_concepts(
-        self, session_id: str, history: List[Dict[str, Any]], *, force: bool = False
+        self, session_id: str, history: List[Dict[str, Any]], *, force: bool = False, user_id: Optional[str] = None
     ):
         """Mode historique (sessions) : persiste dans la table sessions."""
-        return await self._analyze(session_id, history, persist=True, force=force)
+        return await self._analyze(session_id, history, persist=True, force=force, user_id=user_id)
 
     async def analyze_history(self, session_id: str, history: List[Dict[str, Any]]):
         """Mode «thread-only» : renvoie le résultat sans écrire dans la table sessions."""

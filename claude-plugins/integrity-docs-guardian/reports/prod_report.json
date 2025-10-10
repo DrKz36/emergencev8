@@ -1,0 +1,38 @@
+{
+  "timestamp": "2025-10-10T09:17:39.625252",
+  "service": "emergence-app",
+  "region": "europe-west1",
+  "logs_analyzed": 80,
+  "freshness": "1h",
+  "status": "OK",
+  "summary": {
+    "errors": 0,
+    "warnings": 3,
+    "critical_signals": 0,
+    "latency_issues": 0
+  },
+  "errors": [],
+  "warnings": [
+    {
+      "time": "2025-10-10T06:50:48.471045Z",
+      "msg": ""
+    },
+    {
+      "time": "2025-10-10T06:43:42.640903Z",
+      "msg": ""
+    },
+    {
+      "time": "2025-10-10T06:41:52.206748Z",
+      "msg": ""
+    }
+  ],
+  "critical_signals": [],
+  "latency_issues": [],
+  "recommendations": [
+    {
+      "priority": "LOW",
+      "action": "No immediate action required",
+      "details": "Production is healthy"
+    }
+  ]
+}

@@ -33,10 +33,22 @@ async def run_analysis_and_notify(
     try:
         analyzer = getattr(session_manager, "memory_analyzer", None)
         history = session_manager.get_full_history(session_id) or []
+
+        # ✅ FIX CRITIQUE P2 Sprint 3: Extraire user_id depuis session
+        user_id = None
+        try:
+            session = session_manager.get_session(session_id)
+            if session:
+                user_id = getattr(session, "user_id", None)
+        except Exception:
+            pass
+
         if analyzer and hasattr(analyzer, "analyze_session_for_concepts"):
             try:
                 sig = inspect.signature(analyzer.analyze_session_for_concepts)
-                if "history" in sig.parameters:
+                if "user_id" in sig.parameters and "history" in sig.parameters:
+                    await analyzer.analyze_session_for_concepts(session_id, history, user_id=user_id)
+                elif "history" in sig.parameters:
                     await analyzer.analyze_session_for_concepts(session_id, history)
                 else:
                     await analyzer.analyze_session_for_concepts(session_id)
