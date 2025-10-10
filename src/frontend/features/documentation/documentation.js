@@ -187,9 +187,9 @@ export class Documentation {
                                     </svg>
                                 </div>
                                 <div class="stat-info">
-                                    <div class="stat-value">~15,000</div>
+                                    <div class="stat-value">~50,000</div>
                                     <div class="stat-label">Lignes de code Frontend</div>
-                                    <div class="stat-detail">JavaScript / CSS / HTML</div>
+                                    <div class="stat-detail">JavaScript / CSS / HTML (127 fichiers)</div>
                                 </div>
                             </div>
                             <div class="stat-card">
@@ -199,9 +199,9 @@ export class Documentation {
                                     </svg>
                                 </div>
                                 <div class="stat-info">
-                                    <div class="stat-value">~8,000</div>
+                                    <div class="stat-value">~23,000</div>
                                     <div class="stat-label">Lignes de code Backend</div>
-                                    <div class="stat-detail">Python / FastAPI</div>
+                                    <div class="stat-detail">Python / FastAPI (87 fichiers)</div>
                                 </div>
                             </div>
                             <div class="stat-card">
@@ -214,7 +214,7 @@ export class Documentation {
                                     </svg>
                                 </div>
                                 <div class="stat-info">
-                                    <div class="stat-value">17</div>
+                                    <div class="stat-value">15</div>
                                     <div class="stat-label">Modules Frontend</div>
                                     <div class="stat-detail">Architecture modulaire</div>
                                 </div>
@@ -228,9 +228,21 @@ export class Documentation {
                                     </svg>
                                 </div>
                                 <div class="stat-info">
-                                    <div class="stat-value">30+</div>
+                                    <div class="stat-value">38</div>
                                     <div class="stat-label">Dépendances</div>
-                                    <div class="stat-detail">Frontend + Backend</div>
+                                    <div class="stat-detail">34 Python + 4 NPM</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-value">232</div>
+                                    <div class="stat-label">Tests Automatisés</div>
+                                    <div class="stat-detail">Backend pytest + Frontend</div>
                                 </div>
                             </div>
                         </div>
@@ -385,8 +397,58 @@ export class Documentation {
                                             <line x1="12" y1="17" x2="12.01" y2="17"></line>
                                         </svg>
                                     </div>
-                                    <div class="module-name">Tutorial</div>
+                                    <div class="module-name">Documentation</div>
                                     <div class="module-desc">Guides et tutoriel interactif</div>
+                                </div>
+                                <div class="module-card">
+                                    <div class="module-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="9" cy="7" r="4"></circle>
+                                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="module-name">Admin</div>
+                                    <div class="module-desc">Administration et gestion utilisateurs</div>
+                                </div>
+                                <div class="module-card">
+                                    <div class="module-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="module-name">Conversations</div>
+                                    <div class="module-desc">Gestion des threads de conversation</div>
+                                </div>
+                                <div class="module-card">
+                                    <div class="module-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                            <path d="M12 1v6m0 6v6m5.657-13.657l-4.243 4.243m-2.828 2.828l-4.243 4.243m16.97-.485l-6-1m-6 0l-6 1m13.657-5.657l-4.243-4.243m-2.828-2.828l-4.243-4.243m16.97 6.142l-6 1m-6 0l-6-1"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="module-name">Preferences</div>
+                                    <div class="module-desc">Préférences utilisateur</div>
+                                </div>
+                                <div class="module-card">
+                                    <div class="module-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="module-name">References</div>
+                                    <div class="module-desc">Système de références et citations</div>
+                                </div>
+                                <div class="module-card">
+                                    <div class="module-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="module-name">Hymn</div>
+                                    <div class="module-desc">Hymne du projet Emergence</div>
                                 </div>
                             </div>
                         </div>
@@ -439,6 +501,16 @@ export class Documentation {
                                         <td>Parsing et rendu Markdown</td>
                                     </tr>
                                     <tr>
+                                        <td><strong>Concurrently</strong></td>
+                                        <td>^9.2.0</td>
+                                        <td>Lancement parallèle backend/frontend</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Playwright</strong></td>
+                                        <td>^1.48.2</td>
+                                        <td>Tests E2E automatisés</td>
+                                    </tr>
+                                    <tr>
                                         <td><strong>Vanilla JS</strong></td>
                                         <td>ES6+</td>
                                         <td>Framework-less, modules natifs</td>
@@ -471,12 +543,17 @@ export class Documentation {
                                     <tr>
                                         <td><strong>WebSockets</strong></td>
                                         <td>11.0.2+</td>
-                                        <td>Communication temps réel</td>
+                                        <td>Communication temps réel bidirectionnelle</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Pydantic</strong></td>
                                         <td>2.6+</td>
                                         <td>Validation de données et settings</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Dependency Injector</strong></td>
+                                        <td>4.41+</td>
+                                        <td>Injection de dépendances</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -539,6 +616,11 @@ export class Documentation {
                                         <td>Persistance cloud NoSQL</td>
                                     </tr>
                                     <tr>
+                                        <td><strong>aiosqlite</strong></td>
+                                        <td>0.21.0</td>
+                                        <td>Base de données SQLite asynchrone</td>
+                                    </tr>
+                                    <tr>
                                         <td><strong>Prometheus Client</strong></td>
                                         <td>0.20+</td>
                                         <td>Exposition de métriques</td>
@@ -552,6 +634,21 @@ export class Documentation {
                                         <td><strong>Bcrypt</strong></td>
                                         <td>4.1+</td>
                                         <td>Hashing de mots de passe</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>PyTest</strong></td>
+                                        <td>8.3+</td>
+                                        <td>Framework de tests (232 tests)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Ruff</strong></td>
+                                        <td>0.13+</td>
+                                        <td>Linter Python ultra-rapide</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>MyPy</strong></td>
+                                        <td>1.18+</td>
+                                        <td>Vérification de types statique</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -583,12 +680,13 @@ export class Documentation {
                                     Frontend
                                 </h3>
                                 <ul>
-                                    <li><strong>Architecture:</strong> SPA modulaire sans framework</li>
+                                    <li><strong>Architecture:</strong> SPA modulaire sans framework (15 modules)</li>
                                     <li><strong>Pattern:</strong> Component-based avec modules ES6</li>
                                     <li><strong>State:</strong> StateManager centralisé + LocalStorage</li>
-                                    <li><strong>Communication:</strong> WebSocket + REST API</li>
+                                    <li><strong>Communication:</strong> WebSocket bidirectionnel + REST API</li>
                                     <li><strong>UI/UX:</strong> Glassmorphism, design system cohérent</li>
-                                    <li><strong>Build:</strong> Vite avec HMR</li>
+                                    <li><strong>Build:</strong> Vite 7.1.2 avec HMR</li>
+                                    <li><strong>Tests:</strong> Playwright pour tests E2E</li>
                                     <li><strong>Tutoriel:</strong> Système interactif avec guides détaillés</li>
                                 </ul>
                             </div>
@@ -601,12 +699,14 @@ export class Documentation {
                                     Backend
                                 </h3>
                                 <ul>
-                                    <li><strong>Framework:</strong> FastAPI (async/await)</li>
+                                    <li><strong>Framework:</strong> FastAPI 0.109.2 (async/await)</li>
                                     <li><strong>Pattern:</strong> Dependency Injection, Repository</li>
                                     <li><strong>Architecture:</strong> Microservices-ready, modulaire</li>
                                     <li><strong>API:</strong> REST + WebSocket bidirectionnel</li>
-                                    <li><strong>Validation:</strong> Pydantic schemas</li>
-                                    <li><strong>Testing:</strong> Pytest avec fixtures async</li>
+                                    <li><strong>Validation:</strong> Pydantic 2.6+ schemas</li>
+                                    <li><strong>Testing:</strong> 232 tests pytest avec fixtures async</li>
+                                    <li><strong>QA:</strong> Ruff (linter) + MyPy (types statiques)</li>
+                                    <li><strong>Monitoring:</strong> Prometheus + métriques custom</li>
                                 </ul>
                             </div>
 
@@ -639,10 +739,11 @@ export class Documentation {
                                 </h3>
                                 <ul>
                                     <li><strong>Cloud:</strong> Google Cloud Firestore (NoSQL)</li>
-                                    <li><strong>Vector:</strong> ChromaDB (embeddings)</li>
-                                    <li><strong>Local:</strong> SQLite (development)</li>
+                                    <li><strong>Vector:</strong> ChromaDB 0.4.22 + Qdrant (optionnel)</li>
+                                    <li><strong>Local:</strong> aiosqlite 0.21.0 (async SQLite)</li>
                                     <li><strong>Cache:</strong> LocalStorage (frontend state)</li>
-                                    <li><strong>Files:</strong> PyMuPDF, python-docx pour parsing</li>
+                                    <li><strong>Files:</strong> PyMuPDF, python-docx, aiofiles</li>
+                                    <li><strong>Mémoire:</strong> Système STM/LTM avec embeddings</li>
                                 </ul>
                             </div>
                         </div>
@@ -944,6 +1045,40 @@ export class Documentation {
                                             <strong>Objectif :</strong> FG projette de lancer une <strong>beta courant octobre</strong>
                                             avec quelques amis pour valider cette nouvelle approche d'orchestration multi-agents.
                                         </p>
+                                    </div>
+                                </div>
+
+                                <div class="timeline-item">
+                                    <div class="timeline-marker">
+                                        <div class="marker-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="marker-date">Septembre - Octobre 2025</div>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <h4>Consolidation et maintenance</h4>
+                                        <p>
+                                            <strong>Audit complet du système</strong> (10 octobre 2025) révèle un score de maintenabilité de 47/100
+                                            avec une cible de 80/100 sur 6 mois. Identification et résolution de bugs critiques.
+                                        </p>
+                                        <p><strong>Améliorations majeures :</strong></p>
+                                        <ul>
+                                            <li><strong>Système de synchronisation multi-agent</strong> : coordination complète entre Codex et Claude Code</li>
+                                            <li><strong>Guardian hooks</strong> : système de surveillance et validation automatique pré/post-commit</li>
+                                            <li><strong>Optimisation mémoire</strong> : résolution de fuites mémoire et race conditions</li>
+                                            <li><strong>Tests robustes</strong> : 232 tests pytest pour garantir la stabilité</li>
+                                            <li><strong>Documentation technique</strong> : architecture C4, guides de monitoring Prometheus</li>
+                                        </ul>
+                                        <p><strong>État actuel (Octobre 2025) :</strong></p>
+                                        <ul>
+                                            <li>~73,000 lignes de code total (50k frontend + 23k backend)</li>
+                                            <li>15 modules frontend opérationnels</li>
+                                            <li>Architecture multi-agents mature et testée</li>
+                                            <li>Système de mémoire STM/LTM fonctionnel</li>
+                                            <li>Préparation beta testing avec utilisateurs pilotes</li>
+                                        </ul>
                                     </div>
                                 </div>
 

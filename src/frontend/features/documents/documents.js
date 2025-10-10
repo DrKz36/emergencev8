@@ -476,6 +476,15 @@ export default class DocumentsModule {
         this._autoRefreshTimer = setTimeout(() => this.fetchAndRenderDocuments(true), 3000);
     }
 
+    _getFileIcon(filename) {
+        const ext = (filename || '').split('.').pop()?.toLowerCase() || '';
+        const iconSvg = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+        </svg>`;
+        return iconSvg;
+    }
+
     renderDocItem(doc) {
         const id = this._getId(doc);
         const name = this._getName(doc);
@@ -486,25 +495,49 @@ export default class DocumentsModule {
                           : status === 'error' ? 'status-error'
                           : 'status-ready';
 
+        const eyeIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+        </svg>`;
+
+        const downloadIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>`;
+
+        const refreshIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>`;
+
+        const trashIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>`;
+
         return `
             <li class="document-item" data-id="${id}" data-name="${name}">
                 <input type="checkbox" class="doc-select" data-id="${id}" aria-label="Slectionner ${name}">
-                <span class="doc-icon" aria-hidden="true"></span>
-                <span class="doc-name" data-role="doc-name">${name}</span>
+                <span class="doc-icon" aria-hidden="true">${this._getFileIcon(name)}</span>
+                <span class="doc-name" data-role="doc-name" title="${name}">${name}</span>
                 <span class="doc-date">${when}</span>
                 <span class="doc-status ${statusClass}">${status}</span>
                 <div class="doc-actions">
                     <button class="doc-action doc-preview" data-action="preview" data-id="${id}" title="Prévisualiser ${name}" aria-label="Prévisualiser ${name}">
-                        👁️
+                        ${eyeIcon}
                     </button>
                     <button class="doc-action doc-download" data-action="download" data-id="${id}" title="Télécharger ${name}" aria-label="Télécharger ${name}">
-                        ⬇️
+                        ${downloadIcon}
                     </button>
                     <button class="doc-action doc-reindex" data-action="reindex" data-id="${id}" title="Ré-indexer ${name}" aria-label="Ré-indexer ${name}">
-                        🔄
+                        ${refreshIcon}
                     </button>
                     <button class="doc-action doc-remove" data-action="delete" data-id="${id}" title="Supprimer ${name}" aria-label="Supprimer ${name}">
-                        🗑️
+                        ${trashIcon}
                     </button>
                 </div>
             </li>

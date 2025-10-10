@@ -150,9 +150,9 @@ export default class MemoryModule {
 
             </section>
 
-            <section class="memory-page__body" data-memory-center-host></section>
-
             <section class="memory-page__concepts" data-memory-concepts-host></section>
+
+            <section class="memory-page__body" data-memory-center-host></section>
 
           </div>
 

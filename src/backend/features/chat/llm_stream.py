@@ -127,13 +127,20 @@ class LLMStreamer:
                     pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
                     in_tok = getattr(usage, "prompt_tokens", 0)
                     out_tok = getattr(usage, "completion_tokens", 0)
+                    total_cost = (in_tok * pricing["input"]) + (out_tok * pricing["output"])
                     cost_info_container.update(
                         {
                             "input_tokens": in_tok,
                             "output_tokens": out_tok,
-                            "total_cost": (in_tok * pricing["input"])
-                            + (out_tok * pricing["output"]),
+                            "total_cost": total_cost,
                         }
+                    )
+
+                    # Log détaillé pour traçabilité des coûts
+                    logger.info(
+                        f"[OpenAI] Cost calculated: ${total_cost:.6f} "
+                        f"(model={model}, input={in_tok} tokens, output={out_tok} tokens, "
+                        f"pricing_input=${pricing['input']:.8f}/token, pricing_output=${pricing['output']:.8f}/token)"
                     )
         except Exception as e:
             logger.error(f"OpenAI stream error: {e}", exc_info=True)
@@ -158,17 +165,17 @@ class LLMStreamer:
             input_tokens = 0
             try:
                 # Construire prompt complet pour count_tokens
-                prompt_parts = [system_prompt]
-                for msg in history:
-                    content = msg.get("content", "")
-                    if content:
-                        prompt_parts.append(content)
+                # Gemini attend un format spécifique : liste de messages ou texte concaténé
+                prompt_text = system_prompt + "\n" + "\n".join([
+                    msg.get("content", "") for msg in history if msg.get("content")
+                ])
 
-                # Compter tokens input
-                input_tokens = _model.count_tokens(prompt_parts).total_tokens
+                # Compter tokens input (synchrone mais rapide)
+                count_result = _model.count_tokens(prompt_text)
+                input_tokens = count_result.total_tokens
                 logger.debug(f"[Gemini] Input tokens: {input_tokens}")
             except Exception as e:
-                logger.warning(f"[Gemini] Failed to count input tokens: {e}")
+                logger.warning(f"[Gemini] Failed to count input tokens: {e}", exc_info=True)
 
             # Stream response et accumuler texte
             full_response_text = ""
@@ -199,10 +206,11 @@ class LLMStreamer:
             # COUNT TOKENS OUTPUT (après génération)
             output_tokens = 0
             try:
-                output_tokens = _model.count_tokens(full_response_text).total_tokens
+                count_result = _model.count_tokens(full_response_text)
+                output_tokens = count_result.total_tokens
                 logger.debug(f"[Gemini] Output tokens: {output_tokens}")
             except Exception as e:
-                logger.warning(f"[Gemini] Failed to count output tokens: {e}")
+                logger.warning(f"[Gemini] Failed to count output tokens: {e}", exc_info=True)
 
             # CALCUL COÛT
             pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
@@ -213,6 +221,13 @@ class LLMStreamer:
                 "output_tokens": output_tokens,
                 "total_cost": total_cost,
             })
+
+            # Log détaillé pour traçabilité des coûts
+            logger.info(
+                f"[Gemini] Cost calculated: ${total_cost:.6f} "
+                f"(model={model}, input={input_tokens} tokens, output={output_tokens} tokens, "
+                f"pricing_input=${pricing['input']:.8f}/token, pricing_output=${pricing['output']:.8f}/token)"
+            )
         except Exception as e:
             logger.error(f"Gemini stream error: {e}", exc_info=True)
             cost_info_container["__error__"] = "provider_error"
@@ -250,16 +265,25 @@ class LLMStreamer:
                         pricing = MODEL_PRICING.get(model, {"input": 0, "output": 0})
                         in_tok = getattr(usage, "input_tokens", 0)
                         out_tok = getattr(usage, "output_tokens", 0)
+                        total_cost = (in_tok * pricing["input"]) + (out_tok * pricing["output"])
                         cost_info_container.update(
                             {
                                 "input_tokens": in_tok,
                                 "output_tokens": out_tok,
-                                "total_cost": (in_tok * pricing["input"])
-                                + (out_tok * pricing["output"]),
+                                "total_cost": total_cost,
                             }
                         )
-                except Exception:
-                    pass
+
+                        # Log détaillé pour traçabilité des coûts
+                        logger.info(
+                            f"[Anthropic] Cost calculated: ${total_cost:.6f} "
+                            f"(model={model}, input={in_tok} tokens, output={out_tok} tokens, "
+                            f"pricing_input=${pricing['input']:.8f}/token, pricing_output=${pricing['output']:.8f}/token)"
+                        )
+                    else:
+                        logger.warning(f"[Anthropic] No usage data in final response for model {model}")
+                except Exception as e:
+                    logger.warning(f"[Anthropic] Failed to get usage data: {e}", exc_info=True)
         except Exception as e:
             try:
                 from anthropic import RateLimitError as _AnthropicRateLimit

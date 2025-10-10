@@ -756,6 +756,13 @@ body::before, body::after,
   flex-direction: column;
 }
 
+.memory-page__concepts {
+  padding: 0;
+  width: 100%;
+  display: block;
+  position: relative;
+}
+
 .memory-page__threads .threads-panel__body {
   flex: 1 1 auto;
   min-height: 0;
@@ -784,6 +791,10 @@ body::before, body::after,
   .memory-page__body {
     overflow: visible;
   }
+  .memory-page__concepts {
+    margin-top: 20px;
+    width: 100%;
+  }
   .memory-page__threads {
     min-width: 0;
     width: 100%;
@@ -805,8 +816,32 @@ body::before, body::after,
   .memory-page__summary {
     grid-template-columns: 1fr;
   }
+  .memory-page__concepts {
+    margin-top: 18px;
+    width: 100%;
+  }
   .memory-page__threads .threads-panel {
     padding: 20px;
+  }
+}
+
+@media (max-width: 760px) and (orientation: portrait) {
+  .memory-page__primary {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 100%;
+  }
+
+  .memory-page__concepts {
+    margin-top: 0;
+    width: 100%;
+    position: relative;
+    display: block;
+  }
+
+  .memory-page__body {
+    margin-top: 18px;
   }
 }
 
