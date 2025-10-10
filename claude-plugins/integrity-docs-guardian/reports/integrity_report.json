@@ -1,13 +1,8 @@
 {
-  "timestamp": "2025-10-10T07:59:58.477030",
-  "commit_hash": "a3197fbdc857404063811519ba99a5001b628829",
-  "commit_message": "deploy: release p2 sprint3 revision",
+  "timestamp": "2025-10-10T08:24:23.348176",
   "status": "ok",
   "backend_changes": {
-    "files": [
-      "src/backend/features/memory/concept_recall.py",
-      "src/backend/features/memory/concept_recall_metrics.py"
-    ],
+    "files": [],
     "endpoints_added": [],
     "endpoints_modified": [],
     "endpoints_removed": [],
@@ -26,12 +21,12 @@
     "schemas_count": 6
   },
   "statistics": {
-    "backend_files_changed": 2,
+    "backend_files_changed": 0,
     "frontend_files_changed": 0,
     "issues_found": 0,
     "critical": 0,
     "warnings": 0,
     "info": 0
   },
-  "summary": "0 critical, 0 warning(s), 0 total issue(s) found"
+  "summary": "No changes detected"
 }

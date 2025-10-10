@@ -4,7 +4,9 @@
 
 set -e
 
-PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Remonter à la racine du repo et aller au plugin
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PLUGIN_DIR="$REPO_ROOT/claude-plugins/integrity-docs-guardian"
 REPORTS_DIR="$PLUGIN_DIR/reports"
 SCRIPTS_DIR="$PLUGIN_DIR/scripts"
 

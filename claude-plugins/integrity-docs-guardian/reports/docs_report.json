@@ -1,78 +1,44 @@
 {
-  "timestamp": "2025-10-10T07:59:52.231882",
-  "commit_hash": "a3197fbdc857404063811519ba99a5001b628829",
-  "commit_message": "deploy: release p2 sprint3 revision",
-  "status": "needs_update",
+  "timestamp": "2025-10-10T08:24:23.239936",
+  "commit_hash": "db1d6559c9faf4347b8b8c70de85a0d5ac160742",
+  "commit_message": "feat: plugin Guardian d'IntÃ©gritÃ© avec Anima/Neo/Nexus - version FR automatisÃ©e",
+  "status": "ok",
   "changes_detected": {
-    "backend": [
-      "src/backend/features/memory/concept_recall.py",
-      "src/backend/features/memory/concept_recall_metrics.py"
-    ],
+    "backend": [],
     "frontend": [],
     "docs": [
-      "AGENT_SYNC.md",
-      "docs/deployments/2025-10-09-activation-metrics-phase3.md",
-      "docs/deployments/2025-10-09-validation-phase3-complete.md",
-      "docs/deployments/2025-10-10-deploy-p2-sprint3.md",
-      "docs/features/concept-recall-metrics-implementation.md",
-      "docs/passation.md"
+      "claude-plugins/integrity-docs-guardian/Claude.md",
+      "claude-plugins/integrity-docs-guardian/DEMARRAGE_RAPIDE.md",
+      "claude-plugins/integrity-docs-guardian/LISEZMOI.md",
+      "claude-plugins/integrity-docs-guardian/QUICKSTART.md",
+      "claude-plugins/integrity-docs-guardian/README.md",
+      "claude-plugins/integrity-docs-guardian/agents/anima_dockeeper.md",
+      "claude-plugins/integrity-docs-guardian/agents/neo_integritywatcher.md",
+      "claude-plugins/integrity-docs-guardian/agents/nexus_coordinator.md"
     ],
-    "other": []
+    "other": [
+      "claude-plugins/integrity-docs-guardian/hooks/post-commit.sh",
+      "claude-plugins/integrity-docs-guardian/hooks/pre-commit.sh",
+      "claude-plugins/integrity-docs-guardian/reports/docs_report.json",
+      "claude-plugins/integrity-docs-guardian/reports/integrity_report.json",
+      "claude-plugins/integrity-docs-guardian/reports/unified_report.json",
+      "claude-plugins/integrity-docs-guardian/scripts/check_integrity.py",
+      "claude-plugins/integrity-docs-guardian/scripts/generate_report.py",
+      "claude-plugins/integrity-docs-guardian/scripts/scan_docs.py"
+    ]
   },
-  "documentation_gaps": [
-    {
-      "severity": "high",
-      "file": "src/backend/features/memory/concept_recall.py",
-      "issue": "Feature module 'memory' modified",
-      "affected_docs": [
-        "docs/backend/memory.md",
-        "README.md"
-      ],
-      "recommendation": "Ensure memory feature is documented"
-    },
-    {
-      "severity": "high",
-      "file": "src/backend/features/memory/concept_recall_metrics.py",
-      "issue": "Feature module 'memory' modified",
-      "affected_docs": [
-        "docs/backend/memory.md",
-        "README.md"
-      ],
-      "recommendation": "Ensure memory feature is documented"
-    }
-  ],
-  "proposed_updates": [
-    {
-      "file": "docs/backend/memory.md",
-      "action": "update_section",
-      "reason": "2 related change(s) detected",
-      "related_changes": [
-        "src/backend/features/memory/concept_recall.py",
-        "src/backend/features/memory/concept_recall_metrics.py"
-      ],
-      "recommendation": "Ensure memory feature is documented"
-    },
-    {
-      "file": "README.md",
-      "action": "update_section",
-      "reason": "2 related change(s) detected",
-      "related_changes": [
-        "src/backend/features/memory/concept_recall.py",
-        "src/backend/features/memory/concept_recall_metrics.py"
-      ],
-      "recommendation": "Ensure memory feature is documented"
-    }
-  ],
+  "documentation_gaps": [],
+  "proposed_updates": [],
   "statistics": {
-    "files_changed": 8,
-    "backend_files": 2,
+    "files_changed": 16,
+    "backend_files": 0,
     "frontend_files": 0,
-    "docs_files": 6,
-    "gaps_found": 2,
-    "high_severity": 2,
+    "docs_files": 8,
+    "gaps_found": 0,
+    "high_severity": 0,
     "medium_severity": 0,
     "low_severity": 0,
-    "updates_proposed": 2
+    "updates_proposed": 0
   },
-  "summary": "2 documentation gap(s) found, 2 update(s) proposed"
+  "summary": "0 documentation gap(s) found, 0 update(s) proposed"
 }
