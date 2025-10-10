@@ -69,6 +69,12 @@ pnpm-lock.yaml
 *.sqlite
 *.sqlite3
 
+# --- Sync multi-agents (patches temporaires)
+.sync/patches/*.patch
+.sync/logs/*.log
+.sync/sync_history.db
+.sync/sync_history.json
+
 # --- Exceptions utiles
 !assets/**
 !*.ico

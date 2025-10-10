@@ -63,6 +63,12 @@ Nous avons créé **4 fichiers de documentation** pour t'aider :
 
 Maintenant que la solution de synchronisation est en place, nous avons besoin de **ton aide** pour optimiser ton environnement de travail.
 
+### 🎯 Objectif de ta réponse
+
+- **Priorité absolue** : fournir un **rapport complet sur ton environnement d'exécution** (versions Python/Node, outils disponibles, limitations connues, configuration Git, etc.).
+- ✅ Toute réponse doit **au minimum** couvrir : versions Python et Node.js accessibles, outils CLI détectés (`git`, `pytest`, `ruff`, `mypy`, `docker`, ...), limitations réseau/disque/temps, structure actuelle du workspace.
+- ➕ Si tu manques d'une information, mentionne-le explicitement plutôt que de l'ignorer.
+
 ### Questions pour Toi
 
 **1. État Actuel de Ton Environnement**
@@ -262,6 +268,9 @@ Pour optimiser la configuration :
 ---
 
 ## 📝 Réponse Attendue
+
+- **Commence impérativement** par un bloc `## État Actuel Environnement` renseignant les versions Python/Node, outils détectés et limitations majeures.
+- **Inclue ensuite** toutes les sections ci-dessous, même si certaines réponses sont "Non disponible" (à indiquer explicitement).
 
 **Format de réponse souhaité :**
 
