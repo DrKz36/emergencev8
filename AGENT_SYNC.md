@@ -24,24 +24,25 @@
 ### Branche active
 - **Branche courante** : `main`
 - **Derniers commits** :
-  - `1868b25` fix(P1.1): integrate PreferenceExtractor in memory consolidation
-  - `3dd9c1f` docs(P1): validation preparation - guide, metrics baseline, QA script
-  - `85d7ece` docs: prompt complet déploiement Phase P1 mémoire pour Codex
-  - `666c211` docs: sync AGENT_SYNC session validation cockpit Phase 3
+  - `654425a` docs(deploy): add deployment guide for P1+P0 to Google Cloud Run
+  - `0c95f9f` feat(P0): consolidation threads archivés dans LTM - résolution gap critique #1
+  - `bba5bf1` docs: add quick handoff guide for P0 session
+  - `9bc309d` docs(P1.2): update passation + create prompt for P0 session
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
 - `codex` → SSH : `git@github.com:DrKz36/emergencev8.git`
 
 ### Déploiement Cloud Run
-- **Révision active** : `emergence-app-p1-1-hotfix`
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:09a24c9b2fe5b345454bad5a7ba01a2d655ab339ad5b358343b84f0a09a3339f`
-- **Tag image** : `p1.1-hotfix-20251010-015746`
+- **Révision active** : `emergence-app-p1-p0-20251010-040147`
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:28539718d838b238f136afe6bfdae6288bd82a7e2fba79f8c13edd416b0ff4f0`
+- **Tag image** : `p1-p0-20251010-040147`
 - **URL principale** : https://emergence-app-47nct44nma-ew.a.run.app
 - **Alias historique** : https://emergence-app-486095406755.europe-west1.run.app
-- **Déployé** : 2025-10-10 00:02 CEST (trafic 100 %)
-- **Trafic** : 100% sur `p1-1-hotfix` (alias canary conservé)
+- **Déployé** : 2025-10-10 04:03 CEST (trafic 100 %)
+- **Trafic** : 100% sur `p1-p0-20251010-040147` (`canary` conservé sur `emergence-app-00279-kub`)
 - **Documentation** :
+  - [docs/deployments/2025-10-10-deploy-p1-p0.md](docs/deployments/2025-10-10-deploy-p1-p0.md)
   - [docs/deployments/2025-10-09-hotfix-p1.1-preference-integration.md](docs/deployments/2025-10-09-hotfix-p1.1-preference-integration.md)
   - [docs/deployments/2025-10-09-deploy-p1-memory.md](docs/deployments/2025-10-09-deploy-p1-memory.md)
   - [docs/deployments/2025-10-09-deploy-cockpit-phase3.md](docs/deployments/2025-10-09-deploy-cockpit-phase3.md)
@@ -71,12 +72,45 @@
 - **Post-déploiement** : `gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005`, vérifier `/api/health` et `/api/metrics`.
 
 ### Working tree
-- ⚠️ Modification non commitée : `AGENT_SYNC.md` (mise à jour post-déploiement P1.1)
-- Derniers commits : `1868b25`, `3dd9c1f`, `9f3c7a1`
+- ⚠️ Modifications non commitées : `AGENT_SYNC.md`, `docs/deployments/2025-10-10-deploy-p1-p0.md`, `docs/deployments/README.md`, `docs/passation.md` (session Codex en cours)
+- Derniers commits : `654425a`, `0c95f9f`, `bba5bf1`
 
 ---
 
 ## 🚧 Zones de travail en cours
+
+### Codex - Session 2025-10-10 03:20-04:10 (Déploiement P1+P0 production)
+- **Statut** : ✅ Image `p1-p0-20251010-040147` déployée sur `emergence-app` (trafic 100 %)
+- **Fichiers touchés** :
+  - `AGENT_SYNC.md`
+  - `docs/deployments/2025-10-10-deploy-p1-p0.md`
+  - `docs/deployments/README.md`
+  - `docs/passation.md` *(mise à jour en fin de session)*
+- **Actions réalisées** :
+  1. Lecture consignes complètes (AGENT_SYNC, AGENTS, CODEV_PROTOCOL, docs/passation x3, architecture, roadmap, mémoire, `DEPLOY_P1_P0_PROMPT.md`). `curl http://localhost:8000/api/sync/status` → service injoignable (attendu hors session AutoSync).
+  2. `pwsh -File scripts/sync-workdir.ps1` → échec sur `tests/run_all.ps1` (credentials smoke requis, inchangés).
+  3. Build & tag Docker linux/amd64 : `docker build --platform linux/amd64 -t emergence-app:p1-p0-20251010-040147 -f Dockerfile .` puis `docker tag` vers `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:p1-p0-20251010-040147`.
+  4. Push Artifact Registry : `gcloud auth configure-docker europe-west1-docker.pkg.dev` + `docker push …:p1-p0-20251010-040147`.
+  5. Déploiement Cloud Run : `gcloud run deploy emergence-app --image …:p1-p0-20251010-040147 --region europe-west1 --concurrency 40 --cpu 2 --memory 2Gi --timeout 300 --revision-suffix p1-p0-20251010-040147`.
+  6. Routage trafic : `gcloud run services update-traffic emergence-app --to-revisions "emergence-app-p1-p0-20251010-040147=100,emergence-app-00279-kub=0"`.
+  7. Vérifications prod : `curl https://emergence-app-47nct44nma-ew.a.run.app/api/health`, `gcloud run services logs read emergence-app --limit 50` (startup MemoryTaskQueue, PreferenceExtractor ready).
+- **Tests / checks** :
+  - ✅ `docker build --platform linux/amd64 …`
+  - ✅ `docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:p1-p0-20251010-040147`
+  - ✅ `gcloud run deploy emergence-app …`
+  - ✅ `gcloud run services update-traffic …`
+  - ✅ `curl https://emergence-app-47nct44nma-ew.a.run.app/api/health`
+  - ✅ `gcloud run services logs read emergence-app --limit 50`
+  - ⚠️ `scripts/sync-workdir.ps1` échoue (smoke credentials manquants)
+- **Observations** :
+  - Révision `emergence-app-p1-p0-20251010-040147` active (digest `sha256:28539718d838b238f136afe6bfdae6288bd82a7e2fba79f8c13edd416b0ff4f0`).
+  - Alias `canary` conservé sur `emergence-app-00279-kub` (0% trafic).
+  - Logs démarrage → AutoSyncService alerte sur fichiers manquants (`docs/architecture/10-Memoire.md`, `ROADMAP.md`) : inchangé depuis sessions précédentes.
+- **Actions à suivre (FG / prochaine session)** :
+  1. Lancer la migration batch `POST /api/memory/consolidate-archived` (voir prompt) avec credentials prod.
+  2. Déclencher un run de consolidation incluant préférences (script QA) pour vérifier métriques `memory_preferences_*` et logs `save_preferences_to_vector_db`.
+  3. Surveiller Cloud Logging 24h (erreurs `MemoryTaskQueue`, latence archivage).
+  4. Confirmer via Tableau de bord que trafic 100 % reste stable (alertes >5 % erreurs).
 
 ### Claude Code - Session 2025-10-10 02:45-03:15 (Option A - Auto-Sync Deployed)
 - **Statut** : ✅ **Synchronisation automatique Option A opérationnelle**

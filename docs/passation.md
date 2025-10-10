@@ -1,3 +1,45 @@
+## [2025-10-10 04:06] - Agent: Codex (Déploiement P1+P0 production)
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/deployments/2025-10-10-deploy-p1-p0.md`
+- `docs/deployments/README.md`
+- `docs/passation.md`
+
+### Contexte
+Déploiement en production de la release combinée **Phase P1.2** (persistance des préférences dans ChromaDB) et **Phase P0** (consolidation automatique des threads archivés). Objectif : suivre le prompt `DEPLOY_P1_P0_PROMPT.md` pour construire la nouvelle image, l'exposer sur Cloud Run et aligner la documentation.
+
+### Actions réalisées
+1. Lecture des consignes obligatoires (AGENT_SYNC, AGENTS, CODEV_PROTOCOL, docs/passation x3, architecture, mémoire, roadmap) + prompt de déploiement. Vérification AutoSync : `curl http://localhost:8000/api/sync/status` → service non joignable (attendu hors exécution dashboard).
+2. Synchronisation : `pwsh -File scripts/sync-workdir.ps1` (échec attendu sur `tests/run_all.ps1` faute de credentials smoke).
+3. Build & tag Docker linux/amd64 (`docker build --platform linux/amd64 -t emergence-app:p1-p0-20251010-040147 -f Dockerfile .` puis `docker tag … europe-west1-docker.pkg.dev/...:p1-p0-20251010-040147`).
+4. Push Artifact Registry : `gcloud auth configure-docker europe-west1-docker.pkg.dev` + `docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:p1-p0-20251010-040147`.
+5. Déploiement Cloud Run : `gcloud run deploy emergence-app --image …:p1-p0-20251010-040147 --region europe-west1 --concurrency 40 --cpu 2 --memory 2Gi --timeout 300 --revision-suffix p1-p0-20251010-040147`.
+6. Bascule trafic : `gcloud run services update-traffic emergence-app --to-revisions "emergence-app-p1-p0-20251010-040147=100,emergence-app-00279-kub=0"`.
+7. Vérifications prod : `curl https://emergence-app-47nct44nma-ew.a.run.app/api/health`, `gcloud run services logs read emergence-app --limit 50`, `gcloud run revisions list`.
+8. Documentation : création `docs/deployments/2025-10-10-deploy-p1-p0.md`, mise à jour `docs/deployments/README.md` et `AGENT_SYNC.md`.
+
+### Tests
+- ✅ `docker build --platform linux/amd64 -t emergence-app:p1-p0-20251010-040147 -f Dockerfile .`
+- ✅ `docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:p1-p0-20251010-040147`
+- ✅ `gcloud run deploy emergence-app …`
+- ✅ `gcloud run services update-traffic emergence-app …`
+- ✅ `curl https://emergence-app-47nct44nma-ew.a.run.app/api/health`
+- ✅ `gcloud run services logs read emergence-app --limit 50`
+- ⚠️ `pwsh -File scripts/sync-workdir.ps1` échoue (tests smoke nécessitent credentials)
+
+### Prochaines actions recommandées
+1. Exécuter `POST /api/memory/consolidate-archived` (limit 1000) avec compte prod pour migrer l'historique des threads archivés.
+2. Lancer le script QA préférences (`scripts/qa/trigger_preferences_extraction.py`) afin de produire des métriques `memory_preferences_*` et valider `_save_preferences_to_vector_db`.
+3. Surveiller logs/metrics Cloud Run 24 h (latence archivage <200 ms, erreurs <1 %).
+4. Mettre à jour dashboards Grafana/Prometheus avec les panels P1 (`docs/monitoring/prometheus-p1-metrics.md`).
+
+### Blocages
+- Identifiants smoke tests indisponibles (login `tests/run_all.ps1`, script QA, endpoint `consolidate-archived`).
+- AutoSyncService inaccessible localement (dashboard non lancé).
+
+---
+
 ## [2025-10-10 02:00] - Agent: Claude Code (Phase P0 - Consolidation Threads Archivés) ✅
 
 ### Fichiers modifiés
