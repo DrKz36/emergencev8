@@ -700,7 +700,13 @@ export class App {
 
   preloadOtherModules() {
     console.log('[App] Preloading other modules');
-    this.getModuleConfig().forEach((m) => { if (m.id !== this.activeModule) this.loadModule(m.id); });
+    // Ne précharger que les modules essentiels pour éviter les erreurs 429
+    const essentialModules = ['conversations', 'memory', 'documents'];
+    this.getModuleConfig().forEach((m) => {
+      if (m.id !== this.activeModule && essentialModules.includes(m.id)) {
+        this.loadModule(m.id);
+      }
+    });
   }
 
   createModuleContainer(moduleId) {

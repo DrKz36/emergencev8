@@ -17,7 +17,7 @@ export class WebSocketClient {
     this.websocket = null;
 
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
+    this.maxReconnectAttempts = 50; // Augmenté pour production (Cloud Run instable)
     this.reconnectDelayMs = 1000;
 
     this._authPromptedAt = 0;
