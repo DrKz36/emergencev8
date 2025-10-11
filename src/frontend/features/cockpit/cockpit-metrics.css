@@ -24,7 +24,7 @@
 .metrics-header h2 {
     font-size: 28px;
     font-weight: 700;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin: 0;
 }
 
@@ -43,7 +43,7 @@
     border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -124,7 +124,7 @@
 .metric-content h3 {
     font-size: 16px;
     font-weight: 600;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
     margin: 0 0 16px 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -142,7 +142,7 @@
 .metric-value {
     font-size: 36px;
     font-weight: 700;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     line-height: 1.2;
     margin-bottom: 4px;
 }
@@ -150,7 +150,7 @@
 .metric-label {
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-tertiary, #999999);
+    color: var(--text-tertiary, #808080);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -172,13 +172,13 @@
 .stat-label {
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
 }
 
 .stat-value {
     font-size: 16px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 /* Metric Update Animation */
@@ -224,7 +224,7 @@
 .summary-label {
     font-size: 12px;
     font-weight: 500;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -232,7 +232,7 @@
 .summary-value {
     font-size: 20px;
     font-weight: 700;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 /* Responsive Design */

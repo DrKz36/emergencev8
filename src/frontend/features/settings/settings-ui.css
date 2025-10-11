@@ -46,7 +46,7 @@
 
 .btn-reset {
     background: var(--bg-secondary, #f5f5f5);
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 .btn-reset:hover {
@@ -91,7 +91,7 @@
     color: rgba(226, 232, 240, 0.95);
     letter-spacing: -0.01em;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin: 0 0 20px 0;
     padding-bottom: 16px;
     border-bottom: 1px solid var(--border-light, #f0f0f0);
@@ -120,13 +120,13 @@
 .label-text {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 .label-hint {
     font-size: 12px;
     font-weight: 400;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
 }
 
 /* Theme Selector */
@@ -166,7 +166,7 @@
 .theme-name {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 /* Font Size Slider */
@@ -216,7 +216,7 @@
 .slider-marks span {
     font-size: 11px;
     font-weight: 500;
-    color: var(--text-tertiary, #999999);
+    color: var(--text-tertiary, #808080);
 }
 
 /* Select Inputs */
@@ -228,7 +228,7 @@
     border: 1px solid var(--border-color, #e0e0e0);
     border-radius: 8px;
     font-size: 14px;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -358,17 +358,17 @@ input:checked + .toggle-slider:before {
 .preview-header strong {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 .preview-time {
     font-size: 12px;
-    color: var(--text-tertiary, #999999);
+    color: var(--text-tertiary, #808080);
 }
 
 .preview-text {
     font-size: 14px;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     line-height: 1.6;
     margin-bottom: 12px;
 }

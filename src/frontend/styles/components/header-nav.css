@@ -108,6 +108,9 @@
   /* 🔧 Lueur autour de l'icône pour renforcer la visibilité */
   filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
   transition: filter 0.25s ease;
+  /* 🔧 Force la couleur blanche sur tous les traits */
+  color: #ffffff !important;
+  stroke: currentColor !important;
 }
 
 .mobile-nav-toggle:hover svg,

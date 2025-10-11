@@ -20,13 +20,13 @@
 .dashboard-title h1 {
     font-size: 32px;
     font-weight: 700;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin: 0 0 8px 0;
 }
 
 .dashboard-subtitle {
     font-size: 14px;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
     margin: 0;
 }
 
@@ -46,7 +46,7 @@
     border-radius: 8px;
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -290,7 +290,7 @@
     justify-content: center;
     align-items: center;
     min-height: 400px;
-    color: var(--text-tertiary, #999999);
+    color: var(--text-tertiary, #808080);
     gap: 16px;
 }
 

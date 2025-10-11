@@ -24,7 +24,7 @@
     gap: 0.75rem;
     font-size: 1.75rem;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 .agents-actions {
@@ -64,7 +64,7 @@
     grid-column: 1 / -1;
     text-align: center;
     padding: 3rem;
-    color: var(--text-secondary, #666);
+    color: var(--text-secondary, #b0b0b0);
     font-size: 1rem;
 }
 
@@ -109,7 +109,7 @@
 .agent-name {
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin: 0;
 }
 
@@ -140,7 +140,7 @@
 
 .agent-stats .stat-label {
     font-size: 0.75rem;
-    color: var(--text-secondary, #666);
+    color: var(--text-secondary, #b0b0b0);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -148,7 +148,7 @@
 .agent-stats .stat-value {
     font-size: 1rem;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 /* Agent Models */
@@ -161,7 +161,7 @@
 .agent-models h4 {
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--text-secondary, #666);
+    color: var(--text-secondary, #b0b0b0);
     margin: 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -196,12 +196,12 @@
 .model-name {
     font-size: 0.875rem;
     font-weight: 500;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 .model-requests {
     font-size: 0.75rem;
-    color: var(--text-secondary, #666);
+    color: var(--text-secondary, #b0b0b0);
 }
 
 .model-cost {
@@ -221,7 +221,7 @@
 .agents-summary h3 {
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin: 0 0 1.25rem 0;
 }
 
@@ -243,7 +243,7 @@
 
 .summary-label {
     font-size: 0.875rem;
-    color: var(--text-secondary, #666);
+    color: var(--text-secondary, #b0b0b0);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -251,7 +251,7 @@
 .summary-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 /* Dark Mode Support */

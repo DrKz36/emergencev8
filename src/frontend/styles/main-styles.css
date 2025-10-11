@@ -17,6 +17,16 @@
 @import './components/rag-power-button.css';
 @import './components/proactive-hints.css';
 
+:root {
+  /* Valeurs finales pour le thème sombre */
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #e2e8f0;
+  --color-text-tertiary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-text-inverse: #0f172a;
+  --color-text: var(--color-text-primary);
+}
+
 /* --- Card --- */
 .card {
   background: var(--glass-bg);
@@ -118,7 +128,7 @@
   background:
     radial-gradient(130% 130% at 25% 15%, rgba(255,255,255,.9) 0%, rgba(255,255,255,.35) 35%, rgba(255,255,255,0) 60%),
     linear-gradient(145deg, #b3b3b3, #e6e6e6);
-  color: #111;
+  color: var(--color-text-inverse, #0f172a);
   border: 1px solid rgba(255,255,255,0.3);
   border-radius: var(--radius-md);
   box-shadow:
@@ -1231,8 +1241,6 @@
     height: 64px;
   }
 }
-
-
 
 
 

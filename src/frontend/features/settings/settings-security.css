@@ -23,7 +23,7 @@
 .settings-header h2 {
     font-size: 28px;
     font-weight: 700;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin: 0;
 }
 
@@ -177,7 +177,7 @@
 .api-key-name {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 .api-key-status {
@@ -212,7 +212,7 @@
 
 .api-key-last-used {
     font-size: 12px;
-    color: var(--text-tertiary, #999999);
+    color: var(--text-tertiary, #808080);
 }
 
 .api-key-input-group {
@@ -228,7 +228,7 @@
     border-radius: 6px;
     font-size: 14px;
     font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     transition: all 0.2s ease;
 }
 
@@ -297,13 +297,13 @@
 .label-text {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 .label-hint {
     font-size: 12px;
     font-weight: 400;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
 }
 
 .timeout-input {
@@ -313,7 +313,7 @@
     border: 1px solid var(--border-color, #e0e0e0);
     border-radius: 6px;
     font-size: 14px;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     width: 150px;
 }
 
@@ -380,7 +380,7 @@ input:checked + .toggle-slider:before {
 .log-error {
     padding: 40px;
     text-align: center;
-    color: var(--text-tertiary, #999999);
+    color: var(--text-tertiary, #808080);
     font-size: 14px;
 }
 
@@ -396,16 +396,16 @@ input:checked + .toggle-slider:before {
 }
 
 .log-time {
-    color: var(--text-tertiary, #999999);
+    color: var(--text-tertiary, #808080);
 }
 
 .log-action {
     font-weight: 500;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 .log-provider {
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
 }
 
 .log-status {
@@ -462,7 +462,7 @@ input:checked + .toggle-slider:before {
 
 .danger-hint {
     font-size: 12px;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
 }
 
 .btn-danger {

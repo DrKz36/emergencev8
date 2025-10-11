@@ -201,11 +201,12 @@ body::before, body::after,
 
 .chat-input-shell:focus-within{ border-color:rgba(59,130,246,0.55); box-shadow:0 0 0 1px rgba(59,130,246,0.25), 0 16px 36px rgba(37,99,235,0.32); }
 
-.chat-input-shell textarea{
+.chat-input-shell textarea,
+.chat-input{
 
   width:100%;
 
-  background:transparent;
+  background:transparent !important;
 
   border:none;
 
@@ -219,11 +220,12 @@ body::before, body::after,
 
   line-height:1.6;
 
-  color:var(--color-text-primary);
+  color:var(--color-text-primary) !important;
 
 }
 
-.chat-input-shell textarea::placeholder{ color:var(--color-text-muted); }
+.chat-input-shell textarea::placeholder,
+.chat-input::placeholder{ color:var(--color-text-muted) !important; }
 
 .chat-send-button{
 

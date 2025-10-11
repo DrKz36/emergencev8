@@ -14,24 +14,73 @@
     --bg-hover: rgba(255, 255, 255, 0.08);
     --bg-light: rgba(255, 255, 255, 0.06);
 
-    /* Text colors */
-    --text-primary: var(--color-text-primary);
-    --text-secondary: var(--color-text-secondary);
-    --text-tertiary: var(--color-text-muted);
+    /* Text colors - ensure light text on dark backgrounds */
+    --text-primary: var(--color-text-primary, #f8fafc);
+    --text-secondary: var(--color-text-secondary, rgba(226, 232, 240, 0.75));
+    --text-tertiary: var(--color-text-muted, rgba(203, 213, 225, 0.65));
 
     /* Border colors */
-    --border-color: var(--border-color);
+    --border-color: rgba(148, 163, 184, 0.22);
     --border-light: rgba(255, 255, 255, 0.08);
     --border-hover: rgba(255, 255, 255, 0.16);
 
     /* Accent colors */
-    --accent-color: var(--color-primary);
-    --accent-light: var(--color-primary-hover);
+    --accent-color: var(--color-primary, #0aaeff);
+    --accent-light: var(--color-primary-hover, #3bb8ff);
 
     /* Status colors */
-    --error-color: var(--color-error);
+    --error-color: var(--color-error, #ef4444);
     --error-bg: rgba(239, 68, 68, 0.1);
     --error-border: rgba(239, 68, 68, 0.3);
+}
+
+/* Force light text colors for all text elements in dashboard */
+.dashboard-metrics *,
+.dashboard-charts *,
+.dashboard-insights *,
+.dashboard-container * {
+    color: inherit;
+}
+
+.dashboard-metrics h1,
+.dashboard-metrics h2,
+.dashboard-metrics h3,
+.dashboard-metrics h4,
+.dashboard-charts h1,
+.dashboard-charts h2,
+.dashboard-charts h3,
+.dashboard-charts h4,
+.dashboard-insights h1,
+.dashboard-insights h2,
+.dashboard-insights h3,
+.dashboard-insights h4,
+.dashboard-container h1,
+.dashboard-container h2,
+.dashboard-container h3,
+.dashboard-container h4 {
+    color: var(--text-primary, #f8fafc) !important;
+}
+
+.dashboard-metrics p,
+.dashboard-metrics span,
+.dashboard-metrics div,
+.dashboard-charts p,
+.dashboard-charts span,
+.dashboard-charts div,
+.dashboard-insights p,
+.dashboard-insights span,
+.dashboard-insights div,
+.dashboard-container p,
+.dashboard-container span,
+.dashboard-container div {
+    color: var(--text-secondary, rgba(226, 232, 240, 0.85)) !important;
+}
+
+.dashboard-metrics label,
+.dashboard-charts label,
+.dashboard-insights label,
+.dashboard-container label {
+    color: var(--text-secondary, rgba(226, 232, 240, 0.75)) !important;
 }
 
 /* Ensure parent containers don't clip tabs */

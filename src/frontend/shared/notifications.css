@@ -55,7 +55,7 @@
     font-size: 14px;
     font-weight: 500;
     line-height: 1.5;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 .notification-close {
@@ -70,7 +70,7 @@
     border-radius: 4px;
     font-size: 20px;
     font-weight: 400;
-    color: var(--text-tertiary, #999999);
+    color: var(--text-tertiary, #808080);
     cursor: pointer;
     transition: all 0.2s ease;
     flex-shrink: 0;
@@ -78,7 +78,7 @@
 
 .notification-close:hover {
     background: var(--bg-hover, #f0f0f0);
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 /* Notification Types */

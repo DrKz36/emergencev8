@@ -1079,9 +1079,9 @@
   width:100%;
   min-height:40px;
   max-height:40vh;
-  background:transparent;
+  background:transparent !important;
   border:none;
-  color:#f8fafc;
+  color:#f8fafc !important;
   font-size:1rem;
   line-height:1.55;
   padding:0;

@@ -1,3 +1,36 @@
+## [2025-10-11 09:45] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- `index.html`
+- `AGENT_SYNC.md`
+- `src/frontend/features/cockpit/cockpit-charts.css`
+- `src/frontend/features/home/home.css`
+- `src/frontend/features/settings/settings-main.css`
+- `src/frontend/styles/core/_base.css`
+- `src/frontend/styles/core/_navigation.css`
+- `src/frontend/styles/core/_typography.css`
+- `src/frontend/styles/core/_variables.css`
+- `src/frontend/styles/main-styles.css`
+- (supprimé) `src/frontend/styles/core/_text-color-fix.css`
+
+### Contexte
+Uniformisation des couleurs de texte pour améliorer la lisibilité du thème sombre en s'appuyant sur des tokens partagés plutôt que des overrides forcés.
+
+### Actions réalisées
+1. Défini les variables `--color-text*` dans `:root` et mis à jour les styles de base (`_base.css`, `_typography.css`, `_variables.css`, `main-styles.css`) pour utiliser `var(--color-text, var(--color-text-primary))`.
+2. Ajusté la navigation, les écrans d'accueil, cockpit et paramètres pour utiliser `--color-text-inverse` lorsque le texte repose sur un fond clair.
+3. Supprimé `_text-color-fix.css` et nettoyé `index.html`/`main-styles.css` afin de centraliser la palette texte.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions recommandées
+1. QA visuelle desktop/mobile pour confirmer la lisibilité des modules cockpit, mémoire et menu mobile.
+2. Documenter rapidement l'usage des nouveaux tokens texte si d'autres thèmes doivent cohabiter.
+
+### Blocages
+- Aucun.
+
 ## [2025-10-11 07:03] - Agent: Codex (Build & deploy Cloud Run révision 00298-g8j)
 
 ### Fichiers modifiés

@@ -4,6 +4,15 @@
  * Combines metrics, charts, insights, and monitoring capabilities
  */
 
+/* Import all cockpit sub-modules */
+@import url('./cockpit-theme.css');
+@import url('./cockpit-main.css');
+@import url('./cockpit-metrics.css');
+@import url('./cockpit-charts.css');
+@import url('./cockpit-insights.css');
+@import url('./cockpit-agents.css');
+@import url('./cockpit-responsive.css');
+
 /* ========================================================================
    BASE STYLES & THEME VARIABLES
    ======================================================================== */
@@ -81,13 +90,13 @@
 .cockpit-title h1 {
     font-size: 32px;
     font-weight: 700;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin: 0 0 8px 0;
 }
 
 .cockpit-subtitle {
     font-size: 14px;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
     margin: 0;
 }
 
@@ -273,7 +282,7 @@
 .metrics-header h2 {
     font-size: 28px;
     font-weight: 700;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin: 0;
 }
 
@@ -387,7 +396,7 @@
 .metric-content h3 {
     font-size: 16px;
     font-weight: 600;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
     margin: 0 0 16px 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -408,7 +417,7 @@
 .metric-value {
     font-size: 36px;
     font-weight: 700;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     line-height: 1.2;
     margin-bottom: 4px;
 }
@@ -416,7 +425,7 @@
 .metric-label {
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-tertiary, #999999);
+    color: var(--text-tertiary, #808080);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -439,7 +448,7 @@
 .stat-label {
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
@@ -447,7 +456,7 @@
 .stat-value {
     font-size: 16px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 /* Metric Update Animation */
@@ -496,7 +505,7 @@
 .summary-label {
     font-size: 12px;
     font-weight: 500;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -504,7 +513,7 @@
 .summary-value {
     font-size: 20px;
     font-weight: 700;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 /* ========================================================================
@@ -551,7 +560,7 @@
 .charts-header h2 {
     font-size: 28px;
     font-weight: 700;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin: 0;
 }
 
@@ -650,7 +659,7 @@
 .chart-header h3 {
     font-size: 18px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin: 0;
 }
 
@@ -687,7 +696,7 @@
     gap: 8px;
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
 }
 
 .legend-dot {
@@ -781,7 +790,7 @@
 .stat-percent {
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-tertiary, #999999);
+    color: var(--text-tertiary, #808080);
     min-width: 50px;
     text-align: right;
 }
@@ -797,7 +806,7 @@
 .cost-avg {
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
 }
 
 .cost-total strong,
@@ -870,7 +879,7 @@
 .insights-header h2 {
     font-size: 28px;
     font-weight: 700;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin: 0;
 }
 
@@ -883,7 +892,7 @@
 .period-label {
     font-size: 14px;
     font-weight: 500;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
 }
 
 /* Insights Grid */
@@ -938,7 +947,7 @@
 .section-header h3 {
     font-size: 18px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin: 0;
 }
 
@@ -1021,7 +1030,7 @@
 .item-title {
     font-size: 15px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin-bottom: 6px;
     white-space: nowrap;
     overflow: hidden;
@@ -1036,7 +1045,7 @@
     gap: 16px;
     align-items: center;
     font-size: 13px;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
     flex-wrap: wrap;
 }
 
@@ -1069,7 +1078,7 @@
 
 .trend-stable {
     background: #f5f5f5;
-    color: #999999;
+    color: #808080;
 }
 
 /* Status Badge */
@@ -1089,7 +1098,7 @@
 
 .status-archived {
     background: #f5f5f5;
-    color: #999999;
+    color: #808080;
 }
 
 /* Item Action */
@@ -1177,7 +1186,7 @@
 .trend-label {
     font-size: 12px;
     font-weight: 500;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     word-wrap: break-word;
@@ -1187,7 +1196,7 @@
 .trend-value {
     font-size: 24px;
     font-weight: 700;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 /* Activity Heatmap */
@@ -1210,7 +1219,7 @@
     text-align: center;
     font-size: 12px;
     font-weight: 600;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
 }
 
 .heatmap-body {
@@ -1303,7 +1312,7 @@
 .rec-text {
     font-size: 14px;
     font-weight: 500;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin-bottom: 6px;
     line-height: 1.5;
     word-wrap: break-word;
@@ -1313,7 +1322,7 @@
 .rec-priority {
     font-size: 12px;
     font-weight: 600;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -1377,7 +1386,7 @@
     justify-content: center;
     align-items: center;
     min-height: 400px;
-    color: var(--text-tertiary, #999999);
+    color: var(--text-tertiary, #808080);
     gap: 16px;
 }
 
@@ -1412,7 +1421,7 @@
     justify-content: center;
     align-items: center;
     min-height: 200px;
-    color: var(--text-tertiary, #999999);
+    color: var(--text-tertiary, #808080);
     font-size: 14px;
 }
 
@@ -1913,6 +1922,6 @@
 
     .chart-tooltip {
         background: rgba(255, 255, 255, 0.9);
-        color: #1a1a1a;
+        color: #ffffff;
     }
 }

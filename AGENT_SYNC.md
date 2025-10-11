@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-11 05:05 UTC (Codex - Build & deploy Cloud Run révision 00298-g8j)
+**Derniere mise a jour** : 2025-10-11 07:45 UTC (Codex - Harmonisation texte thème sombre)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -246,6 +246,33 @@ git push origin main
 ```
 
 ---
+
+### Codex - Session 2025-10-11 09:45-10:25 (Frontend - Contraste texte)
+- **Statut** : ✅ Palette texte normalisée sur le thème sombre (App + Cockpit + Paramètres)
+- **Fichiers touchés** :
+  - `index.html`
+  - `docs/passation.md`
+  - `src/frontend/features/cockpit/cockpit-charts.css`
+  - `src/frontend/features/home/home.css`
+  - `src/frontend/features/settings/settings-main.css`
+  - `src/frontend/styles/core/_base.css`
+  - `src/frontend/styles/core/_navigation.css`
+  - `src/frontend/styles/core/_typography.css`
+  - `src/frontend/styles/core/_variables.css`
+  - `src/frontend/styles/main-styles.css`
+  - (supprimé) `src/frontend/styles/core/_text-color-fix.css`
+- **Actions réalisées** :
+  1. Redéfini les tokens `--color-text*` dans `:root` et mis à jour les styles de base (`_base.css`, `_typography.css`, `_variables.css`, `main-styles.css`) pour utiliser `var(--color-text, var(--color-text-primary))`.
+  2. Ajusté la navigation, l'écran d'accueil, le cockpit et les paramètres pour employer `--color-text-inverse` lorsqu'un fond clair subsiste.
+  3. Nettoyé `index.html`/`main-styles.css` et retiré `_text-color-fix.css` afin de supprimer les overrides `!important`.
+- **Tests / checks** :
+  - ✅ `npm run build`
+- **Observations** :
+  - Les placeholders critiques (chat input, forms cockpit) héritent bien de `--color-text-muted`.
+  - Aucune dépendance JS impactée ; bundle Vite recompilé sans warnings.
+- **Actions à suivre** :
+  1. QA visuelle rapide (desktop + responsive) pour valider la lisibilité sur tous les modules (menu mobile, cockpit, mémoire).
+  2. Documenter l'usage des nouveaux tokens texte dans la doc UI si plusieurs thèmes doivent cohabiter.
 
 ### Codex - Session 2025-10-10 03:20-04:10 (Déploiement P1+P0 production)
 - **Statut** : ✅ Image `p1-p0-20251010-040147` déployée sur `emergence-app` (trafic 100 %)

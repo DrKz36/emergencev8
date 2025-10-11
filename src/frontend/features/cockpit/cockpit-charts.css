@@ -24,7 +24,7 @@
 .charts-header h2 {
     font-size: 28px;
     font-weight: 700;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin: 0;
 }
 
@@ -41,7 +41,7 @@
     border-radius: 8px;
     font-size: 14px;
     font-weight: 500;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -120,7 +120,7 @@
 .chart-header h3 {
     font-size: 18px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     margin: 0;
 }
 
@@ -130,7 +130,7 @@
     border: 1px solid var(--border-color, #e0e0e0);
     border-radius: 6px;
     font-size: 13px;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -152,7 +152,7 @@
     gap: 8px;
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
 }
 
 .legend-dot {
@@ -225,19 +225,19 @@
 .stat-label {
     font-size: 14px;
     font-weight: 500;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
 }
 
 .stat-value {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary, #ffffff);
 }
 
 .stat-percent {
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-tertiary, #999999);
+    color: var(--text-tertiary, #808080);
     min-width: 50px;
     text-align: right;
 }
@@ -253,7 +253,7 @@
 .cost-avg {
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-secondary, #666666);
+    color: var(--text-secondary, #b0b0b0);
 }
 
 .cost-total strong,
@@ -313,7 +313,7 @@
     justify-content: center;
     align-items: center;
     min-height: 300px;
-    color: var(--text-tertiary, #999999);
+    color: var(--text-tertiary, #808080);
     gap: 12px;
 }
 
@@ -481,7 +481,7 @@
 
     .chart-tooltip {
         background: rgba(255, 255, 255, 0.9);
-        color: #1a1a1a;
+        color: var(--color-text-inverse, #0f172a);
     }
 }
 

@@ -6,7 +6,7 @@ body {
     font-family: var(--font-sans);
     font-size: var(--text-base);
     line-height: var(--line-height-normal);
-    color: var(--color-text);
+    color: var(--color-text, var(--color-text-primary));
 }
 
 /* Headings */
