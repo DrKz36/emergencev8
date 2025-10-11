@@ -58,40 +58,43 @@ def hint_engine(mock_vector_service):
 class TestConceptTracker:
     """Test ConceptTracker class."""
 
-    def test_track_mention_increments_counter(self):
+    @pytest.mark.asyncio
+    async def test_track_mention_increments_counter(self):
         """Test that tracking increments counter correctly."""
         tracker = ConceptTracker()
 
-        count1 = tracker.track_mention("user_123", "python")
+        count1 = await tracker.track_mention("user_123", "python")
         assert count1 == 1
 
-        count2 = tracker.track_mention("user_123", "python")
+        count2 = await tracker.track_mention("user_123", "python")
         assert count2 == 2
 
-        count3 = tracker.track_mention("user_123", "python")
+        count3 = await tracker.track_mention("user_123", "python")
         assert count3 == 3
 
-    def test_track_mention_separate_users(self):
+    @pytest.mark.asyncio
+    async def test_track_mention_separate_users(self):
         """Test that different users have separate counters."""
         tracker = ConceptTracker()
 
-        tracker.track_mention("user_123", "python")
-        tracker.track_mention("user_123", "python")
+        await tracker.track_mention("user_123", "python")
+        await tracker.track_mention("user_123", "python")
 
-        count_user_456 = tracker.track_mention("user_456", "python")
+        count_user_456 = await tracker.track_mention("user_456", "python")
         assert count_user_456 == 1  # Separate counter
 
-    def test_reset_counter(self):
+    @pytest.mark.asyncio
+    async def test_reset_counter(self):
         """Test resetting counter for specific concept."""
         tracker = ConceptTracker()
 
-        tracker.track_mention("user_123", "python")
-        tracker.track_mention("user_123", "python")
-        tracker.track_mention("user_123", "python")
+        await tracker.track_mention("user_123", "python")
+        await tracker.track_mention("user_123", "python")
+        await tracker.track_mention("user_123", "python")
 
-        tracker.reset_counter("user_123", "python")
+        await tracker.reset_counter("user_123", "python")
 
-        count = tracker.track_mention("user_123", "python")
+        count = await tracker.track_mention("user_123", "python")
         assert count == 1  # Reset to 0, then incremented to 1
 
 
@@ -102,9 +105,9 @@ class TestProactiveHintEngine:
     async def test_generate_hints_preference_match(self, hint_engine):
         """Test hint generation when concept matches preference."""
         # Simulate concept mentioned 3 times (threshold reached)
-        hint_engine.concept_tracker.track_mention("user_123", "python")
-        hint_engine.concept_tracker.track_mention("user_123", "python")
-        hint_engine.concept_tracker.track_mention("user_123", "python")
+        await hint_engine.concept_tracker.track_mention("user_123", "python")
+        await hint_engine.concept_tracker.track_mention("user_123", "python")
+        await hint_engine.concept_tracker.track_mention("user_123", "python")
 
         # Generate hints
         hints = await hint_engine.generate_hints(
@@ -128,7 +131,7 @@ class TestProactiveHintEngine:
         """Test no hints generated when concept mentioned < 3 times."""
         # Mention only 1 time (below threshold)
         # Note: generate_hints() will track the concept from the message, so total = 2 (still below 3)
-        hint_engine.concept_tracker.track_mention("user_123", "docker")
+        await hint_engine.concept_tracker.track_mention("user_123", "docker")
 
         hints = await hint_engine.generate_hints(
             user_id="user_123",
@@ -148,7 +151,7 @@ class TestProactiveHintEngine:
         # Setup multiple concepts above threshold
         for concept in ["python", "docker", "kubernetes", "terraform", "ansible"]:
             for _ in range(3):
-                hint_engine.concept_tracker.track_mention("user_123", concept)
+                await hint_engine.concept_tracker.track_mention("user_123", concept)
 
         hints = await hint_engine.generate_hints(
             user_id="user_123",
@@ -184,7 +187,7 @@ class TestProactiveHintEngine:
         # Trigger hints for multiple concepts
         for concept in ["test1", "test2"]:
             for _ in range(3):
-                hint_engine.concept_tracker.track_mention("user_123", concept)
+                await hint_engine.concept_tracker.track_mention("user_123", concept)
 
         hints = await hint_engine.generate_hints(
             user_id="user_123",
@@ -213,7 +216,7 @@ class TestProactiveHintEngine:
 
         # Trigger concept above threshold
         for _ in range(3):
-            hint_engine.concept_tracker.track_mention("user_123", "irrelevant")
+            await hint_engine.concept_tracker.track_mention("user_123", "irrelevant")
 
         hints = await hint_engine.generate_hints(
             user_id="user_123",
@@ -228,7 +231,7 @@ class TestProactiveHintEngine:
         """Test counter resets after hint is generated."""
         # Track concept to threshold
         for _ in range(3):
-            hint_engine.concept_tracker.track_mention("user_123", "python")
+            await hint_engine.concept_tracker.track_mention("user_123", "python")
 
         # Generate hint (should reset counter)
         await hint_engine.generate_hints(
@@ -237,7 +240,7 @@ class TestProactiveHintEngine:
         )
 
         # Verify counter was reset
-        count = hint_engine.concept_tracker.track_mention("user_123", "python")
+        count = await hint_engine.concept_tracker.track_mention("user_123", "python")
         assert count == 1  # Reset to 0, then incremented to 1
 
     @pytest.mark.asyncio
@@ -340,8 +343,8 @@ class TestProactiveHintEngineConfiguration:
         engine.recurrence_threshold = 2  # Lower threshold
 
         # Track concept 2 times (new threshold)
-        engine.concept_tracker.track_mention("user_123", "python")
-        engine.concept_tracker.track_mention("user_123", "python")
+        await engine.concept_tracker.track_mention("user_123", "python")
+        await engine.concept_tracker.track_mention("user_123", "python")
 
         hints = await engine.generate_hints(
             user_id="user_123",
