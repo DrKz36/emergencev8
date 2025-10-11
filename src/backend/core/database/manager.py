@@ -1,6 +1,7 @@
 # src/backend/core/database/manager.py
-# V23.1 - Ajout search_messages() + V23.0 (save_session alignée)
+# V23.2 - Retry logic pour reconnexion DB robuste
 import aiosqlite
+import asyncio
 import logging
 import json
 from typing import Optional, List, TYPE_CHECKING, Dict, Any, Iterable, Tuple
@@ -16,12 +17,14 @@ logger = logging.getLogger(__name__)
 class DatabaseManager:
     """Gère la connexion aiosqlite et opérations de base."""
 
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str, max_retries: int = 3, retry_delay: float = 0.5):
         self.db_path = db_path
         self.connection: Optional[aiosqlite.Connection] = None
         self.db_dir = Path(self.db_path).parent
         self.db_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"DatabaseManager (Async) V23.1 initialisé pour : {self.db_path}")
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
+        logger.info(f"DatabaseManager (Async) V23.2 initialisé pour : {self.db_path}")
 
     async def connect(self):
         if not self.is_connected():
@@ -56,19 +59,45 @@ class DatabaseManager:
         return True
 
     async def _ensure_connection(self) -> aiosqlite.Connection:
+        """
+        Assure qu'une connexion DB valide existe, avec retry logic robuste.
+        Tente jusqu'à max_retries reconnexions avant d'échouer.
+        """
         if not self.is_connected():
             logger.warning(
                 "Database connection lost. Attempting automatic reconnection..."
             )
-            try:
-                await self.connect()
-                logger.info("Database reconnected successfully.")
-            except Exception as e:
-                logger.error(
-                    f"Failed to reconnect to database: {e}",
-                    exc_info=True
-                )
-                raise RuntimeError("Database connection is not available and reconnection failed.") from e
+
+            last_error = None
+            for attempt in range(self.max_retries):
+                try:
+                    # Force reset de la connexion pour éviter les états corrompus
+                    if self.connection:
+                        try:
+                            await self.connection.close()
+                        except Exception:
+                            pass
+                        self.connection = None
+
+                    await self.connect()
+                    logger.info(f"Database reconnected successfully (attempt {attempt + 1}/{self.max_retries})")
+                    break
+                except Exception as e:
+                    last_error = e
+                    logger.warning(
+                        f"Reconnection attempt {attempt + 1}/{self.max_retries} failed: {e}"
+                    )
+                    if attempt < self.max_retries - 1:
+                        await asyncio.sleep(self.retry_delay * (attempt + 1))  # Backoff exponentiel
+                    else:
+                        logger.error(
+                            f"Failed to reconnect to database after {self.max_retries} attempts",
+                            exc_info=True
+                        )
+                        raise RuntimeError(
+                            f"Database connection is not available after {self.max_retries} reconnection attempts"
+                        ) from last_error
+
         assert self.connection is not None  # pour mypy
         return self.connection
 
