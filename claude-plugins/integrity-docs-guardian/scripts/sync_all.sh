@@ -14,7 +14,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Remonte de scripts/ -> integrity-docs-guardian/ -> claude-plugins/ -> REPO_ROOT
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 PLUGIN_DIR="$REPO_ROOT/claude-plugins/integrity-docs-guardian"
 REPORTS_DIR="$PLUGIN_DIR/reports"
 SCRIPTS_DIR="$PLUGIN_DIR/scripts"
@@ -67,8 +68,9 @@ AGENTS_TOTAL=3
 
 # Agent 1: Anima (DocKeeper)
 echo -e "${BLUE}📚 [1/3] Lancement d'Anima (DocKeeper)...${NC}"
-if command -v python &> /dev/null && [ -f "$SCRIPTS_DIR/scan_docs.py" ]; then
-    if python "$SCRIPTS_DIR/scan_docs.py" > /dev/null 2>&1; then
+if (command -v python &> /dev/null || command -v python3 &> /dev/null) && [ -f "$SCRIPTS_DIR/scan_docs.py" ]; then
+    PYTHON_CMD=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
+    if $PYTHON_CMD "$SCRIPTS_DIR/scan_docs.py" > /dev/null 2>&1; then
         echo -e "   ${GREEN}✅ Anima terminé avec succès${NC}"
         ((AGENTS_SUCCESS++))
     else
@@ -81,8 +83,9 @@ echo ""
 
 # Agent 2: Neo (IntegrityWatcher)
 echo -e "${BLUE}🔐 [2/3] Lancement de Neo (IntegrityWatcher)...${NC}"
-if command -v python &> /dev/null && [ -f "$SCRIPTS_DIR/check_integrity.py" ]; then
-    if python "$SCRIPTS_DIR/check_integrity.py" > /dev/null 2>&1; then
+if (command -v python &> /dev/null || command -v python3 &> /dev/null) && [ -f "$SCRIPTS_DIR/check_integrity.py" ]; then
+    PYTHON_CMD=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
+    if $PYTHON_CMD "$SCRIPTS_DIR/check_integrity.py" > /dev/null 2>&1; then
         echo -e "   ${GREEN}✅ Neo terminé avec succès${NC}"
         ((AGENTS_SUCCESS++))
     else
@@ -95,8 +98,9 @@ echo ""
 
 # Agent 3: ProdGuardian (Production Monitor)
 echo -e "${BLUE}☁️  [3/3] Lancement de ProdGuardian (Production Monitor)...${NC}"
-if command -v python &> /dev/null && command -v gcloud &> /dev/null && [ -f "$SCRIPTS_DIR/check_prod_logs.py" ]; then
-    if python "$SCRIPTS_DIR/check_prod_logs.py" > /dev/null 2>&1; then
+if (command -v python &> /dev/null || command -v python3 &> /dev/null) && command -v gcloud &> /dev/null && [ -f "$SCRIPTS_DIR/check_prod_logs.py" ]; then
+    PYTHON_CMD=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
+    if $PYTHON_CMD "$SCRIPTS_DIR/check_prod_logs.py" > /dev/null 2>&1; then
         echo -e "   ${GREEN}✅ ProdGuardian terminé - Production OK${NC}"
         ((AGENTS_SUCCESS++))
     elif [ $? -eq 1 ]; then
@@ -120,7 +124,8 @@ echo ""
 
 if [ -f "$SCRIPTS_DIR/merge_reports.py" ]; then
     echo -e "${BLUE}🔄 Fusion des rapports en cours...${NC}"
-    python "$SCRIPTS_DIR/merge_reports.py"
+    PYTHON_CMD=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
+    $PYTHON_CMD "$SCRIPTS_DIR/merge_reports.py"
     MERGE_EXIT_CODE=$?
 
     if [ $MERGE_EXIT_CODE -eq 0 ]; then
@@ -266,6 +271,67 @@ if [ -f "$REPORTS_DIR/global_report.json" ]; then
         fi
     fi
 fi
+echo ""
+
+################################################################################
+# FEEDBACK AUTOMATIQUE - STATUT DES AGENTS
+################################################################################
+
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${YELLOW}🧾 FEEDBACK AUTOMATIQUE - STATUT DES AGENTS${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+
+# Fonction pour vérifier la fraîcheur d'un rapport (< 5 min = frais)
+check_report_freshness() {
+    local report_file=$1
+    local agent_name=$2
+
+    if [ ! -f "$report_file" ]; then
+        echo -e "   ${RED}❌ $agent_name${NC} - Rapport absent"
+        return 1
+    fi
+
+    # Vérifier l'âge du fichier (en secondes)
+    local file_age=$(($(date +%s) - $(stat -c %Y "$report_file" 2>/dev/null || stat -f %m "$report_file" 2>/dev/null)))
+
+    if [ $file_age -lt 300 ]; then  # < 5 minutes
+        # Extraire le statut si possible
+        if command -v jq &> /dev/null; then
+            local status=$(jq -r '.status // .statut // "unknown"' "$report_file" 2>/dev/null)
+            if [ "$status" = "ok" ] || [ "$status" = "OK" ]; then
+                echo -e "   ${GREEN}✅ $agent_name${NC} - OK (rapport frais)"
+            elif [ "$status" = "needs_update" ] || [ "$status" = "warning" ] || [ "$status" = "WARNING" ]; then
+                echo -e "   ${YELLOW}⚠️  $agent_name${NC} - Attention requise (voir rapport)"
+            elif [ "$status" = "critical" ] || [ "$status" = "CRITICAL" ]; then
+                echo -e "   ${RED}🔴 $agent_name${NC} - CRITIQUE (action immédiate requise)"
+            else
+                echo -e "   ${GREEN}✅ $agent_name${NC} - Rapport frais"
+            fi
+        else
+            echo -e "   ${GREEN}✅ $agent_name${NC} - Rapport frais (< 5 min)"
+        fi
+        return 0
+    else
+        echo -e "   ${YELLOW}⚠️  $agent_name${NC} - Dernier rapport > 5 min (pas exécuté récemment)"
+        return 1
+    fi
+}
+
+# Vérifier chaque agent
+check_report_freshness "$REPORTS_DIR/docs_report.json" "Anima (DocKeeper)"
+check_report_freshness "$REPORTS_DIR/integrity_report.json" "Neo (IntegrityWatcher)"
+check_report_freshness "$REPORTS_DIR/unified_report.json" "Nexus (Coordinator)"
+check_report_freshness "$REPORTS_DIR/prod_report.json" "ProdGuardian"
+
+echo ""
+echo -e "${BLUE}💡 Commandes disponibles:${NC}"
+echo "   • /check_docs        - Vérifier la documentation (Anima)"
+echo "   • /check_integrity   - Vérifier l'intégrité (Neo)"
+echo "   • /guardian_report   - Rapport unifié (Nexus)"
+echo "   • /check_prod        - Surveiller production (ProdGuardian)"
+echo "   • /sync_all          - Orchestration complète"
+echo "   • /audit_agents      - Audit complet du système"
 echo ""
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════════╗${NC}"
