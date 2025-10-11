@@ -57,11 +57,18 @@ class DatabaseManager:
 
     async def _ensure_connection(self) -> aiosqlite.Connection:
         if not self.is_connected():
-            logger.error(
-                "Database connection requested but no active connection is available. "
-                "Call connect() before executing queries."
+            logger.warning(
+                "Database connection lost. Attempting automatic reconnection..."
             )
-            raise RuntimeError("Database connection is not available.")
+            try:
+                await self.connect()
+                logger.info("Database reconnected successfully.")
+            except Exception as e:
+                logger.error(
+                    f"Failed to reconnect to database: {e}",
+                    exc_info=True
+                )
+                raise RuntimeError("Database connection is not available and reconnection failed.") from e
         assert self.connection is not None  # pour mypy
         return self.connection
 
