@@ -262,7 +262,7 @@ async def _build_costs_where_clause(
 ) -> tuple[str, tuple[Any, ...]]:
     """
     Construit la clause WHERE pour la table costs.
-    Note: La table costs n'a PAS de colonnes user_id/session_id dans le schéma actuel.
+    IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données.
     Cette fonction vérifie si ces colonnes existent avant de les utiliser.
     """
     clauses: list[str] = []
@@ -275,16 +275,23 @@ async def _build_costs_where_clause(
     normalized_user = _normalize_scope_identifier(user_id)
     normalized_session = _normalize_scope_identifier(session_id)
 
-    if normalized_user and has_user_id:
+    # user_id est OBLIGATOIRE pour l'isolation des données utilisateur
+    if not normalized_user:
+        raise ValueError("user_id est obligatoire pour accéder aux données de coûts")
+
+    if has_user_id:
         clauses.append("user_id = ?")
         params.append(normalized_user)
+    else:
+        # Si la colonne user_id n'existe pas encore (ancienne DB), retourner une clause qui ne matche rien
+        # pour éviter de montrer des données non filtrées
+        logger.warning("[SECURITY] costs table missing user_id column - returning empty results for safety")
+        clauses.append("1 = 0")  # Clause qui ne matche jamais
 
     if normalized_session and has_session_id:
         clauses.append("session_id = ?")
         params.append(normalized_session)
 
-    if not clauses:
-        return "", tuple()
     return " WHERE " + " AND ".join(clauses), tuple(params)
 
 
@@ -322,18 +329,31 @@ async def get_messages_by_period(
 ) -> Dict[str, int]:
     """
     Retourne le nombre de messages par période (today, week, month, total).
-    Filtre par user_id et/ou session_id si fournis.
+    IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données.
     """
+    # user_id est OBLIGATOIRE pour l'isolation des données utilisateur
+    if not user_id:
+        raise ValueError("user_id est obligatoire pour accéder aux statistiques de messages")
+
     scope_conditions = []
     params = []
 
-    if session_id:
-        scope_conditions.append("session_id = ?")
-        params.append(session_id)
+    # Vérifier si la table messages a la colonne user_id
+    has_user_id = await _table_has_column(db, "messages", "user_id")
 
-    if user_id:
+    if has_user_id:
         scope_conditions.append("user_id = ?")
         params.append(user_id)
+    else:
+        # Si la colonne user_id n'existe pas, retourner des données vides pour la sécurité
+        logger.warning("[SECURITY] messages table missing user_id column - returning empty results for safety")
+        return {"total": 0, "today": 0, "week": 0, "month": 0}
+
+    if session_id:
+        has_session_id = await _table_has_column(db, "messages", "session_id")
+        if has_session_id:
+            scope_conditions.append("session_id = ?")
+            params.append(session_id)
 
     where_clause = ""
     if scope_conditions:

@@ -134,16 +134,18 @@ class DashboardService:
 
             result = []
             for row in rows:
-                agent_name = row.get("agent", "unknown")
+                # Convert sqlite3.Row to dict for .get() method access
+                row_dict = dict(row)
+                agent_name = row_dict.get("agent", "unknown")
                 display_name = agent_display_names.get(agent_name.lower(), agent_name.capitalize())
 
                 result.append({
                     "agent": display_name,
-                    "model": row.get("model", "unknown"),
-                    "total_cost": float(row.get("total_cost", 0) or 0),
-                    "input_tokens": int(row.get("input_tokens", 0) or 0),
-                    "output_tokens": int(row.get("output_tokens", 0) or 0),
-                    "request_count": int(row.get("request_count", 0) or 0)
+                    "model": row_dict.get("model", "unknown"),
+                    "total_cost": float(row_dict.get("total_cost", 0) or 0),
+                    "input_tokens": int(row_dict.get("input_tokens", 0) or 0),
+                    "output_tokens": int(row_dict.get("output_tokens", 0) or 0),
+                    "request_count": int(row_dict.get("request_count", 0) or 0)
                 })
 
             return result

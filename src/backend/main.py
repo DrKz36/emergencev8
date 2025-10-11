@@ -6,6 +6,8 @@ import os
 import re
 import sys
 from pathlib import Path
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, PlainTextResponse
@@ -136,9 +138,100 @@ class DenyListMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """
+    Lifespan context manager pour gérer l'initialisation et la fermeture des services.
+    Remplace les @app.on_event("startup"/"shutdown") pour centraliser le cycle de vie.
+    """
+    container = app.state.service_container
+    logger.info("🚀 Lifespan: Démarrage backend Émergence…")
+
+    # === STARTUP ===
+    try:
+        await _startup(container)
+    except Exception as e:
+        logger.error(f"Lifespan startup: _startup failed: {e}", exc_info=True)
+
+    # 🔧 Démarrer MemoryTaskQueue (P1.1)
+    try:
+        from backend.features.memory.task_queue import get_memory_queue
+        queue = get_memory_queue()
+        await queue.start()
+        logger.info("MemoryTaskQueue started")
+    except Exception as e:
+        logger.warning(f"MemoryTaskQueue startup failed: {e}")
+
+    # 🔧 Démarrer AutoSyncService
+    try:
+        from backend.features.sync.auto_sync_service import get_auto_sync_service
+        sync_service = get_auto_sync_service()
+        await sync_service.start()
+        logger.info("AutoSyncService started")
+    except Exception as e:
+        logger.warning(f"AutoSyncService startup failed: {e}")
+
+    logger.info("✅ Lifespan: Backend prêt")
+
+    yield  # Application running
+
+    # === SHUTDOWN ===
+    logger.info("🔻 Lifespan: Arrêt backend Émergence…")
+
+    # 🔧 Arrêter MemoryTaskQueue
+    try:
+        from backend.features.memory.task_queue import get_memory_queue
+        queue = get_memory_queue()
+        await queue.stop()
+        logger.info("MemoryTaskQueue stopped")
+    except Exception as e:
+        logger.warning(f"MemoryTaskQueue shutdown failed: {e}")
+
+    # 🔧 Arrêter AutoSyncService
+    try:
+        from backend.features.sync.auto_sync_service import get_auto_sync_service
+        sync_service = get_auto_sync_service()
+        await sync_service.stop()
+        logger.info("AutoSyncService stopped")
+    except Exception as e:
+        logger.warning(f"AutoSyncService shutdown failed: {e}")
+
+    # Fermer DB
+    try:
+        await container.db_manager().disconnect()
+        logger.info("DB disconnected")
+    except Exception as e:
+        logger.warning(f"DB disconnect failed: {e}")
+
+    # Fermer VoiceService httpx client si présent
+    try:
+        voice_client_provider = getattr(container, "voice_http_client", None)
+        if voice_client_provider is not None:
+            client = voice_client_provider()
+            close = getattr(client, "aclose", None)
+            if callable(close):
+                await close()
+                logger.info("VoiceService httpx client closed")
+    except Exception as e:
+        logger.warning(f"VoiceService client close failed: {e}")
+
+    # Unwire DI
+    try:
+        container.unwire()
+        logger.info("DI container unwired")
+    except Exception as e:
+        logger.warning(f"Container unwire failed: {e}")
+
+    logger.info("✅ Lifespan: Arrêt backend terminé")
+
+
 def create_app() -> FastAPI:
     container = ServiceContainer()
-    app = FastAPI(title="Émergence API", version="7.2")
+    app = FastAPI(
+        title="Émergence API",
+        version="8.0",
+        lifespan=lifespan
+    )
     app.state.service_container = container
 
     # 🔒 Redirige automatiquement /route ↔ /route/
@@ -170,67 +263,6 @@ def create_app() -> FastAPI:
     app.add_middleware(
         DenyListMiddleware, enabled=DENYLIST_ENABLED, patterns=DENYLIST_PATTERNS
     )
-
-    @app.on_event("startup")
-    async def _on_startup():
-        await _startup(container)
-
-        # 🔧 Démarrer MemoryTaskQueue (P1.1)
-        try:
-            from backend.features.memory.task_queue import get_memory_queue
-            queue = get_memory_queue()
-            await queue.start()
-            logger.info("MemoryTaskQueue started")
-        except Exception as e:
-            logger.warning(f"MemoryTaskQueue startup failed: {e}")
-
-        # 🔧 Démarrer AutoSyncService (Option A)
-        try:
-            from backend.features.sync.auto_sync_service import get_auto_sync_service
-            sync_service = get_auto_sync_service()
-            await sync_service.start()
-            logger.info("AutoSyncService started")
-        except Exception as e:
-            logger.warning(f"AutoSyncService startup failed: {e}")
-
-    @app.on_event("shutdown")
-    async def _on_shutdown():
-        # 🔧 Arrêter MemoryTaskQueue (P1.1)
-        try:
-            from backend.features.memory.task_queue import get_memory_queue
-            queue = get_memory_queue()
-            await queue.stop()
-            logger.info("MemoryTaskQueue stopped")
-        except Exception as e:
-            logger.warning(f"MemoryTaskQueue shutdown failed: {e}")
-
-        # 🔧 Arrêter AutoSyncService (Option A)
-        try:
-            from backend.features.sync.auto_sync_service import get_auto_sync_service
-            sync_service = get_auto_sync_service()
-            await sync_service.stop()
-            logger.info("AutoSyncService stopped")
-        except Exception as e:
-            logger.warning(f"AutoSyncService shutdown failed: {e}")
-
-        try:
-            await container.db_manager().disconnect()
-        except Exception:
-            pass
-        try:
-            voice_client_provider = getattr(container, "voice_http_client", None)
-            if voice_client_provider is not None:
-                client = voice_client_provider()
-                close = getattr(client, "aclose", None)
-                if callable(close):
-                    await close()
-        except Exception:
-            pass
-        try:
-            container.unwire()
-        except Exception:
-            pass
-        logger.info("Arrêt backend Émergence terminé.")
 
     @app.get("/api/health", tags=["Health"])
     async def health():

@@ -27,31 +27,33 @@ class TimelineService:
     ) -> List[Dict[str, Any]]:
         """
         Retourne la timeline d'activité (messages + threads par jour).
+        IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données.
 
         Args:
             period: "7d", "30d", "90d", "1y"
-            user_id: Filtrer par utilisateur
-            session_id: Filtrer par session
+            user_id: Filtrer par utilisateur (OBLIGATOIRE)
+            session_id: Filtrer par session (optionnel)
 
         Returns:
-            Liste de {date, messages, threads}
+            Liste de {date, message_count, thread_count}
         """
+        # user_id est OBLIGATOIRE pour l'isolation des données utilisateur
+        if not user_id:
+            logger.error("[SECURITY] user_id obligatoire pour get_activity_timeline")
+            raise ValueError("user_id est obligatoire pour accéder aux données de timeline")
+
         days = self._parse_period(period)
 
         # Construire les conditions de filtrage
         date_field = "created_at"  # champ de référence pour les messages
-        message_filters = [f"date(m.{date_field}) = dates.date"]
-        thread_filters = ["date(t.created_at) = dates.date"]
-        params: List[Any] = []
+        message_filters = [f"date(m.{date_field}) = dates.date", "m.user_id = ?"]
+        thread_filters = ["date(t.created_at) = dates.date", "t.user_id = ?"]
+        params: List[Any] = [user_id, user_id]
 
         if session_id:
             message_filters.append("m.session_id = ?")
             thread_filters.append("t.session_id = ?")
             params.extend([session_id, session_id])
-        elif user_id:
-            message_filters.append("m.user_id = ?")
-            thread_filters.append("t.user_id = ?")
-            params.extend([user_id, user_id])
 
         message_join = " LEFT JOIN messages m ON " + " AND ".join(message_filters)
         thread_join = " LEFT JOIN threads t ON " + " AND ".join(thread_filters)
@@ -91,21 +93,24 @@ class TimelineService:
     ) -> List[Dict[str, Any]]:
         """
         Retourne la timeline des coûts par jour.
+        IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données.
 
         Returns:
-            Liste de {date, cost}
+            Liste de {date, total_cost}
         """
+        # user_id est OBLIGATOIRE pour l'isolation des données utilisateur
+        if not user_id:
+            logger.error("[SECURITY] user_id obligatoire pour get_costs_timeline")
+            raise ValueError("user_id est obligatoire pour accéder aux données de coûts")
+
         days = self._parse_period(period)
 
-        cost_filters = ["date(c.timestamp) = dates.date"]
-        params: List[Any] = []
+        cost_filters = ["date(c.timestamp) = dates.date", "c.user_id = ?"]
+        params: List[Any] = [user_id]
 
         if session_id:
             cost_filters.append("c.session_id = ?")
             params.append(session_id)
-        elif user_id:
-            cost_filters.append("c.user_id = ?")
-            params.append(user_id)
 
         cost_join = " LEFT JOIN costs c ON " + " AND ".join(cost_filters)
 
@@ -142,21 +147,24 @@ class TimelineService:
     ) -> List[Dict[str, Any]]:
         """
         Retourne la timeline des tokens par jour.
+        IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données.
 
         Returns:
-            Liste de {date, input, output, total}
+            Liste de {date, input_tokens, output_tokens, total}
         """
+        # user_id est OBLIGATOIRE pour l'isolation des données utilisateur
+        if not user_id:
+            logger.error("[SECURITY] user_id obligatoire pour get_tokens_timeline")
+            raise ValueError("user_id est obligatoire pour accéder aux données de tokens")
+
         days = self._parse_period(period)
 
-        token_filters = ["date(c.timestamp) = dates.date"]
-        params: List[Any] = []
+        token_filters = ["date(c.timestamp) = dates.date", "c.user_id = ?"]
+        params: List[Any] = [user_id]
 
         if session_id:
             token_filters.append("c.session_id = ?")
             params.append(session_id)
-        elif user_id:
-            token_filters.append("c.user_id = ?")
-            params.append(user_id)
 
         token_join = " LEFT JOIN costs c ON " + " AND ".join(token_filters)
 
@@ -196,14 +204,22 @@ class TimelineService:
     ) -> Dict[str, int]:
         """
         Retourne la distribution par agent pour une métrique donnée.
+        IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données.
 
         Args:
             metric: "messages", "tokens", "costs"
             period: "7d", "30d", "90d", "1y"
+            user_id: ID utilisateur (OBLIGATOIRE)
+            session_id: ID session (optionnel)
 
         Returns:
             Dict {agent_name: count}
         """
+        # user_id est OBLIGATOIRE pour l'isolation des données utilisateur
+        if not user_id:
+            logger.error("[SECURITY] user_id obligatoire pour get_distribution_by_agent")
+            raise ValueError("user_id est obligatoire pour accéder aux données de distribution")
+
         days = self._parse_period(period)
 
         if metric == "messages":
@@ -216,15 +232,15 @@ class TimelineService:
             }
 
         elif metric in ["tokens", "costs"]:
-            conditions = [f"date(timestamp) >= date('now', '-{days} days')"]
-            params = []
+            conditions = [
+                f"date(timestamp) >= date('now', '-{days} days')",
+                "user_id = ?"
+            ]
+            params = [user_id]
 
             if session_id:
                 conditions.append("session_id = ?")
                 params.append(session_id)
-            elif user_id:
-                conditions.append("user_id = ?")
-                params.append(user_id)
 
             where_clause = " WHERE " + " AND ".join(conditions)
 

@@ -810,3 +810,52 @@ class VectorService:
                 exc_info=True,
             )
             raise
+
+    # ---------- Recherche hybride BM25 + Vectorielle (P1.5) ----------
+    def hybrid_query(
+        self,
+        collection,
+        query_text: str,
+        n_results: int = 5,
+        where_filter: Optional[Dict[str, Any]] = None,
+        alpha: float = 0.5,
+        score_threshold: float = 0.0,
+        bm25_k1: float = 1.5,
+        bm25_b: float = 0.75,
+    ) -> List[Dict[str, Any]]:
+        """
+        Recherche hybride combinant BM25 (lexical) et vectorielle (sémantique).
+
+        Args:
+            collection: Collection Chroma/Qdrant
+            query_text: Requête utilisateur
+            n_results: Nombre de résultats finaux
+            where_filter: Filtres de métadonnées (optionnel)
+            alpha: Poids du scoring vectoriel (0.0 = full BM25, 1.0 = full vector)
+            score_threshold: Seuil minimum de score pour retourner un résultat
+            bm25_k1: Paramètre k1 de BM25 (saturation TF)
+            bm25_b: Paramètre b de BM25 (normalisation longueur)
+
+        Returns:
+            Liste de résultats avec scores hybrides détaillés
+        """
+        try:
+            from backend.features.memory.hybrid_retriever import hybrid_query as _hybrid_query
+            return _hybrid_query(
+                vector_service=self,
+                collection=collection,
+                query_text=query_text,
+                n_results=n_results,
+                where_filter=where_filter,
+                alpha=alpha,
+                score_threshold=score_threshold,
+                bm25_k1=bm25_k1,
+                bm25_b=bm25_b,
+            )
+        except ImportError:
+            logger.warning("HybridRetriever non disponible, fallback sur query() classique")
+            return self.query(collection, query_text, n_results, where_filter)
+        except Exception as e:
+            logger.error(f"Erreur hybrid_query: {e}", exc_info=True)
+            # Fallback sur query vectorielle standard
+            return self.query(collection, query_text, n_results, where_filter)
