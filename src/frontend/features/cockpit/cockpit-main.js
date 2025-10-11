@@ -6,6 +6,7 @@
 import { cockpitMetrics } from './cockpit-metrics.js';
 import { cockpitCharts } from './cockpit-charts.js';
 import { cockpitInsights } from './cockpit-insights.js';
+import { cockpitAgents } from './cockpit-agents.js';
 import { getIcon } from './cockpit-icons.js';
 
 export class Cockpit {
@@ -15,7 +16,8 @@ export class Cockpit {
         this.modules = {
             metrics: cockpitMetrics,
             charts: cockpitCharts,
-            insights: cockpitInsights
+            insights: cockpitInsights,
+            agents: cockpitAgents
         };
         this.initialized = false;
     }
@@ -69,6 +71,11 @@ export class Cockpit {
                         <span class="tab-icon">${getIcon('barChart')}</span>
                         <span class="tab-label">Métriques</span>
                     </button>
+                    <button class="cockpit-tab ${this.activeTab === 'agents' ? 'active' : ''}"
+                            data-tab="agents">
+                        <span class="tab-icon">${getIcon('robot')}</span>
+                        <span class="tab-label">Agents</span>
+                    </button>
                     <button class="cockpit-tab ${this.activeTab === 'charts' ? 'active' : ''}"
                             data-tab="charts">
                         <span class="tab-icon">${getIcon('pieChart')}</span>
@@ -103,6 +110,12 @@ export class Cockpit {
                     <div class="cockpit-view ${this.activeTab === 'charts' ? 'active' : ''}"
                          data-view="charts">
                         <div id="charts-container"></div>
+                    </div>
+
+                    <!-- Agents Tab -->
+                    <div class="cockpit-view ${this.activeTab === 'agents' ? 'active' : ''}"
+                         data-view="agents">
+                        <div id="agents-container"></div>
                     </div>
 
                     <!-- Insights Tab -->
@@ -172,6 +185,9 @@ export class Cockpit {
                 break;
             case 'metrics':
                 await this.modules.metrics.init('metrics-container');
+                break;
+            case 'agents':
+                await this.modules.agents.init('agents-container');
                 break;
             case 'charts':
                 await this.modules.charts.init('charts-container');

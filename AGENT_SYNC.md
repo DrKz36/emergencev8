@@ -43,21 +43,32 @@
 - `codex` → SSH : `git@github.com:DrKz36/emergencev8.git`
 
 ### Déploiement Cloud Run
-- **Révision active** : `emergence-app-00350-wic` ✅ **FIX CRITIQUE DÉPLOYÉ**
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app@sha256:051a6eeac4a8fea2eaa95bf70eb8525d33dccaddd9c52454348852e852b0103f`
-- **Tag image** : `fix-preferences-20251010-090040`
+
+#### ⚠️ Architecture simplifiée (2025-10-11)
+- **Stratégie** : Conteneur unique sans canary
+- **Service unique** : `emergence-app` (conteneur principal-source)
+- **Gestion révisions** : Conservation automatique des 3 dernières révisions fonctionnelles uniquement
+- **Trafic** : 100% sur chaque nouvelle révision déployée (pas de split canary)
+- **Rollback** : Basculer vers l'une des 3 révisions conservées en cas de problème
+
+#### État actuel
+- **Révisions conservées** (3 max) :
+  1. `emergence-app-00297-6pr` (2025-10-10 14:35:05 UTC) - Actuelle
+  2. `emergence-app-00350-wic` (2025-10-10 07:33:38 UTC)
+  3. `emergence-app-00348-rih` (2025-10-10 05:37:33 UTC)
 - **URL principale** : https://emergence-app-47nct44nma-ew.a.run.app
 - **Alias historique** : https://emergence-app-486095406755.europe-west1.run.app
-- **Déployé** : 2025-10-10 09:40 UTC (trafic 100%)
-- **Trafic** : 100% sur `emergence-app-00350-wic` (`tag fix-preferences`, anciennes révisions conservées)
+- **Déployé** : 2025-10-10 14:35 UTC (trafic 100%)
 - **Documentation** :
+  - [docs/deployments/CODEX_BUILD_DEPLOY.md](docs/deployments/CODEX_BUILD_DEPLOY.md) - Guide de déploiement
+  - [docs/deployments/README.md](docs/deployments/README.md) - Historique et procédures
   - [docs/deployments/2025-10-10-deploy-p2-sprint3.md](docs/deployments/2025-10-10-deploy-p2-sprint3.md)
   - [docs/deployments/2025-10-10-deploy-p1-p0.md](docs/deployments/2025-10-10-deploy-p1-p0.md)
   - [docs/deployments/2025-10-09-hotfix-p1.1-preference-integration.md](docs/deployments/2025-10-09-hotfix-p1.1-preference-integration.md)
   - [docs/deployments/2025-10-09-deploy-p1-memory.md](docs/deployments/2025-10-09-deploy-p1-memory.md)
   - [docs/deployments/2025-10-09-deploy-cockpit-phase3.md](docs/deployments/2025-10-09-deploy-cockpit-phase3.md)
   - [docs/deployments/2025-10-09-activation-metrics-phase3.md](docs/deployments/2025-10-09-activation-metrics-phase3.md)
-- **Service Cloud Run** : `emergence-app`
+- **Service Cloud Run** : `emergence-app` (conteneur unique)
 - **Projet GCP** : `emergence-469005`
 - **Région** : `europe-west1`
 - **Registry** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app`
@@ -79,7 +90,11 @@
     --platform managed \
     --allow-unauthenticated
   ```
-- **Post-déploiement** : `gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005`, vérifier `/api/health` et `/api/metrics`.
+- **Post-déploiement** :
+  - Vérifier un seul service : `gcloud run services list --platform=managed --region=europe-west1`
+  - Vérifier max 3 révisions : `gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005`
+  - Tests santé : vérifier `/api/health` et `/api/metrics`
+- **Important** : Pas de canary, pas de split de trafic. Chaque déploiement bascule automatiquement 100% du trafic sur la nouvelle révision.
 
 ### Working tree
 - ⚠️ Modifications non commitées (prêtes pour commit) :
@@ -98,6 +113,8 @@
 ---
 
 ## 🚧 Zones de travail en cours
+
+> **Note importante - Architecture de déploiement** : Depuis le 2025-10-11, l'architecture a été simplifiée. Il n'y a plus de service canary. Toutes les références historiques au "canary" ou à "00279-kub" dans les sessions ci-dessous sont obsolètes. Le système utilise maintenant un conteneur unique `emergence-app` avec conservation des 3 dernières révisions uniquement.
 
 ### 🟢 Claude Code - Session 2025-10-10 09:40 (Fix Critique PreferenceExtractor - RÉSOLU)
 - **Statut** : ✅ **RÉSOLU ET DÉPLOYÉ** - Extraction préférences fonctionnelle
@@ -233,7 +250,7 @@ git push origin main
   3. Build & tag Docker linux/amd64 : `docker build --platform linux/amd64 -t emergence-app:p1-p0-20251010-040147 -f Dockerfile .` puis `docker tag` vers `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:p1-p0-20251010-040147`.
   4. Push Artifact Registry : `gcloud auth configure-docker europe-west1-docker.pkg.dev` + `docker push …:p1-p0-20251010-040147`.
   5. Déploiement Cloud Run : `gcloud run deploy emergence-app --image …:p1-p0-20251010-040147 --region europe-west1 --concurrency 40 --cpu 2 --memory 2Gi --timeout 300 --revision-suffix p1-p0-20251010-040147`.
-  6. Routage trafic : `gcloud run services update-traffic emergence-app --to-revisions "emergence-app-p1-p0-20251010-040147=100,emergence-app-00279-kub=0"`.
+  6. Routage trafic : `gcloud run services update-traffic emergence-app --to-revisions "emergence-app-p1-p0-20251010-040147=100"` (100% sur nouvelle révision).
   7. Vérifications prod : `curl https://emergence-app-47nct44nma-ew.a.run.app/api/health`, `gcloud run services logs read emergence-app --limit 50` (startup MemoryTaskQueue, PreferenceExtractor ready).
 - **Tests / checks** :
   - ✅ `docker build --platform linux/amd64 …`
@@ -245,7 +262,7 @@ git push origin main
   - ⚠️ `scripts/sync-workdir.ps1` échoue (smoke credentials manquants)
 - **Observations** :
   - Révision `emergence-app-p1-p0-20251010-040147` active (digest `sha256:28539718d838b238f136afe6bfdae6288bd82a7e2fba79f8c13edd416b0ff4f0`).
-  - Alias `canary` conservé sur `emergence-app-00279-kub` (0% trafic).
+  - Note : Depuis 2025-10-11, architecture simplifiée sans canary - toutes les anciennes révisions sauf les 3 dernières ont été nettoyées.
   - Logs démarrage → AutoSyncService alerte sur fichiers manquants (`docs/architecture/10-Memoire.md`, `ROADMAP.md`) : inchangé depuis sessions précédentes.
 - **Actions à suivre (FG / prochaine session)** :
   1. Lancer la migration batch `POST /api/memory/consolidate-archived` (voir prompt) avec credentials prod.

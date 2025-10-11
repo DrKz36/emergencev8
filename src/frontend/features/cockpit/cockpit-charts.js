@@ -219,30 +219,94 @@ export class CockpitCharts {
      * Fetch distribution data
      */
     async fetchDistributionData(period) {
-        // Mock data - replace with actual API call
-        return {
-            messages: {
-                'Orchestrateur': 450,
-                'Chercheur': 320,
-                'Développeur': 280,
-                'Reviewer': 150,
-                'Testeur': 100
-            },
-            threads: {
-                'Orchestrateur': 45,
-                'Chercheur': 28,
-                'Développeur': 22,
-                'Reviewer': 15,
-                'Testeur': 8
-            },
-            tokens: {
-                'Orchestrateur': 850000,
-                'Chercheur': 620000,
-                'Développeur': 580000,
-                'Reviewer': 320000,
-                'Testeur': 180000
+        try {
+            // Fetch real data from API
+            const response = await fetch('/api/dashboard/costs/by-agent', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this._getAuthToken() || ''}`,
+                    'X-Session-Id': this._getSessionId() || ''
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch costs by agent: ${response.status}`);
             }
-        };
+
+            const agentCosts = await response.json();
+
+            // Transform data to the expected format
+            const result = {
+                messages: {},
+                threads: {},
+                tokens: {},
+                costs: {}
+            };
+
+            // Aggregate by agent (sum across different models)
+            agentCosts.forEach(item => {
+                const agent = item.agent;
+
+                // For now, use request_count as proxy for messages
+                result.messages[agent] = (result.messages[agent] || 0) + item.request_count;
+
+                // Tokens
+                const totalTokens = item.input_tokens + item.output_tokens;
+                result.tokens[agent] = (result.tokens[agent] || 0) + totalTokens;
+
+                // Costs
+                result.costs[agent] = (result.costs[agent] || 0) + item.total_cost;
+            });
+
+            return result;
+        } catch (error) {
+            console.error('Error fetching distribution data:', error);
+            // Fallback to mock data with real agent names
+            return {
+                messages: {
+                    'Anima': 450,
+                    'Neo': 320,
+                    'Nexus': 280
+                },
+                threads: {
+                    'Anima': 45,
+                    'Neo': 28,
+                    'Nexus': 22
+                },
+                tokens: {
+                    'Anima': 850000,
+                    'Neo': 620000,
+                    'Nexus': 580000
+                }
+            };
+        }
+    }
+
+    /**
+     * Get auth token from storage
+     */
+    _getAuthToken() {
+        try {
+            return localStorage.getItem('emergence.id_token') ||
+                   localStorage.getItem('id_token') ||
+                   sessionStorage.getItem('emergence.id_token') ||
+                   sessionStorage.getItem('id_token');
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Get session ID from storage
+     */
+    _getSessionId() {
+        try {
+            const state = JSON.parse(localStorage.getItem('emergenceState-V14') || '{}');
+            return state.session?.id || state.websocket?.sessionId;
+        } catch (e) {
+            return null;
+        }
     }
 
     /**

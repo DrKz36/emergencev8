@@ -162,3 +162,20 @@ async def get_distribution(
     return await timeline_service.get_distribution_by_agent(
         metric=metric, period=period, user_id=user_id, session_id=session_id
     )
+
+
+@router.get(
+    "/costs/by-agent",
+    response_model=List[Dict[str, Any]],
+    tags=["Dashboard", "Costs"],
+    summary="Récupère les coûts par agent avec le modèle utilisé",
+    description="Retourne la liste des agents avec leurs coûts, tokens et le modèle utilisé.",
+)
+async def get_costs_by_agent(
+    request: Request,
+    dashboard_service: DashboardService = Depends(_resolve_get_dashboard_service()),
+    user_id: str = Depends(deps.get_user_id),
+) -> List[Dict[str, Any]]:
+    session_id = request.headers.get("X-Session-Id") or request.headers.get("x-session-id")
+    logger.info(f"Récupération des coûts par agent, user_id={user_id}, session_id={session_id}")
+    return await dashboard_service.get_costs_by_agent(user_id=user_id, session_id=session_id)

@@ -161,17 +161,21 @@ class LLMStreamer:
 
             (_model,) = await self.with_rate_limit_retries("google", _op)
 
+            # Convertir l'historique OpenAI/Anthropic vers format Gemini
+            # OpenAI: [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
+            # Gemini: Simple string ou list of strings
+            gemini_prompt = "\n".join([
+                msg.get("content", "") for msg in history if msg.get("content")
+            ])
+
             # COUNT TOKENS INPUT (avant génération)
             input_tokens = 0
             try:
-                # Construire prompt complet pour count_tokens
-                # Gemini attend un format spécifique : liste de messages ou texte concaténé
-                prompt_text = system_prompt + "\n" + "\n".join([
-                    msg.get("content", "") for msg in history if msg.get("content")
-                ])
+                # Construire prompt complet pour count_tokens (inclut system prompt)
+                full_prompt_for_count = system_prompt + "\n" + gemini_prompt
 
                 # Compter tokens input (synchrone mais rapide)
-                count_result = _model.count_tokens(prompt_text)
+                count_result = _model.count_tokens(full_prompt_for_count)
                 input_tokens = count_result.total_tokens
                 logger.debug(f"[Gemini] Input tokens: {input_tokens}")
             except Exception as e:
@@ -180,7 +184,7 @@ class LLMStreamer:
             # Stream response et accumuler texte
             full_response_text = ""
             resp = await _model.generate_content_async(
-                history, stream=True, generation_config={"temperature": 0.4}
+                gemini_prompt, stream=True, generation_config={"temperature": 0.4}
             )
             async for chunk in resp:
                 try:

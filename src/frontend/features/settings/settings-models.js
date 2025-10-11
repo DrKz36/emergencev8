@@ -10,11 +10,9 @@ export class SettingsModels {
     constructor() {
         this.container = null;
         this.agents = [
-            { id: 'orchestrator', name: 'Orchestrateur', icon: SettingsIcons.target },
-            { id: 'researcher', name: 'Chercheur', icon: SettingsIcons.search },
-            { id: 'developer', name: 'Développeur', icon: SettingsIcons.code },
-            { id: 'reviewer', name: 'Reviewer', icon: SettingsIcons.eye },
-            { id: 'tester', name: 'Testeur', icon: SettingsIcons.flask }
+            { id: 'anima', name: 'Anima', icon: SettingsIcons.target },
+            { id: 'neo', name: 'Neo', icon: SettingsIcons.search },
+            { id: 'nexus', name: 'Nexus', icon: SettingsIcons.code }
         ];
         this.models = [
             { id: 'gpt-4', name: 'GPT-4', provider: 'OpenAI', cost: 0.03 },

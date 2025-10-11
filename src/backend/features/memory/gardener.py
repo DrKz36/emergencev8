@@ -1,5 +1,6 @@
 # src/backend/features/memory/gardener.py
-# V2.9.0 - Vitality calibration + monitoring metrics
+# V2.10.0 - Fix timestamps réels pour consolidation threads archivés
+#           + Vitality calibration + monitoring metrics
 import logging
 import os
 import asyncio
@@ -346,10 +347,11 @@ def _preference_record_id(
 
 class MemoryGardener:
     """
-    MEMORY GARDENER V2.9.0
-    - Mode historique (sessions) inchange.
-    - NEW: consolidation ciblee d'un THREAD via thread_id (analyse no-persist + vectorisation).
-    - Calibration vitalite configurable + metriques monitoring.
+    MEMORY GARDENER V2.10.0
+    - Mode historique (sessions) inchangé.
+    - Consolidation ciblée d'un THREAD via thread_id (analyse no-persist + vectorisation).
+    - Calibration vitalité configurable + métriques monitoring.
+    - FIX: Timestamps réels (first_mentioned_at/last_mentioned_at) depuis messages pour threads archivés.
     """
 
     KNOWLEDGE_COLLECTION_NAME = "emergence_knowledge"
@@ -424,7 +426,7 @@ class MemoryGardener:
         )
 
         logger.info(
-            "MemoryGardener V2.9.0 configured (base_decay=%.3f | stale=%dd | archive=%dd | min_v=%.2f | max_v=%.2f)",
+            "MemoryGardener V2.10.0 configured (base_decay=%.3f | stale=%dd | archive=%dd | min_v=%.2f | max_v=%.2f)",
             self.base_decay,
             self.stale_threshold_days,
             self.archive_threshold_days,
@@ -707,7 +709,20 @@ class MemoryGardener:
                 limit=1000,
             )
             history = []
+            first_msg_ts = None
+            last_msg_ts = None
+
             for m in msgs or []:
+                # Extraire timestamps pour métadonnées LTM
+                created_at = m.get("created_at")
+                if created_at:
+                    ts = _parse_iso_ts(created_at)
+                    if ts:
+                        if first_msg_ts is None or ts < first_msg_ts:
+                            first_msg_ts = ts
+                        if last_msg_ts is None or ts > last_msg_ts:
+                            last_msg_ts = ts
+
                 history.append(
                     {
                         "role": m.get("role") or "user",
@@ -746,7 +761,14 @@ class MemoryGardener:
                     ):
                         facts_to_add.append(f)
                 if facts_to_add:
-                    session_stub: Dict[str, Any] = {"id": sid, "user_id": uid, "thread_id": tid, "themes": []}
+                    session_stub: Dict[str, Any] = {
+                        "id": sid,
+                        "user_id": uid,
+                        "thread_id": tid,
+                        "themes": [],
+                        "first_message_at": first_msg_ts.isoformat() if first_msg_ts else _now_iso(),
+                        "last_message_at": last_msg_ts.isoformat() if last_msg_ts else _now_iso(),
+                    }
                     await self._record_facts_in_sql(facts_to_add, session_stub, uid)
                     await self._vectorize_facts(facts_to_add, session_stub, uid)
                     new_items_count += len(facts_to_add)
@@ -760,7 +782,14 @@ class MemoryGardener:
             if all_concepts and not await self._any_vectors_for_session_type(
                 tid, "concept"
             ):
-                concept_stub: Dict[str, Any] = {"id": tid, "user_id": uid, "thread_id": tid, "themes": []}
+                concept_stub: Dict[str, Any] = {
+                    "id": tid,
+                    "user_id": uid,
+                    "thread_id": tid,
+                    "themes": [],
+                    "first_message_at": first_msg_ts.isoformat() if first_msg_ts else _now_iso(),
+                    "last_message_at": last_msg_ts.isoformat() if last_msg_ts else _now_iso(),
+                }
                 await self._record_concepts_in_sql(all_concepts, concept_stub, uid)
                 await self._vectorize_concepts(all_concepts, concept_stub, uid)
                 new_items_count += len(all_concepts)
@@ -1550,6 +1579,10 @@ class MemoryGardener:
         thread_id = session.get("thread_id")
         message_id = session.get("message_id")
 
+        # Utiliser les timestamps réels des messages si disponibles
+        first_mentioned = session.get("first_message_at") or now_iso
+        last_mentioned = session.get("last_message_at") or now_iso
+
         for concept_text in concepts:
             vid = uuid.uuid4().hex
             payload.append(
@@ -1562,8 +1595,8 @@ class MemoryGardener:
                         "source_session_id": session["id"],
                         "concept_text": concept_text,
                         "created_at": now_iso,
-                        "first_mentioned_at": now_iso,
-                        "last_mentioned_at": now_iso,
+                        "first_mentioned_at": first_mentioned,
+                        "last_mentioned_at": last_mentioned,
                         "thread_id": thread_id or "",
                         "thread_ids_json": json.dumps([thread_id] if thread_id else []),
                         "message_id": message_id or "",

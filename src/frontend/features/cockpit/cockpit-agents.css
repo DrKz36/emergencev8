@@ -1,0 +1,309 @@
+/**
+ * Cockpit Agents Styles
+ * Agent-specific costs, usage, and models visualization
+ */
+
+.cockpit-agents {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    padding: 1.5rem;
+}
+
+/* Header */
+.agents-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.agents-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--text-primary, #1a1a1a);
+}
+
+.agents-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.agents-actions .btn-refresh {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--primary-color, #4a90e2);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.agents-actions .btn-refresh:hover {
+    background: var(--primary-hover, #357abd);
+    transform: translateY(-1px);
+}
+
+/* Agents Grid */
+.agents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.agents-grid .loading,
+.agents-grid .no-data {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary, #666);
+    font-size: 1rem;
+}
+
+/* Agent Card */
+.agent-card {
+    background: white;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    transition: all 0.3s;
+}
+
+.agent-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.agent-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-light, #f0f0f0);
+}
+
+.agent-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.agent-icon {
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.agent-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary, #1a1a1a);
+    margin: 0;
+}
+
+.agent-cost {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.agent-cost .cost-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color, #4a90e2);
+}
+
+/* Agent Stats */
+.agent-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 1rem;
+}
+
+.agent-stats .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.agent-stats .stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.agent-stats .stat-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary, #1a1a1a);
+}
+
+/* Agent Models */
+.agent-models {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.agent-models h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary, #666);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.models-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.model-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--bg-secondary, #f8f9fa);
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.model-item:hover {
+    background: var(--bg-hover, #e9ecef);
+}
+
+.model-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.model-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary, #1a1a1a);
+}
+
+.model-requests {
+    font-size: 0.75rem;
+    color: var(--text-secondary, #666);
+}
+
+.model-cost {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--primary-color, #4a90e2);
+}
+
+/* Summary Section */
+.agents-summary {
+    background: white;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.agents-summary h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary, #1a1a1a);
+    margin: 0 0 1.25rem 0;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--bg-secondary, #f8f9fa);
+    border-radius: 8px;
+    border: 1px solid var(--border-light, #f0f0f0);
+}
+
+.summary-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.summary-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary, #1a1a1a);
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .agent-card,
+    .agents-summary {
+        background: var(--bg-dark-primary, #2a2a2a);
+        border-color: var(--border-dark, #444);
+    }
+
+    .agent-name,
+    .agent-stats .stat-value,
+    .model-name,
+    .agents-summary h3,
+    .summary-value {
+        color: var(--text-dark-primary, #f0f0f0);
+    }
+
+    .agent-stats .stat-label,
+    .model-requests,
+    .summary-label {
+        color: var(--text-dark-secondary, #aaa);
+    }
+
+    .model-item,
+    .summary-card {
+        background: var(--bg-dark-secondary, #333);
+        border-color: var(--border-dark, #444);
+    }
+
+    .model-item:hover {
+        background: var(--bg-dark-hover, #3a3a3a);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .agents-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .agent-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .agents-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+}

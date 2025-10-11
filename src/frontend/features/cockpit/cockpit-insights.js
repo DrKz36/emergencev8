@@ -245,7 +245,7 @@ export class CockpitInsights {
             peakHour: '14h-15h',
             avgMessagesPerDay: 42,
             growthRate: 15.3,
-            topAgent: 'Orchestrateur'
+            topAgent: 'Anima'
         };
     }
 

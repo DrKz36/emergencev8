@@ -82,6 +82,77 @@ class DashboardService:
         }
 
     # -------------------------
+    # Coûts par agent
+    # -------------------------
+    async def get_costs_by_agent(self, *, user_id: Optional[str] = None,
+                                 session_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Récupère les coûts agrégés par agent avec le modèle utilisé.
+
+        Returns:
+            Liste de {agent, model, total_cost, input_tokens, output_tokens, request_count}
+        """
+        try:
+            # Construction de la clause WHERE
+            conditions = []
+            params = []
+
+            if session_id:
+                conditions.append("session_id = ?")
+                params.append(session_id)
+            elif user_id:
+                conditions.append("user_id = ?")
+                params.append(user_id)
+
+            where_clause = ""
+            if conditions:
+                where_clause = " WHERE " + " AND ".join(conditions)
+
+            # Mapping des noms d'agents techniques vers les noms d'affichage
+            agent_display_names = {
+                "anima": "Anima",
+                "neo": "Neo",
+                "nexus": "Nexus",
+                "user": "User",
+                "system": "System"
+            }
+
+            query = f"""
+                SELECT
+                    agent,
+                    model,
+                    SUM(total_cost) as total_cost,
+                    SUM(input_tokens) as input_tokens,
+                    SUM(output_tokens) as output_tokens,
+                    COUNT(*) as request_count
+                FROM costs{where_clause}
+                GROUP BY agent, model
+                ORDER BY total_cost DESC
+            """
+
+            rows = await self.db.fetch_all(query, tuple(params) if params else ())
+
+            result = []
+            for row in rows:
+                agent_name = row.get("agent", "unknown")
+                display_name = agent_display_names.get(agent_name.lower(), agent_name.capitalize())
+
+                result.append({
+                    "agent": display_name,
+                    "model": row.get("model", "unknown"),
+                    "total_cost": float(row.get("total_cost", 0) or 0),
+                    "input_tokens": int(row.get("input_tokens", 0) or 0),
+                    "output_tokens": int(row.get("output_tokens", 0) or 0),
+                    "request_count": int(row.get("request_count", 0) or 0)
+                })
+
+            return result
+
+        except Exception as e:
+            logger.error(f"[dashboard] Erreur get_costs_by_agent: {e}", exc_info=True)
+            return []
+
+    # -------------------------
     # API principale
     # -------------------------
     async def get_dashboard_data(self, *, user_id: Optional[str] = None,

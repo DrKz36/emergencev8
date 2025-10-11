@@ -2,6 +2,18 @@
 
 Ce dossier contient l'historique chronologique des déploiements de l'application Emergence sur Google Cloud Run.
 
+## ⚠️ Changement d'Architecture - 2025-10-11
+
+**Migration vers conteneur unique sans canary**
+
+- **Avant** : Services multiples (`emergence-app`, `emergence-app-canary`, `emergence-app-clean`)
+- **Maintenant** : Un seul service `emergence-app` (conteneur principal-source)
+- **Impact** : Déploiement simplifié, pas de split de trafic, rollback via les 3 dernières révisions conservées
+- **Nettoyage effectué** :
+  - Services supprimés : `emergence-app-canary`, `emergence-app-clean`
+  - Révisions nettoyées : 89 anciennes révisions supprimées
+  - Révisions conservées : 3 dernières actives (00297-6pr, 00350-wic, 00348-rih)
+
 ## Structure des Documents
 
 Chaque déploiement est documenté avec :
@@ -43,6 +55,15 @@ Exemple : `emergence-app-00266-jc4`
 Format : `YYYY-MM-DD-description-courte.md`
 Exemple : `2025-10-05-audit-fixes-deployment.md`
 
+## Architecture de Déploiement
+
+**Stratégie actuelle** : Conteneur unique sans canary
+
+- **Service unique** : `emergence-app` (conteneur principal-source)
+- **Pas de canary** : Toute nouvelle révision est déployée avec 100% du trafic
+- **Gestion des révisions** : Conservation automatique des 3 dernières révisions fonctionnelles
+- **Rollback simple** : Basculer vers l'une des 3 révisions conservées en cas de problème
+
 ## Processus de Déploiement Standard
 
 ```bash
@@ -63,7 +84,7 @@ docker build --platform linux/amd64 \
 # 4. Push Registry
 docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp
 
-# 5. Deploy Cloud Run
+# 5. Deploy Cloud Run sur conteneur unique
 gcloud run deploy emergence-app \
   --image europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp \
   --platform managed \
@@ -71,7 +92,11 @@ gcloud run deploy emergence-app \
   --project emergence-469005 \
   --allow-unauthenticated
 
-# 6. Documenter
+# 6. Vérifications
+gcloud run services list --platform=managed  # Doit montrer uniquement emergence-app
+gcloud run revisions list --service emergence-app --region europe-west1 --limit 3  # Max 3 révisions
+
+# 7. Documenter
 # Créer docs/deployments/YYYY-MM-DD-description.md
 # Mettre à jour docs/passation.md
 # Mettre à jour AGENT_SYNC.md
@@ -82,15 +107,17 @@ gcloud run deploy emergence-app \
 En cas de problème avec une nouvelle révision :
 
 ```bash
-# Lister les révisions
+# Lister les révisions conservées (max 3)
 gcloud run revisions list --service emergence-app \
   --region europe-west1 --project emergence-469005
 
-# Rollback vers révision précédente
+# Rollback vers une révision précédente
 gcloud run services update-traffic emergence-app \
-  --to-revisions=emergence-app-00265-xxx=100 \
+  --to-revisions=emergence-app-00XXX-yyy=100 \
   --region europe-west1 --project emergence-469005
 ```
+
+> **Note** : Seules les 3 dernières révisions fonctionnelles sont disponibles pour le rollback. Planifiez vos déploiements en conséquence.
 
 ## Monitoring Post-Déploiement
 
@@ -166,10 +193,13 @@ Métriques cibles :
 - [ ] Secrets Cloud Run à jour (si nécessaire)
 - [ ] Passation complétée ([docs/passation.md](../passation.md))
 - [ ] AGENT_SYNC.md mis à jour
+- [ ] Vérification : aucun autre service canary ou test actif
 
 ## Checklist Post-Déploiement
 
 - [ ] Révision déployée avec succès (100% trafic)
+- [ ] Vérification : un seul service `emergence-app` actif
+- [ ] Vérification : maximum 3 révisions conservées
 - [ ] Health check OK (`/health` returns 200)
 - [ ] Logs sans erreurs critiques (5 premières minutes)
 - [ ] Métriques Prometheus exposées (`/api/metrics`)

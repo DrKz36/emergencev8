@@ -1,8 +1,9 @@
 # 🚀 Guide Build & Deploy Cloud Run - Pour Codex
 
-**Date**: 2025-10-08
-**Contexte**: Phase 2 Performance terminée, prêt pour build/deploy
-**Révision actuelle**: `emergence-app-00270-zs6` (healthy, 100% trafic)
+**Date**: 2025-10-11
+**Contexte**: Architecture simplifiée - conteneur unique sans canary
+**Service**: `emergence-app` (100% trafic sur conteneur principal-source)
+**Stratégie**: Déploiement direct - toute nouvelle révision remplace la précédente
 
 ---
 
@@ -13,7 +14,7 @@
 git status  # Doit être "working tree clean"
 git log --oneline -3
 
-# 2. Build & Push & Deploy (one-liner)
+# 2. Build & Push & Deploy sur conteneur unique principal-source (one-liner)
 timestamp=$(date +%Y%m%d-%H%M%S) && \
 docker build --platform linux/amd64 -t europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp . && \
 docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp && \
@@ -24,12 +25,14 @@ gcloud run deploy emergence-app \
   --platform managed \
   --allow-unauthenticated
 
-# 3. Vérifier révision
+# 3. Vérifier révision (seules les 3 dernières sont conservées)
 gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005 --limit 3
 
 # 4. Tester health
 curl https://emergence-app-486095406755.europe-west1.run.app/api/health
 ```
+
+> **📌 Note importante** : Il n'y a plus de service canary. Toutes les nouvelles révisions sont déployées directement sur le conteneur principal `emergence-app` avec 100% du trafic. Seules les 3 dernières révisions fonctionnelles sont conservées automatiquement.
 
 ---
 
@@ -125,7 +128,7 @@ gcloud container images describe europe-west1-docker.pkg.dev/emergence-469005/ap
 
 ## 🚀 Deploy Cloud Run
 
-### Commande deploy
+### Commande deploy (conteneur unique)
 ```bash
 gcloud run deploy emergence-app \
   --image europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp \
@@ -135,13 +138,21 @@ gcloud run deploy emergence-app \
   --allow-unauthenticated
 ```
 
+> **Architecture simplifiée** :
+> - **1 seul service** : `emergence-app` (conteneur principal-source)
+> - **Pas de canary** : Le déploiement bascule directement 100% du trafic
+> - **Gestion des révisions** : Seules les 3 dernières révisions fonctionnelles sont conservées
+
 ### Surveillance deploy
 ```bash
 # Suivre progression
 gcloud run operations list --region europe-west1
 
-# Vérifier révisions
+# Vérifier révisions (max 3 conservées)
 gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005
+
+# Lister tous les services (doit montrer uniquement emergence-app)
+gcloud run services list --platform=managed --region=europe-west1
 ```
 
 ### Cas d'échec : Timeout import layer
@@ -155,7 +166,16 @@ gcloud run revisions list --service emergence-app --region europe-west1 --projec
 2. Optimiser Dockerfile (voir section Build ci-dessus)
 3. Rebuild + redeploy
 
-**Fallback** : Révision `00270-zs6` reste active (pas d'impact prod)
+**Rollback** : En cas de problème, une des 3 dernières révisions conservées peut être réactivée :
+```bash
+# Lister les révisions disponibles
+gcloud run revisions list --service emergence-app --region europe-west1 --limit 3
+
+# Rollback vers une révision spécifique
+gcloud run services update-traffic emergence-app \
+  --to-revisions=emergence-app-00XXX-yyy=100 \
+  --region europe-west1
+```
 
 ---
 
@@ -272,17 +292,17 @@ gcloud run revisions describe emergence-app-00XXX-yyy --region europe-west1 --fo
 ## 📝 Checklist Déploiement
 
 - [ ] Git status clean
-- [ ] Commits pushed (4 commits : c7079f0, 69f7f50, 4f30be9, 2bdbde1)
+- [ ] Commits pushed
 - [ ] Docker auth GCP configuré
 - [ ] Build Docker réussi (timestamp sauvegardé)
 - [ ] Push registry GCP réussi
-- [ ] Deploy Cloud Run réussi
+- [ ] Deploy Cloud Run réussi sur `emergence-app` (conteneur unique)
+- [ ] Vérification : un seul service actif (`gcloud run services list`)
 - [ ] Révision active avec 100% trafic
+- [ ] Seules 3 révisions conservées maximum
 - [ ] Health check OK (curl /api/health)
 - [ ] Tests endpoints critiques OK
-- [ ] Logs analyses récupérés (neo_analysis, cache)
-- [ ] Logs débats récupérés (latence round 1)
-- [ ] Métriques calculées (hit rate, latence)
+- [ ] Métriques Prometheus exposées (/api/metrics)
 - [ ] Documentation mise à jour (si modifications)
 
 ---
