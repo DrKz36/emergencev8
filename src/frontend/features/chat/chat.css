@@ -1377,19 +1377,22 @@
   }
   .chat-header-left{
     width:100%;
-    gap:10px;
+    gap:8px;
+  }
+  .chat-title{
+    display:none;
   }
   .chat-title{
     font-size:.95rem;
   }
   .chat-header .tabs-container,
   .chat-container .tabs-container{
-    gap:6px;
+    gap:4px;
     padding:3px 4px 5px;
     border-radius:16px;
   }
   .chat-header .agent-selector .button-tab{
-    padding:.36rem .9rem;
+    padding:.32rem .84rem;
     font-size:.62rem;
     letter-spacing:.14em;
   }
@@ -1417,9 +1420,10 @@
   }
   .chat-input-shell{
     position:relative;
-    padding:4px 40px 6px 8px;
+    padding:8px 68px 10px 12px;
     gap:6px;
     min-height:var(--input-height);
+    align-items:center;
   }
   .chat-rag-toggle__button{
     padding:5px 8px;
@@ -1446,11 +1450,12 @@
   .chat-input{
     flex-basis:100%;
     min-height:24px;
-    padding-right:38px;
+    padding-right:8px;
   }
   .chat-doc-chips{
     gap:4px;
-    margin-bottom:2px;
+    margin-bottom:4px;
+    width:100%;
   }
   .chat-doc-chips__title{
     font-size:.62rem;
@@ -1469,15 +1474,17 @@
   }
   .chat-send-button{
     position:absolute;
-    bottom:6px;
-    right:8px;
-    width:20px;
-    height:14px;
-    border-radius:5px;
+    top:50%;
+    right:12px;
+    width:40px;
+    height:40px;
+    border-radius:14px;
+    transform:translateY(-50%);
+    align-self:center;
   }
   .chat-send-button svg{
-    width:8px;
-    height:8px;
+    width:18px;
+    height:18px;
   }
 }
 

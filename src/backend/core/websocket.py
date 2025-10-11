@@ -1,5 +1,9 @@
 # src/backend/core/websocket.py
-# V11.2 – Handshake gracieux: accept → ws:auth_required → close(4401) si auth KO
+# V11.3 – Enhanced error handling for WebSocket disconnections
+# Improvements:
+# - Better handling of abrupt client disconnections
+# - Graceful cleanup on protocol-level errors
+# - Reduced error noise in production logs
 import logging
 import asyncio
 from typing import Dict, Any, List, Optional, Callable
@@ -220,8 +224,29 @@ class ConnectionManager:
         for ws in list(connections):
             try:
                 await ws.send_json(message)
-            except (WebSocketDisconnect, RuntimeError) as exc:
-                logger.error("Send error (session %s) -> cleanup: %s", resolved_id, exc)
+            except WebSocketDisconnect as exc:
+                logger.info(
+                    "Client disconnected during send (session=%s, code=%s)",
+                    resolved_id,
+                    getattr(exc, "code", "unknown")
+                )
+                await self.disconnect(resolved_id, ws)
+            except RuntimeError as exc:
+                # Connection lost during send (abrupt disconnection)
+                logger.info(
+                    "Client connection lost during send (session=%s): %s",
+                    resolved_id,
+                    exc
+                )
+                await self.disconnect(resolved_id, ws)
+            except Exception as exc:
+                # Unexpected error during send
+                logger.error(
+                    "Unexpected send error (session=%s): %s",
+                    resolved_id,
+                    exc,
+                    exc_info=True
+                )
                 await self.disconnect(resolved_id, ws)
 
     async def close_session(
@@ -371,13 +396,40 @@ def get_websocket_router(container) -> APIRouter:
                         {"type": "ws:ack", "payload": {"received": True, "echo": data}},
                         target_session_id,
                     )
-        except WebSocketDisconnect:
+        except WebSocketDisconnect as e:
+            # Normal disconnection - client closed connection gracefully
+            logger.info(
+                "Client disconnected gracefully (session=%s, code=%s)",
+                target_session_id,
+                getattr(e, "code", "unknown")
+            )
             await conn_manager.disconnect(target_session_id, websocket)
         except RuntimeError as err:
-            logger.error("WS RuntimeError session=%s: %s", target_session_id, err)
+            # Protocol-level errors (e.g., connection lost during send/receive)
+            # These are often caused by abrupt client disconnections
+            err_msg = str(err).lower()
+            if "websocket" in err_msg or "connection" in err_msg or "disconnect" in err_msg:
+                logger.info(
+                    "Client disconnected abruptly (session=%s): %s",
+                    target_session_id,
+                    err
+                )
+            else:
+                logger.error("WS RuntimeError (session=%s): %s", target_session_id, err)
             await conn_manager.disconnect(target_session_id, websocket)
+        except asyncio.CancelledError:
+            # Task cancellation (e.g., server shutdown)
+            logger.info("WebSocket task cancelled (session=%s)", target_session_id)
+            await conn_manager.disconnect(target_session_id, websocket)
+            raise  # Re-raise to allow proper cleanup
         except Exception as err:
-            logger.error("WS Exception session=%s: %s", target_session_id, err)
+            # Unexpected errors
+            logger.error(
+                "Unexpected WebSocket error (session=%s): %s",
+                target_session_id,
+                err,
+                exc_info=True
+            )
             await conn_manager.disconnect(target_session_id, websocket)
 
     return router

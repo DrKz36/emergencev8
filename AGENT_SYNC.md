@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-11 07:45 UTC (Codex - Harmonisation texte thème sombre)
+**Derniere mise a jour** : 2025-10-11 19:58 UTC (ProdGuardian - Correctif erreurs WebSocket production)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -107,6 +107,40 @@
 ## 🚧 Zones de travail en cours
 
 > **Note importante - Architecture de déploiement** : Depuis le 2025-10-11, l'architecture a été simplifiée. Il n'y a plus de service canary. Toutes les références historiques au "canary" ou à "00279-kub" dans les sessions ci-dessous sont obsolètes. Le système utilise maintenant un conteneur unique `emergence-app` avec conservation des 3 dernières révisions uniquement.
+
+### 🔴 ProdGuardian - Session 2025-10-11 19:58 (Correctif WebSocket Production - EN COURS)
+- **Statut** : 🚧 **EN COURS** — Correctif implémenté, en attente déploiement
+- **Priorité** : 🔴 **CRITIQUE** — 9 erreurs WebSocket/heure en production
+- **Problème identifié** :
+  - **Pattern** : Erreurs répétées dans `uvicorn/protocols/websockets/websockets_impl.py:244`
+  - **Cause** : Déconnexions clients abruptes non gérées gracieusement
+  - **Impact** : Logs pollués, pas de downtime mais expérience dégradée
+  - **Période** : Détecté 2025-10-11 17:58-19:58 UTC (9 erreurs sur 80 logs)
+- **Fichiers modifiés** :
+  - `src/backend/core/websocket.py` (V11.2 → V11.3)
+    - Amélioration gestion d'erreurs dans `websocket_endpoint()` (lignes 378-412)
+    - Amélioration gestion d'erreurs dans `send_personal_message()` (lignes 227-250)
+    - Différenciation logging : INFO pour déconnexions normales, ERROR pour anomalies
+    - Ajout gestion `asyncio.CancelledError` pour shutdown gracieux
+  - `AGENT_SYNC.md` (cette entrée)
+  - `WEBSOCKET_AUDIT_2025-10-11.md` (référence audit existant)
+- **Correctifs implémentés** :
+  1. ✅ Gestion explicite `WebSocketDisconnect` → logger.info au lieu d'error
+  2. ✅ Détection `RuntimeError` liés à WebSocket → logger.info pour déconnexions abruptes
+  3. ✅ Gestion `asyncio.CancelledError` → re-raise après cleanup
+  4. ✅ Granularité logging : code de déconnexion inclus dans les logs
+  5. ✅ Exception handling dans `send_personal_message()` avec 3 cas distincts
+- **Tests requis avant déploiement** :
+  - Build Docker local
+  - Tests manuels déconnexion WebSocket
+  - Vérification logs (pas d'ERROR pour déconnexions normales)
+- **Prochaines actions** :
+  1. 🟡 Documenter dans fichiers pertinents
+  2. 🟡 Commit + push (y.c. fichiers modifiés et non modifiés)
+  3. 🟡 Build & push image Docker
+  4. 🟡 Deploy Cloud Run nouvelle révision
+  5. 🟡 Monitoring 1h post-déploiement (`/check_prod`)
+- **Documentation** : [WEBSOCKET_AUDIT_2025-10-11.md](WEBSOCKET_AUDIT_2025-10-11.md) (audit existant fix DB)
 
 ### 🟢 Codex - Session 2025-10-11 07:00 (Build & Deploy Cloud Run révision 00298-g8j)
 - **Statut** : ✅ **DÉPLOYÉ** — Trafic basculé sur `emergence-app-00298-g8j`
@@ -246,6 +280,36 @@ git push origin main
 ```
 
 ---
+
+### Codex - Session 2025-10-11 11:00-12:15 (Frontend - Dialogue RAG)
+- **Statut** : ✅ Bouton RAG harmonisé avec le module Débat (desktop & portrait) puis réduit de 35 %
+- **Fichiers touchés** :
+  - `src/frontend/features/chat/chat.css`
+  - `src/frontend/styles/components/rag-power-button.css`
+  - `src/frontend/styles/overrides/ui-hotfix-20250823.css`
+- **Actions réalisées** :
+  1. Masqué le libellé "Dialogue" en portrait pour conserver les quatre agents sur une seule ligne.
+  2. Calé `rag-power-button.css` sur le gabarit Débat puis réduit largeur/hauteur de 35 % (28.6px, rayon 8px) afin de garder la parité visuelle.
+  3. Vérifié que les réglages portrait (composer paddings, bouton d’envoi 40px centré) restent alignés après la diminution du toggle.
+- **Tests / checks** :
+  - ✅ `npm run build`
+- **Actions à suivre** :
+  1. QA visuelle desktop & mobile pour vérifier la parité de hauteur agents/RAG et l’absence d’overflow.
+  2. Confirmer côté prod que les chips documents restent accessibles avec le padding revu.
+
+### Codex - Session 2025-10-11 12:15-12:25 (Frontend - RAG toggle +20%)
+- **Statut** : ✅ Augmentation de 20 % (hauteur/largeur) du bouton RAG en Dialogue & Débat
+- **Fichiers touchés** :
+  - `src/frontend/styles/components/rag-power-button.css`
+  - `src/frontend/features/debate/debate.css`
+- **Actions réalisées** :
+  1. Dimension du toggle portée à 34.3px (rayon 9.6px) tout en conservant label, focus et gaps harmonisés côté Dialogue.
+  2. Synchronisation du module Débat pour garder une présentation identique.
+- **Tests / checks** :
+  - ✅ `npm run build`
+- **Actions à suivre** :
+  1. QA visuelle desktop/mobile pour confirmer l’alignement des pastilles agents et l’absence d’overflow horizontal.
+  2. Vérifier que le footer Débat reste équilibré avec ce nouveau gabarit.
 
 ### Codex - Session 2025-10-11 09:45-10:25 (Frontend - Contraste texte)
 - **Statut** : ✅ Palette texte normalisée sur le thème sombre (App + Cockpit + Paramètres)
@@ -1152,6 +1216,47 @@ git log --oneline -10
 ---
 
 ## 🤖 Synchronisation automatique
+### Consolidation - 2025-10-11T17:30:38.040646
+
+**Type de déclenchement** : `threshold`
+**Conditions** : {
+  "pending_changes": 5,
+  "threshold": 5
+}
+**Changements consolidés** : 5 événements sur 2 fichiers
+
+**Fichiers modifiés** :
+- **AGENT_SYNC.md** : 3 événement(s)
+  - `modified` à 2025-10-11T17:18:38.279177 (agent: unknown)
+  - `modified` à 2025-10-11T17:28:08.467670 (agent: unknown)
+  - `modified` à 2025-10-11T17:29:38.457808 (agent: unknown)
+- **docs/passation.md** : 2 événement(s)
+  - `modified` à 2025-10-11T17:27:08.437458 (agent: unknown)
+  - `modified` à 2025-10-11T17:29:08.466232 (agent: unknown)
+
+---
+
+### Consolidation - 2025-10-11T17:18:37.930465
+
+**Type de déclenchement** : `threshold`
+**Conditions** : {
+  "pending_changes": 6,
+  "threshold": 5
+}
+**Changements consolidés** : 6 événements sur 2 fichiers
+
+**Fichiers modifiés** :
+- **AGENT_SYNC.md** : 4 événement(s)
+  - `modified` à 2025-10-11T17:05:07.965402 (agent: unknown)
+  - `modified` à 2025-10-11T17:05:37.979432 (agent: unknown)
+  - `modified` à 2025-10-11T17:06:07.990677 (agent: unknown)
+  - `modified` à 2025-10-11T17:17:38.229658 (agent: unknown)
+- **docs/passation.md** : 2 événement(s)
+  - `modified` à 2025-10-11T17:06:07.991225 (agent: unknown)
+  - `modified` à 2025-10-11T17:18:08.250017 (agent: unknown)
+
+---
+
 ### Consolidation - 2025-10-10T02:59:05.977133
 
 **Type de déclenchement** : `manual`

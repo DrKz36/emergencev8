@@ -1,3 +1,55 @@
+## [2025-10-11 12:25] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+- `src/frontend/styles/components/rag-power-button.css`
+- `src/frontend/features/debate/debate.css`
+
+### Contexte
+Suite à la demande, augmentation de 20 % de la taille actuelle du bouton RAG pour qu’il reste cohérent entre Dialogue et Débat.
+
+### Actions réalisées
+1. Ajusté `rag-power-button.css` pour porter le toggle à 34.3 px (rayon 9.6 px), tout en conservant le label et les gaps harmonisés.
+2. Appliqué la même dimension dans `debate.css` afin de maintenir une parité visuelle entre les modules.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions recommandées
+1. Vérifier en desktop/mobile que le bouton reste bien aligné aux pastilles agents et n’induit pas de scroll horizontal.
+2. Confirmer en mode Débat que le footer conserve l’équilibre visuel avec le bouton redimensionné.
+
+### Blocages
+- Aucun.
+
+## [2025-10-11 12:15] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+- `src/frontend/features/chat/chat.css`
+- `src/frontend/styles/components/rag-power-button.css`
+- `src/frontend/styles/overrides/ui-hotfix-20250823.css`
+
+### Contexte
+Alignement du toggle RAG du module Dialogue sur le style du module Débat, puis réduction supplémentaire des dimensions conformément à la demande (‑35 %).
+
+### Actions réalisées
+1. Maintenu la suppression du titre "Dialogue" en portrait pour laisser la place aux quatre agents sur une seule ligne.
+2. Harmonisé `rag-power-button.css` avec le module Débat, puis réduit largeur/hauteur de 35 % (28.6px, rayon 8px) afin de conserver la cohérence entre modules.
+3. Vérifié que les overrides portrait (`ui-hotfix`) existants conservent le composer bien centré malgré la réduction du toggle.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions recommandées
+1. QA visuelle desktop & mobile pour confirmer la parité de hauteur agents/RAG et l'absence d'overflow.
+2. Vérifier en environnement partagé que les chips documents restent accessibles avec le padding ajusté.
+
+### Blocages
+- Aucun.
+
 ## [2025-10-11 09:45] - Agent: Codex (Frontend)
 
 ### Fichiers modifiés

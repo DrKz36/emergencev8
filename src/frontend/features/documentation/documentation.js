@@ -1313,7 +1313,7 @@ export class Documentation {
                             <h3>${guide.title}</h3>
                         </div>
                         <p class="guide-summary">${guide.summary}</p>
-                        <button class="btn-expand-guide" data-guide-id="${guide.id}" data-guide-icon="${guide.icon}" data-guide-title="${guide.title}">
+                        <button class="btn-expand-guide" data-guide-id="${guide.id}" data-guide-title="${guide.title}">
                             Voir le guide complet
                         </button>
                     </div>
@@ -1348,7 +1348,6 @@ export class Documentation {
             btn.addEventListener('click', (e) => {
                 const button = e.currentTarget;
                 const guideId = button.dataset.guideId;
-                const guideIcon = button.dataset.guideIcon;
                 const guideTitle = button.dataset.guideTitle;
 
                 // Find the guide in TUTORIAL_GUIDES
@@ -1356,7 +1355,7 @@ export class Documentation {
                 if (!guide) return;
 
                 // Update expanded container
-                expandedIcon.textContent = guideIcon;
+                expandedIcon.innerHTML = guide.icon;
                 expandedTitle.textContent = guideTitle;
                 expandedContent.innerHTML = guide.content;
 

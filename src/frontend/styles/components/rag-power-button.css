@@ -16,14 +16,15 @@
 .rag-control {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  flex-wrap: nowrap;
 }
 
 /* Bouton RAG - Même taille que les sélecteurs d'agents */
 .rag-power {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
+  width: 34.3px;
+  height: 34.3px;
+  border-radius: 9.6px;
   border: 1.5px solid rgba(239, 68, 68, 0.5);
   display: flex;
   align-items: center;
@@ -65,12 +66,13 @@
 
 /* Label RAG */
 .rag-label {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-secondary);
   user-select: none;
+  line-height: 1;
 }
 
 /* Accessibilité - focus visible */
@@ -95,13 +97,14 @@
   .chat-header-right .rag-control--mobile {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    flex: 0 0 auto;
   }
 
   .chat-header-right .rag-power {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 34.3px;
+    height: 34.3px;
+    border-radius: 9.6px;
   }
 
   .chat-header-right .rag-power svg {
@@ -110,23 +113,13 @@
   }
 
   .chat-header-right .rag-label {
-    font-size: 0.7rem;
+    font-size: 0.8rem;
   }
 }
 
 /* Très petits écrans */
 @media (max-width: 380px) {
-  .chat-header-right .rag-power {
-    width: 32px;
-    height: 32px;
-  }
-
-  .chat-header-right .rag-power svg {
-    width: 16px;
-    height: 16px;
-  }
-
   .chat-header-right .rag-label {
-    font-size: 0.65rem;
+    display: none;
   }
 }

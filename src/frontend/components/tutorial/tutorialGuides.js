@@ -6,7 +6,9 @@
 export const TUTORIAL_GUIDES = [
   {
     id: 'chat',
-    icon: '💬',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+    </svg>`,
     title: 'Chat Multi-Agents',
     summary: 'Maîtrisez les conversations avec les agents IA spécialisés',
     content: `
@@ -128,7 +130,10 @@ export const TUTORIAL_GUIDES = [
   },
   {
     id: 'threads',
-    icon: '📂',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+    </svg>`,
     title: 'Gestion des Conversations',
     summary: 'Organisez et retrouvez toutes vos conversations',
     content: `
@@ -251,7 +256,9 @@ export const TUTORIAL_GUIDES = [
   },
   {
     id: 'concepts',
-    icon: '🧠',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+    </svg>`,
     title: 'Base de Connaissances',
     summary: 'Exploitez la mémoire sémantique d\'Emergence',
     content: `
@@ -396,7 +403,10 @@ export const TUTORIAL_GUIDES = [
   },
   {
     id: 'documents',
-    icon: '📚',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+    </svg>`,
     title: 'Gestion des Documents',
     summary: 'Uploadez et exploitez vos documents avec le RAG',
     content: `
@@ -573,7 +583,11 @@ export const TUTORIAL_GUIDES = [
   },
   {
     id: 'dashboard',
-    icon: '📊',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="12" y1="20" x2="12" y2="10"></line>
+      <line x1="18" y1="20" x2="18" y2="4"></line>
+      <line x1="6" y1="20" x2="6" y2="16"></line>
+    </svg>`,
     title: 'Dashboard & Métriques',
     summary: 'Suivez vos statistiques et l\'utilisation d\'Emergence',
     content: `
@@ -716,7 +730,10 @@ export const TUTORIAL_GUIDES = [
   },
   {
     id: 'settings',
-    icon: '⚙️',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M12 1v6m0 6v6m5.657-13.657l-4.243 4.243m-2.828 2.828l-4.243 4.243m16.97-.485l-6-1m-6 0l-6 1m13.657-5.657l-4.243-4.243m-2.828-2.828l-4.243-4.243m16.97 6.142l-6 1m-6 0l-6-1"></path>
+    </svg>`,
     title: 'Paramètres et Configuration',
     summary: 'Personnalisez Emergence selon vos besoins',
     content: `
