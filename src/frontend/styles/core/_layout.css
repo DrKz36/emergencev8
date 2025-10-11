@@ -22,7 +22,7 @@
   background-position:center top;
   background-size:cover;
   background-attachment:fixed;
-  color:var(--color-text-primary);
+  color: #f8fafc !important;
   overflow:hidden;
 }
 
@@ -114,6 +114,7 @@
     position: sticky;
     top: 0;
     overflow-y: auto;
+    color: #f8fafc !important;
   }
   .app-content{
     grid-area:content;

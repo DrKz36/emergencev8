@@ -8,6 +8,7 @@ import { settingsModels } from './settings-models.js';
 import { settingsUI } from './settings-ui.js';
 import { settingsSecurity } from './settings-security.js';
 import { settingsTutorial } from './settings-tutorial.js';
+import { settingsRAG } from './settings-rag.js';
 
 export class Settings {
     constructor() {
@@ -17,7 +18,8 @@ export class Settings {
             models: settingsModels,
             ui: settingsUI,
             security: settingsSecurity,
-            tutorial: settingsTutorial
+            tutorial: settingsTutorial,
+            rag: settingsRAG
         };
         this.initialized = false;
         this.hasUnsavedChanges = false;
@@ -79,6 +81,14 @@ export class Settings {
                             <span class="nav-hint">Configuration des agents</span>
                         </div>
                     </button>
+                    <button class="settings-nav-item ${this.activeTab === 'rag' ? 'active' : ''}"
+                            data-tab="rag">
+                        <span class="nav-icon">${SettingsIcons.database}</span>
+                        <div class="nav-content">
+                            <span class="nav-label">RAG</span>
+                            <span class="nav-hint">Recherche sémantique</span>
+                        </div>
+                    </button>
                     <button class="settings-nav-item ${this.activeTab === 'ui' ? 'active' : ''}"
                             data-tab="ui">
                         <span class="nav-icon">${SettingsIcons.palette}</span>
@@ -103,6 +113,12 @@ export class Settings {
                     <div class="settings-panel ${this.activeTab === 'models' ? 'active' : ''}"
                          data-panel="models">
                         <div id="settings-models-container"></div>
+                    </div>
+
+                    <!-- RAG Tab -->
+                    <div class="settings-panel ${this.activeTab === 'rag' ? 'active' : ''}"
+                         data-panel="rag">
+                        <div id="settings-rag-container"></div>
                     </div>
 
                     <!-- UI Tab -->
@@ -904,6 +920,9 @@ Envoyé depuis ÉMERGENCE V8
             case 'models':
                 await this.modules.models.init('settings-models-container');
                 break;
+            case 'rag':
+                await this.modules.rag.init('settings-rag-container');
+                break;
             case 'ui':
                 await this.modules.ui.init('settings-ui-container');
                 break;
@@ -926,6 +945,7 @@ Envoyé depuis ÉMERGENCE V8
         try {
             await Promise.all([
                 this.modules.models.saveSettings(),
+                this.modules.rag.saveSettings(),
                 this.modules.ui.saveSettings()
             ]);
 
@@ -961,6 +981,7 @@ Envoyé depuis ÉMERGENCE V8
         try {
             await Promise.all([
                 this.modules.models.resetSettings(),
+                this.modules.rag.resetSettings(),
                 this.modules.ui.resetSettings()
             ]);
 

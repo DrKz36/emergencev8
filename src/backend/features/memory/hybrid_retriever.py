@@ -21,6 +21,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from collections import Counter
 import math
 
+from .rag_metrics import RAGMetricsTracker, track_hybrid_query
+
 logger = logging.getLogger(__name__)
 
 
@@ -225,6 +227,7 @@ class HybridRetriever:
         query: str,
         corpus: List[str],
         vector_results: Optional[List[Dict[str, Any]]] = None,
+        collection_name: str = "default",
     ) -> List[Dict[str, Any]]:
         """
         Récupère les meilleurs passages via scoring hybride.
@@ -234,6 +237,7 @@ class HybridRetriever:
             corpus: Liste de tous les textes du corpus (pour BM25)
             vector_results: Résultats pré-calculés de la recherche vectorielle
                             (doit contenir 'text', 'metadata', 'distance')
+            collection_name: Nom de la collection (pour métriques)
 
         Returns:
             Liste de résultats hybrides avec scores, triés par pertinence
@@ -241,25 +245,37 @@ class HybridRetriever:
         if not query or not corpus:
             return []
 
-        # 1. Scoring BM25
-        self.bm25_scorer = BM25Scorer(corpus, k1=self.bm25_k1, b=self.bm25_b)
-        bm25_scores = self.bm25_scorer.get_scores(query)
-        bm25_results = [(idx, score) for idx, score in enumerate(bm25_scores)]
-        bm25_results.sort(key=lambda x: x[1], reverse=True)
+        # Track metrics
+        with RAGMetricsTracker(collection_name, "hybrid") as tracker:
+            # 1. Scoring BM25
+            self.bm25_scorer = BM25Scorer(corpus, k1=self.bm25_k1, b=self.bm25_b)
+            bm25_scores = self.bm25_scorer.get_scores(query)
+            bm25_results = [(idx, score) for idx, score in enumerate(bm25_scores)]
+            bm25_results.sort(key=lambda x: x[1], reverse=True)
 
-        # 2. Utiliser les résultats vectoriels (déjà calculés par VectorService)
-        if vector_results is None:
-            vector_results = []
+            # 2. Utiliser les résultats vectoriels (déjà calculés par VectorService)
+            if vector_results is None:
+                vector_results = []
 
-        # 3. Fusion des scores
-        hybrid_results = self._merge_results(bm25_results, vector_results, corpus)
+            # 3. Fusion des scores
+            hybrid_results = self._merge_results(bm25_results, vector_results, corpus)
 
-        logger.info(
-            f"HybridRetriever: query='{query[:50]}...', "
-            f"corpus_size={len(corpus)}, "
-            f"bm25_top={bm25_results[0][1] if bm25_results else 0:.3f}, "
-            f"hybrid_top={hybrid_results[0]['score'] if hybrid_results else 0:.3f}"
-        )
+            # 4. Calculer le nombre de résultats filtrés
+            total_candidates = len(corpus)
+            filtered_count = total_candidates - len(hybrid_results)
+            if filtered_count > 0:
+                tracker.record_filtered(filtered_count, "below_threshold")
+
+            # 5. Enregistrer les résultats
+            tracker.record_results(hybrid_results)
+
+            logger.info(
+                f"HybridRetriever: query='{query[:50]}...', "
+                f"corpus_size={len(corpus)}, "
+                f"bm25_top={bm25_results[0][1] if bm25_results else 0:.3f}, "
+                f"hybrid_top={hybrid_results[0]['score'] if hybrid_results else 0:.3f}, "
+                f"filtered={filtered_count}"
+            )
 
         return hybrid_results
 
@@ -278,6 +294,7 @@ def hybrid_query(
     score_threshold: float = 0.0,
     bm25_k1: float = 1.5,
     bm25_b: float = 0.75,
+    collection_name: str = "default",
 ) -> List[Dict[str, Any]]:
     """
     Effectue une recherche hybride BM25 + vectorielle sur une collection.
@@ -292,6 +309,7 @@ def hybrid_query(
         score_threshold: Seuil minimum de score
         bm25_k1: Paramètre k1 de BM25
         bm25_b: Paramètre b de BM25
+        collection_name: Nom de la collection (pour métriques)
 
     Returns:
         Liste de résultats hybrides avec scores détaillés
@@ -326,6 +344,7 @@ def hybrid_query(
         query=query_text,
         corpus=corpus,
         vector_results=vector_results,
+        collection_name=collection_name,
     )
 
     return hybrid_results

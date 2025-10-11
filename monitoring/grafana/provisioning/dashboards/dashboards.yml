@@ -1,0 +1,15 @@
+# Grafana dashboard provisioning
+
+apiVersion: 1
+
+providers:
+  - name: 'Emergence Dashboards'
+    orgId: 1
+    folder: 'Emergence V8'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true

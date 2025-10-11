@@ -1,8 +1,15 @@
 /* ========================================================================== */
-/* main-styles.css — Styles unifiés (Cartes, Boutons, Inputs) — V3.5          */
+/* main-styles.css — Styles unifiés (Cartes, Boutons, Inputs) — V4.0          */
 /* ========================================================================== */
 
-/* === DESIGN TOKENS MODERNISÉS === */
+/* === SYSTÈME DE DESIGN UNIFIÉ V2.0 === */
+@import './design-system.css';
+
+/* === UI KIT COMPONENTS === */
+@import './ui-kit/button.css';
+@import './ui-kit/bubble.css';
+
+/* === LEGACY DESIGN TOKENS (à migrer progressivement) === */
 @import './design-tokens.css';
 
 /* === COMPOSANTS MODERNISÉS === */

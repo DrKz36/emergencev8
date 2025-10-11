@@ -423,19 +423,19 @@
 .dashboard-card__unit {
   font-size: 1rem;
   font-weight: 500;
-  color: rgba(148, 163, 184, 0.85);
+  color: rgba(226, 232, 240, 0.75);
 }
 
 .dashboard-card__description {
   font-size: 0.875rem;
-  color: rgba(148, 163, 184, 0.8);
+  color: rgba(226, 232, 240, 0.7);
   margin: 0;
   line-height: 1.4;
 }
 
 .dashboard-card__threshold {
   font-size: 0.8125rem;
-  color: rgba(148, 163, 184, 0.75);
+  color: rgba(226, 232, 240, 0.65);
   margin-top: 0.25rem;
 }
 
@@ -611,7 +611,7 @@
   padding: 0.5rem 0.25rem;
   border: none;
   background: transparent;
-  color: rgba(148, 163, 184, 0.75);
+  color: rgba(226, 232, 240, 0.85);
   cursor: pointer;
   transition: color 0.2s ease, transform 0.2s ease;
   border-radius: 0.5rem;
@@ -637,7 +637,7 @@
 
 .mobile-nav__item:hover,
 .mobile-nav__item:focus-visible {
-  color: rgba(226, 232, 240, 0.95);
+  color: rgba(255, 255, 255, 1);
 }
 
 .mobile-nav__item--active {
@@ -730,7 +730,7 @@
   border: 1px solid transparent;
   border-radius: 0.75rem;
   background: transparent;
-  color: rgba(148, 163, 184, 0.85);
+  color: rgba(226, 232, 240, 0.9) !important;
   font-size: 0.95rem;
   font-weight: 500;
   letter-spacing: 0.01em;
@@ -754,7 +754,7 @@
 }
 
 .sidebar-nav__item:hover {
-  color: rgba(226, 232, 240, 0.95);
+  color: rgba(255, 255, 255, 1) !important;
   border-color: rgba(148, 163, 184, 0.25);
   background: rgba(15, 23, 42, 0.35);
   transform: translateX(4px);

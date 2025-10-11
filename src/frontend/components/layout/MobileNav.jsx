@@ -178,7 +178,7 @@ export const MOBILE_NAV_STYLES = `
   padding: 0.5rem 0.25rem;
   border: none;
   background: transparent;
-  color: rgba(148, 163, 184, 0.75);
+  color: rgba(226, 232, 240, 0.85);
   cursor: pointer;
   transition: color 0.2s ease, transform 0.2s ease;
   border-radius: 0.5rem;
@@ -204,7 +204,7 @@ export const MOBILE_NAV_STYLES = `
 
 .mobile-nav__item:hover,
 .mobile-nav__item:focus-visible {
-  color: rgba(226, 232, 240, 0.95);
+  color: rgba(255, 255, 255, 1);
 }
 
 .mobile-nav__item--active {

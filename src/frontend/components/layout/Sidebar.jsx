@@ -279,7 +279,7 @@ export const SIDEBAR_STYLES = `
   border: 1px solid transparent;
   border-radius: 0.75rem;
   background: transparent;
-  color: rgba(148, 163, 184, 0.85);
+  color: rgba(226, 232, 240, 0.9);
   font-size: 1.045rem;
   font-weight: 500;
   letter-spacing: 0.01em;
@@ -303,7 +303,7 @@ export const SIDEBAR_STYLES = `
 }
 
 .sidebar-nav__item:hover {
-  color: rgba(226, 232, 240, 0.95);
+  color: rgba(255, 255, 255, 1);
   border-color: rgba(148, 163, 184, 0.25);
   background: rgba(15, 23, 42, 0.35);
   transform: translateX(4px);

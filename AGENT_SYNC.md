@@ -1145,6 +1145,59 @@ git log --oneline -10
 
 ---
 
+### 🔵 Codex - Session 2025-10-11 06:08 (Préparation commit/push backlog RAG + monitoring)
+- **Statut** : 🟡 **INTÉGRATION** – Mise au propre et préparation du commit/push demandé
+- **AutoSync** : ❌ `curl http://localhost:8000/api/sync/status` → échec connexion (service local indisponible)
+- **Fichiers pris en compte pour le commit** :
+  - `src/backend/features/memory/hybrid_retriever.py`
+  - `src/backend/features/memory/rag_metrics.py`
+  - `src/backend/features/metrics/router.py`
+  - `src/backend/features/settings/*`
+  - `src/backend/main.py`
+  - `src/frontend/components/layout/MobileNav.jsx`
+  - `src/frontend/components/layout/Sidebar.jsx`
+  - `src/frontend/features/chat/chat.css`
+  - `src/frontend/features/debate/debate.css`
+  - `src/frontend/features/documents/documents.css`
+  - `src/frontend/features/settings/settings-main.js`
+  - `src/frontend/features/settings/settings-rag.js`
+  - `src/frontend/features/threads/threads.css`
+  - `src/frontend/styles/components-modern.css`
+  - `src/frontend/styles/core/_layout.css`
+  - `src/frontend/styles/core/_navigation.css`
+  - `src/frontend/styles/core/_variables.css`
+  - `src/frontend/styles/design-system.css`
+  - `src/frontend/styles/main-styles.css`
+  - `src/frontend/styles/overrides/mobile-menu-fix.css`
+  - `src/frontend/styles/ui-kit/*`
+  - `docs/RAG_HYBRID_INTEGRATION.md`
+  - `monitoring/README.md`
+  - `monitoring/docker-compose.yml`
+  - `monitoring/start-monitoring.bat`
+  - `monitoring/start-monitoring.sh`
+  - `monitoring/alertmanager/*`
+  - `monitoring/grafana/*`
+  - `monitoring/prometheus/*`
+  - `tests/backend/features/test_hybrid_retriever.py`
+  - `tests/e2e/rag-hybrid.spec.js`
+  - `AGENT_SYNC.md`
+  - `docs/passation.md`
+- **Actions réalisées** :
+  1. Lecture AGENT_SYNC.md ➜ AGENTS.md ➜ CODEV_PROTOCOL.md ➜ `docs/passation.md` (3 entrées) ➜ `docs/architecture/00-Overview.md`, `docs/architecture/30-Contracts.md`, `docs/Memoire.md`, `docs/Roadmap Stratégique.txt`.
+  2. Tentative `pwsh -File scripts/sync-workdir.ps1` ➜ KO (working tree dirty, attendu avant commit global).
+  3. Préparation commit/push complet selon demande (tous fichiers existants conservés).
+- **Tests exécutés (obligatoires)** :
+  - ⚠️ `ruff check` ➜ 72 erreurs existantes (imports inutilisés + f-strings) principalement dans `.sync/scripts/*.py`, `check_cockpit_data.py`, suites tests mémoire.
+  - ⚠️ `mypy src` ➜ erreurs d’assignation float→int dans `src/backend/features/metrics/router.py`.
+  - ⚠️ `pytest` ➜ échec collecte (`memory_cache_operations` déjà enregistré dans Prometheus client).
+  - ✅ `npm run build`
+  - ⚠️ `pwsh -File tests/run_all.ps1` ➜ login smoke KO (identifiants manquants pour `gonzalefernando@gmail.com`).
+- **Next steps proposées** :
+  1. Corriger les lint `ruff` (imports + f-strings) dans scripts/tests listés.
+  2. Ajuster types `float`/`int` dans `metrics/router.py` (ou mettre en place Decimal/config).
+  3. Résoudre la duplication Prometheus `memory_cache_operations` (factory + reset registry) avant relance `pytest`.
+  4. Fournir credentials ou mock pour `tests/run_all.ps1` afin de finaliser smoke tests.
+
 ### 🔵 Claude Code - Session 2025-10-10 18:30 (Analyse Cockpit + Roadmap P2 Mémoire)
 - **Statut** : ✅ **DOCUMENTATION COMPLÉTÉE** - Prêt pour implémentation P2 puis Sprint 0
 - **Priorité** : 🟡 **PLANIFICATION** - Roadmap claire pour prochaines étapes

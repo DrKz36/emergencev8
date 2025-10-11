@@ -1,0 +1,134 @@
+# Prometheus alert rules for RAG system
+
+groups:
+  - name: rag_performance
+    interval: 30s
+    rules:
+      # Alert if RAG success rate drops below 80%
+      - alert: RAGLowSuccessRate
+        expr: |
+          (
+            sum(rate(rag_queries_hybrid_total{status="success"}[5m]))
+            /
+            (sum(rate(rag_queries_hybrid_total[5m])) + 0.001)
+          ) < 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: rag
+        annotations:
+          summary: "RAG success rate is below 80%"
+          description: "Current success rate: {{ $value | humanizePercentage }}. Check for errors or threshold issues."
+
+      # Alert if average RAG score is too low
+      - alert: RAGLowAverageScore
+        expr: rag_avg_score < 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: rag
+        annotations:
+          summary: "RAG average score is very low"
+          description: "Current average score: {{ $value }}. Results may not be relevant."
+
+      # Alert if too many results are being filtered
+      - alert: RAGHighFilterRate
+        expr: |
+          (
+            sum(rate(rag_results_filtered_total[5m]))
+            /
+            (sum(rate(rag_queries_hybrid_total[5m])) + 0.001)
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: rag
+        annotations:
+          summary: "More than 50% of RAG results are being filtered"
+          description: "Current filter rate: {{ $value | humanizePercentage }}. Consider adjusting score threshold."
+
+      # Alert if query latency is too high (p95 > 1s)
+      - alert: RAGHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(rag_query_duration_seconds_bucket[5m])) by (le)
+          ) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          component: rag
+        annotations:
+          summary: "RAG query latency is high"
+          description: "P95 latency: {{ $value }}s. Performance degradation detected."
+
+      # Critical: Alert if no RAG queries in the last 10 minutes
+      - alert: RAGNoQueries
+        expr: |
+          sum(rate(rag_queries_hybrid_total[10m])) == 0
+        for: 10m
+        labels:
+          severity: critical
+          component: rag
+        annotations:
+          summary: "No RAG queries detected"
+          description: "No RAG queries have been processed in the last 10 minutes. System may be down."
+
+  - name: rag_health
+    interval: 30s
+    rules:
+      # Alert if backend is down
+      - alert: EmergenceBackendDown
+        expr: up{job="emergence-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Emergence backend is down"
+          description: "The Emergence API backend is not responding to health checks."
+
+      # Alert if error rate is high
+      - alert: RAGHighErrorRate
+        expr: |
+          (
+            sum(rate(rag_queries_hybrid_total{status="error"}[5m]))
+            /
+            (sum(rate(rag_queries_hybrid_total[5m])) + 0.001)
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: rag
+        annotations:
+          summary: "RAG error rate is above 10%"
+          description: "Current error rate: {{ $value | humanizePercentage }}. Check logs for details."
+
+  - name: rag_capacity
+    interval: 30s
+    rules:
+      # Alert if query rate is very high (potential DDoS or runaway process)
+      - alert: RAGHighQueryRate
+        expr: sum(rate(rag_queries_hybrid_total[1m])) > 100
+        for: 2m
+        labels:
+          severity: warning
+          component: rag
+        annotations:
+          summary: "RAG query rate is very high"
+          description: "Current rate: {{ $value }} queries/sec. Potential performance impact."
+
+      # Alert if average results count is very low (might indicate data issues)
+      - alert: RAGLowResultsCount
+        expr: |
+          (
+            sum(rate(rag_results_count_sum[5m]))
+            /
+            (sum(rate(rag_results_count_count[5m])) + 0.001)
+          ) < 1
+        for: 10m
+        labels:
+          severity: warning
+          component: rag
+        annotations:
+          summary: "RAG queries returning very few results"
+          description: "Average results per query: {{ $value }}. May indicate empty collections or overly strict filtering."

@@ -1,0 +1,234 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════
+ * ÉMERGENCE V8 - BUTTON COMPONENT SYSTEM
+ * ═══════════════════════════════════════════════════════════════════
+ * Unified button styles using design tokens
+ * Version: 2.0.0
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+ * BASE BUTTON STYLES
+ * ═══════════════════════════════════════════════════════════════ */
+
+.btn {
+  /* Layout */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+
+  /* Typography */
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-normal);
+  text-decoration: none;
+  white-space: nowrap;
+
+  /* Sizing */
+  height: var(--size-button-md);
+  padding: 0 var(--space-4);
+
+  /* Visual */
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  cursor: pointer;
+  user-select: none;
+
+  /* Animation */
+  transition: all var(--transition-base);
+
+  /* States */
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * SIZE VARIANTS
+ * ═══════════════════════════════════════════════════════════════ */
+
+.btn--sm {
+  height: var(--size-button-sm);
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-xs);
+}
+
+.btn--lg {
+  height: var(--size-button-lg);
+  padding: 0 var(--space-6);
+  font-size: var(--font-size-base);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * STYLE VARIANTS
+ * ═══════════════════════════════════════════════════════════════ */
+
+/* Primary Button */
+.btn--primary {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-sm);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+/* Secondary Button */
+.btn--secondary {
+  background: var(--color-white);
+  color: var(--color-primary);
+  border-color: var(--color-border-medium);
+  box-shadow: var(--shadow-xs);
+
+  &:hover:not(:disabled) {
+    background: var(--color-gray-50);
+    border-color: var(--color-primary);
+  }
+
+  &:active:not(:disabled) {
+    background: var(--color-gray-100);
+  }
+}
+
+/* Ghost Button */
+.btn--ghost {
+  background: transparent;
+  color: var(--color-text-primary);
+
+  &:hover:not(:disabled) {
+    background: var(--color-gray-100);
+  }
+
+  &:active:not(:disabled) {
+    background: var(--color-gray-200);
+  }
+}
+
+/* Danger Button */
+.btn--danger {
+  background: var(--color-error);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-sm);
+
+  &:hover:not(:disabled) {
+    background: #ff5585;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+}
+
+/* Success Button */
+.btn--success {
+  background: var(--color-success);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-sm);
+
+  &:hover:not(:disabled) {
+    background: #38d46d;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * ICON BUTTONS
+ * ═══════════════════════════════════════════════════════════════ */
+
+.btn--icon {
+  width: var(--size-button-md);
+  height: var(--size-button-md);
+  padding: 0;
+  border-radius: var(--radius-full);
+
+  &.btn--sm {
+    width: var(--size-button-sm);
+    height: var(--size-button-sm);
+  }
+
+  &.btn--lg {
+    width: var(--size-button-lg);
+    height: var(--size-button-lg);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * SPECIAL STATES
+ * ═══════════════════════════════════════════════════════════════ */
+
+.btn--loading {
+  position: relative;
+  color: transparent;
+  pointer-events: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: var(--radius-full);
+    animation: spin 0.6s linear infinite;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * BUTTON GROUPS
+ * ═══════════════════════════════════════════════════════════════ */
+
+.btn-group {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+.btn-group--attached {
+  gap: 0;
+
+  .btn {
+    border-radius: 0;
+
+    &:first-child {
+      border-top-left-radius: var(--radius-lg);
+      border-bottom-left-radius: var(--radius-lg);
+    }
+
+    &:last-child {
+      border-top-right-radius: var(--radius-lg);
+      border-bottom-right-radius: var(--radius-lg);
+    }
+
+    &:not(:last-child) {
+      border-right-width: 0;
+    }
+  }
+}

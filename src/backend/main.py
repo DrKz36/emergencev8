@@ -60,6 +60,7 @@ DEV_AUTH_ROUTER = _import_router("backend.features.dev_auth.router")  # optionne
 METRICS_ROUTER = _import_router("backend.features.metrics.router")  # Prometheus metrics
 MONITORING_ROUTER = _import_router("backend.features.monitoring.router")  # Monitoring & observability
 SYNC_ROUTER = _import_router("backend.features.sync.router")  # Auto-sync inter-agents
+SETTINGS_ROUTER = _import_router("backend.features.settings.router")  # Application settings
 
 
 def _migrations_dir() -> str:
@@ -295,6 +296,7 @@ def create_app() -> FastAPI:
     _mount_router(METRICS_ROUTER, "/api")  # Prometheus metrics at /api/metrics
     _mount_router(MONITORING_ROUTER)  # Monitoring endpoints at /api/monitoring/*
     _mount_router(SYNC_ROUTER, "/api")  # Auto-sync endpoints at /api/sync/*
+    _mount_router(SETTINGS_ROUTER)  # Settings endpoints at /api/settings/*
 
     # ⚠️ WS: **uniquement** features.chat.router (déclare /ws/{session_id})
     _mount_router(CHAT_ROUTER)  # pas de prefix → garde /ws/{session_id}

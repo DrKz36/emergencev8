@@ -1,0 +1,311 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════
+ * ÉMERGENCE V8 - BUBBLE COMPONENT SYSTEM
+ * ═══════════════════════════════════════════════════════════════════
+ * Unified bubble/badge styles using design tokens
+ * Version: 2.0.0
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+ * BASE BUBBLE STYLES
+ * ═══════════════════════════════════════════════════════════════ */
+
+.bubble {
+  /* Layout */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+
+  /* Typography */
+  font-family: var(--font-sans);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  white-space: nowrap;
+
+  /* Sizing */
+  height: 1.25rem; /* 20px */
+  padding: 0 var(--space-2);
+
+  /* Visual */
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+
+  /* Animation */
+  transition: all var(--transition-fast);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * SIZE VARIANTS
+ * ═══════════════════════════════════════════════════════════════ */
+
+.bubble--sm {
+  height: 1rem; /* 16px */
+  padding: 0 var(--space-1);
+  font-size: 0.625rem; /* 10px */
+}
+
+.bubble--md {
+  height: 1.5rem; /* 24px */
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.bubble--lg {
+  height: 2rem; /* 32px */
+  padding: 0 var(--space-4);
+  font-size: var(--font-size-base);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * COLOR VARIANTS
+ * ═══════════════════════════════════════════════════════════════ */
+
+/* Primary Bubble */
+.bubble--primary {
+  background: var(--color-primary-alpha-10);
+  color: var(--color-primary-dark);
+  border-color: var(--color-primary-alpha-20);
+
+  &:hover {
+    background: var(--color-primary-alpha-20);
+  }
+}
+
+/* Secondary Bubble */
+.bubble--secondary {
+  background: rgba(240, 147, 251, 0.1);
+  color: var(--color-secondary-dark);
+  border-color: rgba(240, 147, 251, 0.2);
+
+  &:hover {
+    background: rgba(240, 147, 251, 0.2);
+  }
+}
+
+/* Success Bubble */
+.bubble--success {
+  background: rgba(67, 233, 123, 0.1);
+  color: #2bb862;
+  border-color: rgba(67, 233, 123, 0.2);
+
+  &:hover {
+    background: rgba(67, 233, 123, 0.2);
+  }
+}
+
+/* Warning Bubble */
+.bubble--warning {
+  background: rgba(255, 217, 61, 0.1);
+  color: #d4b327;
+  border-color: rgba(255, 217, 61, 0.2);
+
+  &:hover {
+    background: rgba(255, 217, 61, 0.2);
+  }
+}
+
+/* Error Bubble */
+.bubble--error {
+  background: rgba(255, 107, 157, 0.1);
+  color: #e05080;
+  border-color: rgba(255, 107, 157, 0.2);
+
+  &:hover {
+    background: rgba(255, 107, 157, 0.2);
+  }
+}
+
+/* Info Bubble */
+.bubble--info {
+  background: rgba(79, 172, 254, 0.1);
+  color: #3a8dd9;
+  border-color: rgba(79, 172, 254, 0.2);
+
+  &:hover {
+    background: rgba(79, 172, 254, 0.2);
+  }
+}
+
+/* Neutral Bubble */
+.bubble--neutral {
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
+  border-color: var(--color-gray-200);
+
+  &:hover {
+    background: var(--color-gray-200);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * SOLID VARIANTS
+ * ═══════════════════════════════════════════════════════════════ */
+
+.bubble--primary-solid {
+  background: var(--color-primary);
+  color: var(--color-white);
+  border-color: var(--color-primary);
+
+  &:hover {
+    background: var(--color-primary-dark);
+  }
+}
+
+.bubble--success-solid {
+  background: var(--color-success);
+  color: var(--color-white);
+  border-color: var(--color-success);
+
+  &:hover {
+    background: #38d46d;
+  }
+}
+
+.bubble--warning-solid {
+  background: var(--color-warning);
+  color: var(--color-gray-900);
+  border-color: var(--color-warning);
+
+  &:hover {
+    background: #f5c823;
+  }
+}
+
+.bubble--error-solid {
+  background: var(--color-error);
+  color: var(--color-white);
+  border-color: var(--color-error);
+
+  &:hover {
+    background: #ff5585;
+  }
+}
+
+.bubble--info-solid {
+  background: var(--color-info);
+  color: var(--color-white);
+  border-color: var(--color-info);
+
+  &:hover {
+    background: #3a9ef0;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * SPECIAL STYLES
+ * ═══════════════════════════════════════════════════════════════ */
+
+/* Gradient Bubble */
+.bubble--gradient {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  color: var(--color-white);
+  border: none;
+
+  &:hover {
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+  }
+}
+
+/* Dot Indicator Bubble */
+.bubble--dot {
+  padding-left: var(--space-3);
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: var(--space-2);
+    width: 0.375rem; /* 6px */
+    height: 0.375rem; /* 6px */
+    border-radius: var(--radius-full);
+    background: currentColor;
+  }
+}
+
+/* Removable Bubble */
+.bubble--removable {
+  padding-right: var(--space-1);
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.bubble__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  margin-left: var(--space-1);
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--transition-fast);
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * NOTIFICATION BADGE (DOT)
+ * ═══════════════════════════════════════════════════════════════ */
+
+.badge {
+  position: relative;
+  display: inline-block;
+}
+
+.badge__dot {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  width: 0.5rem; /* 8px */
+  height: 0.5rem; /* 8px */
+  border-radius: var(--radius-full);
+  background: var(--color-error);
+  border: 2px solid var(--color-white);
+}
+
+.badge__count {
+  position: absolute;
+  top: -0.5rem;
+  right: -0.5rem;
+  min-width: 1.25rem; /* 20px */
+  height: 1.25rem; /* 20px */
+  padding: 0 var(--space-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--color-error);
+  color: var(--color-white);
+  font-size: 0.625rem; /* 10px */
+  font-weight: var(--font-weight-bold);
+  border: 2px solid var(--color-white);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * PULSE ANIMATION
+ * ═══════════════════════════════════════════════════════════════ */
+
+.bubble--pulse,
+.badge__dot--pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

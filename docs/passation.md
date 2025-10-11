@@ -1,3 +1,65 @@
+## [2025-10-11 06:08] - Agent: Codex (Commit backlog RAG/monitoring)
+
+### Fichiers modifiés
+- `src/backend/features/memory/hybrid_retriever.py`
+- `src/backend/features/memory/rag_metrics.py`
+- `src/backend/features/metrics/router.py`
+- `src/backend/features/settings/`
+- `src/backend/main.py`
+- `src/frontend/components/layout/MobileNav.jsx`
+- `src/frontend/components/layout/Sidebar.jsx`
+- `src/frontend/features/chat/chat.css`
+- `src/frontend/features/debate/debate.css`
+- `src/frontend/features/documents/documents.css`
+- `src/frontend/features/settings/settings-main.js`
+- `src/frontend/features/settings/settings-rag.js`
+- `src/frontend/features/threads/threads.css`
+- `src/frontend/styles/components-modern.css`
+- `src/frontend/styles/core/_layout.css`
+- `src/frontend/styles/core/_navigation.css`
+- `src/frontend/styles/core/_variables.css`
+- `src/frontend/styles/design-system.css`
+- `src/frontend/styles/main-styles.css`
+- `src/frontend/styles/overrides/mobile-menu-fix.css`
+- `src/frontend/styles/ui-kit/`
+- `docs/RAG_HYBRID_INTEGRATION.md`
+- `monitoring/README.md`
+- `monitoring/docker-compose.yml`
+- `monitoring/start-monitoring.bat`
+- `monitoring/start-monitoring.sh`
+- `monitoring/alertmanager/`
+- `monitoring/grafana/`
+- `monitoring/prometheus/`
+- `tests/backend/features/test_hybrid_retriever.py`
+- `tests/e2e/rag-hybrid.spec.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+Demande utilisateur: commit + push de tous les fichiers présents en worktree (y compris ceux préparés par d'autres sessions). Lecture des consignes complètes et préparation du commit final en respectant le protocole multi-agents.
+
+### Actions
+1. Lecture séquentielle: `AGENT_SYNC.md`, `AGENTS.md`, `CODEV_PROTOCOL.md`, dernières entrées `docs/passation.md`, références architecture + mémoire + roadmap.
+2. Vérification AutoSync `curl http://localhost:8000/api/sync/status` ➜ KO (service local indisponible). Tentative `scripts/sync-workdir.ps1` ➜ échoue logiquement car worktree sale (avant commit global).
+3. Exécution batterie de tests obligatoires (résultats ci-dessous) puis mise à jour documentation collaborative en vue du commit/push.
+
+### Tests
+- ⚠️ `ruff check` ➜ 72 erreurs (imports inutilisés, f-strings sans placeholders) dans `.sync/scripts/*.py`, `check_cockpit_data.py`, suites tests mémoire.
+- ⚠️ `mypy src` ➜ erreurs d’assignation float→int dans `src/backend/features/metrics/router.py`.
+- ⚠️ `pytest` ➜ duplication Prometheus (`memory_cache_operations*` déjà enregistrés) lors de l’import `memory_ctx`.
+- ✅ `npm run build`.
+- ⚠️ `pwsh -File tests/run_all.ps1` ➜ échec login smoke (identifiants `EMERGENCE_SMOKE_EMAIL/PASSWORD` absents).
+
+### Prochaines actions recommandées
+1. Corriger lint `ruff` dans scripts/tests mentionnés (imports et f-strings).
+2. Ajuster `src/backend/features/metrics/router.py` pour lever les erreurs mypy (types numériques).
+3. Traiter la duplication Prometheus (réinitialiser registry durant tests ou factory).
+4. Fournir credentials ou stub authentification pour `tests/run_all.ps1`.
+
+### Blocages
+- AutoSyncService injoignable (curl 8000 KO).
+- Tests backend/lint toujours rouges tant que corrections ci-dessus non appliquées.
+
 ## [2025-10-10 ~20:30] - Agent: Claude Code (Résolution Synchronisation Cloud ↔ Local ↔ GitHub)
 
 ### Fichiers modifiés
@@ -2772,4 +2834,3 @@ pm run build (warning importmap existant)
 
 ### Blocages
 - Besoin d'identifiants prod pour valider le scénario complet (`qa_metrics_validation.py` + `tests/run_all.ps1`) côté Cloud Run.
-

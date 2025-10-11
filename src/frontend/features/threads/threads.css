@@ -170,7 +170,7 @@
 }
 
 .threads-panel__rename-input::placeholder {
-  color: rgba(148, 163, 184, 0.5);
+  color: rgba(226, 232, 240, 0.5);
 }
 
 .threads-panel__rename-actions {
@@ -344,7 +344,7 @@
 }
 
 .threads-panel__search-input::placeholder {
-  color: rgba(148, 163, 184, 0.58);
+  color: rgba(226, 232, 240, 0.58);
 }
 
 .threads-panel__search-input:focus {
@@ -461,14 +461,14 @@
 
 .threads-panel__item-count::before {
   content: "\2022";
-  color: rgba(148, 163, 184, 0.7);
+  color: rgba(226, 232, 240, 0.6);
   font-weight: 600;
   margin-right: 6px;
 }
 
 .threads-panel__item-timestamp {
   font-size: 13px;
-  color: rgba(148, 163, 184, 0.68);
+  color: rgba(226, 232, 240, 0.68);
 }
 
 .threads-panel__actions {
