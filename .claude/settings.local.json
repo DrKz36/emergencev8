@@ -1,4 +1,10 @@
 {
+  "env": {
+    "CLAUDE_TONE": "casual_direct_fr",
+    "CLAUDE_WORKFLOW": "emergence_codev",
+    "CLAUDE_SYNC_FILE": "AGENT_SYNC.md",
+    "CLAUDE_CUSTOM_INSTRUCTIONS_PATH": ".claude/instructions/style-fr-cash.md"
+  },
   "permissions": {
     "allow": [
       "Bash",
@@ -9,16 +15,14 @@
       "Grep",
       "Task",
       "TodoWrite",
-      "NotebookEdit"
+      "NotebookEdit",
+      "SlashCommand(/check_docs)",
+      "SlashCommand(/check_prod)",
+      "SlashCommand(/check_integrity)",
+      "SlashCommand(/guardian_report)"
     ],
     "deny": [],
     "ask": []
-  },
-  "env": {
-    "CLAUDE_TONE": "casual_direct_fr",
-    "CLAUDE_WORKFLOW": "emergence_codev",
-    "CLAUDE_SYNC_FILE": "AGENT_SYNC.md",
-    "CLAUDE_CUSTOM_INSTRUCTIONS_PATH": ".claude/instructions/style-fr-cash.md"
   },
   "hooks": {
     "UserPromptSubmit": [

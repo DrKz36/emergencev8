@@ -151,6 +151,40 @@ Emergence V8 utilise une approche collaborative avec plusieurs agents IA (Claude
 - **[Testing Guide](TESTING.md)** - Guide tests (232 tests pytest)
 - **[Monitoring Guide](docs/MONITORING_GUIDE.md)** - Prometheus + observabilité
 
+### Backend Features (Phase P1.5 - V8)
+
+Documentation technique des modules backend récents :
+
+- **[Chat Feature](docs/backend/chat.md)** - MemoryContextBuilder avec cache préférences (P2.1)
+  - Cache in-memory TTL 5min (hit rate >80%)
+  - Injection automatique préférences actives (confidence >0.6)
+  - Temporal weighting (boost items récents/fréquents)
+  - Métriques Prometheus cache operations
+
+- **[Memory Feature](docs/backend/memory.md)** - MemoryAnalyzer & HybridRetriever (P1.5)
+  - Extraction préférences/intentions automatique
+  - Fallback cascade LLM (neo → nexus → anima)
+  - Cache analyses TTL 1h avec éviction agressive
+  - Recherche hybride BM25 + vectorielle (alpha=0.5)
+  - Métriques complètes (succès/échecs, latence, cache hits)
+
+- **[Metrics Feature](docs/backend/metrics.md)** - Endpoints Prometheus
+  - `/metrics` - Export Prometheus (activable via env var)
+  - `/metrics/rag` - Métriques RAG structurées (JSON)
+  - `/health` - Healthcheck basique
+
+- **[Monitoring Feature](docs/backend/monitoring.md)** - Health checks avancés K8s
+  - `/health/liveness` - Liveness probe (processus vivant)
+  - `/health/readiness` - Readiness probe (services up: DB, Vector, LLM)
+  - `/api/monitoring/health/detailed` - Métriques système (CPU, RAM, disk)
+  - Dashboards admin (sécurité, performance, slow queries, AI stats)
+
+- **[Settings Feature](docs/backend/settings.md)** - Configuration dynamique
+  - `/api/settings/rag` - Configuration RAG (strict_mode, score_threshold)
+  - `/api/settings/models` - Paramètres LLM par agent
+  - Persistence JSON (`data/settings.json`)
+  - Hot-reload sans redémarrage
+
 ### Prompts Agents Actifs
 
 - **[Corrections Bugs P0](PROMPT_NEXT_SESSION_AUDIT_FIXES_P0.md)** - ⚠️ **PRIORITÉ** : Fuite mémoire + Race conditions

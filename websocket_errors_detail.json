@@ -1,0 +1,2 @@
+ERROR: (gcloud.logging.read) INVALID_ARGUMENT: Unparseable filter: regular expressions must begin and end with '"' at line 1, column 205, token ''websockets_impl''
+[]

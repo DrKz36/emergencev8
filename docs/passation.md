@@ -1,3 +1,34 @@
+## [2025-10-11 07:03] - Agent: Codex (Build & deploy Cloud Run révision 00298-g8j)
+
+### Fichiers modifiés
+- Aucun (opérations infra uniquement).
+
+### Contexte
+- Construction d'une nouvelle image Docker (`deploy-20251011-065930`) et déploiement d'une révision Cloud Run unique (`emergence-app-00298-g8j`) pour basculer le trafic sur l'image à jour.
+- AutoSyncService inaccessible en local (`curl http://localhost:8000/api/sync/status` ➜ connexion refusée).
+- Le script `scripts/sync-workdir.ps1` échoue toujours sur `tests/run_all.ps1` faute d'identifiants smoke (`gonzalefernando@gmail.com`).
+
+### Actions réalisées
+1. Lecture des consignes (`AGENT_SYNC.md`, `AGENTS.md`, `CODEV_PROTOCOL.md`, `docs/passation.md` x3, refs architecture/mémoire/roadmap).
+2. `docker build --platform linux/amd64 -t europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251011-065930 .`
+3. `docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251011-065930`
+4. `gcloud run deploy emergence-app --image europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251011-065930 --project emergence-469005 --region europe-west1 --platform managed --allow-unauthenticated`
+5. Réallocation du trafic : `gcloud run services update-traffic emergence-app --region europe-west1 --project emergence-469005 "--to-revisions=emergence-app-00298-g8j=100,emergence-app-00348-rih=0,emergence-app-00350-wic=0"`
+6. Vérification santé : `curl https://emergence-app-47nct44nma-ew.a.run.app/api/health`
+
+### Tests
+- ✅ `curl https://emergence-app-47nct44nma-ew.a.run.app/api/health`
+- ⚠️ `pwsh -File scripts/sync-workdir.ps1` (échoue car `tests/run_all.ps1` nécessite des identifiants smoke non fournis)
+
+### Prochaines actions recommandées
+1. Vérifier/rétablir AutoSyncService (`http://localhost:8000/api/sync/status`) ou documenter la procédure de redémarrage.
+2. Fournir des identifiants pour `tests/run_all.ps1` ou ajuster la routine smoke afin d'éviter l'échec systématique.
+3. Surveiller les logs Cloud Run (`emergence-app-00298-g8j`) pour confirmer l'absence de régressions (latence mémoire, erreurs LLM).
+
+### Blocages
+- AutoSyncService KO (connexion refusée).
+- Tests smoke `tests/run_all.ps1` bloqués par l'absence de credentials utilisateur.
+
 ## [2025-10-11 06:56] - Agent: Codex (Commit backlog complet)
 
 ### Fichiers modifiés

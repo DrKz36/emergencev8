@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-10 09:54 UTC (Codex - Prompt synchronisation GitHub)
+**Derniere mise a jour** : 2025-10-11 05:05 UTC (Codex - Build & deploy Cloud Run révision 00298-g8j)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -52,13 +52,14 @@
 - **Rollback** : Basculer vers l'une des 3 révisions conservées en cas de problème
 
 #### État actuel
-- **Révisions conservées** (3 max) :
-  1. `emergence-app-00297-6pr` (2025-10-10 14:35:05 UTC) - Actuelle
-  2. `emergence-app-00350-wic` (2025-10-10 07:33:38 UTC)
-  3. `emergence-app-00348-rih` (2025-10-10 05:37:33 UTC)
+- **Révisions conservées** :
+  1. `emergence-app-00298-g8j` (2025-10-11 04:59:59 UTC) — Actuelle (100% trafic)
+  2. `emergence-app-00297-6pr` (2025-10-10 14:35:05 UTC) — Standby (0%)
+  3. `emergence-app-00350-wic` (2025-10-10 07:33:38 UTC) — Tag `fix-preferences` (0%)
+  4. `emergence-app-00348-rih` (2025-10-10 05:37:33 UTC) — Tag `p2-sprint3` (0%)
 - **URL principale** : https://emergence-app-47nct44nma-ew.a.run.app
 - **Alias historique** : https://emergence-app-486095406755.europe-west1.run.app
-- **Déployé** : 2025-10-10 14:35 UTC (trafic 100%)
+- **Déployé** : 2025-10-11 04:59 UTC (trafic 100% ➜ révision 00298-g8j)
 - **Documentation** :
   - [docs/deployments/CODEX_BUILD_DEPLOY.md](docs/deployments/CODEX_BUILD_DEPLOY.md) - Guide de déploiement
   - [docs/deployments/README.md](docs/deployments/README.md) - Historique et procédures
@@ -93,28 +94,37 @@
 - **Post-déploiement** :
   - Vérifier un seul service : `gcloud run services list --platform=managed --region=europe-west1`
   - Vérifier max 3 révisions : `gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005`
+  - Réaffecter le trafic si des tags sont conservés : `gcloud run services update-traffic emergence-app --region europe-west1 --project emergence-469005 "--to-revisions=<nouvelle_révision>=100,emergence-app-00348-rih=0@p2-sprint3,emergence-app-00350-wic=0@fix-preferences"`
   - Tests santé : vérifier `/api/health` et `/api/metrics`
 - **Important** : Pas de canary, pas de split de trafic. Chaque déploiement bascule automatiquement 100% du trafic sur la nouvelle révision.
 
 ### Working tree
-- ⚠️ Modifications non commitées (prêtes pour commit) :
-  - `src/backend/features/memory/analyzer.py` — fix critique passage user_id
-  - `src/backend/features/memory/router.py` — récupération user_id depuis auth
-  - `src/backend/features/memory/gardener.py` — passage uid
-  - `src/backend/features/memory/task_queue.py` — extraction user_id depuis session
-  - `src/backend/features/chat/post_session.py` — extraction user_id conditionnel
-  - `docs/monitoring/POST_P2_SPRINT3_MONITORING_REPORT.md` — résolution anomalie #1
-  - `docs/passation.md` — nouvelle entrée fix critique
-  - `AGENT_SYNC.md` — mise à jour état déploiement
-  - `scripts/qa/simple_preference_test.py` — fix ruff E402 (session précédente)
-  - `tests/backend/features/test_memory_performance.py` — fix ruff F841 (session précédente)
-- Derniers commits : `654425a`, `0c95f9f`, `bba5bf1`
+- ✅ Working tree propre (`git status` clean)
+- Derniers commits : `f5f4fa5`, `b08d866`, `3a93647`, `b3139ee`
 
 ---
 
 ## 🚧 Zones de travail en cours
 
 > **Note importante - Architecture de déploiement** : Depuis le 2025-10-11, l'architecture a été simplifiée. Il n'y a plus de service canary. Toutes les références historiques au "canary" ou à "00279-kub" dans les sessions ci-dessous sont obsolètes. Le système utilise maintenant un conteneur unique `emergence-app` avec conservation des 3 dernières révisions uniquement.
+
+### 🟢 Codex - Session 2025-10-11 07:00 (Build & Deploy Cloud Run révision 00298-g8j)
+- **Statut** : ✅ **DÉPLOYÉ** — Trafic basculé sur `emergence-app-00298-g8j`
+- **Fichiers modifiés** : aucun
+- **Commandes exécutées** :
+  1. `docker build --platform linux/amd64 -t europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251011-065930 .`
+  2. `docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251011-065930`
+  3. `gcloud run deploy emergence-app --image europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251011-065930 --project emergence-469005 --region europe-west1 --platform managed --allow-unauthenticated`
+  4. `gcloud run services update-traffic emergence-app --region europe-west1 --project emergence-469005 "--to-revisions=emergence-app-00298-g8j=100,emergence-app-00348-rih=0,emergence-app-00350-wic=0"`
+  5. `curl https://emergence-app-47nct44nma-ew.a.run.app/api/health`
+- **Résultats** :
+  - Image `deploy-20251011-065930` (digest `sha256:d7fad7f9…`) poussée sur Artifact Registry.
+  - Révision `emergence-app-00298-g8j` active à 100% ; révisions taguées `p2-sprint3` / `fix-preferences` conservées à 0%.
+- **Points de vigilance** :
+  - `curl http://localhost:8000/api/sync/status` ➜ KO (service AutoSync inaccessible).
+  - `scripts/sync-workdir.ps1` échoue (`tests/run_all.ps1` requiert credentials smoke).
+- **Tests** :
+  - ✅ `curl https://emergence-app-47nct44nma-ew.a.run.app/api/health`
 
 ### 🟢 Claude Code - Session 2025-10-10 09:40 (Fix Critique PreferenceExtractor - RÉSOLU)
 - **Statut** : ✅ **RÉSOLU ET DÉPLOYÉ** - Extraction préférences fonctionnelle
