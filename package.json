@@ -13,9 +13,8 @@
     "start:win": "concurrently \"python -m uvicorn --app-dir src backend.main:app --host 0.0.0.0 --port 8000\" \"npm run dev\"",
     "start:venv": "concurrently \".venv\\\\Scripts\\\\python.exe -m uvicorn --app-dir src backend.main:app --host 0.0.0.0 --port 8000\" \"npm run dev\""
   },
-  "dependencies": {
-  },
   "devDependencies": {
+    "@playwright/test": "^1.56.0",
     "concurrently": "^9.2.0",
     "marked": "^12.0.2",
     "playwright": "^1.48.2",

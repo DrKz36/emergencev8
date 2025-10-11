@@ -10,12 +10,12 @@
  * - API mock integration
  */
 
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
 test.describe('Proactive Hints UI', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to app (adjust URL as needed)
-    await page.goto('http://localhost:3000');
+    // Navigate to app (Vite dev server on port 5173)
+    await page.goto('http://localhost:5173');
 
     // Wait for EventBus to be ready
     await page.waitForFunction(() => {
