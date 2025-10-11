@@ -47,6 +47,36 @@
         padding: 12px !important;
     }
 
+    /* Force all sections to full width */
+    .cockpit-metrics,
+    .cockpit-insights,
+    .cockpit-charts,
+    .cockpit-agents {
+        padding: 12px !important;
+        margin: 0 !important;
+        width: 100% !important;
+    }
+
+    /* Force grids to single column */
+    .metrics-grid,
+    .insights-grid,
+    .charts-grid,
+    .agents-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+        width: 100% !important;
+    }
+
+    /* Force cards to full width */
+    .metric-card,
+    .insight-section,
+    .chart-container,
+    .agent-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+    }
+
     .insights-header,
     .metrics-header,
     .charts-header {
@@ -83,14 +113,18 @@
         width: 100% !important;
     }
 
-    /* Chart canvas containers */
+    /* Chart canvas containers - adapt to mobile */
     .chart-canvas-wrapper {
-        overflow-x: auto;
+        width: 100% !important;
+        height: 250px !important;
+        overflow: visible !important;
         -webkit-overflow-scrolling: touch;
     }
 
-    canvas {
-        max-width: 100%;
+    .chart-canvas-wrapper canvas {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
     }
 
     /* Heatmap responsive */
@@ -104,6 +138,14 @@
 }
 
 @media (max-width: 480px) {
+    /* Even more compact for very small screens */
+    .cockpit-metrics,
+    .cockpit-insights,
+    .cockpit-charts,
+    .cockpit-agents {
+        padding: 8px !important;
+    }
+
     .dashboard-tabs {
         padding: 4px !important;
     }
@@ -139,17 +181,19 @@
     /* Reduce padding on small screens */
     .metric-card,
     .chart-container,
-    .insight-section {
-        padding: 16px !important;
+    .insight-section,
+    .agent-card {
+        padding: 12px !important;
+        width: 100% !important;
     }
 
     /* Smaller text on mobile */
     .metric-value {
-        font-size: 28px !important;
+        font-size: 24px !important;
     }
 
     .metric-icon {
-        font-size: 36px !important;
+        font-size: 32px !important;
     }
 
     /* Stack cost summary */
@@ -166,7 +210,26 @@
 
     /* Distribution stats */
     .chart-stats {
-        font-size: 12px;
+        font-size: 11px;
+    }
+
+    /* Smaller chart heights for mobile */
+    .chart-canvas-wrapper {
+        height: 200px !important;
+    }
+
+    /* Summary sections */
+    .metrics-summary,
+    .agents-summary,
+    .summary-grid {
+        grid-template-columns: 1fr !important;
+        padding: 12px !important;
+    }
+
+    /* Agent stats on mobile */
+    .agent-stats {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
     }
 }
 
@@ -187,4 +250,84 @@
 .stat-label {
     word-wrap: break-word;
     overflow-wrap: break-word;
+}
+
+/* Mobile portrait mode specific adjustments */
+@media (max-width: 480px) and (orientation: portrait) {
+    /* Remove all margins and maximize width usage */
+    .cockpit-metrics,
+    .cockpit-insights,
+    .cockpit-charts,
+    .cockpit-agents,
+    .dashboard-metrics,
+    .dashboard-charts {
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+        margin: 0 !important;
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Ensure all cards take full width */
+    .metric-card,
+    .chart-container,
+    .insight-section,
+    .agent-card {
+        width: calc(100vw - 32px) !important;
+        max-width: calc(100vw - 32px) !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Adjust chart containers for portrait */
+    .chart-canvas-wrapper {
+        width: 100% !important;
+        height: 220px !important;
+        min-height: 180px !important;
+    }
+
+    /* Distribution chart should be square-ish */
+    .distribution-chart .chart-canvas-wrapper {
+        height: 280px !important;
+    }
+
+    /* Headers should be more compact */
+    .charts-header h2,
+    .metrics-header h2,
+    .agents-header h2 {
+        font-size: 1.25rem !important;
+    }
+
+    .chart-header h3 {
+        font-size: 1rem !important;
+    }
+
+    /* Legends should wrap better */
+    .chart-legend {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+    }
+
+    /* Tab bar optimization for portrait */
+    .dashboard-tabs {
+        width: 100% !important;
+        overflow-x: auto !important;
+        scrollbar-width: none !important; /* Firefox */
+        -ms-overflow-style: none !important; /* IE/Edge */
+    }
+
+    .dashboard-tabs::-webkit-scrollbar {
+        display: none !important; /* Chrome/Safari */
+    }
+}
+
+/* Landscape mode optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+    .chart-canvas-wrapper {
+        height: 180px !important;
+    }
+
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
 }

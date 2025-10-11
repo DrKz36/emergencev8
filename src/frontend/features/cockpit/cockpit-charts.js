@@ -4,6 +4,7 @@
  */
 
 import { api } from '../../shared/api-client.js';
+import { getIcon } from './cockpit-icons.js';
 
 export class CockpitCharts {
     constructor() {
@@ -46,7 +47,7 @@ export class CockpitCharts {
         this.container.innerHTML = `
             <div class="cockpit-charts">
                 <div class="charts-header">
-                    <h2>📈 Graphiques Interactifs</h2>
+                    <h2>${getIcon('barChart')} Graphiques Interactifs</h2>
                     <div class="charts-controls">
                         <select class="period-selector">
                             <option value="7d">7 derniers jours</option>
@@ -54,7 +55,7 @@ export class CockpitCharts {
                             <option value="90d">90 derniers jours</option>
                             <option value="1y">1 an</option>
                         </select>
-                        <button class="btn-refresh" title="Actualiser">🔄</button>
+                        <button class="btn-refresh" title="Actualiser">${getIcon('refresh')}</button>
                     </div>
                 </div>
 
@@ -62,7 +63,7 @@ export class CockpitCharts {
                     <!-- Timeline Chart -->
                     <div class="chart-container timeline-chart">
                         <div class="chart-header">
-                            <h3>📊 Timeline d'Activité</h3>
+                            <h3>${getIcon('activity')} Timeline d'Activité</h3>
                             <div class="chart-legend">
                                 <span class="legend-item">
                                     <span class="legend-dot messages"></span>
@@ -82,7 +83,7 @@ export class CockpitCharts {
                     <!-- Distribution Pie Chart -->
                     <div class="chart-container distribution-chart">
                         <div class="chart-header">
-                            <h3>🥧 Distribution des Agents</h3>
+                            <h3>${getIcon('pieChart')} Distribution des Agents</h3>
                             <select class="chart-filter">
                                 <option value="messages">Par Messages</option>
                                 <option value="threads">Par Threads</option>
@@ -98,7 +99,7 @@ export class CockpitCharts {
                     <!-- Usage Line Chart -->
                     <div class="chart-container usage-chart">
                         <div class="chart-header">
-                            <h3>📉 Utilisation des Tokens</h3>
+                            <h3>${getIcon('lineChart')} Utilisation des Tokens</h3>
                             <div class="chart-legend">
                                 <span class="legend-item">
                                     <span class="legend-dot input"></span>
@@ -122,7 +123,7 @@ export class CockpitCharts {
                     <!-- Cost Trends Chart -->
                     <div class="chart-container cost-chart">
                         <div class="chart-header">
-                            <h3>💰 Tendances des Coûts</h3>
+                            <h3>${getIcon('dollar')} Tendances des Coûts</h3>
                             <div class="cost-summary">
                                 <span class="cost-total">Total (période): <strong>$0.00</strong></span>
                                 <span class="cost-avg">Moyenne/jour: <strong>$0.00</strong></span>
@@ -198,21 +199,33 @@ export class CockpitCharts {
      * Fetch timeline data
      */
     async fetchTimelineData(period) {
-        // Mock data - replace with actual API call
-        const days = parseInt(period);
-        const data = [];
-        const now = Date.now();
-
-        for (let i = days; i >= 0; i--) {
-            const date = new Date(now - i * 24 * 60 * 60 * 1000);
-            data.push({
-                date: date.toISOString().split('T')[0],
-                messages: Math.floor(Math.random() * 50) + 10,
-                threads: Math.floor(Math.random() * 5) + 1
+        try {
+            const response = await fetch(`/api/dashboard/timeline/activity?period=${period}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this._getAuthToken() || ''}`,
+                    'X-Session-Id': this._getSessionId() || ''
+                }
             });
-        }
 
-        return data;
+            if (!response.ok) {
+                throw new Error(`Failed to fetch activity timeline: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Transform API data to expected format
+            return data.map(item => ({
+                date: item.date,
+                messages: item.message_count || 0,
+                threads: item.thread_count || 0
+            }));
+        } catch (error) {
+            console.error('Error fetching timeline data:', error);
+            // Fallback to empty array if API fails
+            return [];
+        }
     }
 
     /**
@@ -313,46 +326,66 @@ export class CockpitCharts {
      * Fetch tokens data
      */
     async fetchTokensData(period) {
-        // Mock data - replace with actual API call
-        const days = parseInt(period);
-        const data = [];
-        const now = Date.now();
-
-        for (let i = days; i >= 0; i--) {
-            const date = new Date(now - i * 24 * 60 * 60 * 1000);
-            const total = Math.floor(Math.random() * 100000) + 50000;
-            const input = Math.floor(total * 0.4);
-            const output = total - input;
-
-            data.push({
-                date: date.toISOString().split('T')[0],
-                input,
-                output,
-                total
+        try {
+            const response = await fetch(`/api/dashboard/timeline/tokens?period=${period}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this._getAuthToken() || ''}`,
+                    'X-Session-Id': this._getSessionId() || ''
+                }
             });
-        }
 
-        return data;
+            if (!response.ok) {
+                throw new Error(`Failed to fetch tokens timeline: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Transform API data to expected format
+            return data.map(item => ({
+                date: item.date,
+                input: item.input_tokens || 0,
+                output: item.output_tokens || 0,
+                total: (item.input_tokens || 0) + (item.output_tokens || 0)
+            }));
+        } catch (error) {
+            console.error('Error fetching tokens data:', error);
+            // Fallback to empty array if API fails
+            return [];
+        }
     }
 
     /**
      * Fetch costs data
      */
     async fetchCostsData(period) {
-        // Mock data - replace with actual API call
-        const days = parseInt(period);
-        const data = [];
-        const now = Date.now();
-
-        for (let i = days; i >= 0; i--) {
-            const date = new Date(now - i * 24 * 60 * 60 * 1000);
-            data.push({
-                date: date.toISOString().split('T')[0],
-                cost: (Math.random() * 10 + 2).toFixed(2)
+        try {
+            const response = await fetch(`/api/dashboard/timeline/costs?period=${period}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this._getAuthToken() || ''}`,
+                    'X-Session-Id': this._getSessionId() || ''
+                }
             });
-        }
 
-        return data;
+            if (!response.ok) {
+                throw new Error(`Failed to fetch costs timeline: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Transform API data to expected format
+            return data.map(item => ({
+                date: item.date,
+                cost: item.total_cost || 0
+            }));
+        } catch (error) {
+            console.error('Error fetching costs data:', error);
+            // Fallback to empty array if API fails
+            return [];
+        }
     }
 
     /**
@@ -454,9 +487,10 @@ export class CockpitCharts {
         const height = canvas.height = containerHeight * 2;
         ctx.scale(2, 2);
 
-        const padding = 40;
+        const padding = 50;
+        const bottomPadding = 60; // More space for date labels
         const chartWidth = width / 2 - padding * 2;
-        const chartHeight = height / 2 - padding * 2;
+        const chartHeight = height / 2 - padding - bottomPadding;
 
         // Clear canvas
         ctx.clearRect(0, 0, width, height);
@@ -500,6 +534,19 @@ export class CockpitCharts {
             // Threads bars
             ctx.fillStyle = '#9b59b6';
             ctx.fillRect(x + barWidth / 2, padding + chartHeight - threadsHeight, barWidth / 2, threadsHeight);
+
+            // Draw date labels (show every few days for readability)
+            if (data.length <= 10 || i % Math.ceil(data.length / 10) === 0) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.save();
+                ctx.translate(x + barWidth / 2, padding + chartHeight + 15);
+                ctx.rotate(-Math.PI / 4);
+                const dateLabel = new Date(item.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' });
+                ctx.fillText(dateLabel, 0, 0);
+                ctx.restore();
+            }
         });
 
         // Draw axes
@@ -509,6 +556,16 @@ export class CockpitCharts {
         ctx.moveTo(padding, padding + chartHeight);
         ctx.lineTo(padding + chartWidth, padding + chartHeight);
         ctx.stroke();
+
+        // Draw Y-axis labels
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+            const value = Math.round(max * i / 4);
+            const y = padding + chartHeight - (chartHeight * i / 4);
+            ctx.fillText(value.toString(), padding - 10, y + 4);
+        }
 
         console.log('✅ Timeline chart drawn successfully');
     }
@@ -562,17 +619,36 @@ export class CockpitCharts {
         const height = canvas.height = containerHeight * 2;
         ctx.scale(2, 2);
 
-        const padding = 40;
+        const padding = 50;
+        const bottomPadding = 60;
         const chartWidth = width / 2 - padding * 2;
-        const chartHeight = height / 2 - padding * 2;
+        const chartHeight = height / 2 - padding - bottomPadding;
 
         ctx.clearRect(0, 0, width, height);
 
-        if (!data.length) return;
+        if (!data.length) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Aucune donnée disponible', width / 4, height / 4);
+            return;
+        }
 
         const max = Math.max(...data.flatMap(d => keys.map(k => d[k] || 0)));
         const colors = { input: '#4a90e2', output: '#e74c3c', total: '#27ae60' };
 
+        // Draw grid lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+            const y = padding + (chartHeight * i / 4);
+            ctx.beginPath();
+            ctx.moveTo(padding, y);
+            ctx.lineTo(padding + chartWidth, y);
+            ctx.stroke();
+        }
+
+        // Draw lines
         keys.forEach(key => {
             ctx.strokeStyle = colors[key] || '#999';
             ctx.lineWidth = 2;
@@ -591,6 +667,38 @@ export class CockpitCharts {
 
             ctx.stroke();
         });
+
+        // Draw Y-axis labels with K/M formatting
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+            const value = Math.round(max * i / 4);
+            const y = padding + chartHeight - (chartHeight * i / 4);
+            const label = this.formatTokenValue(value);
+            ctx.fillText(label, padding - 10, y + 4);
+        }
+
+        // Draw axes
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padding, padding + chartHeight);
+        ctx.lineTo(padding + chartWidth, padding + chartHeight);
+        ctx.stroke();
+    }
+
+    /**
+     * Format token values with K/M suffixes
+     */
+    formatTokenValue(value) {
+        if (value >= 1000000) {
+            return (value / 1000000).toFixed(1) + 'M';
+        }
+        if (value >= 1000) {
+            return (value / 1000).toFixed(1) + 'K';
+        }
+        return value.toString();
     }
 
     /**
@@ -605,15 +713,33 @@ export class CockpitCharts {
         const height = canvas.height = containerHeight * 2;
         ctx.scale(2, 2);
 
-        const padding = 40;
+        const padding = 50;
+        const bottomPadding = 60;
         const chartWidth = width / 2 - padding * 2;
-        const chartHeight = height / 2 - padding * 2;
+        const chartHeight = height / 2 - padding - bottomPadding;
 
         ctx.clearRect(0, 0, width, height);
 
-        if (!data.length) return;
+        if (!data.length) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Aucune donnée disponible', width / 4, height / 4);
+            return;
+        }
 
         const max = Math.max(...data.map(d => parseFloat(d.cost)));
+
+        // Draw grid lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+            const y = padding + (chartHeight * i / 4);
+            ctx.beginPath();
+            ctx.moveTo(padding, y);
+            ctx.lineTo(padding + chartWidth, y);
+            ctx.stroke();
+        }
 
         // Draw area
         ctx.fillStyle = 'rgba(39, 174, 96, 0.2)';
@@ -651,6 +777,40 @@ export class CockpitCharts {
             }
         });
 
+        ctx.stroke();
+
+        // Draw Y-axis labels with $ formatting
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 4; i++) {
+            const value = (max * i / 4).toFixed(2);
+            const y = padding + chartHeight - (chartHeight * i / 4);
+            ctx.fillText('$' + value, padding - 10, y + 4);
+        }
+
+        // Draw X-axis date labels
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        data.forEach((item, i) => {
+            if (data.length <= 10 || i % Math.ceil(data.length / 10) === 0) {
+                const x = padding + (i / (data.length - 1)) * chartWidth;
+                ctx.save();
+                ctx.translate(x, padding + chartHeight + 15);
+                ctx.rotate(-Math.PI / 4);
+                const dateLabel = new Date(item.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' });
+                ctx.fillText(dateLabel, 0, 0);
+                ctx.restore();
+            }
+        });
+
+        // Draw axes
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padding, padding + chartHeight);
+        ctx.lineTo(padding + chartWidth, padding + chartHeight);
         ctx.stroke();
     }
 

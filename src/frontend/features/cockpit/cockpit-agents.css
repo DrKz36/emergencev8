@@ -289,8 +289,24 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+    .cockpit-agents {
+        padding: 12px;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+        box-sizing: border-box;
+    }
+
     .agents-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
+        width: 100%;
+        gap: 16px;
+    }
+
+    .agent-card {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
     }
 
     .agent-stats {
@@ -298,12 +314,41 @@
     }
 
     .summary-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
+        width: 100%;
     }
 
     .agents-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .cockpit-agents {
+        padding: 8px;
+    }
+
+    .agent-card {
+        padding: 12px;
+        width: 100%;
+    }
+
+    .agent-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .agent-icon {
+        font-size: 1.5rem;
+    }
+
+    .agent-name {
+        font-size: 1rem;
+    }
+
+    .agent-cost .cost-value {
+        font-size: 1.25rem;
     }
 }

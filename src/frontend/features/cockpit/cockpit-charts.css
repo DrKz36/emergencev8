@@ -341,8 +341,13 @@
 }
 
 @media (max-width: 768px) {
-    .dashboard-charts {
-        padding: 16px;
+    .dashboard-charts,
+    .cockpit-charts {
+        padding: 12px;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+        box-sizing: border-box;
     }
 
     .charts-header {
@@ -379,20 +384,43 @@
 
     .chart-canvas-wrapper {
         height: 250px;
+        width: 100%;
+        overflow: visible;
+    }
+
+    .chart-container {
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+
+    /* Force grid to single column */
+    .charts-grid {
+        grid-template-columns: 1fr !important;
+        width: 100%;
+        gap: 16px;
     }
 }
 
 @media (max-width: 480px) {
+    .dashboard-charts,
+    .cockpit-charts {
+        padding: 8px;
+    }
+
     .chart-container {
-        padding: 16px;
+        padding: 12px;
+        width: 100%;
+        max-width: 100%;
     }
 
     .chart-header h3 {
-        font-size: 16px;
+        font-size: 14px;
     }
 
     .legend-item {
-        font-size: 12px;
+        font-size: 11px;
     }
 
     .stat-row {
@@ -404,6 +432,27 @@
         grid-column: 2 / 4;
         text-align: left;
         margin-top: 4px;
+    }
+
+    .chart-canvas-wrapper {
+        height: 200px !important;
+    }
+
+    /* Specific chart heights for mobile */
+    .timeline-chart .chart-canvas-wrapper {
+        height: 220px !important;
+    }
+
+    .distribution-chart .chart-canvas-wrapper {
+        height: 260px !important;
+    }
+
+    .usage-chart .chart-canvas-wrapper {
+        height: 200px !important;
+    }
+
+    .cost-chart .chart-canvas-wrapper {
+        height: 200px !important;
     }
 }
 

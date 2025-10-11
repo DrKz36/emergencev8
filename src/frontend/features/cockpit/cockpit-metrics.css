@@ -243,8 +243,13 @@
 }
 
 @media (max-width: 768px) {
-    .dashboard-metrics {
-        padding: 16px;
+    .dashboard-metrics,
+    .cockpit-metrics {
+        padding: 12px;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+        box-sizing: border-box;
     }
 
     .metrics-header {
@@ -254,11 +259,20 @@
     }
 
     .metrics-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
+        width: 100%;
+        gap: 16px;
     }
 
     .metrics-summary {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
+        width: 100%;
+    }
+
+    .metric-card {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
     }
 
     .metric-value {
@@ -271,6 +285,11 @@
 }
 
 @media (max-width: 480px) {
+    .dashboard-metrics,
+    .cockpit-metrics {
+        padding: 8px;
+    }
+
     .metrics-actions {
         flex-direction: column;
         width: 100%;
@@ -282,7 +301,16 @@
     }
 
     .metric-card {
-        padding: 20px;
+        padding: 16px;
+        width: 100%;
+    }
+
+    .metric-value {
+        font-size: 24px !important;
+    }
+
+    .metric-icon {
+        font-size: 32px !important;
     }
 }
 

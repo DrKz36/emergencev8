@@ -173,14 +173,14 @@ export class CockpitAgents {
      */
     renderAgentCard(group) {
         const agentIcons = {
-            'Anima': '🎯',
-            'Neo': '🔍',
-            'Nexus': '⚙️',
-            'User': '👤',
-            'System': '🖥️'
+            'Anima': getIcon('target'),
+            'Neo': getIcon('eye'),
+            'Nexus': getIcon('settings'),
+            'User': getIcon('user'),
+            'System': getIcon('settings')
         };
 
-        const icon = agentIcons[group.agent] || '🤖';
+        const icon = agentIcons[group.agent] || getIcon('robot');
         const totalTokens = group.totalInputTokens + group.totalOutputTokens;
         const avgCost = group.totalRequests > 0 ? group.totalCost / group.totalRequests : 0;
 
