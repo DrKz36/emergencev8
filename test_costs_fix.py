@@ -13,6 +13,12 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.skip(
+    reason="Requires live LLM providers and credentials; execute manually when validating cost fixes."
+)
+
 # Fix encodage Windows
 if sys.platform == "win32":
     import locale

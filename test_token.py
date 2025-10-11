@@ -3,7 +3,7 @@ Script de test pour vérifier le token d'authentification et les endpoints API
 """
 import requests
 import json
-from typing import Dict, Any
+from typing import Any
 
 # Configuration
 BASE_URL = "http://localhost:8000"

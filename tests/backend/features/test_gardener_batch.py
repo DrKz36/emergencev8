@@ -4,10 +4,7 @@ Tests pour Bug #6 (P1): Optimisation N+1 avec batch fetch
 """
 
 import pytest
-import asyncio
-import time
-from typing import List, Dict, Any
-from unittest.mock import Mock, MagicMock, AsyncMock, patch
+from unittest.mock import Mock, MagicMock, AsyncMock
 from src.backend.features.memory.gardener import MemoryGardener
 
 
@@ -181,7 +178,7 @@ class TestStorePreferenceRecordsOptimization:
 
         # Appeler directement _get_existing_preferences_batch
         preference_ids = [f"pref_{i}" for i in range(5)]
-        result = await gardener._get_existing_preferences_batch(preference_ids)
+        await gardener._get_existing_preferences_batch(preference_ids)
 
         # Vérifier 1 seul appel
         assert mock_preference_collection.get.call_count == 1
@@ -239,7 +236,7 @@ class TestBatchFetchPerformance:
         mock_preference_collection.get = Mock(side_effect=mock_get)
 
         # Appel batch
-        result = await gardener._get_existing_preferences_batch(
+        await gardener._get_existing_preferences_batch(
             [f"pref_{i}" for i in range(num_prefs)]
         )
 

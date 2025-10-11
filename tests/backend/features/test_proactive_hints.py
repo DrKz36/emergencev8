@@ -12,7 +12,7 @@ Run:
     python -m pytest tests/backend/features/test_proactive_hints.py -v
 """
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock
 from backend.features.memory.proactive_hints import (
     ProactiveHintEngine,
     ProactiveHint,

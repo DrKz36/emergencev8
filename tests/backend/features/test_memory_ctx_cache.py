@@ -5,7 +5,7 @@ Tests pour Bug #5 (P1): Invalidation cache préférences
 
 import pytest
 from datetime import datetime, timedelta
-from unittest.mock import Mock, MagicMock, AsyncMock
+from unittest.mock import Mock, MagicMock
 from src.backend.features.chat.memory_ctx import MemoryContextBuilder
 
 
@@ -129,7 +129,7 @@ class TestPreferencesCacheInvalidation:
             "documents": ["Préférence v1"],
             "metadatas": [{"confidence": 0.8}]
         })
-        prefs1 = memory_ctx_builder._fetch_active_preferences_cached(collection, user_id)
+        memory_ctx_builder._fetch_active_preferences_cached(collection, user_id)
         assert user_id in memory_ctx_builder._prefs_cache
 
         # Simuler expiration TTL (modifier timestamp dans le passé)

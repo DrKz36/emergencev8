@@ -7,6 +7,12 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.skip(
+    reason="Requires external LLM providers and API keys; run manually for cost tracking verification."
+)
+
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from backend.core.database.manager import DatabaseManager

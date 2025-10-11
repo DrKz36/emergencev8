@@ -220,7 +220,7 @@ class TestCacheCorrectness:
             with patch('hashlib.md5') as mock_hash:
                 mock_hash.return_value.hexdigest.return_value = "12345678"
 
-                result = await analyzer.analyze_session_for_concepts(
+                await analyzer.analyze_session_for_concepts(
                     session_id="expired_session",
                     history=history,
                     force=False,
@@ -256,7 +256,7 @@ class TestCacheCorrectness:
             with patch('hashlib.md5') as mock_hash:
                 mock_hash.return_value.hexdigest.return_value = "12345678"
 
-                result = await analyzer.analyze_session_for_concepts(
+                await analyzer.analyze_session_for_concepts(
                     session_id="test_session",
                     history=history,
                     force=False,

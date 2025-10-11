@@ -5,13 +5,12 @@ ANIMA (DocKeeper) - Documentation Scanner
 Analyzes git commits and identifies documentation gaps
 """
 
-import os
 import sys
 import json
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Set, Tuple
+from typing import List, Dict, Tuple
 
 # Fix Windows console encoding
 if sys.platform == 'win32':
@@ -101,7 +100,7 @@ def analyze_backend_changes(files: List[str]) -> List[Dict]:
             gaps.append({
                 "severity": "medium",
                 "file": file,
-                "issue": f"File deleted - verify documentation updated",
+                "issue": "File deleted - verify documentation updated",
                 "affected_docs": ["docs/backend/"],
                 "recommendation": f"Update docs to reflect removal of {file}"
             })
@@ -153,7 +152,7 @@ def analyze_frontend_changes(files: List[str]) -> List[Dict]:
             gaps.append({
                 "severity": "low",
                 "file": file,
-                "issue": f"Component/file deleted - verify documentation",
+                "issue": "Component/file deleted - verify documentation",
                 "affected_docs": ["docs/frontend/"],
                 "recommendation": f"Update docs to reflect removal of {file}"
             })
@@ -167,7 +166,7 @@ def analyze_frontend_changes(files: List[str]) -> List[Dict]:
                 "file": file,
                 "issue": f"Component '{component_name}' modified",
                 "affected_docs": ["docs/frontend/components.md"],
-                "recommendation": f"Document component props and usage if interface changed"
+                "recommendation": "Document component props and usage if interface changed"
             })
 
         # Check for API service changes
@@ -220,7 +219,6 @@ def generate_report(changed_files: Dict[str, List[str]]) -> Dict:
     all_gaps = backend_gaps + frontend_gaps
 
     # Determine status
-    has_critical = any(gap["severity"] == "high" for gap in all_gaps)
     status = "needs_update" if all_gaps else "ok"
 
     # Generate proposed updates

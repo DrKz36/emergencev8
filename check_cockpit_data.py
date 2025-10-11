@@ -4,8 +4,6 @@ Analyse la base de données pour valider que les coûts, messages, tokens, etc. 
 """
 
 import sqlite3
-import os
-from datetime import datetime, timedelta
 from pathlib import Path
 
 # Trouver le fichier de base de données
@@ -115,19 +113,19 @@ try:
         """)
         gemini = cursor.fetchone()
         if gemini and gemini["count"] > 0:
-            print(f"\n  🔥 GEMINI (diagnostic Gap #1):")
+            print("\n  🔥 GEMINI (diagnostic Gap #1):")
             print(f"    Requêtes: {gemini['count']}")
             print(f"    Coût total: ${gemini['cost'] or 0:.6f}")
             print(f"    Tokens: {gemini['input_tok'] or 0:,} in, {gemini['output_tok'] or 0:,} out")
 
             if (gemini["cost"] or 0) == 0:
                 print(f"    ⚠️ WARNING: Coûts Gemini à $0.00 avec {gemini['count']} requêtes!")
-                print(f"    💡 Vérifiez que le fix Gap #1 est bien appliqué")
+                print("    💡 Vérifiez que le fix Gap #1 est bien appliqué")
             elif (gemini["input_tok"] or 0) == 0 and (gemini["output_tok"] or 0) == 0:
                 print(f"    ⚠️ WARNING: Tokens Gemini à 0 avec {gemini['count']} requêtes!")
-                print(f"    💡 count_tokens() ne fonctionne peut-être pas")
+                print("    💡 count_tokens() ne fonctionne peut-être pas")
             else:
-                print(f"    ✅ OK: Gemini semble correctement tracké")
+                print("    ✅ OK: Gemini semble correctement tracké")
 
         # Par période
         print("\n  Coûts par période:")

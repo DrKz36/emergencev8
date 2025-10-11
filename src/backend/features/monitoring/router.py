@@ -3,7 +3,7 @@ Router pour les endpoints de monitoring et healthcheck
 """
 
 from fastapi import APIRouter, Depends, Request
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import psutil
 import platform
 import logging
@@ -293,7 +293,6 @@ async def _check_llm_providers(request: Request) -> Dict[str, Any]:
         # Check Google (Gemini)
         try:
             # Google utilise genai configuré globalement
-            import google.generativeai as genai
             providers["google"] = {"status": "up", "configured": True}
         except Exception as e:
             providers["google"] = {"status": "down", "error": str(e)}

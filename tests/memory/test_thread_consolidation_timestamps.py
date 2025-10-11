@@ -10,10 +10,8 @@ Usage:
     pytest tests/memory/test_thread_consolidation_timestamps.py -v
 """
 
-import asyncio
 import json
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any
 
 import pytest
 

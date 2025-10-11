@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from collections import Counter
 import math
 
-from .rag_metrics import RAGMetricsTracker, track_hybrid_query
+from .rag_metrics import RAGMetricsTracker
 
 logger = logging.getLogger(__name__)
 

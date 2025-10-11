@@ -5,7 +5,6 @@ NEO (IntegrityWatcher) - System Integrity Checker
 Verifies backend/frontend coherence and detects potential regressions
 """
 
-import os
 import sys
 import json
 import re
@@ -217,7 +216,6 @@ def detect_integrity_issues(backend_analysis: Dict, frontend_analysis: Dict) -> 
         return f"{method} {path}"
 
     normalized_backend = {normalize_endpoint(e) for e in backend_endpoints}
-    normalized_frontend = {normalize_endpoint(c) for c in frontend_calls}
 
     # Find frontend calls that might not have backend endpoints
     # This is a heuristic - in production you'd check against a complete endpoint registry

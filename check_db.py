@@ -36,7 +36,7 @@ cursor.execute("""
     FROM messages
 """)
 result = cursor.fetchone()
-print(f'\nMessages by Period:')
+print('\nMessages by Period:')
 print(f'  Total: {result[0]}')
 print(f'  Today: {result[1]}')
 print(f'  This Week: {result[2]}')

@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import re
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 from datetime import datetime, timedelta
 from backend.shared.models import Role
 
@@ -11,14 +11,26 @@ logger = logging.getLogger(__name__)
 
 # Prometheus metrics (P2.1)
 try:
-    from prometheus_client import Counter
+    from prometheus_client import Counter, REGISTRY
     PROMETHEUS_AVAILABLE = True
 
-    memory_cache_operations = Counter(
-        "memory_cache_operations_total",
-        "Memory cache operations (hit/miss)",
-        ["operation", "type"]
-    )
+    def _get_memory_cache_counter() -> Counter:
+        try:
+            return Counter(
+                "memory_cache_operations_total",
+                "Memory cache operations (hit/miss)",
+                ["operation", "type"],
+                registry=REGISTRY,
+            )
+        except ValueError:
+            existing = getattr(REGISTRY, "_names_to_collectors", {}).get(
+                "memory_cache_operations_total"
+            )
+            if existing is None:
+                raise
+            return cast(Counter, existing)
+
+    memory_cache_operations = _get_memory_cache_counter()
 except ImportError:
     PROMETHEUS_AVAILABLE = False
     logger.debug("[MemoryContextBuilder] Prometheus client non disponible")

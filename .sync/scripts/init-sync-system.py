@@ -4,7 +4,6 @@ Script d'initialisation du système de synchronisation multi-agent
 Configure l'environnement et vérifie les prérequis
 """
 
-import os
 import subprocess
 import sys
 from pathlib import Path

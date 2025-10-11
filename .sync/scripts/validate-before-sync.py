@@ -132,7 +132,7 @@ class ValidationHook:
             return ValidationResult(
                 check_name="Python Syntax",
                 passed=False,
-                message=f"❌ Erreurs de syntaxe:\n" + "\n".join(errors[:3]),
+                message="❌ Erreurs de syntaxe:\n" + "\n".join(errors[:3]),
                 duration_seconds=time.time() - start,
             )
 
@@ -263,7 +263,7 @@ class ValidationHook:
             return ValidationResult(
                 check_name="Mypy Type Checking",
                 passed=False,
-                message=f"❌ Erreurs de typage:\n" + "\n".join(errors[:3]),
+                message="❌ Erreurs de typage:\n" + "\n".join(errors[:3]),
                 duration_seconds=time.time() - start,
             )
 

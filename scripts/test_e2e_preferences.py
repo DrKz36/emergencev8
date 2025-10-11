@@ -103,7 +103,7 @@ class E2ETestPreferences:
             try:
                 # Envoyer message
                 await websocket.send(json.dumps(payload))
-                print(f"   ✅ Envoyé")
+                print("   ✅ Envoyé")
 
                 # Attendre réponse agent (peut prendre quelques secondes)
                 timeout = 30.0
@@ -120,7 +120,7 @@ class E2ETestPreferences:
 
                         # Chercher réponse agent (ws:agent_response ou similaire)
                         if response_data.get("type") in ["ws:agent_response", "ws:message"]:
-                            print(f"   ✅ Réponse agent reçue")
+                            print("   ✅ Réponse agent reçue")
                             response_received = True
                             break
 
@@ -266,7 +266,7 @@ class E2ETestPreferences:
             try:
                 if websocket and not websocket.closed:
                     await websocket.close()
-            except:
+            except Exception:
                 pass
 
         # Étape 4 : Validation ChromaDB

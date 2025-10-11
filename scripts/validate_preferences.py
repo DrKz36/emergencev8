@@ -32,7 +32,7 @@ def validate_preferences(persist_directory: str = "./chroma_data", limit: int = 
         limit: Nombre max de préférences à afficher
         user_id: Filtrer par user_id (optionnel)
     """
-    print(f"🔍 Validation ChromaDB - Collection 'memory_preferences'")
+    print("🔍 Validation ChromaDB - Collection 'memory_preferences'")
     print(f"📂 Répertoire: {persist_directory}")
     print("-" * 60)
 
@@ -50,7 +50,7 @@ def validate_preferences(persist_directory: str = "./chroma_data", limit: int = 
     # Récupérer collection
     try:
         collection = client.get_collection("memory_preferences")
-        print(f"✅ Collection 'memory_preferences' trouvée")
+        print("✅ Collection 'memory_preferences' trouvée")
     except Exception as e:
         print(f"❌ Collection 'memory_preferences' non trouvée: {e}")
         print("💡 Cela signifie probablement qu'aucune préférence n'a été extraite encore.")

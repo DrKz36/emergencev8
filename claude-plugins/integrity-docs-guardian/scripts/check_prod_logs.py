@@ -10,7 +10,6 @@ import datetime
 import sys
 import os
 import platform
-from pathlib import Path
 
 # Configuration
 SERVICE = "emergence-app"
@@ -71,7 +70,7 @@ def fetch_logs():
         return logs
 
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error fetching logs from gcloud:", file=sys.stderr)
+        print("❌ Error fetching logs from gcloud:", file=sys.stderr)
         print(f"   Command: {' '.join(cmd)}", file=sys.stderr)
         print(f"   Error output: {e.output}", file=sys.stderr)
         return []
@@ -275,7 +274,7 @@ def print_summary(report):
     }
 
     print(f"\n{status_emoji.get(status, '⚪')} Production Status: {status}")
-    print(f"\n📊 Summary:")
+    print("\n📊 Summary:")
     print(f"   - Logs analyzed: {report['logs_analyzed']}")
     print(f"   - Errors: {report['summary']['errors']}")
     print(f"   - Warnings: {report['summary']['warnings']}")
@@ -283,19 +282,19 @@ def print_summary(report):
     print(f"   - Latency issues: {report['summary']['latency_issues']}")
 
     if report["critical_signals"]:
-        print(f"\n❌ Critical Issues:")
+        print("\n❌ Critical Issues:")
         for sig in report["critical_signals"]:
             print(f"   [{sig['time']}] {sig['type']}")
             print(f"      {sig['msg'][:150]}")
 
     if report["errors"]:
-        print(f"\n⚠️  Recent Errors:")
+        print("\n⚠️  Recent Errors:")
         for i, err in enumerate(report["errors"][:3], 1):
             print(f"   {i}. [{err['time']}] {err.get('severity', 'ERROR')}")
             print(f"      {err['msg'][:150]}")
 
     if report["recommendations"]:
-        print(f"\n💡 Recommendations:")
+        print("\n💡 Recommendations:")
         for rec in report["recommendations"]:
             priority_emoji = {"HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}.get(rec["priority"], "⚪")
             print(f"   {priority_emoji} [{rec['priority']}] {rec['action']}")

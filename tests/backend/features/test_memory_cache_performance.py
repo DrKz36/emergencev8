@@ -3,7 +3,7 @@
 import pytest
 import time
 from datetime import datetime, timedelta
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 from backend.features.chat.memory_ctx import MemoryContextBuilder
 
 

@@ -5,7 +5,7 @@ import os
 import logging
 from fastapi import APIRouter, Response
 from prometheus_client import REGISTRY, generate_latest, CONTENT_TYPE_LATEST
-from typing import Dict, Any
+from typing import Dict, Any, Union
 
 logger = logging.getLogger(__name__)
 
@@ -67,12 +67,12 @@ async def get_rag_metrics() -> Dict[str, Any]:
     """
     try:
         # Extract RAG metrics from Prometheus registry
-        metrics_data = {}
+        metrics_data: Dict[str, Union[int, float]] = {}
 
         for metric in REGISTRY.collect():
             # RAG hybrid queries
             if metric.name == "rag_queries_hybrid_total":
-                total = 0
+                total = 0.0
                 for sample in metric.samples:
                     if sample.labels.get("status") == "success":
                         total += sample.value
@@ -86,7 +86,7 @@ async def get_rag_metrics() -> Dict[str, Any]:
 
             # Filtered results
             elif metric.name == "rag_results_filtered_total":
-                total = 0
+                total = 0.0
                 for sample in metric.samples:
                     total += sample.value
                 metrics_data["filtered_results"] = int(total)
@@ -94,8 +94,8 @@ async def get_rag_metrics() -> Dict[str, Any]:
             # Results count histogram
             elif metric.name == "rag_results_count":
                 # Calculate average from histogram
-                count_sum = 0
-                count_total = 0
+                count_sum = 0.0
+                count_total = 0.0
                 for sample in metric.samples:
                     if sample.name.endswith("_sum"):
                         count_sum = sample.value
@@ -106,12 +106,13 @@ async def get_rag_metrics() -> Dict[str, Any]:
                     metrics_data["avg_results_per_query"] = count_sum / count_total
 
         # Calculate success rate
-        total_queries = metrics_data.get("hybrid_queries_total", 0)
+        total_queries = int(metrics_data.get("hybrid_queries_total", 0))
         if total_queries > 0:
             # Assume success if not filtered
-            filtered = metrics_data.get("filtered_results", 0)
-            metrics_data["successful_queries"] = max(0, total_queries - filtered)
-            metrics_data["success_rate"] = metrics_data["successful_queries"] / total_queries
+            filtered = int(metrics_data.get("filtered_results", 0))
+            successful = max(0, total_queries - filtered)
+            metrics_data["successful_queries"] = successful
+            metrics_data["success_rate"] = successful / total_queries if total_queries else 1.0
         else:
             metrics_data["successful_queries"] = 0
             metrics_data["success_rate"] = 1.0

@@ -151,7 +151,7 @@ class TestScenario:
 
         try:
             # Extraction SANS user_sub NI user_id
-            preferences = await extractor.extract(
+            await extractor.extract(
                 messages=messages,
                 user_sub=None,  # ❌ Absent
                 user_id=None,   # ❌ Absent

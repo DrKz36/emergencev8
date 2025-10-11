@@ -3,6 +3,8 @@
 import logging
 import hashlib
 import asyncio
+import os
+import re
 from typing import Dict, Any, List, Optional, TYPE_CHECKING, Callable
 from datetime import datetime, timedelta
 
@@ -116,21 +118,41 @@ class MemoryAnalyzer:
         self,
         db_manager: "DatabaseManager",
         chat_service: Optional["ChatService"] = None,
+        enable_offline_mode: Optional[bool] = None,
     ):
         self.db_manager = db_manager
         self.chat_service = chat_service
-        self.is_ready = self.chat_service is not None
+        if enable_offline_mode is None:
+            env_flag = os.getenv("MEMORY_ANALYZER_ALLOW_OFFLINE")
+            if env_flag is not None:
+                enable_offline_mode = env_flag.strip().lower() in {"1", "true", "yes"}
+            else:
+                # Pytest exporte PYTEST_CURRENT_TEST → utile pour tests unitaires (no LLM)
+                enable_offline_mode = bool(os.getenv("PYTEST_CURRENT_TEST"))
+        self.offline_mode = bool(enable_offline_mode)
+        self.is_ready = self.chat_service is not None or self.offline_mode
         self.preference_extractor: Optional[PreferenceExtractor] = None
         # 🔒 Lock pour accès concurrent au cache (Bug #3 fix)
         self._cache_lock = asyncio.Lock()
-        logger.info(f"MemoryAnalyzer V3.7 (P1) initialisé. Prêt: {self.is_ready}")
+        self._offline_warning_emitted = False
+        logger.info(
+            "MemoryAnalyzer V3.7 (P1) initialisé. Prêt=%s | offline_mode=%s",
+            self.is_ready,
+            self.offline_mode,
+        )
 
     def set_chat_service(self, chat_service: "ChatService"):
         self.chat_service = chat_service
-        self.is_ready = True
-        # Initialiser PreferenceExtractor avec le chat_service (pour appels LLM)
-        self.preference_extractor = PreferenceExtractor(llm_client=chat_service)
-        logger.info("ChatService injecté dans MemoryAnalyzer. L'analyseur et PreferenceExtractor sont prêts.")
+        if self.chat_service:
+            self.offline_mode = False
+            self.is_ready = True
+            # Initialiser PreferenceExtractor avec le chat_service (pour appels LLM)
+            self.preference_extractor = PreferenceExtractor(llm_client=chat_service)
+            logger.info(
+                "ChatService injecté dans MemoryAnalyzer. L'analyseur et PreferenceExtractor sont prêts."
+            )
+        else:
+            self.is_ready = self.offline_mode
 
     async def _get_from_cache(self, key: str) -> Optional[tuple[Dict[str, Any], datetime]]:
         """Récupère entrée du cache de manière thread-safe"""
@@ -169,8 +191,82 @@ class MemoryAnalyzer:
         async with self._cache_lock:
             _ANALYSIS_CACHE.pop(key, None)
 
+    def _offline_analysis(self, history: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Fallback heuristique (tests/offline) lorsque chat_service est absent."""
+        if not history:
+            return {"summary": "", "concepts": [], "entities": []}
+
+        def _extract_text(item: Dict[str, Any]) -> str:
+            text = item.get("content") or item.get("message") or item.get("text") or ""
+            return str(text).strip()
+
+        user_messages: List[str] = []
+        assistant_messages: List[str] = []
+        corpus_parts: List[str] = []
+
+        for entry in history:
+            text = _extract_text(entry)
+            if not text:
+                continue
+            corpus_parts.append(text)
+            role = str(entry.get("role") or "").strip().lower()
+            if role == "assistant":
+                assistant_messages.append(text)
+            else:
+                user_messages.append(text)
+
+        summary_parts: List[str] = []
+        if user_messages:
+            summary_parts.append(user_messages[0])
+        if assistant_messages:
+            summary_parts.append(assistant_messages[0])
+        summary = " ".join(" ".join(summary_parts).split())[:280]
+
+        concept_candidates = user_messages + assistant_messages
+        concepts: List[str] = []
+        seen_concepts: set[str] = set()
+        for candidate in concept_candidates:
+            normalized = " ".join(candidate.split())
+            lowered = normalized.lower()
+            if not lowered or lowered in seen_concepts:
+                continue
+            seen_concepts.add(lowered)
+            concepts.append(normalized[:160])
+            if len(concepts) >= 5:
+                break
+        if not concepts and summary:
+            concepts.append(summary[:160])
+
+        corpus = " ".join(corpus_parts)
+        raw_entities = re.findall(r"[A-Z][A-Za-z0-9\-/\+]{1,}", corpus)
+        entities: List[str] = []
+        seen_entities: set[str] = set()
+        for token in raw_entities:
+            lowered = token.lower()
+            if lowered in seen_entities:
+                continue
+            seen_entities.add(lowered)
+            entities.append(token)
+            if len(entities) >= 8:
+                break
+
+        return {
+            "summary": summary,
+            "concepts": concepts,
+            "entities": entities,
+        }
+
     def _ensure_ready(self):
         if not self.chat_service:
+            if self.offline_mode:
+                if not self._offline_warning_emitted:
+                    logger.warning(
+                        "MemoryAnalyzer fonctionne en mode offline (chat_service absent). "
+                        "Seule une analyse heuristique sera réalisée."
+                    )
+                    self._offline_warning_emitted = True
+                self.is_ready = True
+                return
             self.is_ready = False
             logger.error(
                 "Dépendance 'chat_service' non injectée. L'analyse est impossible."
@@ -219,12 +315,12 @@ class MemoryAnalyzer:
     ) -> Dict[str, Any]:
         self._ensure_ready()
         chat_service = self.chat_service
-        if chat_service is None:
-            raise ReferenceError(
-                "MemoryAnalyzer n'est pas prêt : chat_service manquant."
-            )
+        offline_active = chat_service is None
         logger.info(
-            f"Lancement de l'analyse sémantique (persist={persist}) pour {session_id}"
+            "Lancement de l'analyse sémantique (persist=%s | offline=%s) pour %s",
+            persist,
+            offline_active,
+            session_id,
         )
 
         # Idempotence seulement si on persiste (session réelle)
@@ -252,124 +348,165 @@ class MemoryAnalyzer:
             )
             return {}
 
-        prompt = ANALYSIS_PROMPT_TEMPLATE.format(conversation_text=conversation_text)
-
-        # ⚡ Cache Layer: éviter recalculs inutiles (thread-safe avec lock)
+        analysis_result: Dict[str, Any] = {}
+        provider_used = "offline" if offline_active else "neo_analysis"
         cache_key = None
-        if persist and not force:
-            history_hash = hashlib.md5(conversation_text.encode()).hexdigest()[:8]
-            cache_key = f"memory_analysis:{session_id}:{history_hash}"
+        primary_error: Optional[Exception] = None
 
-            # Check cache validity (TTL 1h) - thread-safe
-            cached_entry = await self._get_from_cache(cache_key)
-            if cached_entry:
-                cached_data, cached_at = cached_entry
-                if datetime.now() - cached_at < timedelta(hours=1):
-                    logger.info(f"[MemoryAnalyzer] Cache HIT pour session {session_id} (hash={history_hash})")
-                    # 📊 Métrique cache HIT
-                    if PROMETHEUS_AVAILABLE:
-                        CACHE_HITS_TOTAL.inc()
-                    return cached_data
-                else:
+        if offline_active:
+            analysis_result = self._offline_analysis(history)
+            logger.debug(
+                "[MemoryAnalyzer] Analyse heuristique offline générée pour %s (concepts=%d)",
+                session_id,
+                len(analysis_result.get("concepts", []) or []),
+            )
+        else:
+            prompt = ANALYSIS_PROMPT_TEMPLATE.format(
+                conversation_text=conversation_text
+            )
+
+            # ⚡ Cache Layer: éviter recalculs inutiles (thread-safe avec lock)
+            if persist and not force:
+                history_hash = hashlib.md5(conversation_text.encode()).hexdigest()[:8]
+                cache_key = f"memory_analysis:{session_id}:{history_hash}"
+
+                # Check cache validity (TTL 1h) - thread-safe
+                cached_entry = await self._get_from_cache(cache_key)
+                if cached_entry:
+                    cached_data, cached_at = cached_entry
+                    if datetime.now() - cached_at < timedelta(hours=1):
+                        logger.info(
+                            f"[MemoryAnalyzer] Cache HIT pour session {session_id} (hash={history_hash})"
+                        )
+                        # 📊 Métrique cache HIT
+                        if PROMETHEUS_AVAILABLE:
+                            CACHE_HITS_TOTAL.inc()
+                        return cached_data
                     # Cache expiré - supprimer de manière thread-safe
                     await self._remove_from_cache(cache_key)
-                    logger.debug(f"[MemoryAnalyzer] Cache EXPIRED pour session {session_id}")
+                    logger.debug(
+                        f"[MemoryAnalyzer] Cache EXPIRED pour session {session_id}"
+                    )
 
-        # 📊 Métrique cache MISS
-        if PROMETHEUS_AVAILABLE and persist and not force:
-            CACHE_MISSES_TOTAL.inc()
+            # 📊 Métrique cache MISS
+            if PROMETHEUS_AVAILABLE and persist and not force:
+                CACHE_MISSES_TOTAL.inc()
 
-        analysis_result: Dict[str, Any] = {}
-        primary_error: Optional[Exception] = None
-        provider_used = "neo_analysis"
-        start_time = datetime.now()
-
-        # Tentative primaire : neo_analysis (GPT-4o-mini - rapide pour JSON)
-        # Bug #9 (P2): Timeout 30s pour éviter blocage indéfini
-        try:
-            analysis_result = await asyncio.wait_for(
-                chat_service.get_structured_llm_response(
-                    agent_id="neo_analysis", prompt=prompt, json_schema=ANALYSIS_JSON_SCHEMA
-                ),
-                timeout=30.0
-            )
-            # 📊 Métriques succès
-            if PROMETHEUS_AVAILABLE:
-                duration = (datetime.now() - start_time).total_seconds()
-                ANALYSIS_DURATION_SECONDS.labels(provider="neo_analysis").observe(duration)
-                ANALYSIS_SUCCESS_TOTAL.labels(provider="neo_analysis").inc()
-            logger.info(f"[MemoryAnalyzer] Analyse réussie avec neo_analysis pour session {session_id}")
-        except Exception as e:
-            primary_error = e
-            error_type = type(e).__name__
-            # 📊 Métriques échec
-            if PROMETHEUS_AVAILABLE:
-                ANALYSIS_FAILURE_TOTAL.labels(provider="neo_analysis", error_type=error_type).inc()
-            logger.warning(
-                f"[MemoryAnalyzer] Analyse neo_analysis échouée ({error_type}) pour session {session_id} — fallback Nexus",
-                exc_info=True,
-            )
-
-        # Fallback 1 : Nexus (Anthropic - plus fiable)
-        if not analysis_result:
-            provider_used = "nexus"
             start_time = datetime.now()
+
+            # Tentative primaire : neo_analysis (GPT-4o-mini - rapide pour JSON)
+            # Bug #9 (P2): Timeout 30s pour éviter blocage indéfini
             try:
                 analysis_result = await asyncio.wait_for(
                     chat_service.get_structured_llm_response(
-                        agent_id="nexus", prompt=prompt, json_schema=ANALYSIS_JSON_SCHEMA
+                        agent_id="neo_analysis",
+                        prompt=prompt,
+                        json_schema=ANALYSIS_JSON_SCHEMA,
                     ),
-                    timeout=30.0
+                    timeout=30.0,
                 )
-                # 📊 Métriques succès Nexus
+                # 📊 Métriques succès
                 if PROMETHEUS_AVAILABLE:
                     duration = (datetime.now() - start_time).total_seconds()
-                    ANALYSIS_DURATION_SECONDS.labels(provider="nexus").observe(duration)
-                    ANALYSIS_SUCCESS_TOTAL.labels(provider="nexus").inc()
-                logger.info(f"[MemoryAnalyzer] Fallback Nexus réussi pour session {session_id}")
+                    ANALYSIS_DURATION_SECONDS.labels(provider="neo_analysis").observe(
+                        duration
+                    )
+                    ANALYSIS_SUCCESS_TOTAL.labels(provider="neo_analysis").inc()
+                logger.info(
+                    f"[MemoryAnalyzer] Analyse réussie avec neo_analysis pour session {session_id}"
+                )
             except Exception as e:
-                # 📊 Métriques échec Nexus
+                primary_error = e
+                error_type = type(e).__name__
+                # 📊 Métriques échec
                 if PROMETHEUS_AVAILABLE:
-                    ANALYSIS_FAILURE_TOTAL.labels(provider="nexus", error_type=type(e).__name__).inc()
-                logger.warning(f"[MemoryAnalyzer] Fallback Nexus échoué ({type(e).__name__}) — tentative Anima", exc_info=True)
+                    ANALYSIS_FAILURE_TOTAL.labels(
+                        provider="neo_analysis", error_type=error_type
+                    ).inc()
+                logger.warning(
+                    f"[MemoryAnalyzer] Analyse neo_analysis échouée ({error_type}) pour session {session_id} — fallback Nexus",
+                    exc_info=True,
+                )
 
-                # Fallback 2 : Anima (OpenAI - dernière chance)
-                provider_used = "anima"
+            # Fallback 1 : Nexus (Anthropic - plus fiable)
+            if not analysis_result:
+                provider_used = "nexus"
                 start_time = datetime.now()
                 try:
-                    analysis_result = await chat_service.get_structured_llm_response(
-                        agent_id="anima", prompt=prompt, json_schema=ANALYSIS_JSON_SCHEMA
+                    analysis_result = await asyncio.wait_for(
+                        chat_service.get_structured_llm_response(
+                            agent_id="nexus",
+                            prompt=prompt,
+                            json_schema=ANALYSIS_JSON_SCHEMA,
+                        ),
+                        timeout=30.0,
                     )
-                    # 📊 Métriques succès Anima
+                    # 📊 Métriques succès Nexus
                     if PROMETHEUS_AVAILABLE:
                         duration = (datetime.now() - start_time).total_seconds()
-                        ANALYSIS_DURATION_SECONDS.labels(provider="anima").observe(duration)
-                        ANALYSIS_SUCCESS_TOTAL.labels(provider="anima").inc()
-                    logger.info(f"[MemoryAnalyzer] Fallback Anima réussi pour session {session_id}")
-                except Exception as final_error:
-                    # 📊 Métriques échec Anima
+                        ANALYSIS_DURATION_SECONDS.labels(provider="nexus").observe(
+                            duration
+                        )
+                        ANALYSIS_SUCCESS_TOTAL.labels(provider="nexus").inc()
+                    logger.info(
+                        f"[MemoryAnalyzer] Fallback Nexus réussi pour session {session_id}"
+                    )
+                except Exception as e:
+                    # 📊 Métriques échec Nexus
                     if PROMETHEUS_AVAILABLE:
-                        ANALYSIS_FAILURE_TOTAL.labels(provider="anima", error_type=type(final_error).__name__).inc()
-                    logger.error(
-                        f"[MemoryAnalyzer] Tous fallbacks échoués pour session {session_id}: {final_error}",
-                        exc_info=True
+                        ANALYSIS_FAILURE_TOTAL.labels(
+                            provider="nexus", error_type=type(e).__name__
+                        ).inc()
+                    logger.warning(
+                        f"[MemoryAnalyzer] Fallback Nexus échoué ({type(e).__name__}) — tentative Anima",
+                        exc_info=True,
                     )
-                    retry_after = None
+
+                    # Fallback 2 : Anima (OpenAI - dernière chance)
+                    provider_used = "anima"
+                    start_time = datetime.now()
                     try:
-                        rd = getattr(primary_error or final_error, "retry_delay", None)
-                        retry_after = getattr(rd, "seconds", None)
-                    except Exception:
-                        pass
-                    await self._notify(
-                        session_id,
-                        {
-                            "session_id": session_id,
-                            "status": "failed",
-                            "error": str(final_error),
-                            "retry_after": retry_after,
-                        },
-                    )
-                    raise
+                        analysis_result = await chat_service.get_structured_llm_response(
+                            agent_id="anima",
+                            prompt=prompt,
+                            json_schema=ANALYSIS_JSON_SCHEMA,
+                        )
+                        # 📊 Métriques succès Anima
+                        if PROMETHEUS_AVAILABLE:
+                            duration = (datetime.now() - start_time).total_seconds()
+                            ANALYSIS_DURATION_SECONDS.labels(provider="anima").observe(
+                                duration
+                            )
+                            ANALYSIS_SUCCESS_TOTAL.labels(provider="anima").inc()
+                        logger.info(
+                            f"[MemoryAnalyzer] Fallback Anima réussi pour session {session_id}"
+                        )
+                    except Exception as final_error:
+                        # 📊 Métriques échec Anima
+                        if PROMETHEUS_AVAILABLE:
+                            ANALYSIS_FAILURE_TOTAL.labels(
+                                provider="anima", error_type=type(final_error).__name__
+                            ).inc()
+                        logger.error(
+                            f"[MemoryAnalyzer] Tous fallbacks échoués pour session {session_id}: {final_error}",
+                            exc_info=True,
+                        )
+                        retry_after = None
+                        try:
+                            rd = getattr(primary_error or final_error, "retry_delay", None)
+                            retry_after = getattr(rd, "seconds", None)
+                        except Exception:
+                            pass
+                        await self._notify(
+                            session_id,
+                            {
+                                "session_id": session_id,
+                                "status": "failed",
+                                "error": str(final_error),
+                                "retry_after": retry_after,
+                            },
+                        )
+                        raise
 
         summary_value = str(analysis_result.get("summary", "") or "")
         concepts_raw = analysis_result.get("concepts", []) or []

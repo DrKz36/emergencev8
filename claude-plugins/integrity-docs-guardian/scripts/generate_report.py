@@ -5,7 +5,6 @@ NEXUS (Coordinator) - Unified Report Generator
 Aggregates reports from Anima and Neo, provides synthesis and prioritization
 """
 
-import os
 import sys
 import json
 from datetime import datetime
@@ -308,7 +307,7 @@ def main():
         json.dump(report, f, indent=2, ensure_ascii=False)
 
     print(f"✅ Unified report generated: {report_file}")
-    print(f"\n📊 Executive Summary:")
+    print("\n📊 Executive Summary:")
     print(f"   Status: {report['executive_summary']['status'].upper()}")
     print(f"   {report['executive_summary']['headline']}")
     print(f"\n📋 Priority Actions: {len(report['priority_actions'])}")

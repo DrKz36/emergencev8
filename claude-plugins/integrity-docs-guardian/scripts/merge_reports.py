@@ -5,12 +5,9 @@ Fusionne les rapports d'Anima, Neo et ProdGuardian en un rapport global
 """
 
 import json
-import glob
 import datetime
-import os
 import sys
 from pathlib import Path
-from collections import defaultdict
 
 # Répertoire des rapports
 REPORTS_DIR = Path(__file__).parent.parent / "reports"
@@ -202,7 +199,7 @@ def afficher_resume(rapport_global):
     print(f"\n{emoji} Statut Global: {statut}")
     print(f"🕒 Timestamp: {rapport_global['timestamp']}")
 
-    print(f"\n📋 RÉSUMÉ:")
+    print("\n📋 RÉSUMÉ:")
     resume = rapport_global["resume"]
     print(f"   - Agents exécutés: {resume['agents_executes']}")
     print(f"   - Erreurs totales: {resume['total_erreurs']}")
@@ -210,7 +207,7 @@ def afficher_resume(rapport_global):
     print(f"   - Signaux critiques: {resume['total_critical']}")
     print(f"   - Actions prioritaires: {resume['actions_prioritaires']}")
 
-    print(f"\n✅ AGENTS:")
+    print("\n✅ AGENTS:")
     for agent, details in rapport_global["agents"].items():
         agent_emoji = {"OK": "✅", "DEGRADED": "⚠️", "CRITICAL": "🔴"}.get(
             details["statut"].upper(), "❓"
@@ -227,7 +224,7 @@ def afficher_resume(rapport_global):
                 print(f"      → {details['erreurs']} erreurs détectées")
 
     if rapport_global["actions_prioritaires"]:
-        print(f"\n💡 ACTIONS PRIORITAIRES:")
+        print("\n💡 ACTIONS PRIORITAIRES:")
         for i, action in enumerate(rapport_global["actions_prioritaires"][:5], 1):
             priority_emoji = {"HIGH": "🔴", "CRITICAL": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}.get(
                 action["priority"], "⚪"

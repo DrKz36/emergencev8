@@ -5,7 +5,6 @@ Vérifie que les locks asyncio.Lock() fonctionnent correctement.
 """
 import pytest
 import asyncio
-from datetime import datetime
 from unittest.mock import Mock, AsyncMock, patch
 
 from backend.features.memory.analyzer import MemoryAnalyzer

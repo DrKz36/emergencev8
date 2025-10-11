@@ -3,7 +3,7 @@ Script de test v2 - Endpoints corrects pour EmergenceV8
 """
 import requests
 import json
-from typing import Dict, Any
+from typing import Any
 
 # Configuration
 BASE_URL = "http://localhost:8000"
@@ -240,7 +240,6 @@ def decode_jwt():
         # Vérifier l'expiration
         import time
         exp = payload_data.get('exp', 0)
-        iat = payload_data.get('iat', 0)
         now = int(time.time())
 
         is_valid = now < exp
