@@ -5,6 +5,7 @@ import inspect
 import json
 import logging
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping, Optional, Sequence
 from uuid import uuid4
@@ -422,6 +423,11 @@ class AuthService:
 
         user_claim = str(claims.get("sub") or "")
         await self._write_audit(event_type, email=email, metadata=audit_meta)
+
+        # Get password_must_reset status
+        allow_row = await self._get_allowlist_row(email)
+        password_must_reset = bool(allow_row.get("password_must_reset", False)) if allow_row else False
+
         return LoginResponse(
             token=token,
             expires_at=expires_at,
@@ -429,6 +435,7 @@ class AuthService:
             session_id=session_id,
             user_id=user_claim,
             email=email,
+            password_must_reset=password_must_reset,
         )
 
     async def dev_login(self, email: Optional[str], ip_address: Optional[str], user_agent: Optional[str]) -> LoginResponse:
@@ -657,7 +664,7 @@ class AuthService:
 
         rows = await self._fetch_all_dicts(
             f"""
-            SELECT email, role, note, created_at, created_by, revoked_at, revoked_by, password_updated_at
+            SELECT email, role, note, created_at, created_by, revoked_at, revoked_by, password_updated_at, password_must_reset
             FROM auth_allowlist
             {where_clause}
             ORDER BY (revoked_at IS NULL) DESC, LOWER(email) ASC
@@ -788,6 +795,52 @@ class AuthService:
             raise AuthError("Entree allowlist introuvable apres mise a jour.", status_code=500)
         return self._row_to_allowlist(updated_row)
 
+    async def change_own_password(
+        self,
+        email: str,
+        current_password: str,
+        new_password: str,
+    ) -> bool:
+        """Change password for the authenticated user."""
+        normalized = self._normalize_email(email)
+        if not normalized:
+            raise AuthError("Email invalide.", status_code=400)
+
+        # Verify current password
+        allow_row = await self._get_allowlist_row(normalized)
+        if not allow_row:
+            raise AuthError("Email non autorise.", status_code=401)
+
+        if allow_row.get("revoked_at"):
+            raise AuthError("Compte temporairement desactive.", status_code=423)
+
+        password_hash = allow_row.get("password_hash")
+        if not password_hash or not self._verify_password(current_password, password_hash):
+            raise AuthError("Mot de passe actuel incorrect.", status_code=401)
+
+        # Validate and set new password
+        self._validate_password_strength(new_password)
+        new_password_hash = self._hash_password(new_password)
+        updated_at = self._now().isoformat()
+
+        await self._upsert_allowlist(
+            normalized,
+            role=allow_row.get("role") or "member",
+            note=allow_row.get("note"),
+            actor=normalized,
+            password_hash=new_password_hash,
+            password_updated_at=updated_at,
+        )
+
+        await self._write_audit(
+            "password:changed",
+            email=normalized,
+            actor=normalized,
+            metadata={"password_updated_at": updated_at, "source": "self_service"},
+        )
+
+        return True
+
     async def remove_allowlist(self, email: str, actor: Optional[str]) -> None:
         normalized = self._normalize_email(email)
         await self.db.execute(
@@ -797,6 +850,148 @@ class AuthService:
         )
         await self.revoke_sessions_for_email(normalized, actor=actor)
         await self._write_audit("allowlist:remove", email=normalized, actor=actor)
+
+    async def create_password_reset_token(self, email: str) -> str:
+        """
+        Create a password reset token for the given email.
+        Token is valid for 1 hour.
+
+        Returns:
+            The reset token
+        """
+        normalized = self._normalize_email(email)
+        if not normalized:
+            raise AuthError("Email invalide.", status_code=400)
+
+        # Check if user exists in allowlist
+        allow_row = await self._get_allowlist_row(normalized)
+        if not allow_row:
+            raise AuthError("Email non autorise.", status_code=404)
+
+        if allow_row.get("revoked_at"):
+            raise AuthError("Compte temporairement desactive.", status_code=423)
+
+        # Generate secure token
+        token = secrets.token_urlsafe(32)
+        now = self._now()
+        expires_at = now + timedelta(hours=1)
+
+        # Store token in database
+        await self.db.execute(
+            """
+            INSERT INTO password_reset_tokens (token, email, expires_at, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (token, normalized, expires_at.isoformat(), now.isoformat()),
+            commit=True,
+        )
+
+        # Audit log
+        await self._write_audit(
+            "password:reset_requested",
+            email=normalized,
+            actor=normalized,
+            metadata={"expires_at": expires_at.isoformat()},
+        )
+
+        return token
+
+    async def verify_password_reset_token(self, token: str) -> Optional[str]:
+        """
+        Verify a password reset token and return the associated email if valid.
+
+        Returns:
+            The email associated with the token, or None if invalid/expired
+        """
+        if not token:
+            return None
+
+        row = await self._fetch_one_dict(
+            """
+            SELECT email, expires_at, used_at
+            FROM password_reset_tokens
+            WHERE token = ?
+            """,
+            (token,),
+        )
+
+        if not row:
+            return None
+
+        # Check if already used
+        if row.get("used_at"):
+            return None
+
+        # Check if expired
+        expires_at = self._parse_dt(row.get("expires_at"))
+        if expires_at < self._now():
+            return None
+
+        return row.get("email")
+
+    async def reset_password_with_token(self, token: str, new_password: str) -> bool:
+        """
+        Reset password using a valid token.
+
+        Returns:
+            True if password was reset successfully
+        """
+        email = await self.verify_password_reset_token(token)
+        if not email:
+            raise AuthError("Token invalide ou expire.", status_code=400)
+
+        # Validate new password
+        self._validate_password_strength(new_password)
+
+        # Get allowlist entry
+        allow_row = await self._get_allowlist_row(email)
+        if not allow_row:
+            raise AuthError("Email non autorise.", status_code=404)
+
+        # Hash new password
+        password_hash = self._hash_password(new_password)
+        updated_at = self._now().isoformat()
+
+        # Update password in allowlist and set password_must_reset to False
+        await self._upsert_allowlist(
+            email,
+            role=allow_row.get("role") or "member",
+            note=allow_row.get("note"),
+            actor=email,
+            password_hash=password_hash,
+            password_updated_at=updated_at,
+        )
+
+        # Set password_must_reset to False
+        await self.db.execute(
+            "UPDATE auth_allowlist SET password_must_reset = 0 WHERE email = ?",
+            (email,),
+            commit=True,
+        )
+
+        # Mark token as used
+        await self.db.execute(
+            """
+            UPDATE password_reset_tokens
+            SET used_at = ?
+            WHERE token = ?
+            """,
+            (self._now().isoformat(), token),
+            commit=True,
+        )
+
+        # Audit log
+        await self._write_audit(
+            "password:reset_completed",
+            email=email,
+            actor=email,
+            metadata={"password_updated_at": updated_at, "source": "reset_token"},
+        )
+
+        # Revoke all existing sessions for security
+        await self.revoke_sessions_for_email(email, actor=email)
+
+        return True
 
     async def list_sessions(self, active_only: bool = False) -> list[SessionInfo]:
         if active_only:
@@ -845,7 +1040,7 @@ class AuthService:
 
     async def _get_allowlist_row(self, email: str) -> Optional[dict[str, Any]]:
         return await self._fetch_one_dict(
-            "SELECT email, role, note, created_at, created_by, revoked_at, revoked_by, password_hash, password_updated_at FROM auth_allowlist WHERE email = ?",
+            "SELECT email, role, note, created_at, created_by, revoked_at, revoked_by, password_hash, password_updated_at, password_must_reset FROM auth_allowlist WHERE email = ?",
             (email,),
         )
 
@@ -943,6 +1138,7 @@ class AuthService:
             created_at=self._parse_dt(row.get("created_at")),
             created_by=row.get("created_by"),
             password_updated_at=self._parse_dt(pwd_updated) if pwd_updated else None,
+            password_must_reset=bool(row.get("password_must_reset", True)),
             revoked_at=self._parse_dt(revoked_at) if revoked_at else None,
             revoked_by=row.get("revoked_by"),
         )

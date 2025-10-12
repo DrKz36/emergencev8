@@ -11,16 +11,23 @@ from backend.features.auth.models import (
     AllowlistCreatePayload,
     AllowlistListResponse,
     AllowlistMutationResponse,
+    ChangePasswordRequest,
+    ChangePasswordResponse,
     LoginRequest,
     DevLoginRequest,
     LoginResponse,
     LogoutPayload,
+    RequestPasswordResetRequest,
+    RequestPasswordResetResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
     SessionRevokePayload,
     SessionRevokeResult,
     SessionStatusResponse,
     SessionsListResponse,
 )
 from backend.features.auth.service import AuthError, AuthService
+from backend.features.auth.email_service import EmailService
 from backend.core.session_manager import SessionManager
 from backend.shared.dependencies import (
     get_auth_service,
@@ -211,6 +218,99 @@ async def get_session(claims: Dict[str, Any] = Depends(get_auth_claims)) -> Sess
         session_id=session_id,
         source=source,
     )
+
+
+@router.post("/change-password", response_model=ChangePasswordResponse)
+async def change_password(
+    payload: ChangePasswordRequest,
+    claims: Dict[str, Any] = Depends(get_auth_claims),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> ChangePasswordResponse:
+    """Change password for the authenticated user."""
+    email = claims.get("email")
+    if not email:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email non trouve dans le token.")
+
+    try:
+        await auth_service.change_own_password(
+            email,
+            payload.current_password,
+            payload.new_password,
+        )
+        return ChangePasswordResponse(
+            success=True,
+            message="Mot de passe change avec succes."
+        )
+    except AuthError as exc:
+        raise _map_auth_error(exc)
+
+
+@router.post("/request-password-reset", response_model=RequestPasswordResetResponse)
+async def request_password_reset(
+    payload: RequestPasswordResetRequest,
+    request: Request,
+    auth_service: AuthService = Depends(get_auth_service),
+) -> RequestPasswordResetResponse:
+    """Request a password reset email."""
+    try:
+        # Create reset token
+        token = await auth_service.create_password_reset_token(payload.email)
+
+        # Send email
+        email_service = EmailService()
+        if email_service.is_enabled():
+            # Get base URL from request
+            base_url = str(request.base_url).rstrip('/')
+
+            # Send email
+            email_sent = await email_service.send_password_reset_email(
+                to_email=payload.email,
+                reset_token=token,
+                base_url=base_url,
+            )
+
+            if not email_sent:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Erreur lors de l'envoi de l'email. Veuillez contacter l'administrateur."
+                )
+        else:
+            # Email service not configured - for development, log the token
+            import logging
+            logger = logging.getLogger("emergence.auth")
+            logger.warning(f"Email service not configured. Reset token for {payload.email}: {token}")
+            logger.warning(f"Reset URL: {str(request.base_url).rstrip('/')}/reset-password?token={token}")
+
+        return RequestPasswordResetResponse(
+            success=True,
+            message="Si votre email est enregistré, vous recevrez un lien de réinitialisation sous peu."
+        )
+    except AuthError as exc:
+        # For security, always return success message even if email not found
+        # This prevents email enumeration
+        return RequestPasswordResetResponse(
+            success=True,
+            message="Si votre email est enregistré, vous recevrez un lien de réinitialisation sous peu."
+        )
+
+
+@router.post("/reset-password", response_model=ResetPasswordResponse)
+async def reset_password(
+    payload: ResetPasswordRequest,
+    auth_service: AuthService = Depends(get_auth_service),
+) -> ResetPasswordResponse:
+    """Reset password using a valid token."""
+    try:
+        await auth_service.reset_password_with_token(
+            payload.token,
+            payload.new_password,
+        )
+        return ResetPasswordResponse(
+            success=True,
+            message="Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter."
+        )
+    except AuthError as exc:
+        raise _map_auth_error(exc)
 
 
 @router.get("/admin/allowlist", response_model=AllowlistListResponse)

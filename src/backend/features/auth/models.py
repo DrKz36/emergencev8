@@ -56,6 +56,7 @@ class LoginResponse(BaseModel):
     session_id: str
     user_id: str
     email: str
+    password_must_reset: bool = False
 
 
 class DevLoginRequest(BaseModel):
@@ -89,6 +90,7 @@ class AllowlistEntry(BaseModel):
     created_at: datetime
     created_by: Optional[str] = None
     password_updated_at: Optional[datetime] = None
+    password_must_reset: bool = True
     revoked_at: Optional[datetime] = None
     revoked_by: Optional[str] = None
 
@@ -139,3 +141,32 @@ class AuditEvent(BaseModel):
     actor: Optional[str] = None
     metadata: dict = Field(default_factory=dict)
     created_at: datetime
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=8)
+    new_password: str = Field(min_length=8)
+
+
+class ChangePasswordResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class RequestPasswordResetRequest(BaseModel):
+    email: str
+
+
+class RequestPasswordResetResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8)
+
+
+class ResetPasswordResponse(BaseModel):
+    success: bool
+    message: str

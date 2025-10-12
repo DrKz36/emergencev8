@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Bienvenue dans ÉMERGENCE</title>
+
+  <link rel="icon" type="image/png" href="/assets/emergence_logo.png" />
+  <link rel="apple-touch-icon" href="/assets/emergence_logo.png" />
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #0b0f1a;
+      --bg-2: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --border: #1f2937;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0b0f1a 0%, #16213e 100%);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      min-height: 100vh;
+    }
+
+    .container {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      max-width: 600px;
+      width: 100%;
+      padding: 2.5rem;
+      animation: slideUp 0.4s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(30px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .logo {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 1.5rem;
+      filter: drop-shadow(0 0 22px rgba(56, 189, 248, 0.45));
+    }
+
+    .avatars {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 3px solid rgba(59, 130, 246, 0.5);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      transition: all 0.3s ease;
+      animation: avatarFloat 3s ease-in-out infinite;
+    }
+
+    .avatar:nth-child(1) {
+      animation-delay: 0s;
+    }
+
+    .avatar:nth-child(2) {
+      animation-delay: 0.5s;
+      width: 90px;
+      height: 90px;
+    }
+
+    .avatar:nth-child(3) {
+      animation-delay: 1s;
+    }
+
+    .avatar:hover {
+      transform: scale(1.1);
+      border-color: rgba(59, 130, 246, 0.8);
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.5);
+    }
+
+    @keyframes avatarFloat {
+      0%, 100% {
+        transform: translateY(0px);
+      }
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 1rem;
+      background: linear-gradient(120deg, rgba(125, 211, 252, 1) 0%, rgba(59, 130, 246, 1) 45%, rgba(168, 85, 247, 1) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      font-size: 1.1rem;
+      margin-bottom: 2rem;
+    }
+
+    .intro {
+      color: #cbd5e1;
+      line-height: 1.8;
+      margin-bottom: 2rem;
+      text-align: left;
+    }
+
+    .intro p {
+      margin-bottom: 1rem;
+    }
+
+    .intro strong {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .highlight-box {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .highlight-box p {
+      color: #93c5fd;
+      font-weight: 500;
+      margin: 0;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+      text-align: left;
+    }
+
+    label {
+      display: block;
+      color: #e2e8f0;
+      font-weight: 500;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+
+    input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: #e2e8f0;
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: rgba(59, 130, 246, 0.5);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    input::placeholder {
+      color: rgba(203, 213, 225, 0.4);
+    }
+
+    input:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .hint {
+      color: #94a3b8;
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+    }
+
+    .message {
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      margin-bottom: 1.25rem;
+      display: none;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .success {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #86efac;
+    }
+
+    .info {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #93c5fd;
+    }
+
+    button {
+      width: 100%;
+      padding: 0.875rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      border: 1px solid rgba(59, 130, 246, 0.5);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    button:hover:not(:disabled) {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .step {
+      display: none;
+    }
+
+    .step.active {
+      display: block;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 1.5rem;
+        border-radius: 0;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+      }
+
+      .avatar {
+        width: 60px;
+        height: 60px;
+      }
+
+      .avatar:nth-child(2) {
+        width: 70px;
+        height: 70px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Step 1: Welcome & Request Email -->
+    <div id="step-1" class="step active">
+      <div class="header">
+        <img src="/assets/emergence_logo.png" alt="ÉMERGENCE" class="logo">
+        <div class="avatars">
+          <img src="/assets/anima.png" alt="Anima" class="avatar">
+          <img src="/assets/neo.png" alt="Neo" class="avatar">
+          <img src="/assets/nexus.png" alt="Nexus" class="avatar">
+        </div>
+        <h1>Bienvenue dans ÉMERGENCE !</h1>
+        <p class="subtitle">Rencontrez Anima, Neo et Nexus</p>
+      </div>
+
+      <div class="intro">
+        <p>
+          Bonjour et bienvenue ! Nous sommes ravis de vous accueillir dans <strong>ÉMERGENCE</strong>,
+          votre écosystème d'intelligence artificielle collaborative.
+        </p>
+        <p>
+          Vous venez de recevoir un <strong>mot de passe temporaire</strong> pour accéder à votre compte.
+          Pour des raisons de sécurité, nous devons d'abord vérifier votre adresse email.
+        </p>
+      </div>
+
+      <div class="highlight-box">
+        <p>
+          📧 Nous allons vous envoyer un email de vérification avec un lien sécurisé pour créer
+          votre mot de passe personnel.
+        </p>
+      </div>
+
+      <div id="message-step1" class="message"></div>
+
+      <form id="email-form">
+        <div class="form-group">
+          <label for="email">Votre adresse email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="votre@email.com"
+            required
+            autocomplete="email"
+          />
+          <small class="hint">Cette adresse doit correspondre à celle utilisée pour votre compte</small>
+        </div>
+
+        <button type="submit" id="send-email-btn">
+          Envoyer le lien de vérification
+        </button>
+      </form>
+
+      <div class="footer">
+        Première connexion • Étape 1/2
+      </div>
+    </div>
+
+    <!-- Step 2: Email Sent Confirmation -->
+    <div id="step-2" class="step">
+      <div class="header">
+        <img src="/assets/emergence_logo.png" alt="ÉMERGENCE" class="logo">
+        <h1>Email envoyé !</h1>
+      </div>
+
+      <div class="intro">
+        <p>
+          Un email de vérification a été envoyé à votre adresse.
+        </p>
+        <p>
+          <strong>Consultez votre boîte de réception</strong> et cliquez sur le lien pour créer
+          votre mot de passe personnel.
+        </p>
+      </div>
+
+      <div class="highlight-box">
+        <p>
+          ⏱️ Le lien est valable pendant <strong>1 heure</strong>.
+        </p>
+      </div>
+
+      <div class="intro">
+        <p style="margin-top: 1.5rem;">
+          Une fois votre mot de passe créé, vous pourrez revenir ici et vous connecter
+          pour découvrir toutes les fonctionnalités d'ÉMERGENCE.
+        </p>
+      </div>
+
+      <div class="footer">
+        <a href="/" style="color: #3b82f6; text-decoration: none; font-weight: 500;">
+          ← Retour à la page de connexion
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Get email from URL parameter if available
+    const urlParams = new URLSearchParams(window.location.search);
+    const emailParam = urlParams.get('email');
+
+    if (emailParam) {
+      document.getElementById('email').value = emailParam;
+    }
+
+    const emailForm = document.getElementById('email-form');
+    const sendEmailBtn = document.getElementById('send-email-btn');
+    const messageStep1 = document.getElementById('message-step1');
+
+    function showMessage(message, type) {
+      messageStep1.textContent = message;
+      messageStep1.className = `message ${type} show`;
+    }
+
+    function showStep(stepNumber) {
+      document.querySelectorAll('.step').forEach(step => {
+        step.classList.remove('active');
+      });
+      document.getElementById(`step-${stepNumber}`).classList.add('active');
+    }
+
+    emailForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('email').value;
+
+      // Clear previous messages
+      messageStep1.classList.remove('show');
+
+      // Validate email
+      if (!email || !email.includes('@')) {
+        showMessage('Veuillez entrer une adresse email valide.', 'error');
+        return;
+      }
+
+      // Disable button
+      sendEmailBtn.disabled = true;
+      sendEmailBtn.textContent = 'Envoi en cours...';
+
+      try {
+        const response = await fetch('/api/auth/request-password-reset', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: email,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || 'Erreur lors de l\'envoi du lien.');
+        }
+
+        // Success - show step 2
+        showStep(2);
+
+      } catch (error) {
+        showMessage(error.message || 'Une erreur est survenue.', 'error');
+        sendEmailBtn.disabled = false;
+        sendEmailBtn.textContent = 'Envoyer le lien de vérification';
+      }
+    });
+  </script>
+</body>
+</html>

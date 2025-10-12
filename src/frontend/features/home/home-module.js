@@ -246,6 +246,14 @@ export class HomeModule {
     try {
       const data = await this.login(email, password);
       this.status = 'success';
+
+      // Check if user needs to reset password (first login)
+      if (data?.password_must_reset === true) {
+        // Redirect to onboarding page
+        window.location.href = `/onboarding.html?email=${encodeURIComponent(email)}`;
+        return;
+      }
+
       this.showMessage('success', t('home.success'));
 
       if (this.qaRecorder) {

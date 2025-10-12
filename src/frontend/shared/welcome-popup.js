@@ -1,4 +1,5 @@
 import { EVENTS } from './constants.js';
+import { ChangePasswordModal } from './change-password-modal.js';
 
 /**
  * Welcome Popup
@@ -54,7 +55,11 @@ export class WelcomePopup {
         this.popup.innerHTML = `
             <div class="welcome-popup">
                 <div class="welcome-popup-header">
-                    <div class="welcome-popup-icon">👋</div>
+                    <div class="welcome-popup-avatars">
+                        <img src="/assets/anima.png" alt="Anima" class="welcome-avatar">
+                        <img src="/assets/neo.png" alt="Neo" class="welcome-avatar">
+                        <img src="/assets/nexus.png" alt="Nexus" class="welcome-avatar">
+                    </div>
                     <h2>Bienvenue dans ÉMERGENCE !</h2>
                     <button class="welcome-popup-close" aria-label="Fermer">×</button>
                 </div>
@@ -173,10 +178,49 @@ export class WelcomePopup {
                 position: relative;
             }
 
-            .welcome-popup-icon {
-                font-size: 3rem;
-                margin-bottom: 0.5rem;
-                text-align: center;
+            .welcome-popup-avatars {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .welcome-avatar {
+                width: 60px;
+                height: 60px;
+                border-radius: 50%;
+                border: 2px solid rgba(59, 130, 246, 0.5);
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                transition: all 0.3s ease;
+                animation: avatarFloat 3s ease-in-out infinite;
+            }
+
+            .welcome-avatar:nth-child(1) {
+                animation-delay: 0s;
+            }
+
+            .welcome-avatar:nth-child(2) {
+                animation-delay: 0.5s;
+            }
+
+            .welcome-avatar:nth-child(3) {
+                animation-delay: 1s;
+            }
+
+            .welcome-avatar:hover {
+                transform: scale(1.1);
+                border-color: rgba(59, 130, 246, 0.8);
+                box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+            }
+
+            @keyframes avatarFloat {
+                0%, 100% {
+                    transform: translateY(0px);
+                }
+                50% {
+                    transform: translateY(-8px);
+                }
             }
 
             .welcome-popup-header h2 {
@@ -273,7 +317,8 @@ export class WelcomePopup {
             }
 
             .btn-welcome-close,
-            .btn-welcome-tutorial {
+            .btn-welcome-tutorial,
+            .btn-welcome-password {
                 padding: 0.6rem 1.2rem;
                 border-radius: 8px;
                 font-size: 0.95rem;
@@ -292,6 +337,18 @@ export class WelcomePopup {
             .btn-welcome-close:hover {
                 background: rgba(255, 255, 255, 0.15);
                 border-color: rgba(255, 255, 255, 0.3);
+            }
+
+            .btn-welcome-password {
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: white;
+                border: 1px solid rgba(16, 185, 129, 0.5);
+                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            }
+
+            .btn-welcome-password:hover {
+                background: linear-gradient(135deg, #059669 0%, #047857 100%);
+                box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
             }
 
             .btn-welcome-tutorial {
@@ -325,7 +382,8 @@ export class WelcomePopup {
                 }
 
                 .btn-welcome-close,
-                .btn-welcome-tutorial {
+                .btn-welcome-tutorial,
+                .btn-welcome-password {
                     width: 100%;
                 }
             }
@@ -354,13 +412,13 @@ export class WelcomePopup {
         closeBtn?.addEventListener('click', handleClose);
         closeBtnFooter?.addEventListener('click', handleClose);
 
-        // Tutorial button - navigate to About page and scroll to tutorial section
+        // Tutorial button - navigate to Documentation page and scroll to tutorial section
         tutorialBtn?.addEventListener('click', () => {
             const permanent = checkbox && checkbox.checked;
             this.dismiss(permanent);
 
             const moduleEvent = (EVENTS && EVENTS.MODULE_NAVIGATE) ? EVENTS.MODULE_NAVIGATE : 'app:navigate';
-            this.eventBus?.emit?.(moduleEvent, { moduleId: 'about' });
+            this.eventBus?.emit?.(moduleEvent, { moduleId: 'documentation' });
 
             // Wait for module to load, then scroll to tutorial section
             setTimeout(() => {
