@@ -396,7 +396,7 @@
       </div>
 
       <div class="footer">
-        <a href="/" style="color: #3b82f6; text-decoration: none; font-weight: 500;">
+        <a href="#" id="back-to-login" style="color: #3b82f6; text-decoration: none; font-weight: 500;">
           ← Retour à la page de connexion
         </a>
       </div>
@@ -426,6 +426,31 @@
         step.classList.remove('active');
       });
       document.getElementById(`step-${stepNumber}`).classList.add('active');
+    }
+
+    // Handle back to login link - clear auth and redirect
+    const backToLoginLink = document.getElementById('back-to-login');
+    if (backToLoginLink) {
+      backToLoginLink.addEventListener('click', (e) => {
+        e.preventDefault();
+
+        // Clear all authentication tokens
+        try {
+          localStorage.removeItem('emergence.id_token');
+          localStorage.removeItem('id_token');
+          sessionStorage.removeItem('emergence.id_token');
+          sessionStorage.removeItem('id_token');
+
+          // Clear cookies
+          document.cookie = 'id_token=; Max-Age=0; path=/; SameSite=Lax';
+          document.cookie = 'emergence_session_id=; Max-Age=0; path=/; SameSite=Lax';
+        } catch (err) {
+          console.warn('Error clearing auth:', err);
+        }
+
+        // Redirect to home
+        window.location.href = '/';
+      });
     }
 
     emailForm.addEventListener('submit', async (e) => {
