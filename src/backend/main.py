@@ -265,8 +265,8 @@ def create_app() -> FastAPI:
         )
         app.add_middleware(MonitoringMiddleware)
         app.add_middleware(SecurityMiddleware)
-        app.add_middleware(RateLimitMiddleware, requests_per_minute=100)  # 100 req/min global
-        logger.info("Monitoring middlewares activés (dont rate limiting 100/min)")
+        app.add_middleware(RateLimitMiddleware, requests_per_minute=300)  # 300 req/min global
+        logger.info("Monitoring middlewares activés (dont rate limiting 300/min)")
     except Exception as e:
         logger.warning(f"Monitoring middlewares non activés: {e}")
 

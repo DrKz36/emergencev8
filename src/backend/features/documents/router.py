@@ -82,6 +82,26 @@ async def upload_document(
             status_code=500, detail="Erreur interne lors du traitement du fichier.")
 
 
+@router.get("/{document_id}")
+async def get_document(
+    document_id: int,
+    session: deps.SessionContext = Depends(deps.get_session_context),
+    service: DocumentService = Depends(_get_document_service),
+):
+    """Retourne les détails d'un document spécifique."""
+    try:
+        docs = await service.get_all_documents(session.session_id, user_id=session.user_id)
+        document = next((doc for doc in docs if doc.get("id") == document_id), None)
+        if document is None:
+            raise HTTPException(status_code=404, detail="Document introuvable")
+        return document
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Erreur lors de la récupération du document {document_id}: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Erreur interne lors de la récupération du document")
+
+
 @router.delete("/{document_id}", status_code=200)
 async def delete_document(
     document_id: int,
