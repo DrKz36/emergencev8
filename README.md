@@ -185,6 +185,14 @@ Documentation technique des modules backend récents :
   - Persistence JSON (`data/settings.json`)
   - Hot-reload sans redémarrage
 
+- **[Dashboard Feature](docs/backend/dashboard.md)** - API cockpit & timeline (V3.2)
+  - `/api/dashboard/costs/summary` - Résumé coûts/métriques (global ou par session)
+  - `/api/dashboard/timeline/*` - Timelines temporelles (activité, coûts, tokens)
+  - `/api/dashboard/distribution/{metric}` - Répartition par agent
+  - Périodes flexibles: 7j, 30j, 90j, 1 an
+  - Isolation multi-utilisateurs (user_id) + filtrage session (X-Session-Id)
+  - TimelineService pour graphiques temporels avec requêtes SQL optimisées
+
 ### Prompts Agents Actifs
 
 - **[Corrections Bugs P0](PROMPT_NEXT_SESSION_AUDIT_FIXES_P0.md)** - ⚠️ **PRIORITÉ** : Fuite mémoire + Race conditions

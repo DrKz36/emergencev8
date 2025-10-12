@@ -1290,20 +1290,6 @@ export class Documentation {
 
     renderTutorialGuides() {
         return `
-            <!-- Expanded guide container (full width) -->
-            <div class="guide-expanded-container" id="guide-expanded-container" style="display: none;">
-                <div class="guide-expanded-header">
-                    <div class="guide-expanded-title">
-                        <span class="guide-expanded-icon" id="guide-expanded-icon"></span>
-                        <h3 id="guide-expanded-title"></h3>
-                    </div>
-                    <button class="btn-close-guide" id="btn-close-guide">
-                        Fermer ×
-                    </button>
-                </div>
-                <div class="guide-expanded-content" id="guide-expanded-content"></div>
-            </div>
-
             <!-- Guide cards grid -->
             <div class="tutorial-guides-grid">
                 ${TUTORIAL_GUIDES.map(guide => `
@@ -1318,6 +1304,20 @@ export class Documentation {
                         </button>
                     </div>
                 `).join('')}
+            </div>
+
+            <!-- Expanded guide container (full width) - placed AFTER cards -->
+            <div class="guide-expanded-container" id="guide-expanded-container" style="display: none;">
+                <div class="guide-expanded-header">
+                    <div class="guide-expanded-title">
+                        <span class="guide-expanded-icon" id="guide-expanded-icon"></span>
+                        <h3 id="guide-expanded-title"></h3>
+                    </div>
+                    <button class="btn-close-guide" id="btn-close-guide">
+                        Fermer ×
+                    </button>
+                </div>
+                <div class="guide-expanded-content" id="guide-expanded-content"></div>
             </div>
         `;
     }

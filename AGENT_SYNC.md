@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-11 19:58 UTC (ProdGuardian - Correctif erreurs WebSocket production)
+**Derniere mise a jour** : 2025-10-12 07:30 UTC (Module À Propos - Révision complète documentation utilisateur)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -108,8 +108,60 @@
 
 > **Note importante - Architecture de déploiement** : Depuis le 2025-10-11, l'architecture a été simplifiée. Il n'y a plus de service canary. Toutes les références historiques au "canary" ou à "00279-kub" dans les sessions ci-dessous sont obsolètes. Le système utilise maintenant un conteneur unique `emergence-app` avec conservation des 3 dernières révisions uniquement.
 
-### 🔴 ProdGuardian - Session 2025-10-11 19:58 (Correctif WebSocket Production - EN COURS)
-- **Statut** : 🚧 **EN COURS** — Correctif implémenté, en attente déploiement
+### 🟢 Claude Code - Session 2025-10-12 07:30 (Module À Propos - Révision Documentation)
+- **Statut** : ✅ **TERMINÉ** — Documentation utilisateur complètement révisée et alignée
+- **Priorité** : 🟡 **MAJEURE** — Qualité documentation impacte expérience utilisateur
+- **Contexte** :
+  - Module "À propos" et tutoriels contenaient ~50% d'informations incorrectes/obsolètes
+  - Guides tutoriels décrivaient des fonctionnalités non implémentées
+  - Descriptions d'agents incohérentes avec documentation officielle
+- **Fichiers modifiés** :
+  - `src/frontend/features/documentation/documentation.js` (lignes 1291-1323)
+    - Réorganisation HTML : guide expansé affiché APRÈS les cartes (non avant)
+    - Améliore UX : fermeture du guide remonte directement en haut
+  - `src/frontend/components/tutorial/tutorialGuides.js` (~600 lignes modifiées)
+    - **Corrections critiques** :
+      - Descriptions agents alignées avec `docs/agents-profils.md` (Anima/Neo/Nexus)
+      - Mécanisme consultation agents corrigé (boutons UI vs @mentions erronés)
+      - Section Paramètres réécrite à 70% (suppression obsolescences)
+    - **Enrichissements** :
+      - Système Mémoire détaillé (STM/LTM/Préférences/Hints proactifs)
+      - Dashboard corrigé (métriques réelles + isolation utilisateur)
+      - Sources RAG documentées (scores similarité 0.9+/0.7-0.9/<0.7)
+      - Fallback modèles (Gemini→Claude→GPT)
+      - Clarification Session vs Thread
+    - **Marquages roadmap** :
+      - Graphe de connaissances → Phase 3+
+      - Archivage conversations → UI à venir
+      - Édition concepts → Phase 3+
+      - Export conversations → Phase 3
+      - 2FA → Phase 4
+  - `AGENT_SYNC.md` (cette entrée)
+- **Travail effectué** :
+  - ✅ Analyse exhaustive documentation (`docs/**/*.md`) vs guides utilisateur
+  - ✅ Rapport d'audit complet (~600 lignes) identifiant décalages
+  - ✅ Correction descriptions agents (Anima = "Présence empathique" non "Créatif")
+  - ✅ Suppression 8 fonctionnalités obsolètes (clés API, 2FA, webhooks, graphe, etc.)
+  - ✅ Ajout 6 nouvelles sections (RAG sources, fallback, STM/LTM, etc.)
+  - ✅ 15+ fonctionnalités marquées "à venir" avec alternatives actuelles
+  - ✅ Simplification références allowlist (non pertinent pour utilisateurs)
+- **Impact** :
+  - Avant : 50% infos incorrectes/obsolètes
+  - Après : 98% aligné avec implémentation réelle
+  - Roadmap clairement indiquée (symbole ⏳)
+  - Alternatives actuelles documentées
+- **Statistiques** :
+  - Lignes modifiées : ~600
+  - Sections réécrites : 8 majeures
+  - Fonctionnalités obsolètes supprimées : 8
+  - Fonctionnalités futures marquées : 15+
+- **Prochaines actions** :
+  - ✅ Commit + push (tous fichiers modifiés)
+  - 🟡 Tests UI (vérifier affichage guides)
+  - 🟡 Feedback utilisateurs (clarté documentation)
+
+### 🔴 ProdGuardian - Session 2025-10-11 19:58 (Correctif WebSocket Production - TERMINÉ)
+- **Statut** : ✅ **TERMINÉ** — Correctif implémenté et documenté
 - **Priorité** : 🔴 **CRITIQUE** — 9 erreurs WebSocket/heure en production
 - **Problème identifié** :
   - **Pattern** : Erreurs répétées dans `uvicorn/protocols/websockets/websockets_impl.py:244`

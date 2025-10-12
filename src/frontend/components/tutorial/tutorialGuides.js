@@ -18,45 +18,66 @@ export const TUTORIAL_GUIDES = [
       </section>
 
       <section class="guide-section">
-        <h3>🤖 Les Trois Agents</h3>
+        <h3>🤖 Les Trois Copilotes IA</h3>
 
         <div class="guide-card">
-          <h4>🌟 Anima - L'Agent Créatif</h4>
-          <p><strong>Spécialités :</strong> Créativité, brainstorming, exploration d'idées, innovation</p>
-          <p><strong>Quand l'utiliser :</strong></p>
+          <h4>🌟 Anima - La Présence Empathique</h4>
+          <p><strong>Rôle :</strong> Accueillir, clarifier et maintenir le rythme des échanges pour garder l'équipe alignée</p>
+          <p><strong>Personnalité :</strong> Chaleureuse, orientée accompagnement, experte en reformulation et reconnaissance des intentions implicites</p>
+          <p><strong>Capacités distinctives :</strong></p>
           <ul>
-            <li>Génération d'idées créatives</li>
-            <li>Exploration de concepts innovants</li>
-            <li>Réflexion divergente et brainstorming</li>
-            <li>Approches non-conventionnelles</li>
+            <li>Détection des signaux faibles dans la mémoire court terme</li>
+            <li>Suggestions de relances pour dynamiser le dialogue</li>
+            <li>Maintien de la cohésion fluide entre utilisateurs et agents techniques</li>
           </ul>
-          <p><strong>Exemple :</strong> "Anima, propose-moi 10 idées innovantes pour améliorer l'engagement utilisateur de mon application"</p>
+          <p><strong>Quand solliciter Anima :</strong></p>
+          <ul>
+            <li>Besoin de clarifier une question complexe ou mal formulée</li>
+            <li>Reformuler une demande pour mieux l'exprimer</li>
+            <li>Détecter les non-dits ou intentions implicites</li>
+            <li>Faciliter la collaboration avec les autres agents</li>
+          </ul>
+          <p><strong>Exemple :</strong> "Anima, j'ai du mal à exprimer ce que je recherche - peux-tu m'aider à clarifier ma demande ?"</p>
         </div>
 
         <div class="guide-card">
-          <h4>🔬 Neo - L'Analyste Rationnel</h4>
-          <p><strong>Spécialités :</strong> Analyse logique, données, résolution de problèmes, structuration</p>
-          <p><strong>Quand l'utiliser :</strong></p>
+          <h4>🔬 Neo - L'Analyste Stratégique</h4>
+          <p><strong>Rôle :</strong> Structurer les idées, cartographier les hypothèses et rapprocher les données existantes</p>
+          <p><strong>Personnalité :</strong> Analytique, concis, ferme quand il faut recadrer, toujours adossé à des grilles de lecture prospectives</p>
+          <p><strong>Capacités distinctives :</strong></p>
           <ul>
-            <li>Analyse de données et statistiques</li>
-            <li>Résolution de problèmes complexes</li>
-            <li>Validation d'hypothèses</li>
-            <li>Structuration d'informations</li>
+            <li>Exploitation fine du RAG pour sourcer et justifier les réponses</li>
+            <li>Déclinaison des discussions en plans d'action prioritisés</li>
+            <li>Évaluation continue des risques et opportunités</li>
           </ul>
-          <p><strong>Exemple :</strong> "Neo, analyse les avantages et inconvénients de l'architecture microservices pour mon projet"</p>
+          <p><strong>Quand solliciter Neo :</strong></p>
+          <ul>
+            <li>Analyse critique d'une solution ou architecture proposée</li>
+            <li>Structuration de plans d'action détaillés et priorisés</li>
+            <li>Recherche de données factuelles dans vos documents (RAG)</li>
+            <li>Identification systématique des risques et opportunités</li>
+          </ul>
+          <p><strong>Exemple :</strong> "Neo, analyse les risques techniques de cette architecture et propose un plan de migration étape par étape"</p>
         </div>
 
         <div class="guide-card">
-          <h4>🧩 Nexus - Le Synthétiseur</h4>
-          <p><strong>Spécialités :</strong> Synthèse, coordination, vue d'ensemble, intégration</p>
-          <p><strong>Quand l'utiliser :</strong></p>
+          <h4>🧩 Nexus - L'Architecte Systémique</h4>
+          <p><strong>Rôle :</strong> Traduire les besoins en flux opérationnels concrets et orchestrer les autres agents spécialisés</p>
+          <p><strong>Personnalité :</strong> Méthodique, orienté protocole, centré sur la cohérence globale et la traçabilité</p>
+          <p><strong>Capacités distinctives :</strong></p>
           <ul>
-            <li>Synthèse d'informations multiples</li>
-            <li>Vue d'ensemble d'un sujet complexe</li>
-            <li>Coordination de perspectives différentes</li>
-            <li>Résumés et conclusions</li>
+            <li>Pilotage des workflows (chat temps réel, mémoire, débats)</li>
+            <li>Arbitrage des fournisseurs LLM selon la qualité et le coût</li>
+            <li>Supervision des indicateurs de coûts et d'observabilité</li>
           </ul>
-          <p><strong>Exemple :</strong> "Nexus, résume-moi les points clés de notre discussion sur l'architecture du projet"</p>
+          <p><strong>Quand solliciter Nexus :</strong></p>
+          <ul>
+            <li>Conception d'architecture système globale et cohérente</li>
+            <li>Synthèse de multiples perspectives ou points de vue</li>
+            <li>Coordination entre différents agents ou composants</li>
+            <li>Vue d'ensemble stratégique avec focus sur la traçabilité</li>
+          </ul>
+          <p><strong>Exemple :</strong> "Nexus, coordonne une discussion entre Anima et Neo pour concevoir l'architecture complète de mon projet"</p>
         </div>
       </section>
 
@@ -71,23 +92,69 @@ export const TUTORIAL_GUIDES = [
           <li><strong>Performance :</strong> Légèrement plus lent mais beaucoup plus précis avec vos données</li>
         </ul>
 
-        <h4>💬 Consultation Ponctuelle d'Autres Agents</h4>
-        <p>Vous pouvez demander l'avis d'un autre agent ponctuellement :</p>
+        <h4>💬 Demander l'Avis d'un Autre Agent</h4>
+        <p>Au-dessus de chaque message agent, vous trouverez des <strong>boutons circulaires</strong> représentant les autres agents disponibles.</p>
+        <p><strong>Comment ça marche :</strong></p>
+        <ol>
+          <li>Cliquez sur le bouton de l'agent désiré (ex: 🌟 Anima) au-dessus d'un message</li>
+          <li>L'agent sollicité donnera son point de vue sur ce message spécifique</li>
+          <li>Sa réponse commentée apparaîtra dans le fil de discussion</li>
+          <li>Utile pour combiner différentes perspectives (empathie + analyse stratégique)</li>
+        </ol>
+        <p><strong>Exemple d'usage :</strong> Sur un message de Neo proposant une architecture technique détaillée, cliquez sur le bouton Anima pour obtenir une perspective plus empathique sur l'impact utilisateur de cette architecture.</p>
+
+        <h4>🧠 Système de Mémoire Multi-Niveaux</h4>
+        <p>Emergence dispose d'un système de mémoire sophistiqué en <strong>3 couches</strong> :</p>
+
+        <h5>📝 Mémoire Court Terme (STM)</h5>
         <ul>
-          <li>Dans votre message, mentionnez l'agent : "@Anima", "@Neo", ou "@Nexus"</li>
-          <li>L'agent actuel consultera l'agent mentionné pour obtenir son point de vue</li>
-          <li>Utile pour combiner différentes perspectives (créativité + analyse)</li>
-          <li>Exemple : "Analyse ce problème, et @Anima propose des solutions innovantes"</li>
+          <li><strong>Résumés automatiques</strong> de vos conversations</li>
+          <li><strong>Concepts et entités</strong> extraits (personnes, technologies, projets)</li>
+          <li>Conservée pendant la session active</li>
+          <li><strong>Accessible via</strong> le bouton "Analyser" dans le chat</li>
         </ul>
 
-        <h4>🧠 Mémoire Conversationnelle</h4>
-        <p>Emergence garde en mémoire vos conversations :</p>
+        <h5>🧬 Mémoire Long Terme (LTM)</h5>
         <ul>
-          <li>Contexte maintenu sur plusieurs messages</li>
-          <li>Références aux échanges précédents</li>
-          <li>Personnalisation progressive des réponses</li>
-          <li>Continuité entre sessions (via conversations)</li>
+          <li><strong>Base de connaissances vectorielle</strong> permanente</li>
+          <li><strong>Recherche sémantique intelligente</strong> dans vos discussions passées</li>
+          <li>Injection automatique dans le contexte des agents</li>
+          <li>Badge 📚 indique quand la LTM est utilisée</li>
         </ul>
+
+        <h5>💡 Préférences et Intentions</h5>
+        <ul>
+          <li><strong>Extraction automatique</strong> de vos préférences (ex: "Je préfère Python")</li>
+          <li><strong>Détection d'intentions</strong> (ex: "Je vais migrer vers PostgreSQL")</li>
+          <li><strong>Hints proactifs</strong> : Rappels contextuels automatiques (💡 icône)</li>
+          <li>Consultez votre dashboard mémoire pour voir ce qui est mémorisé</li>
+        </ul>
+
+        <h5>⚡ Actions disponibles</h5>
+        <ul>
+          <li><strong>Analyser :</strong> Lance l'analyse de la conversation en cours</li>
+          <li><strong>Clear Memory :</strong> Vide la mémoire (STM/LTM au choix)</li>
+          <li><strong>Memory Dashboard :</strong> Consultez vos stats mémoire</li>
+        </ul>
+
+        <h4>🔄 Fallback Automatique de Modèles</h4>
+        <p>Si un fournisseur IA est indisponible (quota dépassé, erreur API), Emergence bascule automatiquement vers un modèle alternatif.</p>
+
+        <h5>Ordre de priorité</h5>
+        <ol>
+          <li><strong>Google (Gemini)</strong> - Prioritaire</li>
+          <li><strong>Anthropic (Claude)</strong> - Fallback 1</li>
+          <li><strong>OpenAI (GPT)</strong> - Fallback 2</li>
+        </ol>
+
+        <h5>Indicateurs visuels</h5>
+        <ul>
+          <li>Badge 🔄 en haut du message indique un fallback</li>
+          <li>Tooltip affiche le modèle réellement utilisé</li>
+          <li>Les coûts sont calculés selon le modèle effectif</li>
+        </ul>
+
+        <p><strong>Exemple :</strong> Si Gemini est indisponible, votre requête sera automatiquement traitée par Claude, sans interruption de service.</p>
 
         <h4>⌨️ Raccourcis Clavier</h4>
         <ul>
@@ -162,14 +229,16 @@ export const TUTORIAL_GUIDES = [
           <li>Les concepts mémorisés spécifiques à cette conversation sont accessibles</li>
         </ul>
 
-        <h4>Archiver une conversation</h4>
-        <p>L'archivage permet de ranger les conversations terminées :</p>
+        <h4>Archiver une conversation ⏳</h4>
+        <p><strong>Statut :</strong> Backend prêt, UI en développement</p>
+        <p>L'archivage permettra de ranger les conversations terminées :</p>
         <ul>
-          <li>La conversation est retirée de la vue principale</li>
-          <li>Les données restent sauvegardées et accessibles via les archives</li>
-          <li>Vous pouvez désarchiver à tout moment</li>
+          <li>La conversation sera retirée de la vue principale</li>
+          <li>Les données resteront sauvegardées et accessibles via les archives</li>
+          <li>Vous pourrez désarchiver à tout moment</li>
           <li>Utile pour garder votre liste organisée</li>
         </ul>
+        <p><strong>Alternative actuelle :</strong> Utilisez la suppression uniquement pour les conversations vraiment non importantes (action irréversible).</p>
 
         <h4>Supprimer une conversation</h4>
         <p><strong>Attention :</strong> La suppression est définitive !</p>
@@ -241,6 +310,27 @@ export const TUTORIAL_GUIDES = [
           <li>✅ Documents liés à la conversation</li>
           <li>✅ Continuité entre sessions (sauvegarde auto)</li>
         </ul>
+
+        <h4>📝 Session vs Conversation (Thread)</h4>
+        <p>Comprendre la différence :</p>
+
+        <h5>Conversation (Thread)</h5>
+        <ul>
+          <li>Fil de discussion visible dans la liste de gauche</li>
+          <li>Contient tous vos messages et réponses agents</li>
+          <li>Peut être renommé, supprimé, archivé</li>
+          <li>Représente un sujet ou projet spécifique</li>
+        </ul>
+
+        <h5>Session</h5>
+        <ul>
+          <li>Technique : identifiant de connexion WebSocket</li>
+          <li>Correspond à votre connexion active actuelle</li>
+          <li>Liée à votre token d'authentification</li>
+          <li>Un thread peut être consulté depuis plusieurs sessions (multi-appareils)</li>
+        </ul>
+
+        <p><strong>En pratique :</strong> Vous n'avez pas besoin de vous soucier des sessions. Concentrez-vous sur vos conversations (threads).</p>
       </section>
 
       <section class="guide-section">
@@ -309,24 +399,22 @@ export const TUTORIAL_GUIDES = [
       </section>
 
       <section class="guide-section">
-        <h3>🔗 Graphe de Connaissances</h3>
+        <h3>🔗 Graphe de Connaissances ⏳</h3>
+        <p><strong>Statut :</strong> Fonctionnalité en développement (Roadmap Phase 3+)</p>
 
-        <h4>Visualisation des relations</h4>
-        <p>Le graphe montre les liens entre vos concepts :</p>
+        <p>Le graphe de connaissances permettra de visualiser les relations entre vos concepts de manière interactive.</p>
+
+        <h4>Fonctionnalités prévues :</h4>
         <ul>
-          <li>📍 <strong>Nœuds :</strong> Chaque concept est un point</li>
-          <li>🔗 <strong>Liens :</strong> Les relations entre concepts</li>
-          <li>🎨 <strong>Couleurs :</strong> Types de concepts (entités, idées, etc.)</li>
-          <li>📏 <strong>Taille :</strong> Importance du concept (fréquence)</li>
+          <li>📍 <strong>Nœuds :</strong> Chaque concept sera représenté par un point</li>
+          <li>🔗 <strong>Liens :</strong> Visualisation des relations entre concepts</li>
+          <li>🎨 <strong>Couleurs :</strong> Différenciation par types (entités, idées, etc.)</li>
+          <li>📏 <strong>Taille :</strong> Importance basée sur la fréquence d'utilisation</li>
+          <li>🖱️ <strong>Navigation interactive :</strong> Zoom, déplacement, filtres</li>
         </ul>
 
-        <h4>Navigation interactive</h4>
-        <ul>
-          <li>Cliquez sur un nœud pour voir ses détails</li>
-          <li>Survolez pour voir les connexions</li>
-          <li>Zoom et déplacement pour explorer</li>
-          <li>Filtres par type, date, importance</li>
-        </ul>
+        <h4>Alternative actuelle :</h4>
+        <p>Consultez vos concepts via le panneau <strong>Mémoire</strong> qui liste tous les concepts extraits avec leurs descriptions et contextes d'origine.</p>
       </section>
 
       <section class="guide-section">
@@ -359,21 +447,31 @@ export const TUTORIAL_GUIDES = [
       <section class="guide-section">
         <h3>⚙️ Gestion des Concepts</h3>
 
-        <h4>Édition manuelle</h4>
+        <h4>Statut actuel</h4>
         <ul>
-          <li>✏️ <strong>Modifier :</strong> Affinez la description d'un concept</li>
-          <li>🏷️ <strong>Étiqueter :</strong> Ajoutez des tags personnalisés</li>
-          <li>🔗 <strong>Lier :</strong> Créez des relations manuelles</li>
-          <li>🗑️ <strong>Supprimer :</strong> Retirez les concepts non pertinents</li>
+          <li>✅ <strong>Visualisation</strong> des concepts mémorisés</li>
+          <li>✅ <strong>Recherche</strong> par mot-clé</li>
+          <li>✅ <strong>Suppression globale</strong> via Clear Memory</li>
         </ul>
 
-        <h4>Export et Sauvegarde</h4>
+        <h4>Fonctionnalités prévues (Roadmap Phase 3+) ⏳</h4>
         <ul>
-          <li>Export JSON de toute la base</li>
-          <li>Export sélectif par catégorie</li>
-          <li>Import depuis un fichier</li>
-          <li>Sauvegarde automatique continue</li>
+          <li>⏳ <strong>Édition manuelle :</strong> Affiner la description d'un concept</li>
+          <li>⏳ <strong>Tags personnalisés :</strong> Ajouter vos propres étiquettes</li>
+          <li>⏳ <strong>Gestion des relations :</strong> Créer des liens manuels entre concepts</li>
+          <li>⏳ <strong>Suppression sélective :</strong> Retirer des concepts individuels</li>
         </ul>
+
+        <h4>Export et Sauvegarde ⏳</h4>
+        <p><strong>Statut :</strong> Planifié Phase 3</p>
+        <ul>
+          <li>⏳ Export JSON de toute la base</li>
+          <li>⏳ Export sélectif par catégorie</li>
+          <li>⏳ Import depuis un fichier</li>
+          <li>✅ Sauvegarde automatique continue (actuelle)</li>
+        </ul>
+
+        <p><strong>Alternative actuelle :</strong> Utilisez <code>POST /api/memory/clear</code> avec <code>scope=ltm</code> pour réinitialiser la base complète.</p>
       </section>
 
       <section class="guide-section">
@@ -492,6 +590,38 @@ export const TUTORIAL_GUIDES = [
           <p><strong>RAG :</strong> Retrouve la section sur l'auth dans votre doc</p>
           <p><strong>Réponse :</strong> Basée sur VOTRE doc, pas sur des infos génériques</p>
         </div>
+
+        <h4>📚 Comprendre les Sources RAG</h4>
+        <p>Lorsque le RAG est activé, chaque réponse agent affiche les sources utilisées :</p>
+
+        <h5>Badge Sources</h5>
+        <p>Cliquez sur 📑 en bas du message pour voir les détails</p>
+
+        <h5>Informations affichées</h5>
+        <ul>
+          <li>📄 <strong>Document :</strong> Nom du fichier source</li>
+          <li>📍 <strong>Position :</strong> Numéro du chunk (morceau de texte)</li>
+          <li>⭐ <strong>Score :</strong> Pertinence (0.0 à 1.0)</li>
+        </ul>
+
+        <h5>Interprétation des scores</h5>
+        <ul>
+          <li><strong>0.9+ :</strong> Très pertinent (correspondance exacte)</li>
+          <li><strong>0.7-0.9 :</strong> Pertinent (contexte similaire)</li>
+          <li><strong>&lt; 0.7 :</strong> Contexte général (moins précis)</li>
+        </ul>
+
+        <div class="guide-example">
+          <strong>Exemple de sources :</strong>
+          <code>
+Sources (3) :
+📄 architecture.pdf (chunk 12) — ⭐ 0.87
+📄 guide-api.md (chunk 5) — ⭐ 0.76
+📄 notes-projet.txt (chunk 3) — ⭐ 0.69
+          </code>
+        </div>
+
+        <p><strong>Astuce :</strong> Un score élevé signifie que le texte récupéré correspond précisément à votre question.</p>
       </section>
 
       <section class="guide-section">
@@ -593,138 +723,114 @@ export const TUTORIAL_GUIDES = [
     content: `
       <section class="guide-section">
         <h3>🎯 Vue d'ensemble</h3>
-        <p>Le <strong>Dashboard</strong> (Cockpit) vous donne une vue d'ensemble de votre utilisation d'Emergence : statistiques, coûts, performances et insights.</p>
+        <p>Le <strong>Cockpit</strong> affiche VOS statistiques personnelles uniquement (isolées par utilisateur).</p>
+        <p><strong>Accès :</strong> Menu principal > Cockpit</p>
       </section>
 
       <section class="guide-section">
-        <h3>📊 Métriques Principales</h3>
+        <h3>📊 Métriques Disponibles</h3>
 
-        <h4>📈 Utilisation Globale</h4>
+        <h4>💰 Coûts d'Utilisation (Personnel)</h4>
         <ul>
-          <li><strong>Messages envoyés :</strong> Total et par période</li>
-          <li><strong>Threads créés :</strong> Nombre de conversations</li>
-          <li><strong>Documents uploadés :</strong> Volume de données</li>
-          <li><strong>Concepts mémorisés :</strong> Taille de la base de connaissances</li>
+          <li><strong>Aujourd'hui :</strong> Dépenses du jour en cours</li>
+          <li><strong>Cette semaine :</strong> 7 derniers jours glissants</li>
+          <li><strong>Ce mois :</strong> Mois calendaire actuel</li>
+          <li><strong>Total :</strong> Cumul depuis votre inscription</li>
         </ul>
 
-        <h4>💰 Coûts et Tokens</h4>
+        <h5>Détails par agent :</h5>
         <ul>
-          <li><strong>Tokens consommés :</strong> Input + Output</li>
-          <li><strong>Coût estimé :</strong> Par modèle, par jour, par mois</li>
-          <li><strong>Répartition :</strong> Par agent, par feature</li>
-          <li><strong>Tendances :</strong> Évolution dans le temps</li>
+          <li>🌟 <strong>Anima :</strong> Tokens + coût</li>
+          <li>🔬 <strong>Neo :</strong> Tokens + coût</li>
+          <li>🧩 <strong>Nexus :</strong> Tokens + coût</li>
         </ul>
 
-        <h4>⚡ Performance</h4>
+        <h4>📈 Activité</h4>
         <ul>
-          <li><strong>Latence moyenne :</strong> Temps de réponse</li>
-          <li><strong>Temps de recherche RAG :</strong> Vitesse des requêtes vectorielles</li>
-          <li><strong>Taux de succès :</strong> Requêtes réussies vs erreurs</li>
-          <li><strong>Uptime :</strong> Disponibilité du système</li>
-        </ul>
-      </section>
-
-      <section class="guide-section">
-        <h3>📉 Graphiques et Visualisations</h3>
-
-        <h4>Timeline d'activité</h4>
-        <p>Visualisez votre activité au fil du temps :</p>
-        <ul>
-          <li>Messages par jour/semaine/mois</li>
-          <li>Pics d'utilisation</li>
-          <li>Comparaison entre périodes</li>
+          <li><strong>Sessions :</strong> Nombre de connexions actives</li>
+          <li><strong>Documents :</strong> Fichiers uploadés (total)</li>
+          <li><strong>Conversations :</strong> Threads créés</li>
         </ul>
 
-        <h4>Répartition par agent</h4>
-        <p>Camembert montrant l'utilisation de chaque agent :</p>
+        <h4>⚡ Performance (Administrateurs uniquement)</h4>
+        <p>Les métriques suivantes sont réservées aux administrateurs :</p>
         <ul>
-          <li>Anima : % des requêtes créatives</li>
-          <li>Neo : % des requêtes analytiques</li>
-          <li>Nexus : % des synthèses</li>
-        </ul>
-
-        <h4>Coûts cumulés</h4>
-        <p>Graphique linéaire de l'évolution des coûts :</p>
-        <ul>
-          <li>Par jour : Détection des anomalies</li>
-          <li>Par semaine : Tendances</li>
-          <li>Par mois : Budget et prévisions</li>
+          <li>⏳ Latence moyenne système</li>
+          <li>⏳ Uptime global</li>
+          <li>⏳ Taux de succès des requêtes</li>
+          <li>⏳ Métriques Prometheus</li>
         </ul>
       </section>
 
       <section class="guide-section">
-        <h3>🔍 Insights et Analyses</h3>
+        <h3>🔒 Confidentialité</h3>
 
-        <h4>Top Concepts</h4>
+        <h4>Vos statistiques sont strictement privées</h4>
         <ul>
-          <li>Concepts les plus fréquents</li>
-          <li>Concepts les plus récents</li>
-          <li>Concepts les plus connectés</li>
-        </ul>
-
-        <h4>Top Threads</h4>
-        <ul>
-          <li>Threads les plus actifs</li>
-          <li>Threads les plus longs</li>
-          <li>Threads récents</li>
-        </ul>
-
-        <h4>Documents populaires</h4>
-        <ul>
-          <li>Documents les plus interrogés (RAG)</li>
-          <li>Documents les plus volumineux</li>
-          <li>Documents récemment uploadés</li>
+          <li>Aucun autre utilisateur ne peut consulter vos données</li>
+          <li>Les administrateurs ont accès à une vue globale anonymisée</li>
+          <li>Chaque utilisateur a sa propre base isolée</li>
         </ul>
       </section>
 
       <section class="guide-section">
-        <h3>⚙️ Configuration et Alertes</h3>
-
-        <h4>Limites et quotas</h4>
+        <h3>⚙️ Rafraîchissement</h3>
         <ul>
-          <li>Définissez un <strong>budget mensuel</strong></li>
-          <li>Alerte à X% du quota</li>
-          <li>Pause automatique si dépassement</li>
-        </ul>
-
-        <h4>Notifications</h4>
-        <ul>
-          <li>Email si coût > seuil</li>
-          <li>Rapport hebdomadaire/mensuel</li>
-          <li>Alerte si erreur système</li>
+          <li><strong>Automatique :</strong> Mise à jour toutes les 30 secondes</li>
+          <li><strong>Manuel :</strong> Cliquez sur l'icône 🔄 pour forcer</li>
         </ul>
       </section>
 
       <section class="guide-section">
-        <h3>📤 Export et Rapports</h3>
+        <h3>👑 Dashboard Administrateur (Rôle Admin uniquement) ⏳</h3>
+        <p><strong>Statut :</strong> Fonctionnalité admin avancée</p>
 
-        <h4>Formats d'export</h4>
+        <h4>Vue Globale :</h4>
         <ul>
-          <li><strong>CSV :</strong> Données brutes pour analyse</li>
-          <li><strong>JSON :</strong> Format structuré</li>
-          <li><strong>PDF :</strong> Rapport formaté</li>
+          <li>Coûts agrégés de tous les utilisateurs</li>
+          <li>Répartition par utilisateur (top consommateurs)</li>
+          <li>Statistiques système complètes</li>
+          <li>Historique d'utilisation global</li>
         </ul>
 
-        <h4>Rapports automatiques</h4>
+        <h4>Gestion Utilisateurs :</h4>
         <ul>
-          <li>Rapport mensuel d'utilisation</li>
-          <li>Facture détaillée</li>
-          <li>Audit de sécurité</li>
+          <li>Liste des utilisateurs actifs</li>
+          <li>Métriques par utilisateur</li>
+          <li>Gestion des accès</li>
+          <li>Révocation de sessions</li>
         </ul>
+
+        <h4>Métriques Système :</h4>
+        <ul>
+          <li>Uptime du service</li>
+          <li>Performance globale</li>
+          <li>Taux d'erreur</li>
+          <li>Monitoring Prometheus</li>
+        </ul>
+
+        <p><strong>Note :</strong> Cette interface n'est visible que si votre email est dans la liste des administrateurs.</p>
       </section>
 
       <section class="guide-section">
-        <h3>💡 Utilisation Optimale</h3>
+        <h3>🧪 Matrice de Benchmarks (Fonctionnalité Avancée) ⏳</h3>
+        <p><strong>Statut :</strong> Réservé aux administrateurs</p>
 
-        <div class="guide-tip">
-          <h4>📊 Surveillez vos métriques</h4>
-          <ul>
-            <li>Consultez le dashboard <strong>hebdomadairement</strong></li>
-            <li>Identifiez les <strong>pics de coûts</strong> anormaux</li>
-            <li>Optimisez l'utilisation des modèles coûteux</li>
-            <li>Utilisez les alertes pour le monitoring</li>
-          </ul>
-        </div>
+        <h4>Teste automatiquement différentes configurations système :</h4>
+        <ul>
+          <li>Topologies d'agents (single, duo, trio)</li>
+          <li>Modes d'orchestration (sequential, parallel)</li>
+          <li>Modes mémoire (off, stm, full)</li>
+        </ul>
+
+        <h4>Métriques affichées :</h4>
+        <ul>
+          <li>✅ Statut : Réussi/Échoué</li>
+          <li>💰 Coût : USD par test</li>
+          <li>⏱️ Latence : Temps d'exécution</li>
+        </ul>
+
+        <p><strong>Note :</strong> Réservé aux administrateurs pour éviter les coûts involontaires.</p>
       </section>
     `
   },
@@ -735,207 +841,201 @@ export const TUTORIAL_GUIDES = [
       <path d="M12 1v6m0 6v6m5.657-13.657l-4.243 4.243m-2.828 2.828l-4.243 4.243m16.97-.485l-6-1m-6 0l-6 1m13.657-5.657l-4.243-4.243m-2.828-2.828l-4.243-4.243m16.97 6.142l-6 1m-6 0l-6-1"></path>
     </svg>`,
     title: 'Paramètres et Configuration',
-    summary: 'Personnalisez Emergence selon vos besoins',
+    summary: 'Personnalisez votre expérience Emergence',
     content: `
       <section class="guide-section">
         <h3>🎯 Vue d'ensemble</h3>
-        <p>La section <strong>Paramètres</strong> vous permet de configurer tous les aspects d'Emergence : modèles IA, interface, sécurité, intégrations, etc.</p>
+        <p>Les paramètres d'Emergence vous permettent de configurer votre expérience utilisateur.</p>
+        <p><strong>Accès :</strong> Menu utilisateur (coin supérieur droit) > Paramètres</p>
       </section>
 
       <section class="guide-section">
-        <h3>🤖 Configuration des Modèles IA</h3>
+        <h3>🆔 Mon Compte</h3>
 
-        <h4>Choix du modèle principal</h4>
-        <p>Sélectionnez le modèle utilisé par défaut :</p>
+        <h4>Informations affichées</h4>
         <ul>
-          <li><strong>GPT-4 Turbo :</strong> Meilleur raisonnement, plus coûteux</li>
-          <li><strong>GPT-3.5 Turbo :</strong> Rapide et économique</li>
-          <li><strong>Claude 3 (Sonnet/Opus) :</strong> Excellent pour l'analyse</li>
-          <li><strong>Modèles locaux :</strong> Llama, Mistral (si configuré)</li>
+          <li>Email de connexion</li>
+          <li>Rôle (membre/administrateur)</li>
+          <li>Date d'inscription</li>
+          <li>Session active (expiration dans X jours)</li>
         </ul>
 
-        <h4>Configuration par agent</h4>
-        <p>Assignez un modèle différent à chaque agent :</p>
+        <h4>Actions disponibles</h4>
         <ul>
-          <li><strong>Anima :</strong> GPT-4 (créativité max)</li>
-          <li><strong>Neo :</strong> Claude 3 (analyse rigoureuse)</li>
-          <li><strong>Nexus :</strong> GPT-3.5 (synthèse rapide)</li>
+          <li>🚪 <strong>Déconnexion</strong></li>
+          <li>⏰ <strong>Voir l'expiration du token</strong> (7 jours)</li>
         </ul>
 
-        <h4>Paramètres de génération</h4>
+        <p><strong>Note :</strong> La gestion du compte est simplifiée pour faciliter l'utilisation.</p>
+      </section>
+
+      <section class="guide-section">
+        <h3>🎨 Interface</h3>
+
+        <h4>Affichage</h4>
         <ul>
-          <li><strong>Température :</strong> 0.0 (déterministe) à 1.0 (créatif)</li>
-          <li><strong>Max tokens :</strong> Limite de longueur de réponse</li>
-          <li><strong>Top-p :</strong> Sampling nucléaire (0.0-1.0)</li>
-          <li><strong>Presence penalty :</strong> Éviter les répétitions</li>
+          <li>✅ <strong>Thème sombre :</strong> Activé par défaut</li>
+          <li>⏳ <strong>Thème clair :</strong> À venir (Roadmap Phase 3)</li>
+          <li>✅ <strong>Animations :</strong> Activer/désactiver les transitions</li>
+          <li>✅ <strong>Notifications :</strong> Toasts en bas à droite</li>
+        </ul>
+
+        <h4>Chat</h4>
+        <ul>
+          <li>✅ <strong>Streaming :</strong> Affichage progressif des réponses (recommandé)</li>
+          <li>✅ <strong>Markdown :</strong> Rendu formaté des messages</li>
+          <li>✅ <strong>Syntax highlighting :</strong> Coloration automatique du code</li>
         </ul>
       </section>
 
       <section class="guide-section">
-        <h3>🎨 Personnalisation de l'Interface</h3>
+        <h3>🤖 Agents et Modèles</h3>
 
-        <h4>Thème</h4>
+        <h4>Configuration actuelle : Fixe (backend)</h4>
+        <p>Les agents sont configurés côté serveur avec des modèles optimaux pré-assignés :</p>
         <ul>
-          <li><strong>Sombre</strong> (défaut) : Repose les yeux</li>
-          <li><strong>Clair :</strong> Meilleure lisibilité en plein jour</li>
-          <li><strong>Auto :</strong> Suit le système</li>
+          <li>🌟 <strong>Anima :</strong> Présence empathique</li>
+          <li>🔬 <strong>Neo :</strong> Analyste stratégique</li>
+          <li>🧩 <strong>Nexus :</strong> Architecte systémique</li>
         </ul>
 
-        <h4>Disposition</h4>
+        <h4>Fallback automatique</h4>
+        <p>Si un fournisseur IA est indisponible (quota dépassé, erreur), Emergence bascule automatiquement :</p>
         <ul>
-          <li>Largeur de la sidebar</li>
-          <li>Taille de police</li>
-          <li>Espacement des messages</li>
-          <li>Affichage des avatars agents</li>
+          <li>Badge 🔄 en haut du message indique un fallback</li>
+          <li>Tooltip affiche le modèle réellement utilisé</li>
+          <li>Les coûts sont calculés selon le modèle effectif</li>
         </ul>
 
-        <h4>Comportement</h4>
+        <p><strong>⏳ Personnalisation :</strong> Sélection personnalisée des modèles prévue en Phase 3 (voir roadmap)</p>
+      </section>
+
+      <section class="guide-section">
+        <h3>📚 RAG et Documents</h3>
+
+        <h4>Activation</h4>
         <ul>
-          <li><strong>Envoi auto :</strong> Entrée envoie (vs Ctrl+Entrée)</li>
-          <li><strong>Markdown :</strong> Activer le rendu Markdown</li>
-          <li><strong>Syntax highlighting :</strong> Coloration code</li>
-          <li><strong>Streaming :</strong> Afficher la réponse en temps réel</li>
+          <li>✅ <strong>Toggle RAG :</strong> Dans la zone de saisie du chat (icône 📚)</li>
+          <li>✅ <strong>Par défaut :</strong> Désactivé (activation manuelle)</li>
+        </ul>
+
+        <h4>Performance (Phase P2)</h4>
+        <ul>
+          <li><strong>Top-k :</strong> 5 chunks récupérés par défaut</li>
+          <li><strong>Seuil similarité :</strong> 0.6 (score minimum)</li>
+          <li><strong>Cache :</strong> 5 minutes (optimisation -71% latence)</li>
+        </ul>
+
+        <p><strong>Note :</strong> Paramètres avancés réservés aux administrateurs</p>
+      </section>
+
+      <section class="guide-section">
+        <h3>🔔 Notifications</h3>
+
+        <h4>Types de notifications</h4>
+
+        <h5>💡 Hints proactifs</h5>
+        <p>Rappels mémoire basés sur vos conversations :</p>
+        <ul>
+          <li>Fréquence : Après 3 mentions d'un concept</li>
+          <li>Snooze : 1 heure (localStorage)</li>
+          <li>Désactiver : Ignorer définitivement</li>
+        </ul>
+
+        <h5>❌ Erreurs système</h5>
+        <p>Toasts rouges :</p>
+        <ul>
+          <li>WebSocket déconnecté</li>
+          <li>Upload de document échoué</li>
+          <li>Erreur API</li>
+        </ul>
+
+        <h5>✅ Succès</h5>
+        <p>Toasts verts :</p>
+        <ul>
+          <li>Message envoyé</li>
+          <li>Document uploadé</li>
+          <li>Analyse complétée</li>
         </ul>
       </section>
 
       <section class="guide-section">
         <h3>🔐 Sécurité et Confidentialité</h3>
 
-        <h4>Gestion des clés API</h4>
-        <ul>
-          <li>Ajoutez vos clés OpenAI, Anthropic, etc.</li>
-          <li>Stockage sécurisé (chiffré)</li>
-          <li>Rotation des clés</li>
-          <li>Révocation instantanée</li>
-        </ul>
-
         <h4>Authentification</h4>
         <ul>
-          <li><strong>Mot de passe :</strong> Changement régulier recommandé</li>
-          <li><strong>2FA :</strong> Authentification à deux facteurs</li>
-          <li><strong>Sessions :</strong> Gestion des sessions actives</li>
-          <li><strong>Logs :</strong> Historique des connexions</li>
+          <li><strong>Type :</strong> Token JWT sécurisé</li>
+          <li><strong>Durée session :</strong> 7 jours</li>
+          <li>⏳ <strong>Rotation tokens :</strong> À venir</li>
+          <li>⏳ <strong>2FA :</strong> Roadmap Phase 4</li>
         </ul>
 
-        <h4>Données et vie privée</h4>
+        <h4>Isolation des données</h4>
         <ul>
-          <li><strong>Stockage local :</strong> Vos données restent sur votre machine</li>
-          <li><strong>Chiffrement :</strong> Base de données chiffrée</li>
-          <li><strong>Export :</strong> Exportez toutes vos données</li>
-          <li><strong>Suppression :</strong> Effacement complet possible</li>
+          <li>Vos conversations sont <strong>strictement privées</strong></li>
+          <li>Chaque utilisateur a sa propre base de données isolée</li>
+          <li>Les administrateurs voient uniquement des stats agrégées anonymisées</li>
+        </ul>
+
+        <h4>Stockage</h4>
+        <ul>
+          <li><strong>Local :</strong> Token JWT dans localStorage</li>
+          <li><strong>Serveur :</strong> SQLite + ChromaDB (backend)</li>
+          <li>⏳ <strong>Chiffrement at-rest :</strong> Roadmap future</li>
         </ul>
       </section>
 
       <section class="guide-section">
-        <h3>🔗 Intégrations</h3>
+        <h3>🚀 Fonctionnalités Prévues</h3>
 
-        <h4>Webhooks</h4>
+        <h4>Phase 3 (en cours)</h4>
         <ul>
-          <li>Configurez des webhooks pour être notifié</li>
-          <li>Événements : Nouveau message, concept extrait, etc.</li>
-          <li>Format : JSON</li>
-          <li>Signature HMAC pour sécurité</li>
+          <li>⏳ Thème clair/sombre (toggle utilisateur)</li>
+          <li>⏳ Sélection personnalisée des modèles IA</li>
+          <li>⏳ Export des conversations (CSV/JSON/PDF)</li>
+          <li>⏳ Gestion avancée des préférences mémoire</li>
         </ul>
 
-        <h4>API externe</h4>
+        <h4>Phase 4 (planifiée)</h4>
         <ul>
-          <li>Intégration Notion, Obsidian, etc.</li>
-          <li>Synchronisation bidirectionnelle</li>
-          <li>Export automatique</li>
+          <li>⏳ Authentification 2FA (TOTP)</li>
+          <li>⏳ Gestion multi-sessions</li>
+          <li>⏳ Mode hors ligne (PWA)</li>
+          <li>⏳ Chiffrement at-rest des données</li>
         </ul>
 
-        <h4>Extensions</h4>
+        <h4>Futur</h4>
         <ul>
-          <li>Plugins communautaires</li>
-          <li>Développez vos propres extensions</li>
-          <li>API JavaScript pour personnalisation</li>
-        </ul>
-      </section>
-
-      <section class="guide-section">
-        <h3>🗄️ Base de Données et Stockage</h3>
-
-        <h4>Emplacement des données</h4>
-        <ul>
-          <li><strong>SQLite :</strong> <code>src/backend/data/db/</code></li>
-          <li><strong>ChromaDB :</strong> <code>src/backend/data/vector_store/</code></li>
-          <li><strong>Documents :</strong> <code>src/backend/data/uploads/</code></li>
-        </ul>
-
-        <h4>Maintenance</h4>
-        <ul>
-          <li><strong>Vacuum :</strong> Optimiser la base SQLite</li>
-          <li><strong>Ré-indexation :</strong> Reconstruire les vecteurs</li>
-          <li><strong>Nettoyage :</strong> Supprimer les données obsolètes</li>
-          <li><strong>Backup :</strong> Sauvegarde automatique</li>
-        </ul>
-
-        <h4>Limites de stockage</h4>
-        <ul>
-          <li>Définissez un quota de stockage</li>
-          <li>Alerte si proche de la limite</li>
-          <li>Auto-archivage des vieux threads</li>
+          <li>⏳ Personnalisation complète des agents</li>
+          <li>⏳ Webhooks et intégrations</li>
+          <li>⏳ API publique développeurs</li>
         </ul>
       </section>
 
       <section class="guide-section">
-        <h3>⚡ Performance</h3>
+        <h3>⚠️ Limitations Connues</h3>
 
-        <h4>Cache</h4>
+        <h4>Sécurité</h4>
         <ul>
-          <li><strong>Embeddings :</strong> Cache des vecteurs calculés</li>
-          <li><strong>Réponses :</strong> Cache LLM (questions identiques)</li>
-          <li><strong>TTL :</strong> Durée de vie du cache</li>
+          <li>❌ Pas de 2FA (authentification email uniquement)</li>
+          <li>❌ Pas de récupération de mot de passe</li>
+          <li>⚠️ Rate limiting partiel (activé sur login uniquement)</li>
         </ul>
 
-        <h4>Optimisations</h4>
+        <h4>Fonctionnalités</h4>
         <ul>
-          <li>Chunking parallel pour gros documents</li>
-          <li>Batch processing des embeddings</li>
-          <li>Lazy loading des threads anciens</li>
-        </ul>
-      </section>
-
-      <section class="guide-section">
-        <h3>🔧 Avancé</h3>
-
-        <h4>Logs et Debug</h4>
-        <ul>
-          <li><strong>Niveau de log :</strong> DEBUG, INFO, WARNING, ERROR</li>
-          <li><strong>Fichiers de log :</strong> Localisation et rotation</li>
-          <li><strong>Monitoring :</strong> Prometheus, Grafana</li>
+          <li>❌ Pas de mode hors ligne (connexion internet requise)</li>
+          <li>❌ Pas d'export conversations (prévu Phase 3)</li>
+          <li>⚠️ Archivage conversations : Backend prêt, UI à venir</li>
         </ul>
 
-        <h4>Développeur</h4>
+        <h4>Performance</h4>
         <ul>
-          <li><strong>Mode debug :</strong> Afficher les prompts complets</li>
-          <li><strong>API REST :</strong> Documentation interactive (Swagger)</li>
-          <li><strong>Webhooks test :</strong> Tester vos intégrations</li>
+          <li>⚠️ Première requête RAG lente (~2s, chargement du modèle)</li>
+          <li>✅ Optimisé ensuite (cache + HNSW, -71% latence Phase P2)</li>
         </ul>
-      </section>
 
-      <section class="guide-section">
-        <h3>💡 Recommandations</h3>
-
-        <div class="guide-tip">
-          <h4>🔒 Sécurité</h4>
-          <ul>
-            <li>Activez <strong>2FA</strong> immédiatement</li>
-            <li>Changez votre <strong>mot de passe</strong> régulièrement</li>
-            <li>Sauvegardez vos <strong>clés API</strong> en lieu sûr</li>
-            <li>Vérifiez les <strong>sessions actives</strong> mensuellement</li>
-          </ul>
-        </div>
-
-        <div class="guide-tip">
-          <h4>⚡ Performance</h4>
-          <ul>
-            <li>Activez le <strong>cache</strong> pour réduire les coûts</li>
-            <li>Utilisez <strong>GPT-3.5</strong> pour les tâches simples</li>
-            <li>Limitez le <strong>max tokens</strong> si nécessaire</li>
-            <li>Nettoyez régulièrement les <strong>vieux threads</strong></li>
-          </ul>
-        </div>
+        <p><strong>Voir la roadmap complète</strong> dans la documentation ou contactez l'équipe de développement.</p>
       </section>
     `
   }
