@@ -109,10 +109,22 @@ class DatabaseManager:
         commit: bool = False,
     ) -> aiosqlite.Cursor:
         conn = await self._ensure_connection()
-        cursor = await conn.execute(query, params or ())
-        if commit:
-            await conn.commit()
-        return cursor
+
+        # Retry logic pour database locked errors
+        max_lock_retries = 5
+        for attempt in range(max_lock_retries):
+            try:
+                cursor = await conn.execute(query, params or ())
+                if commit:
+                    await conn.commit()
+                return cursor
+            except Exception as e:
+                if "database is locked" in str(e).lower() and attempt < max_lock_retries - 1:
+                    wait_time = 0.1 * (2 ** attempt)  # Exponential backoff: 0.1, 0.2, 0.4, 0.8, 1.6s
+                    logger.warning(f"Database locked, retry {attempt + 1}/{max_lock_retries} after {wait_time}s")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise
 
     async def executemany(
         self,

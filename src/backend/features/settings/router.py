@@ -161,6 +161,59 @@ async def update_model_settings(settings: Dict[str, ModelSettings]) -> Dict[str,
 
 
 # ============================================================
+# UI Settings Endpoints
+# ============================================================
+
+class UISettings(BaseModel):
+    """UI/UX configuration"""
+    theme: str = Field(default="dark", description="UI theme (dark/light)")
+    language: str = Field(default="fr", description="Interface language")
+    compact_mode: bool = Field(default=False, description="Enable compact UI mode")
+    animations_enabled: bool = Field(default=True, description="Enable UI animations")
+
+
+@router.get("/ui")
+async def get_ui_settings() -> UISettings:
+    """
+    Get current UI settings.
+    """
+    try:
+        all_settings = load_settings()
+        ui_settings = all_settings.get("ui", {})
+
+        return UISettings(
+            theme=ui_settings.get("theme", "dark"),
+            language=ui_settings.get("language", "fr"),
+            compact_mode=ui_settings.get("compact_mode", False),
+            animations_enabled=ui_settings.get("animations_enabled", True)
+        )
+    except Exception as e:
+        logger.error(f"Failed to get UI settings: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get UI settings: {str(e)}")
+
+
+@router.post("/ui")
+async def update_ui_settings(settings: UISettings) -> Dict[str, str]:
+    """
+    Update UI settings.
+    """
+    try:
+        all_settings = load_settings()
+        all_settings["ui"] = settings.dict()
+        save_settings(all_settings)
+
+        logger.info(f"UI settings updated: {settings.dict()}")
+
+        return {
+            "status": "success",
+            "message": "UI settings updated successfully"
+        }
+    except Exception as e:
+        logger.error(f"Failed to update UI settings: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to update UI settings: {str(e)}")
+
+
+# ============================================================
 # General Settings Endpoints
 # ============================================================
 

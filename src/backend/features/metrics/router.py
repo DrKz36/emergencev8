@@ -9,7 +9,7 @@ from typing import Dict, Any, Union
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["Metrics"])
+router = APIRouter(prefix="/metrics", tags=["Metrics"])
 
 METRICS_ENABLED = os.getenv("CONCEPT_RECALL_METRICS_ENABLED", "false").lower() == "true"
 
