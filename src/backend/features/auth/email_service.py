@@ -80,7 +80,7 @@ class EmailService:
             logger.warning("Email service is not enabled or not configured")
             return False
 
-        reset_link = f"{base_url}/reset-password?token={reset_token}"
+        reset_link = f"{base_url}/reset-password.html?token={reset_token}"
 
         subject = "Réinitialisation de votre mot de passe ÉMERGENCE"
 
