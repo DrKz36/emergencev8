@@ -1286,10 +1286,10 @@ class EmergenceClient {
 
     this.eventBus?.emit?.(EVENTS.AUTH_RESTORED, { source });
 
-    // Welcome popup désactivé - voir welcome-popup.js
-    // if (source === 'startup' || source === 'storage') {
-    //   showWelcomePopupIfNeeded(this.eventBus);
-    // }
+    // Show welcome popup on first connection
+    if (source === 'startup' || source === 'home-login' || source === 'storage') {
+      showWelcomePopupIfNeeded(this.eventBus);
+    }
   }
 
   ensureApp() {

@@ -17,8 +17,13 @@ export class WelcomePopup {
      * Check if popup should be shown
      */
     shouldShow() {
-        // Tutoriel interactif désactivé au démarrage
-        return false;
+        try {
+            const dismissed = localStorage.getItem(STORAGE_KEY);
+            return dismissed !== 'true';
+        } catch (error) {
+            console.warn('[WelcomePopup] Error reading from localStorage:', error);
+            return false;
+        }
     }
 
     /**
@@ -55,23 +60,25 @@ export class WelcomePopup {
                 </div>
                 <div class="welcome-popup-body">
                     <p>
-                        Nous sommes ravis de vous accueillir dans ÉMERGENCE, votre plateforme d'intelligence
-                        artificielle collaborative et multi-agents.
+                        Bienvenue sur ÉMERGENCE !
                     </p>
                     <p>
-                        <strong>Pour bien démarrer :</strong> Un guide d'utilisation complet est disponible
-                        dans la section <strong>"📚 Documentation"</strong> accessible depuis le menu latéral.
+                        Je suis ravi de vous accueillir sur cette plateforme d'intelligence artificielle
+                        que j'ai développée avec passion. ÉMERGENCE est bien plus qu'un simple chatbot :
+                        c'est un écosystème complet d'agents IA collaboratifs conçus pour vous accompagner.
                     </p>
                     <p>
-                        Vous y trouverez des guides détaillés sur toutes les fonctionnalités :
+                        <strong>Pour bien démarrer et comprendre toutes les fonctionnalités,</strong>
+                        je vous recommande vivement de consulter le <strong>tutoriel complet</strong>
+                        disponible dans la section <strong>"À Propos"</strong> du menu.
                     </p>
-                    <ul class="welcome-features-list">
-                        <li>💬 <strong>Chat Multi-Agents</strong> - Anima, Neo & Nexus</li>
-                        <li>🧠 <strong>Base de Connaissances</strong> - Mémoire sémantique</li>
-                        <li>📚 <strong>Documents & RAG</strong> - Vos données comme source</li>
-                        <li>📂 <strong>Conversations</strong> - Organisation et contexte</li>
-                        <li>📊 <strong>Dashboard</strong> - Métriques et statistiques</li>
-                    </ul>
+                    <p>
+                        Ce guide vous expliquera comment tirer le meilleur parti d'ÉMERGENCE et
+                        découvrir toutes ses capacités uniques.
+                    </p>
+                    <p style="margin-top: 1.5rem; font-style: italic; color: #94a3b8; text-align: right;">
+                        Bonne exploration !
+                    </p>
                 </div>
                 <div class="welcome-popup-footer">
                     <label class="welcome-checkbox-label">
@@ -81,7 +88,7 @@ export class WelcomePopup {
                     <div class="welcome-popup-actions">
                         <button class="btn-welcome-close">Fermer</button>
                         <button class="btn-welcome-tutorial">
-                            📚 Voir le guide
+                            Consulter le tutoriel
                         </button>
                     </div>
                 </div>
@@ -347,14 +354,21 @@ export class WelcomePopup {
         closeBtn?.addEventListener('click', handleClose);
         closeBtnFooter?.addEventListener('click', handleClose);
 
-        // Tutorial button - navigate to documentation
+        // Tutorial button - navigate to About page and scroll to tutorial section
         tutorialBtn?.addEventListener('click', () => {
             const permanent = checkbox && checkbox.checked;
             this.dismiss(permanent);
 
             const moduleEvent = (EVENTS && EVENTS.MODULE_NAVIGATE) ? EVENTS.MODULE_NAVIGATE : 'app:navigate';
-            this.eventBus?.emit?.(moduleEvent, { moduleId: 'references' });
-            this.eventBus?.emit?.('references:show-doc', { docId: 'tutorial-guide' });
+            this.eventBus?.emit?.(moduleEvent, { moduleId: 'about' });
+
+            // Wait for module to load, then scroll to tutorial section
+            setTimeout(() => {
+                const tutorialSection = document.getElementById('tutorial');
+                if (tutorialSection) {
+                    tutorialSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 500);
         });
 
         // Close on overlay click

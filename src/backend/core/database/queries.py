@@ -507,16 +507,15 @@ async def get_all_documents(
     *,
     user_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    if user_id or session_id:
-        scope_sql, scope_params = _build_scope_condition(user_id, session_id)
-        rows = await db.fetch_all(
-            f"SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents WHERE {scope_sql} ORDER BY uploaded_at DESC",
-            scope_params,
-        )
-    else:
-        rows = await db.fetch_all(
-            "SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents ORDER BY uploaded_at DESC"
-        )
+    # IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données utilisateur
+    if not user_id:
+        raise ValueError("user_id est obligatoire pour accéder aux documents")
+
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
+    rows = await db.fetch_all(
+        f"SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents WHERE {scope_sql} ORDER BY uploaded_at DESC",
+        scope_params,
+    )
     return [dict(row) for row in rows]
 async def get_document_by_id(
     db: DatabaseManager,
@@ -525,14 +524,15 @@ async def get_document_by_id(
     *,
     user_id: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    if user_id or session_id:
-        scope_sql, scope_params = _build_scope_condition(user_id, session_id)
-        row = await db.fetch_one(
-            f"SELECT * FROM documents WHERE id = ? AND {scope_sql}",
-            (doc_id, *scope_params),
-        )
-    else:
-        row = await db.fetch_one("SELECT * FROM documents WHERE id = ?", (doc_id,))
+    # IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données utilisateur
+    if not user_id:
+        raise ValueError("user_id est obligatoire pour accéder aux documents")
+
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
+    row = await db.fetch_one(
+        f"SELECT * FROM documents WHERE id = ? AND {scope_sql}",
+        (doc_id, *scope_params),
+    )
     return dict(row) if row else None
 async def delete_document(
     db: DatabaseManager,
@@ -690,6 +690,10 @@ async def get_threads(
     limit: int = 20,
     offset: int = 0,
 ) -> List[Dict[str, Any]]:
+    # IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données utilisateur
+    if not user_id:
+        raise ValueError("user_id est obligatoire pour accéder aux threads")
+
     clauses: list[str] = []
     params: list[Any] = []
 
@@ -700,10 +704,9 @@ async def get_threads(
         clauses.append("archived = 0")
     # Si include_archived=True et archived_only=False, pas de filtre (tous les threads)
 
-    if user_id or session_id:
-        scope_sql, scope_params = _build_scope_condition(user_id, session_id)
-        clauses.append(scope_sql)
-        params.extend(scope_params)
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
+    clauses.append(scope_sql)
+    params.extend(scope_params)
     if type_:
         clauses.append("type = ?")
         params.append(type_)
@@ -729,14 +732,15 @@ async def get_thread(
     *,
     user_id: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    if user_id or session_id:
-        scope_sql, scope_params = _build_scope_condition(user_id, session_id)
-        row = await db.fetch_one(
-            f"SELECT * FROM threads WHERE id = ? AND {scope_sql}",
-            (thread_id, *scope_params),
-        )
-    else:
-        row = await db.fetch_one("SELECT * FROM threads WHERE id = ?", (thread_id,))
+    # IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données utilisateur
+    if not user_id:
+        raise ValueError("user_id est obligatoire pour accéder aux threads")
+
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
+    row = await db.fetch_one(
+        f"SELECT * FROM threads WHERE id = ? AND {scope_sql}",
+        (thread_id, *scope_params),
+    )
     return dict(row) if row else None
 async def get_thread_any(
     db: DatabaseManager,
@@ -745,9 +749,16 @@ async def get_thread_any(
     *,
     user_id: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    row = await get_thread(db, thread_id, session_id, user_id=user_id)
-    if row:
-        return row
+    # Si user_id est fourni, essayer d'abord avec filtrage
+    if user_id:
+        try:
+            row = await get_thread(db, thread_id, session_id, user_id=user_id)
+            if row:
+                return row
+        except ValueError:
+            pass  # user_id manquant, continuer avec fallback
+
+    # Fallback sans filtrage (pour usage interne seulement, pas pour API publique)
     fallback = await db.fetch_one("SELECT * FROM threads WHERE id = ?", (thread_id,))
     return dict(fallback) if fallback else None
 async def update_thread(
@@ -920,12 +931,15 @@ async def get_messages(
     limit: int = 50,
     before: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
+    # IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données utilisateur
+    if not user_id:
+        raise ValueError("user_id est obligatoire pour accéder aux messages")
+
     clauses = ["thread_id = ?"]
     params: list[Any] = [thread_id]
-    if user_id or session_id:
-        scope_sql, scope_params = _build_scope_condition(user_id, session_id)
-        clauses.append(scope_sql)
-        params.extend(scope_params)
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
+    clauses.append(scope_sql)
+    params.extend(scope_params)
     if before:
         clauses.append("created_at < ?")
         params.append(before)
@@ -1005,17 +1019,20 @@ async def get_thread_docs(
     *,
     user_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
+    # IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données utilisateur
+    if not user_id:
+        raise ValueError("user_id est obligatoire pour accéder aux thread_docs")
+
     clauses = ["td.thread_id = ?"]
     params: list[Any] = [thread_id]
-    if user_id or session_id:
-        scope_sql, scope_params = _build_scope_condition(
-            user_id,
-            session_id,
-            user_column="td.user_id",
-            session_column="td.session_id",
-        )
-        clauses.append(scope_sql)
-        params.extend(scope_params)
+    scope_sql, scope_params = _build_scope_condition(
+        user_id,
+        session_id,
+        user_column="td.user_id",
+        session_column="td.session_id",
+    )
+    clauses.append(scope_sql)
+    params.extend(scope_params)
     clauses.append("d.user_id = td.user_id")
     query = (
         "SELECT td.thread_id, td.doc_id, td.weight, td.last_used_at, d.filename, d.status "

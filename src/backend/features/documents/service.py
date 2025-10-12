@@ -456,9 +456,12 @@ class DocumentService:
             return False
 
         try:
-            where_filter = {"document_id": int(doc_id), "session_id": session_id}
+            # IMPORTANT: TOUJOURS filtrer par user_id pour l'isolation des données
+            where_filter = {"document_id": int(doc_id)}
             if user_id:
                 where_filter["user_id"] = user_id
+            if session_id:
+                where_filter["session_id"] = session_id
             self.vector_service.delete_vectors(
                 collection=self.document_collection,
                 where_filter=where_filter,
@@ -500,11 +503,16 @@ class DocumentService:
         if not query or not query.strip():
             return []
 
+        # IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données utilisateur
+        if not user_id:
+            logger.error("search_documents appelé sans user_id - isolation des données impossible")
+            return []
+
         try:
-            # Construire le filtre pour la session/user
-            where_filter: Dict[str, Any] = {"session_id": session_id}
-            if user_id:
-                where_filter["user_id"] = user_id
+            # Construire le filtre pour la session/user (TOUJOURS filtrer par user_id)
+            where_filter: Dict[str, Any] = {"user_id": user_id}
+            if session_id:
+                where_filter["session_id"] = session_id
 
             # Étape 1 : Recherche vectorielle (récupère plus que nécessaire pour re-ranking)
             results = self.vector_service.query(

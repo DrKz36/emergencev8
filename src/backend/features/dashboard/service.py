@@ -93,20 +93,19 @@ class DashboardService:
             Liste de {agent, model, total_cost, input_tokens, output_tokens, request_count}
         """
         try:
+            # IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données utilisateur
+            if not user_id:
+                raise ValueError("user_id est obligatoire pour accéder aux coûts")
+
             # Construction de la clause WHERE
-            conditions = []
-            params = []
+            conditions = ["user_id = ?"]
+            params = [user_id]
 
             if session_id:
                 conditions.append("session_id = ?")
                 params.append(session_id)
-            elif user_id:
-                conditions.append("user_id = ?")
-                params.append(user_id)
 
-            where_clause = ""
-            if conditions:
-                where_clause = " WHERE " + " AND ".join(conditions)
+            where_clause = " WHERE " + " AND ".join(conditions)
 
             # Mapping des noms d'agents techniques vers les noms d'affichage
             agent_display_names = {
