@@ -1,3 +1,33 @@
+## [2025-10-12 10:16] - Agent: Codex (Deploy)
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+Demande utilisateur : construire une nouvelle image Docker puis déployer immédiatement une nouvelle révision Cloud Run. La session inclut la vérification des consignes multi-agents et la mise à jour de la documentation collaborative après déploiement.
+
+### Actions réalisées
+1. Tenté de vérifier le statut AutoSync (`curl http://localhost:8000/api/sync/status`) → échec de connexion (service indisponible).
+2. Lu la documentation obligatoire : `AGENT_SYNC.md`, `AGENTS.md`, `CODEV_PROTOCOL.md`, `docs/passation.md` (≥3 entrées), `docs/architecture/00-Overview.md`, `docs/architecture/30-Contracts.md`, `docs/Memoire.md`, `docs/Roadmap Stratégique.txt`.
+3. Exécuté `scripts/sync-workdir.ps1` : fetch/rebase OK, mais `tests/run_all.ps1` stoppe faute de credentials smoke (`EMERGENCE_SMOKE_EMAIL/PASSWORD`).
+4. Construit et poussé l’image `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251012-101317` (build `--platform linux/amd64`).
+5. Déployé `emergence-app-00303-mfg` via `gcloud run deploy … --allow-unauthenticated`, vérifié trafic 100% et `metadata.creationTimestamp`.
+
+### Tests
+- ⚠️ `tests/run_all.ps1` — KO (login `gonzalefernando@gmail.com` impossible sans secrets)
+- ✅ `gcloud run services describe emergence-app --format='table(status.traffic[0].revisionName,status.traffic[0].percent)'`
+- ✅ `gcloud run revisions describe emergence-app-00303-mfg --format='value(metadata.creationTimestamp)'`
+
+### Prochaines actions recommandées
+1. Fournir les identifiants smoke (ou adapter `tests/run_all.ps1`) pour permettre l’exécution complète lors des synchronisations automatisées.
+2. Surveiller les métriques/logs Cloud Run de la révision `emergence-app-00303-mfg` durant l’heure suivant le déploiement (erreurs WS, latence).
+3. Lancer une QA fonctionnelle rapide (chat, mémoire, cockpit) afin de valider la révision en production.
+
+### Blocages
+- API AutoSync locale inaccessible sur `http://localhost:8000` (à confirmer côté infra).
+- Tests smoke nécessitant `EMERGENCE_SMOKE_EMAIL/PASSWORD` non fournis.
+
 ## [2025-10-12 09:14] - Agent: Codex (Sync)
 
 ### Fichiers modifiés

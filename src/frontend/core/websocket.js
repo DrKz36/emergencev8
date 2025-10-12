@@ -231,7 +231,7 @@ export class WebSocketClient {
         } else if (this.eventBus?.off) {
           this._threadWaitUnsub = () => { try { this.eventBus.off('threads:ready', handler); } catch {} };
         }
-        console.warn('[WebSocket] Thread id missing; deferring connection until threads:ready.');
+        console.debug('[WebSocket] En attente du thread (threads:ready)...');
       }
       if (!this._threadWaitUnsub) {
         console.warn('[WebSocket] Thread id missing and no event bus listener available; aborting connect.');
@@ -284,7 +284,7 @@ export class WebSocketClient {
 
         // Model info handler
         if (msg?.type === 'ws:model_info') {
-          console.log('[WebSocket] Model info:', msg.payload);
+          console.debug('[WebSocket] Model info:', msg.payload?.agent_id, msg.payload?.model);
           try { this.state?.set?.('chat.modelInfo', msg.payload || {}); } catch {}
           this.eventBus.emit?.(EVENTS.MODEL_INFO_RECEIVED, {
             provider: msg.payload?.provider,
@@ -314,7 +314,7 @@ export class WebSocketClient {
         // Memory banner handler
         if (msg?.type === 'ws:memory_banner') {
           const p = msg.payload || {};
-          console.log('[WebSocket] Memory banner:', p);
+          console.debug('[WebSocket] Memory banner:', p.agent_id, `STM:${p.has_stm ? 'Y' : 'N'} LTM:${p.ltm_items||0}`);
           this.eventBus.emit?.(EVENTS.MEMORY_BANNER_UPDATE, {
             type: p.type,
             content: p.content,
@@ -386,7 +386,10 @@ export class WebSocketClient {
         const ag  = String(frame?.payload?.agent_id ?? '').trim().toLowerCase();
         const sig = `${ag}::${txt}`;
         const now = Date.now();
-        if (sig && this._lastChatSig === sig && (now - this._lastChatTs) < this._dedupMs) { console.warn('[WebSocket] Duplicate chat.message ignoré (de-dup).'); return; }
+        if (sig && this._lastChatSig === sig && (now - this._lastChatTs) < this._dedupMs) {
+          console.debug('[WebSocket] Message dupliqué filtré');
+          return;
+        }
         this._lastChatSig = sig; this._lastChatTs = now;
       }
 
@@ -403,7 +406,7 @@ export class WebSocketClient {
           const nowOpinion = Date.now();
           const previous = this._opinionDedup.get(sig) || 0;
           if (previous && (nowOpinion - previous) < this._dedupMs) {
-            console.warn('[WebSocket] Duplicate chat.opinion ignoré (de-dup).');
+            console.debug('[WebSocket] Opinion dupliquée filtrée');
             return;
           }
           this._opinionDedup.set(sig, nowOpinion);
@@ -424,7 +427,8 @@ export class WebSocketClient {
 
       // Buffer si non OPEN
       if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
-        console.warn('[WebSocket] Connexion non ouverte → queue', frame?.type);
+        // Ne log que si la queue est vide pour éviter le spam
+        if (!this._sendQueue.length) console.debug('[WebSocket] Connexion fermée, mise en queue des messages');
         this._sendQueue.push(frame);
         this.connect();
         return;

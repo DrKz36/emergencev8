@@ -508,14 +508,47 @@ export default class ChatModule {
     this.state.set('chat.isLoading', true);
     this._updateThreadCacheFromBuckets();
 
-    const threadId = this.getCurrentThreadId();
+    let threadId = this.getCurrentThreadId();
     if (threadId) {
       api.appendMessage(threadId, {
         role: 'user',
         content: trimmed,
         agent_id: currentAgentId,
         meta: { ...messageMeta }
-      }).catch(err => console.error('[Chat] Échec appendMessage(user):', err));
+      }).catch(async (err) => {
+        // Si le thread n'existe pas (404), créer un nouveau thread et réessayer
+        if (err?.status === 404) {
+          console.warn('[Chat] Thread introuvable (404) → création nouveau thread');
+          try {
+            const created = await api.createThread({ type: 'chat', agent_id: currentAgentId });
+            const newThreadId = created?.id;
+            if (newThreadId) {
+              // Mettre à jour l'état avec le nouveau thread
+              this.threadId = newThreadId;
+              this.loadedThreadId = newThreadId;
+              this.state.set('threads.currentId', newThreadId);
+              this.state.set('chat.threadId', newThreadId);
+              try { localStorage.setItem('emergence.threadId', newThreadId); } catch {}
+
+              // Émettre l'événement pour que le WebSocket se reconnecte avec le bon thread
+              this.eventBus.emit('threads:ready', { id: newThreadId });
+
+              // Réessayer l'ajout du message
+              await api.appendMessage(newThreadId, {
+                role: 'user',
+                content: trimmed,
+                agent_id: currentAgentId,
+                meta: { ...messageMeta }
+              });
+              console.log('[Chat] Message ajouté au nouveau thread', newThreadId);
+            }
+          } catch (retryErr) {
+            console.error('[Chat] Échec création thread/retry:', retryErr);
+          }
+        } else {
+          console.error('[Chat] Échec appendMessage(user):', err);
+        }
+      });
     }
 
     // 🛡️ Anti-course: attends brièvement WS avant d'émettre
@@ -1488,7 +1521,7 @@ handleMessagePersisted(payload = {}) {
         const p = this._pendingMsg;
         if (!p || p.triedRest) return;
 
-        const threadId = this.getCurrentThreadId();
+        let threadId = this.getCurrentThreadId();
         if (!threadId) {
           this.showToast('Flux indisponible — aucun thread actif (fallback annulé).');
           return;
@@ -1498,12 +1531,44 @@ handleMessagePersisted(payload = {}) {
           fallbackMeta.use_rag = typeof p.use_rag === 'boolean' ? p.use_rag : !!this.state.get('chat.ragEnabled');
           const docIdsForFallback = Array.isArray(p.doc_ids) ? this._sanitizeDocIds(p.doc_ids) : [];
           if (docIdsForFallback.length) fallbackMeta.doc_ids = docIdsForFallback;
-          await api.appendMessage(threadId, {
-            role: 'user',
-            content: p.text,
-            agent_id: p.agent_id,
-            meta: fallbackMeta
-          });
+
+          try {
+            await api.appendMessage(threadId, {
+              role: 'user',
+              content: p.text,
+              agent_id: p.agent_id,
+              meta: fallbackMeta
+            });
+          } catch (err) {
+            // Si le thread n'existe pas, créer un nouveau thread et réessayer
+            if (err?.status === 404) {
+              console.warn('[Chat] Watchdog: Thread introuvable (404) → création nouveau thread');
+              const created = await api.createThread({ type: 'chat', agent_id: p.agent_id });
+              const newThreadId = created?.id;
+              if (newThreadId) {
+                // Mettre à jour l'état
+                this.threadId = newThreadId;
+                this.loadedThreadId = newThreadId;
+                this.state.set('threads.currentId', newThreadId);
+                this.state.set('chat.threadId', newThreadId);
+                try { localStorage.setItem('emergence.threadId', newThreadId); } catch {}
+
+                // Émettre l'événement pour reconnexion WebSocket
+                this.eventBus.emit('threads:ready', { id: newThreadId });
+
+                // Réessayer avec le nouveau thread
+                await api.appendMessage(newThreadId, {
+                  role: 'user',
+                  content: p.text,
+                  agent_id: p.agent_id,
+                  meta: fallbackMeta
+                });
+                threadId = newThreadId;
+              }
+            } else {
+              throw err;
+            }
+          }
 
           // ✅ Metrics: fallback REST
           try {

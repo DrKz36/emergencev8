@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Derniere mise a jour** : 2025-10-12 07:30 UTC (Module À Propos - Révision complète documentation utilisateur)
+**Derniere mise a jour** : 2025-10-12 08:15 UTC (Cloud Run déploiement révision 00303-mfg)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -53,13 +53,13 @@
 
 #### État actuel
 - **Révisions conservées** :
-  1. `emergence-app-00298-g8j` (2025-10-11 04:59:59 UTC) — Actuelle (100% trafic)
-  2. `emergence-app-00297-6pr` (2025-10-10 14:35:05 UTC) — Standby (0%)
-  3. `emergence-app-00350-wic` (2025-10-10 07:33:38 UTC) — Tag `fix-preferences` (0%)
-  4. `emergence-app-00348-rih` (2025-10-10 05:37:33 UTC) — Tag `p2-sprint3` (0%)
+  1. `emergence-app-00303-mfg` (2025-10-11 18:10:41 UTC) — Actuelle (100% trafic) — Image `deploy-20251012-101317`
+  2. `emergence-app-00298-g8j` (2025-10-11 04:59:59 UTC) — Standby (0%)
+  3. `emergence-app-00297-6pr` (2025-10-10 14:35:05 UTC) — Standby (0%)
+  4. `emergence-app-00350-wic` (2025-10-10 07:33:38 UTC) — Tag `fix-preferences` (0%)
 - **URL principale** : https://emergence-app-47nct44nma-ew.a.run.app
 - **Alias historique** : https://emergence-app-486095406755.europe-west1.run.app
-- **Déployé** : 2025-10-11 04:59 UTC (trafic 100% ➜ révision 00298-g8j)
+- **Déployé** : 2025-10-12 08:13 UTC (trafic 100% ➜ révision 00303-mfg)
 - **Documentation** :
   - [docs/deployments/CODEX_BUILD_DEPLOY.md](docs/deployments/CODEX_BUILD_DEPLOY.md) - Guide de déploiement
   - [docs/deployments/README.md](docs/deployments/README.md) - Historique et procédures
@@ -193,6 +193,26 @@
   4. 🟡 Deploy Cloud Run nouvelle révision
   5. 🟡 Monitoring 1h post-déploiement (`/check_prod`)
 - **Documentation** : [WEBSOCKET_AUDIT_2025-10-11.md](WEBSOCKET_AUDIT_2025-10-11.md) (audit existant fix DB)
+
+### 🟢 Codex - Session 2025-10-12 10:15 (Build & Deploy Cloud Run révision 00303-mfg)
+- **Statut** : ✅ **DÉPLOYÉ** — Trafic basculé sur `emergence-app-00303-mfg`
+- **Fichiers modifiés** : aucun
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251012-101317`
+- **Commandes exécutées** :
+  1. `docker build --platform linux/amd64 -t europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251012-101317 .`
+  2. `docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251012-101317`
+  3. `gcloud run deploy emergence-app --image europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251012-101317 --project emergence-469005 --region europe-west1 --platform managed --allow-unauthenticated`
+  4. `gcloud run services describe emergence-app --project emergence-469005 --region europe-west1 --format='table(status.traffic[0].revisionName,status.traffic[0].percent)'`
+  5. `gcloud run revisions describe emergence-app-00303-mfg --project emergence-469005 --region europe-west1 --format='value(metadata.creationTimestamp)'`
+- **Résultats** :
+  - Révision `emergence-app-00303-mfg` créée (`metadata.creationTimestamp=2025-10-11T18:10:41Z`)
+  - `status.traffic`: 100% sur `emergence-app-00303-mfg`
+  - Service URL confirmé : `https://emergence-app-47nct44nma-ew.a.run.app` (CLI affiche aussi l'alias régional)
+- **Tests** :
+  - ⚠️ `tests/run_all.ps1` — KO (credentials `EMERGENCE_SMOKE_*` absents)
+- **Prochaines actions** :
+  1. Fournir des identifiants smoke ou adapter `tests/run_all.ps1` pour les environnements sans secrets.
+  2. Surveiller les logs Cloud Run (latence, erreurs WS) durant la première heure post-déploiement.
 
 ### 🟢 Codex - Session 2025-10-11 07:00 (Build & Deploy Cloud Run révision 00298-g8j)
 - **Statut** : ✅ **DÉPLOYÉ** — Trafic basculé sur `emergence-app-00298-g8j`
