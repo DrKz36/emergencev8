@@ -200,13 +200,28 @@ export class CockpitCharts {
      */
     async fetchTimelineData(period) {
         try {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            // Add auth token if available
+            const authToken = this._getAuthToken();
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            // Add session ID if available
+            const sessionId = this._getSessionId();
+            if (sessionId) {
+                headers['X-Session-Id'] = sessionId;
+            }
+
+            // Add dev bypass header for development mode
+            headers['X-Dev-Bypass'] = '1';
+
             const response = await fetch(`/api/dashboard/timeline/activity?period=${period}`, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this._getAuthToken() || ''}`,
-                    'X-Session-Id': this._getSessionId() || ''
-                }
+                headers: headers
             });
 
             if (!response.ok) {
@@ -233,14 +248,29 @@ export class CockpitCharts {
      */
     async fetchDistributionData(period) {
         try {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            // Add auth token if available
+            const authToken = this._getAuthToken();
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            // Add session ID if available
+            const sessionId = this._getSessionId();
+            if (sessionId) {
+                headers['X-Session-Id'] = sessionId;
+            }
+
+            // Add dev bypass header for development mode
+            headers['X-Dev-Bypass'] = '1';
+
             // Fetch real data from API
             const response = await fetch('/api/dashboard/costs/by-agent', {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this._getAuthToken() || ''}`,
-                    'X-Session-Id': this._getSessionId() || ''
-                }
+                headers: headers
             });
 
             if (!response.ok) {
@@ -327,13 +357,28 @@ export class CockpitCharts {
      */
     async fetchTokensData(period) {
         try {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            // Add auth token if available
+            const authToken = this._getAuthToken();
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            // Add session ID if available
+            const sessionId = this._getSessionId();
+            if (sessionId) {
+                headers['X-Session-Id'] = sessionId;
+            }
+
+            // Add dev bypass header for development mode
+            headers['X-Dev-Bypass'] = '1';
+
             const response = await fetch(`/api/dashboard/timeline/tokens?period=${period}`, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this._getAuthToken() || ''}`,
-                    'X-Session-Id': this._getSessionId() || ''
-                }
+                headers: headers
             });
 
             if (!response.ok) {
@@ -361,13 +406,28 @@ export class CockpitCharts {
      */
     async fetchCostsData(period) {
         try {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            // Add auth token if available
+            const authToken = this._getAuthToken();
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            // Add session ID if available
+            const sessionId = this._getSessionId();
+            if (sessionId) {
+                headers['X-Session-Id'] = sessionId;
+            }
+
+            // Add dev bypass header for development mode
+            headers['X-Dev-Bypass'] = '1';
+
             const response = await fetch(`/api/dashboard/timeline/costs?period=${period}`, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this._getAuthToken() || ''}`,
-                    'X-Session-Id': this._getSessionId() || ''
-                }
+                headers: headers
             });
 
             if (!response.ok) {

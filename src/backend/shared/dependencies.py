@@ -407,6 +407,30 @@ async def enforce_allowlist(request: Request):
         return
     raise HTTPException(status_code=401, detail="Authorization Bearer requis.")
 
+async def get_user_id_optional(request: Request) -> Optional[str]:
+    """Retourne user_id ou None en mode dev (pour les dashboards)."""
+    dev_bypass = _has_dev_bypass(request.headers)
+    token = _extract_bearer_token_from_header(request.headers.get("Authorization"))
+
+    if token:
+        try:
+            claims = await _get_claims_from_request(request)
+            resolved_user_id = await _ensure_user_id_in_claims(claims, request)
+            if resolved_user_id:
+                return resolved_user_id
+        except HTTPException:
+            pass  # Continue to dev mode checks
+
+    if dev_bypass or _is_global_dev_mode(request):
+        hdr = request.headers.get("X-User-ID") or request.headers.get("X-User-Id")
+        if hdr:
+            logger.warning("DevMode: fallback X-User-ID used")
+            return hdr
+        # En mode dev, retourner None si aucun user_id n'est fourni
+        return None
+
+    raise HTTPException(status_code=401, detail="ID token invalide ou sans 'sub'.")
+
 async def get_user_id(request: Request) -> str:
     dev_bypass = _has_dev_bypass(request.headers)
     token = _extract_bearer_token_from_header(request.headers.get("Authorization"))

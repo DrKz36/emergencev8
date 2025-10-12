@@ -284,6 +284,27 @@ export const api = {
 
     return fetchApi(finalUrl, fetchOptions);
   },
+
+  // Shorthand methods for common HTTP verbs
+  get(endpoint, options = {}) {
+    return this.request(endpoint, { ...options, method: 'GET' });
+  },
+
+  post(endpoint, body, options = {}) {
+    return this.request(endpoint, { ...options, method: 'POST', body });
+  },
+
+  put(endpoint, body, options = {}) {
+    return this.request(endpoint, { ...options, method: 'PUT', body });
+  },
+
+  patch(endpoint, body, options = {}) {
+    return this.request(endpoint, { ...options, method: 'PATCH', body });
+  },
+
+  delete(endpoint, options = {}) {
+    return this.request(endpoint, { ...options, method: 'DELETE' });
+  },
   /* ------------------------ AUTH ----------------------- */
   authLogin: async ({ email, password, meta, signal } = {}) => {
     const safeEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';

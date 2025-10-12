@@ -1,3 +1,58 @@
+## [2025-10-12 09:14] - Agent: Codex (Sync)
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+Demande utilisateur : publier immédiatement toutes les modifications en attente (y compris celles réalisées par d'autres sessions). Objectif : vérifier l'état du dépôt, préparer le commit global et pousser vers `origin/main`.
+
+### Actions réalisées
+1. Lu la documentation obligatoire (AGENT_SYNC, AGENTS, CODEV_PROTOCOL, passation, architecture, roadmap, mémoire) et tenté la synchronisation automatique (`scripts/sync-workdir.ps1`), arrêtée car le dépôt était déjà modifié.
+2. Inventorié les fichiers modifiés via `git status` et `git log`, en soulignant la présence d'un artefact `nul` impossible à indexer sous Windows.
+3. Préparé le commit global pour toutes les modifications suivies (`git add AGENT_SYNC.md docs/passation.md src/backend src/frontend`) en excluant uniquement le fichier `nul`, puis poussé la branche `main` vers `origin`.
+
+### Tests
+- ✖ `pytest` (non exécuté)
+- ✖ `ruff check` (non exécuté)
+- ✖ `mypy` (non exécuté)
+- ✖ `npm run build` (non exécuté)
+- ✖ `pwsh -File tests/run_all.ps1` (non exécuté)
+
+### Prochaines actions recommandées
+1. Supprimer ou renommer l'artefact `nul` depuis un environnement non Windows afin de pouvoir le versionner ou l'ignorer proprement.
+2. Relancer les tests backend/frontend (`pytest`, `npm run build`, linters) pour valider les nombreux changements cockpit et mémoire en cours avant la prochaine session.
+3. Vérifier les styles Cockpit/Mémoire nouvellement ajoutés (`cockpit-mobile.css`, `preferences.js`, `memory.js`) pour détecter d'éventuelles régressions visuelles ou fonctionnelles.
+
+### Blocages
+- Impossible d'ajouter ou de supprimer le fichier `nul` : nom réservé par Windows, nécessite une action manuelle depuis un système compatible (WSL/Linux/macOS) ou son ajout dans `.gitignore`.
+
+## [2025-10-12 08:11] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+- `src/frontend/features/cockpit/cockpit-responsive.css`
+
+### Contexte
+En mode portrait mobile, les panneaux du cockpit étaient tronqués (charts partiels, marges latérales importantes, actions sur deux colonnes). Objectif : proposer une version smartphone dédiée avec pile verticale, contrôles pleine largeur et graphiques exploitables.
+
+### Actions réalisées
+1. Ajouté un breakpoint `≤640px` pour basculer le cockpit en layout colonne : header compact, boutons & filtres 100%, tabs scrollables, sections espacées de 12px.
+2. Forcé toutes les grilles (metrics/insights/charts/agents/trends) en simple colonne et arrondi les cartes (`16px`) pour un rendu homogène.
+3. Recalibré les canvases via `clamp(...)` (min-height 200px) afin d’éviter la coupe des timelines, pies et line charts; légendes désormais empilées verticalement.
+4. Synchronisé le mode portrait `≤480px` (largeur `calc(100vw - 24px)`, stat rows resserrées) pour conserver une lecture fluide sans perte de contenu.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions recommandées
+1. QA sur device réel (iPhone/Android) pour vérifier le confort de lecture des charts et ajuster les hauteurs si besoin.
+2. Mesurer l’impact performance lors du refresh complet et prévoir un skeleton si nécessaire.
+
+### Blocages
+- Aucun.
+
 ## [2025-10-12 07:47] - Agent: Codex (Frontend)
 
 ### Fichiers modifiés

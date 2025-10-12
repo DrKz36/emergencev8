@@ -490,14 +490,17 @@
     transform: translateY(-1px);
 }
 
-/* Loading State */
-.loading-state {
+/* Loading State & No Data */
+.loading-state,
+.no-data {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 200px;
     color: var(--text-tertiary, #808080);
     font-size: 14px;
+    text-align: center;
+    padding: 20px;
 }
 
 /* Responsive Design */

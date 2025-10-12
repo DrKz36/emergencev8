@@ -297,6 +297,43 @@ git push origin main
   1. QA rapide (desktop + mobile) pour valider que le gradient ne parasite pas la lecture sur écrans calibrés différemment.
   2. Ajuster si besoin la teinte des textes (`#ecfdf5` / `#fffbeb`) selon la perception utilisateur.
 
+### Codex - Session 2025-10-12 09:14 (Sync - Commit global)
+- **Statut** : ? Commit + push des modifications en attente (cockpit, memoire, preferences, API client) sur `main`
+- **Fichiers touches** :
+  - `AGENT_SYNC.md`
+  - `docs/passation.md`
+- **Actions realisees** :
+  1. Lecture complete des consignes (AGENT_SYNC, AGENTS, CODEV_PROTOCOL, passation, architecture, roadmap, memoire) puis tentative de `scripts/sync-workdir.ps1` (avortee car worktree deja modifie).
+  2. Inventaire detaille de l'etat Git (`git status`, `git log`) et identification d'un fichier `nul` impossible a indexer ou nettoyer depuis Windows.
+  3. Ajout selectif et push des modifications suivies (`git add AGENT_SYNC.md docs/passation.md src/backend src/frontend && git commit ... && git push origin main`), en laissant l'artefact `nul` en attente de traitement depuis un environnement compatible.
+- **Tests executes** :
+  - ✖ `pytest` (non execute)
+  - ✖ `ruff check` (non execute)
+  - ✖ `mypy` (non execute)
+  - ✖ `npm run build` (non execute)
+  - ✖ `pwsh -File tests/run_all.ps1` (non execute)
+- **Prochaines etapes suggerees** :
+  1. Supprimer/renommer l'artefact `nul` depuis un systeme non Windows ou l'ajouter a `.gitignore`.
+  2. Lancer la batterie de tests (lint + backend + frontend) avant de nouveaux developpements sur Cockpit/Memoire.
+  3. QA ciblee sur les nouveaux styles Cockpit mobile et preferences pour eviter les regressions UI.
+
+### Codex - Session 2025-10-12 08:11 (Frontend - Cockpit portrait mobile)
+- **Statut** : ✅ Layout recompacté et scrollable sur smartphone (mode portrait ≤640px)
+- **Fichiers touchés** :
+  - `src/frontend/features/cockpit/cockpit-responsive.css`
+- **Actions réalisées** :
+  1. Ajouté un palier `@media (max-width: 640px)` pour transformer le cockpit en pile verticale : en-tête colonne, actions pleine largeur, tabs resserrés et sections avec marge latérale de 12px.
+  2. Ajusté les grilles (metrics/insights/charts/agents) en simple colonne, cartes arrondies `16px` et légendes multi-lignes pour éviter la coupe des contenus.
+  3. Recalibré les hauteurs des canvas (`clamp(...)`) afin que les courbes, pie charts et timelines restent intégralement visibles (plus de graphes tronqués).
+  4. Harmonisé le breakpoint `portrait` (≤480px) : largeur `calc(100vw - 24px)`, min-height 200px et regroupement des stats pour conserver une lecture fluide.
+- **Tests / checks** :
+  - ✅ `npm run build`
+- **Observations** :
+  - Le flux central occupe désormais 100% de la largeur utile; les charts conservent leurs légendes sans débordement.
+- **Actions à suivre** :
+  1. QA visuelle sur device réel pour valider le rendu des charts (pie + timeline) et ajuster la hauteur si nécessaire.
+  2. Mesurer l’impact sur les performances de rendu (rafraîchissement complet) une fois les données temps réel injectées.
+
 ### Codex - Session 2025-10-12 07:41 (Frontend - RAG références scrollables)
 - **Statut** : ✅ Liste des sources RAG désormais scrollable avec marge dédiée pour la barre de défilement
 - **Fichiers touchés** :

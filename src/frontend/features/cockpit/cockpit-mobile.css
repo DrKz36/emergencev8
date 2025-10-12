@@ -1,0 +1,321 @@
+/**
+ * Cockpit Mobile Styles
+ * Simplified mobile-optimized cockpit view
+ */
+
+/* Mobile Container */
+.cockpit-mobile {
+    padding: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Mobile Notice Banner */
+.cockpit-mobile-notice {
+    background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(74, 144, 226, 0.05) 100%);
+    border: 1px solid rgba(74, 144, 226, 0.2);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 12px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.notice-icon {
+    font-size: 24px;
+    color: var(--primary-color, #4a90e2);
+    flex-shrink: 0;
+}
+
+.notice-content h3 {
+    margin: 0 0 6px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #ffffff);
+}
+
+.notice-content p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-secondary, #b0b0b0);
+}
+
+/* Mobile Header */
+.cockpit-mobile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.cockpit-mobile-header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary, #ffffff);
+}
+
+.btn-refresh-mobile {
+    background: var(--primary-color, #4a90e2);
+    border: none;
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-refresh-mobile:active {
+    transform: scale(0.95);
+    background: var(--primary-hover, #357abd);
+}
+
+/* Mobile Summary Cards */
+.cockpit-mobile-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+}
+
+.mobile-card {
+    background: var(--card-bg, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    backdrop-filter: blur(10px);
+}
+
+.mobile-card-primary {
+    background: linear-gradient(135deg, rgba(74, 144, 226, 0.15) 0%, rgba(74, 144, 226, 0.05) 100%);
+    border-color: rgba(74, 144, 226, 0.3);
+}
+
+.mobile-card-icon {
+    font-size: 32px;
+    color: var(--primary-color, #4a90e2);
+    flex-shrink: 0;
+}
+
+.mobile-card-content {
+    flex: 1;
+}
+
+.mobile-card-label {
+    font-size: 12px;
+    color: var(--text-secondary, #b0b0b0);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mobile-card-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary, #ffffff);
+}
+
+/* Mobile Sections */
+.cockpit-mobile-section {
+    padding: 16px;
+    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.cockpit-mobile-section h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary, #ffffff);
+}
+
+/* Mobile Agents List */
+.mobile-agents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mobile-agent-item {
+    background: var(--card-bg, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mobile-agent-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mobile-agent-icon {
+    font-size: 20px;
+    color: var(--primary-color, #4a90e2);
+}
+
+.mobile-agent-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary, #ffffff);
+}
+
+.mobile-agent-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.mobile-agent-cost {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary-color, #4a90e2);
+}
+
+.mobile-agent-count {
+    font-size: 11px;
+    color: var(--text-secondary, #b0b0b0);
+}
+
+/* Mobile Activity List */
+.mobile-activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mobile-activity-row {
+    background: var(--card-bg, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.mobile-activity-label {
+    font-size: 12px;
+    color: var(--text-secondary, #b0b0b0);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mobile-activity-values {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: var(--text-primary, #ffffff);
+}
+
+.mobile-activity-cost {
+    font-weight: 600;
+    color: var(--primary-color, #4a90e2);
+}
+
+/* Mobile Trends Grid */
+.mobile-trends-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.mobile-trend-card {
+    background: var(--card-bg, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+}
+
+.mobile-trend-label {
+    font-size: 11px;
+    color: var(--text-secondary, #b0b0b0);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mobile-trend-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary, #ffffff);
+}
+
+/* Mobile Loading State */
+.mobile-loading {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-secondary, #b0b0b0);
+    font-size: 14px;
+}
+
+.mobile-empty {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-tertiary, #808080);
+    font-size: 13px;
+}
+
+/* Responsive - Portrait Phone */
+@media (max-width: 480px) {
+    .cockpit-mobile-notice {
+        margin: 8px;
+        padding: 12px;
+    }
+
+    .notice-icon {
+        font-size: 20px;
+    }
+
+    .notice-content h3 {
+        font-size: 13px;
+    }
+
+    .notice-content p {
+        font-size: 11px;
+    }
+
+    .cockpit-mobile-header {
+        padding: 12px;
+    }
+
+    .cockpit-mobile-header h1 {
+        font-size: 18px;
+    }
+
+    .cockpit-mobile-summary,
+    .cockpit-mobile-section {
+        padding: 12px;
+    }
+
+    .mobile-card {
+        padding: 12px;
+    }
+
+    .mobile-card-icon {
+        font-size: 28px;
+    }
+
+    .mobile-card-value {
+        font-size: 20px;
+    }
+}

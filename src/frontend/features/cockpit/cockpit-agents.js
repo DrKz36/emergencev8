@@ -3,6 +3,7 @@
  * Displays agent-specific costs, usage, and models
  */
 
+import { api } from '../../shared/api-client.js';
 import { getIcon } from './cockpit-icons.js';
 
 export class CockpitAgents {
@@ -89,35 +90,31 @@ export class CockpitAgents {
      */
     async loadAgentsData() {
         try {
-            const token = this._getAuthToken();
-            const sessionId = this._getSessionId();
+            console.log('📥 Fetching agents data from API...');
 
-            const headers = {
-                'Content-Type': 'application/json'
-            };
+            // Use the shared API client which handles auth automatically
+            const data = await api.get('/api/dashboard/costs/by-agent');
 
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
+            console.log('📦 Agents data received:', data);
+
+            if (!data || !Array.isArray(data)) {
+                console.warn('⚠️ Invalid data format received:', data);
+                this.agentsData = [];
+            } else {
+                this.agentsData = data;
             }
 
-            if (sessionId) {
-                headers['X-Session-Id'] = sessionId;
-            }
-
-            const response = await fetch('/api/dashboard/costs/by-agent', {
-                method: 'GET',
-                headers: headers
-            });
-
-            if (!response.ok) {
-                throw new Error(`API error: ${response.status}`);
-            }
-
-            this.agentsData = await response.json();
             this.updateUI();
         } catch (error) {
-            console.error('Error loading agents data:', error);
-            this.showError('Impossible de charger les données des agents');
+            console.error('❌ Error loading agents data:', error);
+
+            // Show more detailed error message
+            const errorMsg = error.message || 'Erreur inconnue';
+            this.showError(`Impossible de charger les données: ${errorMsg}`);
+
+            // Update UI with empty data to show "no data" message
+            this.agentsData = [];
+            this.updateUI();
         }
     }
 
@@ -326,7 +323,22 @@ export class CockpitAgents {
      */
     showError(message) {
         console.error('✗', message);
-        // TODO: Integrate with notification system
+
+        // Show error in the grid
+        const agentsGrid = document.getElementById('agents-grid');
+        if (agentsGrid) {
+            agentsGrid.innerHTML = `
+                <div class="error-message">
+                    <span class="error-icon">${getIcon('alertTriangle')}</span>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // Also try to use the global notification system
+        if (window.notifications) {
+            window.notifications.error(message);
+        }
     }
 
     /**

@@ -137,7 +137,28 @@ export class MemoryCenter {
       if (!btn) return;
       const format = (btn.dataset.memoryExport || '').toLowerCase();
       if (!format) return;
-      this.eventBus?.emit?.('memory:export', { format });
+
+      // Désactiver le bouton pendant l'export
+      btn.disabled = true;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = btn.innerHTML.replace(/JSON|CSV/, 'Export...');
+
+      try {
+        this._exportMemory(format);
+        this.eventBus?.emit?.('memory:export', { format, success: true });
+      } catch (error) {
+        console.error('[MemoryCenter] Export error:', error);
+        this.eventBus?.emit?.('ui:toast', {
+          kind: 'error',
+          text: `Erreur lors de l'export ${format.toUpperCase()}: ${error.message}`
+        });
+      } finally {
+        // Réactiver le bouton après un court délai
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }, 500);
+      }
     };
     this.host.addEventListener('click', handler);
     this._handleClick = handler;
@@ -206,10 +227,27 @@ export class MemoryCenter {
           <p class="memory-section__hint">${snapshot.hint}</p>
         </section>
         <section class="memory-section">
-          <h3 class="memory-section__title">Exports</h3>
+          <header class="memory-section__header">
+            <h3 class="memory-section__title">Exporter les donnees memoire</h3>
+          </header>
+          <p class="memory-section__hint">Telechargez l'historique de vos consolidations memoire au format souhaite.</p>
           <div class="memory-actions">
-            <button type="button" class="memory-action" data-memory-export="json">Exporter JSON</button>
-            <button type="button" class="memory-action" data-memory-export="csv">Exporter CSV</button>
+            <button type="button" class="button button-metal" data-memory-export="json" title="Exporter au format JSON">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              JSON
+            </button>
+            <button type="button" class="button button-metal" data-memory-export="csv" title="Exporter au format CSV">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              CSV
+            </button>
           </div>
         </section>
         <section class="memory-section">
@@ -330,5 +368,106 @@ export class MemoryCenter {
     } catch (err) {
       return 'N/A';
     }
+  }
+
+  _exportMemory(format) {
+    if (!this._history || !this._history.length) {
+      this.eventBus?.emit?.('ui:toast', {
+        kind: 'warning',
+        text: 'Aucune donnee a exporter. L\'historique est vide.'
+      });
+      return;
+    }
+
+    const snapshot = this._buildSnapshot();
+    const exportData = {
+      metadata: {
+        exported_at: new Date().toISOString(),
+        stm_active: snapshot.stmActive,
+        ltm_count: snapshot.ltmCount,
+        last_analysis: snapshot.lastAnalysis,
+        total_entries: this._history.length
+      },
+      history: this._history.map(entry => ({
+        session_id: entry.session_id,
+        updated_at: entry.updated_at,
+        summary: entry.summary,
+        concept_count: entry.concept_count,
+        entity_count: entry.entity_count
+      }))
+    };
+
+    if (format === 'json') {
+      this._downloadJSON(exportData);
+    } else if (format === 'csv') {
+      this._downloadCSV(exportData);
+    }
+  }
+
+  _downloadJSON(data) {
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `emergence-memory-export-${timestamp}.json`;
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    this.eventBus?.emit?.('ui:toast', {
+      kind: 'success',
+      text: `Export JSON reussi: ${filename}`
+    });
+  }
+
+  _downloadCSV(data) {
+    // En-têtes CSV
+    const headers = ['Session ID', 'Date', 'Resume', 'Concepts', 'Entites'];
+    const rows = [headers];
+
+    // Ajouter les données
+    data.history.forEach(entry => {
+      const date = entry.updated_at ? formatTimestamp(entry.updated_at) : '—';
+      const summary = (entry.summary || '').replace(/"/g, '""'); // Échapper les guillemets
+      rows.push([
+        entry.session_id || '',
+        date,
+        `"${summary}"`, // Entourer le résumé de guillemets pour gérer les virgules
+        entry.concept_count || 0,
+        entry.entity_count || 0
+      ]);
+    });
+
+    // Ajouter les métadonnées en bas
+    rows.push([]);
+    rows.push(['Metadonnees']);
+    rows.push(['STM Active', data.metadata.stm_active ? 'Oui' : 'Non']);
+    rows.push(['Elements LTM', data.metadata.ltm_count]);
+    rows.push(['Derniere Analyse', data.metadata.last_analysis]);
+    rows.push(['Exporte le', data.metadata.exported_at]);
+
+    const csvContent = rows.map(row => row.join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM pour UTF-8
+    const url = URL.createObjectURL(blob);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `emergence-memory-export-${timestamp}.csv`;
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    this.eventBus?.emit?.('ui:toast', {
+      kind: 'success',
+      text: `Export CSV reussi: ${filename}`
+    });
   }
 }

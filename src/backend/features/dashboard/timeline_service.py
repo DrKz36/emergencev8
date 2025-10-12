@@ -28,27 +28,30 @@ class TimelineService:
         """
         Retourne la timeline d'activité (messages + threads par jour).
         IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données.
+        En mode dev, si user_id est None, agrège toutes les données.
 
         Args:
             period: "7d", "30d", "90d", "1y"
-            user_id: Filtrer par utilisateur (OBLIGATOIRE)
+            user_id: Filtrer par utilisateur (OBLIGATOIRE en prod, optionnel en dev)
             session_id: Filtrer par session (optionnel)
 
         Returns:
             Liste de {date, message_count, thread_count}
         """
-        # user_id est OBLIGATOIRE pour l'isolation des données utilisateur
-        if not user_id:
-            logger.error("[SECURITY] user_id obligatoire pour get_activity_timeline")
-            raise ValueError("user_id est obligatoire pour accéder aux données de timeline")
-
         days = self._parse_period(period)
 
         # Construire les conditions de filtrage
         date_field = "created_at"  # champ de référence pour les messages
-        message_filters = [f"date(m.{date_field}) = dates.date", "m.user_id = ?"]
-        thread_filters = ["date(t.created_at) = dates.date", "t.user_id = ?"]
-        params: List[Any] = [user_id, user_id]
+        message_filters = [f"date(m.{date_field}) = dates.date"]
+        thread_filters = ["date(t.created_at) = dates.date"]
+        params: List[Any] = []
+
+        # Si user_id est fourni, filtrer par user_id (mode prod)
+        if user_id:
+            message_filters.append("m.user_id = ?")
+            thread_filters.append("t.user_id = ?")
+            params.extend([user_id, user_id])
+        # Sinon, en mode dev, on agrège toutes les données (pas de filtre user_id)
 
         if session_id:
             message_filters.append("m.session_id = ?")
@@ -94,19 +97,20 @@ class TimelineService:
         """
         Retourne la timeline des coûts par jour.
         IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données.
+        En mode dev, si user_id est None, agrège toutes les données.
 
         Returns:
             Liste de {date, total_cost}
         """
-        # user_id est OBLIGATOIRE pour l'isolation des données utilisateur
-        if not user_id:
-            logger.error("[SECURITY] user_id obligatoire pour get_costs_timeline")
-            raise ValueError("user_id est obligatoire pour accéder aux données de coûts")
-
         days = self._parse_period(period)
 
-        cost_filters = ["date(c.timestamp) = dates.date", "c.user_id = ?"]
-        params: List[Any] = [user_id]
+        cost_filters = ["date(c.timestamp) = dates.date"]
+        params: List[Any] = []
+
+        # Si user_id est fourni, filtrer par user_id
+        if user_id:
+            cost_filters.append("c.user_id = ?")
+            params.append(user_id)
 
         if session_id:
             cost_filters.append("c.session_id = ?")
@@ -148,19 +152,20 @@ class TimelineService:
         """
         Retourne la timeline des tokens par jour.
         IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données.
+        En mode dev, si user_id est None, agrège toutes les données.
 
         Returns:
             Liste de {date, input_tokens, output_tokens, total}
         """
-        # user_id est OBLIGATOIRE pour l'isolation des données utilisateur
-        if not user_id:
-            logger.error("[SECURITY] user_id obligatoire pour get_tokens_timeline")
-            raise ValueError("user_id est obligatoire pour accéder aux données de tokens")
-
         days = self._parse_period(period)
 
-        token_filters = ["date(c.timestamp) = dates.date", "c.user_id = ?"]
-        params: List[Any] = [user_id]
+        token_filters = ["date(c.timestamp) = dates.date"]
+        params: List[Any] = []
+
+        # Si user_id est fourni, filtrer par user_id
+        if user_id:
+            token_filters.append("c.user_id = ?")
+            params.append(user_id)
 
         if session_id:
             token_filters.append("c.session_id = ?")
@@ -205,21 +210,17 @@ class TimelineService:
         """
         Retourne la distribution par agent pour une métrique donnée.
         IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données.
+        En mode dev, si user_id est None, agrège toutes les données.
 
         Args:
             metric: "messages", "tokens", "costs"
             period: "7d", "30d", "90d", "1y"
-            user_id: ID utilisateur (OBLIGATOIRE)
+            user_id: ID utilisateur (OBLIGATOIRE en prod, optionnel en dev)
             session_id: ID session (optionnel)
 
         Returns:
             Dict {agent_name: count}
         """
-        # user_id est OBLIGATOIRE pour l'isolation des données utilisateur
-        if not user_id:
-            logger.error("[SECURITY] user_id obligatoire pour get_distribution_by_agent")
-            raise ValueError("user_id est obligatoire pour accéder aux données de distribution")
-
         days = self._parse_period(period)
 
         if metric == "messages":
@@ -233,10 +234,14 @@ class TimelineService:
 
         elif metric in ["tokens", "costs"]:
             conditions = [
-                f"date(timestamp) >= date('now', '-{days} days')",
-                "user_id = ?"
+                f"date(timestamp) >= date('now', '-{days} days')"
             ]
-            params = [user_id]
+            params = []
+
+            # Si user_id est fourni, filtrer par user_id
+            if user_id:
+                conditions.append("user_id = ?")
+                params.append(user_id)
 
             if session_id:
                 conditions.append("session_id = ?")

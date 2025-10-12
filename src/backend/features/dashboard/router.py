@@ -2,7 +2,7 @@
 # V3.2 - Prefix retiré (évite double /api/dashboard) + safe resolver
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
-from typing import Any, Awaitable, Callable, Dict, List
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from backend.features.dashboard.service import DashboardService
 from backend.features.dashboard.timeline_service import TimelineService
@@ -100,10 +100,10 @@ async def get_activity_timeline(
     request: Request,
     period: str = Query("30d", description="Période: 7d, 30d, 90d, 1y"),
     timeline_service: TimelineService = Depends(_resolve_get_timeline_service()),
-    user_id: str = Depends(deps.get_user_id),
+    user_id: Optional[str] = Depends(deps.get_user_id_optional),
 ) -> List[Dict[str, Any]]:
     session_id = request.headers.get("X-Session-Id") or request.headers.get("x-session-id")
-    logger.info(f"Timeline activité period={period}, session_id={session_id}")
+    logger.info(f"Timeline activité period={period}, session_id={session_id}, user_id={user_id}")
     return await timeline_service.get_activity_timeline(
         period=period, user_id=user_id, session_id=session_id
     )
@@ -119,7 +119,7 @@ async def get_costs_timeline(
     request: Request,
     period: str = Query("30d", description="Période: 7d, 30d, 90d, 1y"),
     timeline_service: TimelineService = Depends(_resolve_get_timeline_service()),
-    user_id: str = Depends(deps.get_user_id),
+    user_id: Optional[str] = Depends(deps.get_user_id_optional),
 ) -> List[Dict[str, Any]]:
     session_id = request.headers.get("X-Session-Id") or request.headers.get("x-session-id")
     return await timeline_service.get_costs_timeline(
@@ -137,7 +137,7 @@ async def get_tokens_timeline(
     request: Request,
     period: str = Query("30d", description="Période: 7d, 30d, 90d, 1y"),
     timeline_service: TimelineService = Depends(_resolve_get_timeline_service()),
-    user_id: str = Depends(deps.get_user_id),
+    user_id: Optional[str] = Depends(deps.get_user_id_optional),
 ) -> List[Dict[str, Any]]:
     session_id = request.headers.get("X-Session-Id") or request.headers.get("x-session-id")
     return await timeline_service.get_tokens_timeline(
@@ -156,7 +156,7 @@ async def get_distribution(
     metric: str,
     period: str = Query("30d", description="Période: 7d, 30d, 90d, 1y"),
     timeline_service: TimelineService = Depends(_resolve_get_timeline_service()),
-    user_id: str = Depends(deps.get_user_id),
+    user_id: Optional[str] = Depends(deps.get_user_id_optional),
 ) -> Dict[str, int]:
     session_id = request.headers.get("X-Session-Id") or request.headers.get("x-session-id")
     return await timeline_service.get_distribution_by_agent(

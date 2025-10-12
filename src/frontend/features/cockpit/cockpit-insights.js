@@ -168,9 +168,15 @@ export class CockpitInsights {
      */
     async loadInsights() {
         try {
-            const period = this.container.querySelector('.period-selector').value;
+            const periodSelector = this.container.querySelector('.period-selector');
+            if (!periodSelector) {
+                console.error('❌ Period selector not found!');
+                return;
+            }
 
+            const period = periodSelector.value;
             console.log('📥 Fetching insights for period:', period);
+
             const [concepts, threads, documents, trends] = await Promise.all([
                 this.fetchTopConcepts(period),
                 this.fetchTopThreads(period),
@@ -179,14 +185,20 @@ export class CockpitInsights {
             ]);
 
             this.insights = {
-                topConcepts: concepts,
-                topThreads: threads,
-                topDocuments: documents,
-                trends
+                topConcepts: concepts || [],
+                topThreads: threads || [],
+                topDocuments: documents || [],
+                trends: trends || {}
             };
 
             console.log('📦 Insights data loaded:', this.insights);
+            console.log('  - Top Concepts:', this.insights.topConcepts.length);
+            console.log('  - Top Threads:', this.insights.topThreads.length);
+            console.log('  - Top Documents:', this.insights.topDocuments.length);
+            console.log('  - Trends:', Object.keys(this.insights.trends).length, 'keys');
+
             this.updateUI();
+            console.log('✅ UI updated successfully');
         } catch (error) {
             console.error('❌ Error loading insights:', error);
             this.showError('Impossible de charger les insights');
@@ -211,13 +223,16 @@ export class CockpitInsights {
      * Fetch top threads
      */
     async fetchTopThreads(period) {
-        // Mock data - replace with actual API call
+        // Mock data with relative dates
+        const now = new Date();
+        const hoursAgo = (hours) => new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString();
+
         return [
-            { id: 1, title: 'Implémentation système de mémoire', messages: 45, lastActivity: '2024-01-15T10:30:00Z', status: 'active' },
-            { id: 2, title: 'Optimisation pipeline RAG', messages: 38, lastActivity: '2024-01-14T15:20:00Z', status: 'active' },
-            { id: 3, title: 'Architecture multi-agents', messages: 32, lastActivity: '2024-01-13T09:45:00Z', status: 'archived' },
-            { id: 4, title: 'Intégration base vectorielle', messages: 28, lastActivity: '2024-01-12T14:10:00Z', status: 'active' },
-            { id: 5, title: 'Tests système complet', messages: 24, lastActivity: '2024-01-11T11:30:00Z', status: 'archived' }
+            { id: 1, title: 'Implémentation système de mémoire', messages: 45, lastActivity: hoursAgo(2), status: 'active' },
+            { id: 2, title: 'Optimisation pipeline RAG', messages: 38, lastActivity: hoursAgo(6), status: 'active' },
+            { id: 3, title: 'Architecture multi-agents', messages: 32, lastActivity: hoursAgo(24), status: 'archived' },
+            { id: 4, title: 'Intégration base vectorielle', messages: 28, lastActivity: hoursAgo(48), status: 'active' },
+            { id: 5, title: 'Tests système complet', messages: 24, lastActivity: hoursAgo(96), status: 'archived' }
         ];
     }
 
@@ -225,13 +240,16 @@ export class CockpitInsights {
      * Fetch top documents
      */
     async fetchTopDocuments(period) {
-        // Mock data - replace with actual API call
+        // Mock data with relative dates
+        const now = new Date();
+        const hoursAgo = (hours) => new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString();
+
         return [
-            { id: 1, title: 'Architecture.md', views: 156, lastAccess: '2024-01-15T12:00:00Z', type: 'markdown' },
-            { id: 2, title: 'Memory-System.pdf', views: 134, lastAccess: '2024-01-14T16:30:00Z', type: 'pdf' },
-            { id: 3, title: 'API-Documentation.md', views: 98, lastAccess: '2024-01-13T10:15:00Z', type: 'markdown' },
-            { id: 4, title: 'RAG-Pipeline.txt', views: 87, lastAccess: '2024-01-12T14:45:00Z', type: 'text' },
-            { id: 5, title: 'Testing-Guide.md', views: 76, lastAccess: '2024-01-11T09:20:00Z', type: 'markdown' }
+            { id: 1, title: 'Architecture.md', views: 156, lastAccess: hoursAgo(3), type: 'markdown' },
+            { id: 2, title: 'Memory-System.pdf', views: 134, lastAccess: hoursAgo(8), type: 'pdf' },
+            { id: 3, title: 'API-Documentation.md', views: 98, lastAccess: hoursAgo(18), type: 'markdown' },
+            { id: 4, title: 'RAG-Pipeline.txt', views: 87, lastAccess: hoursAgo(36), type: 'text' },
+            { id: 5, title: 'Testing-Guide.md', views: 76, lastAccess: hoursAgo(72), type: 'markdown' }
         ];
     }
 
@@ -265,12 +283,22 @@ export class CockpitInsights {
      * Render top concepts list
      */
     renderTopConcepts() {
-        const container = document.getElementById('top-concepts-list');
-        const countBadge = document.getElementById('concepts-count');
+        const container = this.container.querySelector('#top-concepts-list');
+        const countBadge = this.container.querySelector('#concepts-count');
 
-        if (!container) return;
+        if (!container) {
+            console.warn('⚠️ top-concepts-list container not found in', this.container);
+            return;
+        }
 
-        countBadge.textContent = this.insights.topConcepts.length;
+        if (countBadge) {
+            countBadge.textContent = this.insights.topConcepts.length;
+        }
+
+        if (!this.insights.topConcepts || this.insights.topConcepts.length === 0) {
+            container.innerHTML = '<div class="no-data">Aucun concept disponible</div>';
+            return;
+        }
 
         const html = this.insights.topConcepts.map(concept => `
             <div class="insight-item concept-item">
@@ -305,12 +333,22 @@ export class CockpitInsights {
      * Render top threads list
      */
     renderTopThreads() {
-        const container = document.getElementById('top-threads-list');
-        const countBadge = document.getElementById('threads-count');
+        const container = this.container.querySelector('#top-threads-list');
+        const countBadge = this.container.querySelector('#threads-count');
 
-        if (!container) return;
+        if (!container) {
+            console.warn('⚠️ top-threads-list container not found in', this.container);
+            return;
+        }
 
-        countBadge.textContent = this.insights.topThreads.length;
+        if (countBadge) {
+            countBadge.textContent = this.insights.topThreads.length;
+        }
+
+        if (!this.insights.topThreads || this.insights.topThreads.length === 0) {
+            container.innerHTML = '<div class="no-data">Aucun thread disponible</div>';
+            return;
+        }
 
         const html = this.insights.topThreads.map(thread => `
             <div class="insight-item thread-item">
@@ -344,12 +382,22 @@ export class CockpitInsights {
      * Render top documents list
      */
     renderTopDocuments() {
-        const container = document.getElementById('top-documents-list');
-        const countBadge = document.getElementById('documents-count');
+        const container = this.container.querySelector('#top-documents-list');
+        const countBadge = this.container.querySelector('#documents-count');
 
-        if (!container) return;
+        if (!container) {
+            console.warn('⚠️ top-documents-list container not found in', this.container);
+            return;
+        }
 
-        countBadge.textContent = this.insights.topDocuments.length;
+        if (countBadge) {
+            countBadge.textContent = this.insights.topDocuments.length;
+        }
+
+        if (!this.insights.topDocuments || this.insights.topDocuments.length === 0) {
+            container.innerHTML = '<div class="no-data">Aucun document disponible</div>';
+            return;
+        }
 
         const html = this.insights.topDocuments.map(doc => `
             <div class="insight-item document-item">
@@ -383,10 +431,18 @@ export class CockpitInsights {
      * Render trends section
      */
     renderTrends() {
-        const container = document.getElementById('trends-content');
-        if (!container) return;
+        const container = this.container.querySelector('#trends-content');
+        if (!container) {
+            console.warn('⚠️ trends-content container not found in', this.container);
+            return;
+        }
 
-        const trends = this.insights.trends;
+        const trends = this.insights.trends || {};
+
+        if (!trends || Object.keys(trends).length === 0) {
+            container.innerHTML = '<div class="no-data">Aucune tendance disponible</div>';
+            return;
+        }
 
         container.innerHTML = `
             <div class="trends-grid">
@@ -423,8 +479,11 @@ export class CockpitInsights {
      * Render activity heatmap
      */
     renderActivityHeatmap() {
-        const container = document.getElementById('activity-heatmap');
-        if (!container) return;
+        const container = this.container.querySelector('#activity-heatmap');
+        if (!container) {
+            console.warn('⚠️ activity-heatmap container not found in', this.container);
+            return;
+        }
 
         // Simple text-based heatmap for now
         const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -457,8 +516,11 @@ export class CockpitInsights {
      * Render smart recommendations
      */
     renderRecommendations() {
-        const container = document.getElementById('recommendations-list');
-        if (!container) return;
+        const container = this.container.querySelector('#recommendations-list');
+        if (!container) {
+            console.warn('⚠️ recommendations-list container not found in', this.container);
+            return;
+        }
 
         const recommendations = [
             { icon: getIcon('lightbulb'), text: 'Concept "Architecture Agent" est en forte croissance. Considérez créer une documentation dédiée.', priority: 'high' },
@@ -528,15 +590,22 @@ export class CockpitInsights {
      */
     navigateToSection(target) {
         console.log('Navigate to:', target);
+
+        // Get eventBus from multiple possible sources
+        const eventBus = window.emergenceApp?.eventBus || window.App?.eventBus || window.app?.eventBus;
+
         // Emit navigation event based on target
-        if (window.app?.eventBus) {
+        if (eventBus) {
             const moduleMap = {
                 'concepts': 'memory',
                 'threads': 'chat',
                 'documents': 'documents'
             };
             const targetModule = moduleMap[target] || target;
-            window.app.eventBus.emit('app:navigate', { moduleId: targetModule });
+            eventBus.emit('app:navigate', { moduleId: targetModule });
+            console.log('✅ Navigation émise vers:', targetModule);
+        } else {
+            console.warn('⚠️ EventBus non disponible pour la navigation');
         }
     }
 
@@ -545,10 +614,18 @@ export class CockpitInsights {
      */
     exploreConcept(conceptId) {
         console.log('Explore concept:', conceptId);
+
+        // Get eventBus from multiple possible sources
+        const eventBus = window.emergenceApp?.eventBus || window.App?.eventBus || window.app?.eventBus;
+
         // Navigate to memory module with concept highlighted
-        if (window.app?.eventBus) {
-            window.app.eventBus.emit('app:navigate', { moduleId: 'memory', data: { conceptId } });
+        if (eventBus) {
+            eventBus.emit('app:navigate', { moduleId: 'memory', data: { conceptId } });
+            console.log('✅ Navigation émise vers memory avec conceptId:', conceptId);
+        } else {
+            console.warn('⚠️ EventBus non disponible pour la navigation');
         }
+
         // Show notification
         if (window.notifications) {
             window.notifications.info(`Navigation vers le concept #${conceptId}`);
@@ -560,14 +637,24 @@ export class CockpitInsights {
      */
     openThread(threadId) {
         console.log('Open thread:', threadId);
+
+        // Get eventBus from multiple possible sources
+        const eventBus = window.emergenceApp?.eventBus || window.App?.eventBus || window.app?.eventBus;
+
         // Navigate to chat module and load thread
-        if (window.app?.eventBus) {
-            window.app.eventBus.emit('app:navigate', { moduleId: 'chat' });
+        if (eventBus) {
+            eventBus.emit('app:navigate', { moduleId: 'chat' });
+            console.log('✅ Navigation émise vers chat');
+
             // Emit thread change event after a short delay
             setTimeout(() => {
-                window.app.eventBus.emit('thread:change', { threadId });
+                eventBus.emit('thread:change', { threadId });
+                console.log('✅ Changement de thread émis:', threadId);
             }, 300);
+        } else {
+            console.warn('⚠️ EventBus non disponible pour la navigation');
         }
+
         // Show notification
         if (window.notifications) {
             window.notifications.info(`Ouverture du thread...`);
@@ -579,10 +666,18 @@ export class CockpitInsights {
      */
     viewDocument(docId) {
         console.log('View document:', docId);
+
+        // Get eventBus from multiple possible sources
+        const eventBus = window.emergenceApp?.eventBus || window.App?.eventBus || window.app?.eventBus;
+
         // Navigate to documents module with document selected
-        if (window.app?.eventBus) {
-            window.app.eventBus.emit('app:navigate', { moduleId: 'documents', data: { docId } });
+        if (eventBus) {
+            eventBus.emit('app:navigate', { moduleId: 'documents', data: { docId } });
+            console.log('✅ Navigation émise vers documents avec docId:', docId);
+        } else {
+            console.warn('⚠️ EventBus non disponible pour la navigation');
         }
+
         // Show notification
         if (window.notifications) {
             window.notifications.info(`Ouverture du document #${docId}`);
