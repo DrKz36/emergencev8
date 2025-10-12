@@ -166,7 +166,8 @@ TABLE_DEFINITIONS = [
         revoked_at TEXT,
         revoked_by TEXT,
         password_hash TEXT,
-        password_updated_at TEXT
+        password_updated_at TEXT,
+        password_must_reset INTEGER DEFAULT 1
     );
     """,
     """
@@ -218,6 +219,25 @@ TABLE_DEFINITIONS = [
     """
     CREATE INDEX IF NOT EXISTS idx_auth_audit_event
     ON auth_audit_log(event_type);
+    """,
+    # -- password reset tokens --
+    """
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        token TEXT PRIMARY KEY,
+        email TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        used_at TEXT,
+        FOREIGN KEY (email) REFERENCES auth_allowlist(email) ON DELETE CASCADE
+    );
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_email
+    ON password_reset_tokens(email);
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at
+    ON password_reset_tokens(expires_at);
     """,
     # -- migrations & monitoring (existant) --
     """
@@ -397,6 +417,7 @@ async def _ensure_allowlist_password_columns(db: DatabaseManager):
 
     await _add_column_if_missing(db, "auth_allowlist", "password_hash", "TEXT")
     await _add_column_if_missing(db, "auth_allowlist", "password_updated_at", "TEXT")
+    await _add_column_if_missing(db, "auth_allowlist", "password_must_reset", "INTEGER DEFAULT 1")
 
     try:
         await db.execute("""
@@ -405,6 +426,16 @@ async def _ensure_allowlist_password_columns(db: DatabaseManager):
         """, commit=True)
     except Exception as e:
         logger.warning(f"[DDL] Index idx_auth_allowlist_password_updated non cree: {e}")
+
+    # Set password_must_reset to 0 for existing users who already have a password
+    try:
+        await db.execute("""
+            UPDATE auth_allowlist
+            SET password_must_reset = 0
+            WHERE password_hash IS NOT NULL AND password_hash != '' AND password_must_reset IS NULL
+        """, commit=True)
+    except Exception as e:
+        logger.warning(f"[DDL] Could not update password_must_reset for existing users: {e}")
 
 async def _ensure_session_isolation_columns(db: DatabaseManager):
     await _add_column_if_missing(db, "threads", "session_id", "TEXT")
