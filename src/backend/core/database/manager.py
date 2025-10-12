@@ -29,11 +29,12 @@ class DatabaseManager:
     async def connect(self):
         if not self.is_connected():
             try:
-                self.connection = await aiosqlite.connect(self.db_path)
+                self.connection = await aiosqlite.connect(self.db_path, timeout=30.0)
                 self.connection.row_factory = aiosqlite.Row
                 await self.connection.execute("PRAGMA journal_mode=WAL;")
+                await self.connection.execute("PRAGMA busy_timeout = 10000;")  # 10 secondes
                 await self.connection.execute("PRAGMA foreign_keys = ON;")
-                logger.info("Connexion aiosqlite établie (WAL).")
+                logger.info("Connexion aiosqlite établie (WAL, busy_timeout=10s).")
             except Exception as e:
                 logger.error(f"Erreur de connexion DB: {e}", exc_info=True)
                 raise
@@ -134,10 +135,22 @@ class DatabaseManager:
         commit: bool = False,
     ) -> aiosqlite.Cursor:
         conn = await self._ensure_connection()
-        cursor = await conn.executemany(query, params)
-        if commit:
-            await conn.commit()
-        return cursor
+
+        # Retry logic pour database locked errors
+        max_lock_retries = 5
+        for attempt in range(max_lock_retries):
+            try:
+                cursor = await conn.executemany(query, params)
+                if commit:
+                    await conn.commit()
+                return cursor
+            except Exception as e:
+                if "database is locked" in str(e).lower() and attempt < max_lock_retries - 1:
+                    wait_time = 0.1 * (2 ** attempt)  # Exponential backoff: 0.1, 0.2, 0.4, 0.8, 1.6s
+                    logger.warning(f"Database locked, retry {attempt + 1}/{max_lock_retries} after {wait_time}s")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise
 
     async def fetch_one(
         self,
@@ -145,9 +158,21 @@ class DatabaseManager:
         params: Optional[Tuple[Any, ...]] = None,
     ) -> Optional[aiosqlite.Row]:
         conn = await self._ensure_connection()
-        async with conn.cursor() as cursor:
-            await cursor.execute(query, params or ())
-            return await cursor.fetchone()
+
+        # Retry logic pour database locked errors
+        max_lock_retries = 5
+        for attempt in range(max_lock_retries):
+            try:
+                async with conn.cursor() as cursor:
+                    await cursor.execute(query, params or ())
+                    return await cursor.fetchone()
+            except Exception as e:
+                if "database is locked" in str(e).lower() and attempt < max_lock_retries - 1:
+                    wait_time = 0.1 * (2 ** attempt)  # Exponential backoff: 0.1, 0.2, 0.4, 0.8, 1.6s
+                    logger.warning(f"Database locked, retry {attempt + 1}/{max_lock_retries} after {wait_time}s")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise
 
     async def fetch_all(
         self,
@@ -155,18 +180,56 @@ class DatabaseManager:
         params: Optional[Tuple[Any, ...]] = None,
     ) -> List[aiosqlite.Row]:
         conn = await self._ensure_connection()
-        async with conn.cursor() as cursor:
-            await cursor.execute(query, params or ())
-            rows = await cursor.fetchall()
-        return list(rows)
+
+        # Retry logic pour database locked errors
+        max_lock_retries = 5
+        for attempt in range(max_lock_retries):
+            try:
+                async with conn.cursor() as cursor:
+                    await cursor.execute(query, params or ())
+                    rows = await cursor.fetchall()
+                return list(rows)
+            except Exception as e:
+                if "database is locked" in str(e).lower() and attempt < max_lock_retries - 1:
+                    wait_time = 0.1 * (2 ** attempt)  # Exponential backoff: 0.1, 0.2, 0.4, 0.8, 1.6s
+                    logger.warning(f"Database locked, retry {attempt + 1}/{max_lock_retries} after {wait_time}s")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise
 
     async def commit(self) -> None:
         conn = await self._ensure_connection()
-        await conn.commit()
+
+        # Retry logic pour database locked errors
+        max_lock_retries = 5
+        for attempt in range(max_lock_retries):
+            try:
+                await conn.commit()
+                return
+            except Exception as e:
+                if "database is locked" in str(e).lower() and attempt < max_lock_retries - 1:
+                    wait_time = 0.1 * (2 ** attempt)  # Exponential backoff: 0.1, 0.2, 0.4, 0.8, 1.6s
+                    logger.warning(f"Database locked on commit, retry {attempt + 1}/{max_lock_retries} after {wait_time}s")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise
 
     async def rollback(self) -> None:
         conn = await self._ensure_connection()
-        await conn.rollback()
+
+        # Retry logic pour database locked errors
+        max_lock_retries = 5
+        for attempt in range(max_lock_retries):
+            try:
+                await conn.rollback()
+                return
+            except Exception as e:
+                if "database is locked" in str(e).lower() and attempt < max_lock_retries - 1:
+                    wait_time = 0.1 * (2 ** attempt)  # Exponential backoff: 0.1, 0.2, 0.4, 0.8, 1.6s
+                    logger.warning(f"Database locked on rollback, retry {attempt + 1}/{max_lock_retries} after {wait_time}s")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise
 
     async def initialize(self, migrations_dir: Optional[str] = None) -> None:
         """
