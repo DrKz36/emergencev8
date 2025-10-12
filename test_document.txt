@@ -1,0 +1,14 @@
+Test document pour vérifier la correction du middleware.
+
+Ce document contient plusieurs lignes de texte pour tester le chunking et la vectorisation.
+
+Section 1: Introduction
+Ce document teste le système de traitement des documents après les corrections apportées aux middlewares.
+
+Section 2: Contenu
+Le système doit être capable de gérer ce document sans provoquer l'erreur "RuntimeError: No response returned."
+
+Section 3: Validation
+Si ce test réussit, le système peut gérer des documents volumineux comme memoire.txt sans problème.
+
+Fin du test.

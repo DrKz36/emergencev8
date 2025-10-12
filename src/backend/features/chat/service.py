@@ -39,6 +39,10 @@ from backend.features.memory.gardener import MemoryGardener
 from backend.features.memory.concept_recall import ConceptRecallTracker
 from backend.features.memory.proactive_hints import ProactiveHintEngine
 
+# ✅ Phase 3 RAG : Imports pour métriques et cache
+from backend.features.chat import rag_metrics
+from backend.features.chat.rag_cache import create_rag_cache, RAGCache
+
 logger = logging.getLogger(__name__)
 
 VITALITY_RECALL_THRESHOLD = getattr(MemoryGardener, "RECALL_THRESHOLD", 0.3)
@@ -84,11 +88,13 @@ class ChatService:
         cost_tracker: CostTracker,
         vector_service: VectorService,
         settings: Settings,
+        document_service: Optional[Any] = None,  # ✅ Phase 3 RAG: Injection DocumentService
     ):
         self.session_manager = session_manager
         self.cost_tracker = cost_tracker
         self.vector_service = vector_service
         self.settings = settings
+        self.document_service = document_service  # ✅ Phase 3 RAG
 
         # Politique hors historique (quand RAG OFF)
         self.off_history_policy = os.getenv("EMERGENCE_RAG_OFF_POLICY", "stateless").strip().lower()
@@ -135,6 +141,20 @@ class ChatService:
         else:
             self.hint_engine = None
             logger.warning("ProactiveHintEngine NON initialisé (vector_service manquant)")
+
+        # ✅ Phase 3 RAG : Cache et métriques
+        self.rag_cache: RAGCache = create_rag_cache()
+        self.rag_metrics_aggregator = rag_metrics.get_aggregator()
+        logger.info(f"[Phase 3 RAG] Cache initialisé: {self.rag_cache.get_stats()}")
+
+        # Configurer les métriques Prometheus avec paramètres système
+        rag_metrics.set_rag_config(
+            n_results=30,
+            max_blocks=10,
+            chunk_tolerance=30,
+            cache_enabled=self.rag_cache.enabled,
+            cache_ttl=self.rag_cache.ttl_seconds
+        )
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
         self.broadcast_agents = self._compute_broadcast_agents()
@@ -314,6 +334,651 @@ class ChatService:
     # ---------- utilitaires mémoire / RAG ----------
     def _extract_sensitive_tokens(self, text: str) -> List[str]:
         return re.findall(r"\b[A-Z]{3,}-\d{3,}\b", text or "")
+
+    def _extract_relevant_excerpt(
+        self,
+        text: str,
+        query: str,
+        max_length: int = 300
+    ) -> str:
+        """
+        Extrait un extrait centré sur les mots-clés de la requête.
+        Respecte les limites de phrases (pas de troncation brutale).
+
+        Args:
+            text: Texte complet du chunk
+            query: Requête utilisateur
+            max_length: Longueur maximale de l'extrait
+
+        Returns:
+            Extrait pertinent avec phrases complètes
+        """
+        if not text or not text.strip():
+            return ""
+
+        # Si le texte est déjà court, le retourner tel quel
+        if len(text) <= max_length:
+            return text.strip()
+
+        # Découper en phrases
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+
+        if not query or not query.strip():
+            # Sans requête, prendre les premières phrases
+            result = []
+            current_len = 0
+            for sentence in sentences:
+                if current_len + len(sentence) > max_length:
+                    break
+                result.append(sentence)
+                current_len += len(sentence) + 1
+            excerpt = ' '.join(result)
+            if len(text) > len(excerpt):
+                excerpt += '...'
+            return excerpt.strip()
+
+        # Trouver la phrase la plus pertinente
+        query_words = set(query.lower().split())
+        best_sentence_idx = 0
+        best_score = 0
+
+        for i, sentence in enumerate(sentences):
+            sentence_lower = sentence.lower()
+            # Score = nombre de mots-clés présents
+            score = sum(1 for word in query_words if len(word) >= 3 and word in sentence_lower)
+            if score > best_score:
+                best_score = score
+                best_sentence_idx = i
+
+        # Prendre 1-2 phrases autour de la meilleure
+        start_idx = max(0, best_sentence_idx - 1)
+        end_idx = min(len(sentences), best_sentence_idx + 2)
+
+        excerpt = ' '.join(sentences[start_idx:end_idx])
+
+        # Truncate proprement si encore trop long
+        if len(excerpt) > max_length:
+            # Couper au dernier espace avant max_length
+            excerpt = excerpt[:max_length].rsplit(' ', 1)[0] + '...'
+        elif len(text) > len(excerpt):
+            excerpt += '...'
+
+        return excerpt.strip()
+
+    def _highlight_keywords(self, text: str, query: str) -> str:
+        """
+        Surligne les mots-clés pertinents de la requête dans le texte.
+        Utilise **mot** pour markdown bold.
+
+        Args:
+            text: Texte à traiter
+            query: Requête contenant les mots-clés
+
+        Returns:
+            Texte avec mots-clés surlignés
+        """
+        if not text or not query:
+            return text
+
+        query_words = [w.strip() for w in query.lower().split() if len(w.strip()) >= 3]
+
+        for word in query_words:
+            if not word:
+                continue
+            # Remplacer (case-insensitive) en conservant la casse originale
+            pattern = re.compile(r'\b(' + re.escape(word) + r')\b', re.IGNORECASE)
+            text = pattern.sub(r'**\1**', text)
+
+        return text
+
+    def _parse_user_intent(self, query: str) -> Dict[str, Any]:
+        """
+        Détecte l'intention de l'utilisateur pour adapter la recherche RAG.
+
+        ✅ Phase 2 RAG Milestone 4 : Parsing d'intention pour filtrage sémantique
+
+        Args:
+            query: Requête utilisateur
+
+        Returns:
+            Dictionnaire avec :
+            - wants_integral_citation: bool (si l'utilisateur veut une citation complète)
+            - content_type: str | None ('poem', 'section', 'conversation')
+            - keywords: List[str] (mots-clés extraits)
+            - expanded_query: str (requête enrichie pour la recherche)
+        """
+        if not query:
+            return {
+                'wants_integral_citation': False,
+                'content_type': None,
+                'keywords': [],
+                'expanded_query': query
+            }
+
+        query_lower = query.lower()
+        intents = {}
+
+        # Détection citation intégrale / exacte
+        integral_patterns = [
+            r'(cit|retrouv|donn|montr).*(intégral|complet|entier|exact)',
+            r'\b(intégral|exactement|exact|textuel|tel quel)\b',
+            r'de manière (intégrale|complète|exacte)',
+            r'en entier',
+            r'cite-moi.*passages',  # "Cite-moi 3 passages"
+            r'cite.*ce qui est écrit',  # "Cite ce qui est écrit sur..."
+        ]
+        intents['wants_integral_citation'] = any(
+            re.search(pattern, query_lower, re.I) for pattern in integral_patterns
+        )
+
+        # Détection type de contenu
+        if re.search(r'\b(poème|poem|vers|strophe)\b', query_lower, re.I):
+            intents['content_type'] = 'poem'
+        elif re.search(r'\b(section|chapitre|partie)\b', query_lower, re.I):
+            intents['content_type'] = 'section'
+        elif re.search(r'\b(conversation|dialogue|échange)\b', query_lower, re.I):
+            intents['content_type'] = 'conversation'
+        else:
+            intents['content_type'] = None
+
+        # Extraction keywords (filtrer stopwords)
+        stopwords = {
+            'le', 'la', 'les', 'un', 'une', 'des', 'de', 'du', 'et', 'ou',
+            'peux', 'tu', 'me', 'mon', 'ma', 'ce', 'que', 'qui', 'appelé',
+            'citer', 'manière', 'ai'
+        }
+        words = re.findall(r'\b[a-zàâäéèêëïîôùûüÿæœç]{3,}\b', query_lower)
+        keywords = [w for w in words if w not in stopwords]
+        intents['keywords'] = keywords
+
+        # Expansion de requête pour "poème fondateur"
+        expanded = query
+        if 'fondateur' in keywords and intents['content_type'] == 'poem':
+            # Ajouter des termes associés pour améliorer le matching
+            expanded += " origine premier initial création commencement"
+
+        intents['expanded_query'] = expanded
+
+        return intents
+
+    def _compute_semantic_score(
+        self,
+        hit: Dict[str, Any],
+        user_intent: Dict[str, Any],
+        doc_occurrence_count: Dict[Any, int],
+        index_in_results: int
+    ) -> float:
+        """
+        Calcul de score sémantique multi-critères pour le re-ranking RAG.
+
+        ✅ Phase 3 RAG : Système de scoring avancé avec signaux pondérés
+
+        Signaux pris en compte (pondération):
+        - 40% : Similarité vectorielle (distance ChromaDB)
+        - 20% : Complétude (chunks fusionnés, longueur, is_complete)
+        - 15% : Pertinence mots-clés (match user_intent keywords)
+        - 10% : Fraîcheur (documents récents)
+        - 10% : Diversité (pénalité si surreprésentation d'un doc)
+        - 05% : Alignement type de contenu
+
+        Args:
+            hit: Chunk avec metadata et distance
+            user_intent: Intention utilisateur (de _parse_user_intent)
+            doc_occurrence_count: Compteur d'occurrences par document_id
+            index_in_results: Position dans la liste (0-based)
+
+        Returns:
+            Score final (plus bas = plus pertinent, compatible avec distance ChromaDB)
+        """
+        md = hit.get('metadata', {})
+        base_distance = hit.get('distance', 1.0)
+
+        # ==========================================
+        # 1. SIMILARITÉ VECTORIELLE (40%)
+        # ==========================================
+        # Distance ChromaDB: 0 = parfait match, >1 = dissimilaire
+        # On normalise à [0, 1] en supposant distance max ~2.0
+        vector_score = min(base_distance / 2.0, 1.0)
+
+        # ==========================================
+        # 2. COMPLÉTUDE (20%)
+        # ==========================================
+        completeness_score = 0.0
+
+        # 2.1 Bonus fusion de chunks
+        merged_count = md.get('merged_chunks', 0)
+        if merged_count > 1:
+            # Plus de chunks fusionnés = contenu plus complet
+            completeness_score -= min(merged_count * 0.05, 0.15)  # Max -0.15
+
+        # 2.2 Bonus longueur (contenus longs plus informatifs)
+        line_start = md.get('line_start', 0)
+        line_end = md.get('line_end', 0)
+        line_count = max(0, line_end - line_start)
+
+        if line_count >= 40:
+            completeness_score -= 0.10
+        elif line_count >= 25:
+            completeness_score -= 0.05
+
+        # 2.3 Bonus is_complete flag
+        if md.get('is_complete'):
+            completeness_score -= 0.05
+
+        # Normaliser à [0, 1]
+        completeness_score = max(completeness_score, -0.3)  # Cap à -0.3
+        completeness_normalized = (completeness_score + 0.3) / 0.3  # → [0, 1]
+
+        # ==========================================
+        # 3. PERTINENCE MOTS-CLÉS (15%)
+        # ==========================================
+        keyword_score = 1.0  # Par défaut neutre
+
+        chunk_keywords = md.get('keywords', '').lower()
+        user_keywords = user_intent.get('keywords', [])
+
+        if chunk_keywords and user_keywords:
+            matches = sum(1 for kw in user_keywords if kw in chunk_keywords)
+            if matches > 0:
+                # Plus de matches = meilleur score
+                match_ratio = min(matches / len(user_keywords), 1.0)
+                keyword_score = 1.0 - (match_ratio * 0.5)  # Max -50%
+
+        # Boost supplémentaire pour keywords critiques
+        if 'fondateur' in chunk_keywords and 'fondateur' in user_keywords:
+            keyword_score *= 0.7  # Boost additionnel
+
+        # ==========================================
+        # 4. FRAÎCHEUR / RECENCY (10%)
+        # ==========================================
+        recency_score = 0.5  # Par défaut neutre
+
+        created_at = md.get('created_at')
+        if created_at:
+            try:
+                if isinstance(created_at, str):
+                    doc_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                else:
+                    doc_date = created_at
+
+                age_days = (datetime.now(timezone.utc) - doc_date).days
+
+                # Documents récents favorisés
+                if age_days < 7:
+                    recency_score = 0.2  # Très récent
+                elif age_days < 30:
+                    recency_score = 0.4  # Récent
+                elif age_days < 180:
+                    recency_score = 0.6  # Moyen
+                else:
+                    # Dépréciation progressive après 6 mois
+                    recency_score = min(0.8 + (age_days - 180) / 365 * 0.2, 1.0)
+
+            except Exception:
+                pass  # Garder valeur par défaut
+
+        # ==========================================
+        # 5. DIVERSITÉ (10%)
+        # ==========================================
+        diversity_score = 0.5  # Par défaut neutre
+
+        doc_id = md.get('document_id')
+        if doc_id is not None:
+            occurrences = doc_occurrence_count.get(doc_id, 1)
+
+            if occurrences > 3:
+                # Pénalité pour surreprésentation (éviter 10 chunks du même doc)
+                diversity_score = min(0.5 + (occurrences - 3) * 0.15, 1.0)
+            elif occurrences == 1:
+                # Bonus pour documents uniques (favorise diversité)
+                diversity_score = 0.3
+
+        # ==========================================
+        # 6. ALIGNEMENT TYPE DE CONTENU (5%)
+        # ==========================================
+        content_type_score = 0.5  # Par défaut neutre
+
+        chunk_type = md.get('chunk_type', '')
+        wanted_type = user_intent.get('content_type')
+
+        if wanted_type and chunk_type:
+            if chunk_type == wanted_type:
+                content_type_score = 0.0  # Match parfait
+            elif wanted_type == 'poem' and chunk_type in ('verse', 'poetry'):
+                content_type_score = 0.2  # Match partiel
+            else:
+                content_type_score = 0.8  # Pas de match
+
+        # ==========================================
+        # SCORE FINAL PONDÉRÉ
+        # ==========================================
+        final_score = (
+            0.40 * vector_score +
+            0.20 * completeness_normalized +
+            0.15 * keyword_score +
+            0.10 * recency_score +
+            0.10 * diversity_score +
+            0.05 * content_type_score
+        )
+
+        return final_score
+
+    def _merge_adjacent_chunks(
+        self,
+        doc_hits: List[Dict[str, Any]],
+        max_blocks: int = 10,
+        user_intent: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Regroupe les chunks adjacents du même document pour reconstituer les contenus fragmentés.
+
+        ✅ Phase 2 RAG Optimisation : Reconstruit automatiquement les contenus longs (poèmes, sections, etc.)
+        qui ont été découpés en plusieurs chunks lors de l'indexation.
+
+        ✅ Phase 3 RAG Optimisation : Re-ranking sémantique multi-critères avec diversification
+
+        Args:
+            doc_hits: Liste de chunks retournés par le RAG (avec métadonnées)
+            max_blocks: Nombre maximum de blocs sémantiques à retourner (pour ne pas surcharger le LLM)
+            user_intent: Intention utilisateur parsée (pour scoring avancé)
+
+        Returns:
+            Liste de chunks fusionnés, triés par pertinence multi-critères
+
+        Logique:
+        1. Trier les chunks par document_id + line_start
+        2. Identifier les séquences de chunks consécutifs (même doc, lignes qui se suivent)
+        3. Fusionner ces chunks en un seul bloc
+        4. Marquer avec [CONTENU COMPLET - lignes X-Y] si fusion
+        5. Re-ranking multi-critères (Phase 3) avec signaux sémantiques avancés
+        6. Limiter au top max_blocks les plus pertinents
+        """
+        if not doc_hits:
+            return []
+
+        # Grouper par document_id
+        by_document: Dict[Any, List[Dict[str, Any]]] = {}
+        for hit in doc_hits:
+            md = hit.get('metadata', {})
+            doc_id = md.get('document_id')
+            if doc_id is not None:
+                if doc_id not in by_document:
+                    by_document[doc_id] = []
+                by_document[doc_id].append(hit)
+
+        merged_hits = []
+
+        for doc_id, chunks in by_document.items():
+            # Trier par line_start pour détecter l'adjacence
+            chunks_sorted = sorted(
+                chunks,
+                key=lambda x: x.get('metadata', {}).get('line_start', 0)
+            )
+
+            i = 0
+            while i < len(chunks_sorted):
+                current = chunks_sorted[i]
+                current_md = current.get('metadata', {})
+                current_end = current_md.get('line_end', 0)
+
+                # Collecter les chunks adjacents
+                adjacent_group = [current]
+                j = i + 1
+
+                while j < len(chunks_sorted):
+                    next_chunk = chunks_sorted[j]
+                    next_md = next_chunk.get('metadata', {})
+                    next_start = next_md.get('line_start', 0)
+
+                    # Vérifier si consécutif (tolérance de 30 lignes pour capturer chunks séparés par lignes vides)
+                    if next_start <= current_end + 30:
+                        adjacent_group.append(next_chunk)
+                        current_end = max(current_end, next_md.get('line_end', 0))
+                        j += 1
+                    else:
+                        break
+
+                # Fusionner si plusieurs chunks adjacents
+                if len(adjacent_group) > 1:
+                    # Fusionner les textes
+                    merged_text = "\n".join([chunk.get('text', '') for chunk in adjacent_group])
+
+                    # Créer métadonnées fusionnées
+                    first_md = adjacent_group[0].get('metadata', {})
+                    last_md = adjacent_group[-1].get('metadata', {})
+
+                    merged_md = dict(first_md)
+                    merged_md['line_start'] = first_md.get('line_start', 0)
+                    merged_md['line_end'] = last_md.get('line_end', 0)
+                    merged_md['line_range'] = f"{merged_md['line_start']}-{merged_md['line_end']}"
+                    merged_md['is_complete'] = all(c.get('metadata', {}).get('is_complete', False) for c in adjacent_group)
+                    merged_md['merged_chunks'] = len(adjacent_group)
+
+                    # Calculer score moyen
+                    avg_score = sum(c.get('distance', 0) for c in adjacent_group) / len(adjacent_group)
+
+                    merged_hit = {
+                        'text': merged_text.strip(),
+                        'metadata': merged_md,
+                        'distance': avg_score,
+                        'id': f"{doc_id}_merged_{i}"
+                    }
+
+                    merged_hits.append(merged_hit)
+                    logger.info(
+                        f"[RAG Merge] Fusionné {len(adjacent_group)} chunks "
+                        f"(doc {doc_id}, lignes {merged_md['line_start']}-{merged_md['line_end']})"
+                    )
+                else:
+                    # Chunk isolé, garder tel quel
+                    merged_hits.append(current)
+
+                i = j if j > i + 1 else i + 1
+
+        # ✅ Phase 3 : Re-ranking multi-critères avec scoring sémantique avancé
+        # Si user_intent fourni, utiliser le nouveau système de scoring
+        if user_intent is not None:
+            # Compter occurrences par document_id (pour score diversité)
+            doc_occurrence_count: Dict[Any, int] = {}
+            for hit in merged_hits:
+                doc_id = hit.get('metadata', {}).get('document_id')
+                if doc_id is not None:
+                    doc_occurrence_count[doc_id] = doc_occurrence_count.get(doc_id, 0) + 1
+
+            # Calculer scores sémantiques multi-critères
+            scored_hits = []
+            for idx, hit in enumerate(merged_hits):
+                semantic_score = self._compute_semantic_score(
+                    hit, user_intent, doc_occurrence_count, idx
+                )
+                scored_hits.append((semantic_score, hit))
+
+            # Trier par score (plus bas = meilleur)
+            scored_hits.sort(key=lambda x: x[0])
+            merged_hits = [hit for score, hit in scored_hits]
+
+        else:
+            # Fallback vers ancien système (Phase 2) si pas d'intent
+            def compute_sort_key(hit: Dict[str, Any]) -> float:
+                base_distance = hit.get('distance', 1.0)
+                md = hit.get('metadata', {})
+                merged_count = md.get('merged_chunks', 0)
+                chunk_type = md.get('chunk_type', 'prose')
+                line_start = md.get('line_start', 0)
+                line_end = md.get('line_end', 0)
+                line_count = max(0, line_end - line_start)
+
+                boost = 1.0
+                if merged_count > 1:
+                    boost *= 0.4
+
+                if chunk_type == 'poem' and merged_count >= 2:
+                    if line_count >= 40:
+                        boost *= 0.2
+                    elif line_count >= 25:
+                        boost *= 0.5
+
+                keywords = md.get('keywords', '')
+                if 'fondateur' in keywords.lower():
+                    boost *= 0.4
+                elif 'espoir' in keywords.lower() and chunk_type == 'poem':
+                    boost *= 0.7
+
+                return base_distance * boost
+
+            merged_hits.sort(key=compute_sort_key)
+
+        # Limiter au top max_blocks
+        result = merged_hits[:max_blocks]
+
+        logger.info(
+            f"[RAG Merge] {len(doc_hits)} chunks originaux → {len(result)} blocs sémantiques "
+            f"(max={max_blocks})"
+        )
+
+        # Log des top 3 pour debugging
+        for i, hit in enumerate(result[:3]):
+            md = hit.get('metadata', {})
+            line_count = md.get('line_end', 0) - md.get('line_start', 0)
+            logger.info(
+                f"[RAG Merge] Top {i+1}: lines {md.get('line_range', 'N/A')} ({line_count} lines), "
+                f"type={md.get('chunk_type', 'N/A')}, merged={md.get('merged_chunks', 0)}, "
+                f"score={hit.get('distance', 0):.3f}, keywords={md.get('keywords', 'N/A')[:30]}"
+            )
+
+        return result
+
+    def _format_rag_context(self, doc_hits: List[Dict[str, Any]], max_tokens: int = 50000) -> str:
+        """
+        Formate le contexte RAG en exploitant les métadonnées sémantiques.
+
+        ✅ Phase 2 RAG : Affiche explicitement le type de contenu (poème, section, etc.)
+        pour aider le LLM à comprendre la nature du texte et à le citer correctement.
+
+        ✅ Phase 3.1 : Instructions RENFORCÉES pour citations exactes (avant le contenu)
+        ✅ Phase 3.2 : Limite intelligente pour éviter context_length_exceeded
+
+        Args:
+            doc_hits: Liste de dictionnaires avec 'text' et 'metadata'
+            max_tokens: Limite approximative en tokens (défaut 50k pour laisser place à l'historique)
+
+        Returns:
+            Contexte formaté avec headers explicites par type
+        """
+        if not doc_hits:
+            return ""
+
+        blocks = []
+        has_poem = False
+        has_complete_content = False
+        total_chars = 0
+        max_chars = max_tokens * 4  # Approximation: 1 token ≈ 4 caractères
+
+        for hit in doc_hits:
+            text = (hit.get('text') or '').strip()
+            if not text:
+                continue
+
+            # ✅ Phase 3.2: Stop si dépasse la limite
+            if total_chars + len(text) > max_chars:
+                logger.warning(f"[RAG Context] Limite atteinte ({total_chars}/{max_chars} chars), truncating remaining docs")
+                break
+
+            total_chars += len(text)
+
+            md = hit.get('metadata', {})
+            chunk_type = md.get('chunk_type', 'prose')
+            section_title = md.get('section_title', '')
+            line_range = md.get('line_range', '')
+            merged_count = md.get('merged_chunks', 0)
+
+            # Tracker contenus complets
+            if merged_count > 1:
+                has_complete_content = True
+
+            # Construire le header selon le type
+            if chunk_type == 'poem':
+                has_poem = True
+                header = "[POÈME"
+                if merged_count > 1:
+                    header += f" - CONTENU COMPLET"
+                header += "]"
+                if section_title:
+                    header += f" {section_title}"
+                if line_range:
+                    header += f" (lignes {line_range})"
+            elif chunk_type == 'section':
+                header = "[SECTION"
+                if merged_count > 1:
+                    header += f" - CONTENU COMPLET"
+                header += "]"
+                if section_title:
+                    header += f" {section_title}"
+                if line_range:
+                    header += f" (lignes {line_range})"
+            elif chunk_type == 'conversation':
+                header = "[CONVERSATION"
+                if merged_count > 1:
+                    header += f" - CONTENU COMPLET"
+                header += "]"
+                if line_range:
+                    header += f" (lignes {line_range})"
+            else:
+                # prose
+                header = ""
+                if section_title:
+                    header = f"[{section_title}]"
+                if line_range and header:
+                    header += f" (lignes {line_range})"
+                if merged_count > 1 and header:
+                    header = header.rstrip("]") + " - CONTENU COMPLET]"
+
+            if header:
+                blocks.append(f"{header}\n{text}")
+            else:
+                blocks.append(text)
+
+        # ✅ Phase 3.1 : Instructions FORTES pour citations exactes (AVANT le contenu)
+        instruction_parts = []
+
+        if has_complete_content or has_poem:
+            instruction_parts.append(
+                "╔══════════════════════════════════════════════════════════╗\n"
+                "║  INSTRUCTION PRIORITAIRE : CITATIONS TEXTUELLES          ║\n"
+                "╚══════════════════════════════════════════════════════════╝"
+            )
+
+        if has_poem:
+            instruction_parts.append(
+                "\n🔴 RÈGLE ABSOLUE pour les POÈMES :\n"
+                "   • Si l'utilisateur demande de citer un poème (intégralement, complet, etc.),\n"
+                "     tu DOIS copier-coller le texte EXACT ligne par ligne.\n"
+                "   • JAMAIS de paraphrase, JAMAIS de résumé.\n"
+                "   • Préserve TOUS les retours à la ligne, la ponctuation, les majuscules.\n"
+                "   • Format : introduis brièvement PUIS cite entre guillemets ou en bloc.\n"
+            )
+
+        if has_complete_content:
+            instruction_parts.append(
+                "\n🟠 RÈGLE pour les CONTENUS COMPLETS :\n"
+                "   • Les blocs marqués \"CONTENU COMPLET\" contiennent la version intégrale.\n"
+                "   • Pour toute demande de citation (section, conversation, passage),\n"
+                "     copie le texte TEL QUEL depuis le bloc correspondant.\n"
+                "   • Ne recompose pas, ne synthétise pas : CITE TEXTUELLEMENT.\n"
+            )
+
+        if instruction_parts:
+            instruction_header = "".join(instruction_parts)
+            blocks_text = "\n\n".join(blocks)
+            result = f"{instruction_header}\n\n{chr(0x2500) * 60}\n\n{blocks_text}"
+        else:
+            result = "\n\n".join(blocks)
+
+        # ✅ Phase 3.2: Log de la taille du contexte généré
+        result_tokens = len(result) // 4  # Approximation
+        logger.info(f"[RAG Context] Generated context: {len(result)} chars (~{result_tokens} tokens), {len(blocks)} blocks")
+
+        return result
 
     @staticmethod
     def _normalize_role_value(role: Any) -> str:
@@ -547,9 +1212,48 @@ class ChatService:
     async def _build_memory_context(
         self, session_id: str, last_user_message: str, top_k: int = 5, agent_id: Optional[str] = None
     ) -> str:
+        """
+        ✅ Phase 3 RAG : Recherche documentaire avec scoring multi-critères + formatage Phase 3.1
+
+        Ordre de priorité :
+        1. Documents (avec scoring multi-critères)
+        2. Mémoire conversationnelle (fallback si pas de documents)
+        """
         try:
             if not last_user_message:
                 return ""
+
+            uid = self._try_get_user_id(session_id)
+
+            # ✅ Phase 3 RAG : Recherche dans les DOCUMENTS en priorité
+            document_results = []
+            if self.document_service:
+                try:
+                    # Parser l'intention utilisateur
+                    intent = self._parse_user_intent(last_user_message)
+
+                    # Rechercher dans les documents avec scoring Phase 3
+                    document_results = self.document_service.search_documents(
+                        query=intent.get("expanded_query", last_user_message),
+                        session_id=session_id,
+                        user_id=uid,
+                        top_k=top_k,
+                        intent=intent
+                    )
+
+                    if document_results:
+                        logger.info(
+                            f"RAG Phase 3: {len(document_results)} documents trouvés "
+                            f"(intent: {intent.get('content_type', 'none')}, "
+                            f"citation_integrale: {intent.get('wants_integral_citation', False)})"
+                        )
+
+                        # ✅ Phase 3.1: Formatter avec cadre visuel pour citations exactes
+                        return self._format_rag_context(document_results)
+                except Exception as e:
+                    logger.error(f"Erreur recherche documents Phase 3: {e}", exc_info=True)
+
+            # Fallback: Recherche dans la mémoire conversationnelle (ancien système)
             if self._knowledge_collection is None:
                 knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
                 self._knowledge_collection = self.vector_service.get_or_create_collection(knowledge_name)
@@ -558,7 +1262,6 @@ class ChatService:
             if knowledge_col is None:
                 return ""
             where_filter = None
-            uid = self._try_get_user_id(session_id)
 
             session_clause: Dict[str, Any] = {
                 "$or": [
@@ -1136,11 +1839,32 @@ class ChatService:
                 if self._doc_collection is None:
                     self._doc_collection = self.vector_service.get_or_create_collection(config.DOCUMENT_COLLECTION_NAME)
 
+                # ✅ Phase 2 RAG Milestone 4 : Détection d'intention utilisateur
+                user_intent = self._parse_user_intent(last_user_message)
+                logger.info(
+                    f"[RAG Intent] content_type={user_intent.get('content_type')}, "
+                    f"wants_integral={user_intent.get('wants_integral_citation')}, "
+                    f"keywords={user_intent.get('keywords')}"
+                )
+
                 base_clauses: List[Dict[str, Any]] = [{"session_id": session_id}]
                 if uid:
                     base_clauses.append({"user_id": uid})
 
                 where_clauses: List[Dict[str, Any]] = list(base_clauses)
+
+                # ✅ Phase 2 RAG Milestone 4 : Filtrage sémantique par type de contenu
+                if user_intent.get('content_type'):
+                    where_clauses.append({"chunk_type": user_intent['content_type']})
+                    logger.info(f"[RAG Filter] Filtering by chunk_type={user_intent['content_type']}")
+
+                # ✅ Phase 2 RAG Milestone 4 : Priorité aux chunks complets si citation intégrale demandée
+                # MAIS rendre ce filtre optionnel pour ne pas trop restreindre
+                if user_intent.get('wants_integral_citation'):
+                    # On ne force pas is_complete=True car ça peut exclure des résultats pertinents
+                    # On l'utilisera plutôt pour le tri/ranking plus tard
+                    logger.info("[RAG Filter] Wants integral citation (will prioritize complete chunks in ranking)")
+
                 if selected_doc_ids:
                     if len(selected_doc_ids) == 1:
                         doc_filter: Dict[str, Any] = {"document_id": selected_doc_ids[0]}
@@ -1155,30 +1879,89 @@ class ChatService:
                 else:
                     where_filter = {"$and": where_clauses}
 
-                query_text = (last_user_message or "").strip()
+                # ✅ Phase 2 RAG Milestone 4 : Utiliser requête expandue
+                query_text = user_intent.get('expanded_query') or (last_user_message or "").strip()
                 if not query_text and selected_doc_ids:
                     query_text = " ".join(f"document:{doc_id}" for doc_id in selected_doc_ids) or "selected documents"
 
-                doc_hits = self.vector_service.query(
-                    collection=self._doc_collection,
-                    query_text=query_text or " ",
-                    where_filter=where_filter,
+                logger.info(f"[RAG Query] expanded_query='{query_text[:100]}...'")
+
+                # ✅ Phase 3 RAG : Enregistrer métriques + vérifier cache
+                rag_metrics.record_query(agent_id, has_intent=bool(user_intent.get('content_type')))
+                if user_intent.get('content_type'):
+                    rag_metrics.record_content_type_query(user_intent['content_type'])
+
+                # Tenter de récupérer depuis le cache
+                cached_result = self.rag_cache.get(
+                    query_text, where_filter, agent_id, selected_doc_ids
                 )
 
-                rag_sources = []
-                for h in (doc_hits or []):
-                    md = h.get("metadata") or {}
-                    excerpt = (h.get("text") or "").strip()
-                    if excerpt:
-                        excerpt = excerpt[:220].rstrip()
-                    rag_sources.append(
-                        {
-                            "document_id": md.get("document_id"),
-                            "filename": md.get("filename"),
-                            "page": md.get("page"),
-                            "excerpt": excerpt,
-                        }
-                    )
+                if cached_result:
+                    # Cache hit !
+                    rag_metrics.record_cache_hit()
+                    doc_hits = cached_result.get('doc_hits', [])
+                    rag_sources = cached_result.get('rag_sources', [])
+                    logger.info(f"[RAG Cache] HIT - Restored {len(doc_hits)} chunks from cache")
+                else:
+                    rag_sources = []
+                    # Cache miss, exécuter la query
+                    rag_metrics.record_cache_miss()
+
+                    # ✅ Phase 1 Optimisation: Recherche hybride (vectorielle + BM25)
+                    with rag_metrics.track_duration(rag_metrics.rag_query_phase3_duration_seconds):
+                        raw_doc_hits = self.vector_service.hybrid_query(
+                            collection=self._doc_collection,
+                            query_text=query_text or " ",
+                            n_results=30,  # Augmenté à 30 pour récupérer contenus longs fragmentés
+                            where_filter=where_filter,
+                            alpha=0.6,  # 60% vectoriel, 40% BM25 (équilibré)
+                            score_threshold=0.2,  # Abaissé de 0.3 à 0.2 pour plus de résultats
+                        )
+
+                    # ✅ Phase 2 RAG Optimisation : Fusionner les chunks adjacents pour reconstituer contenus complets
+                    # ✅ Phase 3 RAG Optimisation : Utiliser nouveau scoring multi-critères
+                    with rag_metrics.track_duration(rag_metrics.rag_merge_duration_seconds):
+                        doc_hits = self._merge_adjacent_chunks(
+                            raw_doc_hits or [],
+                            max_blocks=10,
+                            user_intent=user_intent  # ✅ Passé pour scoring avancé
+                        )
+
+                    # Enregistrer le nombre de chunks fusionnés
+                    raw_count = len(raw_doc_hits or [])
+                    merged_count = len(doc_hits)
+                    if merged_count < raw_count:
+                        rag_metrics.record_chunks_merged(raw_count - merged_count)
+
+                    # Construire rag_sources pour UI
+                    for h in (doc_hits or []):
+                        md = h.get("metadata") or {}
+                        full_text = (h.get("text") or "").strip()
+
+                        # ✅ Phase 1: Extraction intelligente de citation (phrases complètes)
+                        excerpt = self._extract_relevant_excerpt(
+                            full_text,
+                            query_text,
+                            max_length=300  # Plus long que les 220 précédents
+                        )
+
+                        # ✅ Phase 1: Highlighting des mots-clés pour l'UI
+                        highlighted = self._highlight_keywords(excerpt, query_text)
+
+                        # Récupérer le score de pertinence
+                        score = h.get("distance", 0)
+
+                        rag_sources.append(
+                            {
+                                "document_id": md.get("document_id"),
+                                "filename": md.get("filename"),
+                                "page": md.get("page"),
+                                "section": md.get("section"),  # ✅ Section si disponible
+                                "excerpt": excerpt,
+                                "highlighted": highlighted,  # ✅ Version avec highlighting
+                                "score": round(score, 3),  # ✅ Score de pertinence
+                            }
+                        )
 
                 if allowed_doc_ids:
                     filtered_sources: List[Dict[str, Any]] = []
@@ -1195,9 +1978,36 @@ class ChatService:
                             filtered_sources.append(source)
                     rag_sources = filtered_sources
 
-                doc_block = (
-                    "\n\n".join([f"- {h['text']}" for h in (doc_hits or []) if h.get("text")]) if doc_hits else ""
-                )
+                # ✅ Phase 3 RAG : Stocker dans le cache si cache miss
+                if not cached_result and doc_hits:
+                    self.rag_cache.set(
+                        query_text, where_filter, agent_id,
+                        doc_hits, rag_sources, selected_doc_ids
+                    )
+
+                # ✅ Phase 3 RAG : Collecter métriques qualité
+                if doc_hits:
+                    # Diversité des sources (nombre de documents uniques)
+                    unique_docs = len(set(
+                        h.get('metadata', {}).get('document_id')
+                        for h in doc_hits
+                        if h.get('metadata', {}).get('document_id') is not None
+                    ))
+
+                    # Top score (premier résultat = meilleur)
+                    top_score = doc_hits[0].get('distance', 0) if doc_hits else 0
+
+                    # Mettre à jour l'agrégateur de métriques
+                    self.rag_metrics_aggregator.add_result(
+                        chunks_returned=len(doc_hits),
+                        raw_chunks=len(raw_doc_hits or []) if not cached_result else len(doc_hits),
+                        merged_blocks=len(doc_hits),
+                        top_score=top_score,
+                        unique_docs=unique_docs
+                    )
+
+                # ✅ Phase 2 RAG : Formater le contexte avec métadonnées sémantiques
+                doc_block = self._format_rag_context(doc_hits or [])
                 mem_block = await self._build_memory_context(session_id, last_user_message, agent_id=agent_id)
 
                 # Injecter contexte de récurrence si détecté

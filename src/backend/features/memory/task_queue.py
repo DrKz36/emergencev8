@@ -189,12 +189,19 @@ class MemoryTaskQueue:
             logger.warning("[MemoryTaskQueue] consolidate_thread sans thread_id")
             return {"status": "error", "message": "Missing thread_id"}
 
-        # Récupérer gardener depuis container
+        # Récupérer services depuis container
         container = ServiceContainer()
+        memory_analyzer = container.memory_analyzer()
+        chat_service = container.chat_service()
+
+        # ✅ FIX: Injecter chat_service dans memory_analyzer pour le worker background
+        memory_analyzer.set_chat_service(chat_service)
+
+        # Créer gardener avec analyzer configuré
         gardener = MemoryGardener(
             db_manager=container.db_manager(),
             vector_service=container.vector_service(),
-            memory_analyzer=container.memory_analyzer()
+            memory_analyzer=memory_analyzer
         )
 
         # Consolider thread

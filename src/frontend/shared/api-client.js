@@ -386,7 +386,8 @@ export const api = {
   async getDocuments() {
     const url = `${API_ENDPOINTS.DOCUMENTS}/`;
     try {
-      const data = await fetchApi(url);
+      // Timeout plus long pour la récupération de la liste (peut être lente après upload)
+      const data = await fetchApi(url, { timeoutMs: 30000 });
       if (Array.isArray(data?.items)) return data;
       if (Array.isArray(data)) return { items: data };
       return { items: [] };
@@ -408,7 +409,8 @@ export const api = {
   uploadDocument: (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    return fetchApi(API_ENDPOINTS.DOCUMENTS_UPLOAD, { method: 'POST', body: formData });
+    // Timeout plus long pour les fichiers volumineux (2 minutes)
+    return fetchApi(API_ENDPOINTS.DOCUMENTS_UPLOAD, { method: 'POST', body: formData, timeoutMs: 120000 });
   },
 
   deleteDocument: (docId) =>

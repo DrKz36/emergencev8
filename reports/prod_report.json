@@ -1,46 +1,20 @@
 {
-  "timestamp": "2025-10-11T19:58:45.928517",
+  "timestamp": "2025-10-12T02:53:06.044273",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
   "freshness": "1h",
-  "status": "CRITICAL",
+  "status": "OK",
   "summary": {
-    "errors": 9,
+    "errors": 0,
     "warnings": 1,
     "critical_signals": 0,
     "latency_issues": 0
   },
-  "errors": [
-    {
-      "time": "2025-10-11T17:58:29.730791Z",
-      "severity": "ERROR",
-      "msg": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.11/site-packages/uvicorn/protocols/websockets/websockets_impl.py\", line 244, in run_asgi\n    result = await self.app(self.scope, self.asgi_receive, self.asgi_send)  # type: ignore[func-returns-value]\n             ^^^^^^^^^^^^^^^^^^^^^"
-    },
-    {
-      "time": "2025-10-11T17:58:29.698659Z",
-      "severity": "ERROR",
-      "msg": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.11/site-packages/uvicorn/protocols/websockets/websockets_impl.py\", line 244, in run_asgi\n    result = await self.app(self.scope, self.asgi_receive, self.asgi_send)  # type: ignore[func-returns-value]\n             ^^^^^^^^^^^^^^^^^^^^^"
-    },
-    {
-      "time": "2025-10-11T17:58:21.614266Z",
-      "severity": "ERROR",
-      "msg": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.11/site-packages/uvicorn/protocols/websockets/websockets_impl.py\", line 244, in run_asgi\n    result = await self.app(self.scope, self.asgi_receive, self.asgi_send)  # type: ignore[func-returns-value]\n             ^^^^^^^^^^^^^^^^^^^^^"
-    },
-    {
-      "time": "2025-10-11T17:58:21.584346Z",
-      "severity": "ERROR",
-      "msg": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.11/site-packages/uvicorn/protocols/websockets/websockets_impl.py\", line 244, in run_asgi\n    result = await self.app(self.scope, self.asgi_receive, self.asgi_send)  # type: ignore[func-returns-value]\n             ^^^^^^^^^^^^^^^^^^^^^"
-    },
-    {
-      "time": "2025-10-11T17:58:17.481504Z",
-      "severity": "ERROR",
-      "msg": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.11/site-packages/uvicorn/protocols/websockets/websockets_impl.py\", line 244, in run_asgi\n    result = await self.app(self.scope, self.asgi_receive, self.asgi_send)  # type: ignore[func-returns-value]\n             ^^^^^^^^^^^^^^^^^^^^^"
-    }
-  ],
+  "errors": [],
   "warnings": [
     {
-      "time": "2025-10-11T17:58:14.258489Z",
+      "time": "2025-10-12T00:49:59.695057Z",
       "msg": ""
     }
   ],
@@ -48,9 +22,9 @@
   "latency_issues": [],
   "recommendations": [
     {
-      "priority": "HIGH",
-      "action": "Investigate critical issues immediately",
-      "details": "High error rate detected"
+      "priority": "LOW",
+      "action": "No immediate action required",
+      "details": "Production is healthy"
     }
   ]
 }

@@ -1,3 +1,29 @@
+## [2025-10-12 03:41] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+- `src/frontend/features/threads/threads.css`
+
+### Contexte
+Recentrage visuel du module Conversations pour éviter que les contrôles (titre, recherche, tri, CTA) collent aux bords de la carte tout en conservant son encombrement.
+
+### Actions réalisées
+1. Ajouté un `max-width` et un `padding-inline` adaptatif sur `.threads-panel__inner` pour centrer le contenu et créer un matelas uniforme.
+2. Augmenté le `padding` de la carte principale et des éléments `.threads-panel__item` sur desktop et mobile afin d'harmoniser l'espacement.
+3. Ajouté un palier desktop (`@media (min-width: 1280px)`) qui accentue les marges internes afin que boutons et champs respirent sur grand écran, y compris un `padding-inline` renforcé sur `.threads-panel`.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions recommandées
+1. QA visuelle desktop (>=1280px) pour valider l'équilibre gauche/droite du tri et du bouton Nouvelle conversation.
+2. Vérifier en responsive <640px que les nouvelles marges préservent des zones tactiles confortables (archiver/supprimer).
+
+### Blocages
+- `curl http://localhost:8000/api/sync/status` : connexion refusée (AutoSyncService indisponible sur cet environnement).
+- `pwsh -File scripts/sync-workdir.ps1` : refusé (working tree déjà dirty côté repo: `reports/prod_report.json`, `src/backend/features/memory/task_queue.py`, `nul`).
+
 ## [2025-10-11 12:25] - Agent: Codex (Frontend)
 
 ### Fichiers modifiés

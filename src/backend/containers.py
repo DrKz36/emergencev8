@@ -337,6 +337,20 @@ class AppContainer(containers.DeclarativeContainer):
 
     connection_manager = providers.Singleton(ConnectionManager, session_manager=session_manager)
 
+    # --- Documents (doit être défini avant ChatService) ---
+    if DocumentService is not None and ParserFactory is not None:
+        parser_factory = providers.Singleton(ParserFactory)
+        uploads_dir = providers.Callable(_get_uploads_dir, settings)
+        document_service = providers.Singleton(
+            DocumentService,
+            db_manager=db_manager,
+            parser_factory=parser_factory,
+            vector_service=vector_service,
+            uploads_dir=uploads_dir,
+        )
+    else:
+        document_service = None
+
     # --- Chat ---
     chat_service = providers.Singleton(
         ChatService,
@@ -344,6 +358,7 @@ class AppContainer(containers.DeclarativeContainer):
         cost_tracker=cost_tracker,
         vector_service=vector_service,
         settings=settings,
+        document_service=document_service,  # ✅ Phase 3 RAG
     )
 
     # --- Features optionnelles ---
@@ -371,16 +386,7 @@ class AppContainer(containers.DeclarativeContainer):
             cost_tracker=cost_tracker,
         )
 
-    if DocumentService is not None and ParserFactory is not None:
-        parser_factory = providers.Singleton(ParserFactory)
-        uploads_dir = providers.Callable(_get_uploads_dir, settings)
-        document_service = providers.Singleton(
-            DocumentService,
-            db_manager=db_manager,
-            parser_factory=parser_factory,
-            vector_service=vector_service,
-            uploads_dir=uploads_dir,
-        )
+    # DocumentService déjà défini plus haut (avant ChatService)
 
     if BenchmarksService is not None and BenchmarksRepository is not None:
         benchmarks_repository = providers.Singleton(

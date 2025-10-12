@@ -985,7 +985,22 @@ handleClearChat() {
 
   handleRagToggle() {
     const current = !!this.state.get('chat.ragEnabled');
-    this.state.set('chat.ragEnabled', !current);
+    const newState = !current;
+    this.state.set('chat.ragEnabled', newState);
+
+    // Notifier l'utilisateur du changement d'état
+    const selectedDocs = this.state.get('chat.selectedDocIds') || [];
+    if (newState && selectedDocs.length > 0) {
+      this.eventBus.emit('show:notification', {
+        type: 'success',
+        message: `RAG activé - ${selectedDocs.length} document(s) accessible(s) aux agents`
+      });
+    } else if (!newState && selectedDocs.length > 0) {
+      this.eventBus.emit('show:notification', {
+        type: 'info',
+        message: 'RAG désactivé - Les agents ne peuvent plus accéder aux documents'
+      });
+    }
   }
 
   handleDocumentSelectionChanged(payload = {}) {
@@ -1029,6 +1044,13 @@ handleClearChat() {
     this.state.set('chat.selectedDocs', normalizedItems);
     try { this.state.set('documents.selectedIds', normalizedIds); } catch {}
     try { this.state.set('documents.selectionMeta', normalizedItems); } catch {}
+
+    // ✅ Option A : Auto-activation intelligente du RAG
+    // Lorsque des documents sont sélectionnés ET que le RAG est désactivé, l'activer automatiquement
+    if (normalizedIds.length > 0 && !this.state.get('chat.ragEnabled')) {
+      this.state.set('chat.ragEnabled', true);
+      this.showToast(`RAG activé automatiquement - ${normalizedIds.length} document(s) sélectionné(s)`);
+    }
 
     const threadId = this.getCurrentThreadId();
     if (threadId) {

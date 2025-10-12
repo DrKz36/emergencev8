@@ -42,6 +42,19 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
             # Exécuter la requête
             response = await call_next(request)
 
+            # Vérifier que la réponse est valide
+            if response is None:
+                log_structured(
+                    "error",
+                    f"No response returned for: {method} {endpoint}",
+                    method=method,
+                    endpoint=endpoint,
+                )
+                return Response(
+                    content="Internal server error: no response",
+                    status_code=500,
+                )
+
             # Calculer la durée
             duration = time.time() - start_time
             metrics.record_latency(endpoint, duration)
@@ -61,6 +74,24 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
             response.headers["X-Request-ID"] = str(id(request))
 
             return response
+
+        except RuntimeError as exc:
+            # Gérer le cas spécifique "No response returned"
+            if "No response returned" in str(exc):
+                duration = time.time() - start_time
+                log_structured(
+                    "error",
+                    f"RuntimeError (no response): {method} {endpoint}",
+                    method=method,
+                    endpoint=endpoint,
+                    duration_ms=round(duration * 1000, 2),
+                )
+                metrics.record_error(endpoint, "RuntimeError_NoResponse")
+                return Response(
+                    content="Internal server error: no response",
+                    status_code=500,
+                )
+            raise
 
         except Exception as e:
             # Enregistrer l'erreur
@@ -128,15 +159,51 @@ class SecurityMiddleware(BaseHTTPMiddleware):
                     )
 
         # Headers de sécurité
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
 
-        # Ajouter headers de sécurité
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            # Vérifier que la réponse est valide
+            if response is None:
+                log_structured(
+                    "error",
+                    "No response returned in SecurityMiddleware",
+                    endpoint=request.url.path,
+                )
+                return Response(
+                    content="Internal server error: no response",
+                    status_code=500,
+                )
 
-        return response
+            # Ajouter headers de sécurité
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["X-Frame-Options"] = "DENY"
+            response.headers["X-XSS-Protection"] = "1; mode=block"
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
+            return response
+
+        except RuntimeError as exc:
+            if "No response returned" in str(exc):
+                log_structured(
+                    "error",
+                    "RuntimeError (no response) in SecurityMiddleware",
+                    endpoint=request.url.path,
+                )
+                return Response(
+                    content="Internal server error: no response",
+                    status_code=500,
+                )
+            raise
+        except Exception as exc:
+            log_structured(
+                "error",
+                f"Unexpected error in SecurityMiddleware: {exc}",
+                endpoint=request.url.path,
+            )
+            return Response(
+                content="Internal server error",
+                status_code=500,
+            )
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -187,12 +254,49 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.request_counts[client_ip].append((current_time, 1))
 
         # Ajouter header avec quota restant
-        response = await call_next(request)
-        remaining = self.requests_per_minute - recent_requests - 1
-        response.headers["X-RateLimit-Limit"] = str(self.requests_per_minute)
-        response.headers["X-RateLimit-Remaining"] = str(max(0, remaining))
+        try:
+            response = await call_next(request)
 
-        return response
+            # Vérifier que la réponse est valide
+            if response is None:
+                log_structured(
+                    "error",
+                    "No response returned in RateLimitMiddleware",
+                    endpoint=request.url.path,
+                )
+                return Response(
+                    content="Internal server error: no response",
+                    status_code=500,
+                )
+
+            remaining = self.requests_per_minute - recent_requests - 1
+            response.headers["X-RateLimit-Limit"] = str(self.requests_per_minute)
+            response.headers["X-RateLimit-Remaining"] = str(max(0, remaining))
+
+            return response
+
+        except RuntimeError as exc:
+            if "No response returned" in str(exc):
+                log_structured(
+                    "error",
+                    "RuntimeError (no response) in RateLimitMiddleware",
+                    endpoint=request.url.path,
+                )
+                return Response(
+                    content="Internal server error: no response",
+                    status_code=500,
+                )
+            raise
+        except Exception as exc:
+            log_structured(
+                "error",
+                f"Unexpected error in RateLimitMiddleware: {exc}",
+                endpoint=request.url.path,
+            )
+            return Response(
+                content="Internal server error",
+                status_code=500,
+            )
 
 
 class CORSSecurityMiddleware(BaseHTTPMiddleware):

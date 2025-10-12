@@ -281,6 +281,23 @@ git push origin main
 
 ---
 
+### Codex - Session 2025-10-12 03:41 (Frontend - Conversations spacing)
+- **Statut** : ✅ Marges internes recentrées pour le module Conversations
+- **Fichiers touchés** :
+  - `src/frontend/features/threads/threads.css`
+- **Actions réalisées** :
+  1. Ajouté un `max-width` et un `padding-inline` adaptatif sur `.threads-panel__inner` pour centrer le contenu sans modifier l'encombrement de la carte.
+  2. Augmenté légèrement les `padding` de la carte et des `.threads-panel__item` (desktop/mobile) afin que titres, recherche et actions ne collent plus aux bords.
+  3. Introduit un palier desktop (`@media (min-width: 1280px)`) pour pousser davantage les marges internes et donner de l'air aux CTA sur écran large, incluant désormais un `padding-inline` renforcé sur `.threads-panel`.
+- **Tests / checks** :
+  - ✅ `npm run build`
+- **Observations** :
+  - `curl http://localhost:8000/api/sync/status` -> connexion refusée (AutoSyncService hors-ligne sur cet environnement).
+  - `pwsh -File scripts/sync-workdir.ps1` -> échec attendu : working tree déjà dirty (modifs héritées `reports/prod_report.json`, `src/backend/features/memory/task_queue.py`, `nul`).
+- **Actions à suivre** :
+  1. QA visuelle desktop (>=1280px) pour valider l'équilibre gauche/droite du tri et du CTA.
+  2. Vérifier en responsive <640px que les nouvelles marges préservent des zones tactiles confortables.
+
 ### Codex - Session 2025-10-11 11:00-12:15 (Frontend - Dialogue RAG)
 - **Statut** : ✅ Bouton RAG harmonisé avec le module Débat (desktop & portrait) puis réduit de 35 %
 - **Fichiers touchés** :

@@ -136,7 +136,25 @@ class DenyListMiddleware(BaseHTTPMiddleware):
                 if rx.search(path):
                     logger.info(f"DenyList: 404 bloqué path={path} (pattern={raw})")
                     return PlainTextResponse("Not Found", status_code=404)
-        return await call_next(request)
+
+        try:
+            response = await call_next(request)
+
+            # Vérifier que la réponse est valide
+            if response is None:
+                logger.error(f"No response returned in DenyListMiddleware for {request.url.path}")
+                return PlainTextResponse("Internal server error: no response", status_code=500)
+
+            return response
+        except RuntimeError as exc:
+            # Gérer le cas où call_next() lève "No response returned"
+            if "No response returned" in str(exc):
+                logger.error(f"RuntimeError in DenyListMiddleware for {request.url.path}: {exc}")
+                return PlainTextResponse("Internal server error: no response", status_code=500)
+            raise
+        except Exception as exc:
+            logger.error(f"Unexpected error in DenyListMiddleware for {request.url.path}: {exc}", exc_info=True)
+            return PlainTextResponse("Internal server error", status_code=500)
 
 
 @asynccontextmanager
