@@ -108,6 +108,10 @@ class EmailService:
             text-align: center;
             margin-bottom: 30px;
         }}
+        .header img {{
+            max-width: 120px;
+            margin-bottom: 15px;
+        }}
         .header h1 {{
             color: #3b82f6;
             margin: 0;
@@ -137,6 +141,13 @@ class EmailService:
             font-size: 14px;
             color: #94a3b8;
         }}
+        .signature {{
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            font-style: italic;
+            color: #cbd5e1;
+        }}
         .warning {{
             background: rgba(239, 68, 68, 0.1);
             border: 1px solid rgba(239, 68, 68, 0.3);
@@ -150,6 +161,7 @@ class EmailService:
 <body>
     <div class="container">
         <div class="header">
+            <img src="https://emergence-app.ch/assets/emergence_logo.png" alt="ÉMERGENCE Logo">
             <h1>🔒 ÉMERGENCE</h1>
             <p>Réinitialisation de mot de passe</p>
         </div>
@@ -175,6 +187,11 @@ class EmailService:
             </div>
 
             <p>Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email en toute sécurité.</p>
+
+            <div class="signature">
+                <p>L'équipe d'Émergence<br>
+                <strong>FG, Claude et Codex</strong></p>
+            </div>
         </div>
 
         <div class="footer">
@@ -200,6 +217,9 @@ Pour créer un nouveau mot de passe, veuillez cliquer sur le lien ci-dessous :
 ⚠️ Important : Ce lien est valable pendant 1 heure seulement.
 
 Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email en toute sécurité.
+
+L'équipe d'Émergence
+FG, Claude et Codex
 
 ---
 Cet email a été envoyé automatiquement par ÉMERGENCE.
