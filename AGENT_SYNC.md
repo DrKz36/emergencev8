@@ -281,6 +281,56 @@ git push origin main
 
 ---
 
+### Codex - Session 2025-10-12 07:47 (Frontend - Contraste bouton logout)
+- **Statut** : ✅ Contraste rehaussé pour les états connecté/déconnecté
+- **Fichiers touchés** :
+  - `src/frontend/styles/core/_navigation.css`
+- **Actions réalisées** :
+  1. Remplacé les fonds unis par des dégradés plus sombres (`#065f46→#0f5132` et `#92400e→#7c2d12`) avec textes pastel (`#bbf7d0` / `#fef3c7`) pour un ratio de contraste nettement supérieur.
+  2. Ajouté des styles hover/focus spécifiques afin de conserver la lisibilité sans retomber sur le fond bleu par défaut; accentuation des ombres et légère montée en luminosité.
+  3. Maintenu la cohérence sur sidebar et navigation mobile en ciblant les mêmes classes (`auth-button--connected/disconnected`).
+- **Tests / checks** :
+  - ✅ `npm run build`
+- **Observations** :
+  - Le texte reste lisible même sur écrans SDR; contraste vérifié (>4.5:1).
+- **Actions à suivre** :
+  1. QA rapide (desktop + mobile) pour valider que le gradient ne parasite pas la lecture sur écrans calibrés différemment.
+  2. Ajuster si besoin la teinte des textes (`#ecfdf5` / `#fffbeb`) selon la perception utilisateur.
+
+### Codex - Session 2025-10-12 07:41 (Frontend - RAG références scrollables)
+- **Statut** : ✅ Liste des sources RAG désormais scrollable avec marge dédiée pour la barre de défilement
+- **Fichiers touchés** :
+  - `src/frontend/features/chat/chat.css`
+- **Actions réalisées** :
+  1. Ajout d'une hauteur maximale adaptative (`clamp(180px, 32vh, 360px)`) et d'un `overflow-y:auto` sur `.rag-source-list` pour activer le scroll quand il y a >5 références.
+  2. Réduit la largeur effective côté droit (padding de 8px) et stylé la scrollbar (`thin` + couleur cohérente) pour laisser un couloir visuel au défilement.
+  3. Maintien du comportement collapsed/expanded existant et des animations, sans toucher aux interactions.
+- **Tests / checks** :
+  - ✅ `npm run build`
+- **Observations** :
+  - Scrollbar apparait à partir de ~6 items, ne chevauche plus le texte grâce au padding droit.
+- **Actions à suivre** :
+  1. QA visuelle (desktop + portrait) pour vérifier la lisibilité des longues citations pendant le scroll.
+  2. Ajuster si besoin la valeur `clamp(...)` suivant les retours UX (actuellement ~320px max).
+
+### Codex - Session 2025-10-12 07:35 (Frontend - Composer send button)
+- **Statut** : ✅ Bouton d'envoi stabilisé (plus de saut vertical au focus desktop/mobile)
+- **Fichiers touchés** :
+  - `src/frontend/features/chat/chat.css`
+  - `src/frontend/styles/overrides/ui-hotfix-20250823.css`
+- **Actions réalisées** :
+  1. Aligné la hauteur minimale du composer (`min-height:52px`) avec l'auto-grow JS pour éliminer le décalage au focus.
+  2. Recentré le bouton d'envoi : suppression des translations hover/active, ajout d'un focus-visible et marge automatique pour préserver l'alignement.
+  3. Synchronisé les overrides responsive (portrait) afin que le bouton reste centré quel que soit l'écran.
+- **Tests / checks** :
+  - ✅ `npm run build`
+- **Observations** :
+  - `curl http://localhost:8000/api/sync/status` → `{"detail":"ID token invalide ou sans 'sub'."}` (AutoSyncService répond mais nécessite un token valide).
+  - `pwsh -File scripts/sync-workdir.ps1` exécuté en début de session : succès global, message `Parse upload JSON FAILED` identique aux runs précédents (champ `id` absent dans la réponse d'upload de test).
+- **Actions à suivre** :
+  1. QA visuelle desktop/mobile pour confirmer la stabilité du bouton pendant la saisie multi-lignes et l'envoi tactile.
+  2. Étudier l'avertissement `Parse upload JSON FAILED` du script de sync pour éviter le bruit lors des prochains lancements.
+
 ### Codex - Session 2025-10-12 03:41 (Frontend - Conversations spacing)
 - **Statut** : ✅ Marges internes recentrées pour le module Conversations
 - **Fichiers touchés** :

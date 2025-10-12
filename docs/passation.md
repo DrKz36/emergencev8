@@ -1,3 +1,80 @@
+## [2025-10-12 07:47] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+- `src/frontend/styles/core/_navigation.css`
+
+### Contexte
+Le bouton « Se déconnecter » (états connecté/déconnecté) manquait de contraste : texte clair sur vert/jaune saturés → lisibilité réduite. Objectif : rendre les deux états accessibles sans changer la sémantique (vert = connecté, jaune/orange = déconnecté/reconnexion requise).
+
+### Actions réalisées
+1. Défini des dégradés plus sombres pour chaque état afin d’obtenir un contraste >4.5:1 (`#065f46→#0f5132` pour connecté, `#92400e→#7c2d12` pour déconnecté).
+2. Harmonisé la couleur de texte sur des pastels contrastés (`#bbf7d0` / `#fef3c7`) avec text-shadow léger pour rester lisible en SDR.
+3. Ajouté des variantes `:hover`/`:focus-visible` spécifiques pour conserver la montée de lumière sans perdre le contraste, y compris sur la nav mobile.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions recommandées
+1. QA visuelle desktop + mobile pour confirmer la lisibilité (particulièrement sur écrans peu lumineux).
+2. Ajuster si nécessaire la teinte des couleurs de texte (`#ecfdf5` / `#fffbeb`) selon feedback utilisateur.
+
+### Blocages
+- Aucun.
+
+## [2025-10-12 07:41] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+- `src/frontend/features/chat/chat.css`
+
+### Contexte
+Les citations RAG débordaient verticalement lorsqu'il y avait plus de 5-6 sources, sans possibilité de défiler. Demande : conserver toutes les références visibles via un scroll dédié en réduisant légèrement la largeur effective à droite pour laisser apparaître la barre.
+
+### Actions réalisées
+1. Limité la hauteur de `.rag-source-list` via `clamp(180px, 32vh, 360px)` et activé `overflow-y:auto` (scroll autonome, overscroll contain).
+2. Ajouté `padding-right:8px` et stylé la scrollbar (épaisseur fine, teinte bleu/menthe) afin que le texte ne soit plus masqué sur le bord droit.
+3. Vérifié que l'état `is-collapsed` continue de masquer la liste et que les interactions existantes restent inchangées.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions recommandées
+1. QA visuelle desktop & mobile pour confirmer que la nouvelle hauteur max convient aux conversations longues.
+2. Recueillir feedback UX sur la teinte/épaisseur de la scrollbar et ajuster si nécessaire.
+
+### Blocages
+- Aucun.
+
+## [2025-10-12 07:35] - Agent: Codex (Frontend)
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+- `src/frontend/features/chat/chat.css`
+- `src/frontend/styles/overrides/ui-hotfix-20250823.css`
+
+### Contexte
+Correction demandée : le bouton avion du composer glissait vers le bas lorsqu'on focalisait la zone de saisie (desktop et mobile). Objectif : stabiliser l'alignement vertical du bouton d'envoi tout en conservant l'auto-grow du textarea et le comportement responsive existant.
+
+### Actions réalisées
+1. Aligné la hauteur minimale CSS du textarea (`min-height:52px`) avec la borne utilisée par l'auto-grow JS pour éviter tout saut visuel à l'entrée en focus.
+2. Nettoyé le style du bouton (`chat.css`) : recentrage via `align-self:center` + `margin-left:auto`, suppression des translations hover/active, ajout d'un focus ring accessible.
+3. Synchronisé les overrides portrait (`ui-hotfix-20250823.css`) : min-height cohérente et alignement centré pour conserver la stabilité en responsive.
+4. Lancement initial `pwsh -File scripts/sync-workdir.ps1` : fetch/rebase OK, batteries de tests intégrées exécutées (message `Parse upload JSON FAILED` toujours présent car la réponse d'upload ne contient pas `id`).
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions recommandées
+1. QA visuelle desktop + mobile/portrait : vérifier que le bouton reste fixe pendant la saisie multi-lignes et l'envoi tactile.
+2. Inspecter le script `tests/run_all.ps1`/upload pour résoudre le warning `Parse upload JSON FAILED` (absence du champ `id` dans la réponse).
+
+### Blocages
+- `curl http://localhost:8000/api/sync/status` → `{"detail":"ID token invalide ou sans 'sub'."}` (l'AutoSyncService répond mais nécessite un token valide ; information, non bloquant).
+
 ## [2025-10-12 03:41] - Agent: Codex (Frontend)
 
 ### Fichiers modifiés

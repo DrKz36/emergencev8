@@ -262,17 +262,43 @@
 .auth-badge .auth-button.auth-button--connected,
 .sidebar-auth-actions .auth-button.auth-button--connected,
 .mobile-nav .nav-link--auth.auth-button--connected {
-    background-color: var(--color-success, #22c55e);
-    border-color: rgba(34, 197, 94, 0.35);
-    color: var(--color-text-inverse, #0f172a);
+    background: linear-gradient(135deg, #065f46, #0f5132);
+    border-color: rgba(16, 185, 129, 0.55);
+    color: #bbf7d0 !important;
+    box-shadow: 0 10px 24px rgba(6, 95, 70, 0.35);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.auth-badge .auth-button.auth-button--connected:hover,
+.auth-badge .auth-button.auth-button--connected:focus-visible,
+.sidebar-auth-actions .auth-button.auth-button--connected:hover,
+.sidebar-auth-actions .auth-button.auth-button--connected:focus-visible,
+.mobile-nav .nav-link--auth.auth-button--connected:hover,
+.mobile-nav .nav-link--auth.auth-button--connected:focus-visible {
+    background: linear-gradient(135deg, #047857, #0f6c39);
+    color: #ecfdf5 !important;
+    box-shadow: 0 12px 28px rgba(4, 120, 87, 0.4);
 }
 
 .auth-badge .auth-button.auth-button--disconnected,
 .sidebar-auth-actions .auth-button.auth-button--disconnected,
 .mobile-nav .nav-link--auth.auth-button--disconnected {
-    background-color: var(--color-warning, #f97316);
-    border-color: rgba(249, 115, 22, 0.35);
-    color: var(--color-text-inverse, #0f172a);
+    background: linear-gradient(135deg, #92400e, #7c2d12);
+    border-color: rgba(251, 191, 36, 0.55);
+    color: #fef3c7 !important;
+    box-shadow: 0 10px 24px rgba(124, 45, 18, 0.35);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.auth-badge .auth-button.auth-button--disconnected:hover,
+.auth-badge .auth-button.auth-button--disconnected:focus-visible,
+.sidebar-auth-actions .auth-button.auth-button--disconnected:hover,
+.sidebar-auth-actions .auth-button.auth-button--disconnected:focus-visible,
+.mobile-nav .nav-link--auth.auth-button--disconnected:hover,
+.mobile-nav .nav-link--auth.auth-button--disconnected:focus-visible {
+    background: linear-gradient(135deg, #b45309, #8a2c0d);
+    color: #fffbeb !important;
+    box-shadow: 0 12px 28px rgba(138, 44, 13, 0.4);
 }
 
 .sidebar-auth-actions .auth-button:focus-visible {

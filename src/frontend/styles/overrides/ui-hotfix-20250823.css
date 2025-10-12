@@ -363,7 +363,7 @@ body::before, body::after,
 
   .chat-entry-row{ flex-direction:column; align-items:stretch; }
 
-  .chat-entry-row .chat-send-button{ align-self:flex-end; }
+  .chat-entry-row .chat-send-button{ align-self:center; }
 
   .chat-toolbar{ flex-direction:column; align-items:stretch; }
 
@@ -1386,7 +1386,7 @@ body.brain-panel-open .memory-overlay {
     min-height: 56px;
   }
   .chat-input {
-    min-height: 28px;
+    min-height: 52px;
     padding-right: 10px;
   }
   .chat-doc-chips {
