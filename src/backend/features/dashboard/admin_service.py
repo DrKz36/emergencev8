@@ -33,12 +33,12 @@ class AdminDashboardService:
         Includes all users, all sessions, and aggregated metrics.
         """
         try:
-            # Get global costs (no user_id or session_id filter)
-            costs_global = await db_queries.get_costs_summary(self.db)
+            # Get global costs (no user_id or session_id filter, admin mode)
+            costs_global = await db_queries.get_costs_summary(self.db, allow_global=True)
 
-            # Get all documents and sessions
-            documents_all = await db_queries.get_all_documents(self.db)
-            sessions_all = await db_queries.get_all_sessions_overview(self.db)
+            # Get all documents and sessions (admin mode)
+            documents_all = await db_queries.get_all_documents(self.db, allow_global=True)
+            sessions_all = await db_queries.get_all_sessions_overview(self.db, allow_global=True)
 
             # Get per-user breakdown
             users_breakdown = await self._get_users_breakdown()

@@ -258,12 +258,20 @@ async def add_cost_log(
 async def _build_costs_where_clause(
     db: DatabaseManager,
     user_id: Optional[str],
-    session_id: Optional[str]
+    session_id: Optional[str],
+    *,
+    allow_global: bool = False
 ) -> tuple[str, tuple[Any, ...]]:
     """
     Construit la clause WHERE pour la table costs.
-    IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données.
+    IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données, sauf si allow_global=True (admin only).
     Cette fonction vérifie si ces colonnes existent avant de les utiliser.
+
+    Args:
+        db: Database manager
+        user_id: User ID for isolation (required unless allow_global=True)
+        session_id: Optional session ID for additional filtering
+        allow_global: If True, allows querying all data without user_id (ADMIN ONLY)
     """
     clauses: list[str] = []
     params: list[Any] = []
@@ -275,22 +283,28 @@ async def _build_costs_where_clause(
     normalized_user = _normalize_scope_identifier(user_id)
     normalized_session = _normalize_scope_identifier(session_id)
 
-    # user_id est OBLIGATOIRE pour l'isolation des données utilisateur
-    if not normalized_user:
+    # user_id est OBLIGATOIRE pour l'isolation des données utilisateur, sauf mode admin
+    if not normalized_user and not allow_global:
         raise ValueError("user_id est obligatoire pour accéder aux données de coûts")
 
-    if has_user_id:
-        clauses.append("user_id = ?")
-        params.append(normalized_user)
-    else:
-        # Si la colonne user_id n'existe pas encore (ancienne DB), retourner une clause qui ne matche rien
-        # pour éviter de montrer des données non filtrées
-        logger.warning("[SECURITY] costs table missing user_id column - returning empty results for safety")
-        clauses.append("1 = 0")  # Clause qui ne matche jamais
+    # Si user_id est fourni, l'utiliser pour le filtrage
+    if normalized_user:
+        if has_user_id:
+            clauses.append("user_id = ?")
+            params.append(normalized_user)
+        else:
+            # Si la colonne user_id n'existe pas encore (ancienne DB), retourner une clause qui ne matche rien
+            # pour éviter de montrer des données non filtrées
+            logger.warning("[SECURITY] costs table missing user_id column - returning empty results for safety")
+            clauses.append("1 = 0")  # Clause qui ne matche jamais
 
     if normalized_session and has_session_id:
         clauses.append("session_id = ?")
         params.append(normalized_session)
+
+    # Si aucune clause, retourner une chaîne vide (pas de WHERE)
+    if not clauses:
+        return "", tuple()
 
     return " WHERE " + " AND ".join(clauses), tuple(params)
 
@@ -300,8 +314,18 @@ async def get_costs_summary(
     *,
     user_id: Optional[str] = None,
     session_id: Optional[str] = None,
+    allow_global: bool = False,
 ) -> Dict[str, float]:
-    where_clause, params = await _build_costs_where_clause(db, user_id, session_id)
+    """
+    Get costs summary for a user or globally (admin only).
+
+    Args:
+        db: Database manager
+        user_id: User ID to filter by (required unless allow_global=True)
+        session_id: Optional session ID to filter by
+        allow_global: If True, allows querying all costs without user_id (ADMIN ONLY)
+    """
+    where_clause, params = await _build_costs_where_clause(db, user_id, session_id, allow_global=allow_global)
     query = f"""
         SELECT
             SUM(total_cost) AS total_cost,
@@ -390,12 +414,19 @@ async def get_tokens_summary(
     *,
     user_id: Optional[str] = None,
     session_id: Optional[str] = None,
+    allow_global: bool = False,
 ) -> Dict[str, Any]:
     """
     Retourne un résumé des tokens utilisés (input, output, total, moyenne par message).
     Agrège depuis la table costs.
+
+    Args:
+        db: Database manager
+        user_id: User ID to filter by (required unless allow_global=True)
+        session_id: Optional session ID to filter by
+        allow_global: If True, allows querying all tokens without user_id (ADMIN ONLY)
     """
-    where_clause, params = await _build_costs_where_clause(db, user_id, session_id)
+    where_clause, params = await _build_costs_where_clause(db, user_id, session_id, allow_global=allow_global)
 
     query = f"""
         SELECT
@@ -506,16 +537,34 @@ async def get_all_documents(
     session_id: Optional[str] = None,
     *,
     user_id: Optional[str] = None,
+    allow_global: bool = False,
 ) -> List[Dict[str, Any]]:
-    # IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données utilisateur
-    if not user_id:
+    """
+    Get all documents for a user or globally (admin only).
+
+    Args:
+        db: Database manager
+        session_id: Optional session ID to filter by
+        user_id: User ID to filter by (required unless allow_global=True)
+        allow_global: If True, allows querying all documents without user_id (ADMIN ONLY)
+    """
+    # IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données utilisateur, sauf mode admin
+    if not user_id and not allow_global:
         raise ValueError("user_id est obligatoire pour accéder aux documents")
 
-    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
-    rows = await db.fetch_all(
-        f"SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents WHERE {scope_sql} ORDER BY uploaded_at DESC",
-        scope_params,
-    )
+    # Si user_id est fourni, utiliser le filtrage normal
+    if user_id:
+        scope_sql, scope_params = _build_scope_condition(user_id, session_id)
+        rows = await db.fetch_all(
+            f"SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents WHERE {scope_sql} ORDER BY uploaded_at DESC",
+            scope_params,
+        )
+    else:
+        # Mode admin: récupérer tous les documents
+        rows = await db.fetch_all(
+            "SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents ORDER BY uploaded_at DESC",
+            (),
+        )
     return [dict(row) for row in rows]
 async def get_document_by_id(
     db: DatabaseManager,
@@ -577,10 +626,18 @@ async def get_all_sessions_overview(
     db: DatabaseManager,
     user_id: Optional[str] = None,
     session_id: Optional[str] = None,
+    *,
+    allow_global: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     Récupère un aperçu des sessions avec comptage des messages.
     Si session_id est fourni, retourne uniquement cette session.
+
+    Args:
+        db: Database manager
+        user_id: User ID to filter by (optional)
+        session_id: Optional session ID to filter by
+        allow_global: If True, allows querying all sessions without user_id (ADMIN ONLY)
     """
     # Construction de la requête avec LEFT JOIN pour compter les messages
     base_query = """
@@ -607,6 +664,11 @@ async def get_all_sessions_overview(
     if user_id:
         conditions.append("s.user_id = ?")
         params.append(user_id)
+    elif not allow_global:
+        # Si ni user_id ni allow_global, c'est une erreur de sécurité potentielle
+        # On retourne une liste vide par sécurité
+        logger.warning("[SECURITY] get_all_sessions_overview called without user_id and allow_global=False")
+        return []
 
     where_clause = ""
     if conditions:
