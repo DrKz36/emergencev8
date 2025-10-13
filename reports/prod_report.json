@@ -1,46 +1,46 @@
 {
-  "timestamp": "2025-10-12T19:26:00.493299",
+  "timestamp": "2025-10-13T17:15:24.672347",
   "service": "emergence-app",
   "region": "europe-west1",
-  "logs_analyzed": 80,
+  "logs_analyzed": 66,
   "freshness": "1h",
   "status": "DEGRADED",
   "summary": {
-    "errors": 4,
-    "warnings": 0,
+    "errors": 0,
+    "warnings": 5,
     "critical_signals": 0,
     "latency_issues": 0
   },
-  "errors": [
+  "errors": [],
+  "warnings": [
     {
-      "time": "2025-10-12T17:24:21.660526Z",
-      "severity": "ERROR",
-      "msg": "Traceback (most recent call last):\n  File \"/app/src/backend/features/dashboard/admin_service.py\", line 37, in get_global_dashboard_data\n    costs_global = await db_queries.get_costs_summary(self.db)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/app/src/backend/core/database"
+      "time": "2025-10-13T15:10:52.899883Z",
+      "msg": ""
     },
     {
-      "time": "2025-10-12T17:24:07.663815Z",
-      "severity": "ERROR",
-      "msg": "Traceback (most recent call last):\n  File \"/app/src/backend/features/dashboard/admin_service.py\", line 37, in get_global_dashboard_data\n    costs_global = await db_queries.get_costs_summary(self.db)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/app/src/backend/core/database"
+      "time": "2025-10-13T15:08:58.756622Z",
+      "msg": ""
     },
     {
-      "time": "2025-10-12T17:22:21.668280Z",
-      "severity": "ERROR",
-      "msg": "Traceback (most recent call last):\n  File \"/app/src/backend/features/dashboard/admin_service.py\", line 37, in get_global_dashboard_data\n    costs_global = await db_queries.get_costs_summary(self.db)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/app/src/backend/core/database"
+      "time": "2025-10-13T15:05:35.267065Z",
+      "msg": ""
     },
     {
-      "time": "2025-10-12T17:22:07.686974Z",
-      "severity": "ERROR",
-      "msg": "Traceback (most recent call last):\n  File \"/app/src/backend/features/dashboard/admin_service.py\", line 37, in get_global_dashboard_data\n    costs_global = await db_queries.get_costs_summary(self.db)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/app/src/backend/core/database"
+      "time": "2025-10-13T14:33:56.023236Z",
+      "msg": ""
+    },
+    {
+      "time": "2025-10-13T14:18:39.663844Z",
+      "msg": ""
     }
   ],
-  "warnings": [],
   "critical_signals": [],
   "latency_issues": [],
   "recommendations": [
     {
       "priority": "MEDIUM",
       "action": "Monitor closely and investigate warnings",
-      "details": "0 warnings detected"
+      "details": "5 warnings detected"
     }
   ]
 }
