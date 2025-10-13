@@ -40,8 +40,10 @@ export class HomeModule {
     this.root = null;
     this.form = null;
     this.emailInput = null;
+    this.passwordInput = null;
     this.messageNode = null;
     this.submitButton = null;
+    this.forgotPasswordNode = null;
     this.status = 'idle';
     this.pendingController = null;
 
@@ -62,6 +64,7 @@ export class HomeModule {
     this.passwordInput = container.querySelector('[data-role="home-password"]');
     this.messageNode = container.querySelector('[data-role="home-message"]');
     this.submitButton = container.querySelector('[data-role="home-submit"]');
+    this.forgotPasswordNode = container.querySelector('[data-role="home-forgot-password"]');
 
     if (this.form) {
       this.form.addEventListener('submit', this.handleSubmit);
@@ -185,6 +188,10 @@ export class HomeModule {
 
             <div class="home__message" role="status" aria-live="polite" data-role="home-message"></div>
 
+            <div class="home__forgot-password" data-role="home-forgot-password" style="display: none;">
+              <a href="/request-password-reset.html" class="home__forgot-link">Mot de passe oublié ?</a>
+            </div>
+
           </form>
 
           <p class="home__legal">${legal}</p>
@@ -203,6 +210,10 @@ export class HomeModule {
     if (this.status === 'error') {
       this.clearMessage();
       this.status = 'idle';
+      // Cacher le lien "Mot de passe oublié ?" quand l'utilisateur modifie ses identifiants
+      if (this.forgotPasswordNode) {
+        this.forgotPasswordNode.style.display = 'none';
+      }
     }
   }
 
@@ -275,15 +286,26 @@ export class HomeModule {
     } catch (error) {
       const status = error?.status ?? null;
       let message = t('home.error_generic');
+      let showForgotPassword = false;
+
       if (status === 401) {
         const detail = String(error?.message || '').toLowerCase();
-        if (detail.includes('identifiant')) message = t('home.error_password_invalid');
-        else message = t('home.error_unauthorized');
+        if (detail.includes('identifiant')) {
+          message = t('home.error_password_invalid');
+          showForgotPassword = true; // Afficher le lien après une erreur d'identifiants
+        } else {
+          message = t('home.error_unauthorized');
+        }
       } else if (status === 429) message = t('home.error_rate');
       else if (status === 423) message = t('home.error_locked');
 
       this.status = 'error';
       this.showMessage('error', message);
+
+      // Afficher le lien "Mot de passe oublié ?" si erreur d'authentification
+      if (showForgotPassword && this.forgotPasswordNode) {
+        this.forgotPasswordNode.style.display = 'block';
+      }
 
       if (this.qaRecorder) {
         this.qaRecorder.record('home_login_error', {
