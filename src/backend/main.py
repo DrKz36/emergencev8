@@ -61,6 +61,7 @@ METRICS_ROUTER = _import_router("backend.features.metrics.router")  # Prometheus
 MONITORING_ROUTER = _import_router("backend.features.monitoring.router")  # Monitoring & observability
 SYNC_ROUTER = _import_router("backend.features.sync.router")  # Auto-sync inter-agents
 SETTINGS_ROUTER = _import_router("backend.features.settings.router")  # Application settings
+BETA_REPORT_ROUTER = _import_router("backend.features.beta_report.router")  # Beta feedback reports
 
 
 def _migrations_dir() -> str:
@@ -287,6 +288,10 @@ def create_app() -> FastAPI:
     async def health():
         return {"status": "ok", "message": "Emergence Backend is running."}
 
+    @app.post("/api/beta-report-test", tags=["Beta"])
+    async def beta_report_test():
+        return {"status": "test", "message": "Direct endpoint works!"}
+
     # --- Mount REST routers (prefix si nécessaire) ---
     def _mount_router(router, desired_prefix: str = ""):
         if router is None:
@@ -302,6 +307,7 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.error(f"Échec du montage router {desired_prefix}: {e}")
 
+    _mount_router(BETA_REPORT_ROUTER, "/api")  # Beta report endpoints at /api/beta-report (FIRST!)
     _mount_router(DOCUMENTS_ROUTER, "/api/documents")
     _mount_router(DEBATE_ROUTER, "/api/debate")
     _mount_router(DASHBOARD_ROUTER, "/api/dashboard")
