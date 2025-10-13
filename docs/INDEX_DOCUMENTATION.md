@@ -1,7 +1,7 @@
 # Index Documentation EmergenceV8
 
-**Date de mise à jour** : 2025-10-11
-**Version** : V8 - Post P2 Sprint 3
+**Date de mise à jour** : 2025-10-13
+**Version** : V8 - Beta 1.0
 
 ---
 
@@ -127,6 +127,31 @@
 
 ---
 
+### 🧪 Programme Beta
+
+| Document | Description | Date |
+|----------|-------------|------|
+| [BETA_PROGRAM.md](BETA_PROGRAM.md) | **Programme Beta 1.0 complet** | 2025-10-13 |
+| [backend/beta_report.md](backend/beta_report.md) | Documentation technique système rapport | 2025-10-13 |
+
+**Contenu BETA_PROGRAM.md** :
+- Vue d'ensemble du programme beta
+- Système de rapport (formulaire + mailto)
+- Checklist complète (55 points de contrôle, 8 phases)
+- Bugs connus documentés (critiques/modérés/mineurs)
+- Planning beta (Beta 1.0 → RC → Launch)
+- Ressources et contact
+
+**Contenu beta_report.md** :
+- Architecture système de rapport
+- Approche mailto vs backend
+- Frontend (beta_report.html)
+- Backend router (préparation Beta 1.1)
+- Intégration future service email
+- Tests et métriques
+
+---
+
 ## 🎯 Par Cas d'Usage
 
 ### "Je veux corriger les tests mémoire proactive"
@@ -156,6 +181,19 @@
 
 1. ✅ Lire [validation/P2_SPRINT1_COMPLETION_STATUS.md](validation/P2_SPRINT1_COMPLETION_STATUS.md)
 2. ✅ Lire [optimizations/MEMORY_P2_PERFORMANCE_PLAN.md](optimizations/MEMORY_P2_PERFORMANCE_PLAN.md)
+
+### "Je veux participer au programme beta"
+
+1. ✅ Lire [BETA_PROGRAM.md](BETA_PROGRAM.md) - Vue d'ensemble complète
+2. ✅ Accéder au formulaire : https://emergence-app.ch/beta_report.html
+3. ✅ Suivre la checklist de test (55 points, 8 phases)
+4. ✅ Reporter bugs et suggestions via mailto
+
+### "Je veux comprendre le système de rapport beta"
+
+1. ✅ Lire [backend/beta_report.md](backend/beta_report.md) - Documentation technique
+2. ✅ Comprendre l'approche mailto vs backend
+3. ✅ Voir le code : [beta_report.html](../beta_report.html)
 
 ---
 
@@ -298,6 +336,14 @@ R : Option 1 puis Option 2 (voir README_NEXT_STEPS.md)
 
 ## 📝 Changelog Index
 
+### 2025-10-13
+- ✅ **Lancement Beta 1.0**
+- ✅ Création [BETA_PROGRAM.md](BETA_PROGRAM.md)
+- ✅ Création [backend/beta_report.md](backend/beta_report.md)
+- ✅ Création [beta_report.html](../beta_report.html) - Formulaire interactif
+- ✅ Déploiement production (revision 00329-2kv)
+- ✅ Mise à jour INDEX_DOCUMENTATION.md
+
 ### 2025-10-11
 - ✅ Création INDEX_DOCUMENTATION.md
 - ✅ Création README_NEXT_STEPS.md
@@ -314,6 +360,6 @@ R : Option 1 puis Option 2 (voir README_NEXT_STEPS.md)
 
 ---
 
-**Dernière mise à jour** : 2025-10-11
-**Version** : 1.0
+**Dernière mise à jour** : 2025-10-13
+**Version** : 1.1 (Beta 1.0)
 **Maintenu par** : Équipe EmergenceV8
