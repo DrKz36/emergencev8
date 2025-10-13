@@ -9,28 +9,32 @@
 
 ## ⚡ TL;DR - Commandes Rapides
 
+### Méthode Recommandée (Build Local + Push GCR)
 ```bash
 # 1. Vérifier état Git
 git status  # Doit être "working tree clean"
 git log --oneline -3
 
-# 2. Build & Push & Deploy sur conteneur unique principal-source (one-liner)
-timestamp=$(date +%Y%m%d-%H%M%S) && \
-docker build --platform linux/amd64 -t europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp . && \
-docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp && \
-gcloud run deploy emergence-app \
-  --image europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp \
-  --project emergence-469005 \
-  --region europe-west1 \
-  --platform managed \
-  --allow-unauthenticated
+# 2. Build local de l'image Docker
+docker build -t gcr.io/emergence-469005/emergence-app:latest .
 
-# 3. Vérifier révision (seules les 3 dernières sont conservées)
+# 3. Push vers Google Container Registry
+docker push gcr.io/emergence-469005/emergence-app:latest
+
+# 4. Deploy sur Cloud Run
+gcloud run deploy emergence-app \
+  --image gcr.io/emergence-469005/emergence-app:latest \
+  --region europe-west1 \
+  --platform managed
+
+# 5. Vérifier révision (seules les 3 dernières sont conservées)
 gcloud run revisions list --service emergence-app --region europe-west1 --project emergence-469005 --limit 3
 
-# 4. Tester health
+# 6. Tester health
 curl https://emergence-app-486095406755.europe-west1.run.app/api/health
 ```
+
+> **⚡ Pourquoi cette méthode ?** Le build local est **beaucoup plus rapide et fiable** que `gcloud builds submit`. Les builds Cloud prennent 10-15min et ont des timeouts fréquents. Le build local prend 1-2min et utilise le cache Docker.
 
 > **📌 Note importante** : Il n'y a plus de service canary. Toutes les nouvelles révisions sont déployées directement sur le conteneur principal `emergence-app` avec 100% du trafic. Seules les 3 dernières révisions fonctionnelles sont conservées automatiquement.
 
@@ -49,10 +53,48 @@ curl https://emergence-app-486095406755.europe-west1.run.app/api/health
 git status  # "nothing to commit, working tree clean"
 
 # Docker auth GCP
-gcloud auth configure-docker europe-west1-docker.pkg.dev
+gcloud auth configure-docker gcr.io
 
 # Projet GCP actif
 gcloud config get-value project  # emergence-469005
+```
+
+### Configuration SMTP pour les emails (Production)
+
+Pour que les emails de réinitialisation de mot de passe fonctionnent en production, vous devez configurer les variables SMTP sur Cloud Run.
+
+**Variables d'environnement requises** :
+- `EMAIL_ENABLED=1`
+- `SMTP_HOST=smtp.gmail.com`
+- `SMTP_PORT=587`
+- `SMTP_USER=<votre_email>@gmail.com`
+- `SMTP_PASSWORD=<app_password>` (stocké en tant que secret)
+- `SMTP_FROM_EMAIL=<votre_email>@gmail.com`
+- `SMTP_FROM_NAME=ÉMERGENCE`
+- `SMTP_USE_TLS=1`
+
+**Créer un App Password Gmail** :
+1. Allez sur https://myaccount.google.com/security
+2. Activez la validation en 2 étapes
+3. Créez un mot de passe d'application pour "Mail"
+4. Copiez le mot de passe généré (16 caractères)
+
+**Configurer le secret SMTP_PASSWORD** :
+```bash
+# Créer ou mettre à jour le secret
+echo -n "votre_app_password" | gcloud secrets create SMTP_PASSWORD --data-file=- --replication-policy=automatic
+# OU si le secret existe déjà
+echo -n "votre_app_password" | gcloud secrets versions add SMTP_PASSWORD --data-file=-
+
+# Mettre à jour Cloud Run pour utiliser le secret
+gcloud run services update emergence-app \
+  --region europe-west1 \
+  --update-secrets "SMTP_PASSWORD=SMTP_PASSWORD:latest"
+
+# Configurer les autres variables d'environnement
+gcloud run services update emergence-app \
+  --region europe-west1 \
+  --update-env-vars "EMAIL_ENABLED=1,SMTP_HOST=smtp.gmail.com,SMTP_PORT=587,SMTP_USER=votre_email@gmail.com,SMTP_FROM_EMAIL=votre_email@gmail.com,SMTP_FROM_NAME=ÉMERGENCE"
 ```
 
 ---
