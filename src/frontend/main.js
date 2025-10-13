@@ -641,7 +641,8 @@ function mountAuthBadge(eventBus) {
 
   const triggerLogin = () => {
     eventBus.emit('auth:login', {});
-    setTimeout(() => { if (!hasToken()) openDevAuth(); }, 300);
+    // DEV AUTH DISABLED: Ne plus ouvrir automatiquement la popup dev-auth
+    // setTimeout(() => { if (!hasToken()) openDevAuth(); }, 300);
   };
 
   const triggerLogout = () => {
@@ -768,7 +769,8 @@ function mountAuthBadge(eventBus) {
           e.preventDefault();
           if (hasToken()) { eventBus.emit('auth:login', {}); return; }
           eventBus.emit('auth:login', {});
-          setTimeout(() => { if (!hasToken()) openDevAuth(); }, 300);
+          // DEV AUTH DISABLED: Ne plus ouvrir automatiquement la popup dev-auth
+          // setTimeout(() => { if (!hasToken()) openDevAuth(); }, 300);
         }
       }, { capture: true });
       window.__em_auth_listeners__ = true;
@@ -1016,9 +1018,10 @@ class EmergenceClient {
     if (tokenFromUrl) storeAuthToken(tokenFromUrl);
 
     let devAutoLogged = false;
-    if (!hasToken()) {
-      devAutoLogged = await this.tryDevAutoLogin();
-    }
+    // DEV AUTO-LOGIN DISABLED: Pour forcer l'authentification réelle
+    // if (!hasToken()) {
+    //   devAutoLogged = await this.tryDevAutoLogin();
+    // }
 
     // FIX: Mettre à jour l'état du badge après le dev auto-login
     if (devAutoLogged || this.devAutoLogged) {
@@ -1036,9 +1039,10 @@ class EmergenceClient {
     } else {
       this.markAuthRequired();
       this.showHome();
-      if (isLocalHost()) {
-        setTimeout(() => { if (!hasToken()) openDevAuth(); }, 250);
-      }
+      // DEV AUTH POPUP DISABLED: Pour forcer l'utilisation du formulaire de login
+      // if (isLocalHost()) {
+      //   setTimeout(() => { if (!hasToken()) openDevAuth(); }, 250);
+      // }
       this.installStorageListener();
     }
 
