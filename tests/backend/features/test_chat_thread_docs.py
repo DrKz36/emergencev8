@@ -67,6 +67,28 @@ class FakeVectorService:
             },
         ]
 
+    def hybrid_query(self, collection, query_text, n_results=5, where_filter=None, alpha=0.5, score_threshold=0.0):
+        """Hybrid query method for compatibility with ChatService RAG"""
+        self.last_where_filter = where_filter
+        return [
+            {
+                "text": "Allowed excerpt",
+                "metadata": {
+                    "document_id": self.allowed_doc_id,
+                    "filename": "allowed.pdf",
+                    "page": 1,
+                },
+            },
+            {
+                "text": "Blocked excerpt",
+                "metadata": {
+                    "document_id": self.blocked_doc_id,
+                    "filename": "blocked.pdf",
+                    "page": 2,
+                },
+            },
+        ]
+
 
 class FakeConnectionManager:
     def __init__(self):
