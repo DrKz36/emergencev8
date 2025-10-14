@@ -98,6 +98,12 @@ class AuthService:
                 continue
             await self._upsert_allowlist(normalized, role="admin", note="seed", actor="bootstrap")
 
+        # Ensure all existing admins have password_must_reset set to 0
+        await self.db.execute(
+            "UPDATE auth_allowlist SET password_must_reset = 0 WHERE role = 'admin' AND password_must_reset != 0",
+            commit=True,
+        )
+
     async def login(self, email: str, password: str, ip_address: Optional[str], user_agent: Optional[str]) -> LoginResponse:
         normalized = self._normalize_email(email)
         if not normalized:
@@ -1016,10 +1022,13 @@ class AuthService:
         password_updated_at: Optional[str] = None,
     ) -> None:
         now = self._now().isoformat()
+        # Admin users should never be forced to reset password
+        password_must_reset = 0 if role == "admin" else 1
+
         await self.db.execute(
             """
-            INSERT INTO auth_allowlist (email, role, note, created_at, created_by, revoked_at, revoked_by, password_hash, password_updated_at)
-            VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?)
+            INSERT INTO auth_allowlist (email, role, note, created_at, created_by, revoked_at, revoked_by, password_hash, password_updated_at, password_must_reset)
+            VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?)
             ON CONFLICT(email) DO UPDATE SET
                 role = excluded.role,
                 note = excluded.note,
@@ -1032,9 +1041,13 @@ class AuthService:
                 password_updated_at = CASE
                     WHEN excluded.password_hash IS NOT NULL THEN excluded.password_updated_at
                     ELSE auth_allowlist.password_updated_at
+                END,
+                password_must_reset = CASE
+                    WHEN excluded.role = 'admin' THEN 0
+                    ELSE excluded.password_must_reset
                 END
             """,
-            (email, role, note, now, actor, password_hash, password_updated_at),
+            (email, role, note, now, actor, password_hash, password_updated_at, password_must_reset),
             commit=True,
         )
 

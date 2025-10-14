@@ -1,0 +1,10 @@
+# Beta Testers Email List
+# Add one email per line
+# Lines starting with # are ignored
+
+# Example emails (replace with real beta tester emails):
+# user1@example.com
+# user2@example.com
+# user3@example.com
+
+# Add your beta testers below:

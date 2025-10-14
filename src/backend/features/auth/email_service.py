@@ -59,6 +59,267 @@ class EmailService:
             and bool(self.config.smtp_password)
         )
 
+    async def send_beta_invitation_email(
+        self,
+        to_email: str,
+        base_url: str,
+    ) -> bool:
+        """
+        Send a beta invitation email
+
+        Args:
+            to_email: Recipient email address
+            base_url: Base URL of the application (e.g., https://emergence-app.ch)
+
+        Returns:
+            True if email was sent successfully, False otherwise
+        """
+        if not self.is_enabled():
+            logger.warning("Email service is not enabled or not configured")
+            return False
+
+        app_url = base_url
+        report_url = f"{base_url}/beta_report.html"
+
+        subject = "🎉 Bienvenue dans le programme Beta ÉMERGENCE V8"
+
+        html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        .container {{
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 16px;
+            padding: 40px;
+            color: #e2e8f0;
+        }}
+        .header {{
+            text-align: center;
+            margin-bottom: 30px;
+        }}
+        .header img {{
+            max-width: 120px;
+            margin-bottom: 15px;
+        }}
+        .header h1 {{
+            color: #3b82f6;
+            margin: 0;
+            font-size: 28px;
+        }}
+        .content {{
+            margin: 20px 0;
+        }}
+        .button {{
+            display: inline-block;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white !important;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 10px 5px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }}
+        .button:hover {{
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        }}
+        .button-secondary {{
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }}
+        .button-secondary:hover {{
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }}
+        .highlight {{
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid #3b82f6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+        }}
+        .phases {{
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }}
+        .phase-item {{
+            margin: 10px 0;
+            padding-left: 20px;
+        }}
+        .footer {{
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 14px;
+            color: #94a3b8;
+        }}
+        .signature {{
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            font-style: italic;
+            color: #cbd5e1;
+        }}
+        ul {{
+            margin: 10px 0;
+            padding-left: 20px;
+        }}
+        li {{
+            margin: 8px 0;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="https://emergence-app.ch/assets/emergence_logo.png" alt="ÉMERGENCE Logo">
+            <h1>🎉 ÉMERGENCE V8</h1>
+            <p>Programme Beta 1.0</p>
+        </div>
+
+        <div class="content">
+            <p>Bonjour,</p>
+
+            <p>Nous sommes ravis de vous inviter à participer au <strong>programme Beta ÉMERGENCE V8</strong> ! 🚀</p>
+
+            <div class="highlight">
+                <strong>📅 Dates de la beta :</strong> 13 octobre - 3 novembre 2025<br>
+                <strong>🎯 Objectif :</strong> Tester la plateforme et nous aider à l'améliorer avant le lancement public
+            </div>
+
+            <h2 style="color: #3b82f6; margin-top: 30px;">🔑 Accès à la plateforme</h2>
+            <p>Votre email <strong>{to_email}</strong> a été ajouté à l'allowlist. Vous pouvez maintenant accéder à la plateforme :</p>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{app_url}" class="button">🚀 Accéder à ÉMERGENCE</a>
+            </div>
+
+            <h2 style="color: #3b82f6; margin-top: 30px;">✅ Que tester ?</h2>
+            <div class="phases">
+                <p><strong>8 phases de test à explorer :</strong></p>
+                <div class="phase-item">📝 Phase 1 : Authentification & Onboarding</div>
+                <div class="phase-item">💬 Phase 2 : Chat avec les agents (Anima, Neo, Nexus)</div>
+                <div class="phase-item">🧠 Phase 3 : Système de mémoire</div>
+                <div class="phase-item">📄 Phase 4 : Documents & RAG</div>
+                <div class="phase-item">🎭 Phase 5 : Débats autonomes</div>
+                <div class="phase-item">📊 Phase 6 : Cockpit & Analytics</div>
+                <div class="phase-item">⚡ Phase 7 : Tests de robustesse</div>
+                <div class="phase-item">🐛 Phase 8 : Edge cases</div>
+            </div>
+
+            <h2 style="color: #3b82f6; margin-top: 30px;">📋 Formulaire de rapport</h2>
+            <p>Une fois vos tests effectués (ou en cours), merci de remplir le formulaire de rapport beta pour nous faire part de vos retours :</p>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{report_url}" class="button button-secondary">📝 Remplir le formulaire de test</a>
+            </div>
+
+            <h2 style="color: #3b82f6; margin-top: 30px;">💡 Conseils</h2>
+            <ul>
+                <li>Prenez le temps d'explorer chaque fonctionnalité</li>
+                <li>Notez tous les bugs, même mineurs</li>
+                <li>N'hésitez pas à nous faire part de vos suggestions</li>
+                <li>Testez sur différents navigateurs si possible</li>
+                <li>Le formulaire sauvegarde votre progression automatiquement</li>
+            </ul>
+
+            <div class="highlight">
+                <strong>🐛 Bugs connus :</strong><br>
+                Consultez la documentation beta pour connaître les bugs déjà identifiés et leurs workarounds.
+            </div>
+
+            <div class="signature">
+                <p>Merci infiniment pour votre participation ! 🙏<br><br>
+                L'équipe d'Émergence<br>
+                <strong>FG, Claude et Codex</strong></p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>Besoin d'aide ?</strong><br>
+            📧 Email : gonzalefernando@gmail.com<br>
+            📝 Formulaire : <a href="{report_url}" style="color: #3b82f6;">beta_report.html</a></p>
+
+            <p style="margin-top: 20px;">Cet email a été envoyé automatiquement par ÉMERGENCE.<br>
+            Merci de ne pas répondre à cet email.</p>
+        </div>
+    </div>
+</body>
+</html>
+        """
+
+        text_body = f"""
+🎉 BIENVENUE DANS LE PROGRAMME BETA ÉMERGENCE V8
+
+Bonjour,
+
+Nous sommes ravis de vous inviter à participer au programme Beta ÉMERGENCE V8 !
+
+📅 DATES DE LA BETA
+Du 13 octobre au 3 novembre 2025
+
+🎯 OBJECTIF
+Tester la plateforme et nous aider à l'améliorer avant le lancement public
+
+🔑 ACCÈS À LA PLATEFORME
+Votre email {to_email} a été ajouté à l'allowlist.
+Accédez à la plateforme : {app_url}
+
+✅ QUE TESTER ?
+
+8 phases de test à explorer :
+- Phase 1 : Authentification & Onboarding
+- Phase 2 : Chat avec les agents (Anima, Neo, Nexus)
+- Phase 3 : Système de mémoire
+- Phase 4 : Documents & RAG
+- Phase 5 : Débats autonomes
+- Phase 6 : Cockpit & Analytics
+- Phase 7 : Tests de robustesse
+- Phase 8 : Edge cases
+
+📋 FORMULAIRE DE RAPPORT
+Une fois vos tests effectués, merci de remplir le formulaire :
+{report_url}
+
+💡 CONSEILS
+- Prenez le temps d'explorer chaque fonctionnalité
+- Notez tous les bugs, même mineurs
+- N'hésitez pas à nous faire part de vos suggestions
+- Testez sur différents navigateurs si possible
+- Le formulaire sauvegarde votre progression automatiquement
+
+BESOIN D'AIDE ?
+Email : gonzalefernando@gmail.com
+Formulaire : {report_url}
+
+Merci infiniment pour votre participation ! 🙏
+
+L'équipe d'Émergence
+FG, Claude et Codex
+
+---
+Cet email a été envoyé automatiquement par ÉMERGENCE.
+Merci de ne pas répondre à cet email.
+        """
+
+        return await self._send_email(
+            to_email=to_email,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+        )
+
     async def send_password_reset_email(
         self,
         to_email: str,

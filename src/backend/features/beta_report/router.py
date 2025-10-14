@@ -7,13 +7,18 @@ from __future__ import annotations
 import logging
 import json
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+
+from ..auth.email_service import EmailService, build_email_config_from_env
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Beta"])
+
+# Initialize email service
+email_service = EmailService(build_email_config_from_env())
 
 
 class BetaReportRequest(BaseModel):
@@ -175,12 +180,69 @@ DÉTAIL PAR PHASE
     return email_body
 
 
+class BetaInvitationRequest(BaseModel):
+    emails: List[str]
+    base_url: str = "https://emergence-app.ch"
+
+
+@router.post("/beta-invite")
+async def send_beta_invitations(request: BetaInvitationRequest):
+    """
+    Send beta invitation emails to a list of users
+
+    Args:
+        emails: List of email addresses to invite
+        base_url: Base URL of the application (default: https://emergence-app.ch)
+
+    Returns:
+        Summary of sent invitations
+    """
+    if not email_service.is_enabled():
+        raise HTTPException(
+            status_code=503,
+            detail="Email service is not configured. Please set EMAIL_ENABLED=1 and configure SMTP settings."
+        )
+
+    results = {
+        "total": len(request.emails),
+        "sent": [],
+        "failed": []
+    }
+
+    for email in request.emails:
+        try:
+            success = await email_service.send_beta_invitation_email(
+                to_email=email,
+                base_url=request.base_url
+            )
+
+            if success:
+                results["sent"].append(email)
+                logger.info(f"Beta invitation sent to {email}")
+            else:
+                results["failed"].append({"email": email, "reason": "Email service returned false"})
+                logger.error(f"Failed to send beta invitation to {email}")
+
+        except Exception as e:
+            results["failed"].append({"email": email, "reason": str(e)})
+            logger.error(f"Error sending beta invitation to {email}: {e}", exc_info=True)
+
+    return {
+        "status": "completed",
+        "total": results["total"],
+        "sent": len(results["sent"]),
+        "failed": len(results["failed"]),
+        "sent_to": results["sent"],
+        "failed_emails": results["failed"],
+        "timestamp": datetime.now().isoformat()
+    }
+
+
 @router.post("/beta-report")
 async def submit_beta_report(report: BetaReportRequest):
     """
     Endpoint to submit beta test report.
-    In production, this would send an email to gonzalefernando@gmail.com
-    For now, it logs the report.
+    Sends the report via email to gonzalefernando@gmail.com
     """
     try:
         # Format email body
@@ -190,8 +252,7 @@ async def submit_beta_report(report: BetaReportRequest):
         logger.info(f"Beta report received from {report.email}")
         logger.info(f"Completion: {report.completion} ({report.completionPercentage}%)")
 
-        # In production, integrate with email service (SendGrid, AWS SES, etc.)
-        # For now, we'll write to a file for manual review
+        # Save to file for backup
         try:
             from pathlib import Path
             reports_dir = Path("data/beta_reports")
@@ -214,9 +275,31 @@ async def submit_beta_report(report: BetaReportRequest):
         except Exception as e:
             logger.error(f"Failed to save beta report to file: {e}")
 
+        # Send email if service is enabled
+        email_sent = False
+        if email_service.is_enabled():
+            try:
+                email_sent = await email_service._send_email(
+                    to_email="gonzalefernando@gmail.com",
+                    subject=f"EMERGENCE Beta Report - {report.email} ({report.completionPercentage}%)",
+                    html_body=f"<pre>{email_body}</pre>",
+                    text_body=email_body
+                )
+
+                if email_sent:
+                    logger.info("Beta report emailed successfully")
+                else:
+                    logger.warning("Email service returned false when sending beta report")
+
+            except Exception as e:
+                logger.error(f"Failed to email beta report: {e}", exc_info=True)
+        else:
+            logger.warning("Email service not enabled - report saved to file only")
+
         return {
             "status": "success",
             "message": "Merci pour votre rapport! Il a été transmis à l'équipe.",
+            "email_sent": email_sent,
             "timestamp": datetime.now().isoformat()
         }
 

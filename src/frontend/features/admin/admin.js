@@ -6,6 +6,7 @@
 
 import { AuthAdminModule } from './auth-admin-module.js';
 import { adminDashboard } from './admin-dashboard.js';
+import { BetaInvitationsModule } from './beta-invitations-module.js';
 
 export default class AdminModule {
   constructor(eventBus, state, options = {}) {
@@ -17,7 +18,8 @@ export default class AdminModule {
     this._initialized = false;
     this._stylesLoaded = false;
     this._authModule = new AuthAdminModule(eventBus, state, options);
-    this._currentView = 'dashboard'; // 'dashboard' or 'auth'
+    this._betaModule = new BetaInvitationsModule(eventBus, state, options);
+    this._currentView = 'dashboard'; // 'dashboard', 'auth', or 'beta'
   }
 
   _isAdmin() {
@@ -89,10 +91,15 @@ export default class AdminModule {
                   data-view="auth">
             🔐 Gestion Utilisateurs
           </button>
+          <button class="admin-nav-btn ${this._currentView === 'beta' ? 'active' : ''}"
+                  data-view="beta">
+            📧 Invitations Beta
+          </button>
         </div>
         <div class="admin-views">
           <div id="admin-dashboard-view" class="admin-view ${this._currentView === 'dashboard' ? 'active' : ''}"></div>
           <div id="admin-auth-view" class="admin-view ${this._currentView === 'auth' ? 'active' : ''}"></div>
+          <div id="admin-beta-view" class="admin-view ${this._currentView === 'beta' ? 'active' : ''}"></div>
         </div>
       </div>
     `;
@@ -139,6 +146,11 @@ export default class AdminModule {
       if (authContainer && !authContainer.hasChildNodes() && typeof this._authModule?.mount === 'function') {
         this._authModule.mount(authContainer);
       }
+    } else if (view === 'beta') {
+      const betaContainer = this.container.querySelector('#admin-beta-view');
+      if (betaContainer && !betaContainer.hasChildNodes() && typeof this._betaModule?.mount === 'function') {
+        this._betaModule.mount(betaContainer);
+      }
     }
   }
 
@@ -158,6 +170,15 @@ export default class AdminModule {
         this._authModule.unmount();
       } catch (err) {
         console.warn('[Admin] Error unmounting auth module:', err);
+      }
+    }
+
+    // Unmount beta module
+    if (typeof this._betaModule?.unmount === 'function') {
+      try {
+        this._betaModule.unmount();
+      } catch (err) {
+        console.warn('[Admin] Error unmounting beta module:', err);
       }
     }
 

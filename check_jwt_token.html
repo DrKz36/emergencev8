@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ÉMERGENCE - JWT Token Checker</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            color: #333;
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .token-info {
+            background: #f7f9fc;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        .token-info h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+        .token-value {
+            background: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .claims {
+            background: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .claim-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .claim-key {
+            font-weight: bold;
+            color: #667eea;
+        }
+        .claim-value {
+            color: #333;
+            font-family: 'Courier New', monospace;
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .role-admin {
+            background: #4caf50;
+            color: white;
+        }
+        .role-member {
+            background: #ff9800;
+            color: white;
+        }
+        .role-unknown {
+            background: #f44336;
+            color: white;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        button {
+            flex: 1;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-refresh {
+            background: #667eea;
+            color: white;
+        }
+        .btn-refresh:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn-logout {
+            background: #f44336;
+            color: white;
+        }
+        .btn-logout:hover {
+            background: #da190b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .status-error {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #f44336;
+        }
+        .status-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-left: 4px solid #4caf50;
+        }
+        .status-warning {
+            background: #fff3e0;
+            color: #e65100;
+            border-left: 4px solid #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 JWT Token Checker</h1>
+        <p class="subtitle">Vérification de votre token d'authentification</p>
+
+        <div id="tokenInfo"></div>
+
+        <div class="action-buttons">
+            <button class="btn-refresh" onclick="checkToken()">🔄 Rafraîchir</button>
+            <button class="btn-logout" onclick="logout()">🚪 Déconnexion & Nettoyage</button>
+        </div>
+    </div>
+
+    <script>
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return 'N/A';
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleString('fr-FR');
+        }
+
+        function checkToken() {
+            const container = document.getElementById('tokenInfo');
+
+            // Try to get token from all possible storage locations
+            const tokenSources = [
+                { name: 'localStorage: emergence.id_token', value: localStorage.getItem('emergence.id_token') },
+                { name: 'localStorage: id_token', value: localStorage.getItem('id_token') },
+                { name: 'sessionStorage: emergence.id_token', value: sessionStorage.getItem('emergence.id_token') },
+                { name: 'sessionStorage: id_token', value: sessionStorage.getItem('id_token') }
+            ];
+
+            let foundToken = null;
+            let tokenSource = null;
+
+            for (const source of tokenSources) {
+                if (source.value) {
+                    foundToken = source.value;
+                    tokenSource = source.name;
+                    break;
+                }
+            }
+
+            if (!foundToken) {
+                container.innerHTML = `
+                    <div class="status status-error">
+                        ❌ Aucun token JWT trouvé dans localStorage ou sessionStorage
+                        <br><br>
+                        Vous devez vous connecter pour obtenir un token.
+                    </div>
+                `;
+                return;
+            }
+
+            const claims = parseJwt(foundToken);
+
+            if (!claims) {
+                container.innerHTML = `
+                    <div class="status status-error">
+                        ❌ Token invalide ou malformé
+                    </div>
+                `;
+                return;
+            }
+
+            // Check role
+            const role = claims.role || 'unknown';
+            let roleClass = 'role-unknown';
+            let roleStatus = '';
+
+            if (role === 'admin') {
+                roleClass = 'role-admin';
+                roleStatus = '<div class="status status-success">✅ Vous avez le rôle ADMIN - Les endpoints admin devraient fonctionner</div>';
+            } else if (role === 'member') {
+                roleClass = 'role-member';
+                roleStatus = '<div class="status status-warning">⚠️ Vous avez le rôle MEMBER - Accès admin refusé<br>Déconnectez-vous et reconnectez-vous pour obtenir le rôle admin</div>';
+            } else {
+                roleStatus = '<div class="status status-error">❌ Rôle inconnu ou manquant</div>';
+            }
+
+            // Check expiration
+            const now = Math.floor(Date.now() / 1000);
+            const exp = claims.exp || 0;
+            const isExpired = exp < now;
+            const expiryStatus = isExpired
+                ? '<div class="status status-error">❌ Token expiré - Reconnectez-vous</div>'
+                : '<div class="status status-success">✅ Token valide</div>';
+
+            container.innerHTML = `
+                ${roleStatus}
+                ${expiryStatus}
+
+                <div class="token-info">
+                    <h3>📍 Source du token</h3>
+                    <p><strong>${tokenSource}</strong></p>
+                </div>
+
+                <div class="token-info">
+                    <h3>🎭 Informations d'identité</h3>
+                    <div class="claims">
+                        <div class="claim-row">
+                            <span class="claim-key">Rôle:</span>
+                            <span class="claim-value"><span class="role-badge ${roleClass}">${role.toUpperCase()}</span></span>
+                        </div>
+                        <div class="claim-row">
+                            <span class="claim-key">Email:</span>
+                            <span class="claim-value">${claims.email || 'N/A'}</span>
+                        </div>
+                        <div class="claim-row">
+                            <span class="claim-key">User ID (sub):</span>
+                            <span class="claim-value">${claims.sub || 'N/A'}</span>
+                        </div>
+                        <div class="claim-row">
+                            <span class="claim-key">Session ID:</span>
+                            <span class="claim-value">${claims.sid || claims.session_id || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="token-info">
+                    <h3>⏰ Validité du token</h3>
+                    <div class="claims">
+                        <div class="claim-row">
+                            <span class="claim-key">Émis le:</span>
+                            <span class="claim-value">${formatDate(claims.iat)}</span>
+                        </div>
+                        <div class="claim-row">
+                            <span class="claim-key">Expire le:</span>
+                            <span class="claim-value">${formatDate(claims.exp)}</span>
+                        </div>
+                        <div class="claim-row">
+                            <span class="claim-key">Issuer:</span>
+                            <span class="claim-value">${claims.iss || 'N/A'}</span>
+                        </div>
+                        <div class="claim-row">
+                            <span class="claim-key">Audience:</span>
+                            <span class="claim-value">${claims.aud || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="token-info">
+                    <h3>🔑 Token brut</h3>
+                    <div class="token-value">${foundToken}</div>
+                </div>
+
+                <div class="token-info">
+                    <h3>📦 Claims complets</h3>
+                    <div class="token-value">${JSON.stringify(claims, null, 2)}</div>
+                </div>
+            `;
+        }
+
+        function logout() {
+            if (!confirm('Êtes-vous sûr de vouloir vous déconnecter et nettoyer tous les tokens ?')) {
+                return;
+            }
+
+            // Clear all possible token storage locations
+            localStorage.removeItem('emergence.id_token');
+            localStorage.removeItem('id_token');
+            sessionStorage.removeItem('emergence.id_token');
+            sessionStorage.removeItem('id_token');
+
+            // Clear state
+            localStorage.removeItem('emergenceState-V14');
+
+            // Show success message
+            document.getElementById('tokenInfo').innerHTML = `
+                <div class="status status-success">
+                    ✅ Déconnexion réussie !
+                    <br><br>
+                    Tous les tokens ont été supprimés du navigateur.
+                    <br><br>
+                    Veuillez recharger la page principale et vous reconnecter pour obtenir un nouveau token avec le rôle admin.
+                </div>
+            `;
+
+            // Redirect after a delay
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 3000);
+        }
+
+        // Check token on page load
+        checkToken();
+    </script>
+</body>
+</html>

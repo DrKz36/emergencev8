@@ -79,3 +79,90 @@ async def get_user_detailed_data(
     data = await admin_service.get_user_detailed_data(user_id)
     logger.info(f"[Admin] User {user_id} detailed data sent")
     return data
+
+
+@router.get(
+    "/admin/allowlist/emails",
+    response_model=Dict[str, Any],
+    tags=["Admin Dashboard"],
+    summary="Get all allowlist emails (admin only)",
+    description="Returns all emails from the allowlist for beta invitation purposes.",
+)
+async def get_allowlist_emails(
+    _admin_verified: bool = Depends(verify_admin_role),
+    auth_service = Depends(deps.get_auth_service),
+) -> Dict[str, Any]:
+    """
+    Get all allowlist emails - admin only.
+    Returns a list of all active emails in the allowlist.
+    """
+    logger.info("[Admin] Fetching allowlist emails")
+
+    # Get all active allowlist entries
+    entries, total = await auth_service.list_allowlist(status="active", limit=1000)
+
+    emails = [entry.email for entry in entries if entry.email]
+
+    logger.info(f"[Admin] Retrieved {len(emails)} allowlist emails")
+    return {
+        "emails": emails,
+        "total": len(emails),
+    }
+
+
+@router.post(
+    "/admin/beta-invitations/send",
+    response_model=Dict[str, Any],
+    tags=["Admin Dashboard"],
+    summary="Send beta invitations (admin only)",
+    description="Send beta invitation emails to selected addresses.",
+)
+async def send_beta_invitations(
+    request: Dict[str, Any],
+    _admin_verified: bool = Depends(verify_admin_role),
+) -> Dict[str, Any]:
+    """
+    Send beta invitation emails - admin only.
+    """
+    from backend.features.auth.email_service import EmailService
+
+    logger.info("[Admin] Sending beta invitations")
+
+    emails = request.get("emails", [])
+    base_url = request.get("base_url", "https://emergence-app.ch")
+
+    if not emails or not isinstance(emails, list):
+        raise HTTPException(status_code=400, detail="emails must be a non-empty list")
+
+    email_service = EmailService()
+
+    if not email_service.is_enabled():
+        raise HTTPException(status_code=503, detail="Email service is not configured")
+
+    results = {
+        "total": len(emails),
+        "sent": 0,
+        "failed": 0,
+        "sent_to": [],
+        "failed_emails": [],
+    }
+
+    for email in emails:
+        try:
+            success = await email_service.send_beta_invitation_email(email, base_url)
+            if success:
+                results["sent"] += 1
+                results["sent_to"].append(email)
+                logger.info(f"[Admin] Beta invitation sent to {email}")
+            else:
+                results["failed"] += 1
+                results["failed_emails"].append(email)
+                logger.warning(f"[Admin] Failed to send beta invitation to {email}")
+        except Exception as e:
+            results["failed"] += 1
+            results["failed_emails"].append(email)
+            logger.error(f"[Admin] Error sending beta invitation to {email}: {e}")
+
+    logger.info(f"[Admin] Beta invitations sent: {results['sent']}/{results['total']}")
+
+    return results

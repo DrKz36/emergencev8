@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ÉMERGENCE - Envoi d'invitations Beta</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .header h1 {
+            color: #3b82f6;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 1.1em;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .card h2 {
+            color: #3b82f6;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            color: #10b981;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        .input-group textarea,
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .input-group textarea {
+            min-height: 200px;
+            resize: vertical;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .alert-info {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #3b82f6;
+        }
+
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .spinner.show {
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .results-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+
+        .email-list {
+            list-style: none;
+            margin-top: 15px;
+        }
+
+        .email-list li {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .email-list li::before {
+            content: "✉️";
+        }
+
+        .help-text {
+            color: #94a3b8;
+            font-size: 0.9em;
+            margin-top: 8px;
+        }
+
+        .example {
+            background: rgba(59, 130, 246, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 0.9em;
+            border-left: 3px solid #3b82f6;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .quick-action {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .quick-action:hover {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+        }
+
+        .quick-action h3 {
+            color: #3b82f6;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .quick-action p {
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 ÉMERGENCE Beta</h1>
+            <p>Système d'envoi d'invitations beta</p>
+        </div>
+
+        <!-- Alerts -->
+        <div id="alertSuccess" class="alert alert-success"></div>
+        <div id="alertError" class="alert alert-error"></div>
+        <div id="alertInfo" class="alert alert-info"></div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <h2>Actions rapides</h2>
+            <div class="quick-actions">
+                <div class="quick-action" onclick="loadFromAllowlist()">
+                    <h3>📋 Charger l'allowlist</h3>
+                    <p>Récupérer automatiquement tous les emails de l'allowlist</p>
+                </div>
+                <div class="quick-action" onclick="sendTestEmail()">
+                    <h3>✉️ Email de test</h3>
+                    <p>Envoyer une invitation de test à votre adresse</p>
+                </div>
+                <div class="quick-action" onclick="clearEmails()">
+                    <h3>🗑️ Vider la liste</h3>
+                    <p>Effacer tous les emails saisis</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Form -->
+        <div class="card">
+            <h2>Envoyer des invitations</h2>
+
+            <div class="section">
+                <div class="section-title">
+                    <span>📧 Destinataires</span>
+                    <span class="badge" id="emailCount">0 email(s)</span>
+                </div>
+
+                <div class="input-group">
+                    <label for="emails">Liste des emails (un par ligne)</label>
+                    <textarea
+                        id="emails"
+                        placeholder="user1@example.com&#10;user2@example.com&#10;user3@example.com"
+                        oninput="updateEmailCount()"
+                    ></textarea>
+                    <div class="help-text">
+                        💡 Astuce: Collez simplement vos emails, un par ligne. Les lignes vides et commentaires (#) sont ignorés.
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="baseUrl">URL de base de l'application</label>
+                    <input
+                        type="text"
+                        id="baseUrl"
+                        value="https://emergence-app.ch"
+                        placeholder="https://emergence-app.ch"
+                    >
+                    <div class="help-text">
+                        L'URL utilisée dans les liens de l'email d'invitation
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="sendInvitations()" id="sendBtn">
+                    <span>🚀 Envoyer les invitations</span>
+                    <div class="spinner" id="spinner"></div>
+                </button>
+                <button class="btn btn-secondary" onclick="previewEmail()">
+                    👁️ Prévisualiser l'email
+                </button>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="card results" id="results">
+            <div class="results-header">
+                <h2>📊 Résultats de l'envoi</h2>
+                <button class="btn btn-secondary" onclick="hideResults()">Fermer</button>
+            </div>
+
+            <div class="results-stats">
+                <div class="stat-card">
+                    <div class="stat-value" style="color: #3b82f6;" id="statTotal">0</div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color: #10b981;" id="statSent">0</div>
+                    <div class="stat-label">Envoyés ✅</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color: #ef4444;" id="statFailed">0</div>
+                    <div class="stat-label">Échoués ❌</div>
+                </div>
+            </div>
+
+            <div id="sentEmails" style="display: none;">
+                <h3 style="color: #10b981; margin-bottom: 15px;">✅ Emails envoyés avec succès</h3>
+                <ul class="email-list" id="sentEmailsList"></ul>
+            </div>
+
+            <div id="failedEmails" style="display: none;">
+                <h3 style="color: #ef4444; margin-bottom: 15px;">❌ Emails échoués</h3>
+                <ul class="email-list" id="failedEmailsList"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = window.location.origin;
+        const BETA_INVITE_ENDPOINT = `${API_BASE_URL}/api/beta-invite`;
+
+        // Update email count
+        function updateEmailCount() {
+            const emails = getEmailsFromTextarea();
+            document.getElementById('emailCount').textContent = `${emails.length} email(s)`;
+        }
+
+        // Get emails from textarea
+        function getEmailsFromTextarea() {
+            const textarea = document.getElementById('emails');
+            const lines = textarea.value.split('\n');
+            const emails = lines
+                .map(line => line.trim())
+                .filter(line => line && !line.startsWith('#'))
+                .filter(line => line.includes('@'));
+
+            // Remove duplicates
+            return [...new Set(emails)];
+        }
+
+        // Show alert
+        function showAlert(type, message) {
+            const alertId = `alert${type.charAt(0).toUpperCase() + type.slice(1)}`;
+            const alert = document.getElementById(alertId);
+            alert.textContent = message;
+            alert.classList.add('show');
+
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        // Load from allowlist
+        async function loadFromAllowlist() {
+            showAlert('info', '📋 Chargement de l\'allowlist...');
+
+            try {
+                // Call the allowlist API
+                const response = await fetch(`${API_BASE_URL}/api/auth/admin/allowlist`, {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erreur lors du chargement de l\'allowlist');
+                }
+
+                const data = await response.json();
+
+                if (data.items && data.items.length > 0) {
+                    const emails = data.items
+                        .filter(item => item.status === 'active')
+                        .map(item => item.email);
+
+                    document.getElementById('emails').value = emails.join('\n');
+                    updateEmailCount();
+                    showAlert('success', `✅ ${emails.length} email(s) chargé(s) depuis l'allowlist`);
+                } else {
+                    showAlert('info', 'ℹ️ Aucun email trouvé dans l\'allowlist');
+                }
+            } catch (error) {
+                console.error('Error loading allowlist:', error);
+                showAlert('error', `❌ Erreur: ${error.message}`);
+            }
+        }
+
+        // Send test email
+        function sendTestEmail() {
+            const email = prompt('Entrez votre adresse email pour recevoir une invitation de test:');
+
+            if (email && email.includes('@')) {
+                document.getElementById('emails').value = email;
+                updateEmailCount();
+                showAlert('info', '📧 Email de test prêt. Cliquez sur "Envoyer les invitations".');
+            }
+        }
+
+        // Clear emails
+        function clearEmails() {
+            if (confirm('Voulez-vous vraiment vider la liste d\'emails ?')) {
+                document.getElementById('emails').value = '';
+                updateEmailCount();
+                showAlert('info', 'Liste vidée');
+            }
+        }
+
+        // Send invitations
+        async function sendInvitations() {
+            const emails = getEmailsFromTextarea();
+            const baseUrl = document.getElementById('baseUrl').value.trim();
+
+            // Validation
+            if (emails.length === 0) {
+                showAlert('error', '❌ Veuillez saisir au moins un email');
+                return;
+            }
+
+            if (!baseUrl) {
+                showAlert('error', '❌ Veuillez saisir l\'URL de base');
+                return;
+            }
+
+            // Confirmation
+            const confirmMsg = `Êtes-vous sûr de vouloir envoyer ${emails.length} invitation(s) ?\n\nLes emails seront envoyés depuis gonzalefernando@gmail.com`;
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+
+            // UI Updates
+            const sendBtn = document.getElementById('sendBtn');
+            const spinner = document.getElementById('spinner');
+            sendBtn.disabled = true;
+            spinner.classList.add('show');
+            hideResults();
+
+            showAlert('info', `📧 Envoi de ${emails.length} invitation(s) en cours...`);
+
+            try {
+                const response = await fetch(BETA_INVITE_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        emails: emails,
+                        base_url: baseUrl
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Erreur lors de l\'envoi');
+                }
+
+                const result = await response.json();
+
+                // Show results
+                displayResults(result);
+
+                if (result.failed === 0) {
+                    showAlert('success', `✅ ${result.sent} invitation(s) envoyée(s) avec succès !`);
+                } else if (result.sent === 0) {
+                    showAlert('error', `❌ Échec de l'envoi de toutes les invitations`);
+                } else {
+                    showAlert('info', `⚠️ ${result.sent} envoyé(s), ${result.failed} échoué(s)`);
+                }
+
+            } catch (error) {
+                console.error('Error sending invitations:', error);
+                showAlert('error', `❌ Erreur: ${error.message}`);
+            } finally {
+                sendBtn.disabled = false;
+                spinner.classList.remove('show');
+            }
+        }
+
+        // Display results
+        function displayResults(result) {
+            document.getElementById('results').classList.add('show');
+
+            document.getElementById('statTotal').textContent = result.total;
+            document.getElementById('statSent').textContent = result.sent;
+            document.getElementById('statFailed').textContent = result.failed;
+
+            // Sent emails
+            if (result.sent_to && result.sent_to.length > 0) {
+                const sentDiv = document.getElementById('sentEmails');
+                const sentList = document.getElementById('sentEmailsList');
+                sentDiv.style.display = 'block';
+                sentList.innerHTML = result.sent_to.map(email => `<li>${email}</li>`).join('');
+            } else {
+                document.getElementById('sentEmails').style.display = 'none';
+            }
+
+            // Failed emails
+            if (result.failed_emails && result.failed_emails.length > 0) {
+                const failedDiv = document.getElementById('failedEmails');
+                const failedList = document.getElementById('failedEmailsList');
+                failedDiv.style.display = 'block';
+                failedList.innerHTML = result.failed_emails.map(item => {
+                    const email = typeof item === 'string' ? item : item.email;
+                    const reason = typeof item === 'object' ? item.reason : '';
+                    return `<li>${email}${reason ? ` - ${reason}` : ''}</li>`;
+                }).join('');
+            } else {
+                document.getElementById('failedEmails').style.display = 'none';
+            }
+
+            // Scroll to results
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Hide results
+        function hideResults() {
+            document.getElementById('results').classList.remove('show');
+        }
+
+        // Preview email
+        function previewEmail() {
+            window.open('/beta_report.html', '_blank');
+            showAlert('info', 'ℹ️ Aperçu ouvert dans un nouvel onglet (formulaire de rapport, pas l\'invitation)');
+        }
+
+        // Initialize
+        updateEmailCount();
+    </script>
+</body>
+</html>
