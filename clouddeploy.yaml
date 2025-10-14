@@ -1,0 +1,25 @@
+# Cloud Deploy Pipeline Configuration for ÉMERGENCE
+# Implements Canary → Stable automated promotion with verification
+# Projet: emergence-469005
+# Région: europe-west1
+# Service Cloud Run: emergence-app
+
+apiVersion: deploy.cloud.google.com/v1
+kind: DeliveryPipeline
+metadata:
+  name: emergence-pipeline
+description: "ÉMERGENCE multi-agent platform deployment pipeline with canary promotion"
+serialPipeline:
+  stages:
+  # Stage 1: Deploy to Canary (20% traffic)
+  - targetId: run-canary
+    profiles:
+    - canary
+    # Optional: Manual approval gate before canary deployment
+    # requireApproval: true
+
+  # Stage 2: Promote to Stable (100% traffic)
+  # Promotion will be manual or triggered via gcloud command
+  - targetId: run-stable
+    profiles:
+    - stable

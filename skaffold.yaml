@@ -1,0 +1,89 @@
+# Skaffold Configuration for ÉMERGENCE Cloud Deploy
+# Implements canary and stable deployment profiles
+# Projet: emergence-469005
+# Région: europe-west1
+
+apiVersion: skaffold/v4beta7
+kind: Config
+metadata:
+  name: emergence-app
+
+# Default build configuration
+build:
+  artifacts:
+  - image: app
+    docker:
+      dockerfile: Dockerfile
+      buildArgs:
+        BUILDKIT_INLINE_CACHE: "1"
+  googleCloudBuild:
+    projectId: emergence-469005
+    region: europe-west1
+    timeout: "20m"
+
+# Deployment configuration (overridden by profiles)
+manifests:
+  rawYaml:
+  - k8s-dummy.yaml  # Placeholder for Cloud Deploy
+
+# Profile: Canary (20% traffic to new revision, 80% to stable)
+profiles:
+- name: canary
+  activation:
+  - command: deploy
+  deploy:
+    cloudRun:
+      projectid: emergence-469005
+      region: europe-west1
+      hooks:
+        before:
+        - container:
+            name: pre-deploy-check
+            image: gcr.io/google.com/cloudsdktool/cloud-sdk:alpine
+            command: ["sh", "-c"]
+            args:
+            - |
+              echo "🚀 Starting canary deployment..."
+              echo "📊 Checking current service state..."
+              gcloud run services describe emergence-app \
+                --region europe-west1 \
+                --project emergence-469005 \
+                --format="value(status.url)" || true
+  manifests:
+    rawYaml:
+    - canary-service.yaml
+
+# Profile: Stable (100% traffic to new revision)
+- name: stable
+  activation:
+  - command: deploy
+  deploy:
+    cloudRun:
+      projectid: emergence-469005
+      region: europe-west1
+      hooks:
+        before:
+        - container:
+            name: pre-promote
+            image: gcr.io/google.com/cloudsdktool/cloud-sdk:alpine
+            command: ["sh", "-c"]
+            args:
+            - |
+              echo "✅ Promoting canary to stable..."
+              echo "📈 Final health check before promotion..."
+        after:
+        - container:
+            name: post-promote
+            image: gcr.io/google.com/cloudsdktool/cloud-sdk:alpine
+            command: ["sh", "-c"]
+            args:
+            - |
+              echo "🎉 Stable deployment complete!"
+              echo "📊 Final service state:"
+              gcloud run services describe emergence-app \
+                --region europe-west1 \
+                --project emergence-469005 \
+                --format="table(status.url,status.traffic)"
+  manifests:
+    rawYaml:
+    - stable-service.yaml

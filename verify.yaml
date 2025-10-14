@@ -1,0 +1,222 @@
+# Cloud Build Verification Job for Canary Deployment
+# Validates health, metrics, and system integrity before stable promotion
+# Projet: emergence-469005
+# Triggered by Cloud Deploy after canary deployment
+
+steps:
+# Step 1: Wait for Cloud Run revision to be fully ready
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:alpine'
+  id: 'wait-for-ready'
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - |
+    echo "⏳ Waiting for canary revision to be ready..."
+    sleep 30
+    echo "✅ Initial wait complete"
+
+# Step 2: Health Check - Basic API health endpoint
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:alpine'
+  id: 'health-check'
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - |
+    echo "🔍 Step 2: Health Check - Testing /api/health endpoint..."
+
+    SERVICE_URL="https://emergence-app-486095406755.europe-west1.run.app"
+    MAX_RETRIES=5
+    RETRY_DELAY=20
+
+    for i in $(seq 1 $MAX_RETRIES); do
+      echo "Attempt $i/$MAX_RETRIES..."
+
+      HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+        --connect-timeout 10 \
+        --max-time 30 \
+        "${SERVICE_URL}/api/health")
+
+      if [ "$HTTP_CODE" = "200" ]; then
+        echo "✅ Health check passed (HTTP $HTTP_CODE)"
+
+        # Get response body
+        RESPONSE=$(curl -s --connect-timeout 10 --max-time 30 "${SERVICE_URL}/api/health")
+        echo "Response: $RESPONSE"
+
+        # Validate JSON contains "ok"
+        if echo "$RESPONSE" | grep -q '"status":"ok"'; then
+          echo "✅ Health response valid"
+          exit 0
+        else
+          echo "⚠️  Health response invalid: $RESPONSE"
+          exit 1
+        fi
+      else
+        echo "❌ Health check failed (HTTP $HTTP_CODE)"
+
+        if [ $i -lt $MAX_RETRIES ]; then
+          echo "⏳ Retrying in ${RETRY_DELAY}s..."
+          sleep $RETRY_DELAY
+        else
+          echo "❌ Health check failed after $MAX_RETRIES attempts"
+          exit 1
+        fi
+      fi
+    done
+
+# Step 3: Readiness Check - Database and dependencies
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:alpine'
+  id: 'readiness-check'
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - |
+    echo "🔍 Step 3: Readiness Check - Testing /health/readiness endpoint..."
+
+    SERVICE_URL="https://emergence-app-486095406755.europe-west1.run.app"
+
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+      --connect-timeout 10 \
+      --max-time 30 \
+      "${SERVICE_URL}/health/readiness")
+
+    if [ "$HTTP_CODE" = "200" ]; then
+      echo "✅ Readiness check passed (HTTP $HTTP_CODE)"
+
+      RESPONSE=$(curl -s --connect-timeout 10 --max-time 30 "${SERVICE_URL}/health/readiness")
+      echo "Response: $RESPONSE"
+      exit 0
+    else
+      echo "❌ Readiness check failed (HTTP $HTTP_CODE)"
+      exit 1
+    fi
+
+# Step 4: Prometheus Metrics Validation
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:alpine'
+  id: 'metrics-validation'
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - |
+    echo "🔍 Step 4: Prometheus Metrics Validation - Testing /api/metrics..."
+
+    SERVICE_URL="https://emergence-app-486095406755.europe-west1.run.app"
+
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+      --connect-timeout 10 \
+      --max-time 30 \
+      "${SERVICE_URL}/api/metrics")
+
+    if [ "$HTTP_CODE" = "200" ]; then
+      echo "✅ Metrics endpoint accessible (HTTP $HTTP_CODE)"
+
+      # Fetch metrics
+      METRICS=$(curl -s --connect-timeout 10 --max-time 30 "${SERVICE_URL}/api/metrics")
+
+      # Check for critical failure metrics
+      MEMORY_FAILURES=$(echo "$METRICS" | grep "memory_analysis_failure_total" | tail -1 | awk '{print $2}')
+
+      if [ -n "$MEMORY_FAILURES" ]; then
+        echo "📊 Memory analysis failures: $MEMORY_FAILURES"
+
+        # Allow up to 2 failures (tolerant threshold)
+        if [ "$MEMORY_FAILURES" -le 2 ]; then
+          echo "✅ Memory analysis failure count acceptable"
+        else
+          echo "❌ Too many memory analysis failures: $MEMORY_FAILURES > 2"
+          exit 1
+        fi
+      else
+        echo "✅ No memory analysis failures detected"
+      fi
+
+      # Check cache hit rate (should be > 80%)
+      CACHE_HITS=$(echo "$METRICS" | grep 'memory_cache_operations_total{operation="hit"}' | tail -1 | awk '{print $2}')
+      CACHE_TOTAL=$(echo "$METRICS" | grep 'memory_cache_operations_total' | grep -v "#" | awk '{sum+=$2} END {print sum}')
+
+      if [ -n "$CACHE_HITS" ] && [ -n "$CACHE_TOTAL" ] && [ "$CACHE_TOTAL" -gt 0 ]; then
+        HIT_RATE=$(awk "BEGIN {printf \"%.2f\", ($CACHE_HITS / $CACHE_TOTAL) * 100}")
+        echo "📊 Cache hit rate: ${HIT_RATE}%"
+
+        if [ $(echo "$HIT_RATE > 80" | bc -l) -eq 1 ]; then
+          echo "✅ Cache hit rate acceptable (${HIT_RATE}% > 80%)"
+        else
+          echo "⚠️  Cache hit rate below threshold: ${HIT_RATE}% < 80%"
+          # Warning only, not blocking
+        fi
+      else
+        echo "ℹ️  Cache metrics not yet available (new deployment)"
+      fi
+
+      echo "✅ Metrics validation complete"
+      exit 0
+    else
+      echo "❌ Metrics endpoint failed (HTTP $HTTP_CODE)"
+      exit 1
+    fi
+
+# Step 5: Smoke Test - Basic chat flow
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:alpine'
+  id: 'smoke-test'
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - |
+    echo "🔍 Step 5: Smoke Test - Testing frontend accessibility..."
+
+    SERVICE_URL="https://emergence-app-486095406755.europe-west1.run.app"
+
+    # Test frontend index.html
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+      --connect-timeout 10 \
+      --max-time 30 \
+      "${SERVICE_URL}/")
+
+    if [ "$HTTP_CODE" = "200" ]; then
+      echo "✅ Frontend accessible (HTTP $HTTP_CODE)"
+    else
+      echo "❌ Frontend failed (HTTP $HTTP_CODE)"
+      exit 1
+    fi
+
+    # Test static assets
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+      --connect-timeout 10 \
+      --max-time 30 \
+      "${SERVICE_URL}/assets/")
+
+    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "403" ]; then
+      echo "✅ Static assets path exists (HTTP $HTTP_CODE)"
+    else
+      echo "⚠️  Static assets check inconclusive (HTTP $HTTP_CODE)"
+    fi
+
+    echo "✅ Smoke test complete"
+
+# Step 6: Final Validation Summary
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:alpine'
+  id: 'validation-summary'
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - |
+    echo ""
+    echo "═══════════════════════════════════════════════════════"
+    echo "✅ CANARY VALIDATION COMPLETE"
+    echo "═══════════════════════════════════════════════════════"
+    echo ""
+    echo "All verification steps passed:"
+    echo "  ✅ Health check (/api/health)"
+    echo "  ✅ Readiness check (/health/readiness)"
+    echo "  ✅ Metrics validation (/api/metrics)"
+    echo "  ✅ Smoke test (frontend + assets)"
+    echo ""
+    echo "🎉 Canary deployment is HEALTHY"
+    echo "🚀 Ready for promotion to STABLE (100% traffic)"
+    echo ""
+    echo "═══════════════════════════════════════════════════════"
+
+timeout: 600s  # 10 minutes total timeout
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'

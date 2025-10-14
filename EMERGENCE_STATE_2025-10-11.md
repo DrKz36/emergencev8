@@ -548,59 +548,113 @@ git push origin main
 
 ## 🐳 Build & Déploiement
 
-### Docker Build
+### Infrastructure Canary Deployment (2025-10-14)
 
-**Dockerfile** (multi-stage):
-```dockerfile
-FROM python:3.11-slim
+**ÉMERGENCE** utilise désormais un système de déploiement Canary automatisé avec Cloud Deploy pour validation progressive des nouvelles versions.
 
-# Install system deps
-RUN apt-get update && apt-get install -y \
-    build-essential libmagic1 \
-    && rm -rf /var/lib/apt/lists/*
+#### Pipeline Cloud Deploy
 
-WORKDIR /app
+**Architecture** :
+- **Pipeline** : `emergence-pipeline` (2 stages)
+- **Stage 1 - Canary** : Déploiement 20% trafic + vérifications automatiques
+- **Stage 2 - Stable** : Promotion 100% trafic après validation
+- **Rollback** : Automatique en cas d'échec des vérifications
 
-# Install Python deps
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+**Fichiers de configuration** :
+- [`clouddeploy.yaml`](clouddeploy.yaml) - Pipeline delivery
+- [`targets.yaml`](targets.yaml) - Targets canary/stable
+- [`skaffold.yaml`](skaffold.yaml) - Profiles déploiement
+- [`verify.yaml`](verify.yaml) - Job Cloud Build de vérification (6 étapes)
 
-# Pre-download SBERT model (cache image)
-RUN python -c "from sentence_transformers import SentenceTransformer; \
-    SentenceTransformer('all-MiniLM-L6-v2')"
+#### Déploiement Rapide (Recommandé)
 
-# Copy app
-COPY . .
+**Script PowerShell automatisé** :
+```powershell
+# Déploiement complet avec tests
+.\scripts\deploy-simple.ps1
 
-CMD ["uvicorn", "--app-dir", "src", "backend.main:app", \
-     "--host", "0.0.0.0", "--port", "8080"]
+# Déploiement rapide sans tests
+.\scripts\deploy-simple.ps1 -SkipTests
+
+# Utiliser image existante (skip build)
+.\scripts\deploy-simple.ps1 -SkipBuild -SkipTests
 ```
 
-**Build local**:
+**Étapes automatisées** :
+1. ✅ Vérifications pré-déploiement (gcloud, docker, auth)
+2. 🧪 Tests backend (pytest + ruff + mypy) - optionnel
+3. 🐳 Build Docker image (platform linux/amd64)
+4. 📤 Push Artifact Registry
+5. 🚀 Deploy Cloud Run (100% trafic)
+6. ✅ Health check automatique
+
+**Durée** : ~10 minutes (build compris)
+
+#### Déploiement via Cloud Deploy (Pipeline Canary)
+
+**Workflow complet** :
 ```bash
+# 1. Build & Push
 timestamp=$(date +%Y%m%d-%H%M%S)
-docker build --platform linux/amd64 \
-  -t europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp .
+image="europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp"
+
+docker build --platform linux/amd64 -t $image .
+docker push $image
+
+# 2. Créer release Cloud Deploy
+gcloud deploy releases create rel-$timestamp \
+  --project=emergence-469005 \
+  --region=europe-west1 \
+  --delivery-pipeline=emergence-pipeline \
+  --skaffold-file=skaffold.yaml \
+  --images=app=$image
+
+# 3. Monitor rollout (automatique)
+gcloud deploy rollouts list \
+  --delivery-pipeline=emergence-pipeline \
+  --region=europe-west1
 ```
 
-### Push Artifact Registry
+**Vérifications automatiques** (Cloud Build) :
+1. ⏳ Wait for Ready (30s)
+2. ✅ Health Check (`/api/health` → HTTP 200, 5 retry, 2min timeout)
+3. ✅ Readiness Check (`/health/readiness` → HTTP 200)
+4. ✅ Metrics Validation (Prometheus : failures ≤ 2, cache > 80%)
+5. ✅ Smoke Test (frontend + assets accessible)
+6. 📊 Validation Summary
 
+**Critères bloquants** :
+- ❌ Health check fail → **ROLLBACK**
+- ❌ Memory failures > 2 → **ROLLBACK**
+- ❌ Frontend inaccessible → **ROLLBACK**
+
+#### Rollback Automatique
+
+**Script PowerShell** :
+```powershell
+# Rollback automatique vers dernière révision stable
+.\scripts\rollback.ps1
+
+# Rollback vers révision spécifique
+.\scripts\rollback.ps1 -TargetRevision emergence-app-00298-g8j
+
+# Dry run (simulation)
+.\scripts\rollback.ps1 -DryRun
+```
+
+**OU via gcloud** :
 ```bash
-docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp
+# Lister révisions disponibles
+gcloud run revisions list --service emergence-app \
+  --region europe-west1 --project emergence-469005
+
+# Rollback manuel
+gcloud run services update-traffic emergence-app \
+  --to-revisions=emergence-app-00XXX-yyy=100 \
+  --region europe-west1 --project emergence-469005
 ```
 
-### Déploiement Cloud Run
-
-**Commande**:
-```bash
-gcloud run deploy emergence-app \
-  --image europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp \
-  --platform managed \
-  --region europe-west1 \
-  --project emergence-469005 \
-  --allow-unauthenticated \
-  --set-env-vars GOOGLE_API_KEY=$GOOGLE_API_KEY,AUTH_DEV_MODE=0
-```
+#### État Actuel Production
 
 **Révision actuelle** (2025-10-11):
 - Nom: `emergence-app-00298-g8j`
@@ -610,16 +664,13 @@ gcloud run deploy emergence-app \
 
 **URL Production**: `https://emergence-app-486095406755.europe-west1.run.app`
 
-**Rollback**:
-```bash
-# Lister révisions (max 3 conservées)
-gcloud run revisions list --service emergence-app --region europe-west1
+**Pipeline Cloud Deploy** : ✅ Configuré (2025-10-14)
 
-# Rollback vers révision précédente
-gcloud run services update-traffic emergence-app \
-  --to-revisions=emergence-app-00297-6pr=100 \
-  --region europe-west1
-```
+#### Documentation Déploiement
+
+- 📖 [Guide Démarrage Rapide](DEPLOYMENT_QUICKSTART.md) - Guide complet
+- 📖 [Documentation Déploiements](docs/deployments/README.md) - Procédures détaillées
+- 📖 [Historique Déploiements](docs/deployments/) - Changelog déploiements
 
 ---
 

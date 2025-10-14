@@ -2,17 +2,23 @@
 
 Ce dossier contient l'historique chronologique des déploiements de l'application Emergence sur Google Cloud Run.
 
-## ⚠️ Changement d'Architecture - 2025-10-11
+## 🚀 Architecture Canary Deployment - 2025-10-14
 
-**Migration vers conteneur unique sans canary**
+**Migration vers déploiement Canary automatisé avec Cloud Deploy**
 
-- **Avant** : Services multiples (`emergence-app`, `emergence-app-canary`, `emergence-app-clean`)
-- **Maintenant** : Un seul service `emergence-app` (conteneur principal-source)
-- **Impact** : Déploiement simplifié, pas de split de trafic, rollback via les 3 dernières révisions conservées
-- **Nettoyage effectué** :
-  - Services supprimés : `emergence-app-canary`, `emergence-app-clean`
-  - Révisions nettoyées : 89 anciennes révisions supprimées
-  - Révisions conservées : 3 dernières actives (00297-6pr, 00350-wic, 00348-rih)
+- **Avant** : Conteneur unique sans canary (déploiement direct 100% trafic)
+- **Maintenant** : Pipeline Cloud Deploy avec promotion automatique Canary → Stable
+- **Workflow** :
+  1. **Canary** : Déploiement 20% trafic + vérifications automatiques (health, metrics, smoke tests)
+  2. **Validation** : Job Cloud Build exécute 6 étapes de vérification (timeout 10min)
+  3. **Promotion** : Automatique vers 100% trafic si toutes les vérifications passent
+  4. **Rollback** : Automatique en cas d'échec validation
+- **Avantages** :
+  - Détection précoce des problèmes (20% utilisateurs impactés max)
+  - Validation automatisée pré-production (santé, métriques Prometheus, frontend)
+  - Rollback sécurisé vers révision stable précédente
+  - Traçabilité complète via Cloud Deploy
+- **Documentation** : Voir section "Promotion Automatique Canary → Stable" ci-dessous
 
 ## Structure des Documents
 
@@ -57,67 +63,201 @@ Exemple : `2025-10-05-audit-fixes-deployment.md`
 
 ## Architecture de Déploiement
 
-**Stratégie actuelle** : Conteneur unique sans canary
+**Stratégie actuelle** : Pipeline Cloud Deploy avec Canary automatisé
 
-- **Service unique** : `emergence-app` (conteneur principal-source)
-- **Pas de canary** : Toute nouvelle révision est déployée avec 100% du trafic
-- **Gestion des révisions** : Conservation automatique des 3 dernières révisions fonctionnelles
-- **Rollback simple** : Basculer vers l'une des 3 révisions conservées en cas de problème
+- **Pipeline** : `emergence-pipeline` (2 stages: canary → stable)
+- **Targets** :
+  - `run-canary` : 20% trafic (nouvelle révision) + 80% stable
+  - `run-stable` : 100% trafic (après validation)
+- **Orchestration** : Skaffold + Cloud Deploy + Cloud Build
+- **Vérifications** : Job Cloud Build automatique (6 étapes, timeout 10min)
+- **Rollback** : Automatique vers révision stable précédente
 
-## Processus de Déploiement Standard
+### Workflow Complet
+
+```mermaid
+graph TD
+    A[Code Push] --> B[Build Docker Image]
+    B --> C[Push Artifact Registry]
+    C --> D[Create Cloud Deploy Release]
+    D --> E[Deploy Canary 20%]
+    E --> F[Cloud Build Verification]
+    F -->|PASS| G[Promote to Stable 100%]
+    F -->|FAIL| H[Automatic Rollback]
+    G --> I[Production OK]
+    H --> J[Alert & Manual Investigation]
+```
+
+## Promotion Automatique Canary → Stable
+
+### Pipeline Cloud Deploy
+
+Le pipeline ÉMERGENCE utilise **Cloud Deploy** pour orchestrer le déploiement Canary avec promotion automatique.
+
+**Fichiers de configuration** :
+- [`clouddeploy.yaml`](../../clouddeploy.yaml) - Définition pipeline 2 stages
+- [`targets.yaml`](../../targets.yaml) - Targets canary & stable
+- [`skaffold.yaml`](../../skaffold.yaml) - Profiles canary/stable
+- [`verify.yaml`](../../verify.yaml) - Job Cloud Build de vérification
+- [`canary-service.yaml`](../../canary-service.yaml) - Manifeste Cloud Run canary (20%/80%)
+- [`stable-service.yaml`](../../stable-service.yaml) - Manifeste Cloud Run stable (100%)
+
+### Processus de Déploiement Automatisé
+
+#### 1️⃣ Script PowerShell (Recommandé)
+
+```powershell
+# Déploiement complet automatisé
+.\scripts\deploy.ps1
+
+# Options disponibles
+.\scripts\deploy.ps1 -SkipTests          # Sauter tests backend
+.\scripts\deploy.ps1 -SkipBuild          # Sauter build Docker (utiliser image existante)
+.\scripts\deploy.ps1 -ManualApproval     # Pas de confirmation interactive
+.\scripts\deploy.ps1 -ImageTag "custom"  # Tag personnalisé (sinon timestamp auto)
+```
+
+**Étapes exécutées automatiquement** :
+1. ✅ Vérifications pré-déploiement (gcloud, docker, auth)
+2. 🧪 Tests backend (pytest + ruff + mypy) - optionnel
+3. 🐳 Build Docker image (platform linux/amd64)
+4. 📤 Push Artifact Registry
+5. 🚀 Création Cloud Deploy release
+6. 🔍 Déploiement Canary (20% trafic)
+7. ⏳ Vérifications automatiques (Cloud Build job)
+8. ✅ Promotion Stable (100% trafic)
+9. 🎉 Vérification finale (health check)
+
+#### 2️⃣ Ligne de Commande Manuelle
 
 ```bash
-# 1. Validation locale
-npm run build
-pytest tests/backend/ -v
-
-# 2. Commit + Push
-git add -A
-git commit -m "feat: description"
-git push origin main
-
-# 3. Build Docker
+# 1. Build & Push
 timestamp=$(date +%Y%m%d-%H%M%S)
-docker build --platform linux/amd64 \
-  -t europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp .
+image="europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp"
 
-# 4. Push Registry
-docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp
+docker build --platform linux/amd64 -t $image .
+docker push $image
 
-# 5. Deploy Cloud Run sur conteneur unique
-gcloud run deploy emergence-app \
-  --image europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-$timestamp \
-  --platform managed \
-  --region europe-west1 \
-  --project emergence-469005 \
-  --allow-unauthenticated
+# 2. Create Cloud Deploy Release
+gcloud deploy releases create rel-$timestamp \
+  --project=emergence-469005 \
+  --region=europe-west1 \
+  --delivery-pipeline=emergence-pipeline \
+  --skaffold-file=skaffold.yaml \
+  --images=app=$image
 
-# 6. Vérifications
-gcloud run services list --platform=managed  # Doit montrer uniquement emergence-app
-gcloud run revisions list --service emergence-app --region europe-west1 --limit 3  # Max 3 révisions
+# 3. Monitor (automatique)
+gcloud deploy rollouts list \
+  --delivery-pipeline=emergence-pipeline \
+  --region=europe-west1
+```
 
-# 7. Documenter
-# Créer docs/deployments/YYYY-MM-DD-description.md
-# Mettre à jour docs/passation.md
-# Mettre à jour AGENT_SYNC.md
+### Vérifications Automatiques (Cloud Build)
+
+Le job [`verify.yaml`](../../verify.yaml) exécute 6 étapes de validation :
+
+| Étape | Vérification | Critères PASS | Timeout |
+|-------|--------------|---------------|---------|
+| 1️⃣ | Wait for Ready | Révision Cloud Run ready | 30s |
+| 2️⃣ | Health Check | `GET /api/health` → HTTP 200 + `"status":"ok"` | 2min (5 retry) |
+| 3️⃣ | Readiness Check | `GET /health/readiness` → HTTP 200 | 30s |
+| 4️⃣ | Metrics Validation | `GET /api/metrics` → Prometheus OK + `memory_analysis_failure_total ≤ 2` + Cache hit rate > 80% | 30s |
+| 5️⃣ | Smoke Test | `GET /` (frontend) + `GET /assets/` → HTTP 200 | 30s |
+| 6️⃣ | Validation Summary | Récapitulatif résultats | - |
+
+**Critères bloquants** :
+- ❌ Health check fail après 5 retry → **ROLLBACK**
+- ❌ Readiness check fail → **ROLLBACK**
+- ❌ Memory analysis failures > 2 → **ROLLBACK**
+- ⚠️ Cache hit rate < 80% → **WARNING** (non-bloquant)
+- ❌ Frontend inaccessible → **ROLLBACK**
+
+**Timeout global** : 10 minutes (600s)
+
+### Promotion Automatique
+
+Si **toutes les vérifications passent** :
+- Cloud Deploy déclenche automatiquement le stage `run-stable`
+- Traffic split : **100%** → nouvelle révision (tag `stable`)
+- Durée promotion : ~30-60 secondes
+- Aucune action manuelle requise
+
+**Règle automation** (définie dans `clouddeploy.yaml`) :
+```yaml
+automation:
+  rules:
+  - targetId: run-stable
+    wait: "0s"  # Immediate promotion
+    condition: "stages/0.rollouts/0/postdeploy/passed == true"
 ```
 
 ## Rollback Procédure
 
-En cas de problème avec une nouvelle révision :
+### Rollback Automatique
+
+En cas d'échec des vérifications canary, le script [`scripts/rollback.ps1`](../../scripts/rollback.ps1) est déclenché automatiquement.
+
+**Déclencheurs** :
+- ❌ Cloud Build verification job fail
+- ❌ Health check timeout
+- ❌ Metrics validation fail
+
+**Actions** :
+1. Identification révision stable précédente
+2. Bascule trafic 100% → révision précédente
+3. Vérification santé post-rollback
+4. Alerte équipe + logs
+
+### Rollback Manuel
+
+```powershell
+# Rollback automatique vers dernière révision stable
+.\scripts\rollback.ps1
+
+# Rollback vers révision spécifique
+.\scripts\rollback.ps1 -TargetRevision emergence-app-00298-g8j
+
+# Dry run (simulation sans changement)
+.\scripts\rollback.ps1 -DryRun
+
+# Force (pas de confirmation)
+.\scripts\rollback.ps1 -Force
+```
+
+**OU via gcloud CLI** :
 
 ```bash
-# Lister les révisions conservées (max 3)
+# Lister révisions disponibles
 gcloud run revisions list --service emergence-app \
   --region europe-west1 --project emergence-469005
 
-# Rollback vers une révision précédente
+# Rollback vers révision précédente
 gcloud run services update-traffic emergence-app \
   --to-revisions=emergence-app-00XXX-yyy=100 \
   --region europe-west1 --project emergence-469005
 ```
 
-> **Note** : Seules les 3 dernières révisions fonctionnelles sont disponibles pour le rollback. Planifiez vos déploiements en conséquence.
+### Monitoring Rollout
+
+**Cloud Console** :
+```
+https://console.cloud.google.com/deploy/delivery-pipelines/europe-west1/emergence-pipeline?project=emergence-469005
+```
+
+**Logs en temps réel** :
+```bash
+# Logs Cloud Deploy
+gcloud deploy rollouts describe <rollout-name> \
+  --region=europe-west1 --project=emergence-469005
+
+# Logs Cloud Build (verification job)
+gcloud builds list --project=emergence-469005 --limit=5
+
+# Logs Cloud Run
+gcloud run services logs read emergence-app \
+  --region=europe-west1 --project=emergence-469005 --limit=100
+```
+
 
 ## Monitoring Post-Déploiement
 

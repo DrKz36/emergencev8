@@ -1,0 +1,33 @@
+# Cloud Deploy Targets Configuration for ÉMERGENCE
+# Defines canary and stable deployment targets for Cloud Run
+# Projet: emergence-469005
+# Région: europe-west1
+# Service: emergence-app
+
+---
+# Target 1: Canary (20% traffic)
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: run-canary
+  labels:
+    app: emergence
+    stage: canary
+description: "Canary deployment target - 20% traffic for validation"
+requireApproval: false
+run:
+  location: projects/emergence-469005/locations/europe-west1
+
+---
+# Target 2: Stable (100% traffic)
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: run-stable
+  labels:
+    app: emergence
+    stage: stable
+description: "Stable deployment target - 100% production traffic"
+requireApproval: false
+run:
+  location: projects/emergence-469005/locations/europe-west1

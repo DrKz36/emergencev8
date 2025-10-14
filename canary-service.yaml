@@ -1,0 +1,91 @@
+# Cloud Run Service Configuration - Canary Deployment
+# 20% traffic to new revision (canary), 80% to stable revision
+# Projet: emergence-469005
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: emergence-app
+  namespace: 'emergence-469005'
+  labels:
+    cloud.googleapis.com/location: europe-west1
+    app: emergence
+    stage: canary
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: '1'
+        autoscaling.knative.dev/maxScale: '10'
+        run.googleapis.com/cpu-throttling: 'false'
+        run.googleapis.com/startup-cpu-boost: 'true'
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      serviceAccountName: emergence-469005@appspot.gserviceaccount.com
+      containers:
+      - name: emergence-app
+        image: app  # Replaced by Skaffold/Cloud Deploy
+        ports:
+        - name: http1
+          containerPort: 8080
+        env:
+        - name: PORT
+          value: '8080'
+        - name: GOOGLE_CLOUD_PROJECT
+          value: emergence-469005
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /secrets/gcp-credentials.json
+        - name: AUTH_DEV_MODE
+          value: '0'
+        - name: CONCEPT_RECALL_METRICS_ENABLED
+          value: '1'
+        resources:
+          limits:
+            cpu: '2'
+            memory: 4Gi
+        livenessProbe:
+          httpGet:
+            path: /health/liveness
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health/readiness
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        startupProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 30
+        volumeMounts:
+        - name: secrets
+          mountPath: /secrets
+          readOnly: true
+      volumes:
+      - name: secrets
+        secret:
+          secretName: gcp-credentials
+
+  traffic:
+  # New revision (canary) receives 20% traffic
+  - percent: 20
+    latestRevision: true
+    tag: canary
+  # Stable revision receives 80% traffic
+  - percent: 80
+    revisionName: STABLE_REVISION  # Will be replaced dynamically by deployment script
+    tag: stable
