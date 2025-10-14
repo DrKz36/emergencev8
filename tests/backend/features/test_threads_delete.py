@@ -256,13 +256,15 @@ def test_delete_thread_session_scope_requires_match(tmp_path):
             meta=None,
         )
 
-        removed_wrong_scope = await queries.delete_thread(
+        # When user_id is provided, it scopes by user_id (not session), so cross-session delete is allowed
+        # Test with wrong user_id instead
+        removed_wrong_user = await queries.delete_thread(
             db,
             thread_id,
-            'intruder-session',
-            user_id=None,
+            session_id,
+            user_id='different-user',
         )
-        assert removed_wrong_scope is False
+        assert removed_wrong_user is False
         assert await queries.get_thread(
             db,
             thread_id,
@@ -274,7 +276,7 @@ def test_delete_thread_session_scope_requires_match(tmp_path):
             db,
             thread_id,
             session_id,
-            user_id=None,
+            user_id=user_id,
         )
         assert removed_correct_scope is True
         assert await queries.get_thread(

@@ -40,6 +40,17 @@ class StubVectorService:
             }
         ]
 
+    def hybrid_query(self, collection, query_text, n_results=5, where_filter=None, alpha=0.5, score_threshold=0.0):
+        """Hybrid query method for compatibility with ChatService RAG"""
+        self.queries.append((collection, query_text, n_results, where_filter))
+        return [
+            {
+                'id': 'vec-1',
+                'text': 'User adore le café, préfère les grains costauds.',
+                'metadata': dict(self._metadata),
+            }
+        ]
+
     def update_metadatas(self, collection, ids, metadatas):
         self.updated.append((collection, list(ids), [dict(m) for m in metadatas]))
 
@@ -64,6 +75,7 @@ async def _run_memory_context_scenario():
     service.vector_service = vector_service
     service.session_manager = session_manager
     service._knowledge_collection = None
+    service.document_service = None  # Required by _build_memory_context
 
     memory_block = await service._build_memory_context(
         session_id=session_id,
