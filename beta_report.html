@@ -662,8 +662,16 @@
     const successMessage = document.getElementById('successMessage');
     const errorMessage = document.getElementById('errorMessage');
 
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', async function(e) {
       e.preventDefault();
+
+      // Disable submit button
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Envoi en cours...';
+
+      // Hide previous messages
+      successMessage.style.display = 'none';
+      errorMessage.style.display = 'none';
 
       // Collect form data
       const formData = new FormData(form);
@@ -682,44 +690,67 @@
       const completed = Object.values(checklist).filter(v => v).length;
       const completionPct = Math.round((completed / totalTests) * 100);
 
-      // Build email body
-      let emailBody = `EMERGENCE Beta 1.0 - Rapport de Test\\n`;
-      emailBody += `========================================\\n\\n`;
-      emailBody += `Email: ${data.email}\\n`;
-      emailBody += `Navigateur/OS: ${data.browserInfo || 'Non spécifié'}\\n`;
-      emailBody += `Progression: ${completed}/${totalTests} (${completionPct}%)\\n\\n`;
+      // Prepare payload for API
+      const payload = {
+        email: data.email,
+        browserInfo: data.browserInfo || null,
+        checklist: checklist,
+        completion: `${completed}/${totalTests}`,
+        completionPercentage: completionPct,
+        comments1: data.comments1 || null,
+        comments2: data.comments2 || null,
+        comments3: data.comments3 || null,
+        comments4: data.comments4 || null,
+        comments5: data.comments5 || null,
+        comments6: data.comments6 || null,
+        comments7: data.comments7 || null,
+        comments8: data.comments8 || null,
+        bugs: data.bugs || null,
+        suggestions: data.suggestions || null,
+        generalComments: data.generalComments || null
+      };
 
-      const phases = [
-        {n:1, name:'Auth & Onboarding', count:5},
-        {n:2, name:'Chat agents', count:5},
-        {n:3, name:'Mémoire', count:5},
-        {n:4, name:'Documents & RAG', count:6},
-        {n:5, name:'Débats', count:5},
-        {n:6, name:'Cockpit', count:5},
-        {n:7, name:'Robustesse', count:5},
-        {n:8, name:'Edge cases', count:5}
-      ];
+      try {
+        // Send to API
+        const response = await fetch('/api/beta-report', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload)
+        });
 
-      phases.forEach(p => {
-        const phaseTests = Object.entries(checklist).filter(([k]) => k.startsWith(`test${p.n}_`));
-        const pCompleted = phaseTests.filter(([,v]) => v).length;
-        emailBody += `Phase ${p.n} (${p.name}): ${pCompleted}/${p.count}\\n`;
-        const c = data[`comments${p.n}`];
-        if (c && c.trim()) emailBody += `  ${c}\\n`;
-        emailBody += `\\n`;
-      });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-      if (data.bugs && data.bugs.trim()) emailBody += `BUGS:\\n${data.bugs}\\n\\n`;
-      if (data.suggestions && data.suggestions.trim()) emailBody += `SUGGESTIONS:\\n${data.suggestions}\\n\\n`;
-      if (data.generalComments && data.generalComments.trim()) emailBody += `COMMENTAIRES:\\n${data.generalComments}\\n`;
+        const result = await response.json();
 
-      const subject = encodeURIComponent(`EMERGENCE Beta - ${data.email} (${completionPct}%)`);
-      const body = encodeURIComponent(emailBody);
-      window.location.href = `mailto:gonzalefernando@gmail.com?subject=${subject}&body=${body}`;
+        // Show success message
+        successMessage.style.display = 'block';
+        successMessage.textContent = '✅ Merci ! Votre rapport a été envoyé avec succès à l\'équipe EMERGENCE.';
+        successMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-      successMessage.style.display = 'block';
-      successMessage.textContent = '✅ Votre client email s\'est ouvert. Vérifiez le contenu et envoyez!';
-      successMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Reset form after 2 seconds
+        setTimeout(() => {
+          form.reset();
+          updateProgress();
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Envoyer le rapport';
+        }, 2000);
+
+      } catch (error) {
+        console.error('Error submitting report:', error);
+
+        // Show error message
+        errorMessage.style.display = 'block';
+        errorMessage.textContent = '❌ Erreur lors de l\'envoi. Veuillez réessayer ou contacter gonzalefernando@gmail.com directement.';
+        errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Re-enable button
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Envoyer le rapport';
+      }
     });
   </script>
 </body>
