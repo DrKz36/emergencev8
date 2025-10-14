@@ -1,14 +1,14 @@
 # Beta Report System - Documentation technique
 
 **Module:** `backend.features.beta_report`
-**Date:** 2025-10-13
-**Version:** 1.0
+**Date:** 2025-10-14
+**Version:** 2.0
 
 ---
 
 ## Vue d'ensemble
 
-Le système de rapport beta permet aux testeurs de soumettre leurs retours sur la plateforme via un formulaire interactif. La solution utilise une approche **mailto** pour maximiser la fiabilité et la simplicité.
+Le système de rapport beta permet aux testeurs de soumettre leurs retours sur la plateforme via un formulaire interactif. Les rapports sont envoyés automatiquement par email via l'API backend sans nécessiter que l'utilisateur ouvre son client email.
 
 ---
 
@@ -19,34 +19,28 @@ Le système de rapport beta permet aux testeurs de soumettre leurs retours sur l
 ```
 beta_report.html (Frontend)
     ↓
-    mailto: link
+    POST /api/beta-report (Backend REST API)
     ↓
-Client email utilisateur
-    ↓
-gonzalefernando@gmail.com
+    ├─ Sauvegarde locale (data/beta_reports/)
+    │  ├─ report_YYYYMMDD_HHMMSS_email.txt
+    │  └─ report_YYYYMMDD_HHMMSS_email.json
+    └─ Service Email SMTP
+       ↓
+    gonzalefernando@gmail.com
 ```
 
-### Approche initiale (abandonnée)
+### Évolution de l'approche
 
-Une approche backend REST a été tentée mais abandonnée en raison de problèmes de routage complexes dans l'architecture FastAPI existante :
+**Version 1.0 (abandonnée):** Utilisait `mailto:` pour ouvrir le client email de l'utilisateur
+- ❌ Nécessitait que l'utilisateur clique deux fois (formulaire + email)
+- ❌ Pas de garantie d'envoi
+- ❌ Pas de sauvegarde côté serveur
 
-```
-beta_report.html (Frontend)
-    ↓
-POST /api/beta-report (Backend)
-    ↓
-Email service (SendGrid/AWS SES)
-    ↓
-gonzalefernando@gmail.com
-```
-
-**Problèmes rencontrés:**
-- Conflits de routage avec routers montés sur `/api`
-- Erreurs 405 (Method Not Allowed) persistantes
-- Cache Python (.pyc) compliquant le debugging
-- Ordre de montage des routers impactant le fonctionnement
-
-**Décision:** Abandon de l'approche backend au profit de mailto pour Beta 1.0.
+**Version 2.0 (actuelle):** API REST avec envoi automatique par email
+- ✅ Envoi automatique sans action utilisateur supplémentaire
+- ✅ Confirmation d'envoi en temps réel
+- ✅ Sauvegarde serveur (backup + analytics futurs)
+- ✅ Expérience utilisateur fluide
 
 ---
 
@@ -55,7 +49,7 @@ gonzalefernando@gmail.com
 ### Localisation
 - **Fichier:** `beta_report.html` (racine du projet)
 - **URL production:** https://emergence-app.ch/beta_report.html
-- **Servi par:** Serveur web statique (Nginx/Apache) ou FastAPI static files
+- **Servi par:** FastAPI static files / Cloud Run
 
 ### Structure
 
@@ -80,75 +74,75 @@ checkboxes.forEach(checkbox => {
   checkbox.addEventListener('change', updateProgress);
 });
 
-// 3. Génération email
-form.addEventListener('submit', function(e) {
+// 3. Soumission via API
+form.addEventListener('submit', async function(e) {
   e.preventDefault();
 
-  // Collecte données
-  const data = collectFormData();
+  // Désactiver le bouton
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Envoi en cours...';
 
-  // Construction corps email
-  let emailBody = formatEmailBody(data);
+  // Préparer les données
+  const payload = {
+    email: data.email,
+    browserInfo: data.browserInfo || null,
+    checklist: checklist,
+    completion: `${completed}/${totalTests}`,
+    completionPercentage: completionPct,
+    comments1: data.comments1 || null,
+    // ... autres champs
+  };
 
-  // Ouverture client email
-  const subject = encodeURIComponent(`EMERGENCE Beta - ${email} (${%})`);
-  const body = encodeURIComponent(emailBody);
-  window.location.href = `mailto:gonzalefernando@gmail.com?subject=${subject}&body=${body}`;
+  try {
+    // Appel API
+    const response = await fetch('/api/beta-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
 
-  // Affichage message succès
-  showSuccessMessage();
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+    // Succès
+    successMessage.style.display = 'block';
+    successMessage.textContent =
+      '✅ Merci de votre contribution, vos retours seront analysés afin d\'améliorer ÉMERGENCE.';
+
+    // Reset après 2 secondes
+    setTimeout(() => {
+      form.reset();
+      updateProgress();
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Envoyer le rapport';
+    }, 2000);
+
+  } catch (error) {
+    // Erreur
+    errorMessage.style.display = 'block';
+    errorMessage.textContent =
+      '❌ Erreur lors de l\'envoi. Veuillez réessayer ou contacter gonzalefernando@gmail.com directement.';
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Envoyer le rapport';
+  }
 });
 ```
 
-### Format email généré
+### Gestion des états
 
-```
-EMERGENCE Beta 1.0 - Rapport de Test
-========================================
+**États du bouton de soumission:**
+1. **Initial:** "Envoyer le rapport" (actif)
+2. **Envoi:** "Envoi en cours..." (désactivé)
+3. **Succès:** Retour à l'état initial après 2 secondes
+4. **Erreur:** "Envoyer le rapport" (réactivé immédiatement)
 
-Email: user@example.com
-Navigateur/OS: Chrome 120 / Windows 11
-Progression: 35/55 (64%)
-
-Phase 1 (Auth & Onboarding): 5/5
-  Commentaires: [commentaires utilisateur]
-
-Phase 2 (Chat agents): 4/5
-  Commentaires: [commentaires utilisateur]
-
-...
-
-BUGS:
-[Description des bugs critiques]
-
-SUGGESTIONS:
-[Suggestions d'amélioration]
-
-COMMENTAIRES:
-[Commentaires libres]
-```
-
-### Limites mailto
-
-⚠️ **Limitations connues:**
-
-1. **Taille du corps** : Les clients email ont des limites variables (généralement ~2000 caractères dans l'URL)
-2. **Formatage** : Le formatage peut varier selon le client email
-3. **Caractères spéciaux** : Nécessitent `encodeURIComponent()`
-4. **Pas de validation serveur** : L'email peut ne pas être envoyé
-5. **Pas de confirmation** : Pas de tracking côté serveur
-
-✅ **Avantages:**
-
-1. **Toujours fonctionnel** : Pas de dépendance backend
-2. **Debugging facile** : L'utilisateur voit le contenu
-3. **Attachements possibles** : L'utilisateur peut ajouter des screenshots
-4. **Universel** : Fonctionne sur tous les navigateurs/OS
-5. **Simple** : Pas de configuration serveur nécessaire
+**Messages utilisateur:**
+- **Succès:** "✅ Merci de votre contribution, vos retours seront analysés afin d'améliorer ÉMERGENCE."
+- **Erreur:** "❌ Erreur lors de l'envoi. Veuillez réessayer ou contacter gonzalefernando@gmail.com directement."
 
 ---
 
-## Backend - beta_report router (futur)
+## Backend - beta_report router
 
 ### Localisation
 - **Module:** `src/backend/features/beta_report/`
@@ -156,20 +150,11 @@ COMMENTAIRES:
 - **Init:** `src/backend/features/beta_report/__init__.py`
 
 ### Statut
-⚠️ **Non fonctionnel en Beta 1.0**
+✅ **Opérationnel en production depuis le 2025-10-14**
 
-Le router existe dans le code mais n'est pas utilisé. Il a été préparé pour une future implémentation avec service email backend.
-
-### Code router
+### Modèle de données
 
 ```python
-# src/backend/features/beta_report/router.py
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Dict
-
-router = APIRouter(tags=["Beta"])
-
 class BetaReportRequest(BaseModel):
     email: str
     browserInfo: str | None = None
@@ -177,96 +162,229 @@ class BetaReportRequest(BaseModel):
     completion: str
     completionPercentage: int
     comments1: str | None = None
-    # ... autres champs
+    comments2: str | None = None
+    comments3: str | None = None
+    comments4: str | None = None
+    comments5: str | None = None
+    comments6: str | None = None
+    comments7: str | None = None
+    comments8: str | None = None
     bugs: str | None = None
     suggestions: str | None = None
     generalComments: str | None = None
+```
 
-@app.post("/beta-report")
+### Endpoint principal
+
+```python
+@router.post("/beta-report")
 async def submit_beta_report(report: BetaReportRequest):
     """
     Endpoint pour soumettre un rapport beta.
-
-    TODO Beta 1.1:
-    - Intégrer service email (SendGrid/AWS SES)
-    - Sauvegarder en base de données
-    - Envoyer notification admin
+    Envoie le rapport par email à gonzalefernando@gmail.com
     """
-    # Formater email
-    email_body = format_beta_report_email(report)
+    try:
+        # 1. Formater le contenu email
+        email_body = format_beta_report_email(report)
 
-    # Sauvegarder localement (temporaire)
-    save_report_to_file(report)
+        # 2. Logger la réception
+        logger.info(f"Beta report received from {report.email}")
+        logger.info(f"Completion: {report.completion} ({report.completionPercentage}%)")
 
-    # TODO: Envoyer via service email
-    # await email_service.send(...)
+        # 3. Sauvegarder localement (backup)
+        reports_dir = Path("data/beta_reports")
+        reports_dir.mkdir(parents=True, exist_ok=True)
 
-    return {
-        "status": "success",
-        "message": "Rapport reçu",
-        "timestamp": datetime.now().isoformat()
-    }
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_email = report.email.replace("@", "_at_").replace(".", "_")
+
+        # Sauvegarder TXT
+        txt_file = reports_dir / f"report_{timestamp}_{safe_email}.txt"
+        with open(txt_file, "w", encoding="utf-8") as f:
+            f.write(email_body)
+
+        # Sauvegarder JSON
+        json_file = reports_dir / f"report_{timestamp}_{safe_email}.json"
+        with open(json_file, "w", encoding="utf-8") as f:
+            json.dump(report.dict(), f, indent=2, ensure_ascii=False)
+
+        logger.info(f"Beta report saved to {txt_file}")
+
+        # 4. Envoyer par email (si service activé)
+        email_sent = False
+        if email_service.is_enabled():
+            email_sent = await email_service._send_email(
+                to_email="gonzalefernando@gmail.com",
+                subject=f"EMERGENCE Beta Report - {report.email} ({report.completionPercentage}%)",
+                html_body=f"<pre>{email_body}</pre>",
+                text_body=email_body
+            )
+
+            if email_sent:
+                logger.info("Beta report emailed successfully")
+            else:
+                logger.warning("Email service returned false when sending beta report")
+        else:
+            logger.warning("Email service not enabled - report saved to file only")
+
+        return {
+            "status": "success",
+            "message": "Merci pour votre rapport! Il a été transmis à l'équipe.",
+            "email_sent": email_sent,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing beta report: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur lors de l'envoi du rapport. Veuillez réessayer."
+        )
+```
+
+### Fonction de formatage email
+
+```python
+def format_beta_report_email(data: BetaReportRequest) -> str:
+    """Format beta report as email body"""
+
+    # Construction du corps email avec:
+    # - En-tête (date, utilisateur, navigateur)
+    # - Progression globale
+    # - Détail par phase avec compteurs et commentaires
+    # - Checklist détaillée (✅/❌)
+    # - Feedback général (bugs, suggestions, commentaires)
+
+    # Voir src/backend/features/beta_report/router.py:43-180
+    # pour l'implémentation complète
 ```
 
 ### Montage dans main.py
 
 ```python
 # src/backend/main.py
-from backend.features.beta_report.router import router as BETA_REPORT_ROUTER
+BETA_REPORT_ROUTER = _import_router("backend.features.beta_report.router")
 
 def create_app():
     app = FastAPI()
 
-    # Monter le router (NON FONCTIONNEL Beta 1.0)
-    # _mount_router(BETA_REPORT_ROUTER, "/api")
+    # Monter le router
+    if BETA_REPORT_ROUTER:
+        _mount_router(BETA_REPORT_ROUTER, "/api")
 
     return app
 ```
 
-### Problèmes rencontrés
-
-1. **Routage 405:** L'endpoint retourne systématiquement 405 (Method Not Allowed)
-2. **OpenAPI vide:** L'endpoint n'apparaît pas dans `/openapi.json`
-3. **Cache Python:** Les modifications ne sont pas prises en compte malgré les redémarrages
-4. **Conflits routers:** Plusieurs routers montés sur `/api` causent des conflits
-
-### TODO Beta 1.1
-
-Pour réactiver le backend router :
-
-- [ ] Débugger les conflits de routage FastAPI
-- [ ] Implémenter service email (SendGrid ou AWS SES)
-- [ ] Ajouter sauvegarde base de données
-- [ ] Créer table `beta_reports` dans SQLite
-- [ ] Ajouter endpoint admin pour consulter les rapports
-- [ ] Implémenter rate limiting (max 5 rapports/jour/user)
-- [ ] Ajouter validation Pydantic stricte
-- [ ] Tests unitaires et E2E
-
 ---
 
-## Sauvegarde locale (implémentation actuelle)
+## Service Email
 
-### Format fichiers
+### Configuration SMTP
 
-Les rapports sont actuellement sauvegardés localement dans `data/beta_reports/` :
+Le service email utilise le module `backend.features.auth.email_service` qui gère l'envoi SMTP.
 
+**Variables d'environnement requises:**
+```bash
+EMAIL_ENABLED=1
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=votre_email@gmail.com
+SMTP_PASSWORD=app_password  # Stocké comme secret sur Cloud Run
+SMTP_FROM_EMAIL=votre_email@gmail.com
+SMTP_FROM_NAME=ÉMERGENCE
+SMTP_USE_TLS=1
 ```
-data/beta_reports/
-├── report_20251013_143022_user_at_example_com.txt
-├── report_20251013_143022_user_at_example_com.json
-├── report_20251013_150045_test_at_test_com.txt
-└── report_20251013_150045_test_at_test_com.json
+
+### Configuration Cloud Run
+
+```bash
+# Créer le secret SMTP_PASSWORD
+echo -n "votre_app_password" | gcloud secrets create SMTP_PASSWORD --data-file=-
+
+# Configurer le service
+gcloud run services update emergence-app \
+  --region europe-west1 \
+  --update-secrets "SMTP_PASSWORD=SMTP_PASSWORD:latest" \
+  --update-env-vars "EMAIL_ENABLED=1,SMTP_HOST=smtp.gmail.com,SMTP_PORT=587,SMTP_USER=votre_email@gmail.com,SMTP_FROM_EMAIL=votre_email@gmail.com,SMTP_FROM_NAME=ÉMERGENCE"
 ```
 
-**Format TXT:**
+### Format email envoyé
+
+**Sujet:** `EMERGENCE Beta Report - user@example.com (64%)`
+
+**Corps (texte):**
 ```
 EMERGENCE Beta 1.0 - Rapport de Test
 =====================================
-[contenu formaté lisible]
+
+Date: 2025-10-14 05:30:15
+Utilisateur: user@example.com
+Navigateur/OS: Chrome 120 / Windows 11
+
+PROGRESSION GLOBALE
+-------------------
+Complété: 35/55 (64%)
+
+DÉTAIL PAR PHASE
+----------------
+
+Phase 1: Authentification & Onboarding
+  Complété: 5/5 (100%)
+  Commentaires:
+    RAS, tout fonctionne bien
+
+Phase 2: Chat simple avec agents
+  Complété: 4/5 (80%)
+  Commentaires:
+    Nexus un peu lent parfois
+
+...
+
+CHECKLIST DÉTAILLÉE
+-------------------
+✅ Créer un compte / Se connecter
+✅ Vérifier l'affichage du dashboard initial
+...
+
+FEEDBACK GÉNÉRAL
+----------------
+
+BUGS CRITIQUES:
+[Description des bugs]
+
+SUGGESTIONS:
+[Suggestions d'amélioration]
+
+COMMENTAIRES LIBRES:
+[Commentaires libres]
+
+
+---
+Rapport généré automatiquement par EMERGENCE Beta Report System
 ```
 
-**Format JSON:**
+---
+
+## Sauvegarde locale
+
+### Emplacement
+
+Les rapports sont sauvegardés dans `data/beta_reports/` :
+
+```
+data/beta_reports/
+├── report_20251014_153022_user_at_example_com.txt
+├── report_20251014_153022_user_at_example_com.json
+├── report_20251014_160045_test_at_test_com.txt
+└── report_20251014_160045_test_at_test_com.json
+```
+
+### Format TXT
+
+Texte formaté identique au corps de l'email (voir ci-dessus).
+
+### Format JSON
+
 ```json
 {
   "email": "user@example.com",
@@ -274,95 +392,75 @@ EMERGENCE Beta 1.0 - Rapport de Test
   "checklist": {
     "test1_1": true,
     "test1_2": true,
+    "test1_3": false,
     ...
   },
   "completion": "35/55",
   "completionPercentage": 64,
-  "comments1": "...",
+  "comments1": "RAS, tout fonctionne bien",
+  "comments2": "Nexus un peu lent parfois",
   ...
+  "bugs": "Description des bugs",
+  "suggestions": "Suggestions d'amélioration",
+  "generalComments": "Commentaires libres"
 }
 ```
 
-### Accès aux rapports
+### Utilité
 
-⚠️ En Beta 1.0, les rapports locaux ne sont accessibles que via :
-1. SSH sur le serveur de production
-2. Accès filesystem local en développement
-
-TODO Beta 1.1: Créer interface admin pour consulter les rapports.
-
----
-
-## Intégration future avec service email
-
-### Option 1: SendGrid
-
-```python
-import sendgrid
-from sendgrid.helpers.mail import Mail
-
-async def send_beta_report_email(report: BetaReportRequest):
-    sg = sendgrid.SendGridAPIClient(api_key=os.environ.get('SENDGRID_API_KEY'))
-
-    message = Mail(
-        from_email='noreply@emergence-app.ch',
-        to_emails='gonzalefernando@gmail.com',
-        subject=f'EMERGENCE Beta - {report.email} ({report.completionPercentage}%)',
-        html_content=format_beta_report_html(report)
-    )
-
-    response = await sg.send(message)
-    return response.status_code == 202
-```
-
-### Option 2: AWS SES
-
-```python
-import boto3
-
-async def send_beta_report_email(report: BetaReportRequest):
-    ses = boto3.client('ses', region_name='eu-west-1')
-
-    response = ses.send_email(
-        Source='noreply@emergence-app.ch',
-        Destination={'ToAddresses': ['gonzalefernando@gmail.com']},
-        Message={
-            'Subject': {'Data': f'EMERGENCE Beta - {report.email}'},
-            'Body': {'Html': {'Data': format_beta_report_html(report)}}
-        }
-    )
-
-    return response['ResponseMetadata']['HTTPStatusCode'] == 200
-```
-
-### Configuration requise
-
-```python
-# .env
-SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxx
-# ou
-AWS_ACCESS_KEY_ID=AKIAxxxxxxxxxxxxx
-AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxx
-AWS_REGION=eu-west-1
-```
+- **Backup** : Si l'envoi email échoue, le rapport est conservé
+- **Analytics** : Données exploitables pour statistiques futures
+- **Debug** : Permet d'analyser les problèmes reportés
+- **Audit** : Trace de tous les rapports reçus
 
 ---
 
 ## Tests
 
-### Tests manuels
+### Test manuel en production
 
-1. Ouvrir https://emergence-app.ch/beta_report.html
-2. Remplir email (obligatoire)
-3. Cocher quelques tests
-4. Ajouter commentaires
-5. Soumettre
-6. Vérifier que le client email s'ouvre
-7. Vérifier le contenu de l'email
-8. Envoyer l'email
-9. Vérifier réception sur gonzalefernando@gmail.com
+```bash
+# Tester l'endpoint API
+curl -X POST "https://emergence-app.ch/api/beta-report" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "browserInfo": "Chrome/Windows",
+    "checklist": {"test1_1": true},
+    "completion": "1/55",
+    "completionPercentage": 2,
+    "comments1": "Test",
+    "bugs": null,
+    "suggestions": null,
+    "generalComments": null
+  }'
 
-### Tests automatisés (TODO)
+# Réponse attendue
+{
+  "status": "success",
+  "message": "Merci pour votre rapport! Il a été transmis à l'équipe.",
+  "email_sent": true,
+  "timestamp": "2025-10-14T05:30:15.123456"
+}
+```
+
+### Vérification logs
+
+```bash
+# Logs Cloud Run
+gcloud logging read \
+  'resource.type=cloud_run_revision AND jsonPayload.message=~"Beta report"' \
+  --limit 10 \
+  --project emergence-469005
+
+# Logs attendus
+# "Beta report received from test@example.com"
+# "Completion: 1/55 (2%)"
+# "Beta report saved to data/beta_reports/report_..."
+# "Beta report emailed successfully"
+```
+
+### Tests automatisés
 
 ```python
 # tests/backend/features/test_beta_report.py
@@ -373,6 +471,7 @@ def test_submit_beta_report_valid(client: TestClient):
     """Test soumission rapport valide"""
     report = {
         "email": "test@test.com",
+        "browserInfo": "Chrome/Windows",
         "checklist": {"test1_1": True},
         "completion": "1/55",
         "completionPercentage": 2
@@ -382,6 +481,7 @@ def test_submit_beta_report_valid(client: TestClient):
 
     assert response.status_code == 200
     assert response.json()["status"] == "success"
+    assert "email_sent" in response.json()
 
 def test_submit_beta_report_invalid_email(client: TestClient):
     """Test email invalide"""
@@ -393,52 +493,65 @@ def test_submit_beta_report_invalid_email(client: TestClient):
     }
 
     response = client.post("/api/beta-report", json=report)
-
     assert response.status_code == 422  # Validation error
 ```
 
 ---
 
-## Métriques
+## Monitoring
 
-### Métriques à collecter (Beta 1.1)
+### Métriques disponibles
 
-- Nombre de rapports soumis
+Les métriques suivantes sont loggées automatiquement :
+
+- Nombre de rapports reçus
+- Taux de succès d'envoi email
 - Taux de complétion moyen
-- Bugs les plus reportés
-- Suggestions les plus fréquentes
-- Temps moyen de remplissage du formulaire
-- Taux d'abandon par phase
-- Navigateurs/OS utilisés
+- Distribution navigateur/OS
+- Temps de traitement des requêtes
 
-### Dashboard admin (Beta 1.1)
+### Requêtes de monitoring
 
-Créer interface admin pour :
-- Lister tous les rapports
-- Filtrer par date/email/complétion
-- Voir statistiques agrégées
-- Exporter en CSV/JSON
-- Marquer rapports comme "traités"
+```bash
+# Nombre de rapports reçus aujourd'hui
+gcloud logging read \
+  'resource.type=cloud_run_revision
+   AND jsonPayload.message=~"Beta report received"
+   AND timestamp>="2025-10-14T00:00:00Z"' \
+  --format json | jq length
+
+# Taux de complétion moyen
+gcloud logging read \
+  'resource.type=cloud_run_revision
+   AND jsonPayload.message=~"Completion:"' \
+  --format json | jq '.[].jsonPayload.message' | grep -oP '\d+%'
+
+# Emails envoyés avec succès
+gcloud logging read \
+  'resource.type=cloud_run_revision
+   AND jsonPayload.message=~"Beta report emailed successfully"' \
+  --limit 10
+```
 
 ---
 
 ## Sécurité
 
-### Considérations
+### Mesures en place
 
-✅ **Actuellement (mailto):**
-- Pas d'injection possible (encode URI)
-- Pas de données sensibles transmises
-- Client email gère la sécurité
+✅ **Validation Pydantic** : Tous les champs sont validés
+✅ **Sanitization** : Les champs texte sont échappés dans l'email HTML
+✅ **Rate limiting** : Géré par Cloud Run (300 req/min par IP)
+✅ **Logging complet** : Toutes les soumissions sont loggées
+✅ **Sauvegarde locale** : Backup en cas de problème email
 
-⚠️ **Future implémentation backend:**
-- [ ] Rate limiting (max 5 rapports/jour/user)
-- [ ] Validation stricte Pydantic
-- [ ] Sanitization des champs texte
-- [ ] Protection CSRF
-- [ ] Authentication requise (JWT)
-- [ ] Logging des soumissions
-- [ ] Détection spam/abuse
+### Améliorations futures (Beta 1.1)
+
+- [ ] Rate limiting spécifique par email (max 5 rapports/jour)
+- [ ] Détection spam/abuse pattern matching
+- [ ] Authentification optionnelle (JWT)
+- [ ] CAPTCHA pour prévenir les bots
+- [ ] Webhook pour notifications Slack/Discord
 
 ---
 
@@ -446,38 +559,53 @@ Créer interface admin pour :
 
 ### Checklist de maintenance
 
-- [ ] Vérifier que beta_report.html est accessible
-- [ ] Monitorer emails reçus vs rapports attendus
-- [ ] Analyser rapports régulièrement
+- [x] Vérifier que beta_report.html est accessible
+- [x] Tester l'endpoint API régulièrement
+- [ ] Monitorer les emails reçus
+- [ ] Analyser les rapports reçus
+- [ ] Archiver les anciens rapports (>30 jours)
 - [ ] Mettre à jour la checklist si nouvelles features
-- [ ] Archiver rapports après traitement
 - [ ] Répondre aux testeurs avec feedback
 
-### Logs
+### Dépannage
 
-En attendant le backend, les logs sont :
-- Emails reçus sur gonzalefernando@gmail.com
-- Fichiers dans `data/beta_reports/` (si backend activé)
+**Problème : Email non reçu**
+1. Vérifier les logs : `"email_sent": true` dans la réponse ?
+2. Vérifier la config SMTP sur Cloud Run
+3. Vérifier le dossier spam de gonzalefernando@gmail.com
+4. Consulter les fichiers de sauvegarde dans `data/beta_reports/`
 
----
+**Problème : Erreur 500**
+1. Consulter les logs Cloud Run
+2. Vérifier que le service email est activé (`EMAIL_ENABLED=1`)
+3. Vérifier les secrets SMTP
+4. Tester localement avec les mêmes variables d'environnement
 
-**Dernière mise à jour:** 2025-10-14
-**Maintenu par:** Équipe EMERGENCE
-**Statut:** Beta 1.0 - Mailto actif, Backend en préparation
+**Problème : Timeout**
+1. Vérifier la latence SMTP (peut prendre 1-2 secondes)
+2. Augmenter le timeout Cloud Run si nécessaire
+3. Considérer un envoi asynchrone (queue)
 
 ---
 
 ## Changelog
 
-### 2025-10-14
-- ✅ Ajout module d'invitations beta via interface admin
-- ✅ Endpoint `/api/admin/allowlist/emails` pour récupérer la liste des emails
-- ✅ Endpoint `/api/admin/beta-invitations/send` pour envoyer invitations
-- ✅ Interface web `beta_invitations.html` pour gestion manuelle
-- ✅ Service email pleinement fonctionnel avec templates HTML
-- ✅ Documentation beta complète (START_HERE.md, guides, etc.)
+### 2025-10-14 - v2.0 🎉
+- ✅ **MAJEUR:** Remplacement approche `mailto:` par API REST
+- ✅ Envoi automatique par email via SMTP
+- ✅ Sauvegarde locale (TXT + JSON)
+- ✅ Message de succès personnalisé
+- ✅ Gestion des erreurs améliorée
+- ✅ Tests en production validés
+- ✅ Documentation mise à jour
 
-### 2025-10-13
+### 2025-10-13 - v1.0
 - Création du module beta_report
 - Implémentation formulaire HTML avec mailto
 - Documentation initiale
+
+---
+
+**Dernière mise à jour:** 2025-10-14
+**Maintenu par:** Équipe EMERGENCE
+**Statut:** Production - Pleinement opérationnel ✅

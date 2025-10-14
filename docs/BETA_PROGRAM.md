@@ -40,20 +40,20 @@ Le programme beta EMERGENCE V8 permet à un groupe restreint d'utilisateurs (all
 
 ### Fonctionnement
 
-Le système de rapport beta utilise une approche **mailto** pour la simplicité et la fiabilité :
+Le système de rapport beta utilise une **API REST backend** pour un envoi automatique et fiable :
 
 1. L'utilisateur remplit le formulaire interactif sur [beta_report.html](../beta_report.html)
-2. À la soumission, le navigateur génère un email pré-rempli
-3. Le client email de l'utilisateur s'ouvre automatiquement
-4. L'utilisateur vérifie et envoie l'email à `gonzalefernando@gmail.com`
+2. À la soumission, le formulaire envoie les données via `POST /api/beta-report`
+3. Le backend sauvegarde le rapport localement et l'envoie automatiquement par email
+4. L'utilisateur reçoit une confirmation immédiate : "Merci de votre contribution, vos retours seront analysés afin d'améliorer ÉMERGENCE."
 
 ### Avantages de cette approche
 
-✅ **Aucune dépendance backend** - pas de problème de routage ou d'API
-✅ **Fonctionne toujours** - utilise le client email natif
-✅ **Simple à débugger** - l'utilisateur voit le contenu avant envoi
-✅ **Pas de limite de taille** - contrairement aux APIs REST
-✅ **Attachements possibles** - l'utilisateur peut joindre des screenshots
+✅ **Envoi automatique** - l'utilisateur n'a qu'à cliquer une fois
+✅ **Confirmation en temps réel** - feedback immédiat de succès ou d'erreur
+✅ **Sauvegarde serveur** - tous les rapports sont conservés dans `data/beta_reports/`
+✅ **Fiabilité** - garantie d'envoi avec retry possible
+✅ **Analytics** - données exploitables pour statistiques futures
 
 ### Structure du formulaire
 
@@ -82,33 +82,63 @@ Total: 55 points de contrôle
 - Suggestions d'amélioration
 - Commentaires libres
 
-### Format de l'email généré
+### Format de l'email envoyé automatiquement
 
+**Destinataire:** gonzalefernando@gmail.com
+**Sujet:** `EMERGENCE Beta Report - user@example.com (64%)`
+
+**Corps:**
 ```
 EMERGENCE Beta 1.0 - Rapport de Test
-========================================
+=====================================
 
-Email: user@example.com
+Date: 2025-10-14 05:30:15
+Utilisateur: user@example.com
 Navigateur/OS: Chrome 120 / Windows 11
-Progression: 35/55 (64%)
 
-Phase 1 (Auth & Onboarding): 5/5
-  Commentaires: RAS, tout fonctionne
+PROGRESSION GLOBALE
+-------------------
+Complété: 35/55 (64%)
 
-Phase 2 (Chat agents): 4/5
-  Commentaires: Nexus répond lentement parfois
+DÉTAIL PAR PHASE
+----------------
+
+Phase 1: Authentification & Onboarding
+  Complété: 5/5 (100%)
+  Commentaires:
+    RAS, tout fonctionne
+
+Phase 2: Chat simple avec agents
+  Complété: 4/5 (80%)
+  Commentaires:
+    Nexus répond lentement parfois
 
 ...
 
-BUGS:
+CHECKLIST DÉTAILLÉE
+-------------------
+✅ Créer un compte / Se connecter
+✅ Vérifier l'affichage du dashboard initial
+...
+
+FEEDBACK GÉNÉRAL
+----------------
+
+BUGS CRITIQUES:
 [Description des bugs]
 
 SUGGESTIONS:
 [Suggestions d'amélioration]
 
-COMMENTAIRES:
+COMMENTAIRES LIBRES:
 [Commentaires libres]
+
+
+---
+Rapport généré automatiquement par EMERGENCE Beta Report System
 ```
+
+**Note:** Les rapports sont également sauvegardés localement sur le serveur dans `data/beta_reports/` aux formats TXT et JSON.
 
 ---
 
@@ -315,5 +345,21 @@ La liste des emails autorisés est gérée via l'interface admin :
 
 ---
 
-**Dernière mise à jour:** 2025-10-13
+**Dernière mise à jour:** 2025-10-14
 **Maintenu par:** Équipe EMERGENCE
+
+---
+
+## Changelog
+
+### 2025-10-14
+- ✅ Migration du système de rapport de `mailto:` vers API REST backend
+- ✅ Envoi automatique des rapports par email via SMTP
+- ✅ Sauvegarde locale des rapports (TXT + JSON)
+- ✅ Message de confirmation personnalisé
+- ✅ Amélioration de l'expérience utilisateur
+
+### 2025-10-13
+- Lancement du programme Beta 1.0
+- Création du formulaire de rapport interactif
+- Documentation initiale
