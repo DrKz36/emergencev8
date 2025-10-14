@@ -461,6 +461,23 @@ En attendant le backend, les logs sont :
 
 ---
 
-**Dernière mise à jour:** 2025-10-13
+**Dernière mise à jour:** 2025-10-14
 **Maintenu par:** Équipe EMERGENCE
 **Statut:** Beta 1.0 - Mailto actif, Backend en préparation
+
+---
+
+## Changelog
+
+### 2025-10-14
+- ✅ Ajout module d'invitations beta via interface admin
+- ✅ Endpoint `/api/admin/allowlist/emails` pour récupérer la liste des emails
+- ✅ Endpoint `/api/admin/beta-invitations/send` pour envoyer invitations
+- ✅ Interface web `beta_invitations.html` pour gestion manuelle
+- ✅ Service email pleinement fonctionnel avec templates HTML
+- ✅ Documentation beta complète (START_HERE.md, guides, etc.)
+
+### 2025-10-13
+- Création du module beta_report
+- Implémentation formulaire HTML avec mailto
+- Documentation initiale

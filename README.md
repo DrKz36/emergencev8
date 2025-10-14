@@ -185,13 +185,41 @@ Documentation technique des modules backend récents :
   - Persistence JSON (`data/settings.json`)
   - Hot-reload sans redémarrage
 
-- **[Dashboard Feature](docs/backend/dashboard.md)** - API cockpit & timeline (V3.2)
+- **[Dashboard Feature](docs/backend/dashboard.md)** - API cockpit & timeline (V3.3)
   - `/api/dashboard/costs/summary` - Résumé coûts/métriques (global ou par session)
   - `/api/dashboard/timeline/*` - Timelines temporelles (activité, coûts, tokens)
   - `/api/dashboard/distribution/{metric}` - Répartition par agent
+  - `/api/admin/dashboard/global` - Statistiques globales (admin)
+  - `/api/admin/dashboard/user/{user_id}` - Détails utilisateur (admin)
+  - `/api/admin/allowlist/emails` - Liste emails pour invitations beta
+  - `/api/admin/beta-invitations/send` - Envoi invitations beta
   - Périodes flexibles: 7j, 30j, 90j, 1 an
   - Isolation multi-utilisateurs (user_id) + filtrage session (X-Session-Id)
   - TimelineService pour graphiques temporels avec requêtes SQL optimisées
+  - AdminDashboardService pour statistiques globales et gestion beta
+
+- **[Auth Feature](docs/backend/auth.md)** - Authentification & Email (V2.0)
+  - JWT authentication avec sessions management
+  - Allowlist-based access control (admin/member/guest)
+  - Password reset par email avec tokens sécurisés (1h expiration)
+  - Email service avec templates HTML/text (Gmail SMTP)
+  - `/api/auth/login` - Login email/password
+  - `/api/auth/request-password-reset` - Demande réinitialisation
+  - `/api/auth/reset-password` - Réinitialisation avec token
+  - `/api/auth/change-password` - Changement mot de passe
+  - **Fix**: Admins ne sont plus forcés à réinitialiser leur mot de passe
+  - `password_must_reset = 0` automatique pour role admin
+  - Rate limiting anti-brute force (5 tentatives/15min)
+  - Audit log complet de toutes les actions auth
+
+- **[Beta Report Feature](docs/backend/beta_report.md)** - Système rapports beta (V1.0)
+  - Formulaire HTML interactif 55 checkboxes (8 phases de test)
+  - Approche mailto pour fiabilité maximale
+  - Auto-détection navigateur/OS
+  - Barre de progression temps réel
+  - Email service pour invitations beta avec templates HTML
+  - Interface admin `beta_invitations.html` pour gestion manuelle
+  - Documentation complète (START_HERE.md, guides, etc.)
 
 ### Prompts Agents Actifs
 

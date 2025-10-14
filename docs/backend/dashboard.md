@@ -357,9 +357,163 @@ Le module utilise les tables suivantes:
 - `threads.user_id`, `threads.session_id`, `threads.created_at`
 - `costs.user_id`, `costs.session_id`, `costs.timestamp`, `costs.total_cost`, `costs.input_tokens`, `costs.output_tokens`, `costs.agent`
 
+## Admin Dashboard (V1.0)
+
+Le module admin dashboard fournit des endpoints réservés aux administrateurs pour consulter les données globales.
+
+### Endpoints Admin
+
+#### 1. Dashboard global
+
+```http
+GET /api/admin/dashboard/global
+```
+
+**Authorization:** Rôle admin requis
+
+Récupère les statistiques globales de la plateforme (tous utilisateurs).
+
+**Response:**
+```json
+{
+  "total_users": 42,
+  "total_sessions": 156,
+  "total_messages": 3420,
+  "total_costs": 12.45,
+  "active_sessions": 8,
+  "costs_by_agent": [...],
+  "recent_activity": [...]
+}
+```
+
+#### 2. Détails utilisateur
+
+```http
+GET /api/admin/dashboard/user/{user_id}
+```
+
+**Authorization:** Rôle admin requis
+
+Récupère les données détaillées d'un utilisateur spécifique.
+
+**Path params:**
+- `user_id`: ID hashé de l'utilisateur
+
+**Response:**
+```json
+{
+  "user_id": "hash...",
+  "sessions": 12,
+  "messages": 245,
+  "total_cost": 2.34,
+  "documents": 5,
+  "threads": 18,
+  "activity_timeline": [...]
+}
+```
+
+#### 3. Liste des emails allowlist
+
+```http
+GET /api/admin/allowlist/emails
+```
+
+**Authorization:** Rôle admin requis
+
+Récupère tous les emails de l'allowlist pour l'envoi d'invitations beta.
+
+**Response:**
+```json
+{
+  "emails": [
+    "user1@example.com",
+    "user2@example.com"
+  ],
+  "total": 2
+}
+```
+
+#### 4. Envoi d'invitations beta
+
+```http
+POST /api/admin/beta-invitations/send
+```
+
+**Authorization:** Rôle admin requis
+
+Envoie des emails d'invitation beta à une liste d'adresses.
+
+**Request body:**
+```json
+{
+  "emails": [
+    "user1@example.com",
+    "user2@example.com"
+  ],
+  "base_url": "https://emergence-app.ch"
+}
+```
+
+**Response:**
+```json
+{
+  "total": 2,
+  "sent": 2,
+  "failed": 0,
+  "sent_to": [
+    "user1@example.com",
+    "user2@example.com"
+  ],
+  "failed_emails": []
+}
+```
+
+### AdminDashboardService
+
+Service dédié aux statistiques globales d'administration.
+
+**Méthodes:**
+
+##### get_global_dashboard_data()
+```python
+async def get_global_dashboard_data() -> Dict[str, Any]
+```
+
+Retourne les statistiques globales de la plateforme (tous utilisateurs agrégés).
+
+##### get_user_detailed_data()
+```python
+async def get_user_detailed_data(user_id: str) -> Dict[str, Any]
+```
+
+Retourne les données détaillées d'un utilisateur spécifique.
+
+### Sécurité Admin
+
+Tous les endpoints admin sont protégés par:
+
+1. **Vérification du rôle:**
+```python
+async def verify_admin_role(user_role: str = Depends(deps.get_user_role)):
+    if user_role != "admin":
+        raise HTTPException(status_code=403, detail="Access denied. Admin role required.")
+    return True
+```
+
+2. **JWT valide requis** (via `get_auth_claims`)
+3. **Audit logging** de toutes les actions admin
+
 ## Versioning
 
-**Version actuelle:** V3.2
+**Version actuelle:** V3.3
+
+**Changements V3.3 (Octobre 2025):**
+- ✅ Ajout AdminDashboardService pour statistiques globales
+- ✅ Endpoints admin `/admin/dashboard/global` et `/admin/dashboard/user/{user_id}`
+- ✅ Endpoint `/admin/allowlist/emails` pour récupérer liste d'emails
+- ✅ Endpoint `/admin/beta-invitations/send` pour invitations beta
+- ✅ Fix dépendances avec `Depends(deps.get_auth_service)`
+- ✅ Sécurisation avec vérification de rôle admin
 
 **Changements V3.2:**
 - Suppression du préfixe dans le router (évite double `/api/dashboard`)
@@ -371,5 +525,9 @@ Le module utilise les tables suivantes:
 
 - Code source: [src/backend/features/dashboard/](../../src/backend/features/dashboard/)
 - Router: [router.py](../../src/backend/features/dashboard/router.py)
+- Admin Router: [admin_router.py](../../src/backend/features/dashboard/admin_router.py)
 - Timeline Service: [timeline_service.py](../../src/backend/features/dashboard/timeline_service.py)
+- Admin Service: [admin_service.py](../../src/backend/features/dashboard/admin_service.py)
 - API principale: [main.py](../../src/backend/main.py)
+- Documentation Auth: [auth.md](./auth.md)
+- Documentation Beta: [beta_report.md](./beta_report.md)
