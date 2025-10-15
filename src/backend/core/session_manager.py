@@ -16,8 +16,37 @@ from backend.features.memory.analyzer import MemoryAnalyzer
 logger = logging.getLogger(__name__)
 
 # Configuration du timeout d'inactivité
-INACTIVITY_TIMEOUT_MINUTES = 3  # Timeout après 3 minutes d'inactivité
-CLEANUP_INTERVAL_SECONDS = 30  # Vérification toutes les 30 secondes
+import os
+
+INACTIVITY_TIMEOUT_MINUTES = int(os.getenv("SESSION_INACTIVITY_TIMEOUT_MINUTES", "3"))
+CLEANUP_INTERVAL_SECONDS = int(os.getenv("SESSION_CLEANUP_INTERVAL_SECONDS", "30"))
+WARNING_BEFORE_TIMEOUT_SECONDS = int(os.getenv("SESSION_WARNING_BEFORE_TIMEOUT_SECONDS", "30"))
+
+# Métriques Prometheus pour le monitoring des sessions
+try:
+    from prometheus_client import Counter, Gauge, Histogram
+
+    SESSIONS_TIMEOUT_TOTAL = Counter(
+        'sessions_timeout_total',
+        'Total number of sessions closed due to inactivity timeout'
+    )
+    SESSIONS_WARNING_SENT_TOTAL = Counter(
+        'sessions_warning_sent_total',
+        'Total number of inactivity warnings sent to users'
+    )
+    SESSIONS_ACTIVE_GAUGE = Gauge(
+        'sessions_active_current',
+        'Current number of active sessions in memory'
+    )
+    SESSION_INACTIVITY_DURATION = Histogram(
+        'session_inactivity_duration_seconds',
+        'Duration of session inactivity before timeout',
+        buckets=[60, 120, 180, 240, 300, 600]
+    )
+    PROMETHEUS_AVAILABLE = True
+except ImportError:
+    PROMETHEUS_AVAILABLE = False
+    logger.warning("Prometheus client non disponible, métriques de session désactivées")
 
 class SessionManager:
     """
@@ -86,7 +115,9 @@ class SessionManager:
         """Nettoie les sessions inactives depuis plus de INACTIVITY_TIMEOUT_MINUTES minutes."""
         now = datetime.now(timezone.utc)
         timeout_threshold = timedelta(minutes=INACTIVITY_TIMEOUT_MINUTES)
+        warning_threshold = timedelta(minutes=INACTIVITY_TIMEOUT_MINUTES, seconds=-WARNING_BEFORE_TIMEOUT_SECONDS)
         sessions_to_cleanup = []
+        sessions_to_warn = []
 
         for session_id, session in list(self.active_sessions.items()):
             try:
@@ -96,10 +127,46 @@ class SessionManager:
                     last_activity = session.start_time
 
                 inactivity_duration = now - last_activity
+
+                # Vérifier si la session doit être nettoyée
                 if inactivity_duration > timeout_threshold:
                     sessions_to_cleanup.append((session_id, inactivity_duration))
+                # Vérifier si un avertissement doit être envoyé
+                elif inactivity_duration > warning_threshold:
+                    warning_sent = getattr(session, '_warning_sent', False)
+                    if not warning_sent:
+                        sessions_to_warn.append((session_id, inactivity_duration))
             except Exception as e:
                 logger.error(f"Erreur lors de la vérification d'inactivité pour session {session_id}: {e}")
+
+        # Envoyer des avertissements
+        for session_id, duration in sessions_to_warn:
+            try:
+                remaining_seconds = int((timeout_threshold - duration).total_seconds())
+                logger.info(f"Envoi d'avertissement à la session {session_id} (déconnexion dans {remaining_seconds}s)")
+
+                # Marquer l'avertissement comme envoyé
+                session = self.active_sessions.get(session_id)
+                if session:
+                    session._warning_sent = True
+
+                # Envoyer l'avertissement via WebSocket
+                if self.connection_manager:
+                    await self.connection_manager.send_system_message(
+                        session_id,
+                        {
+                            "type": "inactivity_warning",
+                            "message": f"Votre session sera déconnectée dans {remaining_seconds} secondes en raison d'inactivité.",
+                            "remaining_seconds": remaining_seconds
+                        }
+                    )
+
+                # Métrique Prometheus
+                if PROMETHEUS_AVAILABLE:
+                    SESSIONS_WARNING_SENT_TOTAL.inc()
+
+            except Exception as e:
+                logger.error(f"Erreur lors de l'envoi d'avertissement pour session {session_id}: {e}", exc_info=True)
 
         # Nettoyer les sessions inactives
         for session_id, duration in sessions_to_cleanup:
@@ -111,11 +178,23 @@ class SessionManager:
                     close_connections=True,
                     close_code=4408,  # Code personnalisé pour timeout d'inactivité
                 )
+
+                # Métriques Prometheus
+                if PROMETHEUS_AVAILABLE:
+                    SESSIONS_TIMEOUT_TOTAL.inc()
+                    SESSION_INACTIVITY_DURATION.observe(duration.total_seconds())
+
             except Exception as e:
                 logger.error(f"Erreur lors du nettoyage de la session {session_id}: {e}", exc_info=True)
 
+        # Mettre à jour la métrique du nombre de sessions actives
+        if PROMETHEUS_AVAILABLE:
+            SESSIONS_ACTIVE_GAUGE.set(len(self.active_sessions))
+
         if sessions_to_cleanup:
             logger.info(f"{len(sessions_to_cleanup)} session(s) nettoyée(s) pour inactivité.")
+        if sessions_to_warn:
+            logger.info(f"{len(sessions_to_warn)} avertissement(s) d'inactivité envoyé(s).")
 
     def _update_session_activity(self, session_id: str):
         """Met à jour le timestamp de dernière activité d'une session."""
@@ -123,6 +202,9 @@ class SessionManager:
         session = self.active_sessions.get(session_id)
         if session:
             session.last_activity = datetime.now(timezone.utc)
+            # Réinitialiser le flag d'avertissement lors d'une nouvelle activité
+            if hasattr(session, '_warning_sent'):
+                session._warning_sent = False
 
     async def ensure_session(self, session_id: str, user_id: str, *, thread_id: Optional[str] = None,
                              history_limit: int = 200) -> Session:

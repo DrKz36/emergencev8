@@ -249,6 +249,14 @@ class ConnectionManager:
                 )
                 await self.disconnect(resolved_id, ws)
 
+    async def send_system_message(self, session_id: str, payload: dict):
+        """Envoie un message système à une session (ex: avertissement d'inactivité)."""
+        message = {
+            "type": "ws:system_notification",
+            "payload": payload
+        }
+        await self.send_personal_message(message, session_id)
+
     async def close_session(
         self,
         session_id: str,
