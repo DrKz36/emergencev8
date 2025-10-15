@@ -38,6 +38,28 @@
 .concept-graph__controls {
   display: flex;
   gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.concept-graph__filter {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.8);
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.concept-graph__filter:hover,
+.concept-graph__filter:focus {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.4);
+  outline: none;
 }
 
 .concept-graph__btn {
@@ -74,6 +96,31 @@
   color: #fca5a5;
   font-size: 14px;
   line-height: 1.5;
+}
+
+.concept-graph__stats {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.concept-graph__stats-content {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: center;
+}
+
+.concept-graph__stat {
+  font-size: 14px;
+  color: rgba(226, 232, 240, 0.8);
+}
+
+.concept-graph__stat strong {
+  color: rgba(56, 189, 248, 1);
+  font-weight: 600;
+  font-size: 16px;
 }
 
 .concept-graph__canvas-wrapper {
@@ -121,6 +168,47 @@
 .concept-graph__node-info strong {
   color: rgba(226, 232, 240, 0.95);
   font-weight: 500;
+}
+
+.concept-graph__related {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.concept-graph__related strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.concept-graph__related-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.concept-graph__related-item {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: rgba(56, 189, 248, 0.95);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.concept-graph__related-more {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: rgba(148, 163, 184, 0.8);
+  font-size: 12px;
+  font-style: italic;
 }
 
 @media (max-width: 768px) {

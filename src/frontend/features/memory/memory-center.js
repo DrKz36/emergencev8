@@ -2,6 +2,7 @@
 // MemoryCenter with history panel + API integration (ASCII friendly).
 
 import { api } from '../../shared/api-client.js';
+import { ConceptGraph } from './concept-graph.js';
 
 const HISTORY_LIMIT = 20;
 const DEFAULT_HISTORY_INTERVAL = 20000; // Increased from 15s to 20s to reduce polling frequency
@@ -55,6 +56,11 @@ export class MemoryCenter {
     this._historyToken = null;
     this._lastFetchAt = 0;
     this._historyInterval = Math.max(options.historyRefreshInterval ?? DEFAULT_HISTORY_INTERVAL, 1000);
+
+    // Graph view
+    this._activeTab = 'history'; // 'history' or 'graph'
+    this._conceptGraph = null;
+    this._graphContainer = null;
   }
 
   init(hostOverride) {
@@ -133,6 +139,17 @@ export class MemoryCenter {
   _bind() {
     if (!this.host || this._bound) return;
     const handler = (event) => {
+      // Tab switching
+      const tabBtn = event.target.closest('[data-memory-tab]');
+      if (tabBtn) {
+        const tab = tabBtn.dataset.memoryTab;
+        if (tab && tab !== this._activeTab) {
+          this._switchTab(tab);
+        }
+        return;
+      }
+
+      // Export buttons
       const btn = event.target.closest('[data-memory-export]');
       if (!btn) return;
       const format = (btn.dataset.memoryExport || '').toLowerCase();
@@ -252,14 +269,27 @@ export class MemoryCenter {
         </section>
         <section class="memory-section">
           <header class="memory-section__header">
-            <h3 class="memory-section__title">Historique des consolidations</h3>
+            <div class="memory-tabs">
+              <button type="button" class="memory-tab ${this._activeTab === 'history' ? 'active' : ''}" data-memory-tab="history">
+                📋 Historique
+              </button>
+              <button type="button" class="memory-tab ${this._activeTab === 'graph' ? 'active' : ''}" data-memory-tab="graph">
+                🌐 Graphe
+              </button>
+            </div>
           </header>
-          <div class="memory-history" data-memory-history></div>
+          <div class="memory-tab-content" data-memory-tab-content>
+            ${this._activeTab === 'history' ? '<div class="memory-history" data-memory-history></div>' : '<div class="memory-graph" data-memory-graph></div>'}
+          </div>
         </section>
       </div>
     `;
-    this._renderHistory();
-    this._bindHistoryActions();
+    if (this._activeTab === 'history') {
+      this._renderHistory();
+      this._bindHistoryActions();
+    } else if (this._activeTab === 'graph') {
+      this._renderGraph();
+    }
   }
 
   _renderHistory() {
@@ -469,5 +499,40 @@ export class MemoryCenter {
       kind: 'success',
       text: `Export CSV reussi: ${filename}`
     });
+  }
+
+  _switchTab(tab) {
+    if (tab === this._activeTab) return;
+
+    // Cleanup old tab
+    if (this._activeTab === 'graph' && this._conceptGraph) {
+      this._conceptGraph.destroy();
+      this._conceptGraph = null;
+    }
+
+    this._activeTab = tab;
+    this._render();
+
+    this.eventBus?.emit?.('memory:tab:switched', { tab });
+  }
+
+  _renderGraph() {
+    if (!this.host) return;
+
+    const container = this.host.querySelector('[data-memory-graph]');
+    if (!container) return;
+
+    // Create graph container
+    container.innerHTML = '<div class="concept-graph-container" id="memory-concept-graph"></div>';
+
+    const graphHost = container.querySelector('#memory-concept-graph');
+    if (!graphHost) return;
+
+    // Initialize ConceptGraph
+    this._conceptGraph = new ConceptGraph(this.eventBus, this.stateManager, {
+      hostElement: graphHost
+    });
+
+    this._conceptGraph.init();
   }
 }

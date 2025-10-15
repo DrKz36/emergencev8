@@ -12,6 +12,9 @@ import {
   unarchiveThread as apiUnarchiveThread,
   deleteThread as apiDeleteThread,
   updateThread as apiUpdateThread,
+  exportThreadToJSON,
+  exportThreadToCSV,
+  exportThreadToPDF,
 } from './threads-service.js';
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 
@@ -252,6 +255,7 @@ export class ThreadsPanel {
     this.contextMenuId = null;
     this.contextMenuX = 0;
     this.contextMenuY = 0;
+    this.exportSubmenuOpen = false;
 
     this._hasInitialRender = false;
     this._domBound = false;
@@ -697,8 +701,20 @@ export class ThreadsPanel {
       this.startRename(threadId);
     } else if (action === 'context-export') {
       event.preventDefault();
+      this.exportSubmenuOpen = !this.exportSubmenuOpen;
+      this.render(this.state.get('threads'));
+    } else if (action === 'context-export-json') {
+      event.preventDefault();
       this.closeContextMenu();
-      await this.exportThread(threadId);
+      await this.exportThread(threadId, 'json');
+    } else if (action === 'context-export-csv') {
+      event.preventDefault();
+      this.closeContextMenu();
+      await this.exportThread(threadId, 'csv');
+    } else if (action === 'context-export-pdf') {
+      event.preventDefault();
+      this.closeContextMenu();
+      await this.exportThread(threadId, 'pdf');
     } else if (action === 'context-archive') {
       event.preventDefault();
       this.closeContextMenu();
@@ -798,52 +814,36 @@ export class ThreadsPanel {
   closeContextMenu() {
     if (this.contextMenuId) {
       this.contextMenuId = null;
+      this.exportSubmenuOpen = false;
       this.render(this.state.get('threads'));
     }
   }
 
-  async exportThread(threadId) {
+  async exportThread(threadId, format = 'json') {
     const safeId = normalizeId(threadId);
     if (!safeId) return;
 
     try {
-      const threadsState = this.state.get('threads');
-      const entry = threadsState?.map?.[safeId];
-      const record = entry?.thread || entry || {};
-      const messages = entry?.messages || [];
+      let result;
+      if (format === 'csv') {
+        result = await exportThreadToCSV(safeId);
+      } else if (format === 'pdf') {
+        result = await exportThreadToPDF(safeId);
+      } else {
+        result = await exportThreadToJSON(safeId);
+      }
 
-      const exportData = {
-        id: safeId,
-        title: record.title || 'Conversation',
-        agent_id: record.agent_id || record.agentId,
-        created_at: record.created_at || record.createdAt,
-        updated_at: record.updated_at || record.updatedAt,
-        messages: messages.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.created_at || msg.createdAt || msg.timestamp,
-        })),
-        exported_at: new Date().toISOString(),
-      };
-
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `conversation-${safeId}-${Date.now()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      this.eventBus.emit?.(EVENTS.SHOW_NOTIFICATION, {
-        type: 'success',
-        message: 'Conversation exportée avec succès',
-      });
+      if (result?.success) {
+        this.eventBus.emit?.(EVENTS.SHOW_NOTIFICATION, {
+          type: 'success',
+          message: `Conversation exportée en ${format.toUpperCase()} : ${result.filename}`,
+        });
+      }
     } catch (error) {
+      console.error('[ThreadsPanel] Export error:', error);
       this.eventBus.emit?.(EVENTS.SHOW_NOTIFICATION, {
         type: 'error',
-        message: 'Erreur lors de l\'export',
+        message: `Erreur lors de l'export ${format.toUpperCase()}: ${error.message}`,
       });
     }
   }
@@ -1227,6 +1227,32 @@ export class ThreadsPanel {
           <line x1="10" y1="12" x2="14" y2="12"></line>
         </svg>`;
 
+    const exportSubmenu = this.exportSubmenuOpen ? `
+      <div class="threads-context-submenu">
+        <button type="button" class="threads-context-menu__item" data-action="context-export-json" data-thread-id="${escapeHtml(this.contextMenuId)}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          JSON
+        </button>
+        <button type="button" class="threads-context-menu__item" data-action="context-export-csv" data-thread-id="${escapeHtml(this.contextMenuId)}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          CSV
+        </button>
+        <button type="button" class="threads-context-menu__item" data-action="context-export-pdf" data-thread-id="${escapeHtml(this.contextMenuId)}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          PDF
+        </button>
+      </div>
+    ` : '';
+
     menu.innerHTML = `
       <button type="button" class="threads-context-menu__item" data-action="context-rename" data-thread-id="${escapeHtml(this.contextMenuId)}">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1234,13 +1260,17 @@ export class ThreadsPanel {
         </svg>
         Renommer
       </button>
-      <button type="button" class="threads-context-menu__item" data-action="context-export" data-thread-id="${escapeHtml(this.contextMenuId)}">
+      <button type="button" class="threads-context-menu__item threads-context-menu__item--with-submenu${this.exportSubmenuOpen ? ' is-open' : ''}" data-action="context-export" data-thread-id="${escapeHtml(this.contextMenuId)}">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
           <polyline points="7 10 12 15 17 10"></polyline>
           <line x1="12" y1="15" x2="12" y2="3"></line>
         </svg>
         Exporter
+        <svg class="threads-context-menu__arrow" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+        ${exportSubmenu}
       </button>
       <button type="button" class="threads-context-menu__item" data-action="${archiveAction}" data-thread-id="${escapeHtml(this.contextMenuId)}">
         ${archiveIcon}

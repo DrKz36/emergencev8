@@ -95,6 +95,50 @@
   opacity: 1;
 }
 
+/* ===== Onglets Memory Center ===== */
+.memory-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+}
+
+.memory-tab {
+  padding: 10px 20px;
+  border: none;
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 8px 8px 0 0;
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.memory-tab:hover {
+  background: rgba(56, 189, 248, 0.08);
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.memory-tab.active {
+  background: rgba(56, 189, 248, 0.15);
+  color: rgba(56, 189, 248, 1);
+  border-bottom-color: rgba(56, 189, 248, 0.8);
+}
+
+.memory-tab-content {
+  padding: 0;
+  margin: 0;
+}
+
+/* ===== Container pour le graphe ===== */
+.concept-graph-container {
+  width: 100%;
+  min-height: 600px;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
   .memory-page__progress {
@@ -108,5 +152,18 @@
 
   .memory-page__actions .button-primary::after {
     display: none; /* Masquer tooltip sur mobile pour éviter les collisions */
+  }
+
+  .memory-tabs {
+    gap: 4px;
+  }
+
+  .memory-tab {
+    padding: 8px 16px;
+    font-size: 0.8125rem;
+  }
+
+  .concept-graph-container {
+    min-height: 400px;
   }
 }

@@ -78,6 +78,12 @@ export class ConceptGraph {
     this._animationFrame = null;
     this._initialized = false;
 
+    // Filters
+    this._filterType = 'all'; // 'all', 'high', 'medium', 'low'
+    this._filterDate = 'all'; // 'all', 'today', 'week', 'month'
+    this._allNodes = [];
+    this._allLinks = [];
+
     this._boundMouseDown = this.handleMouseDown.bind(this);
     this._boundMouseMove = this.handleMouseMove.bind(this);
     this._boundMouseUp = this.handleMouseUp.bind(this);
@@ -90,13 +96,20 @@ export class ConceptGraph {
         <header class="concept-graph__header">
           <h3 class="concept-graph__title">Graphe de Connaissances</h3>
           <div class="concept-graph__controls">
-            <button class="concept-graph__btn" data-action="reset-view">🔄 Réinitialiser</button>
+            <select class="concept-graph__filter" data-filter="type" title="Filtrer par importance">
+              <option value="all">Tous les concepts</option>
+              <option value="high">Haute importance (10+)</option>
+              <option value="medium">Moyenne (5-9)</option>
+              <option value="low">Faible (1-4)</option>
+            </select>
+            <button class="concept-graph__btn" data-action="reset-view">🔄 Vue</button>
             <button class="concept-graph__btn" data-action="reload">↻ Recharger</button>
           </div>
         </header>
 
         <div class="concept-graph__body">
           <p class="concept-graph__error" data-role="graph-error" hidden></p>
+          <div class="concept-graph__stats" data-role="graph-stats"></div>
           <div class="concept-graph__canvas-wrapper" data-role="graph-canvas-wrapper">
             <canvas class="concept-graph__canvas" data-role="graph-canvas"></canvas>
           </div>
@@ -157,6 +170,7 @@ export class ConceptGraph {
 
     this.errorContainer = host.querySelector('[data-role="graph-error"]');
     this.infoContainer = host.querySelector('[data-role="graph-info"]');
+    this.statsContainer = host.querySelector('[data-role="graph-stats"]');
   }
 
   bindEvents() {
@@ -175,6 +189,14 @@ export class ConceptGraph {
     const reloadBtn = this.container?.querySelector('[data-action="reload"]');
     if (reloadBtn) {
       reloadBtn.addEventListener('click', () => this.loadGraph());
+    }
+
+    const filterType = this.container?.querySelector('[data-filter="type"]');
+    if (filterType) {
+      filterType.addEventListener('change', (e) => {
+        this._filterType = e.target.value;
+        this.applyFilters();
+      });
     }
   }
 
@@ -201,10 +223,11 @@ export class ConceptGraph {
     const relations = data.relations || data.links || [];
 
     // Create nodes
-    this.nodes = concepts.map((concept, index) => ({
+    this._allNodes = concepts.map((concept, index) => ({
       id: concept.id || concept.concept_id || `concept-${index}`,
       label: concept.concept_text || concept.label || 'Concept',
       count: concept.occurrence_count || 1,
+      created_at: concept.created_at || null,
       x: Math.random() * this.width,
       y: Math.random() * this.height,
       vx: 0,
@@ -213,15 +236,17 @@ export class ConceptGraph {
     }));
 
     // Create links
-    this.links = relations.map((rel) => {
-      const source = this.nodes.find(n => n.id === (rel.source_concept_id || rel.source));
-      const target = this.nodes.find(n => n.id === (rel.target_concept_id || rel.target));
+    this._allLinks = relations.map((rel) => {
+      const source = this._allNodes.find(n => n.id === (rel.source_concept_id || rel.source));
+      const target = this._allNodes.find(n => n.id === (rel.target_concept_id || rel.target));
 
       if (source && target) {
         return { source, target, type: rel.type || 'related' };
       }
       return null;
     }).filter(Boolean);
+
+    this.applyFilters();
   }
 
   initializePhysics() {
@@ -439,15 +464,34 @@ export class ConceptGraph {
     const node = this.hoveredNode || this.selectedNode;
 
     if (node) {
-      const connections = this.links.filter(link =>
+      const relatedLinks = this.links.filter(link =>
         link.source === node || link.target === node
-      ).length;
+      );
+
+      const connections = relatedLinks.length;
+
+      // Get related concepts
+      const relatedConcepts = relatedLinks.map(link => {
+        const related = link.source === node ? link.target : link.source;
+        return `<span class="concept-graph__related-item">${related.label}</span>`;
+      }).slice(0, 5); // Show max 5
+
+      const hasMore = relatedLinks.length > 5;
 
       this.infoContainer.innerHTML = `
         <div class="concept-graph__node-info">
           <h4>${node.label}</h4>
           <p><strong>Occurrences:</strong> ${node.count}</p>
           <p><strong>Connexions:</strong> ${connections}</p>
+          ${connections > 0 ? `
+            <div class="concept-graph__related">
+              <strong>Concepts liés:</strong>
+              <div class="concept-graph__related-list">
+                ${relatedConcepts.join('')}
+                ${hasMore ? `<span class="concept-graph__related-more">+${relatedLinks.length - 5} autres</span>` : ''}
+              </div>
+            </div>
+          ` : ''}
         </div>
       `;
     } else {
@@ -465,5 +509,51 @@ export class ConceptGraph {
       this.errorContainer.textContent = '';
       this.errorContainer.hidden = true;
     }
+  }
+
+  applyFilters() {
+    // Filter by type (importance based on count)
+    let filteredNodes = [...this._allNodes];
+
+    if (this._filterType !== 'all') {
+      filteredNodes = filteredNodes.filter(node => {
+        if (this._filterType === 'high') return node.count >= 10;
+        if (this._filterType === 'medium') return node.count >= 5 && node.count < 10;
+        if (this._filterType === 'low') return node.count < 5;
+        return true;
+      });
+    }
+
+    // Filter links to only include those connecting visible nodes
+    const nodeIds = new Set(filteredNodes.map(n => n.id));
+    const filteredLinks = this._allLinks.filter(link =>
+      nodeIds.has(link.source.id) && nodeIds.has(link.target.id)
+    );
+
+    this.nodes = filteredNodes;
+    this.links = filteredLinks;
+
+    this.initializePhysics();
+    this.renderStats();
+  }
+
+  renderStats() {
+    if (!this.statsContainer) return;
+
+    const totalNodes = this._allNodes.length;
+    const visibleNodes = this.nodes.length;
+    const totalLinks = this._allLinks.length;
+    const visibleLinks = this.links.length;
+
+    this.statsContainer.innerHTML = `
+      <div class="concept-graph__stats-content">
+        <span class="concept-graph__stat">
+          <strong>${visibleNodes}</strong>/${totalNodes} concepts
+        </span>
+        <span class="concept-graph__stat">
+          <strong>${visibleLinks}</strong>/${totalLinks} relations
+        </span>
+      </div>
+    `;
   }
 }

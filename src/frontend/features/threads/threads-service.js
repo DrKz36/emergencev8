@@ -3,6 +3,9 @@
  * Service utilitaire pour orchestrer les appels HTTP de la persistance des threads.
  */
 import { api } from '../../shared/api-client.js';
+import Papa from 'papaparse';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 
 const HEX32 = /^[0-9a-f]{32}$/i;
 const UUID36 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -158,5 +161,282 @@ export async function deleteThread(id) {
     return true;
   } catch (error) {
     throw wrapError(error, 'Impossible de supprimer le thread.');
+  }
+}
+
+/**
+ * Export functions for threads
+ */
+
+function formatDate(dateString) {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleString('fr-FR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return dateString;
+  }
+}
+
+function downloadFile(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export async function exportThreadToJSON(threadId) {
+  const safeId = sanitizeThreadId(threadId);
+  if (!safeId) {
+    throw new Error('Identifiant de thread invalide');
+  }
+
+  try {
+    const threadData = await fetchThreadDetail(safeId, { include_messages: true });
+
+    const exportData = {
+      metadata: {
+        exported_at: new Date().toISOString(),
+        thread_id: threadData.id,
+        thread_title: threadData.title || 'Sans titre',
+        agent_id: threadData.agent_id || null,
+        created_at: threadData.created_at,
+        updated_at: threadData.updated_at,
+        message_count: threadData.messages?.length || 0
+      },
+      thread: {
+        id: threadData.id,
+        title: threadData.title,
+        agent_id: threadData.agent_id,
+        type: threadData.type,
+        created_at: threadData.created_at,
+        updated_at: threadData.updated_at,
+        archived: threadData.archived,
+        meta: threadData.meta
+      },
+      messages: (threadData.messages || []).map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        created_at: msg.created_at,
+        tokens: msg.tokens,
+        model: msg.model,
+        cost: msg.cost
+      }))
+    };
+
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `conversation-${safeId.slice(0, 8)}-${timestamp}.json`;
+
+    downloadFile(blob, filename);
+    return { success: true, filename };
+  } catch (error) {
+    throw wrapError(error, 'Impossible d\'exporter le thread en JSON');
+  }
+}
+
+export async function exportThreadToCSV(threadId) {
+  const safeId = sanitizeThreadId(threadId);
+  if (!safeId) {
+    throw new Error('Identifiant de thread invalide');
+  }
+
+  try {
+    const threadData = await fetchThreadDetail(safeId, { include_messages: true });
+
+    const messages = threadData.messages || [];
+
+    // Préparer les données pour CSV
+    const csvData = messages.map(msg => ({
+      'ID Message': msg.id || '',
+      'Date': formatDate(msg.created_at),
+      'Role': msg.role || '',
+      'Contenu': (msg.content || '').replace(/\n/g, ' ').replace(/"/g, '""'),
+      'Tokens': msg.tokens || 0,
+      'Modele': msg.model || '',
+      'Cout ($)': msg.cost || 0
+    }));
+
+    // Ajouter métadonnées en en-tête
+    const headerData = [
+      { 'ID Message': 'METADONNEES', 'Date': '', 'Role': '', 'Contenu': '', 'Tokens': '', 'Modele': '', 'Cout ($)': '' },
+      { 'ID Message': 'Thread ID', 'Date': threadData.id, 'Role': '', 'Contenu': '', 'Tokens': '', 'Modele': '', 'Cout ($)': '' },
+      { 'ID Message': 'Titre', 'Date': threadData.title || 'Sans titre', 'Role': '', 'Contenu': '', 'Tokens': '', 'Modele': '', 'Cout ($)': '' },
+      { 'ID Message': 'Agent', 'Date': threadData.agent_id || 'N/A', 'Role': '', 'Contenu': '', 'Tokens': '', 'Modele': '', 'Cout ($)': '' },
+      { 'ID Message': 'Cree le', 'Date': formatDate(threadData.created_at), 'Role': '', 'Contenu': '', 'Tokens': '', 'Modele': '', 'Cout ($)': '' },
+      { 'ID Message': 'Nombre de messages', 'Date': String(messages.length), 'Role': '', 'Contenu': '', 'Tokens': '', 'Modele': '', 'Cout ($)': '' },
+      { 'ID Message': '', 'Date': '', 'Role': '', 'Contenu': '', 'Tokens': '', 'Modele': '', 'Cout ($)': '' },
+      { 'ID Message': 'MESSAGES', 'Date': '', 'Role': '', 'Contenu': '', 'Tokens': '', 'Modele': '', 'Cout ($)': '' }
+    ];
+
+    const allData = [...headerData, ...csvData];
+
+    const csv = Papa.unparse(allData, {
+      quotes: true,
+      delimiter: ',',
+      header: true
+    });
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `conversation-${safeId.slice(0, 8)}-${timestamp}.csv`;
+
+    downloadFile(blob, filename);
+    return { success: true, filename };
+  } catch (error) {
+    throw wrapError(error, 'Impossible d\'exporter le thread en CSV');
+  }
+}
+
+export async function exportThreadToPDF(threadId) {
+  const safeId = sanitizeThreadId(threadId);
+  if (!safeId) {
+    throw new Error('Identifiant de thread invalide');
+  }
+
+  try {
+    const threadData = await fetchThreadDetail(safeId, { include_messages: true });
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 15;
+    const maxWidth = pageWidth - 2 * margin;
+
+    // En-tête
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.text('Conversation Emergence', margin, 20);
+
+    // Métadonnées
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    let yPos = 35;
+
+    const metadata = [
+      ['Titre', threadData.title || 'Sans titre'],
+      ['Thread ID', threadData.id],
+      ['Agent', threadData.agent_id || 'N/A'],
+      ['Date de creation', formatDate(threadData.created_at)],
+      ['Derniere mise a jour', formatDate(threadData.updated_at)],
+      ['Nombre de messages', String(threadData.messages?.length || 0)]
+    ];
+
+    doc.autoTable({
+      startY: yPos,
+      head: [['Propriete', 'Valeur']],
+      body: metadata,
+      theme: 'grid',
+      headStyles: { fillColor: [56, 189, 248], textColor: 255 },
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 9 }
+    });
+
+    yPos = doc.lastAutoTable.finalY + 10;
+
+    // Messages
+    const messages = threadData.messages || [];
+
+    if (messages.length > 0) {
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+
+      if (yPos > pageHeight - 30) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.text('Messages', margin, yPos);
+      yPos += 8;
+
+      messages.forEach((msg, index) => {
+        if (yPos > pageHeight - 40) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        // Role badge
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'bold');
+        const roleColor = msg.role === 'user' ? [99, 102, 241] : [139, 92, 246];
+        doc.setTextColor(...roleColor);
+        doc.text(`${msg.role.toUpperCase()}`, margin, yPos);
+
+        // Date
+        doc.setTextColor(100, 100, 100);
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(8);
+        doc.text(formatDate(msg.created_at), margin + 25, yPos);
+
+        yPos += 5;
+
+        // Content
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(9);
+        doc.setFont(undefined, 'normal');
+
+        const content = (msg.content || 'Contenu vide').substring(0, 500);
+        const lines = doc.splitTextToSize(content, maxWidth);
+
+        lines.forEach(line => {
+          if (yPos > pageHeight - 20) {
+            doc.addPage();
+            yPos = 20;
+          }
+          doc.text(line, margin, yPos);
+          yPos += 5;
+        });
+
+        // Metadata line
+        if (msg.tokens || msg.model) {
+          doc.setFontSize(7);
+          doc.setTextColor(150, 150, 150);
+          const metaLine = `${msg.model || 'N/A'} • ${msg.tokens || 0} tokens${msg.cost ? ` • $${msg.cost.toFixed(6)}` : ''}`;
+          doc.text(metaLine, margin, yPos);
+          yPos += 4;
+        }
+
+        yPos += 4; // Spacing between messages
+
+        // Separator line
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 6;
+      });
+    }
+
+    // Footer on each page
+    const totalPages = doc.internal.pages.length - 1;
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(
+        `Page ${i} / ${totalPages}`,
+        pageWidth / 2,
+        pageHeight - 10,
+        { align: 'center' }
+      );
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `conversation-${safeId.slice(0, 8)}-${timestamp}.pdf`;
+
+    doc.save(filename);
+    return { success: true, filename };
+  } catch (error) {
+    throw wrapError(error, 'Impossible d\'exporter le thread en PDF');
   }
 }
