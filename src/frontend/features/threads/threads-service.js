@@ -141,6 +141,11 @@ export async function archiveThread(id) {
   return updated;
 }
 
+export async function unarchiveThread(id) {
+  const updated = await updateThread(id, { archived: false });
+  return updated;
+}
+
 export async function deleteThread(id) {
   const safeId = sanitizeThreadId(id);
   if (!safeId) {

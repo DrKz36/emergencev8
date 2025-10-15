@@ -12,6 +12,111 @@
 
 ---
 
+## [beta-1.1.0] - 2025-10-15
+
+### 🎉 P0.1 - Archivage des Conversations (UI)
+
+#### 📊 Métriques
+- **Fonctionnalités complètes** : 9/23 (39%) ⬆️ +4%
+- **Phase P0** : 33% complété (1/3)
+- **Version package.json** : `beta-1.1.0`
+
+#### ✅ Fonctionnalités Ajoutées
+
+**1. Toggle Actifs/Archivés**
+- Interface avec deux boutons visuels (Actifs / Archivés)
+- État actif avec gradient bleu et indicateur visuel
+- Compteurs en temps réel pour chaque vue
+- Navigation fluide entre les deux modes
+
+**Fichiers** :
+- [threads.js:295-312](src/frontend/features/threads/threads.js#L295-L312) - Template HTML du toggle
+- [threads.js:369-392](src/frontend/features/threads/threads.js#L369-L392) - Event listeners
+- [threads.js:472-487](src/frontend/features/threads/threads.js#L472-L487) - État visuel du toggle
+
+**2. Fonction de Désarchivage**
+- Bouton "Désarchiver" dans le menu contextuel en mode archivé
+- API `unarchiveThread()` pour restaurer les conversations
+- Mise à jour automatique des compteurs après désarchivage
+- Suppression du thread de la liste archivée après désarchivage
+
+**Fichiers** :
+- [threads-service.js:144-147](src/frontend/features/threads/threads-service.js#L144-L147) - Fonction API
+- [threads.js:1034-1069](src/frontend/features/threads/threads.js#L1034-L1069) - Handler désarchivage
+- [threads.js:706-709](src/frontend/features/threads/threads.js#L706-L709) - Event handler menu contextuel
+
+**3. Menu Contextuel Adaptatif**
+- Affiche "Archiver" ou "Désarchiver" selon le mode actuel
+- Icônes SVG appropriées pour chaque action
+- Logique conditionnelle basée sur `viewMode`
+
+**Fichiers** :
+- [threads.js:1200-1270](src/frontend/features/threads/threads.js#L1200-L1270) - Rendu du menu contextuel
+
+**4. Compteurs Dynamiques**
+- Méthode `updateThreadCounts()` pour récupérer les stats
+- Badges avec nombre de threads actifs/archivés
+- Mise à jour automatique après archivage/désarchivage
+- Affichage dans les boutons du toggle
+
+**Fichiers** :
+- [threads.js:489-512](src/frontend/features/threads/threads.js#L489-L512) - Méthode de mise à jour
+- [threads.js:500](src/frontend/features/threads/threads.js#L500) - Appel après reload
+- [threads.js:1020](src/frontend/features/threads/threads.js#L1020) - Appel après archivage
+- [threads.js:1048](src/frontend/features/threads/threads.js#L1048) - Appel après désarchivage
+
+**5. Chargement Conditionnel**
+- `reload()` charge les threads actifs ou archivés selon `viewMode`
+- Utilise `fetchArchivedThreads()` en mode archivé
+- Utilise `fetchThreads()` en mode actif
+
+**Fichiers** :
+- [threads.js:514-531](src/frontend/features/threads/threads.js#L514-L531) - Méthode reload avec condition
+
+**6. Styling CSS Complet**
+- Styles pour le toggle view avec états actif/inactif
+- Badges de compteurs avec background gradient
+- Transitions et animations fluides
+- Responsive et accessible
+
+**Fichiers** :
+- [threads.css:116-177](src/frontend/features/threads/threads.css#L116-L177) - Styles complets
+
+**7. Événement de désarchivage**
+- Ajout de `THREADS_UNARCHIVED` dans les constantes
+- Émission d'événement lors du désarchivage réussi
+- Cohérence avec les autres événements threads
+
+**Fichiers** :
+- [constants.js:98](src/frontend/shared/constants.js#L98) - Constante événement
+
+#### 🎯 Acceptance Criteria Remplis
+
+- ✅ Clic droit sur thread → "Archiver" → disparaît de la liste active
+- ✅ Onglet "Archives" affiche threads archivés
+- ✅ Clic sur "Désarchiver" → thread revient dans actifs
+- ✅ Badge compteur "X archivés" visible et mis à jour en temps réel
+
+#### 📝 Documentation Mise à Jour
+
+- [ROADMAP_PROGRESS.md](ROADMAP_PROGRESS.md) - Statut P0.1 complété
+- [ROADMAP_OFFICIELLE.md](ROADMAP_OFFICIELLE.md) - Référence phase P0
+
+#### ⏱️ Temps de Développement
+
+- **Estimé** : 1 jour
+- **Réel** : ~4 heures
+- **Efficacité** : 200% (2x plus rapide que prévu)
+
+#### 🔜 Prochaine Étape
+
+**P0.2 - Graphe de Connaissances Interactif**
+- Intégration du composant ConceptGraph
+- Onglet "Graphe" dans le Centre Mémoire
+- Filtres et interactions (zoom, pan, tooltips)
+
+---
+
 ## [beta-1.0.0] - 2025-10-15
 
 ### 🎉 État Initial - Version Bêta de Référence

@@ -11,38 +11,45 @@
 ## 📈 MÉTRIQUES GLOBALES
 
 ```
-Progression Totale : [███░░░░░░░] 8/23 (35%)
+Progression Totale : [███░░░░░░░] 9/23 (39%)
 
-✅ Complètes    : 8/23 (35%)
+✅ Complètes    : 9/23 (39%)
 🟡 En cours     : 0/23 (0%)
-⏳ À faire      : 15/23 (65%)
+⏳ À faire      : 14/23 (61%)
 ```
 
 ---
 
 ## 🎯 PHASE P0 - QUICK WINS (3-5 jours)
-**Statut global** : ⏳ NON DÉMARRÉ
-**Début prévu** : 2025-10-15
+**Statut global** : 🟡 EN COURS (1/3 complété)
+**Début** : 2025-10-15
 **Fin prévue** : 2025-10-20
 
 ### 1. Archivage des Conversations (UI)
-**Statut** : ⏳ À faire
+**Statut** : ✅ Complété
 **Temps estimé** : 1 jour
-**Temps réel** : -
-**Début** : -
-**Fin** : -
+**Temps réel** : ~4 heures
+**Début** : 2025-10-15
+**Fin** : 2025-10-15
 
 #### Checklist
-- [ ] Ajouter onglet "Archives" dans la sidebar threads
-- [ ] Créer filtre "Actifs / Archivés" dans threads.js
-- [ ] Implémenter bouton "Désarchiver" dans le menu contextuel
-- [ ] Ajouter compteur threads archivés dans le dashboard
-- [ ] Tests : archiver → vérifier retrait liste → désarchiver → vérifier réapparition
+- [x] Ajouter onglet "Archives" dans la sidebar threads
+- [x] Créer filtre "Actifs / Archivés" dans threads.js
+- [x] Implémenter bouton "Désarchiver" dans le menu contextuel
+- [x] Ajouter compteur threads archivés dans le dashboard
+- [x] Tests : archiver → vérifier retrait liste → désarchiver → vérifier réapparition
 
 #### Notes de progression
 ```
-[Date] [Heure] - [Note]
-Aucune note pour le moment.
+[2025-10-15] [18:00] - Implémentation complète de l'archivage UI
+- Ajout de la fonction unarchiveThread() dans threads-service.js
+- Implémentation du toggle Actifs/Archivés avec boutons visuels et compteurs
+- Ajout de la méthode handleUnarchive() pour gérer le désarchivage
+- Mise à jour du menu contextuel pour afficher "Archiver" ou "Désarchiver" selon le mode
+- Ajout de la méthode updateThreadCounts() pour actualiser les compteurs
+- Ajout de l'événement THREADS_UNARCHIVED dans constants.js
+- Styling CSS complet pour le view toggle avec états actif/inactif
+- Le reload() charge maintenant les threads archivés quand viewMode === 'archived'
 ```
 
 ---
@@ -230,6 +237,14 @@ Aucune note pour le moment.
 
 ## 📅 JOURNAL DE BORD
 
+### 2025-10-15 - P0.1 Archivage UI ✅
+- ✅ Implémentation complète de la fonctionnalité d'archivage des conversations
+- ✅ Ajout du toggle Actifs/Archivés avec compteurs temps réel
+- ✅ Fonction de désarchivage opérationnelle
+- ✅ Menu contextuel adaptatif selon le mode (Archiver/Désarchiver)
+- ✅ Styling CSS complet pour tous les nouveaux composants
+- 📊 Progression Phase P0 : 33% (1/3 complété)
+
 ### 2025-10-15 - Initialisation
 - ✅ Création ROADMAP_OFFICIELLE.md
 - ✅ Archivage anciennes roadmaps (Roadmap Stratégique, memory-roadmap, COCKPIT_ROADMAP)
@@ -258,11 +273,12 @@ Aucune note pour le moment.
 ## 🎯 PROCHAINES ACTIONS
 
 ### À faire aujourd'hui (2025-10-15)
-1. ⏳ Décider si on démarre P0.1 (Archivage UI) ou P0.2 (Graphe)
-2. ⏳ Configurer environnement de développement pour P0
+1. ✅ P0.1 Archivage UI - Complété
+2. 🔜 P0.2 Graphe de Connaissances Interactif - Prochaine tâche
+3. ⏳ Tester l'archivage en environnement local
 
 ### À faire cette semaine (15-20 octobre)
-1. ⏳ Compléter Phase P0 (3 fonctionnalités)
+1. 🟡 Compléter Phase P0 (2/3 restantes : Graphe + Export CSV/PDF)
 2. ⏳ Tester intégration complète P0
 3. ⏳ Documenter décisions techniques P0
 

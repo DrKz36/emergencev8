@@ -6,8 +6,10 @@
 import {
   fetchThreads,
   fetchThreadDetail,
+  fetchArchivedThreads,
   createThread as apiCreateThread,
   archiveThread as apiArchiveThread,
+  unarchiveThread as apiUnarchiveThread,
   deleteThread as apiDeleteThread,
   updateThread as apiUpdateThread,
 } from './threads-service.js';
@@ -364,6 +366,31 @@ export class ThreadsPanel {
       this.sortSelect.value = this.sortBy;
     }
 
+    // Attach view toggle listeners
+    if (this.viewToggle && !this.viewToggle.hasAttribute('data-listener-attached')) {
+      const activeBtn = this.viewToggle.querySelector('[data-role="toggle-active"]');
+      const archivedBtn = this.viewToggle.querySelector('[data-role="toggle-archived"]');
+
+      if (activeBtn) {
+        activeBtn.addEventListener('click', () => {
+          this.viewMode = 'active';
+          this.updateViewToggleState();
+          this.reload();
+        });
+      }
+
+      if (archivedBtn) {
+        archivedBtn.addEventListener('click', () => {
+          this.viewMode = 'archived';
+          this.updateViewToggleState();
+          this.reload();
+        });
+      }
+
+      this.viewToggle.setAttribute('data-listener-attached', 'true');
+      this.updateViewToggleState();
+    }
+
     if (!this.unsubscribeRefresh && this.eventBus?.on) {
       this.unsubscribeRefresh = this.eventBus.on(EVENTS.THREADS_REFRESH_REQUEST, this._onRefreshRequested);
     }
@@ -442,15 +469,60 @@ export class ThreadsPanel {
     this.viewToggle = host.querySelector('[data-role="thread-view-toggle"]');
   }
 
+  updateViewToggleState() {
+    if (!this.viewToggle) return;
+
+    const activeBtn = this.viewToggle.querySelector('[data-role="toggle-active"]');
+    const archivedBtn = this.viewToggle.querySelector('[data-role="toggle-archived"]');
+
+    if (activeBtn) {
+      activeBtn.classList.toggle('is-active', this.viewMode === 'active');
+      activeBtn.setAttribute('aria-pressed', this.viewMode === 'active' ? 'true' : 'false');
+    }
+
+    if (archivedBtn) {
+      archivedBtn.classList.toggle('is-active', this.viewMode === 'archived');
+      archivedBtn.setAttribute('aria-pressed', this.viewMode === 'archived' ? 'true' : 'false');
+    }
+  }
+
+  async updateThreadCounts() {
+    try {
+      // Fetch both active and archived counts
+      const activeThreads = await fetchThreads({ type: 'chat', limit: MAX_FETCH_LIMIT });
+      const archivedThreads = await fetchArchivedThreads({ type: 'chat', limit: MAX_FETCH_LIMIT });
+
+      const activeCount = Array.isArray(activeThreads) ? activeThreads.length : 0;
+      const archivedCount = Array.isArray(archivedThreads) ? archivedThreads.length : 0;
+
+      // Update count badges
+      const activeCountEl = this.container?.querySelector('[data-role="active-count"]');
+      const archivedCountEl = this.container?.querySelector('[data-role="archived-count"]');
+
+      if (activeCountEl) {
+        activeCountEl.textContent = activeCount;
+      }
+
+      if (archivedCountEl) {
+        archivedCountEl.textContent = archivedCount;
+      }
+    } catch (error) {
+      console.warn('[ThreadsPanel] Failed to update thread counts:', error);
+    }
+  }
+
   async reload() {
     this.setStatus('loading');
     try {
-      const items = await fetchThreads({ type: 'chat', limit: MAX_FETCH_LIMIT });
+      const items = this.viewMode === 'archived'
+        ? await fetchArchivedThreads({ type: 'chat', limit: MAX_FETCH_LIMIT })
+        : await fetchThreads({ type: 'chat', limit: MAX_FETCH_LIMIT });
       const meta = this.hydrateStateFromList(items);
       this.setStatus('ready');
       const payload = { items, fetchedAt: meta?.fetchedAt };
       this.eventBus.emit?.(EVENTS.THREADS_LIST_UPDATED, payload);
       this.eventBus.emit?.(EVENTS.THREADS_READY, payload);
+      this.updateThreadCounts();
     } catch (error) {
       const message = error?.message || 'Chargement impossible.';
       this.setStatus('error', message);
@@ -631,6 +703,10 @@ export class ThreadsPanel {
       event.preventDefault();
       this.closeContextMenu();
       await this.handleArchive(threadId);
+    } else if (action === 'context-unarchive') {
+      event.preventDefault();
+      this.closeContextMenu();
+      await this.handleUnarchive(threadId);
     } else if (action === 'context-delete') {
       event.preventDefault();
       this.closeContextMenu();
@@ -939,6 +1015,9 @@ export class ThreadsPanel {
           localStorage.removeItem(THREAD_STORAGE_KEY);
         }
       } catch {}
+
+      // Update counts after archiving
+      await this.updateThreadCounts();
     } catch (error) {
       const message = error?.message || "Impossible d'archiver la conversation.";
       this.setStatus('error', message);
@@ -948,6 +1027,43 @@ export class ThreadsPanel {
       }
     } finally {
       this.archivingId = null;
+      this.render(this.state.get('threads'));
+    }
+  }
+
+  async handleUnarchive(threadId) {
+    const safeId = normalizeId(threadId);
+    if (!safeId || this.unarchivingId === safeId) return;
+
+    this.unarchivingId = safeId;
+    this.render(this.state.get('threads'));
+
+    try {
+      const updated = await apiUnarchiveThread(safeId);
+      this.mergeThread(safeId, updated?.thread || updated || { id: safeId, archived: false });
+      this.removeThreadFromState(safeId);
+      this.eventBus.emit?.(EVENTS.THREADS_UNARCHIVED, { id: safeId });
+
+      // Update counts after unarchiving
+      await this.updateThreadCounts();
+
+      // If we're in archived view and no threads left, show placeholder
+      const state = this.state.get('threads');
+      if (state?.currentId === safeId && this.viewMode === 'archived') {
+        const nextId = state?.order?.[0] || null;
+        if (nextId) {
+          await this.handleSelect(nextId);
+        }
+      }
+    } catch (error) {
+      const message = error?.message || "Impossible de désarchiver la conversation.";
+      this.setStatus('error', message);
+      this.eventBus.emit?.(EVENTS.THREADS_ERROR, { action: 'unarchive', error });
+      if (error?.status === 401) {
+        this.eventBus.emit?.('auth:missing', { reason: 401 });
+      }
+    } finally {
+      this.unarchivingId = null;
       this.render(this.state.get('threads'));
     }
   }
@@ -1095,6 +1211,22 @@ export class ThreadsPanel {
     menu.style.left = `${this.contextMenuX}px`;
     menu.style.top = `${this.contextMenuY}px`;
 
+    // Determine if we should show Archive or Unarchive based on current view mode
+    const isArchivedView = this.viewMode === 'archived';
+    const archiveAction = isArchivedView ? 'context-unarchive' : 'context-archive';
+    const archiveLabel = isArchivedView ? 'Désarchiver' : 'Archiver';
+    const archiveIcon = isArchivedView
+      ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 8 3 21 21 21 21 8"></polyline>
+          <rect x="1" y="3" width="22" height="5"></rect>
+          <line x1="10" y1="12" x2="14" y2="12"></line>
+        </svg>`
+      : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="21 8 21 21 3 21 3 8"></polyline>
+          <rect x="1" y="3" width="22" height="5"></rect>
+          <line x1="10" y1="12" x2="14" y2="12"></line>
+        </svg>`;
+
     menu.innerHTML = `
       <button type="button" class="threads-context-menu__item" data-action="context-rename" data-thread-id="${escapeHtml(this.contextMenuId)}">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1110,13 +1242,9 @@ export class ThreadsPanel {
         </svg>
         Exporter
       </button>
-      <button type="button" class="threads-context-menu__item" data-action="context-archive" data-thread-id="${escapeHtml(this.contextMenuId)}">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="21 8 21 21 3 21 3 8"></polyline>
-          <rect x="1" y="3" width="22" height="5"></rect>
-          <line x1="10" y1="12" x2="14" y2="12"></line>
-        </svg>
-        Archiver
+      <button type="button" class="threads-context-menu__item" data-action="${archiveAction}" data-thread-id="${escapeHtml(this.contextMenuId)}">
+        ${archiveIcon}
+        ${archiveLabel}
       </button>
       <button type="button" class="threads-context-menu__item threads-context-menu__item--danger" data-action="context-delete" data-thread-id="${escapeHtml(this.contextMenuId)}">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
