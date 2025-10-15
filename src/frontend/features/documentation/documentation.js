@@ -154,17 +154,33 @@ export class Documentation {
                                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                                 <line x1="12" y1="17" x2="12.01" y2="17"></line>
                             </svg>
-                            Guide d'Utilisation
+                            Guides et Tutoriels
                         </h2>
 
                         <div class="tutorial-intro">
                             <p>
-                                Bienvenue dans ÉMERGENCE ! Ce guide vous aidera à maîtriser toutes les fonctionnalités de la plateforme.
-                                Explorez les sections ci-dessous pour découvrir comment tirer le meilleur parti de votre expérience.
+                                Bienvenue dans ÉMERGENCE ! Découvrez nos guides accessibles pour comprendre et maîtriser
+                                cette plateforme de dialogue multi-agents.
                             </p>
+                            <div class="tutorial-quick-links" style="margin-top: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <a href="#" class="btn-load-tutorial" data-doc="/docs/EMERGENCE_TUTORIEL_VULGARISE_V2.md"
+                                   style="padding: 0.5rem 1rem; background: rgba(56, 189, 248, 0.2); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; text-decoration: none; color: rgb(56, 189, 248); font-weight: 500;">
+                                    📘 Tutoriel Grand Public
+                                </a>
+                                <a href="#" class="btn-load-tutorial" data-doc="/docs/glossaire.md"
+                                   style="padding: 0.5rem 1rem; background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 8px; text-decoration: none; color: rgb(139, 92, 246); font-weight: 500;">
+                                    📚 Glossaire IA
+                                </a>
+                                <a href="#" class="btn-load-tutorial" data-doc="/docs/TUTORIAL_SYSTEM.md"
+                                   style="padding: 0.5rem 1rem; background: rgba(74, 222, 128, 0.2); border: 1px solid rgba(74, 222, 128, 0.4); border-radius: 8px; text-decoration: none; color: rgb(74, 222, 128); font-weight: 500;">
+                                    ⚙️ Documentation Technique
+                                </a>
+                            </div>
                         </div>
 
-                        ${this.renderTutorialGuides()}
+                        <div id="tutorial-content-container" style="margin-top: 2rem;">
+                            ${this.renderTutorialGuides()}
+                        </div>
                     </section>
 
                     <!-- Statistics Section -->
@@ -1323,6 +1339,16 @@ export class Documentation {
     }
 
     attachEventListeners() {
+        // Load tutorial documents
+        const tutorialButtons = document.querySelectorAll('.btn-load-tutorial');
+        tutorialButtons.forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const docPath = btn.dataset.doc;
+                await this.loadMarkdownDoc(docPath);
+            });
+        });
+
         // Smooth scroll for navigation links
         const navLinks = document.querySelectorAll('.doc-nav-link');
         navLinks.forEach(link => {
@@ -1380,6 +1406,137 @@ export class Documentation {
                 expandedContainer.style.display = 'none';
             }
         });
+    }
+
+    async loadMarkdownDoc(docPath) {
+        const container = document.getElementById('tutorial-content-container');
+        if (!container) return;
+
+        try {
+            container.innerHTML = '<div style="text-align: center; padding: 2rem; color: rgba(255,255,255,0.6);">Chargement du document...</div>';
+
+            const response = await fetch(docPath);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const markdown = await response.text();
+            const html = this.markdownToHtml(markdown);
+
+            container.innerHTML = `<div class="markdown-content" style="line-height: 1.8; max-width: 900px; margin: 0 auto;">${html}</div>`;
+
+            // Scroll to tutorial section
+            const tutorialSection = document.getElementById('tutorial');
+            if (tutorialSection) {
+                tutorialSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        } catch (error) {
+            console.error('[Documentation] Failed to load markdown:', error);
+            container.innerHTML = `<div style="text-align: center; padding: 2rem; color: rgba(248, 113, 113, 0.8);">Erreur lors du chargement du document.</div>`;
+        }
+    }
+
+    markdownToHtml(markdown) {
+        const lines = markdown.split(/\r?\n/);
+        const html = [];
+        let inList = false;
+        let inCode = false;
+        const codeBuffer = [];
+
+        const flushList = () => {
+            if (!inList) return;
+            html.push('</ul>');
+            inList = false;
+        };
+
+        const flushCode = () => {
+            if (!inCode) return;
+            const code = codeBuffer.join('\n');
+            html.push(`<pre style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; overflow-x: auto;"><code>${this.escapeHtml(code)}</code></pre>`);
+            codeBuffer.length = 0;
+            inCode = false;
+        };
+
+        lines.forEach((rawLine) => {
+            const line = rawLine ?? '';
+            const trimmed = line.trim();
+
+            if (trimmed.startsWith('```')) {
+                if (inCode) {
+                    flushCode();
+                } else {
+                    flushList();
+                    inCode = true;
+                }
+                return;
+            }
+
+            if (inCode) {
+                codeBuffer.push(line);
+                return;
+            }
+
+            if (!trimmed) {
+                flushList();
+                html.push('');
+                return;
+            }
+
+            const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+            if (headingMatch) {
+                flushList();
+                const level = Math.min(headingMatch[1].length, 6);
+                const text = headingMatch[2];
+                const slug = this.slugify(text);
+                const color = level === 1 ? 'rgba(56, 189, 248, 1)' : level === 2 ? 'rgba(139, 92, 246, 1)' : 'rgba(255,255,255,0.9)';
+                html.push(`<h${level} id="${slug}" style="color: ${color}; margin-top: ${level === 1 ? '2rem' : '1.5rem'}; margin-bottom: 0.75rem;">${this.formatInline(text)}</h${level}>`);
+                return;
+            }
+
+            if (/^[-*+]\s+/.test(trimmed)) {
+                if (!inList) {
+                    html.push('<ul style="margin-left: 1.5rem; margin-bottom: 1rem;">');
+                    inList = true;
+                }
+                const item = trimmed.replace(/^[-*+]\s+/, '');
+                html.push(`<li style="margin-bottom: 0.5rem;">${this.formatInline(item)}</li>`);
+                return;
+            }
+
+            flushList();
+            html.push(`<p style="margin-bottom: 1rem; color: rgba(255,255,255,0.85);">${this.formatInline(trimmed)}</p>`);
+        });
+
+        flushCode();
+        flushList();
+        return html.join('\n');
+    }
+
+    slugify(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/\p{Diacritic}/gu, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .trim()
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-');
+    }
+
+    escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    formatInline(text) {
+        let html = this.escapeHtml(text);
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        html = html.replace(/`([^`]+?)`/g, '<code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.9em;">$1</code>');
+        html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" style="color: rgb(56, 189, 248); text-decoration: none; border-bottom: 1px solid rgba(56, 189, 248, 0.3);">$1</a>');
+        return html;
     }
 
     unmount() {
