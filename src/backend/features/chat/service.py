@@ -1127,6 +1127,124 @@ class ChatService:
         # Chercher des indicateurs de questions temporelles
         return bool(self._TEMPORAL_QUERY_RE.search(text))
 
+    async def _get_cached_consolidated_memory(
+        self,
+        user_id: str,
+        query_text: str,
+        n_results: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Récupère les concepts consolidés depuis le cache ou ChromaDB.
+
+        Utilise le RAGCache pour éviter des recherches répétées sur ChromaDB.
+        Cache hit rate cible: 30-40% selon Phase 3 specs.
+
+        Args:
+            user_id: ID de l'utilisateur
+            query_text: Texte de la requête pour recherche sémantique
+            n_results: Nombre maximum de résultats à retourner
+
+        Returns:
+            Liste de dicts avec timestamp, content, type
+        """
+        import time
+
+        # Vérifier si la collection knowledge existe
+        if self._knowledge_collection is None:
+            knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
+            self._knowledge_collection = self.vector_service.get_or_create_collection(knowledge_name)
+
+        # Utiliser le cache RAG avec une clé spécifique pour la mémoire consolidée
+        # On préfixe la query pour différencier du cache RAG documents
+        cache_query = f"__CONSOLIDATED_MEMORY__:{query_text}"
+        where_filter = {"user_id": user_id} if user_id else None
+
+        # Tenter de récupérer depuis le cache
+        start_time = time.time()
+        cached_result = self.rag_cache.get(
+            cache_query,
+            where_filter,
+            agent_id="memory_consolidation",
+            selected_doc_ids=None
+        )
+
+        if cached_result:
+            # Cache HIT
+            duration = time.time() - start_time
+            logger.debug(f"[TemporalCache] HIT: {duration*1000:.1f}ms pour '{query_text[:50]}'")
+
+            # Le cache stocke doc_hits et rag_sources
+            # Pour la mémoire consolidée, on utilise doc_hits comme entries
+            consolidated_entries = cached_result.get('doc_hits', [])
+
+            # Métriques
+            rag_metrics.record_cache_hit()
+
+            return consolidated_entries
+
+        # Cache MISS - Recherche dans ChromaDB
+        logger.debug(f"[TemporalCache] MISS: Recherche ChromaDB pour '{query_text[:50]}'")
+
+        try:
+            search_start = time.time()
+            results = self._knowledge_collection.query(
+                query_texts=[query_text],
+                n_results=n_results,
+                where=where_filter,
+                include=["metadatas", "documents"]
+            )
+            search_duration = time.time() - search_start
+
+            consolidated_entries = []
+
+            if results and results.get("metadatas") and results["metadatas"][0]:
+                metadatas = results["metadatas"][0]
+                documents = results.get("documents", [[]])[0]
+
+                for i, metadata in enumerate(metadatas):
+                    # Extraire timestamp des concepts consolidés
+                    timestamp = metadata.get("timestamp") or metadata.get("created_at") or metadata.get("first_mentioned_at")
+
+                    # Extraire contenu: priorité document > concept_text > summary
+                    if i < len(documents) and documents[i]:
+                        content = documents[i]
+                    else:
+                        content = metadata.get("concept_text") or metadata.get("summary") or metadata.get("value") or ""
+
+                    concept_type = metadata.get("type", "concept")
+
+                    if timestamp and content:
+                        consolidated_entries.append({
+                            "timestamp": timestamp,
+                            "content": content[:80] + ("..." if len(content) > 80 else ""),
+                            "type": concept_type,
+                            "metadata": metadata  # Garder metadata pour le cache
+                        })
+                        logger.debug(f"[TemporalHistory] Concept consolidé trouvé: {concept_type} @ {timestamp[:10]}")
+
+            # Stocker dans le cache
+            # Note: RAGCache attend doc_hits et rag_sources
+            # On utilise doc_hits pour stocker nos consolidated_entries
+            self.rag_cache.set(
+                cache_query,
+                where_filter,
+                agent_id="memory_consolidation",
+                doc_hits=consolidated_entries,
+                rag_sources=[],  # Pas de sources RAG pour mémoire consolidée
+                selected_doc_ids=None
+            )
+
+            # Métriques
+            rag_metrics.record_cache_miss()
+            logger.info(f"[TemporalCache] ChromaDB search: {search_duration*1000:.0f}ms, found {len(consolidated_entries)} concepts")
+
+            return consolidated_entries
+
+        except Exception as e:
+            logger.warning(f"[TemporalHistory] Erreur recherche knowledge: {e}", exc_info=True)
+            rag_metrics.record_cache_miss()  # Compter comme miss en cas d'erreur
+            return []
+
     async def _build_temporal_history_context(
         self,
         thread_id: str,
@@ -1156,47 +1274,18 @@ class ChatService:
             lines.append("### Historique récent de cette conversation")
             lines.append("")
 
-            # NOUVEAU: Enrichir avec concepts consolidés si question temporelle pertinente
+            # ✅ Phase 3: Enrichir avec concepts consolidés (avec cache)
+            # Utilise n_results dynamique basé sur le nombre de messages
+            n_results = min(5, max(3, len(messages) // 4)) if messages else 5
+
             consolidated_entries = []
-            if last_user_message and self._knowledge_collection is None:
-                knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
-                self._knowledge_collection = self.vector_service.get_or_create_collection(knowledge_name)
-
-            if last_user_message and self._knowledge_collection:
-                try:
-                    # Recherche sémantique dans la mémoire consolidée
-                    results = self._knowledge_collection.query(
-                        query_texts=[last_user_message],
-                        n_results=5,
-                        where={"user_id": user_id} if user_id else None,
-                        include=["metadatas", "documents"]
-                    )
-
-                    if results and results.get("metadatas") and results["metadatas"][0]:
-                        metadatas = results["metadatas"][0]
-                        documents = results.get("documents", [[]])[0]
-
-                        for i, metadata in enumerate(metadatas):
-                            # Extraire timestamp des concepts consolidés
-                            timestamp = metadata.get("timestamp") or metadata.get("created_at") or metadata.get("first_mentioned_at")
-
-                            # Extraire contenu: priorité document > concept_text > summary
-                            if i < len(documents) and documents[i]:
-                                content = documents[i]
-                            else:
-                                content = metadata.get("concept_text") or metadata.get("summary") or metadata.get("value") or ""
-
-                            concept_type = metadata.get("type", "concept")
-
-                            if timestamp and content:
-                                consolidated_entries.append({
-                                    "timestamp": timestamp,
-                                    "content": content[:80] + ("..." if len(content) > 80 else ""),
-                                    "type": concept_type
-                                })
-                                logger.debug(f"[TemporalHistory] Concept consolidé trouvé: {concept_type} @ {timestamp[:10]}")
-                except Exception as e:
-                    logger.warning(f"[TemporalHistory] Erreur recherche knowledge: {e}", exc_info=True)
+            if last_user_message and user_id:
+                # Utiliser la nouvelle méthode cachée (Phase 3)
+                consolidated_entries = await self._get_cached_consolidated_memory(
+                    user_id=user_id,
+                    query_text=last_user_message,
+                    n_results=n_results
+                )
 
             # Combiner et trier tous les événements (messages + concepts consolidés)
             all_events = []
