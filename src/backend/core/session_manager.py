@@ -119,6 +119,11 @@ class SessionManager:
         sessions_to_cleanup = []
         sessions_to_warn = []
 
+        # Debug: Log du nombre de sessions actives
+        active_count = len(self.active_sessions)
+        if active_count > 0:
+            logger.debug(f"[Inactivity Check] {active_count} session(s) active(s) à vérifier")
+
         for session_id, session in list(self.active_sessions.items()):
             try:
                 last_activity = getattr(session, 'last_activity', None)
@@ -128,14 +133,23 @@ class SessionManager:
 
                 inactivity_duration = now - last_activity
 
-                # Vérifier si la session doit être nettoyée
-                if inactivity_duration > timeout_threshold:
+                # Debug: Log de l'état de chaque session
+                logger.debug(
+                    f"[Inactivity Check] Session {session_id[:8]}... inactive depuis {inactivity_duration.total_seconds():.0f}s "
+                    f"(seuil avertissement: {warning_threshold.total_seconds():.0f}s, seuil timeout: {timeout_threshold.total_seconds():.0f}s)"
+                )
+
+                # Vérifier si un avertissement a déjà été envoyé
+                warning_sent = getattr(session, '_warning_sent', False)
+
+                # Vérifier si la session doit être nettoyée (UNIQUEMENT si avertissement déjà envoyé)
+                if inactivity_duration > timeout_threshold and warning_sent:
                     sessions_to_cleanup.append((session_id, inactivity_duration))
-                # Vérifier si un avertissement doit être envoyé
-                elif inactivity_duration > warning_threshold:
-                    warning_sent = getattr(session, '_warning_sent', False)
-                    if not warning_sent:
-                        sessions_to_warn.append((session_id, inactivity_duration))
+                    logger.debug(f"[Inactivity Check] Session {session_id[:8]}... marquée pour nettoyage (avertissement déjà envoyé)")
+                # Vérifier si un avertissement doit être envoyé (session au-delà du seuil mais pas encore avertie)
+                elif inactivity_duration > warning_threshold and not warning_sent:
+                    sessions_to_warn.append((session_id, inactivity_duration))
+                    logger.debug(f"[Inactivity Check] Session {session_id[:8]}... marquée pour avertissement")
             except Exception as e:
                 logger.error(f"Erreur lors de la vérification d'inactivité pour session {session_id}: {e}")
 
@@ -152,14 +166,17 @@ class SessionManager:
 
                 # Envoyer l'avertissement via WebSocket
                 if self.connection_manager:
-                    await self.connection_manager.send_system_message(
-                        session_id,
-                        {
-                            "type": "inactivity_warning",
-                            "message": f"Votre session sera déconnectée dans {remaining_seconds} secondes en raison d'inactivité.",
-                            "remaining_seconds": remaining_seconds
-                        }
-                    )
+                    notification_payload = {
+                        "notification_type": "inactivity_warning",
+                        "message": f"Votre session sera déconnectée dans {remaining_seconds} secondes en raison d'inactivité.",
+                        "remaining_seconds": remaining_seconds,
+                        "duration": 5000  # Durée d'affichage en ms
+                    }
+                    logger.info(f"[Notification] Envoi notification inactivité à {session_id[:8]}... payload: {notification_payload}")
+                    await self.connection_manager.send_system_message(session_id, notification_payload)
+                    logger.info(f"[Notification] Notification inactivité envoyée avec succès à {session_id[:8]}...")
+                else:
+                    logger.warning(f"[Notification] ConnectionManager non disponible pour session {session_id[:8]}...")
 
                 # Métrique Prometheus
                 if PROMETHEUS_AVAILABLE:

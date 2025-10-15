@@ -9,9 +9,9 @@ from typing import Dict, Any, Union
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/metrics", tags=["Metrics"])
+router = APIRouter(tags=["Metrics"])
 
-METRICS_ENABLED = os.getenv("CONCEPT_RECALL_METRICS_ENABLED", "false").lower() == "true"
+METRICS_ENABLED = os.getenv("CONCEPT_RECALL_METRICS_ENABLED", "true").lower() == "true"
 
 
 @router.get("/metrics")
@@ -20,7 +20,7 @@ async def prometheus_metrics():
     Expose Prometheus-compatible metrics endpoint.
 
     Returns metrics in Prometheus text format for scraping.
-    Disabled by default (requires CONCEPT_RECALL_METRICS_ENABLED=true).
+    Enabled by default for Prometheus monitoring.
     """
     if not METRICS_ENABLED:
         return Response(

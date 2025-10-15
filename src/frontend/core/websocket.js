@@ -1,5 +1,5 @@
 // src/frontend/core/websocket.js
-// WebSocketClient V22.3 — queued send + flush onopen (version complète)
+// WebSocketClient V22.5 — queued send + system notifications + no reconnect after inactivity
 
 import { EVENTS } from '../shared/constants.js';
 import { ensureAuth, getIdToken, clearAuth } from './auth.js';
@@ -35,7 +35,7 @@ export class WebSocketClient {
 
     this._bindEventBus();
     this._bindStorageListener();
-    console.log('✅ WebSocketClient V22.3 (queued send) prêt.');
+    console.log('✅ WebSocketClient V22.5 (queued send + no reconnect after inactivity) prêt.');
   }
 
   _getActiveThreadId() {
@@ -352,6 +352,30 @@ export class WebSocketClient {
           });
         }
 
+        // System notification handler (inactivité, etc.)
+        if (msg?.type === 'ws:system_notification') {
+          const p = msg.payload || {};
+          const notifType = p.notification_type || p.type || 'info';
+          const message = p.message || 'Notification système';
+          console.log('[WebSocket] System notification:', notifType, message);
+
+          // Afficher la notification avec le type approprié
+          let toastKind = 'info';
+          if (notifType === 'inactivity_warning') {
+            toastKind = 'warning';
+          } else if (notifType === 'error') {
+            toastKind = 'error';
+          } else if (notifType === 'success') {
+            toastKind = 'success';
+          }
+
+          this.eventBus.emit?.('ui:toast', {
+            kind: toastKind,
+            text: message,
+            duration: p.duration || 5000
+          });
+        }
+
         // Dispatch générique
         if (msg?.type) this.eventBus.emit?.(msg.type, msg.payload);
       } catch { console.warn('[WebSocket] Message non JSON', ev.data); }
@@ -359,7 +383,20 @@ export class WebSocketClient {
 
     this.websocket.onclose = (ev) => {
       const code = ev?.code || 1006;
-      if (code === 4401 || code === 1008) { this.eventBus.emit?.('auth:missing', { reason: code }); this.websocket = null; return; }
+      // 4401: auth error, 1008: policy violation, 4408: inactivity timeout
+      if (code === 4401 || code === 1008) {
+        this.eventBus.emit?.('auth:missing', { reason: code });
+        this.websocket = null;
+        return;
+      }
+      // Ne pas se reconnecter automatiquement après un timeout d'inactivité
+      if (code === 4408) {
+        console.log('[WebSocket] Session fermée pour inactivité (code 4408) - reconnexion désactivée');
+        this.websocket = null;
+        // Émettre un événement pour informer l'UI que la session a expiré
+        this.eventBus.emit?.('session:expired', { reason: 'inactivity_timeout' });
+        return;
+      }
       this._scheduleReconnect();
       this.eventBus.emit?.('ws:close', { code, reason: ev?.reason || '' });
     };

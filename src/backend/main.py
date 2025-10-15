@@ -333,7 +333,7 @@ def create_app() -> FastAPI:
     _mount_router(MEMORY_ROUTER, "/api/memory")
     _mount_router(AUTH_ROUTER)
     _mount_router(DEV_AUTH_ROUTER)  # éventuel
-    _mount_router(METRICS_ROUTER, "/api")  # Prometheus metrics at /api/metrics
+    _mount_router(METRICS_ROUTER)  # Prometheus metrics at /metrics
     _mount_router(MONITORING_ROUTER)  # Monitoring endpoints at /api/monitoring/*
     _mount_router(SYNC_ROUTER, "/api")  # Auto-sync endpoints at /api/sync/*
     _mount_router(SETTINGS_ROUTER)  # Settings endpoints at /api/settings/*

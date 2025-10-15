@@ -720,9 +720,27 @@ function mountAuthBadge(eventBus) {
     updateChipVisibility();
   };
 
-  // Abonnements d’état
+  // Abonnements d'état
   eventBus.on?.('auth:missing', () => { setLogged(false); setConnected(false); setAlert(loginRequiredMessage); });
   eventBus.on?.('auth:logout', () => { setLogged(false); setConnected(false); setAlert(loginRequiredMessage); });
+
+  // Gérer l'expiration de session pour inactivité
+  eventBus.on?.('session:expired', (payload) => {
+    console.log('[Auth] Session expirée:', payload?.reason || 'unknown');
+    setLogged(false);
+    setConnected(false);
+    const message = 'Session fermée pour inactivité';
+    setAlert(message);
+    showToast({
+      kind: 'info',
+      text: message,
+      duration: 5000,
+      action: {
+        label: 'Recharger',
+        handler: () => window.location.reload()
+      }
+    });
+  });
   const wsConnectedEvent = EVENTS.WS_CONNECTED || 'ws:connected';
   const wsEstablishedEvent = EVENTS.WS_SESSION_ESTABLISHED || 'ws:session_established';
   const wsRestoredEvent = EVENTS.WS_SESSION_RESTORED || 'ws:session_restored';
