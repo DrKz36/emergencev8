@@ -1,0 +1,112 @@
+/* src/frontend/features/memory/memory.css */
+/* Styles pour le module Centre Mémoire avec barre de progression */
+
+/* ===== Barre de progression ===== */
+.memory-page__progress {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(30, 41, 59, 0.6);
+  border-radius: 8px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.memory-page__progress[hidden] {
+  display: none;
+}
+
+.memory-page__progress-bar {
+  height: 8px;
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+  position: relative;
+}
+
+.memory-page__progress-fill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(56, 189, 248, 0.8) 0%,
+    rgba(139, 92, 246, 0.8) 100%
+  );
+  border-radius: 4px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+  animation: progressPulse 1.5s ease-in-out infinite;
+}
+
+.memory-page__progress-text {
+  font-size: 0.875rem;
+  color: rgba(226, 232, 240, 0.9);
+  margin: 0;
+  text-align: center;
+}
+
+/* ===== Animations ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes progressPulse {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.7);
+  }
+}
+
+/* ===== Tooltip bouton Analyser ===== */
+.memory-page__actions .button-primary {
+  position: relative;
+}
+
+.memory-page__actions .button-primary::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 0.75rem;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+  max-width: 280px;
+  white-space: normal;
+  text-align: center;
+}
+
+.memory-page__actions .button-primary:hover::after {
+  opacity: 1;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .memory-page__progress {
+    padding: 0.75rem;
+    margin: 0.75rem 0;
+  }
+
+  .memory-page__progress-text {
+    font-size: 0.8125rem;
+  }
+
+  .memory-page__actions .button-primary::after {
+    display: none; /* Masquer tooltip sur mobile pour éviter les collisions */
+  }
+}

@@ -90,8 +90,20 @@ Six guides couvrant toutes les fonctionnalités :
    - Organisation et nommage
    - Contexte et mémoire par conversation
 
-3. **🧠 Base de Connaissances**
-   - Extraction automatique de concepts
+3. **🧠 Centre Mémoire & Base de Connaissances**
+   - **Consolidation automatique** : Analyse vos conversations pour extraire concepts, préférences et faits clés
+   - **Deux niveaux de mémoire** :
+     - STM (Short-Term) : Résumé de la session en cours
+     - LTM (Long-Term) : Base de connaissances persistante partagée entre sessions
+   - **Barre de progression temps réel** : Visualisation de l'extraction (30s-2min selon volume)
+   - **Actions disponibles** :
+     - "Consolider mémoire" : Lance l'analyse manuelle (recommandé après discussions importantes)
+     - "Effacer" : Purge STM et LTM (demande confirmation)
+   - **Ce que la mémoire apporte** :
+     - Agents contextuels : accès à vos préférences et historique
+     - Suggestions automatiques de concepts pertinents
+     - Rappels proactifs pour tâches à échéance
+     - Continuité conversationnelle entre sessions
    - Visualisation du graphe de connaissances
    - Concept recall et enrichissement contextuel
    - Gestion et édition manuelle

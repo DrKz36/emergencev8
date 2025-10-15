@@ -70,6 +70,72 @@ export default class MemoryModule {
 
     });
 
+    this.eventBus.on?.('ws:memory_progress', (payload) => this._handleProgress(payload));
+
+  }
+
+
+
+  _handleProgress(payload) {
+
+    if (!payload) return;
+
+    const { current, total, phase, status, consolidated_sessions, new_items } = payload;
+
+
+
+    if (!this._nodes.progress || !this._nodes.progressFill || !this._nodes.progressText) return;
+
+
+
+    if (status === 'in_progress') {
+
+      this._nodes.progress.hidden = false;
+
+      const percent = Math.round((current / total) * 100);
+
+      this._nodes.progressFill.style.width = `${percent}%`;
+
+
+
+      const phaseLabels = {
+
+        extracting_concepts: 'Extraction des concepts',
+
+        analyzing_preferences: 'Analyse des préférences',
+
+        vectorizing: 'Vectorisation des connaissances',
+
+        consolidating: 'Consolidation en cours'
+
+      };
+
+
+
+      const phaseText = phaseLabels[phase] || 'Analyse en cours';
+
+      this._nodes.progressText.textContent = `${phaseText}... (${current}/${total} sessions)`;
+
+    } else if (status === 'completed') {
+
+      this._nodes.progressFill.style.width = '100%';
+
+      this._nodes.progressText.textContent = `✓ Consolidation terminée : ${consolidated_sessions || 0} sessions, ${new_items || 0} nouveaux items`;
+
+
+
+      setTimeout(() => {
+
+        if (this._nodes.progress) {
+
+          this._nodes.progress.hidden = true;
+
+        }
+
+      }, 3000);
+
+    }
+
   }
 
 
@@ -106,13 +172,25 @@ export default class MemoryModule {
 
           <div class="memory-page__actions">
 
-            <button type="button" class="button button-primary" data-memory-action="analyze">Analyser</button>
+            <button type="button" class="button button-primary" data-memory-action="analyze">Consolider memoire</button>
 
             <button type="button" class="button" data-memory-action="clear">Effacer</button>
 
           </div>
 
         </header>
+
+        <div class="memory-page__progress" data-memory-progress hidden>
+
+          <div class="memory-page__progress-bar">
+
+            <div class="memory-page__progress-fill" data-memory-progress-fill></div>
+
+          </div>
+
+          <p class="memory-page__progress-text" data-memory-progress-text></p>
+
+        </div>
 
         <div class="memory-page__layout">
 
@@ -181,6 +259,12 @@ export default class MemoryModule {
       analyzeBtn: this.container.querySelector('[data-memory-action="analyze"]'),
 
       clearBtn: this.container.querySelector('[data-memory-action="clear"]'),
+
+      progress: this.container.querySelector('[data-memory-progress]'),
+
+      progressFill: this.container.querySelector('[data-memory-progress-fill]'),
+
+      progressText: this.container.querySelector('[data-memory-progress-text]'),
 
     };
 
@@ -386,7 +470,9 @@ export default class MemoryModule {
 
       this._nodes.analyzeBtn.disabled = !!isRunning;
 
-      this._nodes.analyzeBtn.textContent = isRunning ? 'Analyse...' : 'Analyser';
+      this._nodes.analyzeBtn.textContent = isRunning ? 'Consolidation...' : 'Consolider memoire';
+
+      this._nodes.analyzeBtn.title = 'Extrait concepts, préférences et faits structurés des conversations récentes';
 
     }
 

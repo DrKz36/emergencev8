@@ -7,6 +7,164 @@ et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
 ---
 
+## [Non publié] - 2025-10-15
+
+### 📝 Ajouté
+
+#### Mémoire - Feedback Temps Réel Consolidation (V3.8)
+
+**Fonctionnalité** : Barre de progression avec notifications WebSocket pour la consolidation mémoire
+
+**Problème** : Manque total de feedback utilisateur pendant la consolidation (30s-5min d'attente sans retour visuel)
+
+**Solutions implémentées** :
+
+1. **Backend - Événements WebSocket `ws:memory_progress`** ([gardener.py:572-695](src/backend/features/memory/gardener.py#L572-L695))
+   - Notification session par session pendant consolidation
+   - Phases : `extracting_concepts`, `analyzing_preferences`, `vectorizing`, `completed`
+   - Payload : `{current: 2, total: 5, phase: "...", status: "in_progress"}`
+   - Message final avec résumé : `{consolidated_sessions: 5, new_items: 23}`
+
+2. **Frontend - Barre de Progression Visuelle** ([memory.js:73-139](src/frontend/features/memory/memory.js#L73-L139))
+   - Barre animée avec pourcentage (0-100%)
+   - Labels traduits : "Extraction des concepts... (2/5 sessions)"
+   - Message final : "✓ Consolidation terminée : 5 sessions, 23 nouveaux items"
+   - Auto-masquage après 3 secondes
+   - Styles glassmorphism ([memory.css](src/frontend/features/memory/memory.css))
+
+3. **UX - Clarté des Actions** ([memory.js:109-475](src/frontend/features/memory/memory.js#L109-L475))
+   - Bouton renommé : "Analyser" → **"Consolider mémoire"**
+   - Tooltip explicatif : "Extrait concepts, préférences et faits structurés..."
+   - État pendant exécution : "Consolidation..." (bouton désactivé)
+
+4. **Documentation Enrichie**
+   - Guide technique : [docs/backend/memory.md](docs/backend/memory.md) - Section 1.0 ajoutée
+   - Tutoriel utilisateur : [TUTORIAL_SYSTEM.md](docs/TUTORIAL_SYSTEM.md) - Section 3 enrichie
+   - Guide interactif : [tutorialGuides.js](src/frontend/components/tutorial/tutorialGuides.js) - Mémoire détaillée
+   - Guide utilisateur beta : [GUIDE_UTILISATEUR_BETA.md](docs/GUIDE_UTILISATEUR_BETA.md) - **NOUVEAU**
+   - Guide QA : [memory_progress_qa_guide.md](docs/qa/memory_progress_qa_guide.md) - **NOUVEAU**
+   - Rapport d'implémentation : [ameliorations_memoire_15oct2025.md](reports/ameliorations_memoire_15oct2025.md)
+
+**Impact** :
+- ✅ Utilisateur voit progression en temps réel
+- ✅ Comprend ce que fait la consolidation (tooltip + docs)
+- ✅ Sait combien de temps ça prend (~30s-2min)
+- ✅ Reçoit confirmation de succès (résumé final)
+- ✅ Peut réessayer en cas d'erreur (bouton reste actif)
+
+**Tests recommandés** :
+- [ ] Créer 3 conversations (10 messages chacune)
+- [ ] Cliquer "Consolider mémoire" dans Centre Mémoire
+- [ ] Vérifier barre progression affiche "(1/3)", "(2/3)", "(3/3)"
+- [ ] Vérifier message final : "✓ Consolidation terminée : 3 sessions, X items"
+- [ ] Vérifier tooltip au survol bouton
+- [ ] Tester responsive mobile (barre + tooltip)
+
+**Référence complète** : [Guide QA - memory_progress_qa_guide.md](docs/qa/memory_progress_qa_guide.md) (10 scénarios de test)
+
+---
+
+### 🔧 Corrigé
+
+#### Mémoire - Détection Questions Temporelles et Enrichissement Contexte
+
+**Problème** : Anima ne pouvait pas répondre précisément aux questions temporelles ("Quel jour et à quelle heure avons-nous abordé ces sujets ?")
+
+**Diagnostic** :
+- ✅ Rappel des concepts récurrents fonctionnel avec timestamps
+- ❌ Contexte temporel non enrichi pour questions explicites sur dates/heures
+- ❌ Détection des questions temporelles absente
+
+**Corrections apportées** :
+
+1. **ChatService - Détection Questions Temporelles** ([service.py:1114-1128](src/backend/features/chat/service.py#L1114-L1128))
+   - Ajout regex `_TEMPORAL_QUERY_RE` pour détecter les questions temporelles
+   - Patterns : "quand", "quel jour", "quelle heure", "à quelle heure", "quelle date"
+   - Support multilingue (FR/EN)
+
+2. **ChatService - Enrichissement Contexte Historique** ([service.py:1130-1202](src/backend/features/chat/service.py#L1130-L1202))
+   - Nouvelle fonction `_build_temporal_history_context()`
+   - Récupération des 20 derniers messages du thread avec timestamps
+   - Format : `**[15 oct à 3h08] Toi :** Aperçu du message...`
+   - Injection dans le contexte RAG sous section "### Historique récent de cette conversation"
+
+3. **ChatService - Intégration dans le flux RAG** ([service.py:1697-1709](src/backend/features/chat/service.py#L1697-L1709))
+   - Détection automatique des questions temporelles
+   - Enrichissement proactif du `recall_context` si détection positive
+   - Fallback élégant si erreur
+
+**Impact** :
+- Anima peut maintenant répondre précisément avec dates et heures exactes
+- Amélioration de la cohérence temporelle des réponses
+- Meilleure exploitation de la mémoire à long terme
+
+**Tests effectués** :
+- [x] Tests unitaires créés (12 tests, 100% passés)
+- [x] Détection questions temporelles FR/EN validée
+- [x] Formatage dates en français validé ("15 oct à 3h08")
+- [x] Workflow complet d'intégration testé
+- [x] Backend démarre sans erreur
+- [x] Code source vérifié et conforme
+
+**Tests en production effectués** :
+- [x] Question temporelle en production avec Anima ✅
+- [x] Vérification logs `[TemporalQuery]` en conditions réelles ✅
+- [x] Validation enrichissement avec 4 concepts consolidés ✅
+- [ ] Test consolidation Memory Gardener avec authentification
+
+**Résultat Test Production (2025-10-15 04:11)** :
+- Question: "Quand avons-nous parlé de mon poème fondateur? (dates et heures précises)"
+- Réponse Anima: "le 5 octobre à 14h32 et le 8 octobre à 09h15" ✅
+- Log backend: `[TemporalHistory] Contexte enrichi: 20 messages + 4 concepts consolidés` ✅
+- Performance: 4.84s total (recherche ChromaDB + LLM) ✅
+
+**Documentation Tests** :
+- [test_temporal_query.py](tests/backend/features/chat/test_temporal_query.py) - Suite de tests unitaires (12/12 passés)
+- [test_results_temporal_memory_2025-10-15.md](reports/test_results_temporal_memory_2025-10-15.md) - Rapport tests unitaires
+- [test_production_temporal_memory_2025-10-15.md](reports/test_production_temporal_memory_2025-10-15.md) - Rapport test production ✅
+
+**Correction Post-Validation (Fix Bug 0 Concepts Consolidés)** :
+
+4. **ChatService - Enrichissement avec Mémoire Consolidée** ([service.py:1159-1188](src/backend/features/chat/service.py#L1159-L1188))
+   - Ajout recherche sémantique dans `emergence_knowledge` (ChromaDB)
+   - Récupération des 5 concepts consolidés les plus pertinents
+   - Extraction `timestamp`, `summary`, `type` depuis métadonnées
+   - Format : `**[14 oct à 4h30] Mémoire (concept) :** Résumé...`
+
+5. **ChatService - Fusion Chronologique** ([service.py:1190-1266](src/backend/features/chat/service.py#L1190-L1266))
+   - Combinaison messages thread + concepts consolidés
+   - Tri chronologique automatique (du plus ancien au plus récent)
+   - Distinction visuelle thread vs. mémoire consolidée
+   - Log: `[TemporalHistory] Contexte enrichi: X messages + Y concepts consolidés`
+
+**Impact de la correction** :
+- ✅ Questions temporelles fonctionnent aussi pour conversations archivées/consolidées
+- ✅ Exemple: "Quand avons-nous parlé de mon poème fondateur?" → Dates précises même si archivé
+- ✅ Vue chronologique complète (récent + ancien consolidé)
+
+**Documentation Correction** :
+- [fix_temporal_consolidated_memory_2025-10-15.md](reports/fix_temporal_consolidated_memory_2025-10-15.md) - Analyse et solution détaillée
+
+---
+
+#### Memory Gardener - Isolation User ID
+
+**Problème** : Erreur lors de la consolidation mémoire : "user_id est obligatoire pour accéder aux threads"
+
+**Correction** :
+
+1. **MemoryGardener - Appel get_thread_any()** ([gardener.py:669-671](src/backend/features/memory/gardener.py#L669-L671))
+   - Remplacement de `get_thread()` par `get_thread_any()`
+   - Passage du paramètre `user_id` en kwarg
+   - Fallback gracieux si user_id non disponible
+
+**Impact** :
+- Consolidation mémoire fonctionnelle
+- Respect des règles d'isolation user_id
+- Logs plus clairs en cas d'erreur
+
+---
+
 ## [Non publié] - 2025-10-10
 
 ### 🔧 Corrigé

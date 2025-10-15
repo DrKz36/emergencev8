@@ -563,9 +563,34 @@ class MemoryGardener:
 
         processed_ids: List[str] = []
         new_items_count = 0
-        for s in sessions:
+        total_sessions = len(sessions)
+
+        for idx, s in enumerate(sessions):
             sid: str = s["id"]
             uid: Optional[str] = s.get("user_id")
+
+            # 📊 Notification progression
+            try:
+                chat_service = getattr(self.analyzer, "chat_service", None)
+                session_manager = getattr(chat_service, "session_manager", None) if chat_service else None
+                conn = getattr(session_manager, "connection_manager", None) if session_manager else None
+                if conn and sid:
+                    await conn.send_personal_message(
+                        {
+                            "type": "ws:memory_progress",
+                            "payload": {
+                                "session_id": sid,
+                                "current": idx + 1,
+                                "total": total_sessions,
+                                "phase": "extracting_concepts",
+                                "status": "in_progress"
+                            }
+                        },
+                        sid
+                    )
+            except Exception:
+                pass  # Ne pas bloquer sur erreur notification
+
             try:
                 history = self._extract_history(s.get("session_data"))
                 concepts = self._parse_concepts(s.get("extracted_concepts"))
@@ -642,6 +667,33 @@ class MemoryGardener:
             "new_concepts": new_items_count,
         }
         logger.info(report)
+
+        # 📊 Notification finale avec résumé
+        if sessions:
+            try:
+                sid = sessions[0]["id"]  # Session primaire pour notification
+                chat_service = getattr(self.analyzer, "chat_service", None)
+                session_manager = getattr(chat_service, "session_manager", None) if chat_service else None
+                conn = getattr(session_manager, "connection_manager", None) if session_manager else None
+                if conn:
+                    await conn.send_personal_message(
+                        {
+                            "type": "ws:memory_progress",
+                            "payload": {
+                                "session_id": sid,
+                                "current": total_sessions,
+                                "total": total_sessions,
+                                "phase": "completed",
+                                "status": "completed",
+                                "consolidated_sessions": len(processed_ids),
+                                "new_items": new_items_count
+                            }
+                        },
+                        sid
+                    )
+            except Exception:
+                pass
+
         return report
 
     # ---------- NEW: consolidation d’un thread ----------
@@ -664,10 +716,11 @@ class MemoryGardener:
         normalized_agent = self._normalize_agent_id(agent_id)
         try:
             normalized_session = (session_id or "").strip() or None
-            if normalized_session:
-                thr = await queries.get_thread(self.db, tid, normalized_session)
-            else:
-                thr = await queries.get_thread_any(self.db, tid)
+            # Utiliser get_thread_any pour récupérer le thread avec fallback
+            # puis extraire le user_id pour les requêtes suivantes
+            thr = await queries.get_thread_any(
+                self.db, tid, session_id=normalized_session, user_id=user_id
+            )
             if not thr:
                 logger.warning(f"Thread {tid} introuvable.")
                 return {

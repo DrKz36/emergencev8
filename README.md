@@ -161,7 +161,10 @@ Documentation technique des modules backend récents :
   - Temporal weighting (boost items récents/fréquents)
   - Métriques Prometheus cache operations
 
-- **[Memory Feature](docs/backend/memory.md)** - MemoryAnalyzer & HybridRetriever (P1.5)
+- **[Memory Feature](docs/backend/memory.md)** - MemoryAnalyzer & HybridRetriever (V3.8 - P1.5+)
+  - **NOUVEAU (V3.8)**: Feedback temps réel consolidation (WebSocket `ws:memory_progress`)
+  - **NOUVEAU (V3.8)**: Barre de progression frontend (Centre Mémoire) avec phases traduites
+  - **NOUVEAU (V3.8)**: UX améliorée (bouton "Consolider mémoire" + tooltip explicatif)
   - Extraction préférences/intentions automatique
   - Fallback cascade LLM (neo → nexus → anima)
   - Cache analyses TTL 1h avec éviction agressive

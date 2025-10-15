@@ -14,9 +14,58 @@ Le système de mémoire ÉMERGENCE combine deux composants complémentaires:
 1. **MemoryAnalyzer**: Analyse sémantique des conversations et extraction des préférences utilisateur
 2. **HybridRetriever**: Recherche hybride (BM25 + vectorielle) pour améliorer la pertinence du RAG
 
-## 1. Memory Analyzer (V3.7)
+## 1. Memory Analyzer (V3.8)
 
 ### Fonctionnalités principales
+
+#### 1.0 Consolidation mémoire avec feedback temps réel (V3.8 - 2025-10-15)
+
+**Nouveauté**: Le MemoryGardener envoie désormais des événements WebSocket `ws:memory_progress` pour notifier l'avancement en temps réel.
+
+**Événements émis**:
+- **Phase in_progress**: Notification session par session
+  ```json
+  {
+    "type": "ws:memory_progress",
+    "payload": {
+      "session_id": "session_123",
+      "current": 2,
+      "total": 5,
+      "phase": "extracting_concepts",
+      "status": "in_progress"
+    }
+  }
+  ```
+
+- **Phase completed**: Résumé final de la consolidation
+  ```json
+  {
+    "type": "ws:memory_progress",
+    "payload": {
+      "session_id": "session_123",
+      "current": 5,
+      "total": 5,
+      "phase": "completed",
+      "status": "completed",
+      "consolidated_sessions": 5,
+      "new_items": 23
+    }
+  }
+  ```
+
+**Phases disponibles**:
+- `extracting_concepts`: Extraction concepts/entités/faits
+- `analyzing_preferences`: Classification préférences/intentions
+- `vectorizing`: Sauvegarde ChromaDB
+- `completed`: Consolidation terminée
+
+**Impact UX**:
+- Barre de progression affichée dans le frontend (Centre Mémoire)
+- Labels traduits : "Extraction des concepts... (2/5 sessions)"
+- Message final : "✓ Consolidation terminée : 5 sessions, 23 nouveaux items"
+- Durée estimée affichée : 30s-2min selon volume
+
+**Implémentation**: Voir [gardener.py:572-695](../../src/backend/features/memory/gardener.py#L572-L695)
 
 #### 1.1 Analyse sémantique multi-provider
 
@@ -360,6 +409,12 @@ for r in results:
 - [Monitoring Guide](../MONITORING_GUIDE.md) - Observabilité complète
 
 ## Changelog
+
+### V3.8 (UX Improvements) - 2025-10-15
+- **Feedback temps réel**: Événements WebSocket `ws:memory_progress` pour suivi consolidation
+- **Barre de progression frontend**: Affichage (X/Y sessions) avec phases traduites
+- **UX améliorée**: Bouton renommé "Consolider mémoire" + tooltip explicatif
+- **Documentation enrichie**: Tutoriel + guide technique mis à jour
 
 ### V3.7 (P1) - 2025-10-11
 - Extraction préférences/intentions avec PreferenceExtractor

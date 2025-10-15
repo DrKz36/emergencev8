@@ -1111,9 +1111,174 @@ class ChatService:
         return "\n".join(lines) if lines else ""
 
     _MOT_CODE_RE = re.compile(r"\b(mot-?code|code)\b", re.IGNORECASE)
+    _TEMPORAL_QUERY_RE = re.compile(
+        r"\b(quand|quel\s+jour|quelle\s+heure|à\s+quelle\s+heure|quelle\s+date|"
+        r"when|what\s+time|what\s+day|date|timestamp|horodatage)\b",
+        re.IGNORECASE
+    )
 
     def _is_mot_code_query(self, text: str) -> bool:
         return bool(self._MOT_CODE_RE.search(text or ""))
+
+    def _is_temporal_query(self, text: str) -> bool:
+        """Détecte si le message contient une question sur les dates/heures."""
+        if not text:
+            return False
+        # Chercher des indicateurs de questions temporelles
+        return bool(self._TEMPORAL_QUERY_RE.search(text))
+
+    async def _build_temporal_history_context(
+        self,
+        thread_id: str,
+        session_id: str,
+        user_id: str,
+        limit: int = 20,
+        last_user_message: str = ""
+    ) -> str:
+        """
+        Construit un contexte historique enrichi avec timestamps pour répondre
+        aux questions temporelles (quand, quel jour, quelle heure).
+
+        Récupère les messages du thread ET les concepts consolidés pertinents
+        pour fournir un contexte temporel complet incluant l'historique archivé.
+        """
+        try:
+            # Récupérer les messages du thread actif
+            messages = await queries.get_messages(
+                self.session_manager.db_manager,
+                thread_id,
+                session_id=session_id,
+                user_id=user_id,
+                limit=limit
+            )
+
+            lines = []
+            lines.append("### Historique récent de cette conversation")
+            lines.append("")
+
+            # NOUVEAU: Enrichir avec concepts consolidés si question temporelle pertinente
+            consolidated_entries = []
+            if last_user_message and self._knowledge_collection is None:
+                knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
+                self._knowledge_collection = self.vector_service.get_or_create_collection(knowledge_name)
+
+            if last_user_message and self._knowledge_collection:
+                try:
+                    # Recherche sémantique dans la mémoire consolidée
+                    results = self._knowledge_collection.query(
+                        query_texts=[last_user_message],
+                        n_results=5,
+                        where={"user_id": user_id} if user_id else None,
+                        include=["metadatas", "documents"]
+                    )
+
+                    if results and results.get("metadatas") and results["metadatas"][0]:
+                        metadatas = results["metadatas"][0]
+                        documents = results.get("documents", [[]])[0]
+
+                        for i, metadata in enumerate(metadatas):
+                            # Extraire timestamp des concepts consolidés
+                            timestamp = metadata.get("timestamp") or metadata.get("created_at") or metadata.get("first_mentioned_at")
+
+                            # Extraire contenu: priorité document > concept_text > summary
+                            if i < len(documents) and documents[i]:
+                                content = documents[i]
+                            else:
+                                content = metadata.get("concept_text") or metadata.get("summary") or metadata.get("value") or ""
+
+                            concept_type = metadata.get("type", "concept")
+
+                            if timestamp and content:
+                                consolidated_entries.append({
+                                    "timestamp": timestamp,
+                                    "content": content[:80] + ("..." if len(content) > 80 else ""),
+                                    "type": concept_type
+                                })
+                                logger.debug(f"[TemporalHistory] Concept consolidé trouvé: {concept_type} @ {timestamp[:10]}")
+                except Exception as e:
+                    logger.warning(f"[TemporalHistory] Erreur recherche knowledge: {e}", exc_info=True)
+
+            # Combiner et trier tous les événements (messages + concepts consolidés)
+            all_events = []
+
+            # Ajouter les messages du thread
+            for msg in messages:
+                role = msg.get("role", "").lower()
+                content = msg.get("content", "")
+                created_at = msg.get("created_at")
+                agent_id = msg.get("agent_id")
+
+                # Ne garder que les messages utilisateur et assistant
+                if role not in ["user", "assistant"]:
+                    continue
+
+                if created_at:
+                    all_events.append({
+                        "timestamp": created_at,
+                        "role": role,
+                        "content": content,
+                        "agent_id": agent_id,
+                        "source": "thread"
+                    })
+
+            # Ajouter les entrées consolidées
+            for entry in consolidated_entries:
+                all_events.append({
+                    "timestamp": entry["timestamp"],
+                    "role": "memory",
+                    "content": entry["content"],
+                    "type": entry["type"],
+                    "source": "consolidated"
+                })
+
+            # Trier tous les événements par date (du plus ancien au plus récent)
+            try:
+                all_events.sort(key=lambda x: datetime.fromisoformat(x["timestamp"].replace("Z", "+00:00")))
+            except Exception as sort_err:
+                logger.debug(f"[TemporalHistory] Tri impossible: {sort_err}")
+
+            # Formater tous les événements
+            months = ["", "janv", "fév", "mars", "avr", "mai", "juin",
+                      "juil", "août", "sept", "oct", "nov", "déc"]
+
+            for event in all_events:
+                try:
+                    # Parser la date
+                    dt = datetime.fromisoformat(event["timestamp"].replace("Z", "+00:00"))
+                    day = dt.day
+                    month = months[dt.month] if 1 <= dt.month <= 12 else str(dt.month)
+                    time_str = f"{dt.hour}h{dt.minute:02d}"
+                    date_str = f"{day} {month} à {time_str}"
+                except Exception:
+                    date_str = "date inconnue"
+
+                # Extraire un aperçu du contenu
+                content = event.get("content", "")
+                preview = content[:80].strip() if isinstance(content, str) else ""
+                if len(content) > 80:
+                    preview += "..."
+
+                # Formater selon le type d'événement
+                if event["source"] == "thread":
+                    role = event.get("role")
+                    agent_id = event.get("agent_id")
+                    if role == "user":
+                        lines.append(f"**[{date_str}] Toi :** {preview}")
+                    elif role == "assistant" and agent_id:
+                        lines.append(f"**[{date_str}] {agent_id.title()} :** {preview}")
+                elif event["source"] == "consolidated":
+                    # Marquer les entrées issues de la mémoire consolidée
+                    concept_type = event.get("type", "concept")
+                    lines.append(f"**[{date_str}] Mémoire ({concept_type}) :** {preview}")
+
+            if len(all_events) > 0:
+                logger.info(f"[TemporalHistory] Contexte enrichi: {len(messages)} messages + {len(consolidated_entries)} concepts consolidés")
+
+            return "\n".join(lines) if len(lines) > 2 else ""
+
+        except Exception as e:
+            logger.warning(f"[TemporalHistory] Erreur construction contexte : {e}", exc_info=True)
+            return ""
 
     def _fetch_mot_code_for_agent(self, agent_id: str, user_id: Optional[str]) -> Optional[str]:
         if self._knowledge_collection is None:
@@ -1693,6 +1858,21 @@ class ChatService:
                         recall_context = self._build_recall_context(recalls)
                 except Exception as recall_err:
                     logger.warning(f"[ConceptRecall] Détection échouée : {recall_err}")
+
+            # 🆕 DÉTECTION QUESTIONS TEMPORELLES + ENRICHISSEMENT HISTORIQUE
+            if not recall_context and self._is_temporal_query(last_user_message) and uid and thread_id:
+                try:
+                    recall_context = await self._build_temporal_history_context(
+                        thread_id=thread_id,
+                        session_id=session_id,
+                        user_id=uid,
+                        limit=20,
+                        last_user_message=last_user_message
+                    )
+                    if recall_context:
+                        logger.info(f"[TemporalQuery] Contexte historique enrichi pour question temporelle")
+                except Exception as temporal_err:
+                    logger.warning(f"[TemporalQuery] Enrichissement historique échoué : {temporal_err}")
 
             allowed_doc_ids: List[int] = []
             if thread_id:

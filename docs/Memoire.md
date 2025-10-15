@@ -220,11 +220,58 @@
 - `tests/test_memory_clear.ps1`: OK (x2) – après le correctif, les runs successifs créent 2 vecteurs pour la session de test, `memory:clear` retourne `ltm_deleted = ltm_before = 2` et les colonnes `summary/concepts/entities` repassent à `NULL`. Les warnings Chromadb subsistent mais n'interrompent plus l'exécution (surveillance upstream).
 
 ## 5. UX & actions utilisateur
-- **Badges mémoire** : indiquer clairement si STM/LTM ont été injectées dans la dernière réponse agent.
-- **Toasts d'échec** : en cas de `ws:analysis_status` avec `status=failed|error`, le front affiche un toast rouge « Analyse mémoire : échec » contenant un bouton `Réessayer` qui relance `memory:tend`.
-- **Journal** : panneau mémoire listant les dernières consolidations (`lastRunAt`, `thread_id`, `model` si disponible) alimenté par `GET /api/memory/tend-garden`.
-- **CTA Clear** : confirmer avant purge (modal).
+
+### 5.1. Que fait la consolidation mémoire ?
+
+La **consolidation mémoire** (bouton "Consolider mémoire") analyse vos conversations récentes pour :
+
+1. **Extraire automatiquement** :
+   - **Concepts clés** : thématiques, sujets techniques abordés
+   - **Faits structurés** : informations explicites (ex: mot-code, préférences)
+   - **Préférences & intentions** : vos habitudes, besoins récurrents
+   - **Entités nommées** : noms propres, outils, frameworks mentionnés
+
+2. **Organiser l'information** en deux niveaux :
+   - **STM (Short-Term Memory)** : Résumé de la session en cours (2-3 phrases)
+   - **LTM (Long-Term Memory)** : Base de connaissances persistante (vectorisée dans ChromaDB)
+
+3. **Améliorer les conversations futures** :
+   - Les agents accèdent à votre mémoire pour des réponses contextuelles
+   - Suggestion automatique de concepts pertinents
+   - Rappels proactifs pour les tâches à échéance
+
+### 5.2. Quand utiliser la consolidation ?
+
+**Consolidation automatique** :
+- Tous les 10 messages (consolidation incrémentale)
+- En fin de session longue (>30 messages)
+
+**Consolidation manuelle recommandée** :
+- Après une discussion importante à mémoriser
+- Pour forcer l'extraction de préférences
+- Si vous constatez que l'agent "oublie" des informations
+
+**Durée estimée** : 30 secondes à 2 minutes selon le volume
+- Le système analyse 3 modèles LLM (Google → Anthropic → OpenAI) avec fallbacks
+- Une barre de progression affiche l'avancement en temps réel
+
+### 5.3. Interface utilisateur
+
+- **Barre de progression temps réel** : affiche "Extraction des concepts... (2/5 sessions)" pendant la consolidation
+- **Badges mémoire** : indiquer clairement si STM/LTM ont été injectées dans la dernière réponse agent
+- **Toasts d'échec** : en cas de `ws:analysis_status` avec `status=failed|error`, le front affiche un toast rouge « Analyse mémoire : échec » contenant un bouton `Réessayer` qui relance `memory:tend`
+- **Journal** : panneau mémoire listant les dernières consolidations (`lastRunAt`, `thread_id`, `model` si disponible) alimenté par `GET /api/memory/tend-garden`
+- **CTA Clear** : confirmer avant purge (modal)
 - **Vue Centre mémoire** : capture de l'état nominal (STM disponible, compteur LTM, dernière analyse) pour illustrer la section Dashboard mémoire. ![Centre mémoire](assets/memoire/centre-memoire.png)
+
+### 5.4. Événements WebSocket
+
+Le frontend écoute les événements de progression :
+- `ws:memory_progress` : notification en temps réel de l'avancement
+  - Phases : `extracting_concepts`, `analyzing_preferences`, `vectorizing`, `completed`
+  - Payload : `{current: 2, total: 5, phase: "extracting_concepts", status: "in_progress"}`
+- `ws:memory_banner` : mise à jour des compteurs STM/LTM
+- `ws:topic_shifted` : détection changement de sujet (suggestion nouveau thread)
 
 ## 6. Étapes immédiates
 1. [FAIT 2025-09-27] Ajouter une remontée UI lorsqu’une consolidation échoue (toast + bouton retry).

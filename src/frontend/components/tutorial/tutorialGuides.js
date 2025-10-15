@@ -108,18 +108,19 @@ export const TUTORIAL_GUIDES = [
 
         <h5>📝 Mémoire Court Terme (STM)</h5>
         <ul>
-          <li><strong>Résumés automatiques</strong> de vos conversations</li>
+          <li><strong>Résumés automatiques</strong> de vos conversations (2-3 phrases)</li>
           <li><strong>Concepts et entités</strong> extraits (personnes, technologies, projets)</li>
           <li>Conservée pendant la session active</li>
-          <li><strong>Accessible via</strong> le bouton "Analyser" dans le chat</li>
+          <li><strong>Accessible via</strong> le bouton "Consolider mémoire" dans le Centre Mémoire</li>
         </ul>
 
         <h5>🧬 Mémoire Long Terme (LTM)</h5>
         <ul>
-          <li><strong>Base de connaissances vectorielle</strong> permanente</li>
+          <li><strong>Base de connaissances vectorielle</strong> permanente (ChromaDB)</li>
           <li><strong>Recherche sémantique intelligente</strong> dans vos discussions passées</li>
           <li>Injection automatique dans le contexte des agents</li>
           <li>Badge 📚 indique quand la LTM est utilisée</li>
+          <li><strong>Décroissance progressive</strong> : la mémoire "vieillit" naturellement</li>
         </ul>
 
         <h5>💡 Préférences et Intentions</h5>
@@ -130,12 +131,39 @@ export const TUTORIAL_GUIDES = [
           <li>Consultez votre dashboard mémoire pour voir ce qui est mémorisé</li>
         </ul>
 
-        <h5>⚡ Actions disponibles</h5>
+        <h5>⚡ Actions disponibles - Centre Mémoire</h5>
+        <p>Accessible via le menu principal > Mémoire :</p>
         <ul>
-          <li><strong>Analyser :</strong> Lance l'analyse de la conversation en cours</li>
-          <li><strong>Clear Memory :</strong> Vide la mémoire (STM/LTM au choix)</li>
-          <li><strong>Memory Dashboard :</strong> Consultez vos stats mémoire</li>
+          <li><strong>Consolider mémoire :</strong> Lance l'analyse des conversations récentes
+            <ul>
+              <li>Durée : 30 secondes à 2 minutes selon le volume</li>
+              <li>Barre de progression en temps réel</li>
+              <li>Extrait concepts, préférences, faits structurés</li>
+              <li>Fallback automatique si un modèle échoue (Google → Anthropic → OpenAI)</li>
+            </ul>
+          </li>
+          <li><strong>Effacer :</strong> Purge STM et/ou LTM (demande confirmation)</li>
+          <li><strong>Statistiques :</strong> Voir compteurs STM active, LTM stockée, dernière analyse</li>
         </ul>
+
+        <div class="guide-tip">
+          <h5>📊 Quand consolider ?</h5>
+          <ul>
+            <li>✅ <strong>Automatique :</strong> Tous les 10 messages (consolidation incrémentale)</li>
+            <li>✅ <strong>Manuel recommandé :</strong> Après une discussion importante à mémoriser</li>
+            <li>✅ <strong>Durée estimée :</strong> 30s-2min selon volume (barre progression affichée)</li>
+            <li>⚠️ <strong>Note :</strong> Si pas de feedback après 5min, vérifiez les logs backend</li>
+          </ul>
+        </div>
+
+        <div class="guide-example">
+          <strong>Exemple d'utilisation :</strong>
+          <p><strong>Étape 1 :</strong> Allez dans le Centre Mémoire (menu principal)</p>
+          <p><strong>Étape 2 :</strong> Cliquez sur "Consolider mémoire"</p>
+          <p><strong>Étape 3 :</strong> Observez la progression : "Extraction des concepts... (2/5 sessions)"</p>
+          <p><strong>Étape 4 :</strong> Notification finale : "✓ Consolidation terminée : 5 sessions, 23 nouveaux items"</p>
+          <p><strong>Résultat :</strong> Concepts, préférences et faits sont maintenant exploitables par les agents</p>
+        </div>
 
         <h4>🔄 Fallback Automatique de Modèles</h4>
         <p>Si un fournisseur IA est indisponible (quota dépassé, erreur API), Emergence bascule automatiquement vers un modèle alternatif.</p>

@@ -1,4 +1,5 @@
-# V1.1 — Outils mémoire/RAG (STM/LTM) + cache in-memory préférences (P2.1)
+# V1.2 — Outils mémoire/RAG (STM/LTM) + cache in-memory préférences (P2.1)
+#        + Détection requêtes méta + MemoryQueryTool integration (Phase 1 Sprint 1)
 from __future__ import annotations
 import os
 import re
@@ -44,7 +45,12 @@ class MemoryContextBuilder:
         # Cache in-memory préférences (P2.1)
         self._prefs_cache: Dict[str, Tuple[str, datetime]] = {}
         self._cache_ttl = timedelta(minutes=5)  # TTL 5 min
-        logger.info("[MemoryContextBuilder] Initialized with in-memory preference cache (TTL=5min)")
+
+        # 🆕 Phase 1 Sprint 1: MemoryQueryTool pour requêtes méta
+        from backend.features.memory.memory_query_tool import MemoryQueryTool
+        self.memory_query_tool = MemoryQueryTool(vector_service)
+
+        logger.info("[MemoryContextBuilder] Initialized with in-memory preference cache (TTL=5min) + MemoryQueryTool")
 
     def try_get_session_summary(self, session_id: str) -> str:
         try:
@@ -94,10 +100,11 @@ class MemoryContextBuilder:
             knowledge_col = self.vector_service.get_or_create_collection(knowledge_name)
             uid = self.try_get_user_id(session_id)
 
-            # Build memory context with 3 components:
+            # Build memory context with components:
             # 1. Active preferences (high confidence, always injected)
-            # 2. Vector search results (concepts/facts related to query)
-            # 3. Temporal weighting (boost recent items)
+            # 2. 🆕 Meta query detection: chronological timeline if asking about history
+            # 3. Vector search results (concepts/facts related to query)
+            # 4. Temporal weighting (boost recent items)
 
             sections = []
 
@@ -107,7 +114,17 @@ class MemoryContextBuilder:
                 if prefs:
                     sections.append(("Préférences actives", prefs))
 
-            # 2. Vector search for concepts/facts
+            # 🆕 2. Phase 1 Sprint 1: Detect meta queries (questions about conversation history)
+            if uid and self._is_meta_query(last_user_message):
+                logger.info(f"[MemoryContext] Meta query detected: '{last_user_message[:50]}...'")
+                chronological_context = await self._build_chronological_context(uid, last_user_message)
+                if chronological_context:
+                    sections.append(("Historique des sujets abordés", chronological_context))
+                    # Pour requêtes méta, le contexte chronologique suffit
+                    # Pas besoin de recherche vectorielle supplémentaire
+                    return self.merge_blocks(sections)
+
+            # 3. Vector search for concepts/facts (comportement standard)
             where_filter = {"user_id": uid} if uid else None
             results = self.vector_service.query(
                 collection=knowledge_col,
@@ -117,7 +134,7 @@ class MemoryContextBuilder:
             )
 
             if results:
-                # 3. Apply temporal weighting (boost recent items)
+                # 4. Apply temporal weighting (boost recent items)
                 weighted_results = self._apply_temporal_weighting(results)
 
                 lines = []
@@ -420,3 +437,165 @@ class MemoryContextBuilder:
         except Exception as e:
             logger.debug(f"[_format_temporal_hint] Parse error: {e}")
             return ""
+
+    # 🆕 Phase 1 Sprint 1: Meta query detection + chronological context
+
+    def _is_meta_query(self, message: str) -> bool:
+        """
+        Détecte si le message est une requête méta sur l'historique des conversations.
+
+        Requêtes méta = Questions portant sur les sujets abordés, résumés, chronologie.
+
+        Args:
+            message: Message utilisateur
+
+        Returns:
+            True si requête méta détectée
+
+        Exemples de requêtes méta:
+        - "Quels sujets avons-nous abordés ?"
+        - "De quoi on a parlé cette semaine ?"
+        - "Résume nos conversations précédentes"
+        - "Liste les thèmes qu'on a discutés"
+        """
+        if not message:
+            return False
+
+        message_lower = message.lower()
+
+        # Patterns de requêtes méta (ordre de priorité)
+        meta_patterns = [
+            # Requêtes directes sur sujets
+            r"\bquels?\s+sujets?\b",
+            r"\bliste\s+(les?\s+)?(sujets?|th[eè]mes?)\b",
+            r"\b(de\s+)?quoi\s+(on\s+a|avons[-\s]nous|nous\s+avons)\s+(parl[eé]|discut[eé]|abord[eé])\b",
+
+            # Requêtes sur historique/chronologie
+            r"\bhistorique\s+(de\s+)?(nos\s+)?(conversations?|discussions?)\b",
+            r"\bchronologie\b",
+            r"\b(nos\s+)?conversations?\s+(pr[eé]c[eé]dentes?|ant[eé]rieures?|pass[eé]es?)\b",
+
+            # Requêtes sur résumés
+            r"\br[eé]sume(\s+moi)?\s+(nos\s+)?(conversations?|discussions?)\b",
+            r"\bfais[-\s](moi\s+)?un\s+r[eé]sum[eé]\b",
+
+            # Requêtes temporelles
+            r"\b(cette\s+semaine|la\s+semaine\s+derni[eè]re|ce\s+mois|r[eé]cemment)\b.*\b(parl[eé]|discut[eé]|abord[eé])\b",
+            r"\bquand\s+(on\s+a|avons[-\s]nous)\s+(parl[eé]|discut[eé])\b",
+
+            # Requêtes sur thématiques
+            r"\bquels?\s+th[eè]mes?\b",
+            r"\bquelles?\s+(sont\s+)?(les\s+)?th[eé]matiques?\b",
+        ]
+
+        for pattern in meta_patterns:
+            if re.search(pattern, message_lower):
+                logger.debug(f"[MemoryContext] Meta pattern matched: '{pattern}'")
+                return True
+
+        return False
+
+    async def _build_chronological_context(self, user_id: str, query: str) -> str:
+        """
+        Construit contexte chronologique structuré pour requêtes méta.
+
+        Utilise MemoryQueryTool pour récupérer timeline groupée par période.
+
+        Args:
+            user_id: Identifiant utilisateur
+            query: Requête originale (pour détecter timeframe)
+
+        Returns:
+            Contexte formaté markdown avec sujets groupés chronologiquement
+
+        Format généré:
+            **Cette semaine:**
+            - CI/CD pipeline (5 oct 14h32, 8 oct 09h15) - 3 conversations
+              └─ Automatisation déploiement GitHub Actions
+            - Docker (8 oct 14h32) - 1 conversation
+
+            **Semaine dernière:**
+            - Kubernetes (2 oct 16h45) - 2 conversations
+        """
+        try:
+            # Détecter timeframe dans la requête
+            timeframe = self._extract_timeframe_from_query(query)
+
+            if timeframe and timeframe != "all":
+                # Requête ciblée sur une période spécifique
+                logger.info(f"[MemoryContext] Chronological context for timeframe '{timeframe}'")
+                topics = await self.memory_query_tool.list_discussed_topics(
+                    user_id=user_id,
+                    timeframe=timeframe,
+                    limit=50
+                )
+
+                if not topics:
+                    return "Aucun sujet abordé durant cette période."
+
+                # Format simple liste chronologique
+                lines = []
+                for topic in topics:
+                    lines.append(topic.format_natural_fr())
+
+                return "\n".join(lines)
+
+            else:
+                # Requête générale → timeline complète groupée
+                logger.info(f"[MemoryContext] Full chronological timeline requested")
+                timeline = await self.memory_query_tool.get_conversation_timeline(
+                    user_id=user_id,
+                    limit=100
+                )
+
+                if not timeline or all(len(topics) == 0 for topics in timeline.values()):
+                    return "Aucun sujet abordé récemment."
+
+                return self.memory_query_tool.format_timeline_natural_fr(timeline)
+
+        except Exception as e:
+            logger.error(f"[MemoryContext] Error building chronological context: {e}", exc_info=True)
+            return ""
+
+    def _extract_timeframe_from_query(self, query: str) -> str:
+        """
+        Extrait timeframe de la requête utilisateur.
+
+        Args:
+            query: Requête originale
+
+        Returns:
+            "today" | "week" | "month" | "all"
+
+        Exemples:
+        - "cette semaine" → "week"
+        - "aujourd'hui" → "today"
+        - "ce mois" → "month"
+        - (aucun) → "all"
+        """
+        if not query:
+            return "all"
+
+        query_lower = query.lower()
+
+        # Patterns temporels (ordre de spécificité décroissante)
+        if re.search(r"\baujourd'?hui\b", query_lower):
+            return "today"
+
+        if re.search(r"\bcette\s+semaine\b", query_lower):
+            return "week"
+
+        if re.search(r"\b(la\s+)?semaine\s+(derni[eè]re|pass[eé]e)\b", query_lower):
+            return "week"
+
+        if re.search(r"\bce\s+mois\b", query_lower):
+            return "month"
+
+        if re.search(r"\b(le\s+)?mois\s+(dernier|pass[eé])\b", query_lower):
+            return "month"
+
+        if re.search(r"\br[eé]cemment\b", query_lower):
+            return "week"  # "récemment" = dernière semaine par défaut
+
+        # Défaut: toutes périodes
+        return "all"
