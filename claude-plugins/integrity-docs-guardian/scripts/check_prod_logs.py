@@ -59,7 +59,13 @@ def fetch_logs():
         print(f"🔍 Fetching logs from Cloud Run service '{SERVICE}'...", file=sys.stderr)
         print(f"   Region: {REGION}, Freshness: {FRESHNESS}, Limit: {LIMIT}", file=sys.stderr)
 
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True)
+        # Execute with timeout to prevent hanging
+        output = subprocess.check_output(
+            cmd,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=60  # 60 seconds timeout for gcloud logging read
+        )
 
         if not output.strip():
             print("⚠️  No logs returned (empty response)", file=sys.stderr)
@@ -69,6 +75,11 @@ def fetch_logs():
         print(f"✅ Fetched {len(logs)} log entries", file=sys.stderr)
         return logs
 
+    except subprocess.TimeoutExpired as e:
+        print("❌ Timeout fetching logs from gcloud (60s):", file=sys.stderr)
+        print(f"   Command: {' '.join(cmd)}", file=sys.stderr)
+        print("   Suggestion: Check network connectivity or gcloud authentication", file=sys.stderr)
+        return []
     except subprocess.CalledProcessError as e:
         print("❌ Error fetching logs from gcloud:", file=sys.stderr)
         print(f"   Command: {' '.join(cmd)}", file=sys.stderr)
