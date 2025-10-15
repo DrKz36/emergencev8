@@ -186,133 +186,133 @@ export class Settings {
                     </div>
 
                     <div class="about-section full-width">
-                        <h3>📦 Modules Installés</h3>
+                        <h3>${getIcon('package', 'section-icon')} Modules Installés</h3>
                         <div class="modules-list">
                             <div class="module-item">
-                                <span class="module-icon">🏠</span>
+                                <span class="module-icon">${SettingsIcons.home}</span>
                                 <div class="module-info">
                                     <span class="module-name">Home</span>
                                     <span class="module-version">v1.0</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                             <div class="module-item">
-                                <span class="module-icon">📊</span>
+                                <span class="module-icon">${SettingsIcons.dashboard}</span>
                                 <div class="module-info">
                                     <span class="module-name">Cockpit</span>
                                     <span class="module-version">v3.0</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                             <div class="module-item">
-                                <span class="module-icon">💬</span>
+                                <span class="module-icon">${SettingsIcons.messageCircle}</span>
                                 <div class="module-info">
                                     <span class="module-name">Chat</span>
                                     <span class="module-version">v2.5</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                             <div class="module-item">
-                                <span class="module-icon">🎙️</span>
+                                <span class="module-icon">${SettingsIcons.mic}</span>
                                 <div class="module-info">
                                     <span class="module-name">Voice</span>
                                     <span class="module-version">v1.2</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                             <div class="module-item">
-                                <span class="module-icon">🧠</span>
+                                <span class="module-icon">${SettingsIcons.brain}</span>
                                 <div class="module-info">
                                     <span class="module-name">Memory</span>
                                     <span class="module-version">v2.0</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                             <div class="module-item">
-                                <span class="module-icon">💭</span>
+                                <span class="module-icon">${SettingsIcons.thoughtBubble}</span>
                                 <div class="module-info">
                                     <span class="module-name">Debate</span>
                                     <span class="module-version">v1.5</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                             <div class="module-item">
-                                <span class="module-icon">📄</span>
+                                <span class="module-icon">${SettingsIcons.document}</span>
                                 <div class="module-info">
                                     <span class="module-name">Documents</span>
                                     <span class="module-version">v1.8</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                             <div class="module-item">
-                                <span class="module-icon">🔖</span>
+                                <span class="module-icon">${SettingsIcons.bookmark}</span>
                                 <div class="module-info">
                                     <span class="module-name">References</span>
                                     <span class="module-version">v1.0</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                             <div class="module-item">
-                                <span class="module-icon">🧵</span>
+                                <span class="module-icon">${SettingsIcons.thread}</span>
                                 <div class="module-info">
                                     <span class="module-name">Threads</span>
                                     <span class="module-version">v1.3</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                             <div class="module-item">
-                                <span class="module-icon">💬</span>
+                                <span class="module-icon">${SettingsIcons.messageCircle}</span>
                                 <div class="module-info">
                                     <span class="module-name">Conversations</span>
                                     <span class="module-version">v1.4</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                             <div class="module-item">
-                                <span class="module-icon">⏱️</span>
+                                <span class="module-icon">${SettingsIcons.timer}</span>
                                 <div class="module-info">
                                     <span class="module-name">Timeline</span>
                                     <span class="module-version">v1.1</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                             <div class="module-item">
-                                <span class="module-icon">💰</span>
+                                <span class="module-icon">${SettingsIcons.coins}</span>
                                 <div class="module-info">
                                     <span class="module-name">Costs</span>
                                     <span class="module-version">v1.0</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                             <div class="module-item">
-                                <span class="module-icon">👤</span>
+                                <span class="module-icon">${SettingsIcons.user}</span>
                                 <div class="module-info">
                                     <span class="module-name">Preferences</span>
                                     <span class="module-version">v1.5</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                             <div class="module-item">
-                                <span class="module-icon">⚙️</span>
+                                <span class="module-icon">${SettingsIcons.settings}</span>
                                 <div class="module-info">
                                     <span class="module-name">Settings</span>
                                     <span class="module-version">v4.0</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                             <div class="module-item">
-                                <span class="module-icon">🔐</span>
+                                <span class="module-icon">${SettingsIcons.lock}</span>
                                 <div class="module-info">
                                     <span class="module-name">Admin</span>
                                     <span class="module-version">v1.0</span>
                                 </div>
-                                <span class="module-status status-active">✓</span>
+                                <span class="module-status status-active">${SettingsIcons.check}</span>
                             </div>
                         </div>
                     </div>
 
                     <div class="about-section full-width">
-                        <h3>📜 Licence & Crédits</h3>
+                        <h3>${getIcon('scroll', 'section-icon')} Licence & Crédits</h3>
                         <p class="about-text">
                             ÉMERGENCE est une plateforme de gestion multi-agents développée pour orchestrer des systèmes d'IA complexes.
                         </p>
@@ -443,7 +443,7 @@ export class Settings {
                             font-weight: 700;
                             color: rgba(226, 232, 240, 0.98);
                             margin: 0;
-                        ">📚 Documentation Technique</h2>
+                        ">${getIcon('library', 'header-icon')} Documentation Technique</h2>
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" style="
                             background: transparent;
                             border: none;
@@ -528,7 +528,7 @@ export class Settings {
         return `
             <div class="documentation-content">
                 <section class="doc-section">
-                    <h3>📊 Statistiques du Projet</h3>
+                    <h3>${getIcon('barChart', 'section-icon')} Statistiques du Projet</h3>
                     <div class="doc-stats">
                         <div class="doc-stat-item">
                             <span class="stat-label">Frontend:</span>
@@ -546,7 +546,7 @@ export class Settings {
                 </section>
 
                 <section class="doc-section">
-                    <h3>📦 Dépendances Principales</h3>
+                    <h3>${getIcon('package', 'section-icon')} Dépendances Principales</h3>
                     <div class="dependencies-grid">
                         <div class="dep-category">
                             <h4>Frontend</h4>
@@ -570,7 +570,7 @@ export class Settings {
                 </section>
 
                 <section class="doc-section">
-                    <h3>🔌 Architecture du Système</h3>
+                    <h3>${getIcon('plug', 'section-icon')} Architecture du Système</h3>
                     <div class="architecture-info">
                         <p><strong>Modules Frontend:</strong></p>
                         <ul>
@@ -597,7 +597,7 @@ export class Settings {
                 </section>
 
                 <section class="doc-section">
-                    <h3>📈 Observabilité</h3>
+                    <h3>${getIcon('trendingUp', 'section-icon')} Observabilité</h3>
                     <div class="observability-info">
                         <ul>
                             <li><strong>Métriques:</strong> Exposition Prometheus sur /metrics</li>
@@ -609,7 +609,7 @@ export class Settings {
                 </section>
 
                 <section class="doc-section">
-                    <h3>🌟 Genèse du Projet</h3>
+                    <h3>${getIcon('star', 'section-icon')} Genèse du Projet</h3>
                     <div class="genesis-content">
                         <p>
                             <strong>ÉMERGENCE</strong> est né de la vision d'orchestrer plusieurs agents IA de manière cohérente
@@ -633,7 +633,7 @@ export class Settings {
                 </section>
 
                 <section class="doc-section">
-                    <h3>👤 À Propos de l'Auteur</h3>
+                    <h3>${getIcon('user', 'section-icon')} À Propos de l'Auteur</h3>
                     <div class="author-bio">
                         <p><strong>Fernando Gonzalez</strong></p>
                         <p>
@@ -667,19 +667,19 @@ export class Settings {
             <div class="support-content">
                 <div class="support-info">
                     <div class="support-card">
-                        <h3>📧 Contact</h3>
+                        <h3>${getIcon('mail', 'section-icon')} Contact</h3>
                         <p><strong>Fernando Gonzalez</strong></p>
                         <p>Email: <a href="mailto:gonzalefernando@gmail.com">gonzalefernando@gmail.com</a></p>
                     </div>
 
                     <div class="support-card">
-                        <h3>💬 Besoin d'aide ?</h3>
+                        <h3>${getIcon('helpCircle', 'section-icon')} Besoin d'aide ?</h3>
                         <p>Pour toute question, suggestion ou problème technique, n'hésitez pas à me contacter directement par email.</p>
                         <p>Je m'efforce de répondre dans les plus brefs délais.</p>
                     </div>
 
                     <div class="support-card">
-                        <h3>📚 Ressources</h3>
+                        <h3>${getIcon('library', 'section-icon')} Ressources</h3>
                         <ul>
                             <li>Consultez la documentation technique pour plus d'informations</li>
                             <li>Utilisez le formulaire de bug report pour signaler les problèmes</li>
@@ -734,12 +734,12 @@ export class Settings {
                         <label for="bug-type">Type de problème *</label>
                         <select id="bug-type" required>
                             <option value="">-- Sélectionnez un type --</option>
-                            <option value="bug">🐛 Bug / Erreur</option>
-                            <option value="performance">⚡ Performance</option>
-                            <option value="ui">🎨 Interface / Design</option>
-                            <option value="feature">✨ Suggestion de fonctionnalité</option>
-                            <option value="security">🔒 Sécurité</option>
-                            <option value="other">💡 Autre</option>
+                            <option value="bug">Bug / Erreur</option>
+                            <option value="performance">Performance</option>
+                            <option value="ui">Interface / Design</option>
+                            <option value="feature">Suggestion de fonctionnalité</option>
+                            <option value="security">Sécurité</option>
+                            <option value="other">Autre</option>
                         </select>
                     </div>
 
@@ -760,7 +760,7 @@ export class Settings {
 
                     <div class="form-actions">
                         <button type="button" class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">Annuler</button>
-                        <button type="submit" class="btn-submit">📤 Envoyer</button>
+                        <button type="submit" class="btn-submit">${getIcon('send', 'btn-icon')} Envoyer</button>
                     </div>
                 </form>
             </div>
@@ -939,7 +939,7 @@ Envoyé depuis ÉMERGENCE V8
         const saveAllBtn = this.container.querySelector('.btn-save-all');
         if (saveAllBtn) {
             saveAllBtn.disabled = true;
-            saveAllBtn.innerHTML = '⏳ Sauvegarde...';
+            saveAllBtn.innerHTML = `${getIcon('loader', 'btn-icon')} Sauvegarde...`;
         }
 
         try {
@@ -953,9 +953,9 @@ Envoyé depuis ÉMERGENCE V8
             this.showNotification('Tous les paramètres ont été sauvegardés', 'success');
 
             if (saveAllBtn) {
-                saveAllBtn.innerHTML = '✓ Sauvegardé';
+                saveAllBtn.innerHTML = `${getIcon('check', 'btn-icon')} Sauvegardé`;
                 setTimeout(() => {
-                    saveAllBtn.innerHTML = '💾 Tout sauvegarder';
+                    saveAllBtn.innerHTML = `${getIcon('save', 'btn-icon')} Tout sauvegarder`;
                     saveAllBtn.disabled = false;
                 }, 2000);
             }
@@ -964,7 +964,7 @@ Envoyé depuis ÉMERGENCE V8
             this.showNotification('Erreur lors de la sauvegarde', 'error');
 
             if (saveAllBtn) {
-                saveAllBtn.innerHTML = '✗ Erreur';
+                saveAllBtn.innerHTML = `${getIcon('x', 'btn-icon')} Erreur`;
                 saveAllBtn.disabled = false;
             }
         }
@@ -974,7 +974,7 @@ Envoyé depuis ÉMERGENCE V8
      * Reset all settings
      */
     async resetAll() {
-        if (!confirm('⚠️ Réinitialiser TOUS les paramètres ? Cette action est irréversible.')) {
+        if (!confirm('Réinitialiser TOUS les paramètres ? Cette action est irréversible.')) {
             return;
         }
 
