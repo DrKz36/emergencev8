@@ -191,6 +191,25 @@ export class Documentation {
                             </svg>
                             Statistiques du Projet
                         </h2>
+
+                        <!-- Version Badge -->
+                        <div style="margin-bottom: 1.5rem; padding: 1rem; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; display: flex; align-items: center; gap: 1rem;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 2em; height: 2em; color: #3b82f6;">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M12 6v6l4 2"></path>
+                            </svg>
+                            <div>
+                                <div style="font-size: 0.875rem; color: #9ca3af; margin-bottom: 0.25rem;">Version Actuelle</div>
+                                <div style="font-size: 1.5rem; font-weight: 600; background: linear-gradient(120deg, #3b82f6 0%, #a855f7 100%); -webkit-background-clip: text; background-clip: text; color: transparent;">beta-1.0.0</div>
+                                <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">État initial du projet • 15 octobre 2025</div>
+                            </div>
+                            <div style="margin-left: auto; text-align: right;">
+                                <div style="font-size: 0.75rem; color: #9ca3af;">Fonctionnalités</div>
+                                <div style="font-size: 1.25rem; font-weight: 600; color: #3b82f6;">8/23</div>
+                                <div style="font-size: 0.75rem; color: #6b7280;">35% complété</div>
+                            </div>
+                        </div>
+
                         <div class="stats-grid">
                             <div class="stat-card">
                                 <div class="stat-icon">

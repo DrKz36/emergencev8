@@ -231,12 +231,14 @@ export class ThreadsPanel {
     this.newButton = null;
     this.searchInput = null;
     this.sortSelect = null;
+    this.viewToggle = null;
 
     this.unsubscribeState = null;
     this.unsubscribeRefresh = null;
 
     this.selectionLoadingId = null;
     this.archivingId = null;
+    this.unarchivingId = null;
     this.pendingCreate = false;
     this.pendingDeleteId = null;
     this.deletingId = null;
@@ -244,6 +246,7 @@ export class ThreadsPanel {
     this.editingId = null;
     this.editingValue = '';
     this.sortBy = 'modified'; // 'modified', 'created', 'alphabetical'
+    this.viewMode = 'active'; // 'active', 'archived'
     this.contextMenuId = null;
     this.contextMenuX = 0;
     this.contextMenuY = 0;
@@ -289,6 +292,24 @@ export class ThreadsPanel {
             Nouvelle conversation
           </button>
         </header>
+        <div class="threads-panel__view-toggle" data-role="thread-view-toggle">
+          <button type="button" class="threads-panel__view-btn" data-view="active" data-role="toggle-active">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+            </svg>
+            Actifs
+            <span class="threads-panel__view-count" data-role="active-count">0</span>
+          </button>
+          <button type="button" class="threads-panel__view-btn" data-view="archived" data-role="toggle-archived">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="21 8 21 21 3 21 3 8"></polyline>
+              <rect x="1" y="3" width="22" height="5"></rect>
+              <line x1="10" y1="12" x2="14" y2="12"></line>
+            </svg>
+            Archivés
+            <span class="threads-panel__view-count" data-role="archived-count">0</span>
+          </button>
+        </div>
         <div class="threads-panel__controls">
           <div class="threads-panel__search">
             <input
@@ -418,6 +439,7 @@ export class ThreadsPanel {
     this.newButton = host.querySelector('[data-action="new"]');
     this.searchInput = host.querySelector('[data-role="thread-search"]');
     this.sortSelect = host.querySelector('[data-role="thread-sort"]');
+    this.viewToggle = host.querySelector('[data-role="thread-view-toggle"]');
   }
 
   async reload() {

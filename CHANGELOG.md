@@ -1,9 +1,58 @@
-# Changelog - Emergence V8
+# 📦 CHANGELOG - EMERGENCE V8
 
-Toutes les modifications notables de ce projet seront documentées dans ce fichier.
+> **Suivi des versions et évolutions du projet**
+>
+> Format de versioning : `beta-X.Y.Z` jusqu'à la release V1.0.0
+> - **X (Major)** : Phases complètes (P0, P1, P2, P3) / Changements majeurs
+> - **Y (Minor)** : Nouvelles fonctionnalités / Features individuelles
+> - **Z (Patch)** : Corrections de bugs / Améliorations mineures
+>
+> Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
+> et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
-Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
-et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
+---
+
+## [beta-1.0.0] - 2025-10-15
+
+### 🎉 État Initial - Version Bêta de Référence
+
+#### 📊 Métriques de Base
+- **Fonctionnalités complètes** : 8/23 (35%)
+- **Fonctionnalités partielles** : 3/23 (13%)
+- **Fonctionnalités manquantes** : 12/23 (52%)
+- **Version package.json** : `beta-1.0.0`
+
+#### ✅ Fonctionnalités Principales Implémentées
+- Système d'authentification et gestion utilisateurs
+- Chat multi-agents (5 agents : Analyste, Généraliste, Créatif, Technique, Éthique)
+- Centre Mémoire avec extraction de concepts
+- Documentation interactive intégrée
+- Interface administrateur (basique)
+- Système de tutoriel guidé
+- Métriques Prometheus (activées par défaut)
+- Gestion des sessions avec notifications inactivité
+- Système de versioning bêta établi
+
+#### 📝 Documents de Référence
+- [ROADMAP_OFFICIELLE.md](ROADMAP_OFFICIELLE.md) - Roadmap de développement (13 features prévues)
+- [ROADMAP_PROGRESS.md](ROADMAP_PROGRESS.md) - Suivi de progression temps réel
+- [docs/ROADMAP_README.md](docs/ROADMAP_README.md) - Guide d'utilisation roadmap
+
+#### 🛠️ Stack Technique
+- **Frontend** : Vite + Vanilla JS
+- **Backend** : FastAPI + Python
+- **Base de données** : SQLite
+- **Métriques** : Prometheus + Grafana
+- **Versioning** : Sémantique (SemVer) - Phase bêta
+
+#### 🔮 Prochaines Versions Prévues
+- `beta-1.1.0` : Archivage conversations (UI)
+- `beta-1.2.0` : Graphe de connaissances interactif
+- `beta-1.3.0` : Export conversations (CSV/PDF)
+- `beta-2.0.0` : Phase P1 complète (UX Essentielle)
+- `beta-3.0.0` : Phase P2 complète (Administration & Sécurité)
+- `beta-4.0.0` : Phase P3 complète (Fonctionnalités Avancées)
+- `v1.0.0` : Release Production Officielle (date TBD)
 
 ---
 
