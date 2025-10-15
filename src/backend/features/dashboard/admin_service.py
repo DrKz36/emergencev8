@@ -92,11 +92,13 @@ class AdminDashboardService:
     async def _get_users_breakdown(self) -> List[Dict[str, Any]]:
         """Get per-user statistics breakdown."""
         try:
-            # Query to get unique users from sessions
+            # Query to get unique users from sessions with email
+            # INNER JOIN to ensure we only get users that exist in auth_allowlist
             query = """
-                SELECT DISTINCT user_id
-                FROM sessions
-                WHERE user_id IS NOT NULL
+                SELECT DISTINCT s.user_id, a.email, a.role
+                FROM sessions s
+                INNER JOIN auth_allowlist a ON s.user_id = a.email
+                WHERE s.user_id IS NOT NULL
             """
             conn = await self.db._ensure_connection()
             cursor = await conn.execute(query)
@@ -105,6 +107,8 @@ class AdminDashboardService:
             users_data = []
             for row in rows:
                 user_id = row[0]
+                user_email = row[1] if row[1] else user_id  # Use user_id as fallback
+                user_role = row[2] if row[2] else "member"
                 if not user_id:
                     continue
 
@@ -119,12 +123,24 @@ class AdminDashboardService:
                     self.db, user_id=user_id
                 )
 
+                # Get total usage time and modules used
+                usage_stats = await self._get_user_usage_stats(user_id)
+                modules_used = await self._get_user_modules_used(user_id)
+                costs_by_module = await self._get_user_costs_by_module(user_id)
+                first_session_time = await self._get_user_first_session(user_id)
+
                 users_data.append({
                     "user_id": user_id,
+                    "email": user_email,
+                    "role": user_role,
                     "total_cost": float(user_costs.get("total", 0.0) or 0.0),
                     "session_count": len(user_sessions) if user_sessions else 0,
                     "document_count": len(user_documents) if user_documents else 0,
                     "last_activity": await self._get_user_last_activity(user_id),
+                    "first_session": first_session_time,
+                    "total_usage_time_minutes": usage_stats.get("total_minutes", 0),
+                    "modules_used": modules_used,
+                    "costs_by_module": costs_by_module,
                 })
 
             # Sort by total cost descending
@@ -151,6 +167,95 @@ class AdminDashboardService:
         except Exception as e:
             logger.debug(f"Error getting last activity for {user_id}: {e}")
         return None
+
+    async def _get_user_first_session(self, user_id: str) -> Optional[str]:
+        """Get first session creation timestamp for a user."""
+        try:
+            query = """
+                SELECT MIN(created_at) as first_session
+                FROM sessions
+                WHERE user_id = ?
+            """
+            conn = await self.db._ensure_connection()
+            cursor = await conn.execute(query, (user_id,))
+            row = await cursor.fetchone()
+            if row and row[0]:
+                return row[0]
+        except Exception as e:
+            logger.debug(f"Error getting first session for {user_id}: {e}")
+        return None
+
+    async def _get_user_usage_stats(self, user_id: str) -> Dict[str, Any]:
+        """Calculate total usage time for a user based on sessions."""
+        try:
+            query = """
+                SELECT created_at, updated_at
+                FROM sessions
+                WHERE user_id = ?
+                ORDER BY created_at
+            """
+            conn = await self.db._ensure_connection()
+            cursor = await conn.execute(query, (user_id,))
+            rows = await cursor.fetchall()
+
+            total_minutes = 0
+            for row in rows:
+                if row[0] and row[1]:
+                    try:
+                        created = datetime.fromisoformat(row[0].replace('Z', '+00:00'))
+                        updated = datetime.fromisoformat(row[1].replace('Z', '+00:00'))
+                        duration = (updated - created).total_seconds() / 60
+                        total_minutes += max(0, duration)  # Only positive durations
+                    except Exception:
+                        continue
+
+            return {
+                "total_minutes": round(total_minutes, 2),
+            }
+        except Exception as e:
+            logger.debug(f"Error getting usage stats for {user_id}: {e}")
+            return {"total_minutes": 0}
+
+    async def _get_user_modules_used(self, user_id: str) -> List[str]:
+        """Get list of unique modules/features used by a user."""
+        try:
+            query = """
+                SELECT DISTINCT feature
+                FROM costs
+                WHERE user_id = ? AND feature IS NOT NULL
+            """
+            conn = await self.db._ensure_connection()
+            cursor = await conn.execute(query, (user_id,))
+            rows = await cursor.fetchall()
+
+            modules = [row[0] for row in rows if row[0]]
+            return sorted(modules)
+        except Exception as e:
+            logger.debug(f"Error getting modules used for {user_id}: {e}")
+            return []
+
+    async def _get_user_costs_by_module(self, user_id: str) -> Dict[str, float]:
+        """Get cost breakdown by module/feature for a user."""
+        try:
+            query = """
+                SELECT feature, SUM(total_cost) as module_cost
+                FROM costs
+                WHERE user_id = ? AND feature IS NOT NULL
+                GROUP BY feature
+            """
+            conn = await self.db._ensure_connection()
+            cursor = await conn.execute(query, (user_id,))
+            rows = await cursor.fetchall()
+
+            costs_by_module = {}
+            for row in rows:
+                if row[0]:
+                    costs_by_module[row[0]] = float(row[1]) if row[1] else 0.0
+
+            return costs_by_module
+        except Exception as e:
+            logger.debug(f"Error getting costs by module for {user_id}: {e}")
+            return {}
 
     async def _get_date_metrics(self) -> Dict[str, Any]:
         """Get metrics grouped by date ranges."""

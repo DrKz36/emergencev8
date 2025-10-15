@@ -317,6 +317,61 @@
 }
 
 /* Users List */
+.admin-users-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.admin-users-header h3 {
+    margin: 0;
+}
+
+.admin-users-filters {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.user-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(226, 232, 240, 0.75);
+    transition: all 0.2s;
+}
+
+.user-filter-btn:hover {
+    background: rgba(20, 28, 50, 0.8);
+    border-color: rgba(56, 189, 248, 0.4);
+    color: rgba(226, 232, 240, 0.95);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(56, 189, 248, 0.15);
+}
+
+.user-filter-btn.active {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(139, 92, 246, 0.2));
+    border-color: rgba(56, 189, 248, 0.5);
+    color: rgba(56, 189, 248, 0.95);
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(56, 189, 248, 0.25);
+}
+
+.filter-icon svg {
+    width: 1rem;
+    height: 1rem;
+}
+
 .admin-users-list {
     display: grid;
     gap: 1rem;
@@ -324,19 +379,107 @@
 
 .admin-user-card {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 1rem;
     padding: 1.5rem;
     background: rgba(11, 18, 32, 0.78);
     border: 1px solid rgba(148, 163, 184, 0.18);
-    border-radius: 8px;
+    border-radius: 12px;
     transition: all 0.2s;
 }
 
 .admin-user-card:hover {
     background: rgba(15, 23, 42, 0.85);
     border-color: rgba(56, 189, 248, 0.4);
-    transform: translateX(4px);
+    box-shadow: 0 4px 16px rgba(56, 189, 248, 0.15);
+}
+
+.user-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.user-email-section {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.user-icon svg {
+    width: 2rem;
+    height: 2rem;
+    color: rgba(56, 189, 248, 0.8);
+}
+
+.user-email-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.user-email-info strong {
+    font-size: 1.1rem;
+    color: rgba(226, 232, 240, 0.95);
+}
+
+.user-role-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.user-role-badge.admin {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(168, 85, 247, 0.2));
+    color: rgba(168, 85, 247, 0.95);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.user-role-badge.member {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(96, 165, 250, 0.15));
+    color: rgba(96, 165, 250, 0.9);
+    border: 1px solid rgba(96, 165, 250, 0.25);
+}
+
+.user-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.user-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.875rem;
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 8px;
+    border-left: 3px solid rgba(56, 189, 248, 0.5);
+}
+
+.info-label {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8rem;
+    color: rgba(226, 232, 240, 0.65);
+}
+
+.info-icon svg {
+    width: 0.95rem;
+    height: 0.95rem;
+}
+
+.info-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: rgba(226, 232, 240, 0.9);
 }
 
 .user-info {
@@ -353,7 +496,9 @@
 .user-stats {
     display: flex;
     gap: 1.5rem;
-    margin-bottom: 0.5rem;
+    padding: 0.875rem;
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 8px;
 }
 
 .user-stat {
@@ -362,6 +507,11 @@
     display: flex;
     align-items: center;
     gap: 0.375rem;
+}
+
+.user-stat.highlight {
+    color: rgba(56, 189, 248, 0.95);
+    font-weight: 600;
 }
 
 .user-activity {
@@ -400,29 +550,79 @@
 
 .admin-cost-row {
     display: grid;
-    grid-template-columns: 40px 200px 1fr;
+    grid-template-columns: 40px 1fr 300px;
     align-items: center;
     gap: 1rem;
-    padding: 1rem;
+    padding: 1.25rem;
     background: rgba(11, 18, 32, 0.78);
     border: 1px solid rgba(148, 163, 184, 0.18);
-    border-radius: 8px;
+    border-radius: 10px;
+    transition: all 0.2s;
+}
+
+.admin-cost-row:hover {
+    background: rgba(15, 23, 42, 0.85);
+    border-color: rgba(56, 189, 248, 0.3);
+    box-shadow: 0 2px 8px rgba(56, 189, 248, 0.15);
 }
 
 .cost-rank {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     font-weight: bold;
     color: rgba(56, 189, 248, 0.95);
+    text-align: center;
+}
+
+.cost-user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
 }
 
 .cost-user {
     font-weight: 600;
-    color: rgba(226, 232, 240, 0.9);
+    font-size: 1.05rem;
+    color: rgba(226, 232, 240, 0.95);
+    margin-bottom: 0.375rem;
+}
+
+.cost-modules-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.module-cost-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.module-name {
+    color: rgba(226, 232, 240, 0.75);
+    font-weight: 500;
+}
+
+.module-cost {
+    color: rgba(56, 189, 248, 0.9);
+    font-weight: 600;
+}
+
+.no-modules {
+    font-size: 0.85rem;
+    color: rgba(226, 232, 240, 0.5);
+    font-style: italic;
+    margin: 0;
 }
 
 .cost-bar-container {
     position: relative;
-    height: 30px;
+    height: 32px;
     background: rgba(15, 23, 42, 0.8);
     border-radius: 6px;
     overflow: hidden;
@@ -439,12 +639,13 @@
 
 .cost-amount {
     position: absolute;
-    right: 8px;
+    right: 10px;
     top: 50%;
     transform: translateY(-50%);
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     color: rgba(226, 232, 240, 0.95);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* Chart */
@@ -686,6 +887,74 @@
     color: rgba(226, 232, 240, 0.6);
 }
 
+/* Error Notification */
+.admin-error-notification {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 2000;
+    max-width: 400px;
+    animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.admin-error-notification .error-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.95), rgba(185, 28, 28, 0.95));
+    border: 1px solid rgba(248, 113, 113, 0.5);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.admin-error-notification .error-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+.admin-error-notification .error-message {
+    flex: 1;
+    color: white;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.admin-error-notification .error-close {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: white;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+}
+
+.admin-error-notification .error-close:hover {
+    opacity: 1;
+}
+
+.admin-error-notification .error-close svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .admin-dashboard {
@@ -708,6 +977,20 @@
 
     .admin-costs-timeline {
         flex-direction: column;
+    }
+
+    .admin-users-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .admin-users-filters {
+        width: 100%;
+    }
+
+    .user-filter-btn {
+        flex: 1;
+        justify-content: center;
     }
 
     .admin-cost-row {

@@ -23,7 +23,7 @@ TABLE_DEFINITIONS = [
         input_tokens INTEGER,
         output_tokens INTEGER,
         total_cost REAL NOT NULL,
-        feature TEXT NOT NULL CHECK(feature IN ('chat', 'document_processing', 'debate'))
+        feature TEXT NOT NULL CHECK(feature IN ('chat', 'document_processing', 'debate', 'system'))
     );
     """,
     # -- documents --

@@ -1247,8 +1247,51 @@
     color: rgba(34, 197, 94, 0.95);
 }
 
+/* Styles pour les boutons tutoriels */
+.tutorial-quick-links a {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tutorial-quick-links a:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+}
+
+.tutorial-quick-links a:hover svg {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+}
+
+.tutorial-quick-links a:active {
+    transform: translateY(0);
+}
+
+.btn-load-tutorial[data-doc*="EMERGENCE_TUTORIEL"]:hover {
+    background: rgba(56, 189, 248, 0.25);
+    border-color: rgba(56, 189, 248, 0.6);
+}
+
+.btn-load-stats:hover {
+    background: rgba(139, 92, 246, 0.25);
+    border-color: rgba(139, 92, 246, 0.6);
+}
+
+.btn-load-tutorial[data-doc*="glossaire"]:hover {
+    background: rgba(74, 222, 128, 0.25);
+    border-color: rgba(74, 222, 128, 0.6);
+}
+
 @media (max-width: 768px) {
     .tutorial-guides-grid {
         grid-template-columns: 1fr;
+    }
+
+    .tutorial-quick-links {
+        flex-direction: column;
+    }
+
+    .tutorial-quick-links a {
+        width: 100%;
+        justify-content: center;
     }
 }

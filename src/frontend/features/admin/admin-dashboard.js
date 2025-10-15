@@ -315,38 +315,134 @@ export class AdminDashboard {
             return;
         }
 
-        const usersHtml = users.map(user => `
-            <div class="admin-user-card" data-user-id="${user.user_id}">
-                <div class="user-info">
-                    <div class="user-id">${user.user_id}</div>
+        // Get current filter from data attribute or default to 'all'
+        const currentFilter = usersContainer.dataset.roleFilter || 'all';
+
+        // Filter users based on role
+        const filteredUsers = currentFilter === 'all'
+            ? users
+            : users.filter(user => {
+                const role = (user.role || 'member').toLowerCase();
+                return role === currentFilter;
+            });
+
+        // Count users by role
+        const adminCount = users.filter(u => (u.role || 'member').toLowerCase() === 'admin').length;
+        const memberCount = users.filter(u => (u.role || 'member').toLowerCase() === 'member').length;
+
+        const usersHtml = filteredUsers.map(user => {
+            const email = user.email || user.user_id;
+            const role = user.role || 'member';
+            const roleBadge = role === 'admin'
+                ? '<span class="user-role-badge admin">Admin</span>'
+                : '<span class="user-role-badge member">Membre</span>';
+
+            const usageTimeHours = user.total_usage_time_minutes
+                ? (user.total_usage_time_minutes / 60).toFixed(1)
+                : '0';
+
+            const firstSessionDate = user.first_session
+                ? new Date(user.first_session).toLocaleString('fr-FR', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : 'Jamais';
+
+            const lastActivityDate = user.last_activity
+                ? new Date(user.last_activity).toLocaleString('fr-FR', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : 'Jamais';
+
+            const modulesCount = user.modules_used ? user.modules_used.length : 0;
+            const modulesText = modulesCount > 0
+                ? `${modulesCount} module${modulesCount > 1 ? 's' : ''}`
+                : 'Aucun module';
+
+            return `
+                <div class="admin-user-card" data-user-id="${user.user_id}">
+                    <div class="user-header">
+                        <div class="user-email-section">
+                            ${getIcon('user', 'user-icon')}
+                            <div class="user-email-info">
+                                <strong>${email}</strong>
+                                ${roleBadge}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="user-info-grid">
+                        <div class="user-info-item">
+                            <span class="info-label">${getIcon('clock', 'info-icon')} Première connexion</span>
+                            <span class="info-value">${firstSessionDate}</span>
+                        </div>
+                        <div class="user-info-item">
+                            <span class="info-label">${getIcon('activity', 'info-icon')} Dernière activité</span>
+                            <span class="info-value">${lastActivityDate}</span>
+                        </div>
+                        <div class="user-info-item">
+                            <span class="info-label">${getIcon('clock', 'info-icon')} Temps d'utilisation</span>
+                            <span class="info-value">${usageTimeHours}h</span>
+                        </div>
+                        <div class="user-info-item">
+                            <span class="info-label">${getIcon('barChart', 'info-icon')} Modules utilisés</span>
+                            <span class="info-value">${modulesText}</span>
+                        </div>
+                    </div>
                     <div class="user-stats">
                         <span class="user-stat">${getIcon('messageCircle', 'stat-icon')} ${user.session_count} sessions</span>
                         <span class="user-stat">${getIcon('file', 'stat-icon')} ${user.document_count} docs</span>
-                        <span class="user-stat">${getIcon('dollarSign', 'stat-icon')} $${user.total_cost.toFixed(2)}</span>
+                        <span class="user-stat highlight">${getIcon('dollarSign', 'stat-icon')} $${user.total_cost.toFixed(2)}</span>
                     </div>
-                    ${user.last_activity ? `
-                        <div class="user-activity">
-                            ${getIcon('clock', 'activity-icon')} Dernière activité: ${new Date(user.last_activity).toLocaleDateString('fr-FR')}
-                        </div>
-                    ` : ''}
+                    <button class="btn-view-user" data-user-id="${user.user_id}">
+                        Voir détails ${getIcon('arrowRight', 'btn-icon')}
+                    </button>
                 </div>
-                <button class="btn-view-user" data-user-id="${user.user_id}">
-                    Voir détails ${getIcon('arrowRight', 'btn-icon')}
-                </button>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         usersContainer.innerHTML = `
-            <h3>${getIcon('users', 'section-icon')} Utilisateurs (${users.length})</h3>
+            <div class="admin-users-header">
+                <h3>${getIcon('users', 'section-icon')} Utilisateurs (${filteredUsers.length}/${users.length})</h3>
+                <div class="admin-users-filters">
+                    <button class="user-filter-btn ${currentFilter === 'all' ? 'active' : ''}"
+                            data-filter="all">
+                        Tous (${users.length})
+                    </button>
+                    <button class="user-filter-btn ${currentFilter === 'member' ? 'active' : ''}"
+                            data-filter="member">
+                        ${getIcon('user', 'filter-icon')} Membres (${memberCount})
+                    </button>
+                    <button class="user-filter-btn ${currentFilter === 'admin' ? 'active' : ''}"
+                            data-filter="admin">
+                        ${getIcon('shield', 'filter-icon')} Admins (${adminCount})
+                    </button>
+                </div>
+            </div>
             <div class="admin-users-list">
-                ${usersHtml}
+                ${usersHtml.length > 0 ? usersHtml : '<div class="admin-empty"><p>Aucun utilisateur avec ce filtre</p></div>'}
             </div>
         `;
+
+        // Attach click handlers for filters
+        usersContainer.querySelectorAll('.user-filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const filter = e.currentTarget.dataset.filter;
+                usersContainer.dataset.roleFilter = filter;
+                this.renderUsersView();
+            });
+        });
 
         // Attach click handlers for user details
         usersContainer.querySelectorAll('.btn-view-user').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const userId = e.target.dataset.userId;
+                const userId = e.target.closest('.btn-view-user').dataset.userId;
                 this.showUserDetails(userId);
             });
         });
@@ -364,19 +460,39 @@ export class AdminDashboard {
         // Sort by cost descending
         const sortedUsers = [...users].sort((a, b) => b.total_cost - a.total_cost);
 
-        const costsHtml = sortedUsers.map((user, index) => `
-            <div class="admin-cost-row">
-                <div class="cost-rank">#${index + 1}</div>
-                <div class="cost-user">${user.user_id}</div>
-                <div class="cost-bar-container">
-                    <div class="cost-bar" style="width: ${this.calculateBarWidth(user.total_cost, sortedUsers)}%"></div>
-                    <div class="cost-amount">$${user.total_cost.toFixed(2)}</div>
+        const costsHtml = sortedUsers.map((user, index) => {
+            const email = user.email || user.user_id;
+            const costsByModule = user.costs_by_module || {};
+            const modulesHtml = Object.keys(costsByModule).length > 0
+                ? Object.entries(costsByModule)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([module, cost]) => `
+                        <div class="module-cost-item">
+                            <span class="module-name">${module}</span>
+                            <span class="module-cost">$${cost.toFixed(2)}</span>
+                        </div>
+                    `).join('')
+                : '<p class="no-modules">Aucune donnée de module</p>';
+
+            return `
+                <div class="admin-cost-row">
+                    <div class="cost-rank">#${index + 1}</div>
+                    <div class="cost-user-info">
+                        <div class="cost-user">${email}</div>
+                        <div class="cost-modules-breakdown">
+                            ${modulesHtml}
+                        </div>
+                    </div>
+                    <div class="cost-bar-container">
+                        <div class="cost-bar" style="width: ${this.calculateBarWidth(user.total_cost, sortedUsers)}%"></div>
+                        <div class="cost-amount">$${user.total_cost.toFixed(2)}</div>
+                    </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         costsContainer.innerHTML = `
-            <h3>${getIcon('dollarSign', 'section-icon')} Répartition des Coûts par Utilisateur</h3>
+            <h3>${getIcon('dollarSign', 'section-icon')} Répartition des Coûts par Utilisateur et Module</h3>
             <div class="admin-costs-breakdown">
                 ${costsHtml}
             </div>
@@ -612,7 +728,26 @@ export class AdminDashboard {
      */
     showError(message) {
         console.error('[AdminDashboard]', message);
-        // TODO: Integrate with notification system
+
+        // Create error notification
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'admin-error-notification';
+        errorDiv.innerHTML = `
+            <div class="error-content">
+                <span class="error-icon">${AdminIcons.alertCircle || '⚠️'}</span>
+                <span class="error-message">${message}</span>
+                <button class="error-close">${AdminIcons.x || '×'}</button>
+            </div>
+        `;
+
+        // Add to container
+        this.container.insertBefore(errorDiv, this.container.firstChild);
+
+        // Auto-remove after 5 seconds
+        const closeBtn = errorDiv.querySelector('.error-close');
+        const remove = () => errorDiv.remove();
+        closeBtn.addEventListener('click', remove);
+        setTimeout(remove, 5000);
     }
 
     /**

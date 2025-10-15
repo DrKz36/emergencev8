@@ -1,27 +1,29 @@
 /**
  * @module components/tutorial/tutorialGuides
  * @description Guides détaillés pour chaque fonctionnalité d'Emergence
+ * REFONTE: Icônes SVG sobres + intégration avatars agents
  */
+
+import { TutorialIcons, replaceEmojisWithIcons } from './TutorialIcons.js';
+import { AGENT_INFO } from '../agents/AgentAvatars.js';
 
 export const TUTORIAL_GUIDES = [
   {
     id: 'chat',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-    </svg>`,
+    icon: TutorialIcons.messageSquare,
     title: 'Chat Multi-Agents',
     summary: 'Maîtrisez les conversations avec les agents IA spécialisés',
     content: `
       <section class="guide-section">
-        <h3>🎯 Vue d'ensemble</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.target}</span> Vue d'ensemble</h3>
         <p>Le système de chat d'Emergence utilise une architecture <strong>multi-agents</strong> pour vous offrir des réponses riches et variées. Chaque agent possède une personnalité et des compétences uniques.</p>
       </section>
 
       <section class="guide-section">
-        <h3>🤖 Les Trois Copilotes IA</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.brain}</span> Les Trois Copilotes IA</h3>
 
         <div class="guide-card">
-          <h4>🌟 Anima - La Présence Empathique</h4>
+          <h4><span class="tutorial-icon">${TutorialIcons.anima}</span> Anima - La Présence Empathique</h4>
           <p><strong>Rôle :</strong> Accueillir, clarifier et maintenir le rythme des échanges pour garder l'équipe alignée</p>
           <p><strong>Personnalité :</strong> Chaleureuse, orientée accompagnement, experte en reformulation et reconnaissance des intentions implicites</p>
           <p><strong>Capacités distinctives :</strong></p>
@@ -41,7 +43,7 @@ export const TUTORIAL_GUIDES = [
         </div>
 
         <div class="guide-card">
-          <h4>🔬 Neo - L'Analyste Stratégique</h4>
+          <h4><span class="tutorial-icon">${TutorialIcons.neo}</span> Neo - L'Analyste Stratégique</h4>
           <p><strong>Rôle :</strong> Structurer les idées, cartographier les hypothèses et rapprocher les données existantes</p>
           <p><strong>Personnalité :</strong> Analytique, concis, ferme quand il faut recadrer, toujours adossé à des grilles de lecture prospectives</p>
           <p><strong>Capacités distinctives :</strong></p>
@@ -61,7 +63,7 @@ export const TUTORIAL_GUIDES = [
         </div>
 
         <div class="guide-card">
-          <h4>🧩 Nexus - L'Architecte Systémique</h4>
+          <h4><span class="tutorial-icon">${TutorialIcons.nexus}</span> Nexus - L'Architecte Systémique</h4>
           <p><strong>Rôle :</strong> Traduire les besoins en flux opérationnels concrets et orchestrer les autres agents spécialisés</p>
           <p><strong>Personnalité :</strong> Méthodique, orienté protocole, centré sur la cohérence globale et la traçabilité</p>
           <p><strong>Capacités distinctives :</strong></p>
@@ -82,31 +84,31 @@ export const TUTORIAL_GUIDES = [
       </section>
 
       <section class="guide-section">
-        <h3>⚡ Fonctionnalités Avancées</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.zap}</span> Fonctionnalités Avancées</h3>
 
-        <h4>🔄 Mode RAG (Retrieval-Augmented Generation)</h4>
+        <h4><span class="tutorial-icon">${TutorialIcons.refresh}</span> Mode RAG (Retrieval-Augmented Generation)</h4>
         <p>Le toggle RAG permet d'enrichir les réponses avec le contenu de vos documents.</p>
         <ul>
-          <li><strong>Activer :</strong> Cliquez sur l'icône 📚 dans la zone de saisie</li>
+          <li><strong>Activer :</strong> Cliquez sur l'icône <span class="tutorial-icon">${TutorialIcons.book}</span> dans la zone de saisie</li>
           <li><strong>Utilisation :</strong> L'IA recherchera dans vos documents pour des réponses contextualisées</li>
           <li><strong>Performance :</strong> Légèrement plus lent mais beaucoup plus précis avec vos données</li>
         </ul>
 
-        <h4>💬 Demander l'Avis d'un Autre Agent</h4>
+        <h4><span class="tutorial-icon">${TutorialIcons.messageSquare}</span> Demander l'Avis d'un Autre Agent</h4>
         <p>Au-dessus de chaque message agent, vous trouverez des <strong>boutons circulaires</strong> représentant les autres agents disponibles.</p>
         <p><strong>Comment ça marche :</strong></p>
         <ol>
-          <li>Cliquez sur le bouton de l'agent désiré (ex: 🌟 Anima) au-dessus d'un message</li>
+          <li>Cliquez sur le bouton de l'agent désiré (ex: <span class="tutorial-icon">${TutorialIcons.anima}</span> Anima) au-dessus d'un message</li>
           <li>L'agent sollicité donnera son point de vue sur ce message spécifique</li>
           <li>Sa réponse commentée apparaîtra dans le fil de discussion</li>
           <li>Utile pour combiner différentes perspectives (empathie + analyse stratégique)</li>
         </ol>
         <p><strong>Exemple d'usage :</strong> Sur un message de Neo proposant une architecture technique détaillée, cliquez sur le bouton Anima pour obtenir une perspective plus empathique sur l'impact utilisateur de cette architecture.</p>
 
-        <h4>🧠 Système de Mémoire Multi-Niveaux</h4>
+        <h4><span class="tutorial-icon">${TutorialIcons.brain}</span> Système de Mémoire Multi-Niveaux</h4>
         <p>Emergence dispose d'un système de mémoire sophistiqué en <strong>3 couches</strong> :</p>
 
-        <h5>📝 Mémoire Court Terme (STM)</h5>
+        <h5><span class="tutorial-icon">${TutorialIcons.clipboard}</span> Mémoire Court Terme (STM)</h5>
         <ul>
           <li><strong>Résumés automatiques</strong> de vos conversations (2-3 phrases)</li>
           <li><strong>Concepts et entités</strong> extraits (personnes, technologies, projets)</li>
@@ -114,24 +116,24 @@ export const TUTORIAL_GUIDES = [
           <li><strong>Accessible via</strong> le bouton "Consolider mémoire" dans le Centre Mémoire</li>
         </ul>
 
-        <h5>🧬 Mémoire Long Terme (LTM)</h5>
+        <h5><span class="tutorial-icon">${TutorialIcons.database}</span> Mémoire Long Terme (LTM)</h5>
         <ul>
           <li><strong>Base de connaissances vectorielle</strong> permanente (ChromaDB)</li>
           <li><strong>Recherche sémantique intelligente</strong> dans vos discussions passées</li>
           <li>Injection automatique dans le contexte des agents</li>
-          <li>Badge 📚 indique quand la LTM est utilisée</li>
+          <li>Badge <span class="tutorial-icon">${TutorialIcons.book}</span> indique quand la LTM est utilisée</li>
           <li><strong>Décroissance progressive</strong> : la mémoire "vieillit" naturellement</li>
         </ul>
 
-        <h5>💡 Préférences et Intentions</h5>
+        <h5><span class="tutorial-icon">${TutorialIcons.lightbulb}</span> Préférences et Intentions</h5>
         <ul>
           <li><strong>Extraction automatique</strong> de vos préférences (ex: "Je préfère Python")</li>
           <li><strong>Détection d'intentions</strong> (ex: "Je vais migrer vers PostgreSQL")</li>
-          <li><strong>Hints proactifs</strong> : Rappels contextuels automatiques (💡 icône)</li>
+          <li><strong>Hints proactifs</strong> : Rappels contextuels automatiques (<span class="tutorial-icon">${TutorialIcons.lightbulb}</span> icône)</li>
           <li>Consultez votre dashboard mémoire pour voir ce qui est mémorisé</li>
         </ul>
 
-        <h5>⚡ Actions disponibles - Centre Mémoire</h5>
+        <h5><span class="tutorial-icon">${TutorialIcons.zap}</span> Actions disponibles - Centre Mémoire</h5>
         <p>Accessible via le menu principal > Mémoire :</p>
         <ul>
           <li><strong>Consolider mémoire :</strong> Lance l'analyse des conversations récentes
@@ -147,12 +149,12 @@ export const TUTORIAL_GUIDES = [
         </ul>
 
         <div class="guide-tip">
-          <h5>📊 Quand consolider ?</h5>
+          <h5><span class="tutorial-icon">${TutorialIcons.barChart}</span> Quand consolider ?</h5>
           <ul>
-            <li>✅ <strong>Automatique :</strong> Tous les 10 messages (consolidation incrémentale)</li>
-            <li>✅ <strong>Manuel recommandé :</strong> Après une discussion importante à mémoriser</li>
-            <li>✅ <strong>Durée estimée :</strong> 30s-2min selon volume (barre progression affichée)</li>
-            <li>⚠️ <strong>Note :</strong> Si pas de feedback après 5min, vérifiez les logs backend</li>
+            <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Automatique :</strong> Tous les 10 messages (consolidation incrémentale)</li>
+            <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Manuel recommandé :</strong> Après une discussion importante à mémoriser</li>
+            <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Durée estimée :</strong> 30s-2min selon volume (barre progression affichée)</li>
+            <li><span class="tutorial-icon">${TutorialIcons.alertCircle}</span> <strong>Note :</strong> Si pas de feedback après 5min, vérifiez les logs backend</li>
           </ul>
         </div>
 
@@ -165,7 +167,7 @@ export const TUTORIAL_GUIDES = [
           <p><strong>Résultat :</strong> Concepts, préférences et faits sont maintenant exploitables par les agents</p>
         </div>
 
-        <h4>🔄 Fallback Automatique de Modèles</h4>
+        <h4><span class="tutorial-icon">${TutorialIcons.refresh}</span> Fallback Automatique de Modèles</h4>
         <p>Si un fournisseur IA est indisponible (quota dépassé, erreur API), Emergence bascule automatiquement vers un modèle alternatif.</p>
 
         <h5>Ordre de priorité</h5>
@@ -177,14 +179,14 @@ export const TUTORIAL_GUIDES = [
 
         <h5>Indicateurs visuels</h5>
         <ul>
-          <li>Badge 🔄 en haut du message indique un fallback</li>
+          <li>Badge <span class="tutorial-icon">${TutorialIcons.refresh}</span> en haut du message indique un fallback</li>
           <li>Tooltip affiche le modèle réellement utilisé</li>
           <li>Les coûts sont calculés selon le modèle effectif</li>
         </ul>
 
         <p><strong>Exemple :</strong> Si Gemini est indisponible, votre requête sera automatiquement traitée par Claude, sans interruption de service.</p>
 
-        <h4>⌨️ Raccourcis Clavier</h4>
+        <h4><span class="tutorial-icon">${TutorialIcons.settings}</span> Raccourcis Clavier</h4>
         <ul>
           <li><kbd>Entrée</kbd> : Envoyer le message</li>
           <li><kbd>Maj + Entrée</kbd> : Nouvelle ligne</li>
@@ -193,18 +195,18 @@ export const TUTORIAL_GUIDES = [
       </section>
 
       <section class="guide-section">
-        <h3>💡 Astuces et Bonnes Pratiques</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.lightbulb}</span> Astuces et Bonnes Pratiques</h3>
         <ul>
-          <li>✅ <strong>Soyez précis :</strong> Plus votre question est claire, meilleure sera la réponse</li>
-          <li>✅ <strong>Utilisez le contexte :</strong> Référencez des éléments de la conversation précédente</li>
-          <li>✅ <strong>Combinez les agents :</strong> Demandez une vue créative ET analytique</li>
-          <li>✅ <strong>Activez RAG pour vos docs :</strong> Obtenez des réponses basées sur vos propres données</li>
-          <li>✅ <strong>Formatez avec Markdown :</strong> Utilisez **gras**, *italique*, \`code\`, etc.</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Soyez précis :</strong> Plus votre question est claire, meilleure sera la réponse</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Utilisez le contexte :</strong> Référencez des éléments de la conversation précédente</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Combinez les agents :</strong> Demandez une vue créative ET analytique</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Activez RAG pour vos docs :</strong> Obtenez des réponses basées sur vos propres données</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Formatez avec Markdown :</strong> Utilisez **gras**, *italique*, \`code\`, etc.</li>
         </ul>
       </section>
 
       <section class="guide-section">
-        <h3>🎓 Exemples de Prompts Efficaces</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.award}</span> Exemples de Prompts Efficaces</h3>
 
         <div class="guide-example">
           <strong>Brainstorming créatif :</strong>
@@ -233,13 +235,13 @@ export const TUTORIAL_GUIDES = [
     summary: 'Organisez et retrouvez toutes vos conversations',
     content: `
       <section class="guide-section">
-        <h3>🎯 Qu'est-ce qu'une Conversation ?</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.target}</span> Qu'est-ce qu'une Conversation ?</h3>
         <p>Une <strong>conversation</strong> (aussi appelée thread dans l'onglet Mémoire) est un fil de discussion isolé avec un contexte propre. Chaque conversation maintient son propre historique et sa propre mémoire contextuelle.</p>
         <p><strong>Note :</strong> Les conversations apparaissent sous le nom "Threads" dans l'interface Mémoire - c'est la même chose.</p>
       </section>
 
       <section class="guide-section">
-        <h3>📝 Créer et Gérer des Conversations</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.clipboard}</span> Créer et Gérer des Conversations</h3>
 
         <h4>Créer une nouvelle conversation</h4>
         <ol>
@@ -257,7 +259,7 @@ export const TUTORIAL_GUIDES = [
           <li>Les concepts mémorisés spécifiques à cette conversation sont accessibles</li>
         </ul>
 
-        <h4>Archiver une conversation ⏳</h4>
+        <h4>Archiver une conversation <span class="tutorial-icon">${TutorialIcons.clock}</span></h4>
         <p><strong>Statut :</strong> Backend prêt, UI en développement</p>
         <p>L'archivage permettra de ranger les conversations terminées :</p>
         <ul>
@@ -280,14 +282,14 @@ export const TUTORIAL_GUIDES = [
         <h4>Renommer une conversation</h4>
         <ol>
           <li>Survolez la conversation dans la liste</li>
-          <li>Cliquez sur l'icône ✏️ ou faites un clic droit</li>
+          <li>Cliquez sur l'icône <span class="tutorial-icon">${TutorialIcons.edit}</span> ou faites un clic droit</li>
           <li>Saisissez le nouveau nom</li>
           <li>Validez avec <kbd>Entrée</kbd></li>
         </ol>
       </section>
 
       <section class="guide-section">
-        <h3>🔍 Navigation</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.search}</span> Navigation</h3>
 
         <h4>Trier les conversations</h4>
         <p>Les conversations sont triées par :</p>
@@ -306,20 +308,20 @@ export const TUTORIAL_GUIDES = [
       </section>
 
       <section class="guide-section">
-        <h3>💡 Bonnes Pratiques</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.lightbulb}</span> Bonnes Pratiques</h3>
 
         <div class="guide-tip">
-          <h4>🏷️ Nommage des Conversations</h4>
+          <h4><span class="tutorial-icon">${TutorialIcons.tag}</span> Nommage des Conversations</h4>
           <ul>
-            <li>✅ <strong>Descriptif :</strong> "Analyse architecture projet X"</li>
-            <li>✅ <strong>Date si pertinent :</strong> "Sprint planning 2024-01"</li>
-            <li>✅ <strong>Catégorie :</strong> "[Dev] Optimisation base de données"</li>
-            <li>❌ <strong>Éviter :</strong> "Conversation 1", "Discussion", "Notes"</li>
+            <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Descriptif :</strong> "Analyse architecture projet X"</li>
+            <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Date si pertinent :</strong> "Sprint planning 2024-01"</li>
+            <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Catégorie :</strong> "[Dev] Optimisation base de données"</li>
+            <li><span class="tutorial-icon">${TutorialIcons.alertCircle}</span> <strong>Éviter :</strong> "Conversation 1", "Discussion", "Notes"</li>
           </ul>
         </div>
 
         <div class="guide-tip">
-          <h4>📁 Organisation</h4>
+          <h4><span class="tutorial-icon">${TutorialIcons.file}</span> Organisation</h4>
           <ul>
             <li>Une conversation par projet ou sujet majeur</li>
             <li>Nouvelle conversation pour changer radicalement de sujet</li>
@@ -330,16 +332,16 @@ export const TUTORIAL_GUIDES = [
       </section>
 
       <section class="guide-section">
-        <h3>🧠 Contexte et Mémoire</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.brain}</span> Contexte et Mémoire</h3>
         <p>Chaque conversation maintient son propre contexte :</p>
         <ul>
-          <li>✅ Historique des messages indépendant</li>
-          <li>✅ Concepts mémorisés spécifiques à la conversation</li>
-          <li>✅ Documents liés à la conversation</li>
-          <li>✅ Continuité entre sessions (sauvegarde auto)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Historique des messages indépendant</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Concepts mémorisés spécifiques à la conversation</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Documents liés à la conversation</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Continuité entre sessions (sauvegarde auto)</li>
         </ul>
 
-        <h4>📝 Session vs Conversation (Thread)</h4>
+        <h4><span class="tutorial-icon">${TutorialIcons.clipboard}</span> Session vs Conversation (Thread)</h4>
         <p>Comprendre la différence :</p>
 
         <h5>Conversation (Thread)</h5>
@@ -362,7 +364,7 @@ export const TUTORIAL_GUIDES = [
       </section>
 
       <section class="guide-section">
-        <h3>⚡ Raccourcis et Astuces</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.zap}</span> Raccourcis et Astuces</h3>
         <ul>
           <li><kbd>Ctrl/Cmd + N</kbd> : Nouvelle conversation (si configuré)</li>
           <li>Double-clic sur une conversation pour l'ouvrir</li>
@@ -381,12 +383,12 @@ export const TUTORIAL_GUIDES = [
     summary: 'Exploitez la mémoire sémantique d\'Emergence',
     content: `
       <section class="guide-section">
-        <h3>🎯 Qu'est-ce que la Base de Connaissances ?</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.target}</span> Qu'est-ce que la Base de Connaissances ?</h3>
         <p>La <strong>base de connaissances</strong> est un système intelligent qui extrait, stocke et relie automatiquement les concepts importants de vos conversations. C'est la mémoire à long terme d'Emergence.</p>
       </section>
 
       <section class="guide-section">
-        <h3>✨ Extraction Automatique de Concepts</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.zap}</span> Extraction Automatique de Concepts</h3>
 
         <h4>Comment ça fonctionne ?</h4>
         <ol>
@@ -398,16 +400,16 @@ export const TUTORIAL_GUIDES = [
 
         <h4>Types de concepts extraits</h4>
         <ul>
-          <li>🏷️ <strong>Entités :</strong> Noms, lieux, organisations, technologies</li>
-          <li>💡 <strong>Idées :</strong> Concepts abstraits, théories, approches</li>
-          <li>📊 <strong>Données :</strong> Chiffres clés, statistiques, métriques</li>
-          <li>🔗 <strong>Relations :</strong> Liens causaux, hiérarchiques, temporels</li>
-          <li>🎯 <strong>Objectifs :</strong> Buts, intentions, projets</li>
+          <li><span class="tutorial-icon">${TutorialIcons.tag}</span> <strong>Entités :</strong> Noms, lieux, organisations, technologies</li>
+          <li><span class="tutorial-icon">${TutorialIcons.lightbulb}</span> <strong>Idées :</strong> Concepts abstraits, théories, approches</li>
+          <li><span class="tutorial-icon">${TutorialIcons.barChart}</span> <strong>Données :</strong> Chiffres clés, statistiques, métriques</li>
+          <li><span class="tutorial-icon">${TutorialIcons.link}</span> <strong>Relations :</strong> Liens causaux, hiérarchiques, temporels</li>
+          <li><span class="tutorial-icon">${TutorialIcons.target}</span> <strong>Objectifs :</strong> Buts, intentions, projets</li>
         </ul>
       </section>
 
       <section class="guide-section">
-        <h3>🔍 Consultation des Concepts</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.search}</span> Consultation des Concepts</h3>
 
         <h4>Accéder à vos concepts</h4>
         <ol>
@@ -427,18 +429,18 @@ export const TUTORIAL_GUIDES = [
       </section>
 
       <section class="guide-section">
-        <h3>🔗 Graphe de Connaissances ⏳</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.link}</span> Graphe de Connaissances <span class="tutorial-icon">${TutorialIcons.clock}</span></h3>
         <p><strong>Statut :</strong> Fonctionnalité en développement (Roadmap Phase 3+)</p>
 
         <p>Le graphe de connaissances permettra de visualiser les relations entre vos concepts de manière interactive.</p>
 
         <h4>Fonctionnalités prévues :</h4>
         <ul>
-          <li>📍 <strong>Nœuds :</strong> Chaque concept sera représenté par un point</li>
-          <li>🔗 <strong>Liens :</strong> Visualisation des relations entre concepts</li>
-          <li>🎨 <strong>Couleurs :</strong> Différenciation par types (entités, idées, etc.)</li>
-          <li>📏 <strong>Taille :</strong> Importance basée sur la fréquence d'utilisation</li>
-          <li>🖱️ <strong>Navigation interactive :</strong> Zoom, déplacement, filtres</li>
+          <li><span class="tutorial-icon">${TutorialIcons.target}</span> <strong>Nœuds :</strong> Chaque concept sera représenté par un point</li>
+          <li><span class="tutorial-icon">${TutorialIcons.link}</span> <strong>Liens :</strong> Visualisation des relations entre concepts</li>
+          <li><span class="tutorial-icon">${TutorialIcons.settings}</span> <strong>Couleurs :</strong> Différenciation par types (entités, idées, etc.)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.barChart}</span> <strong>Taille :</strong> Importance basée sur la fréquence d'utilisation</li>
+          <li><span class="tutorial-icon">${TutorialIcons.settings}</span> <strong>Navigation interactive :</strong> Zoom, déplacement, filtres</li>
         </ul>
 
         <h4>Alternative actuelle :</h4>
@@ -446,7 +448,7 @@ export const TUTORIAL_GUIDES = [
       </section>
 
       <section class="guide-section">
-        <h3>🎯 Rappel Contextuel (Concept Recall)</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.target}</span> Rappel Contextuel (Concept Recall)</h3>
 
         <h4>Utilisation automatique</h4>
         <p>L'IA utilise vos concepts pour enrichir ses réponses :</p>
@@ -466,47 +468,47 @@ export const TUTORIAL_GUIDES = [
         <h4>Historique</h4>
         <p>Consultez l'historique du concept recall :</p>
         <ul>
-          <li>📊 Nombre de concepts récupérés par requête</li>
-          <li>📈 Fréquence d'utilisation du concept recall</li>
-          <li>📝 Historique des concepts rappelés</li>
+          <li><span class="tutorial-icon">${TutorialIcons.barChart}</span> Nombre de concepts récupérés par requête</li>
+          <li><span class="tutorial-icon">${TutorialIcons.trendingUp}</span> Fréquence d'utilisation du concept recall</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clipboard}</span> Historique des concepts rappelés</li>
         </ul>
       </section>
 
       <section class="guide-section">
-        <h3>⚙️ Gestion des Concepts</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.settings}</span> Gestion des Concepts</h3>
 
         <h4>Statut actuel</h4>
         <ul>
-          <li>✅ <strong>Visualisation</strong> des concepts mémorisés</li>
-          <li>✅ <strong>Recherche</strong> par mot-clé</li>
-          <li>✅ <strong>Suppression globale</strong> via Clear Memory</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Visualisation</strong> des concepts mémorisés</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Recherche</strong> par mot-clé</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Suppression globale</strong> via Clear Memory</li>
         </ul>
 
-        <h4>Fonctionnalités prévues (Roadmap Phase 3+) ⏳</h4>
+        <h4>Fonctionnalités prévues (Roadmap Phase 3+) <span class="tutorial-icon">${TutorialIcons.clock}</span></h4>
         <ul>
-          <li>⏳ <strong>Édition manuelle :</strong> Affiner la description d'un concept</li>
-          <li>⏳ <strong>Tags personnalisés :</strong> Ajouter vos propres étiquettes</li>
-          <li>⏳ <strong>Gestion des relations :</strong> Créer des liens manuels entre concepts</li>
-          <li>⏳ <strong>Suppression sélective :</strong> Retirer des concepts individuels</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> <strong>Édition manuelle :</strong> Affiner la description d'un concept</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> <strong>Tags personnalisés :</strong> Ajouter vos propres étiquettes</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> <strong>Gestion des relations :</strong> Créer des liens manuels entre concepts</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> <strong>Suppression sélective :</strong> Retirer des concepts individuels</li>
         </ul>
 
-        <h4>Export et Sauvegarde ⏳</h4>
+        <h4>Export et Sauvegarde <span class="tutorial-icon">${TutorialIcons.clock}</span></h4>
         <p><strong>Statut :</strong> Planifié Phase 3</p>
         <ul>
-          <li>⏳ Export JSON de toute la base</li>
-          <li>⏳ Export sélectif par catégorie</li>
-          <li>⏳ Import depuis un fichier</li>
-          <li>✅ Sauvegarde automatique continue (actuelle)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Export JSON de toute la base</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Export sélectif par catégorie</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Import depuis un fichier</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Sauvegarde automatique continue (actuelle)</li>
         </ul>
 
         <p><strong>Alternative actuelle :</strong> Utilisez <code>POST /api/memory/clear</code> avec <code>scope=ltm</code> pour réinitialiser la base complète.</p>
       </section>
 
       <section class="guide-section">
-        <h3>💡 Bonnes Pratiques</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.lightbulb}</span> Bonnes Pratiques</h3>
 
         <div class="guide-tip">
-          <h4>✅ Pour de meilleurs résultats</h4>
+          <h4><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Pour de meilleurs résultats</h4>
           <ul>
             <li>Soyez précis dans vos formulations</li>
             <li>Mentionnez explicitement les concepts importants</li>
@@ -517,7 +519,7 @@ export const TUTORIAL_GUIDES = [
         </div>
 
         <div class="guide-tip">
-          <h4>⚠️ À éviter</h4>
+          <h4><span class="tutorial-icon">${TutorialIcons.alertCircle}</span> À éviter</h4>
           <ul>
             <li>Ne pas surcharger avec trop de concepts triviaux</li>
             <li>Éviter les doublons (fusionnez-les)</li>
@@ -537,19 +539,19 @@ export const TUTORIAL_GUIDES = [
     summary: 'Uploadez et exploitez vos documents avec le RAG',
     content: `
       <section class="guide-section">
-        <h3>🎯 Vue d'ensemble</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.target}</span> Vue d'ensemble</h3>
         <p>Le système de <strong>gestion documentaire</strong> d'Emergence vous permet d'uploader, indexer et interroger vos documents. Combiné au RAG, vos documents deviennent une source de connaissance exploitable par l'IA.</p>
       </section>
 
       <section class="guide-section">
-        <h3>📤 Upload de Documents</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.upload}</span> Upload de Documents</h3>
 
         <h4>Formats supportés</h4>
         <ul>
-          <li>📄 <strong>Texte :</strong> .txt, .md, .csv</li>
-          <li>📝 <strong>Documents :</strong> .pdf, .docx, .odt</li>
-          <li>💻 <strong>Code :</strong> .py, .js, .java, .cpp, etc.</li>
-          <li>📊 <strong>Données :</strong> .json, .xml, .yaml</li>
+          <li><span class="tutorial-icon">${TutorialIcons.file}</span> <strong>Texte :</strong> .txt, .md, .csv</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clipboard}</span> <strong>Documents :</strong> .pdf, .docx, .odt</li>
+          <li><span class="tutorial-icon">${TutorialIcons.settings}</span> <strong>Code :</strong> .py, .js, .java, .cpp, etc.</li>
+          <li><span class="tutorial-icon">${TutorialIcons.barChart}</span> <strong>Données :</strong> .json, .xml, .yaml</li>
         </ul>
 
         <h4>Procédure d'upload</h4>
@@ -570,7 +572,7 @@ export const TUTORIAL_GUIDES = [
       </section>
 
       <section class="guide-section">
-        <h3>🔍 Traitement et Indexation</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.search}</span> Traitement et Indexation</h3>
 
         <h4>Chunking intelligent</h4>
         <p>Les documents sont découpés en <strong>chunks</strong> (morceaux) :</p>
@@ -592,11 +594,11 @@ export const TUTORIAL_GUIDES = [
       </section>
 
       <section class="guide-section">
-        <h3>🔗 Utilisation avec le RAG</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.link}</span> Utilisation avec le RAG</h3>
 
         <h4>Activer le RAG</h4>
         <ol>
-          <li>Dans le chat, activez le toggle <strong>📚 RAG</strong></li>
+          <li>Dans le chat, activez le toggle <strong><span class="tutorial-icon">${TutorialIcons.book}</span> RAG</strong></li>
           <li>Posez votre question normalement</li>
           <li>L'IA recherche dans vos documents</li>
           <li>La réponse est enrichie avec le contenu pertinent</li>
@@ -619,17 +621,17 @@ export const TUTORIAL_GUIDES = [
           <p><strong>Réponse :</strong> Basée sur VOTRE doc, pas sur des infos génériques</p>
         </div>
 
-        <h4>📚 Comprendre les Sources RAG</h4>
+        <h4><span class="tutorial-icon">${TutorialIcons.book}</span> Comprendre les Sources RAG</h4>
         <p>Lorsque le RAG est activé, chaque réponse agent affiche les sources utilisées :</p>
 
         <h5>Badge Sources</h5>
-        <p>Cliquez sur 📑 en bas du message pour voir les détails</p>
+        <p>Cliquez sur <span class="tutorial-icon">${TutorialIcons.file}</span> en bas du message pour voir les détails</p>
 
         <h5>Informations affichées</h5>
         <ul>
-          <li>📄 <strong>Document :</strong> Nom du fichier source</li>
-          <li>📍 <strong>Position :</strong> Numéro du chunk (morceau de texte)</li>
-          <li>⭐ <strong>Score :</strong> Pertinence (0.0 à 1.0)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.file}</span> <strong>Document :</strong> Nom du fichier source</li>
+          <li><span class="tutorial-icon">${TutorialIcons.target}</span> <strong>Position :</strong> Numéro du chunk (morceau de texte)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.anima}</span> <strong>Score :</strong> Pertinence (0.0 à 1.0)</li>
         </ul>
 
         <h5>Interprétation des scores</h5>
@@ -643,9 +645,9 @@ export const TUTORIAL_GUIDES = [
           <strong>Exemple de sources :</strong>
           <code>
 Sources (3) :
-📄 architecture.pdf (chunk 12) — ⭐ 0.87
-📄 guide-api.md (chunk 5) — ⭐ 0.76
-📄 notes-projet.txt (chunk 3) — ⭐ 0.69
+<span class="tutorial-icon">${TutorialIcons.file}</span> architecture.pdf (chunk 12) — <span class="tutorial-icon">${TutorialIcons.anima}</span> 0.87
+<span class="tutorial-icon">${TutorialIcons.file}</span> guide-api.md (chunk 5) — <span class="tutorial-icon">${TutorialIcons.anima}</span> 0.76
+<span class="tutorial-icon">${TutorialIcons.file}</span> notes-projet.txt (chunk 3) — <span class="tutorial-icon">${TutorialIcons.anima}</span> 0.69
           </code>
         </div>
 
@@ -653,30 +655,30 @@ Sources (3) :
       </section>
 
       <section class="guide-section">
-        <h3>📊 Gestion et Organisation</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.barChart}</span> Gestion et Organisation</h3>
 
         <h4>Liste des documents</h4>
         <p>Consultez tous vos documents uploadés :</p>
         <ul>
-          <li>📄 Nom du fichier</li>
-          <li>📅 Date d'upload</li>
-          <li>📏 Taille</li>
-          <li>🔢 Nombre de chunks créés</li>
-          <li>📊 Statut de l'indexation</li>
+          <li><span class="tutorial-icon">${TutorialIcons.file}</span> Nom du fichier</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Date d'upload</li>
+          <li><span class="tutorial-icon">${TutorialIcons.barChart}</span> Taille</li>
+          <li><span class="tutorial-icon">${TutorialIcons.barChart}</span> Nombre de chunks créés</li>
+          <li><span class="tutorial-icon">${TutorialIcons.barChart}</span> Statut de l'indexation</li>
         </ul>
 
         <h4>Actions disponibles</h4>
         <ul>
-          <li>👁️ <strong>Prévisualiser :</strong> Voir le contenu</li>
-          <li>⬇️ <strong>Télécharger :</strong> Récupérer le fichier original</li>
-          <li>🔄 <strong>Ré-indexer :</strong> Reconstruire les chunks et embeddings</li>
-          <li>🗑️ <strong>Supprimer :</strong> Retirer le document et ses chunks</li>
+          <li><span class="tutorial-icon">${TutorialIcons.search}</span> <strong>Prévisualiser :</strong> Voir le contenu</li>
+          <li><span class="tutorial-icon">${TutorialIcons.upload}</span> <strong>Télécharger :</strong> Récupérer le fichier original</li>
+          <li><span class="tutorial-icon">${TutorialIcons.refresh}</span> <strong>Ré-indexer :</strong> Reconstruire les chunks et embeddings</li>
+          <li><span class="tutorial-icon">${TutorialIcons.trash}</span> <strong>Supprimer :</strong> Retirer le document et ses chunks</li>
         </ul>
 
       </section>
 
       <section class="guide-section">
-        <h3>⚙️ Configuration Avancée</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.settings}</span> Configuration Avancée</h3>
 
         <h4>Paramètres de chunking</h4>
         <ul>
@@ -694,10 +696,10 @@ Sources (3) :
       </section>
 
       <section class="guide-section">
-        <h3>💡 Bonnes Pratiques</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.lightbulb}</span> Bonnes Pratiques</h3>
 
         <div class="guide-tip">
-          <h4>✅ Pour de meilleurs résultats</h4>
+          <h4><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Pour de meilleurs résultats</h4>
           <ul>
             <li>Uploadez des documents <strong>bien structurés</strong> (titres, sections)</li>
             <li>Utilisez des <strong>formats texte</strong> quand possible (meilleure extraction)</li>
@@ -708,7 +710,7 @@ Sources (3) :
         </div>
 
         <div class="guide-tip">
-          <h4>🎯 Optimisation des requêtes RAG</h4>
+          <h4><span class="tutorial-icon">${TutorialIcons.target}</span> Optimisation des requêtes RAG</h4>
           <ul>
             <li>Questions <strong>précises</strong> > questions vagues</li>
             <li>Mentionnez le <strong>nom du document</strong> si vous le connaissez</li>
@@ -719,22 +721,22 @@ Sources (3) :
       </section>
 
       <section class="guide-section">
-        <h3>🔧 Dépannage</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.settings}</span> Dépannage</h3>
 
         <h4>Le RAG ne trouve pas mon document</h4>
         <ul>
-          <li>✅ Vérifiez que le document est bien indexé</li>
-          <li>✅ Reformulez votre question avec d'autres mots</li>
-          <li>✅ Augmentez le top-k dans les paramètres</li>
-          <li>✅ Vérifiez le seuil de similarité</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Vérifiez que le document est bien indexé</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Reformulez votre question avec d'autres mots</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Augmentez le top-k dans les paramètres</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Vérifiez le seuil de similarité</li>
         </ul>
 
         <h4>L'upload échoue</h4>
         <ul>
-          <li>✅ Vérifiez la taille du fichier</li>
-          <li>✅ Vérifiez le format (supporté ?)</li>
-          <li>✅ Essayez de convertir en .txt ou .pdf</li>
-          <li>✅ Consultez les logs pour plus de détails</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Vérifiez la taille du fichier</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Vérifiez le format (supporté ?)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Essayez de convertir en .txt ou .pdf</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Consultez les logs pour plus de détails</li>
         </ul>
       </section>
     `
@@ -750,15 +752,15 @@ Sources (3) :
     summary: 'Suivez vos statistiques et l\'utilisation d\'Emergence',
     content: `
       <section class="guide-section">
-        <h3>🎯 Vue d'ensemble</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.target}</span> Vue d'ensemble</h3>
         <p>Le <strong>Cockpit</strong> affiche VOS statistiques personnelles uniquement (isolées par utilisateur).</p>
         <p><strong>Accès :</strong> Menu principal > Cockpit</p>
       </section>
 
       <section class="guide-section">
-        <h3>📊 Métriques Disponibles</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.barChart}</span> Métriques Disponibles</h3>
 
-        <h4>💰 Coûts d'Utilisation (Personnel)</h4>
+        <h4><span class="tutorial-icon">${TutorialIcons.dollarSign}</span> Coûts d'Utilisation (Personnel)</h4>
         <ul>
           <li><strong>Aujourd'hui :</strong> Dépenses du jour en cours</li>
           <li><strong>Cette semaine :</strong> 7 derniers jours glissants</li>
@@ -768,30 +770,30 @@ Sources (3) :
 
         <h5>Détails par agent :</h5>
         <ul>
-          <li>🌟 <strong>Anima :</strong> Tokens + coût</li>
-          <li>🔬 <strong>Neo :</strong> Tokens + coût</li>
-          <li>🧩 <strong>Nexus :</strong> Tokens + coût</li>
+          <li><span class="tutorial-icon">${TutorialIcons.anima}</span> <strong>Anima :</strong> Tokens + coût</li>
+          <li><span class="tutorial-icon">${TutorialIcons.neo}</span> <strong>Neo :</strong> Tokens + coût</li>
+          <li><span class="tutorial-icon">${TutorialIcons.nexus}</span> <strong>Nexus :</strong> Tokens + coût</li>
         </ul>
 
-        <h4>📈 Activité</h4>
+        <h4><span class="tutorial-icon">${TutorialIcons.trendingUp}</span> Activité</h4>
         <ul>
           <li><strong>Sessions :</strong> Nombre de connexions actives</li>
           <li><strong>Documents :</strong> Fichiers uploadés (total)</li>
           <li><strong>Conversations :</strong> Threads créés</li>
         </ul>
 
-        <h4>⚡ Performance (Administrateurs uniquement)</h4>
+        <h4><span class="tutorial-icon">${TutorialIcons.zap}</span> Performance (Administrateurs uniquement)</h4>
         <p>Les métriques suivantes sont réservées aux administrateurs :</p>
         <ul>
-          <li>⏳ Latence moyenne système</li>
-          <li>⏳ Uptime global</li>
-          <li>⏳ Taux de succès des requêtes</li>
-          <li>⏳ Métriques Prometheus</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Latence moyenne système</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Uptime global</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Taux de succès des requêtes</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Métriques Prometheus</li>
         </ul>
       </section>
 
       <section class="guide-section">
-        <h3>🔒 Confidentialité</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.lock}</span> Confidentialité</h3>
 
         <h4>Vos statistiques sont strictement privées</h4>
         <ul>
@@ -802,15 +804,15 @@ Sources (3) :
       </section>
 
       <section class="guide-section">
-        <h3>⚙️ Rafraîchissement</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.settings}</span> Rafraîchissement</h3>
         <ul>
           <li><strong>Automatique :</strong> Mise à jour toutes les 30 secondes</li>
-          <li><strong>Manuel :</strong> Cliquez sur l'icône 🔄 pour forcer</li>
+          <li><strong>Manuel :</strong> Cliquez sur l'icône <span class="tutorial-icon">${TutorialIcons.refresh}</span> pour forcer</li>
         </ul>
       </section>
 
       <section class="guide-section">
-        <h3>👑 Dashboard Administrateur (Rôle Admin uniquement) ⏳</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.award}</span> Dashboard Administrateur (Rôle Admin uniquement) <span class="tutorial-icon">${TutorialIcons.clock}</span></h3>
         <p><strong>Statut :</strong> Fonctionnalité admin avancée</p>
 
         <h4>Vue Globale :</h4>
@@ -841,7 +843,7 @@ Sources (3) :
       </section>
 
       <section class="guide-section">
-        <h3>🧪 Matrice de Benchmarks (Fonctionnalité Avancée) ⏳</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.search}</span> Matrice de Benchmarks (Fonctionnalité Avancée) <span class="tutorial-icon">${TutorialIcons.clock}</span></h3>
         <p><strong>Statut :</strong> Réservé aux administrateurs</p>
 
         <h4>Teste automatiquement différentes configurations système :</h4>
@@ -853,9 +855,9 @@ Sources (3) :
 
         <h4>Métriques affichées :</h4>
         <ul>
-          <li>✅ Statut : Réussi/Échoué</li>
-          <li>💰 Coût : USD par test</li>
-          <li>⏱️ Latence : Temps d'exécution</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Statut : Réussi/Échoué</li>
+          <li><span class="tutorial-icon">${TutorialIcons.dollarSign}</span> Coût : USD par test</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Latence : Temps d'exécution</li>
         </ul>
 
         <p><strong>Note :</strong> Réservé aux administrateurs pour éviter les coûts involontaires.</p>
@@ -872,13 +874,13 @@ Sources (3) :
     summary: 'Personnalisez votre expérience Emergence',
     content: `
       <section class="guide-section">
-        <h3>🎯 Vue d'ensemble</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.target}</span> Vue d'ensemble</h3>
         <p>Les paramètres d'Emergence vous permettent de configurer votre expérience utilisateur.</p>
         <p><strong>Accès :</strong> Menu utilisateur (coin supérieur droit) > Paramètres</p>
       </section>
 
       <section class="guide-section">
-        <h3>🆔 Mon Compte</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.user}</span> Mon Compte</h3>
 
         <h4>Informations affichées</h4>
         <ul>
@@ -890,61 +892,61 @@ Sources (3) :
 
         <h4>Actions disponibles</h4>
         <ul>
-          <li>🚪 <strong>Déconnexion</strong></li>
-          <li>⏰ <strong>Voir l'expiration du token</strong> (7 jours)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.arrowRight}</span> <strong>Déconnexion</strong></li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> <strong>Voir l'expiration du token</strong> (7 jours)</li>
         </ul>
 
         <p><strong>Note :</strong> La gestion du compte est simplifiée pour faciliter l'utilisation.</p>
       </section>
 
       <section class="guide-section">
-        <h3>🎨 Interface</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.settings}</span> Interface</h3>
 
         <h4>Affichage</h4>
         <ul>
-          <li>✅ <strong>Thème sombre :</strong> Activé par défaut</li>
-          <li>⏳ <strong>Thème clair :</strong> À venir (Roadmap Phase 3)</li>
-          <li>✅ <strong>Animations :</strong> Activer/désactiver les transitions</li>
-          <li>✅ <strong>Notifications :</strong> Toasts en bas à droite</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Thème sombre :</strong> Activé par défaut</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> <strong>Thème clair :</strong> À venir (Roadmap Phase 3)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Animations :</strong> Activer/désactiver les transitions</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Notifications :</strong> Toasts en bas à droite</li>
         </ul>
 
         <h4>Chat</h4>
         <ul>
-          <li>✅ <strong>Streaming :</strong> Affichage progressif des réponses (recommandé)</li>
-          <li>✅ <strong>Markdown :</strong> Rendu formaté des messages</li>
-          <li>✅ <strong>Syntax highlighting :</strong> Coloration automatique du code</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Streaming :</strong> Affichage progressif des réponses (recommandé)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Markdown :</strong> Rendu formaté des messages</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Syntax highlighting :</strong> Coloration automatique du code</li>
         </ul>
       </section>
 
       <section class="guide-section">
-        <h3>🤖 Agents et Modèles</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.brain}</span> Agents et Modèles</h3>
 
         <h4>Configuration actuelle : Fixe (backend)</h4>
         <p>Les agents sont configurés côté serveur avec des modèles optimaux pré-assignés :</p>
         <ul>
-          <li>🌟 <strong>Anima :</strong> Présence empathique</li>
-          <li>🔬 <strong>Neo :</strong> Analyste stratégique</li>
-          <li>🧩 <strong>Nexus :</strong> Architecte systémique</li>
+          <li><span class="tutorial-icon">${TutorialIcons.anima}</span> <strong>Anima :</strong> Présence empathique</li>
+          <li><span class="tutorial-icon">${TutorialIcons.neo}</span> <strong>Neo :</strong> Analyste stratégique</li>
+          <li><span class="tutorial-icon">${TutorialIcons.nexus}</span> <strong>Nexus :</strong> Architecte systémique</li>
         </ul>
 
         <h4>Fallback automatique</h4>
         <p>Si un fournisseur IA est indisponible (quota dépassé, erreur), Emergence bascule automatiquement :</p>
         <ul>
-          <li>Badge 🔄 en haut du message indique un fallback</li>
+          <li>Badge <span class="tutorial-icon">${TutorialIcons.refresh}</span> en haut du message indique un fallback</li>
           <li>Tooltip affiche le modèle réellement utilisé</li>
           <li>Les coûts sont calculés selon le modèle effectif</li>
         </ul>
 
-        <p><strong>⏳ Personnalisation :</strong> Sélection personnalisée des modèles prévue en Phase 3 (voir roadmap)</p>
+        <p><strong><span class="tutorial-icon">${TutorialIcons.clock}</span> Personnalisation :</strong> Sélection personnalisée des modèles prévue en Phase 3 (voir roadmap)</p>
       </section>
 
       <section class="guide-section">
-        <h3>📚 RAG et Documents</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.book}</span> RAG et Documents</h3>
 
         <h4>Activation</h4>
         <ul>
-          <li>✅ <strong>Toggle RAG :</strong> Dans la zone de saisie du chat (icône 📚)</li>
-          <li>✅ <strong>Par défaut :</strong> Désactivé (activation manuelle)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Toggle RAG :</strong> Dans la zone de saisie du chat (icône <span class="tutorial-icon">${TutorialIcons.book}</span>)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> <strong>Par défaut :</strong> Désactivé (activation manuelle)</li>
         </ul>
 
         <h4>Performance (Phase P2)</h4>
@@ -958,11 +960,11 @@ Sources (3) :
       </section>
 
       <section class="guide-section">
-        <h3>🔔 Notifications</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.info}</span> Notifications</h3>
 
         <h4>Types de notifications</h4>
 
-        <h5>💡 Hints proactifs</h5>
+        <h5><span class="tutorial-icon">${TutorialIcons.lightbulb}</span> Hints proactifs</h5>
         <p>Rappels mémoire basés sur vos conversations :</p>
         <ul>
           <li>Fréquence : Après 3 mentions d'un concept</li>
@@ -970,7 +972,7 @@ Sources (3) :
           <li>Désactiver : Ignorer définitivement</li>
         </ul>
 
-        <h5>❌ Erreurs système</h5>
+        <h5><span class="tutorial-icon">${TutorialIcons.alertCircle}</span> Erreurs système</h5>
         <p>Toasts rouges :</p>
         <ul>
           <li>WebSocket déconnecté</li>
@@ -978,7 +980,7 @@ Sources (3) :
           <li>Erreur API</li>
         </ul>
 
-        <h5>✅ Succès</h5>
+        <h5><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Succès</h5>
         <p>Toasts verts :</p>
         <ul>
           <li>Message envoyé</li>
@@ -988,14 +990,14 @@ Sources (3) :
       </section>
 
       <section class="guide-section">
-        <h3>🔐 Sécurité et Confidentialité</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.lock}</span> Sécurité et Confidentialité</h3>
 
         <h4>Authentification</h4>
         <ul>
           <li><strong>Type :</strong> Token JWT sécurisé</li>
           <li><strong>Durée session :</strong> 7 jours</li>
-          <li>⏳ <strong>Rotation tokens :</strong> À venir</li>
-          <li>⏳ <strong>2FA :</strong> Roadmap Phase 4</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> <strong>Rotation tokens :</strong> À venir</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> <strong>2FA :</strong> Roadmap Phase 4</li>
         </ul>
 
         <h4>Isolation des données</h4>
@@ -1009,58 +1011,58 @@ Sources (3) :
         <ul>
           <li><strong>Local :</strong> Token JWT dans localStorage</li>
           <li><strong>Serveur :</strong> SQLite + ChromaDB (backend)</li>
-          <li>⏳ <strong>Chiffrement at-rest :</strong> Roadmap future</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> <strong>Chiffrement at-rest :</strong> Roadmap future</li>
         </ul>
       </section>
 
       <section class="guide-section">
-        <h3>🚀 Fonctionnalités Prévues</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.zap}</span> Fonctionnalités Prévues</h3>
 
         <h4>Phase 3 (en cours)</h4>
         <ul>
-          <li>⏳ Thème clair/sombre (toggle utilisateur)</li>
-          <li>⏳ Sélection personnalisée des modèles IA</li>
-          <li>⏳ Export des conversations (CSV/JSON/PDF)</li>
-          <li>⏳ Gestion avancée des préférences mémoire</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Thème clair/sombre (toggle utilisateur)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Sélection personnalisée des modèles IA</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Export des conversations (CSV/JSON/PDF)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Gestion avancée des préférences mémoire</li>
         </ul>
 
         <h4>Phase 4 (planifiée)</h4>
         <ul>
-          <li>⏳ Authentification 2FA (TOTP)</li>
-          <li>⏳ Gestion multi-sessions</li>
-          <li>⏳ Mode hors ligne (PWA)</li>
-          <li>⏳ Chiffrement at-rest des données</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Authentification 2FA (TOTP)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Gestion multi-sessions</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Mode hors ligne (PWA)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Chiffrement at-rest des données</li>
         </ul>
 
         <h4>Futur</h4>
         <ul>
-          <li>⏳ Personnalisation complète des agents</li>
-          <li>⏳ Webhooks et intégrations</li>
-          <li>⏳ API publique développeurs</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Personnalisation complète des agents</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> Webhooks et intégrations</li>
+          <li><span class="tutorial-icon">${TutorialIcons.clock}</span> API publique développeurs</li>
         </ul>
       </section>
 
       <section class="guide-section">
-        <h3>⚠️ Limitations Connues</h3>
+        <h3><span class="tutorial-icon">${TutorialIcons.alertCircle}</span> Limitations Connues</h3>
 
         <h4>Sécurité</h4>
         <ul>
-          <li>❌ Pas de 2FA (authentification email uniquement)</li>
-          <li>❌ Pas de récupération de mot de passe</li>
-          <li>⚠️ Rate limiting partiel (activé sur login uniquement)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.alertCircle}</span> Pas de 2FA (authentification email uniquement)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.alertCircle}</span> Pas de récupération de mot de passe</li>
+          <li><span class="tutorial-icon">${TutorialIcons.alertCircle}</span> Rate limiting partiel (activé sur login uniquement)</li>
         </ul>
 
         <h4>Fonctionnalités</h4>
         <ul>
-          <li>❌ Pas de mode hors ligne (connexion internet requise)</li>
-          <li>❌ Pas d'export conversations (prévu Phase 3)</li>
-          <li>⚠️ Archivage conversations : Backend prêt, UI à venir</li>
+          <li><span class="tutorial-icon">${TutorialIcons.alertCircle}</span> Pas de mode hors ligne (connexion internet requise)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.alertCircle}</span> Pas d'export conversations (prévu Phase 3)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.alertCircle}</span> Archivage conversations : Backend prêt, UI à venir</li>
         </ul>
 
         <h4>Performance</h4>
         <ul>
-          <li>⚠️ Première requête RAG lente (~2s, chargement du modèle)</li>
-          <li>✅ Optimisé ensuite (cache + HNSW, -71% latence Phase P2)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.alertCircle}</span> Première requête RAG lente (~2s, chargement du modèle)</li>
+          <li><span class="tutorial-icon">${TutorialIcons.checkCircle}</span> Optimisé ensuite (cache + HNSW, -71% latence Phase P2)</li>
         </ul>
 
         <p><strong>Voir la roadmap complète</strong> dans la documentation ou contactez l'équipe de développement.</p>

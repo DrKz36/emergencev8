@@ -62,10 +62,11 @@ export default class AdminModule {
     if (!container) return;
 
     if (!this._isAdmin()) {
+      const { getIcon } = await import('./admin-icons.js');
       container.innerHTML = `
         <div class="admin-access-denied">
           <div class="access-denied-content">
-            <div class="access-denied-icon">🔒</div>
+            <div class="access-denied-icon">${getIcon('lock', 'icon-xl')}</div>
             <h2>Accès Refusé</h2>
             <p>Vous devez disposer des privilèges administrateur pour accéder à cette section.</p>
           </div>
@@ -79,21 +80,24 @@ export default class AdminModule {
     // Load CSS
     await this._loadStyles();
 
+    // Import AdminIcons for SVG icons
+    const { getIcon } = await import('./admin-icons.js');
+
     // Render admin interface with tabs
     container.innerHTML = `
       <div class="admin-module-wrapper">
         <div class="admin-navigation">
           <button class="admin-nav-btn ${this._currentView === 'dashboard' ? 'active' : ''}"
                   data-view="dashboard">
-            📊 Dashboard Global
+            ${getIcon('barChart', 'nav-icon')} Dashboard Global
           </button>
           <button class="admin-nav-btn ${this._currentView === 'auth' ? 'active' : ''}"
                   data-view="auth">
-            🔐 Gestion Utilisateurs
+            ${getIcon('users', 'nav-icon')} Gestion Utilisateurs
           </button>
           <button class="admin-nav-btn ${this._currentView === 'beta' ? 'active' : ''}"
                   data-view="beta">
-            📧 Invitations Beta
+            ${getIcon('mail', 'nav-icon')} Invitations Beta
           </button>
         </div>
         <div class="admin-views">

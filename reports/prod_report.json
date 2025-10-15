@@ -1,46 +1,31 @@
 {
-  "timestamp": "2025-10-14T19:37:34.971272",
+  "timestamp": "2025-10-15T08:32:46.752032",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
   "freshness": "1h",
-  "status": "DEGRADED",
+  "status": "OK",
   "summary": {
-    "errors": 0,
-    "warnings": 6,
+    "errors": 1,
+    "warnings": 0,
     "critical_signals": 0,
     "latency_issues": 0
   },
-  "errors": [],
-  "warnings": [
+  "errors": [
     {
-      "time": "2025-10-14T17:37:09.334211Z",
-      "msg": ""
-    },
-    {
-      "time": "2025-10-14T17:34:34.037814Z",
-      "msg": ""
-    },
-    {
-      "time": "2025-10-14T17:32:57.759771Z",
-      "msg": ""
-    },
-    {
-      "time": "2025-10-14T17:32:57.595526Z",
-      "msg": ""
-    },
-    {
-      "time": "2025-10-14T17:32:56.903633Z",
-      "msg": ""
+      "time": "2025-10-15T06:32:20.432711Z",
+      "severity": "ERROR",
+      "msg": "Traceback (most recent call last):\n  File \"/app/src/backend/features/dashboard/admin_service.py\", line 103, in _get_users_breakdown\n    cursor = await conn.execute(query)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/aiosqlite/core.py\", line 183, in execute\n "
     }
   ],
+  "warnings": [],
   "critical_signals": [],
   "latency_issues": [],
   "recommendations": [
     {
-      "priority": "MEDIUM",
-      "action": "Monitor closely and investigate warnings",
-      "details": "6 warnings detected"
+      "priority": "LOW",
+      "action": "No immediate action required",
+      "details": "Production is healthy"
     }
   ]
 }
