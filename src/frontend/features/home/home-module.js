@@ -106,7 +106,12 @@ export class HomeModule {
 
     const version = t('home.version');
 
-    const subtitle = t('home.subtitle');
+    let subtitle = t('home.subtitle');
+
+    // Ajouter une phrase de contextualisation si le subtitle est vide
+    if (!subtitle || subtitle === 'home.subtitle') {
+      subtitle = 'Un espace de dialogue avec plusieurs intelligences artificielles qui collaborent pour reflechir, creer et apprendre avec vous.';
+    }
 
     const emailLabel = t('home.email_label');
 

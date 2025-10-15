@@ -5,11 +5,29 @@
 
 const DOCS = [
   {
-    id: 'tutorial-guide',
-    title: 'Tutoriel pas-a-pas',
-    description: 'Guide statique pour prendre en main Emergence.',
-    path: '/docs/TUTORIAL_SYSTEM.md',
+    id: 'tutorial-vulgarise',
+    title: 'Tutoriel EMERGENCE (Grand public)',
+    description: 'Guide complet et accessible pour comprendre et utiliser EMERGENCE, avec glossaire IA integre.',
+    path: '/docs/EMERGENCE_TUTORIEL_VULGARISE_V2.md',
     category: 'Guides',
+    cta: 'Decouvrir EMERGENCE',
+    showInList: true,
+  },
+  {
+    id: 'glossaire',
+    title: 'Glossaire IA',
+    description: 'Dictionnaire interactif des termes lies a l\'intelligence artificielle (LLM, RAG, agents, memoire, etc.).',
+    path: '/docs/glossaire.md',
+    category: 'Guides',
+    cta: 'Consulter le glossaire',
+    showInList: true,
+  },
+  {
+    id: 'tutorial-guide',
+    title: 'Tutoriel systeme (Technique)',
+    description: 'Documentation technique du systeme de tutoriel (developeurs).',
+    path: '/docs/TUTORIAL_SYSTEM.md',
+    category: 'Technique',
     cta: 'Lire le tutoriel',
     showInList: true,
   },
@@ -192,13 +210,13 @@ export class ReferencesModule {
             <h1 id="references-title" class="references__title">A propos</h1>
             <p class="references__intro">Retrouvez la synthese technique et les reperes cle du projet Emergence.</p>
           </div>
-          <button type="button" class="references__tutorial-btn" data-doc-id="tutorial-guide" title="Afficher le guide pas-a-pas">
+          <button type="button" class="references__tutorial-btn" data-doc-id="tutorial-vulgarise" title="Decouvrir EMERGENCE (guide grand public)">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
               <circle cx="12" cy="12" r="10"></circle>
               <path stroke-linecap="round" stroke-linejoin="round" d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
               <line x1="12" y1="17" x2="12.01" y2="17"></line>
             </svg>
-            <span>Tutoriel pas-a-pas</span>
+            <span>Decouvrir EMERGENCE</span>
           </button>
         </header>
         ${agentsSection}
