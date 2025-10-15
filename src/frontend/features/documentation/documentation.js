@@ -5,6 +5,7 @@
 
 import { TUTORIAL_GUIDES } from '../../components/tutorial/tutorialGuides.js';
 import { generateHymnHTML, initializeHymnSection } from './hymn-section.js';
+import { glossaryNavigator } from '../../utils/glossary-navigation.js';
 
 export class Documentation {
     constructor() {
@@ -61,6 +62,10 @@ export class Documentation {
             this.render(container);
             this.attachEventListeners();
             initializeHymnSection();
+
+            // Initialize glossary navigator for back-to-position functionality
+            glossaryNavigator.init();
+
             this.initialized = true;
             console.log('[Documentation] Mounted successfully');
         } catch (error) {
@@ -81,13 +86,20 @@ export class Documentation {
 
                 <!-- Navigation rapide -->
                 <div class="doc-quick-nav">
-                    <a href="#tutorial" class="doc-nav-link">
+                    <a href="#tutorial" class="doc-nav-link btn-load-tutorial" data-doc="/docs/EMERGENCE_TUTORIEL_VULGARISE_V2.md">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"></circle>
                             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                             <line x1="12" y1="17" x2="12.01" y2="17"></line>
                         </svg>
                         Tutoriel
+                    </a>
+                    <a href="#tutorial" class="doc-nav-link btn-load-tutorial" data-doc="/docs/glossaire.md">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                        </svg>
+                        Glossaire
                     </a>
                     <a href="#stats" class="doc-nav-link">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -162,20 +174,6 @@ export class Documentation {
                                 Bienvenue dans ÉMERGENCE ! Découvrez nos guides accessibles pour comprendre et maîtriser
                                 cette plateforme de dialogue multi-agents.
                             </p>
-                            <div class="tutorial-quick-links" style="margin-top: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
-                                <a href="#" class="btn-load-tutorial" data-doc="/docs/EMERGENCE_TUTORIEL_VULGARISE_V2.md"
-                                   style="padding: 0.5rem 1rem; background: rgba(56, 189, 248, 0.2); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; text-decoration: none; color: rgb(56, 189, 248); font-weight: 500;">
-                                    📘 Tutoriel Grand Public
-                                </a>
-                                <a href="#" class="btn-load-tutorial" data-doc="/docs/glossaire.md"
-                                   style="padding: 0.5rem 1rem; background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 8px; text-decoration: none; color: rgb(139, 92, 246); font-weight: 500;">
-                                    📚 Glossaire IA
-                                </a>
-                                <a href="#" class="btn-load-tutorial" data-doc="/docs/TUTORIAL_SYSTEM.md"
-                                   style="padding: 0.5rem 1rem; background: rgba(74, 222, 128, 0.2); border: 1px solid rgba(74, 222, 128, 0.4); border-radius: 8px; text-decoration: none; color: rgb(74, 222, 128); font-weight: 500;">
-                                    ⚙️ Documentation Technique
-                                </a>
-                            </div>
                         </div>
 
                         <div id="tutorial-content-container" style="margin-top: 2rem;">
@@ -1349,8 +1347,8 @@ export class Documentation {
             });
         });
 
-        // Smooth scroll for navigation links
-        const navLinks = document.querySelectorAll('.doc-nav-link');
+        // Smooth scroll for navigation links (excluding tutorial loading buttons)
+        const navLinks = document.querySelectorAll('.doc-nav-link:not(.btn-load-tutorial)');
         navLinks.forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1423,10 +1421,22 @@ export class Documentation {
 
             container.innerHTML = `<div class="markdown-content" style="line-height: 1.8; max-width: 900px; margin: 0 auto;">${html}</div>`;
 
+            // Nettoyer l'historique de navigation pour recommencer avec le nouveau document
+            if (window.glossaryNavigator) {
+                window.glossaryNavigator.clearHistory();
+            }
+
             // Scroll to tutorial section
             const tutorialSection = document.getElementById('tutorial');
             if (tutorialSection) {
                 tutorialSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            // Réinitialiser les liens de glossaire pour le nouveau contenu
+            if (window.glossaryNavigator) {
+                setTimeout(() => {
+                    window.glossaryNavigator.attachLinkListeners();
+                }, 500);
             }
         } catch (error) {
             console.error('[Documentation] Failed to load markdown:', error);
