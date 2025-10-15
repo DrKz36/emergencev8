@@ -1236,6 +1236,8 @@ class ChatService:
 
             # Métriques
             rag_metrics.record_cache_miss()
+            rag_metrics.record_temporal_search_duration(search_duration)
+            rag_metrics.record_temporal_concepts_found(len(consolidated_entries))
             logger.info(f"[TemporalCache] ChromaDB search: {search_duration*1000:.0f}ms, found {len(consolidated_entries)} concepts")
 
             return consolidated_entries
@@ -1949,7 +1951,10 @@ class ChatService:
                     logger.warning(f"[ConceptRecall] Détection échouée : {recall_err}")
 
             # 🆕 DÉTECTION QUESTIONS TEMPORELLES + ENRICHISSEMENT HISTORIQUE
-            if not recall_context and self._is_temporal_query(last_user_message) and uid and thread_id:
+            is_temporal = self._is_temporal_query(last_user_message)
+            rag_metrics.record_temporal_query(is_temporal)
+
+            if not recall_context and is_temporal and uid and thread_id:
                 try:
                     recall_context = await self._build_temporal_history_context(
                         thread_id=thread_id,
@@ -1959,7 +1964,10 @@ class ChatService:
                         last_user_message=last_user_message
                     )
                     if recall_context:
-                        logger.info(f"[TemporalQuery] Contexte historique enrichi pour question temporelle")
+                        # Enregistrer taille du contexte enrichi
+                        context_size = len(recall_context.encode('utf-8'))
+                        rag_metrics.record_temporal_context_size(context_size)
+                        logger.info(f"[TemporalQuery] Contexte historique enrichi pour question temporelle ({context_size} bytes)")
                 except Exception as temporal_err:
                     logger.warning(f"[TemporalQuery] Enrichissement historique échoué : {temporal_err}")
 

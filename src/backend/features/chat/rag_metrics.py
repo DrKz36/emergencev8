@@ -130,6 +130,44 @@ if PROMETHEUS_AVAILABLE:
         'RAG system configuration parameters'
     )
 
+    # ==========================================
+    # Phase 3 - Métriques Mémoire Temporelle
+    # ==========================================
+
+    # Compteur questions temporelles détectées
+    memory_temporal_queries_total = Counter(
+        'memory_temporal_queries_total',
+        'Total temporal queries detected',
+        ['detected']  # "true" ou "false"
+    )
+
+    # Compteur concepts consolidés trouvés
+    memory_temporal_concepts_found_total = Counter(
+        'memory_temporal_concepts_found_total',
+        'Total consolidated concepts found in temporal queries',
+        ['count_range']  # "0", "1-2", "3-5", "5+"
+    )
+
+    # Histogram durée recherche ChromaDB pour mémoire consolidée
+    memory_temporal_search_duration_seconds = Histogram(
+        'memory_temporal_search_duration_seconds',
+        'Time spent searching ChromaDB for consolidated concepts',
+        buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
+    )
+
+    # Histogram taille contexte enrichi
+    memory_temporal_context_size_bytes = Histogram(
+        'memory_temporal_context_size_bytes',
+        'Size of enriched temporal context in bytes',
+        buckets=[100, 500, 1000, 2000, 5000, 10000]
+    )
+
+    # Gauge cache hit rate (calculé périodiquement)
+    memory_temporal_cache_hit_rate = Gauge(
+        'memory_temporal_cache_hit_rate',
+        'Cache hit rate for temporal queries (percentage)'
+    )
+
 
 # ==========================================
 # Helper functions pour instrumentation
@@ -296,6 +334,50 @@ def get_aggregator() -> RAGMetricsAggregator:
     if _global_aggregator is None:
         _global_aggregator = RAGMetricsAggregator()
     return _global_aggregator
+
+
+# ==========================================
+# Phase 3 - Helper functions Mémoire Temporelle
+# ==========================================
+
+def record_temporal_query(is_temporal: bool):
+    """Enregistre une question temporelle (détectée ou non)."""
+    if PROMETHEUS_AVAILABLE:
+        memory_temporal_queries_total.labels(detected=str(is_temporal).lower()).inc()
+
+
+def record_temporal_concepts_found(count: int):
+    """Enregistre le nombre de concepts consolidés trouvés."""
+    if PROMETHEUS_AVAILABLE:
+        # Classifier par range
+        if count == 0:
+            range_label = "0"
+        elif count <= 2:
+            range_label = "1-2"
+        elif count <= 5:
+            range_label = "3-5"
+        else:
+            range_label = "5+"
+
+        memory_temporal_concepts_found_total.labels(count_range=range_label).inc()
+
+
+def record_temporal_search_duration(duration_seconds: float):
+    """Enregistre la durée d'une recherche ChromaDB pour mémoire consolidée."""
+    if PROMETHEUS_AVAILABLE:
+        memory_temporal_search_duration_seconds.observe(duration_seconds)
+
+
+def record_temporal_context_size(size_bytes: int):
+    """Enregistre la taille du contexte temporel enrichi."""
+    if PROMETHEUS_AVAILABLE:
+        memory_temporal_context_size_bytes.observe(size_bytes)
+
+
+def update_temporal_cache_hit_rate(hit_rate_percentage: float):
+    """Met à jour le hit rate du cache temporel."""
+    if PROMETHEUS_AVAILABLE:
+        memory_temporal_cache_hit_rate.set(hit_rate_percentage)
 
 
 logger.info(f"[RAG Metrics] Module initialized (Prometheus available: {PROMETHEUS_AVAILABLE})")
