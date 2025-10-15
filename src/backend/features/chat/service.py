@@ -1247,6 +1247,133 @@ class ChatService:
             rag_metrics.record_cache_miss()  # Compter comme miss en cas d'erreur
             return []
 
+    async def _group_concepts_by_theme(
+        self,
+        consolidated_entries: List[Dict[str, Any]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Groupe les concepts consolidés par similarité sémantique.
+
+        Phase 3 - Priorité 3: Groupement thématique pour contexte plus concis.
+
+        Args:
+            consolidated_entries: Liste de concepts avec timestamp, content, type
+
+        Returns:
+            Dict[group_id, List[concepts]] - Concepts regroupés par thème
+
+        Algorithme:
+        1. Si < 3 concepts → pas de groupement (retour simple)
+        2. Générer embeddings pour chaque concept
+        3. Calculer matrice de similarité cosine
+        4. Regrouper concepts avec similarité > 0.7
+        5. Assigner concepts orphelins au groupe le plus proche (si > 0.5)
+        """
+        # Pas de groupement si peu de concepts
+        if len(consolidated_entries) < 3:
+            return {"ungrouped": consolidated_entries}
+
+        try:
+            # Extraire les contenus pour embedding
+            contents = [entry["content"] for entry in consolidated_entries]
+
+            # Générer embeddings avec le modèle déjà chargé
+            # self.vector_service.model est le SentenceTransformer
+            embeddings = self.vector_service.model.encode(contents)
+
+            # Calculer similarité cosine
+            from sklearn.metrics.pairwise import cosine_similarity
+            similarity_matrix = cosine_similarity(embeddings)
+
+            # Clustering simple avec seuil
+            groups = {}
+            assigned = set()
+            group_id = 0
+
+            for i in range(len(consolidated_entries)):
+                if i in assigned:
+                    continue
+
+                # Créer nouveau groupe
+                group_key = f"theme_{group_id}"
+                groups[group_key] = [consolidated_entries[i]]
+                assigned.add(i)
+
+                # Ajouter concepts similaires (cosine > 0.7)
+                for j in range(i + 1, len(consolidated_entries)):
+                    if j not in assigned and similarity_matrix[i][j] > 0.7:
+                        groups[group_key].append(consolidated_entries[j])
+                        assigned.add(j)
+
+                group_id += 1
+
+            logger.info(f"[ThematicGrouping] {len(consolidated_entries)} concepts → {len(groups)} groupes")
+
+            return groups
+
+        except Exception as e:
+            logger.warning(f"[ThematicGrouping] Erreur clustering: {e}", exc_info=True)
+            # Fallback: retour sans groupement
+            return {"ungrouped": consolidated_entries}
+
+    def _extract_group_title(self, concepts: List[Dict[str, Any]]) -> str:
+        """
+        Extrait un titre représentatif pour un groupe de concepts.
+
+        Phase 3 - Priorité 3: Extraction de titres intelligents.
+
+        Méthode:
+        1. Concaténer tous les contenus du groupe
+        2. Tokenizer et nettoyer (stop words, ponctuation)
+        3. Calculer fréquence des mots (TF simple)
+        4. Prendre les 2-3 mots les plus fréquents et significatifs
+        5. Formater en titre lisible
+
+        Args:
+            concepts: Liste de concepts du groupe
+
+        Returns:
+            Titre formaté (ex: "Infrastructure & Déploiement")
+        """
+        # Concaténer tous les contenus
+        combined_text = " ".join([c.get("content", "") for c in concepts])
+
+        # Nettoyer et tokenizer
+        import re
+        words = re.findall(r'\b[a-zA-ZÀ-ÿ]{4,}\b', combined_text.lower())
+
+        # Stop words simples (français + anglais)
+        stop_words = {
+            'être', 'avoir', 'faire', 'dire', 'aller', 'voir', 'savoir',
+            'pouvoir', 'vouloir', 'venir', 'devoir', 'prendre', 'donner',
+            'utilisateur', 'demande', 'question', 'discussion', 'parler',
+            'the', 'and', 'for', 'that', 'with', 'this', 'from', 'they',
+            'have', 'will', 'what', 'been', 'more', 'when', 'there'
+        }
+
+        # Calculer fréquence
+        word_freq = {}
+        for word in words:
+            if word not in stop_words and len(word) > 3:
+                word_freq[word] = word_freq.get(word, 0) + 1
+
+        # Prendre les 2-3 mots les plus fréquents
+        if not word_freq:
+            return "Discussion"
+
+        top_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:3]
+
+        # Formater en titre (capitaliser)
+        title_words = [w[0].capitalize() for w in top_words[:2]]  # Max 2 mots
+
+        # Joindre avec &
+        if len(title_words) == 2:
+            return f"{title_words[0]} & {title_words[1]}"
+        elif len(title_words) == 1:
+            return title_words[0]
+        else:
+            return "Discussion"
+
     async def _build_temporal_history_context(
         self,
         thread_id: str,
@@ -1289,10 +1416,19 @@ class ChatService:
                     n_results=n_results
                 )
 
-            # Combiner et trier tous les événements (messages + concepts consolidés)
-            all_events = []
+            # 🆕 PHASE 3 - PRIORITÉ 3: Groupement thématique
+            grouped_concepts = {}
+            if len(consolidated_entries) >= 3:
+                # Activer groupement si 3+ concepts
+                grouped_concepts = await self._group_concepts_by_theme(consolidated_entries)
+                logger.info(f"[ThematicGrouping] {len(grouped_concepts)} groupes créés")
+            else:
+                # Pas de groupement si peu de concepts
+                if consolidated_entries:
+                    grouped_concepts = {"ungrouped": consolidated_entries}
 
-            # Ajouter les messages du thread
+            # Préparer les messages du thread (pour affichage séparé)
+            thread_events = []
             for msg in messages:
                 role = msg.get("role", "").lower()
                 content = msg.get("content", "")
@@ -1304,7 +1440,7 @@ class ChatService:
                     continue
 
                 if created_at:
-                    all_events.append({
+                    thread_events.append({
                         "timestamp": created_at,
                         "role": role,
                         "content": content,
@@ -1312,58 +1448,83 @@ class ChatService:
                         "source": "thread"
                     })
 
-            # Ajouter les entrées consolidées
-            for entry in consolidated_entries:
-                all_events.append({
-                    "timestamp": entry["timestamp"],
-                    "role": "memory",
-                    "content": entry["content"],
-                    "type": entry["type"],
-                    "source": "consolidated"
-                })
-
-            # Trier tous les événements par date (du plus ancien au plus récent)
+            # Trier les messages par date (du plus ancien au plus récent)
             try:
-                all_events.sort(key=lambda x: datetime.fromisoformat(x["timestamp"].replace("Z", "+00:00")))
+                thread_events.sort(key=lambda x: datetime.fromisoformat(x["timestamp"].replace("Z", "+00:00")))
             except Exception as sort_err:
                 logger.debug(f"[TemporalHistory] Tri impossible: {sort_err}")
 
-            # Formater tous les événements
+            # Formater les groupes thématiques
             months = ["", "janv", "fév", "mars", "avr", "mai", "juin",
                       "juil", "août", "sept", "oct", "nov", "déc"]
 
-            for event in all_events:
-                try:
-                    # Parser la date
-                    dt = datetime.fromisoformat(event["timestamp"].replace("Z", "+00:00"))
-                    day = dt.day
-                    month = months[dt.month] if 1 <= dt.month <= 12 else str(dt.month)
-                    time_str = f"{dt.hour}h{dt.minute:02d}"
-                    date_str = f"{day} {month} à {time_str}"
-                except Exception:
-                    date_str = "date inconnue"
+            if grouped_concepts:
+                lines.append("**Thèmes abordés:**")
+                lines.append("")
 
-                # Extraire un aperçu du contenu
-                content = event.get("content", "")
-                preview = content[:80].strip() if isinstance(content, str) else ""
-                if len(content) > 80:
-                    preview += "..."
+                for group_id, concepts in grouped_concepts.items():
+                    if group_id == "ungrouped":
+                        # Pas de titre de groupe pour concepts non groupés
+                        for concept in concepts:
+                            try:
+                                dt = datetime.fromisoformat(concept["timestamp"].replace("Z", "+00:00"))
+                                date_str = f"{dt.day} {months[dt.month]} à {dt.hour}h{dt.minute:02d}"
+                                preview = concept["content"]
+                                lines.append(f"**[{date_str}] Mémoire ({concept['type']}) :** {preview}")
+                            except Exception:
+                                pass
+                    else:
+                        # Groupe thématique
+                        title = self._extract_group_title(concepts)
+                        count = len(concepts)
+                        label = "échange" if count == 1 else "échanges"
 
-                # Formater selon le type d'événement
-                if event["source"] == "thread":
-                    role = event.get("role")
-                    agent_id = event.get("agent_id")
-                    if role == "user":
-                        lines.append(f"**[{date_str}] Toi :** {preview}")
-                    elif role == "assistant" and agent_id:
-                        lines.append(f"**[{date_str}] {agent_id.title()} :** {preview}")
-                elif event["source"] == "consolidated":
-                    # Marquer les entrées issues de la mémoire consolidée
-                    concept_type = event.get("type", "concept")
-                    lines.append(f"**[{date_str}] Mémoire ({concept_type}) :** {preview}")
+                        lines.append(f"**[{title}]** Discussion récurrente ({count} {label})")
 
-            if len(all_events) > 0:
-                logger.info(f"[TemporalHistory] Contexte enrichi: {len(messages)} messages + {len(consolidated_entries)} concepts consolidés")
+                        for concept in concepts:
+                            try:
+                                dt = datetime.fromisoformat(concept["timestamp"].replace("Z", "+00:00"))
+                                date_str = f"{dt.day} {months[dt.month]} à {dt.hour}h{dt.minute:02d}"
+                                # Preview raccourci pour groupes
+                                preview = concept["content"][:60] + "..." if len(concept["content"]) > 60 else concept["content"]
+                                lines.append(f"  - {date_str}: {preview}")
+                            except Exception:
+                                pass
+
+                lines.append("")
+
+            # Formater les messages récents (garder les 10 plus récents)
+            if thread_events:
+                lines.append("**Messages récents:**")
+                recent_messages = thread_events[-10:] if len(thread_events) > 10 else thread_events
+
+                for event in recent_messages:
+                    try:
+                        # Parser la date
+                        dt = datetime.fromisoformat(event["timestamp"].replace("Z", "+00:00"))
+                        day = dt.day
+                        month = months[dt.month] if 1 <= dt.month <= 12 else str(dt.month)
+                        time_str = f"{dt.hour}h{dt.minute:02d}"
+                        date_str = f"{day} {month} à {time_str}"
+
+                        # Extraire un aperçu du contenu
+                        content = event.get("content", "")
+                        preview = content[:80].strip() if isinstance(content, str) else ""
+                        if len(content) > 80:
+                            preview += "..."
+
+                        # Formater selon le rôle
+                        role = event.get("role")
+                        agent_id = event.get("agent_id")
+                        if role == "user":
+                            lines.append(f"**[{date_str}] Toi :** {preview}")
+                        elif role == "assistant" and agent_id:
+                            lines.append(f"**[{date_str}] {agent_id.title()} :** {preview}")
+                    except Exception:
+                        pass
+
+            if len(consolidated_entries) > 0 or len(thread_events) > 0:
+                logger.info(f"[TemporalHistory] Contexte enrichi: {len(thread_events)} messages + {len(consolidated_entries)} concepts consolidés ({len(grouped_concepts)} groupes)")
 
             return "\n".join(lines) if len(lines) > 2 else ""
 
