@@ -340,11 +340,15 @@ def create_app() -> FastAPI:
         BASE = REPO_ROOT
         SRC_PATH = BASE / "src"
         ASSETS_PATH = BASE / "assets"
+        DOCS_PATH = BASE / "docs"
         INDEX_PATH = BASE / "index.html"
         if SRC_PATH.exists():
             app.mount("/src", StaticFiles(directory=str(SRC_PATH)), name="src")
         if ASSETS_PATH.exists():
             app.mount("/assets", StaticFiles(directory=str(ASSETS_PATH)), name="assets")
+        if DOCS_PATH.exists():
+            app.mount("/docs", StaticFiles(directory=str(DOCS_PATH)), name="docs")
+            logger.info(f"Dossier /docs monté: {DOCS_PATH}")
         if INDEX_PATH.exists():
             app.mount("/", StaticFiles(html=True, directory=str(BASE)), name="base")
     except Exception as e:
