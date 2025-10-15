@@ -1,8 +1,9 @@
 # src/backend/core/session_manager.py
-# V13.2 - FIX: Alignement avec queries.py V5.1 et ajout du chargement de session.
+# V13.3 - FIX: Ajout du système de timeout d'inactivité (3 minutes)
 import logging
 import json
-from datetime import datetime, timezone
+import asyncio
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional, Tuple, Set
 from uuid import uuid4
 
@@ -14,10 +15,14 @@ from backend.features.memory.analyzer import MemoryAnalyzer
 
 logger = logging.getLogger(__name__)
 
+# Configuration du timeout d'inactivité
+INACTIVITY_TIMEOUT_MINUTES = 3  # Timeout après 3 minutes d'inactivité
+CLEANUP_INTERVAL_SECONDS = 30  # Vérification toutes les 30 secondes
+
 class SessionManager:
     """
     Gère les sessions de chat actives en mémoire et leur persistance.
-    V13.2: Ajout du chargement de session depuis la BDD et correction des dépendances.
+    V13.3: Ajout du système de timeout d'inactivité automatique.
     """
 
     def __init__(self, db_manager: DatabaseManager, memory_analyzer: Optional[MemoryAnalyzer] = None):
@@ -32,14 +37,92 @@ class SessionManager:
         self._hydrated_threads: Dict[Tuple[str, str], bool] = {}
         self._session_alias_to_canonical: Dict[str, str] = {}
         self._session_canonical_to_aliases: Dict[str, Set[str]] = {}
+
+        # Tâche de nettoyage périodique
+        self._cleanup_task: Optional[asyncio.Task] = None
+        self._is_running = False
+
         is_ready = self.memory_analyzer is not None
-        logger.info(f"SessionManager V13.2 initialisé. MemoryAnalyzer prêt : {is_ready}")
+        logger.info(f"SessionManager V13.3 initialisé avec timeout d'inactivité de {INACTIVITY_TIMEOUT_MINUTES}min. MemoryAnalyzer prêt : {is_ready}")
 
     def _ensure_analyzer_ready(self):
         """Vérifie que le service dépendant est bien injecté avant utilisation."""
         if not self.memory_analyzer:
             logger.error("Dépendance 'memory_analyzer' non injectée dans SessionManager.")
             raise ReferenceError("SessionManager: memory_analyzer manquant.")
+
+    def start_cleanup_task(self):
+        """Démarre la tâche de nettoyage automatique des sessions inactives."""
+        if self._cleanup_task is None or self._cleanup_task.done():
+            self._is_running = True
+            self._cleanup_task = asyncio.create_task(self._cleanup_inactive_sessions_loop())
+            logger.info("Tâche de nettoyage des sessions inactives démarrée.")
+
+    async def stop_cleanup_task(self):
+        """Arrête la tâche de nettoyage automatique."""
+        self._is_running = False
+        if self._cleanup_task and not self._cleanup_task.done():
+            self._cleanup_task.cancel()
+            try:
+                await self._cleanup_task
+            except asyncio.CancelledError:
+                pass
+            logger.info("Tâche de nettoyage des sessions inactives arrêtée.")
+
+    async def _cleanup_inactive_sessions_loop(self):
+        """Boucle de nettoyage périodique des sessions inactives."""
+        logger.info(f"Démarrage de la boucle de nettoyage (intervalle: {CLEANUP_INTERVAL_SECONDS}s)")
+        while self._is_running:
+            try:
+                await asyncio.sleep(CLEANUP_INTERVAL_SECONDS)
+                await self._cleanup_inactive_sessions()
+            except asyncio.CancelledError:
+                logger.info("Boucle de nettoyage annulée.")
+                break
+            except Exception as e:
+                logger.error(f"Erreur dans la boucle de nettoyage: {e}", exc_info=True)
+
+    async def _cleanup_inactive_sessions(self):
+        """Nettoie les sessions inactives depuis plus de INACTIVITY_TIMEOUT_MINUTES minutes."""
+        now = datetime.now(timezone.utc)
+        timeout_threshold = timedelta(minutes=INACTIVITY_TIMEOUT_MINUTES)
+        sessions_to_cleanup = []
+
+        for session_id, session in list(self.active_sessions.items()):
+            try:
+                last_activity = getattr(session, 'last_activity', None)
+                if last_activity is None:
+                    # Si pas de last_activity, utiliser start_time
+                    last_activity = session.start_time
+
+                inactivity_duration = now - last_activity
+                if inactivity_duration > timeout_threshold:
+                    sessions_to_cleanup.append((session_id, inactivity_duration))
+            except Exception as e:
+                logger.error(f"Erreur lors de la vérification d'inactivité pour session {session_id}: {e}")
+
+        # Nettoyer les sessions inactives
+        for session_id, duration in sessions_to_cleanup:
+            try:
+                logger.info(f"Session {session_id} inactive depuis {duration.total_seconds():.0f}s, nettoyage...")
+                await self.handle_session_revocation(
+                    session_id,
+                    reason="inactivity_timeout",
+                    close_connections=True,
+                    close_code=4408,  # Code personnalisé pour timeout d'inactivité
+                )
+            except Exception as e:
+                logger.error(f"Erreur lors du nettoyage de la session {session_id}: {e}", exc_info=True)
+
+        if sessions_to_cleanup:
+            logger.info(f"{len(sessions_to_cleanup)} session(s) nettoyée(s) pour inactivité.")
+
+    def _update_session_activity(self, session_id: str):
+        """Met à jour le timestamp de dernière activité d'une session."""
+        session_id = self.resolve_session_id(session_id)
+        session = self.active_sessions.get(session_id)
+        if session:
+            session.last_activity = datetime.now(timezone.utc)
 
     async def ensure_session(self, session_id: str, user_id: str, *, thread_id: Optional[str] = None,
                              history_limit: int = 200) -> Session:
@@ -50,11 +133,13 @@ class SessionManager:
         if not session:
             session = await self.load_session_from_db(session_id)
             if not session:
+                now = datetime.now(timezone.utc)
                 session = Session(
                     id=session_id,
                     user_id=user_id,
-                    start_time=datetime.now(timezone.utc),
+                    start_time=now,
                     end_time=None,
+                    last_activity=now,
                     history=[],
                 )
                 if thread_id:
@@ -63,6 +148,9 @@ class SessionManager:
                 logger.info(f"Session active créée : {session_id} pour l'utilisateur {user_id}")
             else:
                 logger.info(f"Session {session_id} rechargée depuis la BDD")
+
+        # Mettre à jour l'activité à chaque accès
+        self._update_session_activity(session_id)
 
         resolved_user_id = user_id or session.user_id or self._session_user_cache.get(session_id)
         if resolved_user_id:
@@ -92,13 +180,17 @@ class SessionManager:
         session_id = self.resolve_session_id(session_id)
         if session_id in self.active_sessions:
             logger.warning(f"Tentative de création d'une session déjà existante: {session_id}")
+            # Mettre à jour l'activité même si elle existe déjà
+            self._update_session_activity(session_id)
             return self.active_sessions[session_id]
 
+        now = datetime.now(timezone.utc)
         session = Session(
             id=session_id,
             user_id=user_id,
-            start_time=datetime.now(timezone.utc),
+            start_time=now,
             end_time=None,
+            last_activity=now,
             history=[],
         )
         self.active_sessions[session_id] = session
@@ -249,11 +341,13 @@ class SessionManager:
                 except Exception:
                     reconstructed_history.append(candidate)
 
+            now = datetime.now(timezone.utc)
             session = Session(
                 id=session_dict['id'],
                 user_id=session_dict['user_id'],
                 start_time=datetime.fromisoformat(session_dict['created_at']),
                 end_time=datetime.fromisoformat(session_dict['updated_at']),
+                last_activity=now,  # Initialiser avec maintenant lors du chargement
                 history=reconstructed_history,
             )
             session.metadata = {
@@ -358,6 +452,9 @@ class SessionManager:
         session_id = self.resolve_session_id(session_id)
         session = self.get_session(session_id)
         if session:
+            # Mettre à jour l'activité
+            self._update_session_activity(session_id)
+
             payload = message.model_dump(mode='json')
             if "message" in payload and "content" not in payload:
                 payload["content"] = payload.pop("message")

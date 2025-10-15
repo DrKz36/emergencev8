@@ -7,7 +7,7 @@ Assure la cohérence et la validation des structures de données à travers tout
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional, List
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 # --- Énumérations pour les valeurs contrôlées ---
 
@@ -35,9 +35,10 @@ class Session(BaseModel):
     user_id: str = Field(..., description="ID de l'utilisateur associé à la session")
     start_time: datetime = Field(..., description="Horodatage du début de la session")
     end_time: Optional[datetime] = Field(None, description="Horodatage de la fin de la session")
+    last_activity: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Horodatage de la dernière activité")
     history: List[Dict[str, Any]] = Field(default_factory=list, description="Liste des messages (ChatMessage, AgentMessage) de la session")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadata for the session (thread info, summaries).")
-    
+
     class Config:
         extra = 'allow' # Permet d'ajouter des champs non définis (ex: summary, concepts) plus tard
 

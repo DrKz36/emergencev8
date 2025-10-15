@@ -191,6 +191,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.warning(f"AutoSyncService startup failed: {e}")
 
+    # 🔧 Démarrer le nettoyage automatique des sessions inactives
+    try:
+        session_manager = container.session_manager()
+        session_manager.start_cleanup_task()
+        logger.info("SessionManager cleanup task started (inactivity timeout: 3 min)")
+    except Exception as e:
+        logger.warning(f"SessionManager cleanup task startup failed: {e}")
+
     logger.info("✅ Lifespan: Backend prêt")
 
     yield  # Application running
@@ -215,6 +223,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("AutoSyncService stopped")
     except Exception as e:
         logger.warning(f"AutoSyncService shutdown failed: {e}")
+
+    # 🔧 Arrêter le nettoyage automatique des sessions
+    try:
+        session_manager = container.session_manager()
+        await session_manager.stop_cleanup_task()
+        logger.info("SessionManager cleanup task stopped")
+    except Exception as e:
+        logger.warning(f"SessionManager cleanup task shutdown failed: {e}")
 
     # Fermer DB
     try:
