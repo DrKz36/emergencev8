@@ -135,8 +135,10 @@ Vous pouvez **consolider manuellement** la mémoire depuis le **Centre Mémoire*
 ### Étape 3 : Consulter d'autres agents
 
 Si Neo répond mais que vous souhaitez l'avis d'Anima :
-- Tapez `@anima` suivi de votre question pour consulter ponctuellement cet agent.
-- Exemple : `@anima Comment rendre cette lettre plus chaleureuse ?`
+- **Cliquez sur le bouton rond** représentant Anima au-dessus du message de Neo.
+- L'agent sollicité donnera alors son point de vue sur ce message spécifique.
+- Sa réponse commentée apparaîtra dans le fil de discussion.
+- **Astuce** : Ces boutons circulaires d'agents sont visibles au-dessus de chaque message d'agent.
 
 ### Étape 4 : Utiliser le mode RAG (Recherche Augmentée)
 
@@ -182,7 +184,7 @@ Neo (avec RAG) : "Selon le document 'rapport_climat_2024.pdf', page 12, les reco
 ### 💬 Chat Multi-Agents
 L'interface principale pour dialoguer avec Anima, Neo et Nexus. Vous pouvez :
 - Choisir un agent principal ou laisser le système router automatiquement.
-- Consulter ponctuellement un autre agent avec `@nom_agent`.
+- Consulter ponctuellement un autre agent en cliquant sur les **boutons circulaires** au-dessus de chaque message d'agent.
 - Activer/désactiver le mode RAG pour interroger vos documents.
 
 **Raccourcis clavier** :
