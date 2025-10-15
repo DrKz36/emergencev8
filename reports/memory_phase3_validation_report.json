@@ -1,0 +1,55 @@
+{
+  "date": "2025-10-15T05:25:45.394172",
+  "total_messages": 25,
+  "total_concepts_extracted": 12,
+  "total_concepts_found": 29,
+  "themes": {
+    "Infrastructure & DevOps": [
+      "optimisation des images Docker",
+      "Engels",
+      "Beyfortus",
+      "philosophie matérialiste et conscience",
+      "DJ Garance",
+      "configuration CI/CD et déploiement canary",
+      "Cloud Run"
+    ],
+    "Philosophie": [
+      "Engels",
+      "philosophie matérialiste et conscience",
+      "symbolisme et analyse littéraire",
+      "Beyfortus"
+    ],
+    "Littérature & Poésie": [
+      "Cakewalk Next",
+      "philosophie matérialiste et conscience",
+      "Beyfortus",
+      "symbolisme et analyse littéraire",
+      "Engels",
+      "Cloud Run"
+    ],
+    "Médecine & Sciences": [
+      "efficacité des vaccins et données médicales",
+      "Beyfortus",
+      "philosophie matérialiste et conscience",
+      "symbolisme et analyse littéraire",
+      "Prevnar 20",
+      "Engels"
+    ],
+    "Musique & Création": [
+      "Cakewalk Next",
+      "philosophie matérialiste et conscience",
+      "Beyfortus",
+      "DJ Garance",
+      "symbolisme et analyse littéraire",
+      "Engels"
+    ]
+  },
+  "criteria": {
+    "Extraction de concepts multithématiques": true,
+    "Groupement thématique activé (5+ concepts)": true,
+    "Horodatages temporels cohérents": true,
+    "Consolidation LTM visible via API": true,
+    "Recherche sémantique fonctionnelle": true
+  },
+  "validation_status": "PASS"
+}

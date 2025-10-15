@@ -1,0 +1,51 @@
+{
+  "timestamp": "2025-10-15T05:36:45.765407",
+  "duration_sec": 0.225021,
+  "test_results": {
+    "Prometheus Metrics": "✗ FAIL",
+    "Stress Test (100+ req)": "✗ FAIL",
+    "Concept Clustering": "✗ FAIL",
+    "Contextual Recall": "✗ FAIL"
+  },
+  "success_rate": 0.0,
+  "details": {
+    "prometheus": {
+      "success": false,
+      "metrics_count": 0,
+      "sample_metrics": {}
+    },
+    "stress_test": {
+      "success": false,
+      "total_queries": 108,
+      "successful": 0,
+      "errors": 108,
+      "duration_sec": 0.1937873363494873,
+      "throughput_rps": 557.3119587403098,
+      "total_concepts": 0
+    },
+    "clustering": {
+      "success": false,
+      "avg_concepts_per_group": 0,
+      "groups_tested": 3
+    },
+    "contextual_recall": {
+      "success": false,
+      "avg_recall": 0.0,
+      "queries_tested": 3,
+      "details": [
+        {
+          "query": "docker kubernetes",
+          "error": 401
+        },
+        {
+          "query": "prometheus monitoring",
+          "error": 401
+        },
+        {
+          "query": "philosophy materialism",
+          "error": 401
+        }
+      ]
+    }
+  }
+}

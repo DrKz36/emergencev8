@@ -1,0 +1,93 @@
+{
+  "start_time": "2025-10-15T05:35:08.756683",
+  "end_time": "2025-10-15T05:35:08.788149",
+  "duration_seconds": 0.031466,
+  "validation_results": {
+    "Prometheus Metrics": "✗ FAIL",
+    "API Health Check": "✗ FAIL",
+    "Memory Search": "✗ FAIL",
+    "Concept Search": "✗ FAIL"
+  },
+  "success_rate_percent": 0.0,
+  "detailed_results": {
+    "prometheus_metrics": {
+      "success": false,
+      "error": "Status 404"
+    },
+    "api_health": {
+      "success": false,
+      "endpoints": {
+        "/api/memory/tend-garden": {
+          "status": 401,
+          "success": false
+        },
+        "/api/memory/user/stats": {
+          "status": 401,
+          "success": false
+        },
+        "/api/memory/search/unified": {
+          "status": 401,
+          "success": false
+        },
+        "/api/memory/concepts/search": {
+          "status": 401,
+          "success": false
+        }
+      },
+      "total": 4,
+      "working": 0
+    },
+    "memory_search": {
+      "success": false,
+      "queries": {
+        "docker": {
+          "status": "error",
+          "code": 401
+        },
+        "kubernetes": {
+          "status": "error",
+          "code": 401
+        },
+        "prometheus": {
+          "status": "error",
+          "code": 401
+        },
+        "philosophy": {
+          "status": "error",
+          "code": 401
+        },
+        "programming": {
+          "status": "error",
+          "code": 401
+        }
+      },
+      "total_results": 0
+    },
+    "concept_search": {
+      "success": false,
+      "searches": {
+        "docker": {
+          "status": "error",
+          "code": 401
+        },
+        "redis": {
+          "status": "error",
+          "code": 401
+        },
+        "python": {
+          "status": "error",
+          "code": 401
+        },
+        "philosophy": {
+          "status": "error",
+          "code": 401
+        },
+        "music": {
+          "status": "error",
+          "code": 401
+        }
+      },
+      "total_concepts": 0
+    }
+  }
+}
