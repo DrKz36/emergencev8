@@ -1,21 +1,26 @@
 {
-  "timestamp": "2025-10-15T08:32:46.752032",
+  "timestamp": "2025-10-15T17:26:49.122037",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
   "freshness": "1h",
-  "status": "OK",
+  "status": "DEGRADED",
   "summary": {
-    "errors": 1,
+    "errors": 2,
     "warnings": 0,
     "critical_signals": 0,
     "latency_issues": 0
   },
   "errors": [
     {
-      "time": "2025-10-15T06:32:20.432711Z",
+      "time": "2025-10-15T15:19:11.561506Z",
       "severity": "ERROR",
-      "msg": "Traceback (most recent call last):\n  File \"/app/src/backend/features/dashboard/admin_service.py\", line 103, in _get_users_breakdown\n    cursor = await conn.execute(query)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/aiosqlite/core.py\", line 183, in execute\n "
+      "msg": "Traceback (most recent call last):\n  File \"/app/src/backend/features/memory/analyzer.py\", line 400, in _analyze\n    analysis_result = await asyncio.wait_for(\n                      ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/asyncio/tasks.py\", line 502, in wait_for\n    raise exceptions."
+    },
+    {
+      "time": "2025-10-15T15:19:11.561487Z",
+      "severity": "ERROR",
+      "msg": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.11/asyncio/tasks.py\", line 500, in wait_for\n    return fut.result()\n           ^^^^^^^^^^^^\n  File \"/app/src/backend/features/chat/service.py\", line 1991, in get_structured_llm_response\n    openai_resp = await self.openai_client.chat."
     }
   ],
   "warnings": [],
@@ -23,9 +28,9 @@
   "latency_issues": [],
   "recommendations": [
     {
-      "priority": "LOW",
-      "action": "No immediate action required",
-      "details": "Production is healthy"
+      "priority": "MEDIUM",
+      "action": "Monitor closely and investigate warnings",
+      "details": "0 warnings detected"
     }
   ]
 }

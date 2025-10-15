@@ -1,8 +1,8 @@
 # Metrics Feature - Prometheus Endpoints
 
 **Module**: `src/backend/features/metrics/router.py`
-**Version**: V1.0 (Émergence V8)
-**Dernière mise à jour**: 2025-10-11
+**Version**: V1.1 (Émergence V8)
+**Dernière mise à jour**: 2025-10-15
 
 ## Vue d'ensemble
 
@@ -17,8 +17,8 @@ Le module Metrics expose des endpoints pour l'observabilité et le monitoring de
 Expose les métriques au format Prometheus pour scraping.
 
 **Configuration**:
-- Variable d'environnement: `CONCEPT_RECALL_METRICS_ENABLED=true`
-- Par défaut: **désactivé** (retourne message informatif)
+- Variable d'environnement: `CONCEPT_RECALL_METRICS_ENABLED=true|false`
+- Par défaut: **activé** (`true`) - Métriques Prometheus disponibles immédiatement
 
 **Format de sortie**: `text/plain` (Prometheus exposition format)
 
@@ -63,10 +63,12 @@ scrape_configs:
     metrics_path: '/metrics'
 ```
 
-**Erreur si désactivé**:
+**Réponse si désactivé** (via `CONCEPT_RECALL_METRICS_ENABLED=false`):
 ```
 # Metrics disabled. Set CONCEPT_RECALL_METRICS_ENABLED=true to enable.
 ```
+
+> **Note importante**: Depuis la V1.1, les métriques sont **activées par défaut** pour faciliter l'observabilité en production. Pour désactiver, définir explicitement `CONCEPT_RECALL_METRICS_ENABLED=false`.
 
 ---
 
@@ -187,13 +189,18 @@ rag_results_filtered_total{reason="below_threshold|..."}
 ### Variables d'environnement
 
 **`CONCEPT_RECALL_METRICS_ENABLED`**:
-- Valeur: `"true"` pour activer, `"false"` (défaut) pour désactiver
-- Active l'endpoint `/metrics` au format Prometheus
-- **Recommandation production**: Activer uniquement si Prometheus est configuré
+- Valeur: `"true"` (par défaut depuis V1.1) pour activer, `"false"` pour désactiver
+- Contrôle la disponibilité de l'endpoint `/metrics` au format Prometheus
+- **Par défaut**: `true` - Métriques activées pour observabilité production
+- **Recommandation**: Garder activé en production. Désactiver uniquement si aucun système de monitoring n'est configuré
 
 **Exemple `.env`**:
 ```bash
+# Métriques Prometheus (activé par défaut)
 CONCEPT_RECALL_METRICS_ENABLED=true
+
+# Pour désactiver les métriques
+# CONCEPT_RECALL_METRICS_ENABLED=false
 ```
 
 ---
@@ -202,9 +209,11 @@ CONCEPT_RECALL_METRICS_ENABLED=true
 
 ### Avec Prometheus
 
-**1. Activer les métriques**:
+**1. Vérifier que les métriques sont activées** (par défaut depuis V1.1):
 ```bash
-export CONCEPT_RECALL_METRICS_ENABLED=true
+# Vérifier le statut via health endpoint
+curl http://localhost:8000/health
+# Réponse attendue: {"status": "healthy", "metrics_enabled": true}
 ```
 
 **2. Configurer Prometheus** (`prometheus.yml`):
@@ -300,7 +309,7 @@ async function fetchRAGMetrics() {
 
 2. **Rate limiting**: Limiter le scraping Prometheus (max 1 req/15s)
 
-3. **Désactiver par défaut**: `CONCEPT_RECALL_METRICS_ENABLED=false` si pas de Prometheus
+3. **Contrôler l'activation**: Les métriques sont activées par défaut. Définir `CONCEPT_RECALL_METRICS_ENABLED=false` si aucun monitoring Prometheus n'est configuré
 
 ### Monitoring
 
@@ -357,6 +366,11 @@ async function fetchRAGMetrics() {
 ---
 
 ## Changelog
+
+### V1.1 - 2025-10-15
+- **BREAKING CHANGE**: Métriques Prometheus activées par défaut (`CONCEPT_RECALL_METRICS_ENABLED=true`)
+- Amélioration de l'observabilité production (facilite le monitoring Cloud Run)
+- Ajout de documentation sur l'activation par défaut
 
 ### V1.0 - 2025-10-11
 - Endpoint `/metrics` format Prometheus (activable via env var)

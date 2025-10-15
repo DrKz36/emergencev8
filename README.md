@@ -171,10 +171,11 @@ Documentation technique des modules backend récents :
   - Recherche hybride BM25 + vectorielle (alpha=0.5)
   - Métriques complètes (succès/échecs, latence, cache hits)
 
-- **[Metrics Feature](docs/backend/metrics.md)** - Endpoints Prometheus
-  - `/metrics` - Export Prometheus (activable via env var)
+- **[Metrics Feature](docs/backend/metrics.md)** - Endpoints Prometheus (V1.1)
+  - `/metrics` - Export Prometheus (**activé par défaut** depuis V1.1)
   - `/metrics/rag` - Métriques RAG structurées (JSON)
   - `/health` - Healthcheck basique
+  - **Changement majeur**: Observabilité production activée par défaut
 
 - **[Monitoring Feature](docs/backend/monitoring.md)** - Health checks avancés K8s
   - `/health/liveness` - Liveness probe (processus vivant)
