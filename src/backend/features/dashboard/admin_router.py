@@ -239,3 +239,24 @@ async def get_system_metrics(
     metrics = await admin_service.get_system_metrics()
     logger.info("[Admin] System metrics retrieved")
     return metrics
+
+
+@router.get(
+    "/admin/costs/detailed",
+    response_model=Dict[str, Any],
+    tags=["Admin Dashboard"],
+    summary="Get detailed costs breakdown by user and module (admin only)",
+    description="Returns granular cost analysis aggregated by user and feature/module. Fix Phase 1.5.",
+)
+async def get_detailed_costs_breakdown(
+    _admin_verified: bool = Depends(verify_admin_role),
+    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service()),
+) -> Dict[str, Any]:
+    """
+    Get detailed costs breakdown - admin only.
+    Returns costs aggregated by user, with module-level breakdown for each user.
+    """
+    logger.info("[Admin] Fetching detailed costs breakdown")
+    breakdown = await admin_service.get_detailed_costs_breakdown()
+    logger.info(f"[Admin] Detailed costs breakdown retrieved: {breakdown.get('total_users', 0)} users")
+    return breakdown

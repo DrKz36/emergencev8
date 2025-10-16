@@ -90,19 +90,29 @@ class AdminDashboardService:
             }
 
     async def _get_users_breakdown(self) -> List[Dict[str, Any]]:
-        """Get per-user statistics breakdown."""
+        """Get per-user statistics breakdown with flexible user matching."""
         try:
-            # Query to get unique users from sessions with email
-            # INNER JOIN to ensure we only get users that exist in auth_allowlist
+            # Fix Phase 1.3: Use LEFT JOIN to include all users, even without auth_allowlist match
+            # This prevents "Aucun utilisateur trouvé" when user_id != email
             query = """
-                SELECT DISTINCT s.user_id, a.email, a.role
+                SELECT DISTINCT
+                    s.user_id,
+                    COALESCE(a.email, s.user_id) as email,
+                    COALESCE(a.role, 'member') as role
                 FROM sessions s
-                INNER JOIN auth_allowlist a ON s.user_id = a.email
+                LEFT JOIN auth_allowlist a ON (
+                    s.user_id = a.email
+                    OR s.user_id = a.user_id
+                )
                 WHERE s.user_id IS NOT NULL
+                ORDER BY s.created_at DESC
             """
             conn = await self.db._ensure_connection()
             cursor = await conn.execute(query)
             rows = await cursor.fetchall()
+
+            if not rows:
+                logger.warning("[admin_dashboard] No users found in sessions table")
 
             users_data = []
             for row in rows:
@@ -258,33 +268,40 @@ class AdminDashboardService:
             return {}
 
     async def _get_date_metrics(self) -> Dict[str, Any]:
-        """Get metrics grouped by date ranges."""
+        """Get metrics grouped by date ranges with NULL-safe timestamp handling."""
         try:
             now = datetime.now(timezone.utc)
 
-            # Last 7 days breakdown
+            # Fix Phase 1.4: Use COALESCE to handle NULL timestamps
+            # This ensures the "Évolution des Coûts" chart displays data correctly
             daily_costs = []
             for i in range(7):
                 date = now - timedelta(days=i)
                 date_str = date.strftime("%Y-%m-%d")
 
                 query = """
-                    SELECT COALESCE(SUM(total_cost), 0) as daily_total
+                    SELECT
+                        COALESCE(SUM(total_cost), 0) as daily_total,
+                        COUNT(*) as request_count
                     FROM costs
-                    WHERE DATE(timestamp) = ?
+                    WHERE DATE(COALESCE(timestamp, created_at, 'now')) = ?
                 """
                 conn = await self.db._ensure_connection()
                 cursor = await conn.execute(query, (date_str,))
                 row = await cursor.fetchone()
-                daily_total = float(row[0]) if row else 0.0
+                daily_total = float(row[0]) if row and row[0] else 0.0
+                request_count = int(row[1]) if row and row[1] else 0
 
                 daily_costs.append({
                     "date": date_str,
                     "cost": daily_total,
+                    "request_count": request_count,
                 })
 
             # Reverse to show oldest to newest
             daily_costs.reverse()
+
+            logger.info(f"[admin_dashboard] Date metrics calculated for last 7 days, total entries: {len(daily_costs)}")
 
             return {
                 "last_7_days": daily_costs,
@@ -292,7 +309,17 @@ class AdminDashboardService:
 
         except Exception as e:
             logger.error(f"[admin_dashboard] Error getting date metrics: {e}", exc_info=True)
-            return {"last_7_days": []}
+            # Return valid structure with 7 days of zero data as fallback
+            now = datetime.now(timezone.utc)
+            fallback_costs = []
+            for i in range(7):
+                date = now - timedelta(days=6-i)
+                fallback_costs.append({
+                    "date": date.strftime("%Y-%m-%d"),
+                    "cost": 0.0,
+                    "request_count": 0,
+                })
+            return {"last_7_days": fallback_costs}
 
     async def get_user_detailed_data(self, user_id: str) -> Dict[str, Any]:
         """
@@ -340,20 +367,22 @@ class AdminDashboardService:
             }
 
     async def _get_user_cost_history(self, user_id: str, days: int = 30) -> List[Dict[str, Any]]:
-        """Get cost logs history for a user."""
+        """Get cost logs history for a user with NULL-safe timestamp handling."""
         try:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+            # Fix Phase 1.4: Use COALESCE for timestamp filtering
             query = """
                 SELECT
-                    timestamp,
+                    COALESCE(timestamp, created_at) as effective_timestamp,
                     agent,
                     model,
                     total_cost,
                     feature,
                     session_id
                 FROM costs
-                WHERE user_id = ? AND timestamp >= ?
-                ORDER BY timestamp DESC
+                WHERE user_id = ?
+                  AND COALESCE(timestamp, created_at, 'now') >= ?
+                ORDER BY COALESCE(timestamp, created_at) DESC
                 LIMIT 100
             """
             conn = await self.db._ensure_connection()
@@ -366,11 +395,12 @@ class AdminDashboardService:
                     "timestamp": row[0],
                     "agent": row[1],
                     "model": row[2],
-                    "cost": float(row[3]),
+                    "cost": float(row[3]) if row[3] else 0.0,
                     "feature": row[4],
                     "session_id": row[5],
                 })
 
+            logger.info(f"[admin_dashboard] Retrieved {len(history)} cost history entries for user {user_id}")
             return history
         except Exception as e:
             logger.error(f"[admin_dashboard] Error getting cost history for {user_id}: {e}", exc_info=True)
@@ -599,3 +629,86 @@ class AdminDashboardService:
         # TODO: Implement actual error counting
         # For now, return a placeholder value
         return 0
+
+    async def get_detailed_costs_breakdown(self) -> Dict[str, Any]:
+        """
+        Get detailed cost breakdown by user and module.
+        Fix Phase 1.5: New endpoint to provide granular cost analysis.
+        Returns costs aggregated by user, then by module/feature.
+        """
+        try:
+            # Aggregate costs by user and feature using NULL-safe timestamp
+            query = """
+                SELECT
+                    user_id,
+                    feature as module,
+                    SUM(total_cost) as module_cost,
+                    SUM(input_tokens) as input_tokens,
+                    SUM(output_tokens) as output_tokens,
+                    COUNT(*) as request_count,
+                    MIN(COALESCE(timestamp, created_at)) as first_request,
+                    MAX(COALESCE(timestamp, created_at)) as last_request
+                FROM costs
+                WHERE user_id IS NOT NULL
+                GROUP BY user_id, feature
+                ORDER BY module_cost DESC
+            """
+
+            conn = await self.db._ensure_connection()
+            cursor = await conn.execute(query)
+            rows = await cursor.fetchall()
+
+            # Structure by user
+            breakdown = {}
+            for row in rows:
+                user_id = row[0]
+                if user_id not in breakdown:
+                    breakdown[user_id] = {
+                        "user_id": user_id,
+                        "total_cost": 0.0,
+                        "total_requests": 0,
+                        "modules": []
+                    }
+
+                module_data = {
+                    "module": row[1] or "unknown",
+                    "cost": float(row[2] or 0),
+                    "input_tokens": int(row[3] or 0),
+                    "output_tokens": int(row[4] or 0),
+                    "request_count": int(row[5] or 0),
+                    "first_request": row[6],
+                    "last_request": row[7],
+                }
+
+                breakdown[user_id]["total_cost"] += module_data["cost"]
+                breakdown[user_id]["total_requests"] += module_data["request_count"]
+                breakdown[user_id]["modules"].append(module_data)
+
+            # Sort modules within each user by cost
+            for user_data in breakdown.values():
+                user_data["modules"].sort(key=lambda x: x["cost"], reverse=True)
+
+            # Convert to list and sort by total cost
+            users_list = list(breakdown.values())
+            users_list.sort(key=lambda x: x["total_cost"], reverse=True)
+
+            grand_total = sum(u["total_cost"] for u in users_list)
+            total_requests = sum(u["total_requests"] for u in users_list)
+
+            logger.info(f"[admin_dashboard] Detailed costs breakdown: {len(users_list)} users, ${grand_total:.4f} total")
+
+            return {
+                "users": users_list,
+                "total_users": len(users_list),
+                "grand_total_cost": round(grand_total, 4),
+                "total_requests": total_requests,
+            }
+
+        except Exception as e:
+            logger.error(f"[admin_dashboard] Error getting detailed costs: {e}", exc_info=True)
+            return {
+                "users": [],
+                "total_users": 0,
+                "grand_total_cost": 0.0,
+                "total_requests": 0,
+            }

@@ -41,9 +41,9 @@ class TimelineService:
         days = self._parse_period(period)
 
         # Construire les conditions de filtrage
-        date_field = "created_at"  # champ de référence pour les messages
-        message_filters = [f"date(m.{date_field}) = dates.date"]
-        thread_filters = ["date(t.created_at) = dates.date"]
+        # Fix Phase 1.2: Utiliser COALESCE pour gérer les NULL timestamps
+        message_filters = ["date(COALESCE(m.created_at, m.timestamp, 'now')) = dates.date"]
+        thread_filters = ["date(COALESCE(t.created_at, t.updated_at, 'now')) = dates.date"]
         params: List[Any] = []
 
         # Si user_id est fourni, filtrer par user_id (mode prod)
@@ -82,6 +82,7 @@ class TimelineService:
 
         try:
             rows = await self.db.fetch_all(query, tuple(params) if params else ())
+            logger.info(f"[Timeline] Activity timeline returned {len(rows)} days for user_id={user_id}")
             return [dict(r) for r in rows]
         except Exception as e:
             logger.error(f"Erreur get_activity_timeline: {e}", exc_info=True)
@@ -104,7 +105,8 @@ class TimelineService:
         """
         days = self._parse_period(period)
 
-        cost_filters = ["date(c.timestamp) = dates.date"]
+        # Fix Phase 1.2: Utiliser COALESCE pour gérer les NULL timestamps
+        cost_filters = ["date(COALESCE(c.timestamp, c.created_at, 'now')) = dates.date"]
         params: List[Any] = []
 
         # Si user_id est fourni, filtrer par user_id
@@ -137,6 +139,7 @@ class TimelineService:
 
         try:
             rows = await self.db.fetch_all(query, tuple(params) if params else ())
+            logger.info(f"[Timeline] Costs timeline returned {len(rows)} days for user_id={user_id}")
             return [dict(r) for r in rows]
         except Exception as e:
             logger.error(f"Erreur get_costs_timeline: {e}", exc_info=True)
@@ -159,7 +162,8 @@ class TimelineService:
         """
         days = self._parse_period(period)
 
-        token_filters = ["date(c.timestamp) = dates.date"]
+        # Fix Phase 1.2: Utiliser COALESCE pour gérer les NULL timestamps
+        token_filters = ["date(COALESCE(c.timestamp, c.created_at, 'now')) = dates.date"]
         params: List[Any] = []
 
         # Si user_id est fourni, filtrer par user_id
@@ -194,6 +198,7 @@ class TimelineService:
 
         try:
             rows = await self.db.fetch_all(query, tuple(params) if params else ())
+            logger.info(f"[Timeline] Tokens timeline returned {len(rows)} days for user_id={user_id}")
             return [dict(r) for r in rows]
         except Exception as e:
             logger.error(f"Erreur get_tokens_timeline: {e}", exc_info=True)
@@ -233,8 +238,9 @@ class TimelineService:
             }
 
         elif metric in ["tokens", "costs"]:
+            # Fix Phase 1.2: Utiliser COALESCE pour gérer les NULL timestamps
             conditions = [
-                f"date(timestamp) >= date('now', '-{days} days')"
+                f"date(COALESCE(timestamp, created_at, 'now')) >= date('now', '-{days} days')"
             ]
             params = []
 
@@ -260,6 +266,7 @@ class TimelineService:
 
             try:
                 rows = await self.db.fetch_all(query, tuple(params) if params else ())
+                logger.info(f"[Timeline] Distribution by agent returned {len(rows)} agents for metric={metric}")
                 return {row["agent"]: int(row["total"]) for row in rows}
             except Exception as e:
                 logger.error(f"Erreur get_distribution_by_agent: {e}", exc_info=True)

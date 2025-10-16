@@ -94,6 +94,76 @@ def _normalize_scope_identifier(value: Optional[str]) -> Optional[str]:
     return text or None
 
 
+# ------------------- NULL Timestamp Handling Helper ------------------- #
+def get_safe_date_column(table: str, use_localtime: bool = True) -> str:
+    """
+    Returns a safe SQL expression to extract dates from tables that may have NULL timestamps.
+    Uses COALESCE to fall back from timestamp → created_at → 'now' to prevent NULL date failures.
+
+    Args:
+        table: Table name (determines which columns to check first)
+        use_localtime: If True, converts to localtime (default: True for consistency with existing queries)
+
+    Returns:
+        SQL expression like "DATE(COALESCE(timestamp, created_at, 'now'), 'localtime')"
+
+    Examples:
+        >>> get_safe_date_column("costs")
+        "DATE(COALESCE(timestamp, created_at, 'now'), 'localtime')"
+
+        >>> get_safe_date_column("messages", use_localtime=False)
+        "DATE(COALESCE(created_at, timestamp, 'now'))"
+
+    Usage in queries:
+        date_col = get_safe_date_column("costs")
+        query = f"SELECT {date_col} as date, SUM(total_cost) FROM costs WHERE {date_col} >= ..."
+    """
+    # Déterminer l'ordre de priorité des colonnes selon la table
+    if table == "costs":
+        # costs table: priorité timestamp (plus précis), puis created_at
+        date_expr = "COALESCE(timestamp, created_at, 'now')"
+    elif table == "messages":
+        # messages table: priorité created_at (plus standard V6), puis timestamp (legacy)
+        date_expr = "COALESCE(created_at, timestamp, 'now')"
+    elif table in ("sessions", "threads", "documents"):
+        # Tables avec created_at standard
+        date_expr = "COALESCE(created_at, 'now')"
+    else:
+        # Par défaut: essayer created_at, puis timestamp, puis now
+        date_expr = "COALESCE(created_at, timestamp, 'now')"
+
+    # Appliquer la conversion de timezone si demandé
+    if use_localtime:
+        return f"DATE({date_expr}, 'localtime')"
+    else:
+        return f"DATE({date_expr})"
+
+
+def get_safe_timestamp_column(table: str) -> str:
+    """
+    Returns a safe SQL expression to get a timestamp value that handles NULL gracefully.
+    Similar to get_safe_date_column but returns the full timestamp instead of just the date.
+
+    Args:
+        table: Table name (determines which columns to check first)
+
+    Returns:
+        SQL expression like "COALESCE(timestamp, created_at, 'now')"
+
+    Examples:
+        >>> get_safe_timestamp_column("costs")
+        "COALESCE(timestamp, created_at, 'now')"
+    """
+    if table == "costs":
+        return "COALESCE(timestamp, created_at, 'now')"
+    elif table == "messages":
+        return "COALESCE(created_at, timestamp, 'now')"
+    elif table in ("sessions", "threads", "documents"):
+        return "COALESCE(created_at, 'now')"
+    else:
+        return "COALESCE(created_at, timestamp, 'now')"
+
+
 def _resolve_user_scope(user_id: Optional[str], session_id: Optional[str]) -> str:
     normalized_user = _normalize_scope_identifier(user_id)
     if normalized_user:
