@@ -11,11 +11,13 @@
  *
  * Historique :
  * - beta-1.0.0 : Phase P0 complétée (Quick Wins - 3/3)
- * - beta-1.1.0 : Phase P1 complétée (UX Essentielle - 3/3) [ACTUEL]
+ * - beta-2.0.0 : Phase P1 complétée (UX Essentielle - 3/3)
+ * - beta-2.1.0 : Phase 1 & 3 Debug (Backend fixes + UI/UX improvements)
+ * - beta-2.1.1 : Audit système multi-agents + versioning unifié [ACTUEL]
  */
 
-export const VERSION = 'beta-1.1.0';
-export const VERSION_NAME = 'Phase P1 - UX Essentielle';
+export const VERSION = 'beta-2.1.1';
+export const VERSION_NAME = 'Phase P1 + Debug & Audit';
 export const VERSION_DATE = '2025-10-16';
 export const BUILD_PHASE = 'P1';
 export const COMPLETION_PERCENTAGE = 61; // 14/23 features

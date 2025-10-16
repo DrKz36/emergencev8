@@ -96,6 +96,7 @@
 }
 
 /* ===== Onglets Memory Center ===== */
+/* MIGRATION: Utilise le nouveau système de boutons unifié (button-system.css) */
 .memory-tabs {
   display: flex;
   gap: 8px;
@@ -103,29 +104,24 @@
   margin: 0;
 }
 
+/* Les .memory-tab utilisent maintenant .btn + .btn--secondary du button-system.css */
 .memory-tab {
-  padding: 10px 20px;
-  border: none;
-  background: rgba(15, 23, 42, 0.6);
+  /* Styles spécifiques au module Memory qui complètent le système unifié */
   border-radius: 8px 8px 0 0;
-  color: rgba(226, 232, 240, 0.7);
-  font-size: 0.875rem;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s ease;
   border-bottom: 2px solid transparent;
 }
 
 .memory-tab:hover {
+  /* Hérite du hover de .btn--secondary */
   background: rgba(56, 189, 248, 0.08);
-  color: rgba(226, 232, 240, 0.9);
 }
 
 .memory-tab.active {
+  /* Override pour style actif spécifique Memory */
   background: rgba(56, 189, 248, 0.15);
   color: rgba(56, 189, 248, 1);
   border-bottom-color: rgba(56, 189, 248, 0.8);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.3);
 }
 
 .memory-tab-content {

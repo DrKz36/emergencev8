@@ -62,20 +62,15 @@
   outline: none;
 }
 
+/* MIGRATION: Les .concept-graph__btn utilisent maintenant le système de boutons unifié */
+/* Ces styles complètent .btn + .btn--ghost du button-system.css */
 .concept-graph__btn {
-  padding: 8px 16px;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  background: rgba(15, 23, 42, 0.8);
-  color: rgba(226, 232, 240, 0.9);
+  /* Taille du bouton ajustée pour le graphe */
   font-size: 13px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s ease;
 }
 
 .concept-graph__btn:hover {
+  /* Hover spécifique pour le contexte du graphe */
   background: rgba(56, 189, 248, 0.12);
   border-color: rgba(56, 189, 248, 0.4);
   color: #e0f2fe;

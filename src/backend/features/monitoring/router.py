@@ -35,7 +35,7 @@ async def health_check() -> Dict[str, Any]:
     return {
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "version": "0.0.0",  # À synchroniser avec package.json
+        "version": "beta-2.1.1",  # Synchronisé avec package.json
     }
 
 
@@ -381,7 +381,7 @@ async def get_system_info(request: Request) -> Dict[str, Any]:
         disk = psutil.disk_usage('/')
 
         # Version info
-        backend_version = os.getenv("BACKEND_VERSION", "0.0.0")
+        backend_version = os.getenv("BACKEND_VERSION", "beta-2.1.1")
         env = os.getenv("ENVIRONMENT", "development")
 
         # Check services

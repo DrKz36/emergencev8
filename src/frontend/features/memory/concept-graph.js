@@ -102,8 +102,8 @@ export class ConceptGraph {
               <option value="medium">Moyenne (5-9)</option>
               <option value="low">Faible (1-4)</option>
             </select>
-            <button class="concept-graph__btn" data-action="reset-view">🔄 Vue</button>
-            <button class="concept-graph__btn" data-action="reload">↻ Recharger</button>
+            <button class="btn btn--ghost concept-graph__btn" data-action="reset-view">🔄 Vue</button>
+            <button class="btn btn--ghost concept-graph__btn" data-action="reload">↻ Recharger</button>
           </div>
         </header>
 

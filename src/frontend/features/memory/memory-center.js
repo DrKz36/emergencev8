@@ -270,10 +270,10 @@ export class MemoryCenter {
         <section class="memory-section">
           <header class="memory-section__header">
             <div class="memory-tabs">
-              <button type="button" class="memory-tab ${this._activeTab === 'history' ? 'active' : ''}" data-memory-tab="history">
+              <button type="button" class="btn btn--secondary memory-tab ${this._activeTab === 'history' ? 'active' : ''}" data-memory-tab="history">
                 📋 Historique
               </button>
-              <button type="button" class="memory-tab ${this._activeTab === 'graph' ? 'active' : ''}" data-memory-tab="graph">
+              <button type="button" class="btn btn--secondary memory-tab ${this._activeTab === 'graph' ? 'active' : ''}" data-memory-tab="graph">
                 🌐 Graphe
               </button>
             </div>

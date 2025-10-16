@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-16 11:45 (NEO: validation intégrité système emails membres)
+**Dernière mise à jour** : 2025-10-16 12:50 (Orchestrateur: audit complet système multi-agents)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -233,7 +233,7 @@ Progression Totale : [████████░░] 14/23 (61%)
 
 ## 🔧 Système de Versioning
 
-**Version actuelle** : `beta-1.3.0` (Phase P1 complète)
+**Version actuelle** : `beta-2.1.1` (Phase P1 + Debug & Audit)
 
 **Format** : `beta-X.Y.Z`
 - **X (Major)** : Phases complètes (P0→1, P1→2, P2→3, P3→4)
@@ -246,13 +246,99 @@ Progression Totale : [████████░░] 14/23 (61%)
 - ✅ `beta-1.2.0` : P0.2 - Graphe de connaissances (2025-10-15)
 - ✅ `beta-1.3.0` : P0.3 - Export CSV/PDF (2025-10-15)
 - ✅ `beta-2.0.0` : Phase P1 complète (2025-10-16)
+- ✅ `beta-2.1.0` : Phase 1 & 3 Debug (Backend + UI/UX)
+- ✅ `beta-2.1.1` : Audit système agents + versioning unifié (2025-10-16)
 - 🔜 `beta-3.0.0` : Phase P2 complète (TBD)
 - ⏳ `beta-4.0.0` : Phase P3 complète (TBD)
 - 🎯 `v1.0.0` : Release Production Officielle (TBD)
 
 ---
 
+## 🔍 Audit Système Multi-Agents (2025-10-16 12:45)
+
+### ✅ Résultat Global: OK (avec améliorations mineures recommandées)
+
+**Statut agents** : 3/5 actifs, 6/6 scripts opérationnels, 6/6 commandes slash disponibles
+
+**Agents actifs (rapport < 24h)** :
+- ✅ **Anima (DocKeeper)** : Dernier rapport 2025-10-16T12:07 (< 1h) - 0 gap documentaire
+- ✅ **Neo (IntegrityWatcher)** : Dernier rapport 2025-10-16T12:07 (< 1h) - 0 issue détectée, 15 endpoints validés
+- ✅ **Nexus (Coordinator)** : Dernier rapport 2025-10-16T12:07 (< 1h) - "All checks passed"
+
+**Agents semi-actifs** :
+- 🟡 **Orchestrateur** : Dernier rapport 2025-10-15T17:27 (19h) - 5 agents exécutés, 0 erreur
+
+**Agents inactifs** :
+- ⚠️ **ProdGuardian** : Dernier rapport 2025-10-10T09:17 (6 jours - OBSOLÈTE) - Nécessite réexécution
+
+**Incohérences détectées** :
+1. [MOYENNE] ProdGuardian rapport obsolète (6 jours) - Perte de visibilité sur production
+2. [BASSE] Orchestrateur statuts "UNKNOWN" dans rapport global
+3. [BASSE] Warnings vides dans prod_report.json
+
+**Actions prioritaires** :
+1. 🔴 **HAUTE** : Exécuter `/check_prod` pour surveillance Cloud Run
+2. 🟡 **MOYENNE** : Automatiser exécution quotidienne via GitHub Actions
+3. 🟢 **BASSE** : Améliorer qualité rapports (filtrer warnings vides, statuts déterministes)
+
+**Rapport complet d'audit** : Généré 2025-10-16 12:45 par Orchestrateur (Claude Code Sonnet 4.5)
+
+---
+
 ## 🚧 Zones de Travail en Cours
+
+### ✅ Session 2025-10-16 (Après-midi) - Debug Phases 1 & 3 (TERMINÉE)
+
+**Statut** : ✅ **PHASES 1 & 3 COMPLÉTÉES ET VALIDÉES**
+**Agent** : Claude Code (Sonnet 4.5)
+**Durée** : Phase 3 (1 jour) + Phase 1 (déjà complétée)
+
+**Objectifs** :
+- Phase 1 : Corriger problèmes backend critiques (graphiques vides, admin dashboard)
+- Phase 3 : Standardiser système de boutons et améliorer UX
+
+**Résultats** :
+- ✅ **16/16 tests automatisés passés** (5 backend + 11 frontend)
+- ✅ **9 fichiers modifiés** (2 backend, 6 frontend, 1 nouveau)
+- ✅ **Build réussi** : 3.82s, aucune erreur
+
+**Phase 1 - Backend Fixes (déjà complétée)** :
+- ✅ Timeline endpoints : Ajout `COALESCE(timestamp, created_at, 'now')` partout
+- ✅ Admin users breakdown : `INNER JOIN` → `LEFT JOIN`
+- ✅ Admin date metrics : Gestion NULL timestamps + fallback 7 jours
+- ✅ Endpoint `/api/admin/costs/detailed` : Nouveau endpoint créé
+- **Tests** : 5/5 passés (`test_phase1_validation.py`)
+
+**Phase 3 - UI/UX Improvements (nouvelle)** :
+- ✅ **Design System Unifié** : `button-system.css` créé (374 lignes)
+  - 6 variantes (.btn--primary, --secondary, --metal, --ghost, --danger, --success)
+  - 3 tailles (.btn--sm, --md, --lg)
+  - 3+ états (active, disabled, loading)
+  - 28 variables CSS utilisées
+- ✅ **Migration Memory** : Boutons "Historique" et "Graphe" vers `.btn .btn--secondary`
+- ✅ **Migration Graph** : Boutons "Vue" et "Recharger" vers `.btn .btn--ghost`
+- ✅ **Sticky Header** : Module "À propos" avec `position: sticky` + glassmorphism
+- **Tests** : 11/11 passés (`test_phase3_validation.py`)
+
+**Fichiers impactés** :
+- Backend (2) : `timeline_service.py`, `admin_service.py`
+- Frontend (6) : `button-system.css` (new), `main-styles.css`, `memory.css`, `memory-center.js`, `concept-graph.css`, `concept-graph.js`
+- Tests (2) : `test_phase1_validation.py` (existant), `test_phase3_validation.py` (new)
+- Documentation (1) : `docs/PHASE_1_3_COMPLETION_REPORT.md` (new, 600+ lignes)
+
+**Documentation** :
+- 📋 [docs/PHASE_1_3_COMPLETION_REPORT.md](docs/PHASE_1_3_COMPLETION_REPORT.md) - **Rapport complet de complétion**
+- 📋 [docs/DEBUG_PHASE1_STATUS.md](docs/DEBUG_PHASE1_STATUS.md) - État Phase 1
+- 📋 [PLAN_DEBUG_COMPLET.md](PLAN_DEBUG_COMPLET.md) - Plan global (référence)
+- 🧪 [test_phase1_validation.py](test_phase1_validation.py) - Tests backend automatisés
+- 🧪 [test_phase3_validation.py](test_phase3_validation.py) - Tests frontend automatisés
+
+**Prochaines étapes** :
+1. ⏳ Commit Phase 1 + 3 ensemble
+2. ⏳ Phase 2 (Frontend fixes) - Filtrage agents dev, couleurs NEO/NEXUS
+3. ⏳ Phase 4 (Documentation & Tests E2E)
+
+---
 
 ## 🧑‍💻 Codex - Journal 2025-10-16
 
@@ -615,16 +701,36 @@ SMTP_PASSWORD=...
 
 ---
 
-**Dernière mise à jour** : 2025-10-16 11:45 par NEO (IntegrityWatcher via Claude Code)
-**Version** : beta-2.0.0
+**Dernière mise à jour** : 2025-10-16 13:00 par Claude Code (Sonnet 4.5)
+**Version** : beta-2.1.1 (Phase P1 + Debug & Audit + Versioning unifié)
 **Statut Production** : ✅ STABLE ET OPÉRATIONNEL
 **Progression Roadmap** : 61% (14/23 fonctionnalités)
-**Dernière modification** : Validation intégrité système emails membres + section WIP ajoutée
+**Dernière modification** : Versioning unifié (package.json, version.js, monitoring/router.py) + préparation déploiement
 
 
 ---
 
 ## 🤖 Synchronisation automatique
+### Consolidation - 2025-10-16T12:29:40.845209
+
+**Type de déclenchement** : `threshold`
+**Conditions** : {
+  "pending_changes": 5,
+  "threshold": 5
+}
+**Changements consolidés** : 5 événements sur 2 fichiers
+
+**Fichiers modifiés** :
+- **AGENT_SYNC.md** : 4 événement(s)
+  - `modified` à 2025-10-16T11:57:40.984670 (agent: unknown)
+  - `modified` à 2025-10-16T12:19:11.234778 (agent: unknown)
+  - `modified` à 2025-10-16T12:28:11.333615 (agent: unknown)
+  - `modified` à 2025-10-16T12:28:41.358454 (agent: unknown)
+- **docs/passation.md** : 1 événement(s)
+  - `modified` à 2025-10-16T12:20:11.256692 (agent: unknown)
+
+---
+
 ### Consolidation - 2025-10-16T11:57:40.616375
 
 **Type de déclenchement** : `threshold`
