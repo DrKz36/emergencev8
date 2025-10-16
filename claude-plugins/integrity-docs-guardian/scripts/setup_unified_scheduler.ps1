@@ -85,10 +85,10 @@ if (-not $existingTask) {
     Write-Host "🔧 Création de la tâche planifiée..." -ForegroundColor Green
 
     try {
-        # Définir l'action - Exécuter PowerShell avec le script
+        # Définir l'action - Exécuter PowerShell en arrière-plan sans fenêtre
         $action = New-ScheduledTaskAction `
             -Execute "powershell.exe" `
-            -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" `
+            -Argument "-WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" `
             -WorkingDirectory $repoRoot
 
         Write-Host "   ✅ Action configurée" -ForegroundColor White

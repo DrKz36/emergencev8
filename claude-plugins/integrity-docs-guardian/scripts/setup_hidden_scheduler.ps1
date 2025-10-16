@@ -1,8 +1,8 @@
 # ============================================================================
-# SETUP UNIFIED SCHEDULER - Configuration de la tache planifiee Phase 3
+# SETUP HIDDEN SCHEDULER - Configuration avec execution cachee
 # ============================================================================
-# Ce script configure une tache planifiee Windows pour executer
-# le unified_guardian_scheduler.ps1 de maniere periodique
+# Ce script configure une tache planifiee qui s'execute en arriere-plan
+# sans afficher de fenetre PowerShell
 # ============================================================================
 
 param(
@@ -11,7 +11,7 @@ param(
 )
 
 Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "CONFIGURATION DU UNIFIED GUARDIAN SCHEDULER" -ForegroundColor Cyan
+Write-Host "CONFIGURATION DU SCHEDULER EN MODE CACHE" -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -23,19 +23,19 @@ if (-not (Test-Path $repoRoot)) {
 }
 
 $taskName = "EmergenceUnifiedGuardian"
-$scriptPath = Join-Path $repoRoot "claude-plugins\integrity-docs-guardian\scripts\unified_guardian_scheduler.ps1"
+$vbsScriptPath = Join-Path $repoRoot "claude-plugins\integrity-docs-guardian\scripts\run_unified_scheduler_hidden.vbs"
 
-# Verifier que le script existe
-if (-not (Test-Path $scriptPath)) {
-    Write-Host "ERREUR: Script non trouve: $scriptPath" -ForegroundColor Red
+# Verifier que le script VBS existe
+if (-not (Test-Path $vbsScriptPath)) {
+    Write-Host "ERREUR: Script VBS non trouve: $vbsScriptPath" -ForegroundColor Red
     exit 1
 }
 
 Write-Host "Configuration:" -ForegroundColor Yellow
 Write-Host "  Nom de la tache: $taskName" -ForegroundColor White
-Write-Host "  Script: $scriptPath" -ForegroundColor White
+Write-Host "  Script VBS: $vbsScriptPath" -ForegroundColor White
 Write-Host "  Intervalle: $IntervalMinutes minutes" -ForegroundColor White
-Write-Host "  Dossier de travail: $repoRoot" -ForegroundColor White
+Write-Host "  Mode: CACHE (sans fenetre)" -ForegroundColor Green
 Write-Host ""
 
 # Verifier si la tache existe deja
@@ -62,16 +62,16 @@ if ($existingTask) {
 # Creer la tache planifiee
 if (-not $existingTask) {
     Write-Host ""
-    Write-Host "Creation de la tache planifiee..." -ForegroundColor Green
+    Write-Host "Creation de la tache planifiee en mode cache..." -ForegroundColor Green
 
     try {
-        # Definir l'action - Executer PowerShell en arriere-plan sans fenetre
+        # Definir l'action - Executer le script VBS (qui lance PowerShell en cache)
         $action = New-ScheduledTaskAction `
-            -Execute "powershell.exe" `
-            -Argument "-WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" `
+            -Execute "wscript.exe" `
+            -Argument "`"$vbsScriptPath`"" `
             -WorkingDirectory $repoRoot
 
-        Write-Host "  Action configuree" -ForegroundColor White
+        Write-Host "  Action configuree (via VBScript)" -ForegroundColor White
 
         # Definir les declencheurs
         # 1. Au demarrage du systeme
@@ -93,7 +93,7 @@ if (-not $existingTask) {
             -LogonType InteractiveOrPassword `
             -RunLevel Limited
 
-        Write-Host "  Principal configure: $env:USERDOMAIN\$env:USERNAME" -ForegroundColor White
+        Write-Host "  Principal configure: $env:USERNAME" -ForegroundColor White
 
         # Definir les parametres
         $settings = New-ScheduledTaskSettingsSet `
@@ -104,9 +104,10 @@ if (-not $existingTask) {
             -DontStopOnIdleEnd `
             -ExecutionTimeLimit (New-TimeSpan -Minutes 30) `
             -RestartCount 3 `
-            -RestartInterval (New-TimeSpan -Minutes 5)
+            -RestartInterval (New-TimeSpan -Minutes 5) `
+            -Hidden
 
-        Write-Host "  Parametres configures" -ForegroundColor White
+        Write-Host "  Parametres configures (mode cache)" -ForegroundColor White
 
         # Creer la tache
         $task = Register-ScheduledTask `
@@ -115,11 +116,11 @@ if (-not $existingTask) {
             -Trigger $triggerStartup, $triggerRepeat `
             -Principal $principal `
             -Settings $settings `
-            -Description "EMERGENCE - Unified Guardian Scheduler (Phase 3) - Orchestration automatique des agents de verification" `
+            -Description "EMERGENCE - Unified Guardian Scheduler (Hidden) - Orchestration automatique sans fenetre" `
             -ErrorAction Stop
 
         Write-Host ""
-        Write-Host "  Tache planifiee creee avec succes!" -ForegroundColor Green
+        Write-Host "  Tache planifiee creee avec succes en mode CACHE!" -ForegroundColor Green
         Write-Host ""
 
         # Afficher les details de la tache
@@ -129,6 +130,7 @@ if (-not $existingTask) {
         Write-Host "Details de la tache:" -ForegroundColor Yellow
         Write-Host "  Nom: $($taskInfo.TaskName)" -ForegroundColor White
         Write-Host "  Etat: $($taskInfo.State)" -ForegroundColor White
+        Write-Host "  Mode: CACHE (sans fenetre)" -ForegroundColor Green
         Write-Host "  Prochaine execution: $($taskDetails.NextRunTime)" -ForegroundColor White
         Write-Host "  Derniere execution: $($taskDetails.LastRunTime)" -ForegroundColor White
         Write-Host "  Dernier resultat: $($taskDetails.LastTaskResult)" -ForegroundColor White
@@ -143,8 +145,8 @@ if (-not $existingTask) {
         Write-Host "  1. Verifiez que vous avez les droits administrateur" -ForegroundColor White
         Write-Host "  2. Ou creez la tache manuellement via le Planificateur de taches" -ForegroundColor White
         Write-Host ""
-        Write-Host "  Programme: powershell.exe" -ForegroundColor Gray
-        Write-Host "  Arguments: -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" -ForegroundColor Gray
+        Write-Host "  Programme: wscript.exe" -ForegroundColor Gray
+        Write-Host "  Arguments: `"$vbsScriptPath`"" -ForegroundColor Gray
         Write-Host "  Repertoire: $repoRoot" -ForegroundColor Gray
         Write-Host ""
         exit 1
@@ -152,14 +154,22 @@ if (-not $existingTask) {
 }
 
 # Test manuel
-Write-Host "Pour tester la tache maintenant:" -ForegroundColor Yellow
+Write-Host "Pour tester la tache maintenant (execution cachee):" -ForegroundColor Yellow
 Write-Host "  Start-ScheduledTask -TaskName '$taskName'" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "OU directement via VBScript:" -ForegroundColor Yellow
+Write-Host "  wscript.exe `"$vbsScriptPath`"" -ForegroundColor Cyan
 Write-Host ""
 
 # Resume final
 Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "CONFIGURATION TERMINEE" -ForegroundColor Green
+Write-Host "CONFIGURATION TERMINEE - MODE CACHE ACTIVE" -ForegroundColor Green
 Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host ""
+
+Write-Host "IMPORTANT: Aucune fenetre PowerShell ne s'affichera!" -ForegroundColor Green
+Write-Host "Les logs seront disponibles dans:" -ForegroundColor Yellow
+Write-Host "  $(Join-Path $repoRoot 'claude-plugins\integrity-docs-guardian\logs')" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Host "Commandes utiles:" -ForegroundColor Yellow
@@ -167,26 +177,11 @@ Write-Host ""
 Write-Host "  # Voir l'etat de la tache" -ForegroundColor Gray
 Write-Host "  Get-ScheduledTask -TaskName '$taskName'" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  # Demarrer la tache manuellement" -ForegroundColor Gray
+Write-Host "  # Demarrer la tache manuellement (cache)" -ForegroundColor Gray
 Write-Host "  Start-ScheduledTask -TaskName '$taskName'" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  # Arreter la tache" -ForegroundColor Gray
-Write-Host "  Stop-ScheduledTask -TaskName '$taskName'" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "  # Desactiver la tache" -ForegroundColor Gray
-Write-Host "  Disable-ScheduledTask -TaskName '$taskName'" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "  # Supprimer la tache" -ForegroundColor Gray
-Write-Host "  Unregister-ScheduledTask -TaskName '$taskName' -Confirm:`$false" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "  # Voir l'historique d'execution" -ForegroundColor Gray
-Write-Host "  Get-ScheduledTaskInfo -TaskName '$taskName'" -ForegroundColor Cyan
-Write-Host ""
-
-Write-Host "Fichiers importants:" -ForegroundColor Yellow
-Write-Host "  Script: $scriptPath" -ForegroundColor Gray
-Write-Host "  Logs: $(Join-Path $repoRoot 'claude-plugins\integrity-docs-guardian\logs')" -ForegroundColor Gray
-Write-Host "  Rapports: $(Join-Path $repoRoot 'claude-plugins\integrity-docs-guardian\reports')" -ForegroundColor Gray
+Write-Host "  # Voir les logs en temps reel" -ForegroundColor Gray
+Write-Host "  Get-Content '$(Join-Path $repoRoot 'claude-plugins\integrity-docs-guardian\logs\unified_scheduler_*.log')' -Wait -Tail 20" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Host "================================================================" -ForegroundColor Cyan
