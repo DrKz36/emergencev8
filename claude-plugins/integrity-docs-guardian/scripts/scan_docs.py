@@ -140,6 +140,59 @@ def analyze_backend_changes(files: List[str]) -> List[Dict]:
     return gaps
 
 
+def analyze_architecture_docs(changed_files: Dict[str, List[str]]) -> List[Dict]:
+    """Analyze if architecture documentation needs updates based on code changes."""
+    gaps = []
+
+    # Check for significant backend changes that may affect architecture
+    backend_files = changed_files.get("backend", [])
+
+    # Check for new services or major service refactoring
+    for file in backend_files:
+        # New or modified service files
+        if "service.py" in file and "features/" in file:
+            feature_name = file.split("features/")[1].split("/")[0]
+            gaps.append({
+                "severity": "medium",
+                "file": file,
+                "issue": f"Service '{feature_name}' modified - verify architecture docs",
+                "affected_docs": [
+                    "docs/architecture/10-Components.md",
+                    "docs/architecture/00-Overview.md"
+                ],
+                "recommendation": f"Update architecture docs to reflect changes in {feature_name} service"
+            })
+
+        # New or modified routers (API contracts)
+        if "router.py" in file and "features/" in file:
+            feature_name = file.split("features/")[1].split("/")[0]
+            gaps.append({
+                "severity": "high",
+                "file": file,
+                "issue": f"Router '{feature_name}' modified - verify API contracts",
+                "affected_docs": [
+                    "docs/architecture/30-Contracts.md",
+                    f"docs/backend/{feature_name}.md"
+                ],
+                "recommendation": f"Update API contracts documentation for {feature_name} endpoints"
+            })
+
+    # Check for significant database/model changes
+    if any("models.py" in f or "database/" in f for f in backend_files):
+        gaps.append({
+            "severity": "high",
+            "file": "database/models",
+            "issue": "Database schema or models modified",
+            "affected_docs": [
+                "docs/architecture/10-Components.md",
+                "docs/architecture/30-Contracts.md"
+            ],
+            "recommendation": "Update architecture docs to reflect database schema changes"
+        })
+
+    return gaps
+
+
 def analyze_frontend_changes(files: List[str]) -> List[Dict]:
     """Analyze frontend file changes for documentation needs."""
     gaps = []
@@ -215,8 +268,9 @@ def generate_report(changed_files: Dict[str, List[str]]) -> Dict:
     # Analyze changes
     backend_gaps = analyze_backend_changes(changed_files["backend"])
     frontend_gaps = analyze_frontend_changes(changed_files["frontend"])
+    architecture_gaps = analyze_architecture_docs(changed_files)
 
-    all_gaps = backend_gaps + frontend_gaps
+    all_gaps = backend_gaps + frontend_gaps + architecture_gaps
 
     # Determine status
     status = "needs_update" if all_gaps else "ok"

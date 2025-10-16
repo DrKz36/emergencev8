@@ -262,6 +262,28 @@ Retourne répartition par agent pour une métrique.
 
 **Périodes supportées:** 7d, 30d, 90d, 1y
 
+**Gestion robuste des valeurs NULL (Phase 1.2):**
+
+Toutes les méthodes du TimelineService utilisent maintenant le pattern COALESCE pour gérer les timestamps NULL de manière robuste :
+
+```sql
+DATE(COALESCE(timestamp, created_at, 'now'))
+```
+
+Ce pattern garantit que :
+- Les enregistrements avec `timestamp = NULL` utilisent `created_at` comme fallback
+- Si `created_at` est également NULL, la date actuelle est utilisée
+- Aucun enregistrement n'est exclu des agrégations
+
+**Impact:** Les graphiques timeline du Cockpit affichent maintenant des données même en présence de valeurs NULL.
+
+**Logging standardisé:**
+
+Toutes les opérations loguent maintenant avec le format standardisé :
+```python
+logger.info(f"[Timeline] Activity timeline returned {len(rows)} days for user_id={user_id}")
+```
+
 ### DashboardService
 
 Service principal pour les résumés et statistiques globales.
@@ -468,6 +490,52 @@ Envoie des emails d'invitation beta à une liste d'adresses.
 }
 ```
 
+#### 5. Breakdown détaillé des coûts
+
+```http
+GET /api/admin/costs/detailed
+```
+
+**Authorization:** Rôle admin requis
+**Nouveau (Phase 1.5):** Retourne le breakdown détaillé des coûts par utilisateur et par feature/module.
+
+**Response:**
+```json
+{
+  "users": [
+    {
+      "user_id": "hash123",
+      "email": "user@example.com",
+      "total_cost": 2.45,
+      "modules": [
+        {
+          "feature": "chat",
+          "cost": 1.20,
+          "first_request": "2025-10-10T10:00:00",
+          "last_request": "2025-10-16T09:00:00"
+        },
+        {
+          "feature": "memory",
+          "cost": 0.85,
+          "first_request": "2025-10-12T14:00:00",
+          "last_request": "2025-10-15T16:00:00"
+        }
+      ]
+    }
+  ],
+  "total_cost": 12.45
+}
+```
+
+**Usage frontend:**
+```javascript
+const response = await fetch('/api/admin/costs/detailed', {
+  headers: { 'Authorization': `Bearer ${adminToken}` }
+});
+const breakdown = await response.json();
+// Affiche dans l'onglet "Detailed Costs"
+```
+
 ### AdminDashboardService
 
 Service dédié aux statistiques globales d'administration.
@@ -488,6 +556,58 @@ async def get_user_detailed_data(user_id: str) -> Dict[str, Any]
 
 Retourne les données détaillées d'un utilisateur spécifique.
 
+##### get_detailed_costs_breakdown()
+```python
+async def get_detailed_costs_breakdown() -> Dict[str, Any]
+```
+
+**Nouveau (Phase 1.5):** Retourne un breakdown détaillé des coûts par utilisateur et par feature/module.
+
+**Structure de réponse:**
+```json
+{
+  "users": [
+    {
+      "user_id": "hash123",
+      "email": "user@example.com",
+      "total_cost": 2.45,
+      "modules": [
+        {
+          "feature": "chat",
+          "cost": 1.20,
+          "first_request": "2025-10-10T10:00:00",
+          "last_request": "2025-10-16T09:00:00"
+        }
+      ]
+    }
+  ],
+  "total_cost": 12.45
+}
+```
+
+**Gestion robuste des NULL:**
+- Utilise `COALESCE` pour first_request et last_request
+- LEFT JOIN pour assurer l'inclusion de tous les utilisateurs
+- Fallback avec données vides en cas d'erreur
+
+##### Corrections Phase 1.3-1.4
+
+**`_get_users_breakdown()` (Phase 1.3):**
+- Utilise maintenant LEFT JOIN au lieu de INNER JOIN
+- Matching flexible : `s.user_id = a.email OR s.user_id = a.user_id`
+- COALESCE pour email et role : `COALESCE(a.email, s.user_id)`, `COALESCE(a.role, 'member')`
+- **Impact:** Tous les utilisateurs sont affichés dans l'onglet Admin "Users"
+
+**`_get_date_metrics()` (Phase 1.4):**
+- COALESCE pour NULL timestamps
+- Nouveau champ `request_count` ajouté aux résultats
+- Fallback robuste : retourne 7 jours de données vides en cas d'erreur
+- **Impact:** Chart "Cost Evolution (7 days)" affiche maintenant des données
+
+**`_get_user_cost_history()` (Phase 1.4):**
+- COALESCE appliqué partout
+- Gestion d'erreur robuste avec logging
+
 ### Sécurité Admin
 
 Tous les endpoints admin sont protégés par:
@@ -505,7 +625,28 @@ async def verify_admin_role(user_role: str = Depends(deps.get_user_role)):
 
 ## Versioning
 
-**Version actuelle:** V3.3
+**Version actuelle:** V3.4
+
+**Changements V3.4 (Octobre 2025 - Phase 1 Debug):**
+- ✅ **Phase 1.2** : TimelineService - COALESCE pour NULL timestamps dans toutes les méthodes
+- ✅ **Phase 1.3** : AdminService - LEFT JOIN avec matching flexible dans `_get_users_breakdown()`
+- ✅ **Phase 1.4** : AdminService - Corrections `_get_date_metrics()` et `_get_user_cost_history()`
+- ✅ **Phase 1.5** : AdminService - Nouvelle fonction `get_detailed_costs_breakdown()`
+- ✅ **Phase 1.5** : AdminRouter - Nouvel endpoint `GET /admin/costs/detailed`
+- ✅ Gestion robuste des erreurs avec fallbacks partout
+- ✅ Logging standardisé avec préfixes `[Timeline]` et `[admin_dashboard]`
+- ✅ Fixes critiques : Charts Cockpit et Admin Dashboard affichent maintenant des données
+
+**Conventions établies (Phase 1.6):**
+- Pattern COALESCE obligatoire pour les timestamps : `COALESCE(timestamp, created_at, 'now')`
+- Préférence LEFT JOIN sur INNER JOIN pour éviter l'exclusion de données
+- Format logging standardisé : `logger.info(f"[ServiceName] Action: details")`
+- Gestion d'erreur avec try/except et fallbacks (jamais de crash)
+
+**Documentation associée:**
+- [AGENTS_COORDINATION.md](../../docs/AGENTS_COORDINATION.md) - Conventions de développement
+- [INTER_AGENT_SYNC.md](../../docs/INTER_AGENT_SYNC.md) - Points de synchronisation
+- [tests/PHASE1_VALIDATION_CHECKLIST.md](../../docs/tests/PHASE1_VALIDATION_CHECKLIST.md) - Tests de validation
 
 **Changements V3.3 (Octobre 2025):**
 - ✅ Ajout AdminDashboardService pour statistiques globales

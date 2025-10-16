@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-16 (Production deployment fixes + P1 Phase COMPLÉTÉE)
+**Dernière mise à jour** : 2025-10-16 21:00 (Documentation synchronisée + fichiers coopération inter-agents)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -31,17 +31,17 @@
   - `2cd8cc8` feat(memory): Integrate P1.1 - Proactive Hints UI in chat
 
 ### Working tree
-- **Statut** : Modifications en cours (voir `git status`)
+- **Statut** : Modifications en cours - documentation et coopération inter-agents
 - **Fichiers modifiés** :
-  - `reports/prod_report.json` (M) *(présent avant session — ne pas toucher)*
-    - `src/backend/features/auth/service.py` (M)
-    - `tests/backend/features/test_user_scope_persistence.py` (M)
-    - `AGENT_SYNC.md` (M)
-    - `docs/passation.md` (M)
-    - `stable-service.yaml` (M)
-    - `scripts/deploy-simple.ps1` (M)
+  - `AGENT_SYNC.md` (M) - Mise à jour état du dépôt
+  - `README.md` (M) - Mise à jour documentation principale
+  - `claude-plugins/integrity-docs-guardian/scripts/scan_docs.py` (M)
+  - `docs/architecture/10-Components.md` (M)
+  - `docs/backend/dashboard.md` (M)
+  - `reports/prod_report.json` (M)
+  - `docs/passation.md` (M) - Nouvelle entrée session 2025-10-16
 - **Fichiers non suivis** :
-  - Aucun
+  - `CODEX_GPT_GUIDE.md` (à créer)
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
@@ -311,6 +311,23 @@ Progression Totale : [████████░░] 14/23 (61%)
 - 🔧 [docs/backend/](docs/backend/) - Documentation backend
 - 🎨 [docs/frontend/](docs/frontend/) - Documentation frontend
 - 📦 [docs/deployments/](docs/deployments/) - Guides de déploiement
+
+### Conventions de Développement (Nouveau - 2025-10-16)
+- 🆕 [docs/AGENTS_COORDINATION.md](docs/AGENTS_COORDINATION.md) - **Conventions obligatoires inter-agents**
+  - Gestion NULL timestamps (pattern COALESCE)
+  - Jointures flexibles (LEFT JOIN préféré)
+  - Logging standardisé avec préfixes
+  - Gestion d'erreurs robuste avec fallbacks
+- 🆕 [docs/INTER_AGENT_SYNC.md](docs/INTER_AGENT_SYNC.md) - **Points de synchronisation et checklists**
+  - Checklist pré/post modification
+  - État du codebase (conformité conventions)
+  - Communication entre sessions Claude Code / Codex GPT
+
+### Tests et Validation
+- 🆕 [docs/tests/PHASE1_VALIDATION_CHECKLIST.md](docs/tests/PHASE1_VALIDATION_CHECKLIST.md) - **Tests Phase 1 Backend Fixes**
+  - 12 tests fonctionnels (API + Frontend)
+  - Commandes curl pour validation manuelle
+  - Critères de validation pour charts Cockpit et Admin
 
 ### Guides Opérationnels
 - 🚀 [DEPLOYMENT_SUCCESS.md](DEPLOYMENT_SUCCESS.md) - État déploiement production

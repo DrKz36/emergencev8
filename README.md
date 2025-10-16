@@ -135,7 +135,10 @@ Emergence V8 utilise une approche collaborative avec plusieurs agents IA (Claude
 
 **Protocole complet** : voir [`CODEV_PROTOCOL.md`](CODEV_PROTOCOL.md)
 
-**Consignes agents** : voir [`AGENTS.md`](AGENTS.md) (section 13) et [`CODex_GUIDE.md`](CODex_GUIDE.md) (section 11)
+**Consignes agents** :
+- Claude Code : [`AGENTS.md`](AGENTS.md) (section 13)
+- Codex GPT : [`CODEX_GPT_GUIDE.md`](CODEX_GPT_GUIDE.md) (guide complet)
+- Codex local : [`CODex_GUIDE.md`](CODex_GUIDE.md) (section 11)
 
 **Journal de passation** : [`docs/passation.md`](docs/passation.md) (contexte récent, blocages, prochaines actions)
 
@@ -189,7 +192,12 @@ Documentation technique des modules backend récents :
   - Persistence JSON (`data/settings.json`)
   - Hot-reload sans redémarrage
 
-- **[Dashboard Feature](docs/backend/dashboard.md)** - API cockpit & timeline (V3.3)
+- **[Dashboard Feature](docs/backend/dashboard.md)** - API cockpit & timeline (V3.4 - Phase 1 Debug)
+  - **NOUVEAU (V3.4)**: Gestion robuste des valeurs NULL avec pattern COALESCE
+  - **NOUVEAU (V3.4)**: `/api/admin/costs/detailed` - Breakdown détaillé des coûts par utilisateur/module
+  - **FIX (V3.4)**: Charts Cockpit timeline affichent maintenant des données (Phase 1.2)
+  - **FIX (V3.4)**: Admin "Users" tab affiche tous les utilisateurs avec LEFT JOIN (Phase 1.3)
+  - **FIX (V3.4)**: Admin "Cost Evolution" chart fonctionnel avec fallbacks robustes (Phase 1.4)
   - `/api/dashboard/costs/summary` - Résumé coûts/métriques (global ou par session)
   - `/api/dashboard/timeline/*` - Timelines temporelles (activité, coûts, tokens)
   - `/api/dashboard/distribution/{metric}` - Répartition par agent
@@ -201,6 +209,7 @@ Documentation technique des modules backend récents :
   - Isolation multi-utilisateurs (user_id) + filtrage session (X-Session-Id)
   - TimelineService pour graphiques temporels avec requêtes SQL optimisées
   - AdminDashboardService pour statistiques globales et gestion beta
+  - Logging standardisé avec préfixes `[Timeline]` et `[admin_dashboard]`
 
 - **[Auth Feature](docs/backend/auth.md)** - Authentification & Email (V2.0)
   - JWT authentication avec sessions management
