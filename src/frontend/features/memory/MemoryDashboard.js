@@ -98,7 +98,7 @@ export class MemoryDashboard {
       return;
     }
 
-    const { preferences = {}, concepts = {}, stats = {} } = this.stats;
+    const { preferences = {}, concepts = {}, stats = {}, hints = {} } = this.stats;
 
     this.container.innerHTML = `
       <div class="memory-dashboard">
@@ -109,6 +109,7 @@ export class MemoryDashboard {
           ${this.renderStatCard('Sessions analysées', stats.sessions_analyzed || 0)}
           ${this.renderStatCard('Threads archivés', stats.threads_archived || 0)}
           ${this.renderStatCard('Taille LTM', `${stats.ltm_size_mb || 0} MB`)}
+          ${this.renderStatCard('💡 Hints proactifs', hints.total || 0)}
         </div>
 
         <!-- Preferences section -->

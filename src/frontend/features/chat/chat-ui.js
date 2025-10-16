@@ -1,12 +1,14 @@
 /**
- * ChatUI - V28.3.2 (glass layout merge)
+ * ChatUI - V28.3.3 (proactive hints integration)
  * - Adopt glassmorphic layout with header/footer zones and auth host badge.
  * - Keeps mount-safe render, RAG sources, metrics, memory controls, and WS guards.
  * - Merges composer toolbar refinements and message bubble metadata.
+ * - Integrates ProactiveHintsUI for contextual hints display
  */
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { t } from '../../shared/i18n.js';
 import { getInteractionCount, formatInteractionCount, getLastInteractionTimestamp } from '../threads/threads.js';
+import { ProactiveHintsUI } from '../memory/ProactiveHintsUI.js';
 
 export class ChatUI {
   constructor(eventBus, stateManager) {
@@ -37,7 +39,8 @@ export class ChatUI {
     this._globalKeyHandler = null;
     this._mounted = false;
     this._lastContainer = null;
-    console.log('[ChatUI] V28.3.2 (glass-layout) initialisee.');
+    this.proactiveHintsUI = null;
+    console.log('[ChatUI] V28.3.3 (proactive-hints) initialisee.');
   }
 
   destroy() {
@@ -45,6 +48,11 @@ export class ChatUI {
     if (this._globalKeyHandler) {
       document.removeEventListener('keydown', this._globalKeyHandler);
       this._globalKeyHandler = null;
+    }
+    // Cleanup proactive hints
+    if (this.proactiveHintsUI) {
+      this.proactiveHintsUI.destroy();
+      this.proactiveHintsUI = null;
     }
     this.root = null;
   }
@@ -137,6 +145,7 @@ export class ChatUI {
           <div id="rag-sources" class="rag-sources"></div>
         </div>
         <div class="chat-footer">
+          <div id="proactive-hints-container" class="proactive-hints-container"></div>
           <form id="chat-form" class="chat-form" autocomplete="off">
             <div class="chat-composer" data-role="chat-composer">
               <div class="chat-input-shell" data-role="chat-input-shell">
@@ -165,8 +174,76 @@ export class ChatUI {
     this.eventBus.emit?.('ui:auth:host-changed');
     this._ensureControlPanel();
     this._bindEvents(container);
+    this._initProactiveHints(container);
     this.update(container, this.state);
     console.log('[CHAT] ChatUI rendu -> container.id =', container.id || '(anonyme)');
+  }
+
+  _initProactiveHints(container) {
+    if (!container) return;
+
+    // Destroy existing instance if any
+    if (this.proactiveHintsUI) {
+      this.proactiveHintsUI.destroy();
+      this.proactiveHintsUI = null;
+    }
+
+    const hintsContainer = container.querySelector('#proactive-hints-container');
+    if (!hintsContainer) {
+      console.warn('[ChatUI] Proactive hints container not found');
+      return;
+    }
+
+    // Initialize ProactiveHintsUI with custom configuration
+    this.proactiveHintsUI = new ProactiveHintsUI(hintsContainer);
+
+    // Override applyHint method to inject into chat input
+    const chatInput = container.querySelector('#chat-input');
+    if (chatInput) {
+      const originalApplyHint = this.proactiveHintsUI.applyHint.bind(this.proactiveHintsUI);
+      this.proactiveHintsUI.applyHint = (hint) => {
+        console.info('[ChatUI] Applying hint to chat input', hint);
+
+        // Try to get the preference or message from action_payload
+        let textToInject = '';
+        if (hint.action_payload?.preference) {
+          textToInject = hint.action_payload.preference;
+        } else if (hint.action_payload?.message) {
+          textToInject = hint.action_payload.message;
+        } else if (hint.message) {
+          textToInject = hint.message;
+        }
+
+        if (textToInject) {
+          // Inject into chat input
+          const currentValue = chatInput.value.trim();
+          if (currentValue) {
+            // If there's already text, append with a space
+            chatInput.value = currentValue + ' ' + textToInject;
+          } else {
+            chatInput.value = textToInject;
+          }
+
+          // Focus and position cursor at end
+          chatInput.focus();
+          chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
+
+          // Trigger input event to update textarea height
+          chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+          // Show success notification
+          this.eventBus.emit('ui:notification', {
+            type: 'success',
+            message: 'Hint appliqué au chat'
+          });
+        } else {
+          // Fallback to original implementation
+          originalApplyHint(hint);
+        }
+      };
+    }
+
+    console.info('[ChatUI] ProactiveHintsUI initialized');
   }
   update(container, chatState = {}) {
     if (!container) return;
