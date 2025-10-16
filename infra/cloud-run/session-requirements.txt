@@ -1,0 +1,30 @@
+# Requirements for Emergence Session Service
+# Includes WebSocket support, chat, memory analysis, and embeddings
+
+# --- Core server ---
+fastapi==0.119.0
+uvicorn[standard]==0.30.1
+websockets>=11.0.2
+python-multipart>=0.0.9
+
+# --- DI & Config ---
+dependency-injector>=4.41,<5
+pydantic>=2.6,<3
+pydantic-settings>=2.2,<3
+python-dotenv>=1.0,<2
+
+# --- Database ---
+aiosqlite==0.21.0
+
+# --- Vector & Embeddings ---
+chromadb==0.5.23
+sentence-transformers>=2.7,<3
+torch>=2.1,<3
+numpy==1.26.4
+
+# --- Utilities ---
+aiofiles==24.1.0
+httpx>=0.24,<0.28
+
+# --- Monitoring ---
+prometheus-client>=0.20,<1

@@ -1,0 +1,27 @@
+# Minimal requirements for Emergence Authentication Service
+# Only includes dependencies needed for auth, user management, and sessions
+
+# --- Core server ---
+fastapi==0.119.0
+uvicorn[standard]==0.30.1
+python-multipart>=0.0.9
+PyJWT>=2.9,<3
+
+# --- Auth & Security ---
+bcrypt>=4.1,<5
+
+# --- DI & Config ---
+dependency-injector>=4.41,<5
+pydantic>=2.6,<3
+pydantic-settings>=2.2,<3
+python-dotenv>=1.0,<2
+
+# --- Database ---
+aiosqlite==0.21.0
+
+# --- Utilities ---
+aiofiles==24.1.0
+httpx>=0.24,<0.28
+
+# --- Monitoring ---
+prometheus-client>=0.20,<1
