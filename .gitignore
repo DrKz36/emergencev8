@@ -81,3 +81,4 @@ claude-plugins/integrity-docs-guardian/reports/*.json
 # --- Exceptions utiles
 !assets/**
 !*.ico
+nul
