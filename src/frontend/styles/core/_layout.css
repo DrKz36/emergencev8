@@ -13,7 +13,11 @@
 /* ===== Container ===== */
 .app-container{
   display:flex; flex-direction:column;
-  height:100vh; width:100vw;
+  width:100vw;
+  min-height:100vh;
+  min-height:100dvh;
+  min-height:100svh;
+  height:100%;
   position:relative;
   isolation:isolate;
   background-color:var(--color-bg);
@@ -220,7 +224,9 @@
     grid-template-columns:1fr;
     grid-template-rows:auto 1fr;
     grid-template-areas:"header" "content";
-    height:100dvh;
+    min-height:100vh;
+    min-height:100dvh;
+    min-height:100svh;
     background-attachment:scroll;
     background-position:center;
   }
@@ -281,5 +287,4 @@
     padding-bottom: calc(var(--mobile-nav-height, 64px) + env(safe-area-inset-bottom, 0) + 1rem) !important;
   }
 }
-
 

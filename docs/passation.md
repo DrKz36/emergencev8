@@ -143,6 +143,34 @@ gcloud run services update-traffic emergence-app --to-revisions=emergence-app-00
 
 ---
 
+## [2025-10-16 20:45] - Agent: Codex
+
+### Fichiers modifiés
+- `index.html`
+- `src/frontend/styles/core/_layout.css`
+- `src/frontend/styles/core/_responsive.css`
+- `src/frontend/features/home/home.css`
+
+### Contexte
+Audit de l'interface mobile portrait & correction remontée sur le bouton d'accès à l'application qui disparaissait sur certains téléphones. Alignement demandé sur une approche responsive centralisée et blocage du mode paysage.
+
+### Actions
+- Créé `_responsive.css` pour centraliser les variables portrait (espacements HomeModule, seuil d'orientation) et l'overlay d'interdiction paysage.
+- Adapté `home.css` : disparition du `overflow:hidden`, dvh/svh, gaps dynamiques et media-queries hauteur pour garantir visibilité du bouton sur petits écrans.
+- Harmonisé `_layout.css` avec min-height `vh/dvh/svh` et ajouté l'overlay `orientation-lock` + script associé dans `index.html`.
+- Ajouté message d'information paysage + calcul dynamique du seuil à partir de la variable CSS.
+
+### Tests
+- `npm run build`
+
+### Prochaines actions recommandées
+1. Étendre l'usage des variables responsive (`--responsive-*`) aux modules chat/memory pour réduire les overrides spécifiques mobile.
+2. Prévoir une QA rapide sur plusieurs tailles (iPhone SE, Pixel 7, Galaxy S22) pour valider le scroll clavier sur l'écran d'auth.
+3. Ajouter une capture du nouvel overlay dans `docs/ui/` lors de la prochaine mise à jour UX.
+
+### Blocages
+- Aucun.
+
 ## [2025-10-16 08:20] - Agent: Claude Code
 
 ### Fichiers modifiés

@@ -33,6 +33,7 @@
   <link rel="stylesheet" href="/src/frontend/styles/themes/dark.css">
   <link rel="stylesheet" href="/src/frontend/styles/core/_typography.css">
   <link rel="stylesheet" href="/src/frontend/styles/core/_layout.css">
+  <link rel="stylesheet" href="/src/frontend/styles/core/_responsive.css">
   <link rel="stylesheet" href="/src/frontend/styles/core/_navigation.css">
 
   <!-- ===== CSS COMPONENTS ===== -->
@@ -167,6 +168,17 @@
 
   <div id="home-root" class="home-root" hidden aria-hidden="true"></div>
   <div id="mobile-backdrop" class="mobile-backdrop" hidden></div>
+  <div id="orientation-lock" class="orientation-lock" aria-live="polite" aria-hidden="true">
+    <div class="orientation-lock__panel">
+      <svg class="orientation-lock__icon" viewBox="0 0 24 24" role="img" aria-label="Rotation n&eacute;cessaire">
+        <path fill="currentColor" d="M7 3a2 2 0 00-2 2v2h2V5h11v14H7v-2H5v2a2 2 0 002 2h11a2 2 0 002-2V5a2 2 0 00-2-2H7zm1.05 5.636l-1.414 1.414L8.586 12l-1.95 1.95 1.414 1.414L12 13.414l3.95 3.95 1.414-1.414L13.414 12l3.95-3.95-1.414-1.414L12 10.586 8.05 6.636z"/>
+      </svg>
+      <p class="orientation-lock__title">Mode portrait requis</p>
+      <p class="orientation-lock__message">
+        Veuillez pivoter votre appareil en mode portrait pour continuer &mdash; l'interface mobile est con&ccedil;ue pour ce format.
+      </p>
+    </div>
+  </div>
   <div id="app-container" class="app-container">
     <header id="app-header" class="app-header" role="banner">
       <div class="header-logo-title">
@@ -239,6 +251,47 @@
           console.log('[BOOT][front]', window.__EMERGENCE_BOOT__);
         });
       });
+    })();
+  </script>
+  <script>
+    (function () {
+      function resolveMaxWidth() {
+        try {
+          var raw = getComputedStyle(document.documentElement).getPropertyValue('--orientation-lock-max-width');
+          var parsed = parseInt(raw, 10);
+          return Number.isFinite(parsed) && parsed > 0 ? parsed : 960;
+        } catch (_) {
+          return 960;
+        }
+      }
+
+      var lockNode = document.getElementById('orientation-lock');
+      var threshold = resolveMaxWidth();
+
+      function shouldLock() {
+        if (!lockNode) return false;
+        var width = window.innerWidth || document.documentElement.clientWidth || 0;
+        if (width > threshold) return false;
+        return window.matchMedia('(orientation: landscape)').matches;
+      }
+
+      function refreshOrientationLock() {
+        var blocked = shouldLock();
+        if (blocked) {
+          document.body.classList.add('orientation-locked');
+          lockNode.setAttribute('aria-hidden', 'false');
+        } else {
+          document.body.classList.remove('orientation-locked');
+          lockNode.setAttribute('aria-hidden', 'true');
+        }
+      }
+
+      window.addEventListener('orientationchange', refreshOrientationLock);
+      window.addEventListener('resize', refreshOrientationLock, { passive: true });
+      document.addEventListener('DOMContentLoaded', refreshOrientationLock);
+      if (document.readyState !== 'loading') {
+        refreshOrientationLock();
+      }
     })();
   </script>
 

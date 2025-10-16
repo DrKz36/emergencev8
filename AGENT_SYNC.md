@@ -256,6 +256,15 @@ Progression Totale : [████████░░] 14/23 (61%)
 
 ## 🚧 Zones de Travail en Cours
 
+## 🧑‍💻 Codex - Journal 2025-10-16
+
+- **Horodatage** : 20:45 CET
+- **Objectif** : Audit UI mobile portrait + verrouillage paysage (authentification).
+- **Fichiers impactés** : `index.html`, `src/frontend/styles/core/_layout.css`, `src/frontend/styles/core/_responsive.css`, `src/frontend/features/home/home.css`.
+- **Tests** : `npm run build`
+- **Notes** : Overlay d'orientation ajouté + variables responsive centralisées (`--responsive-*`) à généraliser sur les prochains modules.
+
+
 ### ✅ Session 2025-10-16 - Production Deployment (TERMINÉE)
 - **Statut** : ✅ **PRODUCTION STABLE**
 - **Priorité** : 🔴 **CRITIQUE** → ✅ **RÉSOLU**

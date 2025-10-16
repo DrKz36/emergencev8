@@ -1,0 +1,113 @@
+/* src/frontend/styles/core/_responsive.css */
+/* Responsive utilities shared across the client (portrait-first layout, orientation guard). */
+
+:root {
+  /* Dynamic panel spacing for critical auth screen */
+  --responsive-home-panel-padding: clamp(36px, 5vw, 60px);
+  --responsive-home-panel-gap: 28px;
+  --responsive-home-hero-gap: 18px;
+  --responsive-home-form-gap: 18px;
+
+  /* Orientation lock threshold (mobile & small tablets) */
+  --orientation-lock-max-width: 960px;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --responsive-home-panel-padding: clamp(24px, 6vw, 40px);
+    --responsive-home-panel-gap: 22px;
+    --responsive-home-hero-gap: 16px;
+    --responsive-home-form-gap: 16px;
+  }
+}
+
+@media (max-height: 760px) {
+  :root {
+    --responsive-home-panel-padding: clamp(22px, 6vh, 32px);
+    --responsive-home-panel-gap: 20px;
+    --responsive-home-hero-gap: 14px;
+    --responsive-home-form-gap: 14px;
+  }
+}
+
+@media (max-height: 640px) {
+  :root {
+    --responsive-home-panel-padding: clamp(18px, 8vh, 26px);
+    --responsive-home-panel-gap: 16px;
+    --responsive-home-hero-gap: 12px;
+    --responsive-home-form-gap: 12px;
+  }
+}
+
+/* Portrait auth shell should scroll when the content exceeds the viewport */
+body.home-active {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+body.home-active #home-root {
+  overflow-y: auto;
+}
+
+/* Orientation lock overlay */
+.orientation-lock {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: clamp(24px, 6vw, 48px);
+  background: rgba(5, 8, 18, 0.94);
+  backdrop-filter: blur(18px);
+  z-index: 4000;
+  color: rgba(226, 232, 240, 0.92);
+}
+
+.orientation-lock__panel {
+  max-width: 420px;
+  width: min(420px, 100%);
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(148, 197, 255, 0.18);
+  border-radius: 24px;
+  padding: clamp(24px, 4vw, 36px);
+  box-shadow: 0 26px 60px rgba(2, 6, 23, 0.55);
+}
+
+.orientation-lock__icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  color: rgba(96, 165, 250, 0.9);
+}
+
+.orientation-lock__title {
+  margin: 0 0 12px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.orientation-lock__message {
+  margin: 0;
+  line-height: 1.6;
+  font-size: 1rem;
+  color: rgba(203, 213, 225, 0.92);
+}
+
+body.orientation-locked {
+  overflow: hidden;
+  touch-action: none;
+}
+
+body.orientation-locked .orientation-lock {
+  display: flex;
+}
+
+body.orientation-locked #app-container,
+body.orientation-locked #home-root,
+body.orientation-locked #app-loader,
+body.orientation-locked #mobile-backdrop {
+  display: none !important;
+}
