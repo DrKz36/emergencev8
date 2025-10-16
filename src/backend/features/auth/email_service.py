@@ -31,12 +31,17 @@ class EmailConfig:
 def build_email_config_from_env() -> EmailConfig:
     """Build email configuration from environment variables"""
     enabled = os.getenv("EMAIL_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+
+    # Diagnostic logging
+    logger.info(f"Email config: enabled={enabled}, smtp_host={os.getenv('SMTP_HOST', 'NOT_SET')}, "
+                f"smtp_user={os.getenv('SMTP_USER', 'NOT_SET')}, smtp_password={'SET' if smtp_password else 'NOT_SET'}")
 
     return EmailConfig(
         smtp_host=os.getenv("SMTP_HOST", "smtp.gmail.com"),
         smtp_port=int(os.getenv("SMTP_PORT", "587")),
         smtp_user=os.getenv("SMTP_USER", ""),
-        smtp_password=os.getenv("SMTP_PASSWORD", ""),
+        smtp_password=smtp_password,
         from_email=os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "")),
         from_name=os.getenv("SMTP_FROM_NAME", "ÉMERGENCE"),
         use_tls=os.getenv("SMTP_USE_TLS", "1").strip().lower() in {"1", "true", "yes", "on"},
