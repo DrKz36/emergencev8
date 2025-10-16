@@ -1,2 +1,65 @@
-﻿/* Dark theme - ÉMERGENCE V7.0 */
-[data-theme="dark"] { /* Already in variables.css */ }
+/* Dark theme - ÉMERGENCE V8 */
+/* Variables CSS pour le thème sombre (par défaut) */
+
+[data-theme="dark"] {
+  /* === PALETTE "AURA" - DARK THEME === */
+  --color-bg-gradient: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+  --color-bg: #090a0f;
+
+  --color-primary: #00aaff;
+  --color-primary-hover: #33bbff;
+  --color-primary-focus-ring: rgba(0, 170, 255, 0.4);
+
+  /* Agents (couleurs saturées pour fond sombre) */
+  --color-anima: #e11d48;
+  --color-neo:   #2563eb;
+  --color-nexus: #10b981;
+  --color-user:  #8b5cf6;
+
+  --color-anima-bg: rgba(225, 29, 72, 0.12);
+  --color-neo-bg:   rgba(37, 99, 235, 0.12);
+  --color-nexus-bg: rgba(16, 185, 129, 0.12);
+  --color-user-bg:  rgba(139, 92, 246, 0.16);
+
+  /* Bulles chat */
+  --color-accent-anima: var(--color-anima-bg);
+  --color-accent-neo:   var(--color-neo-bg);
+  --color-accent-nexus: var(--color-nexus-bg);
+  --color-accent-user:  var(--color-user-bg);
+  --color-text-on-accent: #f8fafc;
+
+  /* Texte (clair sur fond sombre) */
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #e2e8f0;
+  --color-text-muted: #cbd5e1;
+  --color-text-tertiary: #94a3b8;
+  --color-text-inverse: #0f172a;
+  --color-text: var(--color-text-primary);
+
+  /* États */
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-error:   #ef4444;
+  --color-info:    var(--color-primary);
+
+  /* === GLASSMORPHISM V2 (adapté pour fond sombre) === */
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-blur: 16px;
+  --glass-border-color: rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+
+  /* === BORDURES === */
+  --border-color: rgba(255, 255, 255, 0.12);
+
+  /* === SCROLLBARS === */
+  --scrollbar-thumb: rgba(71, 85, 105, 0.45);
+  --scrollbar-thumb-hover: rgba(71, 85, 105, 0.65);
+  --scrollbar-track: transparent;
+
+  /* === ALIAS DE COMPATIBILITÉ === */
+  --color-background: var(--color-bg);
+  --color-background-primary: var(--color-bg);
+  --color-background-secondary: rgba(255, 255, 255, 0.04);
+  --color-background-tertiary: rgba(255, 255, 255, 0.06);
+  --color-background-light: rgba(255, 255, 255, 0.08);
+}

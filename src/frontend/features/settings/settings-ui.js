@@ -377,6 +377,13 @@ export class SettingsUI {
         } else {
             root.setAttribute('data-theme', theme);
         }
+
+        // Save to localStorage for persistence across page reloads
+        try {
+            localStorage.setItem('emergence.theme', theme);
+        } catch (error) {
+            console.warn('Could not save theme to localStorage:', error);
+        }
     }
 
     /**
@@ -402,6 +409,17 @@ export class SettingsUI {
      * Load settings
      */
     async loadSettings() {
+        // First, try to load from localStorage for immediate application
+        try {
+            const localTheme = localStorage.getItem('emergence.theme');
+            if (localTheme) {
+                this.settings.theme = localTheme;
+            }
+        } catch (error) {
+            console.warn('Could not load theme from localStorage:', error);
+        }
+
+        // Then load from server (may overwrite local settings)
         try {
             const response = await api.request('/api/settings/ui');
             this.settings = { ...this.settings, ...response };

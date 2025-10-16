@@ -8,13 +8,22 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Smooth transition lors du changement de thème */
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
 img, svg, video, canvas { display: block; max-width: 100%; height: auto; }
 button, input, textarea, select { font: inherit; }
 
-/* Scrollbar globale harmonisée avec le design sombre */
+/* Scrollbar globale qui s'adapte au thème */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(71,85,105,.45) transparent;
+  scrollbar-color: var(--scrollbar-thumb, rgba(71,85,105,.45)) var(--scrollbar-track, transparent);
 }
 
 *::-webkit-scrollbar {
@@ -23,18 +32,18 @@ button, input, textarea, select { font: inherit; }
 }
 
 *::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--scrollbar-track, transparent);
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgba(71,85,105,.45);
+  background: var(--scrollbar-thumb, rgba(71,85,105,.45));
   border-radius: 4px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(71,85,105,.65);
+  background: var(--scrollbar-thumb-hover, rgba(71,85,105,.65));
   background-clip: content-box;
 }
 

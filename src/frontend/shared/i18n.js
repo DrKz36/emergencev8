@@ -16,7 +16,7 @@ const MESSAGES = {
     },
     home: {
       title: 'Emergence',
-      version: 'Beta 1.0',
+      version: 'beta-1.0.0',
       subtitle: 'La plateforme multi-agents pour orchestrer vos conversations, débats et mémoires IA.',
       email_label: 'Adresse email professionnelle',
       email_placeholder: 'prenom@entreprise.com',
@@ -99,7 +99,7 @@ const MESSAGES = {
     },
     home: {
       title: 'Emergence',
-      version: 'Beta 1.0',
+      version: 'beta-1.0.0',
 
       subtitle: 'The multi-agent workspace for conversations, debates and memory workflows.',
       email_label: 'Work email address',

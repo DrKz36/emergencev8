@@ -1,2 +1,83 @@
-﻿/* Light theme - ÉMERGENCE V7.0 */
-[data-theme="light"] { /* Already in variables.css */ }
+﻿/* Light theme - ÉMERGENCE V8 */
+/* Variables CSS pour le thème clair */
+
+[data-theme="light"] {
+  /* === PALETTE "AURA" - LIGHT THEME === */
+  --color-bg-gradient: radial-gradient(ellipse at top, #e0f2fe 0%, #f8fafc 100%);
+  --color-bg: #f8fafc;
+
+  --color-primary: #0284c7;
+  --color-primary-hover: #0369a1;
+  --color-primary-focus-ring: rgba(2, 132, 199, 0.3);
+
+  /* Agents (couleurs plus saturées pour contraste sur fond clair) */
+  --color-anima: #e11d48;
+  --color-neo:   #2563eb;
+  --color-nexus: #059669;
+  --color-user:  #7c3aed;
+
+  --color-anima-bg: rgba(225, 29, 72, 0.08);
+  --color-neo-bg:   rgba(37, 99, 235, 0.08);
+  --color-nexus-bg: rgba(5, 150, 105, 0.08);
+  --color-user-bg:  rgba(124, 58, 237, 0.08);
+
+  /* Bulles chat */
+  --color-accent-anima: var(--color-anima-bg);
+  --color-accent-neo:   var(--color-neo-bg);
+  --color-accent-nexus: var(--color-nexus-bg);
+  --color-accent-user:  var(--color-user-bg);
+  --color-text-on-accent: #0f172a;
+
+  /* Texte (inversé pour lisibilité) */
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #1e293b;
+  --color-text-muted: #475569;
+  --color-text-tertiary: #64748b;
+  --color-text: var(--color-text-primary);
+
+  /* États */
+  --color-success: #16a34a;
+  --color-warning: #ea580c;
+  --color-error:   #dc2626;
+  --color-info:    var(--color-primary);
+
+  /* === GLASSMORPHISM V2 (adapté pour fond clair) === */
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-blur: 16px;
+  --glass-border-color: rgba(148, 163, 184, 0.2);
+  --glass-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+
+  /* === BORDURES === */
+  --border-color: rgba(148, 163, 184, 0.2);
+
+  /* === SCROLLBARS === */
+  --scrollbar-thumb: rgba(148, 163, 184, 0.5);
+  --scrollbar-thumb-hover: rgba(100, 116, 139, 0.7);
+  --scrollbar-track: transparent;
+
+  /* === ALIAS DE COMPATIBILITÉ === */
+  --color-background: var(--color-bg);
+  --color-background-primary: #ffffff;
+  --color-background-secondary: rgba(241, 245, 249, 1);
+  --color-background-tertiary: rgba(226, 232, 240, 1);
+  --color-background-light: rgba(248, 250, 252, 1);
+
+  /* === ADDITIONAL OVERRIDES POUR LE THÈME CLAIR === */
+  /* Background du body */
+  background: var(--color-bg-gradient);
+
+  /* Cards avec fond légèrement opaque pour le glassmorphism */
+  --card-bg: rgba(255, 255, 255, 0.9);
+
+  /* Inputs et selects */
+  --input-bg: rgba(255, 255, 255, 0.95);
+  --input-border: rgba(148, 163, 184, 0.25);
+  --input-text: var(--color-text-primary);
+
+  /* Hover states */
+  --hover-bg: rgba(226, 232, 240, 0.6);
+
+  /* Active/selected states */
+  --active-bg: rgba(219, 234, 254, 0.7);
+  --active-border: rgba(37, 99, 235, 0.5);
+}
