@@ -3,6 +3,8 @@
  * @description Helpers de localisation très légers utilisés côté front.
  */
 
+import { VERSION } from '../../version.js';
+
 const MESSAGES = {
   fr: {
     auth: {
@@ -16,7 +18,7 @@ const MESSAGES = {
     },
     home: {
       title: 'Emergence',
-      version: 'beta-1.0.0',
+      version: VERSION,
       subtitle: 'La plateforme multi-agents pour orchestrer vos conversations, débats et mémoires IA.',
       email_label: 'Adresse email professionnelle',
       email_placeholder: 'prenom@entreprise.com',
@@ -99,7 +101,7 @@ const MESSAGES = {
     },
     home: {
       title: 'Emergence',
-      version: 'beta-1.0.0',
+      version: VERSION,
 
       subtitle: 'The multi-agent workspace for conversations, debates and memory workflows.',
       email_label: 'Work email address',

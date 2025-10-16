@@ -20,6 +20,7 @@ import { WS_CONFIG, EVENTS } from './shared/constants.js';
 import { notifications } from './shared/notifications.js';
 import { showWelcomePopupIfNeeded } from './shared/welcome-popup.js';
 import { ProactiveHintsUI } from './features/memory/ProactiveHintsUI.js';
+import './core/version-display.js'; // Auto-update version displays
 
 const storeAuthToken = typeof storeAuthTokenImpl === 'function' ? storeAuthTokenImpl : () => null;
 const clearStoredAuth = typeof clearAuthImpl === 'function' ? clearAuthImpl : () => {};

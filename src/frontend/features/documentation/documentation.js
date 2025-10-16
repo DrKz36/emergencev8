@@ -200,13 +200,13 @@ export class Documentation {
                             </svg>
                             <div>
                                 <div style="font-size: 0.875rem; color: #9ca3af; margin-bottom: 0.25rem;">Version Actuelle</div>
-                                <div style="font-size: 1.5rem; font-weight: 600; background: linear-gradient(120deg, #3b82f6 0%, #a855f7 100%); -webkit-background-clip: text; background-clip: text; color: transparent;">beta-1.0.0</div>
-                                <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">État initial du projet • 15 octobre 2025</div>
+                                <div style="font-size: 1.5rem; font-weight: 600; background: linear-gradient(120deg, #3b82f6 0%, #a855f7 100%); -webkit-background-clip: text; background-clip: text; color: transparent;" id="doc-version-display">beta-1.1.0</div>
+                                <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">Phase P1 - UX Essentielle • 16 octobre 2025</div>
                             </div>
                             <div style="margin-left: auto; text-align: right;">
                                 <div style="font-size: 0.75rem; color: #9ca3af;">Fonctionnalités</div>
-                                <div style="font-size: 1.25rem; font-weight: 600; color: #3b82f6;">8/23</div>
-                                <div style="font-size: 0.75rem; color: #6b7280;">35% complété</div>
+                                <div style="font-size: 1.25rem; font-weight: 600; color: #3b82f6;" id="doc-features-count">14/23</div>
+                                <div style="font-size: 0.75rem; color: #6b7280;" id="doc-completion-pct">61% complété</div>
                             </div>
                         </div>
 
