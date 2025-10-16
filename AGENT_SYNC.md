@@ -34,10 +34,12 @@
 - **Statut** : Modifications en cours (voir `git status`)
 - **Fichiers modifiés** :
   - `reports/prod_report.json` (M) *(présent avant session — ne pas toucher)*
-  - `src/backend/features/auth/service.py` (M)
-  - `tests/backend/features/test_user_scope_persistence.py` (M)
-  - `AGENT_SYNC.md` (M)
-  - `docs/passation.md` (M)
+    - `src/backend/features/auth/service.py` (M)
+    - `tests/backend/features/test_user_scope_persistence.py` (M)
+    - `AGENT_SYNC.md` (M)
+    - `docs/passation.md` (M)
+    - `stable-service.yaml` (M)
+    - `scripts/deploy-simple.ps1` (M)
 - **Fichiers non suivis** :
   - Aucun
 

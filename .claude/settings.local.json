@@ -3,7 +3,9 @@
     "CLAUDE_TONE": "casual_direct_fr",
     "CLAUDE_WORKFLOW": "emergence_codev",
     "CLAUDE_SYNC_FILE": "AGENT_SYNC.md",
-    "CLAUDE_CUSTOM_INSTRUCTIONS_PATH": ".claude/instructions/style-fr-cash.md"
+    "CLAUDE_CUSTOM_INSTRUCTIONS_PATH": ".claude/instructions/style-fr-cash.md",
+    "CLAUDE_COORDINATION_CHECK": ".claude/instructions/coordination-files-check.md",
+    "CLAUDE_DOC_SYNC_ROUTINE": ".claude/instructions/doc-sync-routine.md"
   },
   "permissions": {
     "allow": [

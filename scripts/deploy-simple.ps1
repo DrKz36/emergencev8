@@ -204,9 +204,7 @@ gcloud run deploy $SERVICE_NAME `
     --cpu 2 `
     --memory 4Gi `
     --timeout 300 `
-    --concurrency 80 `
-    --set-env-vars "AUTH_DEV_MODE=0,CONCEPT_RECALL_METRICS_ENABLED=1" `
-    --set-secrets="GOOGLE_API_KEY=GOOGLE_API_KEY:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,SMTP_PASSWORD=SMTP_PASSWORD:latest"
+    --concurrency 80
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Cloud Run deployment failed"

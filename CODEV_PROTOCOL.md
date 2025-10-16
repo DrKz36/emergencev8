@@ -94,11 +94,12 @@ Lorsqu'un agent termine une session de travail, il doit :
 - **Passation** : `docs/passation.md` (journal chronologique).
 - **Architecture** : `docs/architecture/` (mise à jour si flux/composants changent).
 
-**Lecture obligatoire avant toute session** :
-1. `docs/passation.md` (dernières 3 entrées minimum).
+**Lecture obligatoire avant toute session** (ordre harmonisé avec AGENT_SYNC.md) :
+1. `AGENT_SYNC.md` (état actuel du dépôt, progression, déploiement).
 2. `AGENTS.md` (consignes générales).
-3. `CODex_GUIDE.md` (si Codex) ou ce fichier (si Claude Code).
-4. `git status` et `git log --oneline -10` (état actuel du dépôt).
+3. `CODEV_PROTOCOL.md` (ce fichier) ou `CODex_GUIDE.md` (si Codex).
+4. `docs/passation.md` (dernières 3 entrées minimum).
+5. `git status` et `git log --oneline -10` (état Git).
 
 ### 2.3 Gestion des conflits
 

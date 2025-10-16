@@ -1,3 +1,30 @@
+## [2025-10-16 16:55] - Agent: Codex
+
+### Fichiers modifiés
+- `stable-service.yaml`
+- `scripts/deploy-simple.ps1`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+Les emails de réinitialisation ne partaient plus en production. Investigation des logs Cloud Run (`emergence.auth.email`) : `Email config: enabled=False, smtp_host=NOT_SET` depuis la révision `00365-9n8`. La cause : le script `deploy-simple.ps1` utilisait `--set-env-vars/--set-secrets`, effaçant les 90 variables existantes pendant le dernier déploiement, ce qui a désactivé le SMTP.
+
+### Actions
+- Restauré l’intégralité de la configuration via `gcloud run services replace stable-service.yaml`, en pointant sur l’image `sha256:5553e197…` et en alignant le secret `SMTP_PASSWORD` sur `latest` (révision Cloud Run `00366-jp2`, 100 % trafic).
+- Retiré les options destructives du script (`--set-env-vars`, `--set-secrets`) pour éviter de futurs wipes d’environnement.
+- Vérifié les logs post-déploiement (`Email config: enabled=True`) et la présence de toutes les variables (describe Cloud Run).
+
+### Tests
+- 🔎 Logs Cloud Run (`gcloud logging read … textPayload:Email`) confirmant `enabled=True` après redéploiement.
+- 🔎 `gcloud run services describe emergence-app …` : révision `00366-jp2`, 100 % trafic, env restaurée.
+
+### Prochaines actions recommandées
+1. Rejouer un scénario complet de “mot de passe oublié” pour confirmer la réception et la validité du lien (vérifier aussi le dossier spam).
+2. Mettre à jour la documentation `FIX_PRODUCTION_DEPLOYMENT.md` / `deploy-simple.ps1` pour recommander `gcloud run services replace` ou un env file afin d’éviter la perte de variables lors des déploiements manuels.
+
+### Blocages
+- Aucun.
+
 ## [2025-10-16 16:10] - Agent: Codex
 
 ### Fichiers modifiés
