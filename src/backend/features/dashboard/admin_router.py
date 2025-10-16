@@ -166,3 +166,76 @@ async def send_beta_invitations(
     logger.info(f"[Admin] Beta invitations sent: {results['sent']}/{results['total']}")
 
     return results
+
+
+@router.get(
+    "/admin/analytics/sessions",
+    response_model=Dict[str, Any],
+    tags=["Admin Dashboard"],
+    summary="Get all active sessions (admin only)",
+    description="Returns all active user sessions with details for monitoring and management.",
+)
+async def get_active_sessions(
+    _admin_verified: bool = Depends(verify_admin_role),
+    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service()),
+) -> Dict[str, Any]:
+    """
+    Get all active sessions - admin only.
+    Returns session details including user, device info, IP, and last activity.
+    """
+    logger.info("[Admin] Fetching active sessions")
+    sessions = await admin_service.get_active_sessions()
+    logger.info(f"[Admin] Retrieved {len(sessions)} active sessions")
+    return {
+        "sessions": sessions,
+        "total": len(sessions),
+    }
+
+
+@router.post(
+    "/admin/sessions/{session_id}/revoke",
+    response_model=Dict[str, Any],
+    tags=["Admin Dashboard"],
+    summary="Revoke a user session (admin only)",
+    description="Forcefully revokes a user session, logging them out immediately.",
+)
+async def revoke_session(
+    session_id: str,
+    _admin_verified: bool = Depends(verify_admin_role),
+    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service()),
+) -> Dict[str, Any]:
+    """
+    Revoke a session - admin only.
+    """
+    logger.info(f"[Admin] Revoking session {session_id}")
+    success = await admin_service.revoke_session(session_id)
+    if success:
+        logger.info(f"[Admin] Session {session_id} revoked successfully")
+        return {
+            "success": True,
+            "message": f"Session {session_id} revoked successfully",
+        }
+    else:
+        logger.warning(f"[Admin] Failed to revoke session {session_id}")
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+
+@router.get(
+    "/admin/metrics/system",
+    response_model=Dict[str, Any],
+    tags=["Admin Dashboard"],
+    summary="Get system metrics (admin only)",
+    description="Returns system health metrics including uptime, latency, error rates, and resource usage.",
+)
+async def get_system_metrics(
+    _admin_verified: bool = Depends(verify_admin_role),
+    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service()),
+) -> Dict[str, Any]:
+    """
+    Get system metrics - admin only.
+    Includes uptime, average latency, error rate, and resource statistics.
+    """
+    logger.info("[Admin] Fetching system metrics")
+    metrics = await admin_service.get_system_metrics()
+    logger.info("[Admin] System metrics retrieved")
+    return metrics

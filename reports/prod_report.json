@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-16T06:02:07.309959",
+  "timestamp": "2025-10-16T08:18:09.055189",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -7,25 +7,12 @@
   "status": "OK",
   "summary": {
     "errors": 0,
-    "warnings": 3,
+    "warnings": 0,
     "critical_signals": 0,
     "latency_issues": 0
   },
   "errors": [],
-  "warnings": [
-    {
-      "time": "2025-10-16T04:01:26.705454Z",
-      "msg": ""
-    },
-    {
-      "time": "2025-10-16T03:59:07.369460Z",
-      "msg": ""
-    },
-    {
-      "time": "2025-10-16T03:58:59.367488Z",
-      "msg": ""
-    }
-  ],
+  "warnings": [],
   "critical_signals": [],
   "latency_issues": [],
   "recommendations": [

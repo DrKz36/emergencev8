@@ -97,6 +97,11 @@ export class AdminDashboard {
                         <span class="tab-icon">${AdminIcons.dollarSign}</span>
                         <span class="tab-label">Coûts Détaillés</span>
                     </button>
+                    <button class="admin-tab ${this.activeView === 'analytics' ? 'active' : ''}"
+                            data-view="analytics">
+                        <span class="tab-icon">${AdminIcons.activity}</span>
+                        <span class="tab-label">Analytics</span>
+                    </button>
                 </div>
 
                 <!-- Content Area -->
@@ -118,6 +123,13 @@ export class AdminDashboard {
                     <div class="admin-view ${this.activeView === 'costs' ? 'active' : ''}"
                          data-view="costs">
                         <div id="costs-breakdown" class="admin-section"></div>
+                    </div>
+
+                    <!-- Analytics View -->
+                    <div class="admin-view ${this.activeView === 'analytics' ? 'active' : ''}"
+                         data-view="analytics">
+                        <div id="analytics-sessions" class="admin-section"></div>
+                        <div id="analytics-metrics" class="admin-section"></div>
                     </div>
                 </div>
 
@@ -230,6 +242,9 @@ export class AdminDashboard {
                 break;
             case 'costs':
                 this.renderCostsView();
+                break;
+            case 'analytics':
+                await this.renderAnalyticsView();
                 break;
         }
     }
@@ -721,6 +736,329 @@ export class AdminDashboard {
         } catch (e) {
             return null;
         }
+    }
+
+    /**
+     * Render analytics view with sessions and system metrics
+     */
+    async renderAnalyticsView() {
+        const sessionsContainer = this.container.querySelector('#analytics-sessions');
+        const metricsContainer = this.container.querySelector('#analytics-metrics');
+
+        // Show loading state
+        sessionsContainer.innerHTML = '<p class="loading">Chargement des sessions...</p>';
+        metricsContainer.innerHTML = '<p class="loading">Chargement des métriques...</p>';
+
+        try {
+            // Load sessions and metrics in parallel
+            const [sessionsData, metricsData] = await Promise.all([
+                this.loadActiveSessions(),
+                this.loadSystemMetrics()
+            ]);
+
+            // Render sessions list
+            this.renderSessionsList(sessionsData, sessionsContainer);
+
+            // Render system metrics
+            this.renderSystemMetrics(metricsData, metricsContainer);
+
+        } catch (error) {
+            console.error('[AdminDashboard] Error loading analytics:', error);
+            sessionsContainer.innerHTML = '<p class="error">Erreur lors du chargement des sessions</p>';
+            metricsContainer.innerHTML = '<p class="error">Erreur lors du chargement des métriques</p>';
+        }
+    }
+
+    /**
+     * Load active sessions from API
+     */
+    async loadActiveSessions() {
+        const token = this._getAuthToken();
+        const response = await fetch('/api/admin/analytics/sessions', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Sessions API error: ${response.status}`);
+        }
+
+        return await response.json();
+    }
+
+    /**
+     * Load system metrics from API
+     */
+    async loadSystemMetrics() {
+        const token = this._getAuthToken();
+        const response = await fetch('/api/admin/metrics/system', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Metrics API error: ${response.status}`);
+        }
+
+        return await response.json();
+    }
+
+    /**
+     * Render sessions list with revoke buttons
+     */
+    renderSessionsList(data, container) {
+        const sessions = data.sessions || [];
+
+        if (sessions.length === 0) {
+            container.innerHTML = `
+                <h3>${getIcon('users', 'section-icon')} Sessions Actives (0)</h3>
+                <div class="admin-empty">
+                    <p>Aucune session active</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Separate active and inactive sessions
+        const activeSessions = sessions.filter(s => s.is_active);
+        const inactiveSessions = sessions.filter(s => !s.is_active);
+
+        const sessionsHtml = sessions.map(session => {
+            const isActive = session.is_active;
+            const statusBadge = isActive
+                ? '<span class="session-status active">Actif</span>'
+                : '<span class="session-status inactive">Inactif</span>';
+
+            const lastActivity = session.last_activity
+                ? new Date(session.last_activity).toLocaleString('fr-FR', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : 'Jamais';
+
+            const createdAt = session.created_at
+                ? new Date(session.created_at).toLocaleString('fr-FR', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : 'Inconnu';
+
+            return `
+                <div class="session-card ${isActive ? 'active' : 'inactive'}">
+                    <div class="session-header">
+                        <div class="session-user-info">
+                            ${getIcon('user', 'session-icon')}
+                            <div>
+                                <strong>${session.email}</strong>
+                                ${statusBadge}
+                            </div>
+                        </div>
+                        <button class="btn-revoke-session" data-session-id="${session.session_id}">
+                            ${getIcon('x', 'btn-icon')} Révoquer
+                        </button>
+                    </div>
+                    <div class="session-details">
+                        <div class="session-detail">
+                            <span class="detail-label">${getIcon('hash', 'detail-icon')} ID Session</span>
+                            <span class="detail-value session-id">${session.session_id}</span>
+                        </div>
+                        <div class="session-detail">
+                            <span class="detail-label">${getIcon('clock', 'detail-icon')} Créée le</span>
+                            <span class="detail-value">${createdAt}</span>
+                        </div>
+                        <div class="session-detail">
+                            <span class="detail-label">${getIcon('activity', 'detail-icon')} Dernière activité</span>
+                            <span class="detail-value">${lastActivity}</span>
+                        </div>
+                        <div class="session-detail">
+                            <span class="detail-label">${getIcon('clock', 'detail-icon')} Durée</span>
+                            <span class="detail-value">${session.duration_minutes.toFixed(0)} min</span>
+                        </div>
+                        <div class="session-detail">
+                            <span class="detail-label">${getIcon('monitor', 'detail-icon')} Appareil</span>
+                            <span class="detail-value">${session.device}</span>
+                        </div>
+                        <div class="session-detail">
+                            <span class="detail-label">${getIcon('globe', 'detail-icon')} IP</span>
+                            <span class="detail-value">${session.ip_address}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = `
+            <h3>${getIcon('users', 'section-icon')} Sessions (${sessions.length})</h3>
+            <div class="sessions-summary">
+                <div class="summary-item">
+                    <span class="summary-label">Actives</span>
+                    <span class="summary-value active">${activeSessions.length}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Inactives</span>
+                    <span class="summary-value">${inactiveSessions.length}</span>
+                </div>
+            </div>
+            <div class="sessions-grid">
+                ${sessionsHtml}
+            </div>
+        `;
+
+        // Attach revoke button handlers
+        container.querySelectorAll('.btn-revoke-session').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const sessionId = e.currentTarget.dataset.sessionId;
+                await this.revokeSession(sessionId);
+            });
+        });
+    }
+
+    /**
+     * Revoke a session
+     */
+    async revokeSession(sessionId) {
+        if (!confirm(`Voulez-vous vraiment révoquer la session ${sessionId} ?\n\nL'utilisateur sera déconnecté immédiatement.`)) {
+            return;
+        }
+
+        try {
+            const token = this._getAuthToken();
+            const response = await fetch(`/api/admin/sessions/${sessionId}/revoke`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Revoke API error: ${response.status}`);
+            }
+
+            // Reload analytics view
+            await this.renderAnalyticsView();
+
+            // Show success notification
+            this.showSuccessNotification('Session révoquée avec succès');
+
+        } catch (error) {
+            console.error('[AdminDashboard] Error revoking session:', error);
+            this.showError('Impossible de révoquer la session');
+        }
+    }
+
+    /**
+     * Render system metrics dashboard
+     */
+    renderSystemMetrics(data, container) {
+        const uptime = data.uptime || {};
+        const performance = data.performance || {};
+        const reliability = data.reliability || {};
+        const database = data.database || {};
+
+        container.innerHTML = `
+            <h3>${getIcon('activity', 'section-icon')} Métriques Système</h3>
+
+            <div class="metrics-grid">
+                <!-- Uptime -->
+                <div class="metric-card uptime">
+                    <div class="metric-icon">${getIcon('clock', 'metric-icon-lg')}</div>
+                    <div class="metric-content">
+                        <div class="metric-label">Uptime</div>
+                        <div class="metric-value">${uptime.formatted || 'N/A'}</div>
+                        <div class="metric-subtitle">Démarré ${uptime.start_time ? new Date(uptime.start_time).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Inconnu'}</div>
+                    </div>
+                </div>
+
+                <!-- CPU -->
+                <div class="metric-card cpu">
+                    <div class="metric-icon">${getIcon('cpu', 'metric-icon-lg')}</div>
+                    <div class="metric-content">
+                        <div class="metric-label">CPU</div>
+                        <div class="metric-value">${performance.cpu_percent || 0}%</div>
+                        <div class="metric-subtitle">Utilisation processeur</div>
+                    </div>
+                </div>
+
+                <!-- Memory -->
+                <div class="metric-card memory">
+                    <div class="metric-icon">${getIcon('database', 'metric-icon-lg')}</div>
+                    <div class="metric-content">
+                        <div class="metric-label">Mémoire</div>
+                        <div class="metric-value">${performance.memory_mb || 0} MB</div>
+                        <div class="metric-subtitle">RAM utilisée</div>
+                    </div>
+                </div>
+
+                <!-- Latency -->
+                <div class="metric-card latency">
+                    <div class="metric-icon">${getIcon('zap', 'metric-icon-lg')}</div>
+                    <div class="metric-content">
+                        <div class="metric-label">Latence Moyenne</div>
+                        <div class="metric-value">${performance.average_latency_ms || 0} ms</div>
+                        <div class="metric-subtitle">Temps de réponse API</div>
+                    </div>
+                </div>
+
+                <!-- Error Rate -->
+                <div class="metric-card errors ${reliability.error_rate_percent > 5 ? 'warning' : ''}">
+                    <div class="metric-icon">${getIcon('alertCircle', 'metric-icon-lg')}</div>
+                    <div class="metric-content">
+                        <div class="metric-label">Taux d'Erreur</div>
+                        <div class="metric-value">${reliability.error_rate_percent || 0}%</div>
+                        <div class="metric-subtitle">${reliability.total_errors_last_hour || 0} erreurs (1h)</div>
+                    </div>
+                </div>
+
+                <!-- Database -->
+                <div class="metric-card database">
+                    <div class="metric-icon">${getIcon('hardDrive', 'metric-icon-lg')}</div>
+                    <div class="metric-content">
+                        <div class="metric-label">Base de Données</div>
+                        <div class="metric-value">${database.size_mb || 0} MB</div>
+                        <div class="metric-subtitle">${database.total_tables || 0} tables</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metrics-timestamp">
+                Dernière mise à jour : ${data.timestamp ? new Date(data.timestamp).toLocaleString('fr-FR') : 'Inconnu'}
+            </div>
+        `;
+    }
+
+    /**
+     * Show success notification
+     */
+    showSuccessNotification(message) {
+        const successDiv = document.createElement('div');
+        successDiv.className = 'admin-success-notification';
+        successDiv.innerHTML = `
+            <div class="success-content">
+                <span class="success-icon">${getIcon('check', 'notification-icon')}</span>
+                <span class="success-message">${message}</span>
+                <button class="success-close">${AdminIcons.x || '×'}</button>
+            </div>
+        `;
+
+        this.container.insertBefore(successDiv, this.container.firstChild);
+
+        const closeBtn = successDiv.querySelector('.success-close');
+        const remove = () => successDiv.remove();
+        closeBtn.addEventListener('click', remove);
+        setTimeout(remove, 3000);
     }
 
     /**

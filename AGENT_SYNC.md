@@ -276,6 +276,7 @@ Progression Totale : [████████░░] 14/23 (61%)
 ### Documents de Référence
 - 📋 [ROADMAP_OFFICIELLE.md](ROADMAP_OFFICIELLE.md) - Roadmap unique et officielle (13 features)
 - 📊 [ROADMAP_PROGRESS.md](ROADMAP_PROGRESS.md) - Suivi quotidien (61% complété)
+- 🚀 [NEXT_SESSION_P2_4_TO_P2_9.md](NEXT_SESSION_P2_4_TO_P2_9.md) - Planification phases P2.4 à P2.9 (microservices migration)
 - 📜 [CHANGELOG.md](CHANGELOG.md) - Historique détaillé des versions
 - 📖 [README.md](README.md) - Documentation principale du projet
 
