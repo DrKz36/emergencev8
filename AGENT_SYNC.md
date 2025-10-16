@@ -45,7 +45,7 @@
 
 ### ✅ PRODUCTION STABLE ET OPÉRATIONNELLE
 
-**Statut** : ✅ **Révision 00447-faf en production (100% trafic)**
+**Statut** : ✅ **Révision 00455-cew en production (100% trafic) - Version beta-2.1.1**
 
 #### Infrastructure
 - **Projet GCP** : `emergence-469005`
@@ -61,17 +61,28 @@
 | **Health Check** | https://emergence-app.ch/api/health | ✅ 200 OK |
 
 #### Révision Active (2025-10-16)
-- **Révision** : `emergence-app-00447-faf` (tag `canary-20251016-110758`, alias `stable`)
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:20251016-110758`  
-  (`sha256:97984c180b5896315f7311c7089bd3261cd904584a15a7fae722ddc4d49fc865`)
-- **Trafic** : 100% (canary 10% → 50% → 100% validé)
+- **Révision** : `emergence-app-00455-cew` (tag `canary-20251016`, alias `stable`)
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/emergence-repo/emergence-app:20251016-123422`
+  (`sha256:149cce8eb9715f60812883172af5d1a33e32d20edd0bfa48b88550ab7817eb24`)
+- **Trafic** : 100% (canary 10% → 100% direct - tests validés)
+- **Version** : beta-2.1.1 (Audit système agents + versioning unifié)
 - **CPU** : 2 cores
 - **Mémoire** : 4 Gi
 - **Min instances** : 1
 - **Max instances** : 10
 - **Timeout** : 300s
 
-#### Problèmes Résolus (Session 2025-10-16)
+#### Déploiements Récents (Session 2025-10-16)
+
+**🆕 Déploiement beta-2.1.1 (2025-10-16 12:38)** :
+- **Révision** : emergence-app-00455-cew
+- **Tag** : 20251016-123422
+- **Build** : Docker local → GCR → Cloud Run
+- **Tests** : ✅ Health check OK, ✅ Fichiers statiques OK, ✅ Logs propres
+- **Déploiement** : Canary 10% → 100% (validation rapide)
+- **Contenu** : Audit agents + versioning unifié + Phase 1 & 3 debug
+
+#### Problèmes Résolus (Sessions précédentes 2025-10-16)
 
 **1. ✅ Configuration Email SMTP**
 - Variables SMTP ajoutées dans `stable-service.yaml`
@@ -701,16 +712,37 @@ SMTP_PASSWORD=...
 
 ---
 
-**Dernière mise à jour** : 2025-10-16 13:00 par Claude Code (Sonnet 4.5)
+**Dernière mise à jour** : 2025-10-16 13:40 par Claude Code (Sonnet 4.5)
 **Version** : beta-2.1.1 (Phase P1 + Debug & Audit + Versioning unifié)
-**Statut Production** : ✅ STABLE ET OPÉRATIONNEL
+**Statut Production** : ✅ STABLE ET OPÉRATIONNEL - Révision 00455-cew (100% trafic)
 **Progression Roadmap** : 61% (14/23 fonctionnalités)
-**Dernière modification** : Versioning unifié (package.json, version.js, monitoring/router.py) + préparation déploiement
+**Dernière modification** : Déploiement canary beta-2.1.1 validé et basculé à 100%
 
 
 ---
 
 ## 🤖 Synchronisation automatique
+### Consolidation - 2025-10-16T12:43:40.926663
+
+**Type de déclenchement** : `threshold`
+**Conditions** : {
+  "pending_changes": 6,
+  "threshold": 5
+}
+**Changements consolidés** : 6 événements sur 2 fichiers
+
+**Fichiers modifiés** :
+- **AGENT_SYNC.md** : 5 événement(s)
+  - `modified` à 2025-10-16T12:29:41.398492 (agent: unknown)
+  - `modified` à 2025-10-16T12:32:41.529434 (agent: unknown)
+  - `modified` à 2025-10-16T12:33:11.529712 (agent: unknown)
+  - `modified` à 2025-10-16T12:42:41.630139 (agent: unknown)
+  - `modified` à 2025-10-16T12:43:11.651997 (agent: unknown)
+- **docs/passation.md** : 1 événement(s)
+  - `modified` à 2025-10-16T12:29:41.437724 (agent: unknown)
+
+---
+
 ### Consolidation - 2025-10-16T12:29:40.845209
 
 **Type de déclenchement** : `threshold`

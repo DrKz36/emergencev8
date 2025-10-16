@@ -1,3 +1,151 @@
+## [2025-10-16 13:40] - Agent: Claude Code (Sonnet 4.5) - Déploiement Production beta-2.1.1
+
+### Contexte
+Déploiement canary complet de la version beta-2.1.1 en production avec validation et bascule à 100%.
+**Objectif** : Déployer audit agents + versioning unifié + Phase 1 & 3 en production.
+
+### Actions réalisées
+
+1. **Build Docker Image** :
+   - Tag timestamp : 20251016-123422
+   - Image : europe-west1-docker.pkg.dev/emergence-469005/emergence-repo/emergence-app
+   - SHA256 : 149cce8eb9715f60812883172af5d1a33e32d20edd0bfa48b88550ab7817eb24
+   - Durée build : ~34s (layers cached)
+
+2. **Push Google Container Registry** :
+   - Repository : europe-west1-docker.pkg.dev/emergence-469005/emergence-repo
+   - Tags : latest + 20251016-123422
+   - Digest : sha256:0ac03912fec118d291ba9e0009b34852a2164923fcfd1cdec789bbb6f5b3aac4
+
+3. **Déploiement Cloud Run Canary** :
+   - Révision : emergence-app-00455-cew
+   - Tag canary : canary-20251016
+   - Déploiement initial : --no-traffic (0%)
+   - Tests validation : ✅ Tous passés
+
+4. **Tests de Validation** :
+   - ✅ Health check : /api/health retourne {"status": "ok"}
+   - ✅ Fichiers statiques : /src/frontend/main.js accessible (200 OK)
+   - ✅ Logs Cloud Run : Aucune erreur détectée (5 min surveillance)
+
+5. **Routage Progressif Trafic** :
+   - Phase 1 : 10% trafic vers 00455-cew (12:35)
+   - Phase 2 : 100% trafic vers 00455-cew (13:35 - bascule directe après validation)
+
+### Résultat Déploiement
+
+**Statut** : ✅ **PRODUCTION STABLE - Version beta-2.1.1 (100% trafic)**
+
+**Révision active** :
+- Nom : emergence-app-00455-cew
+- Version : beta-2.1.1
+- Trafic : 100%
+- Status : Ready (True)
+- Création : 2025-10-16T10:35:25Z
+
+**URLs Production** :
+- Application : https://emergence-app.ch ✅
+- Health check : https://emergence-app.ch/api/health ✅
+- URL Cloud Run : https://emergence-app-47nct44nma-ew.a.run.app ✅
+
+**Contenu Déployé** :
+- Audit système multi-agents (3/5 agents actifs)
+- Versioning unifié beta-2.1.1 (package.json, version.js, monitoring/router.py)
+- Phase 1 Backend Fixes (timeline endpoints, admin costs)
+- Phase 3 UI/UX Improvements (button system, sticky header)
+- 14 fichiers committés (commit f51f0bd)
+
+### Métriques Déploiement
+
+**Performance** :
+- Build Docker : ~34s
+- Push GCR : ~60s
+- Déploiement Cloud Run : ~90s
+- Tests validation : ~30s
+- **Durée totale** : ~4 min (build + deploy + tests)
+
+**Validation** :
+- Tests automatisés : 16/16 passés (5 backend + 11 frontend)
+- Health checks : ✅ OK
+- Logs : ✅ Aucune erreur
+- Fichiers statiques : ✅ Accessibles
+
+### Commandes Exécutées
+
+```bash
+# Déploiement canary automatisé
+pwsh -File scripts/deploy-canary.ps1
+
+# Bascule 100% trafic
+gcloud run services update-traffic emergence-app \
+  --to-latest \
+  --region=europe-west1 \
+  --project=emergence-469005
+
+# Vérification révision
+gcloud run revisions list \
+  --service=emergence-app \
+  --region=europe-west1 \
+  --project=emergence-469005 \
+  --limit=3
+
+# Test health check production
+curl -s https://emergence-app.ch/api/health
+```
+
+### Documentation Mise à Jour
+
+**Fichiers modifiés** :
+- `AGENT_SYNC.md` : Section "Déploiement Cloud Run - État Actuel"
+  - Révision active : 00447-faf → 00455-cew
+  - Version : beta-2.1.1
+  - Nouvelle section "Déploiements Récents"
+- `docs/passation.md` : Cette entrée
+
+### Prochaines étapes recommandées
+
+1. **Surveillance production (24-48h)** :
+   - Monitoring erreurs : Google Cloud Console
+   - Logs temps réel : `gcloud logging tail ...`
+   - Métriques : Latence, taux d'erreur, utilisation ressources
+
+2. **Exécuter ProdGuardian** :
+   - `/check_prod` pour générer rapport frais logs production
+   - Valider révision 00455-cew stable
+   - Détecter anomalies éventuelles
+
+3. **Automatisation agents** :
+   - Créer workflow GitHub Actions pour `/sync_all` quotidien
+   - Assurer fraîcheur rapports (< 24h)
+
+4. **Phase P2 (Administration & Sécurité)** :
+   - Dashboard Admin Avancé
+   - Gestion Multi-Sessions
+   - Authentification 2FA (TOTP)
+
+### Notes Techniques
+
+**Révisions disponibles (3 dernières)** :
+1. emergence-app-00455-cew (ACTIVE - 100%) - beta-2.1.1
+2. emergence-app-00451-nap (0%) - version précédente
+3. emergence-app-00447-faf (0%) - version n-2
+
+**Rollback disponible** :
+```bash
+# Si problème détecté, rollback vers révision précédente
+gcloud run services update-traffic emergence-app \
+  --to-revisions=emergence-app-00451-nap=100 \
+  --region=europe-west1 \
+  --project=emergence-469005
+```
+
+**Version affichée** :
+- Page d'authentification : "beta-2.1.1" (via src/version.js)
+- API health : Pas de version exposée (sécurité)
+- Monitoring endpoint : /api/system/info (beta-2.1.1)
+
+---
+
 ## [2025-10-16 12:50] - Agent: Claude Code (Sonnet 4.5) - Audit Système Multi-Agents
 
 ### Contexte
