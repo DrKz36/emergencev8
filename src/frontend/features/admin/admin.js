@@ -97,7 +97,7 @@ export default class AdminModule {
           </button>
           <button class="admin-nav-btn ${this._currentView === 'beta' ? 'active' : ''}"
                   data-view="beta">
-            ${getIcon('mail', 'nav-icon')} Invitations Beta
+            ${getIcon('mail', 'nav-icon')} Envoi de mails
           </button>
         </div>
         <div class="admin-views">

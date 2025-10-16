@@ -41,8 +41,8 @@ class TimelineService:
         days = self._parse_period(period)
 
         # Construire les conditions de filtrage
-        # Fix Phase 1.2: Utiliser COALESCE pour gérer les NULL timestamps
-        message_filters = ["date(COALESCE(m.created_at, m.timestamp, 'now')) = dates.date"]
+        # Fix Phase 1.6: messages a created_at (pas timestamp), threads a created_at/updated_at
+        message_filters = ["date(COALESCE(m.created_at, 'now')) = dates.date"]
         thread_filters = ["date(COALESCE(t.created_at, t.updated_at, 'now')) = dates.date"]
         params: List[Any] = []
 
@@ -105,8 +105,8 @@ class TimelineService:
         """
         days = self._parse_period(period)
 
-        # Fix Phase 1.2: Utiliser COALESCE pour gérer les NULL timestamps
-        cost_filters = ["date(COALESCE(c.timestamp, c.created_at, 'now')) = dates.date"]
+        # Fix Phase 1.6: costs table a timestamp (pas created_at)
+        cost_filters = ["date(COALESCE(c.timestamp, 'now')) = dates.date"]
         params: List[Any] = []
 
         # Si user_id est fourni, filtrer par user_id
@@ -162,8 +162,8 @@ class TimelineService:
         """
         days = self._parse_period(period)
 
-        # Fix Phase 1.2: Utiliser COALESCE pour gérer les NULL timestamps
-        token_filters = ["date(COALESCE(c.timestamp, c.created_at, 'now')) = dates.date"]
+        # Fix Phase 1.6: costs table a timestamp (pas created_at)
+        token_filters = ["date(COALESCE(c.timestamp, 'now')) = dates.date"]
         params: List[Any] = []
 
         # Si user_id est fourni, filtrer par user_id
@@ -238,9 +238,9 @@ class TimelineService:
             }
 
         elif metric in ["tokens", "costs"]:
-            # Fix Phase 1.2: Utiliser COALESCE pour gérer les NULL timestamps
+            # Fix Phase 1.6: costs table a timestamp (pas created_at)
             conditions = [
-                f"date(COALESCE(timestamp, created_at, 'now')) >= date('now', '-{days} days')"
+                f"date(COALESCE(timestamp, 'now')) >= date('now', '-{days} days')"
             ]
             params = []
 

@@ -1040,6 +1040,29 @@
     margin: 0;
 }
 
+.auth-admin__select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 8px;
+    color: rgba(226, 232, 240, 0.9);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.auth-admin__select:hover {
+    background: rgba(20, 28, 50, 0.9);
+    border-color: rgba(56, 189, 248, 0.3);
+}
+
+.auth-admin__select:focus {
+    outline: none;
+    border-color: rgba(56, 189, 248, 0.5);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+}
+
 .beta-invitations__select-all {
     display: flex;
     align-items: center;

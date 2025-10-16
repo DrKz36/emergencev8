@@ -48,7 +48,7 @@ async def verify_admin_role(user_role: str = Depends(deps.get_user_role)):
 )
 async def get_global_dashboard(
     _admin_verified: bool = Depends(verify_admin_role),
-    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service()),
+    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service),
 ) -> Dict[str, Any]:
     """
     Get global dashboard data - admin only.
@@ -70,7 +70,7 @@ async def get_global_dashboard(
 async def get_user_detailed_data(
     user_id: str,
     _admin_verified: bool = Depends(verify_admin_role),
-    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service()),
+    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service),
 ) -> Dict[str, Any]:
     """
     Get detailed data for a specific user - admin only.
@@ -111,25 +111,27 @@ async def get_allowlist_emails(
 
 
 @router.post(
-    "/admin/beta-invitations/send",
+    "/admin/emails/send",
     response_model=Dict[str, Any],
     tags=["Admin Dashboard"],
-    summary="Send beta invitations (admin only)",
-    description="Send beta invitation emails to selected addresses.",
+    summary="Send emails to members (admin only)",
+    description="Send emails to selected members with specified template type.",
 )
-async def send_beta_invitations(
+async def send_member_emails(
     request: Dict[str, Any],
     _admin_verified: bool = Depends(verify_admin_role),
 ) -> Dict[str, Any]:
     """
-    Send beta invitation emails - admin only.
+    Send emails to members - admin only.
+    Supports different email types: beta_invitation, auth_issue, custom
     """
     from backend.features.auth.email_service import EmailService
 
-    logger.info("[Admin] Sending beta invitations")
+    logger.info("[Admin] Sending member emails")
 
     emails = request.get("emails", [])
     base_url = request.get("base_url", "https://emergence-app.ch")
+    email_type = request.get("email_type", "beta_invitation")
 
     if not emails or not isinstance(emails, list):
         raise HTTPException(status_code=400, detail="emails must be a non-empty list")
@@ -145,27 +147,76 @@ async def send_beta_invitations(
         "failed": 0,
         "sent_to": [],
         "failed_emails": [],
+        "email_type": email_type,
     }
 
     for email in emails:
         try:
-            success = await email_service.send_beta_invitation_email(email, base_url)
+            success = False
+
+            if email_type == "beta_invitation":
+                success = await email_service.send_beta_invitation_email(email, base_url)
+            elif email_type == "auth_issue":
+                success = await email_service.send_auth_issue_notification_email(email, base_url)
+            elif email_type == "custom":
+                # For custom emails, expect subject and body in request
+                subject = request.get("subject", "")
+                html_body = request.get("html_body", "")
+                text_body = request.get("text_body", "")
+
+                if not subject or not html_body or not text_body:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Custom emails require subject, html_body, and text_body"
+                    )
+
+                success = await email_service.send_custom_email(
+                    email, subject, html_body, text_body
+                )
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unknown email type: {email_type}"
+                )
+
             if success:
                 results["sent"] += 1
                 results["sent_to"].append(email)
-                logger.info(f"[Admin] Beta invitation sent to {email}")
+                logger.info(f"[Admin] Email ({email_type}) sent to {email}")
             else:
                 results["failed"] += 1
                 results["failed_emails"].append(email)
-                logger.warning(f"[Admin] Failed to send beta invitation to {email}")
+                logger.warning(f"[Admin] Failed to send email ({email_type}) to {email}")
         except Exception as e:
             results["failed"] += 1
             results["failed_emails"].append(email)
-            logger.error(f"[Admin] Error sending beta invitation to {email}: {e}")
+            logger.error(f"[Admin] Error sending email ({email_type}) to {email}: {e}")
 
-    logger.info(f"[Admin] Beta invitations sent: {results['sent']}/{results['total']}")
+    logger.info(f"[Admin] Emails sent: {results['sent']}/{results['total']} (type: {email_type})")
 
     return results
+
+
+# Keep old endpoint for backward compatibility
+@router.post(
+    "/admin/beta-invitations/send",
+    response_model=Dict[str, Any],
+    tags=["Admin Dashboard"],
+    summary="Send beta invitations (admin only) - DEPRECATED",
+    description="Send beta invitation emails to selected addresses. Use /admin/emails/send instead.",
+    deprecated=True,
+)
+async def send_beta_invitations(
+    request: Dict[str, Any],
+    _admin_verified: bool = Depends(verify_admin_role),
+) -> Dict[str, Any]:
+    """
+    Send beta invitation emails - admin only.
+    DEPRECATED: Use /admin/emails/send with email_type='beta_invitation' instead.
+    """
+    # Redirect to new endpoint
+    request["email_type"] = "beta_invitation"
+    return await send_member_emails(request, _admin_verified)
 
 
 @router.get(
@@ -177,7 +228,7 @@ async def send_beta_invitations(
 )
 async def get_active_sessions(
     _admin_verified: bool = Depends(verify_admin_role),
-    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service()),
+    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service),
 ) -> Dict[str, Any]:
     """
     Get all active sessions - admin only.
@@ -202,7 +253,7 @@ async def get_active_sessions(
 async def revoke_session(
     session_id: str,
     _admin_verified: bool = Depends(verify_admin_role),
-    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service()),
+    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service),
 ) -> Dict[str, Any]:
     """
     Revoke a session - admin only.
@@ -229,7 +280,7 @@ async def revoke_session(
 )
 async def get_system_metrics(
     _admin_verified: bool = Depends(verify_admin_role),
-    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service()),
+    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service),
 ) -> Dict[str, Any]:
     """
     Get system metrics - admin only.
@@ -250,7 +301,7 @@ async def get_system_metrics(
 )
 async def get_detailed_costs_breakdown(
     _admin_verified: bool = Depends(verify_admin_role),
-    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service()),
+    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service),
 ) -> Dict[str, Any]:
     """
     Get detailed costs breakdown - admin only.

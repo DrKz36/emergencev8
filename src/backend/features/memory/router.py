@@ -980,10 +980,15 @@ async def get_user_memory_stats(
     type_counts = {"preference": 0, "intent": 0, "constraint": 0}
 
     try:
+        # Phase 2 Fix: Utiliser OR au lieu de $in pour meilleure compatibilité ChromaDB
         prefs_results = collection.get(
             where={"$and": [
                 {"user_id": user_id},
-                {"type": {"$in": ["preference", "intent", "constraint"]}}
+                {"$or": [
+                    {"type": "preference"},
+                    {"type": "intent"},
+                    {"type": "constraint"}
+                ]}
             ]},
             include=["documents", "metadatas"]
         )
@@ -991,8 +996,21 @@ async def get_user_memory_stats(
         prefs_docs = prefs_results.get("documents", [])
         prefs_meta = prefs_results.get("metadatas", [])
 
+        # Phase 2 Fix: Gérer les cas où documents/metadatas sont imbriqués dans des listes
+        if prefs_docs and isinstance(prefs_docs, list) and len(prefs_docs) > 0:
+            # Si first element is a list, flatten it
+            if isinstance(prefs_docs[0], list):
+                prefs_docs = [item for sublist in prefs_docs for item in sublist]
+
+        if prefs_meta and isinstance(prefs_meta, list) and len(prefs_meta) > 0:
+            if isinstance(prefs_meta[0], list):
+                prefs_meta = [item for sublist in prefs_meta for item in sublist]
+
         # Parse preferences
         for doc, meta in zip(prefs_docs, prefs_meta):
+            if not meta:  # Skip if metadata is None or empty
+                continue
+
             pref_type = meta.get("type", "preference")
             type_counts[pref_type] = type_counts.get(pref_type, 0) + 1
 
@@ -1006,6 +1024,8 @@ async def get_user_memory_stats(
 
         # Sort by confidence (descending)
         preferences.sort(key=lambda x: x["confidence"], reverse=True)
+
+        logger.info(f"[memory/user/stats] Retrieved {len(preferences)} preferences for user {user_id}")
 
     except Exception as e:
         logger.error(f"[memory/user/stats] Failed to fetch preferences: {e}", exc_info=True)
@@ -1026,8 +1046,20 @@ async def get_user_memory_stats(
         concepts_docs = concepts_results.get("documents", [])
         concepts_meta = concepts_results.get("metadatas", [])
 
+        # Phase 2 Fix: Gérer les cas où documents/metadatas sont imbriqués dans des listes
+        if concepts_docs and isinstance(concepts_docs, list) and len(concepts_docs) > 0:
+            if isinstance(concepts_docs[0], list):
+                concepts_docs = [item for sublist in concepts_docs for item in sublist]
+
+        if concepts_meta and isinstance(concepts_meta, list) and len(concepts_meta) > 0:
+            if isinstance(concepts_meta[0], list):
+                concepts_meta = [item for sublist in concepts_meta for item in sublist]
+
         # Parse concepts
         for doc, meta in zip(concepts_docs, concepts_meta):
+            if not meta:  # Skip if metadata is None or empty
+                continue
+
             concepts.append({
                 "concept": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
                 "mentions": int(meta.get("mention_count", 1)),
@@ -1036,6 +1068,8 @@ async def get_user_memory_stats(
 
         # Sort by mentions (descending)
         concepts.sort(key=lambda x: x["mentions"], reverse=True)
+
+        logger.info(f"[memory/user/stats] Retrieved {len(concepts)} concepts for user {user_id}")
 
     except Exception as e:
         logger.error(f"[memory/user/stats] Failed to fetch concepts: {e}", exc_info=True)

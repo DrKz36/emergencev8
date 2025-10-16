@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-16 11:15 (Bootstrap allowlist + déploiement 00447-faf)
+**Dernière mise à jour** : 2025-10-16 11:45 (NEO: validation intégrité système emails membres)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -31,7 +31,9 @@
   - `dc1781f` docs(debug): Add comprehensive debug plan for Cockpit, Memory, Admin, and About modules
 
 ### Working tree
-- **Statut** : ✅ Propre (`git status` vierge après commit/push)
+- **Statut** : ⚠️ Modifications en cours (système d'emails membres en développement)
+- **Fichiers modifiés** : 9 fichiers (backend: 6, frontend: 3)
+- **Nouveau** : `docs/MEMBER_EMAILS_SYSTEM.md`, scripts de test emails
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
@@ -260,6 +262,47 @@ Progression Totale : [████████░░] 14/23 (61%)
 - **Tests** : `npm run build`
 - **Notes** : Overlay d'orientation ajouté + variables responsive centralisées (`--responsive-*`) à généraliser sur les prochains modules.
 
+### ⚠️ WIP - Système d'Emails Membres (2025-10-16 11:45)
+
+**Statut** : ✅ En développement (prêt pour commit)
+**Agent** : NEO (IntegrityWatcher via Claude Code)
+
+**Fichiers modifiés (9 fichiers)** :
+- **Backend (6)** :
+  - `email_service.py` - Ajout méthodes `send_auth_issue_notification_email()`, `send_custom_email()`
+  - `admin_router.py` - Refonte endpoint `/admin/emails/send` (multi-types)
+  - `admin_service.py`, `timeline_service.py`, `memory/router.py`, `monitoring/router.py`
+- **Frontend (3)** :
+  - `beta-invitations-module.js` - Refonte UI avec sélecteur de type d'email
+  - `admin.js` - Onglet renommé "Envoi de mails"
+  - `admin-dashboard.css` - Styles pour `.auth-admin__select`
+- **Documentation** : `docs/MEMBER_EMAILS_SYSTEM.md` (nouveau), `AGENT_SYNC.md` (mis à jour)
+
+**Changements API** :
+- ⚠️ **Breaking change mitigé** : Endpoint `/admin/beta-invitations/send` renommé → `/admin/emails/send`
+- ✅ **Rétrocompatibilité** : Endpoint deprecated ajouté avec redirection automatique
+- ✅ **Type par défaut** : `beta_invitation` maintenu pour compatibilité
+- ✅ **Nouvelles features** :
+  - Template `auth_issue` : Notification problème d'authentification
+  - Template `custom` : Emails personnalisés (requiert `subject`, `html_body`, `text_body`)
+
+**Validation NEO** :
+- ✅ Cohérence backend/frontend vérifiée
+- ✅ Frontend appelle le nouveau endpoint `/admin/emails/send`
+- ✅ Endpoint deprecated implémenté pour rétrocompatibilité
+- ✅ Paramètres validés côté backend (type, custom fields)
+- ⚠️ Tests E2E recommandés avant déploiement
+
+**Recommandations avant commit** :
+1. ✅ Tests manuels UI : sélecteur type email + envoi
+2. ✅ Test endpoint deprecated (ancienne URL → redirection)
+3. 🟡 Tests E2E automatisés (optionnel, recommandé)
+4. 📝 Mise à jour `openapi.json` si généré automatiquement
+
+**Documentation** :
+- ✅ [docs/MEMBER_EMAILS_SYSTEM.md](docs/MEMBER_EMAILS_SYSTEM.md) - Guide complet système emails
+- ✅ [AGENT_SYNC.md](AGENT_SYNC.md) - Section "Fonctionnalités Administration" mise à jour
+
 
 ### ✅ Session 2025-10-16 - Production Deployment (TERMINÉE)
 - **Statut** : ✅ **PRODUCTION STABLE**
@@ -336,6 +379,13 @@ Progression Totale : [████████░░] 14/23 (61%)
 - 📚 [docs/TUTORIAL_SYSTEM.md](docs/TUTORIAL_SYSTEM.md) - Système de tutoriel
 - 🎯 [GUIDE_INTERFACE_BETA.md](GUIDE_INTERFACE_BETA.md) - Guide interface bêta
 - ❓ [docs/FAQ.md](docs/FAQ.md) - Questions fréquentes
+
+### Fonctionnalités Administration
+- 📧 [docs/MEMBER_EMAILS_SYSTEM.md](docs/MEMBER_EMAILS_SYSTEM.md) - **Système d'envoi d'emails aux membres**
+  - Templates : invitation beta, notification auth, emails personnalisés
+  - Interface admin : sélecteur de type d'email, gestion destinataires
+  - API : `/api/admin/emails/send` (remplace `/api/admin/beta-invitations/send`)
+  - Configuration SMTP requise (voir variables d'env dans doc)
 
 ### 🤖 Sub-Agents Claude Code - Système de Surveillance et Coordination
 
@@ -565,7 +615,8 @@ SMTP_PASSWORD=...
 
 ---
 
-**Dernière mise à jour** : 2025-10-16 par Claude Code Assistant
+**Dernière mise à jour** : 2025-10-16 11:45 par NEO (IntegrityWatcher via Claude Code)
 **Version** : beta-2.0.0
 **Statut Production** : ✅ STABLE ET OPÉRATIONNEL
 **Progression Roadmap** : 61% (14/23 fonctionnalités)
+**Dernière modification** : Validation intégrité système emails membres + section WIP ajoutée

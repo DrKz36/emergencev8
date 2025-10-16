@@ -92,18 +92,15 @@ class AdminDashboardService:
     async def _get_users_breakdown(self) -> List[Dict[str, Any]]:
         """Get per-user statistics breakdown with flexible user matching."""
         try:
-            # Fix Phase 1.3: Use LEFT JOIN to include all users, even without auth_allowlist match
-            # This prevents "Aucun utilisateur trouvé" when user_id != email
+            # Fix Phase 1.6: auth_allowlist n'a PAS de colonne user_id, seulement email
+            # On join uniquement sur email
             query = """
                 SELECT DISTINCT
                     s.user_id,
                     COALESCE(a.email, s.user_id) as email,
                     COALESCE(a.role, 'member') as role
                 FROM sessions s
-                LEFT JOIN auth_allowlist a ON (
-                    s.user_id = a.email
-                    OR s.user_id = a.user_id
-                )
+                LEFT JOIN auth_allowlist a ON s.user_id = a.email
                 WHERE s.user_id IS NOT NULL
                 ORDER BY s.created_at DESC
             """
@@ -279,12 +276,13 @@ class AdminDashboardService:
                 date = now - timedelta(days=i)
                 date_str = date.strftime("%Y-%m-%d")
 
+                # Fix Phase 1.6: costs table a timestamp (pas created_at)
                 query = """
                     SELECT
                         COALESCE(SUM(total_cost), 0) as daily_total,
                         COUNT(*) as request_count
                     FROM costs
-                    WHERE DATE(COALESCE(timestamp, created_at, 'now')) = ?
+                    WHERE DATE(COALESCE(timestamp, 'now')) = ?
                 """
                 conn = await self.db._ensure_connection()
                 cursor = await conn.execute(query, (date_str,))
@@ -370,10 +368,10 @@ class AdminDashboardService:
         """Get cost logs history for a user with NULL-safe timestamp handling."""
         try:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
-            # Fix Phase 1.4: Use COALESCE for timestamp filtering
+            # Fix Phase 1.6: costs table a timestamp (pas created_at)
             query = """
                 SELECT
-                    COALESCE(timestamp, created_at) as effective_timestamp,
+                    timestamp as effective_timestamp,
                     agent,
                     model,
                     total_cost,
@@ -381,8 +379,8 @@ class AdminDashboardService:
                     session_id
                 FROM costs
                 WHERE user_id = ?
-                  AND COALESCE(timestamp, created_at, 'now') >= ?
-                ORDER BY COALESCE(timestamp, created_at) DESC
+                  AND COALESCE(timestamp, 'now') >= ?
+                ORDER BY timestamp DESC
                 LIMIT 100
             """
             conn = await self.db._ensure_connection()
@@ -637,7 +635,7 @@ class AdminDashboardService:
         Returns costs aggregated by user, then by module/feature.
         """
         try:
-            # Aggregate costs by user and feature using NULL-safe timestamp
+            # Fix Phase 1.6: costs table a timestamp (pas created_at)
             query = """
                 SELECT
                     user_id,
@@ -646,8 +644,8 @@ class AdminDashboardService:
                     SUM(input_tokens) as input_tokens,
                     SUM(output_tokens) as output_tokens,
                     COUNT(*) as request_count,
-                    MIN(COALESCE(timestamp, created_at)) as first_request,
-                    MAX(COALESCE(timestamp, created_at)) as last_request
+                    MIN(timestamp) as first_request,
+                    MAX(timestamp) as last_request
                 FROM costs
                 WHERE user_id IS NOT NULL
                 GROUP BY user_id, feature

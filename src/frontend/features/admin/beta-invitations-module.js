@@ -1,7 +1,8 @@
 /**
- * @module features/admin/beta-invitations-module
- * @description Module d'envoi d'invitations Beta - Admin interface for sending beta invitations
- * V1.0 - Send beta invitations to allowlist emails
+ * @module features/admin/member-emails-module
+ * @description Module d'envoi d'emails aux membres - Admin interface for sending emails to members
+ * V2.0 - Send various types of emails to allowlist members
+ * Supports: beta invitations, auth issue notifications, custom messages
  */
 
 import { api } from '../../shared/api-client.js';
@@ -28,6 +29,7 @@ export class BetaInvitationsModule {
     this.selectedEmails = new Set();
     this.isLoading = false;
     this.isSending = false;
+    this.emailType = 'beta_invitation'; // Default type
 
     // UI Elements
     this.emailsContainer = null;
@@ -35,6 +37,7 @@ export class BetaInvitationsModule {
     this.sendButton = null;
     this.messageNode = null;
     this.searchInput = null;
+    this.emailTypeSelect = null;
     this.filteredEmails = [];
 
     this.listeners = [];
@@ -70,6 +73,7 @@ export class BetaInvitationsModule {
     this.sendButton = this.container.querySelector('[data-role="send-invitations"]');
     this.messageNode = this.container.querySelector('[data-role="message"]');
     this.searchInput = this.container.querySelector('[data-role="search-emails"]');
+    this.emailTypeSelect = this.container.querySelector('[data-role="email-type"]');
   }
 
   bindEvents() {
@@ -121,19 +125,37 @@ export class BetaInvitationsModule {
       this.searchInput.addEventListener('input', onSearch);
       this.listeners.push(() => this.searchInput.removeEventListener('input', onSearch));
     }
+
+    // Email type selector
+    if (this.emailTypeSelect) {
+      const onTypeChange = (event) => {
+        this.emailType = event.target.value;
+        this.updateSendButtonLabel();
+      };
+      this.emailTypeSelect.addEventListener('change', onTypeChange);
+      this.listeners.push(() => this.emailTypeSelect.removeEventListener('change', onTypeChange));
+    }
   }
 
   render() {
     return `
       <section class="beta-invitations" data-role="beta-invitations">
         <header class="auth-admin__header">
-          <h2 class="auth-admin__title">📧 Invitations Beta</h2>
-          <p class="auth-admin__subtitle">Envoyez des invitations beta aux utilisateurs de l'allowlist</p>
+          <h2 class="auth-admin__title">📧 Envoi de mails aux membres</h2>
+          <p class="auth-admin__subtitle">Envoyez différents types d'emails aux membres de l'allowlist</p>
         </header>
 
         <div data-role="message" class="auth-admin__message" aria-live="polite"></div>
 
         <div class="beta-invitations__controls">
+          <label class="auth-admin__field">
+            <span>📋 Type d'email</span>
+            <select data-role="email-type" class="auth-admin__select">
+              <option value="beta_invitation">🎉 Invitation Beta</option>
+              <option value="auth_issue">🔧 Notification problème d'authentification</option>
+            </select>
+          </label>
+
           <label class="auth-admin__field">
             <span>🔍 Rechercher</span>
             <input
@@ -158,7 +180,7 @@ export class BetaInvitationsModule {
             class="auth-admin__button auth-admin__button--primary"
             disabled
           >
-            ✉️ Envoyer les invitations (<span data-role="selected-count">0</span>)
+            <span data-role="button-label">✉️ Envoyer les invitations</span> (<span data-role="selected-count">0</span>)
           </button>
         </div>
 
@@ -273,23 +295,52 @@ export class BetaInvitationsModule {
     }
 
     this.sendButton.disabled = count === 0 || this.isSending;
+    this.updateSendButtonLabel();
+  }
+
+  updateSendButtonLabel() {
+    if (!this.sendButton) return;
+
+    const labelSpan = this.sendButton.querySelector('[data-role="button-label"]');
+    if (!labelSpan) return;
+
+    const labels = {
+      'beta_invitation': '✉️ Envoyer les invitations',
+      'auth_issue': '🔧 Envoyer les notifications',
+      'custom': '📤 Envoyer les messages',
+    };
+
+    labelSpan.textContent = labels[this.emailType] || '✉️ Envoyer';
   }
 
   async handleSendInvitations() {
     if (this.isSending || this.selectedEmails.size === 0) return;
 
+    const confirmMessages = {
+      'beta_invitation': `Êtes-vous sûr de vouloir envoyer ${this.selectedEmails.size} invitation(s) beta ?`,
+      'auth_issue': `Êtes-vous sûr de vouloir envoyer ${this.selectedEmails.size} notification(s) de problème d'authentification ?`,
+      'custom': `Êtes-vous sûr de vouloir envoyer ${this.selectedEmails.size} message(s) personnalisé(s) ?`,
+    };
+
     const confirmed = confirm(
-      `Êtes-vous sûr de vouloir envoyer ${this.selectedEmails.size} invitation(s) beta ?`
+      confirmMessages[this.emailType] || `Êtes-vous sûr de vouloir envoyer ${this.selectedEmails.size} email(s) ?`
     );
 
     if (!confirmed) return;
 
     this.isSending = true;
     this.updateSendButton();
-    this.notify('info', `Envoi de ${this.selectedEmails.size} invitation(s) en cours...`);
+
+    const sendingMessages = {
+      'beta_invitation': `Envoi de ${this.selectedEmails.size} invitation(s) en cours...`,
+      'auth_issue': `Envoi de ${this.selectedEmails.size} notification(s) en cours...`,
+      'custom': `Envoi de ${this.selectedEmails.size} message(s) en cours...`,
+    };
+
+    this.notify('info', sendingMessages[this.emailType] || `Envoi de ${this.selectedEmails.size} email(s) en cours...`);
 
     try {
-      const response = await fetch('/api/admin/beta-invitations/send', {
+      const response = await fetch('/api/admin/emails/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -298,6 +349,7 @@ export class BetaInvitationsModule {
         body: JSON.stringify({
           emails: Array.from(this.selectedEmails),
           base_url: window.location.origin,
+          email_type: this.emailType,
         }),
       });
 
@@ -307,11 +359,18 @@ export class BetaInvitationsModule {
 
       const result = await response.json();
 
-      const successMessage = `✅ ${result.sent}/${result.total} invitation(s) envoyée(s) avec succès`;
+      const typeLabels = {
+        'beta_invitation': 'invitation(s)',
+        'auth_issue': 'notification(s)',
+        'custom': 'message(s)',
+      };
+
+      const label = typeLabels[this.emailType] || 'email(s)';
+      const successMessage = `✅ ${result.sent}/${result.total} ${label} envoyée(s) avec succès`;
 
       if (result.failed > 0) {
         this.notify('warning', `${successMessage}. ${result.failed} échec(s).`);
-        console.warn('[BetaInvitations] Failed emails:', result.failed_emails);
+        console.warn('[MemberEmails] Failed emails:', result.failed_emails);
       } else {
         this.notify('success', successMessage);
       }
@@ -322,8 +381,8 @@ export class BetaInvitationsModule {
       this.updateSendButton();
 
     } catch (error) {
-      console.error('[BetaInvitations] Failed to send invitations:', error);
-      this.notify('error', 'Erreur lors de l\'envoi des invitations');
+      console.error('[MemberEmails] Failed to send emails:', error);
+      this.notify('error', 'Erreur lors de l\'envoi des emails');
     } finally {
       this.isSending = false;
       this.updateSendButton();

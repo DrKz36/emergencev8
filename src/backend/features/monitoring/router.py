@@ -214,9 +214,10 @@ async def _check_database(request: Request) -> Dict[str, Any]:
             return {"status": "down", "error": "DBManager non initialisé"}
 
         # Ping basique : exécuter une requête simple
-        async with db_manager.get_connection() as conn:
-            result = await conn.execute("SELECT 1")
-            await result.fetchone()
+        # Fix Phase 2: Utiliser _ensure_connection au lieu de get_connection
+        conn = await db_manager._ensure_connection()
+        cursor = await conn.execute("SELECT 1")
+        await cursor.fetchone()
 
         return {"status": "up"}
     except Exception as e:
@@ -348,3 +349,116 @@ async def readiness_check(request: Request) -> Dict[str, Any]:
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "components": components,
     }
+
+
+@router.get("/system/info")
+async def get_system_info(request: Request) -> Dict[str, Any]:
+    """
+    Get comprehensive system information for About page.
+
+    Provides:
+    - Backend version and environment
+    - Python version and platform
+    - System resources (CPU, memory, disk)
+    - Service status (database, vector, LLM)
+    - Uptime and performance metrics
+
+    Phase 2 Fix: Endpoint dédié pour About page
+    """
+    try:
+        import os
+        import sys
+
+        # Get process info
+        process = psutil.Process()
+        process_create_time = datetime.fromtimestamp(process.create_time(), tz=timezone.utc)
+        now = datetime.now(timezone.utc)
+        uptime_seconds = (now - process_create_time).total_seconds()
+
+        # System resources
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+
+        # Version info
+        backend_version = os.getenv("BACKEND_VERSION", "0.0.0")
+        env = os.getenv("ENVIRONMENT", "development")
+
+        # Check services
+        components = {
+            "database": await _check_database(request),
+            "vector_service": await _check_vector_service(request),
+            "llm_providers": await _check_llm_providers(request),
+        }
+
+        return {
+            "version": {
+                "backend": backend_version,
+                "python": platform.python_version(),
+                "environment": env,
+            },
+            "platform": {
+                "system": platform.system(),
+                "release": platform.release(),
+                "machine": platform.machine(),
+                "processor": platform.processor() or "Unknown",
+            },
+            "resources": {
+                "cpu_percent": round(cpu_percent, 2),
+                "memory": {
+                    "total_gb": round(memory.total / (1024**3), 2),
+                    "available_gb": round(memory.available / (1024**3), 2),
+                    "used_percent": memory.percent,
+                },
+                "disk": {
+                    "total_gb": round(disk.total / (1024**3), 2),
+                    "free_gb": round(disk.free / (1024**3), 2),
+                    "used_percent": disk.percent,
+                },
+            },
+            "uptime": {
+                "seconds": int(uptime_seconds),
+                "formatted": _format_uptime(uptime_seconds),
+                "started_at": process_create_time.isoformat(),
+            },
+            "services": components,
+            "timestamp": now.isoformat(),
+        }
+
+    except Exception as e:
+        logger.error(f"[system/info] Error fetching system info: {e}", exc_info=True)
+        return {
+            "version": {
+                "backend": "unknown",
+                "python": platform.python_version(),
+                "environment": "unknown",
+            },
+            "platform": {
+                "system": platform.system(),
+                "release": "unknown",
+                "machine": "unknown",
+                "processor": "unknown",
+            },
+            "resources": {
+                "cpu_percent": 0,
+                "memory": {"total_gb": 0, "available_gb": 0, "used_percent": 0},
+                "disk": {"total_gb": 0, "free_gb": 0, "used_percent": 0},
+            },
+            "uptime": {"seconds": 0, "formatted": "Unknown", "started_at": None},
+            "services": {},
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "error": str(e),
+        }
+
+
+def _format_uptime(seconds: float) -> str:
+    """Format uptime in human-readable format."""
+    days = int(seconds // 86400)
+    hours = int((seconds % 86400) // 3600)
+    minutes = int((seconds % 3600) // 60)
+    if days > 0:
+        return f"{days}d {hours}h {minutes}m"
+    elif hours > 0:
+        return f"{hours}h {minutes}m"
+    else:
+        return f"{minutes}m"
