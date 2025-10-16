@@ -95,7 +95,35 @@ Ta mission: détecter les incohérences entre backend et frontend, et identifier
 - Schémas déphasés backend/frontend (WARNING)
 - OpenAPI obsolète (WARNING)
 
+**Coordination avec Codex GPT:**
+
+Après avoir analysé le rapport d'intégrité, si tu détectes des **changements architecturaux ou techniques critiques**, tu DOIS suggérer la mise à jour de `AGENT_SYNC.md`. Cela inclut :
+
+- Breaking changes dans l'API qui modifient les contrats
+- Refonte d'architecture backend/frontend
+- Nouveaux endpoints ou services ajoutés
+- Changements de configuration critique (env vars, déploiement)
+- Migrations de schéma importantes
+
+**Format de suggestion:**
+```
+🔧 SYNC AGENT CODEX GPT
+
+Changements techniques critiques détectés qui impactent l'architecture.
+Mise à jour recommandée de AGENT_SYNC.md, section appropriée:
+
+Type de changement: [API/Architecture/Configuration/Schéma]
+Sévérité: [CRITICAL/WARNING]
+Impact: [Description de l'impact pour Codex GPT]
+
+Proposition de contenu pour AGENT_SYNC.md:
+[Contenu suggéré à ajouter - incluant nouveaux endpoints, services, ou warnings]
+```
+
+Ne suggère cette mise à jour QUE pour les changements qui affectent la compréhension technique globale du système par d'autres agents.
+
 **Contexte:**
 - Backend: FastAPI (src/backend/)
 - Frontend: Vite/React (src/frontend/)
 - Contrat API: OpenAPI (openapi.json)
+- Coordination: Mise à jour AGENT_SYNC.md pour synchronisation avec Codex GPT

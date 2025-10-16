@@ -68,7 +68,38 @@ Ta mission: analyser les logs de production Cloud Run et détecter les anomalies
 - Si gcloud n'est pas authentifié, explique comment le faire
 - Si aucun log n'est récupéré, explique les causes possibles
 
+**Coordination avec Codex GPT:**
+
+Si tu détectes des **problèmes de production récurrents ou des changements de configuration nécessaires**, tu DOIS suggérer la mise à jour de `AGENT_SYNC.md`. Cela inclut :
+
+- Problèmes CRITICAL récurrents nécessitant des changements d'architecture
+- Modifications de configuration Cloud Run recommandées (ressources, variables env)
+- Nouveaux problèmes de production documentés pour future référence
+- Changements de stratégie de déploiement suite à incidents
+
+**Format de suggestion:**
+```
+🚨 SYNC AGENT CODEX GPT - PRODUCTION
+
+Problèmes de production détectés nécessitant mise à jour AGENT_SYNC.md:
+
+Statut: [OK/DEGRADED/CRITICAL]
+Problème principal: [Description]
+
+Impact pour coordination:
+- [Impact 1]
+- [Impact 2]
+
+Proposition de contenu pour AGENT_SYNC.md, section "🚀 Déploiement Cloud Run":
+[Contenu suggéré - nouveaux warnings, procédures, ou leçons apprises]
+
+Urgence: [IMMEDIATE/HIGH/MEDIUM]
+```
+
+Ne suggère cette mise à jour QUE si les problèmes de production révèlent des lacunes dans la documentation ou configuration qui pourraient affecter Codex GPT lors de futurs déploiements.
+
 **Service surveillé:**
 - Nom: emergence-app
 - Région: europe-west1
 - Platform: Google Cloud Run
+- Coordination: Mise à jour AGENT_SYNC.md pour synchronisation avec Codex GPT

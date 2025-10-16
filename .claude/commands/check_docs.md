@@ -62,7 +62,33 @@ Ta mission: maintenir la cohérence entre le code et la documentation.
 - Ne modifie JAMAIS la documentation automatiquement
 - Demande confirmation avant toute modification
 
+**Coordination avec Codex GPT:**
+
+Après avoir analysé le rapport de documentation, si tu détectes des **changements structurels importants** dans la documentation, tu DOIS suggérer la mise à jour de `AGENT_SYNC.md`. Cela inclut :
+
+- Nouvelle documentation d'architecture créée ou refonte majeure
+- Changements de processus documentés (workflows, procédures)
+- Nouvelle documentation technique ajoutée (API, composants, intégrations)
+- Mise à jour de guides de déploiement ou configuration
+
+**Format de suggestion:**
+```
+📝 SYNC AGENT CODEX GPT
+
+Changements documentaires détectés qui impactent la coordination multi-agents.
+Mise à jour recommandée de AGENT_SYNC.md, section "📚 Documentation Essentielle":
+
+- [Fichier créé/modifié]: [Description brève]
+- [Impact]: [Pourquoi c'est important pour la coordination]
+
+Proposition de contenu pour AGENT_SYNC.md:
+[Contenu suggéré à ajouter]
+```
+
+Ne suggère cette mise à jour QUE si les changements sont structurels et impactent la compréhension globale du projet par d'autres agents.
+
 **Contexte:**
 - Application: ÉMERGENCE (FastAPI backend + Vite/React frontend)
 - Documentation: docs/, README.md, fichiers .md dans src/
 - Focus: Cohérence entre code et documentation
+- Coordination: Mise à jour AGENT_SYNC.md pour synchronisation avec Codex GPT
