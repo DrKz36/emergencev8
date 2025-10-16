@@ -58,6 +58,16 @@ Le système supporte 3 rôles principaux :
 - `password_must_reset` est automatiquement défini à `0` pour les admins
 - Bootstrap SQL au démarrage : `UPDATE auth_allowlist SET password_must_reset = 0 WHERE role = 'admin'`
 
+#### Résilience des sessions (octobre 2025)
+
+`AuthService.verify_token()` restaure désormais une session manquante lorsque l'entrée correspondante a disparu de `auth_sessions` (cas observé lors de bascules entre instances Cloud Run). Le flux :
+
+- re-crée la session à partir des claims JWT (métadonnées `restored_from_claims=true`) ;
+- journalise `Auth session %s restored from token claims (email=%s)` pour audit ;
+- respecte les garde-fous existants : une session révoquée/expirée ou un compte allowlist révoqué renvoie toujours `401`.
+
+Ce fallback élimine les `401 Session inconnue` tout en préservant la sécurité.
+
 #### Dev Login (mode développement)
 ```python
 POST /api/auth/dev/login

@@ -209,11 +209,12 @@ Documentation technique des modules backend récents :
   - Email service avec templates HTML/text (Gmail SMTP)
   - `/api/auth/login` - Login email/password
   - `/api/auth/request-password-reset` - Demande réinitialisation
-  - `/api/auth/reset-password` - Réinitialisation avec token
-  - `/api/auth/change-password` - Changement mot de passe
-  - **Fix**: Admins ne sont plus forcés à réinitialiser leur mot de passe
-  - `password_must_reset = 0` automatique pour role admin
-  - Rate limiting anti-brute force (5 tentatives/15min)
+- `/api/auth/reset-password` - Réinitialisation avec token
+- `/api/auth/change-password` - Changement mot de passe
+- **Fix**: Admins ne sont plus forcés à réinitialiser leur mot de passe
+- `password_must_reset = 0` automatique pour role admin
+- Rate limiting anti-brute force (5 tentatives/15min)
+- `verify_token()` restaure les sessions manquantes (Cloud Run multi-instance) tout en respectant révocation et expiration
   - Audit log complet de toutes les actions auth
 
 - **[Beta Report Feature](docs/backend/beta_report.md)** - Système rapports beta (V1.0)

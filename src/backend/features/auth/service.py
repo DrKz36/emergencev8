@@ -365,6 +365,66 @@ class AuthService:
             created_at=created_at,
         )
 
+    async def _restore_session_from_claims(
+        self,
+        email: str,
+        session_id: str,
+        role: str,
+        claims: dict[str, Any],
+    ) -> Optional[dict[str, Any]]:
+        issued_at_ts = claims.get("iat")
+        expires_at_ts = claims.get("exp")
+
+        try:
+            issued_at = datetime.fromtimestamp(int(issued_at_ts), tz=timezone.utc)
+        except Exception:
+            issued_at = self._now()
+
+        try:
+            expires_at = datetime.fromtimestamp(int(expires_at_ts), tz=timezone.utc)
+        except Exception:
+            expires_at = issued_at + timedelta(seconds=self.config.token_ttl_seconds)
+
+        user_id = str((claims.get("sub") or claims.get("user_id") or "").strip())
+        if not user_id:
+            user_id = self._hash_subject(email)
+
+        metadata = {
+            "restored_from_claims": True,
+            "restored_at": self._now().isoformat(),
+        }
+
+        try:
+            await self.db.execute(
+                """
+                INSERT OR IGNORE INTO auth_sessions (id, email, role, ip_address, user_id, user_agent, issued_at, expires_at, metadata)
+                VALUES (?, ?, ?, NULL, ?, NULL, ?, ?, ?)
+                """,
+                (
+                    session_id,
+                    email,
+                    role,
+                    user_id or None,
+                    issued_at.isoformat(),
+                    expires_at.isoformat(),
+                    json.dumps(metadata),
+                ),
+                commit=True,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Unable to restore missing auth session %s for %s: %s",
+                session_id,
+                email,
+                exc,
+            )
+            return None
+
+        return await self._fetch_one_dict(
+            "SELECT expires_at, revoked_at, user_id FROM auth_sessions WHERE id = ?",
+            (session_id,),
+        )
+
     async def _issue_session(
         self,
         email: str,
@@ -567,10 +627,26 @@ class AuthService:
         if not allow_row or allow_row.get("revoked_at"):
             raise AuthError("Compte non autoris�.", status_code=401)
 
+        role_value = allow_row.get("role") or claims.get("role") or "member"
+        role = str(role_value).strip() or "member"
+
         session = await self._fetch_one_dict(
             "SELECT expires_at, revoked_at, user_id FROM auth_sessions WHERE id = ?",
             (session_id,),
         )
+        if not session:
+            session = await self._restore_session_from_claims(
+                email=email,
+                session_id=session_id,
+                role=role,
+                claims=claims,
+            )
+            if session:
+                logger.warning(
+                    "Auth session %s restored from token claims (email=%s)",
+                    session_id,
+                    email,
+                )
         if not session:
             raise AuthError("Session inconnue.", status_code=401)
 
@@ -591,7 +667,6 @@ class AuthService:
             raise AuthError("Session expir�e.", status_code=401)
 
         revoked_at = self._parse_dt(revoked_at_raw) if revoked_at_raw else None
-        role = claims.get("role") or allow_row.get("role") or "member"
         claims.update({
             "email": email,
             "role": role,

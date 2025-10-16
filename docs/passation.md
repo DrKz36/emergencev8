@@ -1,3 +1,56 @@
+## [2025-10-16 16:10] - Agent: Codex
+
+### Fichiers modifiés
+- `src/backend/features/auth/service.py`
+- `tests/backend/features/test_user_scope_persistence.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+Poursuite de la sécurisation `verify_token` : après l'ajout du fallback de restauration, il fallait couvrir les scénarios critiques (révocation, expiration, allowlist bloquée) pour garantir que les protections existantes restent effectives et documenter les attentes côté tests automatiques.
+
+### Actions
+- Étendu `verify_token` pour conserver le rôle normalisé lors du fallback et ajouté quatre tests ciblés (session révoquée, session expirée, allowlist révoquée, override `allow_revoked`/`allow_expired`).
+- Consolidé le fichier de tests (`tests/backend/features/test_user_scope_persistence.py`) avec les nouveaux cas et l'import `pytest/AuthError`.
+- Mis à jour `AGENT_SYNC.md` (working tree) et la présente passation.
+
+### Tests
+- ✅ `pytest tests/backend/features/test_user_scope_persistence.py`
+
+### Prochaines actions recommandées
+1. Ajouter un test de non-restauration lorsque l'allowlist est révoquée *avant* la suppression ligne session (cas mixte).
+2. Couvrir `AuthService.verify_token` avec un email d'admin pour valider la persistance automatique du rôle admin lors d'une restauration.
+
+### Blocages
+- Aucun.
+
+## [2025-10-16 15:45] - Agent: Codex
+
+### Fichiers modifiés
+- `src/backend/features/auth/service.py`
+- `tests/backend/features/test_user_scope_persistence.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+Reproduction du blocage signalé côté frontend : après authentification, les requêtes REST retournaient `401 Session inconnue` car `verify_token` exigeait la présence de la ligne `auth_sessions`. Sur Cloud Run multi-instance, la session peut être vérifiée sur un pod différent de celui qui l'a créée. Ajout d'un mécanisme de restauration à partir des claims JWT pour garantir la continuité des sessions, tout en journalisant l'opération pour suivi.
+
+### Actions
+- Implémenté `_restore_session_from_claims` pour réhydrater une session manquante (création opportuniste de la ligne SQLite et métadonnées de traçabilité).
+- Mis à jour `verify_token` pour utiliser le fallback, normaliser `role` avant la vérification et consigner un warning quand la restauration intervient.
+- Ajouté le test `test_verify_token_restores_missing_session` afin de couvrir le flux de restauration et éviter une régression.
+- Actualisé `AGENT_SYNC.md` (état working tree) et cette passation.
+
+### Tests
+- ✅ `pytest tests/backend/features/test_user_scope_persistence.py::test_verify_token_restores_missing_session`
+
+### Prochaines actions recommandées
+1. Étendre la couverture de tests `AuthService.verify_token` (cas session révoquée / expirée) pour valider l’absence d’effets de bord sur la révocation.
+2. Observer les logs Cloud Run (`Auth session %s restored...`) après déploiement afin de confirmer la fréquence réelle du fallback.
+
+### Blocages
+- Aucun.
+
 ## [2025-10-16 10:30] - Agent: Claude Code
 
 ### Fichiers modifiés (5 fichiers)

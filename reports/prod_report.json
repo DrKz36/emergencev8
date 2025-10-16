@@ -1,36 +1,28 @@
 {
-  "timestamp": "2025-10-16T03:25:00.035449",
+  "timestamp": "2025-10-16T06:02:07.309959",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
   "freshness": "1h",
-  "status": "DEGRADED",
+  "status": "OK",
   "summary": {
     "errors": 0,
-    "warnings": 5,
+    "warnings": 3,
     "critical_signals": 0,
     "latency_issues": 0
   },
   "errors": [],
   "warnings": [
     {
-      "time": "2025-10-16T01:23:25.537624Z",
+      "time": "2025-10-16T04:01:26.705454Z",
       "msg": ""
     },
     {
-      "time": "2025-10-16T01:23:25.537555Z",
+      "time": "2025-10-16T03:59:07.369460Z",
       "msg": ""
     },
     {
-      "time": "2025-10-16T01:23:22.292028Z",
-      "msg": ""
-    },
-    {
-      "time": "2025-10-16T01:23:16.662103Z",
-      "msg": ""
-    },
-    {
-      "time": "2025-10-16T01:23:11.347945Z",
+      "time": "2025-10-16T03:58:59.367488Z",
       "msg": ""
     }
   ],
@@ -38,9 +30,9 @@
   "latency_issues": [],
   "recommendations": [
     {
-      "priority": "MEDIUM",
-      "action": "Monitor closely and investigate warnings",
-      "details": "5 warnings detected"
+      "priority": "LOW",
+      "action": "No immediate action required",
+      "details": "Production is healthy"
     }
   ]
 }

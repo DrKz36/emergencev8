@@ -33,12 +33,13 @@
 ### Working tree
 - **Statut** : Modifications en cours (voir `git status`)
 - **Fichiers modifiés** :
-  - `index.html` (M)
-  - `src/backend/features/auth/email_service.py` (M)
-  - `stable-service.yaml` (M)
+  - `reports/prod_report.json` (M) *(présent avant session — ne pas toucher)*
+  - `src/backend/features/auth/service.py` (M)
+  - `tests/backend/features/test_user_scope_persistence.py` (M)
+  - `AGENT_SYNC.md` (M)
+  - `docs/passation.md` (M)
 - **Fichiers non suivis** :
-  - `DEPLOYMENT_SUCCESS.md`
-  - `FIX_PRODUCTION_DEPLOYMENT.md`
+  - Aucun
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`

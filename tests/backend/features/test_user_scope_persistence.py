@@ -1,10 +1,13 @@
 # ruff: noqa: E402
 import asyncio
+import json
 import hashlib
 import os
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
+
+import pytest
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 SRC_DIR = ROOT_DIR / 'src'
@@ -15,7 +18,7 @@ from backend.core.database.manager import DatabaseManager
 from backend.core.database import schema, queries
 from backend.core.database.backfill import run_user_scope_backfill
 from backend.features.auth.models import AuthConfig
-from backend.features.auth.service import AuthService
+from backend.features.auth.service import AuthService, AuthError
 from backend.core.session_manager import SessionManager
 from backend.shared.models import ChatMessage, Role
 
@@ -103,6 +106,121 @@ def test_login_populates_user_scope(tmp_path):
             limit=10,
         )
         assert any(m['content'] == 'Hello world' for m in messages)
+
+        await db.disconnect()
+
+    asyncio.run(scenario())
+
+
+def test_verify_token_restores_missing_session(tmp_path):
+    async def scenario():
+        email = 'restore@example.com'
+        password = 'S3ss10n!'
+        db_path = tmp_path / 'auth-verify-restore.db'
+
+        service, db = await _prepare_auth_service(db_path, email, password)
+
+        login = await service.login(email, password, '127.0.0.1', 'pytest-restore')
+        claims_before = await service.verify_token(login.token)
+        assert claims_before.get('session_id') == login.session_id
+
+        await db.execute(
+            'DELETE FROM auth_sessions WHERE id = ?',
+            (login.session_id,),
+            commit=True,
+        )
+
+        restored_claims = await service.verify_token(login.token)
+        assert restored_claims.get('session_id') == login.session_id
+        assert restored_claims.get('email') == email
+
+        row = await db.fetch_one(
+            'SELECT metadata FROM auth_sessions WHERE id = ?',
+            (login.session_id,),
+        )
+        assert row is not None
+        meta = row['metadata']
+        assert meta
+        metadata = json.loads(meta)
+        assert metadata.get('restored_from_claims') is True
+
+        await db.disconnect()
+
+    asyncio.run(scenario())
+
+
+def test_verify_token_handles_revoked_session(tmp_path):
+    async def scenario():
+        email = 'revoked@example.com'
+        password = 'Rev0keMe!'
+        db_path = tmp_path / 'auth-verify-revoked.db'
+
+        service, db = await _prepare_auth_service(db_path, email, password)
+
+        login = await service.login(email, password, '127.0.0.1', 'pytest-revoke')
+
+        await service.logout(login.session_id, actor='tests')
+
+        with pytest.raises(AuthError) as excinfo:
+            await service.verify_token(login.token)
+        assert excinfo.value.status_code == 401
+
+        claims = await service.verify_token(login.token, allow_revoked=True)
+        assert claims.get('session_revoked') is True
+        assert claims.get('email') == email
+
+        await db.disconnect()
+
+    asyncio.run(scenario())
+
+
+def test_verify_token_handles_expired_session(tmp_path):
+    async def scenario():
+        email = 'expired@example.com'
+        password = 'Exp1red!'
+        db_path = tmp_path / 'auth-verify-expired.db'
+
+        service, db = await _prepare_auth_service(db_path, email, password)
+
+        login = await service.login(email, password, '127.0.0.1', 'pytest-expired')
+
+        await db.execute(
+            "UPDATE auth_sessions SET expires_at = datetime('now', '-5 minutes') WHERE id = ?",
+            (login.session_id,),
+            commit=True,
+        )
+
+        with pytest.raises(AuthError) as excinfo:
+            await service.verify_token(login.token)
+        assert excinfo.value.status_code == 401
+
+        claims = await service.verify_token(login.token, allow_expired=True)
+        assert claims.get('expires_at') <= datetime.now(timezone.utc)
+
+        await db.disconnect()
+
+    asyncio.run(scenario())
+
+
+def test_verify_token_rejects_revoked_allowlist_entry(tmp_path):
+    async def scenario():
+        email = 'revoked-user@example.com'
+        password = 'St1llRevoked!'
+        db_path = tmp_path / 'auth-verify-allowlist.db'
+
+        service, db = await _prepare_auth_service(db_path, email, password)
+
+        login = await service.login(email, password, '127.0.0.1', 'pytest-allowlist')
+
+        await db.execute(
+            "UPDATE auth_allowlist SET revoked_at = datetime('now'), revoked_by = 'tests' WHERE email = ?",
+            (email,),
+            commit=True,
+        )
+
+        with pytest.raises(AuthError) as excinfo:
+            await service.verify_token(login.token)
+        assert excinfo.value.status_code == 401
 
         await db.disconnect()
 
