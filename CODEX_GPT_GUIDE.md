@@ -374,6 +374,11 @@ emergenceV8/
 - Script automatisé : `pwsh -File scripts/deploy-canary.ps1`
 - Ancienne méthode (déconseillée) : déploiement direct
 
+**IMPORTANT – Seed allowlist avant déploiement :**
+- Générer le JSON depuis la base locale : `python scripts/generate_allowlist_seed.py --output allowlist_seed.json`
+- Publier vers Secret Manager : `python scripts/generate_allowlist_seed.py --push AUTH_ALLOWLIST_SEED --create-secret`
+- Sans ce secret (`AUTH_ALLOWLIST_SEED`), la base Cloud Run démarre sans comptes → 401 pour tout le monde.
+
 **NE PAS déployer sans validation architecte** ❌
 
 ---

@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-16 21:00 (Documentation synchronisée + fichiers coopération inter-agents)
+**Dernière mise à jour** : 2025-10-16 10:57 (Correctifs tests mémoire + email scripts)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -31,17 +31,19 @@
   - `2cd8cc8` feat(memory): Integrate P1.1 - Proactive Hints UI in chat
 
 ### Working tree
-- **Statut** : Modifications en cours - documentation et coopération inter-agents
+- **Statut** : Modifications en cours – correctif auth + documentation
 - **Fichiers modifiés** :
-  - `AGENT_SYNC.md` (M) - Mise à jour état du dépôt
-  - `README.md` (M) - Mise à jour documentation principale
-  - `claude-plugins/integrity-docs-guardian/scripts/scan_docs.py` (M)
-  - `docs/architecture/10-Components.md` (M)
-  - `docs/backend/dashboard.md` (M)
-  - `reports/prod_report.json` (M)
-  - `docs/passation.md` (M) - Nouvelle entrée session 2025-10-16
+  - `AGENT_SYNC.md` (M) – état du dépôt actualisé
+  - `docs/AUTHENTICATION.md` (M) – ajout section seed allowlist
+  - `src/backend/features/auth/service.py` (M) – bootstrap allowlist depuis l'env
+  - `stable-service.yaml` (M) – nouvelle variable `AUTH_ALLOWLIST_SEED`
+  - `docs/passation.md` (M) – entrées Codex (auth bootstrap + correctifs tests)
+  - `scripts/test_email.py` (M) – fixture pytest + skip conditionnel
+  - `src/backend/features/memory/memory_query_tool.py` (M) – filtrage timeframe côté Python
+  - `src/backend/tests/test_database_manager.py` (M) – test auto-reconnexion
+  - `tests/backend/features/test_memory_query_tool.py` (M) – attentes timeframe ajustées
 - **Fichiers non suivis** :
-  - `CODEX_GPT_GUIDE.md` (à créer)
+  - `tests/backend/features/test_auth_bootstrap_seed.py` (nouvelle suite de tests)
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
@@ -100,6 +102,11 @@
   - jspdf@2.5.2
   - jspdf-autotable@3.8.3
 - Module chat se charge maintenant sans erreurs
+
+**5. ✅ Seed allowlist automatisé**
+- `AuthService.bootstrap` consomme `AUTH_ALLOWLIST_SEED` / `_PATH` pour reconstruire l'allowlist
+- Nouvelle section dans `docs/AUTHENTICATION.md`
+- Secret `AUTH_ALLOWLIST_SEED` à provisionner avant redéploiement (cf. Prochaines actions)
 
 #### Configuration Complète
 
@@ -501,8 +508,8 @@ SMTP_PASSWORD=...
 ## 🎯 Prochaines Actions
 
 ### Immédiat (Cette semaine)
-1. ✅ Phase P1 complète - **FAIT**
-2. ✅ Production stable - **FAIT**
+1. 🔴 Créer/mettre à jour le secret GCP `AUTH_ALLOWLIST_SEED` (JSON allowlist + mots de passe temporaires)
+2. 🔴 Redéployer `stable-service.yaml` (via `scripts/deploy-canary.ps1`) après injection du secret
 3. 🔜 Démarrer Phase P2 (Dashboard Admin Avancé)
 4. 🔜 Tests d'intégration P1 en production
 

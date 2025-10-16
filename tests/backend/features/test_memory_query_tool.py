@@ -217,14 +217,16 @@ class TestMemoryQueryTool:
         assert {"user_id": "user123"} in where_filter["$and"]
         assert {"type": "concept"} in where_filter["$and"]
 
-        # Vérifier résultats
-        assert len(topics) == 3
+        # Vérifier résultats (les sujets au-delà d'une semaine sont filtrés)
+        assert len(topics) == 2
         assert all(isinstance(t, TopicSummary) for t in topics)
 
         # Vérifier tri par date (plus récent en premier)
         assert topics[0].topic == "CI/CD pipeline"  # last_date = now
         assert topics[1].topic == "Docker containerisation"  # 2 jours
-        assert topics[2].topic == "Kubernetes deployment"  # 20 jours
+
+        topic_names = {topic.topic for topic in topics}
+        assert "Kubernetes deployment" not in topic_names  # 20 jours → exclu
 
     @pytest.mark.asyncio
     async def test_list_discussed_topics_timeframe_all(

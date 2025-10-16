@@ -90,6 +90,83 @@ class AuthService:
             dev_default_email=dev_default_email,
         )
 
+    def _load_allowlist_seed_entries(self) -> list[dict[str, Any]]:
+        """Load allowlist seed entries from environment configuration."""
+        raw_payload: Optional[str] = os.getenv("AUTH_ALLOWLIST_SEED")
+        seed_path = os.getenv("AUTH_ALLOWLIST_SEED_PATH") or os.getenv("AUTH_ALLOWLIST_SEED_FILE")
+
+        if not raw_payload and seed_path:
+            try:
+                with open(seed_path, "r", encoding="utf-8") as handle:
+                    raw_payload = handle.read()
+            except FileNotFoundError:
+                logger.warning("Allowlist seed file not found at %s", seed_path)
+            except Exception as exc:
+                logger.warning("Unable to read allowlist seed file %s: %s", seed_path, exc)
+
+        if not raw_payload:
+            return []
+
+        try:
+            parsed = json.loads(raw_payload)
+        except json.JSONDecodeError as exc:
+            logger.warning("AUTH_ALLOWLIST_SEED contains invalid JSON: %s", exc)
+            return []
+        except Exception as exc:
+            logger.warning("Unexpected error while parsing AUTH_ALLOWLIST_SEED: %s", exc)
+            return []
+
+        if isinstance(parsed, dict):
+            parsed = [parsed]
+
+        if not isinstance(parsed, list):
+            logger.warning("AUTH_ALLOWLIST_SEED must be a list or object. Received: %s", type(parsed).__name__)
+            return []
+
+        entries: list[dict[str, Any]] = []
+        for item in parsed:
+            if not isinstance(item, dict):
+                logger.warning("Skipping allowlist seed entry because it is not an object: %r", item)
+                continue
+            entries.append(item)
+        return entries
+
+    async def _seed_allowlist_from_env(self) -> None:
+        entries = self._load_allowlist_seed_entries()
+        if not entries:
+            return
+
+        for entry in entries:
+            email_raw = entry.get("email")
+            email = self._normalize_email(email_raw)
+            if not email:
+                logger.warning("Skipping allowlist seed entry with invalid email: %r", email_raw)
+                continue
+
+            password = entry.get("password")
+            role = entry.get("role")
+            note = entry.get("note")
+            password_generated = bool(entry.get("password_generated"))
+
+            actor = entry.get("actor") or "bootstrap:env"
+            try:
+                await self.upsert_allowlist(
+                    email=email,
+                    role=role,
+                    note=note,
+                    actor=actor,
+                    password=password,
+                    password_generated=password_generated,
+                )
+                if password:
+                    logger.info("Allowlist seed applied for %s (role=%s)", email, role or "member")
+                else:
+                    logger.info("Allowlist seed ensured for %s (role=%s, password unchanged)", email, role or "member")
+            except AuthError as exc:
+                logger.warning("Failed to seed allowlist entry for %s: %s", email, exc)
+            except Exception as exc:
+                logger.error("Unexpected error while seeding allowlist entry for %s: %s", email, exc, exc_info=True)
+
     # ------------------------------------------------------------------
     async def bootstrap(self) -> None:
         for email in self.config.admin_emails:
@@ -103,6 +180,8 @@ class AuthService:
             "UPDATE auth_allowlist SET password_must_reset = 0 WHERE role = 'admin' AND password_must_reset != 0",
             commit=True,
         )
+
+        await self._seed_allowlist_from_env()
 
     async def login(self, email: str, password: str, ip_address: Optional[str], user_agent: Optional[str]) -> LoginResponse:
         normalized = self._normalize_email(email)

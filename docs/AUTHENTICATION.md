@@ -58,6 +58,59 @@ sequenceDiagram
 }
 ```
 
+---
+
+## ⚙️ Bootstrap & configuration en production
+
+### Seed automatique de l'allowlist
+
+Le backend reconstruit désormais l'allowlist lors du démarrage à partir d'une configuration d'environnement. Cela évite la perte d'accès après un déploiement (ex : reset du fichier SQLite sur Cloud Run).
+
+Deux variables sont prises en charge :
+
+| Variable | Description |
+|----------|-------------|
+| `AUTH_ALLOWLIST_SEED` | Chaîne JSON représentant une liste d'utilisateurs à créer/mettre à jour. |
+| `AUTH_ALLOWLIST_SEED_PATH` (alias `AUTH_ALLOWLIST_SEED_FILE`) | Chemin vers un fichier JSON contenant la même structure. À utiliser pour les payloads volumineux ou stockés via Secret Manager. |
+
+**Structure JSON attendue :**
+```json
+[
+  {
+    "email": "admin@example.com",
+    "password": "AdminPass123!",
+    "role": "admin",
+    "note": "seed-admin"
+  },
+  {
+    "email": "member@example.com",
+    "password": "MemberPass123!",
+    "role": "member",
+    "note": "seed-member"
+  }
+]
+```
+
+### Règles appliquées automatiquement
+
+- Les emails sont normalisés en minuscules.
+- Les mots de passe sont hashés (bcrypt) avant insertion.
+- Les entrées `role="admin"` ont `password_must_reset=0` (auth immédiate).
+- Les autres rôles conservent `password_must_reset=1` (le flux "mot de passe oublié" reste recommandé).
+- Les champs optionnels (`note`, `password_generated`, `actor`) sont conservés lorsque fournis.
+- Les valeurs invalides (email manquant, objet non JSON, liste vide) sont ignorées avec un log `WARNING`.
+
+### Recommandations Cloud Run
+
+1. Stocker le JSON dans **Secret Manager** (`AUTH_ALLOWLIST_SEED`) et le monter comme variable d'environnement sécurisée.
+2. Vérifier que `AUTH_ADMIN_EMAILS` est synchronisé avec la liste seedée.
+3. Pour des fichiers volumineux, utiliser un secret type fichier et référencer son chemin via `AUTH_ALLOWLIST_SEED_PATH`.
+4. Générer automatiquement le JSON depuis la base locale avec `python scripts/generate_allowlist_seed.py --output allowlist_seed.json` (ajouter `--push AUTH_ALLOWLIST_SEED` pour publier directement via gcloud).
+
+> ⚠️ Sans seed, un nouveau déploiement peut créer une allowlist vide (ou des admins sans mot de passe), empêchant toute connexion. Pensez à renseigner le seed **avant** la mise en production.
+
+---
+
 ### 2. Stockage du token
 
 Le token est stocké à **3 endroits** pour assurer la redondance :

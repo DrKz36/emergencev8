@@ -78,7 +78,7 @@ class TopicSummary:
 
             # Inclure heure si != 00h00
             if dt.hour != 0 or dt.minute != 0:
-                return f"{dt.day} {month} {dt.hour}h{dt.minute:02d}"
+                return f"{dt.day} {month} {dt.hour:02d}h{dt.minute:02d}"
             else:
                 return f"{dt.day} {month}"
         except Exception as e:
@@ -138,17 +138,34 @@ class MemoryQueryTool:
             logger.warning("[MemoryQueryTool] list_discussed_topics appelé sans user_id")
             return []
 
-        try:
-            # 1. Construire filtre temporel + user
-            where_filter = self._build_timeframe_filter(user_id, timeframe, min_mention_count)
+        if limit is not None and limit <= 0:
+            logger.info(
+                "[MemoryQueryTool] limit<=0 détecté pour user '%s' — aucun sujet retourné",
+                user_id[:8],
+            )
+            return []
 
-            # 2. Récupérer tous les concepts (pas de recherche vectorielle sémantique)
-            #    On veut TOUS les concepts qui matchent le filtre, pas seulement
-            #    ceux similaires à une requête
+        try:
+            # 1. Calculer éventuelle date de coupure (filtrage appliqué côté Python)
+            cutoff_date: Optional[datetime] = None
+            if timeframe and timeframe != "all":
+                cutoff_date = self._compute_timeframe_cutoff(timeframe)
+
+            # 2. Construire filtre base (user/type/mention_count)
+            where_filter = self._build_timeframe_filter(
+                user_id,
+                None,  # désactive le filtre temporel côté Chroma (comparaison numérique non supportée)
+                min_mention_count,
+            )
+
+            # 3. Récupérer concepts depuis Chroma.
+            fetch_limit = None
+            if limit is not None:
+                fetch_limit = max(limit * 3, limit)
             result = self.knowledge_collection.get(
                 where=where_filter,
                 include=["documents", "metadatas"],
-                limit=limit
+                limit=fetch_limit,
             )
 
             if not result or not result.get("ids"):
@@ -156,14 +173,25 @@ class MemoryQueryTool:
                            user_id[:8], timeframe)
                 return []
 
-            # 3. Parser et construire TopicSummary
+            # 4. Parser et construire TopicSummary
             topics = self._parse_concepts_to_topics(result)
 
-            # 4. Trier par last_mentioned_at (plus récent en premier)
-            topics.sort(key=lambda t: t.last_date or t.first_date, reverse=True)
+            # 5. Filtrer par fenetre temporelle si demandée
+            if cutoff_date:
+                topics = [
+                    topic
+                    for topic in topics
+                    if self._date_is_on_or_after(topic.last_date or topic.first_date, cutoff_date)
+                ]
+
+            # 6. Trier par last_mentioned_at (plus récent en premier)
+            topics.sort(key=lambda t: t.last_date or t.first_date or "", reverse=True)
+
+            if limit is not None:
+                topics = topics[:limit]
 
             logger.info(
-                "[MemoryQueryTool] Récupéré %d sujets pour user '%s' (timeframe=%s, limit=%d)",
+                "[MemoryQueryTool] Récupéré %d sujets pour user '%s' (timeframe=%s, limit=%s)",
                 len(topics), user_id[:8], timeframe, limit
             )
 
@@ -242,6 +270,23 @@ class MemoryQueryTool:
         else:
             logger.warning("[MemoryQueryTool] Timeframe inconnu: '%s'", timeframe)
             return None
+
+    @staticmethod
+    def _date_is_on_or_after(date_str: Optional[str], cutoff: datetime) -> bool:
+        """Retourne True si date ISO >= cutoff UTC."""
+        if not date_str:
+            return False
+
+        try:
+            dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                dt = dt.astimezone(timezone.utc)
+            return dt >= cutoff
+        except Exception:
+            logger.debug("[MemoryQueryTool] Impossible de parser la date '%s'", date_str)
+            return False
 
     def _parse_concepts_to_topics(self, result: Dict[str, Any]) -> List[TopicSummary]:
         """

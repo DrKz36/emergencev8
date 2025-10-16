@@ -408,6 +408,36 @@ for r in results:
 - [VectorService](../architecture/10-Components.md#vectorservice) - Recherche vectorielle
 - [Monitoring Guide](../MONITORING_GUIDE.md) - Observabilité complète
 
+## 3. Memory Query Tool (timeline agents)
+
+**Module** : `src/backend/features/memory/memory_query_tool.py`
+
+### 3.1 Liste des sujets discutés
+- `list_discussed_topics(user_id, timeframe="week", limit=50, min_mention_count=1)`
+- Retourne des `TopicSummary` (dates ISO, nombre de conversations, thread_ids, vitalité).
+- Timeframes supportés : `today`, `week`, `month`, `all` ou `None`.
+
+### 3.2 Timeline conversationnelle
+- `get_conversation_timeline(user_id, limit=120)` regroupe les sujets dans quatre fenêtres :
+  - `this_week`, `last_week`, `this_month`, `older`.
+- Chaque groupe est trié par date (plus récent d'abord) en utilisant `last_date` → `first_date`.
+- Les cutoffs sont calculés côté backend (1 semaine, 2 semaines, 30 jours).
+
+### 3.3 Formatage naturel pour les LLMs
+- `format_timeline_natural_fr(timeline)` retourne un bloc Markdown prêt pour injection dans le prompt :
+  ```markdown
+  ### Historique des sujets abordés
+
+  **Cette semaine:**
+  - CI/CD pipeline (5 oct 14h32, 8 oct 09h15) - 3 conversations
+    └─ Automatisation déploiement GitHub Actions
+  ```
+- Utilisé par les agents pour répondre aux questions « qu’avons-nous abordé récemment ? ».
+
+### 3.4 Données requises
+- S’appuie sur `VectorService` et la collection `emergence_knowledge`.
+- Les consolidations mémoires doivent injecter `first_date`, `last_date`, `summary`, `thread_ids`, `mention_count`.
+
 ## Changelog
 
 ### V3.8 (UX Improvements) - 2025-10-15

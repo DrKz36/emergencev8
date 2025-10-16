@@ -226,12 +226,17 @@ class TestErrorHandling:
 
     @pytest.mark.asyncio
     async def test_execute_on_closed_connection(self, temp_db_path):
-        """Vérifie l'erreur si exécution sans connexion"""
+        """Vérifie que l'exécution auto-initialise la connexion si nécessaire"""
         manager = DatabaseManager(temp_db_path)
 
-        # Ne pas connecter, essayer d'exécuter directement
-        with pytest.raises((aiosqlite.Error, AttributeError, RuntimeError)):
-            await manager.execute("SELECT 1")
+        # Ne pas connecter explicitement : execute() doit gérer la connexion
+        cursor = await manager.execute("SELECT 1")
+        result = await cursor.fetchone()
+
+        assert result[0] == 1
+        assert manager.is_connected() is True
+
+        await manager.disconnect()
 
 
 class TestDatabasePath:

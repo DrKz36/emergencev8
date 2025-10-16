@@ -18,7 +18,7 @@
   - Responsabilités : Landing page (logo + email form), auth locale via allowlist (`POST /api/auth/login`), gestion des tokens (stockage + logout), bootstrap threads (`ensureCurrentThread()`), connexion WS (`/ws/{session_id}`), rendu chat/mémoire/RAG/documents.
 - **Backend (FastAPI + WebSocket)**
   - Couches : `main.py` (DI + migrations + routers), `containers.py` (`ServiceContainer`), routers REST (`/api/auth`, `/api/threads`, `/api/memory`, `/api/documents`, `/api/dashboard`, `/api/debates`), router WS (`chat.router`), services (`AuthService`, `ChatService`, `MemoryAnalyzer`, `MemoryGardener`, `DocumentService`, `DebateService`, `DashboardService`).
-  - Responsabilités : Auth locale (allowlist email + mot de passe, JWT 7j, interface admin), gestion des sessions, orchestration multi-agents avec fallback fournisseur, consolidation mémoire, ingestion documents, diffusion WS, exposition du module benchmarks (ARE/Gaia2) et persistance des résultats.
+  - Responsabilités : Auth locale (allowlist email + mot de passe, JWT 7j, interface admin, bootstrap via `AUTH_ALLOWLIST_SEED`), gestion des sessions, orchestration multi-agents avec fallback fournisseur, consolidation mémoire, ingestion documents, diffusion WS, exposition du module benchmarks (ARE/Gaia2) et persistance des résultats.
 - **Stockages & ressources partagées**
 - **SQLite app** : threads, messages, coûts, documents, mémoire STM/LTM, tables auth (`auth_allowlist`, `auth_sessions`, `auth_audit_log`).
 - **Vector DB (Chroma)** : collection `emergence_knowledge` pour chunks documents + faits mémoire (auto-reset en cas de corruption, backup automatique).

@@ -3,13 +3,32 @@ Test script to send a password reset email
 Usage: python scripts/test_email.py <recipient_email>
 """
 import asyncio
+import os
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add src directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from backend.features.auth.email_service import EmailService, build_email_config_from_env
+from backend.features.auth.email_service import EmailService
+
+
+@pytest.fixture
+def recipient_email() -> str:
+    """
+    Resolve recipient email for pytest execution.
+
+    Pytest collection skips the test unless TEST_EMAIL_RECIPIENT or
+    SMTP_TEST_RECIPIENT is defined in the environment.
+    """
+    from_env = os.getenv("TEST_EMAIL_RECIPIENT") or os.getenv("SMTP_TEST_RECIPIENT")
+    if not from_env:
+        pytest.skip(
+            "Email smoke test disabled. Set TEST_EMAIL_RECIPIENT or SMTP_TEST_RECIPIENT to run it."
+        )
+    return from_env
 
 
 async def test_send_email(recipient_email: str):

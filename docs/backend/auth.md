@@ -205,6 +205,19 @@ DELETE /api/admin/allowlist/{email}
 
 Révoque l'utilisateur et toutes ses sessions actives.
 
+#### Seed automatique (Cloud Run)
+- **Objectif** : conserver l'allowlist après recréation de la base SQLite sur Cloud Run.
+- **Variables supportées** :
+  - `AUTH_ALLOWLIST_SEED` : JSON (liste d'objets `{email, role, note?, password}`).
+  - `AUTH_ALLOWLIST_SEED_PATH` / `AUTH_ALLOWLIST_SEED_FILE` : chemin vers un fichier JSON (pratique avec Secret Manager).
+- **Bootstrap** : `AuthService.bootstrap()` lit le payload au démarrage, hash les mots de passe, applique `password_must_reset=0` pour les admins et journalise les entrées ignorées.
+- **Génération du payload** :
+  ```bash
+  python scripts/generate_allowlist_seed.py --output allowlist_seed.json
+  python scripts/generate_allowlist_seed.py --push AUTH_ALLOWLIST_SEED --create-secret
+  ```
+- **Important** : publier le secret **avant** chaque déploiement (sinon tous les logins renvoient `401`).
+
 ### 5. Sessions Management
 
 #### Obtenir les sessions actives

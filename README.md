@@ -71,6 +71,13 @@ Run all backend quality gates in one go (pytest, ruff, mypy).
 
 Add `-FailFast` to stop after the first failure, or use `-Python` to point to a custom interpreter. Pass `-Paths src/backend` if you need to lint the whole backend.
 
+Generate the production allowlist seed before a Cloud Run deploy:
+```powershell
+python scripts/generate_allowlist_seed.py --output allowlist_seed.json
+python scripts/generate_allowlist_seed.py --push AUTH_ALLOWLIST_SEED --create-secret
+```
+Without this secret (`AUTH_ALLOWLIST_SEED`) Cloud Run boots with an empty allowlist and every login fails with 401.
+
 ## Git remote configuration
 
 When cloning from an archive or copying the folder you need to add the remote manually so that pulls and pushes work. Configure it once with git or use the helper scripts included in `scripts/`.

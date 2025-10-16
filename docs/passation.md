@@ -1,3 +1,65 @@
+## [2025-10-16 10:57] - Agent: Codex
+
+### Fichiers modifiés
+- `scripts/test_email.py`
+- `src/backend/features/memory/memory_query_tool.py`
+- `src/backend/tests/test_database_manager.py`
+- `tests/backend/features/test_memory_query_tool.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+Stabilisation de la suite `pytest` après plusieurs erreurs (`scripts/test_email`, `DatabaseManager`, `MemoryQueryTool`). Objectif : remettre la suite backend en état vert avant travaux P2.
+
+### Actions réalisées
+- Ajout d'un fixture `recipient_email` pour `scripts/test_email.py` avec skip automatique quand aucune adresse de test n'est définie, tout en conservant l'usage CLI.
+- Alignement du test `test_execute_on_closed_connection` avec la reconnexion automatique de `DatabaseManager` et fermeture explicite pour éviter les verrous Windows.
+- Filtrage temporel côté Python dans `MemoryQueryTool` (suppression du `$gte` Chroma sur chaînes ISO) avec tri/slicing post-filtrage et formatage horaire `HHhMM`.
+- Mise à jour des tests (`TopicSummary` et `MemoryQueryTool`) pour refléter le nouveau comportement et prévenir les régressions.
+
+### Tests
+- `python -m pytest scripts/test_email.py -k test_send_email -vv`
+- `python -m pytest src/backend/tests/test_database_manager.py::TestErrorHandling::test_execute_on_closed_connection -vv`
+- `python -m pytest tests/backend/features/test_memory_query_tool.py::TestTopicSummary::test_format_natural_fr_multiple_dates -vv`
+- `python -m pytest tests/backend/features/test_memory_query_tool.py::TestMemoryQueryToolIntegration::test_full_workflow_real_chromadb -vv`
+- `python -m pytest tests/backend/features/test_memory_query_tool.py -vv`
+
+### Prochaines actions recommandées
+1. Relancer `python -m pytest` global une fois les changements auth/bootstrap consolidés pour confirmer l'absence de régressions transverses.
+2. Clarifier le plan de merge/push des correctifs auth (`stable-service.yaml`, `tests/backend/features/test_auth_bootstrap_seed.py`, etc.) encore présents dans l'arbre de travail.
+3. Vérifier la disponibilité d'AutoSyncService (port 8000) ou documenter une procédure alternative si le service reste inaccessible.
+
+### Blocages
+- `curl http://localhost:8000/api/sync/status` → échec de connexion (service indisponible).
+- `pwsh -File scripts/sync-workdir.ps1` interrompu : dépôt déjà modifié (`-AllowDirty` non utilisé).
+
+## [2025-10-16 10:16] - Agent: Codex
+
+### Fichiers modifiés
+- `src/backend/features/auth/service.py`
+- `tests/backend/features/test_auth_bootstrap_seed.py`
+- `docs/AUTHENTICATION.md`
+- `stable-service.yaml`
+
+### Contexte
+Incident de production : impossibilité de se connecter (401 "ID token invalide ou absent") après le dernier déploiement. Analyse → la base SQLite de Cloud Run est réinitialisée et l'allowlist ne conserve plus les mots de passe, bloquant toutes les connexions, y compris admin.
+
+### Actions réalisées
+- Ajout d'un bootstrap automatique de l'allowlist depuis une configuration d'environnement (`AUTH_ALLOWLIST_SEED` / `_PATH`) dans `AuthService.bootstrap`.
+- Création d'une suite de tests dédiée validant le peuplement de l'allowlist et la tolérance aux entrées invalides.
+- Documentation de la nouvelle configuration (docs/AUTHENTICATION.md) et ajout du secret `AUTH_ALLOWLIST_SEED` dans `stable-service.yaml`.
+
+### Tests
+- ✅ `python -m pytest tests/backend/features/test_auth_bootstrap_seed.py`
+
+### Prochaines actions recommandées
+1. Créer (ou mettre à jour) le secret GCP `AUTH_ALLOWLIST_SEED` avec la liste des comptes autorisés + mots de passe temporaires.
+2. Redéployer `stable-service.yaml` après avoir injecté le secret pour restaurer l'accès admin/testers.
+3. Prévoir une migration vers un stockage persistant (Cloud SQL) pour l’auth à moyen terme.
+
+### Blocages
+Aucun.
+
 ## [2025-10-16 21:00] - Agent: Claude Code
 
 ### Fichiers modifiés

@@ -3,7 +3,7 @@
 ## Backend
 - **`main.py`** : instancie `ServiceContainer`, exécute migrations SQLite, monte routers REST (`/api/*`) et WS (`/ws/{session_id}`), gère middleware deny-list + statiques.
 - **`containers.py`** : centralise la DI (DB, `SessionManager`, `ConnectionManager`, `VectorService`, `MemoryAnalyzer`, `ChatService`, `DocumentService`, `DebateService`, `DashboardService`).
-- **`features/auth/service.py`** : gère l'allowlist email, génère les JWT locaux (HS256, 7 jours), trace les sessions (`auth_sessions`), expose la révocation + métadonnées OTP ; le helper `dev_login` n'est accessible que quand `AUTH_DEV_MODE=1` (sinon 404 côté router).
+- **`features/auth/service.py`** : gère l'allowlist email, génère les JWT locaux (HS256, 7 jours), trace les sessions (`auth_sessions`), expose la révocation + métadonnées OTP ; bootstrap l'allowlist depuis `AUTH_ALLOWLIST_SEED` / `_PATH` lors du démarrage Cloud Run ; le helper `dev_login` n'est accessible que quand `AUTH_DEV_MODE=1` (sinon 404 côté router).
 - **`features/auth/router.py`** : endpoints login/logout (`POST /api/auth/*`), opérations admin (allowlist, sessions), route DEV (`POST /api/auth/dev/login`) qui renvoie 404 tant que `AUTH_DEV_MODE=0`, et branche le rate limiting côté FastAPI.
 - **`features/auth/rate_limiter.py`** : garde-fou IP+email (fenêtre glissante), utilisé par le router pour limiter les tentatives.
 - **`features/chat/router.py`** : REST threads/messages, montage WS ; valide JWT (`get_user_id`) ; fallback REST si WS indisponible et dédoublonne les trames `chat.message` / `chat.opinion` avant d'attaquer le service (comparaison texte + meta).
@@ -208,5 +208,4 @@ scrape_configs:
 - Tests rapides : `tests/run_all.ps1` (smoke API), `tests/test_vector_store_reset.ps1`, `tests/test_vector_store_force_backup.ps1`.
 - Auth : nouveaux tests `tests/backend/features/test_auth_login.py` + `tests/backend/features/test_auth_admin.py`; limiter rate et tables auditées.
 - Points de vigilance : latence chargement SBERT (première requête), dépendances clés (`GOOGLE_API_KEY` (alias `GEMINI_API_KEY`), `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`).
-
 

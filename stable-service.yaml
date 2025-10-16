@@ -105,6 +105,11 @@ spec:
           value: gonzalefernando@gmail.com
         - name: AUTH_DEV_DEFAULT_EMAIL
           value: gonzalefernando@gmail.com
+        - name: AUTH_ALLOWLIST_SEED
+          valueFrom:
+            secretKeyRef:
+              name: AUTH_ALLOWLIST_SEED
+              key: latest
         # AI Agent Models
         - name: ANIMA_PROVIDER
           value: openai
