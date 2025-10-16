@@ -79,6 +79,8 @@ export class ConceptList {
     this.options = {
       hostId: typeof options.hostId === 'string' ? options.hostId : null,
       onEdit: typeof options.onEdit === 'function' ? options.onEdit : null,
+      onMerge: typeof options.onMerge === 'function' ? options.onMerge : null,
+      onSplit: typeof options.onSplit === 'function' ? options.onSplit : null,
     };
     this.hostElement = options.hostElement || null;
 
@@ -94,6 +96,10 @@ export class ConceptList {
     this.pageSize = 20;
     this.totalConcepts = 0;
     this.sortBy = 'recent'; // 'recent', 'frequent', 'alphabetical'
+
+    // Selection for bulk operations
+    this.selectedIds = new Set();
+    this.selectionMode = false;
 
     this._initialized = false;
 
@@ -115,6 +121,9 @@ export class ConceptList {
 
         <div class="concept-list__toolbar">
           <div class="concept-list__actions">
+            <button class="concept-list__action-btn" data-action="toggle-selection" title="Mode sélection">
+              ☑️ Sélectionner
+            </button>
             <button class="concept-list__action-btn" data-action="export-all" title="Exporter tous les concepts">
               💾 Exporter
             </button>
@@ -131,6 +140,14 @@ export class ConceptList {
               <option value="alphabetical">Alphabétique</option>
             </select>
           </div>
+        </div>
+
+        <div class="concept-list__bulk-actions" data-role="bulk-actions" hidden>
+          <span class="bulk-actions__count" data-role="selection-count">0 sélectionné(s)</span>
+          <button class="bulk-actions__btn" data-action="bulk-tag" title="Ajouter des tags">🏷️ Tags</button>
+          <button class="bulk-actions__btn" data-action="bulk-merge" title="Fusionner les concepts">🔗 Fusionner</button>
+          <button class="bulk-actions__btn bulk-actions__btn--danger" data-action="bulk-delete" title="Supprimer">🗑️ Supprimer</button>
+          <button class="bulk-actions__btn bulk-actions__btn--secondary" data-action="cancel-selection">Annuler</button>
         </div>
 
         <div class="concept-list__body">
@@ -197,6 +214,33 @@ export class ConceptList {
     if (importInput) {
       importInput.addEventListener('change', (e) => this.importConcepts(e));
     }
+
+    // Selection mode toggle
+    const toggleSelectionBtn = this.container?.querySelector('[data-action="toggle-selection"]');
+    if (toggleSelectionBtn) {
+      toggleSelectionBtn.addEventListener('click', () => this.toggleSelectionMode());
+    }
+
+    // Bulk actions
+    const bulkTagBtn = this.container?.querySelector('[data-action="bulk-tag"]');
+    if (bulkTagBtn) {
+      bulkTagBtn.addEventListener('click', () => this.bulkTag());
+    }
+
+    const bulkMergeBtn = this.container?.querySelector('[data-action="bulk-merge"]');
+    if (bulkMergeBtn) {
+      bulkMergeBtn.addEventListener('click', () => this.bulkMerge());
+    }
+
+    const bulkDeleteBtn = this.container?.querySelector('[data-action="bulk-delete"]');
+    if (bulkDeleteBtn) {
+      bulkDeleteBtn.addEventListener('click', () => this.bulkDelete());
+    }
+
+    const cancelSelectionBtn = this.container?.querySelector('[data-action="cancel-selection"]');
+    if (cancelSelectionBtn) {
+      cancelSelectionBtn.addEventListener('click', () => this.cancelSelection());
+    }
   }
 
   async loadConcepts() {
@@ -261,15 +305,22 @@ export class ConceptList {
     }
 
     const cardsHtml = this.concepts.map((concept) => {
+      const conceptId = concept.id || concept.concept_id || '';
       const text = escapeHtml(concept.concept_text || 'Concept');
       const count = concept.occurrence_count || 0;
       const firstMentioned = formatDateTime(concept.first_mentioned);
       const lastMentioned = formatDateTime(concept.last_mentioned);
       const threads = Array.isArray(concept.thread_ids) ? concept.thread_ids : [];
       const threadsCount = threads.length;
+      const isSelected = this.selectedIds.has(conceptId);
 
       return `
-        <div class="concept-card" data-concept-id="${escapeHtml(concept.id || concept.concept_id || '')}">
+        <div class="concept-card ${this.selectionMode ? 'concept-card--selectable' : ''} ${isSelected ? 'concept-card--selected' : ''}" data-concept-id="${escapeHtml(conceptId)}">
+          ${this.selectionMode ? `
+            <div class="concept-card__checkbox">
+              <input type="checkbox" data-action="toggle-select" data-concept-id="${escapeHtml(conceptId)}" ${isSelected ? 'checked' : ''} />
+            </div>
+          ` : ''}
           <h4 class="concept-card__title">${text}</h4>
           <div class="concept-card__meta">
             <span class="concept-card__stat">
@@ -285,10 +336,13 @@ export class ConceptList {
           </div>
           ${firstMentioned ? `<p class="concept-card__date"><strong>Première mention :</strong> ${escapeHtml(firstMentioned)}</p>` : ''}
           ${lastMentioned ? `<p class="concept-card__date"><strong>Dernière mention :</strong> ${escapeHtml(lastMentioned)}</p>` : ''}
-          <div class="concept-card__actions">
-            <button class="concept-card__action" data-action="edit" data-concept-id="${escapeHtml(concept.id || concept.concept_id || '')}">✏️ Éditer</button>
-            <button class="concept-card__action" data-action="delete" data-concept-id="${escapeHtml(concept.id || concept.concept_id || '')}">🗑️ Supprimer</button>
-          </div>
+          ${!this.selectionMode ? `
+            <div class="concept-card__actions">
+              <button class="concept-card__action" data-action="edit" data-concept-id="${escapeHtml(conceptId)}">✏️ Éditer</button>
+              <button class="concept-card__action" data-action="split" data-concept-id="${escapeHtml(conceptId)}">✂️ Diviser</button>
+              <button class="concept-card__action" data-action="delete" data-concept-id="${escapeHtml(conceptId)}">🗑️ Supprimer</button>
+            </div>
+          ` : ''}
         </div>
       `;
     }).join('');
@@ -300,11 +354,20 @@ export class ConceptList {
       btn.addEventListener('click', (e) => {
         const action = e.target.dataset.action;
         const conceptId = e.target.dataset.conceptId;
-        if (action === 'edit') {
+
+        if (action === 'toggle-select') {
+          this.toggleSelect(conceptId);
+        } else if (action === 'edit') {
           if (this.options.onEdit) {
             this.options.onEdit(conceptId);
           } else {
             this.eventBus?.emit?.('concepts:edit:requested', { conceptId });
+          }
+        } else if (action === 'split') {
+          if (this.options.onSplit) {
+            this.options.onSplit(conceptId);
+          } else {
+            this.eventBus?.emit?.('concepts:split:requested', { conceptId });
           }
         } else if (action === 'delete') {
           this.deleteConcept(conceptId);
@@ -458,6 +521,145 @@ export class ConceptList {
     } finally {
       // Reset file input
       event.target.value = '';
+    }
+  }
+
+  // ========== Selection & Bulk Operations ==========
+
+  toggleSelectionMode() {
+    this.selectionMode = !this.selectionMode;
+    if (!this.selectionMode) {
+      this.selectedIds.clear();
+    }
+    this.updateBulkActionsBar();
+    this.render();
+  }
+
+  toggleSelect(conceptId) {
+    if (this.selectedIds.has(conceptId)) {
+      this.selectedIds.delete(conceptId);
+    } else {
+      this.selectedIds.add(conceptId);
+    }
+    this.updateBulkActionsBar();
+    this.renderList();
+  }
+
+  updateBulkActionsBar() {
+    const bulkActionsBar = this.container?.querySelector('[data-role="bulk-actions"]');
+    const selectionCount = this.container?.querySelector('[data-role="selection-count"]');
+
+    if (!bulkActionsBar) return;
+
+    if (this.selectionMode && this.selectedIds.size > 0) {
+      bulkActionsBar.hidden = false;
+      if (selectionCount) {
+        selectionCount.textContent = `${this.selectedIds.size} sélectionné(s)`;
+      }
+    } else {
+      bulkActionsBar.hidden = true;
+    }
+  }
+
+  cancelSelection() {
+    this.selectionMode = false;
+    this.selectedIds.clear();
+    this.updateBulkActionsBar();
+    this.render();
+  }
+
+  async bulkTag() {
+    if (this.selectedIds.size === 0) return;
+
+    const tags = prompt('Entrez les tags à ajouter (séparés par des virgules):');
+    if (!tags) return;
+
+    const tagList = tags.split(',').map(t => t.trim()).filter(t => t);
+    if (tagList.length === 0) return;
+
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_BASE}/concepts/bulk-tag`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          concept_ids: Array.from(this.selectedIds),
+          tags: tagList,
+          mode: 'add'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      this.eventBus?.emit?.('notification:show', {
+        type: 'success',
+        message: `${result.updated_count} concept(s) tagué(s)`,
+      });
+
+      this.cancelSelection();
+      this.loadConcepts();
+    } catch (error) {
+      this.eventBus?.emit?.('notification:show', {
+        type: 'error',
+        message: 'Erreur lors du tagging: ' + error.message,
+      });
+    }
+  }
+
+  async bulkMerge() {
+    if (this.selectedIds.size < 2) {
+      this.eventBus?.emit?.('notification:show', {
+        type: 'warning',
+        message: 'Sélectionnez au moins 2 concepts à fusionner',
+      });
+      return;
+    }
+
+    // Emit event for merge modal to handle
+    this.eventBus?.emit?.('concepts:bulk-merge:requested', {
+      conceptIds: Array.from(this.selectedIds)
+    });
+  }
+
+  async bulkDelete() {
+    if (this.selectedIds.size === 0) return;
+
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer ${this.selectedIds.size} concept(s) ?`)) {
+      return;
+    }
+
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_BASE}/concepts/bulk-delete`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          concept_ids: Array.from(this.selectedIds)
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      this.eventBus?.emit?.('notification:show', {
+        type: 'success',
+        message: `${result.deleted_count} concept(s) supprimé(s)`,
+      });
+
+      this.cancelSelection();
+      this.loadConcepts();
+    } catch (error) {
+      this.eventBus?.emit?.('notification:show', {
+        type: 'error',
+        message: 'Erreur lors de la suppression: ' + error.message,
+      });
     }
   }
 }

@@ -26,6 +26,8 @@
   <!-- ===== CSS CORE ===== -->
   <link rel="stylesheet" href="/src/frontend/styles/core/reset.css">
   <link rel="stylesheet" href="/src/frontend/styles/core/_variables.css">
+  <link rel="stylesheet" href="/src/frontend/styles/themes/light.css">
+  <link rel="stylesheet" href="/src/frontend/styles/themes/dark.css">
   <link rel="stylesheet" href="/src/frontend/styles/core/_typography.css">
   <link rel="stylesheet" href="/src/frontend/styles/core/_layout.css">
   <link rel="stylesheet" href="/src/frontend/styles/core/_navigation.css">
@@ -52,6 +54,7 @@
   <link rel="stylesheet" href="/src/frontend/features/cockpit/cockpit.css">
   <link rel="stylesheet" href="/src/frontend/features/threads/threads.css">
   <link rel="stylesheet" href="/src/frontend/features/memory/concept-search.css">
+  <link rel="stylesheet" href="/src/frontend/features/memory/concept-management.css">
   <link rel="stylesheet" href="/src/frontend/features/voice/voice.css">
 
   <!-- ===== CSS SETTINGS MODULES ===== -->
@@ -80,6 +83,22 @@
   <link rel="stylesheet" href="/src/frontend/styles/overrides/mobile-menu-fix.css">
 
   <!-- CSS critique (loader + grille minimale) -->
+  <script>
+    // Apply theme IMMEDIATELY from localStorage to avoid flash
+    (function() {
+      try {
+        const theme = localStorage.getItem('emergence.theme') || 'dark';
+        if (theme === 'auto') {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+        } else {
+          document.documentElement.setAttribute('data-theme', theme);
+        }
+      } catch (_) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
   <style>
     :root {
       --bg:#0b0f1a; --bg-2:#111827; --text:#e5e7eb; --muted:#9ca3af; --border:#1f2937; --sidebar-w:230px;

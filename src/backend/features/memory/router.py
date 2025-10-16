@@ -1086,6 +1086,819 @@ async def get_user_memory_stats(
     }
 
 
+@router.get(
+    "/concepts",
+    response_model=Dict[str, Any],
+    summary="List all concepts with pagination",
+    description="Retrieve user's concepts with pagination, sorting and filtering",
+)
+async def get_concepts(
+    request: Request,
+    limit: int = Query(20, ge=1, le=100, description="Number of concepts per page"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    sort: str = Query("recent", regex="^(recent|frequent|alphabetical)$", description="Sort order"),
+) -> Dict[str, Any]:
+    """Get paginated list of user's concepts."""
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    container = _get_container(request)
+    vector_service = container.vector_service()
+    collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+    collection = vector_service.get_or_create_collection(collection_name)
+
+    try:
+        # Get all user concepts
+        results = collection.get(
+            where={"$and": [
+                {"user_id": user_id},
+                {"type": "concept"}
+            ]},
+            include=["documents", "metadatas"]
+        )
+
+        concepts_docs = results.get("documents", [])
+        concepts_meta = results.get("metadatas", [])
+        concepts_ids = results.get("ids", [])
+
+        # Build concept objects
+        concepts = []
+        for concept_id, doc, meta in zip(concepts_ids, concepts_docs, concepts_meta):
+            concept = {
+                "id": concept_id,
+                "concept_id": concept_id,
+                "concept_text": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
+                "description": meta.get("description", ""),
+                "tags": meta.get("tags", []),
+                "relations": meta.get("relations", []),
+                "occurrence_count": int(meta.get("mention_count", 1)),
+                "first_mentioned": meta.get("first_mentioned_at") or meta.get("created_at"),
+                "last_mentioned": meta.get("last_mentioned_at") or meta.get("created_at"),
+                "thread_ids": meta.get("thread_ids", []),
+            }
+            concepts.append(concept)
+
+        # Sort concepts
+        if sort == "frequent":
+            concepts.sort(key=lambda x: x["occurrence_count"], reverse=True)
+        elif sort == "alphabetical":
+            concepts.sort(key=lambda x: x["concept_text"].lower())
+        else:  # recent
+            concepts.sort(key=lambda x: x["last_mentioned"] or "", reverse=True)
+
+        # Apply pagination
+        total = len(concepts)
+        paginated = concepts[offset:offset + limit]
+
+        return {
+            "concepts": paginated,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+
+    except Exception as e:
+        logger.error(f"[concepts/get] Failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve concepts: {e}")
+
+
+@router.get(
+    "/concepts/{concept_id}",
+    response_model=Dict[str, Any],
+    summary="Get concept details by ID",
+    description="Retrieve full details for a specific concept",
+)
+async def get_concept(
+    request: Request,
+    concept_id: str,
+) -> Dict[str, Any]:
+    """Get detailed information about a specific concept."""
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    container = _get_container(request)
+    vector_service = container.vector_service()
+    collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+    collection = vector_service.get_or_create_collection(collection_name)
+
+    try:
+        # Get concept by ID
+        results = collection.get(
+            ids=[concept_id],
+            include=["documents", "metadatas"]
+        )
+
+        if not results.get("ids") or len(results["ids"]) == 0:
+            raise HTTPException(status_code=404, detail="Concept not found")
+
+        doc = results["documents"][0]
+        meta = results["metadatas"][0]
+
+        # Verify ownership
+        if meta.get("user_id") != user_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        return {
+            "id": concept_id,
+            "concept_id": concept_id,
+            "concept_text": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
+            "description": meta.get("description", ""),
+            "tags": meta.get("tags", []),
+            "relations": meta.get("relations", []),
+            "occurrence_count": int(meta.get("mention_count", 1)),
+            "first_mentioned": meta.get("first_mentioned_at") or meta.get("created_at"),
+            "last_mentioned": meta.get("last_mentioned_at") or meta.get("created_at"),
+            "thread_ids": meta.get("thread_ids", []),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[concepts/get_one] Failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve concept: {e}")
+
+
+@router.patch(
+    "/concepts/{concept_id}",
+    response_model=Dict[str, Any],
+    summary="Update concept metadata",
+    description="Update description, tags, or relations for a concept",
+)
+async def update_concept(
+    request: Request,
+    concept_id: str,
+    data: Dict[str, Any] = Body(...),
+) -> Dict[str, Any]:
+    """Update concept metadata (description, tags, relations)."""
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    container = _get_container(request)
+    vector_service = container.vector_service()
+    collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+    collection = vector_service.get_or_create_collection(collection_name)
+
+    try:
+        # Get existing concept
+        results = collection.get(
+            ids=[concept_id],
+            include=["metadatas"]
+        )
+
+        if not results.get("ids") or len(results["ids"]) == 0:
+            raise HTTPException(status_code=404, detail="Concept not found")
+
+        meta = results["metadatas"][0]
+
+        # Verify ownership
+        if meta.get("user_id") != user_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Update metadata
+        updated_meta = {**meta}
+        if "description" in data:
+            updated_meta["description"] = data["description"]
+        if "tags" in data:
+            updated_meta["tags"] = data["tags"]
+        if "relations" in data:
+            updated_meta["relations"] = data["relations"]
+
+        # Update in ChromaDB
+        collection.update(
+            ids=[concept_id],
+            metadatas=[updated_meta]
+        )
+
+        return {
+            "status": "success",
+            "concept_id": concept_id,
+            "updated": True,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[concepts/update] Failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to update concept: {e}")
+
+
+@router.delete(
+    "/concepts/{concept_id}",
+    response_model=Dict[str, Any],
+    summary="Delete a concept",
+    description="Permanently delete a concept from memory",
+)
+async def delete_concept(
+    request: Request,
+    concept_id: str,
+) -> Dict[str, Any]:
+    """Delete a concept from user's memory."""
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    container = _get_container(request)
+    vector_service = container.vector_service()
+    collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+    collection = vector_service.get_or_create_collection(collection_name)
+
+    try:
+        # Get concept to verify ownership
+        results = collection.get(
+            ids=[concept_id],
+            include=["metadatas"]
+        )
+
+        if not results.get("ids") or len(results["ids"]) == 0:
+            raise HTTPException(status_code=404, detail="Concept not found")
+
+        meta = results["metadatas"][0]
+
+        # Verify ownership
+        if meta.get("user_id") != user_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Delete from ChromaDB
+        collection.delete(ids=[concept_id])
+
+        return {
+            "status": "success",
+            "concept_id": concept_id,
+            "deleted": True,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[concepts/delete] Failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to delete concept: {e}")
+
+
+@router.post(
+    "/concepts/merge",
+    response_model=Dict[str, Any],
+    summary="Merge multiple concepts into one",
+    description="Combine 2+ concepts into a single concept, preserving all metadata and history",
+)
+async def merge_concepts(
+    request: Request,
+    data: Dict[str, Any] = Body(...),
+) -> Dict[str, Any]:
+    """
+    Merge multiple concepts into one.
+
+    Body params:
+    - source_ids: List[str] - IDs of concepts to merge
+    - target_id: str - ID of the target concept (will receive merged data)
+    - new_concept_text: Optional[str] - New text for merged concept (default: target's text)
+    """
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    source_ids = data.get("source_ids", [])
+    target_id = data.get("target_id")
+    new_concept_text = data.get("new_concept_text")
+
+    if not source_ids or len(source_ids) < 1:
+        raise HTTPException(status_code=400, detail="source_ids required (at least 1 concept)")
+    if not target_id:
+        raise HTTPException(status_code=400, detail="target_id required")
+    if target_id in source_ids:
+        raise HTTPException(status_code=400, detail="target_id cannot be in source_ids")
+
+    container = _get_container(request)
+    vector_service = container.vector_service()
+    collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+    collection = vector_service.get_or_create_collection(collection_name)
+
+    try:
+        # Get all concepts
+        all_ids = source_ids + [target_id]
+        results = collection.get(
+            ids=all_ids,
+            include=["documents", "metadatas"]
+        )
+
+        if not results.get("ids") or len(results["ids"]) != len(all_ids):
+            raise HTTPException(status_code=404, detail="One or more concepts not found")
+
+        # Verify ownership for all concepts
+        for meta in results["metadatas"]:
+            if meta.get("user_id") != user_id:
+                raise HTTPException(status_code=403, detail="Access denied to one or more concepts")
+
+        # Find target metadata
+        target_idx = results["ids"].index(target_id)
+        target_meta = {**results["metadatas"][target_idx]}
+        target_doc = results["documents"][target_idx]
+
+        # Merge data from source concepts
+        merged_tags = set(target_meta.get("tags", []))
+        merged_relations = list(target_meta.get("relations", []))
+        merged_thread_ids = set(target_meta.get("thread_ids", []))
+        total_occurrences = int(target_meta.get("mention_count", 1))
+        earliest_mentioned = target_meta.get("first_mentioned_at") or target_meta.get("created_at")
+        latest_mentioned = target_meta.get("last_mentioned_at") or target_meta.get("created_at")
+
+        for concept_id in source_ids:
+            idx = results["ids"].index(concept_id)
+            source_meta = results["metadatas"][idx]
+
+            # Merge tags
+            merged_tags.update(source_meta.get("tags", []))
+
+            # Merge relations
+            for rel in source_meta.get("relations", []):
+                if rel not in merged_relations:
+                    merged_relations.append(rel)
+
+            # Merge thread IDs
+            merged_thread_ids.update(source_meta.get("thread_ids", []))
+
+            # Sum occurrences
+            total_occurrences += int(source_meta.get("mention_count", 1))
+
+            # Update timestamps
+            source_first = source_meta.get("first_mentioned_at") or source_meta.get("created_at")
+            source_last = source_meta.get("last_mentioned_at") or source_meta.get("created_at")
+
+            if source_first and (not earliest_mentioned or source_first < earliest_mentioned):
+                earliest_mentioned = source_first
+            if source_last and (not latest_mentioned or source_last > latest_mentioned):
+                latest_mentioned = source_last
+
+        # Update target concept
+        target_meta["tags"] = list(merged_tags)
+        target_meta["relations"] = merged_relations
+        target_meta["thread_ids"] = list(merged_thread_ids)
+        target_meta["mention_count"] = total_occurrences
+        target_meta["first_mentioned_at"] = earliest_mentioned
+        target_meta["last_mentioned_at"] = latest_mentioned
+
+        if new_concept_text:
+            target_meta["concept_text"] = new_concept_text
+
+        # Update target in ChromaDB
+        collection.update(
+            ids=[target_id],
+            metadatas=[target_meta],
+            documents=[new_concept_text] if new_concept_text else None
+        )
+
+        # Delete source concepts
+        collection.delete(ids=source_ids)
+
+        logger.info(f"[concepts/merge] Merged {len(source_ids)} concepts into {target_id} for user {user_id}")
+
+        return {
+            "status": "success",
+            "target_id": target_id,
+            "merged_count": len(source_ids),
+            "merged_ids": source_ids,
+            "new_concept_text": new_concept_text or target_meta.get("concept_text"),
+            "total_occurrences": total_occurrences,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[concepts/merge] Failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to merge concepts: {e}")
+
+
+@router.post(
+    "/concepts/split",
+    response_model=Dict[str, Any],
+    summary="Split a concept into multiple concepts",
+    description="Divide a concept into multiple separate concepts with distinct meanings",
+)
+async def split_concept(
+    request: Request,
+    data: Dict[str, Any] = Body(...),
+) -> Dict[str, Any]:
+    """
+    Split a concept into multiple new concepts.
+
+    Body params:
+    - source_id: str - ID of concept to split
+    - new_concepts: List[Dict] - New concepts to create, each with:
+        - concept_text: str - Text for new concept
+        - description: Optional[str]
+        - tags: Optional[List[str]]
+        - weight: Optional[float] - Proportion of occurrences (0-1, must sum to 1)
+    """
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    source_id = data.get("source_id")
+    new_concepts = data.get("new_concepts", [])
+
+    if not source_id:
+        raise HTTPException(status_code=400, detail="source_id required")
+    if not new_concepts or len(new_concepts) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 new_concepts required")
+
+    # Validate weights sum to 1.0 (within tolerance)
+    weights = [c.get("weight", 1.0 / len(new_concepts)) for c in new_concepts]
+    if abs(sum(weights) - 1.0) > 0.01:
+        raise HTTPException(status_code=400, detail="Concept weights must sum to 1.0")
+
+    container = _get_container(request)
+    vector_service = container.vector_service()
+    collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+    collection = vector_service.get_or_create_collection(collection_name)
+
+    try:
+        # Get source concept
+        results = collection.get(
+            ids=[source_id],
+            include=["documents", "metadatas", "embeddings"]
+        )
+
+        if not results.get("ids") or len(results["ids"]) == 0:
+            raise HTTPException(status_code=404, detail="Source concept not found")
+
+        source_meta = results["metadatas"][0]
+        source_embedding = results["embeddings"][0] if results.get("embeddings") else None
+
+        # Verify ownership
+        if source_meta.get("user_id") != user_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Create new concepts
+        new_ids = []
+        total_occurrences = int(source_meta.get("mention_count", 1))
+
+        for idx, new_concept in enumerate(new_concepts):
+            concept_text = new_concept.get("concept_text")
+            if not concept_text:
+                raise HTTPException(status_code=400, detail=f"concept_text required for new_concept[{idx}]")
+
+            # Generate new ID
+            import uuid
+            new_id = f"concept_{user_id}_{uuid.uuid4().hex[:8]}"
+
+            # Create metadata
+            new_meta = {
+                "user_id": user_id,
+                "type": "concept",
+                "concept_text": concept_text,
+                "description": new_concept.get("description", ""),
+                "tags": new_concept.get("tags", []),
+                "relations": [],
+                "mention_count": int(total_occurrences * weights[idx]),
+                "first_mentioned_at": source_meta.get("first_mentioned_at"),
+                "last_mentioned_at": source_meta.get("last_mentioned_at"),
+                "thread_ids": source_meta.get("thread_ids", []),
+                "created_at": source_meta.get("created_at"),
+                "split_from": source_id,
+            }
+
+            # Add to collection (reuse embedding if available, else will be generated)
+            collection.add(
+                ids=[new_id],
+                documents=[concept_text],
+                metadatas=[new_meta],
+                embeddings=[source_embedding] if source_embedding else None
+            )
+
+            new_ids.append(new_id)
+
+        # Delete source concept
+        collection.delete(ids=[source_id])
+
+        logger.info(f"[concepts/split] Split concept {source_id} into {len(new_ids)} concepts for user {user_id}")
+
+        return {
+            "status": "success",
+            "source_id": source_id,
+            "new_ids": new_ids,
+            "split_count": len(new_ids),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[concepts/split] Failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to split concept: {e}")
+
+
+@router.post(
+    "/concepts/bulk-delete",
+    response_model=Dict[str, Any],
+    summary="Delete multiple concepts at once",
+    description="Bulk delete operation for cleaning up multiple concepts",
+)
+async def bulk_delete_concepts(
+    request: Request,
+    data: Dict[str, Any] = Body(...),
+) -> Dict[str, Any]:
+    """
+    Delete multiple concepts in one operation.
+
+    Body params:
+    - concept_ids: List[str] - IDs of concepts to delete
+    """
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    concept_ids = data.get("concept_ids", [])
+
+    if not concept_ids:
+        raise HTTPException(status_code=400, detail="concept_ids required")
+
+    container = _get_container(request)
+    vector_service = container.vector_service()
+    collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+    collection = vector_service.get_or_create_collection(collection_name)
+
+    try:
+        # Get concepts to verify ownership
+        results = collection.get(
+            ids=concept_ids,
+            include=["metadatas"]
+        )
+
+        found_ids = results.get("ids", [])
+        if len(found_ids) != len(concept_ids):
+            missing = set(concept_ids) - set(found_ids)
+            raise HTTPException(status_code=404, detail=f"Concepts not found: {list(missing)}")
+
+        # Verify ownership for all
+        for meta in results["metadatas"]:
+            if meta.get("user_id") != user_id:
+                raise HTTPException(status_code=403, detail="Access denied to one or more concepts")
+
+        # Delete all
+        collection.delete(ids=concept_ids)
+
+        logger.info(f"[concepts/bulk-delete] Deleted {len(concept_ids)} concepts for user {user_id}")
+
+        return {
+            "status": "success",
+            "deleted_count": len(concept_ids),
+            "deleted_ids": concept_ids,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[concepts/bulk-delete] Failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to bulk delete concepts: {e}")
+
+
+@router.post(
+    "/concepts/bulk-tag",
+    response_model=Dict[str, Any],
+    summary="Add tags to multiple concepts at once",
+    description="Bulk tagging operation for categorizing multiple concepts",
+)
+async def bulk_tag_concepts(
+    request: Request,
+    data: Dict[str, Any] = Body(...),
+) -> Dict[str, Any]:
+    """
+    Add tags to multiple concepts in one operation.
+
+    Body params:
+    - concept_ids: List[str] - IDs of concepts to tag
+    - tags: List[str] - Tags to add
+    - mode: "add" | "replace" - Whether to add or replace existing tags (default: "add")
+    """
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    concept_ids = data.get("concept_ids", [])
+    tags = data.get("tags", [])
+    mode = data.get("mode", "add")
+
+    if not concept_ids:
+        raise HTTPException(status_code=400, detail="concept_ids required")
+    if not tags:
+        raise HTTPException(status_code=400, detail="tags required")
+    if mode not in ["add", "replace"]:
+        raise HTTPException(status_code=400, detail="mode must be 'add' or 'replace'")
+
+    container = _get_container(request)
+    vector_service = container.vector_service()
+    collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+    collection = vector_service.get_or_create_collection(collection_name)
+
+    try:
+        # Get concepts
+        results = collection.get(
+            ids=concept_ids,
+            include=["metadatas"]
+        )
+
+        found_ids = results.get("ids", [])
+        if len(found_ids) != len(concept_ids):
+            missing = set(concept_ids) - set(found_ids)
+            raise HTTPException(status_code=404, detail=f"Concepts not found: {list(missing)}")
+
+        # Verify ownership and update tags
+        updated_metas = []
+        for meta in results["metadatas"]:
+            if meta.get("user_id") != user_id:
+                raise HTTPException(status_code=403, detail="Access denied to one or more concepts")
+
+            updated_meta = {**meta}
+            if mode == "replace":
+                updated_meta["tags"] = tags
+            else:  # add
+                existing_tags = set(updated_meta.get("tags", []))
+                existing_tags.update(tags)
+                updated_meta["tags"] = list(existing_tags)
+
+            updated_metas.append(updated_meta)
+
+        # Update all concepts
+        collection.update(
+            ids=found_ids,
+            metadatas=updated_metas
+        )
+
+        logger.info(f"[concepts/bulk-tag] Tagged {len(found_ids)} concepts for user {user_id}")
+
+        return {
+            "status": "success",
+            "updated_count": len(found_ids),
+            "updated_ids": found_ids,
+            "tags": tags,
+            "mode": mode,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[concepts/bulk-tag] Failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to bulk tag concepts: {e}")
+
+
+@router.get(
+    "/concepts/export",
+    response_model=Dict[str, Any],
+    summary="Export all user concepts",
+    description="Export all concepts in JSON format for backup or transfer",
+)
+async def export_concepts(
+    request: Request,
+) -> Dict[str, Any]:
+    """Export all user concepts."""
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    container = _get_container(request)
+    vector_service = container.vector_service()
+    collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+    collection = vector_service.get_or_create_collection(collection_name)
+
+    try:
+        # Get all user concepts
+        results = collection.get(
+            where={"$and": [
+                {"user_id": user_id},
+                {"type": "concept"}
+            ]},
+            include=["documents", "metadatas"]
+        )
+
+        concepts = []
+        for concept_id, doc, meta in zip(results["ids"], results["documents"], results["metadatas"]):
+            concepts.append({
+                "id": concept_id,
+                "concept_text": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
+                "description": meta.get("description", ""),
+                "tags": meta.get("tags", []),
+                "relations": meta.get("relations", []),
+                "occurrence_count": int(meta.get("mention_count", 1)),
+                "first_mentioned": meta.get("first_mentioned_at"),
+                "last_mentioned": meta.get("last_mentioned_at"),
+                "thread_ids": meta.get("thread_ids", []),
+            })
+
+        return {
+            "concepts": concepts,
+            "total": len(concepts),
+            "exported_at": __import__("datetime").datetime.utcnow().isoformat(),
+            "user_id": user_id,
+        }
+
+    except Exception as e:
+        logger.error(f"[concepts/export] Failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to export concepts: {e}")
+
+
+@router.post(
+    "/concepts/import",
+    response_model=Dict[str, Any],
+    summary="Import concepts from backup",
+    description="Import concepts from JSON export (merge with existing)",
+)
+async def import_concepts(
+    request: Request,
+    data: Dict[str, Any] = Body(...),
+) -> Dict[str, Any]:
+    """
+    Import concepts from export file.
+
+    Body params:
+    - concepts: List[Dict] - Concepts to import
+    - mode: "merge" | "replace" - Merge with existing or replace all (default: "merge")
+    """
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    concepts = data.get("concepts", [])
+    mode = data.get("mode", "merge")
+
+    if not concepts:
+        raise HTTPException(status_code=400, detail="concepts required")
+    if mode not in ["merge", "replace"]:
+        raise HTTPException(status_code=400, detail="mode must be 'merge' or 'replace'")
+
+    container = _get_container(request)
+    vector_service = container.vector_service()
+    collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+    collection = vector_service.get_or_create_collection(collection_name)
+
+    try:
+        imported_count = 0
+
+        # If replace mode, delete all existing concepts
+        if mode == "replace":
+            existing = collection.get(
+                where={"$and": [{"user_id": user_id}, {"type": "concept"}]},
+                include=["metadatas"]
+            )
+            if existing.get("ids"):
+                collection.delete(ids=existing["ids"])
+                logger.info(f"[concepts/import] Deleted {len(existing['ids'])} existing concepts (replace mode)")
+
+        # Import concepts
+        for concept in concepts:
+            concept_text = concept.get("concept_text")
+            if not concept_text:
+                continue
+
+            # Generate new ID
+            import uuid
+            new_id = f"concept_{user_id}_{uuid.uuid4().hex[:8]}"
+
+            meta = {
+                "user_id": user_id,
+                "type": "concept",
+                "concept_text": concept_text,
+                "description": concept.get("description", ""),
+                "tags": concept.get("tags", []),
+                "relations": concept.get("relations", []),
+                "mention_count": int(concept.get("occurrence_count", 1)),
+                "first_mentioned_at": concept.get("first_mentioned"),
+                "last_mentioned_at": concept.get("last_mentioned"),
+                "thread_ids": concept.get("thread_ids", []),
+                "created_at": __import__("datetime").datetime.utcnow().isoformat(),
+            }
+
+            collection.add(
+                ids=[new_id],
+                documents=[concept_text],
+                metadatas=[meta]
+            )
+
+            imported_count += 1
+
+        logger.info(f"[concepts/import] Imported {imported_count} concepts for user {user_id}")
+
+        return {
+            "status": "success",
+            "imported": imported_count,
+            "mode": mode,
+        }
+
+    except Exception as e:
+        logger.error(f"[concepts/import] Failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to import concepts: {e}")
+
+
 @router.post(
     "/consolidate-archived",
     response_model=Dict[str, Any],
