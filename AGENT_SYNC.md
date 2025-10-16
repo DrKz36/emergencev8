@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-16 10:57 (Correctifs tests mémoire + email scripts)
+**Dernière mise à jour** : 2025-10-16 11:15 (Bootstrap allowlist + déploiement 00447-faf)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -24,26 +24,14 @@
 ### Branche active
 - **Branche courante** : `main`
 - **Derniers commits** (5 plus récents) :
-  - `093dbdc` fix(production): Complete Cloud Run deployment configuration
-  - `34cf697` fix(email): Configure SMTP environment variables in Cloud Run deployments
-  - `5560ec4` feat(version): Centralize version management system
-  - `29c20ea` fix(themes): Complete P1.2 - Light/Dark Theme System
-  - `2cd8cc8` feat(memory): Integrate P1.1 - Proactive Hints UI in chat
+  - `46ec599` feat(auth): bootstrap allowlist seeding
+  - `fe9fa85` test(backend): Add Phase 1 validation tests and update documentation
+  - `eb0afb1` docs(agents): Add Codex GPT guide and update inter-agent cooperation docs
+  - `102e01e` fix(backend): Phase 1 - Critical backend fixes for empty charts and admin dashboard
+  - `dc1781f` docs(debug): Add comprehensive debug plan for Cockpit, Memory, Admin, and About modules
 
 ### Working tree
-- **Statut** : Modifications en cours – correctif auth + documentation
-- **Fichiers modifiés** :
-  - `AGENT_SYNC.md` (M) – état du dépôt actualisé
-  - `docs/AUTHENTICATION.md` (M) – ajout section seed allowlist
-  - `src/backend/features/auth/service.py` (M) – bootstrap allowlist depuis l'env
-  - `stable-service.yaml` (M) – nouvelle variable `AUTH_ALLOWLIST_SEED`
-  - `docs/passation.md` (M) – entrées Codex (auth bootstrap + correctifs tests)
-  - `scripts/test_email.py` (M) – fixture pytest + skip conditionnel
-  - `src/backend/features/memory/memory_query_tool.py` (M) – filtrage timeframe côté Python
-  - `src/backend/tests/test_database_manager.py` (M) – test auto-reconnexion
-  - `tests/backend/features/test_memory_query_tool.py` (M) – attentes timeframe ajustées
-- **Fichiers non suivis** :
-  - `tests/backend/features/test_auth_bootstrap_seed.py` (nouvelle suite de tests)
+- **Statut** : ✅ Propre (`git status` vierge après commit/push)
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
@@ -55,7 +43,7 @@
 
 ### ✅ PRODUCTION STABLE ET OPÉRATIONNELLE
 
-**Statut** : ✅ **Déploiement réussi - Tous les services fonctionnels**
+**Statut** : ✅ **Révision 00447-faf en production (100% trafic)**
 
 #### Infrastructure
 - **Projet GCP** : `emergence-469005`
@@ -71,9 +59,10 @@
 | **Health Check** | https://emergence-app.ch/api/health | ✅ 200 OK |
 
 #### Révision Active (2025-10-16)
-- **Révision** : `emergence-app-00364-xxx` (dernière déployée)
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/emergence-repo/emergence-app@sha256:340f3f39e6d99a37c5b15c2d4a4c8126f673c4acb0bafe83194b4ad2a439adf0`
-- **Trafic** : 100% (stratégie unique, pas de split)
+- **Révision** : `emergence-app-00447-faf` (tag `canary-20251016-110758`, alias `stable`)
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:20251016-110758`  
+  (`sha256:97984c180b5896315f7311c7089bd3261cd904584a15a7fae722ddc4d49fc865`)
+- **Trafic** : 100% (canary 10% → 50% → 100% validé)
 - **CPU** : 2 cores
 - **Mémoire** : 4 Gi
 - **Min instances** : 1
@@ -103,10 +92,10 @@
   - jspdf-autotable@3.8.3
 - Module chat se charge maintenant sans erreurs
 
-**5. ✅ Seed allowlist automatisé**
-- `AuthService.bootstrap` consomme `AUTH_ALLOWLIST_SEED` / `_PATH` pour reconstruire l'allowlist
-- Nouvelle section dans `docs/AUTHENTICATION.md`
-- Secret `AUTH_ALLOWLIST_SEED` à provisionner avant redéploiement (cf. Prochaines actions)
+**5. ✅ Seed allowlist automatisé + nouvelle révision**
+- Script `scripts/generate_allowlist_seed.py` ajouté pour exporter/publier le JSON allowlist.
+- `AuthService.bootstrap` consomme `AUTH_ALLOWLIST_SEED` / `_PATH` pour reconstruire l'allowlist à chaque boot.
+- Déploiement `20251016-110758` achevé (canary progressif validé, 100% trafic).
 
 #### Configuration Complète
 
@@ -508,8 +497,8 @@ SMTP_PASSWORD=...
 ## 🎯 Prochaines Actions
 
 ### Immédiat (Cette semaine)
-1. 🔴 Créer/mettre à jour le secret GCP `AUTH_ALLOWLIST_SEED` (JSON allowlist + mots de passe temporaires)
-2. 🔴 Redéployer `stable-service.yaml` (via `scripts/deploy-canary.ps1`) après injection du secret
+1. 🔴 Publier/mettre à jour le secret GCP `AUTH_ALLOWLIST_SEED` (JSON allowlist + mots de passe temporaires)
+2. 🟠 Surveiller les logs Cloud Run (`emergence-app-00447-faf`) pendant ≥60 min — alerte si pics 401/5xx
 3. 🔜 Démarrer Phase P2 (Dashboard Admin Avancé)
 4. 🔜 Tests d'intégration P1 en production
 

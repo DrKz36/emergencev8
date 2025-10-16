@@ -33,6 +33,38 @@ Stabilisation de la suite `pytest` après plusieurs erreurs (`scripts/test_email
 - `curl http://localhost:8000/api/sync/status` → échec de connexion (service indisponible).
 - `pwsh -File scripts/sync-workdir.ps1` interrompu : dépôt déjà modifié (`-AllowDirty` non utilisé).
 
+## [2025-10-16 11:15] - Agent: Codex
+
+### Fichiers modifiés
+- `scripts/generate_allowlist_seed.py` (nouveau)
+- `tests/backend/features/test_auth_bootstrap_seed.py` (nouveau)
+- `src/backend/features/auth/service.py`
+- `docs/AUTHENTICATION.md`, `docs/backend/auth.md`
+- `docs/backend/memory.md`
+- `docs/architecture/00-Overview.md`, `docs/architecture/10-Components.md`
+- `README.md`, `AGENT_SYNC.md`, `CODEX_GPT_GUIDE.md`
+- `stable-service.yaml`
+
+### Contexte
+Blocage prod : allowlist vidée à chaque déploiement Cloud Run → logins 401. Objectif : automatiser le seed de l'allowlist, documenter la procédure et redéployer une image saine.
+
+### Actions réalisées
+- Ajout du bootstrap env (`AuthService.bootstrap` lit `AUTH_ALLOWLIST_SEED` / `_PATH`) + script utilitaire `scripts/generate_allowlist_seed.py`.
+- Suite de tests dédiée + documentation backend/archi/front (CODEX guide, README) et mise à jour de `stable-service.yaml`.
+- Tests ciblés : `python -m pytest tests/backend/features/test_auth_bootstrap_seed.py tests/backend/features/test_memory_query_tool.py src/backend/tests/test_database_manager.py`.
+- Build Docker local `emergence-app:20251016-110758`, push vers Artifact Registry, déploiement Cloud Run révision `emergence-app-00447-faf` :
+  1. `gcloud run deploy ... --no-traffic --tag canary-20251016-110758`
+  2. Canaries 10% → 50% → 100% via `gcloud run services update-traffic`
+  3. Health-checks OK (`/api/health` sur URL stable & canary).
+
+### Prochaines actions recommandées
+1. Provisionner/mettre à jour le secret `AUTH_ALLOWLIST_SEED` avant toute nouvelle release (utiliser le script).
+2. Surveiller les logs Cloud Run (`emergence-app-00447-faf`) 1h pour confirmer l'absence de 401 massifs.
+3. Retirer l'ancien tag `canary-20251016` si plus nécessaire.
+
+### Blocages
+Rien.
+
 ## [2025-10-16 10:16] - Agent: Codex
 
 ### Fichiers modifiés
