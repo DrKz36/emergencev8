@@ -1,8 +1,34 @@
 # Integrity & Docs Guardian Plugin
 
-**Version:** 1.0.0
+**Version:** 2.0.0
 **For:** ÉMERGENCE Application (FastAPI + Vite/React)
-**Agents:** Anima (DocKeeper), Neo (IntegrityWatcher), Nexus (Coordinator)
+**Agents:** Anima (DocKeeper), Neo (IntegrityWatcher), Nexus (Coordinator), ProdGuardian
+**NEW:** 🤖 Auto-Orchestration with Documentation Auto-Update
+
+---
+
+## 🆕 What's New in v2.0.0
+
+### Automatic Orchestration System
+
+The plugin now includes a **complete automatic orchestration system** that:
+
+- ✅ **Runs all agents automatically** (Anima, Neo, ProdGuardian, Nexus)
+- ✅ **Automatically updates documentation** based on verification reports
+- ✅ **Integrates with Git hooks** for post-commit verification
+- ✅ **Supports periodic scheduling** for continuous monitoring
+- ✅ **Provides multiple execution modes** (manual, automatic, scheduled)
+
+**Quick Start with Auto-Orchestration:**
+```bash
+# Test the automatic orchestration
+python claude-plugins/integrity-docs-guardian/scripts/auto_orchestrator.py
+
+# Enable auto-update of documentation
+AUTO_APPLY=1 python claude-plugins/integrity-docs-guardian/scripts/auto_orchestrator.py
+```
+
+📚 **See [QUICKSTART_AUTO.md](QUICKSTART_AUTO.md) for detailed setup instructions**
 
 ---
 
@@ -29,7 +55,9 @@ The **Integrity & Docs Guardian** is a Claude Code plugin designed to automate d
 |-------|------|----------------|
 | **Anima** | DocKeeper | Monitors code changes and identifies documentation gaps |
 | **Neo** | IntegrityWatcher | Verifies backend/frontend coherence and detects regressions |
+| **ProdGuardian** | Production Monitor | Analyzes production logs and detects anomalies |
 | **Nexus** | Coordinator | Aggregates reports, prioritizes actions, provides unified view |
+| **🆕 Auto-Orchestrator** | Automation Engine | Runs all agents automatically and updates documentation |
 
 ### Workflow
 
@@ -498,10 +526,26 @@ python claude-plugins/integrity-docs-guardian/scripts/check_integrity.py
 
 ---
 
+## 📖 Documentation
+
+### Complete Guide
+
+| Document | Description |
+|----------|-------------|
+| **[QUICKSTART_AUTO.md](QUICKSTART_AUTO.md)** | Quick start guide for auto-orchestration |
+| **[AUTO_ORCHESTRATION.md](AUTO_ORCHESTRATION.md)** | Complete documentation of the automatic system |
+| **[SUMMARY_AUTO_SETUP.md](SUMMARY_AUTO_SETUP.md)** | Summary of what was installed |
+| **[README.md](README.md)** | This file - main documentation |
+
+---
+
 ## 🔮 Future Enhancements
 
 ### Planned Features
 
+- [x] **Automatic Orchestration** - ✅ Implemented in v2.0.0
+- [x] **Documentation Auto-Update** - ✅ Implemented in v2.0.0
+- [x] **Periodic Scheduling** - ✅ Implemented in v2.0.0
 - [ ] **AI-Powered Suggestions** - Use Claude to generate documentation updates automatically
 - [ ] **Schema Auto-Sync** - Automatically propagate schema changes to frontend types
 - [ ] **CI/CD Integration** - Block PRs with critical issues
@@ -561,6 +605,14 @@ Built for the **ÉMERGENCE** AI-powered application ecosystem.
 
 ---
 
-**Version:** 1.0.0
-**Last Updated:** 2025-10-10
+**Version:** 2.0.0
+**Last Updated:** 2025-10-16
 **Maintained by:** ÉMERGENCE Team
+
+**Changelog v2.0.0:**
+- ✅ Added automatic orchestration system
+- ✅ Added documentation auto-update capability
+- ✅ Added periodic scheduler for continuous monitoring
+- ✅ Enhanced Git hook with auto-update support
+- ✅ Added `/auto_sync` slash command
+- ✅ Comprehensive documentation (QUICKSTART_AUTO.md, AUTO_ORCHESTRATION.md)

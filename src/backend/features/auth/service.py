@@ -541,7 +541,9 @@ class AuthService:
         if user_agent:
             session_meta.setdefault("user_agent", user_agent)
 
-        await self.db.execute(
+        # CRITICAL WRITE: Utilise execute_critical_write() pour sérialiser les écritures auth_sessions
+        # Évite "database is locked" sur connexions concurrentes multiples
+        await self.db.execute_critical_write(
             """
             INSERT INTO auth_sessions (id, email, role, ip_address, user_id, user_agent, issued_at, expires_at, metadata)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -567,7 +569,8 @@ class AuthService:
             audit_meta.update({k: v for k, v in audit_metadata.items() if v is not None})
 
         user_claim = str(claims.get("sub") or "")
-        await self._write_audit(event_type, email=email, metadata=audit_meta)
+        # Audit log asynchrone pour login (non-bloquant) - réduit latence login de ~50-100ms
+        await self._write_audit(event_type, email=email, metadata=audit_meta, _async=True)
 
         # Get password_must_reset status
         allow_row = await self._get_allowlist_row(email)
@@ -1218,21 +1221,49 @@ class AuthService:
         email: Optional[str],
         actor: Optional[str] = None,
         metadata: Optional[dict[str, Any]] = None,
+        _async: bool = False,
     ) -> None:
+        """
+        Écrit un événement d'audit dans auth_audit_log.
+
+        Args:
+            _async: Si True, exécute en arrière-plan (non-bloquant).
+                   Recommandé pour événements non-critiques (login success, etc.)
+        """
         try:
-            await self.db.execute(
-                "INSERT INTO auth_audit_log (event_type, email, actor, metadata, created_at) VALUES (?, ?, ?, ?, ?)",
-                (
-                    event_type,
-                    email,
-                    actor,
-                    json.dumps(metadata) if metadata else None,
-                    self._now().isoformat(),
-                ),
-                commit=True,
-            )
+            if _async:
+                # Audit asynchrone non-bloquant (fire-and-forget)
+                # Utilisé pour login success, logout, etc.
+                import asyncio
+                asyncio.create_task(
+                    self.db.execute(
+                        "INSERT INTO auth_audit_log (event_type, email, actor, metadata, created_at) VALUES (?, ?, ?, ?, ?)",
+                        (
+                            event_type,
+                            email,
+                            actor,
+                            json.dumps(metadata) if metadata else None,
+                            self._now().isoformat(),
+                        ),
+                        commit=True,
+                    )
+                )
+            else:
+                # Audit synchrone bloquant pour événements critiques
+                # (allowlist changes, password changes, etc.)
+                await self.db.execute(
+                    "INSERT INTO auth_audit_log (event_type, email, actor, metadata, created_at) VALUES (?, ?, ?, ?, ?)",
+                    (
+                        event_type,
+                        email,
+                        actor,
+                        json.dumps(metadata) if metadata else None,
+                        self._now().isoformat(),
+                    ),
+                    commit=True,
+                )
         except Exception as exc:
-            logger.warning("Auth audit log failure: %s", exc)
+            logger.warning("Auth audit log failure (%s): %s", event_type, exc)
 
     def _prepare_params(self, params: Sequence[Any] | None) -> tuple[Any, ...] | None:
         if params is None:

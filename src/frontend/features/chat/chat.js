@@ -289,6 +289,72 @@ export default class ChatModule {
         this.hydrateFromThread(cached);
         console.log('[Chat] mount() → hydratation tardive depuis state pour', currentId);
       }
+    } else {
+      // ✅ Pas de conversation active : en récupérer une ou en créer une nouvelle
+      this._ensureActiveConversation();
+    }
+  }
+
+  /**
+   * S'assure qu'une conversation est active au chargement du module.
+   * Récupère la dernière conversation existante ou en crée une nouvelle.
+   */
+  async _ensureActiveConversation() {
+    try {
+      console.log('[Chat] Aucune conversation active détectée, récupération/création en cours...');
+
+      // Récupérer la liste des threads depuis le state (déjà chargés par app.js)
+      const threadsOrder = this.state.get('threads.order') || [];
+
+      if (threadsOrder.length > 0) {
+        // Prendre le premier thread de la liste (le plus récent)
+        const latestThreadId = threadsOrder[0];
+        const threadData = this.state.get(`threads.map.${latestThreadId}`);
+
+        if (threadData) {
+          console.log('[Chat] Activation de la dernière conversation:', latestThreadId);
+          this.loadedThreadId = latestThreadId;
+          this.threadId = latestThreadId;
+          this.state.set('chat.threadId', latestThreadId);
+          this.state.set('threads.currentId', latestThreadId);
+          try { localStorage.setItem('emergence.threadId', latestThreadId); } catch {}
+
+          // Charger les messages de cette conversation
+          this.hydrateFromThread(threadData);
+
+          // Émettre l'événement pour que le WebSocket se connecte
+          this.eventBus.emit('threads:ready', { id: latestThreadId });
+          this.eventBus.emit(EVENTS.THREADS_SELECTED || 'threads:selected', { id: latestThreadId });
+
+          console.log('[Chat] ✅ Conversation active chargée automatiquement');
+          return;
+        }
+      }
+
+      // Si aucun thread n'existe dans la liste, créer un nouveau
+      console.log('[Chat] Aucune conversation existante, création d\'une nouvelle...');
+      const created = await api.createThread({ type: 'chat', title: 'Conversation' });
+      const newThreadId = created?.id;
+
+      if (newThreadId) {
+        this.loadedThreadId = newThreadId;
+        this.threadId = newThreadId;
+        this.state.set('chat.threadId', newThreadId);
+        this.state.set('threads.currentId', newThreadId);
+        try { localStorage.setItem('emergence.threadId', newThreadId); } catch {}
+
+        // Initialiser avec des messages vides
+        this.hydrateFromThread({ id: newThreadId, messages: [] });
+
+        // Émettre les événements nécessaires
+        this.eventBus.emit('threads:ready', { id: newThreadId });
+        this.eventBus.emit(EVENTS.THREADS_CREATED || 'threads:created', created);
+
+        console.log('[Chat] ✅ Nouvelle conversation créée et activée:', newThreadId);
+      }
+    } catch (error) {
+      console.error('[Chat] Erreur lors de l\'activation automatique de conversation:', error);
+      // En cas d'erreur, continuer sans conversation active (mode dégradé)
     }
   }
 

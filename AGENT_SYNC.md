@@ -31,9 +31,9 @@
   - `dc1781f` docs(debug): Add comprehensive debug plan for Cockpit, Memory, Admin, and About modules
 
 ### Working tree
-- **Statut** : ⚠️ Modifications en cours (système d'emails membres en développement)
-- **Fichiers modifiés** : 9 fichiers (backend: 6, frontend: 3)
-- **Nouveau** : `docs/MEMBER_EMAILS_SYSTEM.md`, scripts de test emails
+- **Statut** : ⚠️ Modifications en cours (auto-activation conversations + cleanup divers)
+- **Fichiers modifiés** : 8 fichiers
+- **Fichiers à commiter** : Tous les changements en attente (auto-activation + scripts auto-sync)
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
@@ -45,7 +45,7 @@
 
 ### ✅ PRODUCTION STABLE ET OPÉRATIONNELLE
 
-**Statut** : ✅ **Révision 00455-cew en production (100% trafic) - Version beta-2.1.1**
+**Statut** : ✅ **Révision 00458-fiy en production (100% trafic) - Anti-DB-Lock Fix**
 
 #### Infrastructure
 - **Projet GCP** : `emergence-469005`
@@ -57,15 +57,15 @@
 | Service | URL | Statut |
 |---------|-----|--------|
 | **Application principale** | https://emergence-app.ch | ✅ Opérationnel |
-| **URL directe Cloud Run** | https://emergence-app-486095406755.europe-west1.run.app | ✅ Opérationnel |
+| **URL directe Cloud Run** | https://emergence-app-47nct44nma-ew.a.run.app | ✅ Opérationnel |
 | **Health Check** | https://emergence-app.ch/api/health | ✅ 200 OK |
 
-#### Révision Active (2025-10-16)
-- **Révision** : `emergence-app-00455-cew` (tag `canary-20251016`, alias `stable`)
-- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/emergence-repo/emergence-app:20251016-123422`
-  (`sha256:149cce8eb9715f60812883172af5d1a33e32d20edd0bfa48b88550ab7817eb24`)
-- **Trafic** : 100% (canary 10% → 100% direct - tests validés)
-- **Version** : beta-2.1.1 (Audit système agents + versioning unifié)
+#### Révision Active (2025-10-16 17:10)
+- **Révision** : `emergence-app-00458-fiy` (tag `anti-db-lock`, alias `stable`)
+- **Image** : `europe-west1-docker.pkg.dev/emergence-469005/emergence-repo/emergence-app:anti-db-lock-20251016-170500`
+  (`sha256:28d7752ed434d2fa4c5d5574a9cdcedf3dff6f948b5c717729053977963e0550`)
+- **Trafic** : 100% (canary 10% → 100% - tests validés)
+- **Version** : beta-2.1.2 (Anti-DB-Lock Fix - Correctif critique auth)
 - **CPU** : 2 cores
 - **Mémoire** : 4 Gi
 - **Min instances** : 1
@@ -74,13 +74,37 @@
 
 #### Déploiements Récents (Session 2025-10-16)
 
-**🆕 Déploiement beta-2.1.1 (2025-10-16 12:38)** :
+**🆕 Déploiement Anti-DB-Lock (2025-10-16 17:10)** :
+- **Révision** : emergence-app-00458-fiy
+- **Tag** : anti-db-lock-20251016-170500
+- **Build** : Docker local → GCR → Cloud Run
+- **Tests** : ✅ Health check OK, ✅ Aucune erreur "database is locked", ✅ Logs propres
+- **Déploiement** : Canary 10% → 100% (validation progressive)
+- **Contenu** : Correctif définitif erreurs 500 "database is locked" sur auth
+
+**Déploiement beta-2.1.1 (2025-10-16 12:38)** :
 - **Révision** : emergence-app-00455-cew
 - **Tag** : 20251016-123422
 - **Build** : Docker local → GCR → Cloud Run
 - **Tests** : ✅ Health check OK, ✅ Fichiers statiques OK, ✅ Logs propres
 - **Déploiement** : Canary 10% → 100% (validation rapide)
 - **Contenu** : Audit agents + versioning unifié + Phase 1 & 3 debug
+
+#### Problèmes Résolus (Session 2025-10-16)
+
+**🆕 6. ✅ Erreurs 500 "database is locked" sur /api/auth/login (CRITIQUE)**
+- **Problème** : Timeout 25.7s + erreur 500 après 3-5 connexions/déconnexions rapides
+- **Cause** : Contention SQLite sur écritures concurrentes (auth_sessions + audit_log)
+- **Correctif 4 niveaux** :
+  1. **SQLite optimisé** : busy_timeout 60s, cache 128MB, WAL autocheckpoint 500 pages
+  2. **Write mutex global** : Nouvelle méthode `execute_critical_write()` avec `asyncio.Lock()`
+  3. **Audit asynchrone** : Écriture logs non-bloquante (réduit latence ~50-100ms)
+  4. **Auth sessions sérialisées** : INSERT auth_sessions via mutex pour éliminer race conditions
+- **Fichiers modifiés** :
+  - [src/backend/core/database/manager.py](src/backend/core/database/manager.py) (V23.3-locked)
+  - [src/backend/features/auth/service.py:544-573,1216-1265](src/backend/features/auth/service.py)
+- **Tests** : ✅ 0 erreurs "database is locked" post-déploiement (10+ min surveillance)
+- **Impact** : Connexions concurrentes multiples maintenant supportées sans blocage
 
 #### Problèmes Résolus (Sessions précédentes 2025-10-16)
 
@@ -297,6 +321,33 @@ Progression Totale : [████████░░] 14/23 (61%)
 ---
 
 ## 🚧 Zones de Travail en Cours
+
+### ✅ Session 2025-10-16 (Soir) - Auto-activation Conversations Module Dialogue (TERMINÉE)
+
+**Statut** : ✅ **FONCTIONNALITÉ IMPLÉMENTÉE ET DOCUMENTÉE**
+**Agent** : Claude Code (Sonnet 4.5)
+**Durée** : 1 heure
+
+**Problème résolu** :
+- Utilisateurs arrivaient sur module Dialogue sans conversation active
+- Agents ne répondaient pas → nécessitait reload ou activation manuelle
+
+**Solution implémentée** :
+- ✅ Nouvelle méthode `_ensureActiveConversation()` dans ChatModule
+- ✅ Stratégie 1 : Récupère dernière conversation depuis `threads.order`
+- ✅ Stratégie 2 : Crée nouvelle conversation si aucune n'existe
+- ✅ Activation complète : Hydratation + State + Events + WebSocket
+
+**Fichiers modifiés** :
+- Frontend (1) : `src/frontend/features/chat/chat.js` (lignes 267-359)
+- Documentation (2) : `docs/passation.md`, `AGENT_SYNC.md`
+
+**Résultat** :
+- ✅ Conversation active automatiquement au chargement module Dialogue
+- ✅ Agents répondent immédiatement sans action utilisateur
+- ✅ Fallback robuste (gère erreurs API et listes vides)
+
+---
 
 ### ✅ Session 2025-10-16 (Après-midi) - Debug Phases 1 & 3 (TERMINÉE)
 

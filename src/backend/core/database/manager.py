@@ -24,23 +24,47 @@ class DatabaseManager:
         self.db_dir.mkdir(parents=True, exist_ok=True)
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        logger.info(f"DatabaseManager (Async) V23.2 initialisé pour : {self.db_path}")
+        # Global write mutex pour sérialiser écritures critiques (auth)
+        self._write_lock = asyncio.Lock()
+        logger.info(f"DatabaseManager (Async) V23.3-locked initialisé pour : {self.db_path}")
 
     async def connect(self):
         if not self.is_connected():
             try:
-                # Augmenté timeout de 30s à 60s pour Cloud Run
+                # Timeout augmenté à 60s pour Cloud Run + retry logic
                 self.connection = await aiosqlite.connect(self.db_path, timeout=60.0)
                 self.connection.row_factory = aiosqlite.Row
+
+                # WAL mode (Write-Ahead Logging) pour permettre lectures concurrentes
                 await self.connection.execute("PRAGMA journal_mode=WAL;")
-                # Augmenté busy_timeout de 10s à 30s pour mieux gérer la concurrence
-                await self.connection.execute("PRAGMA busy_timeout = 30000;")  # 30 secondes
+
+                # Busy timeout maximal pour éviter "database is locked"
+                await self.connection.execute("PRAGMA busy_timeout = 60000;")  # 60 secondes (max)
+
+                # Foreign keys actives
                 await self.connection.execute("PRAGMA foreign_keys = ON;")
-                # Optimisations SQLite pour réduire les locks
+
+                # OPTIMISATIONS ANTI-LOCK AGRESSIVES
+                # synchronous=NORMAL: Balance perf/durabilité (WAL checkpoint async)
                 await self.connection.execute("PRAGMA synchronous = NORMAL;")
-                await self.connection.execute("PRAGMA cache_size = -64000;")  # 64MB cache
+
+                # Cache augmenté à 128MB pour réduire I/O disk
+                await self.connection.execute("PRAGMA cache_size = -131072;")  # 128MB cache
+
+                # Temp en mémoire pour éviter locks sur fichiers temporaires
                 await self.connection.execute("PRAGMA temp_store = MEMORY;")
-                logger.info("Connexion aiosqlite établie (WAL, busy_timeout=30s, optimisée).")
+
+                # Locking mode NORMAL (défaut mais explicite)
+                await self.connection.execute("PRAGMA locking_mode = NORMAL;")
+
+                # WAL autocheckpoint agressif (chaque 1000 pages au lieu de 1000 par défaut)
+                # Réduit la taille du WAL et les locks prolongés
+                await self.connection.execute("PRAGMA wal_autocheckpoint = 500;")
+
+                # Page size optimisé (4KB par défaut, on garde)
+                # await self.connection.execute("PRAGMA page_size = 4096;")
+
+                logger.info("Connexion aiosqlite établie (WAL, busy_timeout=60s, cache=128MB, optimisée anti-lock).")
             except Exception as e:
                 logger.error(f"Erreur de connexion DB: {e}", exc_info=True)
                 raise
@@ -237,6 +261,34 @@ class DatabaseManager:
                     await asyncio.sleep(wait_time)
                 else:
                     raise
+
+    async def execute_critical_write(
+        self,
+        query: str,
+        params: Optional[Tuple[Any, ...]] = None,
+        *,
+        commit: bool = True,
+    ) -> aiosqlite.Cursor:
+        """
+        Exécute une écriture critique (auth sessions, audit logs) avec mutex global.
+        Sérialise les écritures concurrentes pour éviter "database is locked".
+
+        Utiliser cette méthode pour :
+        - INSERT/UPDATE auth_sessions
+        - INSERT auth_audit_log
+        - Autres écritures transactionnelles critiques
+
+        Ne PAS utiliser pour lectures simples (fetch_one, fetch_all).
+        """
+        async with self._write_lock:
+            logger.debug(f"Critical write acquired lock: {query[:50]}...")
+            try:
+                result = await self.execute(query, params, commit=commit)
+                logger.debug(f"Critical write completed: {query[:50]}...")
+                return result
+            except Exception as e:
+                logger.error(f"Critical write failed: {e}", exc_info=True)
+                raise
 
     async def initialize(self, migrations_dir: Optional[str] = None) -> None:
         """
