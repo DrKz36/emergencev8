@@ -122,18 +122,33 @@
 
 #### Procédure de Déploiement
 
-**Build et Push** :
-```bash
-# Build de l'image Docker
-docker build -t europe-west1-docker.pkg.dev/emergence-469005/emergence-repo/emergence-app:latest .
+**🆕 PROCÉDURE RECOMMANDÉE : Déploiement Canary (2025-10-16)**
 
-# Push vers Google Container Registry
-docker push europe-west1-docker.pkg.dev/emergence-469005/emergence-repo/emergence-app:latest
+Pour éviter les rollbacks hasardeux, utiliser le **déploiement progressif canary** :
+
+```bash
+# Script automatisé (recommandé)
+pwsh -File scripts/deploy-canary.ps1
+
+# Ou manuel avec phases progressives (voir CANARY_DEPLOYMENT.md)
 ```
 
-**Déploiement** :
+**Étapes du déploiement canary** :
+1. Build + Push image Docker (avec tag timestamp)
+2. Déploiement avec `--no-traffic` (0% initial)
+3. Tests de validation sur URL canary
+4. Routage progressif : 10% → 25% → 50% → 100%
+5. Surveillance continue à chaque phase
+
+**Documentation complète** : [CANARY_DEPLOYMENT.md](CANARY_DEPLOYMENT.md)
+
+**Ancienne méthode (déconseillée)** :
 ```bash
-# Déployer avec le YAML
+# Build et push
+docker build -t europe-west1-docker.pkg.dev/emergence-469005/emergence-repo/emergence-app:latest .
+docker push europe-west1-docker.pkg.dev/emergence-469005/emergence-repo/emergence-app:latest
+
+# Déploiement direct (risqué - préférer canary)
 gcloud run services replace stable-service.yaml \
   --region=europe-west1 \
   --project=emergence-469005
@@ -174,6 +189,8 @@ gcloud run revisions list \
 ```
 
 #### Documentation
+- 🆕 [CANARY_DEPLOYMENT.md](CANARY_DEPLOYMENT.md) - **Procédure officielle de déploiement canary** (2025-10-16)
+- 🔧 [scripts/deploy-canary.ps1](scripts/deploy-canary.ps1) - Script automatisé de déploiement canary
 - ✅ [DEPLOYMENT_SUCCESS.md](DEPLOYMENT_SUCCESS.md) - Rapport complet de déploiement
 - ✅ [FIX_PRODUCTION_DEPLOYMENT.md](FIX_PRODUCTION_DEPLOYMENT.md) - Guide de résolution
 - ✅ [stable-service.yaml](stable-service.yaml) - Configuration Cloud Run

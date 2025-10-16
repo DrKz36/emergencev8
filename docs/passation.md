@@ -1,3 +1,148 @@
+## [2025-10-16 08:30] - Agent: Claude Code
+
+### Fichiers modifiés
+**Documentation** :
+- `CANARY_DEPLOYMENT.md` (NOUVEAU - procédure officielle)
+- `scripts/deploy-canary.ps1` (NOUVEAU - script automatisé)
+- `AGENT_SYNC.md` (section "Procédure de Déploiement")
+- `docs/passation.md` (cette entrée)
+
+**Déploiement Cloud Run** :
+- Nouvelle révision : `emergence-app-00445-xap`
+- Image : `europe-west1-docker.pkg.dev/emergence-469005/emergence-repo/emergence-app:20251016-082600`
+- Trafic canary : 10% (phase 1)
+
+### Contexte
+Demande utilisateur : Déployer une nouvelle révision avec stratégie canary (déploiement progressif) pour éviter les rollbacks hasardeux. Créer la documentation complète de cette nouvelle procédure.
+
+### Actions réalisées
+
+#### 1. Build et Push de l'image Docker
+```bash
+Tag latest : europe-west1-docker.pkg.dev/emergence-469005/emergence-repo/emergence-app:latest
+Tag timestamp : europe-west1-docker.pkg.dev/emergence-469005/emergence-repo/emergence-app:20251016-082600
+```
+- ✅ Build réussi (33s)
+- ✅ Push des 2 tags réussi
+
+#### 2. Déploiement Canary (--no-traffic)
+```bash
+gcloud run deploy emergence-app --no-traffic --tag=canary-20251016
+```
+- ✅ Révision déployée : `emergence-app-00445-xap`
+- ✅ Trafic initial : 0%
+- ✅ URL canary : `https://stable---emergence-app-47nct44nma-ew.a.run.app`
+
+#### 3. Tests de Validation
+- ✅ Health check : `{"status":"ok","message":"Emergence Backend is running."}`
+- ✅ Fichiers statiques : HTTP 200 OK
+- ✅ Logs (erreurs) : Aucune erreur détectée dans les 5 dernières minutes
+
+#### 4. Routage Progressif (Phase 1 - 10%)
+```bash
+gcloud run services update-traffic emergence-app --to-revisions=emergence-app-00445-xap=10
+```
+- ✅ Trafic routé : 10% vers nouvelle révision, 90% vers `emergence-app-00366-jp2`
+- ⏱️ Surveillance recommandée : 15-30 minutes avant phase 2
+
+#### 5. Documentation Créée
+
+**CANARY_DEPLOYMENT.md** (nouveau fichier - 400+ lignes) :
+- 📋 Philosophie et objectifs du déploiement canary
+- 📋 Prérequis complets
+- 🚀 Procédure détaillée en 5 étapes
+- ⚠️ Procédure de rollback immédiat
+- 📊 Métriques de surveillance post-déploiement
+- 🔧 Commandes utiles
+- ✅ Checklist de déploiement
+- 🎯 Timeline recommandée
+
+**scripts/deploy-canary.ps1** (nouveau script - 250+ lignes) :
+- Script PowerShell automatisé complet
+- Paramètres : `-SkipBuild`, `-SkipTests`, `-TrafficPercent`
+- 6 étapes automatisées :
+  1. Build Docker (optionnel)
+  2. Push vers GCR
+  3. Déploiement --no-traffic
+  4. Tests de validation
+  5. Routage du trafic
+  6. Résumé et prochaines étapes
+- Gestion d'erreurs robuste
+- Output formaté avec couleurs
+
+**AGENT_SYNC.md** (mise à jour) :
+- Section "Procédure de Déploiement" complètement réécrite
+- 🆕 Procédure canary marquée comme recommandée
+- Ancienne méthode marquée comme déconseillée
+- Références vers CANARY_DEPLOYMENT.md et deploy-canary.ps1
+
+### État du déploiement canary
+
+**Révision actuelle** :
+| Révision | Trafic | Statut | Notes |
+|----------|--------|--------|-------|
+| `emergence-app-00445-xap` | 10% | 🟢 OK | Canary en surveillance (commit 99adcaf) |
+| `emergence-app-00366-jp2` | 90% | 🟢 OK | Stable (SMTP fix) |
+
+**Prochaines phases** :
+1. Phase 2 (25%) : Après 15-30 min de surveillance OK
+2. Phase 3 (50%) : Après 30 min - 1h de surveillance OK
+3. Phase 4 (100%) : Après 1-2h de surveillance OK
+
+**Commandes pour phases suivantes** :
+```bash
+# Phase 2 (25%)
+gcloud run services update-traffic emergence-app --to-revisions=emergence-app-00445-xap=25 --region=europe-west1 --project=emergence-469005
+
+# Phase 3 (50%)
+gcloud run services update-traffic emergence-app --to-revisions=emergence-app-00445-xap=50 --region=europe-west1 --project=emergence-469005
+
+# Phase 4 (100%)
+gcloud run services update-traffic emergence-app --to-latest --region=europe-west1 --project=emergence-469005
+```
+
+**Rollback (si nécessaire)** :
+```bash
+gcloud run services update-traffic emergence-app --to-revisions=emergence-app-00366-jp2=100 --region=europe-west1 --project=emergence-469005
+```
+
+### Tests
+- ✅ Build Docker : OK (33s)
+- ✅ Push GCR : OK (2 tags)
+- ✅ Déploiement Cloud Run : OK (révision 00445-xap)
+- ✅ Health check canary : OK (200, 0.23s)
+- ✅ Fichiers statiques : OK (200)
+- ✅ Logs (erreurs) : 0 erreurs
+
+### Prochaines actions recommandées
+
+1. **Court terme (15-30 min)** :
+   - Surveiller les métriques de la révision canary (10% trafic)
+   - Vérifier les logs pour erreurs éventuelles
+   - Si stable, passer à Phase 2 (25%)
+
+2. **Moyen terme (1-3h)** :
+   - Progression canary : 25% → 50% → 100%
+   - Surveillance continue à chaque phase
+   - Validation des métriques (latence, erreurs, ressources)
+
+3. **Long terme** :
+   - Utiliser systématiquement le déploiement canary
+   - Former l'équipe à la procédure
+   - Automatiser davantage avec CI/CD
+
+### Blocages
+- Aucun.
+
+### Notes importantes
+⚠️ **Nouvelle procédure officielle** : Le déploiement canary est maintenant la méthode recommandée pour tous les déploiements en production. L'ancienne méthode (déploiement direct via `stable-service.yaml`) est déconseillée car elle présente un risque de rollback hasardeux.
+
+📚 **Documentation complète** : Consulter [CANARY_DEPLOYMENT.md](../CANARY_DEPLOYMENT.md) pour tous les détails.
+
+🔧 **Script automatisé** : Utiliser `pwsh -File scripts/deploy-canary.ps1` pour automatiser le processus.
+
+---
+
 ## [2025-10-16 08:20] - Agent: Claude Code
 
 ### Fichiers modifiés
