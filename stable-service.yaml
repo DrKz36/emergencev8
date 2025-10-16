@@ -41,6 +41,12 @@ spec:
           value: /secrets/gcp-credentials.json
         - name: AUTH_DEV_MODE
           value: '0'
+        - name: SESSION_INACTIVITY_TIMEOUT_MINUTES
+          value: '30'
+        - name: SESSION_CLEANUP_INTERVAL_SECONDS
+          value: '60'
+        - name: SESSION_WARNING_BEFORE_TIMEOUT_SECONDS
+          value: '120'
         - name: CONCEPT_RECALL_METRICS_ENABLED
           value: '1'
         resources:

@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 # Configuration du timeout d'inactivité
 import os
 
-INACTIVITY_TIMEOUT_MINUTES = int(os.getenv("SESSION_INACTIVITY_TIMEOUT_MINUTES", "3"))
-CLEANUP_INTERVAL_SECONDS = int(os.getenv("SESSION_CLEANUP_INTERVAL_SECONDS", "30"))
-WARNING_BEFORE_TIMEOUT_SECONDS = int(os.getenv("SESSION_WARNING_BEFORE_TIMEOUT_SECONDS", "30"))
+INACTIVITY_TIMEOUT_MINUTES = int(os.getenv("SESSION_INACTIVITY_TIMEOUT_MINUTES", "30"))
+CLEANUP_INTERVAL_SECONDS = int(os.getenv("SESSION_CLEANUP_INTERVAL_SECONDS", "60"))
+WARNING_BEFORE_TIMEOUT_SECONDS = int(os.getenv("SESSION_WARNING_BEFORE_TIMEOUT_SECONDS", "120"))
 
 # Métriques Prometheus pour le monitoring des sessions
 try:
