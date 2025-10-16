@@ -14,21 +14,6 @@ router = APIRouter(tags=["Admin Dashboard"])
 logger = logging.getLogger(__name__)
 
 
-def _resolve_get_admin_dashboard_service():
-    """Resolve admin dashboard service from dependencies."""
-    try:
-        candidate = getattr(deps, "get_admin_dashboard_service", None)
-        if callable(candidate):
-            return candidate
-    except Exception:
-        logger.debug("get_admin_dashboard_service not available", exc_info=True)
-
-    async def _placeholder(*args, **kwargs):
-        raise HTTPException(status_code=503, detail="Admin dashboard service unavailable.")
-
-    return _placeholder
-
-
 async def verify_admin_role(user_role: str = Depends(deps.get_user_role)):
     """Dependency to verify user has admin role."""
     if user_role != "admin":
@@ -48,7 +33,7 @@ async def verify_admin_role(user_role: str = Depends(deps.get_user_role)):
 )
 async def get_global_dashboard(
     _admin_verified: bool = Depends(verify_admin_role),
-    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service),
+    admin_service: AdminDashboardService = Depends(deps.get_admin_dashboard_service),
 ) -> Dict[str, Any]:
     """
     Get global dashboard data - admin only.
@@ -70,7 +55,7 @@ async def get_global_dashboard(
 async def get_user_detailed_data(
     user_id: str,
     _admin_verified: bool = Depends(verify_admin_role),
-    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service),
+    admin_service: AdminDashboardService = Depends(deps.get_admin_dashboard_service),
 ) -> Dict[str, Any]:
     """
     Get detailed data for a specific user - admin only.
@@ -228,7 +213,7 @@ async def send_beta_invitations(
 )
 async def get_active_sessions(
     _admin_verified: bool = Depends(verify_admin_role),
-    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service),
+    admin_service: AdminDashboardService = Depends(deps.get_admin_dashboard_service),
 ) -> Dict[str, Any]:
     """
     Get all active sessions - admin only.
@@ -253,7 +238,7 @@ async def get_active_sessions(
 async def revoke_session(
     session_id: str,
     _admin_verified: bool = Depends(verify_admin_role),
-    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service),
+    admin_service: AdminDashboardService = Depends(deps.get_admin_dashboard_service),
 ) -> Dict[str, Any]:
     """
     Revoke a session - admin only.
@@ -280,7 +265,7 @@ async def revoke_session(
 )
 async def get_system_metrics(
     _admin_verified: bool = Depends(verify_admin_role),
-    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service),
+    admin_service: AdminDashboardService = Depends(deps.get_admin_dashboard_service),
 ) -> Dict[str, Any]:
     """
     Get system metrics - admin only.

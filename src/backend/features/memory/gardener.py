@@ -1189,6 +1189,13 @@ class MemoryGardener:
             embedding, embedding_model = await self._compute_preference_embedding(
                 record["canonical_text"]
             )
+            # 🆕 Phase 1.2: Protection préférences haute confiance (>= 0.7)
+            # Les préférences critiques ne subissent jamais de decay
+            is_protected_preference = (
+                record["type"] in {"preference", "constraint"}
+                and record["confidence"] >= 0.7
+            )
+
             metadata = {
                 "type": record["type"],
                 "topic": record["topic"],
@@ -1209,6 +1216,7 @@ class MemoryGardener:
                     "text-embedding-3-large" if embedding else "vector_service_default"
                 ),
                 "summary": record.get("summary"),
+                "protected": is_protected_preference,  # ← Protection decay
             }
             item_payload = {
                 "id": record["id"],
@@ -1687,6 +1695,11 @@ class MemoryGardener:
             vid = _fact_id(
                 session["id"], f["key"], f.get("agent"), f["value"]
             )  # ← ID déterministe (anti-doublon)
+
+            # 🆕 Phase 1.2: Protection des faits critiques (mots-code)
+            # Les faits protégés ne subissent jamais de decay
+            is_protected = f.get("key") == "mot-code"
+
             payload.append(
                 {
                     "id": vid,
@@ -1704,6 +1717,7 @@ class MemoryGardener:
                         "vitality": self.max_vitality,
                         "decay_runs": 0,
                         "usage_count": 0,
+                        "protected": is_protected,  # ← Protection decay
                     },
                 }
             )
@@ -1826,10 +1840,28 @@ class MemoryGardener:
                 return "0.5-0.75"
             return "0.75-1.0"
 
+        protected_count = 0  # Compteur pour métriques
+
         for idx, vec_id in enumerate(ids):
             meta = metadatas[idx] if idx < len(metadatas) else {}
             if not isinstance(meta, dict):
                 meta = {}
+
+            # 🆕 Phase 1.3: Skip decay pour éléments protégés
+            is_protected = meta.get("protected", False)
+            if is_protected:
+                protected_count += 1
+                # Conserver vitality max et mettre à jour timestamp
+                updated_meta = dict(meta)
+                updated_meta["vitality"] = self.max_vitality
+                updated_meta["last_decay_at"] = now_iso
+                updated_meta["decay_runs"] = int(meta.get("decay_runs") or 0) + 1
+                updates_ids.append(vec_id)
+                updates_meta.append(updated_meta)
+                vitality_values.append(self.max_vitality)
+                new_vitality_values.append(self.max_vitality)
+                bucket_counts[_bucketize(self.max_vitality)] += 1
+                continue  # Skip decay logic
 
             vitality_raw = meta.get("vitality", self.max_vitality)
             try:
@@ -1894,8 +1926,10 @@ class MemoryGardener:
             "processed": len(ids),
             "decayed": len(updates_ids),
             "deleted": len(delete_ids),
+            "protected": protected_count,  # 🆕 Phase 1.3: Compteur éléments protégés
             "retained_ratio": round(len(updates_ids) / len(ids), 4) if ids else 0.0,
             "deleted_ratio": round(len(delete_ids) / len(ids), 4) if ids else 0.0,
+            "protected_ratio": round(protected_count / len(ids), 4) if ids else 0.0,  # 🆕
             "base_decay": self.base_decay,
             "stale_threshold_days": self.stale_threshold_days,
             "stale_decay": self.stale_decay,

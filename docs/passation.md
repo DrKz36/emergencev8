@@ -1,3 +1,85 @@
+## [2025-10-16 23:15] - Agent: Claude Code (Sonnet 4.5) - Documentation inter-agents et commit complet
+
+### Contexte
+Mise à jour de la documentation inter-agents et préparation d'un commit complet de tous les fichiers modifiés et non suivis.
+**Objectif** : Synchroniser la documentation de coopération entre agents et nettoyer l'état git local.
+
+### Fichiers modifiés et créés
+
+**Nouveau (1)** :
+- `CLAUDE_CODE_GUIDE.md` (nouveau) - Guide de référence pour Claude Code
+  - 600+ lignes
+  - Structure similaire à CODEX_GPT_GUIDE.md
+  - Sections : workflow, conventions, architecture, tests, déploiement
+  - Checklist obligatoire avant/pendant/après session
+  - Documentation sub-agents et outils de surveillance
+
+**Existants analysés** :
+- `CODEX_GPT_GUIDE.md` (existant, pas modifié)
+- `AGENT_SYNC.md` (existant, pas modifié dans cette session)
+- `CODEV_PROTOCOL.md` (existant, pas modifié)
+- `docs/passation.md` (mis à jour avec cette entrée)
+
+**À commiter** :
+- Fichiers modifiés : `src/backend/features/memory/gardener.py`, `src/frontend/features/documentation/documentation.css`
+- Fichiers non suivis : `DEPLOYMENT_COMPLETE.md`, `DEPLOYMENT_SUMMARY.md`, `progressive-deploy.ps1`, `test-canary.ps1`, `CLAUDE_CODE_GUIDE.md`, `nul`
+- Fichiers supprimés : `claude-plugins/integrity-docs-guardian/TEST_AUTO_MODE.txt`
+
+### Actions réalisées
+
+**1. Analyse état git** :
+- ✅ Identifié 2 fichiers modifiés
+- ✅ Identifié 6 fichiers non suivis (dont nul à supprimer)
+- ✅ Identifié 1 fichier supprimé
+
+**2. Création documentation** :
+- ✅ `CLAUDE_CODE_GUIDE.md` créé (600+ lignes)
+- ✅ Structure alignée avec CODEX_GPT_GUIDE.md
+- ✅ Sections workflow, conventions, architecture complètes
+
+**3. Revue documentation existante** :
+- ✅ `CODEX_GPT_GUIDE.md` - Guide complet pour Codex GPT
+- ✅ `AGENT_SYNC.md` - État synchronisation à jour
+- ✅ `CODEV_PROTOCOL.md` - Protocole multi-agents cohérent
+- ✅ `DEPLOYMENT_COMPLETE.md` et `DEPLOYMENT_SUMMARY.md` - Documentation déploiement beta-2.1.1
+
+### Résultat
+
+**Documentation inter-agents complète** :
+- ✅ Guide Claude Code créé (CLAUDE_CODE_GUIDE.md)
+- ✅ Guide Codex GPT existant (CODEX_GPT_GUIDE.md)
+- ✅ Protocole co-développement (CODEV_PROTOCOL.md)
+- ✅ État synchronisation (AGENT_SYNC.md)
+- ✅ Journal passation (docs/passation.md)
+
+**Prochaine étape** :
+- ⏳ Commit complet de tous les fichiers (modifiés + non suivis)
+- ⏳ Push vers origin/main
+- ⏳ Dépôt local propre
+
+### Prochaines actions recommandées
+
+1. **Commit et push** :
+   - Ajouter tous les fichiers modifiés et non suivis (sauf nul)
+   - Commit avec message descriptif
+   - Push vers origin/main
+
+2. **Vérification post-commit** :
+   - `git status` doit être propre
+   - Vérifier que tous les fichiers sont suivis
+   - Supprimer le fichier `nul` s'il persiste
+
+3. **Surveillance** :
+   - Vérifier que la documentation est cohérente
+   - Valider que les guides sont accessibles aux deux agents
+   - Tester workflow de lecture obligatoire
+
+### Documentation mise à jour
+- ✅ `CLAUDE_CODE_GUIDE.md` : Créé
+- ✅ `docs/passation.md` : Cette entrée
+
+---
+
 ## [2025-10-16 20:55] - Agent: Claude Code (Sonnet 4.5) - Auto-activation Conversations Module Dialogue
 
 ### Contexte

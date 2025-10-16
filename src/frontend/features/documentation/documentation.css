@@ -1013,8 +1013,8 @@
     color: #ffffff;
     padding: 12px 20px;
     border-radius: 8px;
-    font-size: 15px;
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
     width: 100%;
@@ -1022,6 +1022,10 @@
     text-align: center;
     margin-top: 16px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .btn-expand-guide:hover {
@@ -1033,6 +1037,16 @@
 .btn-expand-guide:active {
     transform: translateY(0);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.btn-expand-guide::after {
+    content: '→';
+    font-size: 16px;
+    transition: transform 0.2s ease;
+}
+
+.btn-expand-guide:hover::after {
+    transform: translateX(3px);
 }
 
 /* Expanded Guide Container (Full Width) */
@@ -1113,7 +1127,7 @@
 
 .guide-expanded-content {
     padding: 32px;
-    max-height: 600px;
+    max-height: 70vh;
     overflow-y: auto;
 }
 
@@ -1143,12 +1157,49 @@
     color: rgba(56, 189, 248, 0.95);
     font-size: 18px;
     margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .guide-section h4 {
     color: rgba(226, 232, 240, 0.95);
     font-size: 16px;
     margin: 24px 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.guide-section h5 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Contraindre les icônes SVG dans les titres de sections */
+.guide-section h3 .tutorial-icon,
+.guide-section h4 .tutorial-icon,
+.guide-section h5 .tutorial-icon,
+.guide-section p .tutorial-icon,
+.guide-section li .tutorial-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+}
+
+.guide-section h3 .tutorial-icon svg,
+.guide-section h4 .tutorial-icon svg,
+.guide-section h5 .tutorial-icon svg,
+.guide-section p .tutorial-icon svg,
+.guide-section li .tutorial-icon svg {
+    width: 100%;
+    height: 100%;
+    stroke: currentColor;
 }
 
 .guide-section p {
