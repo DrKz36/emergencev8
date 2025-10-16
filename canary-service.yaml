@@ -49,6 +49,26 @@ spec:
           value: '120'
         - name: CONCEPT_RECALL_METRICS_ENABLED
           value: '1'
+        # Email Configuration for Password Reset
+        - name: EMAIL_ENABLED
+          value: '1'
+        - name: SMTP_HOST
+          value: smtp.gmail.com
+        - name: SMTP_PORT
+          value: '587'
+        - name: SMTP_USER
+          value: gonzalefernando@gmail.com
+        - name: SMTP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: SMTP_PASSWORD
+              key: latest
+        - name: SMTP_FROM_EMAIL
+          value: gonzalefernando@gmail.com
+        - name: SMTP_FROM_NAME
+          value: ÉMERGENCE
+        - name: SMTP_USE_TLS
+          value: '1'
         resources:
           limits:
             cpu: '2'
