@@ -947,6 +947,14 @@ class AuthService:
             password_hash=password_hash,
             password_updated_at=updated_at,
         )
+
+        # Password has been set - clear the must_reset flag
+        await self.db.execute(
+            "UPDATE auth_allowlist SET password_must_reset = 0 WHERE email = ?",
+            (normalized,),
+            commit=True,
+        )
+
         await self._write_audit(
             "allowlist:password_set",
             email=normalized,
@@ -993,6 +1001,13 @@ class AuthService:
             actor=normalized,
             password_hash=new_password_hash,
             password_updated_at=updated_at,
+        )
+
+        # Ensure password_must_reset is set to 0 after self-service password change
+        await self.db.execute(
+            "UPDATE auth_allowlist SET password_must_reset = 0 WHERE email = ?",
+            (normalized,),
+            commit=True,
         )
 
         await self._write_audit(
@@ -1180,6 +1195,7 @@ class AuthService:
     ) -> None:
         now = self._now().isoformat()
         # Admin users should never be forced to reset password
+        # For new entries: members must reset (1), admins don't (0)
         password_must_reset = 0 if role == "admin" else 1
 
         await self.db.execute(
@@ -1201,7 +1217,8 @@ class AuthService:
                 END,
                 password_must_reset = CASE
                     WHEN excluded.role = 'admin' THEN 0
-                    ELSE excluded.password_must_reset
+                    WHEN excluded.password_hash IS NOT NULL THEN 0
+                    ELSE auth_allowlist.password_must_reset
                 END
             """,
             (email, role, note, now, actor, password_hash, password_updated_at, password_must_reset),

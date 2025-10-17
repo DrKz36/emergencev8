@@ -666,7 +666,8 @@ export class App {
     this.clearSkeleton();
 
     // Bootstrap thread AVANT le premier mount du module 'chat'
-    if (isInitialLoad) {
+    // OU à chaque fois qu'on affiche le module 'chat' (fix mobile)
+    if (isInitialLoad || moduleId === 'chat') {
       await this.ensureCurrentThread();
     }
 

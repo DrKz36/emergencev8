@@ -12,6 +12,86 @@
 
 ---
 
+## [beta-2.1.2] - 2025-10-17
+
+### 🎉 Corrections Production et Synchronisation Système
+
+#### 📊 Métriques
+- **Fonctionnalités complètes** : 14/23 (61%)
+- **Phase P1** : Complété (3/3)
+- **Version package.json** : `beta-2.1.2`
+
+#### 🔧 Corrections Critiques
+
+**1. Synchronisation Versioning (beta-2.1.2)**
+- Correction de la désynchronisation entre version production et code
+- Mise à jour automatique dans tous les fichiers source
+- Production affichera désormais la bonne version
+
+**Fichiers modifiés** :
+- [package.json:4](package.json#L4) - Version mise à jour
+- [index.html:186](index.html#L186) - Version UI mise à jour
+- [monitoring/router.py:38](src/backend/features/monitoring/router.py#L38) - Healthcheck
+- [monitoring/router.py:384](src/backend/features/monitoring/router.py#L384) - System info
+
+**2. Script de Synchronisation Automatique**
+- Nouveau script PowerShell pour synchronisation version automatique
+- Lit depuis `src/version.js` (source de vérité unique)
+- Met à jour 4 fichiers automatiquement
+- Mode DryRun pour validation sécurisée
+
+**Fichier créé** :
+- [scripts/sync_version.ps1](scripts/sync_version.ps1) - Script de synchronisation
+
+**3. Correction Bug password_must_reset**
+- Correction de la boucle infinie de demande de vérification email/reset password
+- Membres ne seront plus demandés de réinitialiser leur mot de passe à chaque connexion
+- Fix SQL CASE statement dans _upsert_allowlist
+
+**Fichiers modifiés** :
+- [auth/service.py:1205](src/backend/features/auth/service.py#L1205) - Fix SQL CASE
+- [auth/service.py:998-1003](src/backend/features/auth/service.py#L998-L1003) - UPDATE explicite (change_own_password)
+- [auth/service.py:951-956](src/backend/features/auth/service.py#L951-L956) - UPDATE explicite (set_allowlist_password)
+
+**4. Correction Chargement Thread Mobile**
+- Thread se charge maintenant automatiquement au retour sur le module chat (mobile)
+- Le premier message est pris en compte immédiatement
+- Thread activé à chaque affichage du module chat
+
+**Fichier modifié** :
+- [app.js:671](src/frontend/core/app.js#L671) - Condition de chargement étendue
+
+**5. Vérification Accès Conversations Archivées**
+- Confirmé : les agents ont accès aux conversations archivées via leur mémoire
+- Paramètre `include_archived=True` par défaut dans l'API de recherche unifiée
+- Recherche mémoire fonctionne sur threads actifs ET archivés
+
+**Fichier vérifié** :
+- [memory/router.py:704](src/backend/features/memory/router.py#L704) - Paramètre include_archived
+
+#### ✅ Impact des Corrections
+
+- ✅ Production affiche version correcte (beta-2.1.2 + 61% completion)
+- ✅ Membres peuvent utiliser le système sans demandes répétitives de reset password
+- ✅ Mobile : thread charge automatiquement au premier affichage du chat
+- ✅ Agents ont accès complet à toutes les conversations (actives + archivées)
+- ✅ Synchronisation version automatisée pour l'avenir
+
+#### 📝 Documentation Mise à Jour
+
+- [docs/VERSIONING_GUIDE.md](docs/VERSIONING_GUIDE.md) - Guide de versioning (à jour)
+- [scripts/sync_version.ps1](scripts/sync_version.ps1) - Script avec documentation intégrée
+
+#### 🔜 Prochaine Étape
+
+**Déploiement Production**
+- Build Docker avec version beta-2.1.2
+- Déploiement canary sur Google Cloud Run
+- Tests sur canary (version, password reset, thread loading)
+- Déploiement progressif si tests OK
+
+---
+
 ## [beta-1.1.0] - 2025-10-15
 
 ### 🎉 P0.1 - Archivage des Conversations (UI)

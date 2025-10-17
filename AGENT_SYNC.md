@@ -19,21 +19,21 @@
 
 ---
 
-## 📍 État actuel du dépôt (2025-10-16)
+## 📍 État actuel du dépôt (2025-10-17)
 
 ### Branche active
 - **Branche courante** : `main`
 - **Derniers commits** (5 plus récents) :
+  - `e8f3e0f` feat(P2.4): complete Chat/LLM Service microservice configuration
   - `46ec599` feat(auth): bootstrap allowlist seeding
   - `fe9fa85` test(backend): Add Phase 1 validation tests and update documentation
   - `eb0afb1` docs(agents): Add Codex GPT guide and update inter-agent cooperation docs
   - `102e01e` fix(backend): Phase 1 - Critical backend fixes for empty charts and admin dashboard
-  - `dc1781f` docs(debug): Add comprehensive debug plan for Cockpit, Memory, Admin, and About modules
 
 ### Working tree
-- **Statut** : ⚠️ Modifications en cours (auto-activation conversations + cleanup divers)
-- **Fichiers modifiés** : 8 fichiers
-- **Fichiers à commiter** : Tous les changements en attente (auto-activation + scripts auto-sync)
+- **Statut** : ⚠️ Modifications en cours - Corrections production beta-2.1.2
+- **Fichiers modifiés** : 11 fichiers
+- **Fichiers à commiter** : Corrections critiques version + password reset + mobile thread loading
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
@@ -268,7 +268,7 @@ Progression Totale : [████████░░] 14/23 (61%)
 
 ## 🔧 Système de Versioning
 
-**Version actuelle** : `beta-2.1.1` (Phase P1 + Debug & Audit)
+**Version actuelle** : `beta-2.1.2` (Corrections Production + Synchronisation)
 
 **Format** : `beta-X.Y.Z`
 - **X (Major)** : Phases complètes (P0→1, P1→2, P2→3, P3→4)
@@ -283,6 +283,7 @@ Progression Totale : [████████░░] 14/23 (61%)
 - ✅ `beta-2.0.0` : Phase P1 complète (2025-10-16)
 - ✅ `beta-2.1.0` : Phase 1 & 3 Debug (Backend + UI/UX)
 - ✅ `beta-2.1.1` : Audit système agents + versioning unifié (2025-10-16)
+- ✅ `beta-2.1.2` : Corrections production + sync version + password reset fix (2025-10-17)
 - 🔜 `beta-3.0.0` : Phase P2 complète (TBD)
 - ⏳ `beta-4.0.0` : Phase P3 complète (TBD)
 - 🎯 `v1.0.0` : Release Production Officielle (TBD)
