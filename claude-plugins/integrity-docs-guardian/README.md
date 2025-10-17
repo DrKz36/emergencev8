@@ -1,17 +1,42 @@
 # Integrity & Docs Guardian Plugin
 
-**Version:** 2.1.0
+**Version:** 2.2.0
 **For:** ÉMERGENCE Application (FastAPI + Vite/React)
 **Agents:** Anima (DocKeeper), Neo (IntegrityWatcher), Nexus (Coordinator), ProdGuardian, Theia (CostWatcher), Argus (LogWatcher)
-**NEW:** 🔍 Real-Time Development Log Monitoring with Auto-Fix (Argus)
+**NEW:** 🤖 Automated Production Monitoring Every 30 Minutes (ProdGuardian Scheduler)
 
 ---
 
-## 🆕 What's New in v2.0.0
+## 🆕 What's New in v2.2.0
 
-### Automatic Orchestration System
+### ✅ Automated Production Monitoring (ProdGuardian Scheduler)
 
-The plugin now includes a **complete automatic orchestration system** that:
+**NEW:** Production monitoring now runs **automatically every 30 minutes**!
+
+- ✅ **Windows Task Scheduler Integration** - Runs check_prod_logs.py every 30 minutes
+- ✅ **Google Cloud Run Monitoring** - Monitors emergence-app in europe-west1
+- ✅ **Automatic Anomaly Detection** - Detects OK/DEGRADED/CRITICAL states
+- ✅ **Detailed Reports** - JSON reports with actionable recommendations
+- ✅ **No Manual Intervention** - Fully automated once configured
+- ✅ **One-Command Setup** - Simple PowerShell script for configuration
+
+**Quick Start with Automated Monitoring:**
+```powershell
+# Configure automated production monitoring (Windows Task Scheduler)
+.\claude-plugins\integrity-docs-guardian\scripts\setup_prod_monitoring.ps1
+
+# Check current production status
+python claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py
+
+# Or via Claude Code slash command
+/check_prod
+```
+
+📚 **See [PROD_MONITORING_ACTIVATED.md](PROD_MONITORING_ACTIVATED.md) for complete setup guide**
+
+### Previous: Automatic Orchestration System (v2.0.0)
+
+The plugin includes a **complete automatic orchestration system** that:
 
 - ✅ **Runs all agents automatically** (Anima, Neo, ProdGuardian, Nexus)
 - ✅ **Automatically updates documentation** based on verification reports
@@ -19,16 +44,7 @@ The plugin now includes a **complete automatic orchestration system** that:
 - ✅ **Supports periodic scheduling** for continuous monitoring
 - ✅ **Provides multiple execution modes** (manual, automatic, scheduled)
 
-**Quick Start with Auto-Orchestration:**
-```bash
-# Test the automatic orchestration
-python claude-plugins/integrity-docs-guardian/scripts/auto_orchestrator.py
-
-# Enable auto-update of documentation
-AUTO_APPLY=1 python claude-plugins/integrity-docs-guardian/scripts/auto_orchestrator.py
-```
-
-📚 **See [QUICKSTART_AUTO.md](QUICKSTART_AUTO.md) for detailed setup instructions**
+📚 **See [QUICKSTART_AUTO.md](QUICKSTART_AUTO.md) for orchestration details**
 
 ---
 
@@ -615,9 +631,18 @@ Built for the **ÉMERGENCE** AI-powered application ecosystem.
 
 ---
 
-**Version:** 2.1.0
+**Version:** 2.2.0
 **Last Updated:** 2025-10-17
 **Maintained by:** ÉMERGENCE Team
+
+**Changelog v2.2.0:**
+- ✅ Added **Automated Production Monitoring** - Windows Task Scheduler integration
+- ✅ ProdGuardian now runs automatically every 30 minutes
+- ✅ One-command setup script (setup_prod_monitoring.ps1)
+- ✅ Advanced scheduler with logging (prod_guardian_scheduler.ps1)
+- ✅ Complete documentation (PROD_MONITORING_ACTIVATED.md, PROD_AUTO_MONITOR_SETUP.md)
+- ✅ Automatic report generation and cleanup
+- ✅ Real-time production health monitoring on Google Cloud Run
 
 **Changelog v2.1.0:**
 - ✅ Added **Argus (LogWatcher)** - Real-time development log monitoring

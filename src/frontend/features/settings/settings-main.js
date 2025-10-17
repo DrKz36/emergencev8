@@ -8,6 +8,7 @@ import { settingsModels } from './settings-models.js';
 import { settingsUI } from './settings-ui.js';
 import { settingsSecurity } from './settings-security.js';
 import { settingsRAG } from './settings-rag.js';
+import versionInfo from '../../version.js';
 
 export class Settings {
     constructor() {
@@ -65,7 +66,8 @@ export class Settings {
                     <img src="/assets/emergence_logo.png" alt="ÉMERGENCE" class="brand-logo">
                     <div class="brand-info">
                         <h2 class="brand-title">ÉMERGENCE V8</h2>
-                        <p class="brand-version">Version 8.0.0</p>
+                        <p class="brand-version">${versionInfo.fullVersion}</p>
+                        <p class="brand-phase">${versionInfo.featuresDisplay} fonctionnalités • ${versionInfo.completionPercentage}% complété</p>
                     </div>
                 </div>
 
@@ -147,11 +149,19 @@ export class Settings {
                         <div class="about-info-grid">
                             <div class="info-item">
                                 <span class="info-label">Version:</span>
-                                <span class="info-value">8.0.0</span>
+                                <span class="info-value">${versionInfo.version}</span>
                             </div>
                             <div class="info-item">
-                                <span class="info-label">Build:</span>
-                                <span class="info-value">${Date.now()}</span>
+                                <span class="info-label">Phase:</span>
+                                <span class="info-value">${versionInfo.buildPhase} - ${versionInfo.versionName}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Date de build:</span>
+                                <span class="info-value">${versionInfo.versionDate}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Fonctionnalités:</span>
+                                <span class="info-value">${versionInfo.featuresDisplay} (${versionInfo.completionPercentage}% complété)</span>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Modules:</span>
@@ -516,23 +526,23 @@ export class Settings {
                     <div class="doc-stats">
                         <div class="doc-stat-item">
                             <span class="stat-label">Lignes de code totales:</span>
-                            <span class="stat-value">~99,627 lignes (tous fichiers sources)</span>
+                            <span class="stat-value">~98,338 lignes (tous fichiers sources)</span>
                         </div>
                         <div class="doc-stat-item">
                             <span class="stat-label">Frontend:</span>
-                            <span class="stat-value">~64,281 lignes (JavaScript/CSS)</span>
+                            <span class="stat-value">~64,592 lignes (JavaScript/CSS)</span>
                         </div>
                         <div class="doc-stat-item">
                             <span class="stat-label">Backend:</span>
-                            <span class="stat-value">~33,660 lignes (Python/FastAPI)</span>
+                            <span class="stat-value">~33,680 lignes (Python/FastAPI)</span>
                         </div>
                         <div class="doc-stat-item">
                             <span class="stat-label">Fichiers sources:</span>
-                            <span class="stat-value">257 fichiers (JS, CSS, Python)</span>
+                            <span class="stat-value">252 fichiers (JS, CSS, Python)</span>
                         </div>
                         <div class="doc-stat-item">
                             <span class="stat-label">Fichiers trackés Git:</span>
-                            <span class="stat-value">906 fichiers au total</span>
+                            <span class="stat-value">925 fichiers au total</span>
                         </div>
                         <div class="doc-stat-item">
                             <span class="stat-label">Architecture:</span>
@@ -545,13 +555,14 @@ export class Settings {
                     <h3>${getIcon('package', 'section-icon')} Dépendances Principales</h3>
                     <div class="dependencies-grid">
                         <div class="dep-category">
-                            <h4>Frontend (9 packages NPM)</h4>
+                            <h4>Frontend (8 packages NPM)</h4>
                             <ul>
                                 <li><strong>Vite 7.1.2</strong> - Build tool moderne ultra-rapide</li>
                                 <li><strong>Marked 12.0.2</strong> - Parsing Markdown</li>
                                 <li><strong>jsPDF 3.0.3</strong> - Génération de PDF</li>
+                                <li><strong>jsPDF-AutoTable 5.0.2</strong> - Tables pour PDF</li>
                                 <li><strong>PapaParse 5.5.3</strong> - Parsing CSV</li>
-                                <li><strong>Playwright 1.48.2</strong> - Tests E2E</li>
+                                <li><strong>Playwright 1.56.0</strong> - Tests E2E</li>
                                 <li><strong>Concurrently 9.2.0</strong> - Orchestration scripts</li>
                                 <li>Vanilla JavaScript - Architecture légère sans framework</li>
                             </ul>
@@ -665,6 +676,12 @@ export class Settings {
                                     analyse les patterns d'erreurs, bloque les déploiements si production instable.
                                     <span style="color: #94a3b8; font-size: 0.9em;">→ Équivalent: DevOps/SRE Engineer (50h/mois)</span>
                                 </li>
+                                <li style="margin: 12px 0; padding: 12px; background: rgba(51, 65, 85, 0.4); border-left: 3px solid #14b8a6; border-radius: 6px;">
+                                    <strong style="color: #2dd4bf;">🔍 Argus (LogWatcher)</strong> - <em>Sentinelle de Développement</em><br/>
+                                    Surveille en temps réel les logs backend et frontend pendant le développement,
+                                    détecte automatiquement les erreurs, propose des corrections avec validation humaine.
+                                    <span style="color: #94a3b8; font-size: 0.9em;">→ Équivalent: Debug Specialist + QA (35h/mois)</span>
+                                </li>
                                 <li style="margin: 12px 0; padding: 12px; background: rgba(51, 65, 85, 0.4); border-left: 3px solid #8b5cf6; border-radius: 6px;">
                                     <strong style="color: #a78bfa;">💰 Theia (CostWatcher)</strong> - <em>Optimisateur de Coûts IA</em><br/>
                                     Analyse l'utilisation des modèles IA, identifie les opportunités d'optimisation,
@@ -688,12 +705,13 @@ export class Settings {
 
                         <h4 style="margin-top: 24px; color: #f59e0b;">💡 Comment Ils Travaillent Ensemble</h4>
                         <p>
-                            L'écosystème Guardian fonctionne en <strong>automatisation complète</strong> grâce à des hooks Git :
+                            L'écosystème Guardian fonctionne en <strong>automatisation complète</strong> grâce à des hooks Git et monitoring actif :
                         </p>
                         <ul>
                             <li><strong>Pre-commit:</strong> Anima + Neo vérifient doc et intégrité AVANT chaque commit</li>
                             <li><strong>Post-commit:</strong> Nexus génère un rapport unifié et affiche un feedback détaillé</li>
                             <li><strong>Pre-push:</strong> ProdGuardian vérifie la production AVANT autorisation de déploiement</li>
+                            <li><strong>Développement actif:</strong> Argus surveille les logs en temps réel et propose des corrections automatiques</li>
                             <li><strong>Monitoring continu:</strong> Theia analyse les coûts et optimise les modèles en arrière-plan</li>
                         </ul>
                         <p>
@@ -738,6 +756,12 @@ export class Settings {
                                         <td style="text-align: right; padding: 12px;">3,500€</td>
                                     </tr>
                                     <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                                        <td style="padding: 12px;">Debug Specialist + QA</td>
+                                        <td style="text-align: center; padding: 12px;">Argus</td>
+                                        <td style="text-align: center; padding: 12px;">35h</td>
+                                        <td style="text-align: right; padding: 12px;">2,800€</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
                                         <td style="padding: 12px;">Tech Writer Senior</td>
                                         <td style="text-align: center; padding: 12px;">Anima</td>
                                         <td style="text-align: center; padding: 12px;">40h</td>
@@ -751,9 +775,9 @@ export class Settings {
                                     </tr>
                                     <tr style="border-top: 2px solid rgba(148, 163, 184, 0.4); background: rgba(16, 185, 129, 0.15); font-weight: 700;">
                                         <td style="padding: 12px; color: #10b981;">TOTAL ÉQUIPE HUMAINE</td>
-                                        <td style="text-align: center; padding: 12px; color: #10b981;">6 postes</td>
-                                        <td style="text-align: center; padding: 12px; color: #10b981;">380h</td>
-                                        <td style="text-align: right; padding: 12px; color: #10b981;">29,200€/mois</td>
+                                        <td style="text-align: center; padding: 12px; color: #10b981;">7 postes</td>
+                                        <td style="text-align: center; padding: 12px; color: #10b981;">415h</td>
+                                        <td style="text-align: right; padding: 12px; color: #10b981;">32,000€/mois</td>
                                     </tr>
                                     <tr style="background: rgba(59, 130, 246, 0.15); font-weight: 700;">
                                         <td style="padding: 12px; color: #60a5fa;">COÛT AGENTS IA (estimation)</td>
@@ -763,7 +787,7 @@ export class Settings {
                                     </tr>
                                     <tr style="background: rgba(16, 185, 129, 0.25); font-weight: 900; font-size: 1.1em;">
                                         <td colspan="3" style="padding: 12px; color: #10b981;">ÉCONOMIE MENSUELLE</td>
-                                        <td style="text-align: right; padding: 12px; color: #10b981;">~29,050€ (99.5%)</td>
+                                        <td style="text-align: right; padding: 12px; color: #10b981;">~31,850€ (99.5%)</td>
                                     </tr>
                                 </tbody>
                             </table>

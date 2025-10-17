@@ -13,14 +13,16 @@
  * - beta-1.0.0 : Phase P0 complétée (Quick Wins - 3/3)
  * - beta-2.0.0 : Phase P1 complétée (UX Essentielle - 3/3)
  * - beta-2.1.0 : Phase 1 & 3 Debug (Backend fixes + UI/UX improvements)
- * - beta-2.1.1 : Audit système multi-agents + versioning unifié [ACTUEL]
+ * - beta-2.1.1 : Audit système multi-agents + versioning unifié
+ * - beta-2.1.2 : Guardian automation + pre-deployment validation [ACTUEL]
  */
 
-export const VERSION = 'beta-2.1.1';
-export const VERSION_NAME = 'Phase P1 + Debug & Audit';
-export const VERSION_DATE = '2025-10-16';
+export const VERSION = 'beta-2.1.2';
+export const VERSION_NAME = 'Guardian Automation & Validation';
+export const VERSION_DATE = '2025-10-17';
 export const BUILD_PHASE = 'P1';
 export const COMPLETION_PERCENTAGE = 61; // 14/23 features
+export const TOTAL_FEATURES = 23;
 
 export default {
   version: VERSION,
@@ -28,6 +30,7 @@ export default {
   versionDate: VERSION_DATE,
   buildPhase: BUILD_PHASE,
   completionPercentage: COMPLETION_PERCENTAGE,
+  totalFeatures: TOTAL_FEATURES,
 
   // Detailed phase breakdown
   phases: {
@@ -49,5 +52,16 @@ export default {
 
   get displayVersion() {
     return VERSION.replace('beta-', 'β');
+  },
+
+  // Feature count helpers
+  get completedFeatures() {
+    return Object.values(this.phases)
+      .filter(phase => phase.status === 'completed')
+      .reduce((sum, phase) => sum + phase.features, 0);
+  },
+
+  get featuresDisplay() {
+    return `${this.completedFeatures}/${this.totalFeatures}`;
   }
 };

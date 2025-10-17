@@ -1123,6 +1123,107 @@ export class Documentation {
                                     <div class="timeline-marker">
                                         <div class="marker-icon">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <circle cx="12" cy="12" r="3"></circle>
+                                                <circle cx="6" cy="6" r="2"></circle>
+                                                <circle cx="18" cy="6" r="2"></circle>
+                                                <circle cx="18" cy="18" r="2"></circle>
+                                                <circle cx="6" cy="18" r="2"></circle>
+                                                <line x1="12" y1="9" x2="12" y2="15"></line>
+                                                <line x1="9" y1="12" x2="15" y2="12"></line>
+                                                <line x1="7.5" y1="7.5" x2="10" y2="10"></line>
+                                                <line x1="16.5" y1="7.5" x2="14" y2="10"></line>
+                                                <line x1="7.5" y1="16.5" x2="10" y2="14"></line>
+                                                <line x1="16.5" y1="16.5" x2="14" y2="14"></line>
+                                            </svg>
+                                        </div>
+                                        <div class="marker-date">Octobre 2025</div>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <h4>L'écosystème Guardian : une équipe d'agents autonomes</h4>
+                                        <p>
+                                            Le système <strong>Integrity & Docs Guardian</strong> représente une innovation majeure dans l'automatisation
+                                            du développement : une équipe virtuelle d'agents spécialisés qui surveillent, vérifient et maintiennent
+                                            la cohérence du code 24/7.
+                                        </p>
+
+                                        <p><strong>L'équipe Guardian :</strong></p>
+                                        <ul>
+                                            <li>
+                                                <strong>Anima (DocKeeper)</strong> - Gardienne de la documentation
+                                                <br/><em>Rôle :</em> Surveille chaque commit pour détecter les écarts entre code et documentation,
+                                                gère le versioning sémantique (beta-X.Y.Z), maintient à jour CHANGELOG, README et docs techniques.
+                                                <br/><em>Équivalent humain :</em> Technical Writer Senior + Release Manager
+                                            </li>
+                                            <li>
+                                                <strong>Neo (IntegrityWatcher)</strong> - Veilleur de cohérence
+                                                <br/><em>Rôle :</em> Analyse l'alignement backend/frontend, détecte les breaking changes,
+                                                vérifie la cohérence des schémas Pydantic/TypeScript, valide les contrats d'API OpenAPI.
+                                                <br/><em>Équivalent humain :</em> QA Engineer + API Architect
+                                            </li>
+                                            <li>
+                                                <strong>Nexus (Coordinator)</strong> - Coordinateur central
+                                                <br/><em>Rôle :</em> Synthétise les rapports d'Anima et Neo, priorise les actions (P0-P4),
+                                                génère des rapports unifiés, suit les tendances et métriques du système.
+                                                <br/><em>Équivalent humain :</em> Tech Lead + Product Manager
+                                            </li>
+                                            <li>
+                                                <strong>ProdGuardian</strong> - Sentinelle production
+                                                <br/><em>Rôle :</em> Surveille la santé du système en production, analyse les logs,
+                                                détecte les anomalies, génère des alertes proactives.
+                                                <br/><em>Équivalent humain :</em> DevOps Engineer + SRE
+                                            </li>
+                                        </ul>
+
+                                        <p><strong>Comparaison économique (pour un projet de ~73k lignes) :</strong></p>
+                                        <div style="background: rgba(59, 130, 246, 0.05); border-left: 3px solid #3b82f6; padding: 1rem; margin: 1rem 0;">
+                                            <p style="margin: 0.5rem 0;"><strong>Équipe humaine traditionnelle :</strong></p>
+                                            <ul style="margin: 0.5rem 0;">
+                                                <li>Technical Writer Senior : ~CHF 90k/an (~175h/an pour cette tâche = CHF 8,200)</li>
+                                                <li>QA Engineer : ~CHF 85k/an (~260h/an pour vérifications = CHF 11,300)</li>
+                                                <li>Tech Lead : ~CHF 110k/an (~130h/an pour coordination = CHF 7,300)</li>
+                                                <li>DevOps/SRE : ~CHF 95k/an (~87h/an pour monitoring = CHF 4,200)</li>
+                                            </ul>
+                                            <p style="margin: 0.5rem 0;"><strong>Total annuel (partiel) : ~CHF 31,000</strong></p>
+                                            <p style="margin: 0.5rem 0; font-size: 0.875rem; color: #6b7280;">
+                                                (~650 heures/an de travail spécialisé pour maintenir la qualité du projet)
+                                            </p>
+                                        </div>
+
+                                        <div style="background: rgba(168, 85, 247, 0.05); border-left: 3px solid #a855f7; padding: 1rem; margin: 1rem 0;">
+                                            <p style="margin: 0.5rem 0;"><strong>Système Guardian (IA agentique) :</strong></p>
+                                            <ul style="margin: 0.5rem 0;">
+                                                <li>Coût Claude API (~500k tokens/mois pour 4 agents) : ~$15-20/mois</li>
+                                                <li>Infrastructure (compute, storage) : ~$10-15/mois</li>
+                                                <li>Setup initial (configuration agents) : ~8h développeur senior</li>
+                                            </ul>
+                                            <p style="margin: 0.5rem 0;"><strong>Total annuel : ~CHF 360 + 8h setup</strong></p>
+                                            <p style="margin: 0.5rem 0; font-size: 0.875rem; color: #6b7280;">
+                                                (Disponibilité 24/7, exécution à chaque commit, zéro fatigue)
+                                            </p>
+                                        </div>
+
+                                        <p><strong>Ratio coût-efficacité : ~86:1</strong></p>
+                                        <p style="font-size: 0.875rem; color: #6b7280;">
+                                            Pour environ CHF 30 par mois, l'écosystème Guardian fournit une surveillance continue
+                                            équivalente à 650 heures de travail humain spécialisé par an. Au-delà du coût,
+                                            ces agents offrent une <strong>cohérence parfaite</strong> (jamais de fatigue,
+                                            d'oubli ou d'incohérence), une <strong>disponibilité totale</strong> (chaque commit est analysé),
+                                            et une <strong>scalabilité immédiate</strong> (peuvent gérer 10x plus de code sans coût supplémentaire significatif).
+                                        </p>
+
+                                        <p>
+                                            <strong>Architecture technique :</strong> Système orchestré via PowerShell (Windows Task Scheduler),
+                                            hooks Git pré/post-commit, rapports JSON structurés, auto-commit configurable,
+                                            logs détaillés, métriques de tendances. Total : ~2,500 lignes de scripts d'orchestration
+                                            pour automatiser complètement le workflow qualité.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="timeline-item">
+                                    <div class="timeline-marker">
+                                        <div class="marker-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                                 <circle cx="9" cy="7" r="4"></circle>
                                                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>

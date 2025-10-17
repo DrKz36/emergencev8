@@ -208,14 +208,25 @@ export class ConceptGraph {
     try {
       const data = await getConceptsForGraph();
       this.processGraphData(data);
-      this.initializePhysics();
-      this.startAnimation();
+
+      // Check if we have any concepts to display
+      if (this._allNodes.length === 0) {
+        this.error = 'Aucun concept à afficher pour le moment.\n\nCommencez à utiliser Emergence pour créer votre graphe de connaissances !';
+        this.renderError();
+        this.renderStats();
+      } else {
+        this.initializePhysics();
+        this.startAnimation();
+        this.renderStats();
+      }
     } catch (error) {
       console.error('[ConceptGraph] Failed to load graph:', error);
 
       // Check if it's a 404 - endpoint doesn't exist yet
       if (error.message && error.message.includes('404')) {
         this.error = 'Le graphe de concepts n\'est pas encore disponible. Aucune donnée à afficher.';
+      } else if (error.message && error.message.includes('401')) {
+        this.error = 'Authentification requise. Veuillez vous reconnecter.';
       } else if (error.message && error.message.includes('429')) {
         // Rate limit hit
         this.error = 'Trop de requêtes. Veuillez réessayer dans quelques instants.';
@@ -230,6 +241,7 @@ export class ConceptGraph {
       this._allLinks = [];
       this.nodes = [];
       this.links = [];
+      this.renderStats();
     } finally {
       this.isLoading = false;
     }
@@ -520,12 +532,22 @@ export class ConceptGraph {
     if (!this.errorContainer) return;
 
     if (this.error) {
-      this.errorContainer.textContent = this.error;
+      // Preserve line breaks in error messages
+      const lines = this.error.split('\n').filter(line => line.trim());
+      this.errorContainer.innerHTML = lines.map(line =>
+        `<p style="margin: 0.5em 0;">${this.escapeHtml(line)}</p>`
+      ).join('');
       this.errorContainer.hidden = false;
     } else {
-      this.errorContainer.textContent = '';
+      this.errorContainer.innerHTML = '';
       this.errorContainer.hidden = true;
     }
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   applyFilters() {

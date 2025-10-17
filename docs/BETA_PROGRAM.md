@@ -147,10 +147,10 @@ Rapport généré automatiquement par EMERGENCE Beta Report System
 ### Phase 1: Authentification & Onboarding (15 min)
 
 - [ ] Créer un compte / Se connecter
-- [ ] Vérifier l'affichage du dashboard initial + consulter le tutoriel (pop-up)
-- [ ] Tester le lien "Mot de passe oublié"
+- [ ] Vérifier l'affichage du dashboard initial
+- [ ] Ouvrir et consulter la documentation intégrée (Paramètres > Documentation ou liens "?" dans l'interface)
 - [ ] Se déconnecter et se reconnecter
-- [ ] Vérifier la persistance de session
+- [ ] Vérifier la persistance de session (token JWT 7 jours)
 
 ### Phase 2: Chat simple avec agents (20 min)
 
@@ -162,11 +162,11 @@ Rapport généré automatiquement par EMERGENCE Beta Report System
 
 ### Phase 3: Système de mémoire (25 min)
 
-- [ ] Activer l'analyse mémoire (bouton "Analyser")
-- [ ] Ouvrir le Centre Mémoire et consulter l'historique
-- [ ] Faire référence à une information passée (vérifier badge "Mémoire injectée")
-- [ ] Tester le "Clear" mémoire (purge STM + LTM)
-- [ ] Tester la détection de topic shift (changer de sujet radicalement)
+- [ ] Ouvrir le Centre Mémoire (menu principal > Mémoire)
+- [ ] Lancer une consolidation mémoire (bouton "Consolider mémoire") - observer la barre de progression
+- [ ] Consulter l'historique des concepts extraits et préférences
+- [ ] Faire référence à une information passée dans une nouvelle conversation (vérifier badge "Mémoire LTM")
+- [ ] Tester le "Clear" mémoire (purge STM et/ou LTM - avec confirmation)
 
 ### Phase 4: Documents & RAG (30 min)
 
@@ -187,27 +187,27 @@ Rapport généré automatiquement par EMERGENCE Beta Report System
 
 ### Phase 6: Cockpit & Analytics (15 min)
 
-- [ ] Ouvrir le Cockpit et consulter résumé coûts
-- [ ] Filtrer par période (7j, 30j, 90j, 1 an)
-- [ ] Consulter répartition par agent
-- [ ] Monitoring santé (health checks)
-- [ ] Dashboard admin (si applicable)
+- [ ] Ouvrir le Cockpit et consulter résumé coûts personnels
+- [ ] Consulter répartition par agent (Anima, Neo, Nexus)
+- [ ] Vérifier les statistiques d'activité (sessions, documents, conversations)
+- [ ] Tester le rafraîchissement automatique (30s) ou manuel
+- [ ] Dashboard admin (si rôle administrateur uniquement)
 
 ### Phase 7: Tests de robustesse (20 min)
 
-- [ ] Envoyer 10 messages rapidement
-- [ ] Uploader 3 documents simultanément
-- [ ] Forcer une déconnexion WebSocket (fermer/rouvrir navigateur)
-- [ ] Tester sur connexion lente (throttling)
-- [ ] Session très longue (50+ messages)
+- [ ] Envoyer 10 messages rapidement (vérifier pas de perte)
+- [ ] Uploader 3 documents simultanément (vérifier traitement séquentiel)
+- [ ] Fermer et rouvrir le navigateur (vérifier reconnexion WebSocket automatique)
+- [ ] Conversation très longue (50+ messages) - vérifier performance
+- [ ] Tester avec documents volumineux (>20 pages - observer latence RAG)
 
 ### Phase 8: Edge cases & bugs connus (15 min)
 
-- [ ] Tester cache mémoire intensif (20+ consolidations)
-- [ ] Accès concurrents (2 onglets, même session)
-- [ ] Document corrompu (upload PDF invalide)
-- [ ] Débat sans sujet (validation champs vides)
-- [ ] Clear pendant consolidation
+- [ ] Tester consolidation mémoire avec beaucoup de messages (50+)
+- [ ] Accès multi-onglets (2 onglets, même compte - vérifier synchronisation)
+- [ ] Upload document invalide/corrompu (vérifier gestion d'erreur)
+- [ ] Débat avec sujet vide ou trop court (<10 caractères - validation)
+- [ ] Tester le système de hold après débat (30s verrouillage - nouveau débat bloqué)
 
 ---
 
@@ -222,19 +222,19 @@ Rapport généré automatiquement par EMERGENCE Beta Report System
 **Priorité:** P0
 **Statut:** À corriger en Beta 1.1
 
-#### 2. Race conditions dictionnaires partagés
-**Description:** Accès concurrents aux dictionnaires partagés sans locks
-**Impact:** Peut causer des erreurs intermittentes
-**Workaround:** Éviter les actions simultanées multiples
-**Priorité:** P0
-**Statut:** À corriger en Beta 1.1
+#### 2. Système de hold débats (30s)
+**Description:** Après un débat, les résultats sont verrouillés pendant 30 secondes
+**Impact:** Impossible de lancer un nouveau débat immédiatement (message "Résultats verrouillés Xs")
+**Workaround:** Attendre l'expiration du timer ou changer d'onglet
+**Priorité:** P1 (fonctionnement normal, amélioration UX possible)
+**Statut:** Comportement intentionnel - amélioration feedback utilisateur prévue Beta 1.1
 
 #### 3. Consolidation mémoire sessions longues
-**Description:** La consolidation peut échouer sur sessions >100 messages
-**Impact:** Perte de contexte mémoire
-**Workaround:** Créer un nouveau thread après 100 messages
-**Priorité:** P0
-**Statut:** À corriger en Beta 1.1
+**Description:** La consolidation peut être lente sur sessions >100 messages (>2min)
+**Impact:** Timeout possible ou attente longue
+**Workaround:** Consolider régulièrement (tous les 20-30 messages)
+**Priorité:** P1
+**Statut:** Optimisation prévue Beta 1.1 (chunking incrémental)
 
 ### 🟠 Modérés
 
@@ -245,19 +245,19 @@ Rapport généré automatiquement par EMERGENCE Beta Report System
 **Priorité:** P1
 **Statut:** Optimisation prévue Beta 1.1
 
-#### 5. WebSocket reconnexion manuelle
-**Description:** Après déconnexion, la reconnexion automatique peut échouer
-**Impact:** Nécessite refresh manuel
-**Workaround:** Rafraîchir la page (F5)
-**Priorité:** P1
-**Statut:** À corriger en Beta 1.1
+#### 5. WebSocket reconnexion automatique
+**Description:** La reconnexion WebSocket après fermeture/réouverture du navigateur fonctionne mais peut prendre quelques secondes
+**Impact:** Léger délai avant rétablissement de la connexion temps réel
+**Workaround:** Attendre quelques secondes ou rafraîchir (F5) si nécessaire
+**Priorité:** P2
+**Statut:** Optimisation du feedback visuel prévue Beta 1.1
 
-#### 6. Collisions uploads simultanés
-**Description:** Risque de collisions si uploads multiples rapides
-**Impact:** Un document peut ne pas être traité
-**Workaround:** Uploader les documents un par un
-**Priorité:** P1
-**Statut:** À corriger en Beta 1.1
+#### 6. Uploads simultanés multiples
+**Description:** Les uploads simultanés sont traités séquentiellement côté serveur
+**Impact:** Peut sembler plus lent avec plusieurs fichiers, mais garantit l'intégrité
+**Workaround:** Attendre la fin du traitement ou uploader un par un pour plus de contrôle
+**Priorité:** P2
+**Statut:** Fonctionnement normal - amélioration feedback visuel prévue Beta 1.2
 
 ### 🟡 Mineurs
 
@@ -345,12 +345,21 @@ La liste des emails autorisés est gérée via l'interface admin :
 
 ---
 
-**Dernière mise à jour:** 2025-10-14
+**Dernière mise à jour:** 2025-10-17
 **Maintenu par:** Équipe EMERGENCE
 
 ---
 
 ## Changelog
+
+### 2025-10-17
+- ✅ Audit et mise à jour de la checklist beta-testeurs
+- ✅ Correction Phase 1: Remplacement "tutoriel pop-up" → "documentation intégrée"
+- ✅ Correction Phase 3: Précision sur le processus de consolidation mémoire
+- ✅ Correction Phase 6: Clarification sur les métriques personnelles vs admin
+- ✅ Correction Phase 7 & 8: Ajustement des tests de robustesse et edge cases
+- ✅ Mise à jour des bugs connus: Reclassification priorités et statuts réels
+- ✅ Suppression "Mot de passe oublié" (non implémenté)
 
 ### 2025-10-14
 - ✅ Migration du système de rapport de `mailto:` vers API REST backend
