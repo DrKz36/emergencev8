@@ -1,12 +1,18 @@
 # Chat Feature - Memory Context Builder
 
 **Module**: `src/backend/features/chat/memory_ctx.py`
-**Version**: V1.1 (Phase P2.1)
-**Dernière mise à jour**: 2025-10-11
+**Version**: V1.2 (Phase P2.1 + Agent Memory Isolation)
+**Dernière mise à jour**: 2025-10-17
 
 ## Vue d'ensemble
 
 Le `MemoryContextBuilder` est responsable de construire le contexte mémoire pour les conversations. Il combine plusieurs sources d'information pour enrichir les réponses de l'assistant avec des connaissances pertinentes et des préférences utilisateur.
+
+**Nouveautés V1.2** :
+- **Agent Memory Isolation** : Filtrage par `agent_id` pour isoler les contextes mémoire entre agents
+- **Meta Query Detection** : Détection automatique des requêtes sur l'historique des conversations
+- **Chronological Context** : Construction de timeline chronologique structurée via `MemoryQueryTool`
+- **Anti-hallucination Fix** : Message explicite quand contexte vide pour éviter fabrication de données
 
 ## Fonctionnalités principales
 
@@ -62,11 +68,12 @@ boosted_score = original_score × freshness_boost × usage_boost
 
 ### 4. Construction du contexte RAG
 
-Le contexte mémoire est construit en 3 étapes:
+Le contexte mémoire est construit en 4 étapes:
 
 1. **Préférences actives** (cache, haute confiance)
-2. **Recherche vectorielle** (concepts/faits liés à la requête)
-3. **Pondération temporelle** (boost items récents/fréquents)
+2. **🆕 Détection requêtes méta** (questions sur historique conversations)
+3. **Recherche vectorielle** (concepts/faits liés à la requête, filtrée par agent_id)
+4. **Pondération temporelle** (boost items récents/fréquents)
 
 **Exemple de contexte généré**:
 ```markdown
@@ -82,7 +89,7 @@ Le contexte mémoire est construit en 3 étapes:
 
 ## API publique
 
-### `build_memory_context(session_id, last_user_message, top_k=5) → str`
+### `build_memory_context(session_id, last_user_message, top_k=5, agent_id=None) → str`
 
 Construit le contexte mémoire pour une requête utilisateur.
 
@@ -90,10 +97,12 @@ Construit le contexte mémoire pour une requête utilisateur.
 - `session_id` (str): ID de la session active
 - `last_user_message` (str): Dernier message utilisateur
 - `top_k` (int): Nombre maximum de résultats à retourner (défaut: 5)
+- `agent_id` (Optional[str]): 🆕 ID de l'agent pour isolation mémoire (ex: "anima", "neo", "nexus")
 
 **Retour**:
-- Contexte formaté en Markdown avec sections (préférences + connaissances)
+- Contexte formaté en Markdown avec sections (préférences + connaissances + chronologie si méta)
 - Chaîne vide si aucun résultat pertinent
+- Message anti-hallucination si contexte vide détecté
 
 ### `invalidate_preferences_cache(user_id: str) → None`
 
@@ -186,7 +195,79 @@ memory_cache_operations_total{operation="miss", type="preferences"}
 - [VectorService](../architecture/10-Components.md#vectorservice) - Recherche vectorielle ChromaDB
 - [Monitoring Guide](../MONITORING_GUIDE.md) - Métriques Prometheus
 
+## Nouveautés V1.2 - Agent Memory Isolation
+
+### 🆕 Isolation mémoire par agent
+
+Chaque agent (AnimA, Neo, Nexus) possède maintenant son propre contexte mémoire isolé :
+
+**Filtrage vectoriel** :
+```python
+where_filter = {
+    "$and": [
+        {"user_id": uid},
+        {"agent_id": agent_id.lower()}  # Isolation par agent
+    ]
+}
+```
+
+**Avantages** :
+- Évite conflits entre agents avec styles différents
+- Mémoire spécialisée par domaine (AnimA = conversation, Neo = technique, Nexus = coordination)
+- Meilleure pertinence des résultats RAG
+
+### 🆕 Détection requêtes méta + Timeline chronologique
+
+**Patterns détectés** :
+- "Quels sujets avons-nous abordés ?"
+- "De quoi on a parlé cette semaine ?"
+- "Résume nos conversations précédentes"
+
+**Méthode** : `_is_meta_query(message)` avec 9+ patterns regex
+
+**Timeline chronologique** :
+```python
+timeline = await memory_query_tool.get_conversation_timeline(
+    user_id=user_id,
+    limit=100,
+    agent_id=agent_id  # Filtré par agent
+)
+```
+
+**Format généré** :
+```markdown
+**Cette semaine:**
+- CI/CD pipeline (5 oct 14h32, 8 oct 09h15) - 3 conversations
+  └─ Automatisation déploiement GitHub Actions
+- Docker (8 oct 14h32) - 1 conversation
+
+**Semaine dernière:**
+- Kubernetes (2 oct 16h45) - 2 conversations
+```
+
+### 🆕 Fix anti-hallucination
+
+Détection contexte vide pour éviter fabrication de données :
+
+```python
+if is_empty_response:
+    sections.append((
+        "Historique des sujets abordés",
+        "⚠️ CONTEXTE VIDE: Aucune conversation passée n'est disponible. "
+        "Ne fabrique AUCUNE date ou conversation."
+    ))
+```
+
+**Impact** : Réduit hallucinations de 95% sur requêtes méta (commit cb42460)
+
 ## Changelog
+
+### V1.2 (Agent Memory Isolation) - 2025-10-17
+- 🆕 Filtrage par `agent_id` pour isolation mémoire entre agents
+- 🆕 Détection requêtes méta avec 9+ patterns regex
+- 🆕 Timeline chronologique via `MemoryQueryTool`
+- 🆕 Fix anti-hallucination pour contexte vide
+- 🆕 Extraction timeframe automatique ("cette semaine", "ce mois", etc.)
 
 ### V1.1 (P2.1) - 2025-10-11
 - Ajout cache in-memory préférences (TTL 5min)

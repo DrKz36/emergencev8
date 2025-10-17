@@ -3,9 +3,11 @@
 **Modules**:
 - `src/backend/features/memory/analyzer.py`
 - `src/backend/features/memory/hybrid_retriever.py`
+- `src/backend/features/memory/gardener.py`
+- `src/backend/features/memory/memory_query_tool.py`
 
-**Version**: V3.7 (Phase P1.5)
-**Dernière mise à jour**: 2025-10-11
+**Version**: V3.9 (Agent Memory Isolation)
+**Dernière mise à jour**: 2025-10-17
 
 ## Vue d'ensemble
 
@@ -413,15 +415,43 @@ for r in results:
 **Module** : `src/backend/features/memory/memory_query_tool.py`
 
 ### 3.1 Liste des sujets discutés
-- `list_discussed_topics(user_id, timeframe="week", limit=50, min_mention_count=1)`
-- Retourne des `TopicSummary` (dates ISO, nombre de conversations, thread_ids, vitalité).
-- Timeframes supportés : `today`, `week`, `month`, `all` ou `None`.
+
+**API** :
+```python
+list_discussed_topics(
+    user_id: str,
+    timeframe: str = "week",
+    limit: int = 50,
+    min_mention_count: int = 1,
+    agent_id: Optional[str] = None  # 🆕 V3.9
+)
+```
+
+**Paramètres** :
+- `user_id` : Identifiant utilisateur
+- `timeframe` : Période (`today`, `week`, `month`, `all`)
+- `limit` : Nombre maximum de sujets
+- `min_mention_count` : Nombre minimum de mentions
+- `agent_id` : 🆕 **Filtrage par agent** pour isolation mémoire
+
+**Retour** : Liste de `TopicSummary` (dates ISO, conversations, thread_ids, vitalité)
 
 ### 3.2 Timeline conversationnelle
-- `get_conversation_timeline(user_id, limit=120)` regroupe les sujets dans quatre fenêtres :
-  - `this_week`, `last_week`, `this_month`, `older`.
-- Chaque groupe est trié par date (plus récent d'abord) en utilisant `last_date` → `first_date`.
-- Les cutoffs sont calculés côté backend (1 semaine, 2 semaines, 30 jours).
+
+**API** :
+```python
+get_conversation_timeline(
+    user_id: str,
+    limit: int = 120,
+    agent_id: Optional[str] = None  # 🆕 V3.9
+)
+```
+
+**Fonctionnement** :
+- Regroupe sujets en 4 fenêtres temporelles : `this_week`, `last_week`, `this_month`, `older`
+- Tri chronologique (plus récent d'abord) : `last_date` → `first_date`
+- Cutoffs calculés backend (1 sem, 2 sem, 30 jours)
+- 🆕 **Filtrage par agent_id** pour contexte isolé
 
 ### 3.3 Formatage naturel pour les LLMs
 - `format_timeline_natural_fr(timeline)` retourne un bloc Markdown prêt pour injection dans le prompt :
@@ -439,6 +469,12 @@ for r in results:
 - Les consolidations mémoires doivent injecter `first_date`, `last_date`, `summary`, `thread_ids`, `mention_count`.
 
 ## Changelog
+
+### V3.9 (Agent Memory Isolation) - 2025-10-17
+- 🆕 **Isolation mémoire par agent**: Filtrage `agent_id` dans `MemoryQueryTool`
+- 🆕 **Timeline par agent**: `get_conversation_timeline()` et `list_discussed_topics()` supportent `agent_id`
+- 🆕 **Contexte agent-specific**: Chaque agent (AnimA, Neo, Nexus) a sa propre timeline
+- 🆕 **Anti-hallucination**: Message explicite quand timeline vide pour éviter fabrication
 
 ### V3.8 (UX Improvements) - 2025-10-15
 - **Feedback temps réel**: Événements WebSocket `ws:memory_progress` pour suivi consolidation
