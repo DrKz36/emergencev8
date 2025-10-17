@@ -289,39 +289,43 @@ class MasterOrchestrator:
         start_time = time.time()
 
         # Step 1: Acquire lock
-        logger.info("\n[Step 1/8] Acquiring orchestration lock...")
+        logger.info("\n[Step 1/9] Acquiring orchestration lock...")
         with GuardianLock("master_orchestrator", "full_orchestration"):
 
             # Step 2: Context detection
-            logger.info("\n[Step 2/8] Detecting context...")
+            logger.info("\n[Step 2/9] Detecting context...")
             context = self._detect_context()
 
             # Step 3: Execute agents
-            logger.info("\n[Step 3/8] Executing agents...")
+            logger.info("\n[Step 3/9] Executing agents...")
             agent_results = self._execute_agents()
 
             # Step 4: Conflict detection
-            logger.info("\n[Step 4/8] Detecting conflicts...")
+            logger.info("\n[Step 4/9] Detecting conflicts...")
             conflicts = self.conflict_detector.detect_conflicts(agent_results)
 
             # Step 5: Generate unified report
-            logger.info("\n[Step 5/8] Generating unified report...")
+            logger.info("\n[Step 5/9] Generating unified report...")
             unified_report = self._generate_unified_report(
                 context, agent_results, conflicts
             )
 
             # Step 6: User validation (if needed)
-            logger.info("\n[Step 6/8] User validation...")
+            logger.info("\n[Step 6/9] User validation...")
             validation_result = self._request_validation(unified_report)
 
             # Step 7: Apply approved fixes
-            logger.info("\n[Step 7/8] Applying approved fixes...")
+            logger.info("\n[Step 7/9] Applying approved fixes...")
             if validation_result.get("approved"):
                 self._apply_fixes(unified_report)
 
             # Step 8: Save global report
-            logger.info("\n[Step 8/8] Saving global report...")
+            logger.info("\n[Step 8/9] Saving global report...")
             self._save_global_report(unified_report)
+
+            # Step 9: Send email report to admins
+            logger.info("\n[Step 9/9] Sending email report to administrators...")
+            self._send_email_report()
 
         execution_time = time.time() - start_time
         logger.info(f"\n✅ Orchestration completed in {execution_time:.1f}s")
@@ -514,6 +518,32 @@ class MasterOrchestrator:
                 print(f"  {i}. {rec}")
 
         print("\n" + "=" * 60)
+
+    def _send_email_report(self):
+        """Send Guardian reports via email to administrators"""
+        try:
+            email_script = SCRIPT_DIR / "send_guardian_reports_email.py"
+            if not email_script.exists():
+                logger.warning("⚠️  Email script not found, skipping email notification")
+                return
+
+            result = subprocess.run(
+                [sys.executable, str(email_script)],
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            if result.returncode == 0:
+                logger.info("✅ Email report sent successfully to administrators")
+            else:
+                logger.warning(f"⚠️  Email sending failed: {result.stderr}")
+
+        except subprocess.TimeoutExpired:
+            logger.warning("⚠️  Email sending timed out (30s)")
+        except Exception as e:
+            logger.warning(f"⚠️  Email sending error: {e}")
 
 
 def main():

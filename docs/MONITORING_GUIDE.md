@@ -499,12 +499,56 @@ METRICS_EXPORT_INTERVAL=300  # 5min
 
 ---
 
+## 📧 Guardian Email Reports (Nouveau - Oct 2025)
+
+### Envoi automatique des rapports Guardian
+
+Le système Guardian envoie maintenant automatiquement des rapports par email après chaque orchestration.
+
+**Configuration email (dans `.env`):**
+
+```env
+EMAIL_ENABLED=1
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=admin@example.com
+SMTP_PASSWORD=app-password
+SMTP_FROM_EMAIL=admin@example.com
+SMTP_FROM_NAME=ÉMERGENCE Guardian
+SMTP_USE_TLS=1
+```
+
+**Rapports inclus dans l'email:**
+- Production Guardian (santé Cloud Run)
+- Intégrité Neo (cohérence backend/frontend)
+- Documentation Anima (lacunes documentation)
+- Rapport Unifié Nexus (synthèse)
+- Rapport Global Master (orchestration)
+
+**Envoi manuel:**
+
+```bash
+python claude-plugins/integrity-docs-guardian/scripts/send_guardian_reports_email.py
+```
+
+**Orchestration avec email automatique:**
+
+```bash
+python claude-plugins/integrity-docs-guardian/scripts/auto_orchestrator.py
+```
+
+**Documentation complète:**
+- [README_EMAIL_REPORTS.md](../claude-plugins/integrity-docs-guardian/README_EMAIL_REPORTS.md) - Guide complet avec troubleshooting
+
+---
+
 ## 📚 Ressources
 
 - [Documentation FastAPI Middleware](https://fastapi.tiangolo.com/tutorial/middleware/)
 - [Python Logging Best Practices](https://docs.python.org/3/howto/logging.html)
 - [Prometheus Monitoring](https://prometheus.io/docs/introduction/overview/)
 - [Grafana Dashboards](https://grafana.com/docs/)
+- [Guardian Email Reports](../claude-plugins/integrity-docs-guardian/README_EMAIL_REPORTS.md)
 
 ---
 

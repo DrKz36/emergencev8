@@ -142,7 +142,17 @@ def main():
     status_emoji = "✅" if auto_update_result['status'] == 'OK' else "❌"
     print(f"{status_emoji} Documentation Updater: {auto_update_result['status']}\n")
 
-    # 5. Calculer les statistiques
+    # 5. Envoyer les rapports par email aux admins
+    print("📧 PHASE 5: Envoi des rapports par email aux administrateurs")
+    print("-" * 70)
+
+    email_result = run_agent('send_guardian_reports_email.py', 'Email Reporter')
+    orchestration_results['agents'].append(email_result)
+
+    status_emoji = "✅" if email_result['status'] == 'OK' else "❌"
+    print(f"{status_emoji} Email Reporter: {email_result['status']}\n")
+
+    # 6. Calculer les statistiques
     total_agents = len(orchestration_results['agents'])
     successful_agents = len([a for a in orchestration_results['agents'] if a['status'] == 'OK'])
     failed_agents = total_agents - successful_agents
@@ -154,12 +164,12 @@ def main():
         'success_rate': f"{(successful_agents / total_agents * 100):.1f}%"
     }
 
-    # 6. Sauvegarder le rapport d'orchestration
+    # 7. Sauvegarder le rapport d'orchestration
     orchestration_report_path = REPORTS_DIR / "orchestration_report.json"
     with open(orchestration_report_path, 'w', encoding='utf-8') as f:
         json.dump(orchestration_results, f, indent=2, ensure_ascii=False)
 
-    # 7. Afficher le résumé final
+    # 8. Afficher le résumé final
     print("=" * 70)
     print("📊 RÉSUMÉ DE L'ORCHESTRATION")
     print("=" * 70)

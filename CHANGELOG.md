@@ -12,6 +12,114 @@
 
 ---
 
+## [beta-2.1.3] - 2025-10-17
+
+### 📧 Guardian Email Reports - Notification Automatique
+
+#### 🆕 Fonctionnalités Ajoutées
+
+**1. Système d'envoi automatique des rapports Guardian par email**
+- Email automatique après chaque orchestration Guardian
+- Rapports HTML stylisés avec thème ÉMERGENCE (dégradés bleu/noir)
+- Version texte pour compatibilité
+- Destinataire: Admin uniquement (`gonzalefernando@gmail.com`)
+
+**Fichiers créés:**
+- [send_guardian_reports_email.py](claude-plugins/integrity-docs-guardian/scripts/send_guardian_reports_email.py) - Script d'envoi automatique
+- [README_EMAIL_REPORTS.md](claude-plugins/integrity-docs-guardian/README_EMAIL_REPORTS.md) - Documentation complète (400+ lignes)
+
+**2. Intégration dans les orchestrations Guardian**
+- Auto-orchestrator exécute l'envoi en Phase 5
+- Master-orchestrator exécute l'envoi en Step 9/9
+- Gestion d'erreurs sans bloquer l'orchestration
+- Chargement automatique du `.env` (dotenv)
+
+**Fichiers modifiés:**
+- [auto_orchestrator.py:145-153](claude-plugins/integrity-docs-guardian/scripts/auto_orchestrator.py#L145-L153) - Intégration Phase 5
+- [master_orchestrator.py:322-328](claude-plugins/integrity-docs-guardian/scripts/master_orchestrator.py#L322-L328) - Intégration Step 9
+
+**3. Configuration SMTP complète**
+- Variables d'environnement documentées dans `.env.example`
+- Support Gmail, Outlook, Amazon SES
+- TLS/SSL configurable
+- Mot de passe d'application Gmail (sécurisé)
+
+**Fichier modifié:**
+- [.env.example:28-36](c:\dev\emergenceV8\.env.example#L28-L36) - Variables SMTP
+
+**4. Contenu des rapports email**
+
+Chaque email contient:
+- Badge de statut global (✅ OK, ⚠️ WARNING, 🚨 CRITICAL)
+- 6 rapports Guardian complets:
+  - **Production Guardian** (prod_report.json) - Santé Cloud Run
+  - **Intégrité Neo** (integrity_report.json) - Cohérence backend/frontend
+  - **Documentation Anima** (docs_report.json) - Lacunes documentation
+  - **Rapport Unifié Nexus** (unified_report.json) - Synthèse
+  - **Rapport Global Master** (global_report.json) - Orchestration
+  - **Orchestration** (orchestration_report.json) - Résumé exécution
+- Statistiques détaillées par rapport (erreurs, warnings, problèmes)
+- Top 3 recommandations prioritaires par rapport
+- Timestamp de chaque scan
+- Design HTML responsive et professionnel
+
+#### ✅ Tests Effectués
+
+- [x] Envoi manuel d'email - Succès
+- [x] Orchestration automatique avec email - Succès
+- [x] Intégration dans auto_orchestrator - Succès
+- [x] Configuration SMTP Gmail validée - Succès
+- [x] Réception email confirmée - Succès
+
+#### 📝 Documentation Mise à Jour
+
+**Nouvelle documentation:**
+- [README_EMAIL_REPORTS.md](claude-plugins/integrity-docs-guardian/README_EMAIL_REPORTS.md) - Guide complet (400+ lignes)
+  - Configuration SMTP détaillée (Gmail, Outlook, SES)
+  - Guide d'utilisation (manuel et automatique)
+  - Troubleshooting complet
+  - Exemples d'automatisation (cron, Windows Task Scheduler)
+  - Bonnes pratiques de sécurité
+
+**Documentation mise à jour:**
+- [GUARDIAN_SETUP_COMPLETE.md](GUARDIAN_SETUP_COMPLETE.md) - Ajout section "Envoi Automatique par Email"
+- [MONITORING_GUIDE.md:502-542](docs/MONITORING_GUIDE.md#L502-L542) - Section Guardian Email Reports
+- [.env.example](c:\dev\emergenceV8\.env.example) - Variables SMTP documentées
+
+#### 🎯 Impact
+
+- ✅ Rapports Guardian envoyés automatiquement à l'admin après chaque orchestration
+- ✅ Monitoring proactif de la production sans intervention manuelle
+- ✅ Email HTML professionnel avec design ÉMERGENCE
+- ✅ Support multi-fournisseurs SMTP (Gmail, Outlook, SES)
+- ✅ Documentation complète pour configuration et troubleshooting
+
+#### 🚀 Utilisation
+
+**Envoi automatique avec orchestration:**
+```bash
+python claude-plugins/integrity-docs-guardian/scripts/auto_orchestrator.py
+```
+
+**Envoi manuel des derniers rapports:**
+```bash
+python claude-plugins/integrity-docs-guardian/scripts/send_guardian_reports_email.py
+```
+
+**Configuration requise (dans `.env`):**
+```env
+EMAIL_ENABLED=1
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=admin@example.com
+SMTP_PASSWORD=app-password
+SMTP_FROM_EMAIL=admin@example.com
+SMTP_FROM_NAME=ÉMERGENCE Guardian
+SMTP_USE_TLS=1
+```
+
+---
+
 ## [beta-2.1.2] - 2025-10-17
 
 ### 🎉 Corrections Production et Synchronisation Système

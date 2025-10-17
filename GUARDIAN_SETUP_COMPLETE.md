@@ -109,6 +109,7 @@ Tous les agents sont **présents et fonctionnels** :
 | 🔐 Neo (IntegrityWatcher) | `check_integrity.py` | ✅ ACTIF |
 | 🏭 ProdGuardian | `check_prod_logs.py` | ✅ ACTIF |
 | 🎯 Nexus (Coordinator) | `generate_report.py` | ✅ ACTIF |
+| 📧 Email Reporter | `send_guardian_reports_email.py` | ✅ ACTIF |
 
 ---
 
@@ -119,6 +120,7 @@ Tous les agents sont **présents et fonctionnels** :
 | **AUTOMATION_GUIDE.md** | Guide complet avec workflows, exemples, troubleshooting | 300+ lignes |
 | **SYSTEM_STATUS.md** | État du système, commandes, configuration | 200+ lignes |
 | **setup_automation.py** | Script interactif de configuration | 200+ lignes |
+| **README_EMAIL_REPORTS.md** | Guide complet du système d'envoi d'emails Guardian | 400+ lignes |
 
 ---
 
@@ -172,8 +174,11 @@ claude-plugins/integrity-docs-guardian/reports/
 ├── docs_report.json           ← Anima (Gaps de documentation)
 ├── integrity_report.json      ← Neo (Intégrité backend/frontend)
 ├── prod_report.json           ← ProdGuardian (Production)
-└── unified_report.json        ← Nexus (Rapport consolidé)
+├── unified_report.json        ← Nexus (Rapport consolidé)
+└── orchestration_report.json  ← Résumé d'orchestration
 ```
+
+**📧 Envoi Automatique par Email** : Tous ces rapports sont automatiquement envoyés par email à l'administrateur (`gonzalefernando@gmail.com`) après chaque orchestration !
 
 **Pour consulter un rapport :**
 ```bash
@@ -186,6 +191,49 @@ jq . claude-plugins/integrity-docs-guardian/reports/unified_report.json
 # Ou ouvre directement dans VS Code
 code claude-plugins/integrity-docs-guardian/reports/unified_report.json
 ```
+
+---
+
+## 📧 Nouveau : Envoi Automatique des Rapports par Email
+
+**✅ ACTIVÉ depuis le 2025-10-17**
+
+### Fonctionnement
+
+Les rapports Guardian sont maintenant **automatiquement envoyés par email** après chaque orchestration :
+
+- **Destinataire :** `gonzalefernando@gmail.com` (Admin uniquement)
+- **Contenu :** Rapport HTML stylisé avec tous les rapports Guardian
+- **Fréquence :** Après chaque exécution de l'orchestration
+- **Format :** Email HTML professionnel + version texte
+
+### Envoi Manuel
+
+Pour envoyer manuellement les derniers rapports :
+
+```bash
+python claude-plugins/integrity-docs-guardian/scripts/send_guardian_reports_email.py
+```
+
+### Configuration
+
+Les paramètres email sont configurés dans `.env` :
+
+```env
+EMAIL_ENABLED=1
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=gonzalefernando@gmail.com
+SMTP_PASSWORD=********
+SMTP_FROM_EMAIL=gonzalefernando@gmail.com
+SMTP_FROM_NAME=ÉMERGENCE Guardian
+SMTP_USE_TLS=1
+```
+
+### Documentation Complète
+
+Pour plus de détails sur le système d'email :
+- **[README_EMAIL_REPORTS.md](claude-plugins/integrity-docs-guardian/README_EMAIL_REPORTS.md)** - Guide complet avec configuration SMTP, troubleshooting, exemples
 
 ---
 

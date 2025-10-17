@@ -32,6 +32,9 @@ dist/
 Thumbs.db
 desktop.ini
 
+# --- Claude Code snapshots and temp files
+.claude/
+
 # --- Logs & temps
 logs/
 *.log
