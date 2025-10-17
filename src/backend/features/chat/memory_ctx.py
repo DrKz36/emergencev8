@@ -116,12 +116,32 @@ class MemoryContextBuilder:
 
             # 🆕 2. Phase 1 Sprint 1: Detect meta queries (questions about conversation history)
             if uid and self._is_meta_query(last_user_message):
-                logger.info(f"[MemoryContext] Meta query detected: '{last_user_message[:50]}...'")
+                logger.info(f"[MemoryContext] Meta query detected: '{last_user_message[:50]}...' (agent: {agent_id})")
                 chronological_context = await self._build_chronological_context(
                     uid, last_user_message, agent_id=agent_id
                 )
                 if chronological_context:
-                    sections.append(("Historique des sujets abordés", chronological_context))
+                    # 🐛 FIX: Vérifier si le contexte contient réellement des données ou juste le message par défaut
+                    is_empty_response = (
+                        "Aucun sujet abordé" in chronological_context or
+                        chronological_context.strip() == ""
+                    )
+
+                    if is_empty_response:
+                        logger.warning(
+                            f"[MemoryContext] Chronological context is empty for user {uid[:8]}... agent {agent_id}. "
+                            f"Returning explicit empty message to prevent hallucinations."
+                        )
+                        # Retourner un message explicite pour que l'agent ne fabule pas
+                        sections.append((
+                            "Historique des sujets abordés",
+                            "⚠️ CONTEXTE VIDE: Aucune conversation passée n'est disponible dans la mémoire. "
+                            "Ne fabrique AUCUNE date ou conversation. Réponds honnêtement à l'utilisateur que tu n'as pas accès à l'historique."
+                        ))
+                    else:
+                        sections.append(("Historique des sujets abordés", chronological_context))
+                        logger.info(f"[MemoryContext] Chronological context provided ({len(chronological_context)} chars)")
+
                     # Pour requêtes méta, le contexte chronologique suffit
                     # Pas besoin de recherche vectorielle supplémentaire
                     return self.merge_blocks(sections)
