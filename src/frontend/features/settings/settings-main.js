@@ -526,19 +526,19 @@ export class Settings {
                     <div class="doc-stats">
                         <div class="doc-stat-item">
                             <span class="stat-label">Lignes de code totales:</span>
-                            <span class="stat-value">~98,338 lignes (tous fichiers sources)</span>
+                            <span class="stat-value">~85,400 lignes (tous fichiers sources)</span>
                         </div>
                         <div class="doc-stat-item">
                             <span class="stat-label">Frontend:</span>
-                            <span class="stat-value">~64,592 lignes (JavaScript/CSS)</span>
+                            <span class="stat-value">~56,300 lignes (JavaScript/CSS)</span>
                         </div>
                         <div class="doc-stat-item">
                             <span class="stat-label">Backend:</span>
-                            <span class="stat-value">~33,680 lignes (Python/FastAPI)</span>
+                            <span class="stat-value">~29,100 lignes (Python/FastAPI)</span>
                         </div>
                         <div class="doc-stat-item">
                             <span class="stat-label">Fichiers sources:</span>
-                            <span class="stat-value">252 fichiers (JS, CSS, Python)</span>
+                            <span class="stat-value">251 fichiers (JS, CSS, Python)</span>
                         </div>
                         <div class="doc-stat-item">
                             <span class="stat-label">Fichiers trackés Git:</span>

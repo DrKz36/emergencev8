@@ -7,6 +7,7 @@ import { TUTORIAL_GUIDES } from '../../components/tutorial/tutorialGuides.js';
 import { generateHymnHTML, initializeHymnSection } from './hymn-section.js';
 import { glossaryNavigator } from '../../utils/glossary-navigation.js';
 import { initGlossaryModal } from '../../components/tutorial/GlossaryModal.js';
+import versionInfo from '../../version.js';
 
 export class Documentation {
     constructor() {
@@ -204,13 +205,13 @@ export class Documentation {
                             </svg>
                             <div>
                                 <div style="font-size: 0.875rem; color: #9ca3af; margin-bottom: 0.25rem;">Version Actuelle</div>
-                                <div style="font-size: 1.5rem; font-weight: 600; background: linear-gradient(120deg, #3b82f6 0%, #a855f7 100%); -webkit-background-clip: text; background-clip: text; color: transparent;" id="doc-version-display">beta-1.1.0</div>
-                                <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">Phase P1 - UX Essentielle • 16 octobre 2025</div>
+                                <div style="font-size: 1.5rem; font-weight: 600; background: linear-gradient(120deg, #3b82f6 0%, #a855f7 100%); -webkit-background-clip: text; background-clip: text; color: transparent;" id="doc-version-display">${versionInfo.version}</div>
+                                <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">${versionInfo.buildPhase} - ${versionInfo.versionName} • ${versionInfo.versionDate}</div>
                             </div>
                             <div style="margin-left: auto; text-align: right;">
                                 <div style="font-size: 0.75rem; color: #9ca3af;">Fonctionnalités</div>
-                                <div style="font-size: 1.25rem; font-weight: 600; color: #3b82f6;" id="doc-features-count">14/23</div>
-                                <div style="font-size: 0.75rem; color: #6b7280;" id="doc-completion-pct">61% complété</div>
+                                <div style="font-size: 1.25rem; font-weight: 600; color: #3b82f6;" id="doc-features-count">${versionInfo.featuresDisplay}</div>
+                                <div style="font-size: 0.75rem; color: #6b7280;" id="doc-completion-pct">${versionInfo.completionPercentage}% complété</div>
                             </div>
                         </div>
 
@@ -224,9 +225,9 @@ export class Documentation {
                                     </svg>
                                 </div>
                                 <div class="stat-info">
-                                    <div class="stat-value">~50,000</div>
+                                    <div class="stat-value">~56,300</div>
                                     <div class="stat-label">Lignes de code Frontend</div>
-                                    <div class="stat-detail">JavaScript / CSS / HTML (127 fichiers)</div>
+                                    <div class="stat-detail">JavaScript / CSS (150 fichiers)</div>
                                 </div>
                             </div>
                             <div class="stat-card">
@@ -236,9 +237,9 @@ export class Documentation {
                                     </svg>
                                 </div>
                                 <div class="stat-info">
-                                    <div class="stat-value">~23,000</div>
+                                    <div class="stat-value">~29,100</div>
                                     <div class="stat-label">Lignes de code Backend</div>
-                                    <div class="stat-detail">Python / FastAPI (87 fichiers)</div>
+                                    <div class="stat-detail">Python / FastAPI (101 fichiers)</div>
                                 </div>
                             </div>
                             <div class="stat-card">
