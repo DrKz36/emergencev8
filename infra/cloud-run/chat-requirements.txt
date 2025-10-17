@@ -1,0 +1,49 @@
+# Chat/LLM Service Requirements (P2.4)
+# Optimisé pour OpenAI, Anthropic, Google + RAG + Memory
+
+# ===== Core Framework =====
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+pydantic==2.9.2
+pydantic-settings==2.6.0
+
+# ===== LLM Providers =====
+openai==1.54.3                 # OpenAI API (GPT-4, GPT-4o-mini)
+anthropic==0.39.0              # Anthropic API (Claude 3.5)
+google-generativeai==0.8.3     # Google Gemini API
+
+# ===== Vector Database & Embeddings =====
+chromadb==0.4.24
+sentence-transformers==3.3.1   # Pour embeddings locaux
+numpy==1.26.4
+
+# ===== Database =====
+sqlalchemy==2.0.35
+aiosqlite==0.20.0
+
+# ===== Memory & RAG =====
+# (Pas de dépendances lourdes supplémentaires - déjà incluses ci-dessus)
+
+# ===== WebSocket & Session Management =====
+websockets==14.1
+python-multipart==0.0.12
+
+# ===== Utilities =====
+python-dotenv==1.0.1
+httpx==0.27.2                  # HTTP client async
+aiofiles==24.1.0
+prometheus-client==0.21.0      # Métriques
+
+# ===== Dependency Injection =====
+dependency-injector==4.43.0
+
+# ===== Security =====
+pyjwt==2.9.0
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+
+# ===== Date & Time =====
+python-dateutil==2.9.0.post0
+
+# ===== Optional for enhanced features =====
+tiktoken==0.8.0                # Token counting pour OpenAI models

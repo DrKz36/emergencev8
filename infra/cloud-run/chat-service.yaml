@@ -1,0 +1,133 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: emergence-chat-service
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+  labels:
+    cloud.googleapis.com/location: europe-west1
+    app: emergence
+    service: chat
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: '1'
+        autoscaling.knative.dev/maxScale: '15'
+        run.googleapis.com/startup-cpu-boost: 'true'
+        run.googleapis.com/cpu-throttling: 'false'
+      labels:
+        app: emergence
+        service: chat
+        version: v1
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 600  # 10 min pour les longues générations LLM
+      serviceAccountName: 486095406755-compute@developer.gserviceaccount.com
+      containers:
+      - name: chat-service
+        image: europe-west1-docker.pkg.dev/emergence-469005/app/emergence-chat-service:latest
+        ports:
+        - name: http1
+          containerPort: 8080
+        env:
+        # LLM API Keys (from Secret Manager)
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: OPENAI_API_KEY
+              key: latest
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ANTHROPIC_API_KEY
+              key: latest
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: GOOGLE_API_KEY
+              key: latest
+              optional: true
+
+        # LLM Configuration
+        - name: EMERGENCE_TEMP_DEFAULT
+          value: "0.4"
+        - name: EMERGENCE_RAG_OFF_POLICY
+          value: "stateless"
+        - name: EMERGENCE_ENABLE_AGENT_MEMORY
+          value: "true"
+
+        # Database Configuration
+        - name: EMERGENCE_DB_PATH
+          value: "/app/data/emergence.db"
+        - name: CHROMA_PERSIST_DIR
+          value: "/app/data/chroma"
+
+        # Service Configuration
+        - name: PORT
+          value: "8080"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: SERVICE_NAME
+          value: "chat-service"
+        - name: ENVIRONMENT
+          value: "production"
+
+        # Chat Service Specific
+        - name: MAX_TOKENS_DEFAULT
+          value: "4096"
+        - name: ENABLE_STREAMING
+          value: "true"
+        - name: ENABLE_RAG_CACHE
+          value: "true"
+        - name: RAG_CACHE_TTL_SECONDS
+          value: "300"
+
+        # Memory/RAG Features (enabled)
+        - name: ENABLE_MEMORY_GARDENER
+          value: "true"
+        - name: ENABLE_CONCEPT_RECALL
+          value: "true"
+        - name: ENABLE_PROACTIVE_HINTS
+          value: "true"
+
+        resources:
+          limits:
+            cpu: '4'
+            memory: 2Gi
+          requests:
+            cpu: '2'
+            memory: 1Gi
+
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        startupProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 0
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 40  # 10 minutes max startup (40 * 15s)
+
+  traffic:
+  - latestRevision: true
+    percent: 100

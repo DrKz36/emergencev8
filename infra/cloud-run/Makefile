@@ -12,7 +12,7 @@ YELLOW := \033[1;33m
 RED := \033[0;31m
 NC := \033[0m # No Color
 
-.PHONY: help setup deploy-auth deploy-session deploy-all test clean logs-auth logs-session secrets
+.PHONY: help setup deploy-auth deploy-session deploy-chat deploy-all test clean logs-auth logs-session logs-chat secrets
 
 # Default target
 help:
@@ -26,16 +26,19 @@ help:
 	@echo "$(GREEN)Deployment:$(NC)"
 	@echo "  make deploy-auth    - Deploy authentication service"
 	@echo "  make deploy-session - Deploy session service"
+	@echo "  make deploy-chat    - Deploy chat/LLM service (P2.4)"
 	@echo "  make deploy-all     - Deploy all services interactively"
 	@echo ""
 	@echo "$(GREEN)Testing:$(NC)"
 	@echo "  make test           - Run integration tests"
 	@echo "  make test-auth      - Test auth service only"
 	@echo "  make test-session   - Test session service only"
+	@echo "  make test-chat      - Test chat service only (P2.4)"
 	@echo ""
 	@echo "$(GREEN)Monitoring:$(NC)"
 	@echo "  make logs-auth      - Tail auth service logs"
 	@echo "  make logs-session   - Tail session service logs"
+	@echo "  make logs-chat      - Tail chat service logs (P2.4)"
 	@echo "  make status         - Show service status"
 	@echo "  make urls           - Display service URLs"
 	@echo ""
@@ -43,6 +46,7 @@ help:
 	@echo "  make clean          - Clean Docker images"
 	@echo "  make rollback-auth  - Rollback auth service"
 	@echo "  make rollback-session - Rollback session service"
+	@echo "  make rollback-chat  - Rollback chat service (P2.4)"
 	@echo ""
 
 # Setup
@@ -74,6 +78,10 @@ deploy-session:
 	@echo "$(BLUE)Deploying session service...$(NC)"
 	@./deploy-session-service.sh
 
+deploy-chat:
+	@echo "$(BLUE)Deploying chat/LLM service (P2.4)...$(NC)"
+	@./deploy-chat-service.sh
+
 deploy-all:
 	@echo "$(BLUE)Deploying all services...$(NC)"
 	@./deploy-all-services.sh
@@ -101,6 +109,15 @@ test-session:
 	echo "URL: $$SESSION_URL"; \
 	curl -s "$$SESSION_URL/api/health" | jq .
 
+test-chat:
+	@echo "$(BLUE)Testing chat/LLM service (P2.4)...$(NC)"
+	@CHAT_URL=$$(gcloud run services describe emergence-chat-service \
+		--region=$(REGION) \
+		--project=$(PROJECT_ID) \
+		--format="value(status.url)"); \
+	echo "URL: $$CHAT_URL"; \
+	curl -s "$$CHAT_URL/api/health" | jq .
+
 # Monitoring
 logs-auth:
 	@gcloud run services logs tail emergence-auth-service \
@@ -109,6 +126,11 @@ logs-auth:
 
 logs-session:
 	@gcloud run services logs tail emergence-session-service \
+		--region=$(REGION) \
+		--project=$(PROJECT_ID)
+
+logs-chat:
+	@gcloud run services logs tail emergence-chat-service \
 		--region=$(REGION) \
 		--project=$(PROJECT_ID)
 
@@ -130,6 +152,12 @@ urls:
 	@echo ""
 	@echo "$(GREEN)💬 Session Service:$(NC)"
 	@gcloud run services describe emergence-session-service \
+		--region=$(REGION) \
+		--project=$(PROJECT_ID) \
+		--format="value(status.url)" 2>/dev/null || echo "Not deployed"
+	@echo ""
+	@echo "$(GREEN)🤖 Chat/LLM Service (P2.4):$(NC)"
+	@gcloud run services describe emergence-chat-service \
 		--region=$(REGION) \
 		--project=$(PROJECT_ID) \
 		--format="value(status.url)" 2>/dev/null || echo "Not deployed"
@@ -171,6 +199,21 @@ rollback-session:
 		--region=$(REGION) \
 		--project=$(PROJECT_ID)
 
+rollback-chat:
+	@echo "$(YELLOW)Rolling back chat service (P2.4)...$(NC)"
+	@REVISIONS=$$(gcloud run revisions list \
+		--service=emergence-chat-service \
+		--region=$(REGION) \
+		--project=$(PROJECT_ID) \
+		--limit=5 \
+		--format="table(name,status)"); \
+	echo "$$REVISIONS"; \
+	read -p "Enter revision name to rollback to: " REVISION; \
+	gcloud run services update-traffic emergence-chat-service \
+		--to-revisions=$$REVISION=100 \
+		--region=$(REGION) \
+		--project=$(PROJECT_ID)
+
 # Cleanup
 clean:
 	@echo "$(YELLOW)Cleaning Docker images...$(NC)"
@@ -198,6 +241,12 @@ dev-session:
 	@docker build -f session-service.Dockerfile -t emergence-session-local ../..
 	@echo "$(GREEN)✅ Build complete. Run with:$(NC)"
 	@echo "docker run -p 8080:8080 emergence-session-local"
+
+dev-chat:
+	@echo "$(BLUE)Building chat/LLM service for local development (P2.4)...$(NC)"
+	@docker build -f chat-service.Dockerfile -t emergence-chat-local ../..
+	@echo "$(GREEN)✅ Build complete. Run with:$(NC)"
+	@echo "docker run -p 8080:8080 -e OPENAI_API_KEY=your-key -e ANTHROPIC_API_KEY=your-key emergence-chat-local"
 
 # Info
 info:
