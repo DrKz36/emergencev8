@@ -1,9 +1,9 @@
 # Integrity & Docs Guardian Plugin
 
-**Version:** 2.0.0
+**Version:** 2.1.0
 **For:** ÉMERGENCE Application (FastAPI + Vite/React)
-**Agents:** Anima (DocKeeper), Neo (IntegrityWatcher), Nexus (Coordinator), ProdGuardian
-**NEW:** 🤖 Auto-Orchestration with Documentation Auto-Update
+**Agents:** Anima (DocKeeper), Neo (IntegrityWatcher), Nexus (Coordinator), ProdGuardian, Theia (CostWatcher), Argus (LogWatcher)
+**NEW:** 🔍 Real-Time Development Log Monitoring with Auto-Fix (Argus)
 
 ---
 
@@ -56,8 +56,10 @@ The **Integrity & Docs Guardian** is a Claude Code plugin designed to automate d
 | **Anima** | DocKeeper | Monitors code changes and identifies documentation gaps |
 | **Neo** | IntegrityWatcher | Verifies backend/frontend coherence and detects regressions |
 | **ProdGuardian** | Production Monitor | Analyzes production logs and detects anomalies |
+| **Theia** | CostWatcher | Monitors AI model costs and suggests optimizations |
+| **🆕 Argus** | LogWatcher | Real-time dev log monitoring with automated error fixing |
 | **Nexus** | Coordinator | Aggregates reports, prioritizes actions, provides unified view |
-| **🆕 Auto-Orchestrator** | Automation Engine | Runs all agents automatically and updates documentation |
+| **Auto-Orchestrator** | Automation Engine | Runs all agents automatically and updates documentation |
 
 ### Workflow
 
@@ -188,6 +190,12 @@ claude-code run /check_docs
 
 # Check integrity
 claude-code run /check_integrity
+
+# Check production logs (Cloud Run)
+claude-code run /check_prod
+
+# Monitor development logs (local) - NEW!
+claude-code run /check_logs
 
 # Generate unified report
 claude-code run /guardian_report
@@ -546,12 +554,14 @@ python claude-plugins/integrity-docs-guardian/scripts/check_integrity.py
 - [x] **Automatic Orchestration** - ✅ Implemented in v2.0.0
 - [x] **Documentation Auto-Update** - ✅ Implemented in v2.0.0
 - [x] **Periodic Scheduling** - ✅ Implemented in v2.0.0
+- [x] **Real-Time Dev Log Monitoring** - ✅ Implemented in v2.1.0 (Argus)
 - [ ] **AI-Powered Suggestions** - Use Claude to generate documentation updates automatically
 - [ ] **Schema Auto-Sync** - Automatically propagate schema changes to frontend types
 - [ ] **CI/CD Integration** - Block PRs with critical issues
 - [ ] **Dashboard** - Visual reporting of trends and health metrics
 - [ ] **Slack/Discord Notifications** - Real-time alerts for critical issues
 - [ ] **Historical Analysis** - Track improvement over time
+- [ ] **Browser Console Capture** - Capture frontend console logs via DevTools Protocol
 
 ### Advanced Checks
 
@@ -605,9 +615,18 @@ Built for the **ÉMERGENCE** AI-powered application ecosystem.
 
 ---
 
-**Version:** 2.0.0
-**Last Updated:** 2025-10-16
+**Version:** 2.1.0
+**Last Updated:** 2025-10-17
 **Maintained by:** ÉMERGENCE Team
+
+**Changelog v2.1.0:**
+- ✅ Added **Argus (LogWatcher)** - Real-time development log monitoring
+- ✅ Automated error detection for backend (FastAPI) and frontend (Vite/React)
+- ✅ Intelligent fix proposals with confidence scores
+- ✅ Auto-fix capability with user validation
+- ✅ Added `/check_logs` slash command for dev monitoring
+- ✅ PowerShell and Python scripts for log analysis
+- ✅ Pattern recognition for common error types (ImportError, TypeError, etc.)
 
 **Changelog v2.0.0:**
 - ✅ Added automatic orchestration system

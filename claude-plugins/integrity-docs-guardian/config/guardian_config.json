@@ -1,0 +1,204 @@
+{
+  "version": "3.0.0",
+  "last_updated": "2025-10-17T00:00:00Z",
+
+  "orchestration": {
+    "enabled": true,
+    "mode": "automatic",
+    "lock_timeout_seconds": 30,
+    "max_parallel_agents": 4,
+    "graceful_degradation": true
+  },
+
+  "agents": {
+    "anima": {
+      "enabled": true,
+      "triggers": ["pre-commit", "manual", "scheduled"],
+      "auto_apply_fixes": false,
+      "min_confidence_threshold": 90,
+      "block_on_critical": false,
+      "responsibilities": [
+        "documentation_gaps",
+        "version_management",
+        "changelog_updates"
+      ]
+    },
+    "neo": {
+      "enabled": true,
+      "triggers": ["pre-commit", "manual"],
+      "auto_apply_fixes": false,
+      "min_confidence_threshold": 85,
+      "block_on_critical": true,
+      "responsibilities": [
+        "schema_alignment",
+        "api_coherence",
+        "breaking_change_detection"
+      ]
+    },
+    "argus": {
+      "enabled": true,
+      "triggers": ["manual"],
+      "auto_apply_fixes": true,
+      "min_confidence_threshold": 95,
+      "block_on_critical": false,
+      "check_interval_seconds": 5,
+      "max_log_buffer_lines": 1000,
+      "responsibilities": [
+        "dev_log_monitoring",
+        "runtime_error_detection",
+        "auto_fix_proposals"
+      ]
+    },
+    "prodguardian": {
+      "enabled": true,
+      "triggers": ["pre-push", "scheduled", "manual"],
+      "auto_apply_fixes": false,
+      "block_on_critical": true,
+      "schedule_cron": "0 */6 * * *",
+      "cloud_run_service": "emergence-app",
+      "cloud_run_region": "europe-west1",
+      "responsibilities": [
+        "production_health",
+        "anomaly_detection",
+        "deployment_safety"
+      ]
+    },
+    "theia": {
+      "enabled": true,
+      "triggers": ["scheduled"],
+      "auto_apply_fixes": false,
+      "schedule_cron": "0 23 * * 0",
+      "alert_threshold_savings_percent": 30,
+      "alert_threshold_savings_amount": 500,
+      "responsibilities": [
+        "ai_cost_monitoring",
+        "model_optimization",
+        "pricing_updates"
+      ]
+    },
+    "nexus": {
+      "enabled": true,
+      "triggers": ["post-commit", "manual", "orchestration"],
+      "responsibilities": [
+        "report_aggregation",
+        "priority_assessment",
+        "trend_analysis"
+      ]
+    }
+  },
+
+  "reporting": {
+    "output_dir": "reports",
+    "retain_days": 30,
+    "formats": ["json", "markdown"],
+    "generate_summaries": true,
+    "slack_webhook": null,
+    "email_notifications": false,
+    "discord_webhook": null
+  },
+
+  "automation": {
+    "auto_commit": true,
+    "auto_push": false,
+    "require_approval_for_p0": true,
+    "require_approval_for_p1": true,
+    "require_approval_for_p2": false,
+    "auto_apply_threshold_confidence": 95,
+    "auto_apply_threshold_priority": "P1",
+    "max_auto_fixes_per_run": 5
+  },
+
+  "git_hooks": {
+    "pre_commit": {
+      "enabled": true,
+      "agents": ["anima", "neo"],
+      "block_on_critical": true,
+      "timeout_seconds": 120
+    },
+    "post_commit": {
+      "enabled": true,
+      "agents": ["nexus"],
+      "timeout_seconds": 60
+    },
+    "pre_push": {
+      "enabled": true,
+      "agents": ["prodguardian"],
+      "block_on_critical": true,
+      "timeout_seconds": 120
+    }
+  },
+
+  "priorities": {
+    "P0": {
+      "name": "CRITICAL",
+      "description": "Blocking issue - prevents commit/push",
+      "action_timeline": "Immediate",
+      "auto_apply": false,
+      "require_approval": true
+    },
+    "P1": {
+      "name": "HIGH",
+      "description": "Important issue - should be fixed soon",
+      "action_timeline": "Within 1 day",
+      "auto_apply": false,
+      "require_approval": true
+    },
+    "P2": {
+      "name": "MEDIUM",
+      "description": "Moderate issue - fix within week",
+      "action_timeline": "Within 1 week",
+      "auto_apply": true,
+      "require_approval": false
+    },
+    "P3": {
+      "name": "LOW",
+      "description": "Minor issue - fix within sprint",
+      "action_timeline": "Within sprint",
+      "auto_apply": true,
+      "require_approval": false
+    },
+    "P4": {
+      "name": "INFO",
+      "description": "Informational - backlog",
+      "action_timeline": "Backlog",
+      "auto_apply": false,
+      "require_approval": false
+    }
+  },
+
+  "conflict_resolution": {
+    "enabled": true,
+    "priority_order": ["neo", "anima", "prodguardian", "argus", "theia"],
+    "resolution_strategy": "highest_priority_wins",
+    "manual_review_on_conflict": true
+  },
+
+  "monitoring": {
+    "track_metrics": true,
+    "metrics_file": "reports/metrics/agent_metrics.json",
+    "dashboard_enabled": false,
+    "alert_on_agent_failure": true,
+    "alert_on_stale_reports": true,
+    "stale_report_threshold_hours": 24
+  },
+
+  "version_management": {
+    "atomic_updates": true,
+    "source_of_truth": "src/version.js",
+    "sync_targets": [
+      "package.json",
+      "CHANGELOG.md",
+      "ROADMAP_OFFICIELLE.md"
+    ],
+    "verify_consistency": true,
+    "rollback_on_failure": true
+  },
+
+  "error_handling": {
+    "graceful_degradation": true,
+    "continue_on_agent_failure": true,
+    "report_partial_results": true,
+    "max_retry_attempts": 2,
+    "retry_delay_seconds": 5
+  }
+}

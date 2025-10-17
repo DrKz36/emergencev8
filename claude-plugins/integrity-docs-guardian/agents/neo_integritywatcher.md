@@ -20,10 +20,13 @@ Ta mission est de détecter les incohérences entre backend et frontend, identif
 
 ### Application Architecture
 - **Name:** ÉMERGENCE
+- **Version System:** `src/version.js` (SOURCE DE VÉRITÉ pour toutes les infos de version)
 - **Backend:** FastAPI (Python) - `src/backend/`
 - **Frontend:** Vite/React (TypeScript/JavaScript) - `src/frontend/`
 - **API Contract:** OpenAPI specification (`openapi.json`)
 - **Agents:** Anima, Neo (toi), Nexus
+
+**Version Reference:** Pour obtenir la version actuelle du système, toujours consulter `src/version.js`
 
 ### Technology Stack
 **Backend:**

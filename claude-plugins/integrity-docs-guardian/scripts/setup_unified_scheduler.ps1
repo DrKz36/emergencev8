@@ -7,7 +7,8 @@
 
 param(
     [switch]$Force,
-    [int]$IntervalMinutes = 60
+    [int]$IntervalMinutes = 60,
+    [switch]$EnableAutoCommit
 )
 
 Write-Host "================================================================" -ForegroundColor Cyan
@@ -48,6 +49,7 @@ Write-Host "   Nom de la tâche: $taskName" -ForegroundColor White
 Write-Host "   Script: $scriptPath" -ForegroundColor White
 Write-Host "   Intervalle: $IntervalMinutes minutes" -ForegroundColor White
 Write-Host "   Dossier de travail: $repoRoot" -ForegroundColor White
+Write-Host "   AUTO_COMMIT: $(if ($EnableAutoCommit) { 'ACTIVÉ' } else { 'DÉSACTIVÉ' })" -ForegroundColor $(if ($EnableAutoCommit) { 'Green' } else { 'Yellow' })
 Write-Host ""
 
 # Vérifier si la tâche existe déjà
@@ -85,13 +87,26 @@ if (-not $existingTask) {
     Write-Host "🔧 Création de la tâche planifiée..." -ForegroundColor Green
 
     try {
+        # Construire les arguments PowerShell
+        $psArguments = "-WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass"
+
+        # Si AUTO_COMMIT est activé, définir la variable d'environnement via le script
+        if ($EnableAutoCommit) {
+            $psArguments += " -Command `"& { `$env:AUTO_COMMIT='1'; & '$scriptPath' }`""
+        } else {
+            $psArguments += " -File `"$scriptPath`""
+        }
+
         # Définir l'action - Exécuter PowerShell en arrière-plan sans fenêtre
         $action = New-ScheduledTaskAction `
             -Execute "powershell.exe" `
-            -Argument "-WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" `
+            -Argument $psArguments `
             -WorkingDirectory $repoRoot
 
         Write-Host "   ✅ Action configurée" -ForegroundColor White
+        if ($EnableAutoCommit) {
+            Write-Host "      🔄 AUTO_COMMIT activé pour cette tâche" -ForegroundColor Green
+        }
 
         # Définir les déclencheurs
         # 1. Au démarrage du système
@@ -129,14 +144,19 @@ if (-not $existingTask) {
 
         Write-Host "   ✅ Paramètres configurés" -ForegroundColor White
 
-        # Créer la tâche
+        # Créer la tâche avec une description adaptée
+        $description = "ÉMERGENCE - Unified Guardian Scheduler (Phase 3) - Orchestration automatique des agents de vérification"
+        if ($EnableAutoCommit) {
+            $description += " [AUTO_COMMIT activé]"
+        }
+
         $task = Register-ScheduledTask `
             -TaskName $taskName `
             -Action $action `
             -Trigger $triggerStartup, $triggerRepeat `
             -Principal $principal `
             -Settings $settings `
-            -Description "ÉMERGENCE - Unified Guardian Scheduler (Phase 3) - Orchestration automatique des agents de vérification" `
+            -Description $description `
             -ErrorAction Stop
 
         Write-Host ""
@@ -223,6 +243,9 @@ Write-Host "🛠️  Commandes utiles:" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "   # Voir l'état de la tâche" -ForegroundColor Gray
 Write-Host "   Get-ScheduledTask -TaskName '$taskName'" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "   # Reconfigurer avec AUTO_COMMIT activé" -ForegroundColor Gray
+Write-Host "   .\setup_unified_scheduler.ps1 -Force -EnableAutoCommit" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "   # Démarrer la tâche manuellement" -ForegroundColor Gray
 Write-Host "   Start-ScheduledTask -TaskName '$taskName'" -ForegroundColor Cyan

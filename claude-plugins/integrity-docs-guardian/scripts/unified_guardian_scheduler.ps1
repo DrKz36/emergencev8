@@ -262,9 +262,11 @@ Write-Log "================================================================" "IN
 
 $autoSyncSuccess = $false
 
-# Vérifier si AUTO_APPLY est activé
+# Vérifier si AUTO_APPLY et AUTO_COMMIT sont activés
 $autoApplyEnabled = $env:AUTO_APPLY -eq "1"
+$autoCommitEnabled = $env:AUTO_COMMIT -eq "1"
 Write-Log "AUTO_APPLY: $(if ($autoApplyEnabled) { 'ACTIVÉ' } else { 'DÉSACTIVÉ' })" "INFO"
+Write-Log "AUTO_COMMIT: $(if ($autoCommitEnabled) { 'ACTIVÉ' } else { 'DÉSACTIVÉ' })" "INFO"
 
 if (Test-Path $autoSyncScript) {
     try {
