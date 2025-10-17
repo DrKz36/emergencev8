@@ -68,6 +68,10 @@ desktop.ini
 
 # Scripts locaux non requis en prod
 run-local.ps1
+
+# Claude Code shell snapshots (temp files)
+.claude/
+
 # === Whitelist FRONT (ARBO-LOCK) ===
 !index.html
 !assets/**
