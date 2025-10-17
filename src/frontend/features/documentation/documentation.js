@@ -6,6 +6,7 @@
 import { TUTORIAL_GUIDES } from '../../components/tutorial/tutorialGuides.js';
 import { generateHymnHTML, initializeHymnSection } from './hymn-section.js';
 import { glossaryNavigator } from '../../utils/glossary-navigation.js';
+import { initGlossaryModal } from '../../components/tutorial/GlossaryModal.js';
 
 export class Documentation {
     constructor() {
@@ -66,6 +67,9 @@ export class Documentation {
             // Initialize glossary navigator for back-to-position functionality
             glossaryNavigator.init();
 
+            // Initialize glossary modal for interactive definitions
+            initGlossaryModal();
+
             this.initialized = true;
             console.log('[Documentation] Mounted successfully');
         } catch (error) {
@@ -86,7 +90,7 @@ export class Documentation {
 
                 <!-- Navigation rapide -->
                 <div class="doc-quick-nav">
-                    <a href="#tutorial" class="doc-nav-link btn-load-tutorial" data-doc="/docs/EMERGENCE_TUTORIEL_VULGARISE_V2.md">
+                    <a href="#tutorial-guides" class="doc-nav-link">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="10"></circle>
                             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
@@ -94,10 +98,10 @@ export class Documentation {
                         </svg>
                         Tutoriel
                     </a>
-                    <a href="#tutorial" class="doc-nav-link btn-load-tutorial" data-doc="/docs/glossaire.md">
+                    <a href="#glossary" class="doc-nav-link" id="btn-show-glossary">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                         </svg>
                         Glossaire
                     </a>
@@ -176,7 +180,7 @@ export class Documentation {
                             </p>
                         </div>
 
-                        <div id="tutorial-content-container" style="margin-top: 2rem;">
+                        <div id="tutorial-guides" style="margin-top: 2rem;">
                             ${this.renderTutorialGuides()}
                         </div>
                     </section>
@@ -1356,18 +1360,18 @@ export class Documentation {
     }
 
     attachEventListeners() {
-        // Load tutorial documents
-        const tutorialButtons = document.querySelectorAll('.btn-load-tutorial');
-        tutorialButtons.forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+        // Show glossary modal
+        const glossaryBtn = document.getElementById('btn-show-glossary');
+        if (glossaryBtn) {
+            glossaryBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                const docPath = btn.dataset.doc;
-                await this.loadMarkdownDoc(docPath);
+                const glossaryModal = initGlossaryModal();
+                glossaryModal.showAll();
             });
-        });
+        }
 
-        // Smooth scroll for navigation links (excluding tutorial loading buttons)
-        const navLinks = document.querySelectorAll('.doc-nav-link:not(.btn-load-tutorial)');
+        // Smooth scroll for navigation links (excluding glossary button)
+        const navLinks = document.querySelectorAll('.doc-nav-link:not(#btn-show-glossary)');
         navLinks.forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();

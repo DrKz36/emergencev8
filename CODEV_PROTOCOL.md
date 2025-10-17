@@ -149,6 +149,105 @@ Avant de demander validation (commit/push), **tout agent doit** :
 - [ ] **Git propre** : `git status` sans fichiers non suivis suspects ✅
 - [ ] **Passation** : entrée complète dans `docs/passation.md` ✅
 
+### 🤖 NOUVEAU - Vérifications Automatiques (Guardian Phase 3)
+
+**Les hooks Git exécutent AUTOMATIQUEMENT les vérifications suivantes** :
+
+#### Pre-Commit Hook (avant validation du commit)
+- ✅ **Couverture tests** : vérifie que nouveaux fichiers `.py` ont des tests associés
+- ✅ **Doc API** : vérifie que `openapi.json` est à jour si routers modifiés
+- ✅ **Anima (DocKeeper)** : détecte automatiquement les gaps de documentation
+  - Analyse les commits récents et fichiers modifiés
+  - Identifie documentation manquante ou obsolète
+  - Génère rapport : `claude-plugins/integrity-docs-guardian/reports/docs_report.json`
+- ✅ **Neo (IntegrityWatcher)** : vérifie automatiquement l'intégrité backend/frontend
+  - Valide cohérence endpoints API backend ↔ frontend
+  - Vérifie schéma OpenAPI
+  - Détecte régressions potentielles
+  - Génère rapport : `claude-plugins/integrity-docs-guardian/reports/integrity_report.json`
+
+**Résultat** :
+- 🚨 **Commit BLOQUÉ** si Neo détecte erreurs CRITIQUES d'intégrité
+- ⚠️ **Commit AUTORISÉ avec warnings** pour problèmes mineurs
+- ✅ **Commit AUTORISÉ sans problème** si tout est OK
+
+#### Post-Commit Hook (après commit réussi)
+- ✅ **Nexus (Coordinator)** : génère automatiquement un rapport unifié
+  - Combine résultats d'Anima, Neo, et ProdGuardian
+  - Génère résumé exécutif (executive summary)
+  - Liste recommandations par priorité (HIGH/MEDIUM/LOW)
+  - Affiche feedback détaillé dans le terminal
+  - Génère rapport : `claude-plugins/integrity-docs-guardian/reports/unified_report.json`
+
+**Résultat** :
+- 📊 Feedback instantané avec statut de chaque agent
+- 💡 Recommandations principales affichées
+- 📋 Rapports JSON disponibles pour analyse détaillée
+
+#### Pre-Push Hook (avant push vers remote)
+- ✅ **ProdGuardian** : vérifie automatiquement l'état de la production
+  - Analyse les logs Google Cloud Run (dernière heure)
+  - Détecte erreurs, warnings, crashes, OOMKilled
+  - Évalue l'état de santé : OK / DEGRADED / CRITICAL
+  - Génère rapport : `claude-plugins/integrity-docs-guardian/reports/prod_report.json`
+- ✅ **Vérification rapports** : vérifie que Documentation et Intégrité sont OK
+
+**Résultat** :
+- 🚨 **Push BLOQUÉ** si production en état CRITICAL
+- ⚠️ **Push AUTORISÉ avec warnings** si production DEGRADED
+- ✅ **Push AUTORISÉ** si production OK
+
+### Feedback Automatique
+
+**Exemple de feedback pre-commit** :
+```
+🔍 ÉMERGENCE Guardian: Vérification Pre-Commit
+====================================================
+📝 Fichiers staged: [liste]
+🧪 [1/4] Vérif de la couverture de tests... ✅
+🔌 [2/4] Vérif de la doc des endpoints API... ✅
+📚 [3/4] Lancement d'Anima (DocKeeper)... ✅
+🔐 [4/4] Lancement de Neo (IntegrityWatcher)... ✅
+====================================================
+✅ Validation pre-commit passée sans problème!
+```
+
+**Exemple de feedback post-commit** :
+```
+🎯 ÉMERGENCE Guardian: Feedback Post-Commit
+=============================================================
+📝 Commit: abc1234
+📊 RÉSUMÉ DES VÉRIFICATIONS
+-------------------------------------------------------------
+📚 Anima (DocKeeper): ✅ OK - Aucun gap de documentation
+🔐 Neo (IntegrityWatcher): ✅ OK - Intégrité vérifiée
+🎯 Nexus (Coordinator): ✅ All systems operational
+📋 Rapports disponibles:
+   - Anima:  .../docs_report.json
+   - Neo:    .../integrity_report.json
+   - Nexus:  .../unified_report.json
+```
+
+### Bypass des Hooks (déconseillé)
+
+En cas de besoin urgent (exemple : fix critique en production) :
+```bash
+# Skip pre-commit + post-commit
+git commit --no-verify -m "message"
+
+# Skip pre-push
+git push --no-verify
+```
+
+⚠️ **Utiliser UNIQUEMENT en cas d'urgence et documenter dans passation !**
+
+### Documentation Guardian
+
+- **Guide complet** : `claude-plugins/integrity-docs-guardian/AUTOMATION_GUIDE.md`
+- **État système** : `claude-plugins/integrity-docs-guardian/SYSTEM_STATUS.md`
+- **Setup** : `GUARDIAN_SETUP_COMPLETE.md`
+- **Rapports** : `claude-plugins/integrity-docs-guardian/reports/*.json`
+
 ---
 
 ## 5. Exemples de collaboration réussie

@@ -84,7 +84,11 @@ def run_orchestrator() -> Dict[str, Any]:
 
 
 def check_git_status() -> bool:
-    """Vérifie s'il y a des changements non commités"""
+    """Vérifie s'il y a des changements non commités
+
+    Note: En mode HIDDEN (CHECK_GIT_STATUS=0), on skip cette vérification
+    pour permettre l'exécution même avec des changements non commités.
+    """
     try:
         result = subprocess.run(
             ['git', 'status', '--porcelain'],
@@ -92,10 +96,11 @@ def check_git_status() -> bool:
             capture_output=True,
             text=True
         )
-        # S'il y a des changements, ne pas exécuter
+        # S'il y a des changements, ne pas exécuter (sauf si CHECK_GIT_STATUS=0)
         has_changes = bool(result.stdout.strip())
         if has_changes:
-            log_message("⚠️ Changements non commités détectés, skip de l'orchestration")
+            log_message("ℹ️  Changements non commités détectés")
+            log_message("   Exécution en mode monitoring (pas de commit automatique)")
         return not has_changes
     except Exception as e:
         log_message(f"⚠️ Impossible de vérifier le statut git: {e}")

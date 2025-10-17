@@ -1933,6 +1933,95 @@ async def import_concepts(
         raise HTTPException(status_code=500, detail=f"Failed to import concepts: {e}")
 
 
+@router.get(
+    "/concepts/graph",
+    response_model=Dict[str, Any],
+    summary="Get concept graph data for visualization",
+    description="Returns concepts and their relationships for graph visualization",
+)
+async def get_concepts_graph(
+    request: Request,
+    limit: int = Query(100, ge=1, le=500, description="Max concepts to include"),
+) -> Dict[str, Any]:
+    """
+    Get concept graph data for visualization.
+
+    Returns:
+        {
+            "concepts": [...],  # List of concepts with metadata
+            "relations": [...], # List of relationships between concepts
+        }
+    """
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    container = _get_container(request)
+    vector_service = container.vector_service()
+    collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+    collection = vector_service.get_or_create_collection(collection_name)
+
+    try:
+        # Get user's concepts
+        results = collection.get(
+            where={"$and": [
+                {"user_id": user_id},
+                {"type": "concept"}
+            ]},
+            include=["documents", "metadatas"],
+            limit=limit
+        )
+
+        concepts_docs = results.get("documents", [])
+        concepts_meta = results.get("metadatas", [])
+        concepts_ids = results.get("ids", [])
+
+        # Build concepts list
+        concepts = []
+        relations = []
+
+        for concept_id, doc, meta in zip(concepts_ids, concepts_docs, concepts_meta):
+            if not meta:
+                continue
+
+            concept = {
+                "id": concept_id,
+                "concept_id": concept_id,
+                "concept_text": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
+                "label": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
+                "occurrence_count": int(meta.get("mention_count", 1)),
+                "created_at": meta.get("first_mentioned_at") or meta.get("created_at"),
+                "last_mentioned": meta.get("last_mentioned_at"),
+                "thread_ids": meta.get("thread_ids", []),
+            }
+            concepts.append(concept)
+
+            # Extract relations from metadata
+            concept_relations = meta.get("relations", [])
+            for rel in concept_relations:
+                if isinstance(rel, dict):
+                    relations.append({
+                        "source": concept_id,
+                        "target": rel.get("target_id"),
+                        "type": rel.get("type", "related"),
+                        "strength": rel.get("strength", 1.0),
+                    })
+
+        logger.info(f"[concepts/graph] Retrieved {len(concepts)} concepts and {len(relations)} relations for user {user_id}")
+
+        return {
+            "concepts": concepts,
+            "relations": relations,
+            "total_concepts": len(concepts),
+            "total_relations": len(relations),
+        }
+
+    except Exception as e:
+        logger.error(f"[concepts/graph] Failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve concept graph: {e}")
+
+
 @router.post(
     "/consolidate-archived",
     response_model=Dict[str, Any],

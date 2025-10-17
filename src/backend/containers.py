@@ -325,6 +325,7 @@ class AppContainer(containers.DeclarativeContainer):
         SessionManager,
         db_manager=db_manager,
         memory_analyzer=memory_analyzer,
+        vector_service=vector_service,  # 🆕 Phase Agent Memory: For HandshakeHandler init
     )
     auth_config = providers.Callable(build_auth_config_from_env)
     auth_rate_limiter = providers.Singleton(SlidingWindowRateLimiter)

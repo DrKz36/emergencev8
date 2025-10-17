@@ -2225,6 +2225,7 @@ class ChatService:
                                     gardener.tend_the_garden(
                                         consolidation_limit=3,
                                         session_id=session_id,
+                                        agent_id=agent_id,  # 🆕 Phase Agent Memory
                                         user_id=mot_uid,
                                     )
                                 )
@@ -2503,6 +2504,20 @@ class ChatService:
                     },
                     session_id,
                 )
+
+                # 🆕 Handshake protocol: Send HELLO for agent-specific context sync
+                if uid and hasattr(connection_manager, 'send_agent_hello'):
+                    try:
+                        await connection_manager.send_agent_hello(
+                            session_id=session_id,
+                            agent_id=agent_id,
+                            model=primary_model,
+                            provider=primary_provider,
+                            user_id=uid
+                        )
+                    except Exception as hello_err:
+                        logger.debug(f"[ChatService] HELLO handshake failed: {hello_err}")
+
             except Exception:
                 pass
             logger.info(
@@ -2744,6 +2759,7 @@ class ChatService:
                                 consolidation_limit=3,
                                 thread_id=thread_id,
                                 session_id=session_id,
+                                agent_id=agent_id,  # 🆕 Phase Agent Memory
                                 user_id=uid or self._try_get_user_id(session_id),
                             )
                         )

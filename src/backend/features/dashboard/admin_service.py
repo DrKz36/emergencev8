@@ -92,21 +92,40 @@ class AdminDashboardService:
     async def _get_users_breakdown(self) -> List[Dict[str, Any]]:
         """Get per-user statistics breakdown with flexible user matching."""
         try:
-            # Fix Phase 1.6: auth_allowlist n'a PAS de colonne user_id, seulement email
-            # On join uniquement sur email
+            # Get all unique user_ids from sessions
             query = """
-                SELECT DISTINCT
-                    s.user_id,
-                    COALESCE(a.email, s.user_id) as email,
-                    COALESCE(a.role, 'member') as role
-                FROM sessions s
-                LEFT JOIN auth_allowlist a ON s.user_id = a.email
-                WHERE s.user_id IS NOT NULL
-                ORDER BY s.created_at DESC
+                SELECT DISTINCT user_id
+                FROM sessions
+                WHERE user_id IS NOT NULL
+                ORDER BY created_at DESC
             """
             conn = await self.db._ensure_connection()
             cursor = await conn.execute(query)
-            rows = await cursor.fetchall()
+            user_id_rows = await cursor.fetchall()
+
+            # Get all emails from auth_allowlist
+            cursor = await conn.execute("SELECT email, role FROM auth_allowlist")
+            allowlist_rows = await cursor.fetchall()
+
+            # Create a mapping: user_id -> (email, role)
+            import hashlib
+            email_map = {}
+            for email, role in allowlist_rows:
+                # Hash the email to match against user_ids
+                email_hash = hashlib.sha256(email.encode('utf-8')).hexdigest()
+                email_map[email_hash] = (email, role)
+                # Also store plain email as key (for non-hashed user_ids)
+                email_map[email] = (email, role)
+
+            # Build rows with matched emails
+            rows = []
+            for (user_id,) in user_id_rows:
+                if user_id in email_map:
+                    email, role = email_map[user_id]
+                    rows.append((user_id, email, role))
+                else:
+                    # Fallback: use user_id as email if no match
+                    rows.append((user_id, user_id, 'member'))
 
             if not rows:
                 logger.warning("[admin_dashboard] No users found in sessions table")
@@ -410,35 +429,49 @@ class AdminDashboardService:
         Returns session details including user, device, IP, and last activity.
         """
         try:
-            # Get all sessions ordered by last activity
+            # Get all sessions
             query = """
                 SELECT
                     s.id,
                     s.user_id,
                     s.created_at,
                     s.updated_at,
-                    s.metadata,
-                    a.email,
-                    a.role
+                    s.metadata
                 FROM sessions s
-                LEFT JOIN auth_allowlist a ON s.user_id = a.email
                 WHERE s.user_id IS NOT NULL
                 ORDER BY s.updated_at DESC
                 LIMIT 100
             """
             conn = await self.db._ensure_connection()
             cursor = await conn.execute(query)
-            rows = await cursor.fetchall()
+            session_rows = await cursor.fetchall()
+
+            # Get all emails from auth_allowlist
+            cursor = await conn.execute("SELECT email, role FROM auth_allowlist")
+            allowlist_rows = await cursor.fetchall()
+
+            # Create email mapping
+            import hashlib
+            email_map = {}
+            for email, role in allowlist_rows:
+                email_hash = hashlib.sha256(email.encode('utf-8')).hexdigest()
+                email_map[email_hash] = (email, role)
+                email_map[email] = (email, role)
 
             sessions = []
-            for row in rows:
+            for row in session_rows:
                 session_id = row[0]
                 user_id = row[1]
                 created_at = row[2]
                 updated_at = row[3]
                 metadata_json = row[4]
-                email = row[5] if row[5] else user_id
-                role = row[6] if row[6] else "member"
+
+                # Match user_id with email from allowlist
+                if user_id in email_map:
+                    email, role = email_map[user_id]
+                else:
+                    email = user_id
+                    role = "member"
 
                 # Parse metadata
                 metadata = {}

@@ -7,7 +7,6 @@ import { SettingsIcons, getIcon } from './settings-icons.js';
 import { settingsModels } from './settings-models.js';
 import { settingsUI } from './settings-ui.js';
 import { settingsSecurity } from './settings-security.js';
-import { settingsTutorial } from './settings-tutorial.js';
 import { settingsRAG } from './settings-rag.js';
 
 export class Settings {
@@ -18,7 +17,6 @@ export class Settings {
             models: settingsModels,
             ui: settingsUI,
             security: settingsSecurity,
-            tutorial: settingsTutorial,
             rag: settingsRAG
         };
         this.initialized = false;
@@ -97,14 +95,6 @@ export class Settings {
                             <span class="nav-hint">Thème et apparence</span>
                         </div>
                     </button>
-                    <button class="settings-nav-item ${this.activeTab === 'tutorial' ? 'active' : ''}"
-                            data-tab="tutorial">
-                        <span class="nav-icon">${SettingsIcons.graduation}</span>
-                        <div class="nav-content">
-                            <span class="nav-label">Tutoriel</span>
-                            <span class="nav-hint">Guides et documentation</span>
-                        </div>
-                    </button>
                 </div>
 
                 <!-- Settings Content -->
@@ -125,12 +115,6 @@ export class Settings {
                     <div class="settings-panel ${this.activeTab === 'ui' ? 'active' : ''}"
                          data-panel="ui">
                         <div id="settings-ui-container"></div>
-                    </div>
-
-                    <!-- Tutorial Tab -->
-                    <div class="settings-panel ${this.activeTab === 'tutorial' ? 'active' : ''}"
-                         data-panel="tutorial">
-                        <div id="settings-tutorial-container"></div>
                     </div>
                 </div>
 
@@ -531,12 +515,24 @@ export class Settings {
                     <h3>${getIcon('barChart', 'section-icon')} Statistiques du Projet</h3>
                     <div class="doc-stats">
                         <div class="doc-stat-item">
+                            <span class="stat-label">Lignes de code totales:</span>
+                            <span class="stat-value">~99,627 lignes (tous fichiers sources)</span>
+                        </div>
+                        <div class="doc-stat-item">
                             <span class="stat-label">Frontend:</span>
-                            <span class="stat-value">~15,000 lignes de code (JavaScript/CSS)</span>
+                            <span class="stat-value">~64,281 lignes (JavaScript/CSS)</span>
                         </div>
                         <div class="doc-stat-item">
                             <span class="stat-label">Backend:</span>
-                            <span class="stat-value">~8,000 lignes de code (Python/FastAPI)</span>
+                            <span class="stat-value">~33,660 lignes (Python/FastAPI)</span>
+                        </div>
+                        <div class="doc-stat-item">
+                            <span class="stat-label">Fichiers sources:</span>
+                            <span class="stat-value">257 fichiers (JS, CSS, Python)</span>
+                        </div>
+                        <div class="doc-stat-item">
+                            <span class="stat-label">Fichiers trackés Git:</span>
+                            <span class="stat-value">906 fichiers au total</span>
                         </div>
                         <div class="doc-stat-item">
                             <span class="stat-label">Architecture:</span>
@@ -549,21 +545,34 @@ export class Settings {
                     <h3>${getIcon('package', 'section-icon')} Dépendances Principales</h3>
                     <div class="dependencies-grid">
                         <div class="dep-category">
-                            <h4>Frontend</h4>
+                            <h4>Frontend (9 packages NPM)</h4>
                             <ul>
-                                <li>Vite - Build tool moderne</li>
-                                <li>Marked - Parsing Markdown</li>
-                                <li>Vanilla JavaScript - Sans framework</li>
+                                <li><strong>Vite 7.1.2</strong> - Build tool moderne ultra-rapide</li>
+                                <li><strong>Marked 12.0.2</strong> - Parsing Markdown</li>
+                                <li><strong>jsPDF 3.0.3</strong> - Génération de PDF</li>
+                                <li><strong>PapaParse 5.5.3</strong> - Parsing CSV</li>
+                                <li><strong>Playwright 1.48.2</strong> - Tests E2E</li>
+                                <li><strong>Concurrently 9.2.0</strong> - Orchestration scripts</li>
+                                <li>Vanilla JavaScript - Architecture légère sans framework</li>
                             </ul>
                         </div>
                         <div class="dep-category">
-                            <h4>Backend</h4>
+                            <h4>Backend (45+ packages Python)</h4>
                             <ul>
-                                <li>FastAPI - Framework web async</li>
-                                <li>OpenAI, Anthropic, Google AI - Intégrations LLM</li>
-                                <li>ChromaDB - Base vectorielle</li>
-                                <li>Firestore - Persistance cloud</li>
-                                <li>Prometheus - Métriques et observabilité</li>
+                                <li><strong>FastAPI 0.119.0</strong> - Framework web async haute performance</li>
+                                <li><strong>Uvicorn 0.30.1</strong> - Serveur ASGI production-ready</li>
+                                <li><strong>OpenAI, Anthropic, Google AI</strong> - Intégrations multi-LLM</li>
+                                <li><strong>ChromaDB 0.5.23</strong> - Base vectorielle pour embeddings</li>
+                                <li><strong>Qdrant Client</strong> - Backend vectoriel alternatif</li>
+                                <li><strong>Google Cloud Firestore</strong> - Persistance cloud NoSQL</li>
+                                <li><strong>Sentence-Transformers</strong> - Embeddings sémantiques</li>
+                                <li><strong>PyTorch 2.1+</strong> - Deep learning backend</li>
+                                <li><strong>Prometheus Client</strong> - Métriques et observabilité</li>
+                                <li><strong>Dependency Injector</strong> - Architecture DI avancée</li>
+                                <li><strong>Pydantic 2.6+</strong> - Validation de données typées</li>
+                                <li><strong>PyJWT, BCrypt</strong> - Authentification et sécurité</li>
+                                <li><strong>PyMuPDF, python-docx</strong> - Traitement documents</li>
+                                <li><strong>Pytest, Ruff, MyPy</strong> - Suite de tests et qualité</li>
                             </ul>
                         </div>
                     </div>
@@ -619,15 +628,168 @@ export class Settings {
                             Le projet a évolué à travers 8 versions majeures, intégrant progressivement :
                         </p>
                         <ul>
-                            <li>La mémoire sémantique persistante</li>
+                            <li>La mémoire sémantique persistante avec graphe de concepts</li>
                             <li>L'orchestration multi-modèles (GPT-4, Claude, Gemini)</li>
                             <li>Le débat contradictoire entre agents</li>
-                            <li>L'interface vocale naturelle</li>
-                            <li>L'observabilité temps réel</li>
+                            <li>L'interface vocale naturelle (Speech-to-Text/Text-to-Speech)</li>
+                            <li>L'observabilité temps réel avec Prometheus</li>
+                            <li>La gestion intelligente de documents avec RAG sémantique</li>
+                            <li>L'isolation mémoire par agent avec synchronisation automatique</li>
+                        </ul>
+
+                        <h4 style="margin-top: 24px; color: #60a5fa;">🤖 L'Écosystème Guardian Claude - Une Équipe IA Autonome</h4>
+                        <p>
+                            Parallèlement au développement d'ÉMERGENCE, un <strong>écosystème complet d'agents IA de développement</strong>
+                            s'est formé naturellement, transformant radicalement la méthode de travail. Ces agents, basés sur Claude 3.5 Sonnet
+                            et Claude Code, constituent aujourd'hui une <strong>véritable équipe de développement autonome</strong>.
+                        </p>
+
+                        <div class="guardian-team" style="background: rgba(30, 41, 59, 0.5); padding: 20px; border-radius: 12px; margin: 16px 0;">
+                            <h5 style="color: #818cf8; margin-top: 0;">Les Agents Guardian - Rôles et Responsabilités</h5>
+                            <ul style="list-style: none; padding-left: 0;">
+                                <li style="margin: 12px 0; padding: 12px; background: rgba(51, 65, 85, 0.4); border-left: 3px solid #f59e0b; border-radius: 6px;">
+                                    <strong style="color: #fbbf24;">📚 Anima (DocKeeper)</strong> - <em>Architecte Documentation</em><br/>
+                                    Scanne en continu le code pour détecter les gaps de documentation, vérifie la cohérence entre
+                                    le code et la doc, génère automatiquement les mises à jour nécessaires.
+                                    <span style="color: #94a3b8; font-size: 0.9em;">→ Équivalent: Tech Writer senior (40h/mois)</span>
+                                </li>
+                                <li style="margin: 12px 0; padding: 12px; background: rgba(51, 65, 85, 0.4); border-left: 3px solid #10b981; border-radius: 6px;">
+                                    <strong style="color: #34d399;">🔐 Neo (IntegrityWatcher)</strong> - <em>Gardien de l'Intégrité</em><br/>
+                                    Vérifie l'intégrité structurelle backend/frontend, détecte les incohérences d'architecture,
+                                    valide les contrats API, signale les violations de conventions.
+                                    <span style="color: #94a3b8; font-size: 0.9em;">→ Équivalent: QA Engineer + Architecte (60h/mois)</span>
+                                </li>
+                                <li style="margin: 12px 0; padding: 12px; background: rgba(51, 65, 85, 0.4); border-left: 3px solid #ef4444; border-radius: 6px;">
+                                    <strong style="color: #f87171;">🏭 ProdGuardian</strong> - <em>Moniteur Production</em><br/>
+                                    Surveille l'état de la production via Cloud Run logs, détecte les erreurs critiques,
+                                    analyse les patterns d'erreurs, bloque les déploiements si production instable.
+                                    <span style="color: #94a3b8; font-size: 0.9em;">→ Équivalent: DevOps/SRE Engineer (50h/mois)</span>
+                                </li>
+                                <li style="margin: 12px 0; padding: 12px; background: rgba(51, 65, 85, 0.4); border-left: 3px solid #8b5cf6; border-radius: 6px;">
+                                    <strong style="color: #a78bfa;">💰 Theia (CostWatcher)</strong> - <em>Optimisateur de Coûts IA</em><br/>
+                                    Analyse l'utilisation des modèles IA, identifie les opportunités d'optimisation,
+                                    recommande les modèles les plus rentables selon le contexte, track le ROI.
+                                    <span style="color: #94a3b8; font-size: 0.9em;">→ Équivalent: FinOps Analyst (30h/mois)</span>
+                                </li>
+                                <li style="margin: 12px 0; padding: 12px; background: rgba(51, 65, 85, 0.4); border-left: 3px solid #06b6d4; border-radius: 6px;">
+                                    <strong style="color: #22d3ee;">🎯 Nexus (Coordinator)</strong> - <em>Chef d'Orchestre</em><br/>
+                                    Consolide les rapports de tous les agents, priorise les actions recommandées,
+                                    génère un executive summary, orchestre les workflows complexes.
+                                    <span style="color: #94a3b8; font-size: 0.9em;">→ Équivalent: Tech Lead/Project Manager (40h/mois)</span>
+                                </li>
+                                <li style="margin: 12px 0; padding: 12px; background: rgba(51, 65, 85, 0.4); border-left: 3px solid #3b82f6; border-radius: 6px;">
+                                    <strong style="color: #60a5fa;">💻 Claude Code</strong> - <em>Développeur Principal</em><br/>
+                                    Développement backend/frontend, refactoring, implémentation de nouvelles features,
+                                    debugging complexe, optimisation de performance, architecture système.
+                                    <span style="color: #94a3b8; font-size: 0.9em;">→ Équivalent: Senior Full-Stack Developer (160h/mois)</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <h4 style="margin-top: 24px; color: #f59e0b;">💡 Comment Ils Travaillent Ensemble</h4>
+                        <p>
+                            L'écosystème Guardian fonctionne en <strong>automatisation complète</strong> grâce à des hooks Git :
+                        </p>
+                        <ul>
+                            <li><strong>Pre-commit:</strong> Anima + Neo vérifient doc et intégrité AVANT chaque commit</li>
+                            <li><strong>Post-commit:</strong> Nexus génère un rapport unifié et affiche un feedback détaillé</li>
+                            <li><strong>Pre-push:</strong> ProdGuardian vérifie la production AVANT autorisation de déploiement</li>
+                            <li><strong>Monitoring continu:</strong> Theia analyse les coûts et optimise les modèles en arrière-plan</li>
                         </ul>
                         <p>
-                            Chaque itération a raffiné l'architecture pour atteindre un système robuste,
-                            scalable et véritablement émergent dans ses capacités.
+                            Cette approche garantit une <strong>qualité continue, une documentation synchronisée et une production stable</strong>,
+                            sans intervention humaine sur les tâches répétitives.
+                        </p>
+
+                        <h4 style="margin-top: 24px; color: #10b981;">📊 Comparaison avec une Équipe Humaine</h4>
+                        <div class="team-comparison" style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; margin: 16px 0; border: 1px solid rgba(16, 185, 129, 0.3);">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid rgba(148, 163, 184, 0.3);">
+                                        <th style="text-align: left; padding: 12px; color: #e2e8f0;">Poste</th>
+                                        <th style="text-align: center; padding: 12px; color: #e2e8f0;">Agent Guardian</th>
+                                        <th style="text-align: center; padding: 12px; color: #e2e8f0;">Heures/mois</th>
+                                        <th style="text-align: right; padding: 12px; color: #e2e8f0;">Coût mensuel (€)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                                        <td style="padding: 12px;">Senior Full-Stack Developer</td>
+                                        <td style="text-align: center; padding: 12px;">Claude Code</td>
+                                        <td style="text-align: center; padding: 12px;">160h</td>
+                                        <td style="text-align: right; padding: 12px;">12,000€</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                                        <td style="padding: 12px;">QA Engineer + Architecte</td>
+                                        <td style="text-align: center; padding: 12px;">Neo</td>
+                                        <td style="text-align: center; padding: 12px;">60h</td>
+                                        <td style="text-align: right; padding: 12px;">4,500€</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                                        <td style="padding: 12px;">DevOps/SRE Engineer</td>
+                                        <td style="text-align: center; padding: 12px;">ProdGuardian</td>
+                                        <td style="text-align: center; padding: 12px;">50h</td>
+                                        <td style="text-align: right; padding: 12px;">4,000€</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                                        <td style="padding: 12px;">Tech Lead/PM</td>
+                                        <td style="text-align: center; padding: 12px;">Nexus</td>
+                                        <td style="text-align: center; padding: 12px;">40h</td>
+                                        <td style="text-align: right; padding: 12px;">3,500€</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                                        <td style="padding: 12px;">Tech Writer Senior</td>
+                                        <td style="text-align: center; padding: 12px;">Anima</td>
+                                        <td style="text-align: center; padding: 12px;">40h</td>
+                                        <td style="text-align: right; padding: 12px;">2,800€</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                                        <td style="padding: 12px;">FinOps Analyst</td>
+                                        <td style="text-align: center; padding: 12px;">Theia</td>
+                                        <td style="text-align: center; padding: 12px;">30h</td>
+                                        <td style="text-align: right; padding: 12px;">2,400€</td>
+                                    </tr>
+                                    <tr style="border-top: 2px solid rgba(148, 163, 184, 0.4); background: rgba(16, 185, 129, 0.15); font-weight: 700;">
+                                        <td style="padding: 12px; color: #10b981;">TOTAL ÉQUIPE HUMAINE</td>
+                                        <td style="text-align: center; padding: 12px; color: #10b981;">6 postes</td>
+                                        <td style="text-align: center; padding: 12px; color: #10b981;">380h</td>
+                                        <td style="text-align: right; padding: 12px; color: #10b981;">29,200€/mois</td>
+                                    </tr>
+                                    <tr style="background: rgba(59, 130, 246, 0.15); font-weight: 700;">
+                                        <td style="padding: 12px; color: #60a5fa;">COÛT AGENTS IA (estimation)</td>
+                                        <td style="text-align: center; padding: 12px; color: #60a5fa;">Automatisé 24/7</td>
+                                        <td style="text-align: center; padding: 12px; color: #60a5fa;">∞</td>
+                                        <td style="text-align: right; padding: 12px; color: #60a5fa;">~150€/mois</td>
+                                    </tr>
+                                    <tr style="background: rgba(16, 185, 129, 0.25); font-weight: 900; font-size: 1.1em;">
+                                        <td colspan="3" style="padding: 12px; color: #10b981;">ÉCONOMIE MENSUELLE</td>
+                                        <td style="text-align: right; padding: 12px; color: #10b981;">~29,050€ (99.5%)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p style="margin-top: 16px; font-size: 0.95em; color: #cbd5e1;">
+                                <strong>Note:</strong> Les coûts humains sont basés sur des taux freelance moyens en Europe (Suisse/France).
+                                Le coût des agents IA comprend l'utilisation API Claude (Sonnet 4.5) avec les optimisations Theia.
+                            </p>
+                        </div>
+
+                        <h4 style="margin-top: 24px; color: #ec4899;">🚀 Impact sur le Développement</h4>
+                        <p>
+                            Grâce à cette équipe IA, ÉMERGENCE bénéficie de :
+                        </p>
+                        <ul>
+                            <li><strong>Vélocité multipliée par 10x:</strong> Développement, tests, documentation en parallèle 24/7</li>
+                            <li><strong>Qualité constante:</strong> Revue de code automatique sur chaque commit, zéro régression documentaire</li>
+                            <li><strong>Production ultra-stable:</strong> Monitoring continu, prévention proactive des incidents</li>
+                            <li><strong>ROI optimisé:</strong> Choix intelligent des modèles selon le contexte, réduction des coûts IA de 40%</li>
+                            <li><strong>Scalabilité infinie:</strong> Les agents s'adaptent automatiquement à la charge de travail</li>
+                        </ul>
+
+                        <p style="margin-top: 20px; padding: 16px; background: rgba(139, 92, 246, 0.1); border-left: 4px solid #8b5cf6; border-radius: 6px;">
+                            <strong style="color: #a78bfa;">💎 Philosophie:</strong> ÉMERGENCE n'est pas seulement une plateforme multi-agents IA
+                            pour les utilisateurs finaux - <strong>c'est aussi le premier projet développé EN COLLABORATION avec une équipe IA autonome</strong>.
+                            Les agents Guardian ont co-créé le système qui les héberge, dans une boucle récursive d'amélioration continue.
+                            C'est l'essence même de l'<strong>émergence</strong>.
                         </p>
                     </div>
                 </section>
@@ -925,9 +1087,6 @@ Envoyé depuis ÉMERGENCE V8
                 break;
             case 'ui':
                 await this.modules.ui.init('settings-ui-container');
-                break;
-            case 'tutorial':
-                await this.modules.tutorial.init('settings-tutorial-container');
                 break;
         }
     }

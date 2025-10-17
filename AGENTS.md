@@ -45,7 +45,17 @@
   - Option 2 : Déclencher manuellement via dashboard : http://localhost:8000/sync-dashboard.html
   - Option 3 : Déclencher via API : `curl -X POST http://localhost:8000/api/sync/consolidate`
   - Les rapports de consolidation sont ajoutés automatiquement à `AGENT_SYNC.md`
+- **🤖 NOUVEAU - Guardian Automation System (Phase 3)** :
+  - Les hooks Git s'exécutent AUTOMATIQUEMENT lors des commits/push :
+    - `pre-commit` : Vérifie documentation (Anima) et intégrité (Neo) AVANT le commit
+    - `post-commit` : Génère rapports (Nexus) et affiche feedback détaillé APRÈS le commit
+    - `pre-push` : Vérifie production (ProdGuardian) AVANT le push
+  - **AUCUNE action manuelle requise** - le système fournit feedback automatique
+  - Si erreurs critiques détectées : commit/push sera **BLOQUÉ** automatiquement
+  - Rapports disponibles dans : `claude-plugins/integrity-docs-guardian/reports/`
+  - Voir `GUARDIAN_SETUP_COMPLETE.md` et `claude-plugins/integrity-docs-guardian/AUTOMATION_GUIDE.md`
 - Finaliser par `git add -A`, un commit explicite et `git push` (sauf instruction contraire) apres rebase sur la branche de reference.
+  - ⚠️ Les hooks Guardian s'exécuteront automatiquement - observe le feedback !
 - Noter dans le compte-rendu les prochaines priorites et actions recommandees.
 
 ---
@@ -101,6 +111,27 @@
 - Resoudre les conflits en local, relancer les tests, puis utiliser `git push --force-with-lease` uniquement apres un rebase reussi.
 - Nettoyer regulierement les branches fusionnees (localement et sur le remote).
 - Finaliser chaque intervention par `git add -A`, un commit explicite et `git push` sauf instruction contraire.
+- **🤖 NOUVEAU - Hooks Git Automatiques (Guardian Phase 3)** :
+  - **Pre-Commit Hook** : S'exécute AVANT chaque commit
+    - Vérifie couverture tests pour nouveaux fichiers Python
+    - Vérifie doc OpenAPI si routers modifiés
+    - Exécute **Anima (DocKeeper)** → détecte gaps de documentation
+    - Exécute **Neo (IntegrityWatcher)** → vérifie intégrité backend/frontend
+    - **BLOQUE le commit** si erreurs critiques d'intégrité détectées
+    - Autorise avec warnings pour problèmes mineurs
+  - **Post-Commit Hook** : S'exécute APRÈS chaque commit réussi
+    - Génère rapport unifié via **Nexus (Coordinator)**
+    - Affiche résumé détaillé avec statut de chaque agent
+    - Liste recommandations principales par priorité (HIGH/MEDIUM/LOW)
+    - Si `AUTO_UPDATE_DOCS=1` : analyse et propose mises à jour de documentation
+    - Si `AUTO_APPLY=1` : applique ET commit automatiquement les mises à jour
+  - **Pre-Push Hook** : S'exécute AVANT chaque push vers remote
+    - Exécute **ProdGuardian** → vérifie état production via Cloud Run logs
+    - Vérifie que rapports Documentation et Intégrité sont OK
+    - **BLOQUE le push** si production en état CRITICAL
+    - Autorise avec warnings si production DEGRADED
+  - **Bypass des hooks** (déconseillé) : `git commit --no-verify` ou `git push --no-verify`
+  - **Rapports générés** : `claude-plugins/integrity-docs-guardian/reports/*.json`
 
 ## 9. Verifications supplementaires
 - Lancer les scripts de tests disponibles (`pwsh -File tests/run_all.ps1`) pour valider les endpoints backend critiques lorsqu'ils sont touches.

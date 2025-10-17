@@ -54,9 +54,10 @@ class SessionManager:
     V13.3: Ajout du système de timeout d'inactivité automatique.
     """
 
-    def __init__(self, db_manager: DatabaseManager, memory_analyzer: Optional[MemoryAnalyzer] = None):
+    def __init__(self, db_manager: DatabaseManager, memory_analyzer: Optional[MemoryAnalyzer] = None, vector_service = None):
         self.db_manager = db_manager
         self.memory_analyzer = memory_analyzer
+        self.vector_service = vector_service  # 🆕 Phase Agent Memory: Needed for HandshakeHandler
         self.active_sessions: Dict[str, Session] = {}
         self._session_user_cache: Dict[str, str] = {}
         # ConnectionManager sera injecté dynamiquement par websocket.ConnectionManager

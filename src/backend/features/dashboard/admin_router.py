@@ -286,7 +286,7 @@ async def get_system_metrics(
 )
 async def get_detailed_costs_breakdown(
     _admin_verified: bool = Depends(verify_admin_role),
-    admin_service: AdminDashboardService = Depends(_resolve_get_admin_dashboard_service),
+    admin_service: AdminDashboardService = Depends(deps.get_admin_dashboard_service),
 ) -> Dict[str, Any]:
     """
     Get detailed costs breakdown - admin only.

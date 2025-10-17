@@ -376,6 +376,77 @@ export class WebSocketClient {
           });
         }
 
+        // 🆕 Handshake protocol handlers (agent-specific context sync)
+        if (msg?.type === 'ws:handshake_hello') {
+          const p = msg.payload || {};
+          console.debug('[WebSocket] HELLO received:', p.agent_id, p.context_rev, `STM:${p.memory_stats?.stm||0} LTM:${p.memory_stats?.ltm||0}`);
+
+          // Stocker le contexte agent dans le state
+          try {
+            this.state?.set?.(`agents.${p.agent_id}.context`, {
+              context_id: p.context_id,
+              context_rev: p.context_rev,
+              capabilities: p.capabilities || [],
+              memory_stats: p.memory_stats || {},
+              last_seen_at: p.last_seen_at,
+              model: p.model,
+              provider: p.provider
+            });
+          } catch {}
+
+          // Émettre événement pour l'UI
+          this.eventBus.emit?.('agent:context_sync', {
+            agent_id: p.agent_id,
+            context_id: p.context_id,
+            context_rev: p.context_rev,
+            memory_stats: p.memory_stats
+          });
+
+          // Envoyer ACK (pour l'instant, toujours "ok")
+          this.send({
+            type: 'handshake.ack',
+            payload: {
+              agent_id: p.agent_id,
+              context_id: p.context_id,
+              context_rev: p.context_rev,
+              user_id: this.state?.get?.('user.id') || 'unknown'
+            }
+          });
+        }
+
+        if (msg?.type === 'ws:handshake_sync') {
+          const p = msg.payload || {};
+          console.log('[WebSocket] SYNC received:', p.agent_id, 'status:', p.status, 'rev:', p.context_rev);
+
+          // Mettre à jour le contexte local
+          try {
+            const existing = this.state?.get?.(`agents.${p.agent_id}.context`) || {};
+            this.state?.set?.(`agents.${p.agent_id}.context`, {
+              ...existing,
+              context_id: p.context_id,
+              context_rev: p.context_rev,
+              memory_stats: p.memory_stats || {},
+              last_sync_at: p.timestamp,
+              sync_status: p.status
+            });
+          } catch {}
+
+          // Notifier l'UI si désynchronisé
+          if (p.status === 'desync' || p.status === 'stale') {
+            this.eventBus.emit?.('ui:toast', {
+              kind: 'warning',
+              text: `Contexte ${p.agent_id} resynchronisé (${p.status})`,
+              duration: 3000
+            });
+          }
+
+          this.eventBus.emit?.('agent:context_synced', {
+            agent_id: p.agent_id,
+            status: p.status,
+            context_rev: p.context_rev
+          });
+        }
+
         // Dispatch générique
         if (msg?.type) this.eventBus.emit?.(msg.type, msg.payload);
       } catch { console.warn('[WebSocket] Message non JSON', ev.data); }

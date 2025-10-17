@@ -715,7 +715,9 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.92);
+    /* backdrop-filter removed to prevent blurring the admin dashboard content */
+    /* Fond plus opaque pour meilleure lisibilité */
 }
 
 .modal-content {
@@ -723,10 +725,10 @@
     width: 90%;
     max-width: 800px;
     max-height: 80vh;
-    background: rgba(11, 18, 32, 0.98);
-    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: rgb(11, 18, 32);
+    border: 2px solid rgba(148, 163, 184, 0.4);
     border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -771,7 +773,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 1.5rem;
-    background: rgba(11, 18, 32, 0.98);
+    background: rgb(11, 18, 32);
 }
 
 /* User Details */

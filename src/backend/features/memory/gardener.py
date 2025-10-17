@@ -823,7 +823,7 @@ class MemoryGardener:
                         "last_message_at": last_msg_ts.isoformat() if last_msg_ts else _now_iso(),
                     }
                     await self._record_facts_in_sql(facts_to_add, session_stub, uid)
-                    await self._vectorize_facts(facts_to_add, session_stub, uid)
+                    await self._vectorize_facts(facts_to_add, session_stub, uid, agent_id=normalized_agent)
                     new_items_count += len(facts_to_add)
                     added_any = True
 
@@ -844,11 +844,24 @@ class MemoryGardener:
                     "last_message_at": last_msg_ts.isoformat() if last_msg_ts else _now_iso(),
                 }
                 await self._record_concepts_in_sql(all_concepts, concept_stub, uid)
-                await self._vectorize_concepts(all_concepts, concept_stub, uid)
+                await self._vectorize_concepts(all_concepts, concept_stub, uid, agent_id=normalized_agent)
                 new_items_count += len(all_concepts)
                 added_any = True
 
             await self._decay_knowledge()
+
+            # Mark thread as consolidated in database
+            if added_any:
+                try:
+                    await self.db.execute(
+                        "UPDATE threads SET consolidated_at = ? WHERE id = ?",
+                        (_now_iso(), tid),
+                        commit=True
+                    )
+                    logger.info(f"[Gardener] Thread {tid} marked as consolidated")
+                except Exception as e:
+                    logger.warning(f"[Gardener] Failed to mark thread {tid} as consolidated: {e}")
+
             msg = (
                 "Consolidation thread OK."
                 if added_any
@@ -1631,7 +1644,7 @@ class MemoryGardener:
                 )
 
     async def _vectorize_concepts(
-        self, concepts: List[str], session: Dict[str, Any], user_id: Optional[str]
+        self, concepts: List[str], session: Dict[str, Any], user_id: Optional[str], agent_id: Optional[str] = None
     ):
         payload = []
         now_iso = _now_iso()
@@ -1646,28 +1659,34 @@ class MemoryGardener:
 
         for concept_text in concepts:
             vid = uuid.uuid4().hex
+            metadata = {
+                "type": "concept",
+                "user_id": user_id,
+                "source_session_id": session["id"],
+                "concept_text": concept_text,
+                "created_at": now_iso,
+                "first_mentioned_at": first_mentioned,
+                "last_mentioned_at": last_mentioned,
+                "thread_id": thread_id or "",
+                "thread_ids_json": json.dumps([thread_id] if thread_id else []),
+                "message_id": message_id or "",
+                "mention_count": 1,
+                "last_access_at": now_iso,
+                "last_decay_at": now_iso,
+                "vitality": self.max_vitality,
+                "decay_runs": 0,
+                "usage_count": 0,
+            }
+
+            # 🆕 Phase Agent Memory: Add agent_id tag for isolation
+            if agent_id:
+                metadata["agent_id"] = self._normalize_agent_id(agent_id)
+
             payload.append(
                 {
                     "id": vid,
                     "text": concept_text,
-                    "metadata": {
-                        "type": "concept",
-                        "user_id": user_id,
-                        "source_session_id": session["id"],
-                        "concept_text": concept_text,
-                        "created_at": now_iso,
-                        "first_mentioned_at": first_mentioned,
-                        "last_mentioned_at": last_mentioned,
-                        "thread_id": thread_id or "",
-                        "thread_ids_json": json.dumps([thread_id] if thread_id else []),
-                        "message_id": message_id or "",
-                        "mention_count": 1,
-                        "last_access_at": now_iso,
-                        "last_decay_at": now_iso,
-                        "vitality": self.max_vitality,
-                        "decay_runs": 0,
-                        "usage_count": 0,
-                    },
+                    "metadata": metadata,
                 }
             )
         if payload:
@@ -1688,6 +1707,7 @@ class MemoryGardener:
         facts: List[Dict[str, Any]],
         session: Dict[str, Any],
         user_id: Optional[str],
+        agent_id: Optional[str] = None,
     ):
         payload = []
         now_iso = _now_iso()
@@ -1700,25 +1720,33 @@ class MemoryGardener:
             # Les faits protégés ne subissent jamais de decay
             is_protected = f.get("key") == "mot-code"
 
+            metadata = {
+                "type": "fact",
+                "key": f["key"],
+                "agent": f.get("agent"),
+                "value": f["value"],
+                "user_id": user_id,
+                "source_session_id": session["id"],
+                "created_at": now_iso,
+                "last_access_at": now_iso,
+                "last_decay_at": now_iso,
+                "vitality": self.max_vitality,
+                "decay_runs": 0,
+                "usage_count": 0,
+                "protected": is_protected,  # ← Protection decay
+            }
+
+            # 🆕 Phase Agent Memory: Add agent_id tag for isolation
+            # For facts, use the fact's agent field if present, otherwise use the passed agent_id
+            fact_agent = f.get("agent") or agent_id
+            if fact_agent:
+                metadata["agent_id"] = self._normalize_agent_id(fact_agent)
+
             payload.append(
                 {
                     "id": vid,
                     "text": f["text"],
-                    "metadata": {
-                        "type": "fact",
-                        "key": f["key"],
-                        "agent": f.get("agent"),
-                        "value": f["value"],
-                        "user_id": user_id,
-                        "source_session_id": session["id"],
-                        "created_at": now_iso,
-                        "last_access_at": now_iso,
-                        "last_decay_at": now_iso,
-                        "vitality": self.max_vitality,
-                        "decay_runs": 0,
-                        "usage_count": 0,
-                        "protected": is_protected,  # ← Protection decay
-                    },
+                    "metadata": metadata,
                 }
             )
         if payload:

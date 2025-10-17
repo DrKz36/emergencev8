@@ -322,6 +322,92 @@ Progression Totale : [████████░░] 14/23 (61%)
 
 ## 🚧 Zones de Travail en Cours
 
+### ✅ Session 2025-10-17 - Guardian Automation System (TERMINÉE)
+
+**Statut** : ✅ **AUTOMATISATION COMPLÈTE ACTIVÉE**
+**Agent** : Claude Code (Sonnet 4.5)
+**Durée** : 2 heures
+
+**Objectif** :
+- Corriger les subagents Guardian qui ne tournaient plus en arrière-fond
+- Activer l'automatisation complète via Git hooks
+- Fournir feedback instantané lors des commits/push
+
+**Solution implémentée** :
+
+**1. Git Hooks Automatiques Créés/Améliorés** :
+- ✅ `.git/hooks/pre-commit` - Vérifie AVANT chaque commit
+  - Exécute Anima (DocKeeper) - détecte gaps de documentation
+  - Exécute Neo (IntegrityWatcher) - vérifie intégrité backend/frontend
+  - **BLOQUE le commit** si erreurs critiques d'intégrité
+  - Autorise avec warnings pour problèmes mineurs
+
+- ✅ `.git/hooks/post-commit` - Feedback APRÈS chaque commit
+  - Génère rapport unifié (Nexus Coordinator)
+  - Affiche résumé détaillé avec statut de chaque agent
+  - Liste recommandations principales par priorité
+  - Support mise à jour auto de docs (si `AUTO_UPDATE_DOCS=1`)
+
+- ✅ `.git/hooks/pre-push` - Vérifie AVANT chaque push
+  - Exécute ProdGuardian - vérifie état de la production Cloud Run
+  - Vérifie que rapports Documentation + Intégrité sont OK
+  - **BLOQUE le push** si production en état CRITICAL
+
+**2. Scripts et Documentation** :
+- ✅ `setup_automation.py` - Script de configuration interactive
+- ✅ `AUTOMATION_GUIDE.md` - Guide complet (300+ lignes)
+- ✅ `SYSTEM_STATUS.md` - État système et commandes (200+ lignes)
+- ✅ `GUARDIAN_SETUP_COMPLETE.md` - Résumé configuration
+
+**3. Corrections Scheduler** :
+- ✅ Amélioration gestion changements non commités
+- ✅ Support mode HIDDEN (`CHECK_GIT_STATUS=0`)
+- ✅ Messages plus clairs dans logs
+
+**Fichiers créés** :
+- `.git/hooks/pre-commit` (146 lignes)
+- `.git/hooks/post-commit` (218 lignes)
+- `.git/hooks/pre-push` (133 lignes)
+- `claude-plugins/integrity-docs-guardian/scripts/setup_automation.py` (200+ lignes)
+- `claude-plugins/integrity-docs-guardian/AUTOMATION_GUIDE.md` (300+ lignes)
+- `claude-plugins/integrity-docs-guardian/SYSTEM_STATUS.md` (200+ lignes)
+- `GUARDIAN_SETUP_COMPLETE.md` (résumé utilisateur)
+
+**Fichiers modifiés** :
+- `claude-plugins/integrity-docs-guardian/scripts/scheduler.py` (amélioration logs)
+- `AGENT_SYNC.md` (cette section)
+
+**Résultat** :
+- ✅ **Prochain commit → Agents s'exécutent automatiquement**
+- ✅ Feedback instantané avec statut détaillé
+- ✅ Protection contre commits/push problématiques
+- ✅ Documentation complète pour utilisation et troubleshooting
+
+**Variables d'environnement optionnelles** :
+```bash
+# Mise à jour automatique de la documentation
+export AUTO_UPDATE_DOCS=1
+export AUTO_APPLY=1  # Commit auto des mises à jour
+
+# Monitoring continu (scheduler)
+export CHECK_GIT_STATUS=0  # Skip vérif git status
+```
+
+**Test recommandé** :
+```bash
+# Teste le système avec ce commit
+git add .
+git commit -m "feat: activate Guardian automation system"
+# → Les hooks s'exécuteront automatiquement !
+```
+
+**Documentation** :
+- 📋 [GUARDIAN_SETUP_COMPLETE.md](GUARDIAN_SETUP_COMPLETE.md) - Résumé configuration
+- 📋 [claude-plugins/integrity-docs-guardian/AUTOMATION_GUIDE.md](claude-plugins/integrity-docs-guardian/AUTOMATION_GUIDE.md) - Guide complet
+- 📋 [claude-plugins/integrity-docs-guardian/SYSTEM_STATUS.md](claude-plugins/integrity-docs-guardian/SYSTEM_STATUS.md) - État système
+
+---
+
 ### ✅ Session 2025-10-16 (Soir) - Auto-activation Conversations Module Dialogue (TERMINÉE)
 
 **Statut** : ✅ **FONCTIONNALITÉ IMPLÉMENTÉE ET DOCUMENTÉE**
@@ -403,6 +489,14 @@ Progression Totale : [████████░░] 14/23 (61%)
 ---
 
 ## 🧑‍💻 Codex - Journal 2025-10-16
+
+### ✅ 2025-10-17 03:19 - Ajustement UI Conversations
+
+- **Agent** : Codex (local)
+- **Objectif** : Élargir l'espacement interne dans le module Conversations pour que les cartes n'affleurent plus le cadre principal.
+- **Fichiers impactés** : `src/frontend/features/threads/threads.css`
+- **Tests** : `npm run build`
+- **Notes** : Ajout d'un padding adaptatif sur `threads-panel__body` et recentrage de la liste (`threads-panel__list`) pour conserver une marge cohérente sur desktop comme mobile sans toucher aux autres usages du composant.
 
 - **Horodatage** : 20:45 CET
 - **Objectif** : Audit UI mobile portrait + verrouillage paysage (authentification).

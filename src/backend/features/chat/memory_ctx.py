@@ -89,7 +89,7 @@ class MemoryContextBuilder:
         return None
 
     async def build_memory_context(
-        self, session_id: str, last_user_message: str, top_k: int = 5
+        self, session_id: str, last_user_message: str, top_k: int = 5, agent_id: Optional[str] = None
     ) -> str:
         try:
             if not last_user_message:
@@ -117,7 +117,9 @@ class MemoryContextBuilder:
             # 🆕 2. Phase 1 Sprint 1: Detect meta queries (questions about conversation history)
             if uid and self._is_meta_query(last_user_message):
                 logger.info(f"[MemoryContext] Meta query detected: '{last_user_message[:50]}...'")
-                chronological_context = await self._build_chronological_context(uid, last_user_message)
+                chronological_context = await self._build_chronological_context(
+                    uid, last_user_message, agent_id=agent_id
+                )
                 if chronological_context:
                     sections.append(("Historique des sujets abordés", chronological_context))
                     # Pour requêtes méta, le contexte chronologique suffit
@@ -125,7 +127,20 @@ class MemoryContextBuilder:
                     return self.merge_blocks(sections)
 
             # 3. Vector search for concepts/facts (comportement standard)
-            where_filter = {"user_id": uid} if uid else None
+            # 🆕 Filtrage par agent_id pour isolation des contextes mémoire
+            where_filter = None
+            if uid and agent_id:
+                # Filtre combiné: user_id ET agent_id
+                where_filter = {
+                    "$and": [
+                        {"user_id": uid},
+                        {"agent_id": agent_id.lower()}
+                    ]
+                }
+            elif uid:
+                # Fallback: seulement user_id (rétrocompatibilité)
+                where_filter = {"user_id": uid}
+
             results = self.vector_service.query(
                 collection=knowledge_col,
                 query_text=last_user_message,
@@ -495,7 +510,9 @@ class MemoryContextBuilder:
 
         return False
 
-    async def _build_chronological_context(self, user_id: str, query: str) -> str:
+    async def _build_chronological_context(
+        self, user_id: str, query: str, agent_id: Optional[str] = None
+    ) -> str:
         """
         Construit contexte chronologique structuré pour requêtes méta.
 
@@ -523,11 +540,12 @@ class MemoryContextBuilder:
 
             if timeframe and timeframe != "all":
                 # Requête ciblée sur une période spécifique
-                logger.info(f"[MemoryContext] Chronological context for timeframe '{timeframe}'")
+                logger.info(f"[MemoryContext] Chronological context for timeframe '{timeframe}' (agent: {agent_id})")
                 topics = await self.memory_query_tool.list_discussed_topics(
                     user_id=user_id,
                     timeframe=timeframe,
-                    limit=50
+                    limit=50,
+                    agent_id=agent_id
                 )
 
                 if not topics:
@@ -542,10 +560,11 @@ class MemoryContextBuilder:
 
             else:
                 # Requête générale → timeline complète groupée
-                logger.info(f"[MemoryContext] Full chronological timeline requested")
+                logger.info(f"[MemoryContext] Full chronological timeline requested (agent: {agent_id})")
                 timeline = await self.memory_query_tool.get_conversation_timeline(
                     user_id=user_id,
-                    limit=100
+                    limit=100,
+                    agent_id=agent_id
                 )
 
                 if not timeline or all(len(topics) == 0 for topics in timeline.values()):

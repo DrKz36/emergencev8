@@ -20,6 +20,24 @@ class ConnectionManager:
     def __init__(self, session_manager: SessionManager):
         self.active_connections: Dict[str, List[WebSocket]] = {}
         self.session_manager = session_manager
+
+        # 🆕 Handshake handler for agent-specific context sync
+        self.handshake_handler = None
+        try:
+            from backend.core.ws.handlers.handshake import HandshakeHandler
+            from backend.core.memory.memory_sync import MemorySyncManager
+
+            # Get vector_service from session_manager if available
+            vector_service = getattr(session_manager, "vector_service", None)
+            if vector_service:
+                memory_sync = MemorySyncManager(vector_service)
+                self.handshake_handler = HandshakeHandler(memory_sync)
+                logger.info("✅ Handshake handler initialized for agent-specific context sync")
+            else:
+                logger.warning("⚠️ Vector service not available, handshake disabled")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to initialize handshake handler: {e}")
+
         try:
             setattr(self.session_manager, "connection_manager", self)
         except Exception as e:
@@ -256,6 +274,44 @@ class ConnectionManager:
             "payload": payload
         }
         await self.send_personal_message(message, session_id)
+
+    async def send_to_session(self, session_id: str, message: dict):
+        """Envoie un message générique à une session (wrapper pour handshake)."""
+        await self.send_personal_message(message, session_id)
+
+    async def send_agent_hello(
+        self,
+        session_id: str,
+        agent_id: str,
+        model: str,
+        provider: str,
+        user_id: str
+    ):
+        """
+        Envoie un message HELLO pour synchroniser le contexte agent.
+
+        Args:
+            session_id: ID session WebSocket
+            agent_id: ID agent (anima, neo, nexus)
+            model: Modèle LLM
+            provider: Provider LLM
+            user_id: ID utilisateur
+        """
+        if not self.handshake_handler:
+            logger.debug("[ConnectionManager] Handshake handler not available, skipping HELLO")
+            return
+
+        try:
+            await self.handshake_handler.send_hello(
+                connection_manager=self,
+                session_id=session_id,
+                agent_id=agent_id,
+                model=model,
+                provider=provider,
+                user_id=user_id
+            )
+        except Exception as e:
+            logger.error(f"[ConnectionManager] Error sending HELLO: {e}", exc_info=True)
 
     async def close_session(
         self,

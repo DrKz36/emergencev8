@@ -113,6 +113,7 @@ class MemoryQueryTool:
         timeframe: Optional[str] = None,
         limit: int = 50,
         min_mention_count: int = 1,
+        agent_id: Optional[str] = None,
     ) -> List[TopicSummary]:
         """
         Récupère la liste des sujets abordés avec dates et fréquences.
@@ -151,11 +152,12 @@ class MemoryQueryTool:
             if timeframe and timeframe != "all":
                 cutoff_date = self._compute_timeframe_cutoff(timeframe)
 
-            # 2. Construire filtre base (user/type/mention_count)
+            # 2. Construire filtre base (user/type/mention_count/agent_id)
             where_filter = self._build_timeframe_filter(
                 user_id,
                 None,  # désactive le filtre temporel côté Chroma (comparaison numérique non supportée)
                 min_mention_count,
+                agent_id=agent_id,
             )
 
             # 3. Récupérer concepts depuis Chroma.
@@ -209,7 +211,8 @@ class MemoryQueryTool:
         self,
         user_id: str,
         timeframe: Optional[str],
-        min_mention_count: int = 1
+        min_mention_count: int = 1,
+        agent_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Construit filtre ChromaDB avec critères temporels et utilisateur.
@@ -218,6 +221,7 @@ class MemoryQueryTool:
             user_id: Identifiant utilisateur
             timeframe: "today" | "week" | "month" | "all" | None
             min_mention_count: Filtre mention_count minimum
+            agent_id: Filtrer par agent (anima, neo, nexus)
 
         Returns:
             Filtre compatible ChromaDB where clause
@@ -226,6 +230,10 @@ class MemoryQueryTool:
             {"user_id": user_id},
             {"type": "concept"}
         ]
+
+        # 🆕 Filtre agent_id pour isolation mémoire
+        if agent_id:
+            base_conditions.append({"agent_id": agent_id.lower()})
 
         # Filtre mention_count si spécifié
         if min_mention_count > 1:
@@ -465,7 +473,8 @@ class MemoryQueryTool:
     async def get_conversation_timeline(
         self,
         user_id: str,
-        limit: int = 100
+        limit: int = 100,
+        agent_id: Optional[str] = None
     ) -> Dict[str, List[TopicSummary]]:
         """
         Génère vue chronologique complète des conversations.
@@ -498,7 +507,8 @@ class MemoryQueryTool:
             all_topics = await self.list_discussed_topics(
                 user_id=user_id,
                 timeframe="all",
-                limit=limit
+                limit=limit,
+                agent_id=agent_id
             )
 
             if not all_topics:

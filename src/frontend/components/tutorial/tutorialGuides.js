@@ -16,7 +16,7 @@ export const TUTORIAL_GUIDES = [
     content: `
       <section class="guide-section">
         <h3><span class="tutorial-icon">${TutorialIcons.target}</span> Vue d'ensemble</h3>
-        <p>Le système de chat d'Emergence utilise une architecture <strong>multi-agents</strong> pour vous offrir des réponses riches et variées. Chaque agent possède une personnalité et des compétences uniques.</p>
+        <p>Le système de chat d'Emergence utilise une architecture <strong>multi-agents</strong> pour vous offrir des réponses riches et variées. Chaque <a href="#glossaire-agent-conversationnel" class="glossary-link" data-glossary="agent-conversationnel">agent conversationnel</a> possède une personnalité et des compétences uniques.</p>
       </section>
 
       <section class="guide-section">
@@ -87,12 +87,13 @@ export const TUTORIAL_GUIDES = [
         <h3><span class="tutorial-icon">${TutorialIcons.zap}</span> Fonctionnalités Avancées</h3>
 
         <h4><span class="tutorial-icon">${TutorialIcons.refresh}</span> Mode RAG (Retrieval-Augmented Generation)</h4>
-        <p>Le toggle RAG permet d'enrichir les réponses avec le contenu de vos documents.</p>
+        <p>Le toggle <a href="#glossaire-rag" class="glossary-link" data-glossary="rag-retrieval-augmented-generation">RAG</a> permet d'enrichir les réponses avec le contenu de vos documents.</p>
         <ul>
           <li><strong>Activer :</strong> Cliquez sur l'icône <span class="tutorial-icon">${TutorialIcons.book}</span> dans la zone de saisie</li>
           <li><strong>Utilisation :</strong> L'IA recherchera dans vos documents pour des réponses contextualisées</li>
           <li><strong>Performance :</strong> Légèrement plus lent mais beaucoup plus précis avec vos données</li>
         </ul>
+        <p><strong>Pour en savoir plus :</strong> Consultez notre <a href="#glossaire-rag" class="glossary-link" data-glossary="rag-retrieval-augmented-generation">guide sur le RAG dans le glossaire</a> qui explique comment cette technique réduit les <a href="#glossaire-hallucination" class="glossary-link" data-glossary="hallucination-ia">hallucinations</a> et améliore la traçabilité.</p>
 
         <h4><span class="tutorial-icon">${TutorialIcons.messageSquare}</span> Demander l'Avis d'un Autre Agent</h4>
         <p>Au-dessus de chaque message agent, vous trouverez des <strong>boutons circulaires</strong> représentant les autres agents disponibles.</p>
@@ -106,7 +107,7 @@ export const TUTORIAL_GUIDES = [
         <p><strong>Exemple d'usage :</strong> Sur un message de Neo proposant une architecture technique détaillée, cliquez sur le bouton Anima pour obtenir une perspective plus empathique sur l'impact utilisateur de cette architecture.</p>
 
         <h4><span class="tutorial-icon">${TutorialIcons.brain}</span> Système de Mémoire Multi-Niveaux</h4>
-        <p>Emergence dispose d'un système de mémoire sophistiqué en <strong>3 couches</strong> :</p>
+        <p>Emergence dispose d'un système de <a href="#glossaire-memoire" class="glossary-link" data-glossary="memoire-stm-ltm">mémoire conversationnelle</a> sophistiqué en <strong>3 couches</strong> :</p>
 
         <h5><span class="tutorial-icon">${TutorialIcons.clipboard}</span> Mémoire Court Terme (STM)</h5>
         <ul>
@@ -115,15 +116,17 @@ export const TUTORIAL_GUIDES = [
           <li>Conservée pendant la session active</li>
           <li><strong>Accessible via</strong> le bouton "Consolider mémoire" dans le Centre Mémoire</li>
         </ul>
+        <p><em>La <a href="#glossaire-memoire" class="glossary-link" data-glossary="memoire-stm-ltm">STM</a> résume votre session en cours, comme votre mémoire immédiate lors d'une conversation.</em></p>
 
         <h5><span class="tutorial-icon">${TutorialIcons.database}</span> Mémoire Long Terme (LTM)</h5>
         <ul>
-          <li><strong>Base de connaissances vectorielle</strong> permanente (ChromaDB)</li>
+          <li><strong>Base de connaissances <a href="#glossaire-vectorisation" class="glossary-link" data-glossary="vectorisation">vectorielle</a></strong> permanente (ChromaDB)</li>
           <li><strong>Recherche sémantique intelligente</strong> dans vos discussions passées</li>
-          <li>Injection automatique dans le contexte des agents</li>
+          <li>Injection automatique dans le <a href="#glossaire-contexte" class="glossary-link" data-glossary="contexte-fenetre-de-contexte">contexte</a> des agents</li>
           <li>Badge <span class="tutorial-icon">${TutorialIcons.book}</span> indique quand la LTM est utilisée</li>
           <li><strong>Décroissance progressive</strong> : la mémoire "vieillit" naturellement</li>
         </ul>
+        <p><em>La <a href="#glossaire-memoire" class="glossary-link" data-glossary="memoire-stm-ltm">LTM</a> est votre base de connaissances permanente qui se souvient entre les sessions.</em></p>
 
         <h5><span class="tutorial-icon">${TutorialIcons.lightbulb}</span> Préférences et Intentions</h5>
         <ul>
@@ -575,22 +578,24 @@ export const TUTORIAL_GUIDES = [
         <h3><span class="tutorial-icon">${TutorialIcons.search}</span> Traitement et Indexation</h3>
 
         <h4>Chunking intelligent</h4>
-        <p>Les documents sont découpés en <strong>chunks</strong> (morceaux) :</p>
+        <p>Les documents sont découpés en <a href="#glossaire-chunking" class="glossary-link" data-glossary="chunking">chunks</a> (morceaux) :</p>
         <ul>
-          <li>Taille optimale : ~500 tokens par chunk</li>
+          <li>Taille optimale : ~500 <a href="#glossaire-token" class="glossary-link" data-glossary="token">tokens</a> par chunk</li>
           <li>Overlap : 50 tokens entre chunks (continuité)</li>
           <li>Respect de la structure (paragraphes, sections)</li>
-          <li>Préservation du contexte</li>
+          <li>Préservation du <a href="#glossaire-contexte" class="glossary-link" data-glossary="contexte-fenetre-de-contexte">contexte</a></li>
         </ul>
+        <p><em>Le <a href="#glossaire-chunking" class="glossary-link" data-glossary="chunking">chunking</a> découpe vos documents pour permettre une recherche précise tout en conservant le contexte.</em></p>
 
         <h4>Embeddings vectoriels</h4>
-        <p>Chaque chunk est converti en vecteur :</p>
+        <p>Chaque chunk est converti en <a href="#glossaire-embedding" class="glossary-link" data-glossary="embedding">vecteur (embedding)</a> :</p>
         <ul>
           <li>Modèle : <code>all-MiniLM-L6-v2</code> (sentence-transformers)</li>
           <li>Dimension : 384</li>
           <li>Stockage : ChromaDB (base vectorielle locale)</li>
-          <li>Recherche : Similarité cosinus</li>
+          <li>Recherche : <a href="#glossaire-similarite-cosinus" class="glossary-link" data-glossary="similarite-cosinus">Similarité cosinus</a></li>
         </ul>
+        <p><em>La <a href="#glossaire-vectorisation" class="glossary-link" data-glossary="vectorisation">vectorisation</a> transforme votre texte en nombres pour permettre une recherche sémantique ultra-rapide.</em></p>
       </section>
 
       <section class="guide-section">

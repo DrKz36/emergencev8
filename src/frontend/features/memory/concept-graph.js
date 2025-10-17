@@ -211,8 +211,25 @@ export class ConceptGraph {
       this.initializePhysics();
       this.startAnimation();
     } catch (error) {
-      this.error = error.message || 'Erreur lors du chargement du graphe';
+      console.error('[ConceptGraph] Failed to load graph:', error);
+
+      // Check if it's a 404 - endpoint doesn't exist yet
+      if (error.message && error.message.includes('404')) {
+        this.error = 'Le graphe de concepts n\'est pas encore disponible. Aucune donnée à afficher.';
+      } else if (error.message && error.message.includes('429')) {
+        // Rate limit hit
+        this.error = 'Trop de requêtes. Veuillez réessayer dans quelques instants.';
+      } else {
+        this.error = error.message || 'Erreur lors du chargement du graphe';
+      }
+
       this.renderError();
+
+      // Set empty data to avoid errors
+      this._allNodes = [];
+      this._allLinks = [];
+      this.nodes = [];
+      this.links = [];
     } finally {
       this.isLoading = false;
     }
