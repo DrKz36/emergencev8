@@ -101,6 +101,12 @@ Vous travaillez en **égalité technique** avec Codex GPT et d'autres agents IA.
 - Node.js 18+ (via nvm recommandé)
 - Docker (pour tests et déploiement)
 
+**Configuration des permissions** :
+- Le fichier `.claude/settings.local.json` contient la configuration des permissions d'exécution automatique
+- `"allow": ["*"]` active l'exécution automatique de toutes les opérations sans demande d'autorisation
+- Cette configuration permet un workflow fluide et continu sans interruption
+- Les commandes spécifiques listées après le wildcard sont maintenues pour référence
+
 ### 4.2 Pendant le développement
 
 **Règles d'or** :

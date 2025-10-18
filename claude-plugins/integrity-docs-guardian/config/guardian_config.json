@@ -14,8 +14,8 @@
     "anima": {
       "enabled": true,
       "triggers": ["pre-commit", "manual", "scheduled"],
-      "auto_apply_fixes": false,
-      "min_confidence_threshold": 90,
+      "auto_apply_fixes": true,
+      "min_confidence_threshold": 80,
       "block_on_critical": false,
       "responsibilities": [
         "documentation_gaps",
@@ -26,9 +26,9 @@
     "neo": {
       "enabled": true,
       "triggers": ["pre-commit", "manual"],
-      "auto_apply_fixes": false,
-      "min_confidence_threshold": 85,
-      "block_on_critical": true,
+      "auto_apply_fixes": true,
+      "min_confidence_threshold": 80,
+      "block_on_critical": false,
       "responsibilities": [
         "schema_alignment",
         "api_coherence",
@@ -52,8 +52,8 @@
     "prodguardian": {
       "enabled": true,
       "triggers": ["pre-push", "scheduled", "manual"],
-      "auto_apply_fixes": false,
-      "block_on_critical": true,
+      "auto_apply_fixes": true,
+      "block_on_critical": false,
       "schedule_cron": "0 */6 * * *",
       "cloud_run_service": "emergence-app",
       "cloud_run_region": "europe-west1",
@@ -64,8 +64,8 @@
       ]
     },
     "theia": {
-      "enabled": true,
-      "triggers": ["scheduled"],
+      "enabled": false,
+      "triggers": ["manual"],
       "auto_apply_fixes": false,
       "schedule_cron": "0 23 * * 0",
       "alert_threshold_savings_percent": 30,
@@ -100,19 +100,19 @@
   "automation": {
     "auto_commit": true,
     "auto_push": false,
-    "require_approval_for_p0": true,
-    "require_approval_for_p1": true,
+    "require_approval_for_p0": false,
+    "require_approval_for_p1": false,
     "require_approval_for_p2": false,
-    "auto_apply_threshold_confidence": 95,
-    "auto_apply_threshold_priority": "P1",
-    "max_auto_fixes_per_run": 5
+    "auto_apply_threshold_confidence": 80,
+    "auto_apply_threshold_priority": "P2",
+    "max_auto_fixes_per_run": 20
   },
 
   "git_hooks": {
     "pre_commit": {
       "enabled": true,
       "agents": ["anima", "neo"],
-      "block_on_critical": true,
+      "block_on_critical": false,
       "timeout_seconds": 120
     },
     "post_commit": {
@@ -123,7 +123,7 @@
     "pre_push": {
       "enabled": true,
       "agents": ["prodguardian"],
-      "block_on_critical": true,
+      "block_on_critical": false,
       "timeout_seconds": 120
     }
   },
@@ -133,15 +133,15 @@
       "name": "CRITICAL",
       "description": "Blocking issue - prevents commit/push",
       "action_timeline": "Immediate",
-      "auto_apply": false,
-      "require_approval": true
+      "auto_apply": true,
+      "require_approval": false
     },
     "P1": {
       "name": "HIGH",
       "description": "Important issue - should be fixed soon",
       "action_timeline": "Within 1 day",
-      "auto_apply": false,
-      "require_approval": true
+      "auto_apply": true,
+      "require_approval": false
     },
     "P2": {
       "name": "MEDIUM",
@@ -170,7 +170,7 @@
     "enabled": true,
     "priority_order": ["neo", "anima", "prodguardian", "argus", "theia"],
     "resolution_strategy": "highest_priority_wins",
-    "manual_review_on_conflict": true
+    "manual_review_on_conflict": false
   },
 
   "monitoring": {

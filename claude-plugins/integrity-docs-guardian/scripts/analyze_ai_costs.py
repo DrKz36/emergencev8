@@ -348,9 +348,10 @@ def analyze_costs(usages: List[ModelUsage]) -> Tuple[Dict, List[CostRecommendati
     recommendations = []
 
     # Default usage estimation (can be overridden with real data)
-    DEFAULT_MONTHLY_REQUESTS = 10000
-    DEFAULT_INPUT_TOKENS = 500
-    DEFAULT_OUTPUT_TOKENS = 250
+    # Realistic values based on actual usage (~80 CHF/month)
+    DEFAULT_MONTHLY_REQUESTS = 200  # ~200 requests/month
+    DEFAULT_INPUT_TOKENS = 400      # ~400 tokens per request
+    DEFAULT_OUTPUT_TOKENS = 300     # ~300 tokens per request
 
     for model_key, model_usages in models_by_usage.items():
         provider, model = model_key.split(':')
@@ -434,6 +435,8 @@ def calculate_monthly_cost(
 def find_alternatives(current: ModelPricing, current_monthly_cost: float) -> List[CostRecommendation]:
     """Find alternative models with better cost/performance"""
     recommendations = []
+    seen_alternatives = set()  # Track alternatives to avoid duplicates
+    max_recommendations = 5  # Limit to top 5 alternatives per model
 
     # Search all providers for alternatives
     for provider, models in PRICING_DATABASE.items():
@@ -442,16 +445,22 @@ def find_alternatives(current: ModelPricing, current_monthly_cost: float) -> Lis
             if alt_model == current.model and provider == current.provider:
                 continue
 
+            # Skip if we've already recommended this alternative
+            alt_key = f"{provider}:{alt_model}"
+            if alt_key in seen_alternatives:
+                continue
+            seen_alternatives.add(alt_key)
+
             # Skip experimental models for production use
             if alt_pricing.status == "experimental":
                 continue
 
-            # Calculate alternative cost
+            # Calculate alternative cost (use realistic usage)
             alt_monthly_cost = calculate_monthly_cost(
                 alt_pricing,
-                10000,  # Default monthly requests
-                500,    # Default input tokens
-                250     # Default output tokens
+                200,  # Realistic monthly requests
+                400,  # Realistic input tokens
+                300   # Realistic output tokens
             )
 
             savings = current_monthly_cost - alt_monthly_cost
@@ -495,7 +504,9 @@ def find_alternatives(current: ModelPricing, current_monthly_cost: float) -> Lis
             )
             recommendations.append(recommendation)
 
-    return recommendations
+    # Sort by savings and return top recommendations
+    recommendations.sort(key=lambda x: x.monthly_savings, reverse=True)
+    return recommendations[:max_recommendations]
 
 
 def estimate_performance_delta(current: ModelPricing, alternative: ModelPricing) -> int:
@@ -637,7 +648,7 @@ def generate_markdown_report(analysis: Dict, recommendations: List[CostRecommend
 
 ## 📚 Notes
 
-- **Estimation baseline:** 10,000 requests/month, 500 input tokens, 250 output tokens per request
+- **Estimation baseline:** 200 requests/month, 400 input tokens, 300 output tokens per request
 - **Pricing updated:** January 2025
 - **Sources:**
   - [OpenAI Pricing](https://platform.openai.com/docs/pricing)

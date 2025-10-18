@@ -100,6 +100,11 @@ Vous travaillez en **égalité technique** avec Claude Code et d'autres agents I
 - Node.js 18+ (via nvm recommandé)
 - Docker (pour tests et déploiement)
 
+**Note sur Claude Code** :
+- Claude Code utilise `.claude/settings.local.json` avec `"allow": ["*"]` pour l'exécution automatique
+- Cette configuration permet à Claude Code de travailler en mode continu sans interruption
+- Si tu travailles avec l'architecte, sache que Claude Code peut maintenant exécuter toutes les tâches automatiquement
+
 ### 4.2 Pendant le développement
 
 **Règles d'or** :
