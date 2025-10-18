@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-18 16:56 (Claude Code: analyse logs GCloud + fix 404)
+**Dernière mise à jour** : 2025-10-18 17:13 (Claude Code: vérification guardians + déploiement beta-2.1.4)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -19,49 +19,46 @@
 
 ---
 
-## 🚀 Session en cours (2025-10-18 16:56) — Agent : Claude Code (Analyse logs GCloud + Fix 404)
+## 🚀 Session en cours (2025-10-18 17:13) — Agent : Claude Code (Vérification Guardians + Déploiement beta-2.1.4)
 
 **Objectif :**
-- Analyser en profondeur les logs Google Cloud (downloaded-logs-20251018-164827.json)
-- Fixer les 404 identifiés en production (reset-password.html, favicon.ico)
+- Vérifier tous les guardians (Anima, Neo, Nexus, ProdGuardian)
+- Mettre à jour documentation inter-agents
+- Préparer et déployer nouvelle version beta-2.1.4 sur Cloud Run
 
 **Fichiers modifiés :**
-- `reset-password.html` (NOUVEAU - copié depuis docs/archive/ vers racine)
-- `favicon.ico` (NOUVEAU - généré depuis emergence_logo.png, 749B multi-résolution)
-- `analyze_logs.py` (NOUVEAU - script analyse logs GCloud)
-- `create_favicon.py` (NOUVEAU - script génération favicon)
-- `AGENT_SYNC.md` (cette session)
-- `docs/passation.md` (nouvelle entrée à venir)
+- `AGENT_SYNC.md` (mise à jour session en cours)
+- `docs/passation.md` (nouvelle entrée)
+- `package.json` (bump version beta-2.1.3 → beta-2.1.4)
+- `.claude/settings.local.json` (auto-update permissions)
+- `reports/prod_report.json` (auto-update guardians)
 
 **Contexte :**
-- Analyse **1500 logs GCloud** (période 14:22→14:48, 26 min)
-- Production **HEALTHY** : **0 erreur critique** (ERROR/EXCEPTION)
-- **3 révisions actives** : emergence-app-00490-xih (39%, principale), -00475-raw (31%), -00480-wap (31%)
-- **Latence moyenne : 162ms** (max 2.3s)
-- **3x 404 détectés** : robots.txt (déjà fixé), reset-password.html (maintenant fixé), favicon.ico (maintenant fixé)
-- **2x 401** : requêtes non auth (comportement normal)
-- **1x Warning** : PreferenceExtractor sans user_id (non critique)
+- Version actuelle : **beta-2.1.3**
+- Production : **HEALTHY** (0 erreur, 0 warning, 80 logs analysés)
+- Guardians : **TOUS AU VERT** ✅
+  - Anima (DocKeeper): OK - 0 gap documentation
+  - Neo (IntegrityWatcher): OK - 0 issue intégrité
+  - Nexus (Coordinator): OK - tous checks passés
+  - ProdGuardian: OK - production healthy
 
-**Actions réalisées :**
-- ✅ Analyse complète logs GCloud avec script Python dédié (analyze_logs.py)
-- ✅ Rapport détaillé : 0 erreur 500, 14 requêtes OK, 5 warnings seulement
-- ✅ Identification root cause 404 : reset-password.html dans docs/archive/ au lieu de la racine
-- ✅ Copie reset-password.html vers racine (backend le servira maintenant via StaticFiles)
-- ✅ Génération favicon.ico multi-résolution (16x16, 32x32, 48x48) depuis logo PNG
-- ✅ Vérification robots.txt présent et bien configuré
+**Actions en cours :**
+- ✅ Lecture AGENT_SYNC.md (état sync inter-agents)
+- ✅ Vérification complète des 4 guardians (tous au vert)
 - ✅ Mise à jour AGENT_SYNC.md
-- ✅ Mise à jour docs/passation.md (entrée détaillée complète)
-- ✅ Git commit (019b67b) + push vers origin/main
-- ✅ Guardians pre-commit/post-commit: tous OK (2 warnings scripts utilitaires)
-- ✅ ProdGuardian pre-push: Production OK (80 logs, 0 erreur, 3 warnings)
-
-**Session terminée à 16:58 (Europe/Zurich)**
+- ⏳ Mise à jour docs/passation.md
+- ⏳ Commit + push tous fichiers modifiés (dépôt propre)
+- ⏳ Bump version beta-2.1.3 → beta-2.1.4
+- ⏳ Build image Docker locale
+- ⏳ Déploiement canary Cloud Run
+- ⏳ Tests révision canary
+- ⏳ Déploiement progressif vers 100%
 
 **Prochaines actions :**
-- Vérifier après prochain déploiement que les 404 sont corrigés :
+- Déployer beta-2.1.4 incluant les fixes 404 (reset-password.html, favicon.ico)
+- Vérifier après déploiement :
   - https://emergence-app.ch/reset-password.html?token=test
   - https://emergence-app.ch/favicon.ico
-- Optionnel: optimiser latences (max 2.3s détecté dans logs)
 - Attendre directive architecte ou session Codex
 
 ---

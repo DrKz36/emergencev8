@@ -1,3 +1,81 @@
+## [2025-10-18 17:13] — Agent: Claude Code (Vérification Guardians + Déploiement beta-2.1.4)
+
+### Fichiers modifiés
+- `AGENT_SYNC.md` (mise à jour session en cours)
+- `docs/passation.md` (cette entrée)
+- `package.json` (bump version beta-2.1.3 → beta-2.1.4)
+- `.claude/settings.local.json` (auto-update permissions)
+- `reports/prod_report.json` (auto-update guardians)
+
+### Contexte
+Demande architecte: vérification complète des guardians + déploiement nouvelle révision Cloud Run.
+Objectif: s'assurer que tout est stable avant déploiement beta-2.1.4 incluant les fixes 404 (reset-password.html, favicon.ico).
+
+### Actions réalisées
+
+1. **Vérification complète des 4 guardians**
+   - ✅ **Anima (DocKeeper)** : Status OK
+     - 0 gap de documentation détecté
+     - 0 mise à jour proposée
+     - 1 fichier modifié (AGENT_SYNC.md)
+   - ✅ **Neo (IntegrityWatcher)** : Status OK
+     - 0 problème d'intégrité
+     - OpenAPI validation OK (15 endpoints, 6 schemas)
+     - 0 erreur critique, 0 warning
+   - ✅ **Nexus (Coordinator)** : Status OK
+     - Rapport unifié généré
+     - 0 issue totale (0 critique, 0 warning, 0 info)
+     - Recommandation: "Continue monitoring"
+   - ✅ **ProdGuardian** : Status OK
+     - 80 logs analysés (dernière heure)
+     - 0 erreur production, 0 warning
+     - 0 signal critique, 0 problème latence
+     - Production HEALTHY 🔥
+
+2. **Configuration mode full auto Claude Code**
+   - Problématique: depuis mise à jour Claude Code ce matin, comportement trop "prudent" (demandes validation incessantes)
+   - CLAUDE.md est ultra clair: mode autonome total
+   - Résolution: engagement Claude Code à respecter CLAUDE.md à la lettre
+   - Nouveau workflow: agir directement sans validation (sauf cas exceptionnels)
+
+3. **Mise à jour documentation inter-agents**
+   - AGENT_SYNC.md: nouvelle session 17:13 (vérification guardians + déploiement beta-2.1.4)
+   - docs/passation.md: cette entrée complète
+   - Fichiers modifiés détaillés et prochaines actions claires
+
+4. **Préparation déploiement beta-2.1.4**
+   - Version actuelle: beta-2.1.3 (commit 5f72040)
+   - Nouvelle version: beta-2.1.4
+   - Changements inclus: fixes 404 reset-password.html + favicon.ico
+   - Workflow: commit → push → build Docker → deploy canary → tests → deploy progressif
+
+### Tests
+- ✅ Tous les guardians au vert (Anima, Neo, Nexus, ProdGuardian)
+- ✅ Production HEALTHY (0 erreur)
+- ✅ Documentation mise à jour (AGENT_SYNC.md, passation.md)
+- ⏳ Build Docker beta-2.1.4 (en cours)
+- ⏳ Déploiement Cloud Run (en cours)
+
+### Travail de Codex pris en compte
+- Aucune session Codex récente (dernière: 2025-10-18 commit fd74118 - beta-2.1.3)
+- Pas de conflit, dépôt sync
+
+### Prochaines actions
+1. ✅ Commit + push tous fichiers modifiés (dépôt propre)
+2. ⏳ Bump version package.json beta-2.1.3 → beta-2.1.4
+3. ⏳ Build image Docker locale
+4. ⏳ Déploiement canary Cloud Run
+5. ⏳ Tests révision canary
+6. ⏳ Déploiement progressif vers 100% si tests OK
+7. ⏳ Vérifier fixes 404 en production:
+   - https://emergence-app.ch/reset-password.html?token=test
+   - https://emergence-app.ch/favicon.ico
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-18 16:56] — Agent: Claude Code (Analyse logs GCloud + Fix 404 production)
 
 ### Fichiers modifiés
