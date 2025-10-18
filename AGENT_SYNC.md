@@ -23,7 +23,7 @@
 
 **Agent :** Claude Code (Sonnet 4.5)
 **Durée :** 1h
-**Commit :** `<à venir après push>`
+**Commit :** `84b2dcf` - fix(admin): rename sessions → threads to clarify dashboard analytics
 
 **Résumé :**
 - ✅ **Fix confusion sessions/threads** (problème critique #1 de l'audit)
