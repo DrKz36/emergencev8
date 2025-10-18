@@ -205,26 +205,31 @@ async def send_beta_invitations(
 
 
 @router.get(
-    "/admin/analytics/sessions",
+    "/admin/analytics/threads",
     response_model=Dict[str, Any],
     tags=["Admin Dashboard"],
-    summary="Get all active sessions (admin only)",
-    description="Returns all active user sessions with details for monitoring and management.",
+    summary="Get all active threads (admin only)",
+    description="Returns all active conversation threads with details for monitoring and management. "
+                "Note: This endpoint returns THREADS (conversations), not authentication sessions. "
+                "For authentication sessions, use /api/auth/admin/sessions instead.",
 )
-async def get_active_sessions(
+async def get_active_threads(
     _admin_verified: bool = Depends(verify_admin_role),
     admin_service: AdminDashboardService = Depends(deps.get_admin_dashboard_service),
 ) -> Dict[str, Any]:
     """
-    Get all active sessions - admin only.
-    Returns session details including user, device info, IP, and last activity.
+    Get all active threads - admin only.
+    Returns thread details including user, device info, IP, and last activity.
+
+    Note: This endpoint returns THREADS (conversations from 'sessions' table),
+    not authentication sessions (from 'auth_sessions' table).
     """
-    logger.info("[Admin] Fetching active sessions")
-    sessions = await admin_service.get_active_sessions()
-    logger.info(f"[Admin] Retrieved {len(sessions)} active sessions")
+    logger.info("[Admin] Fetching active threads")
+    threads = await admin_service.get_active_threads()
+    logger.info(f"[Admin] Retrieved {len(threads)} active threads")
     return {
-        "sessions": sessions,
-        "total": len(sessions),
+        "threads": threads,
+        "total": len(threads),
     }
 
 

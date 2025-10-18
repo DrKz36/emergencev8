@@ -739,42 +739,42 @@ export class AdminDashboard {
     }
 
     /**
-     * Render analytics view with sessions and system metrics
+     * Render analytics view with threads and system metrics
      */
     async renderAnalyticsView() {
         const sessionsContainer = this.container.querySelector('#analytics-sessions');
         const metricsContainer = this.container.querySelector('#analytics-metrics');
 
         // Show loading state
-        sessionsContainer.innerHTML = '<p class="loading">Chargement des sessions...</p>';
+        sessionsContainer.innerHTML = '<p class="loading">Chargement des threads...</p>';
         metricsContainer.innerHTML = '<p class="loading">Chargement des métriques...</p>';
 
         try {
-            // Load sessions and metrics in parallel
-            const [sessionsData, metricsData] = await Promise.all([
-                this.loadActiveSessions(),
+            // Load threads and metrics in parallel
+            const [threadsData, metricsData] = await Promise.all([
+                this.loadActiveThreads(),
                 this.loadSystemMetrics()
             ]);
 
-            // Render sessions list
-            this.renderSessionsList(sessionsData, sessionsContainer);
+            // Render threads list
+            this.renderThreadsList(threadsData, sessionsContainer);
 
             // Render system metrics
             this.renderSystemMetrics(metricsData, metricsContainer);
 
         } catch (error) {
             console.error('[AdminDashboard] Error loading analytics:', error);
-            sessionsContainer.innerHTML = '<p class="error">Erreur lors du chargement des sessions</p>';
+            sessionsContainer.innerHTML = '<p class="error">Erreur lors du chargement des threads</p>';
             metricsContainer.innerHTML = '<p class="error">Erreur lors du chargement des métriques</p>';
         }
     }
 
     /**
-     * Load active sessions from API
+     * Load active threads from API
      */
-    async loadActiveSessions() {
+    async loadActiveThreads() {
         const token = this._getAuthToken();
-        const response = await fetch('/api/admin/analytics/sessions', {
+        const response = await fetch('/api/admin/analytics/threads', {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -783,7 +783,7 @@ export class AdminDashboard {
         });
 
         if (!response.ok) {
-            throw new Error(`Sessions API error: ${response.status}`);
+            throw new Error(`Threads API error: ${response.status}`);
         }
 
         return await response.json();
@@ -810,33 +810,33 @@ export class AdminDashboard {
     }
 
     /**
-     * Render sessions list with revoke buttons
+     * Render threads list with revoke buttons
      */
-    renderSessionsList(data, container) {
-        const sessions = data.sessions || [];
+    renderThreadsList(data, container) {
+        const threads = data.threads || [];
 
-        if (sessions.length === 0) {
+        if (threads.length === 0) {
             container.innerHTML = `
-                <h3>${getIcon('users', 'section-icon')} Sessions Actives (0)</h3>
+                <h3>${getIcon('messageCircle', 'section-icon')} Threads de Conversation Actifs (0)</h3>
                 <div class="admin-empty">
-                    <p>Aucune session active</p>
+                    <p>Aucun thread actif</p>
                 </div>
             `;
             return;
         }
 
-        // Separate active and inactive sessions
-        const activeSessions = sessions.filter(s => s.is_active);
-        const inactiveSessions = sessions.filter(s => !s.is_active);
+        // Separate active and inactive threads
+        const activeThreads = threads.filter(t => t.is_active);
+        const inactiveThreads = threads.filter(t => !t.is_active);
 
-        const sessionsHtml = sessions.map(session => {
-            const isActive = session.is_active;
+        const threadsHtml = threads.map(thread => {
+            const isActive = thread.is_active;
             const statusBadge = isActive
                 ? '<span class="session-status active">Actif</span>'
                 : '<span class="session-status inactive">Inactif</span>';
 
-            const lastActivity = session.last_activity
-                ? new Date(session.last_activity).toLocaleString('fr-FR', {
+            const lastActivity = thread.last_activity
+                ? new Date(thread.last_activity).toLocaleString('fr-FR', {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',
@@ -845,8 +845,8 @@ export class AdminDashboard {
                   })
                 : 'Jamais';
 
-            const createdAt = session.created_at
-                ? new Date(session.created_at).toLocaleString('fr-FR', {
+            const createdAt = thread.created_at
+                ? new Date(thread.created_at).toLocaleString('fr-FR', {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',
@@ -861,21 +861,21 @@ export class AdminDashboard {
                         <div class="session-user-info">
                             ${getIcon('user', 'session-icon')}
                             <div>
-                                <strong>${session.email}</strong>
+                                <strong>${thread.email}</strong>
                                 ${statusBadge}
                             </div>
                         </div>
-                        <button class="btn-revoke-session" data-session-id="${session.session_id}">
+                        <button class="btn-revoke-session" data-session-id="${thread.session_id}">
                             ${getIcon('x', 'btn-icon')} Révoquer
                         </button>
                     </div>
                     <div class="session-details">
                         <div class="session-detail">
-                            <span class="detail-label">${getIcon('hash', 'detail-icon')} ID Session</span>
-                            <span class="detail-value session-id">${session.session_id}</span>
+                            <span class="detail-label">${getIcon('hash', 'detail-icon')} ID Thread</span>
+                            <span class="detail-value session-id">${thread.session_id}</span>
                         </div>
                         <div class="session-detail">
-                            <span class="detail-label">${getIcon('clock', 'detail-icon')} Créée le</span>
+                            <span class="detail-label">${getIcon('clock', 'detail-icon')} Créé le</span>
                             <span class="detail-value">${createdAt}</span>
                         </div>
                         <div class="session-detail">
@@ -884,15 +884,15 @@ export class AdminDashboard {
                         </div>
                         <div class="session-detail">
                             <span class="detail-label">${getIcon('clock', 'detail-icon')} Durée</span>
-                            <span class="detail-value">${session.duration_minutes.toFixed(0)} min</span>
+                            <span class="detail-value">${thread.duration_minutes.toFixed(0)} min</span>
                         </div>
                         <div class="session-detail">
                             <span class="detail-label">${getIcon('monitor', 'detail-icon')} Appareil</span>
-                            <span class="detail-value">${session.device}</span>
+                            <span class="detail-value">${thread.device}</span>
                         </div>
                         <div class="session-detail">
                             <span class="detail-label">${getIcon('globe', 'detail-icon')} IP</span>
-                            <span class="detail-value">${session.ip_address}</span>
+                            <span class="detail-value">${thread.ip_address}</span>
                         </div>
                     </div>
                 </div>
@@ -900,19 +900,27 @@ export class AdminDashboard {
         }).join('');
 
         container.innerHTML = `
-            <h3>${getIcon('users', 'section-icon')} Sessions (${sessions.length})</h3>
+            <div class="info-banner">
+                <div class="info-icon">${getIcon('info', 'info-icon')}</div>
+                <div class="info-content">
+                    <strong>Note :</strong> Cette vue affiche les <strong>threads de conversation</strong> (table <code>sessions</code>).
+                    Pour consulter les <strong>sessions d'authentification JWT</strong> (table <code>auth_sessions</code>),
+                    utilisez le module <strong>Auth Admin</strong>.
+                </div>
+            </div>
+            <h3>${getIcon('messageCircle', 'section-icon')} Threads de Conversation (${threads.length})</h3>
             <div class="sessions-summary">
                 <div class="summary-item">
-                    <span class="summary-label">Actives</span>
-                    <span class="summary-value active">${activeSessions.length}</span>
+                    <span class="summary-label">Actifs</span>
+                    <span class="summary-value active">${activeThreads.length}</span>
                 </div>
                 <div class="summary-item">
-                    <span class="summary-label">Inactives</span>
-                    <span class="summary-value">${inactiveSessions.length}</span>
+                    <span class="summary-label">Inactifs</span>
+                    <span class="summary-value">${inactiveThreads.length}</span>
                 </div>
             </div>
             <div class="sessions-grid">
-                ${sessionsHtml}
+                ${threadsHtml}
             </div>
         `;
 

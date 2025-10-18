@@ -1,4 +1,115 @@
-## [2025-10-18 Session actuelle] — Agent: Claude Code (Sonnet 4.5) - Fix Mode Automatique Claude Code
+## [2025-10-18 Session actuelle] — Agent: Claude Code (Sonnet 4.5) - Fix Confusion Sessions/Threads (Phase 1)
+
+### Fichiers modifiés
+- [src/backend/features/dashboard/admin_service.py](../src/backend/features/dashboard/admin_service.py) - Renommé `get_active_sessions()` → `get_active_threads()`
+- [src/backend/features/dashboard/admin_router.py](../src/backend/features/dashboard/admin_router.py) - Endpoint `/admin/analytics/threads` (ancien: sessions)
+- [src/frontend/features/admin/admin-dashboard.js](../src/frontend/features/admin/admin-dashboard.js) - Mise à jour appels API + labels UI
+- [src/frontend/features/admin/admin-dashboard.css](../src/frontend/features/admin/admin-dashboard.css) - Ajout styles bandeau info
+- [docs/passation.md](passation.md) - Cette entrée
+- [AGENT_SYNC.md](../AGENT_SYNC.md) - Mise à jour session
+
+### Contexte
+Suite à l'audit du 2025-10-18 (voir [AUDIT_COMPLET_2025-10-18.md](../AUDIT_COMPLET_2025-10-18.md)), correction du **problème critique #1** :
+Confusion entre deux types de "sessions" (threads de chat vs sessions d'authentification JWT).
+
+**Problème identifié** :
+- Table `sessions` = Threads de conversation/chat (legacy naming)
+- Table `auth_sessions` = Sessions d'authentification JWT
+- Dashboard admin utilisait la table `sessions` mais avec des noms/labels trompeurs ("Sessions actives")
+- Les utilisateurs admin voyaient des threads de chat déguisés en sessions d'authentification
+- Confusion totale entre les deux concepts
+
+**Impacts** :
+- L'admin pensait voir les sessions d'authentification JWT mais voyait en réalité les threads de chat
+- Impossible de distinguer les deux sans lire le code
+- Risque d'erreur de manipulation (révoquer un thread au lieu d'une session JWT)
+
+### Actions réalisées
+
+**Backend (Python)** :
+- ✅ Renommé fonction `get_active_sessions()` → `get_active_threads()` ([admin_service.py:426](../src/backend/features/dashboard/admin_service.py#L426))
+- ✅ Mise à jour docstring avec note explicative distinguant threads vs sessions JWT
+- ✅ Renommé endpoint `/admin/analytics/sessions` → `/admin/analytics/threads` ([admin_router.py:208](../src/backend/features/dashboard/admin_router.py#L208))
+- ✅ Mise à jour description OpenAPI pour clarifier la différence
+- ✅ Logs mis à jour : "Fetching active threads" au lieu de "sessions"
+- ✅ Clé de retour JSON : `"threads"` au lieu de `"sessions"`
+
+**Frontend (JavaScript)** :
+- ✅ Renommé fonction `loadActiveSessions()` → `loadActiveThreads()` ([admin-dashboard.js:775](../src/frontend/features/admin/admin-dashboard.js#L775))
+- ✅ Endpoint appelé : `/api/admin/analytics/threads` (ancien: `/admin/analytics/sessions`)
+- ✅ Renommé fonction `renderSessionsList()` → `renderThreadsList()` ([admin-dashboard.js:815](../src/frontend/features/admin/admin-dashboard.js#L815))
+- ✅ Variables renommées : `threads` au lieu de `sessions`, `activeThreads`, `inactiveThreads`
+- ✅ Labels UI clarifiés :
+  - "Threads de Conversation (X)" au lieu de "Sessions (X)"
+  - "Threads de Conversation Actifs" dans le titre
+  - "ID Thread" au lieu de "ID Session"
+  - Icône `messageCircle` au lieu de `users`
+- ✅ Bandeau info ajouté en haut de la section pour expliquer la différence
+- ✅ Docstrings mises à jour
+
+**Frontend (CSS)** :
+- ✅ Styles `.info-banner` ajoutés ([admin-dashboard.css:1551-1594](../src/frontend/features/admin/admin-dashboard.css#L1551-L1594))
+- ✅ Background bleu avec bordure gauche pour attirer l'attention
+- ✅ Styles pour `code`, `strong`, liens
+- ✅ Design cohérent avec le reste du dashboard
+
+### Tests
+- ✅ `python -m py_compile` : Backend compile sans erreur
+- ✅ `node -c` : Frontend JavaScript syntaxiquement correct
+- ✅ `ruff check` : Aucune violation de style
+- ✅ Les classes CSS existantes (`session-card`, etc.) conservées pour compatibilité
+- ✅ Aucune régression introduite (module Auth Admin non touché)
+
+**Tests manuels recommandés** (à faire en local) :
+- [ ] Démarrer backend : `pwsh -File scripts/run-backend.ps1`
+- [ ] Se connecter en tant qu'admin
+- [ ] Aller dans Admin → Analytics
+- [ ] Vérifier bandeau info visible et clair
+- [ ] Vérifier titre "Threads de Conversation (X)"
+- [ ] Vérifier données s'affichent correctement
+- [ ] Vérifier module Auth Admin fonctionne toujours (sessions JWT)
+
+### Prochaines actions recommandées (Phase 2)
+
+Selon [PROMPT_SUITE_AUDIT.md](../PROMPT_SUITE_AUDIT.md) :
+
+1. **Améliorer `renderCostsChart()`** (gestion null/undefined)
+   - Problème : Chart.js peut crasher si données nulles
+   - Action : Ajouter validation données avant render
+
+2. **Standardiser format `user_id`** (hash vs plain text)
+   - Problème : Inconsistance email hash SHA256 vs email plain text
+   - Action : Standardiser sur email hash partout
+
+3. **Mettre à jour architecture docs**
+   - Fichier : `docs/architecture/10-Components.md`
+   - Action : Documenter la distinction sessions vs threads
+
+4. **Créer ADR (Architecture Decision Record)**
+   - Documenter la décision de renommer sessions → threads
+   - Justifier le choix de garder la table `sessions` (migration lourde)
+
+### Blocages
+Aucun.
+
+### Notes
+
+**Pourquoi garder la table `sessions` ?**
+- Renommer la table DB serait une migration lourde et risquée
+- Le nom legacy `sessions` reste dans le code backend (requêtes SQL)
+- On clarifie au niveau API/UI : endpoints + labels utilisent "threads"
+- Cohérence future : considérer renommer la table dans une migration future
+
+**Différence threads vs sessions JWT** :
+- **Threads** (`sessions` table) : Conversations de chat persistantes
+- **Sessions JWT** (`auth_sessions` table) : Tokens d'authentification temporaires
+- Endpoints distincts :
+  - `/api/admin/analytics/threads` → Dashboard admin (threads)
+  - `/api/auth/admin/sessions` → Auth admin (sessions JWT)
+
+---
+
+## [2025-10-18 Session précédente] — Agent: Claude Code (Sonnet 4.5) - Fix Mode Automatique Claude Code
 
 ### Fichiers modifiés
 - [.claude/settings.local.json](../.claude/settings.local.json) - Nettoyé (wildcard "*" uniquement)

@@ -423,10 +423,13 @@ class AdminDashboardService:
             logger.error(f"[admin_dashboard] Error getting cost history for {user_id}: {e}", exc_info=True)
             return []
 
-    async def get_active_sessions(self) -> List[Dict[str, Any]]:
+    async def get_active_threads(self) -> List[Dict[str, Any]]:
         """
-        Get all active sessions across all users.
-        Returns session details including user, device, IP, and last activity.
+        Get all active threads (conversations) across all users.
+        Returns thread details including user, device, IP, and last activity.
+
+        Note: This returns THREADS (conversations from 'sessions' table - legacy naming),
+        not authentication sessions. For authentication sessions, use AuthService.list_sessions() instead.
         """
         try:
             # Get all sessions
@@ -520,7 +523,7 @@ class AdminDashboardService:
             return sessions
 
         except Exception as e:
-            logger.error(f"[admin_dashboard] Error getting active sessions: {e}", exc_info=True)
+            logger.error(f"[admin_dashboard] Error getting active threads: {e}", exc_info=True)
             return []
 
     async def revoke_session(self, session_id: str) -> bool:

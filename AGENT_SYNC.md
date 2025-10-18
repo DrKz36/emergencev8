@@ -19,6 +19,37 @@
 
 ---
 
+## 🔄 Dernière session (2025-10-18 - Phase 1 Audit)
+
+**Agent :** Claude Code (Sonnet 4.5)
+**Durée :** 1h
+**Commit :** `<à venir après push>`
+
+**Résumé :**
+- ✅ **Fix confusion sessions/threads** (problème critique #1 de l'audit)
+- ✅ Renommage fonction backend `get_active_sessions()` → `get_active_threads()`
+- ✅ Renommage endpoint `/admin/analytics/sessions` → `/admin/analytics/threads`
+- ✅ Clarification UI dashboard admin : "Threads de Conversation" au lieu de "Sessions"
+- ✅ Bandeau info ajouté pour éviter confusion avec sessions JWT
+- ✅ Tests complets (compilation, ruff, syntaxe JS)
+- ✅ Documentation mise à jour (passation.md)
+
+**Fichiers modifiés :**
+- Backend : [admin_service.py](src/backend/features/dashboard/admin_service.py), [admin_router.py](src/backend/features/dashboard/admin_router.py)
+- Frontend : [admin-dashboard.js](src/frontend/features/admin/admin-dashboard.js), [admin-dashboard.css](src/frontend/features/admin/admin-dashboard.css)
+- Docs : [passation.md](docs/passation.md), [AGENT_SYNC.md](AGENT_SYNC.md)
+
+**Problème résolu :**
+- **Avant :** Dashboard admin affichait "Sessions actives" (table `sessions` = threads de chat)
+- **Après :** Dashboard admin affiche "Threads de Conversation" avec bandeau info explicatif
+- **Distinction claire :** Threads (conversations) ≠ Sessions JWT (authentification)
+
+**Prochaine étape recommandée :** Phase 2 de l'audit (améliorer `renderCostsChart()`, standardiser `user_id`)
+
+**Référence :** [PROMPT_SUITE_AUDIT.md](PROMPT_SUITE_AUDIT.md) - Phase 1 (Immédiat)
+
+---
+
 ## 📍 État actuel du dépôt (2025-10-17)
 
 ### Branche active
