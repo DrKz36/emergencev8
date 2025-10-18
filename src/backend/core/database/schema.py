@@ -95,6 +95,7 @@ TABLE_DEFINITIONS = [
         archived INTEGER NOT NULL DEFAULT 0,
         archival_reason TEXT,
         archived_at TEXT,
+        consolidated_at TEXT,  -- ✅ NOUVEAU Sprint 2: timestamp consolidation LTM (quand thread archivé → ChromaDB)
         last_message_at TEXT,
         message_count INTEGER DEFAULT 0,
         created_at TEXT NOT NULL,
@@ -117,6 +118,12 @@ TABLE_DEFINITIONS = [
     """
     CREATE INDEX IF NOT EXISTS idx_threads_user_type_conversation
     ON threads(user_id, type, conversation_id);
+    """,
+    # ✅ NOUVEAU Sprint 2: Index pour threads archivés non consolidés
+    """
+    CREATE INDEX IF NOT EXISTS idx_threads_archived_not_consolidated
+    ON threads(archived, consolidated_at)
+    WHERE archived = 1 AND consolidated_at IS NULL;
     """,
     """
     CREATE TABLE IF NOT EXISTS messages (

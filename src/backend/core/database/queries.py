@@ -951,7 +951,14 @@ async def update_thread(
     agent_id: Optional[str] = None,
     archived: Optional[bool] = None,
     meta: Optional[Dict[str, Any]] = None,
+    gardener = None,  # ✅ NOUVEAU Sprint 2: injection MemoryGardener pour consolidation auto
 ) -> None:
+    """
+    Met à jour un thread existant.
+
+    ✅ NOUVEAU Sprint 2: Si archived=True et gardener fourni,
+    déclenche automatiquement la consolidation LTM du thread.
+    """
     fields: list[str] = []
     params: list[Any] = []
     if title is not None:
@@ -963,9 +970,21 @@ async def update_thread(
     if meta is not None:
         fields.append("meta = ?")
         params.append(json.dumps(meta))
+
     if archived is not None:
         fields.append("archived = ?")
         params.append(1 if archived else 0)
+
+        # ✅ NOUVEAU Sprint 2: Si archivage, ajouter timestamp + raison
+        if archived:
+            fields.append("archived_at = ?")
+            params.append(datetime.now(timezone.utc).isoformat())
+
+            # Raison par défaut si pas dans meta
+            archival_reason = (meta or {}).get('archival_reason', 'manual_archive')
+            fields.append("archival_reason = ?")
+            params.append(archival_reason)
+
     fields.append("updated_at = ?")
     params.append(datetime.now(timezone.utc).isoformat())
     scope_sql, scope_params = _build_scope_condition(user_id, session_id)
@@ -975,6 +994,36 @@ async def update_thread(
         tuple(params),
         commit=True,
     )
+
+    # ✅ NOUVEAU Sprint 2: Déclencher consolidation si archivage
+    if archived and gardener:
+        try:
+            logger.info(f"Thread {thread_id} archivé, déclenchement consolidation LTM...")
+
+            # Récupérer user_id si pas fourni
+            if not user_id:
+                thread = await get_thread_any(db, thread_id, session_id=session_id, user_id=None)
+                user_id = thread.get('user_id') if thread else None
+
+            if user_id:
+                await gardener._tend_single_thread(
+                    thread_id=thread_id,
+                    session_id=session_id,
+                    user_id=user_id
+                )
+
+                # Marquer comme consolidé
+                await db.execute(
+                    "UPDATE threads SET consolidated_at = ? WHERE id = ?",
+                    (datetime.now(timezone.utc).isoformat(), thread_id),
+                    commit=True
+                )
+                logger.info(f"Thread {thread_id} consolidé en LTM avec succès")
+            else:
+                logger.warning(f"Impossible de consolider thread {thread_id}: user_id introuvable")
+        except Exception as e:
+            logger.error(f"Échec consolidation thread {thread_id}: {e}", exc_info=True)
+            # Ne pas bloquer l'archivage si consolidation échoue
 async def delete_thread(
     db: DatabaseManager,
     thread_id: str,
