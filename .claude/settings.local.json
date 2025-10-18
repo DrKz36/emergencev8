@@ -39,7 +39,8 @@
       "Bash(python claude-plugins/integrity-docs-guardian/scripts/generate_report.py)",
       "Bash(python claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py)",
       "Bash(TZ=Europe/Zurich date '+%Y-%m-%d %H:%M')",
-      "Bash(git add -A)"
+      "Bash(git add -A)",
+      "Bash(git commit -m \"$(cat <<''EOF''\ndocs(sync): vérification guardians + préparation déploiement beta-2.1.4\n\nVérification complète des 4 guardians avant déploiement:\n- Anima (DocKeeper): OK - 0 gap documentation\n- Neo (IntegrityWatcher): OK - 0 issue intégrité\n- Nexus (Coordinator): OK - tous checks passés\n- ProdGuardian: OK - production healthy (80 logs, 0 erreur)\n\nFichiers modifiés:\n- AGENT_SYNC.md: session 17:13 (guardians + déploiement beta-2.1.4)\n- docs/passation.md: nouvelle entrée complète\n- .claude/settings.local.json: auto-update permissions\n- reports/prod_report.json: auto-update guardians\n\nConfiguration mode full auto Claude Code:\n- Résolution comportement trop prudent depuis maj ce matin\n- Engagement à respecter CLAUDE.md (mode autonome total)\n- Workflow: agir directement sans validation\n\nProchaines actions:\n- Bump version beta-2.1.3 → beta-2.1.4\n- Build Docker + déploiement canary Cloud Run\n- Tests + déploiement progressif si OK\n- Vérifier fixes 404 (reset-password.html, favicon.ico)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
