@@ -16,7 +16,9 @@
       "Bash(git add .claude/settings.local.json reports/prod_report.json)",
       "Bash(git commit -m \"$(cat <<''EOF''\nchore: auto-update settings et prod report post-push\n\n- Mise à jour auto settings.local.json avec commandes exécutées\n- Mise à jour prod_report.json par ProdGuardian pre-push hook\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git add -f .claude/settings.local.json)",
-      "Bash(git add reports/prod_report.json)"
+      "Bash(git add reports/prod_report.json)",
+      "Bash(git commit -m \"chore: update prod_report.json from pre-push hook\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\")",
+      "Bash(git commit -m \"chore: sync auto-generated files (settings + prod_report)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\")"
     ],
     "deny": [],
     "ask": []
