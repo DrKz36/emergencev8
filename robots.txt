@@ -1,0 +1,16 @@
+# robots.txt pour ÉMERGENCE
+# https://emergence-app.ch
+
+User-agent: *
+Allow: /
+
+# Bloquer les dossiers sensibles
+Disallow: /api/
+Disallow: /src/backend/
+Disallow: /.git/
+Disallow: /.env
+Disallow: /scripts/
+Disallow: /logs/
+
+# Sitemap (à créer si besoin)
+# Sitemap: https://emergence-app.ch/sitemap.xml
