@@ -1405,7 +1405,12 @@ class ChatService:
 
             # ✅ Phase 3: Enrichir avec concepts consolidés (avec cache)
             # Utilise n_results dynamique basé sur le nombre de messages
-            n_results = min(5, max(3, len(messages) // 4)) if messages else 5
+            # Pour questions exhaustives ("tous", "résumer tout"), chercher plus de concepts
+            is_exhaustive_query = bool(re.search(r'\b(tous|toutes|tout|exhaustif|complet|résumer tout)\b', last_user_message.lower()))
+            if is_exhaustive_query:
+                n_results = 50  # Pour questions exhaustives, chercher beaucoup plus de concepts
+            else:
+                n_results = min(5, max(3, len(messages) // 4)) if messages else 5
 
             consolidated_entries = []
             if last_user_message and user_id:
@@ -2115,7 +2120,8 @@ class ChatService:
             is_temporal = self._is_temporal_query(last_user_message)
             rag_metrics.record_temporal_query(is_temporal)
 
-            if not recall_context and is_temporal and uid and thread_id:
+            # Pour les questions temporelles, prioriser le contexte temporel enrichi
+            if is_temporal and uid and thread_id:
                 try:
                     recall_context = await self._build_temporal_history_context(
                         thread_id=thread_id,

@@ -1,3 +1,29 @@
+## [2025-10-18 07:51] - Agent: Codex (GPT-5 local) - Script mémoire archivée stabilisé
+
+### Fichiers modifiés
+- `test_archived_memory_fix.py` (fallback `topic` → `name` pour l'affichage des exemples)
+- `docs/fix_archived_memory_retrieval.md` (ajout Test 3 + rappel `TopicSummary.topic`)
+- `docs/AGENTS_COORDINATION.md` (section Développement mise à jour)
+- `AGENT_SYNC.md` (journal Codex enrichi)
+
+### Contexte
+- Erreur `AttributeError: 'TopicSummary' object has no attribute 'name'` déclenchée par le script de validation mémoire archivée.
+- Ajout d'un fallback vers `TopicSummary.topic` pour garantir la compatibilité avec les concepts legacy sans champ `name`.
+- Synchronisation des documents de coopération afin que Claude Code et Codex utilisent la même source de vérité (`TopicSummary.topic`).
+
+### Tests
+- `pwsh -NoLogo -Command ".\.venv\Scripts\python.exe test_archived_memory_fix.py"`
+
+### Prochaines actions recommandées
+1. Couvrir le fallback `TopicSummary.topic` par un test automatisé backend (pytest).
+2. Alimenter `RAPPORT_TEST_MEMOIRE_ARCHIVEE.md` avec les résultats post-consolidation.
+3. Déterminer si le backend doit re-remplir le champ `name` pour maintenir la rétrocompatibilité future.
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-17 08:40] - Agent: Claude Code (Sonnet 4.5) - Pre-Deployment Guardian Orchestration & Deploy
 
 ### Fichiers modifiés

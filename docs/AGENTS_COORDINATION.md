@@ -138,12 +138,37 @@ async def get_data(self) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"[Service] Error fetching data: {e}", exc_info=True)
         # Retourner structure valide avec données vides
-        return {
-            "data": [],
-            "total": 0,
-            "status": "error"
-        }
+       return {
+           "data": [],
+           "total": 0,
+           "status": "error"
+       }
 ```
+
+---
+
+### 5. Utilitaires mémoire & monitoring (2025-10-18)
+
+**Scripts partagés (racine repo)** :
+- `check_archived_threads.py` : inventaire rapide des threads archivés (structure + compte messages) pour diagnostiquer la base SQLite.
+- `consolidate_archives_manual.py` : consolidation manuelle des threads archivés vers Chroma (mode offline). **⚠️** À exécuter uniquement après validation avec Claude Code (fix SQL encore nécessaire).
+- `test_archived_memory_fix.py` : vérifie la récupération des concepts legacy / filtrage permissif (`agent_id`). À lancer dès qu'une base Chroma contient des souvenirs réels.
+- `test_anima_context.py` : contrôle que l’absence de mémoire renvoie bien un contexte vide (doit déclencher le toast côté UI).
+- `claude-plugins/integrity-docs-guardian/scripts/argus_simple.py` : mini-monitor pour valider que backend (8000) et frontend (5173) tournent avant tests manuels.
+
+**Documentation associée** :
+- `RAPPORT_TEST_MEMOIRE_ARCHIVEE.md` – synthèse des constats & plan d’action (Chroma vide, scripts à corriger, protocole QA).
+
+**Coordination Claude Code / Codex** :
+1. **Préparation** : lancer `argus_simple.py` pour vérifier que les services sont bien démarrés (évite des tests mémoire à vide).
+2. **Diagnostic DB** : `python check_archived_threads.py` (Claude Code) pour confirmer l’état des threads avant consolidation.
+3. **Consolidation** : `python consolidate_archives_manual.py` (Codex peut exécuter mais doit consigner tout échec dans passation + ping Claude pour ajustement SQL).
+4. **Validation mémoire** :
+   - `python test_archived_memory_fix.py` → attendu : concepts listés par agent, legacy inclus.
+   - `python test_anima_context.py` → attendu : message “contexte vide” si aucune donnée.
+5. **Feedback** : mettre à jour `docs/passation.md` + section correspondante dans `AGENT_SYNC.md` pour garder la traçabilité (tests exécutés, résultats, follow-up).
+
+Ces outils servent de check-list rapide avant de confier une séance de QA mémoire à un autre agent ou à l’architecte.
 
 ---
 
@@ -223,6 +248,9 @@ async def get_data(self) -> Dict[str, Any]:
 ### Développement
 - Ce fichier - Coordination inter-agents
 - [`INTER_AGENT_SYNC.md`](INTER_AGENT_SYNC.md) - Points de synchronisation détaillés
+- `test_archived_memory_fix.py` - Script de validation mutualisé pour le fix « souvenirs archivés »
+  - ⚙️ À lancer par Claude Code **et** Codex GPT avant handoff lorsqu'un changement touche la mémoire
+  - ⚠️ Utiliser l'attribut `TopicSummary.topic` pour tout affichage ou logging (l'attribut `name` est obsolète)
 
 ---
 

@@ -180,6 +180,23 @@ User: Peux-tu me résumer tous les sujets qu'on a abordé ensemble avec les date
 Anima: [Devrait lister TOUS les sujets avec dates exactes, incluant les archives]
 ```
 
+### Test 3: Script de validation automatisée
+
+Un script dédié `test_archived_memory_fix.py` est disponible à la racine du dépôt.  
+Il vérifie simultanément la présence des concepts legacy et l'accès permissif pour Anima.
+
+```bash
+pwsh -NoLogo -Command ".\\.venv\\Scripts\\python.exe test_archived_memory_fix.py"
+```
+
+**Points de contrôle**
+- Le script affiche les topics en utilisant `TopicSummary.topic` (champ de référence pour tous les agents).  
+  L'attribut `name` reste optionnel et ne doit plus être utilisé directement.
+- Chaque utilisateur listé doit avoir au moins un souvenir `LEGACY`.  
+- Le bloc « Validation du fix » doit indiquer le succès du filtrage permissif.
+
+> ⚠️ Si aucun topic n'est retourné, lancer la consolidation des archives (`python -m backend.cli.consolidate_archived_threads --verbose`) puis relancer le test.
+
 ## Fichiers modifiés
 
 - `src/backend/features/memory/memory_query_tool.py` - Filtre PERMISSIF ChromaDB + Python

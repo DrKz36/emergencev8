@@ -187,9 +187,12 @@ Documentation technique des modules backend récents :
   - `/health` - Healthcheck basique
   - **Changement majeur**: Observabilité production activée par défaut
 
-- **[Monitoring Feature](docs/backend/monitoring.md)** - Health checks avancés K8s
+- **[Monitoring Feature](docs/backend/monitoring.md)** - Health checks avancés K8s (V2.1.2)
+  - **NOUVEAU (V2.1.2)**: `/api/system/info` - Informations système complètes pour About page
+  - **NOUVEAU (V2.1.2)**: Version synchronisée `beta-2.1.2` via `BACKEND_VERSION` env var
   - `/health/liveness` - Liveness probe (processus vivant)
   - `/health/readiness` - Readiness probe (services up: DB, Vector, LLM)
+  - `/api/monitoring/health` - Healthcheck basique avec version
   - `/api/monitoring/health/detailed` - Métriques système (CPU, RAM, disk)
   - Dashboards admin (sécurité, performance, slow queries, AI stats)
 
@@ -218,19 +221,23 @@ Documentation technique des modules backend récents :
   - AdminDashboardService pour statistiques globales et gestion beta
   - Logging standardisé avec préfixes `[Timeline]` et `[admin_dashboard]`
 
-- **[Auth Feature](docs/backend/auth.md)** - Authentification & Email (V2.0)
+- **[Auth Feature](docs/backend/auth.md)** - Authentification & Email (V2.1.2)
+  - **FIX CRITIQUE (V2.1.2)**: Bug `password_must_reset` résolu définitivement
+    - Fix SQL CASE dans `_upsert_allowlist()` (lignes 1218-1222)
+    - UPDATE explicites post-changement de mot de passe
+    - Les membres ne sont plus forcés de réinitialiser à chaque connexion
   - JWT authentication avec sessions management
   - Allowlist-based access control (admin/member/guest)
   - Password reset par email avec tokens sécurisés (1h expiration)
   - Email service avec templates HTML/text (Gmail SMTP)
   - `/api/auth/login` - Login email/password
   - `/api/auth/request-password-reset` - Demande réinitialisation
-- `/api/auth/reset-password` - Réinitialisation avec token
-- `/api/auth/change-password` - Changement mot de passe
-- **Fix**: Admins ne sont plus forcés à réinitialiser leur mot de passe
-- `password_must_reset = 0` automatique pour role admin
-- Rate limiting anti-brute force (5 tentatives/15min)
-- `verify_token()` restaure les sessions manquantes (Cloud Run multi-instance) tout en respectant révocation et expiration
+  - `/api/auth/reset-password` - Réinitialisation avec token
+  - `/api/auth/change-password` - Changement mot de passe
+  - **Fix V2.0**: Admins ne sont plus forcés à réinitialiser leur mot de passe
+  - `password_must_reset = 0` automatique pour role admin
+  - Rate limiting anti-brute force (5 tentatives/15min)
+  - `verify_token()` restaure les sessions manquantes (Cloud Run multi-instance) tout en respectant révocation et expiration
   - Audit log complet de toutes les actions auth
 
 - **[Beta Report Feature](docs/backend/beta_report.md)** - Système rapports beta (V1.0)

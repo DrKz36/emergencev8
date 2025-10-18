@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git commit -m \"chore: update auto-generated files (settings + prod_report)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\")"
+      "Bash(powershell -File \"./claude-plugins/integrity-docs-guardian/scripts/argus_monitor.ps1\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":8000\")",
+      "Bash(findstr \":5173\")",
+      "Bash(python claude-plugins/integrity-docs-guardian/scripts/argus_simple.py)"
     ],
     "deny": [],
     "ask": []

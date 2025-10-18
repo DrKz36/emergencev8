@@ -31,7 +31,7 @@ Healthcheck public simple pour vérifier que l'application répond.
 {
   "status": "healthy",
   "timestamp": "2025-10-11T13:45:00.000Z",
-  "version": "0.0.0"
+  "version": "beta-2.1.2"
 }
 ```
 
@@ -178,6 +178,81 @@ readinessProbe:
 ```
 
 **Comportement**: Si 2 échecs consécutifs, Kubernetes retire le pod du load balancing (pas de trafic).
+
+---
+
+### 3. `/api/system/info` - System Information (Phase P2)
+
+**GET** `/api/system/info`
+
+**Endpoint dédié pour About page** - Informations système complètes pour la page "À propos".
+
+**Services vérifiés**:
+- Backend version et environnement
+- Python version et platform
+- System resources (CPU, memory, disk)
+- Service status (database, vector, LLM)
+- Uptime et performance metrics
+
+**Réponse** (200 OK):
+```json
+{
+  "version": {
+    "backend": "beta-2.1.2",
+    "python": "3.11.5",
+    "environment": "production"
+  },
+  "platform": {
+    "system": "Linux",
+    "release": "5.15.0",
+    "machine": "x86_64",
+    "processor": "Intel Xeon"
+  },
+  "resources": {
+    "cpu_percent": 12.4,
+    "memory": {
+      "total_gb": 16.0,
+      "available_gb": 8.5,
+      "used_percent": 46.9
+    },
+    "disk": {
+      "total_gb": 500.0,
+      "free_gb": 235.7,
+      "used_percent": 52.9
+    }
+  },
+  "uptime": {
+    "seconds": 3628800,
+    "formatted": "42 days, 0 hours",
+    "started_at": "2025-09-01T12:00:00Z"
+  },
+  "services": {
+    "database": {
+      "status": "up"
+    },
+    "vector_service": {
+      "status": "up",
+      "backend": "chroma",
+      "collections": 3
+    },
+    "llm_providers": {
+      "status": "up",
+      "providers": {
+        "openai": {"status": "up", "configured": true},
+        "anthropic": {"status": "up", "configured": true}
+      }
+    }
+  },
+  "timestamp": "2025-10-17T13:45:00.000Z"
+}
+```
+
+**Configuration Version**:
+- Version définie via variable d'environnement `BACKEND_VERSION` (défaut: `beta-2.1.2`)
+- Synchronisée avec `package.json`, `index.html` et autres fichiers sources
+- Utilise `os.getenv("BACKEND_VERSION", "beta-2.1.2")` dans le code (ligne 384)
+
+**Usage**: Page "À propos" de l'application, diagnostics système, vérification déploiement.
 
 ---
 
@@ -576,6 +651,12 @@ SUSPICIOUS_PATTERN_THRESHOLD = 10  # Alerting après 10 patterns
 ---
 
 ## Changelog
+
+### P2.1.2 - 2025-10-17
+- **Synchronisation versioning** : `version` maintenant `beta-2.1.2` (ligne 38)
+- **Endpoint /api/system/info** : Informations système complètes pour About page
+- Version backend via variable `BACKEND_VERSION` (défaut: `beta-2.1.2`)
+- Synchronisation avec `package.json`, `index.html` et autres fichiers sources
 
 ### P1.5 - 2025-10-11
 - Health checks avancés (liveness, readiness, detailed)

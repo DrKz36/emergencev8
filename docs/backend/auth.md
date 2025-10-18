@@ -412,28 +412,61 @@ Tous les événements d'authentification sont loggés dans `auth_audit_log` :
 
 ### Admin forcé à réinitialiser le mot de passe
 
-Ce bug a été corrigé dans la V2.0. Solutions :
+Ce bug a été corrigé dans la **V2.1.2** (octobre 2025). Solutions :
 
-1. **Mise à jour automatique au démarrage:**
+**1. Fix automatique dans `_upsert_allowlist()` (lignes 1218-1222):**
+```python
+password_must_reset = CASE
+    WHEN excluded.role = 'admin' THEN 0
+    WHEN excluded.password_hash IS NOT NULL THEN 0
+    ELSE auth_allowlist.password_must_reset
+END
+```
+
+La logique SQL CASE garantit que:
+- Les admins ont toujours `password_must_reset = 0`
+- Quand un mot de passe est défini/changé, le flag est réinitialisé à `0`
+- Sinon, la valeur existante est préservée
+
+**2. UPDATE explicite après changement de mot de passe:**
+- `set_allowlist_password()` (lignes 952-956)
+- `change_own_password()` (lignes 1006-1011)
+
+Ces fonctions exécutent un `UPDATE` explicite pour garantir que `password_must_reset = 0` après un changement de mot de passe.
+
+**3. Mise à jour automatique au démarrage:**
    Le bootstrap SQL s'exécute à chaque démarrage du backend
+   ```sql
+   UPDATE auth_allowlist SET password_must_reset = 0
+   WHERE role = 'admin' AND password_must_reset != 0
+   ```
 
-2. **Mise à jour manuelle:**
+**4. Mise à jour manuelle (si nécessaire):**
    ```python
    python scripts/disable_password_reset.py
    ```
 
-3. **Vérifier en base:**
+**5. Vérifier en base:**
    ```sql
    SELECT email, role, password_must_reset FROM auth_allowlist WHERE role = 'admin';
    ```
 
 ## Changelog
 
+### V2.1.2 (Octobre 2025)
+- ✅ **FIX CRITIQUE:** Bug password_must_reset résolu définitivement
+  - Fix SQL CASE statement dans `_upsert_allowlist()` (lignes 1218-1222)
+  - Ajout UPDATE explicites dans `change_own_password()` et `set_allowlist_password()`
+  - Les membres ne sont plus demandés de réinitialiser leur mot de passe à chaque connexion
+  - Les admins ne sont jamais forcés à réinitialiser
+- ✅ Synchronisation versioning (package.json, index.html, monitoring/router.py)
+- ✅ Validation accès conversations archivées via `include_archived=True` dans l'API
+
 ### V2.0 (Octobre 2025)
 - ✅ Service email complet avec templates HTML
 - ✅ Réinitialisation de mot de passe par email
 - ✅ Invitations beta par email
-- ✅ Fix: admins ne sont plus forcés à réinitialiser
+- ✅ Fix initial: admins ne sont plus forcés à réinitialiser
 - ✅ Bootstrap SQL pour corriger les admins existants
 - ✅ Support Gmail avec mot de passe d'application
 

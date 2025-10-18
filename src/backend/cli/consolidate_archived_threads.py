@@ -34,6 +34,7 @@ Examples:
 
 import asyncio
 import logging
+import os
 import sys
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
@@ -166,7 +167,14 @@ async def run_consolidation(
     db_manager = DatabaseManager("emergence.db")
     await db_manager.connect()
 
-    vector_service = VectorService()
+    # Initialize VectorService with proper parameters
+    persist_directory = os.getenv("EMERGENCE_VECTOR_DIR", "./data/vector_store")
+    embed_model_name = os.getenv("EMBED_MODEL_NAME", "all-MiniLM-L6-v2")
+
+    vector_service = VectorService(
+        persist_directory=persist_directory,
+        embed_model_name=embed_model_name
+    )
     memory_analyzer = MemoryAnalyzer(db_manager=db_manager)
 
     gardener = MemoryGardener(

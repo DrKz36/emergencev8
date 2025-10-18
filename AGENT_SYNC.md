@@ -536,6 +536,50 @@ git commit -m "feat: activate Guardian automation system"
 
 ---
 
+## 🤝 Codex - Journal 2025-10-18
+
+### ✅ 2025-10-18 07:51 - Script mémoire archivée stabilisé
+
+- **Agent** : Codex (local, GPT-5)
+- **Objectifs** :
+  - Supprimer l'AttributeError déclenché par l'usage du champ `name` dans `test_archived_memory_fix.py`.
+  - Aligner la documentation de coopération sur l'attribut de référence `TopicSummary.topic`.
+- **Actions principales** :
+  - ✅ `test_archived_memory_fix.py` : fallback `topic` → `name` pour l'affichage des exemples (compatibilité souvenirs legacy).
+  - ✅ `docs/fix_archived_memory_retrieval.md` : ajout du Test 3 (script automatisé) + rappel d'utiliser `TopicSummary.topic`.
+  - ✅ `docs/AGENTS_COORDINATION.md` : section « Développement » enrichie avec consignes cross-agents et script commun.
+- **Tests / validations** :
+  - `pwsh -NoLogo -Command ".\.venv\Scripts\python.exe test_archived_memory_fix.py"` ✅ (31 concepts legacy détectés).
+- **Suivi / TODO** :
+  1. Ajouter un test backend couvrant explicitement le fallback `TopicSummary.topic`.
+  2. Étendre `RAPPORT_TEST_MEMOIRE_ARCHIVEE.md` avec des captures post-consolidation.
+  3. Décider si l'attribut `name` doit être re-populé côté backend pour compatibilité future.
+
+### ✅ 2025-10-18 07:31 - Consolidation mémoire archivée & garde-fous Anima
+
+- **Agent** : Codex (local, GPT-5)
+- **Objectifs** :
+  - Documenter et valider le correctif `password_must_reset` (V2.1.2) côté auth + monitoring.
+  - Outiller les tests mémoire archivés (scripts manuels + rapport détaillé).
+  - Empêcher les hallucinations mémoire d’Anima lors des requêtes exhaustives.
+- **Actions principales** :
+  - ✍️ `RAPPORT_TEST_MEMOIRE_ARCHIVEE.md` – rapport complet (diagnostic Chroma vide, plan de test, prochaines étapes).
+  - 🛠️ Scripts utilitaires ajoutés : `check_archived_threads.py`, `consolidate_archives_manual.py`, `claude-plugins/integrity-docs-guardian/scripts/argus_simple.py`, `test_archived_memory_fix.py`, `test_anima_context.py`.
+  - 🔁 `src/backend/features/chat/service.py` – double stratégie mémoire : `n_results=50` pour requêtes « tout / résumé complet » + forçage du contexte temporel enrichi.
+  - 🧠 `prompts/anima_system_v2.md` – règle absolue « Zéro hallucination mémoire » (Anima doit avouer l’absence de contexte).
+  - 📚 Documentation alignée (auth, monitoring, architecture) sur la version **beta-2.1.2** et le fix `password_must_reset`.
+  - 🗂️ Mises à jour coordination multi-agents (`docs/AGENTS_COORDINATION.md`) pour intégrer scripts/tests mémoire & monitor Argus minimal.
+- **Tests / validations** :
+  - `python test_archived_memory_fix.py` → info : base Chroma vide (attendu) + script ok.
+  - `python test_anima_context.py` → vérifie la réponse zéro résultat (Anima doit afficher le toast « contexte vide »).
+  - `pytest tests/backend/features/test_memory_enhancements.py -k "temporal"` → ok (contexte temporel).
+- **Suivi / TODO** :
+  1. Alimenter Chroma avec conversations archivées réelles puis rejouer `test_archived_memory_fix.py`.
+  2. Corriger `consolidate_archives_manual.py` (table `threads` manquante) ou l’archiver si non requis.
+  3. Envisager un hook Guardian léger qui exécute `argus_simple.py` en cas de push manuel.
+
+---
+
 ## 🧑‍💻 Codex - Journal 2025-10-16
 
 ### ✅ 2025-10-17 03:19 - Ajustement UI Conversations
