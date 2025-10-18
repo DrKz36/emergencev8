@@ -204,6 +204,45 @@ scrape_configs:
 
 ---
 
+## Tables et Nomenclature Critique
+
+### ⚠️ Distinction SESSIONS vs THREADS (IMPORTANT)
+
+**PROBLÈME LEGACY RÉSOLU (2025-10-18)** : Le système utilise DEUX tables différentes avec des noms similaires qui peuvent prêter à confusion.
+
+#### Table `sessions` (Threads de conversation)
+
+**Usage** : Stocker les threads de chat/conversation persistantes
+**Structure** : `id`, `user_id`, `created_at`, `updated_at`, `session_data`, `metadata`, `summary`, etc.
+**Endpoints** :
+- `GET /api/admin/analytics/threads` - Dashboard admin (anciennement `/admin/analytics/sessions`)
+- `POST /api/chat/messages` - Opérations chat
+
+**Note** : Le nom legacy "sessions" est conservé en DB pour éviter une migration lourde, mais les endpoints/UI utilisent désormais "threads" pour clarifier.
+
+#### Table `auth_sessions` (Sessions d'authentification JWT)
+
+**Usage** : Stocker les sessions d'authentification JWT actives
+**Structure** : `id`, `email`, `role`, `ip_address`, `issued_at`, `expires_at`, `revoked_at`, `revoked_by`
+**Endpoints** :
+- `GET /api/auth/admin/sessions` - Gestion sessions JWT (module Auth Admin)
+- `POST /api/auth/admin/sessions/{id}/revoke` - Révocation session JWT
+
+**Note** : Ce sont les vraies sessions d'authentification, gérées par `AuthService`.
+
+#### Mapping user_id (Format inconsistant)
+
+**PROBLÈME CONNU** : Le champ `user_id` dans la table `sessions` (threads) peut avoir DEUX formats :
+- **Format legacy** : Hash SHA256 de l'email (ex: `a3c5f...`)
+- **Format actuel** : Email en clair (ex: `user@example.com`)
+
+**Solution actuelle** : `AdminDashboardService._build_user_email_map()` supporte les deux formats pour rétrocompatibilité.
+**TODO** : Standardiser tous les `user_id` vers un format unique (recommandé: email en clair) via migration DB future.
+
+**Référence** : Voir [AUDIT_COMPLET_2025-10-18.md](../AUDIT_COMPLET_2025-10-18.md) pour contexte complet.
+
+---
+
 ## Qualité / Observabilité
 - Logs structurés (niveau service) + toasts front pour surfacer auth/token manquants.
 - Tests rapides : `tests/run_all.ps1` (smoke API), `tests/test_vector_store_reset.ps1`, `tests/test_vector_store_force_backup.ps1`.

@@ -89,6 +89,39 @@ class AdminDashboardService:
                 },
             }
 
+    async def _build_user_email_map(self) -> Dict[str, tuple]:
+        """
+        Build a mapping from user_id to (email, role).
+
+        IMPORTANT: user_id format is INCONSISTENT in the database:
+        - Some user_ids are SHA256 hashes of email (legacy format)
+        - Some user_ids are plain email addresses (current format)
+
+        This function supports BOTH formats to ensure backward compatibility.
+
+        Returns:
+            Dict mapping user_id (hash OR plain email) -> (email, role)
+
+        TODO: Standardize all user_ids to a single format (recommended: plain email)
+              and simplify this mapping logic. Requires DB migration.
+        """
+        import hashlib
+
+        conn = await self.db._ensure_connection()
+        cursor = await conn.execute("SELECT email, role FROM auth_allowlist")
+        allowlist_rows = await cursor.fetchall()
+
+        email_map = {}
+        for email, role in allowlist_rows:
+            # Support legacy format: SHA256 hash of email
+            email_hash = hashlib.sha256(email.encode('utf-8')).hexdigest()
+            email_map[email_hash] = (email, role)
+
+            # Support current format: plain email
+            email_map[email] = (email, role)
+
+        return email_map
+
     async def _get_users_breakdown(self) -> List[Dict[str, Any]]:
         """Get per-user statistics breakdown with flexible user matching."""
         try:
@@ -103,19 +136,8 @@ class AdminDashboardService:
             cursor = await conn.execute(query)
             user_id_rows = await cursor.fetchall()
 
-            # Get all emails from auth_allowlist
-            cursor = await conn.execute("SELECT email, role FROM auth_allowlist")
-            allowlist_rows = await cursor.fetchall()
-
-            # Create a mapping: user_id -> (email, role)
-            import hashlib
-            email_map = {}
-            for email, role in allowlist_rows:
-                # Hash the email to match against user_ids
-                email_hash = hashlib.sha256(email.encode('utf-8')).hexdigest()
-                email_map[email_hash] = (email, role)
-                # Also store plain email as key (for non-hashed user_ids)
-                email_map[email] = (email, role)
+            # Build user_id -> (email, role) mapping (supports both hash and plain email)
+            email_map = await self._build_user_email_map()
 
             # Build rows with matched emails
             rows = []
@@ -449,17 +471,8 @@ class AdminDashboardService:
             cursor = await conn.execute(query)
             session_rows = await cursor.fetchall()
 
-            # Get all emails from auth_allowlist
-            cursor = await conn.execute("SELECT email, role FROM auth_allowlist")
-            allowlist_rows = await cursor.fetchall()
-
-            # Create email mapping
-            import hashlib
-            email_map = {}
-            for email, role in allowlist_rows:
-                email_hash = hashlib.sha256(email.encode('utf-8')).hexdigest()
-                email_map[email_hash] = (email, role)
-                email_map[email] = (email, role)
+            # Build user_id -> (email, role) mapping (supports both hash and plain email)
+            email_map = await self._build_user_email_map()
 
             sessions = []
             for row in session_rows:

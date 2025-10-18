@@ -1,4 +1,59 @@
-## [2025-10-18 Session actuelle] — Agent: Claude Code (Sonnet 4.5) - Fix Confusion Sessions/Threads (Phase 1)
+## [2025-10-18 Session actuelle] — Agent: Claude Code (Sonnet 4.5) - Amélioration Dashboard Admin (Phase 2)
+
+### Fichiers modifiés
+- [src/backend/features/dashboard/admin_service.py](../src/backend/features/dashboard/admin_service.py) - Fonction helper `_build_user_email_map()` pour centraliser mapping user_id
+- [src/frontend/features/admin/admin-dashboard.js](../src/frontend/features/admin/admin-dashboard.js) - Amélioration `renderCostsChart()` (gestion valeurs nulles/zéro)
+- [docs/architecture/10-Components.md](../docs/architecture/10-Components.md) - Nouvelle section "Tables et Nomenclature Critique"
+- [docs/architecture/ADR-001-sessions-threads-renaming.md](../docs/architecture/ADR-001-sessions-threads-renaming.md) - ADR complet (NOUVEAU)
+- [docs/passation.md](passation.md) - Cette entrée
+- [AGENT_SYNC.md](../AGENT_SYNC.md) - Mise à jour session
+
+### Contexte
+Suite à la Phase 1 (renommage sessions → threads), la Phase 2 corrige les **problèmes MAJEURS** identifiés dans l'audit du 2025-10-18 :
+- **Problème #3** : Mapping user_id → email incohérent (hash SHA256 vs plain text)
+- **Problème #4** : Graphe coûts vide/confus si toutes les valeurs sont à 0
+
+**Objectif** : Améliorer la robustesse et la maintenabilité du dashboard admin.
+
+### Actions réalisées
+
+#### 1. Amélioration `renderCostsChart()` (Frontend)
+
+**Problème** : Si les 7 jours ont `cost: 0.0`, graphe vide sans message clair.
+**Solution** : Vérification `totalCost === 0` + message explicite "Aucune donnée de coûts pour la période (tous les coûts sont à $0.00)"
+
+#### 2. Standardisation Mapping `user_id` (Backend)
+
+**Problème** : `user_id` peut être hash SHA256 OU email plain text (code dupliqué et complexe).
+**Solution** : Fonction helper `_build_user_email_map()` qui centralise la logique + documentation claire + TODO pour migration future.
+
+#### 3. Documentation Architecture
+
+**Nouveau** : Section "Tables et Nomenclature Critique" dans [10-Components.md](../docs/architecture/10-Components.md)
+**Contenu** : Distinction sessions/threads, mapping user_id, références
+
+#### 4. ADR (Architecture Decision Record)
+
+**Nouveau** : [ADR-001-sessions-threads-renaming.md](../docs/architecture/ADR-001-sessions-threads-renaming.md)
+**Contenu** : Contexte, décision, rationale, conséquences, alternatives
+
+### Tests
+- ✅ `python -m py_compile` : Backend compile sans erreur
+- ✅ `node -c` : Frontend JavaScript syntaxiquement correct
+- ✅ `ruff check` : Aucune violation de style
+
+### Prochaines actions recommandées (Phase 3)
+
+1. Tests E2E frontend
+2. Migration DB future : Standardiser `user_id` → email plain text
+3. Améliorer seuil détection topic shift (configurable)
+
+### Blocages
+Aucun.
+
+---
+
+## [2025-10-18 Session Phase 1] — Agent: Claude Code (Sonnet 4.5) - Fix Confusion Sessions/Threads (Phase 1)
 
 ### Fichiers modifiés
 - [src/backend/features/dashboard/admin_service.py](../src/backend/features/dashboard/admin_service.py) - Renommé `get_active_sessions()` → `get_active_threads()`

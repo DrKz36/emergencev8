@@ -19,7 +19,51 @@
 
 ---
 
-## 🔄 Dernière session (2025-10-18 - Phase 1 Audit)
+## 🔄 Dernière session (2025-10-18 - Phase 2 Audit)
+
+**Agent :** Claude Code (Sonnet 4.5)
+**Durée :** 1h30
+**Commit :** `<à venir après push>`
+
+**Résumé :**
+- ✅ **Amélioration `renderCostsChart()`** (problème majeur #4 de l'audit)
+  - Vérification si tous les coûts sont à 0
+  - Message clair : "Aucune donnée de coûts pour la période (tous les coûts sont à $0.00)"
+  - Gestion robuste des valeurs null/undefined
+- ✅ **Standardisation mapping `user_id`** (problème majeur #3 de l'audit)
+  - Fonction helper centralisée : `_build_user_email_map()`
+  - Documentation claire sur le format inconsistant (hash SHA256 vs plain text)
+  - TODO explicite pour migration future
+  - Élimination duplication de code
+- ✅ **Documentation architecture**
+  - Nouvelle section "Tables et Nomenclature Critique" dans [10-Components.md](docs/architecture/10-Components.md)
+  - Distinction sessions/threads documentée
+  - Mapping user_id documenté
+- ✅ **ADR (Architecture Decision Record)**
+  - Création [ADR-001-sessions-threads-renaming.md](docs/architecture/ADR-001-sessions-threads-renaming.md)
+  - Contexte, décision, rationale, conséquences, alternatives
+  - Référence pour décisions futures
+- ✅ Tests complets (compilation, ruff, syntaxe JS)
+- ✅ Documentation mise à jour (passation.md)
+
+**Fichiers modifiés :**
+- Backend : [admin_service.py](src/backend/features/dashboard/admin_service.py) (fonction helper `_build_user_email_map()`)
+- Frontend : [admin-dashboard.js](src/frontend/features/admin/admin-dashboard.js) (amélioration `renderCostsChart()`)
+- Docs : [10-Components.md](docs/architecture/10-Components.md), [ADR-001](docs/architecture/ADR-001-sessions-threads-renaming.md), [passation.md](docs/passation.md), [AGENT_SYNC.md](AGENT_SYNC.md)
+
+**Problèmes résolus :**
+- **Avant :** Graphe coûts vide sans explication si tous les coûts à $0.00
+- **Après :** Message clair affiché automatiquement
+- **Avant :** Mapping user_id dupliqué et complexe (hash + plain text)
+- **Après :** Fonction helper centralisée + documentation claire
+
+**Prochaine étape recommandée :** Phase 3 (tests E2E, migration DB user_id)
+
+**Référence :** [AUDIT_COMPLET_2025-10-18.md](AUDIT_COMPLET_2025-10-18.md) - Problèmes #3 et #4
+
+---
+
+## 🔄 Session précédente (2025-10-18 - Phase 1 Audit)
 
 **Agent :** Claude Code (Sonnet 4.5)
 **Durée :** 1h
@@ -43,8 +87,6 @@
 - **Avant :** Dashboard admin affichait "Sessions actives" (table `sessions` = threads de chat)
 - **Après :** Dashboard admin affiche "Threads de Conversation" avec bandeau info explicatif
 - **Distinction claire :** Threads (conversations) ≠ Sessions JWT (authentification)
-
-**Prochaine étape recommandée :** Phase 2 de l'audit (améliorer `renderCostsChart()`, standardiser `user_id`)
 
 **Référence :** [PROMPT_SUITE_AUDIT.md](PROMPT_SUITE_AUDIT.md) - Phase 1 (Immédiat)
 

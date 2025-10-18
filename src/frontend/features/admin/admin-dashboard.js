@@ -528,19 +528,30 @@ export class AdminDashboard {
      * Render costs chart
      */
     renderCostsChart(data) {
+        // Check if data exists and is not empty
         if (!data || data.length === 0) {
             return '<p class="admin-empty">Aucune donnée disponible</p>';
         }
 
-        const maxCost = Math.max(...data.map(d => d.cost), 0.01);
+        // Check if all costs are 0 or null/undefined
+        const totalCost = data.reduce((sum, d) => sum + (d.cost || 0), 0);
+        if (totalCost === 0) {
+            return '<p class="admin-empty">Aucune donnée de coûts pour la période (tous les coûts sont à $0.00)</p>';
+        }
+
+        // Calculate max cost for bar height scaling
+        const maxCost = Math.max(...data.map(d => d.cost || 0), 0.01);
+
+        // Render chart bars
         const barsHtml = data.map(item => {
-            const height = (item.cost / maxCost) * 100;
+            const cost = item.cost || 0;
+            const height = (cost / maxCost) * 100;
             return `
                 <div class="chart-bar">
                     <div class="bar-fill" style="height: ${height}%"
-                         title="${item.date}: $${item.cost.toFixed(2)}"></div>
+                         title="${item.date}: $${cost.toFixed(2)}"></div>
                     <div class="bar-label">${new Date(item.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</div>
-                    <div class="bar-value">$${item.cost.toFixed(2)}</div>
+                    <div class="bar-value">$${cost.toFixed(2)}</div>
                 </div>
             `;
         }).join('');
