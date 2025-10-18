@@ -15,7 +15,10 @@
       "Bash(git add -A)",
       "Bash(git commit -m \"$(cat <<''EOF''\nchore(config): Fix Claude Code auto mode - clean settings and doc\n\n- Nettoyage .claude/settings.local.json (wildcard \"*\" en priorité)\n- Backup automatique créé avant modification\n- Documentation complète mode automatique (CLAUDE_AUTO_MODE_SETUP.md)\n- Clarification deux modes de lancement (terminal ec vs extension VSCode)\n- Mise à jour AGENT_SYNC.md et docs/passation.md\n\nNote: settings.local.json peut accumuler des permissions automatiquement\npendant les sessions - c''est normal, le wildcard \"*\" reste actif.\n\nGenerated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push origin main)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nchore: update Guardian reports and settings after push\n\n- reports/prod_report.json: Updated by ProdGuardian pre-push hook\n- .claude/settings.local.json: Auto-updated permissions during session\n\nGenerated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\nchore: update Guardian reports and settings after push\n\n- reports/prod_report.json: Updated by ProdGuardian pre-push hook\n- .claude/settings.local.json: Auto-updated permissions during session\n\nGenerated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git add reports/prod_report.json)",
+      "Bash(git commit -m \"chore: final Guardian report update\")",
+      "Bash(git commit -m \"chore: sync Guardian reports and settings (auto-generated)\")"
     ],
     "deny": [],
     "ask": []
