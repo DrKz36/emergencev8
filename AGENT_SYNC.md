@@ -42,23 +42,29 @@
   - Nexus (Coordinator): OK - tous checks passés
   - ProdGuardian: OK - production healthy
 
-**Actions en cours :**
+**Actions réalisées :**
 - ✅ Lecture AGENT_SYNC.md (état sync inter-agents)
 - ✅ Vérification complète des 4 guardians (tous au vert)
-- ✅ Mise à jour AGENT_SYNC.md
-- ⏳ Mise à jour docs/passation.md
-- ⏳ Commit + push tous fichiers modifiés (dépôt propre)
-- ⏳ Bump version beta-2.1.3 → beta-2.1.4
-- ⏳ Build image Docker locale
-- ⏳ Déploiement canary Cloud Run
-- ⏳ Tests révision canary
-- ⏳ Déploiement progressif vers 100%
+- ✅ Mise à jour AGENT_SYNC.md + docs/passation.md
+- ✅ Commit + push tous fichiers modifiés (dépôt propre)
+- ✅ Bump version beta-2.1.3 → beta-2.1.4
+- ✅ Build image Docker locale (tag: 20251018-171833)
+- ✅ Déploiement canary Cloud Run (révision: emergence-app-00494-cew)
+- ✅ Tests révision canary (health, favicon.ico, reset-password.html: tous OK)
+- ✅ Déploiement progressif: 10% → 25% → 50% → 100%
+
+**Session terminée à 17:28 (Europe/Zurich)**
+
+**Résultats déploiement beta-2.1.4 :**
+- ✅ Révision Cloud Run: `emergence-app-00494-cew`
+- ✅ Trafic production: **100%** vers beta-2.1.4
+- ✅ Version API affichée: `beta-2.1.4`
+- ✅ Fixes 404 vérifiés en production :
+  - https://emergence-app.ch/favicon.ico → 200 OK
+  - https://emergence-app.ch/reset-password.html → 200 OK
+  - https://emergence-app.ch/robots.txt → 200 OK
 
 **Prochaines actions :**
-- Déployer beta-2.1.4 incluant les fixes 404 (reset-password.html, favicon.ico)
-- Vérifier après déploiement :
-  - https://emergence-app.ch/reset-password.html?token=test
-  - https://emergence-app.ch/favicon.ico
 - Attendre directive architecte ou session Codex
 
 ---

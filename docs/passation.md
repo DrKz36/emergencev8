@@ -53,23 +53,50 @@ Objectif: s'assurer que tout est stable avant déploiement beta-2.1.4 incluant l
 - ✅ Tous les guardians au vert (Anima, Neo, Nexus, ProdGuardian)
 - ✅ Production HEALTHY (0 erreur)
 - ✅ Documentation mise à jour (AGENT_SYNC.md, passation.md)
-- ⏳ Build Docker beta-2.1.4 (en cours)
-- ⏳ Déploiement Cloud Run (en cours)
+- ✅ Build Docker beta-2.1.4 (tag: 20251018-171833, build 37.9s)
+- ✅ Push vers GCR (europe-west1-docker.pkg.dev)
+- ✅ Déploiement canary Cloud Run (révision: emergence-app-00494-cew)
+- ✅ Tests canary (health, favicon.ico, reset-password.html: tous 200 OK)
+- ✅ Déploiement progressif (10% → 25% → 50% → 100%)
+- ✅ Vérification production principale (https://emergence-app.ch):
+  - Version API: beta-2.1.4 ✅
+  - favicon.ico: 200 OK ✅
+  - reset-password.html: 200 OK ✅
+  - robots.txt: 200 OK ✅
 
 ### Travail de Codex pris en compte
 - Aucune session Codex récente (dernière: 2025-10-18 commit fd74118 - beta-2.1.3)
 - Pas de conflit, dépôt sync
 
+### Résultats finaux déploiement beta-2.1.4
+**Commits:**
+- c946ca3: docs(sync): vérification guardians + préparation déploiement beta-2.1.4
+- 64bf6e0: release: bump to beta-2.1.4 and deploy 00491
+
+**Cloud Run:**
+- Révision: `emergence-app-00494-cew`
+- Tag: `canary-20251018`
+- Image: `europe-west1-docker.pkg.dev/emergence-469005/emergence-repo/emergence-app:20251018-171833`
+- Trafic production: **100%** vers beta-2.1.4
+
+**Déploiement progressif:**
+1. Phase 1 (canary): 10% trafic, tests OK
+2. Phase 2: 25% trafic
+3. Phase 3: 50% trafic
+4. Phase 4: 100% trafic (--to-latest)
+
+**Vérifications production (https://emergence-app.ch):**
+- ✅ Version API: beta-2.1.4
+- ✅ favicon.ico: 200 OK (fix 404 confirmé)
+- ✅ reset-password.html: 200 OK (fix 404 confirmé)
+- ✅ robots.txt: 200 OK
+
+**Fixes 404 déployés et fonctionnels en production !**
+
 ### Prochaines actions
-1. ✅ Commit + push tous fichiers modifiés (dépôt propre)
-2. ⏳ Bump version package.json beta-2.1.3 → beta-2.1.4
-3. ⏳ Build image Docker locale
-4. ⏳ Déploiement canary Cloud Run
-5. ⏳ Tests révision canary
-6. ⏳ Déploiement progressif vers 100% si tests OK
-7. ⏳ Vérifier fixes 404 en production:
-   - https://emergence-app.ch/reset-password.html?token=test
-   - https://emergence-app.ch/favicon.ico
+- Session terminée avec succès
+- Attendre directive architecte ou session Codex
+- Optionnel: optimiser latences (max 2.3s détecté dans logs précédents)
 
 ### Blocages
 Aucun.
