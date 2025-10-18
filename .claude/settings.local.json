@@ -57,7 +57,9 @@
       "Bash(curl -s \"https://emergence-app.ch/api/monitoring/health\")",
       "Bash(curl -s -I \"https://emergence-app.ch/favicon.ico\")",
       "Bash(curl -s -I \"https://emergence-app.ch/reset-password.html\")",
-      "Bash(curl -s -I \"https://emergence-app.ch/robots.txt\")"
+      "Bash(curl -s -I \"https://emergence-app.ch/robots.txt\")",
+      "Bash(git commit -m \"$(cat <<''EOF''\ndocs(sync): finalisation déploiement beta-2.1.4 - SUCCÈS COMPLET\n\nDéploiement beta-2.1.4 réussi avec tous les tests passés:\n\nRévision Cloud Run:\n- emergence-app-00494-cew (tag: canary-20251018)\n- Trafic: 100% vers beta-2.1.4\n- Image: europe-west1-docker.pkg.dev/.../emergence-app:20251018-171833\n\nDéploiement progressif:\n- Phase 1 (canary): 10% trafic, tous tests OK\n- Phase 2: 25% trafic\n- Phase 3: 50% trafic\n- Phase 4: 100% trafic (--to-latest)\n\nVérifications production (https://emergence-app.ch):\n- ✅ Version API: beta-2.1.4\n- ✅ favicon.ico: 200 OK (fix 404 confirmé)\n- ✅ reset-password.html: 200 OK (fix 404 confirmé)\n- ✅ robots.txt: 200 OK\n\nFixes 404 déployés et fonctionnels en production !\n\nFichiers modifiés:\n- AGENT_SYNC.md: session terminée, résultats déploiement\n- docs/passation.md: entrée complète avec résultats finaux\n- .claude/settings.local.json: auto-update permissions\n- reports/prod_report.json: auto-update guardians\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit -m \"chore: auto-update guardian reports and settings (final sync)\")"
     ],
     "deny": [],
     "ask": []
