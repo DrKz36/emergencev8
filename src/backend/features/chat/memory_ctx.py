@@ -10,7 +10,7 @@ from backend.shared.models import Role
 
 logger = logging.getLogger(__name__)
 
-# Prometheus metrics (P2.1)
+# Prometheus metrics (P2.1 + Sprint 4)
 try:
     from prometheus_client import Counter, REGISTRY
     PROMETHEUS_AVAILABLE = True
@@ -31,7 +31,26 @@ try:
                 raise
             return cast(Counter, existing)
 
+    def _get_agent_isolation_violations_counter() -> Counter:
+        """Sprint 4: Counter violations isolation agent"""
+        try:
+            return Counter(
+                "agent_isolation_violations_total",
+                "Concepts cross-agent détectés",
+                ["agent_requesting", "agent_concept"],
+                registry=REGISTRY,
+            )
+        except ValueError:
+            existing = getattr(REGISTRY, "_names_to_collectors", {}).get(
+                "agent_isolation_violations_total"
+            )
+            if existing is None:
+                raise
+            return cast(Counter, existing)
+
     memory_cache_operations = _get_memory_cache_counter()
+    agent_isolation_violations = _get_agent_isolation_violations_counter()
+
 except ImportError:
     PROMETHEUS_AVAILABLE = False
     logger.debug("[MemoryContextBuilder] Prometheus client non disponible")
@@ -702,35 +721,64 @@ class MemoryContextBuilder:
         return "all"
 
     @staticmethod
-    def _result_matches_agent(result: Dict[str, Any], agent_id: str) -> bool:
+    def _result_matches_agent(
+        result: Dict[str, Any],
+        agent_id: str,
+        strict_mode: Optional[bool] = None  # ✅ Sprint 4: Mode strict
+    ) -> bool:
         """
         Vérifie si un résultat vectoriel correspond à l'agent demandé.
 
-        Stratégie PERMISSIVE pour rétrocompatibilité:
-        - Retourne True si le résultat a l'agent_id demandé
-        - Retourne True si le résultat n'a PAS d'agent_id (concepts legacy)
-        - Retourne False sinon
+        🆕 Sprint 4: Support mode strict pour isolation agent.
+
+        Modes:
+        - PERMISSIF (strict_mode=False): Inclut concepts legacy sans agent_id
+        - STRICT (strict_mode=True): Exclut concepts sans agent_id
+        - AUTO (strict_mode=None): Lit depuis env STRICT_AGENT_ISOLATION
 
         Args:
             result: Résultat vectoriel avec metadata
             agent_id: Agent ID normalisé (lowercase)
+            strict_mode: Mode strict (None = auto depuis env)
 
         Returns:
             True si le résultat correspond
         """
+        import os
+
+        # Auto-détection mode depuis env
+        if strict_mode is None:
+            strict_mode = os.getenv('STRICT_AGENT_ISOLATION', 'false').lower() == 'true'
+
         metadata = result.get("metadata", {})
         if not isinstance(metadata, dict):
-            return True  # Pas de metadata → legacy, on inclut
+            return not strict_mode  # Mode permissif = inclure, strict = exclure
 
         result_agent_id = metadata.get("agent_id")
 
-        # Cas 1: Pas d'agent_id → concept legacy, on l'inclut
+        # Cas 1: Pas d'agent_id → concept legacy
         if not result_agent_id:
-            return True
+            # Mode strict: EXCLURE concepts sans agent_id
+            # Mode permissif: INCLURE (comportement legacy)
+            return not strict_mode
 
         # Cas 2: Agent ID correspond exactement
         if isinstance(result_agent_id, str) and result_agent_id.lower() == agent_id:
             return True
 
-        # Cas 3: Ne correspond pas
+        # Cas 3: Ne correspond pas → violation isolation
+        # 🆕 Sprint 4: Monitoring violations cross-agent
+        if strict_mode and PROMETHEUS_AVAILABLE and result_agent_id:
+            try:
+                agent_isolation_violations.labels(
+                    agent_requesting=agent_id,
+                    agent_concept=result_agent_id
+                ).inc()
+                logger.debug(
+                    f"[AgentIsolation] Violation détectée: agent {agent_id} "
+                    f"a tenté d'accéder au concept de {result_agent_id}"
+                )
+            except Exception as e:
+                logger.warning(f"[AgentIsolation] Erreur monitoring violation: {e}")
+
         return False

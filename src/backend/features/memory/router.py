@@ -2120,3 +2120,189 @@ async def consolidate_archived_threads(
         "total_archived": len(threads),
         "errors": errors
     }
+
+
+# Sprint 5 - Dashboard Unifié
+@router.get(
+    "/dashboard",
+    response_model=Dict[str, Any],
+    summary="Get unified memory dashboard",
+    description="Returns complete memory overview: stats, preferences, concepts, archived conversations",
+)
+async def get_memory_dashboard(
+    request: Request
+) -> Dict[str, Any]:
+    """
+    🆕 Sprint 5: Dashboard mémoire unifié.
+
+    Combine:
+    - Stats utilisateur (preferences, concepts, threads)
+    - Top préférences actives
+    - Top concepts fréquents
+    - Conversations archivées récentes
+    - Timeline activité
+
+    Returns:
+        {
+          "stats": {
+            "conversations_total": 47,
+            "conversations_active": 5,
+            "conversations_archived": 42,
+            "concepts_total": 156,
+            "preferences_active": 12,
+            "memory_size_mb": 4.2
+          },
+          "top_preferences": [...],
+          "top_concepts": [...],
+          "recent_archives": [...],
+          "timeline": [...]
+        }
+    """
+    try:
+        user_id = await shared_dependencies.get_user_id(request)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    container = _get_container(request)
+    vector_service = container.vector_service()
+    db_manager = container.db_manager()
+
+    collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
+    collection = vector_service.get_or_create_collection(collection_name)
+
+    dashboard = {
+        "stats": {},
+        "top_preferences": [],
+        "top_concepts": [],
+        "recent_archives": [],
+        "timeline": []
+    }
+
+    try:
+        # 1. Stats threads (total, active, archived)
+        all_threads = await queries.get_threads(
+            db_manager,
+            session_id=None,
+            user_id=user_id,
+            archived_only=False,
+            limit=10000  # Large pour stats
+        )
+
+        active_threads = [t for t in all_threads if not t.get('archived')]
+        archived_threads = [t for t in all_threads if t.get('archived')]
+
+        # 2. Stats concepts
+        concepts_results = collection.get(
+            where={"$and": [{"user_id": user_id}, {"type": "concept"}]},
+            include=["metadatas"]
+        )
+        total_concepts = len(concepts_results.get('ids', []))
+
+        # 3. Stats préférences
+        prefs_results = collection.get(
+            where={"$and": [
+                {"user_id": user_id},
+                {"type": "preference"},
+                {"confidence": {"$gte": 0.6}}
+            ]},
+            include=["documents", "metadatas"]
+        )
+        active_prefs = prefs_results.get('ids', [])
+
+        # 4. Calcul taille mémoire approx (KB → MB)
+        memory_size_kb = (
+            len(all_threads) * 2 +  # ~2KB par thread
+            total_concepts * 1 +     # ~1KB par concept
+            len(active_prefs) * 0.5  # ~0.5KB par préférence
+        )
+        memory_size_mb = round(memory_size_kb / 1024, 2)
+
+        dashboard["stats"] = {
+            "conversations_total": len(all_threads),
+            "conversations_active": len(active_threads),
+            "conversations_archived": len(archived_threads),
+            "concepts_total": total_concepts,
+            "preferences_active": len(active_prefs),
+            "memory_size_mb": memory_size_mb
+        }
+
+        # 5. Top préférences (top 5 par confidence)
+        prefs_docs = prefs_results.get('documents', [])
+        prefs_meta = prefs_results.get('metadatas', [])
+
+        preferences = []
+        for doc, meta in zip(prefs_docs, prefs_meta):
+            if not meta:
+                continue
+            preferences.append({
+                "text": doc if isinstance(doc, str) else str(doc),
+                "confidence": float(meta.get("confidence", 0.5)),
+                "topic": meta.get("topic", "general")
+            })
+
+        preferences.sort(key=lambda x: x["confidence"], reverse=True)
+        dashboard["top_preferences"] = preferences[:5]
+
+        # 6. Top concepts (top 5 par mention_count)
+        concepts_docs = concepts_results.get('documents', [])
+        concepts_meta = concepts_results.get('metadatas', [])
+
+        concepts = []
+        for doc, meta in zip(concepts_docs, concepts_meta):
+            if not meta:
+                continue
+            concepts.append({
+                "text": meta.get("concept_text") or (doc if isinstance(doc, str) else str(doc)),
+                "mentions": int(meta.get("mention_count", 1)),
+                "last_mentioned": meta.get("last_mentioned_at")
+            })
+
+        concepts.sort(key=lambda x: x["mentions"], reverse=True)
+        dashboard["top_concepts"] = concepts[:5]
+
+        # 7. Archives récentes (top 3)
+        archived_threads.sort(
+            key=lambda t: t.get('archived_at', ''),
+            reverse=True
+        )
+
+        for thread in archived_threads[:3]:
+            dashboard["recent_archives"].append({
+                "thread_id": thread.get('id'),
+                "title": thread.get('title', 'Sans titre'),
+                "archived_at": thread.get('archived_at'),
+                "message_count": thread.get('message_count', 0),
+                "consolidated": thread.get('consolidated_at') is not None
+            })
+
+        # 8. Timeline activité (groupée par période)
+        # TODO: Améliorer avec topics via MemoryQueryTool
+        dashboard["timeline"] = [
+            {
+                "period": "Cette semaine",
+                "conversations": len([t for t in all_threads if _is_this_week(t.get('created_at'))]),
+                "topics": []  # TODO
+            }
+        ]
+
+        logger.info(f"[dashboard] Dashboard généré pour user {user_id}")
+
+        return dashboard
+
+    except Exception as e:
+        logger.error(f"[dashboard] Failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to generate dashboard: {e}")
+
+
+def _is_this_week(iso_date: Optional[str]) -> bool:
+    """Helper: vérifie si date est dans semaine courante"""
+    if not iso_date:
+        return False
+    try:
+        from datetime import datetime, timedelta, timezone
+        dt = datetime.fromisoformat(iso_date.replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        week_start = now - timedelta(days=now.weekday())
+        return dt >= week_start
+    except Exception:
+        return False

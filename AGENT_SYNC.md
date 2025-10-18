@@ -395,6 +395,109 @@ Créer un système Guardian entièrement automatisé qui maintient la racine du 
 
 ---
 
+### ✅ Session 2025-10-18 (23:45) - Sprints 4+5 Memory Refactoring (TOUS TERMINÉS)
+
+**Statut** : 🎉 **ROADMAP MEMORY COMPLÉTÉE - 5/5 SPRINTS TERMINÉS**
+**Agent** : Claude Code (Sonnet 4.5)
+**Durée** : 3 heures (total session)
+**Roadmap** : [MEMORY_REFACTORING_ROADMAP.md](MEMORY_REFACTORING_ROADMAP.md) Sprints 4+5
+
+**🏆 TOUS LES SPRINTS TERMINÉS:**
+- ✅ Sprint 1 : Clarification Session vs Conversation
+- ✅ Sprint 2 : Consolidation Auto Archives
+- ✅ Sprint 3 : Rappel Proactif Unifié
+- ✅ Sprint 4 : Isolation Agent Stricte
+- ✅ Sprint 5 : Interface Utilisateur (API Dashboard)
+
+**Sprint 4 - Isolation Agent Stricte** :
+
+**1. Script backfill agent_id** :
+- ✅ [src/backend/cli/backfill_agent_ids.py](src/backend/cli/backfill_agent_ids.py) (NOUVEAU - 150+ lignes)
+- ✅ Inférence agent_id depuis thread_ids source
+- ✅ Paramètres: `--user-id`, `--all`, `--dry-run`, `--db`
+
+**2. Filtrage mode strict** :
+- ✅ [memory_ctx.py](src/backend/features/chat/memory_ctx.py) (lignes 705-784)
+- ✅ Paramètre `strict_mode` dans `_result_matches_agent()`
+- ✅ 3 modes: PERMISSIF, STRICT, AUTO (depuis env)
+
+**3. Monitoring violations** :
+- ✅ Métrique Prometheus `agent_isolation_violations_total`
+- ✅ Labels: agent_requesting, agent_concept
+- ✅ Instrumentation complète avec logs
+
+**4. Feature flag** :
+- ✅ [.env.example](.env.example) : `STRICT_AGENT_ISOLATION=false`
+- ✅ Auto-détection mode depuis env
+
+**5. Tests Sprint 4** :
+- ✅ [test_agent_isolation.py](tests/backend/features/test_agent_isolation.py) (NOUVEAU - 300+ lignes)
+- ✅ **17/17 tests passent** (100% success en 26.73s)
+- ✅ Coverage: filtrage strict/permissif, monitoring, backfill
+
+**Sprint 5 - Interface Utilisateur (API Dashboard)** :
+
+**1. Endpoint dashboard unifié** :
+- ✅ `GET /api/memory/dashboard` ([router.py](src/backend/features/memory/router.py) lignes 2126-2308)
+- ✅ Stats: conversations, concepts, préférences, mémoire (MB)
+- ✅ Top 5 préférences, top 5 concepts, 3 archives récentes
+- ✅ Timeline activité
+
+**2. Endpoints existants vérifiés** :
+- ✅ Export/import: `/api/memory/concepts/export`, `/import`
+- ✅ Recherche: `/api/memory/search`, `/search/unified`
+- ✅ Stats: `/api/memory/user/stats`
+- ✅ Threads: `/api/threads/`, `/archived/list`, PATCH, DELETE
+- ✅ Consolidation: `/api/memory/consolidate_archived`
+
+**3. Documentation API** :
+- ✅ [docs/API_MEMORY_ENDPOINTS.md](docs/API_MEMORY_ENDPOINTS.md) (NOUVEAU - 200+ lignes)
+- ✅ 20+ endpoints documentés avec exemples
+- ✅ Format requêtes/réponses, authentification
+
+**Fichiers modifiés** :
+- Backend (3): [backfill_agent_ids.py](src/backend/cli/backfill_agent_ids.py) (NOUVEAU), [memory_ctx.py](src/backend/features/chat/memory_ctx.py), [router.py](src/backend/features/memory/router.py)
+- Tests (1): [test_agent_isolation.py](tests/backend/features/test_agent_isolation.py) (NOUVEAU)
+- Config (1): [.env.example](.env.example)
+- Documentation (3): [API_MEMORY_ENDPOINTS.md](docs/API_MEMORY_ENDPOINTS.md) (NOUVEAU), [docs/passation.md](docs/passation.md), [AGENT_SYNC.md](AGENT_SYNC.md)
+
+**Critères de succès** :
+**Sprint 4:**
+- [x] Script backfill testé ✅
+- [x] Mode strict implémenté ✅
+- [x] Feature flag opérationnel ✅
+- [x] Monitoring violations actif ✅
+- [x] Tests unitaires (17/17) ✅
+- [x] Documentation ✅
+
+**Sprint 5:**
+- [x] Dashboard API fonctionnel ✅
+- [x] Export/import concepts ✅
+- [x] Endpoints vérifiés ✅
+- [x] Documentation API complète ✅
+
+**Impact** :
+✅ Isolation agent stricte activable (feature flag)
+✅ Backfill agent_id pour concepts legacy
+✅ Monitoring violations cross-agent temps réel
+✅ Dashboard API complet (stats + top items + archives)
+✅ 20+ endpoints API documentés
+✅ Export/import concepts pour backup
+✅ Tests complets (17/17 Sprint 4)
+
+**Documentation** :
+- 📋 [MEMORY_REFACTORING_ROADMAP.md](MEMORY_REFACTORING_ROADMAP.md) - Roadmap complète (5/5 sprints ✅)
+- 📋 [docs/API_MEMORY_ENDPOINTS.md](docs/API_MEMORY_ENDPOINTS.md) - Documentation API (NOUVEAU)
+- 📋 [docs/passation.md](docs/passation.md) - Entrée 2025-10-18 23:45
+
+**Prochaines actions** :
+- Frontend React dashboard (optionnel - Sprint 5 UI)
+- Amélioration recherche archives FTS5 (optionnel)
+- Tests E2E cross-session recall (optionnel)
+- Activation progressive STRICT_AGENT_ISOLATION en prod (optionnel)
+
+---
+
 ### ✅ Session 2025-10-18 (22:30) - Sprint 3 Memory Refactoring (TERMINÉ)
 
 **Statut** : ✅ **SPRINT 3 COMPLÉTÉ - 20/20 TESTS PASSENT**
