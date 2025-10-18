@@ -18,7 +18,13 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nchore: update Guardian reports and settings after push\n\n- reports/prod_report.json: Updated by ProdGuardian pre-push hook\n- .claude/settings.local.json: Auto-updated permissions during session\n\nGenerated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git add reports/prod_report.json)",
       "Bash(git commit -m \"chore: final Guardian report update\")",
-      "Bash(git commit -m \"chore: sync Guardian reports and settings (auto-generated)\")"
+      "Bash(git commit -m \"chore: sync Guardian reports and settings (auto-generated)\")",
+      "Bash(cat .claude/settings.local.json)",
+      "Bash(if [ -f .claude/settings.local.json.backup ])",
+      "Bash(then cat .claude/settings.local.json.backup)",
+      "Bash(else echo \"Backup not found\")",
+      "Bash(fi)",
+      "Bash(git commit -m \"$(cat <<''EOF''\ndocs: update auto mode strategy - accumulation approach (correct fix)\n\nCORRECTION DE LA STRATÉGIE INITIALE\n\nAprès test réel, le wildcard \"*\" seul ne suffit PAS.\nClaude Code demande quand même certaines permissions spécifiques.\n\nVRAIE SOLUTION : Approche \"Accumulation Progressive\"\n\nAu lieu de nettoyer le fichier → Laisser accumuler naturellement :\n1. Claude demande une permission → Accepter\n2. Permission s''ajoute automatiquement au fichier\n3. Ne sera PLUS JAMAIS redemandée\n4. Après 2-3 sessions → Fichier complet → Mode full auto ✅\n\nC''est comme \"entraîner\" le fichier jusqu''à ce qu''il connaisse tous les cas.\n\nModifications CLAUDE_AUTO_MODE_SETUP.md :\n- Section \"Comment utiliser\" : Stratégie accumulation ajoutée\n- Troubleshooting : Problème 5 ajouté (demandes normales)\n- Warnings ajoutés : NE PAS nettoyer le fichier\n- Explication claire du processus d''apprentissage\n\nsettings.local.json :\n- Permissions accumulées pendant cette session conservées\n- 13 permissions spécifiques ajoutées automatiquement\n- Wildcard \"*\" conservé en première position\n\nLeçon apprise :\nNe PAS réinitialiser settings.local.json - ça supprime l''apprentissage !\n\nGenerated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

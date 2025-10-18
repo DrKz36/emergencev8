@@ -43,7 +43,13 @@ Le mode full auto était déjà en place. Tous les fichiers critiques sont corre
 ✅ Tableau `"deny"` vide
 ✅ Syntaxe JSON valide
 
-**Note :** Claude Code peut ajouter automatiquement des permissions spécifiques pendant les sessions (c'est normal), mais le wildcard "*" reste actif et prend le dessus.
+**⚠️ Note importante (après tests réels) :**
+
+Le wildcard `"*"` seul **ne suffit pas** - Claude Code demande quand même certaines permissions spécifiques.
+
+**Solution :** Laisser le fichier **accumuler naturellement** les permissions. Chaque permission acceptée s'ajoute au fichier et ne sera PLUS JAMAIS redemandée. Après 2-3 sessions, le fichier contient toutes les permissions possibles → Mode full auto complet ✅
+
+**Ne PAS nettoyer ce fichier régulièrement !** Tu perdrais toutes les permissions accumulées.
 
 ---
 
@@ -114,6 +120,37 @@ Write-Host "✅ Claude Code configuré - Tape 'ec' pour démarrer" -ForegroundCo
 ---
 
 ## 🚀 Comment utiliser
+
+### ⚠️ MISE À JOUR STRATÉGIE - Approche "Accumulation Progressive"
+
+**LA VRAIE SOLUTION** (après test réel) :
+
+**Ne PAS nettoyer le fichier `settings.local.json` !**
+
+Le wildcard `"*"` seul **ne suffit pas** - Claude Code demande quand même des permissions pour certaines actions spécifiques, même avec le wildcard.
+
+**Stratégie recommandée : Laisser accumuler les permissions**
+
+1. **Première utilisation** : Claude va demander des permissions pour certaines actions
+2. **Tu acceptes toutes les permissions** (bouton "Allow")
+3. **Chaque permission acceptée s'ajoute au fichier automatiquement**
+4. **Cette permission ne sera PLUS JAMAIS redemandée**
+5. **Après 2-3 sessions normales** : Fichier contient toutes les permissions possibles
+6. **À partir de là** : Plus aucune demande ! Mode full auto complet ✅
+
+**C'est comme "entraîner" le fichier de permissions** jusqu'à ce qu'il connaisse tous les cas de figure.
+
+**Éviter :**
+- ❌ Nettoyer le fichier settings.local.json régulièrement
+- ❌ Supprimer les permissions accumulées
+- ❌ Mettre le fichier en lecture seule
+
+**Faire :**
+- ✅ Accepter toutes les permissions demandées
+- ✅ Laisser le fichier se remplir naturellement
+- ✅ Attendre 2-3 sessions pour que l'accumulation soit complète
+
+---
 
 ### Lancement standard (recommandé)
 
@@ -222,11 +259,24 @@ Test-Path .claude\settings.local.json
 Get-Content .claude\settings.local.json | ConvertFrom-Json
 ```
 
-**C) Si erreur, supprime et recrée :**
-```powershell
-Remove-Item .claude\settings.local.json -Force
-# Puis recrée avec le bon contenu (voir section 1)
-```
+**C) Si erreur de syntaxe, répare le JSON**
+
+**⚠️ NE PAS supprimer le fichier !** Tu perdrais toutes les permissions accumulées.
+
+---
+
+### Problème 5 : Claude demande encore quelques permissions
+
+**Cause :** Normal ! Le fichier n'a pas encore accumulé toutes les permissions possibles.
+
+**Solution : ACCEPTE-LES !**
+
+1. Claude demande une permission → Clique "Allow"
+2. La permission s'ajoute automatiquement au fichier
+3. Elle ne sera PLUS JAMAIS redemandée
+4. Après 2-3 sessions → Plus aucune demande
+
+**C'est un processus d'apprentissage progressif - c'est NORMAL ! ✅**
 
 ---
 
