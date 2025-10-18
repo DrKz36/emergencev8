@@ -1,0 +1,104 @@
+{
+  "timestamp": "2025-10-18T09:14:14.460236",
+  "archive_month": "2025-10",
+  "scan_results": {
+    "to_archive": 0,
+    "to_delete": 0,
+    "whitelisted": 25,
+    "kept": 33
+  },
+  "actions_taken": {
+    "archived": 0,
+    "deleted": 0,
+    "errors": 0
+  },
+  "files": {
+    "to_archive": [],
+    "to_delete": [],
+    "whitelisted": [
+      {
+        "file": "AGENTS.md",
+        "reason": "whitelisted"
+      },
+      {
+        "file": "AGENT_SYNC.md",
+        "reason": "whitelisted"
+      },
+      {
+        "file": "CANARY_DEPLOYMENT.md",
+        "reason": "whitelisted"
+      },
+      {
+        "file": "CHANGELOG.md",
+        "reason": "whitelisted"
+      },
+      {
+        "file": "CLAUDE.md",
+        "reason": "whitelisted"
+      },
+      {
+        "file": "CLAUDE_CODE_GUIDE.md",
+        "reason": "whitelisted"
+      },
+      {
+        "file": "CLEANUP_PLAN_2025-10-18.md",
+        "reason": "whitelisted"
+      },
+      {
+        "file": "CODEV_PROTOCOL.md",
+        "reason": "whitelisted"
+      },
+      {
+        "file": "CODEX_GPT_GUIDE.md",
+        "reason": "whitelisted"
+      },
+      {
+        "file": "CONTRIBUTING.md",
+        "reason": "whitelisted"
+      }
+    ],
+    "kept": [
+      {
+        "file": ".dockerignore",
+        "reason": "no matching rule"
+      },
+      {
+        "file": ".env",
+        "reason": "no matching rule"
+      },
+      {
+        "file": ".env.beta.example",
+        "reason": "no matching rule"
+      },
+      {
+        "file": ".env.example",
+        "reason": "no matching rule"
+      },
+      {
+        "file": ".env.local",
+        "reason": "no matching rule"
+      },
+      {
+        "file": ".env.test",
+        "reason": "no matching rule"
+      },
+      {
+        "file": ".gcloudignore",
+        "reason": "no matching rule"
+      },
+      {
+        "file": ".gitattributes",
+        "reason": "no matching rule"
+      },
+      {
+        "file": ".gitignore",
+        "reason": "no matching rule"
+      },
+      {
+        "file": "apply_migration_consolidated_at.py",
+        "reason": "no matching rule"
+      }
+    ]
+  },
+  "summary": "0 fichiers archivés, 0 fichiers supprimés"
+}

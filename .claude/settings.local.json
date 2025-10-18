@@ -1,11 +1,13 @@
 {
+  "env": {
+    "AUTO_UPDATE_DOCS": "0",
+    "AUTO_APPLY": "0"
+  },
   "permissions": {
     "allow": [
-      "Bash(powershell -File \"./claude-plugins/integrity-docs-guardian/scripts/argus_monitor.ps1\")",
-      "Bash(netstat -ano)",
-      "Bash(findstr \":8000\")",
-      "Bash(findstr \":5173\")",
-      "Bash(python claude-plugins/integrity-docs-guardian/scripts/argus_simple.py)"
+      "Bash(pwsh -NoProfile -Command \"cd C:\\dev\\emergenceV8; git push\")",
+      "Bash(python claude-plugins/integrity-docs-guardian/scripts/archive_guardian.py --dry-run)",
+      "Bash(git add -A)"
     ],
     "deny": [],
     "ask": []

@@ -323,6 +323,78 @@ Progression Totale : [████████░░] 14/23 (61%)
 
 ## 🚧 Zones de Travail en Cours
 
+### ✅ Session 2025-10-18 (22:00) - Archive Guardian Automatisé (TERMINÉE)
+
+**Statut** : ✅ **SYSTÈME AUTOMATISÉ ACTIVÉ**
+**Agent** : Claude Code (Sonnet 4.5)
+**Durée** : 1 heure
+**Demande** : "J'aimerais même aller plus loin! Je veux un guardian automatisé (pourquoi pas anima qui s'occupe de la doc) qui scan de manière hebdomadaires les fichiers obsolètes et à archiver de manière autonome et automatique."
+
+**Objectif** :
+Créer un système Guardian entièrement automatisé qui maintient la racine du dépôt propre en permanence, sans intervention manuelle.
+
+**Solution implémentée** :
+
+**1. Prompt Anima étendu (v1.2.0)** :
+- ✅ Ajout responsabilité "Automatic Repository Cleanup" dans [anima_dockeeper.md](claude-plugins/integrity-docs-guardian/agents/anima_dockeeper.md)
+- ✅ Règles de détection automatique définies (patterns + âge fichiers)
+- ✅ Whitelist complète pour protéger fichiers essentiels
+- ✅ Structure d'archivage mensuelle `docs/archive/YYYY-MM/`
+
+**2. Script Archive Guardian créé** :
+- ✅ [archive_guardian.py](claude-plugins/integrity-docs-guardian/scripts/archive_guardian.py) (500+ lignes)
+- **Fonctionnalités** :
+  - Scan intelligent racine avec patterns regex
+  - Détection basée sur type fichier + âge + pattern
+  - 3 modes : `--dry-run`, interactif, `--auto`
+  - Whitelist configurable (27 fichiers essentiels)
+  - Rapports JSON détaillés (`reports/archive_cleanup_report.json`)
+  - Structure d'archivage : `docs/archive/YYYY-MM/{obsolete-docs, temp-scripts, test-files}`
+
+**3. Scheduler hebdomadaire PowerShell** :
+- ✅ [setup_archive_scheduler.ps1](claude-plugins/integrity-docs-guardian/scripts/setup_archive_scheduler.ps1)
+- **Configuration** :
+  - Tâche planifiée Windows "EmergenceArchiveGuardian"
+  - Fréquence : Dimanche 3h00 du matin
+  - Mode automatique (`--auto` flag)
+  - Logs Windows + rapports JSON
+- **Commandes** :
+  - Setup : `.\setup_archive_scheduler.ps1`
+  - Status : `.\setup_archive_scheduler.ps1 -Status`
+  - Remove : `.\setup_archive_scheduler.ps1 -Remove`
+
+**4. Documentation complète** :
+- ✅ [ARCHIVE_GUARDIAN_SETUP.md](claude-plugins/integrity-docs-guardian/ARCHIVE_GUARDIAN_SETUP.md) (500+ lignes)
+  - Guide installation & configuration
+  - Règles de détection détaillées
+  - Exemples d'usage
+  - Troubleshooting complet
+
+**Fichiers créés** :
+- claude-plugins/integrity-docs-guardian/scripts/archive_guardian.py (500+ lignes)
+- claude-plugins/integrity-docs-guardian/scripts/setup_archive_scheduler.ps1 (150+ lignes)
+- claude-plugins/integrity-docs-guardian/ARCHIVE_GUARDIAN_SETUP.md (500+ lignes)
+- claude-plugins/integrity-docs-guardian/agents/anima_dockeeper.md (mise à jour v1.2.0)
+
+**Impact** :
+- ✅ **Maintenance automatique** de la racine (hebdomadaire)
+- ✅ **Zéro intervention manuelle** requise
+- ✅ **Archivage structuré** et retrouvable
+- ✅ **Rapports détaillés** de chaque nettoyage
+- ✅ **Protection** des fichiers essentiels (whitelist)
+
+**Prochaines étapes** :
+- ⏳ Configurer le scheduler : `cd claude-plugins/integrity-docs-guardian/scripts && .\setup_archive_scheduler.ps1`
+- 🟢 Laisser tourner automatiquement chaque dimanche
+- 🟢 Consulter rapports : `cat reports/archive_cleanup_report.json`
+
+**Documentation** :
+- 📋 [ARCHIVE_GUARDIAN_SETUP.md](claude-plugins/integrity-docs-guardian/ARCHIVE_GUARDIAN_SETUP.md) - Guide complet
+- 📋 [anima_dockeeper.md](claude-plugins/integrity-docs-guardian/agents/anima_dockeeper.md) - Prompt Anima v1.2.0
+- 📋 [docs/passation.md](docs/passation.md) - Entrée 2025-10-18 22:00
+
+---
+
 ### ✅ Session 2025-10-18 (20:00) - Sprint 2 Memory Refactoring (EN COURS)
 
 **Statut** : 🟡 **SPRINT 2 EN COURS - 5/5 TESTS PASSENT**

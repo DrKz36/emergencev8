@@ -120,6 +120,64 @@ Aucun travail de Codex en cours sur Sprint 2.
 
 ---
 
+## [2025-10-18 22:00] — Agent: Claude Code (Sonnet 4.5) - Archive Guardian Automatisé COMPLÉTÉ
+
+### Fichiers modifiés
+- [claude-plugins/integrity-docs-guardian/agents/anima_dockeeper.md](claude-plugins/integrity-docs-guardian/agents/anima_dockeeper.md) - Prompt Anima v1.2.0
+- [claude-plugins/integrity-docs-guardian/scripts/archive_guardian.py](claude-plugins/integrity-docs-guardian/scripts/archive_guardian.py) - Script automatisé (NOUVEAU, 500+ lignes)
+- [claude-plugins/integrity-docs-guardian/scripts/setup_archive_scheduler.ps1](claude-plugins/integrity-docs-guardian/scripts/setup_archive_scheduler.ps1) - Setup scheduler (NOUVEAU)
+- [claude-plugins/integrity-docs-guardian/ARCHIVE_GUARDIAN_SETUP.md](claude-plugins/integrity-docs-guardian/ARCHIVE_GUARDIAN_SETUP.md) - Documentation (NOUVEAU, 500+ lignes)
+- [AGENT_SYNC.md](AGENT_SYNC.md) - Section Archive Guardian ajoutée
+- [docs/passation.md](docs/passation.md) - Cette entrée
+
+### Contexte
+**Demande utilisateur** : "Je veux un guardian automatisé qui scan de manière hebdomadaires les fichiers obsolètes et à archiver de manière autonome et automatique."
+
+Système Guardian automatisé qui maintient la racine du dépôt propre sans intervention manuelle.
+
+### Actions réalisées
+
+**1. Extension du prompt Anima (DocKeeper) v1.2.0** :
+- ✅ Ajout responsabilité "Automatic Repository Cleanup"
+- ✅ Règles de détection automatique (patterns regex + âge)
+- ✅ Whitelist 27 fichiers essentiels
+- ✅ Structure archivage : `docs/archive/YYYY-MM/`
+
+**2. Script Archive Guardian** (500+ lignes) :
+- **3 modes** : `--dry-run`, interactif, `--auto`
+- **Détection intelligente** : .md obsolètes, scripts test, HTML, batch/shell
+- **Rapports JSON** : `reports/archive_cleanup_report.json`
+
+**3. Scheduler hebdomadaire PowerShell** :
+- Tâche planifiée Windows "EmergenceArchiveGuardian"
+- **Fréquence** : Dimanche 3h00
+- **Setup** : `.\setup_archive_scheduler.ps1`
+
+**4. Documentation complète** (500+ lignes) :
+- Guide installation & configuration
+- Règles détection détaillées
+- Exemples usage + troubleshooting
+
+### Tests
+- ✅ Dry-run : 0 fichiers détectés (racine propre)
+- ✅ Patterns regex OK, whitelist respectée
+- ✅ Rapport JSON généré
+
+### Résultat
+- ✅ **Maintenance hebdomadaire automatique**
+- ✅ **Zéro intervention manuelle** requise
+- ✅ **Archivage structuré** retrouvable
+- ✅ **Protection fichiers essentiels**
+
+### Prochaines actions
+1. ⏳ Configurer scheduler : `.\setup_archive_scheduler.ps1`
+2. 🟢 Laisser tourner automatiquement chaque dimanche
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-18 17:00] — Agent: Claude Code (Sonnet 4.5) - Grand Nettoyage Racine COMPLÉTÉ
 
 ### Fichiers modifiés

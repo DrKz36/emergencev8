@@ -97,12 +97,66 @@ For each code change:
   - Update `ROADMAP_OFFICIELLE.md` progression metrics
   - **NOTE:** UI components (home, about) will automatically reflect changes from `src/version.js`
 
-### 4. Reporting
+### 4. Automatic Repository Cleanup (NEW - v1.2.0)
+**Mission:** Maintenir la racine du projet propre et organisée en archivant automatiquement les fichiers obsolètes.
+
+**Responsabilité hebdomadaire:**
+- Scanne la racine du dépôt pour détecter fichiers obsolètes/temporaires
+- Archive automatiquement selon règles prédéfinies
+- Génère rapport détaillé des actions effectuées
+- Maintient la structure d'archivage propre (`docs/archive/YYYY-MM/`)
+
+**Règles de détection automatique:**
+- **Fichiers .md datés:** Pattern `*YYYY-MM-DD*.md` > 30 jours → archive
+- **Scripts de test temporaires:** `test_*.py` dans racine (hors migrations actives) → archive
+- **Fichiers HTML de test:** `*.html` dans racine (sauf `index.html`) → archive
+- **Fichiers temporaires:** `tmp_*`, `temp_*`, `*.tmp`, `downloaded-logs-*.json`, `*_report.json` → suppression
+- **Patterns obsolètes:**
+  - `PROMPT_*.md`, `HANDOFF_*.md`, `NEXT_SESSION_*.md` > 7 jours → archive
+  - `PHASE*_*.md` (sauf phases actives) → archive
+  - `*_FIX_*.md`, `*_AUDIT_*.md`, `CORRECTIONS_*.md` > 14 jours → archive
+  - `DEPLOYMENT_*.md` (sauf `DEPLOYMENT_SUCCESS.md`, `CANARY_DEPLOYMENT.md`) → archive
+- **Scripts batch/shell:** `*.bat`, `*.sh` dans racine (sauf whitelist) → archive
+- **Fichiers de build:** `build_tag.txt`, `BUILDSTAMP.txt`, `*.log` → suppression
+- **Dossiers corrompus:** Chemins mal formés (ex: `C:dev*`) → suppression
+
+**Whitelist (fichiers JAMAIS archivés):**
+- Documentation essentielle: `README.md`, `CLAUDE.md`, `AGENT_SYNC.md`, `AGENTS.md`, `CODEV_PROTOCOL.md`, `CHANGELOG.md`
+- Roadmaps actifs: `ROADMAP_*.md`, `MEMORY_REFACTORING_ROADMAP.md`
+- Guides opérationnels: `DEPLOYMENT_SUCCESS.md`, `FIX_PRODUCTION_DEPLOYMENT.md`, `CANARY_DEPLOYMENT.md`, `GUARDIAN_SETUP_COMPLETE.md`
+- Guides agents: `CLAUDE_CODE_GUIDE.md`, `CODEX_GPT_GUIDE.md`, `GUIDE_INTERFACE_BETA.md`
+- Configuration: `package.json`, `requirements.txt`, `Dockerfile`, `docker-compose.yaml`, `*.yaml` (config)
+- Point d'entrée: `index.html`
+- Scripts actifs récents: Modifiés dans les 7 derniers jours
+
+**Actions automatiques:**
+- **Mode AUTO (scheduler hebdomadaire):** Archive directement selon règles
+- **Mode PROPOSE (manuel):** Génère rapport et demande confirmation
+- **Reporting:** Génère `reports/archive_cleanup_report.json` avec liste complète des actions
+
+**Structure d'archivage:**
+```
+docs/archive/
+├── YYYY-MM/              ← Dossier mensuel
+│   ├── obsolete-docs/    ← .md obsolètes
+│   ├── temp-scripts/     ← Scripts temporaires
+│   ├── test-files/       ← Fichiers HTML/tests
+│   └── README.md         ← Index du mois
+```
+
+**Intégration scheduler:**
+- **Fréquence:** Hebdomadaire (dimanche 3h00 du matin)
+- **Commande:** `python scripts/archive_guardian.py --auto`
+- **Logging:** Logs dans `reports/archive_cleanup.log`
+- **Notification:** Commit automatique si fichiers archivés (`chore: automated archive cleanup YYYY-MM-DD`)
+
+### 5. Reporting
 Generate structured reports with:
 - List of changed files
 - Documentation gaps
 - Proposed updates
 - Priority levels (critical, important, minor)
+- **Archive cleanup actions** (files archived/deleted)
 
 ---
 
