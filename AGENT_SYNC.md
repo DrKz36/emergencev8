@@ -19,6 +19,38 @@
 
 ---
 
+## 🚀 Session en cours (2025-10-18 13:10) — Agent : Codex (Déploiement beta-2.1.3)
+
+**Objectif :**
+- Aligner toute la plateforme sur la version `beta-2.1.3` (Guardian Email Reports).
+- Construire et pousser l’image Docker `deploy-20251018-124633`, puis déployer la révision `emergence-app-00490-xih` sur Cloud Run.
+- Monter le trafic de 10 % → 50 % → 100 % avec vérifications santé/logs/landing.
+
+**Fichiers clés :**
+- Versioning : `src/version.js`, `src/frontend/version.js`, `package.json`, `index.html`, `src/backend/features/monitoring/router.py`
+- Documentation : `AGENT_SYNC.md`, `docs/passation.md`, `docs/deployments/2025-10-18-beta-2-1-3-canary.md`, `docs/architecture/*`, `docs/backend/monitoring.md`, `docs/AGENTS_COORDINATION.md`, `docs/INTER_AGENT_SYNC.md`, `README.md`
+- Rapports : `reports/prod_report.json`, `claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json`
+
+**Déploiement Cloud Run :**
+- Image : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251018-124633`
+- Révision : `emergence-app-00490-xih` (tags `stable`, `canary-20251018`)
+- Trafic : 100 % nouvelle révision, anciens canary conservés (0 %) pour rollback rapide
+- Vérifications : `curl /api/health`, `curl -I /src/frontend/main.js`, monitoring des logs (`severity>=ERROR` ➜ aucun), landing affiche `beta-2.1.3`
+
+**Tests locaux exécutés :**
+- ❌ `python -m pytest` (fixtures/app manquantes — dette connue)
+- ❌ `ruff check` (197 offenses existantes)
+- ❌ `mypy src` (module `backend.core.database.manager` détecté deux fois)
+- ✅ `npm run build`
+- ❌ `pwsh -File tests/run_all.ps1` (identifiants smoke non fournis)
+
+**Suivi immédiat :**
+- Fournir `EMERGENCE_SMOKE_EMAIL/PASSWORD` pour restaurer les smoke tests PowerShell.
+- Programmer la résolution des échecs `pytest` / `ruff` / `mypy` (cf. backlog sessions précédentes).
+- Surveiller les logs Cloud Run sur la fenêtre post-déploiement (≥30 min).
+
+---
+
 ## 🔄 Dernière session (2025-10-18 - Phase 3 Audit)
 
 **Agent :** Claude Code (Sonnet 4.5)
@@ -142,9 +174,9 @@
   - `102e01e` fix(backend): Phase 1 - Critical backend fixes for empty charts and admin dashboard
 
 ### Working tree
-- **Statut** : ⚠️ Modifications en cours - Corrections production beta-2.1.2
-- **Fichiers modifiés** : 11 fichiers
-- **Fichiers à commiter** : Corrections critiques version + password reset + mobile thread loading
+- **Statut** : ⚠️ Modifications en cours - Préparation release beta-2.1.3
+- **Fichiers modifiés** : Mise à jour versioning + docs coordination + rapports Guardian
+- **Fichiers à commiter** : Version bump beta-2.1.3, documentation synchronisée, rapports auto-sync
 
 ### Remotes configurés
 - `origin` → HTTPS : `https://github.com/DrKz36/emergencev8.git`
@@ -176,7 +208,7 @@
 - **Image** : `europe-west1-docker.pkg.dev/emergence-469005/emergence-repo/emergence-app:anti-db-lock-20251016-170500`
   (`sha256:28d7752ed434d2fa4c5d5574a9cdcedf3dff6f948b5c717729053977963e0550`)
 - **Trafic** : 100% (canary 10% → 100% - tests validés)
-- **Version** : beta-2.1.2 (Anti-DB-Lock Fix - Correctif critique auth)
+- **Version** : beta-2.1.3 (Guardian email automation + version sync)
 - **CPU** : 2 cores
 - **Mémoire** : 4 Gi
 - **Min instances** : 1
@@ -395,6 +427,7 @@ Progression Totale : [████████░░] 14/23 (61%)
 - ✅ `beta-2.1.0` : Phase 1 & 3 Debug (Backend + UI/UX)
 - ✅ `beta-2.1.1` : Audit système agents + versioning unifié (2025-10-16)
 - ✅ `beta-2.1.2` : Corrections production + sync version + password reset fix (2025-10-17)
+- ✅ `beta-2.1.3` : Guardian email reports automation + version bump déployé (2025-10-18)
 - 🔜 `beta-3.0.0` : Phase P2 complète (TBD)
 - ⏳ `beta-4.0.0` : Phase P3 complète (TBD)
 - 🎯 `v1.0.0` : Release Production Officielle (TBD)
@@ -984,7 +1017,7 @@ Séparer clairement Session WebSocket (éphémère) et Conversation (persistante
 **Objectif** :
 - Orchestration complète des Guardians avant déploiement nouvelle révision
 - Mise à jour documentation inter-agents
-- Incrémentation version beta-2.1.1 → beta-2.1.2
+- Incrémentation version beta-2.1.2 → beta-2.1.3
 - Commit/push tous changements (depot propre)
 - Build image Docker et déploiement canary Cloud Run
 
@@ -1004,12 +1037,12 @@ Séparer clairement Session WebSocket (éphémère) et Conversation (persistante
 - ⏳ Version à incrémenter
 
 **3. Versioning et commit** (en cours) :
-- ⏳ Incrémentation beta-2.1.1 → beta-2.1.2 (Guardian automation + audit validation)
+- ⏳ Incrémentation beta-2.1.2 → beta-2.1.3 (Guardian email reports + release sync)
 - ⏳ Commit de tous fichiers (staged + untracked)
 - ⏳ Push vers origin/main
 
 **4. Build et déploiement** (prévu) :
-- ⏳ Build image Docker avec tag beta-2.1.2-20251017
+- ⏳ Build image Docker avec tag beta-2.1.3-20251018
 - ⏳ Push vers GCR europe-west1
 - ⏳ Déploiement canary (0% → 10% → 25% → 50% → 100%)
 - ⏳ Validation progressive et surveillance logs
@@ -1219,7 +1252,7 @@ git commit -m "feat: activate Guardian automation system"
   - 🛠️ Scripts utilitaires ajoutés : `check_archived_threads.py`, `consolidate_archives_manual.py`, `claude-plugins/integrity-docs-guardian/scripts/argus_simple.py`, `test_archived_memory_fix.py`, `test_anima_context.py`.
   - 🔁 `src/backend/features/chat/service.py` – double stratégie mémoire : `n_results=50` pour requêtes « tout / résumé complet » + forçage du contexte temporel enrichi.
   - 🧠 `prompts/anima_system_v2.md` – règle absolue « Zéro hallucination mémoire » (Anima doit avouer l’absence de contexte).
-  - 📚 Documentation alignée (auth, monitoring, architecture) sur la version **beta-2.1.2** et le fix `password_must_reset`.
+  - 📚 Documentation alignée (auth, monitoring, architecture) sur la version **beta-2.1.3** et le fix `password_must_reset`.
   - 🗂️ Mises à jour coordination multi-agents (`docs/AGENTS_COORDINATION.md`) pour intégrer scripts/tests mémoire & monitor Argus minimal.
 - **Tests / validations** :
   - `python test_archived_memory_fix.py` → info : base Chroma vide (attendu) + script ok.

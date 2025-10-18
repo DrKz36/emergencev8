@@ -1,7 +1,7 @@
 # Coordination Inter-Agents - ÉMERGENCE V8
 
-**Dernière mise à jour:** 2025-10-16 23:30
-**Version:** Beta 1.1.0
+**Dernière mise à jour:** 2025-10-18 14:30
+**Version:** Beta 2.1.3
 **Agents impliqués:** Claude Code, Codex GPT, Claude Local
 
 ---
@@ -288,6 +288,16 @@ Ces outils servent de check-list rapide avant de confier une séance de QA mémo
 
 ## Changelog des Conventions
 
+### 2025-10-18 - Synchronisation version beta-2.1.3
+
+**Ajouts:**
+- Mise à jour des références de version (beta-2.1.3)
+- Rappel de garder AGENT_SYNC/passation alignés après déploiements
+
+**Impacts:**
+- Codex & Claude se basent sur une version unique actualisée
+- Facilite la préparation des releases Guardian (email reports)
+
 ### 2025-10-16 - Phase 1 Backend Fixes
 
 **Ajouts:**
@@ -321,3 +331,5 @@ Pour toute question sur ces conventions ou pour proposer des améliorations :
 **Maintenu par:** Les agents IA collaboratifs
 **Approuvé par:** Équipe de développement ÉMERGENCE V8
 **Révision:** Trimestrielle ou après chaque phase majeure
+
+

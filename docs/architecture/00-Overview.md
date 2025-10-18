@@ -37,7 +37,7 @@
 - **Thread bootstrap** : a l'ouverture, le front garantit un thread `type=chat` (REST) puis hydrate les messages (limite 50). Si `GET /api/threads/{id}` renvoie 403 ou 404, l'app regenere un thread `type=chat` et relance le chargement sans dupliquer les toasts.
 - **RAG et Memoire** : activation explicite (toggle) ; bandeau sources cote UI ; consolidation memoire declenchee manuellement ou auto (gardener) ; `memory:clear` purge STM puis LTM filtree ; meta WS enrichies (`selected_doc_ids`, `rag_status`).
 - **Débat** : tours orchestrés côté back, isolation stricte des contextes agents, diffusion WS (`ws:debate_*`).
-- **Observabilité** : logs structurés (`model_fallback`, `ws:handshake`, `rag:active`, `memory:garden`) et notifications front (`ws:model_info`, `ws:memory_banner`). Healthchecks (`/api/monitoring/health`, `/api/system/info`) exposent version `beta-2.1.2` synchronisée via `BACKEND_VERSION` env var.
+- **Observabilité** : logs structurés (`model_fallback`, `ws:handshake`, `rag:active`, `memory:garden`) et notifications front (`ws:model_info`, `ws:memory_banner`). Healthchecks (`/api/monitoring/health`, `/api/system/info`) exposent version `beta-2.1.3` synchronisée via `BACKEND_VERSION` env var.
 
 ## 4) Références & Tests clés
 - Scripts PowerShell `tests/run_all.ps1`, `tests/test_vector_store_reset.ps1`, `tests/test_vector_store_force_backup.ps1`.

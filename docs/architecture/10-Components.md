@@ -12,7 +12,7 @@
 - **`features/documents/service.py`** : upload, parsing (`ParserFactory`), chunking, vectorisation, suppression (purge embeddings associés).
 - **`features/debate/service.py`** : gère `debate:create`, chaîne les tours agents, isole les contextes, publie `ws:debate_*`.
 - **`features/dashboard/service.py`** : agrège coûts (jour/semaine/mois/total), sessions actives, documents traités.
-- **`features/monitoring/router.py`** : healthchecks (`/api/monitoring/health`, `/api/monitoring/health/detailed`) et endpoint system info (`/api/system/info`) pour About page. **V2.1.2:** Version synchronisée `beta-2.1.2` via `BACKEND_VERSION` env var (lignes 38, 384), exposée dans tous les healthchecks et system info.
+- **`features/monitoring/router.py`** : healthchecks (`/api/monitoring/health`, `/api/monitoring/health/detailed`) et endpoint system info (`/api/system/info`) pour About page. **V2.1.3:** Version synchronisée `beta-2.1.3` via `BACKEND_VERSION` env var (lignes 38, 384), exposée dans tous les healthchecks et system info.
 - **`features/dashboard/timeline_service.py`** (V3.4 - Phase 1.2) : service dédié aux graphiques temporels du Cockpit (activité, coûts, tokens par jour), gère les valeurs NULL avec pattern COALESCE robuste, isolation multi-utilisateurs (user_id) + filtrage optionnel par session (X-Session-Id), périodes flexibles (7j, 30j, 90j, 1 an).
 - **`features/dashboard/admin_service.py`** (V3.4 - Phase 1.3-1.5) : service admin pour statistiques globales, breakdown utilisateurs avec LEFT JOIN flexible, métriques temporelles avec fallbacks robustes, nouveau endpoint breakdown détaillé des coûts par utilisateur/module.
 - **`features/benchmarks/service.py`** : orchestre le `BenchmarksRunner`, charge le catalogue de scénarios (ARE/Gaia2), persiste les runs en SQLite et (optionnellement) Firestore (`EMERGENCE_FIRESTORE_PROJECT`, `GOOGLE_APPLICATION_CREDENTIALS`) et expose les endpoints `/api/benchmarks/*` (fallback SQLite forcé si `EDGE_MODE=1`).
@@ -248,4 +248,3 @@ scrape_configs:
 - Tests rapides : `tests/run_all.ps1` (smoke API), `tests/test_vector_store_reset.ps1`, `tests/test_vector_store_force_backup.ps1`.
 - Auth : nouveaux tests `tests/backend/features/test_auth_login.py` + `tests/backend/features/test_auth_admin.py`; limiter rate et tables auditées.
 - Points de vigilance : latence chargement SBERT (première requête), dépendances clés (`GOOGLE_API_KEY` (alias `GEMINI_API_KEY`), `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`).
-

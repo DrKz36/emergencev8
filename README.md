@@ -189,7 +189,7 @@ Documentation technique des modules backend récents :
 
 - **[Monitoring Feature](docs/backend/monitoring.md)** - Health checks avancés K8s (V2.1.2)
   - **NOUVEAU (V2.1.2)**: `/api/system/info` - Informations système complètes pour About page
-  - **NOUVEAU (V2.1.2)**: Version synchronisée `beta-2.1.2` via `BACKEND_VERSION` env var
+  - **NOUVEAU (V2.1.3)**: Version synchronisée `beta-2.1.3` via `BACKEND_VERSION` env var
   - `/health/liveness` - Liveness probe (processus vivant)
   - `/health/readiness` - Readiness probe (services up: DB, Vector, LLM)
   - `/api/monitoring/health` - Healthcheck basique avec version

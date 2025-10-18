@@ -1,7 +1,7 @@
 # Synchronisation Inter-Agents - Points de Coordination
 
-**Dernière mise à jour:** 2025-10-16 23:30
-**Version:** Beta 1.1.0
+**Dernière mise à jour:** 2025-10-18 14:30
+**Version:** Beta 2.1.3
 
 ---
 
@@ -295,6 +295,20 @@ Tâche: [DESCRIPTION DE LA TÂCHE]
 
 ## Historique des Synchronisations
 
+### 2025-10-18 14:30 - Synchronisation version beta-2.1.3
+
+**Agent:** Codex (GPT-5)
+**Contexte:** Préparation déploiement Guardian email reports
+
+**Changements:**
+- Alignement version globale sur eta-2.1.3
+- Mise à jour des documents coordination (ce fichier + AGENTS_COORDINATION.md)
+- Rappel de consigner AGENT_SYNC & passation après chaque release
+
+**Impact:**
+- Clarifie la version cible pour la session de déploiement
+- Facilite la coordination Claude/Codex pour les étapes canary → stable
+
 ### 2025-10-16 23:30 - Phase 1 Backend Fixes Complète
 
 **Agent:** Claude Code (Sonnet 4.5)
@@ -358,3 +372,6 @@ Tâche: [DESCRIPTION DE LA TÂCHE]
 
 **Dernière modification par:** Claude Code (Sonnet 4.5)
 **Prochaine révision:** Après Phase 2 ou sur demande utilisateur
+
+
+

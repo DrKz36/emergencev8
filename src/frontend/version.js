@@ -14,12 +14,13 @@
  * - beta-2.0.0 : Phase P1 complétée (UX Essentielle - 3/3)
  * - beta-2.1.0 : Phase 1 & 3 Debug (Backend fixes + UI/UX improvements)
  * - beta-2.1.1 : Audit système multi-agents + versioning unifié
- * - beta-2.1.2 : Guardian automation + pre-deployment validation [ACTUEL]
+ * - beta-2.1.2 : Guardian automation + pre-deployment validation
+ * - beta-2.1.3 : Guardian email reports automation [ACTUEL]
  */
 
-export const VERSION = 'beta-2.1.2';
-export const VERSION_NAME = 'Guardian Automation & Validation';
-export const VERSION_DATE = '2025-10-17';
+export const VERSION = 'beta-2.1.3';
+export const VERSION_NAME = 'Guardian Email Reports';
+export const VERSION_DATE = '2025-10-18';
 export const BUILD_PHASE = 'P1';
 export const COMPLETION_PERCENTAGE = 61; // 14/23 features
 export const TOTAL_FEATURES = 23;

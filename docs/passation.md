@@ -1,3 +1,62 @@
+## [2025-10-18 13:10] - Agent: Codex (Déploiement Cloud Run & Versioning)
+
+### Fichiers modifiés
+- `.claude/settings.local.json` (auto-sync permissions inchangées — inclus pour garder le dépôt propre)
+- `AGENT_SYNC.md`
+- `CHANGELOG.md`
+- `README.md`
+- `docs/backend/monitoring.md`
+- `docs/AGENTS_COORDINATION.md`
+- `docs/INTER_AGENT_SYNC.md`
+- `docs/architecture/00-Overview.md`
+- `docs/architecture/10-Components.md`
+- `docs/architecture/30-Contracts.md`
+- `docs/deployments/2025-10-18-beta-2-1-3-canary.md` (NOUVEAU)
+- `index.html`
+- `package.json`
+- `src/backend/features/monitoring/router.py`
+- `src/version.js`
+- `src/frontend/version.js`
+- `reports/prod_report.json`
+- `claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json`
+
+### Contexte
+- Finaliser la release `beta-2.1.3` (Guardian Email Reports) : version unique, affichage UI, documentation coordination.
+- Construire et déployer une nouvelle image Docker `deploy-20251018-124633` sur Cloud Run avec montée progressive du trafic.
+- Consigner l’opération (docs déploiement, AGENT_SYNC, passation).
+
+### Actions réalisées
+1. **Versioning & documentation**
+   - Synchronisation `src/version.js`, `src/frontend/version.js`, `package.json`, `index.html`, `router.py` sur `beta-2.1.3`.
+   - Mise à jour docs architecture + monitoring + README + AGENT_SYNC + coordination inter-agents (ajout changelog 2025-10-18).
+2. **Build & push**
+   - `docker build -t europe-west1-docker.pkg.dev/...:deploy-20251018-124633 -t ...:latest .`
+   - Push des tags `deploy-20251018-124633` et `latest`.
+3. **Déploiement Cloud Run**
+   - `gcloud run deploy emergence-app --no-traffic --tag=canary-20251018` → révision `emergence-app-00490-xih`.
+   - Routage progressif : 10% → 50% → 100% (`gcloud run services update-traffic`).
+   - Vérifications : health check canary, fichier statique, lecture logs (`severity>=ERROR` aucune entrée), page d’accueil affiche `beta-2.1.3`.
+4. **Traçabilité**
+   - Création `docs/deployments/2025-10-18-beta-2-1-3-canary.md` avec digest, étapes, vérifications et suivis.
+
+### Tests
+- ❌ `python -m pytest` — 5 erreurs préexistantes (fixture/app manquante, bug capture pytest). Pas de régression relevée.
+- ❌ `ruff check` — 197 offenses héritées (scripts legacy + validation). Non traitées ici.
+- ❌ `mypy src` — duplication module `backend.core.database.manager` (déjà signalé).
+- ✅ `npm run build`
+- ❌ `pwsh -File tests/run_all.ps1` — login échoué (identifiants smoke manquants).
+- ✅ Vérifs canary Cloud Run (`curl /api/health`, `curl -I /src/frontend/main.js`, logs).
+
+### Prochaines actions recommandées
+1. Régler la fixture pytest / capture (cf. `tests/backend/features/test_memory_concept_search.py`) puis relancer la suite.
+2. Fournir credentials smoke (`EMERGENCE_SMOKE_EMAIL/PASSWORD`) pour permettre `tests/run_all.ps1`.
+3. Prévoir nettoyage backlog `ruff`/`mypy` (ouvrir ticket dédié).
+4. Surveiller logs Cloud Run pendant la fenêtre post-déploiement (30 min) pour confirmer stabilité.
+
+### Blocages
+- Tests backend/linter déjà cassés avant la session (cf. sessions précédentes) — nécessitent refonte séparée.
+- Pas d’accès aux identifiants smoke => tests PowerShell bloqués.
+
 ## [2025-10-18 Session Phase 3] — Agent: Claude Code (Sonnet 4.5) - Dashboard Guardian + Tests E2E (Phase 3)
 
 ### Fichiers modifiés

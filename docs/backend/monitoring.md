@@ -668,3 +668,4 @@ SUSPICIOUS_PATTERN_THRESHOLD = 10  # Alerting après 10 patterns
 - Health check basique `/api/monitoring/health`
 - Métriques application initiales
 - Security/Performance monitors
+

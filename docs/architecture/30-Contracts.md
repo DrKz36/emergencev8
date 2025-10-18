@@ -97,12 +97,12 @@
 - `POST /api/threads/{id}/documents` → associe documents (`{ document_ids: [] }`).
 
 ### Monitoring et Healthchecks
-- `GET /api/monitoring/health` → 200 `{ status: "healthy", timestamp, version }` (version: `beta-2.1.2`)
+- `GET /api/monitoring/health` → 200 `{ status: "healthy", timestamp, version }` (version: `beta-2.1.3`)
 - `GET /api/monitoring/health/detailed` → 200 `{ status, timestamp, system: { platform, python_version, cpu_percent, memory, disk } }`
 - `GET /api/system/info` → 200 Informations système complètes pour About page
   ```json
   {
-    "version": { "backend": "beta-2.1.2", "python": "3.11.5", "environment": "production" },
+    "version": { "backend": "beta-2.1.3", "python": "3.11.5", "environment": "production" },
     "platform": { "system": "Linux", "release": "5.15.0", "machine": "x86_64" },
     "resources": { "cpu_percent": 12.4, "memory": {...}, "disk": {...} },
     "uptime": { "seconds": 3628800, "formatted": "42 days, 0 hours", "started_at": "..." },
@@ -110,7 +110,7 @@
     "timestamp": "..."
   }
   ```
-  Version backend via `BACKEND_VERSION` env var (défaut: `beta-2.1.2`), synchronisée avec `package.json` et `index.html`.
+  Version backend via `BACKEND_VERSION` env var (défaut: `beta-2.1.3`), synchronisée avec `package.json` et `index.html`.
 
 ### Mémoire
 - `POST /api/memory/tend-garden` (`{ thread_id?, mode? }`) → 202 + job async ; renvoie état courant (`{ status, last_run_at, summary_id }`).
@@ -150,7 +150,6 @@
 - Révocation : `auth_sessions.revoked_at` + liste en mémoire purgée toutes les 5 minutes.
 - Les claims enrichis exposent `session_revoked` et `revoked_at` le cas échéant; le handshake WS refuse une session révoquée.
 - OTP futur : champs réservés (`otp_secret`, `otp_expires_at`, `otp_channel`) pour SMS/OTP; routes resteront compatibles.
-
 
 
 
