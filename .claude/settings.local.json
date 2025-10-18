@@ -5,20 +5,7 @@
   },
   "permissions": {
     "allow": [
-      "Bash(git push)",
-      "Bash(git add AGENT_SYNC.md)",
-      "Bash(git commit -m \"docs(sync): update AGENT_SYNC.md with commit hash 84b2dcf\")",
-      "Bash(ruff check src/backend/features/dashboard/admin_service.py)",
-      "Bash(git add AGENT_SYNC.md docs/architecture/10-Components.md docs/architecture/ADR-001-sessions-threads-renaming.md docs/passation.md src/backend/features/dashboard/admin_service.py src/frontend/features/admin/admin-dashboard.js)",
-      "Bash(git commit -m \"docs(sync): update AGENT_SYNC.md with commit hash d2bb93c\")",
-      "Bash(python scripts/generate_guardian_dashboard.py)",
-      "Bash(python -m pytest tests/backend/e2e/test_admin_dashboard_e2e.py -v)",
-      "Bash(ruff check scripts/generate_guardian_dashboard.py)",
-      "Bash(python -m py_compile scripts/generate_guardian_dashboard.py)",
-      "Bash(python -m py_compile tests/backend/e2e/test_admin_dashboard_e2e.py)",
-      "Bash(git add scripts/generate_guardian_dashboard.py tests/backend/e2e/test_admin_dashboard_e2e.py docs/guardian-status.html docs/passation.md AGENT_SYNC.md)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nfeat(tests): add Guardian dashboard + E2E tests for admin dashboard (Phase 3)\n\nSuite à l''audit 2025-10-18 - Phase 3 implémentée avec succès\n\nDashboard Guardian HTML:\n- Nouveau script: scripts/generate_guardian_dashboard.py\n- Lit rapports JSON des guardians (unified, prod, integrity)\n- Génère dashboard HTML visuel et responsive\n- Design moderne: gradient, cards, badges colorés, tables\n- Fix encoding Windows (UTF-8)\n- Fichier généré: docs/guardian-status.html\n\nTests E2E Dashboard Admin:\n- Nouveau: tests/backend/e2e/test_admin_dashboard_e2e.py\n- 12 tests, 4 classes, 100% pass en 0.18s\n- Coverage complète:\n  * Endpoint /admin/analytics/threads (Phase 1)\n  * Endpoint /admin/analytics/costs (Phase 2)\n  * Endpoint /api/auth/admin/sessions (JWT)\n  * Workflow intégration complète\n- Validation fixes Phase 1 (sessions vs threads distinction)\n- Validation fixes Phase 2 (graphes coûts robustes)\n\nBénéfices:\n- Visualisation rapide état guardians (plus besoin lire JSON)\n- Protection contre régressions dashboard admin\n- CI/CD ready\n- Documentation complète\n\nTests:\n- ✅ 12/12 tests E2E passent\n- ✅ ruff check OK\n- ✅ Script Guardian exécute sans erreur\n- ✅ Dashboard HTML généré correctement\n\nDocumentation:\n- passation.md: Nouvelle entrée Phase 3 complète\n- AGENT_SYNC.md: Session Phase 3 mise à jour\n\nRéférence: AUDIT_COMPLET_2025-10-18.md - Phase 3 & Amélioration #8\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git commit -m \"docs(sync): update AGENT_SYNC.md with commit hash 0be5958\")"
+      "Bash(git add .claude/settings.local.json AGENT_SYNC.md docs/passation.md reports/prod_report.json \"claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json\")"
     ],
     "deny": [],
     "ask": []

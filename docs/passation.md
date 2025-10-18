@@ -1,3 +1,52 @@
+## [2025-10-18 15:45] — Agent: Claude Code (Synchronisation doc post-déploiement beta-2.1.3)
+
+### Fichiers modifiés
+- `AGENT_SYNC.md` (mise à jour session en cours)
+- `docs/passation.md` (cette entrée)
+- `reports/prod_report.json` (timestamp auto-update: 12:56:35)
+- `claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json` (timestamp auto-update: 12:59:42)
+
+### Contexte
+Synchronisation de la documentation inter-agents après le déploiement réussi de **beta-2.1.3** par Codex.
+Le dépôt local avait 2 fichiers modifiés (rapports guardians auto-générés par hooks Git).
+Objectif: nettoyer le dépôt et documenter l'état actuel pour Codex.
+
+### Actions réalisées
+1. **Lecture contexte**
+   - Lecture `AGENT_SYNC.md` (session Codex déploiement beta-2.1.3)
+   - Lecture `docs/passation.md` (dernières entrées)
+   - `git status` et `git log` pour comprendre état du dépôt
+   - Inspection des fichiers modifiés (prod_report.json - seulement timestamps changés)
+
+2. **Mise à jour documentation**
+   - `AGENT_SYNC.md`: nouvelle session en cours (15:45)
+   - `docs/passation.md`: cette entrée
+
+3. **Git commit & push**
+   - `git add` de tous les fichiers modifiés (AGENT_SYNC.md, passation.md, 2x prod_report.json)
+   - Commit avec message descriptif
+   - Push vers origin/main
+
+### Tests
+- ✅ Lecture fichiers OK
+- ✅ Édition AGENT_SYNC.md OK
+- ✅ Édition passation.md OK
+- ✅ Git status clean après commit
+
+### Travail de Codex pris en compte
+- ✅ Déploiement beta-2.1.3 documenté et compris
+- ✅ Révision Cloud Run `emergence-app-00490-xih` notée (100% trafic)
+- ✅ Rapports guardians post-déploiement intégrés
+- ✅ Pas d'interférence avec le travail de Codex
+
+### Prochaines actions recommandées
+1. Aucun travail de dev en cours
+2. Attendre prochaine directive de l'architecte (FG) ou nouvelle session Codex
+3. Dépôt est clean et synchronisé
+
+### Blocages
+Aucun.
+
 ## [2025-10-18 13:10] - Agent: Codex (Déploiement Cloud Run & Versioning)
 
 ### Fichiers modifiés

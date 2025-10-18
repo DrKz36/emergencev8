@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-16 12:50 (Orchestrateur: audit complet système multi-agents)
+**Dernière mise à jour** : 2025-10-18 15:45 (Claude Code: synchronisation doc post-déploiement beta-2.1.3)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -19,35 +19,33 @@
 
 ---
 
-## 🚀 Session en cours (2025-10-18 13:10) — Agent : Codex (Déploiement beta-2.1.3)
+## 🚀 Session en cours (2025-10-18 15:45) — Agent : Claude Code (Synchronisation doc post-déploiement)
 
 **Objectif :**
-- Aligner toute la plateforme sur la version `beta-2.1.3` (Guardian Email Reports).
-- Construire et pousser l’image Docker `deploy-20251018-124633`, puis déployer la révision `emergence-app-00490-xih` sur Cloud Run.
-- Monter le trafic de 10 % → 50 % → 100 % avec vérifications santé/logs/landing.
+- Synchroniser la documentation inter-agents après déploiement beta-2.1.3 par Codex
+- Commiter les rapports guardians auto-générés (prod_report.json)
+- Nettoyer le dépôt local (statut clean)
 
-**Fichiers clés :**
-- Versioning : `src/version.js`, `src/frontend/version.js`, `package.json`, `index.html`, `src/backend/features/monitoring/router.py`
-- Documentation : `AGENT_SYNC.md`, `docs/passation.md`, `docs/deployments/2025-10-18-beta-2-1-3-canary.md`, `docs/architecture/*`, `docs/backend/monitoring.md`, `docs/AGENTS_COORDINATION.md`, `docs/INTER_AGENT_SYNC.md`, `README.md`
-- Rapports : `reports/prod_report.json`, `claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json`
+**Fichiers modifiés :**
+- `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (nouvelle entrée)
+- `reports/prod_report.json` (timestamp auto-update par ProdGuardian)
+- `claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json` (timestamp auto-update)
 
-**Déploiement Cloud Run :**
-- Image : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251018-124633`
-- Révision : `emergence-app-00490-xih` (tags `stable`, `canary-20251018`)
-- Trafic : 100 % nouvelle révision, anciens canary conservés (0 %) pour rollback rapide
-- Vérifications : `curl /api/health`, `curl -I /src/frontend/main.js`, monitoring des logs (`severity>=ERROR` ➜ aucun), landing affiche `beta-2.1.3`
+**Contexte :**
+- Codex a déployé beta-2.1.3 avec succès (commit `fd74118`)
+- Révision Cloud Run `emergence-app-00490-xih` en prod (100% trafic)
+- Rapports guardians auto-générés après hooks Git (timestamps 12:56 et 12:59)
+- Dépôt local a 2 fichiers non stagés (rapports JSON)
 
-**Tests locaux exécutés :**
-- ❌ `python -m pytest` (fixtures/app manquantes — dette connue)
-- ❌ `ruff check` (197 offenses existantes)
-- ❌ `mypy src` (module `backend.core.database.manager` détecté deux fois)
-- ✅ `npm run build`
-- ❌ `pwsh -File tests/run_all.ps1` (identifiants smoke non fournis)
+**Actions en cours :**
+- ✅ Lecture AGENT_SYNC.md + git status
+- ✅ Mise à jour AGENT_SYNC.md
+- 🔄 Mise à jour docs/passation.md
+- ⏳ Git add + commit + push
 
-**Suivi immédiat :**
-- Fournir `EMERGENCE_SMOKE_EMAIL/PASSWORD` pour restaurer les smoke tests PowerShell.
-- Programmer la résolution des échecs `pytest` / `ruff` / `mypy` (cf. backlog sessions précédentes).
-- Surveiller les logs Cloud Run sur la fenêtre post-déploiement (≥30 min).
+**Prochaines actions :**
+- Attendre prochaine directive architecte ou session Codex
 
 ---
 
