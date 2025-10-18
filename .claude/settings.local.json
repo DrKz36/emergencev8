@@ -1,26 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "*",
-      "Bash(powershell.exe -Command \"Get-ScheduledTask | Where-Object {($_.TaskName -like ''*Guardian*'') -or ($_.TaskName -like ''*ProdGuardian*'')} | Select-Object TaskName, State, @{Name=''LastRunTime'';Expression={$_.LastRunTime}}, @{Name=''NextRunTime'';Expression={$_.NextRunTime}} | Format-Table -AutoSize\")",
-      "Bash(powershell.exe -ExecutionPolicy Bypass -File check_tasks.ps1)",
-      "Bash(powershell.exe -ExecutionPolicy Bypass -File check_task_details.ps1)",
-      "Bash(python claude-plugins/integrity-docs-guardian/scripts/send_guardian_reports_email.py)",
-      "Bash(powershell.exe -ExecutionPolicy Bypass -File claude-plugins/integrity-docs-guardian/scripts/setup_email_reports.ps1)",
-      "Bash(powershell.exe -ExecutionPolicy Bypass -File claude-plugins/integrity-docs-guardian/scripts/setup_email_reports_user.ps1)",
-      "Bash(powershell.exe -ExecutionPolicy Bypass -File verify_email_task.ps1)",
-      "Bash(git add -A)",
-      "Bash(git add -f .claude/README.md .claude/settings.local.json)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nchore: config permissions auto-exec Claude Code + Guardian email reports\n\n**Configuration Claude Code**\n- Ajout wildcard \"*\" dans .claude/settings.local.json pour exécution automatique\n- Création .claude/README.md documentant la config permissions\n- Mise à jour CLAUDE_CODE_GUIDE.md + CODEX_GPT_GUIDE.md avec section config\n\n**Guardian Email Reports**\n- Nouveaux scripts email automatisés (send_guardian_reports_email.py)\n- Scripts PowerShell setup email (setup_email_reports.ps1, setup_email_reports_user.ps1)\n- Documentation activation email (EMAIL_ACTIVATION.md, README_EMAIL_REPORTS.md)\n- Audit coûts AI modèles (ai_model_cost_audit_20251018.md)\n\n**Autres**\n- Mise à jour guardian_config.json\n- Script test envoi email connexion (send_connection_issues_email.py)\n- Rapports prod mis à jour\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git push origin main)",
-      "Bash(git add .claude/settings.local.json reports/prod_report.json)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nchore: auto-update settings et prod report post-push\n\n- Mise à jour auto settings.local.json avec commandes exécutées\n- Mise à jour prod_report.json par ProdGuardian pre-push hook\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git add -f .claude/settings.local.json)",
-      "Bash(git add reports/prod_report.json)",
-      "Bash(git commit -m \"chore: update prod_report.json from pre-push hook\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\")",
-      "Bash(git commit -m \"chore: sync auto-generated files (settings + prod_report)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\")",
-      "Bash(git restore reports/prod_report.json)",
-      "Bash(git commit -m \"chore: update settings.local.json with git restore command\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\")"
+      "Bash(git commit -m \"chore: update auto-generated files (settings + prod_report)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\")"
     ],
     "deny": [],
     "ask": []
