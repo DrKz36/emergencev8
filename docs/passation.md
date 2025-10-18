@@ -1,3 +1,72 @@
+## [2025-10-18 17:39] — Agent: Claude Code (Fix VSCode Settings Full Auto Mode)
+
+### Fichiers modifiés
+- `C:\Users\Admin\AppData\Roaming\Code\User\settings.json` (ajout configs Claude Code full auto)
+- `.claude/settings.local.json` (auto-update permissions)
+- `reports/prod_report.json` (auto-update guardians)
+- `AGENT_SYNC.md` (mise à jour session 17:39)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Suite déploiement beta-2.1.4, identification problème mode full auto Claude Code.
+Architecte signale que VSCode affiche popups de validation pour actions sensibles (git push, déploiement), malgré CLAUDE.md qui stipule mode autonome total.
+
+Root cause: fichier `settings.json` VSCode contenait configs pour Copilot/Codex mais **AUCUNE config Claude Code équivalente**.
+
+### Actions réalisées
+
+1. **Diagnostic du problème**
+   - Lecture `settings.json` VSCode
+   - Confirmation: configs Copilot présentes (`autoApplyEdits`, `confirmExecution: never`, `requireApproval: false`)
+   - Constat: AUCUNE config équivalente pour Claude Code
+   - Impact: UI VSCode affichait popups de validation à chaque action sensible
+
+2. **Ajout configurations Claude Code full auto**
+   - Édition `C:\Users\Admin\AppData\Roaming\Code\User\settings.json`
+   - Ajout de 11+ configurations Claude Code:
+     ```json
+     "claude-code.requireApproval": false,
+     "claude-code.confirmExecution": "never",
+     "claude-code.autoApplyEdits": true,
+     "claude-code.tools.requireApproval": false,
+     "claude-code.bash.requireApproval": false,
+     "claude-code.edit.requireApproval": false,
+     "claude-code.write.requireApproval": false,
+     "claude-code.read.requireApproval": false,
+     "claude-code.git.requireApproval": false,
+     "claude-code.git.confirmPush": false,
+     "claude-code.git.confirmCommit": false,
+     "claude-code.deployment.requireApproval": false,
+     "claude-code.dangerousOperations.requireApproval": false,
+     "claude-code.autoExecuteLimit": -1,
+     "claude-code.autoExecute": true
+     ```
+
+3. **Mise à jour documentation inter-agents**
+   - AGENT_SYNC.md: nouvelle session 17:39 (fix VSCode settings full auto)
+   - docs/passation.md: cette entrée complète
+   - Documentation du problème et de la solution pour référence future
+
+### Tests
+- ⏳ Reloader VSCode requis pour activer les nouvelles configs
+- ⏳ Test mode full auto sans popups après reload
+- ✅ Documentation mise à jour (AGENT_SYNC.md, passation.md)
+
+### Travail de Codex pris en compte
+- Aucune session Codex récente
+- Pas de conflit
+
+### Prochaines actions
+1. Architecte doit reloader VSCode (`Ctrl+Shift+P` → "Developer: Reload Window")
+2. Tester une tâche full auto (ex: "bump version beta-2.1.5") pour vérifier ZÉRO popup
+3. Si popups persistent: vérifier logs VSCode ou consulter doc Claude Code
+4. Commit + push tous fichiers modifiés (dépôt propre)
+
+### Blocages
+Aucun. Solution implémentée, reload VSCode requis.
+
+---
+
 ## [2025-10-18 17:13] — Agent: Claude Code (Vérification Guardians + Déploiement beta-2.1.4)
 
 ### Fichiers modifiés

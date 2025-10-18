@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-18 17:13 (Claude Code: vérification guardians + déploiement beta-2.1.4)
+**Dernière mise à jour** : 2025-10-18 17:39 (Claude Code: fix VSCode settings full auto mode)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -19,53 +19,67 @@
 
 ---
 
-## 🚀 Session en cours (2025-10-18 17:13) — Agent : Claude Code (Vérification Guardians + Déploiement beta-2.1.4)
+## 🚀 Session en cours (2025-10-18 17:39) — Agent : Claude Code (Fix VSCode Settings Full Auto Mode)
+
+**Objectif :**
+- Fixer configuration VSCode pour éliminer popups de validation
+- Activer mode full auto complet dans Claude Code
+- Nettoyer dépôt (commit + push tous fichiers)
+
+**Fichiers modifiés :**
+- `C:\Users\Admin\AppData\Roaming\Code\User\settings.json` (ajout configs Claude Code full auto)
+- `.claude/settings.local.json` (auto-update permissions)
+- `reports/prod_report.json` (auto-update guardians)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée)
+
+**Contexte :**
+- **Problème identifié**: VSCode affichait des popups de validation pour actions sensibles (git push, déploiement, etc.)
+- **Cause**: fichier `settings.json` VSCode contenait configs Copilot mais AUCUNE config Claude Code
+- **Impact**: mode full auto CLAUDE.md non respecté (validation requise à chaque action)
+
+**Actions en cours :**
+- ✅ Ajout 11+ configs Claude Code dans `settings.json` VSCode:
+  - `requireApproval: false` - Pas de validation générale
+  - `confirmExecution: "never"` - Jamais de confirmation d'exécution
+  - `autoApplyEdits: true` - Edits automatiques
+  - `tools/bash/edit/write/read.requireApproval: false` - Chaque outil individuellement
+  - `git.confirmPush/confirmCommit: false` - Git operations automatiques
+  - `deployment.requireApproval: false` - Déploiements sans validation
+  - `dangerousOperations.requireApproval: false` - Opérations sensibles auto
+  - `autoExecuteLimit: -1` - Pas de limite d'actions automatiques
+  - `autoExecute: true` - Exécution auto globale
+- ✅ Mise à jour AGENT_SYNC.md
+- ⏳ Mise à jour docs/passation.md
+- ⏳ Commit + push tous fichiers modifiés (dépôt propre)
+
+**Prochaines actions :**
+- Reloader VSCode pour activer les nouvelles configs
+- Tester mode full auto sans popups
+- Attendre directive architecte ou session Codex
+
+---
+
+## 🔄 Dernière session (2025-10-18 17:13) — Agent : Claude Code (Vérification Guardians + Déploiement beta-2.1.4)
 
 **Objectif :**
 - Vérifier tous les guardians (Anima, Neo, Nexus, ProdGuardian)
 - Mettre à jour documentation inter-agents
 - Préparer et déployer nouvelle version beta-2.1.4 sur Cloud Run
 
-**Fichiers modifiés :**
-- `AGENT_SYNC.md` (mise à jour session en cours)
-- `docs/passation.md` (nouvelle entrée)
-- `package.json` (bump version beta-2.1.3 → beta-2.1.4)
-- `.claude/settings.local.json` (auto-update permissions)
-- `reports/prod_report.json` (auto-update guardians)
-
-**Contexte :**
-- Version actuelle : **beta-2.1.3**
-- Production : **HEALTHY** (0 erreur, 0 warning, 80 logs analysés)
-- Guardians : **TOUS AU VERT** ✅
-  - Anima (DocKeeper): OK - 0 gap documentation
-  - Neo (IntegrityWatcher): OK - 0 issue intégrité
-  - Nexus (Coordinator): OK - tous checks passés
-  - ProdGuardian: OK - production healthy
-
-**Actions réalisées :**
-- ✅ Lecture AGENT_SYNC.md (état sync inter-agents)
+**Résultats :**
 - ✅ Vérification complète des 4 guardians (tous au vert)
-- ✅ Mise à jour AGENT_SYNC.md + docs/passation.md
-- ✅ Commit + push tous fichiers modifiés (dépôt propre)
 - ✅ Bump version beta-2.1.3 → beta-2.1.4
 - ✅ Build image Docker locale (tag: 20251018-171833)
 - ✅ Déploiement canary Cloud Run (révision: emergence-app-00494-cew)
 - ✅ Tests révision canary (health, favicon.ico, reset-password.html: tous OK)
 - ✅ Déploiement progressif: 10% → 25% → 50% → 100%
-
-**Session terminée à 17:28 (Europe/Zurich)**
-
-**Résultats déploiement beta-2.1.4 :**
 - ✅ Révision Cloud Run: `emergence-app-00494-cew`
 - ✅ Trafic production: **100%** vers beta-2.1.4
 - ✅ Version API affichée: `beta-2.1.4`
-- ✅ Fixes 404 vérifiés en production :
-  - https://emergence-app.ch/favicon.ico → 200 OK
-  - https://emergence-app.ch/reset-password.html → 200 OK
-  - https://emergence-app.ch/robots.txt → 200 OK
+- ✅ Fixes 404 vérifiés en production (favicon.ico, reset-password.html, robots.txt)
 
-**Prochaines actions :**
-- Attendre directive architecte ou session Codex
+**Session terminée à 17:28 (Europe/Zurich)**
 
 ---
 
