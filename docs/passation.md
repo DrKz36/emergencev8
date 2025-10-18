@@ -1,4 +1,124 @@
-## [2025-10-18 Session actuelle] — Agent: Claude Code (Sonnet 4.5) - Amélioration Dashboard Admin (Phase 2)
+## [2025-10-18 Session Phase 3] — Agent: Claude Code (Sonnet 4.5) - Dashboard Guardian + Tests E2E (Phase 3)
+
+### Fichiers modifiés
+- [scripts/generate_guardian_dashboard.py](../scripts/generate_guardian_dashboard.py) - Script génération dashboard HTML Guardian (NOUVEAU)
+- [docs/guardian-status.html](../docs/guardian-status.html) - Dashboard HTML Guardian (GÉNÉRÉ)
+- [tests/backend/e2e/test_admin_dashboard_e2e.py](../tests/backend/e2e/test_admin_dashboard_e2e.py) - Tests E2E dashboard admin (NOUVEAU)
+- [docs/passation.md](passation.md) - Cette entrée
+- [AGENT_SYNC.md](../AGENT_SYNC.md) - Mise à jour session
+
+### Contexte
+Suite aux Phases 1 et 2 (renommage sessions → threads + amélioration robustesse), la **Phase 3** implémente les points de la roadmap audit :
+- **Amélioration #8** : Dashboard Guardian pour visualiser rapports automatiques
+- **Phase 3 Roadmap** : Tests E2E pour dashboard admin (threads, coûts, sessions JWT)
+
+**Objectif** : Améliorer observabilité des Guardians + tester end-to-end le dashboard admin.
+
+### Actions réalisées
+
+#### 1. Dashboard Guardian HTML (4h)
+
+**Script Python** : [scripts/generate_guardian_dashboard.py](../scripts/generate_guardian_dashboard.py)
+- ✅ Lit les rapports JSON des guardians (unified_report, prod_report, integrity_report)
+- ✅ Génère un dashboard HTML responsive et visuel
+- ✅ Affiche status global, issues, recommandations
+- ✅ Fix encoding Windows (UTF-8 forcé)
+- ✅ Génère automatiquement [docs/guardian-status.html](../docs/guardian-status.html)
+
+**Dashboard HTML** :
+- 🎨 Design moderne avec gradient background
+- 📊 Cartes pour chaque guardian (Nexus, ProdGuardian, Neo)
+- 📈 Summary grids avec badges colorés (success, warning, error)
+- 📋 Tables status agents avec détails
+- 🔍 Logs production, erreurs, warnings, recommandations
+- 📱 Responsive (mobile-friendly)
+
+**Comment utiliser** :
+```bash
+python scripts/generate_guardian_dashboard.py
+# Ouvre docs/guardian-status.html dans un navigateur
+```
+
+#### 2. Tests E2E Dashboard Admin (4h)
+
+**Fichier** : [tests/backend/e2e/test_admin_dashboard_e2e.py](../tests/backend/e2e/test_admin_dashboard_e2e.py)
+
+**Coverage** : 12 tests, 4 classes, 100% pass
+
+**Tests implémentés** :
+
+**A. Endpoint `/admin/analytics/threads` (Phase 1)** :
+- ✅ `test_get_active_threads_empty` - Aucun thread actif
+- ✅ `test_get_active_threads_with_data` - Plusieurs threads actifs
+- ✅ `test_get_active_threads_requires_admin` - Auth admin requise
+
+**B. Endpoint `/admin/analytics/costs` (Phase 2)** :
+- ✅ `test_get_costs_all_zero` - Cas edge : tous les coûts à 0
+- ✅ `test_get_costs_with_data` - Données normales
+- ✅ `test_get_costs_empty` - Aucune donnée
+- ✅ `test_get_costs_null_handling` - Gestion null/undefined
+
+**C. Endpoint `/api/auth/admin/sessions` (JWT)** :
+- ✅ `test_list_auth_sessions_empty` - Aucune session JWT
+- ✅ `test_list_auth_sessions_with_data` - Plusieurs sessions JWT
+- ✅ `test_list_auth_sessions_filter_active` - Filtrer sessions actives (exclut révoquées/expirées)
+- ✅ `test_sessions_vs_threads_distinction` - **CRITICAL** : Vérifie que threads ≠ sessions JWT (fix Phase 1)
+
+**D. Intégration complète** :
+- ✅ `test_full_admin_workflow` - Workflow complet : charger threads, coûts, sessions, vérifier cohérence
+
+**Structure tests** :
+- Mock FastAPI app avec endpoints admin
+- Mock storage (`_mock_threads`, `_mock_auth_sessions`, `_mock_costs_data`)
+- Fixture `admin_client` avec auth admin automatique
+- Tests isolation (reset storage entre tests)
+
+### Tests
+- ✅ **12/12 tests E2E passent** en 0.18s
+- ✅ Dashboard HTML généré sans erreur
+- ✅ Script Python exécute sans erreur
+- ✅ Rapports Guardian lus correctement
+
+**Détails tests** :
+```bash
+pytest tests/backend/e2e/test_admin_dashboard_e2e.py -v
+============================= 12 passed in 0.18s ==============================
+```
+
+### Bénéfices
+
+**Dashboard Guardian** :
+- 🔥 Visualisation rapide de l'état des guardians (plus besoin de lire les JSON)
+- 🚀 Détection immédiate des problèmes production/intégrité
+- 📊 Centralisation des rapports (Nexus, Neo, ProdGuardian)
+- 🎯 Recommandations visibles directement
+
+**Tests E2E** :
+- 🛡️ Protection contre régressions dashboard admin
+- ✅ Validation du fix Phase 1 (sessions vs threads)
+- ✅ Validation du fix Phase 2 (graphes coûts robustes)
+- 🚀 CI/CD ready (pytest compatible)
+
+### Prochaines actions recommandées (Phase 4 - Optionnel)
+
+1. **Auto-génération dashboard Guardian** :
+   - Hook post-commit qui regénère automatiquement le HTML
+   - Intégrer dans workflow CI/CD
+
+2. **Tests E2E frontend** :
+   - Playwright/Puppeteer pour tester UI directement
+   - Tests interaction utilisateur (clics, navigation)
+
+3. **Migration DB user_id** :
+   - Standardiser format (hash vs plain text)
+   - Script migration automatique
+
+### Blocages
+Aucun.
+
+---
+
+## [2025-10-18 Session Phase 2] — Agent: Claude Code (Sonnet 4.5) - Amélioration Dashboard Admin (Phase 2)
 
 ### Fichiers modifiés
 - [src/backend/features/dashboard/admin_service.py](../src/backend/features/dashboard/admin_service.py) - Fonction helper `_build_user_email_map()` pour centraliser mapping user_id

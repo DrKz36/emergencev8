@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guardian Dashboard - Emergence V8</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .generated-at {
+            margin-top: 10px;
+            font-size: 0.9em;
+            opacity: 0.7;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .card.error {
+            background: rgba(239, 68, 68, 0.95);
+            color: #fff;
+        }
+
+        h2 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 1.3em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            color: #764ba2;
+        }
+
+        h4 {
+            font-size: 1.1em;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+        }
+
+        .meta p {
+            margin: 5px 0;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .summary-item {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .summary-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .summary-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .summary-value.success {
+            color: #10b981;
+        }
+
+        .summary-value.warning {
+            color: #f59e0b;
+        }
+
+        .summary-value.error {
+            color: #ef4444;
+        }
+
+        .summary-value.info {
+            color: #3b82f6;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-success {
+            background: #10b981;
+            color: #fff;
+        }
+
+        .badge-warning {
+            background: #f59e0b;
+            color: #fff;
+        }
+
+        .badge-error {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .badge-info {
+            background: #3b82f6;
+            color: #fff;
+        }
+
+        .status-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }
+
+        .status-table th,
+        .status-table td {
+            padding: 15px;
+            text-align: left;
+        }
+
+        .status-table tbody tr:nth-child(even) {
+            background: #f9fafb;
+        }
+
+        .status-table tbody tr:hover {
+            background: #f3f4f6;
+        }
+
+        code {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #667eea;
+        }
+
+        ul {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+
+        ul li {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .issues-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .issues-list li {
+            padding: 10px 15px;
+            margin: 8px 0;
+            border-left: 4px solid #3b82f6;
+            background: #f9fafb;
+            border-radius: 4px;
+        }
+
+        .issues-list li.error {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .issues-list li.warning {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+        }
+
+        .issues-list li.critical {
+            border-left-color: #dc2626;
+            background: #fee2e2;
+            font-weight: bold;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid rgba(255, 255, 255, 0.2);
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .meta {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Guardian Dashboard</h1>
+            <p class="subtitle">Système de Surveillance Automatisé - Emergence V8</p>
+            <p class="generated-at">Généré le 2025-10-18 12:08:34</p>
+        </header>
+
+        <main>
+            
+    <div class="card">
+        <h2>📊 Rapport Unifié (Nexus)</h2>
+        <div class="meta">
+            <p><strong>Timestamp:</strong> 2025-10-18 12:00:27</p>
+            <p><strong>Commit:</strong> <code>a8a626c9</code></p>
+            <p><strong>Status:</strong> <span class="badge badge-success">✅ OK</span></p>
+        </div>
+
+        <h3>Résumé Exécutif</h3>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="summary-label">Total Issues</div>
+                <div class="summary-value success">0</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Critical</div>
+                <div class="summary-value success">0</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Warnings</div>
+                <div class="summary-value success">0</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Info</div>
+                <div class="summary-value info">0</div>
+            </div>
+        </div>
+
+        <h3>Status Agents</h3>
+        <table class="status-table">
+            <thead>
+                <tr>
+                    <th>Agent</th>
+                    <th>Status</th>
+                    <th>Issues</th>
+                    <th>Résumé</th>
+                </tr>
+            </thead>
+            <tbody>
+    
+                <tr>
+                    <td><strong>ANIMA</strong></td>
+                    <td><span class="badge badge-success">✅ OK</span></td>
+                    <td>0</td>
+                    <td>0 documentation gap(s) found, 0 update(s) proposed</td>
+                </tr>
+        
+                <tr>
+                    <td><strong>NEO</strong></td>
+                    <td><span class="badge badge-success">✅ OK</span></td>
+                    <td>0</td>
+                    <td>No changes detected</td>
+                </tr>
+        
+            </tbody>
+        </table>
+    <h3>Recommandations</h3><h4>Immediate</h4><ul><li>None - all checks passed</li></ul><h4>Short_term</h4><ul><li>Continue monitoring</li></ul><h4>Long_term</h4><ul><li>Maintain current practices</li></ul></div>
+            
+    <div class="card">
+        <h2>☁️ Production Cloud Run</h2>
+        <div class="meta">
+            <p><strong>Timestamp:</strong> 2025-10-18 12:00:31</p>
+            <p><strong>Service:</strong> emergence-app</p>
+            <p><strong>Région:</strong> europe-west1</p>
+            <p><strong>Logs analysés:</strong> 80</p>
+            <p><strong>Status:</strong> <span class="badge badge-success">✅ OK</span></p>
+        </div>
+
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="summary-label">Errors</div>
+                <div class="summary-value success">0</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Warnings</div>
+                <div class="summary-value success">0</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Critical Signals</div>
+                <div class="summary-value success">0</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Latency Issues</div>
+                <div class="summary-value success">0</div>
+            </div>
+        </div>
+    <h3>Recommandations</h3><ul><li><strong>[LOW]</strong> No immediate action required - <em>Production is healthy</em></li></ul></div>
+            
+    <div class="card">
+        <h2>🛡️ Intégrité Backend/Frontend (Neo)</h2>
+        <div class="meta">
+            <p><strong>Timestamp:</strong> 2025-10-18 11:59:46</p>
+            <p><strong>Status:</strong> <span class="badge badge-success">✅ OK</span></p>
+        </div>
+
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="summary-label">Backend Files</div>
+                <div class="summary-value">0</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Frontend Files</div>
+                <div class="summary-value">0</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Issues</div>
+                <div class="summary-value success">0</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-label">Critical</div>
+                <div class="summary-value success">0</div>
+            </div>
+        </div>
+    </div>
+        </main>
+
+        <footer>
+            <p>🛡️ Guardians: Anima (Docs) | Neo (Integrity) | Nexus (Coordinator) | ProdGuardian (Cloud Run)</p>
+            <p>Rapports auto-générés par hooks Git (pre-commit, post-commit, pre-push)</p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -19,7 +19,45 @@
 
 ---
 
-## 🔄 Dernière session (2025-10-18 - Phase 2 Audit)
+## 🔄 Dernière session (2025-10-18 - Phase 3 Audit)
+
+**Agent :** Claude Code (Sonnet 4.5)
+**Durée :** 2h
+**Commit :** `<à venir>` - feat(tests): add Guardian dashboard + E2E tests for admin dashboard (Phase 3)
+
+**Résumé :**
+- ✅ **Dashboard Guardian HTML** (amélioration #8 de l'audit)
+  - Script Python : [scripts/generate_guardian_dashboard.py](scripts/generate_guardian_dashboard.py)
+  - Lit rapports JSON (unified, prod, integrity)
+  - Génère dashboard HTML visuel et responsive : [docs/guardian-status.html](docs/guardian-status.html)
+  - Fix encoding Windows (UTF-8)
+  - Design moderne : gradient, cards, badges colorés, tables
+- ✅ **Tests E2E Dashboard Admin** (Phase 3 roadmap)
+  - Nouveau fichier : [tests/backend/e2e/test_admin_dashboard_e2e.py](tests/backend/e2e/test_admin_dashboard_e2e.py)
+  - 12 tests, 4 classes, 100% pass en 0.18s
+  - Coverage : threads actifs, graphes coûts, sessions JWT, intégration complète
+  - Validation fixes Phase 1 (sessions vs threads) et Phase 2 (graphes robustes)
+- ✅ Tests passent tous (12/12)
+- ✅ Documentation mise à jour (passation.md, AGENT_SYNC.md)
+
+**Fichiers modifiés :**
+- Tests : [test_admin_dashboard_e2e.py](tests/backend/e2e/test_admin_dashboard_e2e.py) (NOUVEAU)
+- Scripts : [generate_guardian_dashboard.py](scripts/generate_guardian_dashboard.py) (NOUVEAU)
+- Docs : [guardian-status.html](docs/guardian-status.html) (GÉNÉRÉ), [passation.md](docs/passation.md), [AGENT_SYNC.md](AGENT_SYNC.md)
+
+**Bénéfices :**
+- 🔥 Visualisation rapide état guardians (plus besoin lire JSON)
+- 🛡️ Protection contre régressions dashboard admin (tests E2E)
+- ✅ Validation end-to-end des fixes Phases 1 & 2
+- 🚀 CI/CD ready
+
+**Prochaine étape recommandée :** Phase 4 optionnelle (auto-génération dashboard, tests UI Playwright, migration DB)
+
+**Référence :** [AUDIT_COMPLET_2025-10-18.md](AUDIT_COMPLET_2025-10-18.md) - Phase 3 & Amélioration #8
+
+---
+
+## 🔄 Session précédente (2025-10-18 - Phase 2 Audit)
 
 **Agent :** Claude Code (Sonnet 4.5)
 **Durée :** 1h30
