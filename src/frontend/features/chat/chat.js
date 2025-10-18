@@ -795,22 +795,36 @@ export default class ChatModule {
     this._lastChunkByMessage.set(String(messageId), '');
     this._updateThreadCacheFromBuckets();
     this._clearStreamWatchdog(); // le flux a bien démarré
+    // 🔥 FIX: Trigger UI update
+    if (this.ui && this.container) {
+      this.ui.update(this.container, this.state.get('chat'));
+    }
   }
 
   handleStreamChunk(payload = {}) {
+    console.log('[Chat] 🔍 handleStreamChunk called:', payload);
     const agentId = String(payload && typeof payload === 'object' ? (payload.agent_id ?? payload.agentId) : '').trim();
     const messageId = payload && typeof payload === 'object' ? payload.id : null;
-    if (!agentId || !messageId) return;
+    if (!agentId || !messageId) {
+      console.warn('[Chat] ❌ Chunk ignored: agentId=', agentId, 'messageId=', messageId);
+      return;
+    }
     const rawChunk = payload && typeof payload.chunk !== 'undefined' ? payload.chunk : '';
     const chunkText = typeof rawChunk === 'string' ? rawChunk : String(rawChunk ?? '');
+    console.log('[Chat] 🔍 Chunk text:', chunkText);
     const meta = (payload && typeof payload.meta === 'object') ? payload.meta : null;
 
     const lastChunk = this._lastChunkByMessage.get(String(messageId));
-    if (chunkText && lastChunk === chunkText) return;
+    if (chunkText && lastChunk === chunkText) {
+      console.log('[Chat] ⏭️ Chunk duplicate ignored');
+      return;
+    }
 
     const bucketId = this._resolveBucketFromCache(messageId, agentId, meta);
+    console.log('[Chat] 🔍 BucketId:', bucketId);
     const list = this.state.get(`chat.messages.${bucketId}`) || [];
     const idx = list.findIndex((m) => m.id === messageId);
+    console.log('[Chat] 🔍 Message idx:', idx, 'list.length:', list.length);
     if (idx >= 0) {
       const msg = { ...list[idx] };
       msg.content = (msg.content || '') + chunkText;
@@ -818,6 +832,39 @@ export default class ChatModule {
       this.state.set(`chat.messages.${bucketId}`, [...list]);
       this._lastChunkByMessage.set(String(messageId), chunkText);
       this._updateThreadCacheFromBuckets();
+      console.log('[Chat] ✅ Chunk applied! Content length:', msg.content.length);
+
+      // 🔥 FIX OPTION E: Modification directe du DOM (bypass du flux state→UI)
+      // Au lieu de passer par le flux complet state.set() → ui.update() → _renderMessages() → innerHTML,
+      // on met à jour directement l'élément DOM du message pour éviter le problème de référence d'objet
+      const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+      if (messageEl) {
+        const contentEl = messageEl.querySelector('.message-text');
+        if (contentEl) {
+          // Mise à jour incrémentale directe du contenu
+          // Note: on utilise innerHTML (pas textContent) car le contenu peut contenir des <br/> pour les retours à la ligne
+          const escapedContent = this._escapeHTML(msg.content).replace(/\n/g, '<br/>');
+          const cursor = msg.isStreaming ? '<span class="blinking-cursor">|</span>' : '';
+          contentEl.innerHTML = escapedContent + cursor;
+          console.log('[Chat] 🔥 DOM updated directly for message', messageId, '- length:', msg.content.length);
+        } else {
+          console.warn('[Chat] ⚠️ .message-text not found in message element');
+        }
+      } else {
+        console.warn('[Chat] ⚠️ Message element not found in DOM for id:', messageId);
+      }
+
+      // 🔥 FIX ORIGINAL: Trigger UI update (conservé pour cohérence state, même si DOM déjà mis à jour)
+      console.log('[Chat] 🔍 UI exists:', !!this.ui, 'Container exists:', !!this.container);
+      if (this.ui && this.container) {
+        console.log('[Chat] 🔄 Calling ui.update()...');
+        this.ui.update(this.container, this.state.get('chat'));
+        console.log('[Chat] ✅ ui.update() called');
+      } else {
+        console.warn('[Chat] ❌ Cannot update UI: ui=' + !!this.ui + ' container=' + !!this.container);
+      }
+    } else {
+      console.warn('[Chat] ❌ Message not found in bucket!');
     }
   }
 
@@ -1696,6 +1743,22 @@ handleMessagePersisted(payload = {}) {
         setTimeout(() => { try { el.remove(); } catch {} }, 180);
       }, 2200);
     } catch {}
+  }
+
+  /**
+   * Escape HTML special characters to prevent XSS
+   * @private
+   */
+  _escapeHTML(s) {
+    return String(s).replace(/[&<>"']/g, (c) => {
+      switch (c) {
+        case '&': return '&amp;';
+        case '<': return '&lt;';
+        case '>': return '&gt;';
+        case '"': return '&quot;';
+        default: return '&#39;';
+      }
+    });
   }
 }
 

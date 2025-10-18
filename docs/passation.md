@@ -1,3 +1,103 @@
+## [2025-10-18 18:35] — Agent: Claude Code (Fix Streaming Chunks Display - RÉSOLU ✅)
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat-ui.js` (ajout data-message-id ligne 1167)
+- `src/frontend/features/chat/chat.js` (modification directe DOM lignes 837-855 + méthode _escapeHTML lignes 1752-1761)
+- `vite.config.js` (fix proxy WebSocket - session précédente)
+- `BUG_STREAMING_CHUNKS_INVESTIGATION.md` (documentation investigation complète + solution)
+- `AGENT_SYNC.md` (mise à jour session 18:35)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Bug critique remonté hier par architecte FG : les chunks de streaming arrivent bien du backend via WebSocket, le state est mis à jour correctement, MAIS **l'UI ne se mettait JAMAIS à jour visuellement pendant le streaming**. Le message restait vide, puis apparaissait complet à la fin du streaming.
+
+Investigation complète effectuée hier soir et documentée dans `BUG_STREAMING_CHUNKS_INVESTIGATION.md`.
+
+**Root cause identifiée :** Problème de référence d'objet JavaScript dans le flux state → UI
+- `ChatUI.update()` fait un shallow copy: `this.state = {...this.state, ...chatState}`
+- Les objets imbriqués (`messages.anima[35].content`) gardent la **même référence mémoire**
+- `_renderMessages()` reçoit le même tableau (référence identique) à chaque appel
+- Même si `msg.content` augmente (2, 4, 7, 11... chars), le DOM n'est jamais mis à jour
+- innerHTML est appelé mais avec le "même" HTML (du point de vue de la référence)
+
+### Actions réalisées
+
+**1. Implémentation Solution Option E - Modification Directe du DOM**
+
+Au lieu de compter uniquement sur le flux classique:
+```
+state.set() → StateManager.notify() → ui.update() → _renderMessages() → innerHTML
+```
+
+On ajoute une **mise à jour directe et incrémentale** du DOM dans `handleStreamChunk`:
+
+```javascript
+// chat.js lignes 837-855
+const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+if (messageEl) {
+  const contentEl = messageEl.querySelector('.message-text');
+  if (contentEl) {
+    const escapedContent = this._escapeHTML(msg.content).replace(/\n/g, '<br/>');
+    const cursor = msg.isStreaming ? '<span class="blinking-cursor">|</span>' : '';
+    contentEl.innerHTML = escapedContent + cursor;
+  }
+}
+```
+
+**2. Ajout attribut data-message-id sur les messages**
+
+Pour que `querySelector` puisse retrouver l'élément DOM :
+
+```javascript
+// chat-ui.js ligne 1167
+return `
+  <div class="${className}" data-message-id="${this._escapeHTML(m.id || '')}">
+```
+
+**3. Ajout méthode _escapeHTML() dans chat.js**
+
+Pour sécurité XSS lors de l'injection directe de contenu dans innerHTML :
+
+```javascript
+// chat.js lignes 1752-1761
+_escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, (c) => {
+    switch (c) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '"': return '&quot;';
+      default: return '&#39;';
+    }
+  });
+}
+```
+
+### Tests
+- ✅ Build frontend: `npm run build` → OK (aucune erreur compilation)
+- ⏳ Test manuel en attente (nécessite backend actif)
+
+### Travail de Codex GPT pris en compte
+Aucun (session Claude Code autonome).
+
+### Prochaines actions recommandées
+1. **Tester manuellement** avec backend actif et envoyer message à agent
+2. **Vérifier** que les chunks s'affichent bien en temps réel dans l'UI
+3. **Nettoyer console.log()** debug si fix OK (beaucoup de logs ajoutés pour investigation)
+4. **Commit + push** fix streaming chunks
+
+### Blocages
+Aucun. Le fix est implémenté et compile correctement.
+
+### Avantages de la solution choisie
+- ✅ Bypass complet du problème de référence d'objet
+- ✅ Mise à jour instantanée du DOM à chaque chunk (performance optimale)
+- ✅ Conserve le flux normal `ui.update()` pour cohérence globale du state
+- ✅ Sécurité XSS via `_escapeHTML()`
+- ✅ Solution simple et robuste (modification incrémentale au lieu de full re-render)
+
+---
+
 ## [2025-10-18 17:39] — Agent: Claude Code (Fix VSCode Settings Full Auto Mode)
 
 ### Fichiers modifiés

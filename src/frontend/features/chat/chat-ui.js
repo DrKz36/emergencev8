@@ -247,8 +247,11 @@ export class ChatUI {
   }
   update(container, chatState = {}) {
     if (!container) return;
+    console.log('[ChatUI] 🔍 update() called with chatState.messages:', chatState.messages);
     const previousMeta = this.state.lastMessageMeta;
     this.state = { ...this.state, ...chatState };
+    console.log('[ChatUI] 🔍 After merge, this.state.messages:', this.state.messages);
+    console.log('[ChatUI] 🔍 currentAgentId:', this.state.currentAgentId);
     if (chatState && chatState.lastMessageMeta && chatState.lastMessageMeta !== previousMeta) {
       this.state.areSourcesExpanded = false;
     }
@@ -271,7 +274,9 @@ export class ChatUI {
     this._setActiveAgentTab(container, this.state.currentAgentId);
 
     const rawMessages = this.state.messages?.[this.state.currentAgentId];
+    console.log('[ChatUI] 🔍 rawMessages for', this.state.currentAgentId, ':', rawMessages);
     const list = this._asArray(rawMessages).map((m) => this._normalizeMessage(m));
+    console.log('[ChatUI] 🔍 Calling _renderMessages with', list.length, 'messages');
     this._renderMessages(container.querySelector('#chat-messages'), list);
     this._updateThreadMeta(container);
 
@@ -1159,7 +1164,7 @@ _hasOpinionFromAgent(agentId, messageId) {
     const opinionButtonsHTML = (side === 'assistant') ? this._opinionButtonsHTML(m, encodedRaw) : '';
 
     return `
-      <div class="${className}">
+      <div class="${className}" data-message-id="${this._escapeHTML(m.id || '')}">
         <div class="message-bubble">
           <div class="message-header">
             <div class="message-meta">
