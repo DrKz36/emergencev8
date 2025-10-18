@@ -23,7 +23,7 @@
 
 **Agent :** Claude Code (Sonnet 4.5)
 **Durée :** 2h
-**Commit :** `<à venir>` - feat(tests): add Guardian dashboard + E2E tests for admin dashboard (Phase 3)
+**Commit :** `0be5958` - feat(tests): add Guardian dashboard + E2E tests for admin dashboard (Phase 3)
 
 **Résumé :**
 - ✅ **Dashboard Guardian HTML** (amélioration #8 de l'audit)
