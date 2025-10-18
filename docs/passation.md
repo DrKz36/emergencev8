@@ -1,3 +1,109 @@
+## [2025-10-18 15:30] — Agent: Claude Code (Sonnet 4.5) - Sprint 1 Memory Refactoring COMPLÉTÉ
+
+### Fichiers modifiés
+- [migrations/20251018_add_conversation_id.sql](migrations/20251018_add_conversation_id.sql) - Migration SQL conversation_id
+- [src/backend/core/database/queries.py:783-941](src/backend/core/database/queries.py) - create_thread + get_threads_by_conversation
+- [src/backend/core/database/schema.py:88,114-120](src/backend/core/database/schema.py) - conversation_id + index
+- [tests/backend/core/database/test_conversation_id.py](tests/backend/core/database/test_conversation_id.py) - 7 tests unitaires (NOUVEAU)
+- [apply_migration_conversation_id.py](apply_migration_conversation_id.py) - Script migration (NOUVEAU)
+- [docs/passation.md](docs/passation.md) - Cette entrée
+- [AGENT_SYNC.md](AGENT_SYNC.md) - Section Sprint 1 ajoutée
+
+### Contexte
+**Roadmap**: [MEMORY_REFACTORING_ROADMAP.md](MEMORY_REFACTORING_ROADMAP.md) Sprint 1
+**Objectif**: Séparer clairement Session WebSocket (éphémère) et Conversation (persistante)
+
+**Problème résolu**:
+- `threads.session_id` pointait vers session WS éphémère → Impossible retrouver conversations utilisateur
+- Confusion conceptuelle Session vs Conversation
+
+**Solution implémentée**:
+- Ajout colonne `conversation_id` canonique dans table threads
+- Par défaut `conversation_id = thread_id` (rétrocompatibilité)
+- Nouvelle fonction `get_threads_by_conversation()` pour récupérer historique complet
+- Index performance: `idx_threads_user_conversation`, `idx_threads_user_type_conversation`
+
+### Actions réalisées
+
+**1. Migration SQL (migrations/20251018_add_conversation_id.sql)**:
+```sql
+ALTER TABLE threads ADD COLUMN conversation_id TEXT;
+UPDATE threads SET conversation_id = id WHERE conversation_id IS NULL;
+CREATE INDEX idx_threads_user_conversation ON threads(user_id, conversation_id);
+CREATE INDEX idx_threads_user_type_conversation ON threads(user_id, type, conversation_id);
+```
+
+**2. Backend (queries.py)**:
+- ✅ `create_thread()` modifié: paramètre `conversation_id` optionnel (défaut = thread_id)
+- ✅ `get_threads_by_conversation()` créé: récupère tous threads d'une conversation
+
+**3. Schema (schema.py)**:
+- ✅ Colonne `conversation_id TEXT` ajoutée dans définition table threads
+- ✅ Index `idx_threads_user_conversation` et `idx_threads_user_type_conversation` ajoutés
+
+**4. Tests (test_conversation_id.py)**:
+- ✅ `test_create_thread_with_conversation_id` - Création avec conversation_id explicite
+- ✅ `test_create_thread_without_conversation_id_defaults_to_thread_id` - Rétrocompatibilité
+- ✅ `test_get_threads_by_conversation` - Récupération par conversation_id
+- ✅ `test_get_threads_by_conversation_with_archived` - Filtrage archivés
+- ✅ `test_get_threads_by_conversation_user_isolation` - Isolation utilisateurs
+- ✅ `test_conversation_continuity_across_sessions` - Continuité multi-sessions
+- ✅ `test_conversation_id_index_exists` - Vérification index
+
+**5. Migration appliquée**:
+- ✅ Script `apply_migration_conversation_id.py` créé et exécuté
+- ✅ Migration appliquée sur base locale emergence.db
+- ✅ Validation: 0 threads sans conversation_id, index créés
+
+### Tests
+```bash
+pytest tests/backend/core/database/test_conversation_id.py -v
+```
+**Résultat**: ✅ **7/7 tests passent** (100% success)
+
+### Critères de succès Sprint 1 (roadmap)
+- [x] Migration `conversation_id` appliquée sans erreur
+- [x] Toutes conversations existantes ont `conversation_id = id`
+- [x] Nouveaux threads créés avec `conversation_id`
+- [x] Requêtes `get_threads_by_conversation()` fonctionnelles
+- [x] Tests unitaires passent (100% coverage nouvelles fonctions)
+- [x] Rétrocompatibilité préservée (`session_id` toujours utilisable)
+
+### Impact & Bénéfices
+✅ **Séparation claire**:
+- Session WS (éphémère) ≠ Conversation (persistante)
+- `session_id` = connexion WebSocket unique
+- `conversation_id` = fil de discussion permanent
+
+✅ **Continuité conversations**:
+- User reprend conversation après déconnexion/reconnexion
+- Historique complet accessible via `get_threads_by_conversation()`
+
+✅ **Rétrocompatibilité totale**:
+- Threads existants: `conversation_id = id` (migration automatique)
+- Nouveaux threads: `conversation_id` optionnel (défaut = thread_id)
+- Code existant fonctionne sans modification
+
+✅ **Performance**:
+- Index `idx_threads_user_conversation` pour requêtes rapides
+- Index composite `idx_threads_user_type_conversation` pour filtrage
+
+### Prochaines actions recommandées
+**Sprint 2**: Consolidation Auto Threads Archivés (MEMORY_REFACTORING_ROADMAP.md Sprint 2)
+1. Hook automatique lors archivage → déclenche consolidation LTM
+2. Job batch rattrapage archives existants
+3. Colonne `consolidated_at` pour tracking
+
+**Sprint 3**: Rappel Proactif Unifié
+1. Créer `UnifiedMemoryRetriever` (STM + LTM + Archives)
+2. Intégrer dans `MemoryContextBuilder`
+3. Agent "se souvient" spontanément conversations archivées
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-18 07:51] - Agent: Codex (GPT-5 local) - Script mémoire archivée stabilisé
 
 ### Fichiers modifiés

@@ -789,16 +789,23 @@ async def create_thread(
     title: Optional[str] = None,
     agent_id: Optional[str] = None,
     meta: Optional[Dict[str, Any]] = None,
+    conversation_id: Optional[str] = None,  # ✅ NOUVEAU: identifiant canonique conversation
 ) -> str:
     thread_id = uuid.uuid4().hex
     now = datetime.now(timezone.utc).isoformat()
     user_value = _resolve_user_scope(user_id, session_id)
     normalized_session = _normalize_scope_identifier(session_id) or user_value
+
+    # ✅ NOUVEAU: Générer conversation_id si pas fourni (défaut = thread_id)
+    if not conversation_id:
+        conversation_id = thread_id
+
     await db.execute(
-        "INSERT INTO threads (id, session_id, user_id, type, title, agent_id, meta, archived, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)",
+        "INSERT INTO threads (id, conversation_id, session_id, user_id, type, title, agent_id, meta, archived, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)",
         (
             thread_id,
+            conversation_id,  # ✅ NOUVEAU
             normalized_session,
             user_value,
             type_,
@@ -893,6 +900,47 @@ async def get_thread_any(
     # Fallback sans filtrage (pour usage interne seulement, pas pour API publique)
     fallback = await db.fetch_one("SELECT * FROM threads WHERE id = ?", (thread_id,))
     return dict(fallback) if fallback else None
+async def get_threads_by_conversation(
+    db: DatabaseManager,
+    conversation_id: str,
+    user_id: str,
+    *,
+    include_archived: bool = False
+) -> List[Dict[str, Any]]:
+    """
+    ✅ NOUVEAU Sprint 1: Récupère tous threads d'une conversation.
+
+    Une conversation peut avoir plusieurs threads (sessions différentes).
+    Utile pour retrouver l'historique complet d'une discussion persistante.
+
+    Args:
+        db: DatabaseManager
+        conversation_id: Identifiant canonique conversation
+        user_id: Utilisateur propriétaire (sécurité)
+        include_archived: Inclure threads archivés (défaut: False)
+
+    Returns:
+        Liste threads triés par date création (plus récent en premier)
+    """
+    clauses = ["conversation_id = ?", "user_id = ?"]
+    params = [conversation_id, user_id]
+
+    if not include_archived:
+        clauses.append("archived = 0")
+
+    query = f"""
+        SELECT
+            t.*,
+            COALESCE(t.last_message_at, (SELECT MAX(m.created_at) FROM messages m WHERE m.thread_id = t.id)) as last_message_at,
+            COALESCE(t.message_count, (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id)) as message_count
+        FROM threads t
+        WHERE {' AND '.join(clauses)}
+        ORDER BY t.created_at DESC
+    """
+    rows = await db.fetch_all(query, tuple(params))
+    return [dict(r) for r in rows]
+
+
 async def update_thread(
     db: DatabaseManager,
     thread_id: str,

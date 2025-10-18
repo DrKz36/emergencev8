@@ -323,7 +323,75 @@ Progression Totale : [████████░░] 14/23 (61%)
 
 ## 🚧 Zones de Travail en Cours
 
-### ✅ Session 2025-10-17 (Matin) - Pre-Deployment Guardian Orchestration & Deploy (EN COURS)
+### ✅ Session 2025-10-18 (Après-midi) - Sprint 1 Memory Refactoring (TERMINÉE)
+
+**Statut** : ✅ **SPRINT 1 COMPLÉTÉ - 7/7 TESTS PASSENT**
+**Agent** : Claude Code (Sonnet 4.5)
+**Durée** : 3 heures
+**Roadmap** : [MEMORY_REFACTORING_ROADMAP.md](MEMORY_REFACTORING_ROADMAP.md) Sprint 1
+
+**Objectif** :
+Séparer clairement Session WebSocket (éphémère) et Conversation (persistante) pour permettre continuité conversations multi-sessions.
+
+**Problème résolu** :
+- `threads.session_id` pointait vers session WS éphémère
+- Impossible de retrouver facilement toutes conversations d'un utilisateur
+- Confusion conceptuelle entre Session (connexion) et Conversation (fil discussion)
+
+**Solution implémentée** :
+
+**1. Migration SQL** :
+- ✅ Colonne `conversation_id TEXT` ajoutée dans table threads
+- ✅ Initialisation rétrocompatible: `conversation_id = id` pour threads existants
+- ✅ Index performance: `idx_threads_user_conversation`, `idx_threads_user_type_conversation`
+
+**2. Backend Python** :
+- ✅ `queries.create_thread()` modifié: paramètre `conversation_id` optionnel (défaut = thread_id)
+- ✅ `queries.get_threads_by_conversation()` créé: récupère tous threads d'une conversation
+- ✅ `schema.py` mis à jour: colonne + index dans TABLE_DEFINITIONS
+
+**3. Tests** :
+- ✅ 7 tests unitaires créés dans [tests/backend/core/database/test_conversation_id.py](tests/backend/core/database/test_conversation_id.py)
+- ✅ Coverage: Création, récupération, archivage, isolation utilisateurs, continuité sessions
+- ✅ **Résultat: 7/7 tests passent** (100% success)
+
+**4. Migration appliquée** :
+- ✅ Script [apply_migration_conversation_id.py](apply_migration_conversation_id.py) créé
+- ✅ Migration [migrations/20251018_add_conversation_id.sql](migrations/20251018_add_conversation_id.sql) appliquée sur emergence.db
+- ✅ Validation: 0 threads sans conversation_id, index créés
+
+**Fichiers modifiés** :
+- Backend (3) : [queries.py:783-941](src/backend/core/database/queries.py), [schema.py:88,114-120](src/backend/core/database/schema.py), [manager.py](src/backend/core/database/manager.py)
+- Migrations (1) : [20251018_add_conversation_id.sql](migrations/20251018_add_conversation_id.sql)
+- Tests (1) : [test_conversation_id.py](tests/backend/core/database/test_conversation_id.py) (NOUVEAU)
+- Scripts (1) : [apply_migration_conversation_id.py](apply_migration_conversation_id.py) (NOUVEAU)
+- Documentation (2) : [docs/passation.md](docs/passation.md), [AGENT_SYNC.md](AGENT_SYNC.md)
+
+**Critères de succès (roadmap)** :
+- [x] Migration `conversation_id` appliquée sans erreur
+- [x] Toutes conversations existantes ont `conversation_id = id`
+- [x] Nouveaux threads créés avec `conversation_id`
+- [x] Requêtes `get_threads_by_conversation()` fonctionnelles
+- [x] Tests unitaires passent (100% coverage)
+- [x] Rétrocompatibilité préservée (`session_id` toujours utilisable)
+
+**Impact** :
+✅ Continuité conversations: User reprend conversation après déconnexion/reconnexion
+✅ Historique complet: `get_threads_by_conversation(user_id, conv_id)`
+✅ Performance: Index optimisés pour requêtes fréquentes
+✅ Rétrocompatibilité: Code existant fonctionne sans modification
+
+**Prochaines étapes** :
+- Sprint 2: Consolidation Auto Threads Archivés (3-4 jours estimés)
+- Sprint 3: Rappel Proactif Unifié avec `UnifiedMemoryRetriever` (4-5 jours estimés)
+
+**Documentation** :
+- 📋 [MEMORY_REFACTORING_ROADMAP.md](MEMORY_REFACTORING_ROADMAP.md) - Roadmap complète refonte mémoire
+- 📋 [docs/passation.md](docs/passation.md) - Entrée 2025-10-18 15:30
+
+---
+
+### ✅ Session 2025-10-17 (Matin) - Pre-Deployment Guardian Orchestration & Deploy (TERMINÉE)
 
 **Statut** : 🟡 **EN COURS - DÉPLOIEMENT EN PRÉPARATION**
 **Agent** : Claude Code (Sonnet 4.5)

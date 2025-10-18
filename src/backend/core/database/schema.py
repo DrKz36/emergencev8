@@ -85,6 +85,7 @@ TABLE_DEFINITIONS = [
     """
     CREATE TABLE IF NOT EXISTS threads (
         id TEXT PRIMARY KEY,
+        conversation_id TEXT,  -- ✅ NOUVEAU Sprint 1: identifiant canonique conversation (session_id = WS éphémère)
         session_id TEXT NOT NULL,
         user_id TEXT NOT NULL,
         type TEXT NOT NULL CHECK(type IN ('chat','debate')),
@@ -107,6 +108,15 @@ TABLE_DEFINITIONS = [
     """
     CREATE INDEX IF NOT EXISTS idx_threads_session_updated
     ON threads(session_id, updated_at DESC);
+    """,
+    # ✅ NOUVEAU Sprint 1: Index pour conversation_id
+    """
+    CREATE INDEX IF NOT EXISTS idx_threads_user_conversation
+    ON threads(user_id, conversation_id);
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_threads_user_type_conversation
+    ON threads(user_id, type, conversation_id);
     """,
     """
     CREATE TABLE IF NOT EXISTS messages (
