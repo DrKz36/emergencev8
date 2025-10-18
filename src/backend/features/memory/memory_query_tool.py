@@ -30,6 +30,7 @@ class TopicSummary:
         self.thread_ids = data.get("thread_ids", [])
         self.summary = data.get("summary", "")
         self.vitality = data.get("vitality", 1.0)
+        self.agent_id = data.get("agent_id")  # 🆕 Pour filtrage permissif
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -178,6 +179,19 @@ class MemoryQueryTool:
             # 4. Parser et construire TopicSummary
             topics = self._parse_concepts_to_topics(result)
 
+            # 4b. 🆕 FIX: Filtrage PERMISSIF par agent_id côté Python
+            # Inclut les concepts avec l'agent_id demandé OU sans agent_id (legacy)
+            if agent_id:
+                normalized_agent_id = agent_id.lower()
+                topics = [
+                    topic
+                    for topic in topics
+                    if self._topic_matches_agent(topic, normalized_agent_id)
+                ]
+                logger.debug(
+                    f"[MemoryQueryTool] Filtré {len(topics)} topics pour agent '{agent_id}' (inclut legacy sans agent_id)"
+                )
+
             # 5. Filtrer par fenetre temporelle si demandée
             if cutoff_date:
                 topics = [
@@ -221,7 +235,7 @@ class MemoryQueryTool:
             user_id: Identifiant utilisateur
             timeframe: "today" | "week" | "month" | "all" | None
             min_mention_count: Filtre mention_count minimum
-            agent_id: Filtrer par agent (anima, neo, nexus)
+            agent_id: Filtrer par agent (anima, neo, nexus) - PERMISSIF: inclut aussi concepts sans agent_id (legacy)
 
         Returns:
             Filtre compatible ChromaDB where clause
@@ -231,9 +245,11 @@ class MemoryQueryTool:
             {"type": "concept"}
         ]
 
-        # 🆕 Filtre agent_id pour isolation mémoire
-        if agent_id:
-            base_conditions.append({"agent_id": agent_id.lower()})
+        # 🆕 FIX: Filtre agent_id PERMISSIF pour inclure concepts legacy sans agent_id
+        # Stratégie: Récupérer TOUS les concepts de l'utilisateur, puis filtrer côté Python
+        # (ChromaDB ne supporte pas les requêtes OR complexes avec valeurs nulles)
+        # On ne filtre PAS ici par agent_id, on le fera en post-processing dans list_discussed_topics
+        # IMPORTANT: Ceci garantit la rétrocompatibilité avec les anciens concepts consolidés
 
         # Filtre mention_count si spécifié
         if min_mention_count > 1:
@@ -296,6 +312,36 @@ class MemoryQueryTool:
             logger.debug("[MemoryQueryTool] Impossible de parser la date '%s'", date_str)
             return False
 
+    @staticmethod
+    def _topic_matches_agent(topic: TopicSummary, agent_id: str) -> bool:
+        """
+        Vérifie si un topic correspond à l'agent demandé.
+
+        Stratégie PERMISSIVE pour rétrocompatibilité:
+        - Retourne True si le topic a l'agent_id demandé
+        - Retourne True si le topic n'a PAS d'agent_id (concepts legacy)
+        - Retourne False sinon
+
+        Args:
+            topic: TopicSummary à vérifier
+            agent_id: Agent ID normalisé (lowercase)
+
+        Returns:
+            True si le topic correspond
+        """
+        topic_agent_id = topic.agent_id
+
+        # Cas 1: Pas d'agent_id dans le topic → concept legacy, on l'inclut
+        if not topic_agent_id:
+            return True
+
+        # Cas 2: Agent ID correspond exactement
+        if isinstance(topic_agent_id, str) and topic_agent_id.lower() == agent_id:
+            return True
+
+        # Cas 3: Ne correspond pas
+        return False
+
     def _parse_concepts_to_topics(self, result: Dict[str, Any]) -> List[TopicSummary]:
         """
         Parse résultat ChromaDB en TopicSummary.
@@ -346,6 +392,9 @@ class MemoryQueryTool:
                 # Résumé optionnel (Phase 2)
                 summary = meta.get("summary", "")
 
+                # 🆕 Agent ID pour filtrage permissif
+                agent_id = meta.get("agent_id")
+
                 topic_data = {
                     "topic": concept_text.strip(),
                     "first_date": first_date,
@@ -354,6 +403,7 @@ class MemoryQueryTool:
                     "thread_ids": thread_ids,
                     "summary": summary,
                     "vitality": vitality,
+                    "agent_id": agent_id,
                 }
 
                 topics.append(TopicSummary(topic_data))

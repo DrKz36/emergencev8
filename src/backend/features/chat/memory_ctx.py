@@ -147,26 +147,26 @@ class MemoryContextBuilder:
                     return self.merge_blocks(sections)
 
             # 3. Vector search for concepts/facts (comportement standard)
-            # 🆕 Filtrage par agent_id pour isolation des contextes mémoire
-            where_filter = None
-            if uid and agent_id:
-                # Filtre combiné: user_id ET agent_id
-                where_filter = {
-                    "$and": [
-                        {"user_id": uid},
-                        {"agent_id": agent_id.lower()}
-                    ]
-                }
-            elif uid:
-                # Fallback: seulement user_id (rétrocompatibilité)
-                where_filter = {"user_id": uid}
+            # 🆕 FIX: Filtrage PERMISSIF par agent_id (inclut concepts legacy sans agent_id)
+            # On récupère TOUS les concepts de l'utilisateur, puis on filtre côté Python
+            where_filter = {"user_id": uid} if uid else None
 
             results = self.vector_service.query(
                 collection=knowledge_col,
                 query_text=last_user_message,
-                n_results=top_k,
+                n_results=top_k * 2,  # Récupérer plus pour pouvoir filtrer après
                 where_filter=where_filter,
             )
+
+            # Filtrage PERMISSIF côté Python si agent_id spécifié
+            if results and agent_id:
+                normalized_agent_id = agent_id.lower()
+                results = [
+                    r for r in results
+                    if self._result_matches_agent(r, normalized_agent_id)
+                ]
+                # Limiter aux top_k après filtrage
+                results = results[:top_k]
 
             if results:
                 # 4. Apply temporal weighting (boost recent items)
@@ -638,3 +638,37 @@ class MemoryContextBuilder:
 
         # Défaut: toutes périodes
         return "all"
+
+    @staticmethod
+    def _result_matches_agent(result: Dict[str, Any], agent_id: str) -> bool:
+        """
+        Vérifie si un résultat vectoriel correspond à l'agent demandé.
+
+        Stratégie PERMISSIVE pour rétrocompatibilité:
+        - Retourne True si le résultat a l'agent_id demandé
+        - Retourne True si le résultat n'a PAS d'agent_id (concepts legacy)
+        - Retourne False sinon
+
+        Args:
+            result: Résultat vectoriel avec metadata
+            agent_id: Agent ID normalisé (lowercase)
+
+        Returns:
+            True si le résultat correspond
+        """
+        metadata = result.get("metadata", {})
+        if not isinstance(metadata, dict):
+            return True  # Pas de metadata → legacy, on inclut
+
+        result_agent_id = metadata.get("agent_id")
+
+        # Cas 1: Pas d'agent_id → concept legacy, on l'inclut
+        if not result_agent_id:
+            return True
+
+        # Cas 2: Agent ID correspond exactement
+        if isinstance(result_agent_id, str) and result_agent_id.lower() == agent_id:
+            return True
+
+        # Cas 3: Ne correspond pas
+        return False
