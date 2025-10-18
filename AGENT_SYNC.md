@@ -44,14 +44,18 @@
 - ✅ Analyse logs GCloud (erreurs + warnings + général)
 - ✅ Rapport complet production (0 erreurs critiques)
 - ✅ Création robots.txt avec blocage dossiers sensibles
-- ✅ Activation AUTO_APPLY dans settings.local.json
-- 🔄 Mise à jour AGENT_SYNC.md
-- ⏳ Mise à jour docs/passation.md
-- ⏳ Git add + commit + push
+- ✅ Activation AUTO_APPLY dans settings.local.json (gitignored)
+- ✅ Mise à jour AGENT_SYNC.md
+- ✅ Mise à jour docs/passation.md
+- ✅ Git commit (f7f8ce4) + push vers origin/main
+- ✅ Guardians pre-commit/post-commit: tous OK
+- ✅ ProdGuardian pre-push: Production HEALTHY
+
+**Session terminée à 16:51 (Europe/Zurich)**
 
 **Prochaines actions :**
-- Commit changements (robots.txt + settings)
-- Attendre prochaine directive
+- Vérifier robots.txt accessible à https://emergence-app.ch/robots.txt (après déploiement)
+- Attendre prochaine directive architecte ou session Codex
 
 ---
 
