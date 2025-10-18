@@ -49,13 +49,19 @@
 - ✅ Copie reset-password.html vers racine (backend le servira maintenant via StaticFiles)
 - ✅ Génération favicon.ico multi-résolution (16x16, 32x32, 48x48) depuis logo PNG
 - ✅ Vérification robots.txt présent et bien configuré
-- ⏳ Mise à jour AGENT_SYNC.md (en cours)
-- ⏳ Mise à jour docs/passation.md (à venir)
-- ⏳ Git commit + push (à venir)
+- ✅ Mise à jour AGENT_SYNC.md
+- ✅ Mise à jour docs/passation.md (entrée détaillée complète)
+- ✅ Git commit (019b67b) + push vers origin/main
+- ✅ Guardians pre-commit/post-commit: tous OK (2 warnings scripts utilitaires)
+- ✅ ProdGuardian pre-push: Production OK (80 logs, 0 erreur, 3 warnings)
+
+**Session terminée à 16:58 (Europe/Zurich)**
 
 **Prochaines actions :**
-- Commit + push changements (reset-password.html, favicon.ico, scripts)
-- Vérifier après déploiement que les 404 sont corrigés
+- Vérifier après prochain déploiement que les 404 sont corrigés :
+  - https://emergence-app.ch/reset-password.html?token=test
+  - https://emergence-app.ch/favicon.ico
+- Optionnel: optimiser latences (max 2.3s détecté dans logs)
 - Attendre directive architecte ou session Codex
 
 ---
