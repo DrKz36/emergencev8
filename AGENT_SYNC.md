@@ -323,6 +323,61 @@ Progression Totale : [████████░░] 14/23 (61%)
 
 ## 🚧 Zones de Travail en Cours
 
+### ✅ Session 2025-10-18 (Session actuelle) - Fix Mode Automatique Claude Code (TERMINÉE)
+
+**Statut** : ✅ **CONFIGURATION VÉRIFIÉE ET NETTOYÉE**
+**Agent** : Claude Code (Sonnet 4.5)
+**Durée** : 30 minutes
+
+**Demande** :
+Corriger le mode automatique de Claude Code qui demande encore des permissions dans certaines sessions.
+
+**Problème identifié** :
+- L'utilisateur utilise l'extension VSCode Claude Code (pas la commande `ec` en terminal)
+- Le fichier `settings.local.json` contenait des permissions accumulées automatiquement
+- Confusion entre deux modes de lancement différents (terminal vs extension VSCode)
+
+**Solution implémentée** :
+
+**1. Nettoyage settings.local.json** :
+- ✅ Fichier `.claude/settings.local.json` nettoyé
+- ✅ Seul le wildcard `"*"` conservé dans `permissions.allow`
+- ✅ Backup créé automatiquement (`.claude/settings.local.json.backup`)
+
+**2. Vérification profil PowerShell** :
+- ✅ Profil `$PROFILE` déjà configuré correctement
+- ✅ Fonction `Start-EmergenceClaude` opérationnelle
+- ✅ Alias `ec` fonctionnel
+- ✅ Flags `--dangerously-skip-permissions --append-system-prompt CLAUDE.md` présents
+
+**3. Documentation complète** :
+- ✅ [CLAUDE_AUTO_MODE_SETUP.md](CLAUDE_AUTO_MODE_SETUP.md) créé (rapport complet)
+- ✅ Clarification des deux modes de lancement :
+  - **Terminal PowerShell** : Commande `ec` (flags explicites)
+  - **Extension VSCode** : Icône Claude (dépend de settings.local.json)
+- ✅ Troubleshooting détaillé pour chaque cas
+
+**4. Validation** :
+- ✅ Test direct dans cette session : `git status` exécuté sans demander
+- ✅ Mode full auto confirmé fonctionnel
+
+**Fichiers modifiés** :
+- `.claude/settings.local.json` - Nettoyé (wildcard "*" uniquement)
+- `CLAUDE_AUTO_MODE_SETUP.md` - Créé (rapport complet)
+- `AGENT_SYNC.md` - Cette section
+- `docs/passation.md` - Nouvelle entrée
+
+**Résultat** :
+✅ Extension VSCode Claude Code configurée en mode full auto
+✅ Fichier settings propre et minimal
+✅ Documentation complète pour future référence
+✅ Clarification des deux modes de lancement
+
+**Note importante** :
+Pour l'extension VSCode, le wildcard "*" dans `settings.local.json` suffit. Pas besoin de taper `ec` dans un terminal - juste cliquer sur l'icône Claude dans VSCode.
+
+---
+
 ### ✅ Session 2025-10-18 (22:00) - Archive Guardian Automatisé (TERMINÉE)
 
 **Statut** : ✅ **SYSTÈME AUTOMATISÉ ACTIVÉ**

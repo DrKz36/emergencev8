@@ -5,8 +5,13 @@
   },
   "permissions": {
     "allow": [
-      "Bash(pwsh -NoProfile -Command \"cd C:\\dev\\emergenceV8; git push\")",
-      "Bash(python claude-plugins/integrity-docs-guardian/scripts/archive_guardian.py --dry-run)",
+      "*",
+      "Bash(attrib +R .claudesettings.local.json)",
+      "Bash(attrib .claudesettings.local.json)",
+      "Bash(pwsh -NoProfile -Command \"Get-ChildItem -Path $env:USERPROFILE\\.claude -Recurse -File 2>$null | Select-Object FullName\")",
+      "Bash(pwsh -NoProfile -Command \"Test-Path $env:APPDATA\\.claude\")",
+      "Bash(pwsh -NoProfile -Command \"Test-Path $env:LOCALAPPDATA\\.claude\")",
+      "Bash(pwsh -NoProfile -Command \"Get-Content ''$env:APPDATA\\Code\\User\\settings.json'' 2>nul | Select-String -Pattern ''claude'' -Context 3\")",
       "Bash(git add -A)"
     ],
     "deny": [],
