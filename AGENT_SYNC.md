@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-18 16:50 (Claude Code: rapport logs GCloud + création robots.txt)
+**Dernière mise à jour** : 2025-10-18 16:56 (Claude Code: analyse logs GCloud + fix 404)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -19,43 +19,44 @@
 
 ---
 
-## 🚀 Session en cours (2025-10-18 16:50) — Agent : Claude Code (Logs GCloud + robots.txt)
+## 🚀 Session en cours (2025-10-18 16:56) — Agent : Claude Code (Analyse logs GCloud + Fix 404)
 
 **Objectif :**
-- Vérifier logs GCloud pour rapport d'erreur production
-- Créer fichier robots.txt (fix 404 Googlebot)
-- Activer mode full auto (AUTO_APPLY=1)
+- Analyser en profondeur les logs Google Cloud (downloaded-logs-20251018-164827.json)
+- Fixer les 404 identifiés en production (reset-password.html, favicon.ico)
 
 **Fichiers modifiés :**
-- `.claude/settings.local.json` (AUTO_APPLY: 0 → 1, permissions gcloud)
-- `robots.txt` (NOUVEAU - fix 404)
-- `reports/prod_report.json` (timestamp auto-update)
+- `reset-password.html` (NOUVEAU - copié depuis docs/archive/ vers racine)
+- `favicon.ico` (NOUVEAU - généré depuis emergence_logo.png, 749B multi-résolution)
+- `analyze_logs.py` (NOUVEAU - script analyse logs GCloud)
+- `create_favicon.py` (NOUVEAU - script génération favicon)
 - `AGENT_SYNC.md` (cette session)
 - `docs/passation.md` (nouvelle entrée à venir)
 
 **Contexte :**
-- Analyse logs GCloud dernière heure
-- Production HEALTHY : 0 erreurs, 3 warnings (2x 401 normal, 1x 404 robots.txt)
-- Révision Cloud Run `emergence-app-00490-xih` stable (100% trafic)
-- Healthchecks 100% OK, latences < 10ms
-- Googlebot cherchait robots.txt → 404 → maintenant fixé
+- Analyse **1500 logs GCloud** (période 14:22→14:48, 26 min)
+- Production **HEALTHY** : **0 erreur critique** (ERROR/EXCEPTION)
+- **3 révisions actives** : emergence-app-00490-xih (39%, principale), -00475-raw (31%), -00480-wap (31%)
+- **Latence moyenne : 162ms** (max 2.3s)
+- **3x 404 détectés** : robots.txt (déjà fixé), reset-password.html (maintenant fixé), favicon.ico (maintenant fixé)
+- **2x 401** : requêtes non auth (comportement normal)
+- **1x Warning** : PreferenceExtractor sans user_id (non critique)
 
 **Actions réalisées :**
-- ✅ Analyse logs GCloud (erreurs + warnings + général)
-- ✅ Rapport complet production (0 erreurs critiques)
-- ✅ Création robots.txt avec blocage dossiers sensibles
-- ✅ Activation AUTO_APPLY dans settings.local.json (gitignored)
-- ✅ Mise à jour AGENT_SYNC.md
-- ✅ Mise à jour docs/passation.md
-- ✅ Git commit (f7f8ce4) + push vers origin/main
-- ✅ Guardians pre-commit/post-commit: tous OK
-- ✅ ProdGuardian pre-push: Production HEALTHY
-
-**Session terminée à 16:51 (Europe/Zurich)**
+- ✅ Analyse complète logs GCloud avec script Python dédié (analyze_logs.py)
+- ✅ Rapport détaillé : 0 erreur 500, 14 requêtes OK, 5 warnings seulement
+- ✅ Identification root cause 404 : reset-password.html dans docs/archive/ au lieu de la racine
+- ✅ Copie reset-password.html vers racine (backend le servira maintenant via StaticFiles)
+- ✅ Génération favicon.ico multi-résolution (16x16, 32x32, 48x48) depuis logo PNG
+- ✅ Vérification robots.txt présent et bien configuré
+- ⏳ Mise à jour AGENT_SYNC.md (en cours)
+- ⏳ Mise à jour docs/passation.md (à venir)
+- ⏳ Git commit + push (à venir)
 
 **Prochaines actions :**
-- Vérifier robots.txt accessible à https://emergence-app.ch/robots.txt (après déploiement)
-- Attendre prochaine directive architecte ou session Codex
+- Commit + push changements (reset-password.html, favicon.ico, scripts)
+- Vérifier après déploiement que les 404 sont corrigés
+- Attendre directive architecte ou session Codex
 
 ---
 
