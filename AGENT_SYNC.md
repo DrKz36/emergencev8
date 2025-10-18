@@ -395,9 +395,93 @@ Créer un système Guardian entièrement automatisé qui maintient la racine du 
 
 ---
 
-### ✅ Session 2025-10-18 (20:00) - Sprint 2 Memory Refactoring (EN COURS)
+### ✅ Session 2025-10-18 (22:30) - Sprint 3 Memory Refactoring (TERMINÉ)
 
-**Statut** : 🟡 **SPRINT 2 EN COURS - 5/5 TESTS PASSENT**
+**Statut** : ✅ **SPRINT 3 COMPLÉTÉ - 20/20 TESTS PASSENT**
+**Agent** : Claude Code (Sonnet 4.5)
+**Durée** : 2 heures
+**Roadmap** : [MEMORY_REFACTORING_ROADMAP.md](MEMORY_REFACTORING_ROADMAP.md) Sprint 3
+
+**Objectif** :
+Agent "se souvient" spontanément de conversations passées pertinentes (rappel proactif unifié).
+
+**Problème résolu** :
+- Agent ne rappelait PAS spontanément les conversations archivées
+- Contexte mémoire fragmenté (STM + LTM séparés, pas d'archives)
+- Pas de couche unifiée pour récupération mémoire
+
+**Solution implémentée** :
+
+**1. UnifiedMemoryRetriever créé** :
+- ✅ [src/backend/features/memory/unified_retriever.py](src/backend/features/memory/unified_retriever.py) (NOUVEAU - 400+ lignes)
+- ✅ Classe `MemoryContext`: `to_prompt_sections()`, `to_markdown()`
+- ✅ Classe `UnifiedMemoryRetriever`: `retrieve_context()` unifié
+- ✅ 3 sources mémoire:
+  - STM: SessionManager (RAM)
+  - LTM: VectorService (ChromaDB - concepts/préférences)
+  - Archives: DatabaseManager (SQLite - conversations archivées)
+- ✅ Recherche archives basique (keywords dans title)
+
+**2. Intégration MemoryContextBuilder** :
+- ✅ [src/backend/features/chat/memory_ctx.py](src/backend/features/chat/memory_ctx.py) (lignes 53-71, 109-164)
+- ✅ Import + initialisation UnifiedRetriever dans `__init__`
+- ✅ Injection db_manager depuis SessionManager
+- ✅ Nouveau paramètre `build_memory_context(..., use_unified_retriever: bool = True)`
+- ✅ Fallback gracieux vers legacy si erreur
+
+**3. Feature flags & Monitoring** :
+- ✅ [.env.example](.env.example) (lignes 38-43):
+  - `ENABLE_UNIFIED_MEMORY_RETRIEVER=true`
+  - `UNIFIED_RETRIEVER_INCLUDE_ARCHIVES=true`
+  - `UNIFIED_RETRIEVER_TOP_K_ARCHIVES=3`
+- ✅ Métriques Prometheus:
+  - Counter `unified_retriever_calls_total` (agent_id, source)
+  - Histogram `unified_retriever_duration_seconds` (source)
+- ✅ Instrumentation complète avec timers
+
+**4. Tests unitaires** :
+- ✅ [tests/backend/features/test_unified_retriever.py](tests/backend/features/test_unified_retriever.py) (NOUVEAU - 400+ lignes)
+- ✅ **20/20 tests passent** (100% success en 0.17s)
+- ✅ Coverage:
+  - MemoryContext: 7 tests (init, sections, markdown)
+  - UnifiedRetriever: 13 tests (STM, LTM, Archives, full, edge cases)
+
+**Fichiers modifiés** :
+- Backend (2) : [unified_retriever.py](src/backend/features/memory/unified_retriever.py) (NOUVEAU), [memory_ctx.py](src/backend/features/chat/memory_ctx.py)
+- Tests (1) : [test_unified_retriever.py](tests/backend/features/test_unified_retriever.py) (NOUVEAU)
+- Config (1) : [.env.example](.env.example)
+- Documentation (2) : [docs/passation.md](docs/passation.md), [AGENT_SYNC.md](AGENT_SYNC.md)
+
+**Critères de succès (roadmap)** :
+- [x] `UnifiedMemoryRetriever` créé et testé ✅
+- [x] Intégration `MemoryContextBuilder` fonctionnelle ✅
+- [x] Conversations archivées dans contexte agent ✅ (basique)
+- [x] Feature flag activation/désactivation ✅
+- [x] Métriques Prometheus opérationnelles ✅
+- [x] Tests unitaires passent (20/20) ✅
+- [ ] Performance: Latence < 200ms P95 ⏳ À valider en prod
+- [ ] Tests E2E rappel proactif ⏳ Optionnel
+
+**Impact** :
+✅ Rappel proactif conversations archivées automatique
+✅ Contexte unifié (STM + LTM + Archives) en un appel
+✅ Fallback gracieux vers legacy
+✅ Monitoring performance complet
+✅ Tests complets (20/20)
+
+**Prochaines actions** :
+- Sprint 4 (optionnel) : Isolation agent stricte, amélioration recherche archives (FTS5)
+- Sprint 5 (optionnel) : Interface utilisateur mémoire
+
+**Documentation** :
+- 📋 [MEMORY_REFACTORING_ROADMAP.md](MEMORY_REFACTORING_ROADMAP.md) - Roadmap complète Sprints 1-5
+- 📋 [docs/passation.md](docs/passation.md) - Entrée 2025-10-18 22:30
+
+---
+
+### ✅ Session 2025-10-18 (20:00) - Sprint 2 Memory Refactoring (TERMINÉ)
+
+**Statut** : ✅ **SPRINT 2 COMPLÉTÉ - 5/5 TESTS PASSENT**
 **Agent** : Claude Code (Sonnet 4.5)
 **Durée** : 2 heures
 **Roadmap** : [MEMORY_REFACTORING_ROADMAP.md](MEMORY_REFACTORING_ROADMAP.md) Sprint 2

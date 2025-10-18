@@ -50,6 +50,24 @@ class MemoryContextBuilder:
         from backend.features.memory.memory_query_tool import MemoryQueryTool
         self.memory_query_tool = MemoryQueryTool(vector_service)
 
+        # 🆕 Sprint 3 Memory Refactoring: UnifiedMemoryRetriever
+        from backend.features.memory.unified_retriever import UnifiedMemoryRetriever
+
+        # Obtenir db_manager depuis session_manager
+        db_manager = getattr(session_manager, 'db_manager', None)
+
+        if db_manager:
+            self.unified_retriever = UnifiedMemoryRetriever(
+                session_manager=session_manager,
+                vector_service=vector_service,
+                db_manager=db_manager,
+                memory_query_tool=self.memory_query_tool
+            )
+            logger.info("[MemoryContextBuilder] Initialized with UnifiedMemoryRetriever (STM + LTM + Archives)")
+        else:
+            logger.warning("[MemoryContextBuilder] db_manager not available, UnifiedRetriever disabled")
+            self.unified_retriever = None
+
         logger.info("[MemoryContextBuilder] Initialized with in-memory preference cache (TTL=5min) + MemoryQueryTool")
 
     def try_get_session_summary(self, session_id: str) -> str:
@@ -89,16 +107,60 @@ class MemoryContextBuilder:
         return None
 
     async def build_memory_context(
-        self, session_id: str, last_user_message: str, top_k: int = 5, agent_id: Optional[str] = None
+        self, session_id: str, last_user_message: str, top_k: int = 5, agent_id: Optional[str] = None,
+        use_unified_retriever: bool = True  # ✅ Sprint 3: Flag activation UnifiedRetriever
     ) -> str:
+        """
+        Construit contexte mémoire pour injection prompt.
+
+        🆕 Sprint 3: Si use_unified_retriever=True, utilise UnifiedRetriever pour:
+        - Préférences (cache 5min)
+        - Concepts vectoriels pertinents
+        - Conversations archivées pertinentes
+
+        Args:
+            session_id: Session WebSocket
+            last_user_message: Message utilisateur actuel
+            top_k: Nombre résultats vectoriels
+            agent_id: ID agent (anima/neo/nexus)
+            use_unified_retriever: Activer UnifiedRetriever (défaut: True)
+
+        Returns:
+            Contexte formaté markdown
+        """
         try:
             if not last_user_message:
                 return ""
+
+            uid = self.try_get_user_id(session_id)
+
+            # 🆕 SPRINT 3: Utiliser UnifiedRetriever si disponible et activé
+            if use_unified_retriever and self.unified_retriever and uid and agent_id:
+                logger.info("[MemoryContext] Using UnifiedRetriever for context (STM + LTM + Archives)")
+
+                try:
+                    context = await self.unified_retriever.retrieve_context(
+                        user_id=uid,
+                        agent_id=agent_id,
+                        session_id=session_id,
+                        current_query=last_user_message,
+                        top_k_concepts=top_k,
+                        top_k_archives=3  # Top 3 conversations archivées
+                    )
+
+                    return context.to_markdown()
+
+                except Exception as e:
+                    logger.error(f"[MemoryContext] UnifiedRetriever failed, falling back to legacy: {e}", exc_info=True)
+                    # Fallback to legacy behavior below
+
+            # FALLBACK: Comportement legacy (si unified_retriever désactivé ou erreur)
+            logger.info("[MemoryContext] Using legacy retrieval (no UnifiedRetriever)")
+
             knowledge_name = os.getenv(
                 "EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge"
             )
             knowledge_col = self.vector_service.get_or_create_collection(knowledge_name)
-            uid = self.try_get_user_id(session_id)
 
             # Build memory context with components:
             # 1. Active preferences (high confidence, always injected)
