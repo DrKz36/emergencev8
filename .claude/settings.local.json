@@ -62,7 +62,9 @@
       "Bash(git commit -m \"chore: auto-update guardian reports and settings (final sync)\")",
       "Read(//c/Users/Admin/AppData/Roaming/Code/User/**)",
       "Bash(git commit -m \"$(cat <<''EOF''\nfix(config): VSCode settings full auto mode - élimination popups validation\n\nFix configuration VSCode pour activer mode full auto complet Claude Code.\n\nProblème:\n- VSCode affichait popups validation pour actions sensibles (git push, déploiement)\n- Cause: settings.json contenait configs Copilot mais AUCUNE config Claude Code\n- Impact: mode full auto CLAUDE.md non respecté (validation requise)\n\nSolution:\n- Ajout 11+ configs Claude Code dans settings.json VSCode:\n  - requireApproval: false (pas de validation générale)\n  - confirmExecution: \"never\" (jamais de confirmation)\n  - autoApplyEdits: true (edits automatiques)\n  - tools/bash/edit/write/read/git.requireApproval: false\n  - git.confirmPush/confirmCommit: false\n  - deployment.requireApproval: false\n  - dangerousOperations.requireApproval: false\n  - autoExecuteLimit: -1 (pas de limite)\n  - autoExecute: true (exécution auto globale)\n\nFichiers modifiés:\n- AGENT_SYNC.md: session 17:39 (fix VSCode settings)\n- docs/passation.md: nouvelle entrée complète avec diagnostic\n- .claude/settings.local.json: auto-update permissions\n- reports/prod_report.json: auto-update guardians\n\nNote: Reload VSCode requis pour activer les nouvelles configs\nTest: vérifier ZÉRO popup sur prochaine tâche full auto\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git commit -m \"chore: auto-update guardian reports and settings (post-push sync)\")"
+      "Bash(git commit -m \"chore: auto-update guardian reports and settings (post-push sync)\")",
+      "Bash(git commit -m \"chore: final prod_report.json auto-update\")",
+      "Bash(git commit -m \"chore: cycle guardian reports auto-update (final)\")"
     ],
     "deny": [],
     "ask": []
