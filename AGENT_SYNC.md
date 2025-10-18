@@ -23,7 +23,7 @@
 
 **Agent :** Claude Code (Sonnet 4.5)
 **Durée :** 1h30
-**Commit :** `<à venir après push>`
+**Commit :** `d2bb93c` - feat(dashboard): improve admin dashboard robustness & documentation (Phase 2)
 
 **Résumé :**
 - ✅ **Amélioration `renderCostsChart()`** (problème majeur #4 de l'audit)
