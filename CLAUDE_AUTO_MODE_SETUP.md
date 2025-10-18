@@ -278,6 +278,19 @@ Get-Content .claude\settings.local.json | ConvertFrom-Json
 
 **C'est un processus d'apprentissage progressif - c'est NORMAL ! ✅**
 
+**ALTERNATIVE RAPIDE : Config Ultimate pré-remplie**
+
+Si tu veux sauter toute la phase d'apprentissage et avoir le mode full auto **immédiatement** :
+
+```powershell
+# Applique 160+ permissions en une seule commande
+python .claude-templates/apply_ultimate_config.py
+```
+
+Ce script merge ta config actuelle avec un template contenant **TOUTES** les permissions possibles du projet. Plus besoin d'attendre 2-3 sessions !
+
+Voir [.claude-templates/README.md](.claude-templates/README.md) pour les détails.
+
 ---
 
 ### Problème 4 : Claude utilise un mauvais ton
