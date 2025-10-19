@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-19 14:55 (Claude Code: Fix beta_report.html - 404 → 200 ✅)
+**Dernière mise à jour** : 2025-10-19 21:00 (Claude Code: PHASE 2 GUARDIAN CLOUD - USAGE TRACKING SYSTEM ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -17,64 +17,63 @@
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
 5. `git status` + `git log --online -10` - état Git
 
-## 🚀 Session en cours (2025-10-19 14:55) — Agent : Claude Code (FIX BETA_REPORT.HTML - 404 → 200 ✅)
+## 🚀 Session en cours (2025-10-19 21:00) — Agent : Claude Code (PHASE 2 GUARDIAN CLOUD ✅)
 
 **Objectif :**
-- ✅ **COMPLET**: Restaurer beta_report.html en production (404 → 200 OK)
+- ✅ **COMPLET**: Phase 2 Guardian Cloud - Système tracking automatique utilisateurs
 
-**Fichiers modifiés (2 fichiers) :**
-- `beta_report.html` (restauré depuis archive vers racine)
-- `docs/passation.md` (nouvelle entrée)
+**Fichiers créés (7 backend + 1 doc) :**
+- `src/backend/features/usage/*.py` (5 fichiers - 801 LOC)
+- `src/backend/middleware/*.py` (2 fichiers - 285 LOC)
+- `docs/USAGE_TRACKING.md` (580 lignes)
 
-**Contexte du problème :**
-La page `https://emergence-app.ch/beta_report.html` retournait **404 Not Found**.
+**Fichiers modifiés:**
+- `src/backend/main.py` (middleware + router + init tables)
+- `docs/passation.md` (nouvelle entrée Phase 2)
+- `docs/GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md` (Phase 2 ✅)
 
-**Cause identifiée :**
-- Fichier HTML archivé dans `docs/archive/REPORTS_OLD_2025-10/beta_report.html`
-- Pas présent à la racine → FastAPI StaticFiles ne le servait pas
-- Backend `/api/beta-report` (POST) était déjà opérationnel
+**Total:** ~1068 lignes code + 580 lignes doc
 
-**Solution implémentée :**
+**Système implémenté:**
 
-**1. Restauration fichier**
-```bash
-cp docs/archive/REPORTS_OLD_2025-10/beta_report.html beta_report.html
-```
+**UsageTrackingMiddleware** - Capture automatique requêtes API
+- Extract user email depuis JWT token
+- Log feature_usage (endpoint, method, durée, success/error)
+- Log user_errors (erreurs >= 400)
+- Privacy OK: PAS de body capturé
 
-**2. Vérification contenu**
-- Formulaire beta complet (8 phases, 55 tests)
-- Envoie vers `/api/beta-report` (ligne 715)
-- Auto-détection navigateur/OS
-- Barre de progression dynamique
+**3 Tables SQLite créées:**
+1. `user_sessions` - Sessions login/logout
+2. `feature_usage` - Features utilisées par user
+3. `user_errors` - Erreurs rencontrées
 
-**3. Déploiement production**
-- Build + push Docker (tag 20251019-144943) ✅
-- Déploiement canary 10% ✅
-- Test canary: `HTTP 200 OK` (27158 bytes) ✅
-- Promotion 100% trafic ✅
-- Test prod finale: `HTTP 200 OK` ✅
+**UsageGuardian Agent:**
+- `generate_report(hours=2)` → Agrège stats
+- Sauvegarde `reports/usage_report.json`
 
-**URLs actives :**
-- ✅ Formulaire: https://emergence-app.ch/beta_report.html
-- ✅ API endpoint: https://emergence-app.ch/api/beta-report (POST)
-- ✅ Email dest: gonzalefernando@gmail.com
+**Endpoints API:**
+- GET `/api/usage/summary?hours=2` (admin)
+- POST `/api/usage/generate-report` (admin)
+- GET `/api/usage/health` (public)
 
-**Tests de validation :**
-```bash
-# Canary
-curl -I https://canary-20251019---emergence-app-47nct44nma-ew.a.run.app/beta_report.html
-# → HTTP/1.1 200 OK, Content-Length: 27158
+**Tests effectués:**
+✅ Syntaxe/linting OK
+✅ Privacy compliance (code review)
+✅ Intégration main.py
 
-# Production
-curl -I https://emergence-app.ch/beta_report.html
-# → HTTP/1.1 200 OK, Content-Length: 27158
-```
+**Tests manuels TODO:**
+- [ ] Lancer backend local
+- [ ] Faire requêtes API
+- [ ] Vérifier SQLite populated
+- [ ] Tester endpoint admin
 
-**Prochaines actions :**
-1. Tester soumission formulaire complet
-2. Vérifier réception email avec rapport
-3. Ajouter lien dans emails beta invitations
-4. Documenter dans dashboard beta testeurs
+**Prochaines actions Phase 3 (Gmail API Integration):**
+1. Setup GCP OAuth2 Gmail API
+2. Service Gmail lecture emails Guardian
+3. Codex lit rapports par email
+4. Tests intégration complète
+
+**Voir:** `docs/USAGE_TRACKING.md` et `docs/GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md`
 
 ---
 

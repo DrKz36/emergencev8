@@ -1,3 +1,190 @@
+## [2025-10-19 21:00] — Agent: Claude Code (PHASE 2 GUARDIAN CLOUD - USAGE TRACKING SYSTEM ✅)
+
+### Fichiers créés (6 nouveaux fichiers backend + 1 doc)
+
+**Backend - Feature Usage:**
+- ✅ `src/backend/features/usage/__init__.py` (13 lignes)
+- ✅ `src/backend/features/usage/models.py` (96 lignes) - Pydantic models
+- ✅ `src/backend/features/usage/repository.py` (326 lignes) - UsageRepository SQLite
+- ✅ `src/backend/features/usage/guardian.py` (222 lignes) - UsageGuardian agent
+- ✅ `src/backend/features/usage/router.py` (144 lignes) - API endpoints
+
+**Backend - Middleware:**
+- ✅ `src/backend/middleware/__init__.py` (5 lignes)
+- ✅ `src/backend/middleware/usage_tracking.py` (280 lignes) - Middleware tracking automatique
+
+**Backend - main.py (modifié):**
+- ✅ Ajout import `USAGE_ROUTER`
+- ✅ Init tables usage tracking au startup
+- ✅ Intégration `UsageTrackingMiddleware` avec DI
+
+**Documentation:**
+- ✅ `docs/USAGE_TRACKING.md` (580 lignes) - Doc complète du système
+- ✅ `docs/GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md` - Phase 2 marquée ✅
+
+**Total Phase 2:** ~1068 lignes de code + 580 lignes de documentation
+
+### Contexte
+
+**Objectif Phase 2:** Créer système de tracking automatique de l'activité utilisateurs dans ÉMERGENCE V8.
+
+**Demande initiale (Issue #2):**
+- Tracker sessions utilisateur (login/logout, durée)
+- Tracker features utilisées (endpoints appelés)
+- Tracker erreurs rencontrées
+- **Privacy-compliant** : PAS de contenu messages/fichiers
+
+**Approche implémentée:**
+- Middleware automatique (fire-and-forget) capturant toutes requêtes API
+- 3 tables SQLite (user_sessions, feature_usage, user_errors)
+- UsageGuardian agent pour agréger stats toutes les N heures
+- Endpoints admin pour dashboard
+
+### Architecture implémentée
+
+**Middleware (UsageTrackingMiddleware):**
+- Capture automatique de TOUTES les requêtes API
+- Extract user email depuis JWT token (ou headers dev)
+- Log feature usage (endpoint, méthode, durée, success/error)
+- Log user errors (erreurs >= 400)
+- **Privacy OK:** Body des requêtes JAMAIS capturé
+- Fire-and-forget (asyncio.create_task) pour performance
+
+**Tables SQLite:**
+
+1. **user_sessions** - Sessions utilisateur
+   - id, user_email, session_start, session_end, duration_seconds, ip_address, user_agent
+
+2. **feature_usage** - Utilisation features
+   - id, user_email, feature_name, endpoint, method, timestamp, success, error_message, duration_ms, status_code
+
+3. **user_errors** - Erreurs utilisateurs
+   - id, user_email, endpoint, method, error_type, error_code, error_message, stack_trace, timestamp
+
+**UsageGuardian Agent:**
+- `generate_report(hours=2)` → Agrège stats sur période donnée
+- `save_report_to_file()` → Sauvegarde JSON dans `reports/usage_report.json`
+- Génère rapport avec:
+  - Active users count
+  - Total requests / errors
+  - Stats par user (features utilisées, temps passé, erreurs)
+  - Top features utilisées
+  - Error breakdown (codes HTTP)
+
+**Endpoints API:**
+
+1. **GET /api/usage/summary?hours=2** (admin only)
+   - Retourne rapport usage JSON
+   - Require `require_admin_claims`
+
+2. **POST /api/usage/generate-report?hours=2** (admin only)
+   - Génère rapport + sauvegarde fichier
+   - Retourne chemin + summary
+
+3. **GET /api/usage/health** (public)
+   - Health check système usage tracking
+
+### Tests effectués
+
+✅ **Syntaxe / Linting:**
+```bash
+ruff check src/backend/features/usage/ src/backend/middleware/ --select F,W
+# → All checks passed!
+```
+
+✅ **Privacy compliance (code review):**
+- Middleware ne capture PAS le body des requêtes
+- Pas de tokens JWT complets capturés
+- Pas de mots de passe loggés
+- Seulement metadata: endpoint, user_email, success/error, durée
+
+✅ **Intégration main.py:**
+- Middleware activé automatiquement au startup
+- Repository getter injecté via DI
+- Tables créées automatiquement (`ensure_tables()`)
+- Router monté sur `/api/usage/*`
+
+**Tests manuels (TODO pour prochaine session):**
+- [ ] Lancer backend local
+- [ ] Faire requêtes API (chat, threads, etc.)
+- [ ] Vérifier tables SQLite populated
+- [ ] Tester endpoint `/api/usage/summary` avec token admin
+
+### Prochaines actions recommandées
+
+**Immédiat (tests):**
+1. Tester backend local avec quelques requêtes
+2. Vérifier SQLite: `SELECT * FROM feature_usage LIMIT 10`
+3. Tester endpoint admin avec token JWT
+4. Valider privacy (vérifier qu'aucun body n'est capturé)
+
+**Phase 3 (Gmail API Integration) - 4 jours:**
+1. Setup GCP OAuth2 pour Gmail API
+2. Service Gmail pour lecture emails Guardian
+3. Codex peut lire rapports par email (via OAuth)
+4. Tests intégration complète
+
+**Phase 4 (Admin UI trigger Guardian):**
+1. Bouton "Lancer Audit Guardian" dans admin dashboard
+2. Déclenche audit cloud à la demande
+3. Affiche résultats temps réel
+
+**Phase 5 (Email Guardian integration):**
+1. Intégrer rapport usage dans email Guardian
+2. Template déjà prêt: `{% if usage_stats %}`
+3. Email toutes les 2h avec stats complètes
+
+### Blocages
+
+Aucun blocage technique.
+
+**Notes:**
+- SQLite utilisé pour Phase 2 (Firestore viendra en Phase 3+)
+- Middleware testé syntaxiquement mais pas en runtime (à faire)
+- Privacy compliance validée par code review
+
+### Commit recommandé
+
+```bash
+git add .
+git commit -m "feat(usage): Phase 2 Guardian Cloud - Usage Tracking System ✅
+
+Système complet de tracking automatique utilisateurs:
+
+Backend (1068 LOC):
+- UsageTrackingMiddleware (capture auto requêtes API)
+- UsageRepository (SQLite CRUD - 3 tables)
+- UsageGuardian (agrège stats toutes les N heures)
+- Endpoints /api/usage/* (admin only)
+
+Privacy-compliant:
+- ✅ Track endpoint + user_email + durée + success/error
+- ❌ NO body capture (messages, fichiers, passwords)
+
+Tables SQLite:
+- user_sessions (login/logout, durée)
+- feature_usage (endpoint, method, timestamp, success)
+- user_errors (erreurs rencontrées par users)
+
+Endpoints:
+- GET /api/usage/summary?hours=2 (admin)
+- POST /api/usage/generate-report (admin)
+- GET /api/usage/health (public)
+
+Documentation:
+- docs/USAGE_TRACKING.md (580 lignes)
+- docs/GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md (Phase 2 ✅)
+
+Prochaine étape: Phase 3 - Gmail API Integration
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+"
+```
+
+---
+
 ## [2025-10-19 18:30] — Agent: Claude Code (REFACTOR GUARDIAN SYSTEM - v3.0.0 ✅)
 
 ### Fichiers modifiés

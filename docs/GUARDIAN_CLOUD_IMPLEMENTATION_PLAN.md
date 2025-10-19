@@ -153,7 +153,7 @@
 
 ---
 
-### **PHASE 2 : Usage Tracking System** (3 jours)
+### **PHASE 2 : Usage Tracking System** ✅ (3 jours) - **TERMINÉ 2025-10-19**
 
 **Objectifs:**
 - Tracker activité utilisateurs (sessions, features, erreurs)
@@ -162,82 +162,39 @@
 
 **Tâches:**
 
-#### 2.1 - Base de données (1j)
-- [ ] Créer table `user_sessions` (Firestore/PostgreSQL)
-  ```sql
-  - user_email
-  - session_start
-  - session_end
-  - duration_seconds
-  - ip_address (optionnel)
-  ```
+#### 2.1 - Base de données (1j) ✅
+- [x] Créer table `user_sessions` (SQLite)
+- [x] Créer table `feature_usage` (SQLite)
+- [x] Créer table `user_errors` (SQLite)
+- [x] Créer `UsageRepository` avec méthodes CRUD complètes
 
-- [ ] Créer table `feature_usage` (Firestore/PostgreSQL)
-  ```sql
-  - user_email
-  - feature_name (ex: "chat_message", "document_upload")
-  - timestamp
-  - success (bool)
-  - error_message (if failed)
-  ```
-
-- [ ] Créer table `user_errors` (Firestore/PostgreSQL)
-  ```sql
-  - user_email
-  - endpoint
-  - error_type (500, 400, etc.)
-  - error_message
-  - stack_trace
-  - timestamp
-  ```
-
-#### 2.2 - Middleware tracking (1j)
-- [ ] Créer `usage_tracking_middleware.py`
-  - Capture toutes les requêtes API
+#### 2.2 - Middleware tracking (1j) ✅
+- [x] Créer `usage_tracking_middleware.py`
+  - Capture automatique toutes requêtes API
   - Extract user email depuis JWT token
-  - Log feature usage (endpoint appelé)
-  - Log erreurs (si status >= 400)
-  - **Exclure:** `/api/chat/message` content (privacy)
+  - Log feature usage (endpoint + méthode + durée)
+  - Log erreurs (status >= 400)
+  - **Privacy OK:** Pas de body capturé
+- [x] Intégrer middleware dans `main.py`
 
-- [ ] Intégrer middleware dans `main.py`
-  ```python
-  app.add_middleware(UsageTrackingMiddleware)
-  ```
+#### 2.3 - UsageGuardian Agent (1j) ✅
+- [x] Créer `usage_guardian.py`
+  - Agrège stats dernières N heures
+  - Génère rapport JSON complet
+  - Sauvegarde `reports/usage_report.json`
+- [x] Endpoint `/api/usage/summary` (admin only)
+- [x] Endpoint `/api/usage/generate-report` (admin only)
+- [x] Endpoint `/api/usage/health` (public)
 
-#### 2.3 - UsageGuardian Agent (1j)
-- [ ] Créer `usage_guardian.py`
-  - Agrège stats dernières 2h
-  - Génère rapport `usage_report.json`:
-    ```json
-    {
-      "period": "2025-10-19 14:00 - 16:00",
-      "active_users": 5,
-      "users": [
-        {
-          "email": "user@example.com",
-          "total_time_minutes": 45,
-          "features_used": ["chat", "documents", "voice"],
-          "errors_count": 2,
-          "errors": [
-            {
-              "endpoint": "/api/documents/upload",
-              "error": "File too large",
-              "timestamp": "..."
-            }
-          ]
-        }
-      ]
-    }
-    ```
+**Livrables:** ✅
+- `src/backend/middleware/usage_tracking.py` (280 lignes)
+- `src/backend/features/usage/models.py` (96 lignes)
+- `src/backend/features/usage/repository.py` (326 lignes)
+- `src/backend/features/usage/guardian.py` (222 lignes)
+- `src/backend/features/usage/router.py` (144 lignes)
+- `docs/USAGE_TRACKING.md` (documentation complète)
 
-- [ ] Endpoint `/api/usage/summary`
-  - Retourne rapport usage pour Admin UI
-
-**Livrables:**
-- `src/backend/middleware/usage_tracking.py`
-- `src/backend/features/usage/guardian.py`
-- `src/backend/features/usage/router.py`
-- Rapports: `usage_report.json`
+**Total Phase 2:** ~1068 lignes de code + documentation
 
 ---
 

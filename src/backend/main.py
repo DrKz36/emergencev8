@@ -63,6 +63,7 @@ SYNC_ROUTER = _import_router("backend.features.sync.router")  # Auto-sync inter-
 SETTINGS_ROUTER = _import_router("backend.features.settings.router")  # Application settings
 BETA_REPORT_ROUTER = _import_router("backend.features.beta_report.router")  # Beta feedback reports
 GUARDIAN_ROUTER = _import_router("backend.features.guardian.router")  # Guardian auto-fix
+USAGE_ROUTER = _import_router("backend.features.usage.router")  # Usage tracking (Phase 2 Guardian Cloud)
 
 
 def _migrations_dir() -> str:
@@ -133,6 +134,15 @@ async def _startup(container: ServiceContainer):
         logger.info("AuthService bootstrap terminé.")
     except Exception as e:
         logger.warning(f"AuthService bootstrap non appliqué: {e}")
+
+    # 🔧 Phase 2 Guardian Cloud: Initialiser tables usage tracking
+    try:
+        from backend.features.usage.repository import UsageRepository
+        usage_repo = UsageRepository(db_manager)
+        await usage_repo.ensure_tables()
+        logger.info("Usage tracking tables initialized")
+    except Exception as e:
+        logger.warning(f"Usage tracking tables initialization failed: {e}")
 
     # Log startup duration
     startup_duration_ms = int((time.perf_counter() - startup_start) * 1000)
@@ -303,6 +313,21 @@ def create_app() -> FastAPI:
     except Exception as e:
         logger.warning(f"Monitoring middlewares non activés: {e}")
 
+    # 🔧 Phase 2 Guardian Cloud: Usage tracking middleware
+    try:
+        from backend.middleware.usage_tracking import UsageTrackingMiddleware
+        from backend.features.usage.repository import UsageRepository
+
+        usage_middleware = UsageTrackingMiddleware(app)
+        # Injecter repository getter via DI
+        usage_middleware.set_repository_getter(
+            lambda: UsageRepository(container.db_manager())
+        )
+        app.add_middleware(UsageTrackingMiddleware)
+        logger.info("Usage tracking middleware activé")
+    except Exception as e:
+        logger.warning(f"Usage tracking middleware non activé: {e}")
+
     # CORS d'abord...
     app.add_middleware(
         CORSMiddleware,
@@ -382,6 +407,7 @@ def create_app() -> FastAPI:
     _mount_router(SYNC_ROUTER, "/api")  # Auto-sync endpoints at /api/sync/*
     _mount_router(SETTINGS_ROUTER)  # Settings endpoints at /api/settings/*
     _mount_router(GUARDIAN_ROUTER)  # Guardian auto-fix at /api/guardian/*
+    _mount_router(USAGE_ROUTER)  # Usage tracking at /api/usage/* (Phase 2 Guardian Cloud)
 
     # ⚠️ WS: **uniquement** features.chat.router (déclare /ws/{session_id})
     _mount_router(CHAT_ROUTER)  # pas de prefix → garde /ws/{session_id}
