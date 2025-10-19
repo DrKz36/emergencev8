@@ -1,0 +1,84 @@
+{% extends "email_base.html" %}
+
+{% block title %}Mise à jour Auth ÉMERGENCE{% endblock %}
+
+{% block header_title %}🔧 ÉMERGENCE V8{% endblock %}
+
+{% block header_subtitle %}
+<p class="header-subtitle">Mise à jour importante - Programme Beta</p>
+{% endblock %}
+
+{% block content %}
+<p>Bonjour cher beta-testeur,</p>
+
+<p>Nous vous écrivons pour vous informer que <strong>des problèmes d'authentification</strong> ont affecté certains utilisateurs de la beta ÉMERGENCE V8.</p>
+
+<div class="success">
+    <strong>🔧 Problème traité :</strong> L'équipe a identifié et corrigé le problème. Nous espérons que tout est maintenant résolu.
+</div>
+
+<div class="warning">
+    <strong>⚠️ Important à savoir :</strong><br>
+    ÉMERGENCE V8 est en phase beta. Il est tout à fait possible que d'autres problèmes surviennent (authentification, connexion ou autres fonctionnalités).
+</div>
+
+<h2 style="color: #3b82f6; margin-top: 30px;">🔐 Action recommandée</h2>
+
+<p>Pour remettre les choses à plat et garantir la sécurité de votre compte, nous vous recommandons de <strong>réinitialiser votre mot de passe</strong>.</p>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ reset_url }}" class="button" style="color: white; text-decoration: none;">🔑 Réinitialiser mon mot de passe</a>
+</div>
+
+<h2 style="color: #3b82f6; margin-top: 30px;">📝 Étapes recommandées</h2>
+<ol>
+    <li>Cliquez sur le bouton ci-dessus pour accéder à la page de réinitialisation</li>
+    <li>Saisissez votre adresse email (<strong>{{ to_email }}</strong>)</li>
+    <li>Vérifiez votre boîte mail pour le lien de réinitialisation</li>
+    <li>Créez un nouveau mot de passe sécurisé</li>
+    <li>Reconnectez-vous à ÉMERGENCE</li>
+</ol>
+
+<div class="alert">
+    <strong>🚨 Problème bloquant ? Contactez-nous immédiatement !</strong><br><br>
+    Si vous rencontrez un problème <strong>bloquant</strong> (authentification impossible, fonctionnalité majeure non fonctionnelle, etc.), merci de <strong>me contacter aussi vite que possible</strong> afin que l'équipe puisse intervenir rapidement.<br><br>
+    📧 Email : <strong>gonzalefernando@gmail.com</strong>
+</div>
+
+<h2 style="color: #3b82f6; margin-top: 30px;">📋 Formulaire de beta-test</h2>
+
+<p>Que vous ayez rencontré ou non des problèmes, votre feedback est <strong>absolument essentiel</strong> pour améliorer ÉMERGENCE. Merci de prendre quelques minutes pour remplir le formulaire de test beta :</p>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ report_url }}" class="button button-secondary" style="color: white; text-decoration: none;">📝 Remplir le formulaire beta</a>
+</div>
+
+<div class="highlight">
+    <strong>🎯 Votre feedback nous aide à :</strong>
+    <ul>
+        <li>Identifier les bugs et points de friction</li>
+        <li>Comprendre ce qui n'est pas clair ou intuitif</li>
+        <li>Prioriser les améliorations importantes</li>
+        <li>Créer une meilleure expérience utilisateur</li>
+    </ul>
+</div>
+
+<h2 style="color: #3b82f6; margin-top: 30px;">🙏 Merci pour votre patience</h2>
+
+<p>Votre participation active au programme beta est <strong>inestimable</strong> et nous permet d'améliorer continuellement la plateforme. Nous comptons sur vous pour nous aider à faire d'ÉMERGENCE la meilleure version possible !</p>
+
+<div class="signature">
+    <p>Toute l'équipe vous remercie ! 🙏<br><br>
+    L'équipe d'Émergence<br>
+    <strong>FG, Claude et Codex</strong></p>
+</div>
+{% endblock %}
+
+{% block footer %}
+<p><strong>Besoin d'aide ?</strong><br>
+📧 Email : gonzalefernando@gmail.com<br>
+📝 Formulaire : <a href="{{ report_url }}" style="color: #3b82f6;">beta_report.html</a></p>
+
+<p style="margin-top: 20px;">Cet email a été envoyé automatiquement par ÉMERGENCE.<br>
+Merci de ne pas répondre à cet email.</p>
+{% endblock %}

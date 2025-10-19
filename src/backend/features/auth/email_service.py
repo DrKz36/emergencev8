@@ -1,6 +1,7 @@
 """
 Email Service for authentication-related emails
-Handles password reset emails
+Handles password reset emails, beta invitations, Guardian reports
+Uses Jinja2 templates for clean HTML/text email generation
 """
 from __future__ import annotations
 
@@ -9,8 +10,12 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Optional
+from typing import Optional, Dict, Any
 from dataclasses import dataclass
+from pathlib import Path
+from datetime import datetime
+
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 logger = logging.getLogger("emergence.auth.email")
 
@@ -50,10 +55,20 @@ def build_email_config_from_env() -> EmailConfig:
 
 
 class EmailService:
-    """Service for sending authentication-related emails"""
+    """Service for sending emails using Jinja2 templates"""
 
     def __init__(self, config: Optional[EmailConfig] = None):
         self.config = config or build_email_config_from_env()
+
+        # Setup Jinja2 environment for email templates
+        templates_dir = Path(__file__).parent.parent.parent / "templates"
+        self.jinja_env = Environment(
+            loader=FileSystemLoader(str(templates_dir)),
+            autoescape=select_autoescape(['html', 'xml']),
+            trim_blocks=True,
+            lstrip_blocks=True,
+        )
+        logger.info(f"Jinja2 templates loaded from: {templates_dir}")
 
     def is_enabled(self) -> bool:
         """Check if email service is properly configured and enabled"""
@@ -63,6 +78,15 @@ class EmailService:
             and bool(self.config.smtp_user)
             and bool(self.config.smtp_password)
         )
+
+    def _render_template(self, template_name: str, context: Dict[str, Any]) -> str:
+        """Render a Jinja2 template with given context"""
+        try:
+            template = self.jinja_env.get_template(template_name)
+            return template.render(**context)
+        except Exception as e:
+            logger.error(f"Error rendering template {template_name}: {e}")
+            raise
 
     async def send_beta_invitation_email(
         self,
@@ -83,240 +107,15 @@ class EmailService:
             logger.warning("Email service is not enabled or not configured")
             return False
 
-        app_url = base_url
-        report_url = f"{base_url}/beta_report.html"
+        context = {
+            'to_email': to_email,
+            'app_url': base_url,
+            'report_url': f"{base_url}/beta_report.html",
+        }
 
         subject = "🎉 Bienvenue dans le programme Beta ÉMERGENCE V8"
-
-        html_body = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }}
-        .container {{
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            border-radius: 16px;
-            padding: 40px;
-            color: #e2e8f0;
-        }}
-        .header {{
-            text-align: center;
-            margin-bottom: 30px;
-        }}
-        .header img {{
-            max-width: 120px;
-            margin-bottom: 15px;
-        }}
-        .header h1 {{
-            color: #3b82f6;
-            margin: 0;
-            font-size: 28px;
-        }}
-        .content {{
-            margin: 20px 0;
-        }}
-        .button {{
-            display: inline-block;
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white !important;
-            text-decoration: none;
-            padding: 14px 28px;
-            border-radius: 8px;
-            font-weight: 600;
-            margin: 10px 5px;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }}
-        .button:hover {{
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        }}
-        .button-secondary {{
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }}
-        .button-secondary:hover {{
-            background: linear-gradient(135deg, #059669 0%, #047857 100%);
-        }}
-        .highlight {{
-            background: rgba(59, 130, 246, 0.1);
-            border-left: 4px solid #3b82f6;
-            border-radius: 4px;
-            padding: 15px;
-            margin: 20px 0;
-        }}
-        .phases {{
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }}
-        .phase-item {{
-            margin: 10px 0;
-            padding-left: 20px;
-        }}
-        .footer {{
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 14px;
-            color: #94a3b8;
-        }}
-        .signature {{
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            font-style: italic;
-            color: #cbd5e1;
-        }}
-        ul {{
-            margin: 10px 0;
-            padding-left: 20px;
-        }}
-        li {{
-            margin: 8px 0;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <img src="https://emergence-app.ch/assets/emergence_logo.png" alt="ÉMERGENCE Logo">
-            <h1>🎉 ÉMERGENCE V8</h1>
-            <p>Programme Beta 1.0</p>
-        </div>
-
-        <div class="content">
-            <p>Bonjour,</p>
-
-            <p>Nous sommes ravis de vous inviter à participer au <strong>programme Beta ÉMERGENCE V8</strong> ! 🚀</p>
-
-            <div class="highlight">
-                <strong>📅 Dates de la beta :</strong> 13 octobre - 3 novembre 2025<br>
-                <strong>🎯 Objectif :</strong> Tester la plateforme et nous aider à l'améliorer avant le lancement public
-            </div>
-
-            <h2 style="color: #3b82f6; margin-top: 30px;">🔑 Accès à la plateforme</h2>
-            <p>Votre email <strong>{to_email}</strong> a été ajouté à l'allowlist. Vous pouvez maintenant accéder à la plateforme :</p>
-
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{app_url}" class="button">🚀 Accéder à ÉMERGENCE</a>
-            </div>
-
-            <h2 style="color: #3b82f6; margin-top: 30px;">✅ Que tester ?</h2>
-            <div class="phases">
-                <p><strong>8 phases de test à explorer :</strong></p>
-                <div class="phase-item">📝 Phase 1 : Authentification & Onboarding</div>
-                <div class="phase-item">💬 Phase 2 : Chat avec les agents (Anima, Neo, Nexus)</div>
-                <div class="phase-item">🧠 Phase 3 : Système de mémoire</div>
-                <div class="phase-item">📄 Phase 4 : Documents & RAG</div>
-                <div class="phase-item">🎭 Phase 5 : Débats autonomes</div>
-                <div class="phase-item">📊 Phase 6 : Cockpit & Analytics</div>
-                <div class="phase-item">⚡ Phase 7 : Tests de robustesse</div>
-                <div class="phase-item">🐛 Phase 8 : Edge cases</div>
-            </div>
-
-            <h2 style="color: #3b82f6; margin-top: 30px;">📋 Formulaire de rapport</h2>
-            <p>Une fois vos tests effectués (ou en cours), merci de remplir le formulaire de rapport beta pour nous faire part de vos retours :</p>
-
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{report_url}" class="button button-secondary">📝 Remplir le formulaire de test</a>
-            </div>
-
-            <h2 style="color: #3b82f6; margin-top: 30px;">💡 Conseils</h2>
-            <ul>
-                <li>Prenez le temps d'explorer chaque fonctionnalité</li>
-                <li>Notez tous les bugs, même mineurs</li>
-                <li>N'hésitez pas à nous faire part de vos suggestions</li>
-                <li>Testez sur différents navigateurs si possible</li>
-                <li>Le formulaire sauvegarde votre progression automatiquement</li>
-            </ul>
-
-            <div class="highlight">
-                <strong>🐛 Bugs connus :</strong><br>
-                Consultez la documentation beta pour connaître les bugs déjà identifiés et leurs workarounds.
-            </div>
-
-            <div class="signature">
-                <p>Merci infiniment pour votre participation ! 🙏<br><br>
-                L'équipe d'Émergence<br>
-                <strong>FG, Claude et Codex</strong></p>
-            </div>
-        </div>
-
-        <div class="footer">
-            <p><strong>Besoin d'aide ?</strong><br>
-            📧 Email : gonzalefernando@gmail.com<br>
-            📝 Formulaire : <a href="{report_url}" style="color: #3b82f6;">beta_report.html</a></p>
-
-            <p style="margin-top: 20px;">Cet email a été envoyé automatiquement par ÉMERGENCE.<br>
-            Merci de ne pas répondre à cet email.</p>
-        </div>
-    </div>
-</body>
-</html>
-        """
-
-        text_body = f"""
-🎉 BIENVENUE DANS LE PROGRAMME BETA ÉMERGENCE V8
-
-Bonjour,
-
-Nous sommes ravis de vous inviter à participer au programme Beta ÉMERGENCE V8 !
-
-📅 DATES DE LA BETA
-Du 13 octobre au 3 novembre 2025
-
-🎯 OBJECTIF
-Tester la plateforme et nous aider à l'améliorer avant le lancement public
-
-🔑 ACCÈS À LA PLATEFORME
-Votre email {to_email} a été ajouté à l'allowlist.
-Accédez à la plateforme : {app_url}
-
-✅ QUE TESTER ?
-
-8 phases de test à explorer :
-- Phase 1 : Authentification & Onboarding
-- Phase 2 : Chat avec les agents (Anima, Neo, Nexus)
-- Phase 3 : Système de mémoire
-- Phase 4 : Documents & RAG
-- Phase 5 : Débats autonomes
-- Phase 6 : Cockpit & Analytics
-- Phase 7 : Tests de robustesse
-- Phase 8 : Edge cases
-
-📋 FORMULAIRE DE RAPPORT
-Une fois vos tests effectués, merci de remplir le formulaire :
-{report_url}
-
-💡 CONSEILS
-- Prenez le temps d'explorer chaque fonctionnalité
-- Notez tous les bugs, même mineurs
-- N'hésitez pas à nous faire part de vos suggestions
-- Testez sur différents navigateurs si possible
-- Le formulaire sauvegarde votre progression automatiquement
-
-BESOIN D'AIDE ?
-Email : gonzalefernando@gmail.com
-Formulaire : {report_url}
-
-Merci infiniment pour votre participation ! 🙏
-
-L'équipe d'Émergence
-FG, Claude et Codex
-
----
-Cet email a été envoyé automatiquement par ÉMERGENCE.
-Merci de ne pas répondre à cet email.
-        """
+        html_body = self._render_template('beta_invitation_email.html', context)
+        text_body = self._render_template('beta_invitation_email.txt', context)
 
         return await self._send_email(
             to_email=to_email,
@@ -374,271 +173,15 @@ Merci de ne pas répondre à cet email.
             logger.warning("Email service is not enabled or not configured")
             return False
 
-        reset_url = f"{base_url}/reset-password.html"
-        report_url = f"{base_url}/beta_report.html"
+        context = {
+            'to_email': to_email,
+            'reset_url': f"{base_url}/reset-password.html",
+            'report_url': f"{base_url}/beta_report.html",
+        }
 
         subject = "🔧 ÉMERGENCE Beta - Mise à jour importante sur l'authentification"
-
-        html_body = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }}
-        .container {{
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            border-radius: 16px;
-            padding: 40px;
-            color: #e2e8f0;
-        }}
-        .header {{
-            text-align: center;
-            margin-bottom: 30px;
-        }}
-        .header img {{
-            max-width: 120px;
-            margin-bottom: 15px;
-        }}
-        .header h1 {{
-            color: #3b82f6;
-            margin: 0;
-            font-size: 28px;
-        }}
-        .content {{
-            margin: 20px 0;
-        }}
-        .button {{
-            display: inline-block;
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white !important;
-            text-decoration: none;
-            padding: 14px 28px;
-            border-radius: 8px;
-            font-weight: 600;
-            margin: 10px 5px;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }}
-        .button:hover {{
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        }}
-        .button-secondary {{
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }}
-        .button-secondary:hover {{
-            background: linear-gradient(135deg, #059669 0%, #047857 100%);
-        }}
-        .highlight {{
-            background: rgba(59, 130, 246, 0.1);
-            border-left: 4px solid #3b82f6;
-            border-radius: 4px;
-            padding: 15px;
-            margin: 20px 0;
-        }}
-        .warning {{
-            background: rgba(251, 191, 36, 0.1);
-            border-left: 4px solid #f59e0b;
-            border-radius: 4px;
-            padding: 15px;
-            margin: 20px 0;
-        }}
-        .alert {{
-            background: rgba(239, 68, 68, 0.1);
-            border-left: 4px solid #ef4444;
-            border-radius: 4px;
-            padding: 15px;
-            margin: 20px 0;
-        }}
-        .success {{
-            background: rgba(16, 185, 129, 0.1);
-            border-left: 4px solid #10b981;
-            border-radius: 4px;
-            padding: 15px;
-            margin: 20px 0;
-        }}
-        .footer {{
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 14px;
-            color: #94a3b8;
-        }}
-        .signature {{
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            font-style: italic;
-            color: #cbd5e1;
-        }}
-        ul {{
-            margin: 10px 0;
-            padding-left: 20px;
-        }}
-        li {{
-            margin: 8px 0;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <img src="https://emergence-app.ch/assets/emergence_logo.png" alt="ÉMERGENCE Logo">
-            <h1>🔧 ÉMERGENCE V8</h1>
-            <p>Mise à jour importante - Programme Beta</p>
-        </div>
-
-        <div class="content">
-            <p>Bonjour cher beta-testeur,</p>
-
-            <p>Nous vous écrivons pour vous informer que <strong>des problèmes d'authentification</strong> ont affecté certains utilisateurs de la beta ÉMERGENCE V8.</p>
-
-            <div class="success">
-                <strong>🔧 Problème traité :</strong> L'équipe a identifié et corrigé le problème. Nous espérons que tout est maintenant résolu.
-            </div>
-
-            <div class="warning">
-                <strong>⚠️ Important à savoir :</strong><br>
-                ÉMERGENCE V8 est en phase beta. Il est tout à fait possible que d'autres problèmes surviennent (authentification, connexion ou autres fonctionnalités).
-            </div>
-
-            <h2 style="color: #3b82f6; margin-top: 30px;">🔐 Action recommandée</h2>
-
-            <p>Pour remettre les choses à plat et garantir la sécurité de votre compte, nous vous recommandons de <strong>réinitialiser votre mot de passe</strong>.</p>
-
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{reset_url}" class="button">🔑 Réinitialiser mon mot de passe</a>
-            </div>
-
-            <h2 style="color: #3b82f6; margin-top: 30px;">📝 Étapes recommandées</h2>
-            <ol>
-                <li>Cliquez sur le bouton ci-dessus pour accéder à la page de réinitialisation</li>
-                <li>Saisissez votre adresse email (<strong>{to_email}</strong>)</li>
-                <li>Vérifiez votre boîte mail pour le lien de réinitialisation</li>
-                <li>Créez un nouveau mot de passe sécurisé</li>
-                <li>Reconnectez-vous à ÉMERGENCE</li>
-            </ol>
-
-            <div class="alert">
-                <strong>🚨 Problème bloquant ? Contactez-nous immédiatement !</strong><br><br>
-                Si vous rencontrez un problème <strong>bloquant</strong> (authentification impossible, fonctionnalité majeure non fonctionnelle, etc.), merci de <strong>me contacter aussi vite que possible</strong> afin que l'équipe puisse intervenir rapidement.<br><br>
-                📧 Email : <strong>gonzalefernando@gmail.com</strong>
-            </div>
-
-            <h2 style="color: #3b82f6; margin-top: 30px;">📋 Formulaire de beta-test</h2>
-
-            <p>Que vous ayez rencontré ou non des problèmes, votre feedback est <strong>absolument essentiel</strong> pour améliorer ÉMERGENCE. Merci de prendre quelques minutes pour remplir le formulaire de test beta :</p>
-
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{report_url}" class="button button-secondary">📝 Remplir le formulaire beta</a>
-            </div>
-
-            <div class="highlight">
-                <strong>🎯 Votre feedback nous aide à :</strong>
-                <ul>
-                    <li>Identifier les bugs et points de friction</li>
-                    <li>Comprendre ce qui n'est pas clair ou intuitif</li>
-                    <li>Prioriser les améliorations importantes</li>
-                    <li>Créer une meilleure expérience utilisateur</li>
-                </ul>
-            </div>
-
-            <h2 style="color: #3b82f6; margin-top: 30px;">🙏 Merci pour votre patience</h2>
-
-            <p>Votre participation active au programme beta est <strong>inestimable</strong> et nous permet d'améliorer continuellement la plateforme. Nous comptons sur vous pour nous aider à faire d'ÉMERGENCE la meilleure version possible !</p>
-
-            <div class="signature">
-                <p>Toute l'équipe vous remercie ! 🙏<br><br>
-                L'équipe d'Émergence<br>
-                <strong>FG, Claude et Codex</strong></p>
-            </div>
-        </div>
-
-        <div class="footer">
-            <p><strong>Besoin d'aide ?</strong><br>
-            📧 Email : gonzalefernando@gmail.com<br>
-            📝 Formulaire : <a href="{report_url}" style="color: #3b82f6;">beta_report.html</a></p>
-
-            <p style="margin-top: 20px;">Cet email a été envoyé automatiquement par ÉMERGENCE.<br>
-            Merci de ne pas répondre à cet email.</p>
-        </div>
-    </div>
-</body>
-</html>
-        """
-
-        text_body = f"""
-🔧 ÉMERGENCE V8 - Mise à jour importante sur l'authentification
-
-Bonjour cher beta-testeur,
-
-Nous vous écrivons pour vous informer que des problèmes d'authentification ont affecté certains utilisateurs de la beta ÉMERGENCE V8.
-
-🔧 PROBLÈME TRAITÉ
-
-L'équipe a identifié et corrigé le problème. Nous espérons que tout est maintenant résolu.
-
-⚠️ IMPORTANT À SAVOIR
-
-ÉMERGENCE V8 est en phase beta. Il est tout à fait possible que d'autres problèmes surviennent (authentification, connexion ou autres fonctionnalités).
-
-🔐 ACTION RECOMMANDÉE
-
-Pour remettre les choses à plat et garantir la sécurité de votre compte, nous vous recommandons de réinitialiser votre mot de passe.
-
-Accédez à la page de réinitialisation :
-{reset_url}
-
-📝 ÉTAPES RECOMMANDÉES
-
-1. Cliquez sur le lien ci-dessus pour accéder à la page de réinitialisation
-2. Saisissez votre adresse email ({to_email})
-3. Vérifiez votre boîte mail pour le lien de réinitialisation
-4. Créez un nouveau mot de passe sécurisé
-5. Reconnectez-vous à ÉMERGENCE
-
-🚨 PROBLÈME BLOQUANT ? CONTACTEZ-NOUS IMMÉDIATEMENT !
-
-Si vous rencontrez un problème BLOQUANT (authentification impossible, fonctionnalité majeure non fonctionnelle, etc.), merci de me contacter aussi vite que possible afin que l'équipe puisse intervenir rapidement.
-
-📧 Email : gonzalefernando@gmail.com
-
-📋 FORMULAIRE DE BETA-TEST
-
-Que vous ayez rencontré ou non des problèmes, votre feedback est absolument essentiel pour améliorer ÉMERGENCE. Merci de prendre quelques minutes pour remplir le formulaire :
-
-{report_url}
-
-🎯 Votre feedback nous aide à :
-- Identifier les bugs et points de friction
-- Comprendre ce qui n'est pas clair ou intuitif
-- Prioriser les améliorations importantes
-- Créer une meilleure expérience utilisateur
-
-🙏 MERCI POUR VOTRE PATIENCE
-
-Votre participation active au programme beta est inestimable et nous permet d'améliorer continuellement la plateforme. Nous comptons sur vous pour nous aider à faire d'ÉMERGENCE la meilleure version possible !
-
-Toute l'équipe vous remercie !
-
-L'équipe d'Émergence
-FG, Claude et Codex
-
----
-BESOIN D'AIDE ?
-Email : gonzalefernando@gmail.com
-Formulaire : {report_url}
-
-Cet email a été envoyé automatiquement par ÉMERGENCE.
-Merci de ne pas répondre à cet email.
-        """
+        html_body = self._render_template('auth_issue_email.html', context)
+        text_body = self._render_template('beta_invitation_email.txt', context)  # Reuse text template
 
         return await self._send_email(
             to_email=to_email,
@@ -668,151 +211,13 @@ Merci de ne pas répondre à cet email.
             logger.warning("Email service is not enabled or not configured")
             return False
 
-        reset_link = f"{base_url}/reset-password.html?token={reset_token}"
+        context = {
+            'reset_link': f"{base_url}/reset-password.html?token={reset_token}",
+        }
 
         subject = "Réinitialisation de votre mot de passe ÉMERGENCE"
-
-        html_body = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }}
-        .container {{
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            border-radius: 16px;
-            padding: 40px;
-            color: #e2e8f0;
-        }}
-        .header {{
-            text-align: center;
-            margin-bottom: 30px;
-        }}
-        .header img {{
-            max-width: 120px;
-            margin-bottom: 15px;
-        }}
-        .header h1 {{
-            color: #3b82f6;
-            margin: 0;
-            font-size: 28px;
-        }}
-        .content {{
-            margin: 20px 0;
-        }}
-        .button {{
-            display: inline-block;
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white !important;
-            text-decoration: none;
-            padding: 14px 28px;
-            border-radius: 8px;
-            font-weight: 600;
-            margin: 20px 0;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }}
-        .button:hover {{
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        }}
-        .footer {{
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 14px;
-            color: #94a3b8;
-        }}
-        .signature {{
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            font-style: italic;
-            color: #cbd5e1;
-        }}
-        .warning {{
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 8px;
-            padding: 12px;
-            margin: 20px 0;
-            color: #fca5a5;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <img src="https://emergence-app.ch/assets/emergence_logo.png" alt="ÉMERGENCE Logo">
-            <h1>🔒 ÉMERGENCE</h1>
-            <p>Réinitialisation de mot de passe</p>
-        </div>
-
-        <div class="content">
-            <p>Bonjour,</p>
-
-            <p>Vous avez demandé la réinitialisation de votre mot de passe pour votre compte ÉMERGENCE.</p>
-
-            <p>Pour créer un nouveau mot de passe, veuillez cliquer sur le bouton ci-dessous :</p>
-
-            <div style="text-align: center;">
-                <a href="{reset_link}" class="button">Réinitialiser mon mot de passe</a>
-            </div>
-
-            <p>Ou copiez ce lien dans votre navigateur :</p>
-            <p style="word-break: break-all; background: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 4px;">
-                {reset_link}
-            </p>
-
-            <div class="warning">
-                ⚠️ <strong>Important :</strong> Ce lien est valable pendant 1 heure seulement.
-            </div>
-
-            <p>Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email en toute sécurité.</p>
-
-            <div class="signature">
-                <p>L'équipe d'Émergence<br>
-                <strong>FG, Claude et Codex</strong></p>
-            </div>
-        </div>
-
-        <div class="footer">
-            <p>Cet email a été envoyé automatiquement par ÉMERGENCE.<br>
-            Merci de ne pas répondre à cet email.</p>
-        </div>
-    </div>
-</body>
-</html>
-        """
-
-        text_body = f"""
-Réinitialisation de votre mot de passe ÉMERGENCE
-
-Bonjour,
-
-Vous avez demandé la réinitialisation de votre mot de passe pour votre compte ÉMERGENCE.
-
-Pour créer un nouveau mot de passe, veuillez cliquer sur le lien ci-dessous :
-
-{reset_link}
-
-⚠️ Important : Ce lien est valable pendant 1 heure seulement.
-
-Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email en toute sécurité.
-
-L'équipe d'Émergence
-FG, Claude et Codex
-
----
-Cet email a été envoyé automatiquement par ÉMERGENCE.
-Merci de ne pas répondre à cet email.
-        """
+        html_body = self._render_template('password_reset_email.html', context)
+        text_body = self._render_template('password_reset_email.txt', context)
 
         return await self._send_email(
             to_email=to_email,
@@ -820,6 +225,134 @@ Merci de ne pas répondre à cet email.
             html_body=html_body,
             text_body=text_body,
         )
+
+    async def send_guardian_report(
+        self,
+        to_email: str,
+        reports: Dict[str, Optional[Dict]],
+        base_url: str = "https://emergence-app.ch",
+    ) -> bool:
+        """
+        Send Guardian monitoring report email
+
+        Args:
+            to_email: Admin email address
+            reports: Dictionary of Guardian reports (prod, docs, integrity, unified, global)
+            base_url: Base URL for links
+
+        Returns:
+            True if sent successfully
+        """
+        if not self.is_enabled():
+            logger.warning("Email service is not enabled or not configured")
+            return False
+
+        # Determine global status
+        global_status = self._determine_global_status(reports)
+
+        # Prepare summary
+        summary = self._prepare_summary(reports)
+
+        # Collect all problems for details section
+        all_problems = self._collect_all_problems(reports)
+
+        # Build context for template
+        context = {
+            'timestamp': datetime.now().strftime("%d/%m/%Y à %H:%M:%S"),
+            'global_status': global_status,
+            'summary': summary,
+            'prod_report': reports.get('prod_report.json'),
+            'docs_report': reports.get('docs_report.json'),
+            'integrity_report': reports.get('integrity_report.json'),
+            'unified_report': reports.get('unified_report.json'),
+            'usage_stats': reports.get('usage_stats'),  # For Phase 2
+            'all_problems': all_problems,
+            'admin_ui_url': f"{base_url}/admin",
+            'cloud_storage_url': f"{base_url}/api/guardian/reports",
+            'cloud_logging_url': "https://console.cloud.google.com/logs/query",
+        }
+
+        subject = f"🛡️ Guardian ÉMERGENCE - {global_status} - {datetime.now().strftime('%d/%m %H:%M')}"
+        html_body = self._render_template('guardian_report_email.html', context)
+        text_body = self._render_template('guardian_report_email.txt', context)
+
+        return await self._send_email(
+            to_email=to_email,
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+        )
+
+    def _determine_global_status(self, reports: Dict[str, Optional[Dict]]) -> str:
+        """Determine global status from all reports"""
+        # Try global_report first
+        global_report = reports.get('global_report.json')
+        if global_report and isinstance(global_report, dict):
+            return global_report.get('status', 'UNKNOWN')
+
+        # Otherwise aggregate from individual reports
+        has_critical = False
+        has_warning = False
+
+        for report_data in reports.values():
+            if report_data and isinstance(report_data, dict):
+                status = report_data.get('status', '').upper()
+                if status in ['CRITICAL', 'ERROR', 'FAILED']:
+                    has_critical = True
+                elif status in ['WARNING', 'DEGRADED', 'NEEDS_UPDATE']:
+                    has_warning = True
+
+        if has_critical:
+            return 'CRITICAL'
+        elif has_warning:
+            return 'WARNING'
+        else:
+            return 'OK'
+
+    def _prepare_summary(self, reports: Dict[str, Optional[Dict]]) -> Dict[str, int]:
+        """Prepare summary metrics from all reports"""
+        summary = {
+            'critical_count': 0,
+            'warning_count': 0,
+            'active_users': 0,
+        }
+
+        for report_data in reports.values():
+            if report_data and isinstance(report_data, dict):
+                report_summary = report_data.get('summary')
+                if report_summary and isinstance(report_summary, dict):
+                    summary['critical_count'] += report_summary.get('critical_count', 0)
+                    summary['warning_count'] += report_summary.get('warning_count', 0)
+
+        return summary
+
+    def _collect_all_problems(self, reports: Dict[str, Optional[Dict]]) -> list:
+        """Collect all problems/recommendations from reports"""
+        all_problems = []
+
+        # Map report keys to source names
+        source_map = {
+            'prod_report.json': '☁️ Production',
+            'docs_report.json': '📚 Documentation',
+            'integrity_report.json': '🔐 Intégrité',
+        }
+
+        for report_key, source_name in source_map.items():
+            report_data = reports.get(report_key)
+            if report_data and isinstance(report_data, dict):
+                recs = report_data.get('recommendations', [])
+                if recs and isinstance(recs, list):
+                    for rec in recs:
+                        if isinstance(rec, dict):
+                            all_problems.append({
+                                'source': source_name,
+                                'priority': rec.get('priority', 'MEDIUM'),
+                                'action': rec.get('action', 'N/A'),
+                                'file': rec.get('file', ''),
+                                'details': rec.get('details', '')
+                            })
+
+        return all_problems
 
     async def _send_email(
         self,
@@ -866,7 +399,7 @@ Merci de ne pas répondre à cet email.
             server.send_message(msg)
             server.quit()
 
-            logger.info(f"Password reset email sent successfully to {to_email}")
+            logger.info(f"Email sent successfully to {to_email}")
             return True
 
         except smtplib.SMTPAuthenticationError as e:

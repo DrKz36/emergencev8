@@ -1,0 +1,103 @@
+🛡️ RAPPORT GUARDIAN ÉMERGENCE V8
+{'='*70}
+
+Généré le: {{ timestamp }}
+Statut Global: {{ global_status }}
+
+{'='*70}
+
+{% if prod_report %}
+☁️ PRODUCTION CLOUD RUN
+{'-'*70}
+Statut: {{ prod_report.status | default('UNKNOWN') }}
+{% if prod_report.summary %}
+• Logs analysés: {{ prod_report.summary.total_logs | default(0) }}
+• Erreurs: {{ prod_report.summary.error_count | default(0) }}
+• Warnings: {{ prod_report.summary.warning_count | default(0) }}
+• Critiques: {{ prod_report.summary.critical_count | default(0) }}
+{% endif %}
+
+{% if prod_report.recommendations %}
+📋 Recommandations:
+{% for rec in prod_report.recommendations[:3] %}
+  [{{ rec.priority }}] {{ rec.action }}
+{% endfor %}
+{% endif %}
+
+{% endif %}
+
+{% if docs_report %}
+📚 DOCUMENTATION (ANIMA)
+{'-'*70}
+Statut: {{ docs_report.status | default('UNKNOWN') }}
+{% if docs_report.summary %}
+• Gaps détectés: {{ docs_report.summary.total_gaps | default(0) }}
+• Mises à jour proposées: {{ docs_report.summary.proposed_updates | default(0) }}
+{% endif %}
+
+{% if docs_report.recommendations %}
+📋 Recommandations:
+{% for rec in docs_report.recommendations[:3] %}
+  [{{ rec.priority }}] {{ rec.action }}
+{% endfor %}
+{% endif %}
+
+{% endif %}
+
+{% if integrity_report %}
+🔐 INTÉGRITÉ SYSTÈME (NEO)
+{'-'*70}
+Statut: {{ integrity_report.status | default('UNKNOWN') }}
+{% if integrity_report.summary %}
+• Problèmes critiques: {{ integrity_report.summary.critical_count | default(0) }}
+• Warnings: {{ integrity_report.summary.warning_count | default(0) }}
+{% endif %}
+
+{% if integrity_report.recommendations %}
+📋 Recommandations:
+{% for rec in integrity_report.recommendations[:3] %}
+  [{{ rec.priority }}] {{ rec.action }}
+{% endfor %}
+{% endif %}
+
+{% endif %}
+
+{% if unified_report %}
+🎯 RAPPORT UNIFIÉ (NEXUS)
+{'-'*70}
+Statut: {{ unified_report.status | default('UNKNOWN') }}
+{% if unified_report.priority_actions %}
+• Actions prioritaires: {{ unified_report.priority_actions | length }}
+{% endif %}
+
+{% endif %}
+
+{% if usage_stats %}
+👥 STATISTIQUES D'UTILISATION
+{'-'*70}
+• Utilisateurs actifs (2h): {{ usage_stats.active_users | default(0) }}
+• Features utilisées: {{ usage_stats.features_used | length if usage_stats.features_used else 0 }}
+• Erreurs utilisateur: {{ usage_stats.user_errors | default(0) }}
+
+{% endif %}
+
+{'='*70}
+
+🔗 LIENS RAPIDES
+
+• Admin Dashboard: {{ admin_ui_url }}
+• Rapports Complets: {{ cloud_storage_url }}
+{% if cloud_logging_url %}
+• Cloud Logging: {{ cloud_logging_url }}
+{% endif %}
+
+{'='*70}
+
+🤖 Guardian Autonomous Monitoring System
+ÉMERGENCE V8 - Rapports automatiques toutes les 2h
+
+Contact: gonzalefernando@gmail.com
+
+---
+Cet email a été envoyé automatiquement par ÉMERGENCE.
+Merci de ne pas répondre à cet email.

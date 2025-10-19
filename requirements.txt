@@ -41,6 +41,9 @@ aiofiles==24.1.0                 # match env stable
 PyMuPDF>=1.24.10,<1.25           # recent fitz/PyMuPDF
 python-docx>=1.1.0,<1.2
 
+# --- Email templates ---
+Jinja2>=3.1,<4                   # Email templates rendering
+
 # OS specific (magic/libmagic)
 python-magic>=0.4.27; platform_system!="Windows"
 python-magic-bin>=0.4.14; platform_system=="Windows"

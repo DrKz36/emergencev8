@@ -1,0 +1,377 @@
+{% extends "email_base.html" %}
+
+{% block title %}Guardian Report ÉMERGENCE{% endblock %}
+
+{% block extra_styles %}
+/* Guardian-specific styles */
+.section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    border-left: 4px solid #3b82f6;
+}
+.section-title {
+    color: #3b82f6;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.status-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    color: white;
+}
+.status-ok { background: #10b981; }
+.status-warning { background: #f59e0b; }
+.status-critical { background: #ef4444; }
+.status-unknown { background: #6b7280; }
+
+.metric {
+    margin: 12px 0;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.metric:last-child {
+    border-bottom: none;
+}
+.metric-label {
+    color: #94a3b8;
+    font-size: 14px;
+}
+.metric-value {
+    color: #e2e8f0;
+    font-weight: 600;
+    font-size: 18px;
+    margin-top: 4px;
+}
+
+.recommendations {
+    background: rgba(251, 191, 36, 0.1);
+    border-left: 4px solid #f59e0b;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+}
+.recommendations-title {
+    color: #f59e0b;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.details-section {
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 4px solid #ef4444;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+.details-title {
+    color: #ef4444;
+    font-weight: 600;
+    font-size: 18px;
+    margin-bottom: 15px;
+}
+.problem-item {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 12px;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+.problem-priority {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: 8px;
+}
+.priority-CRITICAL { background: #dc2626; color: white; }
+.priority-HIGH { background: #f59e0b; color: white; }
+.priority-MEDIUM { background: #3b82f6; color: white; }
+.priority-LOW { background: #6b7280; color: white; }
+
+.timestamp {
+    color: #94a3b8;
+    font-size: 14px;
+    margin-top: 10px;
+}
+{% endblock %}
+
+{% block header_title %}🛡️ Guardian ÉMERGENCE V8{% endblock %}
+
+{% block header_subtitle %}
+<p class="header-subtitle">Rapport de Monitoring Automatique</p>
+<p class="timestamp">{{ timestamp }}</p>
+<div style="margin-top: 15px;">
+    {% if global_status == 'OK' %}
+    <span class="status-badge status-ok">✅ {{ global_status }}</span>
+    {% elif global_status == 'WARNING' %}
+    <span class="status-badge status-warning">⚠️ {{ global_status }}</span>
+    {% elif global_status == 'CRITICAL' %}
+    <span class="status-badge status-critical">🚨 {{ global_status }}</span>
+    {% else %}
+    <span class="status-badge status-unknown">❓ {{ global_status }}</span>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Executive Summary -->
+<div class="section">
+    <div class="section-title">
+        <span>📊 Executive Summary</span>
+    </div>
+    <div class="metric">
+        <div class="metric-label">Statut Global</div>
+        <div class="metric-value">{{ global_status }}</div>
+    </div>
+    <div class="metric">
+        <div class="metric-label">Problèmes Critiques</div>
+        <div class="metric-value">{{ summary.critical_count | default(0) }}</div>
+    </div>
+    <div class="metric">
+        <div class="metric-label">Avertissements</div>
+        <div class="metric-value">{{ summary.warning_count | default(0) }}</div>
+    </div>
+    {% if summary.active_users is defined %}
+    <div class="metric">
+        <div class="metric-label">Utilisateurs Actifs</div>
+        <div class="metric-value">{{ summary.active_users }}</div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Production Guardian -->
+{% if prod_report %}
+<div class="section">
+    <div class="section-title">
+        <span>☁️ Production Cloud Run</span>
+        {% set prod_status = prod_report.status | default('UNKNOWN') %}
+        {% if prod_status == 'OK' %}
+        <span class="status-badge status-ok">✅ {{ prod_status }}</span>
+        {% elif prod_status == 'WARNING' %}
+        <span class="status-badge status-warning">⚠️ {{ prod_status }}</span>
+        {% elif prod_status == 'CRITICAL' %}
+        <span class="status-badge status-critical">🚨 {{ prod_status }}</span>
+        {% else %}
+        <span class="status-badge status-unknown">❓ {{ prod_status }}</span>
+        {% endif %}
+    </div>
+
+    {% if prod_report.summary %}
+    <div class="metric">
+        <div class="metric-label">Logs Analysés</div>
+        <div class="metric-value">{{ prod_report.summary.total_logs | default(0) }}</div>
+    </div>
+    <div class="metric">
+        <div class="metric-label">Erreurs Détectées</div>
+        <div class="metric-value">{{ prod_report.summary.error_count | default(0) }}</div>
+    </div>
+    <div class="metric">
+        <div class="metric-label">Warnings</div>
+        <div class="metric-value">{{ prod_report.summary.warning_count | default(0) }}</div>
+    </div>
+    <div class="metric">
+        <div class="metric-label">Problèmes Critiques</div>
+        <div class="metric-value">{{ prod_report.summary.critical_count | default(0) }}</div>
+    </div>
+    {% endif %}
+
+    {% if prod_report.recommendations %}
+    <div class="recommendations">
+        <div class="recommendations-title">📋 Recommandations</div>
+        <ul>
+        {% for rec in prod_report.recommendations[:3] %}
+            <li>[{{ rec.priority }}] {{ rec.action }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Documentation (Anima) -->
+{% if docs_report %}
+<div class="section">
+    <div class="section-title">
+        <span>📚 Documentation (Anima)</span>
+        {% set docs_status = docs_report.status | default('UNKNOWN') %}
+        {% if docs_status == 'OK' %}
+        <span class="status-badge status-ok">✅ {{ docs_status }}</span>
+        {% elif docs_status in ['WARNING', 'NEEDS_UPDATE'] %}
+        <span class="status-badge status-warning">⚠️ {{ docs_status }}</span>
+        {% elif docs_status == 'CRITICAL' %}
+        <span class="status-badge status-critical">🚨 {{ docs_status }}</span>
+        {% else %}
+        <span class="status-badge status-unknown">❓ {{ docs_status }}</span>
+        {% endif %}
+    </div>
+
+    {% if docs_report.summary %}
+    <div class="metric">
+        <div class="metric-label">Gaps Détectés</div>
+        <div class="metric-value">{{ docs_report.summary.total_gaps | default(0) }}</div>
+    </div>
+    <div class="metric">
+        <div class="metric-label">Mises à Jour Proposées</div>
+        <div class="metric-value">{{ docs_report.summary.proposed_updates | default(0) }}</div>
+    </div>
+    {% endif %}
+
+    {% if docs_report.recommendations %}
+    <div class="recommendations">
+        <div class="recommendations-title">📋 Recommandations</div>
+        <ul>
+        {% for rec in docs_report.recommendations[:3] %}
+            <li>[{{ rec.priority }}] {{ rec.action }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Intégrité (Neo) -->
+{% if integrity_report %}
+<div class="section">
+    <div class="section-title">
+        <span>🔐 Intégrité Système (Neo)</span>
+        {% set integrity_status = integrity_report.status | default('UNKNOWN') %}
+        {% if integrity_status == 'OK' %}
+        <span class="status-badge status-ok">✅ {{ integrity_status }}</span>
+        {% elif integrity_status == 'WARNING' %}
+        <span class="status-badge status-warning">⚠️ {{ integrity_status }}</span>
+        {% elif integrity_status == 'CRITICAL' %}
+        <span class="status-badge status-critical">🚨 {{ integrity_status }}</span>
+        {% else %}
+        <span class="status-badge status-unknown">❓ {{ integrity_status }}</span>
+        {% endif %}
+    </div>
+
+    {% if integrity_report.summary %}
+    <div class="metric">
+        <div class="metric-label">Problèmes Critiques</div>
+        <div class="metric-value">{{ integrity_report.summary.critical_count | default(0) }}</div>
+    </div>
+    <div class="metric">
+        <div class="metric-label">Warnings</div>
+        <div class="metric-value">{{ integrity_report.summary.warning_count | default(0) }}</div>
+    </div>
+    {% endif %}
+
+    {% if integrity_report.recommendations %}
+    <div class="recommendations">
+        <div class="recommendations-title">📋 Recommandations</div>
+        <ul>
+        {% for rec in integrity_report.recommendations[:3] %}
+            <li>[{{ rec.priority }}] {{ rec.action }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Rapport Unifié (Nexus) -->
+{% if unified_report %}
+<div class="section">
+    <div class="section-title">
+        <span>🎯 Rapport Unifié (Nexus)</span>
+        {% set unified_status = unified_report.status | default('UNKNOWN') %}
+        {% if unified_status == 'OK' %}
+        <span class="status-badge status-ok">✅ {{ unified_status }}</span>
+        {% elif unified_status == 'WARNING' %}
+        <span class="status-badge status-warning">⚠️ {{ unified_status }}</span>
+        {% elif unified_status == 'CRITICAL' %}
+        <span class="status-badge status-critical">🚨 {{ unified_status }}</span>
+        {% else %}
+        <span class="status-badge status-unknown">❓ {{ unified_status }}</span>
+        {% endif %}
+    </div>
+
+    {% if unified_report.priority_actions %}
+    <div class="metric">
+        <div class="metric-label">Actions Prioritaires</div>
+        <div class="metric-value">{{ unified_report.priority_actions | length }}</div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Usage Stats (si disponible) -->
+{% if usage_stats %}
+<div class="section">
+    <div class="section-title">
+        <span>👥 Statistiques d'Utilisation</span>
+    </div>
+
+    <div class="metric">
+        <div class="metric-label">Utilisateurs Actifs (2h)</div>
+        <div class="metric-value">{{ usage_stats.active_users | default(0) }}</div>
+    </div>
+    <div class="metric">
+        <div class="metric-label">Features Utilisées</div>
+        <div class="metric-value">{{ usage_stats.features_used | length if usage_stats.features_used else 0 }}</div>
+    </div>
+    <div class="metric">
+        <div class="metric-label">Erreurs Utilisateur</div>
+        <div class="metric-value">{{ usage_stats.user_errors | default(0) }}</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Détails des Problèmes -->
+{% if all_problems and all_problems | length > 0 %}
+<div class="details-section">
+    <div class="details-title">📋 Détails des Corrections Recommandées</div>
+
+    {% for problem in all_problems[:10] %}
+    <div class="problem-item">
+        <span class="problem-priority priority-{{ problem.priority }}">{{ problem.priority }}</span>
+        <strong>{{ problem.source }}</strong>
+        <div style="margin-top:8px;">{{ problem.action }}</div>
+        {% if problem.file %}
+        <div style="margin-top:5px; color:#94a3b8; font-size:13px;">📄 {{ problem.file }}</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    {% if all_problems | length > 10 %}
+    <div style="margin-top:15px; color:#94a3b8; font-size:14px;">
+        ... et {{ all_problems | length - 10 }} autres problèmes détectés
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Quick Links -->
+<div class="section">
+    <div class="section-title">
+        <span>🔗 Liens Rapides</span>
+    </div>
+    <div style="margin-top: 15px;">
+        <a href="{{ admin_ui_url }}" class="button" style="color: white;">🎛️ Admin Dashboard</a>
+        <a href="{{ cloud_storage_url }}" class="button button-secondary" style="color: white;">📦 Rapports Complets</a>
+    </div>
+    {% if cloud_logging_url %}
+    <div style="margin-top: 10px;">
+        <a href="{{ cloud_logging_url }}" style="color: #3b82f6; font-size: 14px;">📊 Cloud Logging Console</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block footer %}
+<p><strong>🤖 Guardian Autonomous Monitoring System</strong></p>
+<p>ÉMERGENCE V8 - Rapports automatiques toutes les 2h</p>
+<p style="margin-top: 15px;">
+    📧 Contact : gonzalefernando@gmail.com
+</p>
+{% endblock %}

@@ -1,0 +1,51 @@
+🎉 BIENVENUE DANS LE PROGRAMME BETA ÉMERGENCE V8
+
+Bonjour,
+
+Nous sommes ravis de vous inviter à participer au programme Beta ÉMERGENCE V8 !
+
+📅 DATES DE LA BETA
+Du 13 octobre au 3 novembre 2025
+
+🎯 OBJECTIF
+Tester la plateforme et nous aider à l'améliorer avant le lancement public
+
+🔑 ACCÈS À LA PLATEFORME
+Votre email {{ to_email }} a été ajouté à l'allowlist.
+Accédez à la plateforme : {{ app_url }}
+
+✅ QUE TESTER ?
+
+8 phases de test à explorer :
+- Phase 1 : Authentification & Onboarding
+- Phase 2 : Chat avec les agents (Anima, Neo, Nexus)
+- Phase 3 : Système de mémoire
+- Phase 4 : Documents & RAG
+- Phase 5 : Débats autonomes
+- Phase 6 : Cockpit & Analytics
+- Phase 7 : Tests de robustesse
+- Phase 8 : Edge cases
+
+📋 FORMULAIRE DE RAPPORT
+Une fois vos tests effectués, merci de remplir le formulaire :
+{{ report_url }}
+
+💡 CONSEILS
+- Prenez le temps d'explorer chaque fonctionnalité
+- Notez tous les bugs, même mineurs
+- N'hésitez pas à nous faire part de vos suggestions
+- Testez sur différents navigateurs si possible
+- Le formulaire sauvegarde votre progression automatiquement
+
+BESOIN D'AIDE ?
+Email : gonzalefernando@gmail.com
+Formulaire : {{ report_url }}
+
+Merci infiniment pour votre participation ! 🙏
+
+L'équipe d'Émergence
+FG, Claude et Codex
+
+---
+Cet email a été envoyé automatiquement par ÉMERGENCE.
+Merci de ne pas répondre à cet email.

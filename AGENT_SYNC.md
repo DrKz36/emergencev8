@@ -2310,6 +2310,26 @@ SMTP_PASSWORD=...
 ---
 
 ## 🤖 Synchronisation automatique
+### Consolidation - 2025-10-19T15:16:30.780355
+
+**Type de déclenchement** : `threshold`
+**Conditions** : {
+  "pending_changes": 5,
+  "threshold": 5
+}
+**Changements consolidés** : 5 événements sur 2 fichiers
+
+**Fichiers modifiés** :
+- **docs/passation.md** : 3 événement(s)
+  - `modified` à 2025-10-19T14:54:30.639774 (agent: unknown)
+  - `modified` à 2025-10-19T14:55:30.693954 (agent: unknown)
+  - `modified` à 2025-10-19T15:15:31.281181 (agent: unknown)
+- **AGENT_SYNC.md** : 2 événement(s)
+  - `modified` à 2025-10-19T14:55:00.674147 (agent: unknown)
+  - `modified` à 2025-10-19T14:56:00.711016 (agent: unknown)
+
+---
+
 ### Consolidation - 2025-10-16T12:43:40.926663
 
 **Type de déclenchement** : `threshold`
