@@ -433,7 +433,7 @@ Contact: {ADMIN_EMAIL}
             try:
                 with smtplib.SMTP('smtp.gmail.com', 587) as server:
                     server.starttls()
-                    server.login("emergence@gonzalefernando.com", smtp_password)
+                    server.login("gonzalefernando@gmail.com", smtp_password)
                     server.send_message(msg)
                 print(f"✅ Email envoyé à {ADMIN_EMAIL}")
                 return True
