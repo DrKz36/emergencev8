@@ -343,3 +343,97 @@ async def scheduled_guardian_report(
             status_code=500,
             detail=f"Erreur lors de la génération du rapport: {str(e)}"
         )
+
+
+@router.post("/run-audit")
+async def run_guardian_audit():
+    """
+    Endpoint pour lancer audit Guardian manuellement (Admin UI)
+    Charge tous les rapports disponibles et retourne summary
+
+    Accessible sans auth pour l'instant (TODO: require admin)
+    """
+    logger.info("Manual Guardian audit triggered from Admin UI")
+
+    try:
+        # Charger tous les rapports Guardian
+        email_service = GuardianEmailService()
+        reports = email_service.load_all_reports()
+
+        if not any(reports.values()):
+            logger.warning("No Guardian reports found")
+            return {
+                "status": "warning",
+                "message": "Aucun rapport Guardian trouvé",
+                "timestamp": datetime.now().isoformat(),
+                "reports": {}
+            }
+
+        # Extraire summary de chaque rapport
+        summary = {
+            "timestamp": datetime.now().isoformat(),
+            "status": "unknown",
+            "reports_loaded": [],
+            "reports_missing": [],
+            "global_status": "OK",
+            "total_critical": 0,
+            "total_warnings": 0,
+            "total_recommendations": 0,
+            "details": {}
+        }
+
+        report_names = [
+            'prod_report.json',
+            'docs_report.json',
+            'integrity_report.json',
+            'unified_report.json',
+            'usage_report.json'
+        ]
+
+        for report_name in report_names:
+            report_data = reports.get(report_name)
+
+            if report_data and isinstance(report_data, dict):
+                summary["reports_loaded"].append(report_name)
+
+                # Extract status
+                status = report_data.get("status", "UNKNOWN").upper()
+                report_summary = report_data.get("summary", {})
+
+                # Aggregate counts
+                if isinstance(report_summary, dict):
+                    summary["total_critical"] += report_summary.get("critical_count", 0)
+                    summary["total_warnings"] += report_summary.get("warning_count", 0)
+
+                # Count recommendations
+                recs = report_data.get("recommendations", [])
+                if isinstance(recs, list):
+                    summary["total_recommendations"] += len(recs)
+
+                # Store details
+                summary["details"][report_name] = {
+                    "status": status,
+                    "summary": report_summary,
+                    "recommendations_count": len(recs) if isinstance(recs, list) else 0
+                }
+
+                # Update global status
+                if status in ["CRITICAL", "ERROR", "FAILED"]:
+                    summary["global_status"] = "CRITICAL"
+                elif status in ["WARNING", "NEEDS_UPDATE"] and summary["global_status"] != "CRITICAL":
+                    summary["global_status"] = "WARNING"
+
+            else:
+                summary["reports_missing"].append(report_name)
+
+        summary["status"] = "success"
+        logger.info(f"Guardian audit completed: {summary['global_status']} - {len(summary['reports_loaded'])} reports loaded")
+
+        return summary
+
+    except Exception as e:
+        logger.error(f"Error in run_guardian_audit: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de l'audit Guardian: {str(e)}"
+        )

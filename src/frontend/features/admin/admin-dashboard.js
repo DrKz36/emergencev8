@@ -5,6 +5,7 @@
  */
 
 import { AdminIcons, getIcon } from './admin-icons.js';
+import { adminGuardianModule } from './admin-guardian.js';
 
 export class AdminDashboard {
     constructor() {
@@ -102,6 +103,11 @@ export class AdminDashboard {
                         <span class="tab-icon">${AdminIcons.activity}</span>
                         <span class="tab-label">Analytics</span>
                     </button>
+                    <button class="admin-tab ${this.activeView === 'guardian' ? 'active' : ''}"
+                            data-view="guardian">
+                        <span class="tab-icon">🛡️</span>
+                        <span class="tab-label">Guardian</span>
+                    </button>
                 </div>
 
                 <!-- Content Area -->
@@ -130,6 +136,12 @@ export class AdminDashboard {
                          data-view="analytics">
                         <div id="analytics-sessions" class="admin-section"></div>
                         <div id="analytics-metrics" class="admin-section"></div>
+                    </div>
+
+                    <!-- Guardian View -->
+                    <div class="admin-view ${this.activeView === 'guardian' ? 'active' : ''}"
+                         data-view="guardian">
+                        <div id="guardian-container" class="admin-section"></div>
                     </div>
                 </div>
 
@@ -246,6 +258,19 @@ export class AdminDashboard {
             case 'analytics':
                 await this.renderAnalyticsView();
                 break;
+            case 'guardian':
+                this.renderGuardianView();
+                break;
+        }
+    }
+
+    /**
+     * Render Guardian view
+     */
+    renderGuardianView() {
+        const container = this.container.querySelector('#guardian-container');
+        if (container) {
+            adminGuardianModule.init(container);
         }
     }
 
