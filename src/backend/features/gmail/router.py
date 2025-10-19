@@ -22,8 +22,26 @@ logger = logging.getLogger("emergence.gmail.router")
 
 router = APIRouter()
 
-gmail_oauth_service = GmailOAuthService()
-gmail_service = GmailService()
+# Lazy loading - instancier services uniquement quand nécessaire
+# (évite crash au niveau module si Secret Manager fail)
+_gmail_oauth_service = None
+_gmail_service = None
+
+
+def get_oauth_service() -> GmailOAuthService:
+    """Get or create Gmail OAuth service (lazy loading)"""
+    global _gmail_oauth_service
+    if _gmail_oauth_service is None:
+        _gmail_oauth_service = GmailOAuthService()
+    return _gmail_oauth_service
+
+
+def get_gmail_service() -> GmailService:
+    """Get or create Gmail service (lazy loading)"""
+    global _gmail_service
+    if _gmail_service is None:
+        _gmail_service = GmailService()
+    return _gmail_service
 
 
 @router.get("/auth/gmail")
@@ -42,7 +60,7 @@ async def gmail_auth_init(request: Request):
         redirect_uri = f"{base_url}/auth/callback/gmail"
 
         # Générer URL de consentement Google
-        authorization_url = gmail_oauth_service.initiate_oauth(redirect_uri)
+        authorization_url = get_oauth_service().initiate_oauth(redirect_uri)
 
         logger.info(f"Redirecting to Google OAuth: {authorization_url}")
         return RedirectResponse(url=authorization_url)
@@ -88,7 +106,7 @@ async def gmail_auth_callback(
         redirect_uri = f"{base_url}/auth/callback/gmail"
 
         # Échanger code contre tokens
-        result = await gmail_oauth_service.handle_callback(
+        result = await get_oauth_service().handle_callback(
             code=code,
             redirect_uri=redirect_uri,
             user_email="admin"  # Admin par défaut (pas d'auth multi-user)
@@ -153,7 +171,7 @@ async def read_gmail_reports(
             )
 
         # Lire emails Guardian
-        emails = await gmail_service.read_guardian_reports(
+        emails = await get_gmail_service().read_guardian_reports(
             max_results=max_results,
             user_email="admin"
         )
@@ -188,7 +206,7 @@ async def gmail_oauth_status():
         JSONResponse: Status OAuth
     """
     try:
-        credentials = await gmail_oauth_service.get_credentials("admin")
+        credentials = await get_oauth_service().get_credentials("admin")
 
         if not credentials:
             return JSONResponse(
