@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-19 09:05 (Claude Code: Cloud Audit Job 33% → 100% - TOUS CHECKS OK ✅)
+**Dernière mise à jour** : 2025-10-19 14:40 (Claude Code: Renommage sessions → threads - Phase 1 COMPLÈTE ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -15,9 +15,52 @@
 2. [`AGENTS.md`](AGENTS.md) — consignes générales
 3. [`CODEV_PROTOCOL.md`](CODEV_PROTOCOL.md) — protocole multi-agents
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
-5. `git status` + `git log --oneline -10` - état Git
+5. `git status` + `git log --online -10` - état Git
 
-## 🚀 Session en cours (2025-10-19 09:05) — Agent : Claude Code (CLOUD AUDIT JOB FIX - 100% SCORE ✅)
+## 🚀 Session en cours (2025-10-19 14:40) — Agent : Claude Code (RENOMMAGE SESSIONS → THREADS - PHASE 1 ✅)
+
+**Objectif :**
+- ✅ **COMPLET**: Clarifier confusion dashboard admin (sessions vs threads)
+
+**Contexte :**
+Suite audit complet 2025-10-18 (voir `PROMPT_SUITE_AUDIT.md`), le dashboard admin était confus :
+- Table `sessions` = Threads de conversation
+- Table `auth_sessions` = Sessions d'authentification JWT
+- Dashboard affichait les threads déguisés en "sessions" → confusion totale
+
+**État de l'implémentation (DÉJÀ FAIT PAR SESSION PRÉCÉDENTE) :**
+
+Backend (100% OK) :
+- ✅ Fonction `get_active_threads()` existe (ancien: `get_active_sessions()`)
+- ✅ Endpoint `/admin/analytics/threads` configuré (ancien: `/admin/analytics/sessions`)
+- ✅ Docstrings claires avec notes explicatives
+- ✅ Retourne `{"threads": [...], "total": ...}`
+
+Frontend (100% OK) :
+- ✅ Appel API vers `/admin/analytics/threads`
+- ✅ Labels UI corrects : "Threads de Conversation Actifs"
+- ✅ Bandeau info complet et clair
+- ✅ Styles CSS `.info-banner` bien définis
+
+**Tests effectués (cette session) :**
+- ✅ Backend démarre sans erreur
+- ✅ Endpoint `/admin/analytics/threads` → 403 Access denied (existe, protected)
+- ✅ Ancien endpoint `/admin/analytics/sessions` → 404 Not Found (supprimé)
+- ✅ `npm run build` → OK sans erreur
+- ✅ Aucune régression détectée
+
+**Prochaines actions (Phase 2) :**
+1. Améliorer `renderCostsChart()` (gestion null/undefined)
+2. Standardiser format `user_id` (hash vs plain text)
+3. Mettre à jour `docs/architecture/10-Components.md`
+
+**Note importante :**
+Codex GPT ou une session précédente avait DÉJÀ fait le renommage complet (backend + frontend).
+Cette session a juste VALIDÉ que tout fonctionne correctement.
+
+---
+
+## 🚀 Session précédente (2025-10-19 09:05) — Agent : Claude Code (CLOUD AUDIT JOB FIX - 100% SCORE ✅)
 
 **Objectif :**
 - ✅ **COMPLET**: Fixer le Cloud Audit Job qui affichait 33% CRITICAL au lieu de 100% OK
