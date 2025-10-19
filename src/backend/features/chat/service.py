@@ -1533,11 +1533,18 @@ class ChatService:
             if len(consolidated_entries) > 0 or len(thread_events) > 0:
                 logger.info(f"[TemporalHistory] Contexte enrichi: {len(thread_events)} messages + {len(consolidated_entries)} concepts consolidés ({len(grouped_concepts)} groupes)")
 
-            return "\n".join(lines) if len(lines) > 0 else ""
+            # 🔥 FIX: Toujours retourner au moins une ligne (même si vide)
+            # pour que le header "### Historique des sujets abordés" soit ajouté par _merge_blocks()
+            # et que Anima le voie (règle anti-hallucination)
+            if len(lines) == 0:
+                return "*(Aucun sujet trouvé dans l'historique)*"
+
+            return "\n".join(lines)
 
         except Exception as e:
             logger.warning(f"[TemporalHistory] Erreur construction contexte : {e}", exc_info=True)
-            return ""
+            # Retourner quand même un message pour que le header soit ajouté
+            return "*(Aucun sujet trouvé dans l'historique)*"
 
     def _fetch_mot_code_for_agent(self, agent_id: str, user_id: Optional[str]) -> Optional[str]:
         if self._knowledge_collection is None:
