@@ -309,21 +309,65 @@
 {% if usage_stats %}
 <div class="section">
     <div class="section-title">
-        <span>👥 Statistiques d'Utilisation</span>
+        <span>👥 Statistiques d'Utilisation (2h)</span>
     </div>
 
     <div class="metric">
-        <div class="metric-label">Utilisateurs Actifs (2h)</div>
-        <div class="metric-value">{{ usage_stats.active_users | default(0) }}</div>
+        <div class="metric-label">Utilisateurs Actifs</div>
+        <div class="metric-value">{{ usage_stats.summary.active_users_count | default(0) }}</div>
     </div>
     <div class="metric">
-        <div class="metric-label">Features Utilisées</div>
-        <div class="metric-value">{{ usage_stats.features_used | length if usage_stats.features_used else 0 }}</div>
+        <div class="metric-label">Requêtes Totales</div>
+        <div class="metric-value">{{ usage_stats.summary.total_requests | default(0) }}</div>
     </div>
     <div class="metric">
-        <div class="metric-label">Erreurs Utilisateur</div>
-        <div class="metric-value">{{ usage_stats.user_errors | default(0) }}</div>
+        <div class="metric-label">Erreurs Utilisateurs</div>
+        <div class="metric-value">{{ usage_stats.summary.total_errors | default(0) }}</div>
     </div>
+
+    <!-- Top Features Utilisées -->
+    {% if usage_stats.top_features and usage_stats.top_features | length > 0 %}
+    <div style="margin-top: 20px;">
+        <div class="metric-label">🔥 Top Features Utilisées</div>
+        <ul style="margin-top: 10px; padding-left: 20px; color: #e2e8f0;">
+        {% for feature in usage_stats.top_features[:5] %}
+            <li style="margin: 8px 0;">
+                <strong>{{ feature.feature_name }}</strong>
+                <span style="color: #94a3b8;">({{ feature.count }} fois)</span>
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Détail par Utilisateur -->
+    {% if usage_stats.user_details and usage_stats.user_details | length > 0 %}
+    <div style="margin-top: 20px;">
+        <div class="metric-label">👤 Activité par Utilisateur</div>
+        <table style="width: 100%; margin-top: 10px; border-collapse: collapse;">
+            <thead>
+                <tr style="background: rgba(255,255,255,0.05); color: #3b82f6;">
+                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid rgba(255,255,255,0.1);">Email</th>
+                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid rgba(255,255,255,0.1);">Features</th>
+                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid rgba(255,255,255,0.1);">Durée</th>
+                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid rgba(255,255,255,0.1);">Erreurs</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for user in usage_stats.user_details[:10] %}
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding: 10px; color: #e2e8f0;">{{ user.user_email }}</td>
+                    <td style="padding: 10px; color: #94a3b8;">{{ user.unique_features_count | default(0) }}</td>
+                    <td style="padding: 10px; color: #94a3b8;">{{ user.total_duration_minutes | default(0) }} min</td>
+                    <td style="padding: 10px; color: {{ '#ef4444' if user.error_count > 0 else '#10b981' }};">
+                        {{ user.error_count | default(0) }}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
 </div>
 {% endif %}
 

@@ -1,0 +1,49 @@
+# Cloud Scheduler Configuration - Guardian Email Reports
+# Envoie automatiquement les rapports Guardian par email toutes les 2h
+
+# Création du job via gcloud CLI:
+#
+# gcloud scheduler jobs create http guardian-scheduled-report \
+#   --location=europe-west1 \
+#   --schedule="0 */2 * * *" \
+#   --uri="https://emergence-stable-HASH.a.run.app/api/guardian/scheduled-report" \
+#   --http-method=POST \
+#   --headers="X-Guardian-Scheduler-Token=SECRET_TOKEN" \
+#   --time-zone="Europe/Zurich" \
+#   --description="Guardian email reports - toutes les 2h"
+
+name: guardian-scheduled-report
+location: europe-west1
+schedule: "0 */2 * * *"  # Toutes les 2 heures (00:00, 02:00, 04:00, etc.)
+timeZone: Europe/Zurich
+description: "Envoie rapports Guardian par email automatiquement"
+
+httpTarget:
+  uri: https://emergence-stable-HASH.a.run.app/api/guardian/scheduled-report
+  httpMethod: POST
+  headers:
+    X-Guardian-Scheduler-Token: "${GUARDIAN_SCHEDULER_TOKEN}"  # À définir dans Secret Manager
+    Content-Type: application/json
+
+# Variables d'environnement requises dans Cloud Run:
+# - GUARDIAN_SCHEDULER_TOKEN (doit matcher le token du header)
+# - EMAIL_ENABLED=1
+# - SMTP_HOST=smtp.gmail.com
+# - SMTP_PORT=587
+# - SMTP_USER=gonzalefernando@gmail.com
+# - SMTP_PASSWORD=<app-password>
+# - GUARDIAN_ADMIN_EMAIL=gonzalefernando@gmail.com
+
+# Notes:
+# 1. Le HASH de l'URL Cloud Run change à chaque déploiement
+# 2. Mettre à jour l'URL après chaque déploiement avec:
+#    gcloud scheduler jobs update http guardian-scheduled-report \
+#      --location=europe-west1 \
+#      --uri="https://emergence-stable-NEW_HASH.a.run.app/api/guardian/scheduled-report"
+#
+# 3. Tester manuellement:
+#    gcloud scheduler jobs run guardian-scheduled-report --location=europe-west1
+#
+# 4. Voir les logs:
+#    gcloud scheduler jobs describe guardian-scheduled-report --location=europe-west1
+#    gcloud logging read "resource.type=cloud_scheduler_job" --limit 10

@@ -9,11 +9,18 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
+import logging
+
+from features.guardian.email_report import GuardianEmailService
 
 router = APIRouter(prefix="/api/guardian", tags=["guardian"])
+logger = logging.getLogger("emergence.guardian.router")
 
 # Secret pour signer les tokens (doit être en .env en prod)
 GUARDIAN_SECRET = os.getenv("GUARDIAN_SECRET", "dev-secret-change-in-prod")
+
+# Token pour Cloud Scheduler (authentification scheduled jobs)
+GUARDIAN_SCHEDULER_TOKEN = os.getenv("GUARDIAN_SCHEDULER_TOKEN", "dev-scheduler-token-change-in-prod")
 
 
 def generate_fix_token(report_id: str) -> str:
@@ -278,3 +285,61 @@ async def get_guardian_status():
             status["reports_missing"].append(key)
 
     return status
+
+
+@router.post("/scheduled-report")
+async def scheduled_guardian_report(
+    background_tasks: BackgroundTasks,
+    x_guardian_scheduler_token: Optional[str] = Header(None, alias="X-Guardian-Scheduler-Token")
+):
+    """
+    Endpoint appelé par Cloud Scheduler toutes les 2h
+    Génère et envoie le rapport Guardian par email
+
+    Authentifié par token (env var GUARDIAN_SCHEDULER_TOKEN)
+    """
+    # Vérifier le token scheduler
+    if not x_guardian_scheduler_token:
+        logger.warning("Scheduled report called without token")
+        raise HTTPException(
+            status_code=401,
+            detail="Token scheduler manquant (X-Guardian-Scheduler-Token header)"
+        )
+
+    if x_guardian_scheduler_token != GUARDIAN_SCHEDULER_TOKEN:
+        logger.warning(f"Invalid scheduler token: {x_guardian_scheduler_token[:10]}...")
+        raise HTTPException(
+            status_code=403,
+            detail="Token scheduler invalide"
+        )
+
+    logger.info("Scheduled Guardian report triggered by Cloud Scheduler")
+
+    try:
+        # Lancer l'envoi du rapport en background
+        async def send_report_task():
+            try:
+                email_service = GuardianEmailService()
+                success = await email_service.send_report()
+                if success:
+                    logger.info("✅ Guardian report email sent successfully (scheduled)")
+                else:
+                    logger.error("❌ Failed to send Guardian report email (scheduled)")
+            except Exception as e:
+                logger.error(f"Error in scheduled report task: {e}", exc_info=True)
+
+        background_tasks.add_task(send_report_task)
+
+        return {
+            "status": "success",
+            "message": "Guardian report génération lancée",
+            "timestamp": datetime.now().isoformat(),
+            "trigger": "cloud_scheduler"
+        }
+
+    except Exception as e:
+        logger.error(f"Error in scheduled_guardian_report endpoint: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la génération du rapport: {str(e)}"
+        )

@@ -73,11 +73,28 @@ Statut: {{ unified_report.status | default('UNKNOWN') }}
 {% endif %}
 
 {% if usage_stats %}
-👥 STATISTIQUES D'UTILISATION
+👥 STATISTIQUES D'UTILISATION (2h)
 {'-'*70}
-• Utilisateurs actifs (2h): {{ usage_stats.active_users | default(0) }}
-• Features utilisées: {{ usage_stats.features_used | length if usage_stats.features_used else 0 }}
-• Erreurs utilisateur: {{ usage_stats.user_errors | default(0) }}
+• Utilisateurs actifs: {{ usage_stats.summary.active_users_count | default(0) }}
+• Requêtes totales: {{ usage_stats.summary.total_requests | default(0) }}
+• Erreurs utilisateurs: {{ usage_stats.summary.total_errors | default(0) }}
+
+{% if usage_stats.top_features and usage_stats.top_features | length > 0 %}
+🔥 TOP FEATURES:
+{% for feature in usage_stats.top_features[:5] %}
+  {{ loop.index }}. {{ feature.feature_name }} ({{ feature.count }} fois)
+{% endfor %}
+{% endif %}
+
+{% if usage_stats.user_details and usage_stats.user_details | length > 0 %}
+👤 ACTIVITÉ PAR UTILISATEUR:
+{% for user in usage_stats.user_details[:10] %}
+  • {{ user.user_email }}
+    - Features: {{ user.unique_features_count | default(0) }}
+    - Durée: {{ user.total_duration_minutes | default(0) }} min
+    - Erreurs: {{ user.error_count | default(0) }}
+{% endfor %}
+{% endif %}
 
 {% endif %}
 

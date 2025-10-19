@@ -322,7 +322,7 @@
 
 ---
 
-### **PHASE 5 : Unified Email Reporting** (2 jours)
+### **PHASE 5 : Unified Email Reporting** ✅ (2 jours) - **TERMINÉ 2025-10-19**
 
 **Objectifs:**
 - Email Guardian toutes les 2h (Cloud Scheduler)
@@ -331,8 +331,8 @@
 
 **Tâches:**
 
-#### 5.1 - Template HTML Email (1j)
-- [ ] Créer `guardian_report_email.html` (Jinja2 template)
+#### 5.1 - Template HTML Email (1j) ✅
+- [x] Créer `guardian_report_email.html` (Jinja2 template)
 
 **Structure template:**
 ```html
@@ -434,14 +434,14 @@
 </html>
 ```
 
-#### 5.2 - Email Send Logic (1j)
-- [ ] Créer `send_guardian_email_report()`
+#### 5.2 - Email Send Logic (1j) ✅
+- [x] Créer `send_guardian_email_report()`
   - Load tous les rapports (prod, usage, nexus)
   - Render template HTML
   - Send via EmailService
   - Log envoi (Firestore)
 
-- [ ] Cloud Scheduler config
+- [x] Cloud Scheduler config
   ```yaml
   Schedule: "0 */2 * * *"  # Toutes les 2h
   Target: /api/guardian/scheduled-report
@@ -450,15 +450,17 @@
     X-Guardian-Scheduler-Token: SECRET_TOKEN
   ```
 
-- [ ] Endpoint `/api/guardian/scheduled-report`
+- [x] Endpoint `/api/guardian/scheduled-report`
   - Vérifie token scheduler
   - Lance audit complet
   - Génère + envoie email
   - Retourne 200 OK
 
-**Livrables:**
-- `src/backend/templates/guardian_report_email.html`
-- `src/backend/features/guardian/email_report.py`
+**Livrables:** ✅
+- `src/backend/templates/guardian_report_email.html` (enrichi avec usage stats)
+- `src/backend/templates/guardian_report_email.txt` (enrichi)
+- `src/backend/features/guardian/email_report.py` (charge usage_report.json)
+- `src/backend/features/guardian/router.py` (endpoint scheduled-report)
 - Cloud Scheduler config: `infrastructure/guardian-scheduler.yaml`
 
 ---

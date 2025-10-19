@@ -1,3 +1,155 @@
+## [2025-10-19 22:15] — Agent: Claude Code (PHASE 5 GUARDIAN CLOUD - UNIFIED EMAIL REPORTING ✅)
+
+### Fichiers modifiés (4 backend + 1 infra + 1 doc)
+
+**Backend - Templates Email:**
+- ✅ `src/backend/templates/guardian_report_email.html` (enrichi avec usage stats détaillés)
+- ✅ `src/backend/templates/guardian_report_email.txt` (enrichi)
+
+**Backend - Guardian Services:**
+- ✅ `src/backend/features/guardian/email_report.py` (charge usage_report.json)
+- ✅ `src/backend/features/guardian/router.py` (nouveau endpoint `/api/guardian/scheduled-report`)
+
+**Infrastructure:**
+- ✅ `infrastructure/guardian-scheduler.yaml` (config Cloud Scheduler)
+
+**Documentation:**
+- ✅ `docs/GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md` (Phase 5 ✅)
+
+### Contexte
+
+**Objectif Phase 5:** Créer système d'email automatique toutes les 2h avec rapports Guardian complets incluant usage stats (Phase 2).
+
+**Demande initiale:**
+- Email Guardian toutes les 2h (Cloud Scheduler)
+- Template HTML riche (prod errors + usage + recommendations)
+- Unifier système email (1 seul type de mail)
+
+**État avant Phase 5:**
+- ✅ EmailService déjà unifié (`email_service.py` avec `send_guardian_report()`)
+- ✅ GuardianEmailService déjà créé (`email_report.py`)
+- ✅ Template HTML Guardian déjà existant (378 lignes)
+- ❌ Manquait: intégration usage stats + endpoint scheduled
+
+### Implémentations effectuées
+
+**1. Enrichissement template HTML Guardian (guardian_report_email.html lignes 309-372)**
+- ✅ Section "👥 Statistiques d'Utilisation (2h)" complète
+- ✅ Métriques summary: active_users_count, total_requests, total_errors
+- ✅ Top Features Utilisées (top 5 avec counts)
+- ✅ Tableau "Activité par Utilisateur" avec:
+  - User email
+  - Features utilisées (unique count)
+  - Durée totale (minutes)
+  - Erreurs count (couleur rouge si > 0)
+- ✅ Affichage jusqu'à 10 utilisateurs
+- ✅ Template texte enrichi aussi (`guardian_report_email.txt`)
+
+**2. Intégration usage_report.json (email_report.py lignes 84, 120-124)**
+- ✅ Ajout `'usage_report.json'` dans `load_all_reports()`
+- ✅ Extraction `usage_stats` depuis `usage_report.json`
+- ✅ Passage séparé à `EmailService.send_guardian_report()` pour template
+
+**3. Endpoint Cloud Scheduler (router.py lignes 290-346)**
+- ✅ POST `/api/guardian/scheduled-report`
+- ✅ Authentification par header `X-Guardian-Scheduler-Token`
+- ✅ Vérification token (env var `GUARDIAN_SCHEDULER_TOKEN`)
+- ✅ Background task pour envoi email (non-bloquant)
+- ✅ Logging complet (info, warnings, errors)
+- ✅ Retourne status JSON immédiatement
+
+**Workflow endpoint:**
+```python
+1. Vérifier header X-Guardian-Scheduler-Token
+2. Si valide → lancer background task
+3. Background task:
+   - Instancier GuardianEmailService()
+   - Charger tous rapports (prod, docs, integrity, usage)
+   - Render template HTML avec tous les rapports
+   - Envoyer email via SMTP
+4. Retourner 200 OK immédiatement (non-bloquant)
+```
+
+**4. Config Cloud Scheduler (infrastructure/guardian-scheduler.yaml)**
+- ✅ Schedule: `"0 */2 * * *"` (toutes les 2h)
+- ✅ Location: europe-west1
+- ✅ TimeZone: Europe/Zurich
+- ✅ Headers: X-Guardian-Scheduler-Token (depuis Secret Manager)
+- ✅ Instructions gcloud CLI pour création/update
+- ✅ Notes sur test manuel et monitoring
+
+### Tests effectués
+
+✅ **Syntaxe Python:**
+```bash
+python -m py_compile router.py email_report.py
+# → OK (aucune erreur)
+```
+
+✅ **Linting (ruff):**
+```bash
+ruff check --select F,E,W
+# → 7 erreurs E501 (lignes trop longues > 88)
+# → Aucune erreur critique de syntaxe
+```
+
+### Format rapport usage_stats attendu
+
+Le template attend ce format JSON (généré par UsageGuardian Phase 2):
+
+```json
+{
+  "summary": {
+    "active_users_count": 3,
+    "total_requests": 127,
+    "total_errors": 5
+  },
+  "top_features": [
+    {"feature_name": "/api/chat/message", "count": 45},
+    {"feature_name": "/api/documents/process", "count": 32}
+  ],
+  "user_details": [
+    {
+      "user_email": "user@example.com",
+      "unique_features_count": 8,
+      "total_duration_minutes": 42,
+      "error_count": 2
+    }
+  ]
+}
+```
+
+### Variables d'environnement requises
+
+**Backend Cloud Run:**
+```bash
+GUARDIAN_SCHEDULER_TOKEN=<secret-token>  # Matcher avec Cloud Scheduler
+EMAIL_ENABLED=1
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=gonzalefernando@gmail.com
+SMTP_PASSWORD=<app-password>
+GUARDIAN_ADMIN_EMAIL=gonzalefernando@gmail.com
+```
+
+### Prochaines actions (Phase 6 - Cloud Deployment)
+
+1. Déployer Cloud Run avec nouvelles vars env
+2. Créer Cloud Scheduler job (gcloud CLI)
+3. Tester endpoint manuellement:
+   ```bash
+   curl -X POST https://emergence-stable-HASH.a.run.app/api/guardian/scheduled-report \
+     -H "X-Guardian-Scheduler-Token: SECRET"
+   ```
+4. Vérifier email reçu (HTML + usage stats visibles)
+5. Activer scheduler (auto toutes les 2h)
+
+### Blocages
+
+Aucun.
+
+---
+
 ## [2025-10-19 21:00] — Agent: Claude Code (PHASE 2 GUARDIAN CLOUD - USAGE TRACKING SYSTEM ✅)
 
 ### Fichiers créés (6 nouveaux fichiers backend + 1 doc)

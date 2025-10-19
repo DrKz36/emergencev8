@@ -81,6 +81,7 @@ class GuardianEmailService:
             'docs_report.json',
             'unified_report.json',
             'orchestration_report.json',
+            'usage_report.json',  # Phase 2 - Usage tracking
         ]
 
         reports = {}
@@ -114,6 +115,13 @@ class GuardianEmailService:
         if not any(reports.values()):
             logger.error("No valid Guardian reports found to send")
             return False
+
+        # Extract usage_report for special handling in email template
+        usage_stats = reports.get('usage_report.json')
+        if usage_stats:
+            # Pass usage_stats separately for clearer template context
+            reports['usage_stats'] = usage_stats
+            logger.info("Usage stats loaded successfully for email")
 
         # Determine recipient
         if not to_email:

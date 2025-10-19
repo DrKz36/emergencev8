@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-19 21:00 (Claude Code: PHASE 2 GUARDIAN CLOUD - USAGE TRACKING SYSTEM ✅)
+**Dernière mise à jour** : 2025-10-19 22:15 (Claude Code: PHASE 5 GUARDIAN CLOUD - UNIFIED EMAIL REPORTING ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -17,63 +17,73 @@
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
 5. `git status` + `git log --online -10` - état Git
 
-## 🚀 Session en cours (2025-10-19 21:00) — Agent : Claude Code (PHASE 2 GUARDIAN CLOUD ✅)
+## 🚀 Session en cours (2025-10-19 22:15) — Agent : Claude Code (PHASE 5 GUARDIAN CLOUD ✅)
 
 **Objectif :**
-- ✅ **COMPLET**: Phase 2 Guardian Cloud - Système tracking automatique utilisateurs
+- ✅ **COMPLET**: Phase 5 Guardian Cloud - Unified Email Reporting (emails auto 2h)
 
-**Fichiers créés (7 backend + 1 doc) :**
-- `src/backend/features/usage/*.py` (5 fichiers - 801 LOC)
-- `src/backend/middleware/*.py` (2 fichiers - 285 LOC)
-- `docs/USAGE_TRACKING.md` (580 lignes)
-
-**Fichiers modifiés:**
-- `src/backend/main.py` (middleware + router + init tables)
-- `docs/passation.md` (nouvelle entrée Phase 2)
-- `docs/GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md` (Phase 2 ✅)
-
-**Total:** ~1068 lignes code + 580 lignes doc
+**Fichiers modifiés (4 backend + 1 infra + 1 doc) :**
+- `src/backend/templates/guardian_report_email.html` (enrichi usage stats)
+- `src/backend/templates/guardian_report_email.txt` (enrichi)
+- `src/backend/features/guardian/email_report.py` (charge usage_report.json)
+- `src/backend/features/guardian/router.py` (endpoint `/api/guardian/scheduled-report`)
+- `infrastructure/guardian-scheduler.yaml` (config Cloud Scheduler)
+- `docs/GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md` (Phase 5 ✅)
 
 **Système implémenté:**
 
-**UsageTrackingMiddleware** - Capture automatique requêtes API
-- Extract user email depuis JWT token
-- Log feature_usage (endpoint, method, durée, success/error)
-- Log user_errors (erreurs >= 400)
-- Privacy OK: PAS de body capturé
+**1. Template HTML enrichi** (guardian_report_email.html)
+- ✅ Section "👥 Statistiques d'Utilisation (2h)"
+- ✅ Métriques: active_users, total_requests, total_errors
+- ✅ Top Features (top 5 avec counts)
+- ✅ Tableau users (email, features, durée, erreurs)
+- ✅ Couleurs dynamiques (rouge si erreurs > 0)
 
-**3 Tables SQLite créées:**
-1. `user_sessions` - Sessions login/logout
-2. `feature_usage` - Features utilisées par user
-3. `user_errors` - Erreurs rencontrées
+**2. GuardianEmailService** (email_report.py)
+- ✅ Charge `usage_report.json` (Phase 2)
+- ✅ Extract `usage_stats` séparément pour template
+- ✅ Envoie email complet avec tous rapports
 
-**UsageGuardian Agent:**
-- `generate_report(hours=2)` → Agrège stats
-- Sauvegarde `reports/usage_report.json`
+**3. Endpoint Cloud Scheduler** (router.py)
+- ✅ POST `/api/guardian/scheduled-report`
+- ✅ Auth: header `X-Guardian-Scheduler-Token`
+- ✅ Background task (non-bloquant)
+- ✅ Logging complet
+- ✅ Retourne 200 OK immédiatement
 
-**Endpoints API:**
-- GET `/api/usage/summary?hours=2` (admin)
-- POST `/api/usage/generate-report` (admin)
-- GET `/api/usage/health` (public)
+**4. Cloud Scheduler Config** (guardian-scheduler.yaml)
+- ✅ Schedule: toutes les 2h (`0 */2 * * *`)
+- ✅ Location: europe-west1, timezone: Europe/Zurich
+- ✅ Headers auth token
+- ✅ Instructions gcloud CLI complètes
 
 **Tests effectués:**
-✅ Syntaxe/linting OK
-✅ Privacy compliance (code review)
-✅ Intégration main.py
+✅ Syntaxe Python OK (`py_compile`)
+✅ Linting ruff (7 E501 lignes longues, aucune erreur critique)
 
-**Tests manuels TODO:**
-- [ ] Lancer backend local
-- [ ] Faire requêtes API
-- [ ] Vérifier SQLite populated
-- [ ] Tester endpoint admin
+**Variables env requises (Cloud Run):**
+```
+GUARDIAN_SCHEDULER_TOKEN=<secret>
+EMAIL_ENABLED=1
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=gonzalefernando@gmail.com
+SMTP_PASSWORD=<app-password>
+GUARDIAN_ADMIN_EMAIL=gonzalefernando@gmail.com
+```
 
-**Prochaines actions Phase 3 (Gmail API Integration):**
-1. Setup GCP OAuth2 Gmail API
-2. Service Gmail lecture emails Guardian
-3. Codex lit rapports par email
-4. Tests intégration complète
+**Prochaines actions Phase 6 (Cloud Deployment):**
+1. Déployer Cloud Run avec vars env
+2. Créer Cloud Scheduler job (gcloud CLI)
+3. Tester endpoint manuellement
+4. Vérifier email reçu (HTML + usage stats)
+5. Activer scheduler auto
 
-**Voir:** `docs/USAGE_TRACKING.md` et `docs/GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md`
+**ALTERNATIVE: Faire Phase 4 avant Phase 6**
+- Phase 4 = Admin UI trigger audit Guardian (bouton dashboard)
+- Plus utile pour tests manuels avant Cloud Scheduler
+
+**Voir:** `docs/passation.md` (entrée 2025-10-19 22:15) et `docs/GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md`
 
 ---
 
@@ -2309,6 +2319,25 @@ SMTP_PASSWORD=...
 ---
 
 ## 🤖 Synchronisation automatique
+### Consolidation - 2025-10-19T16:16:31.386368
+
+**Type de déclenchement** : `time_based`
+**Conditions** : {
+  "pending_changes": 4,
+  "time_since_last_minutes": 60.01006688333334
+}
+**Changements consolidés** : 4 événements sur 2 fichiers
+
+**Fichiers modifiés** :
+- **AGENT_SYNC.md** : 3 événement(s)
+  - `modified` à 2025-10-19T15:16:31.333471 (agent: unknown)
+  - `modified` à 2025-10-19T15:54:32.212802 (agent: unknown)
+  - `modified` à 2025-10-19T15:55:02.235225 (agent: unknown)
+- **docs/passation.md** : 1 événement(s)
+  - `modified` à 2025-10-19T15:53:32.170867 (agent: unknown)
+
+---
+
 ### Consolidation - 2025-10-19T15:16:30.780355
 
 **Type de déclenchement** : `threshold`
