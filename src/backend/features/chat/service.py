@@ -36,6 +36,7 @@ from backend.core import config
 from backend.core.database import queries
 
 from backend.features.memory.gardener import MemoryGardener
+from backend.features.memory.memory_query_tool import MemoryQueryTool
 from backend.features.memory.concept_recall import ConceptRecallTracker
 from backend.features.memory.proactive_hints import ProactiveHintEngine
 
@@ -132,6 +133,14 @@ class ChatService:
         else:
             self.concept_recall_tracker = None
             logger.warning("ConceptRecallTracker NON initialisé (db_manager ou vector_service manquant)")
+
+        self.memory_query_tool: Optional[MemoryQueryTool]
+        try:
+            self.memory_query_tool = MemoryQueryTool(vector_service)
+            logger.info("MemoryQueryTool initialisé pour timeline consolidée")
+        except Exception as err:
+            self.memory_query_tool = None
+            logger.warning(f"MemoryQueryTool non initialisé: {err}")
 
         # ProactiveHintEngine (P2 Sprint 2) - génère suggestions contextuelles
         self.hint_engine: ProactiveHintEngine | None
@@ -1382,6 +1391,7 @@ class ChatService:
         thread_id: str,
         session_id: str,
         user_id: str,
+        agent_id: Optional[str] = None,
         limit: int = 20,
         last_user_message: str = ""
     ) -> str:
@@ -1434,13 +1444,52 @@ class ChatService:
                 if consolidated_entries:
                     grouped_concepts = {"ungrouped": consolidated_entries}
 
+            timeline_added = False
+            if self.memory_query_tool and user_id:
+                try:
+                    max_topics_per_period = 6 if is_exhaustive_query else 3
+                    timeline_limit = max(limit * 2, 20)
+                    timeline = await self.memory_query_tool.get_conversation_timeline(
+                        user_id=user_id,
+                        limit=timeline_limit,
+                        agent_id=agent_id
+                    )
+                    period_labels = {
+                        "this_week": "**Cette semaine:**",
+                        "last_week": "**Semaine dernière:**",
+                        "this_month": "**Ce mois-ci:**",
+                        "older": "**Plus ancien:**",
+                    }
+                    timeline_section: List[str] = []
+                    for period in ("this_week", "last_week", "this_month", "older"):
+                        topics = timeline.get(period, [])
+                        if not topics:
+                            continue
+                        timeline_section.append(period_labels[period])
+                        count = 0
+                        for topic in topics:
+                            timeline_section.append(f"- {topic.format_natural_fr()}")
+                            count += 1
+                            if count >= max_topics_per_period:
+                                break
+                        timeline_section.append("")
+                    formatted_timeline = "\n".join(line for line in timeline_section if line.strip())
+                    if formatted_timeline:
+                        lines.append("**Synthèse chronologique consolidée :**")
+                        lines.append("")
+                        lines.append(formatted_timeline)
+                        lines.append("")
+                        timeline_added = True
+                except Exception as timeline_err:
+                    logger.warning(f"[TemporalHistory] Timeline consolidation échouée: {timeline_err}")
+
             # Préparer les messages du thread (pour affichage séparé)
             thread_events = []
             for msg in messages:
                 role = msg.get("role", "").lower()
                 content = msg.get("content", "")
                 created_at = msg.get("created_at")
-                agent_id = msg.get("agent_id")
+                message_agent_id = msg.get("agent_id")
 
                 # Ne garder que les messages utilisateur et assistant
                 if role not in ["user", "assistant"]:
@@ -1451,7 +1500,7 @@ class ChatService:
                         "timestamp": created_at,
                         "role": role,
                         "content": content,
-                        "agent_id": agent_id,
+                        "agent_id": message_agent_id,
                         "source": "thread"
                     })
 
@@ -1465,7 +1514,7 @@ class ChatService:
             months = ["", "janv", "fév", "mars", "avr", "mai", "juin",
                       "juil", "août", "sept", "oct", "nov", "déc"]
 
-            if grouped_concepts:
+            if grouped_concepts and not timeline_added:
                 lines.append("**Thèmes abordés:**")
                 lines.append("")
 
@@ -1522,11 +1571,11 @@ class ChatService:
 
                         # Formater selon le rôle
                         role = event.get("role")
-                        agent_id = event.get("agent_id")
+                        event_agent_id = event.get("agent_id")
                         if role == "user":
                             lines.append(f"**[{date_str}] Toi :** {preview}")
-                        elif role == "assistant" and agent_id:
-                            lines.append(f"**[{date_str}] {agent_id.title()} :** {preview}")
+                        elif role == "assistant" and event_agent_id:
+                            lines.append(f"**[{date_str}] {event_agent_id.title()} :** {preview}")
                     except Exception:
                         pass
 
@@ -2141,6 +2190,7 @@ class ChatService:
                         thread_id=thread_id,
                         session_id=session_id,
                         user_id=uid,
+                        agent_id=agent_id,
                         limit=20,
                         last_user_message=last_user_message
                     )
@@ -2205,6 +2255,8 @@ class ChatService:
                                 "has_stm": bool(stm_here),
                                 "ltm_items": 0,
                                 "injected_into_prompt": False,
+                                "stm_content": stm_here if stm_here else "",
+                                "ltm_content": "",
                             },
                         },
                         session_id,
@@ -2281,6 +2333,8 @@ class ChatService:
                             "has_stm": bool(stm),
                             "ltm_items": int(ltm_count_for_banner),
                             "injected_into_prompt": bool(injected),
+                            "stm_content": stm if stm else "",
+                            "ltm_content": ltm_block if ltm_block else "",
                         },
                     },
                     session_id,
@@ -3312,4 +3366,3 @@ class ChatService:
     # ---------- diverses ----------
     def _count_bullets(self, text: str) -> int:
         return sum(1 for line in (text or "").splitlines() if line.strip().startswith("- "))
-

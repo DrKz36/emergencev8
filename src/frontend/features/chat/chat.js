@@ -32,6 +32,7 @@ export default class ChatModule {
     this._streamStartTimer = null;
     this._streamStartTimeoutMs = 1500;
     this._pendingMsg = null;
+    this._isStreamingNow = false; // 🔥 FIX: Flag pour bloquer le listener state pendant le streaming
 
     // Anti double actions
     this._sendLock = false;
@@ -405,6 +406,12 @@ export default class ChatModule {
 
   registerStateChanges() {
     const unsub = this.state.subscribe('chat', (chatState) => {
+      // 🔥 FIX: Ne PAS appeler ui.update() pendant le streaming
+      // Sinon _renderMessages() écrase la modification directe du DOM faite dans handleStreamChunk
+      if (this._isStreamingNow) {
+        console.log('[Chat] 🚫 State listener: ui.update() skipped (streaming in progress)');
+        return;
+      }
       if (this.ui && this.container) this.ui.update(this.container, chatState);
     });
     if (typeof unsub === 'function') this.listeners.push(unsub);
@@ -795,10 +802,11 @@ export default class ChatModule {
     this._lastChunkByMessage.set(String(messageId), '');
     this._updateThreadCacheFromBuckets();
     this._clearStreamWatchdog(); // le flux a bien démarré
-    // 🔥 FIX: Trigger UI update
-    if (this.ui && this.container) {
-      this.ui.update(this.container, this.state.get('chat'));
-    }
+
+    // 🔥 FIX CRITIQUE: Activer le flag APRÈS que state.set() ait déclenché le listener
+    // Le state.set() ci-dessus a déclenché le listener state qui a appelé ui.update()
+    // Le message vide est maintenant dans le DOM, on peut bloquer les prochains updates
+    this._isStreamingNow = true;
   }
 
   handleStreamChunk(payload = {}) {
@@ -845,8 +853,24 @@ export default class ChatModule {
           // Note: on utilise innerHTML (pas textContent) car le contenu peut contenir des <br/> pour les retours à la ligne
           const escapedContent = this._escapeHTML(msg.content).replace(/\n/g, '<br/>');
           const cursor = msg.isStreaming ? '<span class="blinking-cursor">|</span>' : '';
-          contentEl.innerHTML = escapedContent + cursor;
-          console.log('[Chat] 🔥 DOM updated directly for message', messageId, '- length:', msg.content.length);
+          const finalHTML = escapedContent + cursor;
+
+          console.log('[Chat] 🔍 DOM update details:', {
+            messageId,
+            rawContentLength: msg.content.length,
+            rawContentPreview: msg.content.substring(0, 50),
+            escapedContentLength: escapedContent.length,
+            escapedContentPreview: escapedContent.substring(0, 50),
+            finalHTMLLength: finalHTML.length,
+            finalHTMLPreview: finalHTML.substring(0, 100),
+            contentElTagName: contentEl.tagName,
+            contentElVisible: contentEl.offsetHeight > 0
+          });
+
+          contentEl.innerHTML = finalHTML;
+
+          console.log('[Chat] 🔥 DOM updated - innerHTML set. Current innerHTML length:', contentEl.innerHTML.length);
+          console.log('[Chat] 🔥 DOM updated - Current textContent:', contentEl.textContent.substring(0, 50));
         } else {
           console.warn('[Chat] ⚠️ .message-text not found in message element');
         }
@@ -854,15 +878,9 @@ export default class ChatModule {
         console.warn('[Chat] ⚠️ Message element not found in DOM for id:', messageId);
       }
 
-      // 🔥 FIX ORIGINAL: Trigger UI update (conservé pour cohérence state, même si DOM déjà mis à jour)
-      console.log('[Chat] 🔍 UI exists:', !!this.ui, 'Container exists:', !!this.container);
-      if (this.ui && this.container) {
-        console.log('[Chat] 🔄 Calling ui.update()...');
-        this.ui.update(this.container, this.state.get('chat'));
-        console.log('[Chat] ✅ ui.update() called');
-      } else {
-        console.warn('[Chat] ❌ Cannot update UI: ui=' + !!this.ui + ' container=' + !!this.container);
-      }
+      // ⚠️ NE PAS appeler ui.update() ici pendant le streaming !
+      // Raison: _renderMessages() fait un full re-render avec innerHTML qui ÉCRASE la modification directe du DOM
+      // qu'on vient de faire. Le state sera synchronisé à la fin du streaming via handleStreamEnd.
     } else {
       console.warn('[Chat] ❌ Message not found in bucket!');
     }
@@ -897,6 +915,28 @@ export default class ChatModule {
 
     this.state.set('chat.isLoading', false);
     this._clearStreamWatchdog();
+
+    // 🔥 DEBUG: Vérifier le contenu du message avant le re-render final
+    const finalList = this.state.get(`chat.messages.${bucketId}`) || [];
+    const finalMsg = finalList.find((m) => m.id === messageId);
+    console.log('[Chat] 🔍 handleStreamEnd - Message content before ui.update():', {
+      messageId,
+      contentLength: finalMsg?.content?.length || 0,
+      content: finalMsg?.content?.substring(0, 50) || 'EMPTY',
+      isStreaming: finalMsg?.isStreaming
+    });
+
+    // 🔥 FIX: Désactiver le flag de streaming AVANT de synchroniser l'UI
+    this._isStreamingNow = false;
+
+    // 🔥 FIX: Synchroniser l'UI à la fin du streaming
+    // On appelle ui.update() ici pour:
+    // - Retirer le curseur clignotant (isStreaming: false)
+    // - Activer le bouton de copie
+    // - Synchroniser l'état final de l'UI avec le state
+    if (this.ui && this.container) {
+      this.ui.update(this.container, this.state.get('chat'));
+    }
 
     try {
       if (this._assistantPersistedIds.has(messageId)) return;
@@ -1393,9 +1433,50 @@ handleMessagePersisted(payload = {}) {
 }
 
   /* ============================ Hooks RAG/Mémoire ============================ */
-  handleMemoryBanner() {
+  handleMemoryBanner(payload = {}) {
     try { this.state.set('chat.memoryBannerAt', Date.now()); } catch {}
-    this.showToast('Mémoire chargée ✓');
+
+    const { stm_content = '', ltm_content = '', ltm_items = 0, has_stm = false, agent_id = 'system' } = payload;
+
+    // Log pour debug
+    console.log('[Chat] handleMemoryBanner:', { agent_id, has_stm, ltm_items, stm_length: stm_content.length, ltm_length: ltm_content.length });
+
+    // Afficher un message système avec le contenu de la mémoire
+    if (has_stm || ltm_items > 0) {
+      const parts = [];
+      if (stm_content && stm_content.trim()) {
+        parts.push(`**Résumé de session:**\n${stm_content}`);
+      }
+      if (ltm_content && ltm_content.trim()) {
+        parts.push(`**Faits & souvenirs (${ltm_items} items):**\n${ltm_content}`);
+      }
+
+      if (parts.length > 0) {
+        const memoryMessage = {
+          id: `memory_${Date.now()}`,
+          role: 'system',
+          content: `🧠 **Mémoire chargée**\n\n${parts.join('\n\n---\n\n')}`,
+          timestamp: Date.now(),
+          agent_id: agent_id
+        };
+
+        // Déterminer le bucket de l'agent qui répond (pour que le message soit visible)
+        const bucketId = this._determineBucketForMessage(agent_id, null);
+        console.log('[Chat] Adding memory message to bucket:', bucketId);
+
+        // Ajouter le message dans le bucket de l'agent actuel
+        try {
+          const pathKey = `chat.messages.${bucketId}`;
+          const messages = this.state.get(pathKey) || [];
+          this.state.set(pathKey, [...messages, memoryMessage]);
+          this._rememberMessageBucket(memoryMessage.id, bucketId);
+        } catch (err) {
+          console.warn('[Chat] Failed to add memory message to state:', err);
+        }
+      }
+    }
+
+    this.showToast(`Mémoire chargée ✓ (${ltm_items} items)`);
   }
 
   handleConceptRecall(payload = {}) {

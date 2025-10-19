@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-19 04:20 (Claude Code: Fix Anima "pas accès aux conversations" - RÉSOLU ✅)
+**Dernière mise à jour** : 2025-10-19 05:30 (Claude Code: Affichage chunks mémoire dans l'UI - RÉSOLU ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -14,12 +14,52 @@
 1. Ce fichier (`AGENT_SYNC.md`) — état actuel du dépôt
 2. [`AGENTS.md`](AGENTS.md) — consignes générales
 3. [`CODEV_PROTOCOL.md`](CODEV_PROTOCOL.md) — protocole multi-agents
-4. [`docs/passation.md`](docs/passation.md) — 3 dernières entrées minimum
-5. `git status` + `git log --oneline -10` — état Git
+4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
+5. `git status` + `git log --oneline -10` - état Git
 
----
+## 🚀 Session en cours (2025-10-19 05:30) — Agent : Claude Code (Affichage chunks mémoire dans l'UI - RÉSOLU ✅)
 
-## 🚀 Session en cours (2025-10-19 04:20) — Agent : Claude Code (Fix Anima "pas accès aux conversations" - RÉSOLU ✅)
+**Objectif :**
+- ✅ **RÉSOLU**: Afficher les chunks de mémoire (STM/LTM) dans l'interface utilisateur
+- User voyait pas le contenu de la mémoire chargée alors que les agents la recevaient en contexte
+
+**Problème identifié (2 bugs distincts) :**
+
+**Bug #1 - Backend n'envoyait pas le contenu:**
+- `ws:memory_banner` envoyait seulement des stats (has_stm, ltm_items, injected_into_prompt)
+- Le contenu textuel des chunks (stm, ltm_block) n'était PAS envoyé au frontend
+- Frontend ne pouvait donc pas afficher les chunks même s'il le voulait
+
+**Bug #2 - Frontend mettait les messages dans le mauvais bucket:**
+- `handleMemoryBanner()` créait un message système dans le bucket "system"
+- L'UI affiche seulement les messages du bucket de l'agent actuel (anima, nexus, etc.)
+- Résultat: message créé mais jamais visible dans l'interface
+
+**Fichiers modifiés :**
+- `src/backend/features/chat/service.py` (ajout stm_content et ltm_content dans ws:memory_banner)
+- `src/frontend/features/chat/chat.js` (affichage chunks mémoire dans le bon bucket)
+- `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (entrée complète)
+
+**Solution implémentée :**
+- Backend: Ajout `stm_content` et `ltm_content` dans payload `ws:memory_banner`
+- Frontend: Message mémoire ajouté dans le bucket de l'agent actuel (pas "system")
+- Utilise `_determineBucketForMessage(agent_id, null)` pour trouver le bon bucket
+
+**Tests effectués :**
+- ✅ Test manuel: Envoi message global → tous les agents affichent le message mémoire
+- ✅ Message "🧠 **Mémoire chargée**" visible avec résumé de session (371 caractères)
+- ✅ Console log confirme bucket correct: `[Chat] Adding memory message to bucket: anima`
+
+**Résultat :**
+- ✅ Les chunks de mémoire sont maintenant visibles dans l'interface
+- ✅ Transparence totale sur la mémoire STM/LTM chargée
+
+**Prochaines actions :**
+1. Commit + push des changements
+2. Améliorer le formatage visuel (collapse/expand pour grands résumés)
+
+## 🚀 Session precedente (2025-10-19 04:20) — Agent : Claude Code (Fix Anima "pas accès aux conversations" - RÉSOLU ✅)
 
 **Objectif :**
 - ✅ **RÉSOLU**: Fixer Anima qui dit "Je n'ai pas accès à nos conversations passées" au lieu de résumer les sujets
