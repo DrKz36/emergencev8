@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-19 15:00 (Claude Code: Phase 2 - Robustesse dashboard + doc user_id ✅)
+**Dernière mise à jour** : 2025-10-19 14:55 (Claude Code: Fix beta_report.html - 404 → 200 ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -17,7 +17,68 @@
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
 5. `git status` + `git log --online -10` - état Git
 
-## 🚀 Session en cours (2025-10-19 15:00) — Agent : Claude Code (PHASE 2 - ROBUSTESSE DASHBOARD + DOC USER_ID ✅)
+## 🚀 Session en cours (2025-10-19 14:55) — Agent : Claude Code (FIX BETA_REPORT.HTML - 404 → 200 ✅)
+
+**Objectif :**
+- ✅ **COMPLET**: Restaurer beta_report.html en production (404 → 200 OK)
+
+**Fichiers modifiés (2 fichiers) :**
+- `beta_report.html` (restauré depuis archive vers racine)
+- `docs/passation.md` (nouvelle entrée)
+
+**Contexte du problème :**
+La page `https://emergence-app.ch/beta_report.html` retournait **404 Not Found**.
+
+**Cause identifiée :**
+- Fichier HTML archivé dans `docs/archive/REPORTS_OLD_2025-10/beta_report.html`
+- Pas présent à la racine → FastAPI StaticFiles ne le servait pas
+- Backend `/api/beta-report` (POST) était déjà opérationnel
+
+**Solution implémentée :**
+
+**1. Restauration fichier**
+```bash
+cp docs/archive/REPORTS_OLD_2025-10/beta_report.html beta_report.html
+```
+
+**2. Vérification contenu**
+- Formulaire beta complet (8 phases, 55 tests)
+- Envoie vers `/api/beta-report` (ligne 715)
+- Auto-détection navigateur/OS
+- Barre de progression dynamique
+
+**3. Déploiement production**
+- Build + push Docker (tag 20251019-144943) ✅
+- Déploiement canary 10% ✅
+- Test canary: `HTTP 200 OK` (27158 bytes) ✅
+- Promotion 100% trafic ✅
+- Test prod finale: `HTTP 200 OK` ✅
+
+**URLs actives :**
+- ✅ Formulaire: https://emergence-app.ch/beta_report.html
+- ✅ API endpoint: https://emergence-app.ch/api/beta-report (POST)
+- ✅ Email dest: gonzalefernando@gmail.com
+
+**Tests de validation :**
+```bash
+# Canary
+curl -I https://canary-20251019---emergence-app-47nct44nma-ew.a.run.app/beta_report.html
+# → HTTP/1.1 200 OK, Content-Length: 27158
+
+# Production
+curl -I https://emergence-app.ch/beta_report.html
+# → HTTP/1.1 200 OK, Content-Length: 27158
+```
+
+**Prochaines actions :**
+1. Tester soumission formulaire complet
+2. Vérifier réception email avec rapport
+3. Ajouter lien dans emails beta invitations
+4. Documenter dans dashboard beta testeurs
+
+---
+
+## 🚀 Session précédente (2025-10-19 15:00) — Agent : Claude Code (PHASE 2 - ROBUSTESSE DASHBOARD + DOC USER_ID ✅)
 
 **Objectif :**
 - ✅ **COMPLET**: Améliorer robustesse dashboard admin + documenter format user_id
