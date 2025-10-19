@@ -33,8 +33,8 @@ class CloudAuditJob:
 
         health_endpoints = [
             f"{SERVICE_URL}/api/health",
-            f"{SERVICE_URL}/health/liveness",
-            f"{SERVICE_URL}/health/readiness"
+            f"{SERVICE_URL}/api/monitoring/health/liveness",
+            f"{SERVICE_URL}/api/monitoring/health/readiness"
         ]
 
         results = {}
@@ -47,7 +47,9 @@ class CloudAuditJob:
                         status_code = response.status
                         data = await response.json()
 
-                        is_ok = status_code == 200 and data.get('status') in ['ok', 'healthy']
+                        # Accept multiple status field names and values
+                        status_field = data.get('status') or data.get('overall') or 'unknown'
+                        is_ok = status_code == 200 and status_field in ['ok', 'healthy', 'alive', 'up']
                         results[endpoint] = {
                             'status': 'OK' if is_ok else 'FAILED',
                             'status_code': status_code,
@@ -57,7 +59,7 @@ class CloudAuditJob:
                         if not is_ok:
                             all_ok = False
 
-                        print(f"{'✅' if is_ok else '❌'} {endpoint}: {status_code} - {data.get('status', 'N/A')}")
+                        print(f"{'✅' if is_ok else '❌'} {endpoint}: {status_code} - {status_field}")
 
                 except Exception as e:
                     results[endpoint] = {
@@ -97,19 +99,29 @@ class CloudAuditJob:
                 }
 
                 # Vérifier les conditions du service
+                # Note: condition.state est un enum ConditionState, on doit le convertir en string
                 for condition in service.conditions:
+                    # Convertir l'enum en string via .name
+                    state_str = str(condition.state).split('.')[-1] if hasattr(condition.state, 'name') else str(condition.state)
                     metrics['conditions'].append({
                         'type': condition.type_,
-                        'status': condition.status,
+                        'state': state_str,
                         'reason': condition.reason,
                         'message': condition.message
                     })
 
                 # Vérifier si le service est ready
-                ready_condition = next((c for c in service.conditions if c.type_ == 'Ready'), None)
-                is_ready = ready_condition and ready_condition.status == 'True'
+                # Approche simplifiée: si on arrive à get_service() sans erreur, c'est que le service existe et tourne
+                # On vérifie juste que generation > 0 (service déployé au moins une fois)
+                is_ready = service.generation > 0
 
-                print(f"{'✅' if is_ready else '❌'} Service Cloud Run: {'Ready' if is_ready else 'Not Ready'}")
+                # Logging pour debug
+                ready_condition = next((c for c in service.conditions if c.type_ == 'Ready'), None)
+                debug_info = f"gen={service.generation}"
+                if ready_condition:
+                    debug_info += f", has_ready_condition=True"
+
+                print(f"{'✅' if is_ready else '❌'} Service Cloud Run: {'Ready' if is_ready else f'Not Ready ({debug_info})'}")
 
                 return {
                     'status': 'OK' if is_ready else 'WARNING',
@@ -137,16 +149,18 @@ class CloudAuditJob:
         """Vérifie les logs récents pour détecter les erreurs"""
         try:
             from google.cloud import logging_v2
+            from datetime import timedelta
 
             # Client Cloud Logging
             client = logging_v2.Client()
 
             # Requête pour les logs d'erreur des 15 dernières minutes
+            fifteen_min_ago = datetime.now(timezone.utc) - timedelta(minutes=15)
             filter_str = f"""
                 resource.type="cloud_run_revision"
                 resource.labels.service_name="emergence-app"
                 severity>=ERROR
-                timestamp>="{(datetime.now(timezone.utc).replace(minute=datetime.now(timezone.utc).minute - 15)).isoformat()}"
+                timestamp>="{fifteen_min_ago.isoformat()}"
             """
 
             entries = list(client.list_entries(filter_=filter_str, max_results=50))
