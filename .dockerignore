@@ -1,51 +1,63 @@
-.venv/
-env/
-venv/
-__pycache__/
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
 *.pyc
 *.pyo
-*.pytest_cache/
-.pytest_cache/
-.cache/
-.mypy_cache/
-.dmypy.json
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+venv/
+env/
 
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
 
-build/
-dist/
-*.egg-info/
-.eggs/
+# Environment
+.env
+.env.local
+*.local
 
-logs/
+# Logs
 *.log
-tmp/
-tmp_tests/
+logs/
 
+# Reports
+claude-plugins/integrity-docs-guardian/reports/
+reports/
+
+# Build artifacts
+dist/
+build/
+*.tar.gz
+
+# Node
 node_modules/
-npm-debug.log*
-yarn.lock
-pnpm-lock.yaml
-
-# Données locales lourdes
-data/
-datasets/
-storage/
-cache/
-
-# DB locales (on génère en runtime)
-*.db
-*.sqlite
-*.sqlite3
+npm-debug.log
 
 # Secrets
-*.env
-.env*
-secrets/
-**/secrets.json
-# --- ÉMERGENCE (ne pas exclure la page GIS /dev-auth.html) ---
-!src/frontend/dev-auth.html
-!src/backend/features/dev_auth/**
+gmail_client_secret.json
+*.pem
+*.key
+*.crt
+
+# Temp files
+*.bak
+*.backup
+*.tmp
+*.swp
+~*
+
+# OS files
+.DS_Store
+Thumbs.db
