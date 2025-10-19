@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-19 12:45 (Claude Code: fix streaming chunks display FINAL - RÉSOLU ✅)
+**Dernière mise à jour** : 2025-10-19 04:20 (Claude Code: Fix Anima "pas accès aux conversations" - RÉSOLU ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -19,54 +19,64 @@
 
 ---
 
-## 🚀 Session en cours (2025-10-19 12:45) — Agent : Claude Code (Fix Streaming Chunks Display FINAL - RÉSOLU ✅)
+## 🚀 Session en cours (2025-10-19 04:20) — Agent : Claude Code (Fix Anima "pas accès aux conversations" - RÉSOLU ✅)
 
 **Objectif :**
-- ✅ **RÉSOLU**: Fixer affichage streaming chunks dans UI chat (FIX FINAL)
-- Les chunks arrivent du backend via WebSocket
-- Le state est mis à jour correctement
-- MAIS l'UI ne se raffraichissait JAMAIS visuellement pendant le streaming
-- Erreur: `[Chat] ⚠️ Message element not found in DOM for id: ...`
+- ✅ **RÉSOLU**: Fixer Anima qui dit "Je n'ai pas accès à nos conversations passées" au lieu de résumer les sujets
+- User demandait résumé des sujets/concepts abordés avec dates/heures/fréquence
+- Feature marchait il y a 4 jours, cassée depuis commit anti-hallucination
 
-**Problème identifié :**
-- **Cause racine**: Flag `_isStreamingNow` activé AVANT le `state.set()` dans `handleStreamStart`
-- Le flag était activé ligne 784, puis `state.set()` ligne 803
-- Quand `state.set()` déclenche le listener state, le flag bloque déjà l'appel à `ui.update()`
-- Résultat: le message vide n'est JAMAIS rendu dans le DOM
-- Quand les chunks arrivent, `handleStreamChunk` cherche l'élément DOM mais il n'existe pas
-- Tous les chunks échouent avec "Message element not found in DOM"
+**Problème identifié (3 bugs distincts!) :**
 
-**Solution implémentée (FIX FINAL) :**
-- Déplacé `this._isStreamingNow = true` APRÈS le `state.set()` (maintenant ligne 809)
-- Ordre correct maintenant:
-  1. `state.set()` ajoute le message vide au state (ligne 800)
-  2. Le listener state déclenche `ui.update()` (flag pas encore activé)
-  3. Le message vide est rendu dans le DOM avec `data-message-id`
-  4. PUIS le flag est activé pour bloquer les prochains updates
-  5. Quand les chunks arrivent, l'élément DOM existe et peut être mis à jour directement
+**Bug #1 - Flow memory context (memory_ctx.py):**
+- `format_timeline_natural_fr()` retournait "Aucun sujet..." SANS header quand vide
+- Anima cherche `### Historique des sujets abordés` → pas trouvé → dit "pas accès"
+- Fix: Toujours retourner le header même si timeline vide
 
-**Fichiers modifiés :**
-- `src/frontend/features/chat/chat.js` (déplacement flag _isStreamingNow ligne 809)
-- `AGENT_SYNC.md` (cette mise à jour)
-- `docs/passation.md` (nouvelle entrée à créer)
+**Bug #2 - Flow temporal query (_build_temporal_history_context):**
+- Retournait `""` si liste vide → condition `if temporal_context:` = False en Python
+- Bloc jamais ajouté à blocks_to_merge → header jamais généré
+- Fix: Retourner toujours au moins `"*(Aucun sujet trouvé...)*"` même si vide
+
+**Bug #3 - CRITIQUE (cause réelle du problème user):**
+- Frontend envoyait `use_rag: False` pour les questions de résumé
+- `_normalize_history_for_llm()` checkait `if use_rag and rag_context:`
+- rag_context créé avec header MAIS **jamais injecté** dans prompt!
+- Anima ne voyait jamais le contexte → disait "pas accès"
+- Fix: Nouvelle condition détecte "Historique des sujets abordés" dans contexte
+  et injecte même si use_rag=False
+
+**Fichiers modifiés (3 commits) :**
+- `src/backend/features/memory/memory_query_tool.py` - header toujours retourné
+- `src/backend/features/chat/memory_ctx.py` - toujours appeler formatter
+- `src/backend/features/chat/service.py` - 3 fixes:
+  1. _build_temporal_history_context: retour message si vide
+  2. _build_temporal_history_context: retour message si erreur
+  3. _normalize_history_for_llm: injection même si use_rag=False
+
+**Commits :**
+- `e466c38` - fix(backend): Anima peut voir l'historique même quand vide (flow memory)
+- `b106d35` - fix(backend): Vraie fix pour header Anima - flow temporel aussi
+- `1f0b1a3` - fix(backend): Injection contexte temporel même si use_rag=False ⭐ **FIX CRITIQUE**
 
 **Tests effectués :**
-- ✅ Build frontend: `npm run build` → OK (3.04s, aucune erreur)
-- ⏳ Test manuel en attente (nécessite backend actif + envoi message)
+- ✅ Guardians pre-commit/push passés (warnings docs OK)
+- ✅ Prod status: OK (Cloud Run healthy)
+- ⏳ Test manuel requis: redémarrer backend + demander résumé sujets à Anima
 
-**Logs attendus après fix :**
+**Maintenant Anima verra toujours :**
 ```
-[Chat] handleStreamStart → state.set() → listener déclenché → ui.update() appelé
-[Chat] Message vide ajouté au DOM avec data-message-id="..."
-[Chat] 🔥 DOM updated directly for message ... - length: 2
-[Chat] 🚫 State listener: ui.update() skipped (streaming in progress)
+[RAG_CONTEXT]
+### Historique des sujets abordés
+
+*(Aucun sujet trouvé dans l'historique)*
 ```
+Ou avec des vrais sujets si consolidation des archives réussie.
 
 **Prochaines actions :**
-- Tester manuellement avec backend actif
-- Vérifier que texte s'affiche chunk par chunk
-- Nettoyer console.log() debug si OK
-- Commit + push fix streaming chunks FINAL
+- **TESTER**: Redémarrer backend + demander à Anima de résumer les sujets
+- Fixer consolidation des threads archivés (script consolidate_all_archives.py foire avec import errors)
+- Une fois consolidation OK, l'historique sera peuplé avec vrais sujets des conversations archivées
 
 ---
 
