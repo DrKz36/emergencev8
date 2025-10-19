@@ -25,18 +25,12 @@ def verify_admin():
 
 router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
 
-
-@router.get("/health")
-async def health_check() -> Dict[str, Any]:
-    """
-    Healthcheck endpoint - public
-    Vérifie que l'application est opérationnelle
-    """
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "version": "beta-2.1.4",  # Synchronisé avec package.json
-    }
+# Note: Basic health endpoints are now in main.py at root level:
+# - /api/health (simple OK check)
+# - /healthz (liveness probe)
+# - /ready (readiness probe with DB/Vector checks)
+#
+# This router only provides DETAILED monitoring endpoints.
 
 
 @router.get("/health/detailed")
@@ -305,50 +299,11 @@ async def _check_llm_providers(request: Request) -> Dict[str, Any]:
         return {"status": "down", "error": str(e)}
 
 
-@router.get("/health/liveness")
-async def liveness_check() -> Dict[str, Any]:
-    """
-    Liveness probe (Kubernetes-ready)
-    Vérifie que le processus est vivant et peut traiter des requêtes.
-    Retourne 200 si l'app est vivante, 503 sinon.
-    """
-    return {
-        "status": "alive",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "uptime_seconds": psutil.Process().create_time(),
-    }
-
-
-@router.get("/health/readiness")
-async def readiness_check(request: Request) -> Dict[str, Any]:
-    """
-    Readiness probe (Kubernetes-ready)
-    Vérifie que tous les services critiques sont opérationnels.
-
-    Retourne:
-    - 200 si tous les services sont UP
-    - 503 si au moins un service critique est DOWN
-
-    Services vérifiés:
-    - Database (SQLite/PostgreSQL)
-    - VectorService (Chroma/Qdrant)
-    - LLM Providers (OpenAI, Anthropic, Google)
-    """
-    components = {
-        "database": await _check_database(request),
-        "vector_service": await _check_vector_service(request),
-        "llm_providers": await _check_llm_providers(request),
-    }
-
-    # Overall status : UP si tous les composants critiques sont UP
-    all_up = all(c.get("status") == "up" for c in components.values())
-    overall_status = "up" if all_up else "degraded"
-
-    return {
-        "overall": overall_status,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "components": components,
-    }
+# Liveness and readiness probes have been moved to main.py:
+# - /healthz (liveness)
+# - /ready (readiness with DB/Vector checks)
+#
+# These endpoints are simpler and at root level for Cloud Run compatibility.
 
 
 @router.get("/system/info")

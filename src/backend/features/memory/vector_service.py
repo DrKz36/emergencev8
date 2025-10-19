@@ -761,7 +761,12 @@ class VectorService:
         try:
             ids = [item["id"] for item in items]
             documents_text = [item[item_text_key] for item in items]
-            metadatas = [item.get("metadata", {}) for item in items]
+
+            # ChromaDB only accepts str, int, float, bool in metadata - filter out None values
+            metadatas = [
+                {k: v for k, v in item.get("metadata", {}).items() if v is not None}
+                for item in items
+            ]
 
             precomputed_embeddings: List[List[float]] = []
             use_precomputed = True

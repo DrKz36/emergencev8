@@ -208,28 +208,64 @@ Pour 99% des tâches dev normales: **FONCE**.
 
 ## 🤖 SYSTÈME GUARDIAN (AUTOMATIQUE)
 
-**Le système Guardian s'exécute automatiquement via hooks Git:**
+**Version 3.0.0 - Nettoyé et optimisé (2025-10-19)**
 
-### Pre-Commit Hook
-- ✅ Anima (DocKeeper) - Vérifie documentation
+### Installation/Activation
+
+**Une seule commande pour tout installer :**
+```powershell
+cd claude-plugins\integrity-docs-guardian\scripts
+.\setup_guardian.ps1
+```
+
+**Ce que ça fait :**
+- ✅ Configure Git Hooks (pre-commit, post-commit, pre-push)
+- ✅ Active auto-update documentation
+- ✅ Crée Task Scheduler (monitoring prod toutes les 6h)
+- ✅ Teste tous les agents
+
+### Hooks Git Automatiques
+
+**Pre-Commit Hook (BLOQUANT):**
+- ✅ Anima (DocKeeper) - Vérifie documentation + versioning
 - ✅ Neo (IntegrityWatcher) - Vérifie intégrité backend/frontend
 - 🚨 **BLOQUE le commit** si erreurs critiques
 
-### Post-Commit Hook
+**Post-Commit Hook:**
 - ✅ Nexus (Coordinator) - Génère rapport unifié
-- ✅ Affiche feedback détaillé automatiquement
+- ✅ Auto-update docs (CHANGELOG, ROADMAP)
 
-### Pre-Push Hook
+**Pre-Push Hook (BLOQUANT):**
 - ✅ ProdGuardian - Vérifie production Cloud Run
 - 🚨 **BLOQUE le push** si production CRITICAL
 
-**Tu n'as RIEN à faire - observe juste le feedback après commit/push.**
+### Audit Manuel Global
 
-**Bypass (urgence uniquement):**
-```bash
+**Pour lancer tous les agents manuellement :**
+```powershell
+.\run_audit.ps1
+```
+
+**Avec email du rapport :**
+```powershell
+.\run_audit.ps1 -EmailReport -EmailTo "admin@example.com"
+```
+
+### Commandes Utiles
+
+```powershell
+# Désactiver Guardian
+.\setup_guardian.ps1 -Disable
+
+# Monitoring prod toutes les 2h (au lieu de 6h)
+.\setup_guardian.ps1 -IntervalHours 2
+
+# Bypass hooks (urgence uniquement)
 git commit --no-verify
 git push --no-verify
 ```
+
+**📚 Documentation complète :** `claude-plugins/integrity-docs-guardian/README_GUARDIAN.md`
 
 ---
 

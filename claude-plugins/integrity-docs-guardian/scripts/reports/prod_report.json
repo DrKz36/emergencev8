@@ -1,17 +1,23 @@
 {
-  "timestamp": "2025-10-19T07:59:42.284027",
+  "timestamp": "2025-10-19T14:59:42.192864",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
   "freshness": "1h",
   "status": "OK",
   "summary": {
-    "errors": 0,
+    "errors": 1,
     "warnings": 0,
     "critical_signals": 0,
     "latency_issues": 0
   },
-  "errors": [],
+  "errors": [
+    {
+      "time": "2025-10-19T12:58:43.133106Z",
+      "severity": "ERROR",
+      "msg": "Traceback (most recent call last):\n  File \"/app/src/backend/features/dashboard/admin_service.py\", line 144, in _get_users_breakdown\n    email_map = await self._build_user_email_map()\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/app/src/backend/features/dashboard/admin_service.py\", lin"
+    }
+  ],
   "warnings": [],
   "critical_signals": [],
   "latency_issues": [],
