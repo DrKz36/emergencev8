@@ -1,3 +1,171 @@
+## [2025-10-19 16:00] — Agent: Claude Code (PHASE 3 - HEALTH ENDPOINTS + FIX CHROMADB ✅)
+
+### Fichiers modifiés
+
+**Backend:**
+- `src/backend/features/monitoring/router.py` (suppression endpoints health dupliqués)
+- `src/backend/features/memory/vector_service.py` (fix metadata None values ChromaDB)
+- `docs/passation.md` (cette entrée)
+- `AGENT_SYNC.md` (mise à jour session)
+
+### Contexte
+
+Suite à `docs/passation.md` (Phase 3 optionnelle), implémentation des optimisations :
+1. Simplification health endpoints (suppression duplicatas)
+2. Fix erreur Cloud Run ChromaDB (metadata None values)
+
+### Modifications implémentées
+
+**1. Simplification health endpoints (suppression duplicatas)**
+
+Problème :
+- Trop de health endpoints dupliqués :
+  - `/api/health` (main.py) ✅ GARDÉ
+  - `/healthz` (main.py) ✅ GARDÉ
+  - `/ready` (main.py) ✅ GARDÉ
+  - `/api/monitoring/health` ❌ SUPPRIMÉ (duplicate /api/health)
+  - `/api/monitoring/health/liveness` ❌ SUPPRIMÉ (duplicate /healthz)
+  - `/api/monitoring/health/readiness` ❌ SUPPRIMÉ (duplicate /ready)
+  - `/api/monitoring/health/detailed` ✅ GARDÉ (métriques système utiles)
+
+Solution :
+- Supprimé endpoints `/api/monitoring/health*` (sauf `/detailed`)
+- Commentaire ajouté pour indiquer où sont les health endpoints de base
+- Endpoints simplifiés à la racine pour Cloud Run
+
+**2. Fix erreur Cloud Run ChromaDB metadata None values**
+
+Problème (logs production):
+```
+ValueError: Expected metadata value to be a str, int, float or bool, got None which is a NoneType in upsert.
+```
+- Fichier: `vector_service.py` ligne 675 (méthode `add_items`)
+- Cause: Métadonnées contenant `None` lors de l'upsert ChromaDB
+- Impact: Erreurs dans logs production + potentielle perte de données (préférences utilisateur)
+
+Solution :
+- Filtrage des valeurs `None` dans métadonnées avant upsert :
+```python
+metadatas = [
+    {k: v for k, v in item.get("metadata", {}).items() if v is not None}
+    for item in items
+]
+```
+- ChromaDB accepte uniquement `str, int, float, bool`
+- Les clés avec valeurs `None` sont maintenant ignorées
+
+### Tests
+
+**Health endpoints:**
+- ✅ `/api/health` → 200 OK (simple check)
+- ✅ `/healthz` → 200 OK (liveness)
+- ✅ `/ready` → 200 OK (readiness DB + Vector)
+- ✅ `/api/monitoring/health/detailed` → 200 OK (métriques système)
+- ✅ `/api/monitoring/health` → 404 (supprimé)
+- ✅ `/api/monitoring/health/liveness` → 404 (supprimé)
+- ✅ `/api/monitoring/health/readiness` → 404 (supprimé)
+
+**Backend:**
+- ✅ Backend démarre sans erreur
+- ✅ `npm run build` → OK (3.12s)
+- ✅ Fix ChromaDB testé (backend démarre avec nouveau code)
+
+**Logs Cloud Run:**
+- ✅ Erreur ChromaDB identifiée et fixée
+- ⏳ Déploiement requis pour validation production
+
+### Prochaines actions recommandées
+
+1. Déployer le fix en production (canary → stable)
+2. Vérifier logs Cloud Run après déploiement (erreur metadata doit disparaître)
+3. Optionnel: Migration DB `sessions` → `threads` (reportée, trop risqué)
+
+### Blocages
+
+Aucun.
+
+---
+
+## [2025-10-19 14:55] — Agent: Claude Code (FIX BETA_REPORT.HTML - 404 → 200 ✅)
+
+### Fichiers modifiés
+
+**Fichiers ajoutés:**
+- `beta_report.html` (copié depuis `docs/archive/REPORTS_OLD_2025-10/beta_report.html`)
+
+**Déploiement:**
+- Image Docker rebuild + push (tag 20251019-144943)
+- Déploiement canary 10% → 100%
+- Production stable (revision emergence-app-00508-rum)
+
+### Contexte
+
+**Problème rapporté:**
+La page `https://emergence-app.ch/beta_report.html` retournait **404 Not Found**.
+
+**Cause:**
+Le fichier HTML `beta_report.html` était archivé dans `docs/archive/REPORTS_OLD_2025-10/` mais **pas présent à la racine** du projet, donc pas servi par FastAPI StaticFiles.
+
+**Backend déjà OK:**
+- Router `/api/beta-report` fonctionnel (src/backend/features/beta_report/router.py)
+- Endpoint POST `/api/beta-report` opérationnel
+- Email service configuré et testé
+
+### Solution appliquée
+
+**1. Restauration fichier HTML**
+```bash
+cp docs/archive/REPORTS_OLD_2025-10/beta_report.html beta_report.html
+```
+
+**2. Vérification contenu**
+- Formulaire complet avec 8 phases de tests (55 tests total)
+- Envoie vers `/api/beta-report` (ligne 715 du HTML)
+- Auto-détection navigateur/OS
+- Barre de progression dynamique
+
+**3. Déploiement production**
+- Build + push image Docker ✅
+- Déploiement canary 10% ✅
+- Test sur URL canary: **HTTP 200 OK** ✅
+- Promotion 100% trafic ✅
+- Test prod finale: **HTTP 200 OK** ✅
+
+### Tests de validation
+
+**Canary (10%):**
+```bash
+curl -I https://canary-20251019---emergence-app-47nct44nma-ew.a.run.app/beta_report.html
+# HTTP/1.1 200 OK
+# Content-Length: 27158
+```
+
+**Production (100%):**
+```bash
+curl -I https://emergence-app.ch/beta_report.html
+# HTTP/1.1 200 OK
+# Content-Length: 27158
+```
+
+### URLs actives
+
+✅ **Formulaire Beta:** https://emergence-app.ch/beta_report.html
+✅ **API Endpoint:** https://emergence-app.ch/api/beta-report (POST)
+✅ **Email destination:** gonzalefernando@gmail.com
+
+### Prochaines actions recommandées
+
+1. Tester soumission complète formulaire beta_report.html
+2. Vérifier réception email avec rapport formaté
+3. Documenter URL dans emails beta invitations
+4. Ajouter lien dans dashboard beta testeurs
+
+### Blocages
+
+Aucun. Déploiement production stable.
+
+---
+
 ## [2025-10-19 15:00] — Agent: Claude Code (PHASE 2 - ROBUSTESSE DASHBOARD + DOC USER_ID ✅)
 
 ### Fichiers modifiés
