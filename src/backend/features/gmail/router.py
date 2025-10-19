@@ -12,10 +12,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Request, Header, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
+import logging
 
-from src.backend.core.logger import logger
-from src.backend.features.gmail.oauth_service import GmailOAuthService
-from src.backend.features.gmail.gmail_service import GmailService
+from backend.features.gmail.oauth_service import GmailOAuthService
+from backend.features.gmail.gmail_service import GmailService
+
+logger = logging.getLogger("emergence.gmail.router")
 
 
 router = APIRouter()

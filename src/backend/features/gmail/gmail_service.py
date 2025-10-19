@@ -14,9 +14,11 @@ import base64
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+import logging
 
-from src.backend.core.logger import logger
-from src.backend.features.gmail.oauth_service import GmailOAuthService
+from backend.features.gmail.oauth_service import GmailOAuthService
+
+logger = logging.getLogger("emergence.gmail.service")
 
 
 class GmailService:

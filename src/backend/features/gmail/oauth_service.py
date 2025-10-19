@@ -15,9 +15,9 @@ from datetime import datetime
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
+import logging
 
-from src.backend.core.logger import logger
-from src.backend.core.config import get_settings
+logger = logging.getLogger("emergence.gmail.oauth")
 
 
 class GmailOAuthService:
@@ -26,7 +26,6 @@ class GmailOAuthService:
     SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
     def __init__(self):
-        self.settings = get_settings()
         self.client_config = self._load_client_config()
 
     def _load_client_config(self) -> dict:
@@ -41,7 +40,7 @@ class GmailOAuthService:
             try:
                 from google.cloud import secretmanager
                 client = secretmanager.SecretManagerServiceClient()
-                project_id = self.settings.gcp_project_id or "emergence-469005"
+                project_id = os.getenv("GCP_PROJECT_ID", "emergence-469005")
                 secret_name = f"projects/{project_id}/secrets/gmail-oauth-client-secret/versions/latest"
                 response = client.access_secret_version(request={"name": secret_name})
                 return json.loads(response.payload.data.decode('UTF-8'))
