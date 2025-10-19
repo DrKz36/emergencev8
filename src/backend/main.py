@@ -64,6 +64,7 @@ SETTINGS_ROUTER = _import_router("backend.features.settings.router")  # Applicat
 BETA_REPORT_ROUTER = _import_router("backend.features.beta_report.router")  # Beta feedback reports
 GUARDIAN_ROUTER = _import_router("backend.features.guardian.router")  # Guardian auto-fix
 USAGE_ROUTER = _import_router("backend.features.usage.router")  # Usage tracking (Phase 2 Guardian Cloud)
+GMAIL_ROUTER = _import_router("backend.features.gmail.router")  # Gmail API (Phase 3 Guardian Cloud)
 
 
 def _migrations_dir() -> str:
@@ -408,6 +409,7 @@ def create_app() -> FastAPI:
     _mount_router(SETTINGS_ROUTER)  # Settings endpoints at /api/settings/*
     _mount_router(GUARDIAN_ROUTER)  # Guardian auto-fix at /api/guardian/*
     _mount_router(USAGE_ROUTER)  # Usage tracking at /api/usage/* (Phase 2 Guardian Cloud)
+    _mount_router(GMAIL_ROUTER)  # Gmail API at /auth/gmail + /api/gmail/* (Phase 3 Guardian Cloud)
 
     # ⚠️ WS: **uniquement** features.chat.router (déclare /ws/{session_id})
     _mount_router(CHAT_ROUTER)  # pas de prefix → garde /ws/{session_id}

@@ -152,5 +152,69 @@
 - Les claims enrichis exposent `session_revoked` et `revoked_at` le cas échéant; le handshake WS refuse une session révoquée.
 - OTP futur : champs réservés (`otp_secret`, `otp_expires_at`, `otp_channel`) pour SMS/OTP; routes resteront compatibles.
 
+---
+
+## 7) Gmail API Endpoints (Phase 3 Guardian Cloud)
+
+### OAuth Flow (Admin uniquement)
+
+- `GET /auth/gmail` → **Initie OAuth2 flow Gmail**
+  - Redirect vers Google consent screen
+  - Demande scope `gmail.readonly` (lecture seule)
+  - Retourne 302 redirect vers `https://accounts.google.com/o/oauth2/auth`
+
+- `GET /auth/callback/gmail?code=...` → **Callback OAuth2**
+  - Échange `code` contre tokens OAuth (access_token + refresh_token)
+  - Stocke tokens dans Firestore (collection `gmail_oauth_tokens`, document `admin`)
+  - Tokens encrypted at rest (Firestore security)
+  - Retourne 200 `{ success: true, message: "Gmail OAuth authentication successful!", next_step: "..." }`
+  - Erreur: 400 si `error` param ou `code` manquant
+  - Erreur: 500 si échange token échoue
+
+### API Codex (lecture rapports Guardian)
+
+- `POST /api/gmail/read-reports` → **Lire emails Guardian pour Codex GPT**
+  - **Auth:** Header `X-Codex-API-Key: <secret>` (API key stockée dans Secret Manager GCP)
+  - **Payload (optionnel):** `{ max_results: 10 }`
+  - **Query Gmail:** `subject:(emergence OR guardian OR audit)` (emails Guardian uniquement)
+  - **Retourne:** 200 `{ success: true, count: 3, emails: [...] }`
+    - Chaque email: `{ id, subject, from, date, timestamp, body, snippet }`
+    - `body`: HTML ou plaintext (décodé base64url)
+  - **Erreurs:**
+    - 401 si API key invalide
+    - 500 si OAuth tokens manquants ou expirés (relancer OAuth flow)
+    - 500 si Gmail API quota exceeded
+
+### Status OAuth
+
+- `GET /api/gmail/status` → **Vérifier status OAuth Gmail**
+  - **Pas d'auth requise** (endpoint public pour debug)
+  - Retourne 200 `{ authenticated: true|false, message: "...", scopes?: [...] }`
+  - Si `authenticated: false`, message indique `/auth/gmail` requis
+
+### Variables env requises
+
+```bash
+CODEX_API_KEY=<secret>  # API key Codex (Secret Manager: codex-api-key)
+GCP_PROJECT_ID=emergence-469005  # Pour Secret Manager
+```
+
+### Sécurité
+
+- ✅ OAuth scope readonly uniquement (aucune modification emails)
+- ✅ Tokens Gmail stockés Firestore (encrypted at rest)
+- ✅ Auto-refresh tokens expirés (refresh_token persist)
+- ✅ Credentials OAuth depuis Secret Manager (gmail-oauth-client-secret)
+- ✅ API key Codex depuis Secret Manager (codex-api-key)
+- ✅ HTTPS obligatoire (TLS 1.3)
+
+### Workflow Codex
+
+1. **Polling**: POST `/api/gmail/read-reports` (toutes les 2h)
+2. **Parse**: Extract erreurs depuis HTML Guardian report
+3. **Auto-fix**: Créer branche Git + commit + PR GitHub
+4. **Notify**: Slack/Email confirmation
+
+**Voir:** `docs/GMAIL_CODEX_INTEGRATION.md` pour doc complète Codex GPT.
 
 
