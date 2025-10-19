@@ -598,6 +598,41 @@ Ou avec des vrais sujets si consolidation des archives réussie.
 
 ---
 
+## 🔄 Dernière session (2025-10-19 16:00) — Agent : Claude Code (PHASE 3 - Health Endpoints + Fix ChromaDB ✅)
+
+**Objectif :**
+- Simplifier health endpoints (suppression duplicatas)
+- Investiguer et fixer erreur Cloud Run ChromaDB metadata
+
+**Résultats :**
+- ✅ **Simplification health endpoints**
+  - Supprimé endpoints dupliqués dans `/api/monitoring/health*` (sauf `/detailed`)
+  - Gardé endpoints de base: `/api/health`, `/healthz`, `/ready`
+  - Commentaires ajoutés pour clarifier architecture
+  - Tests: 7/7 endpoints OK (4 gardés, 3 supprimés retournent 404)
+- ✅ **Fix erreur ChromaDB metadata None values**
+  - Identifié erreur production: `ValueError: Expected metadata value to be a str, int, float or bool, got None`
+  - Fichier: `vector_service.py` ligne 765 (méthode `add_items`)
+  - Solution: Filtrage valeurs `None` avant upsert ChromaDB
+  - Impact: Élimine erreurs logs production + évite perte données préférences utilisateur
+- ✅ Tests backend complets (backend démarre, health endpoints OK)
+- ✅ `npm run build` → OK (3.12s)
+- ✅ Documentation mise à jour (passation.md, AGENT_SYNC.md)
+
+**Fichiers modifiés :**
+- Backend : [monitoring/router.py](src/backend/features/monitoring/router.py) (suppression endpoints)
+- Backend : [vector_service.py](src/backend/features/memory/vector_service.py) (fix metadata None)
+- Docs : [passation.md](docs/passation.md), [AGENT_SYNC.md](AGENT_SYNC.md)
+
+**Prochaines actions :**
+1. Déployer le fix en production (canary → stable)
+2. Vérifier logs Cloud Run après déploiement (erreur metadata doit disparaître)
+3. Migration DB `sessions` → `threads` reportée (trop risqué, bénéfice faible)
+
+**Session terminée à 16:15 (Europe/Zurich)**
+
+---
+
 ## 🔄 Dernière session (2025-10-18 17:13) — Agent : Claude Code (Vérification Guardians + Déploiement beta-2.1.4)
 
 **Objectif :**
