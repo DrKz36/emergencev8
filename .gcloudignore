@@ -72,6 +72,13 @@ run-local.ps1
 # Claude Code shell snapshots (temp files)
 .claude/
 
+# Guardian reports & tests temporaires
+claude-plugins/integrity-docs-guardian/reports/
+reports/
+test_guardian_email*.py
+decode_email*.py
+email_html_output.html
+
 # === Whitelist FRONT (ARBO-LOCK) ===
 !index.html
 !assets/**
