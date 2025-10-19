@@ -1793,7 +1793,10 @@ class ChatService:
         agent_id: Optional[str] = None,
     ) -> List[Dict]:
         normalized: List[Dict[str, Any]] = []
-        if use_rag and rag_context:
+        # 🔥 FIX: Injecter le contexte même si use_rag=False quand c'est du contexte temporel
+        # (pour les questions "résume sujets", Anima doit voir le header même si RAG désactivé)
+        should_inject_context = rag_context and (use_rag or "Historique des sujets abordés" in rag_context)
+        if should_inject_context:
             if provider == "google":
                 normalized.append({"role": "user", "parts": [f"[RAG_CONTEXT]\n{rag_context}"]})
             else:
