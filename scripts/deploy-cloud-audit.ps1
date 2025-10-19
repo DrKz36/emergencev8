@@ -51,7 +51,7 @@ gcloud run jobs deploy cloud-audit-job `
     --max-retries=2 `
     --task-timeout=10m `
     --set-env-vars="ADMIN_EMAIL=gonzalefernando@gmail.com,SERVICE_URL=https://emergence-app-486095406755.europe-west1.run.app" `
-    --set-secrets="SMTP_PASSWORD=smtp-password:latest,OPENAI_API_KEY=openai-api-key:latest" `
+    --set-secrets="SMTP_PASSWORD=SMTP_PASSWORD:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest" `
     --memory=512Mi `
     --cpu=1
 

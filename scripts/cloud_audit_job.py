@@ -83,7 +83,7 @@ class CloudAuditJob:
 
             # Client Cloud Run
             client = run_v2.ServicesClient()
-            service_path = f"projects/emergence-app-prod/locations/europe-west1/services/emergence-app"
+            service_path = f"projects/emergence-469005/locations/europe-west1/services/emergence-app"
 
             try:
                 service = client.get_service(name=service_path)
