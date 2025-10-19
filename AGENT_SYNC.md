@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-19 14:40 (Claude Code: Renommage sessions → threads - Phase 1 COMPLÈTE ✅)
+**Dernière mise à jour** : 2025-10-19 15:00 (Claude Code: Phase 2 - Robustesse dashboard + doc user_id ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -17,7 +17,60 @@
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
 5. `git status` + `git log --online -10` - état Git
 
-## 🚀 Session en cours (2025-10-19 14:40) — Agent : Claude Code (RENOMMAGE SESSIONS → THREADS - PHASE 1 ✅)
+## 🚀 Session en cours (2025-10-19 15:00) — Agent : Claude Code (PHASE 2 - ROBUSTESSE DASHBOARD + DOC USER_ID ✅)
+
+**Objectif :**
+- ✅ **COMPLET**: Améliorer robustesse dashboard admin + documenter format user_id
+
+**Fichiers modifiés (3 fichiers) :**
+- `src/frontend/features/admin/admin-dashboard.js` (amélioration `renderCostsChart()`)
+- `docs/architecture/10-Components.md` (doc user_id - 3 formats supportés)
+- `docs/architecture/30-Contracts.md` (endpoint `/admin/analytics/threads`)
+
+**Améliorations implémentées :**
+
+**1. Robustesse `renderCostsChart()` (admin-dashboard.js lignes 527-599)**
+- ✅ Vérification `Array.isArray()` pour éviter crash si data n'est pas un array
+- ✅ Filtrage des entrées invalides (null, undefined, missing fields)
+- ✅ `parseFloat()` + `isNaN()` pour gérer coûts null/undefined
+- ✅ Try/catch pour formatage dates (fallback "N/A" / "Date inconnue")
+- ✅ Messages d'erreur clairs selon les cas :
+  - "Aucune donnée disponible" (data vide/null)
+  - "Aucune donnée valide disponible" (après filtrage)
+  - "Aucune donnée de coûts pour la période" (total = 0)
+
+**2. Décision format user_id (PAS de migration DB)**
+- ❌ **Migration REJETÉE** : Trop risqué de migrer les user_id existants
+- ✅ **Documentation** : Format inconsistant documenté dans architecture
+- ✅ 3 formats supportés :
+  1. Hash SHA256 de l'email (legacy)
+  2. Email en clair (actuel)
+  3. Google OAuth `sub` (numeric, priorité 1)
+- Le code `AdminDashboardService._build_user_email_map()` gère déjà les 3 formats correctement
+
+**3. Documentation architecture (10-Components.md lignes 233-272)**
+- ✅ Section "Mapping user_id" mise à jour avec détails des 3 formats
+- ✅ Explication de la fonction `_build_user_email_map()` (lignes 92-127 de admin_service.py)
+- ✅ Décision documentée : NE PAS migrer (trop risqué)
+- ✅ Recommandation future : OAuth `sub` prioritaire, sinon email en clair
+
+**4. Documentation contrats API (30-Contracts.md ligne 90)**
+- ✅ Endpoint `GET /api/admin/analytics/threads` ajouté
+- ✅ Note explicative : THREADS (table `sessions`), pas sessions JWT
+
+**Tests effectués :**
+- ✅ `npm run build` → OK (2.96s, hash admin-B529-Y9B.js changé)
+- ✅ Aucune erreur frontend
+- ✅ Code backend inchangé (seulement doc)
+
+**Prochaines actions (Phase 3 - optionnel) :**
+1. Refactor table `sessions` → `threads` (migration DB lourde)
+2. Health endpoints manquants (`/health/liveness`, `/health/readiness` sans `/api/monitoring/`)
+3. Fix Cloud Run API error (Unknown field: status)
+
+---
+
+## 🚀 Session précédente (2025-10-19 14:40) — Agent : Claude Code (RENOMMAGE SESSIONS → THREADS - PHASE 1 ✅)
 
 **Objectif :**
 - ✅ **COMPLET**: Clarifier confusion dashboard admin (sessions vs threads)

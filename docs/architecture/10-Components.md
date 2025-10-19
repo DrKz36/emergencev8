@@ -230,16 +230,46 @@ scrape_configs:
 
 **Note** : Ce sont les vraies sessions d'authentification, gérées par `AuthService`.
 
-#### Mapping user_id (Format inconsistant)
+#### Mapping user_id (Format inconsistant - 3 formats supportés)
 
-**PROBLÈME CONNU** : Le champ `user_id` dans la table `sessions` (threads) peut avoir DEUX formats :
-- **Format legacy** : Hash SHA256 de l'email (ex: `a3c5f...`)
-- **Format actuel** : Email en clair (ex: `user@example.com`)
+**PROBLÈME CONNU** : Le champ `user_id` dans la table `sessions` (threads) et autres tables peut avoir **TROIS formats différents** :
 
-**Solution actuelle** : `AdminDashboardService._build_user_email_map()` supporte les deux formats pour rétrocompatibilité.
-**TODO** : Standardiser tous les `user_id` vers un format unique (recommandé: email en clair) via migration DB future.
+1. **Format legacy** : Hash SHA256 de l'email (ex: `a3c5f8d9e1b2...`)
+   - Utilisé par les anciennes sessions
+   - Privacy-friendly mais illisible
 
-**Référence** : Voir [AUDIT_COMPLET_2025-10-18.md](../AUDIT_COMPLET_2025-10-18.md) pour contexte complet.
+2. **Format actuel** : Email en clair (ex: `user@example.com`)
+   - Utilisé par les nouvelles sessions
+   - Lisible, facile à debugger
+   - Recommandé pour les apps internes
+
+3. **Format OAuth** : Google OAuth `sub` (ex: `1234567890` - numeric)
+   - Utilisé pour les utilisateurs Google OAuth
+   - Identifiant unique Google
+   - Priorité 1 dans le matching (le plus fiable)
+
+**Solution actuelle** : `AdminDashboardService._build_user_email_map()` (lignes 92-127) supporte **les trois formats** simultanément pour rétrocompatibilité :
+```python
+# Ligne 116-125 de admin_service.py
+if oauth_sub:
+    email_map[oauth_sub] = (email, role)  # Priority 1
+
+email_hash = hashlib.sha256(email.encode('utf-8')).hexdigest()
+email_map[email_hash] = (email, role)  # Legacy support
+
+email_map[email] = (email, role)  # Current format
+```
+
+**Décision Phase 2 (2025-10-19)** : **NE PAS MIGRER** les user_id existants.
+- Migration DB trop risquée (pourrait casser les références historiques)
+- Le code actuel gère les 3 formats correctement
+- Documenter le comportement au lieu de le changer
+
+**Recommandation future** : Lors de la création de **nouveaux users**, utiliser systématiquement :
+- OAuth `sub` si disponible (Google OAuth)
+- Email en clair sinon
+
+**Référence** : Voir [AUDIT_COMPLET_2025-10-18.md](../AUDIT_COMPLET_2025-10-18.md) et [PROMPT_SUITE_AUDIT.md](../PROMPT_SUITE_AUDIT.md) pour contexte complet.
 
 ---
 

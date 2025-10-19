@@ -87,6 +87,7 @@
 - `DELETE /api/auth/admin/allowlist/{email}` -> 204 (suppression).
 - `GET /api/auth/admin/sessions` -> 200 `{ items:[{ id, email, ip, issued_at, expires_at, revoked_at }] }`.
 - `POST /api/auth/admin/sessions/revoke` -> 200 `{ updated:1 }` (révoque `id`).
+- `GET /api/admin/analytics/threads` -> 200 `{ threads:[...], total }` (admin seulement). Retourne tous les threads de conversation actifs avec détails (user_id, email, role, timestamps, durée, statut actif). **Note** : Renvoie des THREADS (table `sessions`), pas des sessions d'auth JWT (voir `/api/auth/admin/sessions` pour ça).
 
 ### Threads & messages
 - `GET /api/threads?type=chat&limit=1` → `{ items:[{id,type,created_at,last_message_at,message_count,archival_reason,archived_at}] }`
