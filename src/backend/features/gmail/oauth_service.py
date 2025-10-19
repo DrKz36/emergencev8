@@ -77,7 +77,6 @@ class GmailOAuthService:
 
         authorization_url, state = flow.authorization_url(
             access_type='offline',  # Pour refresh token
-            include_granted_scopes='true',
             prompt='consent'  # Force consent screen (pour avoir refresh_token)
         )
 

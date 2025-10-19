@@ -61,6 +61,8 @@ secrets/
 **/secrets.json
 **/config.local.json
 id_token.txt
+gmail_client_secret.json
+*_client_secret.json
 
 # --- Node / frontend
 node_modules/

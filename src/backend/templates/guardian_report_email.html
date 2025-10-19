@@ -168,19 +168,179 @@
     {% if prod_report.summary %}
     <div class="metric">
         <div class="metric-label">Logs Analysés</div>
-        <div class="metric-value">{{ prod_report.summary.total_logs | default(0) }}</div>
+        <div class="metric-value">{{ prod_report.logs_analyzed | default(prod_report.summary.total_logs) | default(0) }}</div>
     </div>
     <div class="metric">
         <div class="metric-label">Erreurs Détectées</div>
-        <div class="metric-value">{{ prod_report.summary.error_count | default(0) }}</div>
+        <div class="metric-value">{{ prod_report.summary.errors | default(prod_report.summary.error_count) | default(0) }}</div>
     </div>
     <div class="metric">
         <div class="metric-label">Warnings</div>
-        <div class="metric-value">{{ prod_report.summary.warning_count | default(0) }}</div>
+        <div class="metric-value">{{ prod_report.summary.warnings | default(prod_report.summary.warning_count) | default(0) }}</div>
     </div>
     <div class="metric">
         <div class="metric-label">Problèmes Critiques</div>
-        <div class="metric-value">{{ prod_report.summary.critical_count | default(0) }}</div>
+        <div class="metric-value">{{ prod_report.summary.critical_signals | default(prod_report.summary.critical_count) | default(0) }}</div>
+    </div>
+    {% endif %}
+
+    <!-- ERROR PATTERNS ANALYSIS (NEW - enriched data) -->
+    {% if prod_report.error_patterns and (prod_report.error_patterns.by_endpoint or prod_report.error_patterns.by_error_type or prod_report.error_patterns.by_file) %}
+    <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+        <div class="metric-label" style="font-size: 16px; color: #3b82f6; margin-bottom: 15px;">🔍 Analyse de Patterns</div>
+
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            {% if prod_report.error_patterns.by_endpoint %}
+            <tr>
+                <td style="padding: 8px 0; vertical-align: top; width: 30%; color: #94a3b8; font-size: 13px;">
+                    <strong>Par Endpoint:</strong>
+                </td>
+                <td style="padding: 8px 0; color: #e2e8f0; font-size: 13px;">
+                    {% for endpoint, count in (prod_report.error_patterns.by_endpoint.items() | list)[:3] %}
+                    <div style="margin: 4px 0;">
+                        <span style="background: rgba(59, 130, 246, 0.2); padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 12px;">{{ endpoint }}</span>
+                        <span style="background: #ef4444; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; margin-left: 8px;">{{ count }}</span>
+                    </div>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endif %}
+
+            {% if prod_report.error_patterns.by_error_type %}
+            <tr>
+                <td style="padding: 8px 0; vertical-align: top; color: #94a3b8; font-size: 13px;">
+                    <strong>Par Type d'Erreur:</strong>
+                </td>
+                <td style="padding: 8px 0; color: #e2e8f0; font-size: 13px;">
+                    {% for error_type, count in (prod_report.error_patterns.by_error_type.items() | list)[:3] %}
+                    <div style="margin: 4px 0;">
+                        <span style="background: rgba(239, 68, 68, 0.2); padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 12px;">{{ error_type }}</span>
+                        <span style="background: #ef4444; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; margin-left: 8px;">{{ count }}</span>
+                    </div>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endif %}
+
+            {% if prod_report.error_patterns.by_file %}
+            <tr>
+                <td style="padding: 8px 0; vertical-align: top; color: #94a3b8; font-size: 13px;">
+                    <strong>Par Fichier:</strong>
+                </td>
+                <td style="padding: 8px 0; color: #e2e8f0; font-size: 13px;">
+                    {% for file_path, count in (prod_report.error_patterns.by_file.items() | list)[:3] %}
+                    <div style="margin: 4px 0;">
+                        <span style="background: rgba(251, 191, 36, 0.2); padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 12px;">{{ file_path }}</span>
+                        <span style="background: #ef4444; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; margin-left: 8px;">{{ count }}</span>
+                    </div>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- DETAILED ERRORS (NEW - enriched data) -->
+    {% if prod_report.errors_detailed and prod_report.errors_detailed | length > 0 %}
+    <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+        <div class="metric-label" style="font-size: 16px; color: #ef4444; margin-bottom: 15px;">❌ Erreurs Détaillées (Top 3)</div>
+
+        {% for error in prod_report.errors_detailed[:3] %}
+        <div style="background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; padding: 15px; border-radius: 6px; margin: 15px 0;">
+            <div style="color: #94a3b8; font-size: 12px; margin-bottom: 8px;">
+                <strong>⏰ {{ error.timestamp }}</strong>
+                {% if error.severity %}
+                <span style="background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 8px;">{{ error.severity }}</span>
+                {% endif %}
+            </div>
+
+            {% if error.endpoint %}
+            <div style="margin: 8px 0; font-size: 13px;">
+                <span style="color: #94a3b8;">🌐 Endpoint:</span>
+                <span style="background: rgba(59, 130, 246, 0.2); padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #4a9eff;">
+                    {{ error.http_method }} {{ error.endpoint }}
+                </span>
+                {% if error.status_code %}
+                <span style="background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px;">{{ error.status_code }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if error.error_type %}
+            <div style="margin: 8px 0; font-size: 13px;">
+                <span style="color: #94a3b8;">⚠️ Type:</span>
+                <span style="background: rgba(239, 68, 68, 0.2); padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #ff6b6b;">{{ error.error_type }}</span>
+            </div>
+            {% endif %}
+
+            {% if error.file_path %}
+            <div style="margin: 8px 0; font-size: 13px;">
+                <span style="color: #94a3b8;">📁 Fichier:</span>
+                <span style="background: rgba(251, 191, 36, 0.2); padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #ffaa00;">
+                    {{ error.file_path }}{% if error.line_number %}:{{ error.line_number }}{% endif %}
+                </span>
+            </div>
+            {% endif %}
+
+            <div style="margin-top: 12px;">
+                <div style="color: #94a3b8; font-size: 12px; margin-bottom: 4px;"><strong>💬 Message:</strong></div>
+                <div style="background: rgba(0, 0, 0, 0.3); padding: 10px; border-radius: 4px; font-family: monospace; font-size: 11px; color: #e2e8f0; white-space: pre-wrap; overflow-x: auto;">{{ error.message[:500] }}{% if error.message | length > 500 %}...{% endif %}</div>
+            </div>
+
+            {% if error.stack_trace %}
+            <div style="margin-top: 12px;">
+                <div style="color: #94a3b8; font-size: 12px; margin-bottom: 4px;"><strong>📚 Stack Trace:</strong></div>
+                <div style="background: rgba(0, 0, 0, 0.3); padding: 10px; border-radius: 4px; font-family: monospace; font-size: 11px; color: #e2e8f0; white-space: pre-wrap; overflow-x: auto;">{{ error.stack_trace[:700] }}{% if error.stack_trace | length > 700 %}...{% endif %}</div>
+            </div>
+            {% endif %}
+
+            {% if error.request_id %}
+            <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+                🔍 Request ID: <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">{{ error.request_id }}</code>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- CODE SNIPPETS (NEW - enriched data) -->
+    {% if prod_report.code_snippets and prod_report.code_snippets | length > 0 %}
+    <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+        <div class="metric-label" style="font-size: 16px; color: #f59e0b; margin-bottom: 15px;">💻 Code Suspect (Fichiers avec erreurs)</div>
+
+        {% for snippet in prod_report.code_snippets[:2] %}
+        <div style="background: rgba(251, 191, 36, 0.1); border-left: 3px solid #f59e0b; padding: 15px; border-radius: 6px; margin: 15px 0;">
+            <div style="color: #ffaa00; font-size: 14px; font-weight: 600; margin-bottom: 8px;">
+                📁 {{ snippet.file }}
+                <span style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 8px;">{{ snippet.error_count }} erreurs</span>
+            </div>
+            <div style="color: #94a3b8; font-size: 12px; margin-bottom: 10px;">
+                Ligne {{ snippet.line }} (lignes {{ snippet.start_line }}-{{ snippet.end_line }})
+            </div>
+            <div style="background: rgba(0, 0, 0, 0.4); padding: 12px; border-radius: 4px; font-family: monospace; font-size: 11px; color: #c9d1d9; white-space: pre-wrap; overflow-x: auto; border: 1px solid rgba(255,255,255,0.1);">{{ snippet.code_snippet }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- RECENT COMMITS (NEW - enriched data) -->
+    {% if prod_report.recent_commits and prod_report.recent_commits | length > 0 %}
+    <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+        <div class="metric-label" style="font-size: 16px; color: #3b82f6; margin-bottom: 15px;">🔀 Commits Récents (Coupables Potentiels)</div>
+
+        {% for commit in prod_report.recent_commits[:3] %}
+        <div style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 6px; margin: 10px 0; border-left: 3px solid #3b82f6;">
+            <div style="font-family: monospace; font-size: 12px;">
+                <span style="color: #4a9eff; font-weight: 600;">{{ commit.hash }}</span>
+                <span style="color: #94a3b8;"> by </span>
+                <span style="color: #ffaa00;">{{ commit.author }}</span>
+                <span style="color: #94a3b8; font-size: 11px;"> ({{ commit.time }})</span>
+            </div>
+            <div style="color: #e2e8f0; font-size: 13px; margin-top: 6px;">{{ commit.message }}</div>
+        </div>
+        {% endfor %}
     </div>
     {% endif %}
 

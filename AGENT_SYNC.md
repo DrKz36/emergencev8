@@ -2442,6 +2442,54 @@ SMTP_PASSWORD=...
 ---
 
 ## 🤖 Synchronisation automatique
+### Consolidation - 2025-10-19T21:17:32.383180
+
+**Type de déclenchement** : `time_based`
+**Conditions** : {
+  "pending_changes": 1,
+  "time_since_last_minutes": 60.01049221666666
+}
+**Changements consolidés** : 1 événements sur 1 fichiers
+
+**Fichiers modifiés** :
+- **AGENT_SYNC.md** : 1 événement(s)
+  - `modified` à 2025-10-19T20:17:36.127197 (agent: unknown)
+
+---
+
+### Consolidation - 2025-10-19T20:17:31.749070
+
+**Type de déclenchement** : `time_based`
+**Conditions** : {
+  "pending_changes": 1,
+  "time_since_last_minutes": 60.007747583333334
+}
+**Changements consolidés** : 1 événements sur 1 fichiers
+
+**Fichiers modifiés** :
+- **AGENT_SYNC.md** : 1 événement(s)
+  - `modified` à 2025-10-19T19:17:34.759274 (agent: unknown)
+
+---
+
+### Consolidation - 2025-10-19T19:17:31.281156
+
+**Type de déclenchement** : `time_based`
+**Conditions** : {
+  "pending_changes": 3,
+  "time_since_last_minutes": 60.011302799999996
+}
+**Changements consolidés** : 3 événements sur 2 fichiers
+
+**Fichiers modifiés** :
+- **AGENT_SYNC.md** : 2 événement(s)
+  - `modified` à 2025-10-19T18:17:33.452967 (agent: unknown)
+  - `modified` à 2025-10-19T18:39:33.936573 (agent: unknown)
+- **docs/passation.md** : 1 événement(s)
+  - `modified` à 2025-10-19T18:41:04.004004 (agent: unknown)
+
+---
+
 ### Consolidation - 2025-10-19T18:17:30.597891
 
 **Type de déclenchement** : `time_based`

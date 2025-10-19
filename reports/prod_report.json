@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-19T15:18:27.047326",
+  "timestamp": "2025-10-19T21:14:59.701353",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -7,23 +7,77 @@
   "status": "OK",
   "summary": {
     "errors": 0,
-    "warnings": 2,
+    "warnings": 1,
     "critical_signals": 0,
     "latency_issues": 0
   },
   "errors": [],
   "warnings": [
     {
-      "time": "2025-10-19T13:16:20.865270Z",
-      "msg": ""
-    },
-    {
-      "time": "2025-10-19T13:16:20.715292Z",
+      "time": "2025-10-19T19:12:34.947607Z",
       "msg": ""
     }
   ],
   "critical_signals": [],
   "latency_issues": [],
+  "errors_detailed": [],
+  "warnings_detailed": [
+    {
+      "timestamp": "2025-10-19T19:12:34.947607Z",
+      "severity": "WARNING",
+      "message": "",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    }
+  ],
+  "error_patterns": {
+    "by_endpoint": {},
+    "by_error_type": {},
+    "by_file": {},
+    "frequency_timeline": [],
+    "most_common_error": null
+  },
+  "code_snippets": [],
+  "recent_commits": [
+    {
+      "hash": "af0ee77a",
+      "author": "Fernando Gonzalez",
+      "time": "43 minutes ago",
+      "message": "fix(gmail): Force HTTPS pour OAuth redirect URI sur Cloud Run"
+    },
+    {
+      "hash": "6195a463",
+      "author": "Fernando Gonzalez",
+      "time": "70 minutes ago",
+      "message": "fix(gmail): Add google-cloud-secret-manager dependency"
+    },
+    {
+      "hash": "65c7cfbb",
+      "author": "Fernando Gonzalez",
+      "time": "2 hours ago",
+      "message": "fix(gmail): Lazy loading services (Ã©vite crash module)"
+    },
+    {
+      "hash": "702331b8",
+      "author": "Fernando Gonzalez",
+      "time": "2 hours ago",
+      "message": "fix(gmail): Fix import paths (src.backend.* â†’ backend.* + logging)"
+    },
+    {
+      "hash": "822bba61",
+      "author": "Fernando Gonzalez",
+      "time": "3 hours ago",
+      "message": "docs(guardian): Phase 3+6 complet - Guide Codex Gmail + Debug session"
+    }
+  ],
   "recommendations": [
     {
       "priority": "LOW",
