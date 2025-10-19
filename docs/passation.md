@@ -38,38 +38,48 @@ python test_beta_invitation_email.py
 | **`.env` local** | ✅ OK | Mot de passe correct sans espaces |
 | **SMTP Auth Gmail** | ✅ OK | Authentification réussie |
 | **Email Service Local** | ✅ OK | Envoi beta invitation OK |
-| **Secret GCP `SMTP_PASSWORD`** | ❌ TODO | FG doit mettre à jour manuellement |
-| **Prod Cloud Run** | ❌ TODO | Redéploiement après update secret |
+| **Secret GCP `SMTP_PASSWORD`** | ✅ OK | Version 6 créée avec nouveau mot de passe |
+| **Prod Cloud Run** | ✅ OK | emergence-app redéployé (revision 00501-zon) |
 
-### Actions requises (FG)
+### Actions effectuées (Production GCP)
 
-**1. Mettre à jour le secret GCP :**
+**1. Mise à jour du secret GCP :**
 ```bash
 echo "aqcaxyqfyyiapawu" | gcloud secrets versions add SMTP_PASSWORD \
-  --project=emergence-dev-446414 \
+  --project=emergence-469005 \
   --data-file=-
+# → Created version [6] of the secret [SMTP_PASSWORD]. ✅
 ```
 
-**2. Redéployer les services Cloud Run :**
+**2. Redéploiement des services Cloud Run :**
 ```bash
-gcloud run services update emergence-stable \
-  --project=emergence-dev-446414 \
-  --region=europe-west6 \
+gcloud run services update emergence-app \
+  --project=emergence-469005 \
+  --region=europe-west1 \
   --update-env-vars=FORCE_UPDATE=$(date +%s)
+# → Service [emergence-app] revision [emergence-app-00501-zon] deployed ✅
+# → URL: https://emergence-app-486095406755.europe-west1.run.app
 ```
+
+**Vérifications production :**
+- ✅ Secret SMTP_PASSWORD version 6 créé
+- ✅ Service emergence-app redéployé (revision 00501-zon)
+- ✅ Config vérifiée : SMTP_PASSWORD utilise key:latest (version 6 automatiquement)
+- ✅ Health checks OK (service répond correctement)
+
+**Note importante :** Le projet GCP correct est `emergence-469005` (pas `emergence-dev-446414`).
 
 ### Résumé
 
-Le service mail fonctionne **parfaitement en local**. Le problème en prod vient du secret GCP `SMTP_PASSWORD` qui contient encore l'ancien mot de passe d'application Gmail. FG doit le mettre à jour manuellement puis redéployer les services Cloud Run.
+Le service mail fonctionne **parfaitement en local ET en production**. Secret GCP mis à jour avec le nouveau mot de passe d'application Gmail et service Cloud Run redéployé avec succès.
 
 ### Prochaines actions
 
-- FG : Mettre à jour secret GCP + redéployer
-- FG : Tester envoi invitation beta depuis l'UI admin en prod
+- FG : Tester envoi invitation beta depuis l'UI admin en prod web (https://emergence-app.ch)
 
 ### Blocages
 
-Aucun. Service mail opérationnel en local. Reste juste la mise à jour prod (permissions GCP requises).
+Aucun. Service mail 100% opérationnel local + production.
 
 ---
 
