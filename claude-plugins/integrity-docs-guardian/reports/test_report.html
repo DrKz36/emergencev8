@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guardian Report - EMERGENCE V8</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: #0a0e27;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #1a1f3a;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            color: #ffffff;
+            margin-top: 0;
+            border-bottom: 3px solid #ff4444;
+            padding-bottom: 15px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            background-color: #ff4444;
+            color: #ffffff;
+            margin-bottom: 20px;
+        }
+        .summary-box {
+            background-color: #252b4a;
+            border-left: 4px solid #ff4444;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .summary-item {
+            background-color: #1a1f3a;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .summary-item .number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ff4444;
+        }
+        .summary-item .label {
+            font-size: 12px;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+        .section {
+            margin: 30px 0;
+        }
+        .section-title {
+            font-size: 20px;
+            color: #4a9eff;
+            border-bottom: 2px solid #2a3f5f;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .error-card {
+            background-color: #2a1f1f;
+            border-left: 4px solid #ff4444;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        .code-block {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            margin: 10px 0;
+            color: #c9d1d9;
+        }
+        .code-block pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+        .endpoint-tag {
+            display: inline-block;
+            background-color: #3a3f5a;
+            color: #4a9eff;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+            margin: 5px 5px 5px 0;
+        }
+        .file-tag {
+            display: inline-block;
+            background-color: #3a3f5a;
+            color: #ffaa00;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+            margin: 5px 5px 5px 0;
+        }
+        .error-type-tag {
+            display: inline-block;
+            background-color: #3a3f5a;
+            color: #ff4444;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+            margin: 5px 5px 5px 0;
+        }
+        .recommendation {
+            background-color: #252b4a;
+            border-left: 4px solid #4a9eff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        .recommendation.high {
+            border-left-color: #ff4444;
+        }
+        .recommendation.medium {
+            border-left-color: #ffaa00;
+        }
+        .recommendation.low {
+            border-left-color: #44ff44;
+        }
+        .command {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+            color: #4a9eff;
+        }
+        .timestamp {
+            color: #a0a0a0;
+            font-size: 12px;
+        }
+        .commit {
+            background-color: #252b4a;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        .commit .hash {
+            color: #4a9eff;
+            font-family: monospace;
+        }
+        .commit .author {
+            color: #ffaa00;
+        }
+        .pattern-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .pattern-box {
+            background-color: #252b4a;
+            padding: 15px;
+            border-radius: 6px;
+        }
+        .pattern-box h4 {
+            margin-top: 0;
+            color: #4a9eff;
+            font-size: 14px;
+        }
+        .pattern-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #2a3f5f;
+        }
+        .pattern-item:last-child {
+            border-bottom: none;
+        }
+        .badge-count {
+            background-color: #ff4444;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #2a3f5f;
+            text-align: center;
+            color: #a0a0a0;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Guardian Report - EMERGENCE V8</h1>
+
+        <div class="status-badge">CRITICAL</div>
+
+        <div class="summary-box">
+            <h3 style="margin-top: 0;">📊 Summary</h3>
+            <p><strong>Service:</strong> emergence-app (europe-west1)</p>
+            <p><strong>Timestamp:</strong> <span class="timestamp">2025-10-19T14:30:00.000000</span></p>
+            <p><strong>Logs analyzed:</strong> 120 (last 1h)</p>
+
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="number">8</div>
+                    <div class="label">Errors</div>
+                </div>
+                <div class="summary-item">
+                    <div class="number">3</div>
+                    <div class="label">Warnings</div>
+                </div>
+                <div class="summary-item">
+                    <div class="number">1</div>
+                    <div class="label">Critical Signals</div>
+                </div>
+                <div class="summary-item">
+                    <div class="number">0</div>
+                    <div class="label">Latency Issues</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">🔍 Error Patterns Analysis</h2>
+            <div class="pattern-grid">
+
+                <div class="pattern-box">
+                    <h4>🌐 By Endpoint</h4>
+
+                    <div class="pattern-item">
+                        <span class="endpoint-tag">https://emergence-app-xxxxxxxx-ew.a.run.app/api/chat/message</span>
+                        <span class="badge-count">5</span>
+                    </div>
+
+                    <div class="pattern-item">
+                        <span class="endpoint-tag">https://emergence-app-xxxxxxxx-ew.a.run.app/api/agents/query</span>
+                        <span class="badge-count">2</span>
+                    </div>
+
+                    <div class="pattern-item">
+                        <span class="endpoint-tag">https://emergence-app-xxxxxxxx-ew.a.run.app/api/agents/dispatch</span>
+                        <span class="badge-count">1</span>
+                    </div>
+
+                </div>
+
+                <div class="pattern-box">
+                    <h4>⚠️ By Error Type</h4>
+
+                    <div class="pattern-item">
+                        <span class="error-type-tag">KeyError</span>
+                        <span class="badge-count">5</span>
+                    </div>
+
+                    <div class="pattern-item">
+                        <span class="error-type-tag">OperationalError</span>
+                        <span class="badge-count">2</span>
+                    </div>
+
+                    <div class="pattern-item">
+                        <span class="error-type-tag">ValueError</span>
+                        <span class="badge-count">1</span>
+                    </div>
+
+                </div>
+
+                <div class="pattern-box">
+                    <h4>📁 By File</h4>
+
+                    <div class="pattern-item">
+                        <span class="file-tag">src/backend/features/chat/service.py</span>
+                        <span class="badge-count">5</span>
+                    </div>
+
+                    <div class="pattern-item">
+                        <span class="file-tag">src/backend/core/database.py</span>
+                        <span class="badge-count">2</span>
+                    </div>
+
+                    <div class="pattern-item">
+                        <span class="file-tag">src/backend/features/agents/orchestrator.py</span>
+                        <span class="badge-count">1</span>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">❌ Detailed Errors (Top 4)</h2>
+
+            <div class="error-card">
+
+                <p><strong>⏰ Time:</strong> <span class="timestamp">2025-10-19T14:25:32.123456Z</span></p>
+                <p><strong>🔴 Severity:</strong> ERROR</p>
+
+                <p><strong>🌐 Endpoint:</strong> <span class="endpoint-tag">POST https://emergence-app-xxxxxxxx-ew.a.run.app/api/chat/message</span></p>
+
+                <p><strong>⚠️ Type:</strong> <span class="error-type-tag">KeyError</span></p>
+
+                <p><strong>📁 File:</strong> <span class="file-tag">src/backend/features/chat/service.py:142</span></p>
+
+                <p><strong>💬 Message:</strong></p>
+                <div class="code-block">
+                    <pre>KeyError: 'user_id'
+
+Failed to process chat message due to missing user_id in request context</pre>
+                </div>
+
+                <p><strong>📚 Stack Trace:</strong></p>
+                <div class="code-block">
+                    <pre>Traceback (most recent call last):
+  File &quot;/workspace/src/backend/features/chat/service.py&quot;, line 142, in process_message
+    user_id = context['user_id']
+KeyError: 'user_id'</pre>
+                </div>
+
+                <p><strong>🔍 Request ID:</strong> <code>req_abc123xyz</code> (for tracing)</p>
+
+            </div>
+
+            <div class="error-card">
+
+                <p><strong>⏰ Time:</strong> <span class="timestamp">2025-10-19T14:25:28.987654Z</span></p>
+                <p><strong>🔴 Severity:</strong> ERROR</p>
+
+                <p><strong>🌐 Endpoint:</strong> <span class="endpoint-tag">POST https://emergence-app-xxxxxxxx-ew.a.run.app/api/chat/message</span></p>
+
+                <p><strong>⚠️ Type:</strong> <span class="error-type-tag">KeyError</span></p>
+
+                <p><strong>📁 File:</strong> <span class="file-tag">src/backend/features/chat/service.py:142</span></p>
+
+                <p><strong>💬 Message:</strong></p>
+                <div class="code-block">
+                    <pre>KeyError: 'user_id'
+
+Failed to process chat message due to missing user_id in request context</pre>
+                </div>
+
+                <p><strong>📚 Stack Trace:</strong></p>
+                <div class="code-block">
+                    <pre>Traceback (most recent call last):
+  File &quot;/workspace/src/backend/features/chat/service.py&quot;, line 142, in process_message
+    user_id = context['user_id']
+KeyError: 'user_id'</pre>
+                </div>
+
+            </div>
+
+            <div class="error-card">
+
+                <p><strong>⏰ Time:</strong> <span class="timestamp">2025-10-19T14:23:15.456789Z</span></p>
+                <p><strong>🔴 Severity:</strong> ERROR</p>
+
+                <p><strong>🌐 Endpoint:</strong> <span class="endpoint-tag">POST https://emergence-app-xxxxxxxx-ew.a.run.app/api/agents/query</span></p>
+
+                <p><strong>⚠️ Type:</strong> <span class="error-type-tag">OperationalError</span></p>
+
+                <p><strong>📁 File:</strong> <span class="file-tag">src/backend/core/database.py:56</span></p>
+
+                <p><strong>💬 Message:</strong></p>
+                <div class="code-block">
+                    <pre>psycopg2.OperationalError: could not connect to server: Connection timed out
+	Is the server running on host &quot;10.42.0.5&quot; and accepting TCP/IP connections on port 5432?</pre>
+                </div>
+
+                <p><strong>📚 Stack Trace:</strong></p>
+                <div class="code-block">
+                    <pre>Traceback (most recent call last):
+  File &quot;/workspace/src/backend/core/database.py&quot;, line 56, in get_connection
+    conn = psycopg2.connect(dsn)
+psycopg2.OperationalError: could not connect to server: Connection timed out</pre>
+                </div>
+
+            </div>
+
+            <div class="error-card">
+
+                <p><strong>⏰ Time:</strong> <span class="timestamp">2025-10-19T14:22:45.111222Z</span></p>
+                <p><strong>🔴 Severity:</strong> ERROR</p>
+
+                <p><strong>🌐 Endpoint:</strong> <span class="endpoint-tag">POST https://emergence-app-xxxxxxxx-ew.a.run.app/api/agents/dispatch</span></p>
+
+                <p><strong>⚠️ Type:</strong> <span class="error-type-tag">ValueError</span></p>
+
+                <p><strong>📁 File:</strong> <span class="file-tag">src/backend/features/agents/orchestrator.py:92</span></p>
+
+                <p><strong>💬 Message:</strong></p>
+                <div class="code-block">
+                    <pre>ValueError: Invalid agent type 'unknown_agent'</pre>
+                </div>
+
+                <p><strong>📚 Stack Trace:</strong></p>
+                <div class="code-block">
+                    <pre>Traceback (most recent call last):
+  File &quot;/workspace/src/backend/features/agents/orchestrator.py&quot;, line 89, in dispatch_to_agent
+    agent_class = AGENT_REGISTRY[agent_type]
+KeyError: 'unknown_agent'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File &quot;/workspace/src/backend/features/agents/orchestrator.py&quot;, line 92, in dispatch_to_agent
+    raise ValueError(f&quot;Invalid agent type '{agent_type}'&quot;)
+ValueError: Invalid agent type 'unknown_agent'</pre>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">💻 Suspect Code Snippets</h2>
+
+            <div class="pattern-box">
+                <h4>📁 src/backend/features/chat/service.py <span style="color: #ff4444;">(5 errors)</span></h4>
+                <p style="font-size: 12px; color: #a0a0a0;">Line 142 (showing lines 137-147)</p>
+                <div class="code-block">
+                    <pre>    async def process_message(self, message: str, context: dict) -&gt; dict:
+        &quot;&quot;&quot;Process a user message and return agent response&quot;&quot;&quot;
+        try:
+            # Extract user context
+            user_id = context['user_id']  # ← LINE 142: KeyError here!
+            session_id = context.get('session_id')
+            
+            # Log the message
+            logger.info(f&quot;Processing message for user {user_id}&quot;)
+            
+            # Dispatch to appropriate agent
+</pre>
+                </div>
+            </div>
+
+            <div class="pattern-box">
+                <h4>📁 src/backend/core/database.py <span style="color: #ff4444;">(2 errors)</span></h4>
+                <p style="font-size: 12px; color: #a0a0a0;">Line 56 (showing lines 51-61)</p>
+                <div class="code-block">
+                    <pre>    def get_connection(self) -&gt; Connection:
+        &quot;&quot;&quot;Get a database connection from the pool&quot;&quot;&quot;
+        try:
+            dsn = self._build_dsn()
+            conn = psycopg2.connect(dsn)  # ← LINE 56: Connection timeout!
+            return conn
+        except psycopg2.OperationalError as e:
+            logger.error(f&quot;Database connection failed: {e}&quot;)
+            raise
+</pre>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">🔀 Recent Commits (Potential Culprits)</h2>
+
+            <div class="commit">
+                <span class="hash">a1b2c3d4</span> by <span class="author">Fernando Gonzales</span> <span class="timestamp">(2 hours ago)</span>
+                <p style="margin: 5px 0 0 0;">feat(chat): Add context-aware message processing</p>
+            </div>
+
+            <div class="commit">
+                <span class="hash">e5f6g7h8</span> by <span class="author">Fernando Gonzales</span> <span class="timestamp">(5 hours ago)</span>
+                <p style="margin: 5px 0 0 0;">fix(database): Increase connection timeout to 10s</p>
+            </div>
+
+            <div class="commit">
+                <span class="hash">i9j0k1l2</span> by <span class="author">Codex GPT</span> <span class="timestamp">(1 day ago)</span>
+                <p style="margin: 5px 0 0 0;">refactor(agents): Simplify agent dispatcher</p>
+            </div>
+
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">💡 Recommendations</h2>
+
+            <div class="recommendation high">
+                <p><strong>🚨 [HIGH] Investigate critical issues immediately</strong></p>
+                <p>High error rate detected</p>
+
+                <p><strong>Affected Endpoints:</strong></p>
+
+                <span class="endpoint-tag">https://emergence-app-xxxxxxxx-ew.a.run.app/api/chat/message</span>
+
+                <span class="endpoint-tag">https://emergence-app-xxxxxxxx-ew.a.run.app/api/agents/query</span>
+
+                <span class="endpoint-tag">https://emergence-app-xxxxxxxx-ew.a.run.app/api/agents/dispatch</span>
+
+                <p><strong>Affected Files:</strong></p>
+
+                <span class="file-tag">src/backend/features/chat/service.py</span>
+
+                <span class="file-tag">src/backend/core/database.py</span>
+
+                <span class="file-tag">src/backend/features/agents/orchestrator.py</span>
+
+            </div>
+
+            <div class="recommendation high">
+                <p><strong>🚨 [HIGH] Consider rollback to previous stable revision</strong></p>
+                <p>High error rate suggests recent deployment issue</p>
+
+                <p><strong>Rollback Command:</strong></p>
+                <div class="command">gcloud run services update-traffic emergence-app --to-revisions=PREVIOUS=100 --region=europe-west1</div>
+
+            </div>
+
+            <div class="recommendation high">
+                <p><strong>🚨 [HIGH] Fix recurring KeyError error</strong></p>
+                <p>This error type accounts for most failures (5 occurrences)</p>
+
+            </div>
+
+            <div class="recommendation high">
+                <p><strong>🚨 [HIGH] Fix endpoint: https://emergence-app-xxxxxxxx-ew.a.run.app/api/chat/message</strong></p>
+                <p>This endpoint is failing repeatedly (5 errors)</p>
+
+                <p><strong>Suggested Fix:</strong> Check request validation, error handling, and database queries for this endpoint</p>
+
+            </div>
+
+        </div>
+
+        <div class="footer">
+            <p>🤖 Guardian System 3.0.0 - Automated Production Monitoring</p>
+            <p>ÉMERGENCE V8 Production Monitoring | Generated 2025-10-19T14:30:00.000000</p>
+            <p style="margin-top: 10px; font-size: 11px;">
+                This report is optimized for Codex GPT to take actionable debugging steps.<br>
+                All context (stack traces, code snippets, patterns) is included for autonomous troubleshooting.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+
