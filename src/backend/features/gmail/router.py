@@ -44,6 +44,24 @@ def get_gmail_service() -> GmailService:
     return _gmail_service
 
 
+def get_base_url(request: Request) -> str:
+    """
+    Get correct base URL for OAuth redirects.
+
+    Cloud Run: Force HTTPS (load balancer does SSL termination)
+    Local dev: Use request.base_url as-is
+    """
+    base_url = str(request.base_url).rstrip('/')
+
+    # Si on est sur Cloud Run, forcer HTTPS
+    if os.getenv('K_SERVICE'):
+        # Cloud Run: remplacer http:// par https://
+        if base_url.startswith('http://'):
+            base_url = base_url.replace('http://', 'https://', 1)
+
+    return base_url
+
+
 @router.get("/auth/gmail")
 async def gmail_auth_init(request: Request):
     """
@@ -56,7 +74,7 @@ async def gmail_auth_init(request: Request):
     """
     try:
         # Build redirect URI dynamique (prod ou local)
-        base_url = str(request.base_url).rstrip('/')
+        base_url = get_base_url(request)
         redirect_uri = f"{base_url}/auth/callback/gmail"
 
         # Générer URL de consentement Google
@@ -102,7 +120,7 @@ async def gmail_auth_callback(
 
     try:
         # Build redirect URI (doit matcher initiate_oauth)
-        base_url = str(request.base_url).rstrip('/')
+        base_url = get_base_url(request)
         redirect_uri = f"{base_url}/auth/callback/gmail"
 
         # Échanger code contre tokens
