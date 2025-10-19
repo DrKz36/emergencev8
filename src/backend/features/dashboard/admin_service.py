@@ -96,23 +96,27 @@ class AdminDashboardService:
         IMPORTANT: user_id format is INCONSISTENT in the database:
         - Some user_ids are SHA256 hashes of email (legacy format)
         - Some user_ids are plain email addresses (current format)
+        - Some user_ids are Google OAuth sub (numeric format) - FIX 2025-10-19
 
-        This function supports BOTH formats to ensure backward compatibility.
+        This function supports ALL formats to ensure backward compatibility.
 
         Returns:
-            Dict mapping user_id (hash OR plain email) -> (email, role)
+            Dict mapping user_id (hash OR plain email OR oauth_sub) -> (email, role)
 
-        TODO: Standardize all user_ids to a single format (recommended: plain email)
-              and simplify this mapping logic. Requires DB migration.
+        FIXED: Added oauth_sub column support for Google OAuth users.
         """
         import hashlib
 
         conn = await self.db._ensure_connection()
-        cursor = await conn.execute("SELECT email, role FROM auth_allowlist")
+        cursor = await conn.execute("SELECT email, role, oauth_sub FROM auth_allowlist")
         allowlist_rows = await cursor.fetchall()
 
         email_map = {}
-        for email, role in allowlist_rows:
+        for email, role, oauth_sub in allowlist_rows:
+            # Support Google OAuth sub (priority 1 - most accurate)
+            if oauth_sub:
+                email_map[oauth_sub] = (email, role)
+
             # Support legacy format: SHA256 hash of email
             email_hash = hashlib.sha256(email.encode('utf-8')).hexdigest()
             email_map[email_hash] = (email, role)

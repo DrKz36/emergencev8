@@ -2,9 +2,9 @@
 # ÉMERGENCE V8 - Automatisation audit 3x/jour
 
 param(
-    [string]$ProjectId = "emergence-app-prod",
+    [string]$ProjectId = "emergence-469005",
     [string]$Region = "europe-west1",
-    [string]$ServiceAccount = "emergence-app@emergence-app-prod.iam.gserviceaccount.com"
+    [string]$ServiceAccount = "486095406755-compute@developer.gserviceaccount.com"
 )
 
 Write-Host "============================================================" -ForegroundColor Cyan
@@ -13,7 +13,7 @@ Write-Host "============================================================`n" -For
 
 # 1. Build de l'image Docker
 Write-Host "[1/5] Build de l'image Docker..." -ForegroundColor Yellow
-$ImageName = "europe-west1-docker.pkg.dev/$ProjectId/emergence/cloud-audit-job"
+$ImageName = "europe-west1-docker.pkg.dev/$ProjectId/app/cloud-audit-job"
 $ImageTag = "latest"
 
 docker build -f Dockerfile.audit -t "${ImageName}:${ImageTag}" .
@@ -50,7 +50,7 @@ gcloud run jobs deploy cloud-audit-job `
     --service-account=$ServiceAccount `
     --max-retries=2 `
     --task-timeout=10m `
-    --set-env-vars="ADMIN_EMAIL=gonzalefernando@gmail.com,SERVICE_URL=https://emergence-app-574876800592.europe-west1.run.app" `
+    --set-env-vars="ADMIN_EMAIL=gonzalefernando@gmail.com,SERVICE_URL=https://emergence-app-486095406755.europe-west1.run.app" `
     --set-secrets="SMTP_PASSWORD=smtp-password:latest,OPENAI_API_KEY=openai-api-key:latest" `
     --memory=512Mi `
     --cpu=1

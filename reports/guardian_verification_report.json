@@ -1,13 +1,13 @@
 {
-  "timestamp": "2025-10-19T04:47:39.429628+00:00",
+  "timestamp": "2025-10-19T06:08:34.285895+00:00",
   "revision_checked": "emergence-app-00501-zon",
   "previous_revision": "emergence-app-00298-g8j",
   "status": "OK",
-  "integrity_score": "83%",
+  "integrity_score": "87%",
   "checks": {
     "total": 24,
-    "passed": 20,
-    "failed": 4
+    "passed": 21,
+    "failed": 3
   },
   "files": {
     "global_report.json": "UNKNOWN",
@@ -39,12 +39,12 @@
       "integrity_report.json": {
         "status": "OK",
         "path": "c:\\dev\\emergenceV8\\reports\\integrity_report.json",
-        "timestamp": "2025-10-19T06:45:02.777405"
+        "timestamp": "2025-10-19T08:08:18.058982"
       },
       "docs_report.json": {
-        "status": "needs_update",
+        "status": "OK",
         "path": "c:\\dev\\emergenceV8\\reports\\docs_report.json",
-        "timestamp": "2025-10-19T06:45:02.644524"
+        "timestamp": "2025-10-19T08:08:17.927548"
       },
       "unified_report.json": {
         "status": "UNKNOWN",
@@ -77,11 +77,11 @@
       "details": {
         "src/backend/main.py": {
           "exists": true,
-          "size": 14937
+          "size": 16842
         },
         "src/backend/features/chat/service.py": {
           "exists": true,
-          "size": 146879
+          "size": 151481
         },
         "src/frontend/features/chat/chat.js": {
           "exists": true,
@@ -97,11 +97,11 @@
         },
         "src/backend/features/memory/vector_service.py": {
           "exists": true,
-          "size": 33106
+          "size": 40727
         },
         "src/backend/features/dashboard/admin_router.py": {
           "exists": true,
-          "size": 11047
+          "size": 11850
         }
       }
     },

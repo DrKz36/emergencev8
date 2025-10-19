@@ -62,6 +62,7 @@ MONITORING_ROUTER = _import_router("backend.features.monitoring.router")  # Moni
 SYNC_ROUTER = _import_router("backend.features.sync.router")  # Auto-sync inter-agents
 SETTINGS_ROUTER = _import_router("backend.features.settings.router")  # Application settings
 BETA_REPORT_ROUTER = _import_router("backend.features.beta_report.router")  # Beta feedback reports
+GUARDIAN_ROUTER = _import_router("backend.features.guardian.router")  # Guardian auto-fix
 
 
 def _migrations_dir() -> str:
@@ -380,6 +381,7 @@ def create_app() -> FastAPI:
     _mount_router(MONITORING_ROUTER)  # Monitoring endpoints at /api/monitoring/*
     _mount_router(SYNC_ROUTER, "/api")  # Auto-sync endpoints at /api/sync/*
     _mount_router(SETTINGS_ROUTER)  # Settings endpoints at /api/settings/*
+    _mount_router(GUARDIAN_ROUTER)  # Guardian auto-fix at /api/guardian/*
 
     # ⚠️ WS: **uniquement** features.chat.router (déclare /ws/{session_id})
     _mount_router(CHAT_ROUTER)  # pas de prefix → garde /ws/{session_id}

@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import re
+import yaml
 from uuid import uuid4
 from typing import Dict, Any, List, Tuple, Optional, AsyncGenerator, AsyncIterator, cast
 from pathlib import Path
@@ -43,6 +44,9 @@ from backend.features.memory.proactive_hints import ProactiveHintEngine
 # ✅ Phase 3 RAG : Imports pour métriques et cache
 from backend.features.chat import rag_metrics
 from backend.features.chat.rag_cache import create_rag_cache, RAGCache
+
+# 🛡️ P2.3 - Garde-fous agents (RoutePolicy, BudgetGuard, ToolCircuitBreaker)
+from backend.shared.agents_guard import RoutePolicy, BudgetGuard, ToolCircuitBreaker, ModelTier
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +168,54 @@ class ChatService:
             cache_enabled=self.rag_cache.enabled,
             cache_ttl=self.rag_cache.ttl_seconds
         )
+
+        # 🛡️ P2.3 - Charger config agents_guard et instancier guards
+        self.route_policy: Optional[RoutePolicy] = None
+        self.budget_guard: Optional[BudgetGuard] = None
+        self.tool_circuit_breaker: Optional[ToolCircuitBreaker] = None
+        try:
+            config_path = Path("config/agents_guard.yaml")
+            if config_path.exists():
+                with open(config_path, "r", encoding="utf-8") as f:
+                    guard_config = yaml.safe_load(f)
+
+                # BudgetGuard ✅ ACTIF
+                if "agents" in guard_config:
+                    budgets = {
+                        agent_id: cfg.get("max_tokens_day", 100000)
+                        for agent_id, cfg in guard_config["agents"].items()
+                    }
+                    self.budget_guard = BudgetGuard(budgets)
+                    logger.info(f"[P2.3] BudgetGuard initialisé pour {len(budgets)} agents")
+
+                # RoutePolicy 📋 TODO: Intégration dans _get_agent_config() pour choisir SLM vs LLM
+                # Nécessite refonte logique sélection modèle (agent_configs + confidence scoring)
+                if "routing" in guard_config:
+                    routing_cfg = guard_config["routing"]
+                    default_tier = routing_cfg.get("default", "slm")
+                    confidence_threshold = routing_cfg.get("thresholds", {}).get("nexus", 0.65)
+                    self.route_policy = RoutePolicy(
+                        default_tier=ModelTier(default_tier),
+                        confidence_threshold=confidence_threshold,
+                    )
+                    logger.info(f"[P2.3] RoutePolicy initialisé (default={default_tier}, threshold={confidence_threshold}) - TODO: intégration active")
+
+                # ToolCircuitBreaker 📋 TODO: Wrapper appels async tools (MemoryQueryTool, ProactiveHintEngine, etc.)
+                # Exemple usage: await self.tool_circuit_breaker.execute("memory_query", self.memory_query_tool.query, ...)
+                if "tools" in guard_config and "circuit_breaker" in guard_config["tools"]:
+                    cb_cfg = guard_config["tools"]["circuit_breaker"]
+                    self.tool_circuit_breaker = ToolCircuitBreaker(
+                        timeout_seconds=cb_cfg.get("timeout_s", 30.0),
+                        backoff_base=0.5,
+                        backoff_max=8.0,
+                        max_consecutive_failures=cb_cfg.get("max_failures", 3),
+                        reset_after_seconds=cb_cfg.get("reset_after_s", 60.0),
+                    )
+                    logger.info(f"[P2.3] ToolCircuitBreaker initialisé (timeout={cb_cfg.get('timeout_s', 30)}s) - TODO: intégration active")
+            else:
+                logger.warning(f"[P2.3] Config agents_guard non trouvée: {config_path}")
+        except Exception as e:
+            logger.warning(f"[P2.3] Échec chargement agents_guard: {e}")
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
         self.broadcast_agents = self._compute_broadcast_agents()
@@ -910,7 +962,7 @@ class ChatService:
                 has_poem = True
                 header = "[POÈME"
                 if merged_count > 1:
-                    header += f" - CONTENU COMPLET"
+                    header += " - CONTENU COMPLET"
                 header += "]"
                 if section_title:
                     header += f" {section_title}"
@@ -919,7 +971,7 @@ class ChatService:
             elif chunk_type == 'section':
                 header = "[SECTION"
                 if merged_count > 1:
-                    header += f" - CONTENU COMPLET"
+                    header += " - CONTENU COMPLET"
                 header += "]"
                 if section_title:
                     header += f" {section_title}"
@@ -928,7 +980,7 @@ class ChatService:
             elif chunk_type == 'conversation':
                 header = "[CONVERSATION"
                 if merged_count > 1:
-                    header += f" - CONTENU COMPLET"
+                    header += " - CONTENU COMPLET"
                 header += "]"
                 if line_range:
                     header += f" (lignes {line_range})"
@@ -1915,8 +1967,29 @@ class ChatService:
 
     # ---------- providers (stream) ----------
     async def _get_llm_response_stream(
-        self, provider: str, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict
+        self, provider: str, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict, agent_id: str = "unknown"
     ) -> AsyncGenerator[str, None]:
+        """
+        Stream LLM response avec BudgetGuard (P2.3).
+
+        Args:
+            agent_id: ID de l'agent (anima, neo, nexus) pour tracking budget
+        """
+        # 🛡️ P2.3 - BudgetGuard: Estimer tokens input avant appel
+        estimated_input_tokens = 0
+        if self.budget_guard:
+            try:
+                # Estimation grossière: ~4 chars = 1 token
+                system_chars = len(system_prompt) if system_prompt else 0
+                history_chars = sum(len(str(msg.get("content", ""))) for msg in history)
+                estimated_input_tokens = (system_chars + history_chars) // 4
+
+                # Check budget AVANT appel LLM
+                self.budget_guard.check(agent_id, estimated_input_tokens)
+            except RuntimeError as e:
+                logger.error(f"[BudgetGuard] {agent_id} budget exceeded: {e}")
+                raise
+
         if provider == "openai":
             streamer = self._get_openai_stream(model, system_prompt, history, cost_info_container)
         elif provider == "google":
@@ -1925,8 +1998,18 @@ class ChatService:
             streamer = self._get_anthropic_stream(model, system_prompt, history, cost_info_container)
         else:
             raise ValueError(f"Fournisseur LLM non supporté: {provider}")
+
         async for chunk in streamer:
             yield chunk
+
+        # 🛡️ P2.3 - BudgetGuard: Consommer tokens réels APRÈS stream
+        if self.budget_guard and cost_info_container:
+            try:
+                total_tokens = cost_info_container.get("input_tokens", 0) + cost_info_container.get("output_tokens", 0)
+                if total_tokens > 0:
+                    self.budget_guard.consume(agent_id, total_tokens)
+            except Exception as e:
+                logger.warning(f"[BudgetGuard] Failed to consume tokens for {agent_id}: {e}")
 
     async def _get_openai_stream(
         self, model: str, system_prompt: str, history: List[Dict[str, Any]], cost_info_container: Dict[str, Any]
@@ -2659,7 +2742,7 @@ class ChatService:
             async def _stream_with(provider_name, model_name, hist):
                 return await self._ensure_async_stream(
                     self._get_llm_response_stream(
-                        provider_name, model_name, system_prompt, hist, cost_info_container
+                        provider_name, model_name, system_prompt, hist, cost_info_container, agent_id=agent_id  # P2.3
                     )
                 )
             success = False
@@ -2986,6 +3069,7 @@ class ChatService:
                     system_prompt,
                     normalized,
                     local_cost,
+                    agent_id=agent_id,  # P2.3
                 )
             )
             async for chunk in stream_iter:
