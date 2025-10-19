@@ -58,26 +58,81 @@ Prérequis:
 "@ -ForegroundColor White
 }
 
+function Start-ChromeWithDebug {
+    Write-Info "Lancement de Chrome avec DevTools Protocol..."
+
+    # Trouver Chrome
+    $chromePaths = @(
+        "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe",
+        "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
+        "${env:LOCALAPPDATA}\Google\Chrome\Application\chrome.exe"
+    )
+
+    $chromePath = $chromePaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    if (-not $chromePath) {
+        Write-Error "Chrome introuvable. Installez Chrome ou lancez-le manuellement avec --remote-debugging-port=9222"
+        return $false
+    }
+
+    # Lancer Chrome avec debug
+    try {
+        Start-Process -FilePath $chromePath -ArgumentList @(
+            "--remote-debugging-port=9222",
+            "--user-data-dir=$env:TEMP\chrome-debug-profile",
+            "http://localhost:5173"
+        ) -WindowStyle Normal
+
+        Write-Success "Chrome lancé avec DevTools Protocol"
+        Write-Info "Attente de 3s pour que Chrome démarre..."
+        Start-Sleep -Seconds 3
+        return $true
+    } catch {
+        Write-Error "Impossible de lancer Chrome: $_"
+        return $false
+    }
+}
+
 function Get-ChromeDebugURL {
     Write-Info "Récupération de l'URL de debug Chrome..."
 
     try {
-        $response = Invoke-RestMethod -Uri "http://localhost:9222/json" -Method Get
+        $response = Invoke-RestMethod -Uri "http://localhost:9222/json" -Method Get -ErrorAction Stop
         $page = $response | Where-Object { $_.url -like "*localhost:5173*" -or $_.url -like "*localhost:8000*" } | Select-Object -First 1
 
         if ($page) {
             Write-Success "Page trouvée: $($page.title)"
             return $page.webSocketDebuggerUrl
         } else {
-            Write-Error "Aucune page Emergence trouvée sur localhost:5173"
+            Write-Warn "Aucune page Emergence trouvée sur localhost:5173"
             Write-Info "Pages disponibles:"
             $response | ForEach-Object { Write-Host "  - $($_.title) : $($_.url)" }
             return $null
         }
     } catch {
-        Write-Error "Impossible de se connecter à Chrome DevTools sur localhost:9222"
-        Write-Info "Assurez-vous que Chrome est lancé avec --remote-debugging-port=9222"
-        return $null
+        Write-Warn "Chrome DevTools non accessible sur localhost:9222"
+        Write-Info "Tentative de lancement automatique de Chrome..."
+
+        if (Start-ChromeWithDebug) {
+            # Retry après lancement
+            try {
+                $response = Invoke-RestMethod -Uri "http://localhost:9222/json" -Method Get -ErrorAction Stop
+                $page = $response | Where-Object { $_.url -like "*localhost:5173*" } | Select-Object -First 1
+
+                if ($page) {
+                    Write-Success "Page trouvée après lancement: $($page.title)"
+                    return $page.webSocketDebuggerUrl
+                } else {
+                    Write-Error "Page Emergence toujours introuvable. Ouvrez http://localhost:5173 manuellement"
+                    return $null
+                }
+            } catch {
+                Write-Error "Échec de connexion après lancement de Chrome"
+                return $null
+            }
+        } else {
+            return $null
+        }
     }
 }
 
