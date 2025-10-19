@@ -1,3 +1,188 @@
+## [2025-10-19 18:30] — Agent: Claude Code (REFACTOR GUARDIAN SYSTEM - v3.0.0 ✅)
+
+### Fichiers modifiés
+
+**Guardian Scripts:**
+- ❌ Supprimé 18 scripts PowerShell obsolètes (doublons)
+- ❌ Supprimé 3 orchestrateurs Python → gardé `master_orchestrator.py`
+- ❌ Supprimé `merge_reports.py`, `argus_simple.py` (doublons)
+- ✅ Créé `setup_guardian.ps1` (script unifié installation/config)
+- ✅ Créé `run_audit.ps1` (audit manuel global)
+
+**Documentation:**
+- ✅ Créé `README_GUARDIAN.md` (doc complète système Guardian)
+- ✅ Créé `docs/GUARDIAN_CLOUD_MIGRATION.md` (plan migration Cloud Run)
+- ✅ Mis à jour `CLAUDE.md` (section Guardian modernisée)
+
+**Backend (commits précédents):**
+- `src/backend/features/monitoring/router.py` (health endpoints simplifiés)
+- `src/backend/features/memory/vector_service.py` (fix ChromaDB metadata None)
+
+### Contexte
+
+Demande utilisateur : "Audit complet écosystème Guardian local pour nettoyer doublons avant migration cloud"
+
+**Constat initial :**
+- ~100 fichiers Guardian (scripts, docs, rapports)
+- 18 scripts PowerShell faisant la même chose
+- 3 orchestrateurs Python identiques
+- Documentation scattered (45+ MD files contradictoires)
+- Rapports dupliqués (2 locations)
+
+**Objectif :** Nettoyer pour avoir une base saine avant migration Cloud Run.
+
+### Audit Guardian Complet
+
+**Agents identifiés (6 core) :**
+1. **ANIMA** (DocKeeper) - 350 LOC - Gaps docs, versioning
+2. **NEO** (IntegrityWatcher) - 398 LOC - Cohérence backend/frontend
+3. **NEXUS** (Coordinator) - 332 LOC - Agrège Anima+Neo, priorise P0-P4
+4. **PRODGUARDIAN** - 357 LOC - Logs Cloud Run, monitoring prod
+5. **ARGUS** - 495 LOC (+ 193 LOC doublon) - Dev logs analysis
+6. **THEIA** - 720 LOC - AI costs (DISABLED)
+
+**Doublons critiques détectés :**
+
+| Catégorie | Avant | Après | Suppression |
+|-----------|-------|-------|-------------|
+| Orchestrateurs Python | 3 fichiers (926 LOC) | 1 fichier (564 LOC) | -362 LOC (-39%) |
+| Scripts PowerShell | 18 fichiers | 2 fichiers | -16 fichiers (-88%) |
+| Report generators | 2 fichiers (609 LOC) | 1 fichier (332 LOC) | -277 LOC (-45%) |
+| Argus impl | 2 fichiers (688 LOC) | 1 fichier (495 LOC) | -193 LOC (-28%) |
+
+**Total cleanup : -40% fichiers, -14% code Python**
+
+### Nouveau Système Guardian v3.0.0
+
+**Installation ultra-simple :**
+```powershell
+.\setup_guardian.ps1
+```
+
+**Ce que ça fait :**
+- Configure Git Hooks (pre-commit, post-commit, pre-push)
+- Active auto-update documentation
+- Crée Task Scheduler Windows (monitoring prod 6h)
+- Teste tous les agents
+
+**Audit manuel global :**
+```powershell
+.\run_audit.ps1
+.\run_audit.ps1 -EmailReport -EmailTo "admin@example.com"
+```
+
+**Commandes utiles :**
+```powershell
+.\setup_guardian.ps1 -Disable                 # Désactiver
+.\setup_guardian.ps1 -IntervalHours 2         # Monitoring 2h au lieu de 6h
+.\setup_guardian.ps1 -EmailTo "admin@example" # Avec email
+```
+
+### Git Hooks Automatiques
+
+**Pre-Commit (BLOQUANT) :**
+- Anima (DocKeeper) - Vérifie docs + versioning
+- Neo (IntegrityWatcher) - Vérifie cohérence backend/frontend
+- → Bloque commit si erreur critique
+
+**Post-Commit :**
+- Nexus (Coordinator) - Génère rapport unifié
+- Auto-update docs (CHANGELOG, ROADMAP)
+
+**Pre-Push (BLOQUANT) :**
+- ProdGuardian - Vérifie état production Cloud Run
+- → Bloque push si production CRITICAL
+
+### Plan Migration Cloud Run
+
+**Document créé :** `docs/GUARDIAN_CLOUD_MIGRATION.md`
+
+**Timeline : 7 jours (5 phases)**
+
+**Phase 1 (1j) :** Setup infrastructure GCP
+- Cloud Storage bucket `emergence-guardian-reports`
+- Firestore collection `guardian_status`
+- Secret Manager (SMTP, API keys)
+
+**Phase 2 (2j) :** Adapter agents Python
+- `check_prod_logs.py` → upload Cloud Storage
+- Nouveau `argus_cloud.py` → analyse Cloud Logging
+- `generate_report.py` → agrège rapports cloud
+
+**Phase 3 (2j) :** API Cloud Run
+- Service `emergence-guardian-service`
+- Endpoints : `/health`, `/api/guardian/run-audit`, `/api/guardian/reports`
+- Auth API Key
+
+**Phase 4 (1j) :** Cloud Scheduler
+- Trigger toutes les 2h (au lieu de 6h local)
+- Email auto si status CRITICAL
+- Retry logic
+
+**Phase 5 (1j) :** Tests & déploiement
+- Tests staging
+- Déploiement production
+- Monitoring du Guardian lui-même
+
+**Agents actifs cloud :**
+- ✅ PRODGUARDIAN (logs Cloud Run)
+- ✅ NEXUS (agrégation)
+- ✅ ARGUS Cloud (Cloud Logging analysis)
+- ❌ ANIMA/NEO (code source local, possible via GitHub Actions)
+
+**Coût estimé : 6-11€/mois** (probablement dans Free Tier GCP)
+
+**Bénéfices :**
+- Monitoring 24/7 garanti (pas de dépendance PC local)
+- Fréquence 2h au lieu de 6h
+- Emails automatiques si erreurs critiques
+- API consultable depuis Admin UI
+- Rapports persistés Cloud Storage (30j + archives)
+
+### Tests
+
+**Setup Guardian :**
+- ✅ `setup_guardian.ps1` exécuté avec succès
+- ✅ Git Hooks créés (pre-commit, post-commit, pre-push)
+- ✅ Task Scheduler configuré (6h interval)
+- ✅ Anima test OK
+- ✅ Neo test OK
+
+**Git Hooks en action :**
+- ✅ Pre-commit hook → Anima + Neo OK (commit autorisé)
+- ✅ Post-commit hook → Nexus + Auto-update docs OK
+- ✅ Pre-push hook → ProdGuardian OK (production HEALTHY, push autorisé)
+
+### Travail de Codex GPT pris en compte
+
+Aucun (Codex n'a pas travaillé sur Guardian récemment).
+
+### Prochaines actions recommandées
+
+**Immédiat (cette semaine) :**
+1. ✅ Consolider Guardian local (FAIT)
+2. Valider plan migration cloud avec FG
+3. Phase 1 migration : Setup infrastructure GCP
+
+**Court terme (semaine prochaine) :**
+4. Phase 2-3 migration : Adapter agents + API Cloud Run
+5. Test Guardian cloud en staging
+
+**Moyen terme (2 semaines) :**
+6. Phase 4-5 migration : Cloud Scheduler + déploiement prod
+7. Intégration rapports Guardian dans Admin UI beta
+
+**Optionnel (long terme) :**
+- Slack webhooks (alertes temps réel)
+- GitHub Actions Guardian (ANIMA+NEO sur PR)
+- BigQuery cost analysis (THEIA Cloud)
+
+### Blocages
+
+Aucun.
+
+---
+
 ## [2025-10-19 16:00] — Agent: Claude Code (PHASE 3 - HEALTH ENDPOINTS + FIX CHROMADB ✅)
 
 ### Fichiers modifiés
