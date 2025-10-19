@@ -46,6 +46,28 @@ async def get_global_dashboard(
 
 
 @router.get(
+    "/admin/dashboard/audits",
+    response_model=Dict[str, Any],
+    tags=["Admin Dashboard"],
+    summary="Get audit reports history (admin only)",
+    description="Returns the last N audit reports with timestamps and status.",
+)
+async def get_audit_history(
+    limit: int = 10,
+    _admin_verified: bool = Depends(verify_admin_role),
+    admin_service: AdminDashboardService = Depends(deps.get_admin_dashboard_service),
+) -> Dict[str, Any]:
+    """
+    Get audit reports history - admin only.
+    Returns audit reports from reports/ directory.
+    """
+    logger.info(f"[Admin] Fetching audit history (limit={limit})")
+    data = await admin_service.get_audit_history(limit=limit)
+    logger.info(f"[Admin] Audit history sent ({len(data.get('audits', []))} reports)")
+    return data
+
+
+@router.get(
     "/admin/dashboard/user/{user_id}",
     response_model=Dict[str, Any],
     tags=["Admin Dashboard"],

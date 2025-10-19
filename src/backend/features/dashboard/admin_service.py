@@ -677,6 +677,86 @@ class AdminDashboardService:
         # For now, return a placeholder value
         return 0
 
+    async def get_audit_history(self, limit: int = 10) -> Dict[str, Any]:
+        """
+        Get the history of audit reports from reports/ directory.
+        Returns the last N reports sorted by timestamp (most recent first).
+        """
+        try:
+            import json
+            from pathlib import Path
+
+            reports_dir = Path(__file__).parent.parent.parent.parent.parent / "reports"
+
+            if not reports_dir.exists():
+                return {
+                    "audits": [],
+                    "count": 0,
+                    "error": "Reports directory not found"
+                }
+
+            # Chercher guardian_verification_report.json (rapport principal)
+            verification_reports = list(reports_dir.glob("guardian_verification_report*.json"))
+
+            audits = []
+
+            for report_file in verification_reports:
+                try:
+                    with open(report_file, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+
+                    # Extraire les infos clés
+                    audits.append({
+                        'timestamp': data.get('timestamp'),
+                        'revision': data.get('revision_checked'),
+                        'status': data.get('status'),
+                        'integrity_score': data.get('integrity_score'),
+                        'checks': data.get('checks'),
+                        'summary': data.get('summary'),
+                        'issues': data.get('issues', []),
+                        'file': report_file.name
+                    })
+
+                except Exception as e:
+                    logger.warning(f"Error reading audit report {report_file}: {e}")
+                    continue
+
+            # Trier par timestamp décroissant (plus récent en premier)
+            audits.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+
+            # Limiter au nombre demandé
+            audits = audits[:limit]
+
+            # Calculer des stats
+            total_audits = len(audits)
+            ok_count = sum(1 for a in audits if a.get('status') == 'OK')
+            warning_count = sum(1 for a in audits if a.get('status') == 'WARNING')
+            critical_count = sum(1 for a in audits if a.get('status') == 'CRITICAL')
+
+            # Calculer le score moyen
+            scores = [int(a.get('integrity_score', '0%').replace('%', '')) for a in audits if a.get('integrity_score')]
+            avg_score = sum(scores) / len(scores) if scores else 0
+
+            return {
+                "audits": audits,
+                "count": total_audits,
+                "stats": {
+                    "ok": ok_count,
+                    "warning": warning_count,
+                    "critical": critical_count,
+                    "average_score": f"{int(avg_score)}%"
+                },
+                "latest": audits[0] if audits else None
+            }
+
+        except Exception as e:
+            logger.error(f"[admin_dashboard] Error fetching audit history: {e}", exc_info=True)
+            return {
+                "audits": [],
+                "count": 0,
+                "error": str(e)
+            }
+
     async def get_detailed_costs_breakdown(self) -> Dict[str, Any]:
         """
         Get detailed cost breakdown by user and module.

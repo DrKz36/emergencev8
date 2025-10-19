@@ -1,0 +1,18 @@
+{
+  "timestamp": "2025-10-18T06:56:46.298548",
+  "session_id": "manual-20251018-065646",
+  "monitoring_duration_minutes": 0.0,
+  "status": "ok",
+  "backend_errors": [],
+  "frontend_errors": [],
+  "statistics": {
+    "total_errors": 0,
+    "critical": 0,
+    "warnings": 0,
+    "info": 0,
+    "backend_errors": 0,
+    "frontend_errors": 0,
+    "unique_errors": 0,
+    "recurring_errors": 0
+  }
+}

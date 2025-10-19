@@ -1,0 +1,134 @@
+{
+  "timestamp": "2025-10-19T04:47:39.429628+00:00",
+  "revision_checked": "emergence-app-00501-zon",
+  "previous_revision": "emergence-app-00298-g8j",
+  "status": "OK",
+  "integrity_score": "83%",
+  "checks": {
+    "total": 24,
+    "passed": 20,
+    "failed": 4
+  },
+  "files": {
+    "global_report.json": "UNKNOWN",
+    "unified_report.json": "UNKNOWN",
+    "orchestration_report.json": "UNKNOWN",
+    "prod_report.json": "OK"
+  },
+  "summary": {
+    "backend_integrity": "OK",
+    "frontend_integrity": "OK",
+    "ws_health": "OK",
+    "prod_status": "OK",
+    "endpoints_health": "OK",
+    "documentation_health": "OK"
+  },
+  "issues": [],
+  "details": {
+    "guardian_reports": {
+      "global_report.json": {
+        "status": "UNKNOWN",
+        "path": "c:\\dev\\emergenceV8\\reports\\global_report.json",
+        "timestamp": "N/A"
+      },
+      "prod_report.json": {
+        "status": "OK",
+        "path": "c:\\dev\\emergenceV8\\reports\\prod_report.json",
+        "timestamp": "2025-10-17T06:13:54.085393"
+      },
+      "integrity_report.json": {
+        "status": "OK",
+        "path": "c:\\dev\\emergenceV8\\reports\\integrity_report.json",
+        "timestamp": "2025-10-19T06:45:02.777405"
+      },
+      "docs_report.json": {
+        "status": "needs_update",
+        "path": "c:\\dev\\emergenceV8\\reports\\docs_report.json",
+        "timestamp": "2025-10-19T06:45:02.644524"
+      },
+      "unified_report.json": {
+        "status": "UNKNOWN",
+        "path": "c:\\dev\\emergenceV8\\reports\\unified_report.json",
+        "timestamp": "N/A"
+      },
+      "orchestration_report.json": {
+        "status": "UNKNOWN",
+        "path": "c:\\dev\\emergenceV8\\reports\\orchestration_report.json",
+        "timestamp": "2025-10-17T07:45:32.761866"
+      }
+    },
+    "production": {
+      "status": "OK",
+      "service": "emergence-app",
+      "region": "europe-west1",
+      "summary": {
+        "errors": 0,
+        "warnings": 0,
+        "critical_signals": 0,
+        "latency_issues": 0
+      },
+      "revision_checked": "emergence-app-00501-zon",
+      "timestamp": "2025-10-17T06:13:54.085393"
+    },
+    "integrity": {
+      "status": "OK",
+      "files_checked": 7,
+      "files_ok": 7,
+      "details": {
+        "src/backend/main.py": {
+          "exists": true,
+          "size": 14937
+        },
+        "src/backend/features/chat/service.py": {
+          "exists": true,
+          "size": 146879
+        },
+        "src/frontend/features/chat/chat.js": {
+          "exists": true,
+          "size": 73093
+        },
+        "src/backend/features/auth/router.py": {
+          "exists": true,
+          "size": 15314
+        },
+        "src/backend/features/memory/router.py": {
+          "exists": true,
+          "size": 82405
+        },
+        "src/backend/features/memory/vector_service.py": {
+          "exists": true,
+          "size": 33106
+        },
+        "src/backend/features/dashboard/admin_router.py": {
+          "exists": true,
+          "size": 11047
+        }
+      }
+    },
+    "endpoints": {
+      "status": "OK",
+      "routers_checked": 5,
+      "routers_found": 5,
+      "details": {
+        "auth.router": true,
+        "chat.router": true,
+        "memory.router": true,
+        "documents.router": true,
+        "dashboard.admin_router": true
+      }
+    },
+    "documentation": {
+      "status": "OK",
+      "docs_checked": 6,
+      "docs_found": 6,
+      "details": {
+        "AGENT_SYNC.md": true,
+        "AGENTS.md": true,
+        "CODEV_PROTOCOL.md": true,
+        "docs/passation.md": true,
+        "docs/architecture/00-Overview.md": true,
+        "ROADMAP_OFFICIELLE.md": true
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "summary": {
+    "failed_checks": 2,
+    "successful_checks": 0,
+    "total_checks": 2
+  },
+  "results": {
+    "prodguardian": {
+      "executed": false,
+      "report_path": null,
+      "status": "failed"
+    },
+    "guardian": {
+      "executed": false,
+      "report_path": null,
+      "status": "failed"
+    }
+  },
+  "execution_mode": "scheduled",
+  "timestamp": "2025-10-17 05:51:01"
+}

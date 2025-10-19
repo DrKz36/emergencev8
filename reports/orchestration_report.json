@@ -1,0 +1,48 @@
+{
+  "timestamp": "2025-10-17T07:45:32.761866",
+  "agents": [
+    {
+      "agent": "Anima (DocKeeper)",
+      "status": "ERROR",
+      "message": "",
+      "timestamp": "2025-10-17T07:45:32.880744"
+    },
+    {
+      "agent": "Neo (IntegrityWatcher)",
+      "status": "OK",
+      "message": "🔐 NEO (IntegrityWatcher) - Checking system integrity...\n📝 Detected 3 changed file(s)\n✅ Report generated: C:\\dev\\emergenceV8\\claude-plugins\\integrity-docs-guardian\\reports\\integrity_report.json\n📊 Summary: 0 critical, 0 warning(s), 0 total issue(s) found\n",
+      "timestamp": "2025-10-17T07:45:33.000617"
+    },
+    {
+      "agent": "ProdGuardian",
+      "status": "OK",
+      "message": "\n🟢 Production Status: OK\n\n📊 Summary:\n   - Logs analyzed: 80\n   - Errors: 0\n   - Warnings: 0\n   - Critical signals: 0\n   - Latency issues: 0\n\n💡 Recommendations:\n   🟢 [LOW] No immediate action required\n      Production is healthy\n\n",
+      "timestamp": "2025-10-17T07:45:35.520421"
+    },
+    {
+      "agent": "Nexus (Coordinator)",
+      "status": "ERROR",
+      "message": "",
+      "timestamp": "2025-10-17T07:45:35.596881"
+    },
+    {
+      "agent": "Merge Reports",
+      "status": "OK",
+      "message": "\n======================================================================\n📊 RAPPORT DE SYNCHRONISATION GLOBALE\n======================================================================\n\n⚪ Statut Global: UNKNOWN\n🕒 Timestamp: 2025-10-17T07:45:35.657629\n\n📋 RÉSUMÉ:\n   - Agents exécutés: 7\n   - Erreurs totales: 0\n   - Warnings: 0\n   - Signaux critiques: 0\n   - Actions prioritaires: 1\n\n✅ AGENTS:\n   ❓ Auto_update: unknown\n   ❓ Docs: needs_update\n   ❓ Global: unknown\n   ✅ Integrity: ok\n   ❓ Orchestration: unknown\n   ✅ Prod: OK\n   ❓ Unified: unknown\n\n💡 ACTIONS PRIORITAIRES:\n   1. 🟢 [PROD] No immediate action required\n      → Production is healthy\n\n======================================================================\n\n",
+      "timestamp": "2025-10-17T07:45:35.686819"
+    },
+    {
+      "agent": "Auto Documentation Updater",
+      "status": "OK",
+      "message": "🤖 Agent de Mise à Jour Automatique de Documentation\n============================================================\n\n📊 Chargement des rapports...\n🔍 Analyse des rapports de production...\n🔍 Analyse des rapports de documentation...\n🔍 Analyse des rapports d'intégrité...\n\n📄 Rapport de mise à jour sauvegardé: C:\\dev\\emergenceV8\\claude-plugins\\integrity-docs-guardian\\reports\\auto_update_report.json\n✅ Aucune mise à jour de documentation nécessaire\n\n============================================================\n📊 RÉSUMÉ\nTotal updates: 0\n\n⚠️ Mode manuel - aucune modification appliquée\nPour appliquer automatiquement: AUTO_APPLY=1 python auto_update_docs.py\n",
+      "timestamp": "2025-10-17T07:45:35.749061"
+    }
+  ],
+  "global_status": "ERROR",
+  "summary": {
+    "total_agents": 6,
+    "successful": 4,
+    "failed": 2,
+    "success_rate": "66.7%"
+  }
+}

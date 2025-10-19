@@ -1,0 +1,37 @@
+# Dockerfile pour le Cloud Audit Job
+FROM python:3.11-slim
+
+# Variables d'environnement
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Installer les dépendances système
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Créer répertoire de travail
+WORKDIR /app
+
+# Copier requirements (optimisation cache Docker)
+COPY requirements.txt .
+
+# Installer les dépendances Python
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Installer les librairies Google Cloud supplémentaires
+RUN pip install --no-cache-dir \
+    google-cloud-run==0.10.5 \
+    google-cloud-logging==3.9.0 \
+    aiohttp==3.9.1
+
+# Copier le code source
+COPY scripts/cloud_audit_job.py /app/
+COPY src/backend/features/auth/email_service.py /app/src/backend/features/auth/
+
+# Créer un utilisateur non-root
+RUN useradd -m -u 1000 audituser && chown -R audituser:audituser /app
+USER audituser
+
+# Point d'entrée
+CMD ["python", "cloud_audit_job.py"]
