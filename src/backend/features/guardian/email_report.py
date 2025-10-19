@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, Optional
 import logging
 
-from features.auth.email_service import EmailService
+from backend.features.auth.email_service import EmailService
 
 logger = logging.getLogger("emergence.guardian.email")
 

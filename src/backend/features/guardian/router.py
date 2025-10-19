@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 import logging
 
-from features.guardian.email_report import GuardianEmailService
+from backend.features.guardian.email_report import GuardianEmailService
 
 router = APIRouter(prefix="/api/guardian", tags=["guardian"])
 logger = logging.getLogger("emergence.guardian.router")
