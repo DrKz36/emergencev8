@@ -1,3 +1,71 @@
+## [2025-10-19 15:00] — Agent: Claude Code (PHASE 2 - ROBUSTESSE DASHBOARD + DOC USER_ID ✅)
+
+### Fichiers modifiés
+
+**Frontend:**
+- `src/frontend/features/admin/admin-dashboard.js` (amélioration `renderCostsChart()` lignes 527-599)
+
+**Documentation:**
+- `docs/architecture/10-Components.md` (section "Mapping user_id" lignes 233-272)
+- `docs/architecture/30-Contracts.md` (endpoint `/admin/analytics/threads` ligne 90)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+
+Suite à `PROMPT_SUITE_AUDIT.md` (Phase 2), implémentation des améliorations :
+1. Robustesse `renderCostsChart()` contre null/undefined
+2. Décision sur standardisation `user_id` (ne pas migrer, documenter)
+3. Documentation architecture complète
+
+### Améliorations implémentées
+
+**1. Robustesse `renderCostsChart()` (évite crash dashboard)**
+
+Problèmes fixés :
+- Crash si `data` est null/undefined
+- Crash si `item.cost` est null/undefined
+- Crash si `item.date` est null/undefined
+
+Solutions :
+- `Array.isArray()` validation
+- Filtrage entrées invalides
+- `parseFloat()` + `isNaN()` pour coûts
+- Try/catch pour dates (fallback "N/A")
+
+**2. Décision format user_id : NE PAS MIGRER**
+
+3 formats supportés :
+- Hash SHA256 (legacy)
+- Email en clair (actuel)
+- OAuth `sub` (Google)
+
+Code backend déjà correct (`_build_user_email_map()`).
+Migration DB rejetée (trop risqué).
+
+**3. Documentation architecture**
+
+- Section "Mapping user_id" créée (10-Components.md)
+- Endpoint `/admin/analytics/threads` documenté (30-Contracts.md)
+
+### Tests
+
+- ✅ `npm run build` → OK (2.96s)
+- ✅ Hash admin module changé
+- ✅ Aucune erreur
+
+### Prochaines actions (Phase 3 - optionnel)
+
+1. Refactor table `sessions` → `threads` (migration DB)
+2. Health endpoints sans `/api/monitoring/` prefix
+3. Fix Cloud Run API error
+
+### Blocages
+
+Aucun.
+
+---
+
 ## [2025-10-19 15:20] — Agent: Claude Code (FIX SERVICE MAIL - SMTP PASSWORD ✅)
 
 ### Fichiers modifiés

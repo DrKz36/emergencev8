@@ -525,33 +525,68 @@ export class AdminDashboard {
     }
 
     /**
-     * Render costs chart
+     * Render costs chart with robust null/undefined handling
      */
     renderCostsChart(data) {
         // Check if data exists and is not empty
-        if (!data || data.length === 0) {
+        if (!data || !Array.isArray(data) || data.length === 0) {
             return '<p class="admin-empty">Aucune donnée disponible</p>';
         }
 
+        // Filter out invalid entries (null, undefined, missing required fields)
+        const validData = data.filter(item =>
+            item &&
+            typeof item === 'object' &&
+            (item.date !== null && item.date !== undefined) &&
+            (typeof item.cost === 'number' || item.cost === null || item.cost === undefined)
+        );
+
+        if (validData.length === 0) {
+            return '<p class="admin-empty">Aucune donnée valide disponible</p>';
+        }
+
         // Check if all costs are 0 or null/undefined
-        const totalCost = data.reduce((sum, d) => sum + (d.cost || 0), 0);
+        const totalCost = validData.reduce((sum, d) => {
+            const cost = parseFloat(d.cost);
+            return sum + (isNaN(cost) ? 0 : cost);
+        }, 0);
+
         if (totalCost === 0) {
             return '<p class="admin-empty">Aucune donnée de coûts pour la période (tous les coûts sont à $0.00)</p>';
         }
 
         // Calculate max cost for bar height scaling
-        const maxCost = Math.max(...data.map(d => d.cost || 0), 0.01);
+        const costs = validData.map(d => {
+            const cost = parseFloat(d.cost);
+            return isNaN(cost) ? 0 : cost;
+        });
+        const maxCost = Math.max(...costs, 0.01);
 
         // Render chart bars
-        const barsHtml = data.map(item => {
-            const cost = item.cost || 0;
-            const height = (cost / maxCost) * 100;
+        const barsHtml = validData.map(item => {
+            const cost = parseFloat(item.cost);
+            const safeCost = isNaN(cost) ? 0 : cost;
+            const height = (safeCost / maxCost) * 100;
+
+            // Safe date formatting
+            let dateLabel = 'N/A';
+            let dateTitle = 'Date inconnue';
+            try {
+                const dateObj = new Date(item.date);
+                if (!isNaN(dateObj.getTime())) {
+                    dateLabel = dateObj.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+                    dateTitle = dateObj.toLocaleDateString('fr-FR');
+                }
+            } catch (e) {
+                console.warn('[AdminDashboard] Invalid date in renderCostsChart:', item.date);
+            }
+
             return `
                 <div class="chart-bar">
                     <div class="bar-fill" style="height: ${height}%"
-                         title="${item.date}: $${cost.toFixed(2)}"></div>
-                    <div class="bar-label">${new Date(item.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</div>
-                    <div class="bar-value">$${cost.toFixed(2)}</div>
+                         title="${dateTitle}: $${safeCost.toFixed(2)}"></div>
+                    <div class="bar-label">${dateLabel}</div>
+                    <div class="bar-value">$${safeCost.toFixed(2)}</div>
                 </div>
             `;
         }).join('');
