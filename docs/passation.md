@@ -1,3 +1,301 @@
+## [2025-10-19 18:35 CET] — Agent: Claude Code (PHASES 3+6 GUARDIAN CLOUD + FIX CRITICAL ✅)
+
+### Fichiers modifiés (9 backend + 2 infra + 3 docs)
+
+**Backend Gmail API (Phase 3 - nouveau):**
+- ✅ `src/backend/features/gmail/__init__.py` (nouveau package)
+- ✅ `src/backend/features/gmail/oauth_service.py` (189 lignes - OAuth2 flow)
+- ✅ `src/backend/features/gmail/gmail_service.py` (236 lignes - Email reading)
+- ✅ `src/backend/features/gmail/router.py` (214 lignes - 4 endpoints API)
+- ✅ `src/backend/main.py` (mount Gmail router)
+- ✅ `requirements.txt` (ajout google-auth libs)
+
+**Backend Guardian (fixes critiques):**
+- ✅ `src/backend/features/guardian/router.py` (fix import path ligne 14)
+- ✅ `src/backend/features/guardian/email_report.py` (fix import path ligne 12)
+
+**Infrastructure:**
+- ✅ `.dockerignore` (nouveau - fix Cloud Build)
+- ✅ `docs/architecture/30-Contracts.md` (section Gmail API)
+
+**Documentation complète:**
+- ✅ `docs/GMAIL_CODEX_INTEGRATION.md` (453 lignes - guide Codex)
+- ✅ `docs/PHASE_6_DEPLOYMENT_GUIDE.md` (300+ lignes)
+- ✅ `AGENT_SYNC.md` (mise à jour complète)
+
+### Contexte
+
+**Objectif session:** Finaliser Guardian Cloud Phases 3 (Gmail API pour Codex GPT) + Phase 6 (Cloud Deployment).
+
+**État initial:**
+- ✅ Phases 1, 2, 4, 5 déjà complétées et committées
+- ❌ Phase 3 (Gmail) manquante → Codex ne peut pas lire emails Guardian
+- ❌ Phase 6 (Deploy) partiellement faite mais avec bugs critiques
+- 🚨 Production déployée avec alerte CRITICAL (66% health)
+
+**Problèmes rencontrés:**
+
+**1. CRITICAL alert post-déploiement:**
+- **Symptôme:** Guardian emails avec alerte CRITICAL, score 66%, endpoint `/ready` en erreur
+- **Erreur:** `"GOOGLE_API_KEY or GEMINI_API_KEY must be provided"`
+- **Cause:** Cloud Run deployment écrasait env vars, secrets LLM non montés
+- **Solution:** `gcloud run services update --set-secrets` pour OPENAI/ANTHROPIC/GOOGLE/GEMINI
+- **Résultat:** Health score 66% → 100% OK ✅
+
+**2. Guardian router 405 Method Not Allowed:**
+- **Symptôme:** Admin UI → Run Guardian Audit → Erreur 405
+- **Endpoint:** `POST /api/guardian/run-audit`
+- **Diagnostic:** Router Guardian ne s'importait pas (import silencieusement failed), absent de OpenAPI
+- **Cause racine:** Import paths incorrects `from features.guardian.*` au lieu de `from backend.features.guardian.*`
+- **Files affectés:** `router.py` ligne 14, `email_report.py` ligne 12
+- **Solution:** Fix imports dans les 2 fichiers, rebuild + redeploy Docker image
+- **Résultat:** Endpoint répond maintenant 200 OK avec JSON ✅
+
+**3. Cloud Build "operation not permitted":**
+- **Erreur:** `failed to copy files: operation not permitted` lors de `gcloud builds submit`
+- **Cause:** Fichiers avec permissions/timestamps problématiques bloquent tar dans Cloud Build
+- **Solution:** Build local Docker + push GCR au lieu de Cloud Build
+- **Workaround:** Création `.dockerignore` pour exclure fichiers problématiques
+- **Commandes:** `docker build` → `docker push gcr.io` → `gcloud run services update`
+
+### Implémentations effectuées
+
+**PHASE 3: Gmail API Integration (pour Codex GPT)**
+
+**1. OAuth2 Service (`oauth_service.py` - 189 lignes)**
+- ✅ `initiate_oauth(redirect_uri)` → Retourne URL consent screen Google
+- ✅ `handle_callback(code, redirect_uri, user_email)` → Exchange code for tokens
+- ✅ `get_credentials(user_email)` → Load tokens from Firestore + auto-refresh
+- ✅ Scope: `gmail.readonly` (lecture seule)
+- ✅ Token storage: Firestore collection `gmail_oauth_tokens` (encrypted at rest)
+- ✅ Support dev (local JSON) + prod (Secret Manager)
+
+**2. Gmail Reading Service (`gmail_service.py` - 236 lignes)**
+- ✅ `read_guardian_reports(max_results=10, user_email)` → Query Guardian emails
+- ✅ Query: subject contient "emergence", "guardian", ou "audit"
+- ✅ Parse HTML/plaintext bodies (base64url decode, multipart support)
+- ✅ Extract headers: subject, from, date, timestamp
+- ✅ Return: Liste d'emails avec `{subject, from, date, body, timestamp}`
+
+**3. API Router (`router.py` - 214 lignes)**
+
+**Endpoints implémentés:**
+
+**a) `GET /auth/gmail` (Admin one-time OAuth)**
+- Redirige vers Google consent screen
+- Redirect URI: `{BASE_URL}/auth/callback/gmail`
+- User doit accepter scope `gmail.readonly`
+- Usage: Naviguer une fois dans browser pour autoriser
+
+**b) `GET /auth/callback/gmail` (OAuth callback)**
+- Reçoit `code` de Google après consent
+- Exchange code for access_token + refresh_token
+- Store tokens dans Firestore
+- Redirige vers page confirmation
+
+**c) `POST /api/gmail/read-reports` (API pour Codex GPT) 🔥**
+- **Auth:** Header `X-Codex-API-Key` (77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb)
+- **Query param:** `max_results` (default: 10)
+- **Response:** JSON liste d'emails Guardian
+- **Usage Codex:** Polling régulier pour détecter nouveaux rapports
+
+**d) `GET /api/gmail/status` (Check OAuth status)**
+- Vérifie si OAuth tokens existent pour user
+- Return: `{authenticated: bool, user_email: str}`
+
+**4. Secrets GCP configurés**
+- ✅ `gmail-oauth-client-secret` (OAuth2 client credentials JSON)
+- ✅ `codex-api-key` (API key pour Codex: 77bc68b9...)
+- ✅ `guardian-scheduler-token` (Cloud Scheduler auth: 7bf60d6...)
+
+**5. OAuth Redirect URI ajouté dans GCP Console**
+- ✅ `https://emergence-app-486095406755.europe-west1.run.app/auth/callback/gmail`
+
+**PHASE 6: Cloud Deployment & Fixes**
+
+**1. Docker Build & Deploy workflow**
+- ✅ Build local: `docker build -t gcr.io/emergence-469005/emergence-app:latest .`
+- ✅ Push GCR: `docker push gcr.io/emergence-469005/emergence-app:latest`
+- ✅ Deploy Cloud Run: `gcloud run services update emergence-app --region europe-west1 --image ...`
+- ✅ Image size: 17.8GB (avec SentenceTransformer model)
+- ✅ Build time: ~3 min avec cache Docker
+
+**2. Cloud Run configuration finale**
+- ✅ Service: `emergence-app`
+- ✅ Région: `europe-west1`
+- ✅ Révision actuelle: `emergence-app-00390-6mb` (avec fix Guardian)
+- ✅ URL: https://emergence-app-486095406755.europe-west1.run.app
+- ✅ Secrets montés: OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, GEMINI_API_KEY
+- ✅ Health probes: `/api/health` (startup), `/api/health` (liveness)
+
+**3. Déploiements successifs pendant debug:**
+- `emergence-app-00387` → Initial deploy (missing LLM keys, Guardian 405)
+- `emergence-app-00388-jk5` → Fix LLM keys (CRITICAL → OK)
+- `emergence-app-00389-tbh` → Rebuild with Phase 3 code (Guardian still 405)
+- `emergence-app-00390-6mb` → Fix Guardian imports (tout OK ✅)
+
+**4. Validation endpoints production:**
+```bash
+# Health (OK)
+curl https://emergence-app-486095406755.europe-west1.run.app/api/health
+{"status":"ok","message":"Emergence Backend is running."}
+
+# Ready (OK)
+curl https://emergence-app-486095406755.europe-west1.run.app/ready
+{"ok":true,"db":"up","vector":"up"}
+
+# Guardian audit (OK - no reports in container, normal)
+curl -X POST https://emergence-app-486095406755.europe-west1.run.app/api/guardian/run-audit
+{"status":"warning","message":"Aucun rapport Guardian trouvé",...}
+```
+
+### Tests
+
+**Tests effectués:**
+
+**✅ Backend import local:**
+```bash
+cd src && python -c "from backend.features.guardian.router import router; print('OK')"
+# OK (après fix imports)
+```
+
+**✅ Health endpoints production:**
+- `/api/health` → 200 OK
+- `/ready` → 200 OK avec `{"ok":true,"db":"up","vector":"up"}`
+
+**✅ Guardian audit endpoint:**
+- `POST /api/guardian/run-audit` → 200 OK (avant: 405)
+- Response JSON valide avec status "warning" (pas de rapports dans container)
+
+**❌ Tests non effectués (pending):**
+- OAuth Gmail flow (nécessite browser interaction admin)
+- API Codex `/api/gmail/read-reports` (nécessite OAuth complété d'abord)
+- Cloud Scheduler (optionnel, pas encore créé)
+- E2E tests complets
+
+### Travail de Codex GPT pris en compte
+
+Aucun travail récent de Codex détecté sur Guardian Cloud ou Gmail. Phases 1-5 complétées par Claude Code uniquement.
+
+### Prochaines actions recommandées
+
+**🔥 PRIORITÉ 1: OAuth Gmail flow (Codex activation)**
+
+**Étape 1: Admin OAuth (one-time)**
+```bash
+# 1. Ouvre dans browser
+https://emergence-app-486095406755.europe-west1.run.app/auth/gmail
+
+# 2. Accepte consent Google (scope: gmail.readonly)
+# 3. Tokens stockés dans Firestore automatiquement
+```
+
+**Étape 2: Test API Codex**
+```bash
+curl -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb" \
+     "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=5"
+```
+
+**Étape 3: Workflow Codex GPT (auto-fix)**
+
+Codex doit implémenter polling dans son système:
+
+```python
+# Pseudo-code Codex workflow
+import requests
+import time
+
+CODEX_API_KEY = "77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb"
+API_URL = "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports"
+
+while True:
+    # 1. Poll emails Guardian (toutes les 30 min)
+    response = requests.post(
+        API_URL,
+        headers={"X-Codex-API-Key": CODEX_API_KEY},
+        params={"max_results": 5}
+    )
+    emails = response.json()
+
+    # 2. Parse body pour extraire erreurs
+    for email in emails:
+        body = email['body']
+        if 'CRITICAL' in body or 'ERROR' in body:
+            errors = extract_errors(body)  # Parse HTML/text
+
+            # 3. Créer branch Git + fix + PR
+            create_fix_branch(errors)
+            apply_automated_fixes(errors)
+            create_pull_request(errors)
+
+    time.sleep(1800)  # 30 min
+```
+
+**🔥 PRIORITÉ 2: Cloud Scheduler (automatisation emails 2h)**
+
+```bash
+# Créer Cloud Scheduler job
+gcloud scheduler jobs create http guardian-email-report \
+  --location=europe-west1 \
+  --schedule="0 */2 * * *" \
+  --uri="https://emergence-app-486095406755.europe-west1.run.app/api/guardian/scheduled-report" \
+  --http-method=POST \
+  --headers="X-Guardian-Scheduler-Token=7bf60d655dc4d95fe5dc873e9c407449cb8011f2e57988f0c6e80b9815b5a640"
+```
+
+**PRIORITÉ 3: Push commits vers GitHub**
+
+```bash
+git push origin main
+# Commits:
+# - e0a1c73 feat(gmail): Phase 3 Guardian Cloud - Gmail API Integration ✅
+# - 2bf517a docs(guardian): Phase 6 Guardian Cloud - Deployment Guide ✅
+# - 74df1ab fix(guardian): Fix import paths (features.* → backend.features.*)
+```
+
+**PRIORITÉ 4: Documentation Codex**
+
+- Lire `docs/GMAIL_CODEX_INTEGRATION.md` (guide complet 453 lignes)
+- Implémenter polling workflow dans Codex système
+- Tester auto-fix Git workflow
+
+### Blocages
+
+**Aucun blocage technique.** Tous les systèmes fonctionnels.
+
+**Pending user action:**
+- OAuth Gmail flow (nécessite browser pour consent Google)
+- Décision: Cloud Scheduler now ou plus tard?
+- Décision: Push commits vers GitHub now ou attendre validation?
+
+### Notes techniques
+
+**Architecture Gmail API:**
+```
+Codex GPT (local/cloud)
+    ↓ HTTP POST (X-Codex-API-Key)
+Cloud Run /api/gmail/read-reports
+    ↓ OAuth2 tokens (Firestore)
+Google Gmail API (readonly)
+    ↓ Emails Guardian
+Return JSON to Codex
+```
+
+**Sécurité:**
+- ✅ OAuth2 readonly scope (pas de write/delete)
+- ✅ Tokens encrypted at rest (Firestore)
+- ✅ Codex API key (X-Codex-API-Key header)
+- ✅ HTTPS only
+- ✅ Auto-refresh tokens (pas d'expiration manuelle)
+
+**Performance:**
+- Gmail API quota: 1B requests/day (largement suffisant)
+- Codex polling suggéré: 30 min (48 calls/day << quota)
+- Email parsing: base64url decode + multipart support
+- Max 10 emails par call (configurable avec `max_results`)
+
+---
+
 ## [2025-10-19 22:15] — Agent: Claude Code (PHASE 5 GUARDIAN CLOUD - UNIFIED EMAIL REPORTING ✅)
 
 ### Fichiers modifiés (4 backend + 1 infra + 1 doc)
