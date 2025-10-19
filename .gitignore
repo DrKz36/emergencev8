@@ -33,7 +33,12 @@ Thumbs.db
 desktop.ini
 
 # --- Claude Code snapshots and temp files
-.claude/
+# .claude/ → COMMENTÉ pour versionner settings.local.json
+# On ignore uniquement les fichiers temporaires
+.claude/*.backup
+.claude/*.backup_*
+.claude/snapshots/
+.claude/temp/
 
 # --- Logs & temps
 logs/
