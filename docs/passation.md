@@ -1,3 +1,62 @@
+## [2025-10-19 03:23] — Agent: Claude Code (Fix conversation_id Migration - RÉSOLU ✅)
+
+### Fichiers modifiés
+- `src/backend/core/database/schema.py` (ajout migrations conversation_id + consolidated_at lignes 501-507)
+- `AGENT_SYNC.md` (mise à jour session 03:23)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Bug critique remonté par FG : impossible de créer une nouvelle conversation dans l'UI.
+Erreur HTTP 500 avec message: `table threads has no column named conversation_id`
+
+**Root cause :**
+- Le schéma DB définit `conversation_id TEXT` dans la table threads (schema.py:88)
+- Le code `create_thread()` essaie d'insérer dans cette colonne (queries.py:804)
+- MAIS la table `threads` réelle en base n'avait pas cette colonne
+- Le système de migration `_ensure_threads_enriched_columns()` n'incluait pas conversation_id ni consolidated_at
+
+### Actions réalisées
+
+**1. Ajout migrations colonnes manquantes**
+
+Modifié `_ensure_threads_enriched_columns()` pour ajouter :
+
+```python
+# Colonnes Sprint 1 & 2
+if "conversation_id" not in cols:
+    await db.execute("ALTER TABLE threads ADD COLUMN conversation_id TEXT", commit=True)
+    logger.info("[DDL] Colonne ajoutée: threads.conversation_id TEXT")
+
+if "consolidated_at" not in cols:
+    await db.execute("ALTER TABLE threads ADD COLUMN consolidated_at TEXT", commit=True)
+    logger.info("[DDL] Colonne ajoutée: threads.consolidated_at TEXT")
+```
+
+**2. Migrations appliquées automatiquement**
+
+Les migrations s'appliquent automatiquement au démarrage du backend via `create_tables()` qui appelle `_ensure_threads_enriched_columns()`.
+
+### Tests
+- ✅ Compilation Python: `python -m py_compile schema.py` → OK
+- ✅ Linter: `ruff check schema.py` → OK
+- ✅ Backend redémarré avec migration appliquée
+- ✅ Log confirmation: `[DDL] Colonne ajoutée: threads.conversation_id TEXT`
+- ✅ Test création conversation: `POST /api/threads/` → **201 Created**
+- ✅ Nouveau thread créé: `a496f4b5082a4c9e9f8f714649f91f8e`
+
+### Travail de Codex GPT pris en compte
+Aucun (session Claude Code autonome suite à bug critique).
+
+### Prochaines actions recommandées
+1. Commit + push fix migration
+2. Vérifier si d'autres colonnes Sprint 1/2 manquent dans migrations
+3. Tester création/gestion conversations multi-threads (Sprint 1 feature)
+
+### Blocages
+Aucun. Le fix est opérationnel et testé avec succès.
+
+---
+
 ## [2025-10-18 18:35] — Agent: Claude Code (Fix Streaming Chunks Display - RÉSOLU ✅)
 
 ### Fichiers modifiés

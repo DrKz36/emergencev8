@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-18 18:35 (Claude Code: fix streaming chunks display - RÉSOLU)
+**Dernière mise à jour** : 2025-10-19 03:23 (Claude Code: fix conversation_id migration - RÉSOLU ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -19,7 +19,43 @@
 
 ---
 
-## 🚀 Session en cours (2025-10-18 18:35) — Agent : Claude Code (Fix Streaming Chunks Display - RÉSOLU ✅)
+## 🚀 Session en cours (2025-10-19 03:23) — Agent : Claude Code (Fix conversation_id Migration - RÉSOLU ✅)
+
+**Objectif :**
+- ✅ **RÉSOLU**: Fixer erreur création nouvelle conversation (HTTP 500)
+- Erreur: `table threads has no column named conversation_id`
+- Migration manquante pour colonnes Sprint 1 & 2
+
+**Problème identifié :**
+- **Root cause**: Schéma DB définit `conversation_id TEXT` (ligne 88)
+- Code essaie d'insérer dans cette colonne (queries.py:804)
+- MAIS la table `threads` existante n'a pas cette colonne
+- Système de migration incomplet (manquait conversation_id + consolidated_at)
+
+**Solution implémentée :**
+- Ajout migration colonnes dans `_ensure_threads_enriched_columns()` (schema.py:501-507)
+- Migration `conversation_id TEXT` pour Sprint 1
+- Migration `consolidated_at TEXT` pour Sprint 2 (timestamp consolidation LTM)
+- Migrations appliquées automatiquement au démarrage backend
+
+**Fichiers modifiés :**
+- `src/backend/core/database/schema.py` (ajout migrations conversation_id + consolidated_at)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée)
+
+**Tests effectués :**
+- ✅ Compilation Python: `python -m py_compile schema.py` → OK
+- ✅ Linter: `ruff check schema.py` → OK
+- ✅ Migration appliquée au démarrage: log `[DDL] Colonne ajoutée: threads.conversation_id TEXT`
+- ✅ Création conversation: `POST /api/threads/` → **201 Created** (thread_id=a496f4b5082a4c9e9f8f714649f91f8e)
+
+**Prochaines actions :**
+- Commit + push fix migration
+- Vérifier que Codex GPT n'a pas d'autres modifs en cours
+
+---
+
+## 🔄 Session précédente (2025-10-18 18:35) — Agent : Claude Code (Fix Streaming Chunks Display - RÉSOLU ✅)
 
 **Objectif :**
 - ✅ **RÉSOLU**: Fixer affichage streaming chunks dans UI chat

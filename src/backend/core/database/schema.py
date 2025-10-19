@@ -491,11 +491,22 @@ async def _ensure_costs_enriched_columns(db: DatabaseManager):
 # ------------------------------------------------------------------------ #
 
 async def _ensure_threads_enriched_columns(db: DatabaseManager):
-    """Ajoute les colonnes d'enrichissement threads (last_message_at, message_count, archival_reason)."""
+    """Ajoute les colonnes d'enrichissement threads (conversation_id, consolidated_at, last_message_at, message_count, archival_reason)."""
     cols = await _get_columns(db, "threads")
     if not cols:
         return
     added_message_count = False
+
+    # Colonnes Sprint 1 & 2
+    if "conversation_id" not in cols:
+        await db.execute("ALTER TABLE threads ADD COLUMN conversation_id TEXT", commit=True)
+        logger.info("[DDL] Colonne ajoutée: threads.conversation_id TEXT")
+
+    if "consolidated_at" not in cols:
+        await db.execute("ALTER TABLE threads ADD COLUMN consolidated_at TEXT", commit=True)
+        logger.info("[DDL] Colonne ajoutée: threads.consolidated_at TEXT")
+
+    # Colonnes existantes
     if "archival_reason" not in cols:
         await db.execute("ALTER TABLE threads ADD COLUMN archival_reason TEXT", commit=True)
         logger.info("[DDL] Colonne ajoutée: threads.archival_reason TEXT")
