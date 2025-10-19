@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-19 05:30 (Claude Code: Affichage chunks mémoire dans l'UI - RÉSOLU ✅)
+**Dernière mise à jour** : 2025-10-19 14:45 (Claude Code: Fix responsive mobile dashboard admin - RÉSOLU ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -17,7 +17,45 @@
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
 5. `git status` + `git log --oneline -10` - état Git
 
-## 🚀 Session en cours (2025-10-19 05:30) — Agent : Claude Code (Affichage chunks mémoire dans l'UI - RÉSOLU ✅)
+## 🚀 Session en cours (2025-10-19 14:45) — Agent : Claude Code (Fix responsive mobile dashboard admin - RÉSOLU ✅)
+
+**Objectif :**
+- ✅ **RÉSOLU**: Corriger l'affichage responsive mobile de la section "Évolution des Coûts" dans le dashboard admin
+- User signalait débordement du graphique (7 derniers jours) hors du panneau sur mobile
+
+**Problème identifié :**
+- `.admin-chart` : pas de gestion overflow, les 7 barres débordaient sur petits écrans
+- `.chart-bar` : pas de min-width, barres trop larges
+- Labels et values wrappaient et cassaient la mise en page
+- Aucune adaptation mobile (contrairement à la timeline qui avait déjà un fix)
+
+**Fichiers modifiés :**
+- `src/frontend/features/admin/admin-dashboard.css` (fix responsive section Évolution des Coûts)
+- `docs/passation.md` (entrée complète)
+- `AGENT_SYNC.md` (cette session)
+
+**Solution implémentée :**
+- Desktop: overflow-x auto, min-width barres, white-space nowrap
+- Mobile: gap/padding réduits, labels en diagonale (rotate -45deg), textes plus petits
+- Hauteur chart réduite 200px → 180px sur mobile
+- Barres plus fines 50px → 40px sur mobile
+
+**Tests effectués :**
+- ✅ Test visuel mode responsive Chrome DevTools (375px, 768px)
+- ✅ Graphique s'adapte sans débordement
+- ✅ Labels en diagonale lisibles
+- ✅ Desktop non impacté
+
+**Résultat :**
+- ✅ Section "Évolution des Coûts" responsive et lisible sur mobile
+- ✅ Plus de débordement
+- ✅ UX améliorée petits écrans
+
+**Prochaines actions :**
+1. Commit + push + déploiement production (en cours)
+2. Vérifier autres sections dashboard pour cohérence responsive
+
+## 🚀 Session précédente (2025-10-19 05:30) — Agent : Claude Code (Affichage chunks mémoire dans l'UI - RÉSOLU ✅)
 
 **Objectif :**
 - ✅ **RÉSOLU**: Afficher les chunks de mémoire (STM/LTM) dans l'interface utilisateur

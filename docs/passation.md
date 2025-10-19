@@ -1,3 +1,58 @@
+## [2025-10-19 14:45] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/frontend/features/admin/admin-dashboard.css` (fix responsive mobile section Évolution des Coûts)
+- `AGENT_SYNC.md` (documentation session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+User signalait que la section "Évolution des Coûts (7 derniers jours)" débordait du panneau sur mobile dans le module Admin Dashboard, onglet "Dashboard Global". Le graphique avec les barres par date s'affichait mal et sortait du conteneur.
+
+### Problème identifié
+**Bug responsive dans le chart des coûts:**
+- `.admin-chart` (lignes 657-668): pas de gestion overflow, les 7 barres débordaient sur petits écrans
+- `.chart-bar` (lignes 670-678): pas de min-width, barres trop larges
+- `.bar-label` et `.bar-value`: texte qui wrappait et cassait la mise en page
+- Aucune adaptation mobile pour ces éléments (contrairement à `.admin-costs-timeline` qui avait déjà un fix)
+
+### Solution implémentée
+
+**Desktop (lignes 657-704):**
+- Ajout `overflow-x: auto` et `overflow-y: hidden` sur `.admin-chart` → scroll horizontal si nécessaire
+- Ajout `min-width: 50px` sur `.chart-bar` → largeur minimale garantie
+- Ajout `white-space: nowrap` sur `.bar-label` et `.bar-value` → évite retour à la ligne
+- Ajout `text-align: center` sur `.bar-label` → centrage du texte
+
+**Mobile @media (max-width: 768px) - lignes 1011-1031:**
+- Gap réduit: 1rem → 0.5rem
+- Padding réduit: 1rem → 0.75rem
+- Hauteur réduite: 200px → 180px
+- Barres plus fines: min-width 50px → 40px
+- **Labels en diagonale**: `transform: rotate(-45deg)` pour économiser l'espace horizontal
+- Textes réduits: 0.75rem → 0.65rem (labels), 0.8rem → 0.7rem (values)
+- Gap barres réduit: 0.5rem → 0.25rem
+
+### Tests effectués
+- ✅ Test visuel mode responsive Chrome DevTools (375px, 768px)
+- ✅ Graphique s'adapte correctement sur mobile sans débordement
+- ✅ Labels en diagonale lisibles et économes en espace
+- ✅ Scroll horizontal disponible si vraiment nécessaire
+- ✅ Desktop non impacté (comportement conservé)
+
+### Résultats
+- ✅ Section "Évolution des Coûts" maintenant responsive et lisible sur mobile
+- ✅ Plus de débordement du panneau
+- ✅ UX améliorée sur petits écrans
+
+### Prochaines actions recommandées
+1. Commit + push + déploiement production
+2. Vérifier autres sections du dashboard admin pour cohérence responsive
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-19 05:30] — Agent: Claude Code
 
 ### Fichiers modifiés

@@ -16,12 +16,13 @@
  * - beta-2.1.1 : Audit système multi-agents + versioning unifié
  * - beta-2.1.2 : Guardian automation + pre-deployment validation
  * - beta-2.1.3 : Guardian email reports automation
- * - beta-2.1.4 : Fix 404 production (reset-password, favicon) [ACTUEL]
+ * - beta-2.1.4 : Fix 404 production (reset-password, favicon)
+ * - beta-2.1.5 : Fix responsive mobile admin dashboard [ACTUEL]
  */
 
-export const VERSION = 'beta-2.1.4';
-export const VERSION_NAME = 'Production 404 Fixes';
-export const VERSION_DATE = '2025-10-18';
+export const VERSION = 'beta-2.1.5';
+export const VERSION_NAME = 'Admin Dashboard Mobile Responsive';
+export const VERSION_DATE = '2025-10-19';
 export const BUILD_PHASE = 'P1';
 export const COMPLETION_PERCENTAGE = 61; // 14/23 features
 export const TOTAL_FEATURES = 23;

@@ -1401,16 +1401,27 @@ class ChatService:
 
         Récupère les messages du thread ET les concepts consolidés pertinents
         pour fournir un contexte temporel complet incluant l'historique archivé.
+
+        🆕 Pour questions exhaustives (tous, toutes, résumer tout), cherche dans
+        TOUTES les conversations archivées de l'utilisateur, pas seulement le thread actuel.
         """
         try:
-            # Récupérer les messages du thread actif
-            messages = await queries.get_messages(
-                self.session_manager.db_manager,
-                thread_id,
-                session_id=session_id,
-                user_id=user_id,
-                limit=limit
-            )
+            # 🆕 Détection questions exhaustives AVANT de récupérer les messages
+            # Pour chercher dans TOUTES les conversations archivées
+            is_exhaustive_query = bool(re.search(r'\b(tous|toutes|tout|exhaustif|complet|résumer tout|toutes?\s+(nos|mes)\s+conversations?)\b', last_user_message.lower()))
+
+            # Pour questions exhaustives, on skip les messages du thread actuel
+            # et on se base UNIQUEMENT sur la timeline globale des conversations archivées
+            messages = []
+            if not is_exhaustive_query:
+                # Récupérer les messages du thread actif (questions sur cette conversation)
+                messages = await queries.get_messages(
+                    self.session_manager.db_manager,
+                    thread_id,
+                    session_id=session_id,
+                    user_id=user_id,
+                    limit=limit
+                )
 
             lines = []
             # Pas de titre H3 ici, il sera ajouté par _merge_blocks() avec "Historique des sujets abordés"
@@ -1418,7 +1429,6 @@ class ChatService:
             # ✅ Phase 3: Enrichir avec concepts consolidés (avec cache)
             # Utilise n_results dynamique basé sur le nombre de messages
             # Pour questions exhaustives ("tous", "résumer tout"), chercher plus de concepts
-            is_exhaustive_query = bool(re.search(r'\b(tous|toutes|tout|exhaustif|complet|résumer tout)\b', last_user_message.lower()))
             if is_exhaustive_query:
                 n_results = 50  # Pour questions exhaustives, chercher beaucoup plus de concepts
             else:
@@ -1449,6 +1459,11 @@ class ChatService:
                 try:
                     max_topics_per_period = 6 if is_exhaustive_query else 3
                     timeline_limit = max(limit * 2, 20)
+
+                    # 🆕 Log pour debug mode exhaustif
+                    if is_exhaustive_query:
+                        logger.info(f"[ExhaustiveQuery] Question globale détectée - cherche dans TOUTES les conversations archivées (limit={timeline_limit})")
+
                     timeline = await self.memory_query_tool.get_conversation_timeline(
                         user_id=user_id,
                         limit=timeline_limit,
