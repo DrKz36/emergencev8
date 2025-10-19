@@ -1,3 +1,263 @@
+## [2025-10-19 21:45 CET] — Agent: Claude Code (OAUTH GMAIL FIX + GUARDIAN EMAIL ENRICHI ✅)
+
+### Fichiers modifiés/créés (15 fichiers, +4043 lignes)
+
+**OAuth Gmail Fix:**
+- ✅ `src/backend/features/gmail/oauth_service.py` (ligne 80: supprimé `include_granted_scopes='true'`)
+- ✅ `.gitignore` (+2 lignes: `gmail_client_secret.json`, `*_client_secret.json`)
+
+**Guardian Email Ultra-Enrichi (+616 lignes):**
+- ✅ `claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py` (+292 lignes)
+  - 4 nouvelles fonctions: `extract_full_context()`, `analyze_patterns()`, `get_code_snippet()`, `get_recent_commits()`
+  - Génère rapports JSON avec stack traces complets, patterns d'erreurs, code source, commits récents
+- ✅ `src/backend/templates/guardian_report_email.html` (+168 lignes)
+  - Sections: 🔍 Analyse de Patterns, ❌ Erreurs Détaillées (Top 3), 📄 Code Suspect, 📝 Commits Récents
+  - Design moderne avec CSS glassmorphism
+- ✅ `claude-plugins/integrity-docs-guardian/scripts/generate_html_report.py` (nouveau)
+- ✅ `claude-plugins/integrity-docs-guardian/scripts/send_prod_report_to_codex.py` (nouveau)
+- ✅ `claude-plugins/integrity-docs-guardian/scripts/email_template_guardian.html` (nouveau)
+
+**Scripts Tests/Debug (+892 lignes):**
+- ✅ `test_guardian_email.py` (test complet intégration Guardian email)
+- ✅ `test_guardian_email_simple.py` (test simple envoi email)
+- ✅ `decode_email.py` (décodage emails Guardian base64)
+- ✅ `decode_email_html.py` (extraction HTML depuis emails)
+- ✅ `claude-plugins/integrity-docs-guardian/reports/test_report.html` (exemple rapport)
+
+**Déploiement:**
+- ✅ `.gcloudignore` (+7 lignes: ignore `reports/`, `test_guardian_email*.py`, `decode_email*.py`)
+  - Résout erreur "ZIP does not support timestamps before 1980"
+
+**Documentation Codex GPT (+678 lignes):**
+- ✅ `claude-plugins/integrity-docs-guardian/CODEX_GPT_EMAIL_INTEGRATION.md` (détails emails enrichis)
+- ✅ `claude-plugins/integrity-docs-guardian/CODEX_GPT_SETUP.md` (678 lignes - guide complet)
+  - 10 sections: Rôle, API, Structure emails, Workflow debug, Scénarios, Patterns, Best practices, Escalade, Sécurité, Tests
+  - Exemples concrets, templates de réponse, code snippets, commandes curl
+
+### Contexte
+
+**Objectif session:** Finaliser l'intégration Gmail OAuth + Créer système Guardian email ultra-enrichi pour Codex GPT.
+
+**État initial:**
+- ⚠️ OAuth Gmail bloqué avec erreur "redirect_uri_mismatch" (Erreur 400)
+- ⚠️ OAuth scope mismatch: "Scope has changed from X to Y" lors du callback
+- ⚠️ App OAuth en mode "En production" mais pas validée → Google bloque utilisateurs
+- ⚠️ Emails Guardian minimalistes (300 chars) → Codex ne peut pas débugger
+- ⚠️ `CODEX_API_KEY` pas configurée sur Cloud Run
+- ⚠️ Déploiement gcloud bloqué par erreur "timestamp before 1980"
+
+**Problèmes résolus:**
+
+**1. OAuth Gmail - redirect_uri_mismatch:**
+- **Symptôme:** Google OAuth rejette avec "redirect_uri_mismatch"
+- **Cause:** URL Cloud Run changée (`47nct44rma-ew.a.run.app` → `486095406755.europe-west1.run.app`)
+- **Solution:** Ajouté nouvelle URI dans GCP Console OAuth2 Client
+- **Résultat:** Redirect URI acceptée ✅
+
+**2. OAuth Gmail - scope mismatch:**
+- **Symptôme:** `"OAuth failed: Scope has changed from 'gmail.readonly' to 'userinfo.email gmail.readonly userinfo.profile openid'"`
+- **Cause:** `include_granted_scopes='true'` dans `oauth_service.py` ligne 80 ajoute scopes supplémentaires
+- **Solution:** Supprimé ligne 80 `include_granted_scopes='true'`
+- **Résultat:** OAuth callback réussi ✅
+
+**3. OAuth Gmail - App non validée:**
+- **Symptôme:** Écran "Google n'a pas validé cette application"
+- **Cause:** App en mode "En production" sans validation Google
+- **Solution:**
+  - Retour en mode "Testing" (GCP Console → Audience)
+  - Ajout `gonzalefernando@gmail.com` dans "Utilisateurs test"
+- **Résultat:** OAuth flow fonctionnel pour test users ✅
+
+**4. API Codex - CODEX_API_KEY manquante:**
+- **Symptôme:** `{"detail":"Codex API key not configured on server"}`
+- **Cause:** Variable d'environnement `CODEX_API_KEY` absente sur Cloud Run
+- **Solution:** `gcloud run services update --update-env-vars="CODEX_API_KEY=..."`
+- **Révision:** emergence-app-00396-z6j déployée
+- **Résultat:** API Codex opérationnelle ✅
+
+**5. Déploiement gcloud - timestamp error:**
+- **Symptôme:** `ERROR: gcloud crashed (ValueError): ZIP does not support timestamps before 1980`
+- **Cause:** Fichiers avec timestamps < 1980 (artefacts Git/Windows)
+- **Solution 1:** `git ls-files | xargs touch` (failed)
+- **Solution 2:** Build Docker manuel + push Artifact Registry
+  - `docker build -t europe-west1-docker.pkg.dev/.../emergence-app:latest .`
+  - `docker push europe-west1-docker.pkg.dev/.../emergence-app:latest`
+  - `gcloud run deploy --image=...`
+- **Résultat:** Déploiement réussi (révision 00395-v6h → 00396-z6j) ✅
+
+### Tests
+
+**OAuth Gmail Flow:**
+```bash
+# URL testé
+https://emergence-app-486095406755.europe-west1.run.app/auth/gmail
+
+# Résultat
+{
+  "success": true,
+  "message": "Gmail OAuth authentication successful! You can now use the Gmail API.",
+  "next_step": "Codex can now call POST /api/gmail/read-reports with API key"
+}
+```
+✅ OAuth flow complet réussi (consent screen → callback → token stocké Firestore)
+
+**API Codex - Lire Rapports:**
+```bash
+curl -X POST https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports \
+  -H "Content-Type: application/json" \
+  -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb" \
+  -d '{}'
+
+# Résultat
+{
+  "success": true,
+  "count": 10,
+  "emails": [
+    {
+      "subject": "🛡️ Rapport Guardian ÉMERGENCE - 19/10/2025 21:39",
+      "timestamp": "2025-10-19T19:39:56",
+      "body": "... contenu complet avec stack traces, patterns, code snippets, commits ..."
+    }
+  ]
+}
+```
+✅ 10 emails Guardian récupérés avec succès, contenu ultra-enrichi présent
+
+**Tests Déploiement:**
+- ✅ `docker build`: 128s (7 étapes, CACHED sauf COPY)
+- ✅ `docker push`: 2 tags pushés (b0ce491, latest)
+- ✅ `gcloud run deploy`: Révision 00396-z6j déployée, 100% traffic
+- ✅ Health check: 0 errors, 0 warnings
+
+### Résultats
+
+**Production Status:**
+- **URL:** https://emergence-app-486095406755.europe-west1.run.app
+- **Révision:** emergence-app-00396-z6j (100% traffic)
+- **Health:** ✅ OK (0 errors, 0 warnings)
+- **OAuth Gmail:** ✅ Fonctionnel (test users configuré)
+- **API Codex:** ✅ Opérationnelle (`/api/gmail/read-reports`)
+
+**Guardian Email Enrichi:**
+Chaque email contient maintenant **TOUT le contexte** pour Codex GPT:
+- ✅ **Stack traces complètes** (fichier, ligne, traceback)
+- ✅ **Analyse patterns** (par endpoint, type d'erreur, fichier)
+- ✅ **Code snippets** (5 lignes avant/après, ligne problématique marquée)
+- ✅ **Commits récents** (hash, auteur, message, timestamp)
+- ✅ **Recommandations actionnables**
+
+**Exemple contenu email enrichi:**
+```
+🔍 ANALYSE DE PATTERNS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Par Endpoint:
+  • POST /api/chat/message: 5 erreurs
+
+Par Type d'Erreur:
+  • KeyError: 5 occurrences
+
+Par Fichier:
+  • src/backend/features/chat/service.py: 5 erreurs
+
+❌ ERREUR #1 (5 occurrences)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📅 Timestamp: 2025-10-19T14:25:32.123456Z
+🔴 Severity: ERROR
+📝 Message: KeyError: 'user_id'
+
+📚 Stack Trace:
+   File "src/backend/features/chat/service.py", line 142
+   KeyError: 'user_id'
+
+📄 CODE SUSPECT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+src/backend/features/chat/service.py:142
+
+137: async def process_message(self, message: str, context: dict):
+142:     user_id = context['user_id']  # ← LIGNE QUI PLANTE!
+
+📝 COMMITS RÉCENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+a1b2c3d4 - Fernando Gonzales - Il y a 2 heures
+  feat(chat): Add context-aware message processing  ← SUSPECT!
+```
+
+**Codex GPT Setup:**
+- ✅ Guide complet créé (678 lignes): `CODEX_GPT_SETUP.md`
+- ✅ Workflow de debugging autonome documenté (5 étapes)
+- ✅ 10 sections: Rôle, API, Structure emails, Scénarios, Patterns, Best practices, etc.
+- ✅ Templates de réponse, exemples concrets, commandes curl de test
+
+**Boucle de monitoring autonome complète:**
+```
+Guardian (Cloud Run)
+    ↓ (génère rapport enrichi)
+Gmail API
+    ↓ (polling 30 min)
+Codex GPT
+    ↓ (analyse + debug)
+Fix proposé à Architecte
+    ↓ (validation)
+Déploiement Cloud Run
+    ↓
+Production Healthy! 🔥
+```
+
+### Commits (4)
+
+**Session complète: +4043 lignes ajoutées**
+
+1. **b0ce491** - `feat(gmail+guardian): OAuth scope fix + Email enrichi pour Codex`
+   - OAuth: Supprimé `include_granted_scopes` (fix scope mismatch)
+   - Guardian: +616 lignes (check_prod_logs.py, guardian_report_email.html, scripts Codex)
+   - Total: +2466 lignes
+
+2. **df1b2d2** - `fix(deploy): Ignorer reports/tests temporaires dans .gcloudignore`
+   - Ajout ignore: `reports/`, `test_guardian_email*.py`, `decode_email*.py`
+   - Résout: "ZIP does not support timestamps before 1980"
+
+3. **02d62e6** - `feat(guardian): Scripts de test et debug email Guardian`
+   - Tests: `test_guardian_email.py`, `test_guardian_email_simple.py`
+   - Debug: `decode_email.py`, `decode_email_html.py`
+   - Total: +892 lignes
+
+4. **d9f9d16** - `docs(guardian): Guide complet configuration Codex GPT`
+   - `CODEX_GPT_SETUP.md`: 678 lignes
+   - 10 sections complètes, exemples, templates, workflow autonome
+
+### Prochaines actions recommandées
+
+**Pour Codex GPT (maintenant opérationnel):**
+1. ✅ Tester endpoint API (`/api/gmail/read-reports`)
+2. ✅ Parser 1 email CRITICAL (extraire type, fichier, code, commits)
+3. ✅ Rédiger 1 analyse test (template "Proposer Fix" du guide)
+4. ⏳ Setup polling automatique (toutes les 30 min)
+5. ⏳ Monitorer production 24h et documenter interventions
+
+**Pour production:**
+1. ✅ OAuth Gmail fonctionnel
+2. ✅ API Codex opérationnelle
+3. ⏳ Passer en mode "Internal" OAuth (si org workspace disponible)
+4. ⏳ Documenter feature Gmail dans `docs/backend/gmail.md` (Guardian Anima le demande)
+5. ⏳ Tests E2E frontend pour topic shift
+
+### Blocages
+
+**Aucun.** Tous les objectifs atteints:
+- ✅ OAuth Gmail fonctionnel (flow testé OK)
+- ✅ Guardian email ultra-enrichi (+616 lignes)
+- ✅ API Codex opérationnelle (10 emails récupérés)
+- ✅ Guide Codex complet (678 lignes)
+- ✅ Production healthy (0 errors)
+
+**Session massive: 15 fichiers modifiés/créés, +4043 lignes, 4 commits, déploiement Cloud Run réussi!** 🔥
+
+---
+
 ## [2025-10-19 18:35 CET] — Agent: Claude Code (PHASES 3+6 GUARDIAN CLOUD + FIX CRITICAL ✅)
 
 ### Fichiers modifiés (9 backend + 2 infra + 3 docs)

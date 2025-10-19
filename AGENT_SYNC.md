@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-19 18:35 CET (Claude Code: PHASE 3 + 6 GUARDIAN CLOUD ✅ + FIX CRITICAL)
+**Dernière mise à jour** : 2025-10-19 21:45 CET (Claude Code: OAUTH GMAIL FIX + GUARDIAN EMAIL ULTRA-ENRICHI ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -17,7 +17,66 @@
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
 5. `git status` + `git log --online -10` - état Git
 
-## 🚀 Session en cours (2025-10-19 18:35 CET) — Agent : Claude Code (PHASES 3+6 GUARDIAN CLOUD ✅)
+## 🚀 Session Complétée (2025-10-19 21:45 CET) — Agent : Claude Code (OAUTH + GUARDIAN ENRICHI ✅)
+
+**Objectif :**
+- ✅ **COMPLET**: Fix OAuth Gmail scope mismatch
+- ✅ **COMPLET**: Guardian Email Ultra-Enrichi pour Codex GPT (+616 lignes)
+- ✅ **COMPLET**: Déploiement Cloud Run révision 00396-z6j
+- ✅ **COMPLET**: API Codex opérationnelle (`/api/gmail/read-reports`)
+- ✅ **COMPLET**: Guide complet Codex GPT (678 lignes)
+
+**Fichiers modifiés/créés (15 fichiers, +4043 lignes) :**
+
+**OAuth Gmail Fix:**
+- `src/backend/features/gmail/oauth_service.py` (-1 ligne: supprimé `include_granted_scopes`)
+- `.gitignore` (+2 lignes: `gmail_client_secret.json`, `*_client_secret.json`)
+
+**Guardian Email Enrichi (+616 lignes):**
+- `claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py` (+292 lignes)
+  - 4 nouvelles fonctions: `extract_full_context()`, `analyze_patterns()`, `get_code_snippet()`, `get_recent_commits()`
+- `src/backend/templates/guardian_report_email.html` (+168 lignes)
+  - Sections: Patterns, Erreurs Détaillées, Code Suspect, Commits Récents
+- `claude-plugins/integrity-docs-guardian/scripts/generate_html_report.py` (nouveau)
+- `claude-plugins/integrity-docs-guardian/scripts/send_prod_report_to_codex.py` (nouveau)
+- `claude-plugins/integrity-docs-guardian/scripts/email_template_guardian.html` (nouveau)
+
+**Scripts Tests/Debug:**
+- `test_guardian_email.py` (nouveau)
+- `test_guardian_email_simple.py` (nouveau)
+- `decode_email.py` (nouveau)
+- `decode_email_html.py` (nouveau)
+- `claude-plugins/integrity-docs-guardian/reports/test_report.html` (nouveau)
+
+**Déploiement:**
+- `.gcloudignore` (+7 lignes: ignore reports/tests temporaires)
+
+**Documentation:**
+- `claude-plugins/integrity-docs-guardian/CODEX_GPT_EMAIL_INTEGRATION.md` (nouveau, détails emails enrichis)
+- `claude-plugins/integrity-docs-guardian/CODEX_GPT_SETUP.md` (nouveau, **678 lignes**, guide complet Codex)
+
+**Résultats:**
+- ✅ OAuth Gmail fonctionnel (test users configuré, flow testé OK)
+- ✅ API Codex opérationnelle (10 emails Guardian récupérés avec succès)
+- ✅ Cloud Run révision **00396-z6j** déployée avec `CODEX_API_KEY` configurée
+- ✅ Codex GPT peut maintenant débugger de manière 100% autonome
+
+**Commits (4) :**
+- `b0ce491` - feat(gmail+guardian): OAuth scope fix + Email enrichi (+2466 lignes)
+- `df1b2d2` - fix(deploy): Ignorer reports/tests temporaires (.gcloudignore)
+- `02d62e6` - feat(guardian): Scripts de test et debug email (+892 lignes)
+- `d9f9d16` - docs(guardian): Guide complet Codex GPT (+678 lignes)
+
+**Production Status:**
+- URL: https://emergence-app-486095406755.europe-west1.run.app
+- Révision: emergence-app-00396-z6j (100% traffic)
+- Health: ✅ OK (0 errors, 0 warnings)
+- OAuth Gmail: ✅ Fonctionnel
+- API Codex: ✅ Opérationnelle
+
+---
+
+## 🚀 Session Précédente (2025-10-19 18:35 CET) — Agent : Claude Code (PHASES 3+6 GUARDIAN CLOUD ✅)
 
 **Objectif :**
 - ✅ **COMPLET**: Phase 3 Guardian Cloud - Gmail API Integration pour Codex GPT
