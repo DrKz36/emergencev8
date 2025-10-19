@@ -90,7 +90,12 @@
       "Write(reports/**)",
       "Write(docs/**)",
       "Write(**/*.backup)",
-      "Bash(git add .gitignore .claude/settings.local.json)"
+      "Bash(git add .gitignore .claude/settings.local.json)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfix(config): Versionner settings.local.json et fix permissions autonomie\n\n- Modifié .gitignore pour versionner .claude/settings.local.json\n- Simplifié permissions avec wildcards :* (validateur strict)\n- Ajout permissions globales: *, Bash, Read, Edit, Write, Glob, Grep\n- Config maintenant persistante entre sessions (plus de purge)\n\nRésout le problème de reset constant des permissions qui obligeait\nà re-valider manuellement à chaque session.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(npm run build)",
+      "Bash(pwsh -File scripts/debug-frontend.ps1 check)",
+      "Bash(pwsh -File scripts/quick-debug.ps1 check)",
+      "Bash(git add src/frontend/features/chat/chat.js scripts/debug-frontend.ps1 scripts/quick-debug.ps1 .claude/settings.local.json)"
     ],
     "deny": [],
     "ask": []

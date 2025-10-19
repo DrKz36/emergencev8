@@ -1438,45 +1438,11 @@ handleMessagePersisted(payload = {}) {
 
     const { stm_content = '', ltm_content = '', ltm_items = 0, has_stm = false, agent_id = 'system' } = payload;
 
-    // Log pour debug
-    console.log('[Chat] handleMemoryBanner:', { agent_id, has_stm, ltm_items, stm_length: stm_content.length, ltm_length: ltm_content.length });
+    // Log silencieux - la mémoire est chargée automatiquement côté backend
+    console.log('[Chat] 🧠 Mémoire chargée silencieusement:', { agent_id, has_stm, ltm_items });
 
-    // Afficher un message système avec le contenu de la mémoire
-    if (has_stm || ltm_items > 0) {
-      const parts = [];
-      if (stm_content && stm_content.trim()) {
-        parts.push(`**Résumé de session:**\n${stm_content}`);
-      }
-      if (ltm_content && ltm_content.trim()) {
-        parts.push(`**Faits & souvenirs (${ltm_items} items):**\n${ltm_content}`);
-      }
-
-      if (parts.length > 0) {
-        const memoryMessage = {
-          id: `memory_${Date.now()}`,
-          role: 'system',
-          content: `🧠 **Mémoire chargée**\n\n${parts.join('\n\n---\n\n')}`,
-          timestamp: Date.now(),
-          agent_id: agent_id
-        };
-
-        // Déterminer le bucket de l'agent qui répond (pour que le message soit visible)
-        const bucketId = this._determineBucketForMessage(agent_id, null);
-        console.log('[Chat] Adding memory message to bucket:', bucketId);
-
-        // Ajouter le message dans le bucket de l'agent actuel
-        try {
-          const pathKey = `chat.messages.${bucketId}`;
-          const messages = this.state.get(pathKey) || [];
-          this.state.set(pathKey, [...messages, memoryMessage]);
-          this._rememberMessageBucket(memoryMessage.id, bucketId);
-        } catch (err) {
-          console.warn('[Chat] Failed to add memory message to state:', err);
-        }
-      }
-    }
-
-    this.showToast(`Mémoire chargée ✓ (${ltm_items} items)`);
+    // Pas de message UI ni de toast - la mémoire est injectée directement dans le contexte
+    // L'utilisateur verra l'effet dans les réponses de l'agent
   }
 
   handleConceptRecall(payload = {}) {
