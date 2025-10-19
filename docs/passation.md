@@ -1,3 +1,78 @@
+## [2025-10-19 15:20] — Agent: Claude Code (FIX SERVICE MAIL - SMTP PASSWORD ✅)
+
+### Fichiers modifiés
+- `.env` (vérifié, mot de passe correct)
+- `src/backend/features/auth/email_service.py` (vérifié service mail)
+
+### Contexte
+
+Problème signalé par FG : les invitations beta ne s'envoient plus après changement du mot de passe d'application Gmail.
+
+**Nouveau mot de passe d'application Gmail :** `aqca xyqf yyia pawu` (avec espaces pour humains)
+
+**Investigation :**
+
+1. ✅ `.env` local contenait déjà le bon mot de passe sans espaces : `aqcaxyqfyyiapawu`
+2. ✅ Test authentification SMTP → OK
+3. ✅ Test envoi email beta invitation → Envoyé avec succès
+4. ❌ Secret GCP `SMTP_PASSWORD` en production → **À METTRE À JOUR** (pas de permissions Claude Code)
+
+### Tests effectués
+
+**SMTP Authentication Test :**
+```bash
+python -c "import smtplib; server = smtplib.SMTP('smtp.gmail.com', 587); server.starttls(); server.login('gonzalefernando@gmail.com', 'aqcaxyqfyyiapawu'); print('SMTP Auth OK'); server.quit()"
+# → SMTP Auth OK ✅
+```
+
+**Beta Invitation Email Test :**
+```bash
+python test_beta_invitation_email.py
+# → EMAIL ENVOYE AVEC SUCCES ! ✅
+```
+
+### État du service mail
+
+| Composant | État | Notes |
+|-----------|------|-------|
+| **`.env` local** | ✅ OK | Mot de passe correct sans espaces |
+| **SMTP Auth Gmail** | ✅ OK | Authentification réussie |
+| **Email Service Local** | ✅ OK | Envoi beta invitation OK |
+| **Secret GCP `SMTP_PASSWORD`** | ❌ TODO | FG doit mettre à jour manuellement |
+| **Prod Cloud Run** | ❌ TODO | Redéploiement après update secret |
+
+### Actions requises (FG)
+
+**1. Mettre à jour le secret GCP :**
+```bash
+echo "aqcaxyqfyyiapawu" | gcloud secrets versions add SMTP_PASSWORD \
+  --project=emergence-dev-446414 \
+  --data-file=-
+```
+
+**2. Redéployer les services Cloud Run :**
+```bash
+gcloud run services update emergence-stable \
+  --project=emergence-dev-446414 \
+  --region=europe-west6 \
+  --update-env-vars=FORCE_UPDATE=$(date +%s)
+```
+
+### Résumé
+
+Le service mail fonctionne **parfaitement en local**. Le problème en prod vient du secret GCP `SMTP_PASSWORD` qui contient encore l'ancien mot de passe d'application Gmail. FG doit le mettre à jour manuellement puis redéployer les services Cloud Run.
+
+### Prochaines actions
+
+- FG : Mettre à jour secret GCP + redéployer
+- FG : Tester envoi invitation beta depuis l'UI admin en prod
+
+### Blocages
+
+Aucun. Service mail opérationnel en local. Reste juste la mise à jour prod (permissions GCP requises).
+
+---
+
 ## [2025-10-19 14:40] — Agent: Claude Code (RENOMMAGE SESSIONS → THREADS - PHASE 1 VALIDÉE ✅)
 
 ### Fichiers vérifiés
