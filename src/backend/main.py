@@ -69,7 +69,10 @@ def _migrations_dir() -> str:
 
 
 async def _startup(container: ServiceContainer):
+    import time
+    startup_start = time.perf_counter()
     logger.info("Démarrage backend Émergence…")
+
     try:
         db_manager = container.db_manager()
         fast_boot = os.getenv("EMERGENCE_FAST_BOOT") or os.getenv(
@@ -83,6 +86,14 @@ async def _startup(container: ServiceContainer):
             logger.info("DB initialisée (migrations exécutées).")
     except Exception as e:
         logger.warning(f"Initialisation DB partielle: {e}")
+
+    # 🔥 P2.1 - Warm-up: Pré-charger SBERT et Chroma/Qdrant
+    try:
+        vector_service = container.vector_service()
+        vector_service._ensure_inited()  # Force lazy init NOW
+        logger.info(f"VectorService pré-chargé (backend={vector_service.backend}, model={vector_service.embed_model_name})")
+    except Exception as e:
+        logger.warning(f"VectorService warm-up échoué: {e}")
 
     # Wire DI (inclut chat.router → Provide[...] ok)
     try:
@@ -121,6 +132,10 @@ async def _startup(container: ServiceContainer):
         logger.info("AuthService bootstrap terminé.")
     except Exception as e:
         logger.warning(f"AuthService bootstrap non appliqué: {e}")
+
+    # Log startup duration
+    startup_duration_ms = int((time.perf_counter() - startup_start) * 1000)
+    logger.info(f"✅ Startup completed in {startup_duration_ms}ms")
 
 
 # --- Middleware Deny-list (404 early) ---
@@ -303,6 +318,34 @@ def create_app() -> FastAPI:
     @app.get("/api/health", tags=["Health"])
     async def health():
         return {"status": "ok", "message": "Emergence Backend is running."}
+
+    @app.get("/healthz", tags=["Health"], include_in_schema=False)
+    async def healthz_simple():
+        """Simple liveness check (k8s-style)"""
+        return {"ok": True}
+
+    @app.get("/ready", tags=["Health"], include_in_schema=False)
+    async def ready_check(request: Request):
+        """Readiness check - vérifie DB + Chroma disponibles"""
+        try:
+            # Check DB
+            db_manager = app.state.service_container.db_manager()
+            conn = await db_manager._ensure_connection()
+            cursor = await conn.execute("SELECT 1")
+            await cursor.fetchone()
+
+            # Check VectorService (lazy-load safe)
+            vector_service = app.state.service_container.vector_service()
+            vector_service._ensure_inited()
+
+            return {"ok": True, "db": "up", "vector": "up"}
+        except Exception as e:
+            logger.error(f"/ready check failed: {e}")
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=503,
+                content={"ok": False, "error": str(e)}
+            )
 
     @app.post("/api/beta-report-test", tags=["Beta"])
     async def beta_report_test():

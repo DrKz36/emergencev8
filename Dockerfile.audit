@@ -27,7 +27,6 @@ RUN pip install --no-cache-dir \
 
 # Copier le code source
 COPY scripts/cloud_audit_job.py /app/
-COPY src/backend/features/auth/email_service.py /app/src/backend/features/auth/
 
 # Créer un utilisateur non-root
 RUN useradd -m -u 1000 audituser && chown -R audituser:audituser /app

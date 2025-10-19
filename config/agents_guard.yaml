@@ -1,0 +1,39 @@
+# config/agents_guard.yaml
+# P2.3 - Configuration des garde-fous agents
+
+# 1️⃣ Budgets quotidiens par agent (tokens/jour)
+agents:
+  anima:
+    max_tokens_day: 120000  # 120k tokens/jour (GPT-4: ~$1.80/jour à $0.015/1k)
+  neo:
+    max_tokens_day: 80000   # 80k tokens/jour
+  nexus:
+    max_tokens_day: 60000   # 60k tokens/jour
+
+# 2️⃣ Politique de routing (SLM vs LLM)
+routing:
+  default: slm  # Tier par défaut (slm, llm_light, llm_heavy)
+  escalate_on:
+    - confidence_below: 0.65  # Escalade si confidence < 65%
+    - tool_missing: true      # Escalade si tool requis manquant
+  # Seuils de confidence par agent (optionnel)
+  thresholds:
+    anima: 0.60  # Plus tolérant (Anima peut gérer des requêtes floues)
+    neo: 0.70    # Plus strict (Neo doit être sûr de ses analyses)
+    nexus: 0.65  # Standard
+
+# 3️⃣ Circuit breaker pour les tools
+tools:
+  circuit_breaker:
+    timeout_s: 30  # Timeout par défaut (secondes)
+    backoff: "exp:0.5..8s"  # Backoff exponentiel (0.5s → 8s max)
+    max_failures: 3  # Ouvrir circuit après 3 échecs consécutifs
+    reset_after_s: 60  # Reset circuit après 60s sans échec
+
+  # Tools spécifiques avec overrides (optionnel)
+  overrides:
+    memory_query:
+      timeout_s: 45  # Plus de temps pour RAG
+    web_search:
+      timeout_s: 60  # Encore plus pour web
+      max_failures: 5  # Plus tolérant

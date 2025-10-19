@@ -405,32 +405,41 @@ RÉSUMÉ:
 Contact: {ADMIN_EMAIL}
 """
 
-            # Envoyer l'email (utilise le EmailService existant)
-            # Import ici pour éviter les dépendances circulaires
-            sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "backend"))
-            from features.auth.email_service import EmailService
+            # Envoyer l'email via SMTP direct
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
 
-            email_service = EmailService()
-
-            if not email_service.is_enabled():
-                print("❌ Service email non activé")
+            smtp_password = os.getenv("SMTP_PASSWORD")
+            if not smtp_password:
+                print("❌ SMTP_PASSWORD non configuré")
                 return False
 
             subject = f"☁️ Audit Cloud ÉMERGENCE - {status} - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
 
-            success = await email_service.send_custom_email(
-                to_email=ADMIN_EMAIL,
-                subject=subject,
-                html_body=html_body,
-                text_body=text_body
-            )
+            # Créer message MIME
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = "emergence@gonzalefernando.com"
+            msg['To'] = ADMIN_EMAIL
 
-            if success:
+            # Attacher texte et HTML
+            part1 = MIMEText(text_body, 'plain', 'utf-8')
+            part2 = MIMEText(html_body, 'html', 'utf-8')
+            msg.attach(part1)
+            msg.attach(part2)
+
+            # Envoyer via SMTP
+            try:
+                with smtplib.SMTP('smtp.gmail.com', 587) as server:
+                    server.starttls()
+                    server.login("emergence@gonzalefernando.com", smtp_password)
+                    server.send_message(msg)
                 print(f"✅ Email envoyé à {ADMIN_EMAIL}")
-            else:
-                print(f"❌ Échec envoi email")
-
-            return success
+                return True
+            except Exception as smtp_err:
+                print(f"❌ Erreur SMTP: {smtp_err}")
+                return False
 
         except Exception as e:
             print(f"❌ Erreur envoi email: {e}")

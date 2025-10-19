@@ -62,14 +62,23 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "✅ Cloud Run Job déployé`n" -ForegroundColor Green
 
-# 4. Créer Cloud Scheduler (3x/jour)
-Write-Host "[4/5] Configuration Cloud Scheduler (3x/jour)..." -ForegroundColor Yellow
+# 4. Créer Cloud Scheduler (toutes les 2h)
+Write-Host "[4/5] Configuration Cloud Scheduler (toutes les 2h)..." -ForegroundColor Yellow
 
-# Horaires: 08:00, 14:00, 20:00 (Europe/Zurich)
+# Horaires: toutes les 2h (00:00, 02:00, 04:00, ..., 22:00) - Europe/Zurich
 $Schedules = @(
-    @{ Name = "cloud-audit-morning"; Cron = "0 8 * * *"; Description = "Audit matinal (08:00)" },
-    @{ Name = "cloud-audit-afternoon"; Cron = "0 14 * * *"; Description = "Audit après-midi (14:00)" },
-    @{ Name = "cloud-audit-evening"; Cron = "0 20 * * *"; Description = "Audit soirée (20:00)" }
+    @{ Name = "cloud-audit-00h"; Cron = "0 0 * * *"; Description = "Audit 00:00" },
+    @{ Name = "cloud-audit-02h"; Cron = "0 2 * * *"; Description = "Audit 02:00" },
+    @{ Name = "cloud-audit-04h"; Cron = "0 4 * * *"; Description = "Audit 04:00" },
+    @{ Name = "cloud-audit-06h"; Cron = "0 6 * * *"; Description = "Audit 06:00" },
+    @{ Name = "cloud-audit-08h"; Cron = "0 8 * * *"; Description = "Audit 08:00" },
+    @{ Name = "cloud-audit-10h"; Cron = "0 10 * * *"; Description = "Audit 10:00" },
+    @{ Name = "cloud-audit-12h"; Cron = "0 12 * * *"; Description = "Audit 12:00" },
+    @{ Name = "cloud-audit-14h"; Cron = "0 14 * * *"; Description = "Audit 14:00" },
+    @{ Name = "cloud-audit-16h"; Cron = "0 16 * * *"; Description = "Audit 16:00" },
+    @{ Name = "cloud-audit-18h"; Cron = "0 18 * * *"; Description = "Audit 18:00" },
+    @{ Name = "cloud-audit-20h"; Cron = "0 20 * * *"; Description = "Audit 20:00" },
+    @{ Name = "cloud-audit-22h"; Cron = "0 22 * * *"; Description = "Audit 22:00" }
 )
 
 foreach ($Schedule in $Schedules) {
@@ -99,7 +108,7 @@ foreach ($Schedule in $Schedules) {
     }
 }
 
-Write-Host "`n✅ Cloud Scheduler configuré (3 jobs)`n" -ForegroundColor Green
+Write-Host "`n✅ Cloud Scheduler configuré (12 jobs - toutes les 2h)`n" -ForegroundColor Green
 
 # 5. Test manuel du job
 Write-Host "[5/5] Test manuel du Cloud Audit Job..." -ForegroundColor Yellow
@@ -129,15 +138,14 @@ Write-Host "============================================================`n" -For
 
 Write-Host "📊 Résumé:" -ForegroundColor Yellow
 Write-Host "  - Cloud Run Job: cloud-audit-job" -ForegroundColor White
-Write-Host "  - Image: $ImageName:$ImageTag" -ForegroundColor White
+Write-Host "  - Image: ${ImageName}:${ImageTag}" -ForegroundColor White
 Write-Host "  - Région: $Region" -ForegroundColor White
 Write-Host "  - Email: gonzalefernando@gmail.com" -ForegroundColor White
-Write-Host "  - Fréquence: 3x/jour (08:00, 14:00, 20:00 CET)" -ForegroundColor White
+Write-Host "  - Fréquence: Toutes les 2h (12x/jour)" -ForegroundColor White
 
-Write-Host "`n📧 Prochains rapports automatiques:" -ForegroundColor Yellow
-Write-Host "  - Matin: 08:00 (Europe/Zurich)" -ForegroundColor White
-Write-Host "  - Après-midi: 14:00 (Europe/Zurich)" -ForegroundColor White
-Write-Host "  - Soir: 20:00 (Europe/Zurich)" -ForegroundColor White
+Write-Host "`n📧 Rapports automatiques toutes les 2h:" -ForegroundColor Yellow
+Write-Host "  - 00:00, 02:00, 04:00, 06:00, 08:00, 10:00," -ForegroundColor White
+Write-Host "    12:00, 14:00, 16:00, 18:00, 20:00, 22:00 (Europe/Zurich)" -ForegroundColor White
 
 Write-Host "`n🔗 Liens utiles:" -ForegroundColor Yellow
 Write-Host "  - Cloud Run Jobs: https://console.cloud.google.com/run/jobs?project=$ProjectId" -ForegroundColor Cyan

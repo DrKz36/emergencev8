@@ -96,6 +96,120 @@ except Exception:  # pragma: no cover - dépendance optionnelle
 logger = logging.getLogger(__name__)
 
 
+# ---- P2.2 - RAG freshness & diversity helpers ----
+def recency_decay(age_days: float, half_life: float = 90.0) -> float:
+    """
+    Calcule un facteur de décroissance temporelle exponentiel.
+
+    Args:
+        age_days: Âge du document en jours (0 = aujourd'hui)
+        half_life: Nombre de jours pour que le poids soit divisé par 2 (défaut: 90j)
+
+    Returns:
+        Float entre 0 et 1 (1 = document très récent, 0 = très ancien)
+
+    Exemples:
+        - age_days=0   → 1.0   (aujourd'hui)
+        - age_days=90  → 0.5   (3 mois)
+        - age_days=180 → 0.25  (6 mois)
+        - age_days=270 → 0.125 (9 mois)
+    """
+    if age_days < 0:
+        age_days = 0
+    return 0.5 ** (age_days / half_life)
+
+
+def mmr(
+    query_embedding: List[float],
+    candidates: List[Dict[str, Any]],
+    k: int = 5,
+    lambda_param: float = 0.7,
+) -> List[Dict[str, Any]]:
+    """
+    Maximal Marginal Relevance - sélectionne les k résultats les plus pertinents ET diversifiés.
+
+    Formule: MMR = λ * sim(query, doc) - (1-λ) * max(sim(doc, selected))
+
+    Args:
+        query_embedding: Embedding de la requête
+        candidates: Liste de dicts avec {id, text, metadata, distance, embedding}
+        k: Nombre de résultats à retourner
+        lambda_param: Balance pertinence/diversité (1.0 = full pertinence, 0.0 = full diversité)
+
+    Returns:
+        Liste de k résultats ordonnés par score MMR décroissant
+    """
+    import numpy as np
+
+    if not candidates or k <= 0:
+        return []
+
+    # Prendre au max k résultats
+    k = min(k, len(candidates))
+
+    # Si un seul résultat, pas besoin de MMR
+    if k == 1 or len(candidates) == 1:
+        return candidates[:1]
+
+    # Convertir query en numpy
+    query_vec = np.array(query_embedding)
+
+    # Assurer que tous les candidats ont un embedding
+    # (si pas présent, utiliser l'embedding query comme fallback - pas idéal mais safe)
+    for cand in candidates:
+        if "embedding" not in cand or cand["embedding"] is None:
+            cand["embedding"] = query_embedding
+
+    # Extraire embeddings des candidats
+    candidate_vecs = [np.array(c["embedding"]) for c in candidates]
+
+    # Fonction de similarité cosine
+    def cosine_sim(a, b):
+        dot = np.dot(a, b)
+        norm_a = np.linalg.norm(a)
+        norm_b = np.linalg.norm(b)
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+        return float(dot / (norm_a * norm_b))
+
+    # Calcul de la similarité query<->candidates
+    query_sims = [cosine_sim(query_vec, vec) for vec in candidate_vecs]
+
+    # Indices des candidats sélectionnés et restants
+    selected_indices: List[int] = []
+    remaining_indices = list(range(len(candidates)))
+
+    # Premier résultat : le plus similaire à la query
+    best_idx = int(np.argmax(query_sims))
+    selected_indices.append(best_idx)
+    remaining_indices.remove(best_idx)
+
+    # Sélection itérative des k-1 autres résultats
+    while len(selected_indices) < k and remaining_indices:
+        mmr_scores = []
+        for idx in remaining_indices:
+            # Pertinence par rapport à la query
+            relevance = query_sims[idx]
+
+            # Similarité max avec les docs déjà sélectionnés
+            max_sim_selected = max(
+                cosine_sim(candidate_vecs[idx], candidate_vecs[sel_idx])
+                for sel_idx in selected_indices
+            )
+
+            # Score MMR
+            mmr_score = lambda_param * relevance - (1 - lambda_param) * max_sim_selected
+            mmr_scores.append((idx, mmr_score))
+
+        # Sélectionner le meilleur score MMR
+        best_idx, _ = max(mmr_scores, key=lambda x: x[1])
+        selected_indices.append(best_idx)
+        remaining_indices.remove(best_idx)
+
+    # Retourner les résultats sélectionnés dans l'ordre MMR
+    return [candidates[idx] for idx in selected_indices]
+
+
 class QdrantCollectionAdapter:
     """Adapte l'API collection Chroma attendue par le code pour Qdrant."""
 
@@ -693,7 +807,27 @@ class VectorService:
         query_text: str,
         n_results: int = 5,
         where_filter: Optional[Dict[str, Any]] = None,
+        apply_recency: bool = True,  # P2.2 - Enable recency decay
+        apply_mmr: bool = True,      # P2.2 - Enable MMR diversity
+        recency_half_life: float = 90.0,  # P2.2 - Half-life in days
+        mmr_lambda: float = 0.7,     # P2.2 - MMR balance (0.7 = 70% relevance, 30% diversity)
     ) -> List[Dict[str, Any]]:
+        """
+        Recherche vectorielle avec support optionnel de recency decay et MMR.
+
+        Args:
+            collection: Collection Chroma/Qdrant
+            query_text: Texte de la requête
+            n_results: Nombre de résultats souhaités
+            where_filter: Filtre de métadonnées (optionnel)
+            apply_recency: Appliquer la décroissance temporelle (défaut: True)
+            apply_mmr: Appliquer MMR pour diversité (défaut: True)
+            recency_half_life: Demi-vie pour recency decay en jours (défaut: 90)
+            mmr_lambda: Balance MMR (1.0 = full relevance, 0.0 = full diversity)
+
+        Returns:
+            Liste de résultats avec {id, text, metadata, distance, [age_days, recency_score]}
+        """
         self._ensure_inited()
         if not query_text:
             return []
@@ -702,36 +836,84 @@ class VectorService:
             embeddings_list = (
                 embeddings.tolist() if hasattr(embeddings, "tolist") else embeddings
             )
+            query_embedding = embeddings_list[0] if embeddings_list else []
+
             if self.backend == "qdrant":
                 collection_name = getattr(collection, "name", str(collection))
-                vector = embeddings_list[0] if embeddings_list else []
-                return self._qdrant_query(
-                    collection_name, vector, n_results, where_filter
+                raw_results = self._qdrant_query(
+                    collection_name, query_embedding, n_results * 2, where_filter  # Fetch more for MMR
+                )
+            else:
+                results = collection.query(
+                    query_embeddings=embeddings_list,
+                    n_results=n_results * 2,  # Fetch more candidates for MMR filtering
+                    where=self._normalize_where(where_filter),
+                    include=["documents", "metadatas", "distances", "embeddings"],  # Need embeddings for MMR
                 )
 
-            results = collection.query(
-                query_embeddings=embeddings_list,
-                n_results=n_results,
-                where=self._normalize_where(where_filter),
-                include=["documents", "metadatas", "distances"],
-            )
+                raw_results: List[Dict[str, Any]] = []
+                if results and results.get("ids") and results["ids"][0]:
+                    ids = results["ids"][0]
+                    docs = results.get("documents", [[]])[0]
+                    metas = results.get("metadatas", [[]])[0]
+                    dists = results.get("distances", [[]])[0]
+                    embeds = results.get("embeddings", [[]])[0] if "embeddings" in results else [[]] * len(ids)
+                    for i, doc_id in enumerate(ids):
+                        raw_results.append(
+                            {
+                                "id": doc_id,
+                                "text": docs[i] if i < len(docs) else None,
+                                "metadata": metas[i] if i < len(metas) else None,
+                                "distance": dists[i] if i < len(dists) else None,
+                                "embedding": embeds[i] if i < len(embeds) and embeds[i] else query_embedding,
+                            }
+                        )
 
-            formatted_results: List[Dict[str, Any]] = []
-            if results and results.get("ids") and results["ids"][0]:
-                ids = results["ids"][0]
-                docs = results.get("documents", [[]])[0]
-                metas = results.get("metadatas", [[]])[0]
-                dists = results.get("distances", [[]])[0]
-                for i, doc_id in enumerate(ids):
-                    formatted_results.append(
-                        {
-                            "id": doc_id,
-                            "text": docs[i] if i < len(docs) else None,
-                            "metadata": metas[i] if i < len(metas) else None,
-                            "distance": dists[i] if i < len(dists) else None,
-                        }
-                    )
-            return formatted_results
+            # P2.2 - Apply recency decay if enabled
+            if apply_recency and raw_results:
+                from datetime import datetime, timezone
+                now = datetime.now(timezone.utc)
+                for result in raw_results:
+                    meta = result.get("metadata") or {}
+                    ts_str = meta.get("ts") or meta.get("timestamp")
+                    if ts_str:
+                        try:
+                            # Parse timestamp (ISO format expected)
+                            ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                            age_days = (now - ts).total_seconds() / 86400
+                            recency_score = recency_decay(age_days, half_life=recency_half_life)
+                            result["age_days"] = round(age_days, 1)
+                            result["recency_score"] = round(recency_score, 3)
+                            # Adjust distance by recency (lower distance = better match)
+                            # We boost relevance by dividing distance by recency factor
+                            # (capped to avoid division by zero)
+                            if result.get("distance") is not None:
+                                recency_factor = max(recency_score, 0.1)  # Floor at 0.1
+                                result["distance"] = result["distance"] / recency_factor
+                        except Exception:
+                            pass  # Skip recency for malformed timestamps
+
+            # Sort by adjusted distance (lower = better)
+            raw_results.sort(key=lambda x: x.get("distance", float("inf")))
+
+            # P2.2 - Apply MMR if enabled
+            if apply_mmr and len(raw_results) > 1:
+                # MMR needs embeddings - ensure they're present
+                final_results = mmr(
+                    query_embedding=query_embedding,
+                    candidates=raw_results,
+                    k=n_results,
+                    lambda_param=mmr_lambda,
+                )
+            else:
+                final_results = raw_results[:n_results]
+
+            # Clean up: remove embeddings from final results (internal use only)
+            for res in final_results:
+                res.pop("embedding", None)
+
+            return final_results
+
         except Exception as e:
             safe_q = (query_text or "")[:50]
             logger.error(
