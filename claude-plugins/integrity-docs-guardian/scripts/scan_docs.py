@@ -34,6 +34,8 @@ def run_git_command(cmd: List[str], cwd: Path = REPO_ROOT) -> str:
             cwd=cwd,
             capture_output=True,
             text=True,
+            encoding='utf-8',
+            errors='replace',  # Remplace caractères invalides au lieu de crasher
             check=True
         )
         return result.stdout.strip()
