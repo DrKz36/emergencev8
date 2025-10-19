@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EMERGENCE Beta 1.0 - Rapport de Test</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .header p {
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 40px;
+    }
+
+    .intro {
+      background: #f8f9fa;
+      border-left: 4px solid #667eea;
+      padding: 20px;
+      margin-bottom: 30px;
+      border-radius: 4px;
+    }
+
+    .intro p {
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #495057;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #667eea;
+      margin: 30px 0 20px 0;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .phase {
+      margin-bottom: 30px;
+    }
+
+    .phase-header {
+      font-size: 16px;
+      font-weight: 600;
+      color: #495057;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+    }
+
+    .phase-header .badge {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 10px;
+    }
+
+    .checklist {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .checklist-item {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      padding: 8px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .checklist-item:hover {
+      background: #e9ecef;
+    }
+
+    .checklist-item input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      margin-right: 12px;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .checklist-item label {
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #495057;
+      margin: 0;
+      font-weight: 400;
+    }
+
+    .checklist-item input[type="checkbox"]:checked + label {
+      color: #28a745;
+      text-decoration: line-through;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .progress-text {
+      text-align: center;
+      font-size: 14px;
+      color: #6c757d;
+      margin-bottom: 10px;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-top: 30px;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .submit-btn:active {
+      transform: translateY(0);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .success-message {
+      display: none;
+      background: #d4edda;
+      border: 2px solid #28a745;
+      color: #155724;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .error-message {
+      display: none;
+      background: #f8d7da;
+      border: 2px solid #dc3545;
+      color: #721c24;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .required {
+      color: #dc3545;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        margin: 0;
+        border-radius: 0;
+      }
+
+      .header {
+        padding: 30px 20px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .content {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚀 EMERGENCE Beta 1.0</h1>
+      <p>Rapport de Test - Formulaire de Feedback</p>
+    </div>
+
+    <div class="content">
+      <div class="intro">
+        <p><strong>Merci de participer à notre programme Beta!</strong></p>
+        <p>Ce formulaire vous permet de reporter votre progression dans les tests ainsi que vos bugs et suggestions. Cochez les tests effectués et ajoutez vos commentaires dans les champs prévus.</p>
+        <p>Tous les champs marqués d'un <span class="required">*</span> sont obligatoires.</p>
+      </div>
+
+      <form id="betaForm">
+        <!-- Informations utilisateur -->
+        <div class="form-group">
+          <label for="email">Email <span class="required">*</span></label>
+          <input type="email" id="email" name="email" required placeholder="votre.email@example.com">
+        </div>
+
+        <div class="form-group">
+          <label for="browserInfo">Navigateur et OS</label>
+          <input type="text" id="browserInfo" name="browserInfo" placeholder="Ex: Chrome 120 / Windows 11">
+        </div>
+
+        <!-- Progression -->
+        <div class="section-title">📊 Progression globale</div>
+        <div class="progress-text">
+          <span id="progressText">0 / 55 tests complétés (0%)</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <!-- Phase 1 -->
+        <div class="phase">
+          <div class="phase-header">
+            <span class="badge">Phase 1</span>
+            <span>Authentification & Onboarding (15 min)</span>
+          </div>
+          <div class="checklist">
+            <div class="checklist-item">
+              <input type="checkbox" id="test1_1" name="test1_1">
+              <label for="test1_1">Créer un compte / Se connecter</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test1_2" name="test1_2">
+              <label for="test1_2">Vérifier l'affichage du dashboard initial + consulter le tutoriel (pop-up)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test1_3" name="test1_3">
+              <label for="test1_3">Tester le lien "Mot de passe oublié"</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test1_4" name="test1_4">
+              <label for="test1_4">Se déconnecter et se reconnecter</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test1_5" name="test1_5">
+              <label for="test1_5">Vérifier la persistance de session</label>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top: 15px;">
+            <label for="comments1">Commentaires Phase 1</label>
+            <textarea id="comments1" name="comments1" placeholder="Bugs, suggestions, remarques..."></textarea>
+          </div>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="phase">
+          <div class="phase-header">
+            <span class="badge">Phase 2</span>
+            <span>Chat simple avec agents (20 min)</span>
+          </div>
+          <div class="checklist">
+            <div class="checklist-item">
+              <input type="checkbox" id="test2_1" name="test2_1">
+              <label for="test2_1">Lancer une conversation avec Anima (3-5 questions variées)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test2_2" name="test2_2">
+              <label for="test2_2">Lancer une conversation avec Neo (questions techniques)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test2_3" name="test2_3">
+              <label for="test2_3">Lancer une conversation avec Nexus (synthèse/coordination)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test2_4" name="test2_4">
+              <label for="test2_4">Créer plusieurs threads et basculer entre eux</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test2_5" name="test2_5">
+              <label for="test2_5">Supprimer un thread</label>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top: 15px;">
+            <label for="comments2">Commentaires Phase 2</label>
+            <textarea id="comments2" name="comments2" placeholder="Qualité des réponses, temps de réponse, bugs..."></textarea>
+          </div>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="phase">
+          <div class="phase-header">
+            <span class="badge">Phase 3</span>
+            <span>Système de mémoire (25 min)</span>
+          </div>
+          <div class="checklist">
+            <div class="checklist-item">
+              <input type="checkbox" id="test3_1" name="test3_1">
+              <label for="test3_1">Activer l'analyse mémoire (bouton "Analyser")</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test3_2" name="test3_2">
+              <label for="test3_2">Ouvrir le Centre Mémoire et consulter l'historique</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test3_3" name="test3_3">
+              <label for="test3_3">Faire référence à une information passée (vérifier badge "Mémoire injectée")</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test3_4" name="test3_4">
+              <label for="test3_4">Tester le "Clear" mémoire (purge STM + LTM)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test3_5" name="test3_5">
+              <label for="test3_5">Tester la détection de topic shift (changer de sujet radicalement)</label>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top: 15px;">
+            <label for="comments3">Commentaires Phase 3</label>
+            <textarea id="comments3" name="comments3" placeholder="Performance consolidation, qualité rappels, bugs..."></textarea>
+          </div>
+        </div>
+
+        <!-- Phase 4 -->
+        <div class="phase">
+          <div class="phase-header">
+            <span class="badge">Phase 4</span>
+            <span>Documents & RAG (30 min)</span>
+          </div>
+          <div class="checklist">
+            <div class="checklist-item">
+              <input type="checkbox" id="test4_1" name="test4_1">
+              <label for="test4_1">Uploader un document PDF simple (&lt;5 pages)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test4_2" name="test4_2">
+              <label for="test4_2">Uploader un document TXT contenant un poème</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test4_3" name="test4_3">
+              <label for="test4_3">Activer le RAG et poser des questions sur le document</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test4_4" name="test4_4">
+              <label for="test4_4">Tester avec document volumineux (&gt;20 pages)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test4_5" name="test4_5">
+              <label for="test4_5">Supprimer un document</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test4_6" name="test4_6">
+              <label for="test4_6">Tester isolation documents (2 sessions différentes)</label>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top: 15px;">
+            <label for="comments4">Commentaires Phase 4</label>
+            <textarea id="comments4" name="comments4" placeholder="Qualité RAG, latence, pertinence résultats, bugs..."></textarea>
+          </div>
+        </div>
+
+        <!-- Phase 5 -->
+        <div class="phase">
+          <div class="phase-header">
+            <span class="badge">Phase 5</span>
+            <span>Débats autonomes (25 min)</span>
+          </div>
+          <div class="checklist">
+            <div class="checklist-item">
+              <input type="checkbox" id="test5_1" name="test5_1">
+              <label for="test5_1">Lancer un débat simple (2 tours)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test5_2" name="test5_2">
+              <label for="test5_2">Vérifier la synthèse finale du médiateur</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test5_3" name="test5_3">
+              <label for="test5_3">Lancer un débat avec RAG activé</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test5_4" name="test5_4">
+              <label for="test5_4">Tester débat long (4+ tours)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test5_5" name="test5_5">
+              <label for="test5_5">Consulter les métriques du débat (coûts par agent)</label>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top: 15px;">
+            <label for="comments5">Commentaires Phase 5</label>
+            <textarea id="comments5" name="comments5" placeholder="Qualité des débats, cohérence, bugs..."></textarea>
+          </div>
+        </div>
+
+        <!-- Phase 6 -->
+        <div class="phase">
+          <div class="phase-header">
+            <span class="badge">Phase 6</span>
+            <span>Cockpit & Analytics (15 min)</span>
+          </div>
+          <div class="checklist">
+            <div class="checklist-item">
+              <input type="checkbox" id="test6_1" name="test6_1">
+              <label for="test6_1">Ouvrir le Cockpit et consulter résumé coûts</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test6_2" name="test6_2">
+              <label for="test6_2">Filtrer par période (7j, 30j, 90j, 1 an)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test6_3" name="test6_3">
+              <label for="test6_3">Consulter répartition par agent</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test6_4" name="test6_4">
+              <label for="test6_4">Monitoring santé (health checks)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test6_5" name="test6_5">
+              <label for="test6_5">Dashboard admin (si applicable)</label>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top: 15px;">
+            <label for="comments6">Commentaires Phase 6</label>
+            <textarea id="comments6" name="comments6" placeholder="Clarté des métriques, bugs d'affichage..."></textarea>
+          </div>
+        </div>
+
+        <!-- Phase 7 -->
+        <div class="phase">
+          <div class="phase-header">
+            <span class="badge">Phase 7</span>
+            <span>Tests de robustesse (20 min)</span>
+          </div>
+          <div class="checklist">
+            <div class="checklist-item">
+              <input type="checkbox" id="test7_1" name="test7_1">
+              <label for="test7_1">Envoyer 10 messages rapidement</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test7_2" name="test7_2">
+              <label for="test7_2">Uploader 3 documents simultanément</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test7_3" name="test7_3">
+              <label for="test7_3">Forcer une déconnexion WebSocket (fermer/rouvrir navigateur)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test7_4" name="test7_4">
+              <label for="test7_4">Tester sur connexion lente (throttling)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test7_5" name="test7_5">
+              <label for="test7_5">Session très longue (50+ messages)</label>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top: 15px;">
+            <label for="comments7">Commentaires Phase 7</label>
+            <textarea id="comments7" name="comments7" placeholder="Erreurs, timeouts, comportements inattendus..."></textarea>
+          </div>
+        </div>
+
+        <!-- Phase 8 -->
+        <div class="phase">
+          <div class="phase-header">
+            <span class="badge">Phase 8</span>
+            <span>Edge cases & bugs connus (15 min)</span>
+          </div>
+          <div class="checklist">
+            <div class="checklist-item">
+              <input type="checkbox" id="test8_1" name="test8_1">
+              <label for="test8_1">Tester cache mémoire intensif (20+ consolidations)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test8_2" name="test8_2">
+              <label for="test8_2">Accès concurrents (2 onglets, même session)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test8_3" name="test8_3">
+              <label for="test8_3">Document corrompu (upload PDF invalide)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test8_4" name="test8_4">
+              <label for="test8_4">Débat sans sujet (validation champs vides)</label>
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="test8_5" name="test8_5">
+              <label for="test8_5">Clear pendant consolidation</label>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top: 15px;">
+            <label for="comments8">Commentaires Phase 8</label>
+            <textarea id="comments8" name="comments8" placeholder="Edge cases découverts, race conditions observées..."></textarea>
+          </div>
+        </div>
+
+        <!-- Commentaires généraux -->
+        <div class="section-title">💬 Feedback Général</div>
+
+        <div class="form-group">
+          <label for="bugs">Bugs critiques rencontrés</label>
+          <textarea id="bugs" name="bugs" placeholder="Décrivez les bugs avec: titre, étapes pour reproduire, résultat attendu vs obtenu, contexte (navigateur, OS, heure)..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="suggestions">Suggestions d'amélioration</label>
+          <textarea id="suggestions" name="suggestions" placeholder="Fonctionnalités manquantes, améliorations UX, idées..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="generalComments">Commentaires libres</label>
+          <textarea id="generalComments" name="generalComments" placeholder="Impression générale, points forts, points faibles..."></textarea>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">
+          Envoyer le rapport
+        </button>
+
+        <div class="success-message" id="successMessage">
+          ✅ Merci de votre contribution, vos retours seront analysés afin d'améliorer ÉMERGENCE.
+        </div>
+
+        <div class="error-message" id="errorMessage">
+          ❌ Erreur lors de l'envoi. Veuillez réessayer ou contacter gonzalefernando@gmail.com directement.
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Auto-detect browser info
+    document.addEventListener('DOMContentLoaded', function() {
+      const browserInfo = document.getElementById('browserInfo');
+      const userAgent = navigator.userAgent;
+      let browser = 'Unknown';
+      let os = 'Unknown';
+
+      // Detect browser
+      if (userAgent.indexOf('Chrome') > -1 && userAgent.indexOf('Edg') === -1) browser = 'Chrome';
+      else if (userAgent.indexOf('Safari') > -1 && userAgent.indexOf('Chrome') === -1) browser = 'Safari';
+      else if (userAgent.indexOf('Firefox') > -1) browser = 'Firefox';
+      else if (userAgent.indexOf('Edg') > -1) browser = 'Edge';
+
+      // Detect OS
+      if (userAgent.indexOf('Win') > -1) os = 'Windows';
+      else if (userAgent.indexOf('Mac') > -1) os = 'macOS';
+      else if (userAgent.indexOf('Linux') > -1) os = 'Linux';
+      else if (userAgent.indexOf('Android') > -1) os = 'Android';
+      else if (userAgent.indexOf('iOS') > -1) os = 'iOS';
+
+      browserInfo.value = `${browser} / ${os}`;
+    });
+
+    // Progress tracking
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const totalTests = checkboxes.length;
+
+    function updateProgress() {
+      const checked = document.querySelectorAll('input[type="checkbox"]:checked').length;
+      const percentage = Math.round((checked / totalTests) * 100);
+      progressFill.style.width = percentage + '%';
+      progressText.textContent = `${checked} / ${totalTests} tests complétés (${percentage}%)`;
+    }
+
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', updateProgress);
+    });
+
+    // Form submission
+    const form = document.getElementById('betaForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const successMessage = document.getElementById('successMessage');
+    const errorMessage = document.getElementById('errorMessage');
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      // Disable submit button
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Envoi en cours...';
+
+      // Hide previous messages
+      successMessage.style.display = 'none';
+      errorMessage.style.display = 'none';
+
+      // Collect form data
+      const formData = new FormData(form);
+      const data = {};
+
+      for (let [key, value] of formData.entries()) {
+        data[key] = value;
+      }
+
+      // Collect checklist
+      const checklist = {};
+      checkboxes.forEach(checkbox => {
+        checklist[checkbox.id] = checkbox.checked;
+      });
+
+      const completed = Object.values(checklist).filter(v => v).length;
+      const completionPct = Math.round((completed / totalTests) * 100);
+
+      // Prepare payload for API
+      const payload = {
+        email: data.email,
+        browserInfo: data.browserInfo || null,
+        checklist: checklist,
+        completion: `${completed}/${totalTests}`,
+        completionPercentage: completionPct,
+        comments1: data.comments1 || null,
+        comments2: data.comments2 || null,
+        comments3: data.comments3 || null,
+        comments4: data.comments4 || null,
+        comments5: data.comments5 || null,
+        comments6: data.comments6 || null,
+        comments7: data.comments7 || null,
+        comments8: data.comments8 || null,
+        bugs: data.bugs || null,
+        suggestions: data.suggestions || null,
+        generalComments: data.generalComments || null
+      };
+
+      try {
+        // Send to API
+        const response = await fetch('/api/beta-report', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        // Show success message
+        successMessage.style.display = 'block';
+        successMessage.textContent = '✅ Merci de votre contribution, vos retours seront analysés afin d\'améliorer ÉMERGENCE.';
+        successMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Reset form after 2 seconds
+        setTimeout(() => {
+          form.reset();
+          updateProgress();
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Envoyer le rapport';
+        }, 2000);
+
+      } catch (error) {
+        console.error('Error submitting report:', error);
+
+        // Show error message
+        errorMessage.style.display = 'block';
+        errorMessage.textContent = '❌ Erreur lors de l\'envoi. Veuillez réessayer ou contacter gonzalefernando@gmail.com directement.';
+        errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Re-enable button
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Envoyer le rapport';
+      }
+    });
+  </script>
+</body>
+</html>
