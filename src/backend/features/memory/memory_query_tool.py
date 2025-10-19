@@ -652,10 +652,12 @@ class MemoryQueryTool:
             **Semaine dernière:**
             - Kubernetes (2 oct 16h45) - 2 conversations
         """
-        if not timeline:
-            return "Aucun sujet abordé récemment."
-
+        # 🔥 FIX: Toujours retourner le header pour que Anima le voit (anti-hallucination)
         lines = ["### Historique des sujets abordés\n"]
+
+        if not timeline:
+            lines.append("\n*(Aucun sujet trouvé dans l'historique)*")
+            return "\n".join(lines)
 
         period_labels = {
             "this_week": "**Cette semaine:**",

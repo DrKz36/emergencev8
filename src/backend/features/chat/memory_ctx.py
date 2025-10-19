@@ -668,9 +668,8 @@ class MemoryContextBuilder:
                     agent_id=agent_id
                 )
 
-                if not timeline or all(len(topics) == 0 for topics in timeline.values()):
-                    return "Aucun sujet abordé récemment."
-
+                # 🔥 FIX: Toujours utiliser format_timeline_natural_fr qui retourne le header
+                # (même si vide, pour que Anima voie le header et ne hallucine pas)
                 return self.memory_query_tool.format_timeline_natural_fr(timeline)
 
         except Exception as e:

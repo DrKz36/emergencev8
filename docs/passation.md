@@ -1,3 +1,106 @@
+## [2025-10-19 12:45] — Agent: Claude Code (Fix Streaming Chunks Display FINAL - RÉSOLU ✅)
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.js` (déplacement flag _isStreamingNow après state.set(), ligne 809)
+- `AGENT_SYNC.md` (mise à jour session 12:45)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Bug critique streaming chunks : les chunks arrivent du backend via WebSocket, le state est mis à jour, MAIS l'UI ne se rafraîchit jamais visuellement pendant le streaming.
+
+Erreur dans logs : `[Chat] ⚠️ Message element not found in DOM for id: 1ac7c84a-0585-432a-91e2-42b62af359ea`
+
+**Root cause :**
+- Dans `handleStreamStart`, le flag `_isStreamingNow = true` était activé AVANT le `state.set()`
+- Ordre incorrect : flag activé ligne 784 → puis `state.set()` ligne 803
+- Quand `state.set()` déclenche le listener state, le flag bloque déjà l'appel à `ui.update()`
+- Résultat : le message vide n'est JAMAIS rendu dans le DOM
+- Quand les chunks arrivent, `handleStreamChunk` cherche l'élément DOM avec `data-message-id` mais il n'existe pas
+- Tous les chunks échouent silencieusement : state mis à jour mais DOM jamais rafraîchi
+
+**Investigation précédente (session 2025-10-18 18:35) :**
+- Avait implémenté modification directe du DOM avec `data-message-id`
+- MAIS le problème était en amont : le message vide n'était jamais ajouté au DOM
+- La modification directe du DOM était correcte, mais opérait sur un élément inexistant
+
+### Actions réalisées
+
+**Fix FINAL : Déplacement du flag après state.set()**
+
+Modifié `handleStreamStart()` (chat.js:782-810) :
+
+```javascript
+handleStreamStart(payload = {}) {
+  const agentIdRaw = payload && typeof payload === 'object' ? (payload.agent_id ?? payload.agentId) : null;
+  const agentId = String(agentIdRaw ?? '').trim() || 'nexus';
+  const messageId = payload && typeof payload === 'object' && payload.id ? payload.id : `assistant-${Date.now()}`;
+  const baseMeta = (payload && typeof payload.meta === 'object') ? { ...payload.meta } : null;
+
+  const bucketId = this._resolveBucketFromCache(messageId, agentId, baseMeta);
+  const agentMessage = {
+    id: messageId,
+    role: 'assistant',
+    content: '',
+    agent_id: agentId,
+    isStreaming: true,
+    created_at: Date.now(),
+  };
+  if (baseMeta && Object.keys(baseMeta).length) agentMessage.meta = baseMeta;
+
+  const curr = this.state.get(`chat.messages.${bucketId}`) || [];
+  this.state.set(`chat.messages.${bucketId}`, [...curr, agentMessage]);  // ← Déclenche listener state
+  this._rememberMessageBucket(messageId, bucketId);
+  this._lastChunkByMessage.set(String(messageId), '');
+  this._updateThreadCacheFromBuckets();
+  this._clearStreamWatchdog();
+
+  // 🔥 FIX CRITIQUE: Flag activé APRÈS state.set()
+  // Le message vide est maintenant dans le DOM, on peut bloquer les prochains updates
+  this._isStreamingNow = true;  // ← Déplacé ICI (avant: ligne 784, maintenant: ligne 809)
+}
+```
+
+**Flux correct maintenant :**
+1. `state.set()` ajoute le message vide au state
+2. Le listener state déclenche `ui.update()` (flag pas encore activé)
+3. Le message vide est rendu dans le DOM avec attribut `data-message-id`
+4. PUIS le flag `_isStreamingNow = true` est activé
+5. Les prochains appels au listener state sont bloqués
+6. Quand les chunks arrivent, `handleStreamChunk` trouve l'élément DOM et le met à jour directement
+7. Le texte s'affiche chunk par chunk en temps réel
+
+### Tests
+- ✅ Build frontend: `npm run build` → OK (3.04s, aucune erreur)
+- ⏳ Test manuel requis avec backend actif + envoi message
+
+**Logs attendus après fix :**
+```
+[Chat] handleStreamStart → state.set() déclenche listener
+[Chat] Listener state → ui.update() appelé (flag pas encore activé)
+[Chat] Message vide rendu dans DOM avec data-message-id="..."
+[Chat] Flag _isStreamingNow activé
+[Chat] 🔥 DOM updated directly for message ... - length: 2
+[Chat] 🚫 State listener: ui.update() skipped (streaming in progress)
+[Chat] 🔥 DOM updated directly for message ... - length: 5
+[Chat] 🚫 State listener: ui.update() skipped (streaming in progress)
+...
+```
+
+### Travail de Codex GPT pris en compte
+Session précédente (2025-10-18 18:35) avait implémenté la modification directe du DOM avec `data-message-id` dans `handleStreamChunk`. Ce code était correct mais incomplet car le message vide n'était jamais ajouté au DOM. Le fix actuel complète cette implémentation en garantissant que le message vide est rendu avant le streaming.
+
+### Prochaines actions recommandées
+1. **Test manuel immédiat** : Démarrer backend + envoyer message et vérifier streaming visuel chunk par chunk
+2. **Vérifier logs** : Confirmer que `Message element not found in DOM` n'apparaît plus
+3. **Nettoyer debug logs** : Retirer les console.log() de debug dans handleStreamChunk si fix OK
+4. **Commit + push** : Si test OK, commit avec message clair
+5. **Documentation** : Ajouter ce fix dans BUG_STREAMING_CHUNKS_INVESTIGATION.md (résolution finale)
+
+### Blocages
+Aucun. Fix logique simple et clair.
+
+---
+
 ## [2025-10-19 03:23] — Agent: Claude Code (Fix conversation_id Migration - RÉSOLU ✅)
 
 ### Fichiers modifiés

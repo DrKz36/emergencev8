@@ -1113,7 +1113,10 @@ class ChatService:
     _MOT_CODE_RE = re.compile(r"\b(mot-?code|code)\b", re.IGNORECASE)
     _TEMPORAL_QUERY_RE = re.compile(
         r"\b(quand|quel\s+jour|quelle\s+heure|à\s+quelle\s+heure|quelle\s+date|"
-        r"when|what\s+time|what\s+day|date|timestamp|horodatage)\b",
+        r"when|what\s+time|what\s+day|date|timestamp|horodatage|"
+        r"résume|résumer|quels?\s+sujets?|quelles?\s+conversations?|"
+        r"de\s+quoi\s+on\s+a\s+parlé|qu'on\s+a\s+abordé|historique|"
+        r"nombre\s+de\s+fois|combien\s+de\s+fois)\b",
         re.IGNORECASE
     )
 
@@ -1400,8 +1403,7 @@ class ChatService:
             )
 
             lines = []
-            lines.append("### Historique récent de cette conversation")
-            lines.append("")
+            # Pas de titre H3 ici, il sera ajouté par _merge_blocks() avec "Historique des sujets abordés"
 
             # ✅ Phase 3: Enrichir avec concepts consolidés (avec cache)
             # Utilise n_results dynamique basé sur le nombre de messages
@@ -1531,7 +1533,7 @@ class ChatService:
             if len(consolidated_entries) > 0 or len(thread_events) > 0:
                 logger.info(f"[TemporalHistory] Contexte enrichi: {len(thread_events)} messages + {len(consolidated_entries)} concepts consolidés ({len(grouped_concepts)} groupes)")
 
-            return "\n".join(lines) if len(lines) > 2 else ""
+            return "\n".join(lines) if len(lines) > 0 else ""
 
         except Exception as e:
             logger.warning(f"[TemporalHistory] Erreur construction contexte : {e}", exc_info=True)
@@ -2120,19 +2122,21 @@ class ChatService:
             is_temporal = self._is_temporal_query(last_user_message)
             rag_metrics.record_temporal_query(is_temporal)
 
+            # Variable séparée pour contexte temporel (évite confusion avec recall_context)
+            temporal_context = ""
             # Pour les questions temporelles, prioriser le contexte temporel enrichi
             if is_temporal and uid and thread_id:
                 try:
-                    recall_context = await self._build_temporal_history_context(
+                    temporal_context = await self._build_temporal_history_context(
                         thread_id=thread_id,
                         session_id=session_id,
                         user_id=uid,
                         limit=20,
                         last_user_message=last_user_message
                     )
-                    if recall_context:
+                    if temporal_context:
                         # Enregistrer taille du contexte enrichi
-                        context_size = len(recall_context.encode('utf-8'))
+                        context_size = len(temporal_context.encode('utf-8'))
                         rag_metrics.record_temporal_context_size(context_size)
                         logger.info(f"[TemporalQuery] Contexte historique enrichi pour question temporelle ({context_size} bytes)")
                 except Exception as temporal_err:
@@ -2457,7 +2461,11 @@ class ChatService:
 
                 # Injecter contexte de récurrence si détecté
                 blocks_to_merge = []
-                if recall_context:
+                # Contexte temporel enrichi (pour questions "quels sujets", "résume conversations", etc.)
+                if temporal_context:
+                    blocks_to_merge.append(("Historique des sujets abordés", temporal_context))
+                # Contexte de récurrence ponctuelle (pour concepts spécifiques récurrents)
+                elif recall_context:
                     blocks_to_merge.append(("🔗 Connexions avec discussions passées", recall_context))
                 if mem_block:
                     blocks_to_merge.append(("Mémoire (concepts clés)", mem_block))
@@ -2468,6 +2476,12 @@ class ChatService:
                 await connection_manager.send_personal_message(
                     {"type": "ws:rag_status", "payload": {"status": "found", "agent_id": agent_id}}, session_id
                 )
+
+            # 🆕 INJECTION CONTEXTE TEMPOREL (même si use_rag=False)
+            # Le contexte temporel doit être disponible pour les questions méta sur l'historique
+            if temporal_context and not rag_context:
+                # Si RAG n'a pas été activé mais qu'on a un contexte temporel, l'injecter quand même
+                rag_context = self._merge_blocks([("Historique des sujets abordés", temporal_context)])
 
             raw_concat = "\n".join([(m.get("content") or m.get("message", "")) for m in history])
             raw_tokens = self._extract_sensitive_tokens(raw_concat)

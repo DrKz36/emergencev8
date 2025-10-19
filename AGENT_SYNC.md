@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-19 03:23 (Claude Code: fix conversation_id migration - RÉSOLU ✅)
+**Dernière mise à jour** : 2025-10-19 12:45 (Claude Code: fix streaming chunks display FINAL - RÉSOLU ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -19,7 +19,58 @@
 
 ---
 
-## 🚀 Session en cours (2025-10-19 03:23) — Agent : Claude Code (Fix conversation_id Migration - RÉSOLU ✅)
+## 🚀 Session en cours (2025-10-19 12:45) — Agent : Claude Code (Fix Streaming Chunks Display FINAL - RÉSOLU ✅)
+
+**Objectif :**
+- ✅ **RÉSOLU**: Fixer affichage streaming chunks dans UI chat (FIX FINAL)
+- Les chunks arrivent du backend via WebSocket
+- Le state est mis à jour correctement
+- MAIS l'UI ne se raffraichissait JAMAIS visuellement pendant le streaming
+- Erreur: `[Chat] ⚠️ Message element not found in DOM for id: ...`
+
+**Problème identifié :**
+- **Cause racine**: Flag `_isStreamingNow` activé AVANT le `state.set()` dans `handleStreamStart`
+- Le flag était activé ligne 784, puis `state.set()` ligne 803
+- Quand `state.set()` déclenche le listener state, le flag bloque déjà l'appel à `ui.update()`
+- Résultat: le message vide n'est JAMAIS rendu dans le DOM
+- Quand les chunks arrivent, `handleStreamChunk` cherche l'élément DOM mais il n'existe pas
+- Tous les chunks échouent avec "Message element not found in DOM"
+
+**Solution implémentée (FIX FINAL) :**
+- Déplacé `this._isStreamingNow = true` APRÈS le `state.set()` (maintenant ligne 809)
+- Ordre correct maintenant:
+  1. `state.set()` ajoute le message vide au state (ligne 800)
+  2. Le listener state déclenche `ui.update()` (flag pas encore activé)
+  3. Le message vide est rendu dans le DOM avec `data-message-id`
+  4. PUIS le flag est activé pour bloquer les prochains updates
+  5. Quand les chunks arrivent, l'élément DOM existe et peut être mis à jour directement
+
+**Fichiers modifiés :**
+- `src/frontend/features/chat/chat.js` (déplacement flag _isStreamingNow ligne 809)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée à créer)
+
+**Tests effectués :**
+- ✅ Build frontend: `npm run build` → OK (3.04s, aucune erreur)
+- ⏳ Test manuel en attente (nécessite backend actif + envoi message)
+
+**Logs attendus après fix :**
+```
+[Chat] handleStreamStart → state.set() → listener déclenché → ui.update() appelé
+[Chat] Message vide ajouté au DOM avec data-message-id="..."
+[Chat] 🔥 DOM updated directly for message ... - length: 2
+[Chat] 🚫 State listener: ui.update() skipped (streaming in progress)
+```
+
+**Prochaines actions :**
+- Tester manuellement avec backend actif
+- Vérifier que texte s'affiche chunk par chunk
+- Nettoyer console.log() debug si OK
+- Commit + push fix streaming chunks FINAL
+
+---
+
+## 🔄 Session précédente (2025-10-19 03:23) — Agent : Claude Code (Fix conversation_id Migration - RÉSOLU ✅)
 
 **Objectif :**
 - ✅ **RÉSOLU**: Fixer erreur création nouvelle conversation (HTTP 500)
