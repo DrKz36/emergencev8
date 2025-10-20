@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-20 05:15 CET (Claude Code : FIX CRITIQUE PRODUCTION - OOM + Bugs)
+**Dernière mise à jour** : 2025-10-20 06:10 CET (Claude Code : DEBUG + FIX CHROMADB + GUARDIAN)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -16,6 +16,78 @@
 3. [`CODEV_PROTOCOL.md`](CODEV_PROTOCOL.md) — protocole multi-agents
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
 5. `git status` + `git log --online -10` - état Git
+
+## 🐛 Session en cours (2025-10-20 06:10 CET) — Agent : Claude Code (DEBUG + FIX CHROMADB + GUARDIAN)
+
+**Contexte :**
+Après fix production OOM (révision 00397-xxn déployée), analyse logs production révèle 2 nouveaux bugs critiques.
+
+**Problèmes identifiés :**
+
+1. **🐛 BUG CHROMADB METADATA (NOUVEAU CRASH PROD)**
+   - Source : [vector_service.py:765-773](src/backend/features/memory/vector_service.py#L765-L773)
+   - Erreur : `ValueError: Expected str/int/float/bool, got [] which is a list in upsert`
+   - Impact : Crash gardener.py → vector_service.add_items() → collection.upsert()
+   - Logs : 10+ errors @03:18, @03:02 dans revision 00397-xxn
+   - Cause : Filtre metadata `if v is not None` insuffisant, n'élimine pas les listes/dicts
+
+2. **🐛 BUG GUARDIAN LOG PARSING (WARNINGS VIDES)**
+   - Source : [check_prod_logs.py:93-111, 135-185](claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py#L93-L111)
+   - Symptôme : 6 warnings avec `"message": ""` dans prod_report.json
+   - Impact : Rapports Guardian inexploitables, pre-push hook bloquant à tort
+   - Cause : Script parse `jsonPayload.message`, mais logs HTTP utilisent `httpRequest` top-level
+   - Types logs affectés : `run.googleapis.com/requests` (health checks, API requests, security scans)
+
+**Fixes appliqués (commit de840be) :**
+
+1. **vector_service.py:765-773**
+   ```python
+   # AVANT (bugué)
+   metadatas = [
+       {k: v for k, v in item.get("metadata", {}).items() if v is not None}
+       for item in items
+   ]
+
+   # APRÈS (corrigé)
+   metadatas = [
+       {
+           k: v
+           for k, v in item.get("metadata", {}).items()
+           if isinstance(v, (str, int, float, bool))  # Filtre strict
+       }
+       for item in items
+   ]
+   ```
+
+2. **check_prod_logs.py:93-111 (extract_message)**
+   - Ajout handling `httpRequest` top-level
+   - Format : `"GET /url → 404"`
+   - Extrait : method, requestUrl, status
+
+3. **check_prod_logs.py:135-185 (extract_full_context)**
+   - Ajout parsing `httpRequest` top-level
+   - Extrait : endpoint, http_method, status_code, user_agent, trace
+
+**Résultats tests :**
+- ✅ Guardian script : 0 errors, 0 warnings (vs 6 warnings vides avant)
+- ✅ prod_report.json : status "OK", rapports clean
+- ⏳ Build Docker en cours (image avec fixes ChromaDB/Guardian)
+- ⏳ Déploiement Cloud Run à venir
+
+**État actuel :**
+- Git : clean, commit de840be pushé
+- Production : révision 00397-xxn active (avec bug ChromaDB)
+- Build : en cours (Step 3/7, loading context 414MB)
+- Prochaine révision : contiendra fixes ChromaDB + Guardian
+
+**Prochaines actions :**
+1. ⏳ Terminer build + push Docker image
+2. ⏳ Deploy Cloud Run nouvelle révision avec fixes
+3. 📊 Monitorer logs post-deploy (vérifier disparition errors ChromaDB)
+4. 📝 Documenter session dans docs/passation.md
+5. 🧪 Relancer tests backend (pytest)
+
+---
 
 ## 🚨 Session CRITIQUE complétée (2025-10-20 05:15 CET) — Agent : Claude Code (FIX PRODUCTION DOWN)
 
