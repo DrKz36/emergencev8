@@ -35,6 +35,9 @@ export class AdminGuardianModule {
                 </div>
 
                 <div class="guardian-actions">
+                    <button id="generate-guardian-reports" class="btn btn-success">
+                        📊 Générer Rapports
+                    </button>
                     <button id="run-guardian-audit" class="btn btn-primary">
                         🚀 Lancer Audit Guardian
                     </button>
@@ -60,8 +63,13 @@ export class AdminGuardianModule {
      * Attache les event listeners
      */
     attachEventListeners() {
+        const generateBtn = document.getElementById('generate-guardian-reports');
         const runBtn = document.getElementById('run-guardian-audit');
         const refreshBtn = document.getElementById('refresh-guardian-status');
+
+        if (generateBtn) {
+            generateBtn.addEventListener('click', () => this.generateReports());
+        }
 
         if (runBtn) {
             runBtn.addEventListener('click', () => this.runAudit());
@@ -69,6 +77,64 @@ export class AdminGuardianModule {
 
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => this.runAudit());
+        }
+    }
+
+    /**
+     * Génère les rapports Guardian via API (production logs)
+     */
+    async generateReports() {
+        if (this.isAuditRunning) {
+            console.log('[AdminGuardian] Operation already running');
+            return;
+        }
+
+        this.isAuditRunning = true;
+        this.showLoading();
+
+        try {
+            console.log('[AdminGuardian] Generating Guardian reports...');
+
+            const response = await fetch('/api/guardian/generate-reports', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': '0'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            console.log('[AdminGuardian] Generate response:', data);
+
+            if (data && data.status === 'success') {
+                const statusDiv = document.getElementById('guardian-status');
+                if (statusDiv) {
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>✅ Succès:</strong> ${data.message}
+                            <p class="text-muted mt-2">
+                                Rapport généré: ${data.report.logs_analyzed} logs analysés,
+                                ${data.report.summary.errors} erreurs,
+                                ${data.report.summary.warnings} warnings
+                            </p>
+                            <p class="text-muted"><em>Cliquez sur "Lancer Audit" pour voir les détails</em></p>
+                        </div>
+                    `;
+                }
+            } else {
+                throw new Error('Invalid response format');
+            }
+
+        } catch (error) {
+            console.error('[AdminGuardian] Generate error:', error);
+            this.displayError(error.message || 'Erreur lors de la génération des rapports');
+        } finally {
+            this.isAuditRunning = false;
         }
     }
 
