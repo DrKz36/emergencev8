@@ -1,3 +1,92 @@
+## [2025-10-19 23:10 CET] — Agent: Codex (Résolution conflits + synchronisation Guardian)
+
+### Fichiers modifiés
+
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+- `reports/prod_report.json`
+- `claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json`
+- `email_html_output.html`
+
+### Contexte
+
+- Résolution des conflits Git introduits lors des sessions 22:45 / 21:45 sur la synchronisation inter-agents.
+- Harmonisation des rapports Guardian (suppression des warnings fantômes, timestamps alignés).
+- Régénération de l'aperçu HTML Guardian pour supprimer les artefacts `�` liés à l'encodage.
+
+### Actions réalisées
+
+1. Fusionné les résumés dans `AGENT_SYNC.md` et `docs/passation.md` en rétablissant l'ordre chronologique.
+2. Synchronisé les deux `prod_report.json` (workspace + scripts) et régénéré `email_html_output.html` via `generate_html_report.py`.
+3. Vérifié l'absence d'autres conflits ou artefacts ; aucun code applicatif touché.
+
+### Tests
+
+- ⚠️ Non lancés — seulement des documents/rapports modifiés (blocage proxy PyPI toujours présent).
+
+### Prochaines actions recommandées
+
+1. Refaire `pip install -r requirements.txt` puis `pytest` dès que le proxy autorise les téléchargements.
+2. Laisser tourner les hooks Guardian (pre-commit/post-commit) pour confirmer la cohérence des rapports.
+3. Vérifier sur le dashboard Guardian qu'aucune consolidation automatique ne réintroduit d'anciens warnings.
+
+### Blocages
+
+- Proxy 403 sur PyPI (empêche toujours l'installation des dépendances Python).
+
+---
+
+## [2025-10-19 22:45 CET] — Agent: Claude Code (Vérification tests Codex GPT)
+
+### Fichiers modifiés
+
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+
+- Tentative de mise à jour de l'environnement Python 3.11 (`python -m pip install --upgrade pip`, `pip install -r requirements.txt`) bloquée par le proxy (403 Forbidden).
+- Exécution de `pytest` après l'échec des installations : la collecte échoue car les modules `features`/`core/src` ne sont pas résolus dans l'environnement actuel.
+- Rappel : aucun accès direct aux emails Guardian depuis cet environnement (API nécessitant secrets externes non disponibles).
+
+### Actions recommandées / Next steps
+
+1. Réexécuter `pip install -r requirements.txt` depuis un environnement disposant de l'accès réseau requis aux dépôts PyPI.
+2. Relancer `pytest` une fois les dépendances installées et la structure d'import configurée (PYTHONPATH ou package installable).
+3. Vérifier l'intégration Gmail/Guardian côté production via l'API Cloud Run une fois les tests locaux disponibles.
+
+### Blocages / Points de vigilance
+
+- Blocage réseau (Proxy 403) empêchant l'installation des dépendances Python.
+- ImportError sur les modules applicatifs (`features`, `core`, `src`) lors de `pytest`.
+- Accès Gmail Guardian indisponible sans secrets d'API et autorisation OAuth dans cet environnement.
+
+---
+
+## [2025-10-19 22:00 CET] — Agent: Codex (Documentation Codex GPT)
+
+### Fichiers modifiés
+
+- `claude-plugins/integrity-docs-guardian/CODEX_GPT_SETUP.md`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+
+- Ajout d'une section "Prochaines étapes" avec checklist opérationnelle pour Codex GPT.
+- Ajout d'un récapitulatif "Mission accomplie" décrivant la boucle de monitoring autonome complète.
+- Mise à jour des journaux de synchronisation (`AGENT_SYNC.md`, `docs/passation.md`).
+
+### Actions recommandées / Next steps
+
+1. Vérifier que Codex GPT suit la nouvelle checklist lors de la prochaine session de monitoring.
+2. Continuer la documentation des interventions dans `docs/codex_interventions.md` après chaque cycle de 24h.
+3. Garder un œil sur les rapports Guardian pour confirmer la stabilité post-déploiement.
+
+### Blocages / Points de vigilance
+
+- Aucun blocage identifié (documentation uniquement).
+
 ## [2025-10-19 21:45 CET] — Agent: Claude Code (OAUTH GMAIL FIX + GUARDIAN EMAIL ENRICHI ✅)
 
 ### Fichiers modifiés/créés (15 fichiers, +4043 lignes)

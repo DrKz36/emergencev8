@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guardian Report - EMERGENCE V8</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: #0a0e27;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #1a1f3a;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            color: #ffffff;
+            margin-top: 0;
+            border-bottom: 3px solid #44ff44;
+            padding-bottom: 15px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            background-color: #44ff44;
+            color: #ffffff;
+            margin-bottom: 20px;
+        }
+        .summary-box {
+            background-color: #252b4a;
+            border-left: 4px solid #44ff44;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .summary-item {
+            background-color: #1a1f3a;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .summary-item .number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #44ff44;
+        }
+        .summary-item .label {
+            font-size: 12px;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+        .section {
+            margin: 30px 0;
+        }
+        .section-title {
+            font-size: 20px;
+            color: #4a9eff;
+            border-bottom: 2px solid #2a3f5f;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .error-card {
+            background-color: #2a1f1f;
+            border-left: 4px solid #ff4444;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        .code-block {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            margin: 10px 0;
+            color: #c9d1d9;
+        }
+        .code-block pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+        .endpoint-tag {
+            display: inline-block;
+            background-color: #3a3f5a;
+            color: #4a9eff;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+            margin: 5px 5px 5px 0;
+        }
+        .file-tag {
+            display: inline-block;
+            background-color: #3a3f5a;
+            color: #ffaa00;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+            margin: 5px 5px 5px 0;
+        }
+        .error-type-tag {
+            display: inline-block;
+            background-color: #3a3f5a;
+            color: #ff4444;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+            margin: 5px 5px 5px 0;
+        }
+        .recommendation {
+            background-color: #252b4a;
+            border-left: 4px solid #4a9eff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        .recommendation.high {
+            border-left-color: #ff4444;
+        }
+        .recommendation.medium {
+            border-left-color: #ffaa00;
+        }
+        .recommendation.low {
+            border-left-color: #44ff44;
+        }
+        .command {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+            color: #4a9eff;
+        }
+        .timestamp {
+            color: #a0a0a0;
+            font-size: 12px;
+        }
+        .commit {
+            background-color: #252b4a;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        .commit .hash {
+            color: #4a9eff;
+            font-family: monospace;
+        }
+        .commit .author {
+            color: #ffaa00;
+        }
+        .pattern-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .pattern-box {
+            background-color: #252b4a;
+            padding: 15px;
+            border-radius: 6px;
+        }
+        .pattern-box h4 {
+            margin-top: 0;
+            color: #4a9eff;
+            font-size: 14px;
+        }
+        .pattern-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #2a3f5f;
+        }
+        .pattern-item:last-child {
+            border-bottom: none;
+        }
+        .badge-count {
+            background-color: #ff4444;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #2a3f5f;
+            text-align: center;
+            color: #a0a0a0;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Guardian Report - EMERGENCE V8</h1>
+
+        <div class="status-badge">OK</div>
+
+        <div class="summary-box">
+            <h3 style="margin-top: 0;">📊 Summary</h3>
+            <p><strong>Service:</strong> emergence-app (europe-west1)</p>
+            <p><strong>Timestamp:</strong> <span class="timestamp">2025-10-19T21:59:42.962793</span></p>
+            <p><strong>Logs analyzed:</strong> 80 (last 1h)</p>
+
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="number">0</div>
+                    <div class="label">Errors</div>
+                </div>
+                <div class="summary-item">
+                    <div class="number">0</div>
+                    <div class="label">Warnings</div>
+                </div>
+                <div class="summary-item">
+                    <div class="number">0</div>
+                    <div class="label">Critical Signals</div>
+                </div>
+                <div class="summary-item">
+                    <div class="number">0</div>
+                    <div class="label">Latency Issues</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">🔀 Recent Commits (Potential Culprits)</h2>
+
+            <div class="commit">
+                <span class="hash">0669d03b</span> by <span class="author">Fernando Gonzalez</span> <span class="timestamp">(5 minutes ago)</span>
+                <p style="margin: 5px 0 0 0;">docs(session): Documentation complÃ¨te session OAuth + Guardian enrichi</p>
+            </div>
+
+            <div class="commit">
+                <span class="hash">d9f9d166</span> by <span class="author">Fernando Gonzalez</span> <span class="timestamp">(10 minutes ago)</span>
+                <p style="margin: 5px 0 0 0;">docs(guardian): Guide complet configuration Codex GPT</p>
+            </div>
+
+            <div class="commit">
+                <span class="hash">02d62e64</span> by <span class="author">Fernando Gonzalez</span> <span class="timestamp">(13 minutes ago)</span>
+                <p style="margin: 5px 0 0 0;">feat(guardian): Scripts de test et debug email Guardian</p>
+            </div>
+
+            <div class="commit">
+                <span class="hash">df1b2d21</span> by <span class="author">Fernando Gonzalez</span> <span class="timestamp">(17 minutes ago)</span>
+                <p style="margin: 5px 0 0 0;">fix(deploy): Ignorer reports/tests temporaires dans .gcloudignore</p>
+            </div>
+
+            <div class="commit">
+                <span class="hash">b0ce4915</span> by <span class="author">Fernando Gonzalez</span> <span class="timestamp">(40 minutes ago)</span>
+                <p style="margin: 5px 0 0 0;">feat(gmail+guardian): OAuth scope fix + Email enrichi pour Codex</p>
+            </div>
+
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">💡 Recommendations</h2>
+
+            <div class="recommendation low">
+                <p><strong>🚨 [LOW] No immediate action required</strong></p>
+                <p>Production is healthy</p>
+
+            </div>
+
+        </div>
+
+        <div class="footer">
+            <p>🤖 Guardian System 3.0.0 - Automated Production Monitoring</p>
+            <p>ÉMERGENCE V8 Production Monitoring | Generated 2025-10-19T21:59:42.962793</p>
+            <p style="margin-top: 10px; font-size: 11px;">
+                This report is optimized for Codex GPT to take actionable debugging steps.<br>
+                All context (stack traces, code snippets, patterns) is included for autonomous troubleshooting.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+

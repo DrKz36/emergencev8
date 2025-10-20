@@ -864,13 +864,18 @@ class VectorService:
                     dists = results.get("distances", [[]])[0]
                     embeds = results.get("embeddings", [[]])[0] if "embeddings" in results else [[]] * len(ids)
                     for i, doc_id in enumerate(ids):
+                        # Fix: Avoid ambiguous truth check on numpy array
+                        embed_value = embeds[i] if i < len(embeds) else None
+                        use_embed = embed_value is not None and (
+                            not hasattr(embed_value, '__len__') or len(embed_value) > 0
+                        )
                         raw_results.append(
                             {
                                 "id": doc_id,
                                 "text": docs[i] if i < len(docs) else None,
                                 "metadata": metas[i] if i < len(metas) else None,
                                 "distance": dists[i] if i < len(dists) else None,
-                                "embedding": embeds[i] if i < len(embeds) and embeds[i] else query_embedding,
+                                "embedding": embed_value if use_embed else query_embedding,
                             }
                         )
 

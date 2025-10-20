@@ -104,18 +104,36 @@ class AdminDashboardService:
             Dict mapping user_id (hash OR plain email OR oauth_sub) -> (email, role)
 
         FIXED: Added oauth_sub column support for Google OAuth users.
+        FIXED 2025-10-20: Handle missing oauth_sub column gracefully for backward compat.
         """
         import hashlib
+        import sqlite3
 
         conn = await self.db._ensure_connection()
-        cursor = await conn.execute("SELECT email, role, oauth_sub FROM auth_allowlist")
-        allowlist_rows = await cursor.fetchall()
+
+        # Try to query with oauth_sub column first (new schema)
+        try:
+            cursor = await conn.execute("SELECT email, role, oauth_sub FROM auth_allowlist")
+            allowlist_rows = await cursor.fetchall()
+            has_oauth_sub = True
+        except sqlite3.OperationalError as e:
+            if "no such column: oauth_sub" in str(e):
+                # Fallback to old schema without oauth_sub
+                cursor = await conn.execute("SELECT email, role FROM auth_allowlist")
+                allowlist_rows = await cursor.fetchall()
+                has_oauth_sub = False
+            else:
+                raise
 
         email_map = {}
-        for email, role, oauth_sub in allowlist_rows:
-            # Support Google OAuth sub (priority 1 - most accurate)
-            if oauth_sub:
-                email_map[oauth_sub] = (email, role)
+        for row in allowlist_rows:
+            if has_oauth_sub:
+                email, role, oauth_sub = row
+                # Support Google OAuth sub (priority 1 - most accurate)
+                if oauth_sub:
+                    email_map[oauth_sub] = (email, role)
+            else:
+                email, role = row
 
             # Support legacy format: SHA256 hash of email
             email_hash = hashlib.sha256(email.encode('utf-8')).hexdigest()

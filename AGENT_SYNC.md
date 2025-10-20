@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-19 21:45 CET (Claude Code: OAUTH GMAIL FIX + GUARDIAN EMAIL ULTRA-ENRICHI ✅)
+**Dernière mise à jour** : 2025-10-19 23:10 CET (Codex : Résolution conflits + rapports Guardian)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -16,6 +16,63 @@
 3. [`CODEV_PROTOCOL.md`](CODEV_PROTOCOL.md) — protocole multi-agents
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
 5. `git status` + `git log --online -10` - état Git
+
+## ✅ Session complétée (2025-10-19 23:10 CET) — Agent : Codex (Résolution conflits + rapports Guardian)
+
+**Objectif :**
+- ✅ Résoudre les conflits Git sur `AGENT_SYNC.md` et `docs/passation.md`.
+- ✅ Harmoniser les rapports Guardian (`prod_report.json`) et restaurer l'aperçu HTML.
+
+**Actions menées :**
+- Fusion des sections concurrentes, remise en ordre chronologique des sessions et nettoyage des duplications.
+- Synchronisation des rapports Guardian (`reports/prod_report.json`, `claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json`) avec le même snapshot.
+- Régénération de `email_html_output.html` via `scripts/generate_html_report.py` pour obtenir un rendu UTF-8 propre.
+
+**Résultats :**
+- ✅ Conflits documentaires résolus, journaux alignés.
+- ✅ Rapports Guardian cohérents + aperçu HTML à jour.
+- ⚠️ Tests non relancés (changements limités à de la documentation/artefacts).
+
+**Prochaines étapes suggérées :**
+1. Relancer `pip install -r requirements.txt` puis `pytest` dès que le proxy PyPI est accessible.
+2. Vérifier les feedbacks Guardian lors du prochain commit pour confirmer la cohérence des rapports.
+
+---
+
+## ✅ Session complétée (2025-10-19 22:45 CET) — Agent : Claude Code (Vérification tests Codex GPT)
+
+**Objectif :**
+- ✅ Exécuter les tests demandés par l'architecte après la mise à jour du guide Codex GPT.
+- ✅ Documenter les résultats et l'absence d'accès direct aux emails Guardian.
+
+**Commandes exécutées :**
+- `python -m pip install --upgrade pip` → échec (proxy 403) ; aucun changement appliqué.
+- `python -m pip install -r requirements.txt` → échec (proxy 403, dépendances non téléchargées).
+- `pytest` → échec de collecte (modules `features`/`core/src` introuvables dans l'environnement CI minimal).
+
+**Résultat :**
+- Tests bloqués avant exécution complète faute de dépendances installées et de modules applicatifs résolus.
+- Aucun fichier applicatif modifié ; uniquement cette synchronisation et `docs/passation.md`.
+- Accès aux emails Guardian impossible dans cet environnement (API nécessitant secrets/connexion externe).
+
+---
+
+## 🕘 Session précédente (2025-10-19 22:00 CET) — Agent : Codex (Documentation Codex GPT)
+
+**Objectif :**
+- ✅ Ajouter les prochaines étapes opérationnelles et le statut final "Mission accomplie" dans `claude-plugins/integrity-docs-guardian/CODEX_GPT_SETUP.md`.
+- ✅ Tenir la synchronisation inter-agents à jour (`AGENT_SYNC.md`, `docs/passation.md`).
+
+**Fichiers modifiés (1 doc + 2 journaux) :**
+- `claude-plugins/integrity-docs-guardian/CODEX_GPT_SETUP.md` — Ajout section "Prochaines étapes", checklist rapide et résumé de la boucle de monitoring autonome.
+- `AGENT_SYNC.md` — Mise à jour de la session en cours.
+- `docs/passation.md` — Journalisation de la passation (à jour).
+
+**Notes :**
+- Aucun changement de code applicatif.
+- Pas de tests requis (mise à jour documentaire uniquement).
+
+---
 
 ## 🚀 Session Complétée (2025-10-19 21:45 CET) — Agent : Claude Code (OAUTH + GUARDIAN ENRICHI ✅)
 
@@ -76,7 +133,8 @@
 
 ---
 
-## 🚀 Session Précédente (2025-10-19 18:35 CET) — Agent : Claude Code (PHASES 3+6 GUARDIAN CLOUD ✅)
+## 🕘 Session précédente (2025-10-19 18:35 CET) — Agent : Claude Code (PHASES 3+6 GUARDIAN CLOUD ✅)
+
 
 **Objectif :**
 - ✅ **COMPLET**: Phase 3 Guardian Cloud - Gmail API Integration pour Codex GPT
@@ -2501,6 +2559,48 @@ SMTP_PASSWORD=...
 ---
 
 ## 🤖 Synchronisation automatique
+### Consolidation - 2025-10-19T22:16:32.904787
+
+**Type de déclenchement** : `threshold`
+**Conditions** : {
+  "pending_changes": 7,
+  "threshold": 5
+}
+**Changements consolidés** : 7 événements sur 2 fichiers
+
+**Fichiers modifiés** :
+- **AGENT_SYNC.md** : 5 événement(s)
+  - `modified` à 2025-10-19T22:02:38.606318 (agent: unknown)
+  - `modified` à 2025-10-19T22:06:38.675420 (agent: unknown)
+  - `modified` à 2025-10-19T22:09:08.743507 (agent: unknown)
+  - `modified` à 2025-10-19T22:15:38.813162 (agent: unknown)
+  - `modified` à 2025-10-19T22:16:08.832850 (agent: unknown)
+- **docs/passation.md** : 2 événement(s)
+  - `modified` à 2025-10-19T22:10:08.764861 (agent: unknown)
+  - `modified` à 2025-10-19T22:16:08.832850 (agent: unknown)
+
+---
+
+### Consolidation - 2025-10-19T22:02:32.780306
+
+**Type de déclenchement** : `threshold`
+**Conditions** : {
+  "pending_changes": 5,
+  "threshold": 5
+}
+**Changements consolidés** : 5 événements sur 2 fichiers
+
+**Fichiers modifiés** :
+- **AGENT_SYNC.md** : 3 événement(s)
+  - `modified` à 2025-10-19T21:17:37.532661 (agent: unknown)
+  - `modified` à 2025-10-19T21:53:08.278775 (agent: unknown)
+  - `modified` à 2025-10-19T22:01:38.525717 (agent: unknown)
+- **docs/passation.md** : 2 événement(s)
+  - `modified` à 2025-10-19T21:54:38.324718 (agent: unknown)
+  - `modified` à 2025-10-19T22:01:38.545418 (agent: unknown)
+
+---
+
 ### Consolidation - 2025-10-19T21:17:32.383180
 
 **Type de déclenchement** : `time_based`

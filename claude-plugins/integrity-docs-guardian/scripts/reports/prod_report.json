@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-19T20:59:42.951385",
+  "timestamp": "2025-10-20T05:05:43.894791",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -7,37 +7,16 @@
   "status": "OK",
   "summary": {
     "errors": 0,
-    "warnings": 1,
+    "warnings": 0,
     "critical_signals": 0,
     "latency_issues": 0
   },
   "errors": [],
-  "warnings": [
-    {
-      "time": "2025-10-19T18:58:53.372549Z",
-      "msg": ""
-    }
-  ],
+  "warnings": [],
   "critical_signals": [],
   "latency_issues": [],
   "errors_detailed": [],
-  "warnings_detailed": [
-    {
-      "timestamp": "2025-10-19T18:58:53.372549Z",
-      "severity": "WARNING",
-      "message": "",
-      "stack_trace": null,
-      "endpoint": null,
-      "http_method": null,
-      "status_code": null,
-      "user_agent": null,
-      "request_id": null,
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    }
-  ],
+  "warnings_detailed": [],
   "error_patterns": {
     "by_endpoint": {},
     "by_error_type": {},
@@ -48,34 +27,34 @@
   "code_snippets": [],
   "recent_commits": [
     {
-      "hash": "af0ee77a",
+      "hash": "0669d03b",
       "author": "Fernando Gonzalez",
-      "time": "28 minutes ago",
-      "message": "fix(gmail): Force HTTPS pour OAuth redirect URI sur Cloud Run"
+      "time": "7 hours ago",
+      "message": "docs(session): Documentation complÃ¨te session OAuth + Guardian enrichi"
     },
     {
-      "hash": "6195a463",
+      "hash": "d9f9d166",
       "author": "Fernando Gonzalez",
-      "time": "55 minutes ago",
-      "message": "fix(gmail): Add google-cloud-secret-manager dependency"
+      "time": "7 hours ago",
+      "message": "docs(guardian): Guide complet configuration Codex GPT"
     },
     {
-      "hash": "65c7cfbb",
+      "hash": "02d62e64",
       "author": "Fernando Gonzalez",
-      "time": "2 hours ago",
-      "message": "fix(gmail): Lazy loading services (Ã©vite crash module)"
+      "time": "7 hours ago",
+      "message": "feat(guardian): Scripts de test et debug email Guardian"
     },
     {
-      "hash": "702331b8",
+      "hash": "df1b2d21",
       "author": "Fernando Gonzalez",
-      "time": "2 hours ago",
-      "message": "fix(gmail): Fix import paths (src.backend.* â†’ backend.* + logging)"
+      "time": "7 hours ago",
+      "message": "fix(deploy): Ignorer reports/tests temporaires dans .gcloudignore"
     },
     {
-      "hash": "822bba61",
+      "hash": "b0ce4915",
       "author": "Fernando Gonzalez",
-      "time": "2 hours ago",
-      "message": "docs(guardian): Phase 3+6 complet - Guide Codex Gmail + Debug session"
+      "time": "8 hours ago",
+      "message": "feat(gmail+guardian): OAuth scope fix + Email enrichi pour Codex"
     }
   ],
   "recommendations": [

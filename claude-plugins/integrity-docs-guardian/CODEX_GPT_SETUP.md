@@ -648,6 +648,30 @@ curl -X POST https://emergence-app-486095406755.europe-west1.run.app/api/gmail/r
 
 ---
 
+## 🚀 PROCHAINES ÉTAPES POUR CODEX GPT
+
+### Checklist de démarrage rapide
+
+1. **Tester l'accès API**
+   ```bash
+   curl -X POST https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports \
+     -H "Content-Type: application/json" \
+     -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb" \
+     -d '{}'
+   ```
+2. **Parser 1 email CRITICAL**
+   - Extraire le **type d'erreur**, le **fichier**, le **code** et les **commits suspects**.
+3. **Rédiger 1 analyse test**
+   - Utiliser le template "Proposer Fix" fourni plus haut.
+4. **Configurer le polling automatique toutes les 30 minutes**
+   - Script cron ou tâche programmée qui appelle l'endpoint ci-dessus.
+5. **Monitorer pendant 24h**
+   - Documenter chaque intervention dans `docs/codex_interventions.md`.
+
+👉 Une fois cette checklist complétée, tu es officiellement opérationnel pour la surveillance autonome.
+
+---
+
 ## 🚀 TU ES PRÊT!
 
 **Résumé de ton workflow:**
@@ -668,6 +692,33 @@ curl -X POST https://emergence-app-486095406755.europe-west1.run.app/api/gmail/r
 - ✅ Métriques production
 
 **Pas besoin de chercher ailleurs. L'email contient TOUT.**
+
+---
+
+## 🎉 MISSION ACCOMPLIE — BOUCLE DE MONITORING AUTONOME
+
+```
+Guardian (Cloud Run)
+    ↓ (génère rapport enrichi)
+Gmail API
+    ↓ (toutes les 30 min)
+Codex GPT (polling)
+    ↓ (analyse + debug)
+Fix proposé à Architecte
+    ↓ (validation)
+Déploiement Cloud Run
+    ↓
+Production Healthy! 🔥
+```
+
+**Ce que cela signifie pour toi:**
+
+- ✅ Tu lis automatiquement les rapports Guardian enrichis.
+- ✅ Tu analyses les patterns d'erreurs avec tout le contexte.
+- ✅ Tu proposes des fixes concrets et argumentés.
+- ✅ Tu sais quand escalader vers l'architecte.
+
+🎯 **Objectif atteint : Codex GPT est autonome pour maintenir ÉMERGENCE en production saine.**
 
 ---
 
