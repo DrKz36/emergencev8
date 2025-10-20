@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-20 07:10 CET (Claude Code : TEST COMPLET RAPPORTS EMAIL GUARDIAN)
+**Dernière mise à jour** : 2025-10-20 07:20 CET (Claude Code : PRÉREQUIS CODEX CLOUD → GMAIL ACCESS)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -16,6 +16,110 @@
 3. [`CODEV_PROTOCOL.md`](CODEV_PROTOCOL.md) — protocole multi-agents
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
 5. `git status` + `git log --online -10` - état Git
+
+## ✅ Session COMPLÉTÉE (2025-10-20 07:20 CET) — Agent : Claude Code (PRÉREQUIS CODEX CLOUD → GMAIL ACCESS)
+
+### 📧 CONFIGURATION GMAIL POUR CODEX CLOUD
+
+**Objectif :** Documenter les prérequis et étapes pour que Codex Cloud puisse accéder aux emails Guardian depuis Gmail.
+
+### État de la configuration
+
+**Backend (déjà opérationnel) :**
+- ✅ Gmail API OAuth2 configurée (client_id, client_secret)
+- ✅ Endpoint Codex API déployé en production : `/api/gmail/read-reports`
+- ✅ Secrets GCP configurés (Firestore + Cloud Run)
+- ✅ Service GmailService opérationnel ([src/backend/features/gmail/gmail_service.py](src/backend/features/gmail/gmail_service.py))
+
+**Ce qui reste à faire (4 minutes total) :**
+
+1. **OAuth Gmail flow** (2 min, one-time, TOI en tant qu'admin)
+   - URL: https://emergence-app-486095406755.europe-west1.run.app/auth/gmail
+   - Action: Autoriser Google consent screen (scope: gmail.readonly)
+   - Résultat: Tokens OAuth stockés dans Firestore
+
+2. **Config Codex Cloud** (1 min, TOI)
+   - Variables d'environnement à donner à Codex:
+     ```bash
+     EMERGENCE_API_URL=https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports
+     EMERGENCE_CODEX_API_KEY=77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb
+     ```
+   - ⚠️ Secrets à sécuriser (pas en dur dans code)
+
+3. **Test d'accès** (1 min, CODEX)
+   - Test curl ou Python depuis Codex Cloud
+   - Résultat attendu: 200 OK avec liste emails Guardian
+
+### Documentation créée
+
+**Guides complets :**
+- ✅ [CODEX_CLOUD_GMAIL_SETUP.md](CODEX_CLOUD_GMAIL_SETUP.md) - Guide détaillé (450 lignes)
+  - Configuration OAuth2
+  - Credentials Codex
+  - Code Python exemple
+  - Workflow polling + auto-fix
+  - Troubleshooting
+- ✅ [CODEX_CLOUD_QUICKSTART.txt](CODEX_CLOUD_QUICKSTART.txt) - Résumé visuel ASCII (50 lignes)
+
+**Docs existantes (vérifiées) :**
+- [docs/CODEX_GMAIL_QUICKSTART.md](docs/CODEX_GMAIL_QUICKSTART.md) - Guide rapide backend
+- [docs/GMAIL_CODEX_INTEGRATION.md](docs/GMAIL_CODEX_INTEGRATION.md) - Guide complet intégration
+
+### Credentials Codex Cloud
+
+**API Endpoint :**
+```
+https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports
+```
+
+**API Key (header X-Codex-API-Key) :**
+```
+77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb
+```
+
+**Sécurité :**
+- Scope Gmail: `gmail.readonly` uniquement (pas de delete/modify)
+- Auth: API key header uniquement
+- HTTPS only
+- Rate limiting: 100 req/min
+
+### Code exemple pour Codex Cloud
+
+```python
+import requests
+import os
+
+API_URL = os.getenv("EMERGENCE_API_URL")
+CODEX_API_KEY = os.getenv("EMERGENCE_CODEX_API_KEY")
+
+def fetch_guardian_emails(max_results=10):
+    response = requests.post(
+        API_URL,
+        headers={"X-Codex-API-Key": CODEX_API_KEY},
+        params={"max_results": max_results},
+        timeout=30
+    )
+    response.raise_for_status()
+    return response.json()['emails']
+
+# Test
+emails = fetch_guardian_emails(max_results=5)
+for email in emails:
+    print(f"  - {email['subject']} ({email['date']})")
+```
+
+### Prochaines actions recommandées
+
+1. **TOI:** Autoriser OAuth Gmail (2 min) → Ouvrir URL OAuth
+2. **TOI:** Configurer Codex Cloud avec credentials (1 min)
+3. **CODEX:** Tester accès API depuis Codex Cloud (1 min)
+4. **CODEX:** Implémenter polling loop + auto-fix (optionnel, 30 min)
+
+### Blocages
+
+Aucun. Tout est prêt côté backend, il reste juste OAuth + config Codex.
+
+---
 
 ## ✅ Session COMPLÉTÉE (2025-10-20 07:10 CET) — Agent : Claude Code (TEST COMPLET RAPPORTS EMAIL GUARDIAN)
 

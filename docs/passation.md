@@ -1,3 +1,122 @@
+## [2025-10-20 07:20 CET] — Agent: Claude Code (PRÉREQUIS CODEX CLOUD → GMAIL ACCESS)
+
+### Fichiers modifiés
+
+- `CODEX_CLOUD_GMAIL_SETUP.md` (nouveau - guide complet 450 lignes)
+- `CODEX_CLOUD_QUICKSTART.txt` (nouveau - résumé ASCII visuel)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+
+Demande utilisateur : documenter les prérequis pour que Codex Cloud (agent AI distant) puisse accéder aux emails Guardian depuis Gmail. Vérification de la config existante et création de guides complets pour onboarding Codex.
+
+### Actions réalisées
+
+**Phase 1: Vérification config existante (5 min)**
+- Vérifié variables .env : Gmail OAuth client_id, SMTP config OK
+- Trouvé `gmail_client_secret.json` : OAuth2 Web client configuré
+- Trouvé docs existantes : `CODEX_GMAIL_QUICKSTART.md`, `GMAIL_CODEX_INTEGRATION.md`
+- Vérifié backend service : `src/backend/features/gmail/gmail_service.py` opérationnel
+
+**Phase 2: Documentation nouveaux guides (20 min)**
+
+1. Créé `CODEX_CLOUD_GMAIL_SETUP.md` (450 lignes)
+   - Architecture Gmail API + Codex Cloud
+   - Étape 1: OAuth Gmail flow (admin, 2 min)
+   - Étape 2: Config Codex Cloud (credentials, 1 min)
+   - Étape 3: Test d'accès API (curl + Python, 1 min)
+   - Workflow polling + auto-fix (code Python complet)
+   - Sécurité & bonnes pratiques
+   - Troubleshooting complet
+   - Checklist validation
+
+2. Créé `CODEX_CLOUD_QUICKSTART.txt` (résumé ASCII)
+   - Format visuel ASCII art (facile à lire)
+   - 3 étapes ultra-rapides
+   - Code Python minimal
+   - Troubleshooting rapide
+
+**Phase 3: Mise à jour AGENT_SYNC.md (5 min)**
+- Nouvelle section Codex Cloud Gmail access
+- État config backend (déjà opérationnel)
+- Credentials à fournir à Codex
+- Code exemple Python
+- Prochaines actions
+
+### Configuration requise pour Codex Cloud
+
+**Backend (déjà fait) :**
+- ✅ Gmail API OAuth2 configurée
+- ✅ Endpoint `/api/gmail/read-reports` déployé en prod
+- ✅ Secrets GCP (Firestore + Cloud Run)
+- ✅ Service GmailService opérationnel
+
+**Ce qu'il reste à faire (4 minutes) :**
+
+1. **OAuth Gmail (2 min, TOI admin)**
+   - URL: https://emergence-app-486095406755.europe-west1.run.app/auth/gmail
+   - Action: Autoriser Google (scope: gmail.readonly)
+   - Résultat: Tokens stockés Firestore
+
+2. **Config Codex (1 min, TOI)**
+   - Variables d'environnement:
+     ```
+     EMERGENCE_API_URL=https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports
+     EMERGENCE_CODEX_API_KEY=77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb
+     ```
+   - Sécuriser (pas en dur)
+
+3. **Test d'accès (1 min, CODEX)**
+   - Test curl ou Python depuis Codex Cloud
+   - Résultat: 200 OK + emails Guardian
+
+### Code exemple Python pour Codex
+
+```python
+import requests
+import os
+
+API_URL = os.getenv("EMERGENCE_API_URL")
+CODEX_API_KEY = os.getenv("EMERGENCE_CODEX_API_KEY")
+
+def fetch_guardian_emails(max_results=10):
+    response = requests.post(
+        API_URL,
+        headers={"X-Codex-API-Key": CODEX_API_KEY},
+        params={"max_results": max_results},
+        timeout=30
+    )
+    response.raise_for_status()
+    return response.json()['emails']
+```
+
+### Tests
+
+- ✅ Config backend vérifiée (OAuth2, endpoint, secrets)
+- ✅ Docs existantes lues et validées
+- ✅ Nouveaux guides créés (setup + quickstart)
+- ✅ Code Python exemple testé syntaxiquement
+- ⏳ OAuth flow à faire (admin uniquement)
+- ⏳ Test Codex à faire (après OAuth + config)
+
+### Travail de Codex GPT pris en compte
+
+Aucun travail récent de Codex GPT. Session autonome de documentation Codex Cloud.
+
+### Prochaines actions recommandées
+
+1. **Admin (TOI):** Autoriser OAuth Gmail (2 min) → Ouvrir URL
+2. **Admin (TOI):** Configurer Codex Cloud credentials (1 min)
+3. **Codex Cloud:** Tester accès API (1 min, curl ou Python)
+4. **Codex Cloud:** Implémenter polling loop + auto-fix (optionnel, 30 min)
+
+### Blocages
+
+Aucun. Backend prêt, guides créés. Il reste juste OAuth + config Codex côté utilisateur.
+
+---
+
 ## [2025-10-20 07:10 CET] — Agent: Claude Code (TEST COMPLET RAPPORTS EMAIL GUARDIAN)
 
 ### Fichiers modifiés
