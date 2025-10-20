@@ -1,3 +1,71 @@
+## [2025-10-20 06:55 CET] — Agent: Claude Code (DÉPLOIEMENT PRODUCTION CANARY → STABLE)
+
+### Fichiers modifiés
+
+- `AGENT_SYNC.md` (mise à jour session déploiement)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+
+Déploiement production de la nouvelle version (révision 00529-hin) incluant les fixes ChromaDB metadata validation + Guardian log parsing de la session précédente.
+
+**Stratégie de déploiement utilisée :** Canary deployment (10% → 100%)
+
+### Actions réalisées
+
+**Phase 1: Build + Push Docker**
+- Build image Docker avec nouveau code (fixes ChromaDB + Guardian)
+- Push vers GCP Artifact Registry
+- Digest: `sha256:97247886db2bceb25756b21bb9a80835e9f57914c41fe49ba3856fd39031cb5a`
+
+**Phase 2: Déploiement Canary**
+- Déploiement révision canary `emergence-app-00529-hin` avec tag `canary`
+- Test URL canary directe: ✅ HTTP 200 healthy
+- Routing 10% trafic vers canary, 90% vers ancienne révision
+
+**Phase 3: Monitoring**
+- Monitoring logs pendant 30 secondes
+- Aucune erreur WARNING/ERROR détectée
+- Test URL principale: ✅ HTTP 200
+
+**Phase 4: Promotion stable**
+- Routing 100% trafic vers nouvelle révision `emergence-app-00529-hin`
+- Validation finale logs production: ✅ aucune erreur
+- Frontend opérationnel, page d'accueil servie correctement
+
+### Tests
+
+- ✅ Health check production: HTTP 200 `{"status":"healthy","metrics_enabled":true}`
+- ✅ Page d'accueil: HTTP 200, HTML complet
+- ✅ Logs production: Aucune erreur depuis déploiement
+- ✅ Frontend: Assets servis, chargement correct
+
+### État production
+
+**Service:** `emergence-app`
+**Région:** `europe-west1`
+**Révision active:** `emergence-app-00529-hin` (100% trafic)
+**URL:** https://emergence-app-47nct44nma-ew.a.run.app
+**Status:** ✅ **HEALTHY - Production opérationnelle**
+
+### Travail de Codex GPT pris en compte
+
+Aucun travail récent de Codex GPT détecté. Session autonome de déploiement suite aux fixes de la session précédente de Claude Code.
+
+### Prochaines actions recommandées
+
+1. **Monitoring continu** - Surveiller métriques Cloud Run pendant 24-48h (latence, erreurs, trafic)
+2. **Vérifier logs ChromaDB** - Confirmer que le fix metadata validation élimine les erreurs ChromaDB
+3. **Tester Guardian** - Vérifier que les rapports Guardian ne contiennent plus de messages vides
+4. **Documenter release** - Mettre à jour CHANGELOG.md si nécessaire
+5. **Reprendre roadmap** - Continuer développement selon ROADMAP_PROGRESS.md
+
+### Blocages
+
+Aucun. Déploiement réussi, production stable.
+
+---
+
 ## [2025-10-20 06:30 CET] — Agent: Claude Code (DEBUG + FIX CHROMADB + GUARDIAN PARSING)
 
 ### Fichiers modifiés

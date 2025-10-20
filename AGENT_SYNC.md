@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-20 06:35 CET (Claude Code : Session terminée - DEBUG + FIX CHROMADB + GUARDIAN)
+**Dernière mise à jour** : 2025-10-20 06:55 CET (Claude Code : DÉPLOIEMENT PRODUCTION RÉUSSI - Canary → Stable)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -16,6 +16,98 @@
 3. [`CODEV_PROTOCOL.md`](CODEV_PROTOCOL.md) — protocole multi-agents
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
 5. `git status` + `git log --online -10` - état Git
+
+## ✅ Session COMPLÉTÉE (2025-10-20 06:55 CET) — Agent : Claude Code (DÉPLOIEMENT PRODUCTION CANARY → STABLE)
+
+### 🚀 DÉPLOIEMENT RÉUSSI EN PRODUCTION
+
+**Nouvelle révision stable :** `emergence-app-00529-hin`
+**URL production :** https://emergence-app-47nct44nma-ew.a.run.app
+**Image Docker :** `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:latest`
+**Digest :** `sha256:97247886db2bceb25756b21bb9a80835e9f57914c41fe49ba3856fd39031cb5a`
+
+### Contexte
+
+Après les fixes critiques ChromaDB metadata validation + Guardian log parsing de la session précédente, déploiement de la nouvelle version en production via stratégie canary.
+
+### Actions réalisées
+
+**Phase 1: Build + Push Docker (15 min)**
+```bash
+docker build -t europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:latest .
+docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:latest
+# ✅ Push réussi (digest sha256:97247886...)
+```
+
+**Phase 2: Déploiement Canary (5 min)**
+```bash
+# Déployer révision canary sans trafic
+gcloud run deploy emergence-app \
+  --image=europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:latest \
+  --tag=canary --no-traffic
+# ✅ Révision emergence-app-00529-hin déployée
+
+# Tester URL canary directe
+curl https://canary---emergence-app-47nct44nma-ew.a.run.app/health
+# ✅ HTTP 200 {"status":"healthy","metrics_enabled":true}
+
+# Router 10% trafic vers canary
+gcloud run services update-traffic emergence-app --to-tags=canary=10
+# ✅ Split: 90% v00398 (old) + 10% v00529 (canary)
+```
+
+**Phase 3: Monitoring + Validation (3 min)**
+```bash
+# Monitorer logs canary pendant 30s
+gcloud logging read "...severity>=WARNING..." --freshness=5m
+# ✅ Aucune erreur détectée
+
+# Test URL principale
+curl https://emergence-app-47nct44nma-ew.a.run.app/health
+# ✅ HTTP 200 OK
+```
+
+**Phase 4: Promotion 100% (2 min)**
+```bash
+# Router 100% trafic vers nouvelle révision
+gcloud run services update-traffic emergence-app \
+  --to-revisions=emergence-app-00529-hin=100
+# ✅ Nouvelle révision stable, 100% trafic
+
+# Validation finale logs production
+gcloud logging read "...severity>=ERROR..." --freshness=10m
+# ✅ Aucune erreur
+```
+
+### Tests validation production
+
+- ✅ **Health check:** HTTP 200 `{"status":"healthy","metrics_enabled":true}`
+- ✅ **Page d'accueil:** HTTP 200, HTML complet servi
+- ✅ **Logs production:** Aucune erreur ERROR/WARNING depuis déploiement
+- ✅ **Révision stable:** emergence-app-00529-hin @ 100% trafic
+- ✅ **Frontend:** Chargement correct, assets servis
+
+### État production actuel
+
+**Service Cloud Run:** `emergence-app`
+**Région:** `europe-west1`
+**Révision active:** `emergence-app-00529-hin` (100% trafic)
+**Image:** `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:latest@sha256:97247886db2bceb25756b21bb9a80835e9f57914c41fe49ba3856fd39031cb5a`
+**Status:** ✅ **HEALTHY - Production opérationnelle**
+
+### Prochaines actions recommandées
+
+1. ✅ **Monitoring production continu** (Guardian ProdGuardian toutes les 6h)
+2. 🔄 **Surveiller métriques Cloud Run** (latence, erreurs, trafic) pendant 24-48h
+3. 📊 **Vérifier logs ChromaDB** pour confirmer fix metadata validation
+4. 📝 **Documenter release** dans CHANGELOG.md si pas déjà fait
+5. 🎯 **Prochaine feature** selon ROADMAP_PROGRESS.md
+
+### Blocages
+
+Aucun. Déploiement nominal, production stable.
+
+---
 
 ## ✅ Session COMPLÉTÉE (2025-10-20 06:35 CET) — Agent : Claude Code (DEBUG + FIX CHROMADB + GUARDIAN)
 

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-20T06:08:03.364485",
+  "timestamp": "2025-10-20T06:59:43.679165",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -27,34 +27,34 @@
   "code_snippets": [],
   "recent_commits": [
     {
-      "hash": "8e2949d3",
+      "hash": "e3c5a6bc",
       "author": "Fernando Gonzalez",
-      "time": "4 minutes ago",
-      "message": "chore: Cleanup imports + pytest config + session docs"
+      "time": "22 minutes ago",
+      "message": "fix(ui): Ajout bouton GÃ©nÃ©rer Rapports Guardian manquant"
     },
     {
-      "hash": "3cadcd82",
+      "hash": "1b261942",
       "author": "Fernando Gonzalez",
-      "time": "36 minutes ago",
-      "message": "feat(guardian): Cloud Storage pour rapports + endpoint gÃ©nÃ©ration temps rÃ©el"
+      "time": "26 minutes ago",
+      "message": "docs: Finalisation session debug ChromaDB + Guardian (COMPLETE)"
     },
     {
-      "hash": "e5e1f7ec",
+      "hash": "18c08b7e",
       "author": "Fernando Gonzalez",
-      "time": "49 minutes ago",
-      "message": "docs: Session critique fix production (OOM + bugs)"
+      "time": "26 minutes ago",
+      "message": "docs: Session debug ChromaDB + Guardian parsing (passation complÃ¨te)"
     },
     {
-      "hash": "53bfb455",
+      "hash": "e4988359",
       "author": "Fernando Gonzalez",
-      "time": "60 minutes ago",
-      "message": "fix(critical): Fix production crashes (OOM + bugs)"
+      "time": "37 minutes ago",
+      "message": "docs: Session debug ChromaDB + Guardian parsing"
     },
     {
-      "hash": "0669d03b",
+      "hash": "de840bee",
       "author": "Fernando Gonzalez",
-      "time": "8 hours ago",
-      "message": "docs(session): Documentation complÃ¨te session OAuth + Guardian enrichi"
+      "time": "51 minutes ago",
+      "message": "fix(critical): ChromaDB metadata validation + Guardian log parsing"
     }
   ],
   "recommendations": [
