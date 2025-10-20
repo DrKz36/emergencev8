@@ -12,8 +12,8 @@ Tests pour valider:
 """
 import pytest
 from datetime import datetime, timezone
-from src.backend.core.database.manager import DatabaseManager
-from src.backend.core.database import queries
+from backend.core.database.manager import DatabaseManager
+from backend.core.database import queries
 
 
 @pytest.fixture

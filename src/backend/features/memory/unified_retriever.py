@@ -11,7 +11,7 @@
 # Roadmap: MEMORY_REFACTORING_ROADMAP.md Sprint 3
 
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from datetime import datetime
 
 logger = logging.getLogger(__name__)

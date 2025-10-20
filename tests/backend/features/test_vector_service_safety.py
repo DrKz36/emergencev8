@@ -5,7 +5,7 @@ Tests pour Bug #4 (P1): Validation récursive where_filter
 
 import pytest
 from unittest.mock import Mock, MagicMock
-from src.backend.features.memory.vector_service import VectorService
+from backend.features.memory.vector_service import VectorService
 
 
 @pytest.fixture

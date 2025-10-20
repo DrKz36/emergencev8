@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 import json
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 

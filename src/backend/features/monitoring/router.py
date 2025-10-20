@@ -322,7 +322,6 @@ async def get_system_info(request: Request) -> Dict[str, Any]:
     """
     try:
         import os
-        import sys
 
         # Get process info
         process = psutil.Process()

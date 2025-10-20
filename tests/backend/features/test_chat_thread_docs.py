@@ -99,7 +99,7 @@ class FakeConnectionManager:
 
 
 class PatchedChatService(ChatService):
-    async def _get_llm_response_stream(self, provider_name, model_name, system_prompt, history, cost_info_container):
+    async def _get_llm_response_stream(self, provider_name, model_name, system_prompt, history, cost_info_container, agent_id: str = "unknown"):
         async def generator():
             yield "Stub response"
         return generator()

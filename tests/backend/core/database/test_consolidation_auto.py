@@ -10,8 +10,8 @@ Teste que :
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
-from src.backend.core.database.manager import DatabaseManager
-from src.backend.core.database import queries
+from backend.core.database.manager import DatabaseManager
+from backend.core.database import queries
 
 
 @pytest.fixture

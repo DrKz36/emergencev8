@@ -7,7 +7,6 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict, Optional, List
-from datetime import datetime
 import os
 
 logger = logging.getLogger("emergence.guardian.storage")

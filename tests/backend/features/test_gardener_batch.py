@@ -5,7 +5,7 @@ Tests pour Bug #6 (P1): Optimisation N+1 avec batch fetch
 
 import pytest
 from unittest.mock import Mock, MagicMock, AsyncMock
-from src.backend.features.memory.gardener import MemoryGardener
+from backend.features.memory.gardener import MemoryGardener
 
 
 @pytest.fixture

@@ -285,7 +285,7 @@ async def request_password_reset(
             success=True,
             message="Si votre email est enregistré, vous recevrez un lien de réinitialisation sous peu."
         )
-    except AuthError as exc:
+    except AuthError:
         # For security, always return success message even if email not found
         # This prevents email enumeration
         return RequestPasswordResetResponse(

@@ -5,7 +5,6 @@ Replaces the old standalone scripts (guardian_email_report.py, send_guardian_rep
 
 UPDATED 2025-10-20: Now uses Cloud Storage for report persistence (Cloud Run stateless fix)
 """
-import json
 import os
 from pathlib import Path
 from typing import Dict, Optional

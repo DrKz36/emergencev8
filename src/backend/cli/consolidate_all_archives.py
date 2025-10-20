@@ -27,7 +27,6 @@ from src.backend.core.database.manager import DatabaseManager
 from src.backend.features.memory.gardener import MemoryGardener
 from src.backend.features.memory.vector_service import VectorService
 from src.backend.features.memory.analyzer import MemoryAnalyzer
-from src.backend.core.database import queries
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +118,7 @@ async def consolidate_all_archives(
         try:
             # Vérifier si déjà consolidé
             if not force and await is_already_consolidated(vector_service, thread_id):
-                logger.info(f"  -> Déjà consolidé, skip")
+                logger.info("  -> Déjà consolidé, skip")
                 skipped += 1
                 continue
 
@@ -142,7 +141,7 @@ async def consolidate_all_archives(
                     commit=True
                 )
             else:
-                logger.info(f"  -> Aucun concept extrait")
+                logger.info("  -> Aucun concept extrait")
                 skipped += 1
 
         except Exception as e:

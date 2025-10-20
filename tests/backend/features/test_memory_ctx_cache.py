@@ -6,7 +6,7 @@ Tests pour Bug #5 (P1): Invalidation cache préférences
 import pytest
 from datetime import datetime, timedelta
 from unittest.mock import Mock, MagicMock
-from src.backend.features.chat.memory_ctx import MemoryContextBuilder
+from backend.features.chat.memory_ctx import MemoryContextBuilder
 
 
 @pytest.fixture
