@@ -1,3 +1,189 @@
+## [2025-10-20 06:30 CET] — Agent: Claude Code (DEBUG + FIX CHROMADB + GUARDIAN PARSING)
+
+### Fichiers modifiés
+
+- `src/backend/features/memory/vector_service.py` (fix metadata validation ligne 765-773)
+- `claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py` (fix HTTP logs parsing ligne 93-185)
+- `claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json` (rapport clean)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+
+Après déploiement révision 00397-xxn (fix OOM + bugs), analyse logs production révèle 2 nouveaux bugs critiques encore actifs en production.
+
+**Problèmes identifiés via logs Cloud Run :**
+
+1. **🐛 BUG CHROMADB METADATA VALIDATION (CRASH PROD)**
+   - Logs: 10+ errors @03:18, @03:02 dans révision 00397-xxn
+   - Erreur: `ValueError: Expected metadata value to be a str, int, float or bool, got [] which is a list in upsert`
+   - Source: [vector_service.py:765-773](src/backend/features/memory/vector_service.py#L765-L773)
+   - Impact: Crash gardener.py → vector_service.add_items() → collection.upsert()
+   - Cause: Filtre metadata `if v is not None` insuffisant, n'élimine pas les listes/dicts
+
+2. **🐛 BUG GUARDIAN LOG PARSING (WARNINGS VIDES)**
+   - Symptôme: 6 warnings avec `"message": ""` dans prod_report.json
+   - Impact: Rapports Guardian inexploitables, pre-push hook bloque à tort
+   - Source: [check_prod_logs.py:93-185](claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py#L93-L185)
+   - Cause: Script parse `jsonPayload.message`, mais logs HTTP utilisent `httpRequest` top-level
+   - Types affectés: `run.googleapis.com/requests` (health checks, API, security scans)
+
+### Actions réalisées
+
+**Phase 1: Diagnostic logs production (10 min)**
+```bash
+# Fetch logs warnings/errors
+gcloud logging read "resource.type=cloud_run_revision AND severity>=WARNING" --limit=50 --freshness=2h
+# → 6 warnings messages vides + patterns HTTP requests
+
+# Fetch raw ERROR log structure
+gcloud logging read "resource.type=cloud_run_revision AND severity=ERROR" --limit=2 --format=json
+# → Identifié erreurs ChromaDB metadata + structure logs HTTP (textPayload, httpRequest)
+```
+
+**Phase 2: Fixes code (20 min)**
+
+1. **Fix vector_service.py:765-773 (metadata validation stricte)**
+   ```python
+   # AVANT (bugué - filtrait seulement None)
+   metadatas = [
+       {k: v for k, v in item.get("metadata", {}).items() if v is not None}
+       for item in items
+   ]
+
+   # APRÈS (corrigé - filtre strict types ChromaDB valides)
+   metadatas = [
+       {
+           k: v
+           for k, v in item.get("metadata", {}).items()
+           if isinstance(v, (str, int, float, bool))  # Filtre strict
+       }
+       for item in items
+   ]
+   ```
+   - ChromaDB n'accepte QUE: `str`, `int`, `float`, `bool`
+   - Rejette maintenant: `None`, `[]`, `{}`, objets complexes
+
+2. **Fix check_prod_logs.py:93-111 (extract_message)**
+   ```python
+   # Ajout handling httpRequest top-level (logs run.googleapis.com/requests)
+   elif "httpRequest" in log_entry:
+       http = log_entry["httpRequest"]
+       method = http.get("requestMethod", "")
+       url = http.get("requestUrl", "")
+       status = http.get("status", "")
+       return f"{method} {url} → {status}"
+   ```
+
+3. **Fix check_prod_logs.py:135-185 (extract_full_context)**
+   ```python
+   # Ajout parsing httpRequest top-level
+   elif "httpRequest" in log_entry:
+       http = log_entry["httpRequest"]
+       context["endpoint"] = http.get("requestUrl", "")
+       context["http_method"] = http.get("requestMethod", "")
+       context["status_code"] = http.get("status", None)
+       context["user_agent"] = http.get("userAgent", "")
+       context["request_id"] = log_entry.get("trace") or log_entry.get("insertId")
+   ```
+
+**Phase 3: Tests locaux (5 min)**
+```bash
+# Test Guardian script avec fixes
+python claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py
+# → Status: OK, 0 errors, 0 warnings ✅ (vs 6 warnings vides avant)
+
+# Vérification rapport
+cat claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json
+# → Messages HTTP parsés correctement: "GET /url → 404" ✅
+```
+
+**Phase 4: Build + Deploy (12 min)**
+```bash
+# Build Docker (AVANT reboot - réussi)
+docker build --platform linux/amd64 -t europe-west1-docker.pkg.dev/.../emergence-app:latest .
+# → Build réussi (image 97247886db2b, 17.8GB)
+
+# Push Artifact Registry (APRÈS reboot)
+docker push europe-west1-docker.pkg.dev/.../emergence-app:latest
+# → Push réussi (digest sha256:97247886db2b...)
+
+# Deploy Cloud Run
+gcloud run deploy emergence-app --image=...latest --region=europe-west1 --memory=2Gi --cpu=2
+# → Révision 00398-4gq déployée (100% traffic) ✅
+```
+
+**Phase 5: Validation post-deploy (5 min)**
+```bash
+# Health check
+curl https://emergence-app-486095406755.europe-west1.run.app/api/health
+# → {"status":"ok"} ✅
+
+# Vérification logs nouvelle révision (aucune erreur ChromaDB)
+gcloud logging read "resource.labels.revision_name=emergence-app-00398-4gq AND severity=ERROR" --limit=20
+# → Aucun ERROR ✅
+
+# Logs ChromaDB
+gcloud logging read "revision_name=emergence-app-00398-4gq AND textPayload=~\"ChromaDB\|ValueError\"" --limit=10
+# → Seulement log INFO connexion ChromaDB, aucune erreur metadata ✅
+
+# Guardian rapport production
+python check_prod_logs.py
+# → Status: 🟢 OK, 0 errors, 1 warning (vs 6 avant) ✅
+```
+
+**Commits (2):**
+```bash
+git commit -m "fix(critical): ChromaDB metadata validation + Guardian log parsing"
+# → Commit de840be (fixes code)
+
+git commit -m "docs: Session debug ChromaDB + Guardian parsing"
+# → Commit e498835 (documentation AGENT_SYNC.md)
+```
+
+### Résultats
+
+**Production état final:**
+- ✅ Révision: **00398-4gq** active (100% traffic)
+- ✅ Health check: OK
+- ✅ Logs: **0 errors** ChromaDB (vs 10+ avant)
+- ✅ Guardian: Status 🟢 OK, 1 warning (vs 6 warnings vides avant)
+- ✅ Rapports Guardian: Messages HTTP parsés correctement
+- ✅ Production: **STABLE ET FONCTIONNELLE**
+
+**Bugs résolus:**
+1. ✅ ChromaDB metadata validation: Plus de crash sur listes/dicts
+2. ✅ Guardian log parsing: Messages HTTP extraits correctement
+3. ✅ Pre-push hook: Plus de blocages à tort (rapports clean)
+
+**Fichiers modifiés (5 fichiers, +73 lignes):**
+- `src/backend/features/memory/vector_service.py` (+8 lignes)
+- `claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py` (+22 lignes)
+- `claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json` (clean)
+- `AGENT_SYNC.md` (+73 lignes)
+- `docs/passation.md` (cette entrée)
+
+### Tests
+
+- ✅ Guardian script local: 0 errors, 0 warnings
+- ✅ Health check prod: OK
+- ✅ Logs révision 00398-4gq: Aucune erreur
+- ✅ ChromaDB fonctionnel: Pas de ValueError metadata
+- ✅ Guardian rapports: Messages HTTP parsés
+
+### Prochaines actions recommandées
+
+1. 📊 Monitorer logs production 24h (vérifier stabilité ChromaDB)
+2. 🧪 Relancer tests backend complets (pytest)
+3. 📝 Documenter feature Guardian Cloud Storage (TODO depuis commit 3cadcd8)
+4. 🔍 Analyser le 1 warning restant dans Guardian rapport (nature ?)
+
+### Blocages
+
+Aucun.
+
+---
+
 ## [2025-10-20 05:15 CET] — Agent: Claude Code (FIX CRITIQUE PRODUCTION - OOM + Bugs)
 
 ### Fichiers modifiés
