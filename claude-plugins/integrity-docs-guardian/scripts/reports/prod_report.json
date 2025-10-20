@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-20T05:59:42.442614",
+  "timestamp": "2025-10-20T06:08:03.364485",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -27,21 +27,27 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "8e2949d3",
+      "author": "Fernando Gonzalez",
+      "time": "4 minutes ago",
+      "message": "chore: Cleanup imports + pytest config + session docs"
+    },
+    {
       "hash": "3cadcd82",
       "author": "Fernando Gonzalez",
-      "time": "27 minutes ago",
+      "time": "36 minutes ago",
       "message": "feat(guardian): Cloud Storage pour rapports + endpoint gÃ©nÃ©ration temps rÃ©el"
     },
     {
       "hash": "e5e1f7ec",
       "author": "Fernando Gonzalez",
-      "time": "41 minutes ago",
+      "time": "49 minutes ago",
       "message": "docs: Session critique fix production (OOM + bugs)"
     },
     {
       "hash": "53bfb455",
       "author": "Fernando Gonzalez",
-      "time": "52 minutes ago",
+      "time": "60 minutes ago",
       "message": "fix(critical): Fix production crashes (OOM + bugs)"
     },
     {
@@ -49,12 +55,6 @@
       "author": "Fernando Gonzalez",
       "time": "8 hours ago",
       "message": "docs(session): Documentation complÃ¨te session OAuth + Guardian enrichi"
-    },
-    {
-      "hash": "d9f9d166",
-      "author": "Fernando Gonzalez",
-      "time": "8 hours ago",
-      "message": "docs(guardian): Guide complet configuration Codex GPT"
     }
   ],
   "recommendations": [

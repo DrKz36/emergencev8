@@ -762,9 +762,14 @@ class VectorService:
             ids = [item["id"] for item in items]
             documents_text = [item[item_text_key] for item in items]
 
-            # ChromaDB only accepts str, int, float, bool in metadata - filter out None values
+            # ChromaDB only accepts str, int, float, bool in metadata - filter out invalid types
+            # Filter out None, lists, dicts, and any other non-primitive types
             metadatas = [
-                {k: v for k, v in item.get("metadata", {}).items() if v is not None}
+                {
+                    k: v
+                    for k, v in item.get("metadata", {}).items()
+                    if isinstance(v, (str, int, float, bool))
+                }
                 for item in items
             ]
 

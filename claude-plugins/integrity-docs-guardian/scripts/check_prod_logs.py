@@ -101,6 +101,13 @@ def extract_message(log_entry):
             if field in payload:
                 return str(payload[field])
         return json.dumps(payload)[:200]
+    elif "httpRequest" in log_entry:
+        # HTTP request logs (run.googleapis.com/requests)
+        http = log_entry["httpRequest"]
+        method = http.get("requestMethod", "")
+        url = http.get("requestUrl", "")
+        status = http.get("status", "")
+        return f"{method} {url} → {status}"
     return ""
 
 
@@ -125,9 +132,13 @@ def extract_full_context(log_entry):
         "full_payload": None
     }
 
-    # Extract message
+    # Extract message (use the centralized extract_message function)
+    context["message"] = extract_message(log_entry)
+
+    # Extract context based on log type
     if "textPayload" in log_entry:
-        context["message"] = log_entry["textPayload"]
+        # Text logs (stderr, stdout) - message already extracted
+        pass
     elif "jsonPayload" in log_entry:
         payload = log_entry["jsonPayload"]
         context["full_payload"] = payload  # Keep full JSON for analysis
@@ -162,6 +173,16 @@ def extract_full_context(log_entry):
                 context["line_number"] = error.get("line")
                 if "stack" in error:
                     context["stack_trace"] = error["stack"]
+
+    # Top-level httpRequest (run.googleapis.com/requests logs)
+    elif "httpRequest" in log_entry:
+        http = log_entry["httpRequest"]
+        context["endpoint"] = http.get("requestUrl", "")
+        context["http_method"] = http.get("requestMethod", "")
+        context["status_code"] = http.get("status", None)
+        context["user_agent"] = http.get("userAgent", "")
+        # For HTTP logs, trace is at top-level
+        context["request_id"] = log_entry.get("trace") or log_entry.get("insertId")
 
     # Extract file/line from message if not found (Python traceback format)
     if not context["file_path"] and context["message"]:
