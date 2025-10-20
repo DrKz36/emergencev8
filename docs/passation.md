@@ -806,7 +806,7 @@ https://emergence-app-486095406755.europe-west1.run.app/auth/gmail
 
 **API Codex - Lire Rapports:**
 ```bash
-curl -X POST https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports \
+curl -X GET https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports \
   -H "Content-Type: application/json" \
   -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb" \
   -d '{}'

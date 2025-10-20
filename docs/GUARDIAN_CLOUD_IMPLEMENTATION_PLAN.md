@@ -245,7 +245,7 @@
 
 - [ ] Endpoint pour Codex
   ```python
-  @router.post("/api/gmail/read-reports")
+  @router.get("/api/gmail/read-reports")
   async def read_gmail_reports(api_key: str = Header(...)):
       # Vérifier API key Codex
       # Appeler gmail_service.read_guardian_reports()
@@ -256,7 +256,7 @@
 - [ ] Créer API key Codex (Secret Manager)
 - [ ] Documenter API pour Codex:
   ```bash
-  curl -X POST https://emergence-app.../api/gmail/read-reports \
+  curl -X GET https://emergence-app.../api/gmail/read-reports \
     -H "X-Codex-API-Key: SECRET_KEY" \
     -H "Content-Type: application/json"
   ```
@@ -510,7 +510,7 @@
 
 - [ ] Test Gmail read (Codex API)
   ```bash
-  curl -X POST https://emergence-app.../api/gmail/read-reports \
+  curl -X GET https://emergence-app.../api/gmail/read-reports \
     -H "X-Codex-API-Key: KEY"
   # Devrait retourner derniers emails Guardian
   ```

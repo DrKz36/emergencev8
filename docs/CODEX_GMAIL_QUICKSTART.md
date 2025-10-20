@@ -155,7 +155,7 @@ POLLING_INTERVAL = 1800  # 30 minutes (en secondes)
 
 def fetch_guardian_emails(max_results: int = 10) -> List[Dict]:
     """Fetch Guardian emails from Cloud Run API"""
-    response = requests.post(
+    response = requests.get(
         API_URL,
         headers={"X-Codex-API-Key": CODEX_API_KEY},
         params={"max_results": max_results},

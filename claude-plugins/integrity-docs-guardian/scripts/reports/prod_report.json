@@ -1,24 +1,198 @@
 {
-  "timestamp": "2025-10-20T06:59:43.679165",
+  "timestamp": "2025-10-20T18:01:30.480572",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
   "freshness": "1h",
-  "status": "OK",
+  "status": "CRITICAL",
   "summary": {
-    "errors": 0,
-    "warnings": 0,
+    "errors": 7,
+    "warnings": 2,
     "critical_signals": 0,
     "latency_issues": 0
   },
-  "errors": [],
-  "warnings": [],
+  "errors": [
+    {
+      "time": "2025-10-20T16:01:18.121344Z",
+      "severity": "HTTP_5XX",
+      "msg": "INFO:     169.254.169.126:10292 - \"POST /api/gmail/read-reports?max_results=3 HTTP/1.1\" 500 Internal Server Error"
+    },
+    {
+      "time": "2025-10-20T16:01:18.120348Z",
+      "severity": "HTTP_5XX",
+      "msg": "2025-10-20 16:01:18,121 INFO [backend.core.monitoring] {\"timestamp\": \"2025-10-20T16:01:18.121268+00:00\", \"level\": \"INFO\", \"message\": \"Request completed: POST /api/gmail/read-reports\", \"method\": \"POST\", \"endpoint\": \"/api/gmail/read-reports\", \"status_code\": 500, \"duration_ms\": 2.07}"
+    },
+    {
+      "time": "2025-10-20T16:01:18.106138Z",
+      "severity": "ERROR",
+      "msg": "POST https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=3 → 500"
+    },
+    {
+      "time": "2025-10-20T16:00:10.644284Z",
+      "severity": "HTTP_5XX",
+      "msg": "INFO:     169.254.169.126:43606 - \"POST /api/gmail/read-reports?max_results=3 HTTP/1.1\" 500 Internal Server Error"
+    },
+    {
+      "time": "2025-10-20T16:00:10.643772Z",
+      "severity": "HTTP_5XX",
+      "msg": "2025-10-20 16:00:10,645 INFO [backend.core.monitoring] {\"timestamp\": \"2025-10-20T16:00:10.645185+00:00\", \"level\": \"INFO\", \"message\": \"Request completed: POST /api/gmail/read-reports\", \"method\": \"POST\", \"endpoint\": \"/api/gmail/read-reports\", \"status_code\": 500, \"duration_ms\": 1.35}"
+    }
+  ],
+  "warnings": [
+    {
+      "time": "2025-10-20T16:00:45.643197Z",
+      "msg": "GET https://emergence-app-486095406755.europe-west1.run.app/api/monitoring/health/readiness → 404"
+    },
+    {
+      "time": "2025-10-20T16:00:45.627215Z",
+      "msg": "GET https://emergence-app-486095406755.europe-west1.run.app/api/monitoring/health/liveness → 404"
+    }
+  ],
   "critical_signals": [],
   "latency_issues": [],
-  "errors_detailed": [],
-  "warnings_detailed": [],
+  "errors_detailed": [
+    {
+      "timestamp": "2025-10-20T16:01:18.121344Z",
+      "severity": "DEFAULT",
+      "message": "INFO:     169.254.169.126:10292 - \"POST /api/gmail/read-reports?max_results=3 HTTP/1.1\" 500 Internal Server Error",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T16:01:18.120348Z",
+      "severity": "DEFAULT",
+      "message": "2025-10-20 16:01:18,121 INFO [backend.core.monitoring] {\"timestamp\": \"2025-10-20T16:01:18.121268+00:00\", \"level\": \"INFO\", \"message\": \"Request completed: POST /api/gmail/read-reports\", \"method\": \"POST\", \"endpoint\": \"/api/gmail/read-reports\", \"status_code\": 500, \"duration_ms\": 2.07}",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T16:01:18.106138Z",
+      "severity": "ERROR",
+      "message": "POST https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=3 → 500",
+      "stack_trace": null,
+      "endpoint": "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=3",
+      "http_method": "POST",
+      "status_code": 500,
+      "user_agent": "curl/8.12.1",
+      "request_id": "projects/emergence-469005/traces/1ab1ff25100201592be1d3bc57b228dc",
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T16:00:10.644284Z",
+      "severity": "DEFAULT",
+      "message": "INFO:     169.254.169.126:43606 - \"POST /api/gmail/read-reports?max_results=3 HTTP/1.1\" 500 Internal Server Error",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T16:00:10.643772Z",
+      "severity": "DEFAULT",
+      "message": "2025-10-20 16:00:10,645 INFO [backend.core.monitoring] {\"timestamp\": \"2025-10-20T16:00:10.645185+00:00\", \"level\": \"INFO\", \"message\": \"Request completed: POST /api/gmail/read-reports\", \"method\": \"POST\", \"endpoint\": \"/api/gmail/read-reports\", \"status_code\": 500, \"duration_ms\": 1.35}",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T16:00:10.638505Z",
+      "severity": "ERROR",
+      "message": "POST https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=3 → 500",
+      "stack_trace": null,
+      "endpoint": "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=3",
+      "http_method": "POST",
+      "status_code": 500,
+      "user_agent": "curl/8.12.1",
+      "request_id": "projects/emergence-469005/traces/2b814260f94a0b4388d68a78a79e5098",
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T15:58:42.169706Z",
+      "severity": "DEFAULT",
+      "message": "INFO:     169.254.169.126:64340 - \"POST /api/gmail/read-reports?max_results=3 HTTP/1.1\" 500 Internal Server Error",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    }
+  ],
+  "warnings_detailed": [
+    {
+      "timestamp": "2025-10-20T16:00:45.643197Z",
+      "severity": "WARNING",
+      "message": "GET https://emergence-app-486095406755.europe-west1.run.app/api/monitoring/health/readiness → 404",
+      "stack_trace": null,
+      "endpoint": "https://emergence-app-486095406755.europe-west1.run.app/api/monitoring/health/readiness",
+      "http_method": "GET",
+      "status_code": 404,
+      "user_agent": "Python/3.11 aiohttp/3.9.1",
+      "request_id": "projects/emergence-469005/traces/1c862eabb561d31765fb225588ecd9e7",
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T16:00:45.627215Z",
+      "severity": "WARNING",
+      "message": "GET https://emergence-app-486095406755.europe-west1.run.app/api/monitoring/health/liveness → 404",
+      "stack_trace": null,
+      "endpoint": "https://emergence-app-486095406755.europe-west1.run.app/api/monitoring/health/liveness",
+      "http_method": "GET",
+      "status_code": 404,
+      "user_agent": "Python/3.11 aiohttp/3.9.1",
+      "request_id": "projects/emergence-469005/traces/6788dd95b286e0f165fb225588ecddba",
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    }
+  ],
   "error_patterns": {
-    "by_endpoint": {},
+    "by_endpoint": {
+      "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=3": 2
+    },
     "by_error_type": {},
     "by_file": {},
     "frequency_timeline": [],
@@ -27,41 +201,51 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "4079829e",
+      "author": "Fernando Gonzalez",
+      "time": "11 hours ago",
+      "message": "docs(codex): PrÃ©requis Codex Cloud pour accÃ¨s Gmail Guardian"
+    },
+    {
+      "hash": "eda86e26",
+      "author": "Fernando Gonzalez",
+      "time": "11 hours ago",
+      "message": "test(guardian): Test complet rapports email automatiques"
+    },
+    {
+      "hash": "b3e5a310",
+      "author": "Fernando Gonzalez",
+      "time": "11 hours ago",
+      "message": "docs(deployment): DÃ©ploiement production canary â†’ stable rÃ©ussi"
+    },
+    {
       "hash": "e3c5a6bc",
       "author": "Fernando Gonzalez",
-      "time": "22 minutes ago",
+      "time": "11 hours ago",
       "message": "fix(ui): Ajout bouton GÃ©nÃ©rer Rapports Guardian manquant"
     },
     {
       "hash": "1b261942",
       "author": "Fernando Gonzalez",
-      "time": "26 minutes ago",
+      "time": "11 hours ago",
       "message": "docs: Finalisation session debug ChromaDB + Guardian (COMPLETE)"
-    },
-    {
-      "hash": "18c08b7e",
-      "author": "Fernando Gonzalez",
-      "time": "26 minutes ago",
-      "message": "docs: Session debug ChromaDB + Guardian parsing (passation complÃ¨te)"
-    },
-    {
-      "hash": "e4988359",
-      "author": "Fernando Gonzalez",
-      "time": "37 minutes ago",
-      "message": "docs: Session debug ChromaDB + Guardian parsing"
-    },
-    {
-      "hash": "de840bee",
-      "author": "Fernando Gonzalez",
-      "time": "51 minutes ago",
-      "message": "fix(critical): ChromaDB metadata validation + Guardian log parsing"
     }
   ],
   "recommendations": [
     {
-      "priority": "LOW",
-      "action": "No immediate action required",
-      "details": "Production is healthy"
+      "priority": "HIGH",
+      "action": "Investigate critical issues immediately",
+      "details": "High error rate detected",
+      "affected_files": [],
+      "affected_endpoints": [
+        "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=3"
+      ]
+    },
+    {
+      "priority": "HIGH",
+      "action": "Fix endpoint: https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=3",
+      "details": "This endpoint is failing repeatedly (2 errors)",
+      "suggested_fix": "Check request validation, error handling, and database queries for this endpoint"
     }
   ]
 }

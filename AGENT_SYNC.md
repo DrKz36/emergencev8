@@ -93,7 +93,7 @@ API_URL = os.getenv("EMERGENCE_API_URL")
 CODEX_API_KEY = os.getenv("EMERGENCE_CODEX_API_KEY")
 
 def fetch_guardian_emails(max_results=10):
-    response = requests.post(
+    response = requests.get(
         API_URL,
         headers={"X-Codex-API-Key": CODEX_API_KEY},
         params={"max_results": max_results},

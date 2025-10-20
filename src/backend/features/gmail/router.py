@@ -4,7 +4,7 @@ Gmail API Router - Endpoints OAuth2 + Codex API.
 Endpoints:
 - GET /auth/gmail - Initie OAuth flow
 - GET /auth/callback/gmail - Callback OAuth
-- POST /api/gmail/read-reports - API Codex (lecture rapports)
+- GET /api/gmail/read-reports - API Codex (lecture rapports)
 """
 
 import os
@@ -154,7 +154,7 @@ async def gmail_auth_callback(
         )
 
 
-@router.post("/api/gmail/read-reports")
+@router.get("/api/gmail/read-reports")
 async def read_gmail_reports(
     x_codex_api_key: str = Header(..., alias="X-Codex-API-Key"),
     max_results: int = 10

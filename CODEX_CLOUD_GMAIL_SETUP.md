@@ -175,12 +175,9 @@ CODEX_API_KEY = os.getenv("EMERGENCE_CODEX_API_KEY")
 def fetch_guardian_emails(max_results=10):
     """Fetch Guardian emails from Emergence API"""
     try:
-        response = requests.post(
+        response = requests.get(
             API_URL,
-            headers={
-                "X-Codex-API-Key": CODEX_API_KEY,
-                "Content-Type": "application/json"
-            },
+            headers={"X-Codex-API-Key": CODEX_API_KEY},
             params={"max_results": max_results},
             timeout=30
         )
@@ -259,7 +256,7 @@ def guardian_polling_loop():
             print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Fetching Guardian emails...")
 
             # 1. Fetch emails
-            response = requests.post(
+            response = requests.get(
                 API_URL,
                 headers={"X-Codex-API-Key": CODEX_API_KEY},
                 params={"max_results": 5},

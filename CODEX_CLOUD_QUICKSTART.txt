@@ -38,7 +38,7 @@ EMERGENCE_CODEX_API_KEY=77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f418
 
 Test curl:
 
-curl -X POST \
+curl -X GET \
   "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=5" \
   -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb"
 
@@ -55,7 +55,7 @@ API_URL = os.getenv("EMERGENCE_API_URL")
 CODEX_API_KEY = os.getenv("EMERGENCE_CODEX_API_KEY")
 
 def fetch_guardian_emails(max_results=10):
-    response = requests.post(
+    response = requests.get(
         API_URL,
         headers={"X-Codex-API-Key": CODEX_API_KEY},
         params={"max_results": max_results},

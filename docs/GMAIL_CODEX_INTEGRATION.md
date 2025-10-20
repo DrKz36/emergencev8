@@ -85,7 +85,7 @@ https://emergence-app-486095406755.europe-west1.run.app/auth/gmail
 **Requête:**
 
 ```bash
-curl -X POST https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports \
+curl -X GET https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports \
   -H "X-Codex-API-Key: YOUR_SECRET_KEY_HERE" \
   -H "Content-Type: application/json" \
   -d '{"max_results": 10}'
@@ -202,10 +202,10 @@ import requests
 CODEX_API_KEY = "64f5a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0"
 API_URL = "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports"
 
-response = requests.post(
+response = requests.get(
     API_URL,
     headers={"X-Codex-API-Key": CODEX_API_KEY},
-    json={"max_results": 10}
+    params={"max_results": 10}
 )
 
 emails = response.json()["emails"]
@@ -367,7 +367,7 @@ curl http://localhost:8000/api/gmail/status
 echo "CODEX_API_KEY=test-key-123" >> .env
 
 # 2. Appeler API
-curl -X POST http://localhost:8000/api/gmail/read-reports \
+curl -X GET http://localhost:8000/api/gmail/read-reports \
   -H "X-Codex-API-Key: test-key-123" \
   -H "Content-Type: application/json"
 

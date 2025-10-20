@@ -193,6 +193,47 @@ def _extract_bearer_token_from_header(auth_header: Optional[str]) -> str:
         return parts[1].strip()
     return ""
 
+
+def _extract_token_from_request(request: Request) -> str:
+    token = _extract_bearer_token_from_header(request.headers.get("Authorization"))
+    if token:
+        return token
+
+    cookie_candidates: list[str] = []
+    try:
+        cookie_candidates.extend(
+            [
+                request.cookies.get("id_token"),
+                request.cookies.get("access_token"),
+                request.cookies.get("token"),
+            ]
+        )
+    except Exception:
+        pass
+
+    for raw in cookie_candidates:
+        normalized = _normalize_bearer_value(raw) if isinstance(raw, str) else None
+        if normalized and _looks_like_jwt(normalized):
+            return normalized
+
+    query_candidates: list[str] = []
+    try:
+        qp = request.query_params
+        if qp:
+            for key in ("token", "auth", "access_token", "id_token"):
+                value = qp.get(key)
+                if value:
+                    query_candidates.append(str(value))
+    except Exception:
+        pass
+
+    for raw in query_candidates:
+        normalized = _normalize_bearer_value(raw)
+        if normalized and _looks_like_jwt(normalized):
+            return normalized
+
+    return ""
+
 async def _resolve_token_claims(token: str, scope_holder, *, allow_revoked: bool = False) -> Dict[str, Any]:
     if not token:
         raise HTTPException(status_code=401, detail="ID token invalide ou absent.")
@@ -215,7 +256,7 @@ async def _get_claims_from_request(request: Request, *, allow_revoked: bool = Fa
     cached = getattr(request.state, cache_key, None)
     if isinstance(cached, dict):
         return cached
-    token = _extract_bearer_token_from_header(request.headers.get("Authorization"))
+    token = _extract_token_from_request(request)
     claims = await _resolve_token_claims(token, request, allow_revoked=allow_revoked)
     setattr(request.state, cache_key, claims)
     if allow_revoked and not isinstance(getattr(request.state, "auth_claims", None), dict):
