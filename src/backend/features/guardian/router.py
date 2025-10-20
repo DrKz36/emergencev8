@@ -7,7 +7,7 @@ import hashlib
 import hmac
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import logging
 
@@ -345,26 +345,111 @@ async def scheduled_guardian_report(
         )
 
 
+@router.post("/generate-reports")
+async def generate_guardian_reports():
+    """
+    Endpoint pour générer rapports Guardian en temps réel (Production logs)
+    Upload les rapports vers Cloud Storage pour persistence
+
+    Accessible sans auth pour l'instant (TODO: require admin)
+    """
+    logger.info("Manual Guardian report generation triggered from Admin UI")
+
+    try:
+        from google.cloud import logging as cloud_logging
+        from backend.features.guardian.storage_service import GuardianStorageService
+
+        # Initialize services
+        storage = GuardianStorageService()
+        log_client = cloud_logging.Client()
+
+        # Fetch recent production logs (last 1 hour)
+        logger.info("Fetching production logs from Cloud Logging...")
+        filter_str = '''
+            resource.type="cloud_run_revision"
+            AND resource.labels.service_name="emergence-app"
+            AND timestamp>="{}Z"
+        '''.format((datetime.now() - timedelta(hours=1)).isoformat())
+
+        entries = list(log_client.list_entries(filter_=filter_str, max_results=100))
+
+        # Analyze logs
+        errors = []
+        warnings = []
+        for entry in entries:
+            if entry.severity in ["ERROR", "CRITICAL"]:
+                errors.append({
+                    "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
+                    "severity": entry.severity,
+                    "message": str(entry.payload)[:500]
+                })
+            elif entry.severity == "WARNING":
+                warnings.append({
+                    "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
+                    "message": str(entry.payload)[:500]
+                })
+
+        # Generate prod report
+        prod_report = {
+            "timestamp": datetime.now().isoformat(),
+            "status": "CRITICAL" if len(errors) >= 5 else ("DEGRADED" if len(errors) > 0 else "OK"),
+            "logs_analyzed": len(entries),
+            "summary": {
+                "errors": len(errors),
+                "warnings": len(warnings),
+                "critical_signals": sum(1 for e in errors if e["severity"] == "CRITICAL")
+            },
+            "errors": errors[:10],  # Top 10 errors
+            "warnings": warnings[:5]  # Top 5 warnings
+        }
+
+        # Upload to Cloud Storage
+        upload_success = storage.upload_report("prod_report.json", prod_report)
+
+        if upload_success:
+            logger.info("✅ Production report generated and uploaded to Cloud Storage")
+            return {
+                "status": "success",
+                "message": "Rapport production généré et uploadé",
+                "timestamp": datetime.now().isoformat(),
+                "report": prod_report
+            }
+        else:
+            logger.error("Failed to upload report to Cloud Storage")
+            return {
+                "status": "error",
+                "message": "Erreur lors de l'upload vers Cloud Storage",
+                "timestamp": datetime.now().isoformat()
+            }
+
+    except Exception as e:
+        logger.error(f"Error generating Guardian reports: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la génération des rapports: {str(e)}"
+        )
+
+
 @router.post("/run-audit")
 async def run_guardian_audit():
     """
     Endpoint pour lancer audit Guardian manuellement (Admin UI)
-    Charge tous les rapports disponibles et retourne summary
+    Charge tous les rapports disponibles depuis Cloud Storage et retourne summary
 
     Accessible sans auth pour l'instant (TODO: require admin)
     """
     logger.info("Manual Guardian audit triggered from Admin UI")
 
     try:
-        # Charger tous les rapports Guardian
+        # Charger tous les rapports Guardian depuis Cloud Storage
         email_service = GuardianEmailService()
         reports = email_service.load_all_reports()
 
         if not any(reports.values()):
-            logger.warning("No Guardian reports found")
+            logger.warning("No Guardian reports found in Cloud Storage")
             return {
                 "status": "warning",
-                "message": "Aucun rapport Guardian trouvé",
+                "message": "Aucun rapport Guardian trouvé (générez-les d'abord avec /generate-reports)",
                 "timestamp": datetime.now().isoformat(),
                 "reports": {}
             }

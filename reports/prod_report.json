@@ -1,31 +1,131 @@
 {
-  "timestamp": "2025-10-20T05:05:43.914792",
+  "timestamp": "2025-10-20T05:19:15.544856",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
   "freshness": "1h",
-  "status": "OK",
+  "status": "DEGRADED",
   "summary": {
-    "errors": 0,
+    "errors": 4,
     "warnings": 0,
     "critical_signals": 0,
     "latency_issues": 0
   },
-  "errors": [],
+  "errors": [
+    {
+      "time": "2025-10-20T03:18:28.648467Z",
+      "severity": "ERROR",
+      "msg": "Traceback (most recent call last):\n  File \"/app/src/backend/features/memory/gardener.py\", line 1267, in _store_preference_records\n    await asyncio.to_thread(\n  File \"/usr/local/lib/python3.11/asyncio/threads.py\", line 25, in to_thread\n    return await loop.run_in_executor(None, func_call)\n         "
+    },
+    {
+      "time": "2025-10-20T03:18:28.648440Z",
+      "severity": "ERROR",
+      "msg": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py\", line 90, in wrapper\n    return func(self, *args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/Collectio"
+    },
+    {
+      "time": "2025-10-20T03:18:28.646985Z",
+      "severity": "ERROR",
+      "msg": "Traceback (most recent call last):\n  File \"/app/src/backend/features/memory/vector_service.py\", line 794, in add_items\n    collection.upsert(\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/Collection.py\", line 334, in upsert\n    upsert_request = self._validate_and_prepare_upsert"
+    },
+    {
+      "time": "2025-10-20T03:18:28.646967Z",
+      "severity": "ERROR",
+      "msg": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py\", line 90, in wrapper\n    return func(self, *args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/Collectio"
+    }
+  ],
   "warnings": [],
   "critical_signals": [],
   "latency_issues": [],
-  "errors_detailed": [],
+  "errors_detailed": [
+    {
+      "timestamp": "2025-10-20T03:18:28.648467Z",
+      "severity": "ERROR",
+      "message": "Traceback (most recent call last):\n  File \"/app/src/backend/features/memory/gardener.py\", line 1267, in _store_preference_records\n    await asyncio.to_thread(\n  File \"/usr/local/lib/python3.11/asyncio/threads.py\", line 25, in to_thread\n    return await loop.run_in_executor(None, func_call)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/concurrent/futures/thread.py\", line 58, in run\n    result = self.fn(*self.args, **self.kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/app/src/backend/features/memory/vector_service.py\", line 794, in add_items\n    collection.upsert(\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/Collection.py\", line 334, in upsert\n    upsert_request = self._validate_and_prepare_upsert_request(\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py\", line 93, in wrapper\n    raise type(e)(msg).with_traceback(e.__traceback__)\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py\", line 90, in wrapper\n    return func(self, *args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py\", line 399, in _validate_and_prepare_upsert_request\n    validate_insert_record_set(record_set=upsert_records)\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/types.py\", line 230, in validate_insert_record_set\n    validate_metadatas(record_set[\"metadatas\"])\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/types.py\", line 592, in validate_metadatas\n    validate_metadata(metadata)\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/types.py\", line 558, in validate_metadata\n    raise ValueError(\nValueError: Expected metadata value to be a str, int, float or bool, got [] which is a list in upsert.",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": "ValueError",
+      "file_path": "/app/src/backend/features/memory/gardener.py",
+      "line_number": 1267,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T03:18:28.648440Z",
+      "severity": "ERROR",
+      "message": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py\", line 90, in wrapper\n    return func(self, *args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py\", line 399, in _validate_and_prepare_upsert_request\n    validate_insert_record_set(record_set=upsert_records)\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/types.py\", line 230, in validate_insert_record_set\n    validate_metadatas(record_set[\"metadatas\"])\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/types.py\", line 592, in validate_metadatas\n    validate_metadata(metadata)\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/types.py\", line 558, in validate_metadata\n    raise ValueError(\nValueError: Expected metadata value to be a str, int, float or bool, got [] which is a list",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": "ValueError",
+      "file_path": "/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py",
+      "line_number": 90,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T03:18:28.646985Z",
+      "severity": "ERROR",
+      "message": "Traceback (most recent call last):\n  File \"/app/src/backend/features/memory/vector_service.py\", line 794, in add_items\n    collection.upsert(\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/Collection.py\", line 334, in upsert\n    upsert_request = self._validate_and_prepare_upsert_request(\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py\", line 93, in wrapper\n    raise type(e)(msg).with_traceback(e.__traceback__)\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py\", line 90, in wrapper\n    return func(self, *args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py\", line 399, in _validate_and_prepare_upsert_request\n    validate_insert_record_set(record_set=upsert_records)\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/types.py\", line 230, in validate_insert_record_set\n    validate_metadatas(record_set[\"metadatas\"])\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/types.py\", line 592, in validate_metadatas\n    validate_metadata(metadata)\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/types.py\", line 558, in validate_metadata\n    raise ValueError(\nValueError: Expected metadata value to be a str, int, float or bool, got [] which is a list in upsert.",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": "ValueError",
+      "file_path": "/app/src/backend/features/memory/vector_service.py",
+      "line_number": 794,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T03:18:28.646967Z",
+      "severity": "ERROR",
+      "message": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py\", line 90, in wrapper\n    return func(self, *args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py\", line 399, in _validate_and_prepare_upsert_request\n    validate_insert_record_set(record_set=upsert_records)\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/types.py\", line 230, in validate_insert_record_set\n    validate_metadatas(record_set[\"metadatas\"])\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/types.py\", line 592, in validate_metadatas\n    validate_metadata(metadata)\n  File \"/usr/local/lib/python3.11/site-packages/chromadb/api/types.py\", line 558, in validate_metadata\n    raise ValueError(\nValueError: Expected metadata value to be a str, int, float or bool, got [] which is a list",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": "ValueError",
+      "file_path": "/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py",
+      "line_number": 90,
+      "full_payload": null
+    }
+  ],
   "warnings_detailed": [],
   "error_patterns": {
     "by_endpoint": {},
-    "by_error_type": {},
-    "by_file": {},
+    "by_error_type": {
+      "ValueError": 4
+    },
+    "by_file": {
+      "/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py": 2,
+      "/app/src/backend/features/memory/gardener.py": 1,
+      "/app/src/backend/features/memory/vector_service.py": 1
+    },
     "frequency_timeline": [],
-    "most_common_error": null
+    "most_common_error": "ValueError"
   },
   "code_snippets": [],
   "recent_commits": [
+    {
+      "hash": "e5e1f7ec",
+      "author": "Fernando Gonzalez",
+      "time": "5 seconds ago",
+      "message": "docs: Session critique fix production (OOM + bugs)"
+    },
+    {
+      "hash": "53bfb455",
+      "author": "Fernando Gonzalez",
+      "time": "12 minutes ago",
+      "message": "fix(critical): Fix production crashes (OOM + bugs)"
+    },
     {
       "hash": "0669d03b",
       "author": "Fernando Gonzalez",
@@ -35,33 +135,26 @@
     {
       "hash": "d9f9d166",
       "author": "Fernando Gonzalez",
-      "time": "7 hours ago",
+      "time": "8 hours ago",
       "message": "docs(guardian): Guide complet configuration Codex GPT"
     },
     {
       "hash": "02d62e64",
       "author": "Fernando Gonzalez",
-      "time": "7 hours ago",
-      "message": "feat(guardian): Scripts de test et debug email Guardian"
-    },
-    {
-      "hash": "df1b2d21",
-      "author": "Fernando Gonzalez",
-      "time": "7 hours ago",
-      "message": "fix(deploy): Ignorer reports/tests temporaires dans .gcloudignore"
-    },
-    {
-      "hash": "b0ce4915",
-      "author": "Fernando Gonzalez",
       "time": "8 hours ago",
-      "message": "feat(gmail+guardian): OAuth scope fix + Email enrichi pour Codex"
+      "message": "feat(guardian): Scripts de test et debug email Guardian"
     }
   ],
   "recommendations": [
     {
-      "priority": "LOW",
-      "action": "No immediate action required",
-      "details": "Production is healthy"
+      "priority": "MEDIUM",
+      "action": "Monitor closely and investigate warnings",
+      "details": "0 warnings detected",
+      "affected_files": [
+        "/usr/local/lib/python3.11/site-packages/chromadb/api/models/CollectionCommon.py",
+        "/app/src/backend/features/memory/gardener.py",
+        "/app/src/backend/features/memory/vector_service.py"
+      ]
     }
   ]
 }

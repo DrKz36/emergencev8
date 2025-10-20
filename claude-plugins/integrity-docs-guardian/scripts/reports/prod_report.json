@@ -1,22 +1,164 @@
 {
-  "timestamp": "2025-10-20T05:05:43.894791",
+  "timestamp": "2025-10-20T05:29:42.750888",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
   "freshness": "1h",
-  "status": "OK",
+  "status": "DEGRADED",
   "summary": {
     "errors": 0,
-    "warnings": 0,
+    "warnings": 8,
     "critical_signals": 0,
     "latency_issues": 0
   },
   "errors": [],
-  "warnings": [],
+  "warnings": [
+    {
+      "time": "2025-10-20T03:28:44.364916Z",
+      "msg": ""
+    },
+    {
+      "time": "2025-10-20T03:28:44.180531Z",
+      "msg": ""
+    },
+    {
+      "time": "2025-10-20T03:28:41.307984Z",
+      "msg": ""
+    },
+    {
+      "time": "2025-10-20T03:28:41.277993Z",
+      "msg": ""
+    },
+    {
+      "time": "2025-10-20T03:28:41.248584Z",
+      "msg": ""
+    }
+  ],
   "critical_signals": [],
   "latency_issues": [],
   "errors_detailed": [],
-  "warnings_detailed": [],
+  "warnings_detailed": [
+    {
+      "timestamp": "2025-10-20T03:28:44.364916Z",
+      "severity": "WARNING",
+      "message": "",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T03:28:44.180531Z",
+      "severity": "WARNING",
+      "message": "",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T03:28:41.307984Z",
+      "severity": "WARNING",
+      "message": "",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T03:28:41.277993Z",
+      "severity": "WARNING",
+      "message": "",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T03:28:41.248584Z",
+      "severity": "WARNING",
+      "message": "",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T03:28:41.205889Z",
+      "severity": "WARNING",
+      "message": "",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T03:28:41.178090Z",
+      "severity": "WARNING",
+      "message": "",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-20T03:28:41.151200Z",
+      "severity": "WARNING",
+      "message": "",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    }
+  ],
   "error_patterns": {
     "by_endpoint": {},
     "by_error_type": {},
@@ -27,41 +169,42 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "e5e1f7ec",
+      "author": "Fernando Gonzalez",
+      "time": "11 minutes ago",
+      "message": "docs: Session critique fix production (OOM + bugs)"
+    },
+    {
+      "hash": "53bfb455",
+      "author": "Fernando Gonzalez",
+      "time": "22 minutes ago",
+      "message": "fix(critical): Fix production crashes (OOM + bugs)"
+    },
+    {
       "hash": "0669d03b",
       "author": "Fernando Gonzalez",
-      "time": "7 hours ago",
+      "time": "8 hours ago",
       "message": "docs(session): Documentation complÃ¨te session OAuth + Guardian enrichi"
     },
     {
       "hash": "d9f9d166",
       "author": "Fernando Gonzalez",
-      "time": "7 hours ago",
+      "time": "8 hours ago",
       "message": "docs(guardian): Guide complet configuration Codex GPT"
     },
     {
       "hash": "02d62e64",
       "author": "Fernando Gonzalez",
-      "time": "7 hours ago",
-      "message": "feat(guardian): Scripts de test et debug email Guardian"
-    },
-    {
-      "hash": "df1b2d21",
-      "author": "Fernando Gonzalez",
-      "time": "7 hours ago",
-      "message": "fix(deploy): Ignorer reports/tests temporaires dans .gcloudignore"
-    },
-    {
-      "hash": "b0ce4915",
-      "author": "Fernando Gonzalez",
       "time": "8 hours ago",
-      "message": "feat(gmail+guardian): OAuth scope fix + Email enrichi pour Codex"
+      "message": "feat(guardian): Scripts de test et debug email Guardian"
     }
   ],
   "recommendations": [
     {
-      "priority": "LOW",
-      "action": "No immediate action required",
-      "details": "Production is healthy"
+      "priority": "MEDIUM",
+      "action": "Monitor closely and investigate warnings",
+      "details": "8 warnings detected",
+      "affected_files": []
     }
   ]
 }

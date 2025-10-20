@@ -26,6 +26,8 @@ tiktoken>=0.5.2,<0.8
 
 # --- Data & vectors ---
 google-cloud-firestore>=2.16,<3
+google-cloud-storage>=2.10,<3  # Guardian reports Cloud Storage
+google-cloud-logging>=3.5,<4   # Guardian production logs analysis
 aiosqlite==0.21.0                # match env stable
 chromadb==0.5.23                 # upgraded for batch upsert optimizations (+20-40% performance)
 qdrant-client>=1.7.3,<2          # optional vector backend (Qdrant)

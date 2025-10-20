@@ -2,6 +2,8 @@
 Guardian Email Report Service
 Loads Guardian reports and sends them via email using EmailService
 Replaces the old standalone scripts (guardian_email_report.py, send_guardian_reports_email.py)
+
+UPDATED 2025-10-20: Now uses Cloud Storage for report persistence (Cloud Run stateless fix)
 """
 import json
 import os
@@ -10,6 +12,7 @@ from typing import Dict, Optional
 import logging
 
 from backend.features.auth.email_service import EmailService
+from backend.features.guardian.storage_service import GuardianStorageService
 
 logger = logging.getLogger("emergence.guardian.email")
 
@@ -22,20 +25,23 @@ class GuardianEmailService:
         Initialize Guardian Email Service
 
         Args:
-            reports_dir: Directory containing Guardian JSON reports (default: repo/reports/)
+            reports_dir: Directory containing Guardian JSON reports (fallback only, deprecated)
         """
+        # Use Cloud Storage service (with local fallback)
+        self.storage_service = GuardianStorageService(use_local_fallback=True)
+
+        # Keep old reports_dir for backward compat (fallback only)
         if reports_dir is None:
-            # Default to repo/reports/
             self.reports_dir = Path(__file__).parent.parent.parent.parent.parent / "reports"
         else:
             self.reports_dir = reports_dir
 
         self.email_service = EmailService()
-        logger.info(f"GuardianEmailService initialized with reports_dir: {self.reports_dir}")
+        logger.info(f"GuardianEmailService initialized with Cloud Storage (fallback: {self.reports_dir})")
 
     def load_report(self, report_name: str) -> Optional[Dict]:
         """
-        Load a single Guardian report JSON file
+        Load a single Guardian report from Cloud Storage (or local fallback)
 
         Args:
             report_name: Name of the report file (e.g., 'prod_report.json')
@@ -43,29 +49,8 @@ class GuardianEmailService:
         Returns:
             Report data as dict, or None if not found or invalid
         """
-        report_path = self.reports_dir / report_name
-
-        if not report_path.exists():
-            logger.warning(f"Report file not found: {report_path}")
-            return None
-
-        try:
-            with open(report_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-
-            if not isinstance(data, dict):
-                logger.warning(f"Report {report_name} is not a valid dict")
-                return None
-
-            logger.info(f"Loaded report: {report_name}")
-            return data
-
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error in {report_name}: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Error loading {report_name}: {e}")
-            return None
+        # Use Cloud Storage service (handles fallback automatically)
+        return self.storage_service.download_report(report_name)
 
     def load_all_reports(self) -> Dict[str, Optional[Dict]]:
         """
