@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-20 17:10 CET (Claude Code : FIX CODEX_API_KEY + ENDPOINT GMAIL OPÉRATIONNEL)
+**Dernière mise à jour** : 2025-10-20 18:40 CET (Claude Code : FIX GMAIL 500 + OOM PRODUCTION → DÉPLOYÉ ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -16,6 +16,54 @@
 3. [`CODEV_PROTOCOL.md`](CODEV_PROTOCOL.md) — protocole multi-agents
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
 5. `git status` + `git log --online -10` - état Git
+
+## ✅ Session COMPLÉTÉE (2025-10-20 18:40 CET) — Agent : Claude Code (FIX GMAIL 500 + OOM PRODUCTION → DÉPLOYÉ)
+
+### 🔥 URGENCE PRODUCTION RÉSOLUE : 2 bugs critiques corrigés + déployés
+
+**Problèmes identifiés:**
+1. **Endpoint Gmail pétait en 500** → 411 Length Required (POST sans body)
+2. **OOM Kill** → mémoire 671 MiB / 512 MiB limite
+
+**Corrections appliquées:**
+
+1. ✅ **Fix Gmail API (Commit 60a45e5)** - POST → GET
+   - Endpoint `/api/gmail/read-reports` changé de POST à GET
+   - Root cause: Google Cloud Load Balancer exige Content-Length header sur POST sans body
+   - Sémantiquement correct: lecture = GET, pas POST
+   - Fichiers modifiés:
+     - [src/backend/features/gmail/router.py](src/backend/features/gmail/router.py:157) - `@router.post` → `@router.get`
+     - 10+ fichiers de doc mis à jour (curl, Python examples)
+
+2. ✅ **Fix OOM Production**
+   - Augmenté mémoire Cloud Run: 512 MiB → 1 GiB
+   - Commande: `gcloud run services update emergence-app --memory=1Gi`
+
+3. ✅ **Déploiement terminé**
+   - Build Docker OK (18 GB, 140s)
+   - Push Artifact Registry OK (digest sha256:8007832a94a2...)
+   - Déployé sur Cloud Run: **revision emergence-app-00407-lxj**
+   - 100% traffic routé vers nouvelle revision
+
+**Validation finale:**
+```bash
+curl -X GET "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=3" \
+  -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb"
+```
+- ✅ **HTTP/1.1 200 OK**
+- ✅ `{"success":true,"count":3,"emails":[...]}`
+- ✅ 3 emails Guardian retournés correctement
+
+**Résultats:**
+- ❌ Avant: POST `/api/gmail/read-reports` → 500 (411 Length Required) + OOM
+- ✅ Après: **GET `/api/gmail/read-reports` → 200 OK** + mémoire stable 1 GiB
+
+**Prochaines actions recommandées:**
+- ✅ Codex Cloud peut maintenant accéder aux emails (GET au lieu de POST)
+- 📊 Monitorer logs 24h pour confirmer stabilité
+- 📝 Documenter dans CHANGELOG.md
+
+---
 
 ## ✅ Session COMPLÉTÉE (2025-10-20 17:10 CET) — Agent : Claude Code (FIX CODEX_API_KEY → ENDPOINT GMAIL 100% OPÉRATIONNEL)
 
