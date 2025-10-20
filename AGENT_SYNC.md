@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-19 23:10 CET (Codex : Résolution conflits + rapports Guardian)
+**Dernière mise à jour** : 2025-10-20 05:15 CET (Claude Code : FIX CRITIQUE PRODUCTION - OOM + Bugs)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -16,6 +16,65 @@
 3. [`CODEV_PROTOCOL.md`](CODEV_PROTOCOL.md) — protocole multi-agents
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
 5. `git status` + `git log --online -10` - état Git
+
+## 🚨 Session CRITIQUE complétée (2025-10-20 05:15 CET) — Agent : Claude Code (FIX PRODUCTION DOWN)
+
+**Contexte :**
+Production en état critique : déconnexions constantes, non-réponses agents, erreurs auth, crashes mémoire.
+
+**Problèmes identifiés via logs GCloud :**
+1. **💀 MEMORY LEAK / OOM CRITIQUE**
+   - Container crashait: 1050 MiB used (limite 1024 MiB dépassée)
+   - Instances terminées par Cloud Run → déconnexions utilisateurs
+   - Requêtes HTTP 503 en cascade
+
+2. **🐛 BUG VECTOR_SERVICE.PY ligne 873**
+   - `ValueError: The truth value of an array with more than one element is ambiguous`
+   - Check `if embeds[i]` sur numpy array = crash
+   - Causait non-réponses des agents mémoire
+
+3. **🐛 BUG ADMIN_SERVICE.PY ligne 111**
+   - `sqlite3.OperationalError: no such column: oauth_sub`
+   - Code essayait SELECT sur colonne inexistante
+   - Causait crashes dashboard admin + erreurs auth
+
+**Actions menées :**
+1. Fix [vector_service.py:866-880](src/backend/features/memory/vector_service.py#L866-L880)
+   - Remplacé check ambigu par `embed_value is not None and hasattr check`
+   - Plus de crash sur numpy arrays
+
+2. Fix [admin_service.py:114-145](src/backend/features/dashboard/admin_service.py#L114-L145)
+   - Ajouté try/except avec fallback sur old schema (sans oauth_sub)
+   - Backward compatible pour DB prod
+
+3. Créé migration [20251020_add_oauth_sub.sql](src/backend/core/database/migrations/20251020_add_oauth_sub.sql)
+   - `ALTER TABLE auth_allowlist ADD COLUMN oauth_sub TEXT`
+   - Index sur oauth_sub pour perfs
+   - À appliquer manuellement en prod si besoin
+
+4. Augmenté RAM Cloud Run: **1Gi → 2Gi**
+   - Révision **00397-xxn** déployée (europe-west1)
+   - Config: 2 CPU + 2Gi RAM + timeout 300s
+   - Build time: ~3min, Deploy time: ~5min
+
+**Résultats :**
+- ✅ Health check: OK (https://emergence-app-486095406755.europe-west1.run.app/api/health)
+- ✅ Logs clean: Aucune erreur sur nouvelle révision
+- ✅ Email Guardian: Config testée et fonctionnelle
+- ✅ Production: STABLE
+
+**Fichiers modifiés (commit 53bfb45) :**
+- `src/backend/features/memory/vector_service.py` (fix numpy)
+- `src/backend/features/dashboard/admin_service.py` (fix oauth_sub)
+- `src/backend/core/database/migrations/20251020_add_oauth_sub.sql` (nouveau)
+- `AGENT_SYNC.md` + `docs/passation.md` (cette sync)
+- `reports/*.json` + `email_html_output.html` (Guardian sync Codex)
+
+**Prochaines actions recommandées :**
+1. ⚠️ Appliquer migration oauth_sub en prod si besoin Google OAuth
+2. 📊 Monitorer RAM usage sur 24h (2Gi suffit-il ?)
+3. 🔍 Identifier source du memory leak potentiel
+4. ✅ Tests backend à relancer (pytest bloqué par proxy dans session précédente)
 
 ## ✅ Session complétée (2025-10-19 23:10 CET) — Agent : Codex (Résolution conflits + rapports Guardian)
 
