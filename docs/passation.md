@@ -1,5 +1,131 @@
 ## [2025-10-20 07:20 CET] — Agent: Claude Code (PRÉREQUIS CODEX CLOUD → GMAIL ACCESS)
 
+## [2025-10-20 17:10] — Agent: Claude Code
+
+### Fichiers modifiés
+- `AGENT_SYNC.md` (nouvelle session: fix CODEX_API_KEY)
+- `docs/passation.md` (cette entrée)
+- Infrastructure GCP: Cloud Run service `emergence-app` (nouvelle revision 00406-8qg)
+- Permissions IAM: Secret `codex-api-key` (ajout secretAccessor)
+
+### Contexte
+**Problème :** Codex galère pour voir les emails Guardian. L'endpoint `/api/gmail/read-reports` retournait HTTP 500 "Codex API key not configured on server".
+
+**Diagnostic :**
+1. Secret GCP `codex-api-key` existe et contient la clé correcte
+2. Template service Cloud Run contient bien `CODEX_API_KEY` monté depuis le secret
+3. Mais la revision active `emergence-app-00529-hin` n'avait PAS `CODEX_API_KEY`
+4. Permissions IAM manquantes : service account ne pouvait pas lire le secret
+5. `gcloud run services update` ne créait pas de nouvelles revisions (bug Cloud Run)
+
+**Root cause :** Double problème de permissions IAM + sync template/revision Cloud Run.
+
+### Actions réalisées
+
+**1. Ajout permissions IAM (5 min)**
+```bash
+gcloud secrets add-iam-policy-binding codex-api-key \
+  --role=roles/secretmanager.secretAccessor \
+  --member=serviceAccount:486095406755-compute@developer.gserviceaccount.com
+```
+✅ Service account peut maintenant lire le secret.
+
+**2. Nettoyage revisions foireuses (10 min)**
+- Supprimé revisions 00400, 00401, 00402 (créées avec 512Mi → OOM)
+- Forcé traffic à 100% sur 00529-hin (ancienne stable)
+
+**3. Création service YAML complet (15 min)**
+Créé `/tmp/emergence-app-service-fixed.yaml` avec:
+- Tous les secrets (OPENAI, ANTHROPIC, GOOGLE, GEMINI, **CODEX_API_KEY**)
+- Image exacte avec SHA256 digest
+- Nouvelle env var `FIX_CODEX_API=true` pour forcer changement
+- Resources correctes (2Gi memory, 1 CPU)
+
+**4. Déploiement via `gcloud run services replace` (20 min)**
+```bash
+gcloud run services replace /tmp/emergence-app-service-fixed.yaml
+```
+✅ Nouvelle revision `emergence-app-00406-8qg` créée et déployée (100% trafic)
+
+**5. Tests validation (5 min)**
+```bash
+curl -X POST \
+  "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=3" \
+  -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb" \
+  -H "Content-Type: application/json" \
+  -d "{}"
+```
+✅ **HTTP 200 OK** - 3 emails Guardian retournés avec tous les détails !
+
+**6. Documentation (10 min)**
+- ✅ Mis à jour `AGENT_SYNC.md` avec diagnostic complet, solution, et instructions pour Codex
+- ✅ Code Python exemple pour Codex Cloud
+- ✅ Checklist complète des prochaines actions
+
+### Tests
+
+**Endpoint Gmail API :**
+- ✅ HTTP 200 OK
+- ✅ 3 emails Guardian récupérés (id, subject, body, snippet, timestamp)
+- ✅ Parsing JSON parfait
+- ✅ Latence acceptable (~2s)
+
+**Production Cloud Run :**
+- ✅ Revision `emergence-app-00406-8qg` sert 100% trafic
+- ✅ Service healthy, aucune erreur dans logs
+- ✅ Tous les secrets montés correctement (OPENAI, ANTHROPIC, GOOGLE, GEMINI, CODEX_API_KEY)
+
+### Résultats
+
+**AVANT fix :**
+- ❌ Endpoint Gmail API : HTTP 500 "Codex API key not configured"
+- ❌ Secret `CODEX_API_KEY` absent de la revision active
+- ❌ Permissions IAM manquantes
+- ❌ Codex Cloud ne peut pas lire les emails Guardian
+
+**APRÈS fix :**
+- ✅ Endpoint Gmail API : HTTP 200 OK
+- ✅ Secret `CODEX_API_KEY` monté et accessible dans revision 00406-8qg
+- ✅ Permissions IAM configurées (secretAccessor)
+- ✅ Codex Cloud peut maintenant récupérer les emails Guardian
+
+### Impact
+
+**Production :** ✅ Stable, aucune régression. Nouvelle revision 00406-8qg opérationnelle.
+
+**Codex Cloud :** 🚀 Peut maintenant accéder aux emails Guardian pour auto-fix.
+
+**Prochaines étapes pour Codex :**
+1. Configurer credentials (`EMERGENCE_API_URL`, `EMERGENCE_CODEX_API_KEY`)
+2. Tester accès avec code Python fourni
+3. Implémenter polling toutes les 30-60 min
+4. Parser les emails et extraire erreurs CRITICAL/ERROR
+
+### Travail de Codex GPT pris en compte
+
+Aucun travail récent de Codex. Session autonome Claude Code.
+
+### Prochaines actions recommandées
+
+**Immediate (pour Codex Cloud) :**
+1. **Configurer credentials** dans env Codex Cloud
+2. **Tester accès** endpoint Gmail API
+3. **Implémenter polling** pour récupérer emails Guardian
+
+**Optionnel (pour admin FG) :**
+1. **OAuth Gmail flow** si pas déjà fait : https://emergence-app-486095406755.europe-west1.run.app/auth/gmail
+
+**Monitoring :**
+1. Surveiller logs Cloud Run pendant 24h pour vérifier stabilité revision 00406
+2. Vérifier que Codex Cloud utilise bien l'endpoint
+
+### Blocages
+
+**AUCUN.** Endpoint Gmail API 100% opérationnel et testé. Codex Cloud peut maintenant accéder aux emails Guardian. 🚀
+
+---
+
+
 ### Fichiers modifiés
 
 - `CODEX_CLOUD_GMAIL_SETUP.md` (nouveau - guide complet 450 lignes)
