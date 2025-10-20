@@ -1,3 +1,94 @@
+## [2025-10-20 07:10 CET] — Agent: Claude Code (TEST COMPLET RAPPORTS EMAIL GUARDIAN)
+
+### Fichiers modifiés
+
+- `claude-plugins/integrity-docs-guardian/TEST_EMAIL_REPORTS.md` (nouveau - documentation tests)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+
+Suite au déploiement production, test complet du système d'envoi automatique de rapports Guardian par email. Validation que les audits manuels et automatiques génèrent et envoient bien des rapports enrichis par email à l'admin.
+
+### Actions réalisées
+
+**Phase 1: Vérification config email**
+- Vérifié variables SMTP dans `.env` (Gmail configuré)
+- Vérifié script `send_guardian_reports_email.py`
+- Confirmé EmailService backend opérationnel
+
+**Phase 2: Test audit manuel avec email**
+```bash
+pwsh -File run_audit.ps1 -EmailReport -EmailTo "gonzalefernando@gmail.com"
+```
+- Exécuté 6 agents Guardian (Anima, Neo, ProdGuardian, Argus, Nexus, Master)
+- Durée totale: 7.9s
+- Statut: WARNING (1 warning Argus, 0 erreurs critiques)
+- ✅ **Email envoyé avec succès**
+- Rapports JSON générés: `global_report.json`, `unified_report.json`, etc.
+
+**Phase 3: Configuration Task Scheduler avec email**
+```bash
+pwsh -File setup_guardian.ps1 -EmailTo "gonzalefernando@gmail.com"
+```
+- Créé tâche planifiée `EMERGENCE_Guardian_ProdMonitor`
+- Intervalle: toutes les 6 heures
+- Email automatiquement configuré dans la tâche
+- Git Hooks activés (pre-commit, post-commit, pre-push)
+
+**Phase 4: Test exécution automatique**
+```bash
+Start-ScheduledTask -TaskName 'EMERGENCE_Guardian_ProdMonitor'
+```
+- Tâche exécutée manuellement pour test
+- LastTaskResult: 0 (succès)
+- Nouveau rapport prod généré: `prod_report.json` @ 07:05:10
+- Production status: OK (0 errors, 0 warnings)
+
+**Phase 5: Documentation complète**
+- Créé `TEST_EMAIL_REPORTS.md` (3 pages de doc)
+- Documenté config, commandes, résultats, format email
+- Inclus exemples de contenu JSON et HTML
+
+### Tests validation
+
+- ✅ **Config email:** Variables SMTP OK, service EmailService fonctionnel
+- ✅ **Audit manuel:** 6 agents OK, email envoyé avec succès
+- ✅ **Audit automatique:** Task Scheduler configuré et testé (LastResult: 0)
+- ✅ **Rapports enrichis:** JSON complets + email HTML stylisé généré
+- ✅ **Production monitoring:** Configuré toutes les 6h avec alertes email
+
+### Format rapport email
+
+**Contenu HTML stylisé:**
+1. Statut global avec emoji (✅ OK / ⚠️ WARNING / 🚨 CRITICAL)
+2. Résumé par agent:
+   - Anima: Documentation gaps, fichiers modifiés
+   - Neo: Intégrité backend/frontend, breaking changes API
+   - ProdGuardian: Erreurs prod, warnings, latence, signaux critiques
+   - Nexus: Rapport unifié, statistiques globales
+3. Statistiques détaillées (fichiers, issues par sévérité/catégorie)
+4. Actions recommandées (immédiat/court terme/long terme)
+5. Métadonnées (timestamp, commit hash, branche)
+
+### Travail de Codex GPT pris en compte
+
+Aucun travail récent de Codex GPT. Session autonome de test Guardian email.
+
+### Prochaines actions recommandées
+
+1. **Vérifier réception email** dans boîte mail gonzalefernando@gmail.com
+2. **Tester avec erreur critique** (simulation) pour valider alertes email 🚨
+3. **Monitorer exécutions auto** Task Scheduler pendant 24-48h
+4. **Améliorer template email** avec graphiques métriques temporelles
+5. **Support multi-destinataires** (CC, BCC pour équipe élargie)
+
+### Blocages
+
+Aucun. Système d'envoi email opérationnel et validé.
+
+---
+
 ## [2025-10-20 06:55 CET] — Agent: Claude Code (DÉPLOIEMENT PRODUCTION CANARY → STABLE)
 
 ### Fichiers modifiés
