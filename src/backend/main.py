@@ -36,6 +36,14 @@ from backend.containers import ServiceContainer  # noqa: E402
 from backend.core.database.schema import initialize_database  # noqa: E402
 from backend.core.config import DENYLIST_ENABLED, DENYLIST_PATTERNS  # noqa: E402
 
+# État global du warm-up (pour healthcheck)
+_warmup_ready = {
+    "db": False,
+    "embed": False,
+    "vector": False,
+    "di": False,
+}
+
 
 def _import_router(dotted: str):
     try:
@@ -72,10 +80,31 @@ def _migrations_dir() -> str:
 
 
 async def _startup(container: ServiceContainer):
+    """
+    Startup avec warm-up complet (Cloud Run optimized).
+
+    Charge explicitement:
+    - DB + migrations
+    - Embedding model (SBERT)
+    - Collections Chroma/Qdrant
+    - DI wiring
+
+    Ne marque ready=True que si tout est OK.
+    """
     import time
     startup_start = time.perf_counter()
-    logger.info("Démarrage backend Émergence…")
+    logger.info("🚀 Démarrage backend Émergence (warm-up mode)...")
 
+    # État global du warm-up (pour healthcheck)
+    global _warmup_ready
+    _warmup_ready = {
+        "db": False,
+        "embed": False,
+        "vector": False,
+        "di": False,
+    }
+
+    # 1. Database
     try:
         db_manager = container.db_manager()
         fast_boot = os.getenv("EMERGENCE_FAST_BOOT") or os.getenv(
@@ -83,22 +112,62 @@ async def _startup(container: ServiceContainer):
         )
         if fast_boot:
             await db_manager.connect()
-            logger.info("DB connectée (FAST_BOOT=on).")
+            logger.info("✅ DB connectée (FAST_BOOT=on)")
         else:
             await initialize_database(db_manager, _migrations_dir())
-            logger.info("DB initialisée (migrations exécutées).")
-    except Exception as e:
-        logger.warning(f"Initialisation DB partielle: {e}")
+            logger.info("✅ DB initialisée (migrations exécutées)")
 
-    # 🔥 P2.1 - Warm-up: Pré-charger SBERT et Chroma/Qdrant
+        # Vérifier la connexion DB
+        conn = await db_manager._ensure_connection()
+        cursor = await conn.execute("SELECT 1")
+        await cursor.fetchone()
+        _warmup_ready["db"] = True
+        logger.info("✅ DB warmup: connexion vérifiée")
+    except Exception as e:
+        logger.error(f"❌ DB warmup failed: {e}", exc_info=True)
+        _warmup_ready["db"] = False
+
+    # 2. Embedding model
     try:
         vector_service = container.vector_service()
         vector_service._ensure_inited()  # Force lazy init NOW
-        logger.info(f"VectorService pré-chargé (backend={vector_service.backend}, model={vector_service.embed_model_name})")
+        logger.info(f"✅ Embedding model loaded: {vector_service.embed_model_name}")
+        _warmup_ready["embed"] = True
     except Exception as e:
-        logger.warning(f"VectorService warm-up échoué: {e}")
+        logger.error(f"❌ Embedding model warmup failed: {e}", exc_info=True)
+        _warmup_ready["embed"] = False
 
-    # Wire DI (inclut chat.router → Provide[...] ok)
+    # 3. Chroma collections
+    try:
+        vector_service = container.vector_service()
+        # Vérifier que les collections principales existent
+        if hasattr(vector_service, 'client'):
+            if vector_service.backend == "chroma":
+                # Chroma: tenter d'accéder aux collections
+                try:
+                    vector_service.client.get_or_create_collection("documents")
+                    vector_service.client.get_or_create_collection("knowledge")
+                    logger.info("✅ Chroma collections verified")
+                except Exception as ce:
+                    logger.warning(f"⚠️ Chroma collections check failed: {ce}")
+            elif vector_service.backend == "qdrant":
+                # Qdrant: vérifier les collections
+                try:
+                    from qdrant_client.http.exceptions import UnexpectedResponse
+                    try:
+                        vector_service.client.get_collection("documents")
+                        vector_service.client.get_collection("knowledge")
+                        logger.info("✅ Qdrant collections verified")
+                    except UnexpectedResponse:
+                        logger.warning("⚠️ Qdrant collections not found (will be created on demand)")
+                except Exception as qe:
+                    logger.warning(f"⚠️ Qdrant collections check failed: {qe}")
+        _warmup_ready["vector"] = True
+    except Exception as e:
+        logger.error(f"❌ Vector collections warmup failed: {e}", exc_info=True)
+        _warmup_ready["vector"] = False
+
+    # 4. Wire DI (inclut chat.router → Provide[...] ok)
     try:
         import backend.features.chat.router as chat_router_module
         import backend.features.dashboard.router as dashboard_module
@@ -115,9 +184,11 @@ async def _startup(container: ServiceContainer):
                 benchmarks_module,
             ]
         )
-        logger.info("DI wired (chat|dashboard|documents|debate|benchmarks.router).")
+        logger.info("✅ DI wired (chat|dashboard|documents|debate|benchmarks.router)")
+        _warmup_ready["di"] = True
     except Exception as e:
-        logger.warning(f"Wire DI partiel: {e}")
+        logger.error(f"❌ DI wiring failed: {e}", exc_info=True)
+        _warmup_ready["di"] = False
 
     # 🔗 MemoryAnalyzer ← ChatService (hook P0)
     try:
@@ -145,9 +216,17 @@ async def _startup(container: ServiceContainer):
     except Exception as e:
         logger.warning(f"Usage tracking tables initialization failed: {e}")
 
-    # Log startup duration
+    # Log startup duration + readiness
     startup_duration_ms = int((time.perf_counter() - startup_start) * 1000)
-    logger.info(f"✅ Startup completed in {startup_duration_ms}ms")
+    all_ready = all(_warmup_ready.values())
+    if all_ready:
+        logger.info(f"✅ Warm-up completed in {startup_duration_ms}ms - READY for traffic")
+    else:
+        failed = [k for k, v in _warmup_ready.items() if not v]
+        logger.warning(
+            f"⚠️ Warm-up completed in {startup_duration_ms}ms - "
+            f"NOT READY (failed: {', '.join(failed)})"
+        )
 
 
 # --- Middleware Deny-list (404 early) ---
@@ -347,9 +426,30 @@ def create_app() -> FastAPI:
         return {"status": "ok", "message": "Emergence Backend is running."}
 
     @app.get("/healthz", tags=["Health"], include_in_schema=False)
-    async def healthz_simple():
-        """Simple liveness check (k8s-style)"""
-        return {"ok": True}
+    async def healthz_strict():
+        """
+        Strict readiness check (Cloud Run optimized).
+
+        Retourne 200 si warm-up complet (DB + embed + vector + DI).
+        Retourne 503 si warm-up incomplet (instance pas encore prête).
+
+        Cloud Run n'envoie du traffic que si ce endpoint retourne 200.
+        """
+        global _warmup_ready
+        all_ready = all(_warmup_ready.values())
+
+        if all_ready:
+            return {"ok": True, "status": "ready", **_warmup_ready}
+        else:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "ok": False,
+                    "status": "starting",
+                    **_warmup_ready
+                }
+            )
 
     @app.get("/ready", tags=["Health"], include_in_schema=False)
     async def ready_check(request: Request):

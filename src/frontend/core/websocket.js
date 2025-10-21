@@ -263,7 +263,12 @@ export class WebSocketClient {
 
     this.websocket.onmessage = (ev) => {
       try {
-        const msg = JSON.parse(ev.data);
+        // Support newline-delimited JSON batches (WsOutbox backend)
+        const rawData = ev.data;
+        const lines = rawData.includes('\n') ? rawData.split('\n').filter(l => l.trim()) : [rawData];
+
+        for (const line of lines) {
+          const msg = JSON.parse(line);
 
         // Auth required handler
         if (msg?.type === 'ws:auth_required') {
@@ -447,8 +452,9 @@ export class WebSocketClient {
           });
         }
 
-        // Dispatch générique
-        if (msg?.type) this.eventBus.emit?.(msg.type, msg.payload);
+          // Dispatch générique
+          if (msg?.type) this.eventBus.emit?.(msg.type, msg.payload);
+        } // end for
       } catch { console.warn('[WebSocket] Message non JSON', ev.data); }
     };
 

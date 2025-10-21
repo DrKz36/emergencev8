@@ -1,6 +1,8 @@
 # src/backend/core/websocket.py
-# V11.3 – Enhanced error handling for WebSocket disconnections
+# V12.0 – WsOutbox integration (coalescence + backpressure)
 # Improvements:
+# - WsOutbox per-connection for message batching (25ms coalescence)
+# - Backpressure (512 msg queue) to prevent burst overload
 # - Better handling of abrupt client disconnections
 # - Graceful cleanup on protocol-level errors
 # - Reduced error noise in production logs
@@ -12,6 +14,7 @@ from fastapi import APIRouter, WebSocket, HTTPException
 from starlette.websockets import WebSocketDisconnect
 
 from .session_manager import SessionManager
+from .ws_outbox import WsOutbox
 from backend.shared import dependencies  # auth WS (allowlist + sub=uid)
 
 logger = logging.getLogger(__name__)
@@ -19,6 +22,8 @@ logger = logging.getLogger(__name__)
 class ConnectionManager:
     def __init__(self, session_manager: SessionManager):
         self.active_connections: Dict[str, List[WebSocket]] = {}
+        # Map WebSocket -> WsOutbox
+        self.outboxes: Dict[WebSocket, WsOutbox] = {}
         self.session_manager = session_manager
 
         # 🆕 Handshake handler for agent-specific context sync
@@ -151,6 +156,12 @@ class ConnectionManager:
 
         self.active_connections[session_id].append(websocket)
 
+        # 🆕 Créer et démarrer WsOutbox pour cette connexion
+        outbox = WsOutbox(websocket)
+        self.outboxes[websocket] = outbox
+        await outbox.start()
+        logger.debug(f"WsOutbox started for session {session_id}")
+
         est_payload = {"session_id": session_id, "thread_id": thread_id}
         if alias:
             est_payload["client_session_id"] = alias
@@ -206,6 +217,12 @@ class ConnectionManager:
         return session_id
 
     async def disconnect(self, session_id: str, websocket: WebSocket):
+        # 🆕 Arrêter WsOutbox proprement
+        outbox = self.outboxes.pop(websocket, None)
+        if outbox:
+            await outbox.stop()
+            logger.debug(f"WsOutbox stopped for session {session_id}")
+
         resolved_id = self._resolve_session_id(session_id)
         conns = self.active_connections.get(resolved_id, [])
         if websocket in conns:
@@ -237,11 +254,26 @@ class ConnectionManager:
             )
 
     async def send_personal_message(self, message: dict, session_id: str):
+        """
+        Envoie un message à tous les clients d'une session via WsOutbox.
+
+        WsOutbox gère automatiquement:
+        - Coalescence (25ms window)
+        - Backpressure (drop si queue pleine)
+        - Batching des messages
+        """
         resolved_id = self._resolve_session_id(session_id)
         connections = self.active_connections.get(resolved_id, [])
         for ws in list(connections):
             try:
-                await ws.send_json(message)
+                # 🆕 Envoyer via WsOutbox au lieu de ws.send_json()
+                outbox = self.outboxes.get(ws)
+                if outbox:
+                    await outbox.send(message)
+                else:
+                    # Fallback si pas d'outbox (ne devrait pas arriver)
+                    logger.warning(f"No outbox for session {resolved_id}, using fallback send_json")
+                    await ws.send_json(message)
             except WebSocketDisconnect as exc:
                 logger.info(
                     "Client disconnected during send (session=%s, code=%s)",

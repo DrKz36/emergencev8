@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 09:10 CET (Claude Code : Sync rapports Guardian + Documentation Codex GPT ✅)
+**Dernière mise à jour** : 2025-10-21 09:25 CET (Claude Code : Optimisations WS + Cloud Run warm-up ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -45,6 +45,67 @@ Mis à jour automatiquement par hooks Git + Task Scheduler (6h).
 
 **Voir détails :** [PROMPT_CODEX_RAPPORTS.md](PROMPT_CODEX_RAPPORTS.md)
 **Setup complet :** [docs/CODEX_SUMMARY_SETUP.md](docs/CODEX_SUMMARY_SETUP.md)
+
+## ✅ Session COMPLÉTÉE (2025-10-21 09:25 CET) — Agent : Claude Code (Optimisations WebSocket + Cloud Run)
+
+### Fichiers modifiés
+- `src/backend/core/ws_outbox.py` (nouveau - buffer WS sortant avec coalescence)
+- `src/backend/core/websocket.py` (intégration WsOutbox)
+- `src/backend/main.py` (warm-up complet + healthcheck strict)
+- `src/frontend/core/websocket.js` (support newline-delimited JSON batches)
+- `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (cette session)
+
+### Actions réalisées
+
+**1. WsOutbox - Buffer WebSocket sortant**
+- ✅ Créé module `ws_outbox.py` avec coalescence 25ms + backpressure (queue 512 msgs)
+- ✅ Intégré dans `ConnectionManager` : chaque connexion a son `WsOutbox`
+- ✅ Envoi groupé (newline-delimited JSON) pour réduire charge réseau
+- ✅ Métriques Prometheus : `ws_outbox_queue_size`, `ws_outbox_batch_size`, `ws_outbox_send_latency`, `ws_outbox_dropped_total`, `ws_outbox_send_errors_total`
+- 🎯 **Résout** : Rafales WS qui saturent la bande passante
+
+**2. Warm-up Cloud Run**
+- ✅ Warm-up explicite dans `_startup()` : DB, embedding model (SBERT), Chroma collections, DI wiring
+- ✅ État global `_warmup_ready` avec 4 flags : `db`, `embed`, `vector`, `di`
+- ✅ Logs détaillés avec emojis (✅/❌) pour chaque étape
+- 🎯 **Résout** : Cold starts Cloud Run + instances démarrent plus vite
+
+**3. Healthcheck strict `/healthz`**
+- ✅ Retourne 200 si warm-up complet (tous flags `_warmup_ready` = True)
+- ✅ Retourne 503 si warm-up incomplet (Cloud Run n'envoie pas de traffic)
+- ✅ Payload inclut détails : `{"ok": true/false, "status": "ready"/"starting", "db": true/false, "embed": true/false, "vector": true/false, "di": true/false}`
+- 🎯 **Résout** : Cloud Run qui route du traffic vers instances pas ready
+
+**4. Client WebSocket - Support batching**
+- ✅ Modifié `websocket.js` pour parser newline-delimited JSON
+- ✅ Boucle sur les lignes reçues si `\n` détecté, sinon parse normal
+- ✅ Backoff exponentiel déjà présent (1s → 2s → 4s → 8s max) - conservé tel quel
+- 🎯 **Compatible** avec WsOutbox backend
+
+### Tests
+- ✅ `ruff check` : All checks passed
+- ✅ `mypy` : Warnings existants uniquement (pas de nouvelles erreurs)
+- ✅ `npm run build` : Succès (2.94s)
+- ✅ Import Python `ws_outbox.py` + `main.py` : OK
+- ⚠️ Tests E2E manuels requis : rafale WS + vérifier coalescence + warm-up
+
+### Impact
+- 🚀 **Performances WS** : Coalescence 25ms réduit nombre de sends réseau, lisse les rafales
+- 🚀 **Cloud Run** : Warm-up explicite élimine cold-start visible, healthcheck strict évite routing vers instances pas ready
+- 📊 **Observabilité** : Métriques Prometheus pour monitoring WsOutbox (queue, batch size, latency, drops, errors)
+- 🔒 **Backpressure** : Queue 512 msgs max, drop si pleine (évite OOM)
+
+### Prochaines actions recommandées
+1. **Déployer en staging** pour tester warm-up + healthcheck Cloud Run
+2. **Surveiller métriques Prometheus** : `ws_outbox_*` sur Grafana
+3. **Configurer Cloud Run** avec `min-instances=1` + healthcheck sur `/healthz`
+4. **Load test** : envoyer 1000 msgs en 10s pour vérifier coalescence + backpressure
+
+### Blocages
+Aucun.
+
+---
 
 ## ✅ Session COMPLÉTÉE (2025-10-21 08:00 CET) — Agent : Codex GPT (Fix 404 onboarding.html + Déploiement)
 

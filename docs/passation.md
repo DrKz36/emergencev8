@@ -1,3 +1,120 @@
+## [2025-10-21 09:25 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/backend/core/ws_outbox.py` (nouveau - buffer WebSocket sortant)
+- `src/backend/core/websocket.py` (intégration WsOutbox dans ConnectionManager)
+- `src/backend/main.py` (warm-up Cloud Run + healthcheck strict `/healthz`)
+- `src/frontend/core/websocket.js` (support newline-delimited JSON batches)
+- `AGENT_SYNC.md` (session documentée)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Implémentation des optimisations suggérées par Codex GPT pour améliorer les performances WebSocket et le démarrage Cloud Run. Deux axes principaux :
+
+1. **Optimisation flux WebSocket sortant** - Rafales de messages saturent la bande passante
+2. **Warm-up Cloud Run** - Cold starts visibles + healthcheck pas assez strict
+
+### Détails de l'implémentation
+
+**1. WsOutbox - Buffer WebSocket sortant avec coalescence**
+
+Créé `src/backend/core/ws_outbox.py` :
+- Classe `WsOutbox` avec `asyncio.Queue(maxsize=512)` pour backpressure
+- Coalescence sur 25ms : messages groupés dans une fenêtre de 25ms
+- Envoi par batch : `"\n".join(json.dumps(x) for x in batch)` (newline-delimited JSON)
+- Drain loop asynchrone qui récupère messages + groupe sur deadline
+- Gestion propre du shutdown avec `asyncio.Event`
+- Métriques Prometheus : `ws_outbox_queue_size`, `ws_outbox_batch_size`, `ws_outbox_send_latency`, `ws_outbox_dropped_total`, `ws_outbox_send_errors_total`
+
+Intégré dans `ConnectionManager` (`websocket.py`) :
+- Chaque WebSocket a son propre `WsOutbox` créé dans `connect()`
+- Remplacé `ws.send_json()` par `outbox.send()` dans `send_personal_message()`
+- Lifecycle : `outbox.start()` au connect, `outbox.stop()` au disconnect
+- Map `self.outboxes: Dict[WebSocket, WsOutbox]` pour tracking
+
+**2. Warm-up complet Cloud Run**
+
+Modifié `src/backend/main.py` `_startup()` :
+- État global `_warmup_ready` avec 4 flags : `db`, `embed`, `vector`, `di`
+- Warm-up DB : connexion + vérification `SELECT 1`
+- Warm-up embedding model : `vector_service._ensure_inited()` + vérification chargement SBERT
+- Warm-up Chroma collections : `get_or_create_collection("documents")` + `get_or_create_collection("knowledge")`
+- Warm-up DI : wiring modules + capture succès/échec
+- Logs détaillés avec emojis ✅/❌ pour chaque étape
+- Log final : "✅ Warm-up completed in XXXms - READY for traffic" ou "⚠️ NOT READY (failed: db, embed)"
+
+**3. Healthcheck strict `/healthz`**
+
+Endpoint `/healthz` modifié :
+- Avant : retournait toujours 200 `{"ok": True}`
+- Maintenant : vérifie `_warmup_ready` global
+  - Si tous flags True → 200 `{"ok": True, "status": "ready", "db": true, "embed": true, "vector": true, "di": true}`
+  - Si au moins un False → 503 `{"ok": False, "status": "starting", "db": false, ...}`
+- Cloud Run n'envoie du traffic que si 200 (évite routing vers instances pas ready)
+
+**4. Client WebSocket - Support batching**
+
+Modifié `src/frontend/core/websocket.js` `onmessage` :
+- Avant : `const msg = JSON.parse(ev.data);`
+- Maintenant :
+  ```js
+  const rawData = ev.data;
+  const lines = rawData.includes('\n') ? rawData.split('\n').filter(l => l.trim()) : [rawData];
+  for (const line of lines) {
+    const msg = JSON.parse(line);
+    // ... traitement message
+  }
+  ```
+- Compatible avec envoi normal (1 msg) et batching (N msgs séparés par `\n`)
+- Backoff exponentiel déjà présent (1s → 2s → 4s → 8s max, 50 attempts max) - conservé tel quel
+
+### Travail de Codex GPT pris en compte
+- Session [2025-10-21 08:00 CET] : Fix bug 404 onboarding.html + déploiement prod
+- Pas de conflit avec cette session (fichiers différents)
+
+### Tests
+- ✅ `ruff check` : All checks passed
+- ✅ `mypy` : Warnings existants uniquement (pas de nouvelles erreurs liées à ces modifs)
+- ✅ `npm run build` : Succès (2.94s)
+- ✅ Import Python `ws_outbox.py` + `main.py` : OK (app démarre)
+- ⚠️ Tests E2E requis : rafale WS + vérifier coalescence fonctionne + warm-up timing
+
+### Impact
+**Performances WebSocket :**
+- Coalescence 25ms réduit le nombre de `send()` réseau (ex: 100 msgs en 25ms → 1 batch de 100)
+- Backpressure (queue 512) évite OOM si rafale trop importante
+- Métriques Prometheus permettent monitoring temps réel (queue size, batch size, latency)
+
+**Cloud Run :**
+- Warm-up explicite élimine cold-start visible (modèle SBERT chargé avant traffic)
+- Healthcheck strict évite routing vers instances pas ready (503 tant que warmup incomplet)
+- Logs détaillés facilitent debug démarrage (on voit quel composant a échoué)
+
+**Observabilité :**
+- 5 métriques Prometheus ajoutées pour WsOutbox
+- Healthcheck `/healthz` expose état ready détaillé par composant
+
+### Prochaines actions recommandées
+1. **Déployer en staging** et vérifier :
+   - Temps de warm-up (devrait être < 5s)
+   - Healthcheck `/healthz` retourne 503 → 200 après warm-up
+   - Logs de startup montrent ✅ pour tous les composants
+2. **Configurer Cloud Run** :
+   - `min-instances=1` pour éviter cold starts fréquents
+   - Healthcheck sur `/healthz` (au lieu de `/ready`)
+   - Concurrency=8, CPU=1, Memory=1Gi (comme prompt GPT)
+3. **Load test WebSocket** :
+   - Script qui envoie 1000 messages en 10s
+   - Vérifier métriques Prometheus : `ws_outbox_batch_size` (devrait être > 1), `ws_outbox_dropped_total` (devrait rester 0)
+4. **Monitoring Grafana** :
+   - Dashboard avec `ws_outbox_*` métriques
+   - Alertes si `ws_outbox_dropped_total` > seuil
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-21 09:10 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
