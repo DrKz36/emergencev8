@@ -311,6 +311,59 @@ def get_recent_commits(max_commits=5):
         return []
 
 
+def is_bot_scan_or_noise(full_context):
+    """
+    Detect if a warning is just bot scanning noise (not a real application error)
+    Returns True if this is noise that should be ignored
+    """
+    message = full_context.get("message", "")
+    endpoint = full_context.get("endpoint", "")
+    status_code = full_context.get("status_code")
+
+    # Ignore non-404 warnings (they might be real issues)
+    if status_code != 404:
+        return False
+
+    # Known bot scan endpoints (not part of our application)
+    BOT_SCAN_PATHS = [
+        "/install", "/protractor.conf.js", "/wizard/", "/applications.pinpoint",
+        "/install/update.html", "/.env", "/wp-admin", "/admin", "/phpmyadmin",
+        "/config.json", "/web.config", "/.git/config", "/backup", "/setup",
+        "/test", "/debug", "/api/v1/admin", "/api/admin", "/console",
+        "/.aws/credentials", "/server-status", "/cgi-bin", "/xmlrpc.php"
+    ]
+
+    # Known bot scan hosts (cloud metadata, security scans)
+    BOT_SCAN_HOSTS = [
+        "alibaba.oast.pro", "100.100.100.200", "169.254.169.254",
+        "metadata.google.internal", "169.254.169.254", "metadata"
+    ]
+
+    # Check if endpoint matches bot scan patterns
+    if endpoint:
+        endpoint_lower = endpoint.lower()
+        for bot_path in BOT_SCAN_PATHS:
+            if bot_path.lower() in endpoint_lower:
+                return True
+
+        # Check if trying to access cloud metadata
+        for bot_host in BOT_SCAN_HOSTS:
+            if bot_host in endpoint_lower:
+                return True
+
+    # Check message for bot scan patterns
+    message_lower = message.lower()
+    for bot_path in BOT_SCAN_PATHS:
+        if bot_path.lower() in message_lower:
+            return True
+
+    for bot_host in BOT_SCAN_HOSTS:
+        if bot_host in message_lower:
+            return True
+
+    return False
+
+
 def analyze_logs(logs):
     """
     Analyze logs for errors, warnings, performance issues, and critical signals
@@ -344,11 +397,13 @@ def analyze_logs(logs):
             errors_with_full_context.append(full_context)
 
         elif severity == "WARNING":
-            warnings.append({
-                "time": timestamp,
-                "msg": message[:300]
-            })
-            warnings_with_context.append(full_context)
+            # FILTER: Ignore bot scan noise (404s from security scanners)
+            if not is_bot_scan_or_noise(full_context):
+                warnings.append({
+                    "time": timestamp,
+                    "msg": message[:300]
+                })
+                warnings_with_context.append(full_context)
 
         elif severity == "INFO":
             info_logs.append({
