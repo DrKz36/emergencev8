@@ -403,6 +403,18 @@ class VectorService:
         self._init_lock = threading.Lock()
         self._inited = False
 
+        # 🆕 Score cache pour performance
+        from backend.features.memory.score_cache import ScoreCache
+        cache_size = int(os.getenv("MEMORY_SCORE_CACHE_SIZE", "10000"))
+        cache_ttl = int(os.getenv("MEMORY_SCORE_CACHE_TTL", "3600"))
+        self.score_cache = ScoreCache(max_size=cache_size, ttl_seconds=cache_ttl)
+        logger.info(f"[VectorService] Score cache initialisé (size={cache_size}, ttl={cache_ttl}s)")
+
+        # 🆕 Métriques Prometheus pour weighted retrieval
+        from backend.features.memory.weighted_retrieval_metrics import WeightedRetrievalMetrics
+        self.metrics = WeightedRetrievalMetrics()
+        logger.info("[VectorService] Métriques Prometheus initialisées")
+
         # Weighted retrieval config
         self.memory_config = MemoryConfig.from_env()
         logger.info(
@@ -1256,6 +1268,9 @@ class VectorService:
         if not query_text:
             return []
 
+        import time
+        query_start = time.time()
+
         try:
             # 1. Récupérer candidats avec query standard (fetch plus pour re-ranking)
             fetch_size = max(n_results * 3, 20)
@@ -1275,39 +1290,61 @@ class VectorService:
             from datetime import datetime, timezone
             now = datetime.now(timezone.utc)
             weighted_results = []
+            collection_name = getattr(collection, "name", "unknown")
 
             for res in raw_results:
                 meta = res.get("metadata", {})
+                entry_id = res.get("id", "unknown")
 
                 # Extraire métadonnées de retrieval
-                last_used_str = meta.get("last_used_at")
+                last_used_str = meta.get("last_used_at") or ""
                 use_count = int(meta.get("use_count", 0))
 
-                # Calculer Δt (jours depuis last_used_at)
-                if last_used_str:
-                    try:
-                        last_used = datetime.fromisoformat(last_used_str.replace("Z", "+00:00"))
-                        delta_days = (now - last_used).total_seconds() / 86400
-                    except Exception:
-                        # Si parsing échoue, considérer comme jamais utilisé (très ancien)
-                        delta_days = 999.0
+                # 🆕 Vérifier cache d'abord
+                cached_score = self.score_cache.get(query_text, entry_id, last_used_str)
+                if cached_score is not None:
+                    # Cache hit → utiliser score caché
+                    weighted_score = cached_score
+                    cosine_sim = 0.0  # Pas recalculé (pas besoin)
+                    delta_days = 0.0
                 else:
-                    # Jamais utilisé → très ancien
-                    delta_days = 999.0
+                    # Cache miss → calculer score
+                    score_start = time.time()
 
-                # Calculer similarité cosine depuis distance
-                # ChromaDB L2 squared distance for normalized vectors: distance = 2 * (1 - cosine_sim)
-                distance = res.get("distance", 2.0)
-                cosine_sim = 1.0 - (distance / 2.0)
+                    # Calculer Δt (jours depuis last_used_at)
+                    if last_used_str:
+                        try:
+                            last_used = datetime.fromisoformat(last_used_str.replace("Z", "+00:00"))
+                            delta_days = (now - last_used).total_seconds() / 86400
+                        except Exception:
+                            # Si parsing échoue, considérer comme jamais utilisé (très ancien)
+                            delta_days = 999.0
+                    else:
+                        # Jamais utilisé → très ancien
+                        delta_days = 999.0
 
-                # Calculer score pondéré
-                weighted_score = compute_memory_score(
-                    cosine_sim=cosine_sim,
-                    delta_days=delta_days,
-                    freq=use_count,
-                    lambda_=lambda_,
-                    alpha=alpha,
-                )
+                    # Calculer similarité cosine depuis distance
+                    # ChromaDB L2 squared distance for normalized vectors: distance = 2 * (1 - cosine_sim)
+                    distance = res.get("distance", 2.0)
+                    cosine_sim = 1.0 - (distance / 2.0)
+
+                    # Calculer score pondéré
+                    weighted_score = compute_memory_score(
+                        cosine_sim=cosine_sim,
+                        delta_days=delta_days,
+                        freq=use_count,
+                        lambda_=lambda_,
+                        alpha=alpha,
+                    )
+
+                    # 🆕 Stocker dans cache
+                    self.score_cache.set(query_text, entry_id, last_used_str, weighted_score)
+
+                    # 🆕 Métriques scoring
+                    score_duration = time.time() - score_start
+                    self.metrics.record_score(collection_name, weighted_score, score_duration)
+                    self.metrics.record_entry_age(collection_name, delta_days)
+                    self.metrics.record_use_count(collection_name, use_count)
 
                 # Appliquer seuil
                 if weighted_score < score_threshold:
@@ -1351,6 +1388,15 @@ class VectorService:
                 f"{len(final_results)} résultats (score_min={final_results[-1]['weighted_score']:.3f} si résultats)"
             )
 
+            # 🆕 Métriques requête
+            query_duration = time.time() - query_start
+            self.metrics.record_query(
+                collection=collection_name,
+                status='success',
+                results_count=len(final_results),
+                duration_seconds=query_duration
+            )
+
             return final_results
 
         except Exception as e:
@@ -1359,6 +1405,16 @@ class VectorService:
                 f"Échec de la recherche pondérée '{safe_q}…' dans '{collection.name}': {e}",
                 exc_info=True,
             )
+
+            # 🆕 Métriques erreur
+            collection_name = getattr(collection, "name", "unknown") if collection else "unknown"
+            self.metrics.record_query(
+                collection=collection_name,
+                status='error',
+                results_count=0,
+                duration_seconds=time.time() - query_start
+            )
+
             return []
 
     def _update_retrieval_metadata(
@@ -1379,9 +1435,13 @@ class VectorService:
         if not results:
             return
 
+        import time
+        update_start = time.time()
+
         try:
             from datetime import datetime, timezone
             now = datetime.now(timezone.utc).isoformat()
+            collection_name = getattr(collection, "name", "unknown")
 
             ids = []
             updated_metadatas = []
@@ -1409,6 +1469,9 @@ class VectorService:
                 ids.append(entry_id)
                 updated_metadatas.append(new_meta)
 
+                # 🆕 Invalider cache pour cette entrée (métadonnées changées)
+                self.score_cache.invalidate(entry_id)
+
             if ids:
                 self.update_metadatas(
                     collection=collection,
@@ -1418,6 +1481,10 @@ class VectorService:
                 logger.debug(
                     f"[VectorService] Metadatas de retrieval mis à jour pour {len(ids)} entrées"
                 )
+
+                # 🆕 Métriques metadata update
+                update_duration = time.time() - update_start
+                self.metrics.record_metadata_update(collection_name, update_duration)
 
         except Exception as e:
             logger.warning(

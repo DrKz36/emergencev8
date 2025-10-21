@@ -314,9 +314,10 @@ class UnifiedMemoryRetriever:
                 logger.warning(f"Preferences retrieval failed: {e}")
                 preferences = []
 
-            # Concepts pertinents (requête vectorielle)
+            # Concepts pertinents (requête vectorielle pondérée)
+            # Utilise query_weighted() pour scoring temporel + fréquence
             try:
-                concepts_results = self.vector_service.query(
+                concepts_results = self.vector_service.query_weighted(
                     collection=collection,
                     query_text=query,
                     n_results=top_k,
@@ -332,7 +333,7 @@ class UnifiedMemoryRetriever:
                 concepts = [
                     {
                         'text': r.get('text', ''),
-                        'score': r.get('score', 0),
+                        'weighted_score': r.get('weighted_score', 0),  # Score pondéré
                         'metadata': r.get('metadata', {})
                     }
                     for r in (concepts_results or [])
@@ -395,7 +396,6 @@ class UnifiedMemoryRetriever:
             scored_threads = []
 
             for thread in archived_threads:
-                thread_id = thread.get('id')
                 title = thread.get('title', '').lower()
 
                 # Score basique: mots clés dans title

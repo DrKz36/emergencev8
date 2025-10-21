@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 06:35 CET (Claude Code : Automation Task Scheduler + Hooks Git résumé Codex ✅)
+**Dernière mise à jour** : 2025-10-21 23:45 CET (Claude Code : Intégration complète retrieval pondéré + optimisations (cache, GC, métriques) ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 

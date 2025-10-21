@@ -455,8 +455,8 @@ class MemoryQueryTool:
             return None
 
         try:
-            # Recherche vectorielle sémantique
-            results = self.vector_service.query(
+            # Recherche vectorielle pondérée (scoring temporel + fréquence)
+            results = self.vector_service.query_weighted(
                 collection=self.knowledge_collection,
                 query_text=topic_query,
                 n_results=limit,
@@ -476,6 +476,7 @@ class MemoryQueryTool:
                 return None
 
             # Prendre le meilleur match (premier résultat)
+            # Note: query_weighted() retourne weighted_score au lieu de distance
             best_match = results[0]
             meta = best_match.get("metadata", {})
 
@@ -501,13 +502,13 @@ class MemoryQueryTool:
                 "thread_ids": thread_ids,
                 "summary": meta.get("summary", ""),
                 "vitality": float(meta.get("vitality", 1.0)),
-                "similarity_score": best_match.get("distance", 0.0),
+                "weighted_score": best_match.get("weighted_score", 0.0),  # Score pondéré
                 "conversations": conversations,
             }
 
             logger.info(
-                "[MemoryQueryTool] Détails récupérés pour topic '%s' (similarity=%.3f)",
-                topic_query, details["similarity_score"]
+                "[MemoryQueryTool] Détails récupérés pour topic '%s' (weighted_score=%.3f)",
+                topic_query, details["weighted_score"]
             )
 
             return details

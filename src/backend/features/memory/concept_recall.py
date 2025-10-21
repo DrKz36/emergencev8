@@ -73,9 +73,10 @@ class ConceptRecallTracker:
             # Start timing for metrics
             start_time = time.time()
 
-            # 1. Recherche vectorielle sur concepts existants de l'utilisateur
+            # 1. Recherche vectorielle pondérée sur concepts existants de l'utilisateur
+            # Utilise query_weighted() pour bénéficier du scoring temporel
             vector_search_start = time.time()
-            results = self.vector_service.query(
+            results = self.vector_service.query_weighted(
                 collection=self.collection,
                 query_text=message_text,
                 n_results=10,  # Top 10 concepts similaires
@@ -93,16 +94,14 @@ class ConceptRecallTracker:
                 return []
 
             # 2. Filtrer par similarité et exclure thread actuel (éviter auto-détection)
+            # Note: query_weighted() retourne déjà weighted_score au lieu de distance
             recalls = []
             for res in results:
                 meta = res.get("metadata", {})
-                # ChromaDB uses L2 squared distance for normalized vectors
-                # For normalized vectors: distance_l2_squared = 2 * (1 - cosine_similarity)
-                # So: cosine_similarity = 1 - (distance / 2)
-                distance = res.get("distance", 2.0)
-                score = 1.0 - (distance / 2.0)
+                # Récupérer le weighted_score calculé par query_weighted()
+                score = res.get("weighted_score", 0.0)
 
-                # Seuil de similarité
+                # Seuil de similarité (weighted_score combine cosine_sim + temporal + freq)
                 if score < self.SIMILARITY_THRESHOLD:
                     continue
 
@@ -299,7 +298,8 @@ class ConceptRecallTracker:
             ]
         """
         try:
-            results = self.vector_service.query(
+            # Utilise query_weighted() pour bénéficier du scoring temporel
+            results = self.vector_service.query_weighted(
                 collection=self.collection,
                 query_text=concept_text,
                 n_results=limit,
@@ -314,10 +314,8 @@ class ConceptRecallTracker:
             history = []
             for res in results:
                 meta = res.get("metadata", {})
-                # ChromaDB uses L2 squared distance for normalized vectors
-                # For normalized vectors: cosine_similarity = 1 - (distance / 2)
-                distance = res.get("distance", 2.0)
-                score = 1.0 - (distance / 2.0)
+                # Récupérer weighted_score calculé par query_weighted()
+                score = res.get("weighted_score", 0.0)
 
                 if score >= 0.6:  # Seuil plus permissif pour requête explicite
                     # Decode thread_ids from JSON

@@ -1,6 +1,7 @@
 # 🤖 Prompt System - Codex GPT (Local & Cloud)
 
-**Version :** 2025-10-21 | **Dépôt :** `emergencev8`
+**Version :** 2025-10-21 23:45 CET | **Dépôt :** `emergencev8`
+**Dernière MAJ :** Intégration complète retrieval pondéré + optimisations (cache, GC, métriques)
 
 ---
 
