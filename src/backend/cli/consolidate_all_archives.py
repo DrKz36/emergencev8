@@ -99,8 +99,8 @@ async def consolidate_all_archives(
     """
     params.append(limit)
 
-    threads = await db.fetch_all(query, tuple(params))
-    threads = [dict(t) for t in threads]
+    threads_raw = await db.fetch_all(query, tuple(params))
+    threads: list[dict[str, Any]] = [dict(t) for t in threads_raw]
 
     logger.info(f"Trouvé {len(threads)} thread(s) archivé(s)")
 

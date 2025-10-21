@@ -63,7 +63,7 @@ def verify_fix_token(token: str, max_age_seconds: int = 86400) -> bool:
         return False
 
 
-async def execute_anima_fixes(recommendations: list) -> dict:
+async def execute_anima_fixes(recommendations: list) -> dict[str, list[dict[str, Any]]]:
     """Exécute les corrections Anima (Documentation)"""
     results: dict[str, list[dict[str, Any]]] = {
         "fixed": [],
@@ -98,7 +98,7 @@ async def execute_anima_fixes(recommendations: list) -> dict:
     return results
 
 
-async def execute_neo_fixes(recommendations: list) -> dict:
+async def execute_neo_fixes(recommendations: list) -> dict[str, list[dict[str, Any]]]:
     """Exécute les corrections Neo (Intégrité)"""
     results: dict[str, list[dict[str, Any]]] = {
         "fixed": [],
@@ -132,7 +132,7 @@ async def execute_neo_fixes(recommendations: list) -> dict:
     return results
 
 
-async def execute_prod_fixes(recommendations: list) -> dict:
+async def execute_prod_fixes(recommendations: list) -> dict[str, list[dict[str, Any]]]:
     """Exécute les corrections Production (ATTENTION: très sensible)"""
     results: dict[str, list[dict[str, Any]]] = {
         "fixed": [],
@@ -153,7 +153,7 @@ async def execute_prod_fixes(recommendations: list) -> dict:
 
 async def apply_guardian_fixes(report_data: dict) -> dict:
     """Applique les corrections Guardian selon les rapports"""
-    fixes_summary = {
+    fixes_summary: dict[str, Any] = {
         "timestamp": datetime.now().isoformat(),
         "anima": {},
         "neo": {},
@@ -170,9 +170,9 @@ async def apply_guardian_fixes(report_data: dict) -> dict:
         if recs and isinstance(recs, list):
             anima_results = await execute_anima_fixes(recs)
             fixes_summary["anima"] = anima_results
-            fixes_summary["total_fixed"] += len(anima_results["fixed"])
-            fixes_summary["total_failed"] += len(anima_results["failed"])
-            fixes_summary["total_skipped"] += len(anima_results["skipped"])
+            fixes_summary["total_fixed"] += len(anima_results.get("fixed", []))
+            fixes_summary["total_failed"] += len(anima_results.get("failed", []))
+            fixes_summary["total_skipped"] += len(anima_results.get("skipped", []))
 
     # Neo (Intégrité)
     integrity_report = report_data.get("integrity")
@@ -181,9 +181,9 @@ async def apply_guardian_fixes(report_data: dict) -> dict:
         if recs and isinstance(recs, list):
             neo_results = await execute_neo_fixes(recs)
             fixes_summary["neo"] = neo_results
-            fixes_summary["total_fixed"] += len(neo_results["fixed"])
-            fixes_summary["total_failed"] += len(neo_results["failed"])
-            fixes_summary["total_skipped"] += len(neo_results["skipped"])
+            fixes_summary["total_fixed"] += len(neo_results.get("fixed", []))
+            fixes_summary["total_failed"] += len(neo_results.get("failed", []))
+            fixes_summary["total_skipped"] += len(neo_results.get("skipped", []))
 
     # Prod (Production)
     prod_report = report_data.get("prod")
@@ -192,9 +192,9 @@ async def apply_guardian_fixes(report_data: dict) -> dict:
         if recs and isinstance(recs, list):
             prod_results = await execute_prod_fixes(recs)
             fixes_summary["prod"] = prod_results
-            fixes_summary["total_fixed"] += len(prod_results["fixed"])
-            fixes_summary["total_failed"] += len(prod_results["failed"])
-            fixes_summary["total_skipped"] += len(prod_results["skipped"])
+            fixes_summary["total_fixed"] += len(prod_results.get("fixed", []))
+            fixes_summary["total_failed"] += len(prod_results.get("failed", []))
+            fixes_summary["total_skipped"] += len(prod_results.get("skipped", []))
 
     return fixes_summary
 

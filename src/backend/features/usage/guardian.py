@@ -80,8 +80,9 @@ class UsageGuardian:
 
             # Process feature usage
             for usage in feature_usages:
-                user = user_stats[usage.user_email]
-                user["email"] = usage.user_email
+                email = usage.user_email or "anonymous"
+                user = user_stats[email]
+                user["email"] = email
                 user["requests_count"] += 1
                 user["features_used"].add(usage.feature_name)
                 if usage.duration_ms:
@@ -89,8 +90,9 @@ class UsageGuardian:
 
             # Process errors
             for error in user_errors:
-                user = user_stats[error.user_email]
-                user["email"] = error.user_email
+                email = error.user_email or "anonymous"
+                user = user_stats[email]
+                user["email"] = email
                 user["errors_count"] += 1
                 user["errors"].append(
                     {

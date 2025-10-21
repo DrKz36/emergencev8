@@ -13,7 +13,7 @@
 import asyncio
 import logging
 import argparse
-from typing import Optional
+from typing import Optional, Any
 
 from backend.features.memory.vector_service import VectorService
 from backend.core.database.manager import DatabaseManager
@@ -67,7 +67,7 @@ async def backfill_missing_agent_ids(
     collection = vector_service.get_or_create_collection("emergence_knowledge")
 
     # Récupérer tous concepts (on filtrera après)
-    where = {"type": "concept"}
+    where: dict[str, Any] = {"type": "concept"}
     if user_id:
         where = {"$and": [where, {"user_id": user_id}]}
 

@@ -15,7 +15,7 @@ import json
 import logging
 import os
 import re
-import yaml
+import yaml  # type: ignore[import-untyped]
 from uuid import uuid4
 from typing import Dict, Any, List, Tuple, Optional, AsyncGenerator, AsyncIterator, cast
 from pathlib import Path
@@ -1251,6 +1251,7 @@ class ChatService:
 
         try:
             search_start = time.time()
+            assert self._knowledge_collection is not None, "Knowledge collection should be initialized"
             results = self._knowledge_collection.query(
                 query_texts=[query_text],
                 n_results=n_results,
@@ -1346,7 +1347,7 @@ class ChatService:
             embeddings = self.vector_service.model.encode(contents)
 
             # Calculer similarité cosine
-            from sklearn.metrics.pairwise import cosine_similarity
+            from sklearn.metrics.pairwise import cosine_similarity  # type: ignore[import-untyped]
             similarity_matrix = cosine_similarity(embeddings)
 
             # Clustering simple avec seuil
@@ -1416,7 +1417,7 @@ class ChatService:
         }
 
         # Calculer fréquence
-        word_freq = {}
+        word_freq: dict[str, int] = {}
         for word in words:
             if word not in stop_words and len(word) > 3:
                 word_freq[word] = word_freq.get(word, 0) + 1

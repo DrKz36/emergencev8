@@ -2169,7 +2169,7 @@ async def get_memory_dashboard(
     collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
     collection = vector_service.get_or_create_collection(collection_name)
 
-    dashboard = {
+    dashboard: dict[str, Any] = {
         "stats": {},
         "top_preferences": [],
         "top_concepts": [],
