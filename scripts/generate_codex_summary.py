@@ -39,7 +39,16 @@ def load_json_report(filename: str) -> Optional[Dict]:
 def extract_prod_insights(prod_report: Dict) -> Dict[str, Any]:
     """Extrait insights actionnables du rapport production."""
     if not prod_report:
-        return {"status": "UNKNOWN", "insights": [], "errors_summary": "Aucun rapport disponible"}
+        return {
+            "status": "UNKNOWN",
+            "logs_analyzed": 0,
+            "errors_count": 0,
+            "warnings_count": 0,
+            "critical_signals": 0,
+            "insights": [],
+            "recommendations": [],
+            "recent_commits": []
+        }
 
     insights = []
     status = prod_report.get("status", "UNKNOWN")
@@ -128,7 +137,14 @@ def extract_prod_insights(prod_report: Dict) -> Dict[str, Any]:
 def extract_docs_insights(docs_report: Dict) -> Dict[str, Any]:
     """Extrait insights du rapport documentation (Anima)."""
     if not docs_report:
-        return {"status": "UNKNOWN", "insights": []}
+        return {
+            "status": "UNKNOWN",
+            "gaps_count": 0,
+            "updates_count": 0,
+            "backend_files_changed": 0,
+            "frontend_files_changed": 0,
+            "insights": []
+        }
 
     insights = []
     status = docs_report.get("status", "UNKNOWN")
@@ -180,7 +196,12 @@ def extract_docs_insights(docs_report: Dict) -> Dict[str, Any]:
 def extract_integrity_insights(integrity_report: Dict) -> Dict[str, Any]:
     """Extrait insights du rapport intégrité (Neo)."""
     if not integrity_report:
-        return {"status": "UNKNOWN", "insights": []}
+        return {
+            "status": "UNKNOWN",
+            "issues_count": 0,
+            "critical_count": 0,
+            "insights": []
+        }
 
     insights = []
     status = integrity_report.get("status", "UNKNOWN")
@@ -236,7 +257,14 @@ def extract_integrity_insights(integrity_report: Dict) -> Dict[str, Any]:
 def extract_unified_insights(unified_report: Dict) -> Dict[str, Any]:
     """Extrait insights du rapport unifié (Nexus)."""
     if not unified_report:
-        return {"status": "UNKNOWN", "insights": []}
+        return {
+            "status": "UNKNOWN",
+            "total_issues": 0,
+            "critical": 0,
+            "warnings": 0,
+            "insights": [],
+            "statistics": {}
+        }
 
     exec_summary = unified_report.get("executive_summary", {})
     status = exec_summary.get("status", "UNKNOWN")
