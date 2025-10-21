@@ -2,50 +2,62 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 18:10 CET (Claude Code : Fix Guardian workflow - generate_codex_summary.py ✅)
+**Dernière mise à jour** : 2025-10-21 19:20 CET (Claude Code : Session COMPLÉTÉE - Guardian stable + CI/CD optimisé ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
 ---
 
-## ✅ Session EN COURS (2025-10-21 18:10 CET) — Agent : Claude Code
+## ✅ Session COMPLÉTÉE (2025-10-21 19:20 CET) — Agent : Claude Code
 
 ### Fichiers modifiés
 - `scripts/generate_codex_summary.py` (fix KeyError fallbacks)
+- `.github/workflows/deploy.yml` (trigger intelligent avec paths filter)
 - `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (entrée complète)
 
 ### Actions réalisées
 
-**Problème détecté**
-- 🔴 Workflow GitHub Actions plantait sur Guardian Validation job
-- 🔍 Erreur: `KeyError: 'errors_count'` dans `generate_codex_summary.py`
-- 🔎 Cause: Les fonctions `extract_*_insights()` retournaient des fallbacks incomplets quand rapports vides/manquants
+**1. Fix Guardian Workflow - KeyError résolu** 🎯
+- 🔴 Problème: Workflow GitHub Actions plantait sur Guardian Validation (`KeyError: 'errors_count'`)
+- 🔍 Cause: Fonctions `extract_*_insights()` retournaient fallbacks incomplets
+- ✅ Fix: 4 fonctions corrigées avec fallbacks complets (toutes clés attendues)
+- ✅ Commits: `ec5fbd4` (fix guardian), `6b2263f` (docs), `fa5369b` (deploy fix)
 
-**Fix appliqué**
-- ✅ `extract_prod_insights()`: Fallback complet avec toutes clés (logs_analyzed, errors_count, warnings_count, critical_signals, insights, recommendations, recent_commits)
-- ✅ `extract_docs_insights()`: Fallback complet (gaps_count, updates_count, backend_files_changed, frontend_files_changed, insights)
-- ✅ `extract_integrity_insights()`: Fallback complet (issues_count, critical_count, insights)
-- ✅ `extract_unified_insights()`: Fallback complet (total_issues, critical, warnings, insights, statistics)
-- ✅ Test local: Script génère `codex_summary.md` sans erreur
-- ✅ Commit `ec5fbd4` (fix guardian)
-- ✅ Push vers GitHub: Guardian local OK
+**2. Optimisation CI/CD - Deploy intelligent** ⚡
+- 🔴 Problème: Workflow deploy se déclenchait sur TOUS les push (même docs)
+- ✅ Fix: Ajout `paths` filter dans `deploy.yml`
+- ✅ Résultat: Deploy uniquement si code/infra modifié (src/, Dockerfile, requirements.txt, etc.)
+
+**3. Validation finale** 🔥
+- ✅ Workflow "Tests & Guardian Validation" **PASSE** pour les 3 derniers commits
+- ✅ Guardian local (hooks) fonctionne parfaitement
+- ✅ Plus de KeyError dans generate_codex_summary.py
+- ✅ CI/CD optimisé et fluide
 
 ### Tests
 - ✅ Test local: `python scripts/generate_codex_summary.py` OK
-- ✅ Guardian pre-commit hook OK
-- ✅ Guardian post-commit hook OK
-- ✅ Guardian pre-push hook OK
-- ⏳ Workflow GitHub Actions en cours (attente résultat Guardian Validation)
+- ✅ Guardian hooks (pre-commit, post-commit, pre-push): tous OK
+- ✅ Workflow GitHub Actions "Tests & Guardian Validation": ✅ SUCCÈS (commits ec5fbd4, 6b2263f, fa5369b)
+- ⚠️ Workflow "Deploy to Cloud Run": échoue sur auth GCR (normal, pas de GCP_SA_KEY secret configuré)
 
 ### Travail de Codex GPT pris en compte
 Aucune modification Codex récente.
 
 ### Prochaines actions recommandées
-1. **Vérifier workflow GitHub Actions** - Guardian Validation job devrait passer maintenant
-2. **Continuer travail si workflow OK** - Système Guardian stable
+1. **Continuer le dev normalement** - Guardian stable, workflows fonctionnels
+2. **Commits de docs** - Ne déclencheront plus de deploy inutile
+3. **(Optionnel) Auto-deploy** - Configurer `GCP_SA_KEY` secret si déploiement automatique souhaité
+4. **(Future) Auto-fix Codex cloud** - Architecture webhook → GitHub Actions → Codex API (discuté, reste en manuel pour l'instant)
 
 ### Blocages
 Aucun.
+
+### Notes techniques importantes
+- **Guardian Validation**: Système stable, rapports générés correctement
+- **CI/CD optimisé**: Deploy intelligent, économie de ressources GitHub Actions
+- **Workflow actuel**: Manuel mais sûr (Guardian rapports → lecture manuelle → fix → commit)
+- **Auto-fix cloud**: Architecturé mais non développé (choix utilisateur de rester manuel)
 
 ---
 
@@ -4738,6 +4750,25 @@ SMTP_PASSWORD=...
 ---
 
 ## 🤖 Synchronisation automatique
+### Consolidation - 2025-10-21T18:54:46.105889
+
+**Type de déclenchement** : `time_based`
+**Conditions** : {
+  "pending_changes": 4,
+  "time_since_last_minutes": 60.01130043333333
+}
+**Changements consolidés** : 4 événements sur 2 fichiers
+
+**Fichiers modifiés** :
+- **AGENT_SYNC.md** : 3 événement(s)
+  - `modified` à 2025-10-21T17:54:45.979502 (agent: unknown)
+  - `modified` à 2025-10-21T18:07:46.347337 (agent: unknown)
+  - `modified` à 2025-10-21T18:08:16.351076 (agent: unknown)
+- **docs/passation.md** : 1 événement(s)
+  - `modified` à 2025-10-21T18:08:46.379880 (agent: unknown)
+
+---
+
 ### Consolidation - 2025-10-21T17:54:45.423816
 
 **Type de déclenchement** : `threshold`
