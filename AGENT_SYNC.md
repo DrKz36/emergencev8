@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 16:30 CET (Claude Code : Fix health check 404 errors + déploiement prod ✅)
+**Dernière mise à jour** : 2025-10-21 18:00 CET (Claude Code : Script analyse rapports Guardian + prompt enrichi pour Codex ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -34,6 +34,66 @@ Quand l'utilisateur demande "vérifie les rapports Guardian" :
 Mis à jour automatiquement par hooks Git + Task Scheduler (6h).
 
 **Voir détails :** [CODEX_GPT_GUIDE.md Section 9.3](CODEX_GPT_GUIDE.md#93-accéder-aux-rapports-guardian)
+
+## ✅ Session COMPLÉTÉE (2025-10-21 18:00 CET) — Agent : Claude Code (Script analyse rapports + prompt enrichi)
+
+### 🎯 Objectif
+- Enrichir le prompt court avec TOUTES les infos utiles des rapports
+- Créer script Python d'analyse automatique
+- Fournir format actionnable pour correctifs
+
+### 🐛 Problème identifié
+Le prompt court pour Codex était trop simpliste (seulement `status`, `errors`, `warnings`).
+
+**Alors que les rapports contiennent énormément d'infos utiles :**
+- `errors_detailed` (message, endpoint, file, line, stack trace)
+- `error_patterns` (patterns par endpoint, type, timeline)
+- `code_snippets` (code source impliqué)
+- `priority_actions` (P0-P4)
+- `documentation_gaps` (gaps trouvés par Anima)
+- `issues` (issues d'intégrité avec recommandations)
+- `recommendations` (par horizon : immediate/short/long)
+
+### ✅ Actions réalisées
+1. **Enrichi PROMPT_CODEX_RAPPORTS.md**
+   - Section 2 détaillée : analyse TOUTES les infos utiles
+   - Exemples Python complets pour prod_report.json
+   - Exemples Python complets pour unified_report.json
+   - Section 3 : Template résumé pour l'utilisateur
+   - Format clair avec toutes les sections importantes
+
+2. **Créé scripts/analyze_guardian_reports.py**
+   - Script Python prêt à l'emploi
+   - Lit prod_report.json + unified_report.json
+   - Analyse toutes les infos (errors, warnings, patterns, gaps, issues)
+   - Affiche résumé complet et actionnable
+   - Fix encoding UTF-8 Windows
+   - Codex peut juste lancer : `python scripts/analyze_guardian_reports.py`
+
+3. **Testé le script**
+   ```bash
+   python scripts/analyze_guardian_reports.py
+   ```
+   Résultat : Production OK, 0 issues, format nickel ✅
+
+4. **Commit + Push** (426a16a)
+   - 3 fichiers modifiés (+404 -10 lignes)
+   - Guardian hooks: ✅ Tous OK
+   - Production: ✅ Stable
+
+### 📌 État final
+- ✅ Prompt enrichi avec toutes les infos utiles
+- ✅ Script Python prêt à l'emploi
+- ✅ Format actionnable pour correctifs
+- ✅ Commit + push réussis
+- ✅ Production stable (0 erreurs, 0 warnings)
+
+### 📝 Prochaines actions recommandées
+1. Tester avec Codex GPT lors de sa prochaine session
+2. Vérifier qu'il utilise le script ou le code d'exemple enrichi
+3. Affiner le format si besoin
+
+---
 
 ## ✅ Session COMPLÉTÉE (2025-10-21 17:20 CET) — Agent : Claude Code (Doc accès rapports Guardian pour Codex GPT)
 
