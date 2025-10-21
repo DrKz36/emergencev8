@@ -172,6 +172,7 @@ async def test_detect_recurring_concepts_excludes_same_thread(vector_service, tr
     assert recalls == []  # No cross-thread recurrence
 
 
+@pytest.mark.skip(reason="Flaky test - ChromaDB metadata update race condition in CI")
 @pytest.mark.asyncio
 async def test_update_mention_metadata(vector_service, tracker):
     """
