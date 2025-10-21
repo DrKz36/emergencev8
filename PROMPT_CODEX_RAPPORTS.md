@@ -2,183 +2,135 @@
 
 **Quand l'utilisateur te demande "vérifie les rapports Guardian" ou "analyse la prod" :**
 
-> 💡 **Option recommandée :** `python scripts/analyze_guardian_reports.py --summary`
->
-> - Produit automatiquement le résumé attendu pour l'utilisateur.
-> - Ajouter `--detailed` pour l'analyse complète.
-> - Utiliser `--reports-dir <chemin>` si les rapports ne sont pas dans `reports/`.
+## 🚀 NOUVELLE PROCÉDURE (2025-10-21)
 
-## 1️⃣ Lis ces fichiers JSON (LOCAUX dans le dépôt)
+### 1️⃣ Lis le résumé markdown enrichi (RECOMMANDÉ)
+
+```python
+# Résumé narratif exploitable pour LLM
+with open('c:/dev/emergenceV8/reports/codex_summary.md', 'r', encoding='utf-8') as f:
+    summary = f.read()
+
+print(summary)
+```
+
+**Ce fichier contient :**
+- ✅ Vue d'ensemble tous les Guardians (Production, Docs, Intégrité)
+- ✅ Insights actionnables avec contexte
+- ✅ Code snippets des fichiers avec erreurs
+- ✅ Patterns d'erreurs (endpoints, types, fichiers)
+- ✅ Recommandations prioritaires avec commandes gcloud
+- ✅ Commits récents (contexte pour identifier coupables)
+- ✅ Actions prioritaires ("Que faire maintenant ?")
+
+**Avantage :** Format markdown = plus facile à lire pour un LLM que du JSON brut.
+
+---
+
+### 2️⃣ (Optionnel) Accès rapports JSON bruts pour détails
+
+Si tu as besoin de **plus de détails** après avoir lu le résumé :
 
 ```python
 import json
 
-# Production (PRIORITÉ #1)
+# Production (détails complets)
 with open('c:/dev/emergenceV8/reports/prod_report.json', 'r', encoding='utf-8') as f:
     prod = json.load(f)
 
-# Vue d'ensemble
+# Documentation
+with open('c:/dev/emergenceV8/reports/docs_report.json', 'r', encoding='utf-8') as f:
+    docs = json.load(f)
+
+# Intégrité
+with open('c:/dev/emergenceV8/reports/integrity_report.json', 'r', encoding='utf-8') as f:
+    integrity = json.load(f)
+
+# Rapport unifié
 with open('c:/dev/emergenceV8/reports/unified_report.json', 'r', encoding='utf-8') as f:
     unified = json.load(f)
 ```
 
-## 2️⃣ Analyse les résultats (TOUTES ces infos sont utiles !)
+**Champs utiles dans prod_report.json :**
+- `errors_detailed` : Liste erreurs avec full context (endpoint, file, line, stack trace)
+- `error_patterns.by_endpoint` : Endpoints les plus affectés
+- `error_patterns.by_file` : Fichiers les plus affectés
+- `code_snippets` : Code source avec numéros de ligne
+- `recent_commits` : 5 derniers commits (potentiels coupables)
+- `recommendations` : Actions prioritaires avec commandes gcloud
 
-### 📊 Production (prod_report.json)
+---
+
+## 📊 Exemple d'utilisation complète
 
 ```python
-# Résumé global
-status = prod['status']  # OK, WARNING, CRITICAL
-errors = prod['summary']['errors']
-warnings = prod['summary']['warnings']
+# 1. Lire le résumé markdown
+with open('c:/dev/emergenceV8/reports/codex_summary.md', 'r', encoding='utf-8') as f:
+    summary = f.read()
 
-# IMPORTANT : Erreurs détaillées (pour debug)
-for err in prod['errors_detailed']:
-    print(f"❌ {err['message']}")
-    print(f"   Endpoint: {err['endpoint']}")
-    print(f"   Stack trace: {err['stack_trace']}")
-    print(f"   File: {err['file_path']}:{err['line_number']}")
+print("📋 RÉSUMÉ GUARDIAN")
+print(summary)
 
-# PATTERNS d'erreurs (TRÈS UTILE pour trouver la cause !)
-patterns = prod['error_patterns']
-print(f"Endpoint le plus touché: {patterns['by_endpoint']}")
-print(f"Type d'erreur le plus fréquent: {patterns['most_common_error']}")
+# 2. Si erreurs détectées, approfondir avec JSON
+import json
+with open('c:/dev/emergenceV8/reports/prod_report.json', 'r', encoding='utf-8') as f:
+    prod = json.load(f)
 
-# Code snippets impliqués (contexte complet)
-for snippet in prod['code_snippets']:
-    print(f"Code: {snippet}")
-
-# Recommandations actionnables
-for rec in prod['recommendations']:
-    print(f"[{rec['priority']}] {rec['action']}")
-    print(f"   → {rec['details']}")
+if prod['summary']['errors'] > 0:
+    print("\n🔍 DÉTAILS DES ERREURS")
+    for error in prod['errors_detailed'][:5]:
+        print(f"Type: {error.get('error_type')}")
+        print(f"Endpoint: {error.get('endpoint')}")
+        print(f"File: {error.get('file_path')}:{error.get('line_number')}")
+        print(f"Message: {error.get('message')[:200]}")
+        print("---")
 ```
-
-### 📋 Vue d'ensemble (unified_report.json)
-
-```python
-# Executive summary
-exec_sum = unified['executive_summary']
-print(f"Status: {exec_sum['status']}")
-print(f"Issues: {exec_sum['total_issues']} (Critical: {exec_sum['critical']})")
-print(f"Headline: {exec_sum['headline']}")
-
-# PRIORITY ACTIONS (À FAIRE EN PREMIER !)
-for action in unified['priority_actions']:
-    print(f"🔥 [{action['priority']}] {action['description']}")
-    print(f"   File: {action['file']}")
-    print(f"   Fix: {action['recommendation']}")
-
-# Anima (Documentation)
-anima = unified['full_reports']['anima']
-print(f"\n📚 ANIMA (Documentation):")
-for gap in anima['documentation_gaps']:
-    print(f"   ⚠️ {gap['description']} ({gap['file']})")
-for update in anima['proposed_updates']:
-    print(f"   📝 {update['action']} → {update['target_file']}")
-
-# Neo (Intégrité backend/frontend)
-neo = unified['full_reports']['neo']
-print(f"\n🔍 NEO (Intégrité):")
-print(f"   Backend: {neo['backend_changes']}")
-print(f"   Frontend: {neo['frontend_changes']}")
-for issue in neo['issues']:
-    print(f"   ❌ {issue['category']}: {issue['description']}")
-    print(f"      → {issue['recommendation']}")
-
-# Recommandations par horizon
-recs = unified['recommendations']
-print(f"\n💡 RECOMMANDATIONS:")
-print(f"   Immediate: {recs['immediate']}")
-print(f"   Short-term: {recs['short_term']}")
-print(f"   Long-term: {recs['long_term']}")
-```
-
-## 3️⃣ Résume pour l'utilisateur (Format clair)
-
-```
-============================================================
-📊 RAPPORTS GUARDIAN - {timestamp}
-============================================================
-
-🔴 PRODUCTION (emergence-app)
-   Status: {status}
-   Logs analysés: {logs_analyzed} (dernière {freshness})
-
-   Erreurs: {errors}
-   Warnings: {warnings}
-   Latence: {latency_issues}
-
-   {SI ERREURS:}
-   ❌ ERREURS DÉTECTÉES:
-      - {error_message} ({endpoint})
-        File: {file_path}:{line_number}
-        Stack: {stack_trace}
-
-   {SI PATTERNS:}
-   🔍 PATTERNS:
-      - Endpoint le plus touché: {by_endpoint}
-      - Erreur la plus fréquente: {most_common_error}
-
-   💡 ACTIONS RECOMMANDÉES:
-      [{priority}] {action}
-      → {details}
 
 ---
 
-📋 VUE D'ENSEMBLE (Nexus)
-   Status: {status}
-   Issues totales: {total_issues} (Critical: {critical})
+## 🔄 Génération du résumé
 
-   🔥 PRIORITY ACTIONS:
-      {SI priority_actions:}
-      [{priority}] {description}
-      File: {file}
-      Fix: {recommendation}
-
-   📚 ANIMA (Documentation):
-      {SI gaps:}
-      ⚠️ Gaps: {documentation_gaps}
-      📝 Updates proposées: {proposed_updates}
-
-   🔍 NEO (Intégrité):
-      Backend changes: {backend_changes}
-      Frontend changes: {frontend_changes}
-      {SI issues:}
-      ❌ Issues: {issues}
-
----
-
-💡 RECOMMANDATIONS PAR HORIZON:
-   🔥 Immediate: {immediate}
-   📅 Short-term: {short_term}
-   📋 Long-term: {long_term}
-
-============================================================
-```
-
-## 4️⃣ C'est tout !
-
-**Les rapports sont mis à jour automatiquement (hooks Git + Task Scheduler 6h).**
-
-**PAS BESOIN de se connecter à Cloud Run !** 🚫
-
----
-
-## 💻 Script d'exemple prêt à l'emploi
+Le résumé `codex_summary.md` est généré par :
 
 ```bash
-# Utilise le script Python fourni
-python scripts/analyze_guardian_reports.py
+python scripts/generate_codex_summary.py
 ```
 
-**Ce script fait tout le boulot pour toi :**
-- Lit les 2 rapports JSON
+**Mise à jour automatique :**
+- ✅ Hooks Git (post-commit, pre-push)
+- ✅ Task Scheduler (toutes les 6h)
+
+**Mise à jour manuelle :**
+```bash
+cd c:/dev/emergenceV8
+python scripts/generate_codex_summary.py
+```
+
+---
+
+## 🚨 PAS BESOIN de gcloud !
+
+**Les rapports sont LOCAUX dans le dépôt.**
+- ❌ Pas besoin de se connecter à Cloud Run
+- ❌ Pas besoin de gcloud auth
+- ✅ Juste lire les fichiers dans `reports/`
+
+---
+
+## 💻 Alternative : Script Python tout-en-un (ancien)
+
+Si tu préfères utiliser le script Python qui analyse les JSON :
+
+```bash
+python scripts/analyze_guardian_reports.py --summary
+```
+
+**Ce script fait :**
+- Lit les rapports JSON
 - Analyse toutes les infos utiles
 - Affiche un résumé complet et actionnable
-- Format prêt pour copy/paste à l'utilisateur
 
-**Code source :** [scripts/analyze_guardian_reports.py](scripts/analyze_guardian_reports.py)
+Mais le **résumé markdown (`codex_summary.md`) est plus exploitable** pour un LLM.
 
 ---
 

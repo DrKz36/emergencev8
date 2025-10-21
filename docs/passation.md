@@ -1,3 +1,71 @@
+## [2025-10-21 06:25 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `scripts/generate_codex_summary.py` (nouveau - enrichissement rapports Guardian)
+- `reports/codex_summary.md` (nouveau - résumé markdown exploitable)
+- `PROMPT_CODEX_RAPPORTS.md` (nouvelle procédure d'accès rapports)
+- `AGENT_SYNC.md` (documentation accès rapports enrichie)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**Enrichissement des rapports Guardian pour exploitation optimale par Codex GPT.**
+
+Problème adressé : Codex GPT avait du mal à exploiter les rapports JSON Guardian car :
+- Structures JSON complexes (nested dicts)
+- Manque de contexte narratif
+- Pas d'insights actionnables directs
+- Données dispersées entre 4 rapports JSON
+
+Solution : Créer un résumé markdown narratif unifié avec insights exploitables.
+
+### Implémentation détaillée
+
+**1. Script `generate_codex_summary.py`**
+   - Lit 4 rapports JSON (prod, docs, integrity, unified)
+   - Extrait insights actionnables avec contexte complet :
+     * Production : erreurs détaillées, patterns (endpoint/file/error type), code snippets
+     * Documentation : gaps avec sévérité, mises à jour proposées
+     * Intégrité : problèmes critiques, endpoints/API modifiés
+   - Génère markdown narratif dans `reports/codex_summary.md`
+   - Format optimisé pour LLM (vs JSON brut)
+
+**2. Contenu du résumé markdown**
+   - Vue d'ensemble : tableau récapitulatif 4 Guardians
+   - Production :
+     * Erreurs avec contexte (endpoint, fichier:ligne, message, stack trace)
+     * Patterns d'erreurs (endpoints/fichiers/types les plus affectés)
+     * Code snippets avec numéros de ligne
+     * Recommandations avec commandes gcloud
+     * Commits récents (contexte pour identifier coupables)
+   - Documentation : gaps détaillés + fichiers docs à mettre à jour
+   - Intégrité : issues critiques + endpoints/API modifiés
+   - Section "Que faire maintenant ?" : actions prioritaires ordonnées
+
+**3. Mise à jour documentation**
+   - `PROMPT_CODEX_RAPPORTS.md` : nouvelle procédure (lire markdown en priorité)
+   - `AGENT_SYNC.md` : section accès rapports enrichie
+   - Exemples d'utilisation complets
+
+### Tests
+- ✅ Script `generate_codex_summary.py` exécuté avec succès
+- ✅ Résumé `codex_summary.md` généré correctement (66 lignes)
+- ✅ Format markdown narratif exploitable pour LLM
+- ✅ Test avec rapports actuels (production OK, 0 erreurs)
+
+### Travail de Codex GPT pris en compte
+- Codex avait signalé difficulté d'accès aux rapports Guardian
+- Cette amélioration résout le problème en fournissant résumé narratif clair
+
+### Prochaines actions recommandées
+1. Intégrer `generate_codex_summary.py` dans hooks Git (post-commit, pre-push)
+2. Ajouter à Task Scheduler (génération automatique toutes les 6h)
+3. Tester avec Codex GPT pour validation de l'exploitabilité
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-21 19:30 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

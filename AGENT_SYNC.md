@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 19:30 CET (Claude Code : Système de mémoire pondérée avec décroissance temporelle ✅)
+**Dernière mise à jour** : 2025-10-21 06:25 CET (Claude Code : Résumé markdown Guardian pour Codex GPT ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -21,19 +21,90 @@
 
 **Les rapports Guardian sont LOCAUX dans le dépôt !**
 
-Quand l'utilisateur demande "vérifie les rapports Guardian" :
-- ✅ **FAIRE** : Lire les fichiers JSON dans `c:\dev\emergenceV8\reports\`
-- ❌ **NE PAS FAIRE** : Dire "je n'ai pas accès à Cloud Run..."
+### 🆕 NOUVELLE PROCÉDURE (2025-10-21)
 
-**Fichiers principaux :**
-- `reports/prod_report.json` - Production (erreurs/warnings)
-- `reports/unified_report.json` - Rapport unifié (Nexus)
-- `reports/integrity_report.json` - Intégrité backend/frontend (Neo)
-- `reports/docs_report.json` - Documentation (Anima)
+**Quand l'utilisateur demande "vérifie les rapports Guardian" :**
+
+1. **RECOMMANDÉ** : Lire le résumé markdown enrichi
+   - Fichier : `reports/codex_summary.md`
+   - Format : Markdown narratif exploitable pour LLM
+   - Contenu : Vue d'ensemble + insights + code snippets + recommandations actionnables
+
+2. **(Optionnel)** : Accès rapports JSON bruts pour détails
+   - `reports/prod_report.json` - Production (erreurs détaillées, patterns, code snippets)
+   - `reports/unified_report.json` - Rapport unifié (Nexus)
+   - `reports/integrity_report.json` - Intégrité backend/frontend (Neo)
+   - `reports/docs_report.json` - Documentation (Anima)
+
+**Génération du résumé :**
+```bash
+python scripts/generate_codex_summary.py
+```
 
 Mis à jour automatiquement par hooks Git + Task Scheduler (6h).
 
-**Voir détails :** [CODEX_GPT_GUIDE.md Section 9.3](CODEX_GPT_GUIDE.md#93-accéder-aux-rapports-guardian)
+**Voir détails :** [PROMPT_CODEX_RAPPORTS.md](PROMPT_CODEX_RAPPORTS.md)
+
+## ✅ Session COMPLÉTÉE (2025-10-21 06:25 CET) — Agent : Claude Code (Résumé markdown Guardian pour Codex GPT)
+
+### 🎯 Objectif
+- Enrichir les rapports Guardian pour exploitation optimale par Codex GPT
+- Créer un résumé markdown narratif avec insights actionnables
+- Améliorer la documentation d'accès aux rapports Guardian
+
+### 🛠️ Actions réalisées
+
+**1. Script `generate_codex_summary.py`**
+   - Lit tous les rapports JSON Guardian (prod, docs, integrity, unified)
+   - Extrait insights actionnables avec contexte complet
+   - Génère résumé markdown narratif dans `reports/codex_summary.md`
+   - Format optimisé pour exploitation par LLM (vs JSON brut)
+
+**2. Contenu du résumé markdown**
+   - ✅ Vue d'ensemble des 4 Guardians avec métriques clés
+   - ✅ Insights production : erreurs détaillées, patterns (endpoint/file/error type), code snippets
+   - ✅ Insights documentation : gaps avec sévérité, mises à jour proposées
+   - ✅ Insights intégrité : problèmes critiques, endpoints/API modifiés
+   - ✅ Commits récents (contexte pour identifier coupables)
+   - ✅ Section "Que faire maintenant ?" avec actions prioritaires
+
+**3. Mise à jour `PROMPT_CODEX_RAPPORTS.md`**
+   - Nouvelle procédure : lire `codex_summary.md` en priorité
+   - Accès JSON brut en optionnel pour détails supplémentaires
+   - Exemples d'utilisation complets
+   - Documentation génération du résumé
+
+**4. Mise à jour `AGENT_SYNC.md`**
+   - Section "Accès rapports Guardian" enrichie
+   - Nouvelle procédure documentée
+   - Référence au script `generate_codex_summary.py`
+
+### 📊 Résultats
+
+**Fichiers créés :**
+- `scripts/generate_codex_summary.py` (script enrichissement rapports)
+- `reports/codex_summary.md` (résumé markdown exploitable)
+
+**Fichiers modifiés :**
+- `PROMPT_CODEX_RAPPORTS.md` (nouvelle procédure)
+- `AGENT_SYNC.md` (documentation accès rapports)
+
+**Tests :**
+- ✅ Script exécuté avec succès
+- ✅ Résumé markdown généré correctement
+- ✅ Format narratif exploitable pour LLM
+
+### 🎯 Prochaines actions recommandées
+
+1. Intégrer `generate_codex_summary.py` dans hooks Git (post-commit, pre-push)
+2. Ajouter à Task Scheduler (génération automatique toutes les 6h)
+3. Tester avec Codex GPT pour validation de l'exploitabilité
+
+### 🔗 Contexte
+
+**Problème résolu :** Codex GPT avait du mal à exploiter les rapports JSON bruts (structures complexes, manque de contexte narratif). Le résumé markdown fournit des insights directement actionnables avec code snippets, patterns d'erreurs, et recommandations prioritaires.
+
+---
 
 ## ✅ Session COMPLÉTÉE (2025-10-21 19:30 CET) — Agent : Claude Code (Mémoire pondérée avec décroissance temporelle)
 
