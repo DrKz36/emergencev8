@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-21T14:56:28.494226",
+  "timestamp": "2025-10-21T14:56:52.563228",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -27,9 +27,15 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "83b92fae",
+      "author": "Fernando Gonzalez",
+      "time": "5 seconds ago",
+      "message": "chore(guardian): Rapports Guardian rÃ©gÃ©nÃ©rÃ©s par hooks post-commit"
+    },
+    {
       "hash": "b3245a83",
       "author": "Fernando Gonzalez",
-      "time": "13 seconds ago",
+      "time": "37 seconds ago",
       "message": "docs(sync): Commit rapports Guardian + doc inter-agents"
     },
     {
@@ -49,12 +55,6 @@
       "author": "Fernando Gonzalez",
       "time": "2 hours ago",
       "message": "docs: Ajout NEXT_SESSION_PROMPT.md pour prochaine instance"
-    },
-    {
-      "hash": "215e28e9",
-      "author": "Fernando Gonzalez",
-      "time": "2 hours ago",
-      "message": "docs(passation): Ajout session audit complet + Guardian + Docker"
     }
   ],
   "recommendations": [
