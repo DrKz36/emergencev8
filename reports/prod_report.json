@@ -1,149 +1,22 @@
 {
-  "timestamp": "2025-10-21T12:59:18.576137",
+  "timestamp": "2025-10-21T13:09:59.329671",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
   "freshness": "1h",
-  "status": "DEGRADED",
+  "status": "OK",
   "summary": {
     "errors": 0,
-    "warnings": 7,
+    "warnings": 0,
     "critical_signals": 0,
     "latency_issues": 0
   },
   "errors": [],
-  "warnings": [
-    {
-      "time": "2025-10-21T10:59:09.238555Z",
-      "msg": "GET https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/api/v1/application.wadl → 404"
-    },
-    {
-      "time": "2025-10-21T10:59:09.078144Z",
-      "msg": "GET https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/api/application.wadl → 404"
-    },
-    {
-      "time": "2025-10-21T10:59:08.660100Z",
-      "msg": "GET https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/application.wadl → 404"
-    },
-    {
-      "time": "2025-10-21T10:58:57.203245Z",
-      "msg": "GET https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/status → 404"
-    },
-    {
-      "time": "2025-10-21T10:58:51.028537Z",
-      "msg": "GET https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/mongo-express/ → 404"
-    }
-  ],
+  "warnings": [],
   "critical_signals": [],
   "latency_issues": [],
   "errors_detailed": [],
-  "warnings_detailed": [
-    {
-      "timestamp": "2025-10-21T10:59:09.238555Z",
-      "severity": "WARNING",
-      "message": "GET https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/api/v1/application.wadl → 404",
-      "stack_trace": null,
-      "endpoint": "https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/api/v1/application.wadl",
-      "http_method": "GET",
-      "status_code": 404,
-      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Safari/605.1.15",
-      "request_id": "projects/emergence-469005/traces/2b08aa5b248775842f4f8f200abaf037",
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-21T10:59:09.078144Z",
-      "severity": "WARNING",
-      "message": "GET https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/api/application.wadl → 404",
-      "stack_trace": null,
-      "endpoint": "https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/api/application.wadl",
-      "http_method": "GET",
-      "status_code": 404,
-      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/17.17134",
-      "request_id": "projects/emergence-469005/traces/399472b709759b90a041974cb13f8b10",
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-21T10:59:08.660100Z",
-      "severity": "WARNING",
-      "message": "GET https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/application.wadl → 404",
-      "stack_trace": null,
-      "endpoint": "https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/application.wadl",
-      "http_method": "GET",
-      "status_code": 404,
-      "user_agent": "Mozilla/5.0 (Kubuntu; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
-      "request_id": "projects/emergence-469005/traces/82b937287e0e715117741437d02e136d",
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-21T10:58:57.203245Z",
-      "severity": "WARNING",
-      "message": "GET https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/status → 404",
-      "stack_trace": null,
-      "endpoint": "https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/status",
-      "http_method": "GET",
-      "status_code": 404,
-      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Safari/605.1.15",
-      "request_id": "projects/emergence-469005/traces/698022a102395fb0afb56c14abb37ac5",
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-21T10:58:51.028537Z",
-      "severity": "WARNING",
-      "message": "GET https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/mongo-express/ → 404",
-      "stack_trace": null,
-      "endpoint": "https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/mongo-express/",
-      "http_method": "GET",
-      "status_code": 404,
-      "user_agent": "Mozilla/5.0 (Fedora; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-      "request_id": "projects/emergence-469005/traces/a43320773ec27b11765a508119b3ccaf",
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-21T10:58:36.762387Z",
-      "severity": "WARNING",
-      "message": "GET https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/pre-commit-config.yaml → 404",
-      "stack_trace": null,
-      "endpoint": "https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/pre-commit-config.yaml",
-      "http_method": "GET",
-      "status_code": 404,
-      "user_agent": "Mozilla/5.0 (X11; Linux i686; rv:126.0) Gecko/20100101 Firefox/126.0",
-      "request_id": "projects/emergence-469005/traces/344537da381801e9962e08be2f919de3",
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-21T10:58:35.922941Z",
-      "severity": "WARNING",
-      "message": "GET https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/.pre-commit-config.yaml → 404",
-      "stack_trace": null,
-      "endpoint": "https://bc-mc.3enubnxbd5fjlpbcqhzs9jx73.blockchainnodeengine.com/.pre-commit-config.yaml",
-      "http_method": "GET",
-      "status_code": 404,
-      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:134.0) Gecko/20100101 Firefox/134.0",
-      "request_id": "projects/emergence-469005/traces/186d50cfbd80cf4963587a58e44c3ced",
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    }
-  ],
+  "warnings_detailed": [],
   "error_patterns": {
     "by_endpoint": {},
     "by_error_type": {},
@@ -154,42 +27,41 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "b3298234",
+      "author": "Fernando Gonzalez",
+      "time": "3 minutes ago",
+      "message": "chore(release): Bump version beta-2.1.5 â†’ beta-2.1.6"
+    },
+    {
+      "hash": "c89c75cb",
+      "author": "Fernando Gonzalez",
+      "time": "5 minutes ago",
+      "message": "fix(guardian): AmÃ©liorer filtre bot scans ProdGuardian + Tests Docker"
+    },
+    {
       "hash": "5b7cb718",
       "author": "Fernando Gonzalez",
-      "time": "9 minutes ago",
+      "time": "19 minutes ago",
       "message": "docs: Ajout NEXT_SESSION_PROMPT.md pour prochaine instance"
     },
     {
       "hash": "215e28e9",
       "author": "Fernando Gonzalez",
-      "time": "12 minutes ago",
+      "time": "23 minutes ago",
       "message": "docs(passation): Ajout session audit complet + Guardian + Docker"
     },
     {
       "hash": "092d5c67",
       "author": "Fernando Gonzalez",
-      "time": "14 minutes ago",
+      "time": "25 minutes ago",
       "message": "fix(guardian): AmÃ©liorer Guardian + Docker Compose + Audit complet"
-    },
-    {
-      "hash": "d3edc141",
-      "author": "Fernando Gonzalez",
-      "time": "28 minutes ago",
-      "message": "feat(benchmarks): Module de benchmark rÃ©tention mÃ©moire multi-agents"
-    },
-    {
-      "hash": "3b95815c",
-      "author": "Fernando Gonzalez",
-      "time": "51 minutes ago",
-      "message": "docs(cicd): Documentation session CI/CD GitHub Actions âœ…"
     }
   ],
   "recommendations": [
     {
-      "priority": "MEDIUM",
-      "action": "Monitor closely and investigate warnings",
-      "details": "7 warnings detected",
-      "affected_files": []
+      "priority": "LOW",
+      "action": "No immediate action required",
+      "details": "Production is healthy"
     }
   ]
 }

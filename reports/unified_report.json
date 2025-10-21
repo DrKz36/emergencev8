@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "timestamp": "2025-10-21T12:50:42.333161",
-    "commit_hash": "215e28e9b56d05024fe10478ddb328b6e8d43275",
-    "commit_message": "docs(passation): Ajout session audit complet + Guardian + Docker\n\nEntrée de passation complète pour session 2025-10-21 16:45:\n- Audit complet application (backend, frontend, Guardian, GCP)\n- Correctifs Guardian (ProdGuardian faux positifs, pre-commit hook V2)\n- Docker Compose complet pour dev local\n- Document AUDIT_COMPLET_2025-10-21.md (400+ lignes)\n- Plan d'assainissement hiérarchisé\n- Roadmap Docker local → GCP\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "timestamp": "2025-10-21T13:06:41.064321",
+    "commit_hash": "c89c75cb44d9324e5e1ad29d7a7c38951d206e89",
+    "commit_message": "fix(guardian): Améliorer filtre bot scans ProdGuardian + Tests Docker\n\nAmélioration du système de monitoring production:\n\n1. ProdGuardian - Filtre bot scans étendu\n   - Ajout 13 nouveaux patterns dans BOT_SCAN_PATHS\n   - Scans PHP: /xprober.php, /.user.ini, /user.ini\n   - Scans AWS/S3: /.s3cfg, /.aws/, /aws/\n   - Path traversal: /etc/passwd, /etc/shadow, 000~ROOT~000\n   - Scans Python: /venv/, /requirements.txt\n   - Warnings réduits 9 → 7 (filtre fonctionne, nouveaux scans continus)\n\n2. Tests Docker Compose\n   - Stack dev complète testée (backend, frontend, mongo, chromadb)\n   - Build backend OK (4min 42s pip install)\n   - Images téléchargées avec succès\n   - Containers en cours de démarrage (Docker Desktop Windows)\n\n3. Documentation inter-agents\n   - AGENT_SYNC.md: Session 18:15 CET ajoutée\n   - docs/passation.md: Entrée complète avec contexte + actions\n\nImpact:\n- ✅ ProdGuardian plus précis (filtre automatique bot scans)\n- ✅ Moins de faux positifs DEGRADED\n- ✅ Pre-push hook plus fiable\n- ✅ Stack Docker Compose validée\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
     "nexus_version": "1.0.0"
   },
   "executive_summary": {
@@ -31,25 +31,34 @@
   "priority_actions": [],
   "full_reports": {
     "anima": {
-      "timestamp": "2025-10-21T12:50:41.931570",
-      "commit_hash": "215e28e9b56d05024fe10478ddb328b6e8d43275",
-      "commit_message": "docs(passation): Ajout session audit complet + Guardian + Docker\n\nEntrée de passation complète pour session 2025-10-21 16:45:\n- Audit complet application (backend, frontend, Guardian, GCP)\n- Correctifs Guardian (ProdGuardian faux positifs, pre-commit hook V2)\n- Docker Compose complet pour dev local\n- Document AUDIT_COMPLET_2025-10-21.md (400+ lignes)\n- Plan d'assainissement hiérarchisé\n- Roadmap Docker local → GCP\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+      "timestamp": "2025-10-21T13:06:40.456079",
+      "commit_hash": "c89c75cb44d9324e5e1ad29d7a7c38951d206e89",
+      "commit_message": "fix(guardian): Améliorer filtre bot scans ProdGuardian + Tests Docker\n\nAmélioration du système de monitoring production:\n\n1. ProdGuardian - Filtre bot scans étendu\n   - Ajout 13 nouveaux patterns dans BOT_SCAN_PATHS\n   - Scans PHP: /xprober.php, /.user.ini, /user.ini\n   - Scans AWS/S3: /.s3cfg, /.aws/, /aws/\n   - Path traversal: /etc/passwd, /etc/shadow, 000~ROOT~000\n   - Scans Python: /venv/, /requirements.txt\n   - Warnings réduits 9 → 7 (filtre fonctionne, nouveaux scans continus)\n\n2. Tests Docker Compose\n   - Stack dev complète testée (backend, frontend, mongo, chromadb)\n   - Build backend OK (4min 42s pip install)\n   - Images téléchargées avec succès\n   - Containers en cours de démarrage (Docker Desktop Windows)\n\n3. Documentation inter-agents\n   - AGENT_SYNC.md: Session 18:15 CET ajoutée\n   - docs/passation.md: Entrée complète avec contexte + actions\n\nImpact:\n- ✅ ProdGuardian plus précis (filtre automatique bot scans)\n- ✅ Moins de faux positifs DEGRADED\n- ✅ Pre-push hook plus fiable\n- ✅ Stack Docker Compose validée\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
       "status": "ok",
       "changes_detected": {
         "backend": [],
         "frontend": [],
         "docs": [
-          "docs/passation.md"
+          "AGENT_SYNC.md",
+          "docs/passation.md",
+          "reports/codex_summary.md"
         ],
-        "other": []
+        "other": [
+          "claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py",
+          "reports/auto_update_report.json",
+          "reports/docs_report.json",
+          "reports/integrity_report.json",
+          "reports/prod_report.json",
+          "reports/unified_report.json"
+        ]
       },
       "documentation_gaps": [],
       "proposed_updates": [],
       "statistics": {
-        "files_changed": 1,
+        "files_changed": 9,
         "backend_files": 0,
         "frontend_files": 0,
-        "docs_files": 1,
+        "docs_files": 3,
         "gaps_found": 0,
         "high_severity": 0,
         "medium_severity": 0,
@@ -59,7 +68,7 @@
       "summary": "0 documentation gap(s) found, 0 update(s) proposed"
     },
     "neo": {
-      "timestamp": "2025-10-21T12:50:42.034085",
+      "timestamp": "2025-10-21T13:06:40.555114",
       "status": "ok",
       "backend_changes": {
         "files": [],
@@ -92,10 +101,10 @@
     }
   },
   "statistics": {
-    "total_files_changed": 1,
+    "total_files_changed": 9,
     "backend_files": 0,
     "frontend_files": 0,
-    "docs_files": 1,
+    "docs_files": 3,
     "issues_by_severity": {
       "critical": 0,
       "warning": 0,
