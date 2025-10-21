@@ -1,3 +1,100 @@
+## [2025-10-21 07:15 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `scripts/run_audit.py` (fix linting + typing)
+- `scripts/guardian_email_report.py` (vérification qualité)
+- `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Review et correction qualité code après les 4 sessions de Codex GPT.
+Codex a fait un excellent travail fonctionnel (Test 4 + amélioration scripts Guardian), mais a oublié la rigueur typing/linting.
+
+### Détails de l'implémentation
+
+**Review travail de Codex :**
+- ✅ `tests/system/test_python_dependencies.py` : Test dépendances Python créé, fonctionne nickel
+- ✅ `scripts/guardian_email_report.py` : Fonctions `normalize_status()`, `extract_status()`, `resolve_path()` ajoutées
+  - Support tous statuts (OK, WARNING, ERROR, CRITICAL, NEEDS_UPDATE)
+  - Fallbacks pour statuts imbriqués (executive_summary.status, global_status)
+  - Fix extraction métriques prod (logs_analyzed, errors, warnings, critical_signals)
+  - Fix extraction gaps docs (documentation_gaps list au lieu de summary)
+- ✅ `scripts/run_audit.py` : Même logique `normalize_status()` + `extract_status()` ajoutée
+
+**Corrections qualité appliquées :**
+
+[scripts/run_audit.py](../scripts/run_audit.py):
+- Ligne 9 : Import `os` inutilisé supprimé
+- Ligne 17 : Imports `List`, `Optional` inutilisés supprimés
+- Ligne 59 : Ajout annotation `self.results: Dict[str, Any] = {}`
+- Ligne 147 : Ajout annotation `reports_status: Dict[str, Any] = {}`
+- Lignes 62, 100, 200, 243, 279, 325, 356 : Fix 7 méthodes `-> Dict` vers `-> Dict[str, Any]`
+- Lignes 459, 467, 471, 523 : 5 f-strings sans placeholders convertis en strings normales
+
+[scripts/guardian_email_report.py](../scripts/guardian_email_report.py):
+- ✅ Aucune erreur détectée, code déjà propre
+
+### Tests
+- ✅ `pytest tests/system/test_python_dependencies.py -v` (1 passed)
+- ✅ `ruff check scripts/guardian_email_report.py scripts/run_audit.py` (All checks passed!)
+- ✅ `mypy scripts/guardian_email_report.py scripts/run_audit.py --ignore-missing-imports` (Success: no issues found)
+
+### Travail de Codex GPT pris en compte
+- Session 23:59 : Test 4 dépendances Python (conservé intact, fonctionne parfaitement)
+- Sessions Guardian : Améliorations scripts conservées, qualité code fixée
+- Passation et AGENT_SYNC.md de Codex lus avant corrections
+
+### Analyse qualité travail Codex
+
+**Points forts :**
+- 🔥 Logique normalisation statuts robuste et complète (9 statuts supportés)
+- 🔥 Gestion fallbacks intelligente pour structures JSON variées
+- 🔥 Code défensif avec isinstance() et safe access systématique
+- 🔥 Cohérence entre les 2 scripts (même normalize_status)
+- 🔥 Fix bugs extraction métriques (prod + docs)
+
+**Points faibles :**
+- 💩 Oubli annotations de type (Dict[str, Any])
+- 💩 Imports inutilisés (os, List, Optional)
+- 💩 f-strings sans placeholders (mauvaise pratique)
+
+**Note : 8.5/10** - Excellent travail fonctionnel, rigueur qualité manquante.
+
+### Prochaines actions recommandées
+1. Tester scripts Guardian avec nouveaux extracteurs de statuts sur prod
+2. Valider extraction métriques sur tous les rapports Guardian
+3. Ajouter tests unitaires pour `normalize_status()` et `extract_status()`
+
+### Blocages
+Aucun.
+
+---
+
+## [2025-10-21 23:59 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `tests/system/test_python_dependencies.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+Mise en place d'un test rapide "Test 4" pour valider la présence des dépendances Python critiques (FastAPI, Pytest) demandée par l'utilisateur.
+
+### Détails de l'implémentation
+- Création du dossier `tests/system/` et du test `test_python_core_dependencies` qui logge les imports avec les emojis attendus et échoue si un module manque.
+- Installation locale de `fastapi==0.119.0` (aligné avec `requirements.txt`) afin que l'environnement passe ce contrôle.
+- Pas d'autres changements dans le code applicatif.
+
+### Tests
+- ✅ `pytest tests/system/test_python_dependencies.py -q`
+- ✅ `ruff check tests/system/test_python_dependencies.py`
+
+### Travail de Claude Code pris en compte
+- Les sessions précédentes restent inchangées ; ce test s'ajoute sans impacter les développements mémoire/guardian existants.
+
+### Blocages
+- Aucun.
+
 ## [2025-10-21 06:35 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

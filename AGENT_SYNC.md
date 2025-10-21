@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 23:45 CET (Claude Code : Intégration complète retrieval pondéré + optimisations (cache, GC, métriques) ✅)
+**Dernière mise à jour** : 2025-10-21 07:15 CET (Claude Code : Fix qualité code scripts Guardian après travail Codex ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -45,6 +45,76 @@ Mis à jour automatiquement par hooks Git + Task Scheduler (6h).
 
 **Voir détails :** [PROMPT_CODEX_RAPPORTS.md](PROMPT_CODEX_RAPPORTS.md)
 **Setup complet :** [docs/CODEX_SUMMARY_SETUP.md](docs/CODEX_SUMMARY_SETUP.md)
+
+## ✅ Session COMPLÉTÉE (2025-10-21 07:15 CET) — Agent : Claude Code (Fix qualité code scripts Guardian)
+
+### Fichiers modifiés
+- `scripts/run_audit.py` (fix linting + typing)
+- `scripts/guardian_email_report.py` (vérification qualité)
+- `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (cette session)
+
+### Actions réalisées
+**Review du travail de Codex GPT (4 sessions) :**
+- ✅ Test 4 dépendances Python créé et fonctionnel
+- ✅ Amélioration scripts Guardian (normalize_status, extract_status, safe access)
+- ❌ **Corrections qualité code nécessaires** :
+
+**Fixes appliqués sur `scripts/run_audit.py` :**
+- Import `os` inutilisé supprimé
+- Imports `List`, `Optional` inutilisés supprimés
+- 5 f-strings sans placeholders convertis en strings normales
+- Ajout annotation type `self.results: Dict[str, Any] = {}`
+- Ajout annotation type `reports_status: Dict[str, Any] = {}`
+- Fix 7 méthodes `-> Dict` vers `-> Dict[str, Any]`
+
+**Résultat :**
+- ✅ `ruff check` : All checks passed!
+- ✅ `mypy` : Success: no issues found
+- ✅ `pytest tests/system/test_python_dependencies.py` : 1 passed
+
+### Analyse travail Codex
+**Points forts :**
+- 🔥 Logique normalisation statuts robuste et intelligente
+- 🔥 Gestion fallbacks pour statuts imbriqués (executive_summary, global_status)
+- 🔥 Code défensif avec safe access systématique
+- 🔥 Fix extraction métriques prod (logs_analyzed, errors, warnings)
+- 🔥 Fix extraction gaps docs (documentation_gaps list)
+
+**Points faibles :**
+- 💩 Oubli annotations de type (typing)
+- 💩 Imports inutilisés non nettoyés
+- 💩 f-strings sans placeholders
+
+**Note : 8.5/10** - Excellent travail fonctionnel, rigueur typing/linting manquante (corrigée).
+
+### Tests
+- ✅ `ruff check scripts/guardian_email_report.py scripts/run_audit.py`
+- ✅ `mypy scripts/guardian_email_report.py scripts/run_audit.py --ignore-missing-imports`
+- ✅ `pytest tests/system/test_python_dependencies.py -v`
+
+### Prochaines actions
+1. Commit + push tous les fichiers (test + fixes scripts)
+2. Tester les scripts Guardian avec nouvelles extractions statuts
+
+## ✅ Session COMPLÉTÉE (2025-10-21 23:59 CET) — Agent : Codex GPT (Test dépendances Python)
+
+### Fichiers modifiés
+- `tests/system/test_python_dependencies.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Ajout d'un test système `test_python_core_dependencies` qui vérifie la présence de `fastapi` et `pytest` via `importlib.util.find_spec` et journalise le résultat avec les emojis attendus.
+- Installation locale de `fastapi==0.119.0` pour aligner l'environnement d'exécution avec `requirements.txt` et permettre au test de passer.
+- Exécution rapide de `pytest` sur le nouveau test et vérification lint `ruff` pour garantir un état propre avant commit.
+
+### Tests
+- ✅ `pytest tests/system/test_python_dependencies.py -q`
+- ✅ `ruff check tests/system/test_python_dependencies.py`
+
+### Prochaines actions
+1. Étendre la vérification aux dépendances critiques backend (pydantic, httpx) si nécessaire pour les prochaines sessions.
 
 ## ✅ Session COMPLÉTÉE (2025-10-21 23:45 CET) — Agent : Claude Code (Intégration complète retrieval pondéré + optimisations)
 

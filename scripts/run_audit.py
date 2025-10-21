@@ -6,7 +6,6 @@ Vérifie l'intégrité complète du système et génère un rapport de vérifica
 Usage: python scripts/run_audit.py --target emergence-app-00501-zon --mode full
 """
 
-import os
 import sys
 import json
 import asyncio
@@ -14,7 +13,7 @@ import argparse
 import io
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 # Fix encoding Windows
 if sys.platform == 'win32':
@@ -57,10 +56,10 @@ class AuditOrchestrator:
         self.target_revision = target_revision
         self.mode = mode
         self.timestamp = datetime.now(timezone.utc).isoformat()
-        self.results = {}
+        self.results: Dict[str, Any] = {}
         self.repo_root = Path(__file__).parent.parent
 
-    async def run_full_audit(self) -> Dict:
+    async def run_full_audit(self) -> Dict[str, Any]:
         """Lance l'audit complet du système"""
         print(f"🔍 Démarrage de l'audit complet pour {self.target_revision}")
         print(f"⏰ Timestamp: {self.timestamp}")
@@ -98,7 +97,7 @@ class AuditOrchestrator:
 
         return self.results
 
-    async def _check_guardian_reports(self) -> Dict:
+    async def _check_guardian_reports(self) -> Dict[str, Any]:
         """Vérifie l'existence et le statut des rapports Guardian"""
 
         def normalize_status(raw_status: Any) -> str:
@@ -145,7 +144,7 @@ class AuditOrchestrator:
 
             return status, timestamp or 'N/A'
 
-        reports_status = {}
+        reports_status: Dict[str, Any] = {}
         expected_reports = [
             'global_report.json',
             'prod_report.json',
@@ -198,7 +197,7 @@ class AuditOrchestrator:
 
         return reports_status
 
-    async def _check_production_cloudrun(self) -> Dict:
+    async def _check_production_cloudrun(self) -> Dict[str, Any]:
         """Vérifie l'état de la production Cloud Run"""
         prod_report_path = REPORTS_DIR / 'prod_report.json'
 
@@ -241,7 +240,7 @@ class AuditOrchestrator:
                 'error': str(e)
             }
 
-    async def _check_integrity(self) -> Dict:
+    async def _check_integrity(self) -> Dict[str, Any]:
         """Vérifie l'intégrité backend/frontend"""
         # Vérifier les fichiers critiques
         critical_files = [
@@ -277,7 +276,7 @@ class AuditOrchestrator:
             'details': files_check
         }
 
-    async def _check_endpoints(self) -> Dict:
+    async def _check_endpoints(self) -> Dict[str, Any]:
         """Vérifie la cohérence des endpoints API"""
         # Vérifier que les routes backend existent
         backend_main = self.repo_root / 'src' / 'backend' / 'main.py'
@@ -323,7 +322,7 @@ class AuditOrchestrator:
                 'error': str(e)
             }
 
-    async def _check_documentation(self) -> Dict:
+    async def _check_documentation(self) -> Dict[str, Any]:
         """Vérifie la présence de la documentation"""
         critical_docs = [
             'AGENT_SYNC.md',
@@ -354,7 +353,7 @@ class AuditOrchestrator:
             'details': docs_check
         }
 
-    async def _generate_verification_report(self) -> Dict:
+    async def _generate_verification_report(self) -> Dict[str, Any]:
         """Génère le rapport de vérification final"""
         # Calculer le statut global
         global_status = 'OK'
@@ -457,7 +456,7 @@ class AuditOrchestrator:
 
         print(f"\n📝 Rapport de vérification sauvegardé: {output_path}")
         print(f"\n{'='*60}")
-        print(f"🎯 RÉSUMÉ DE L'AUDIT")
+        print("🎯 RÉSUMÉ DE L'AUDIT")
         print(f"{'='*60}")
         print(f"Révision vérifiée: {self.target_revision}")
         print(f"Statut global: {self._format_status_emoji(global_status)} {global_status}")
@@ -465,11 +464,11 @@ class AuditOrchestrator:
         print(f"Checks: {passed_checks}/{total_checks} passés")
 
         if issues:
-            print(f"\n⚠️  Problèmes détectés:")
+            print("\n⚠️  Problèmes détectés:")
             for issue in issues:
                 print(f"  - {issue}")
         else:
-            print(f"\n✅ Aucun problème détecté")
+            print("\n✅ Aucun problème détecté")
 
         print(f"\n{'='*60}\n")
 
@@ -521,7 +520,7 @@ async def send_email_report():
         return success
 
     except subprocess.TimeoutExpired:
-        print(f"⏱️  Timeout lors de l'envoi d'email (> 60s)")
+        print("⏱️  Timeout lors de l'envoi d'email (> 60s)")
         return False
     except Exception as e:
         print(f"❌ Erreur lors de l'envoi d'email: {e}")

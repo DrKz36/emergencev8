@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-21T06:51:00.649720",
+  "timestamp": "2025-10-21T07:09:59.619770",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -27,34 +27,34 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "a2acc79f",
+      "author": "Fernando Gonzalez",
+      "time": "19 minutes ago",
+      "message": "chore(reports): Mise Ã  jour rapports post-push"
+    },
+    {
       "hash": "72b6c53a",
       "author": "Fernando Gonzalez",
-      "time": "4 seconds ago",
+      "time": "19 minutes ago",
       "message": "chore(guardian): Mise Ã  jour rapports Guardian automatiques"
     },
     {
       "hash": "fe4dc014",
       "author": "Fernando Gonzalez",
-      "time": "32 seconds ago",
+      "time": "20 minutes ago",
       "message": "feat(memory): IntÃ©gration complÃ¨te retrieval pondÃ©rÃ© + optimisations (cache, GC, mÃ©triques)"
     },
     {
       "hash": "04f0428e",
       "author": "Fernando Gonzalez",
-      "time": "4 minutes ago",
+      "time": "23 minutes ago",
       "message": "refactor(agents): Condenser prompt system Codex GPT (-63%)"
     },
     {
       "hash": "21b8d45e",
       "author": "Fernando Gonzalez",
-      "time": "11 minutes ago",
+      "time": "30 minutes ago",
       "message": "feat(agents): Prompt system Codex GPT unifiÃ© (local + cloud)"
-    },
-    {
-      "hash": "4e54f24b",
-      "author": "Fernando Gonzalez",
-      "time": "16 minutes ago",
-      "message": "docs(guardian): Documentation session automation Codex Summary"
     }
   ],
   "recommendations": [
