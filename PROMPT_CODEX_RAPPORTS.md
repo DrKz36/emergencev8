@@ -2,6 +2,12 @@
 
 **Quand l'utilisateur te demande "vérifie les rapports Guardian" ou "analyse la prod" :**
 
+> 💡 **Option recommandée :** `python scripts/analyze_guardian_reports.py --summary`
+>
+> - Produit automatiquement le résumé attendu pour l'utilisateur.
+> - Ajouter `--detailed` pour l'analyse complète.
+> - Utiliser `--reports-dir <chemin>` si les rapports ne sont pas dans `reports/`.
+
 ## 1️⃣ Lis ces fichiers JSON (LOCAUX dans le dépôt)
 
 ```python

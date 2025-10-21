@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 18:00 CET (Claude Code : Script analyse rapports Guardian + prompt enrichi pour Codex ✅)
+**Dernière mise à jour** : 2025-10-21 19:30 CET (Claude Code : Système de mémoire pondérée avec décroissance temporelle ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -34,6 +34,125 @@ Quand l'utilisateur demande "vérifie les rapports Guardian" :
 Mis à jour automatiquement par hooks Git + Task Scheduler (6h).
 
 **Voir détails :** [CODEX_GPT_GUIDE.md Section 9.3](CODEX_GPT_GUIDE.md#93-accéder-aux-rapports-guardian)
+
+## ✅ Session COMPLÉTÉE (2025-10-21 19:30 CET) — Agent : Claude Code (Mémoire pondérée avec décroissance temporelle)
+
+### 🎯 Objectif
+- Implémenter stratégie de retrieval pondéré combinant similarité sémantique, fraîcheur temporelle et fréquence d'utilisation
+- Améliorer stabilité de la mémoire : faits anciens mais importants persistent, faits récents sont pris en compte sans écraser les anciens
+
+### 🛠️ Actions réalisées
+
+**1. Fonction `compute_memory_score()` (vector_service.py)**
+   - Formule : `score = cosine_sim × exp(-λ × Δt) × (1 + α × freq)`
+   - Paramètres :
+     * `cosine_sim` : similarité sémantique (0-1)
+     * `Δt` : jours depuis `last_used_at`
+     * `freq` : nombre de récupérations (`use_count`)
+     * `λ` (lambda) : taux de décroissance (défaut: 0.02 → demi-vie ~35j)
+     * `α` (alpha) : facteur de renforcement (défaut: 0.1 → freq=10 → +100%)
+   - Protection contre valeurs invalides
+   - Documentation complète avec exemples
+
+**2. Configuration `memory_config.json`**
+   - Paramètres configurables : `decay_lambda`, `reinforcement_alpha`, `top_k`, `score_threshold`, `enable_trace_logging`, `gc_inactive_days`
+   - Support override via variables d'environnement (`MEMORY_DECAY_LAMBDA`, etc.)
+   - Classe `MemoryConfig` pour chargement automatique
+
+**3. Méthode `VectorService.query_weighted()`**
+   - Pipeline de retrieval pondéré :
+     1. Récupère candidats (fetch 3× pour re-ranking)
+     2. Calcule `weighted_score` pour chaque entrée
+     3. Applique seuil minimum (`score_threshold`)
+     4. Trie par score décroissant
+     5. Met à jour `last_used_at` et `use_count` automatiquement
+   - Mode trace optionnel pour débogage détaillé
+   - Paramètres configurables par appel
+
+**4. Méthode `_update_retrieval_metadata()`**
+   - Met à jour `last_used_at = now` (ISO 8601)
+   - Incrémente `use_count += 1`
+   - Persiste dans ChromaDB/Qdrant via `update_metadatas()`
+
+**5. Tests unitaires complets (test_weighted_retrieval.py)**
+   - 16 tests couvrant :
+     * `compute_memory_score()` avec différents scénarios
+     * `MemoryConfig` (fichier JSON + env)
+     * `query_weighted()` avec scoring pondéré
+     * Mise à jour automatique des métadonnées
+     * Seuil de score minimum
+     * Mode trace
+   - ✅ **16/16 tests passent**
+
+### 📊 Résultats
+
+**Fichiers modifiés :**
+- `src/backend/features/memory/vector_service.py` (+230 lignes)
+  * Classe `MemoryConfig`
+  * Fonction `compute_memory_score()`
+  * Méthode `query_weighted()`
+  * Méthode `_update_retrieval_metadata()`
+
+**Fichiers créés :**
+- `src/backend/features/memory/memory_config.json` (configuration)
+- `tests/backend/features/memory/test_weighted_retrieval.py` (16 tests)
+
+### 🔬 Exemple d'utilisation
+
+```python
+# Utilisation de base
+results = vector_service.query_weighted(
+    collection=knowledge_collection,
+    query_text="CI/CD pipeline",
+    n_results=5
+)
+
+# Mode trace activé pour débogage
+results = vector_service.query_weighted(
+    collection=knowledge_collection,
+    query_text="CI/CD pipeline",
+    enable_trace=True,
+    lambda_=0.03,  # Décroissance plus rapide
+    alpha=0.15,    # Renforcement plus fort
+)
+
+# Affichage
+for r in results:
+    print(f"{r['text']}: score={r['weighted_score']:.3f}")
+    if 'trace_info' in r:
+        print(f"  → sim={r['trace_info']['cosine_sim']}, "
+              f"Δt={r['trace_info']['delta_days']}j, "
+              f"use_count={r['trace_info']['use_count']}")
+```
+
+### 🧪 Tests réalisés
+- ✅ Tests unitaires : 16/16 passent
+- ✅ Fonction `compute_memory_score()` : 8 scénarios validés
+- ✅ `MemoryConfig` : chargement fichier + env validé
+- ✅ `query_weighted()` : scoring + metadata update validés
+- ✅ Mode trace : logs détaillés fonctionnels
+
+### 📝 Prochaines actions recommandées
+1. **Intégration dans les services existants**
+   - Utiliser `query_weighted()` dans `ConceptRecallTracker` pour bénéficier du scoring pondéré
+   - Intégrer dans `MemoryQueryTool` pour les requêtes temporelles
+   - Ajouter dans `UnifiedRetriever` pour la recherche hybride
+
+2. **Optimisations futures**
+   - Ajouter garbage collector pour archiver entrées inactives > `gc_inactive_days`
+   - Implémenter cache des scores calculés pour performance
+   - Ajouter métriques Prometheus pour monitoring (latence scoring, distribution scores)
+
+3. **Documentation utilisateur**
+   - Guide d'utilisation dans `docs/MEMORY_WEIGHTED_RETRIEVAL.md`
+   - Exemples de configuration pour différents use cases (mémoire courte vs longue)
+
+### 🔗 Références
+- Formule inspirée de la psychologie cognitive (courbe d'Ebbinghaus)
+- Décroissance exponentielle : `exp(-λt)` standard en apprentissage
+- Renforcement par répétition : spacing effect
+
+---
 
 ## ✅ Session COMPLÉTÉE (2025-10-21 18:00 CET) — Agent : Claude Code (Script analyse rapports + prompt enrichi)
 

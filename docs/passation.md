@@ -1,3 +1,135 @@
+## [2025-10-21 19:30 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/memory/vector_service.py` (+230 lignes - système mémoire pondérée)
+- `src/backend/features/memory/memory_config.json` (nouveau - configuration)
+- `tests/backend/features/memory/test_weighted_retrieval.py` (nouveau - 16 tests)
+- `AGENT_SYNC.md` (nouvelle session documentée)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**Implémentation d'un système de retrieval pondéré par l'horodatage pour la mémoire vectorielle.**
+
+Problème adressé : La mémoire actuelle ne distinguait pas entre :
+- Faits anciens mais très utilisés (importants)
+- Faits récents mais jamais récupérés (moins pertinents)
+
+Solution : Scoring combinant similarité sémantique, fraîcheur temporelle et fréquence d'utilisation.
+
+**Formule implémentée :**
+```
+score = cosine_sim × exp(-λ × Δt) × (1 + α × freq)
+```
+
+où :
+- `cosine_sim` : similarité sémantique (0-1)
+- `Δt` : jours depuis dernière utilisation (`last_used_at`)
+- `freq` : nombre de récupérations (`use_count`)
+- `λ` (lambda) : taux de décroissance (0.02 → demi-vie 35j)
+- `α` (alpha) : facteur de renforcement (0.1 → freq=10 → +100%)
+
+### Implémentation détaillée
+
+**1. Fonction `compute_memory_score()`**
+   - Calcul du score pondéré avec protection contre valeurs invalides
+   - Documentation complète avec exemples de calcul
+   - 8 tests unitaires validant tous les scénarios
+
+**2. Classe `MemoryConfig`**
+   - Chargement depuis `memory_config.json`
+   - Override via variables d'environnement (`MEMORY_DECAY_LAMBDA`, etc.)
+   - Paramètres : `decay_lambda`, `reinforcement_alpha`, `top_k`, `score_threshold`, `enable_trace_logging`, `gc_inactive_days`
+
+**3. Méthode `VectorService.query_weighted()`**
+   - Pipeline complet :
+     1. Récupération candidats (fetch 3× pour re-ranking)
+     2. Calcul `weighted_score` pour chaque entrée
+     3. Filtrage par `score_threshold`
+     4. Tri par score décroissant
+     5. Mise à jour automatique `last_used_at` et `use_count`
+   - Mode trace optionnel avec logs détaillés
+
+**4. Méthode `_update_retrieval_metadata()`**
+   - Met à jour `last_used_at = now` (ISO 8601)
+   - Incrémente `use_count += 1`
+   - Persistance dans ChromaDB/Qdrant
+
+### Tests
+- ✅ **16/16 tests unitaires passent**
+- ✅ `compute_memory_score()` : 8 scénarios (récent/ancien, utilisé/rare, lambda/alpha)
+- ✅ `MemoryConfig` : chargement JSON + env
+- ✅ `query_weighted()` : scoring + tri + update metadata
+- ✅ Mode trace : logs détaillés fonctionnels
+- ✅ Seuil de score minimum validé
+
+Commande :
+```bash
+pytest tests/backend/features/memory/test_weighted_retrieval.py -v
+# Résultat : 16 passed in 5.20s
+```
+
+### Exemple d'utilisation
+
+```python
+# Utilisation de base
+results = vector_service.query_weighted(
+    collection=knowledge_collection,
+    query_text="CI/CD pipeline",
+    n_results=5
+)
+
+# Mode trace pour débogage
+results = vector_service.query_weighted(
+    collection=knowledge_collection,
+    query_text="CI/CD pipeline",
+    enable_trace=True,
+    lambda_=0.03,  # Décroissance plus rapide
+    alpha=0.15,    # Renforcement plus fort
+)
+
+# Affichage
+for r in results:
+    print(f"{r['text']}: score={r['weighted_score']:.3f}")
+    if 'trace_info' in r:
+        print(f"  → sim={r['trace_info']['cosine_sim']}, "
+              f"Δt={r['trace_info']['delta_days']}j, "
+              f"use_count={r['trace_info']['use_count']}")
+```
+
+### Impact
+
+**Amélioration de la stabilité de la mémoire :**
+- ✅ Faits anciens mais importants persistent (boost par `use_count`)
+- ✅ Faits récents sont pris en compte sans écraser les anciens
+- ✅ Mémoire s'adapte naturellement à la fréquence d'usage
+- ✅ Pas d'amnésie brutale (décroissance douce via `exp(-λt)`)
+
+**Configuration flexible :**
+- Mémoire courte : `lambda=0.05` (demi-vie 14j)
+- Mémoire longue : `lambda=0.01` (demi-vie 70j)
+- Renforcement fort : `alpha=0.2`
+- Renforcement faible : `alpha=0.05`
+
+### Prochaines actions recommandées
+1. **Intégration dans services existants :**
+   - Utiliser `query_weighted()` dans `ConceptRecallTracker`
+   - Intégrer dans `MemoryQueryTool` pour requêtes temporelles
+   - Ajouter dans `UnifiedRetriever` pour recherche hybride
+
+2. **Optimisations futures :**
+   - Garbage collector pour archiver entrées inactives > 180j
+   - Cache des scores calculés pour performance
+   - Métriques Prometheus (latence scoring, distribution scores)
+
+3. **Documentation utilisateur :**
+   - Guide complet dans `docs/MEMORY_WEIGHTED_RETRIEVAL.md`
+   - Exemples de configuration par use case
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-21 17:55 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Script d'analyse des rapports Guardian pour Codex GPT
-Utilise les rapports JSON locaux pour générer un résumé actionnable
+"""Outils d'analyse des rapports Guardian.
+
+Le script peut générer un résumé synthétique (utile pour répondre vite aux
+utilisateurs) ou afficher une analyse détaillée de tous les signaux remontés
+par les agents Guardian.
 """
 
+import argparse
 import json
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict
 
 # Fix encoding Windows
 if sys.platform == 'win32':
@@ -16,13 +20,18 @@ if sys.platform == 'win32':
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
     sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
-REPORTS_DIR = Path(__file__).parent.parent / 'reports'
+DEFAULT_REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"
 
 
-def analyze_prod_report():
-    """Analyse le rapport production"""
-    with open(REPORTS_DIR / 'prod_report.json', 'r', encoding='utf-8') as f:
-        prod = json.load(f)
+def load_report(report_path: Path) -> Dict[str, Any]:
+    """Charge un rapport Guardian en JSON."""
+
+    with report_path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def analyze_prod_report(prod: Dict[str, Any]) -> None:
+    """Affiche l'analyse détaillée du rapport production."""
 
     print("=" * 60)
     print(f"📊 PRODUCTION - {prod['service']}")
@@ -86,10 +95,8 @@ def analyze_prod_report():
         print()
 
 
-def analyze_unified_report():
-    """Analyse le rapport unifié Nexus"""
-    with open(REPORTS_DIR / 'unified_report.json', 'r', encoding='utf-8') as f:
-        unified = json.load(f)
+def analyze_unified_report(unified: Dict[str, Any]) -> None:
+    """Affiche l'analyse détaillée du rapport unifié Nexus."""
 
     print("=" * 60)
     print("📋 VUE D'ENSEMBLE (Nexus)")
@@ -156,17 +163,75 @@ def analyze_unified_report():
     print()
 
 
-def main():
-    """Point d'entrée principal"""
-    print("\n" + "=" * 60)
-    print("📊 ANALYSE RAPPORTS GUARDIAN")
-    print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 60)
+def print_summary(prod: Dict[str, Any], unified: Dict[str, Any]) -> None:
+    """Affiche un résumé concis des rapports Guardian."""
+
+    print("📊 Production (prod_report.json)")
+    print(f"- Status: {prod['status']}")
+    print(f"- Erreurs: {prod['summary']['errors']}")
+    print(f"- Warnings: {prod['summary']['warnings']}")
+    print()
+    exec_summary = unified["executive_summary"]
+    print("📋 Vue d'ensemble (unified_report.json)")
+    print(f"- Status: {exec_summary['status']}")
+    print(f"- Issues: {exec_summary['total_issues']}")
     print()
 
+
+def parse_args() -> argparse.Namespace:
+    """Analyse les arguments CLI."""
+
+    parser = argparse.ArgumentParser(
+        description="Analyse les rapports Guardian générés localement."
+    )
+    parser.add_argument(
+        "--summary",
+        action="store_true",
+        help="Affiche uniquement un résumé concis conforme aux instructions Guardian.",
+    )
+    parser.add_argument(
+        "--detailed",
+        action="store_true",
+        help=(
+            "Force l'analyse détaillée même si --summary est présent. Utile pour"
+            " obtenir toutes les informations de debug."
+        ),
+    )
+    parser.add_argument(
+        "--reports-dir",
+        type=Path,
+        default=DEFAULT_REPORTS_DIR,
+        help="Chemin vers le dossier contenant prod_report.json et unified_report.json.",
+    )
+    return parser.parse_args()
+
+
+def main():
+    """Point d'entrée principal."""
+
+    args = parse_args()
+    reports_dir = args.reports_dir.expanduser()
+
+    prod_path = reports_dir / "prod_report.json"
+    unified_path = reports_dir / "unified_report.json"
+
     try:
-        analyze_prod_report()
-        analyze_unified_report()
+        prod = load_report(prod_path)
+        unified = load_report(unified_path)
+
+        summary_requested = args.summary and not args.detailed
+        if summary_requested:
+            print_summary(prod, unified)
+            return
+
+        print("\n" + "=" * 60)
+        print("📊 ANALYSE RAPPORTS GUARDIAN")
+        print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print("=" * 60)
+        print()
+
+        analyze_prod_report(prod)
+        analyze_unified_report(unified)
 
         print("=" * 60)
         print("✅ ANALYSE TERMINÉE")

@@ -96,6 +96,72 @@ except Exception:  # pragma: no cover - dépendance optionnelle
 logger = logging.getLogger(__name__)
 
 
+# ---- Memory Config Loader ----
+class MemoryConfig:
+    """Configuration pour le système de retrieval pondéré par l'horodatage."""
+
+    def __init__(self, config_path: Optional[str] = None):
+        # Valeurs par défaut
+        self.decay_lambda = 0.02
+        self.reinforcement_alpha = 0.1
+        self.top_k = 8
+        self.score_threshold = 0.2
+        self.enable_trace_logging = False
+        self.gc_inactive_days = 180
+
+        # Charger depuis fichier si disponible
+        if config_path is None:
+            # Chemin par défaut
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            config_path = os.path.join(current_dir, "memory_config.json")
+
+        if os.path.exists(config_path):
+            try:
+                import json
+                with open(config_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    # Charger la section "default" si elle existe
+                    config_data = data.get("default", data)
+                    self.decay_lambda = config_data.get("decay_lambda", self.decay_lambda)
+                    self.reinforcement_alpha = config_data.get("reinforcement_alpha", self.reinforcement_alpha)
+                    self.top_k = config_data.get("top_k", self.top_k)
+                    self.score_threshold = config_data.get("score_threshold", self.score_threshold)
+                    self.enable_trace_logging = config_data.get("enable_trace_logging", self.enable_trace_logging)
+                    self.gc_inactive_days = config_data.get("gc_inactive_days", self.gc_inactive_days)
+                logger.info(
+                    f"MemoryConfig chargée depuis {config_path}: λ={self.decay_lambda}, α={self.reinforcement_alpha}, "
+                    f"top_k={self.top_k}, threshold={self.score_threshold}"
+                )
+            except Exception as e:
+                logger.warning(f"Impossible de charger {config_path}, utilisation des valeurs par défaut: {e}")
+        else:
+            logger.info(f"Fichier config {config_path} absent, utilisation des valeurs par défaut")
+
+    @classmethod
+    def from_env(cls) -> "MemoryConfig":
+        """Charge la config depuis les variables d'environnement (priorité sur le fichier JSON)."""
+        config = cls()
+        # Override depuis env si présent
+        if os.getenv("MEMORY_DECAY_LAMBDA"):
+            try:
+                config.decay_lambda = float(os.getenv("MEMORY_DECAY_LAMBDA"))
+            except ValueError:
+                pass
+        if os.getenv("MEMORY_REINFORCEMENT_ALPHA"):
+            try:
+                config.reinforcement_alpha = float(os.getenv("MEMORY_REINFORCEMENT_ALPHA"))
+            except ValueError:
+                pass
+        if os.getenv("MEMORY_TOP_K"):
+            try:
+                config.top_k = int(os.getenv("MEMORY_TOP_K"))
+            except ValueError:
+                pass
+        if os.getenv("MEMORY_TRACE_LOGGING"):
+            config.enable_trace_logging = os.getenv("MEMORY_TRACE_LOGGING", "").lower() in {"1", "true", "yes"}
+        return config
+
+
 # ---- P2.2 - RAG freshness & diversity helpers ----
 def recency_decay(age_days: float, half_life: float = 90.0) -> float:
     """
@@ -117,6 +183,72 @@ def recency_decay(age_days: float, half_life: float = 90.0) -> float:
     if age_days < 0:
         age_days = 0
     return 0.5 ** (age_days / half_life)
+
+
+def compute_memory_score(
+    cosine_sim: float,
+    delta_days: float,
+    freq: int,
+    lambda_: float = 0.02,
+    alpha: float = 0.1,
+) -> float:
+    """
+    Calcule un score pondéré combinant similarité sémantique, fraîcheur temporelle et fréquence d'utilisation.
+
+    Formule : score = cosine_sim × exp(-λ × Δt) × (1 + α × freq)
+
+    où :
+    - cosine_sim : similarité cosine entre query et mémoire (0-1)
+    - Δt : nombre de jours depuis last_used_at
+    - freq : nombre d'utilisations récentes (use_count)
+    - λ (lambda) : taux de décroissance temporelle (0.01-0.05 recommandé)
+    - α (alpha) : facteur de renforcement par usage (0.05-0.2 recommandé)
+
+    Args:
+        cosine_sim: Similarité cosine (0-1, 1 = identique)
+        delta_days: Jours depuis dernière utilisation (Δt)
+        freq: Nombre d'utilisations (use_count)
+        lambda_: Taux de décroissance exponentielle (défaut: 0.02)
+                 Plus λ est grand, plus l'oubli est rapide
+                 Exemples: λ=0.02 → demi-vie ~35 jours, λ=0.05 → demi-vie ~14 jours
+        alpha: Facteur de renforcement par fréquence (défaut: 0.1)
+               Exemples: α=0.1, freq=5 → boost +50%
+
+    Returns:
+        Score pondéré (float > 0)
+
+    Exemples:
+        >>> # Mémoire récente très utilisée
+        >>> compute_memory_score(0.85, delta_days=2, freq=10, lambda_=0.02, alpha=0.1)
+        1.615  # Excellent score (récent + fréquent)
+
+        >>> # Mémoire ancienne peu utilisée
+        >>> compute_memory_score(0.85, delta_days=100, freq=1, lambda_=0.02, alpha=0.1)
+        0.115  # Score faible (ancien + rare)
+
+        >>> # Mémoire ancienne mais très utilisée
+        >>> compute_memory_score(0.85, delta_days=50, freq=20, lambda_=0.02, alpha=0.1)
+        0.864  # Score moyen-bon (renforcement compense l'ancienneté)
+    """
+    import math
+
+    # Protection contre valeurs invalides
+    cosine_sim = max(0.0, min(1.0, cosine_sim))
+    delta_days = max(0.0, delta_days)
+    freq = max(0, freq)
+    lambda_ = max(0.001, lambda_)
+    alpha = max(0.0, alpha)
+
+    # Décroissance temporelle : exp(-λ × Δt)
+    freshness_weight = math.exp(-lambda_ * delta_days)
+
+    # Renforcement par fréquence : (1 + α × freq)
+    reinforcement = 1.0 + alpha * freq
+
+    # Score final combiné
+    score = cosine_sim * freshness_weight * reinforcement
+
+    return score
 
 
 def mmr(
@@ -270,6 +402,13 @@ class VectorService:
         # Guard thread-safe (double-checked lock)
         self._init_lock = threading.Lock()
         self._inited = False
+
+        # Weighted retrieval config
+        self.memory_config = MemoryConfig.from_env()
+        logger.info(
+            f"VectorService: Weighted retrieval activé (λ={self.memory_config.decay_lambda}, "
+            f"α={self.memory_config.reinforcement_alpha}, top_k={self.memory_config.top_k})"
+        )
 
     # ---------- Lazy init ----------
     def _ensure_inited(self) -> None:
@@ -1056,3 +1195,232 @@ class VectorService:
             logger.error(f"Erreur hybrid_query: {e}", exc_info=True)
             # Fallback sur query vectorielle standard
             return self.query(collection, query_text, n_results, where_filter)
+
+    # ---------- Weighted Retrieval avec décroissance temporelle (P2.3) ----------
+    def query_weighted(
+        self,
+        collection,
+        query_text: str,
+        n_results: Optional[int] = None,
+        where_filter: Optional[Dict[str, Any]] = None,
+        lambda_: Optional[float] = None,
+        alpha: Optional[float] = None,
+        score_threshold: Optional[float] = None,
+        enable_trace: Optional[bool] = None,
+        update_metadata: bool = True,
+    ) -> List[Dict[str, Any]]:
+        """
+        Recherche vectorielle avec scoring pondéré combinant similarité, fraîcheur et fréquence d'utilisation.
+
+        Formule : score = cosine_sim × exp(-λ × Δt) × (1 + α × freq)
+
+        où :
+        - cosine_sim : similarité entre query et mémoire
+        - Δt : jours depuis last_used_at
+        - freq : use_count (nombre de récupérations)
+        - λ : taux de décroissance temporelle
+        - α : facteur de renforcement par fréquence
+
+        Args:
+            collection: Collection Chroma/Qdrant
+            query_text: Texte de requête
+            n_results: Nombre de résultats (défaut: memory_config.top_k)
+            where_filter: Filtre de métadonnées
+            lambda_: Taux décroissance (défaut: memory_config.decay_lambda)
+            alpha: Facteur renforcement (défaut: memory_config.reinforcement_alpha)
+            score_threshold: Seuil minimum de score (défaut: memory_config.score_threshold)
+            enable_trace: Active logs de trace (défaut: memory_config.enable_trace_logging)
+            update_metadata: Met à jour last_used_at et use_count (défaut: True)
+
+        Returns:
+            Liste de résultats avec {id, text, metadata, distance, weighted_score, [trace_info]}
+
+        Example:
+            >>> results = vector_service.query_weighted(
+            ...     collection=knowledge_collection,
+            ...     query_text="CI/CD pipeline",
+            ...     n_results=5
+            ... )
+            >>> for r in results:
+            ...     print(f"{r['text']}: score={r['weighted_score']:.3f}")
+        """
+        self._ensure_inited()
+
+        # Charger paramètres depuis config si non spécifiés
+        lambda_ = lambda_ if lambda_ is not None else self.memory_config.decay_lambda
+        alpha = alpha if alpha is not None else self.memory_config.reinforcement_alpha
+        n_results = n_results if n_results is not None else self.memory_config.top_k
+        score_threshold = score_threshold if score_threshold is not None else self.memory_config.score_threshold
+        enable_trace = enable_trace if enable_trace is not None else self.memory_config.enable_trace_logging
+
+        if not query_text:
+            return []
+
+        try:
+            # 1. Récupérer candidats avec query standard (fetch plus pour re-ranking)
+            fetch_size = max(n_results * 3, 20)
+            raw_results = self.query(
+                collection=collection,
+                query_text=query_text,
+                n_results=fetch_size,
+                where_filter=where_filter,
+                apply_recency=False,  # Désactiver recency decay standard (on utilise notre propre scoring)
+                apply_mmr=False,      # Désactiver MMR (on trie par weighted_score)
+            )
+
+            if not raw_results:
+                return []
+
+            # 2. Calculer weighted scores pour chaque résultat
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+            weighted_results = []
+
+            for res in raw_results:
+                meta = res.get("metadata", {})
+
+                # Extraire métadonnées de retrieval
+                last_used_str = meta.get("last_used_at")
+                use_count = int(meta.get("use_count", 0))
+
+                # Calculer Δt (jours depuis last_used_at)
+                if last_used_str:
+                    try:
+                        last_used = datetime.fromisoformat(last_used_str.replace("Z", "+00:00"))
+                        delta_days = (now - last_used).total_seconds() / 86400
+                    except Exception:
+                        # Si parsing échoue, considérer comme jamais utilisé (très ancien)
+                        delta_days = 999.0
+                else:
+                    # Jamais utilisé → très ancien
+                    delta_days = 999.0
+
+                # Calculer similarité cosine depuis distance
+                # ChromaDB L2 squared distance for normalized vectors: distance = 2 * (1 - cosine_sim)
+                distance = res.get("distance", 2.0)
+                cosine_sim = 1.0 - (distance / 2.0)
+
+                # Calculer score pondéré
+                weighted_score = compute_memory_score(
+                    cosine_sim=cosine_sim,
+                    delta_days=delta_days,
+                    freq=use_count,
+                    lambda_=lambda_,
+                    alpha=alpha,
+                )
+
+                # Appliquer seuil
+                if weighted_score < score_threshold:
+                    continue
+
+                # Enrichir résultat avec score et trace
+                res["weighted_score"] = round(weighted_score, 4)
+                res["cosine_sim"] = round(cosine_sim, 4)
+
+                if enable_trace:
+                    res["trace_info"] = {
+                        "cosine_sim": round(cosine_sim, 4),
+                        "delta_days": round(delta_days, 1),
+                        "use_count": use_count,
+                        "lambda": lambda_,
+                        "alpha": alpha,
+                        "weighted_score": round(weighted_score, 4),
+                    }
+                    logger.debug(
+                        f"[Memory] Entry {res.get('id', 'unknown')[:8]}: "
+                        f"sim={cosine_sim:.3f} | Δt={delta_days:.1f}j | freq={use_count} | score={weighted_score:.3f}"
+                    )
+
+                weighted_results.append(res)
+
+            # 3. Trier par weighted_score décroissant
+            weighted_results.sort(key=lambda x: x.get("weighted_score", 0.0), reverse=True)
+
+            # 4. Conserver top_k
+            final_results = weighted_results[:n_results]
+
+            # 5. Mettre à jour métadonnées de retrieval (last_used_at, use_count)
+            if update_metadata and final_results:
+                self._update_retrieval_metadata(
+                    collection=collection,
+                    results=final_results,
+                )
+
+            logger.info(
+                f"[VectorService] Weighted query '{query_text[:30]}...': "
+                f"{len(final_results)} résultats (score_min={final_results[-1]['weighted_score']:.3f} si résultats)"
+            )
+
+            return final_results
+
+        except Exception as e:
+            safe_q = (query_text or "")[:50]
+            logger.error(
+                f"Échec de la recherche pondérée '{safe_q}…' dans '{collection.name}': {e}",
+                exc_info=True,
+            )
+            return []
+
+    def _update_retrieval_metadata(
+        self,
+        collection,
+        results: List[Dict[str, Any]],
+    ) -> None:
+        """
+        Met à jour les métadonnées de retrieval (last_used_at, use_count) pour les entrées récupérées.
+
+        Args:
+            collection: Collection Chroma/Qdrant
+            results: Liste de résultats avec {id, metadata, ...}
+
+        Returns:
+            None
+        """
+        if not results:
+            return
+
+        try:
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc).isoformat()
+
+            ids = []
+            updated_metadatas = []
+
+            for res in results:
+                entry_id = res.get("id")
+                if not entry_id:
+                    continue
+
+                meta = res.get("metadata", {})
+                current_use_count = int(meta.get("use_count", 0))
+
+                # Mise à jour
+                new_meta = dict(meta)
+                new_meta["last_used_at"] = now
+                new_meta["use_count"] = current_use_count + 1
+
+                # Filter out invalid types for ChromaDB (only str, int, float, bool)
+                new_meta = {
+                    k: v
+                    for k, v in new_meta.items()
+                    if isinstance(v, (str, int, float, bool))
+                }
+
+                ids.append(entry_id)
+                updated_metadatas.append(new_meta)
+
+            if ids:
+                self.update_metadatas(
+                    collection=collection,
+                    ids=ids,
+                    metadatas=updated_metadatas,
+                )
+                logger.debug(
+                    f"[VectorService] Metadatas de retrieval mis à jour pour {len(ids)} entrées"
+                )
+
+        except Exception as e:
+            logger.warning(
+                f"Échec mise à jour retrieval metadata dans '{collection.name}': {e}",
+                exc_info=True,
+            )

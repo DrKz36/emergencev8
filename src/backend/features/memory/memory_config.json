@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Memory Weighted Retrieval Configuration",
+  "description": "Configuration pour le système de retrieval pondéré par l'horodatage et la fréquence d'utilisation",
+  "type": "object",
+  "properties": {
+    "decay_lambda": {
+      "type": "number",
+      "description": "Taux de décroissance temporelle exponentielle (λ). Plus la valeur est élevée, plus l'oubli est rapide.",
+      "minimum": 0.001,
+      "maximum": 0.2,
+      "default": 0.02,
+      "examples": [
+        {
+          "value": 0.02,
+          "description": "Décroissance modérée - Demi-vie ~35 jours (recommandé)"
+        },
+        {
+          "value": 0.01,
+          "description": "Décroissance lente - Demi-vie ~70 jours (mémoire longue)"
+        },
+        {
+          "value": 0.05,
+          "description": "Décroissance rapide - Demi-vie ~14 jours (mémoire courte)"
+        }
+      ]
+    },
+    "reinforcement_alpha": {
+      "type": "number",
+      "description": "Facteur de renforcement par fréquence d'utilisation (α). Contrôle l'importance de la répétition.",
+      "minimum": 0.0,
+      "maximum": 0.5,
+      "default": 0.1,
+      "examples": [
+        {
+          "value": 0.1,
+          "description": "Renforcement modéré - use_count=10 → +100% (recommandé)"
+        },
+        {
+          "value": 0.05,
+          "description": "Renforcement faible - use_count=10 → +50%"
+        },
+        {
+          "value": 0.2,
+          "description": "Renforcement fort - use_count=10 → +200%"
+        }
+      ]
+    },
+    "top_k": {
+      "type": "integer",
+      "description": "Nombre de résultats à retourner après pondération",
+      "minimum": 1,
+      "maximum": 50,
+      "default": 8
+    },
+    "score_threshold": {
+      "type": "number",
+      "description": "Seuil minimum de score pour conserver une mémoire. Évite d'oublier les faits essentiels.",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "default": 0.2
+    },
+    "enable_trace_logging": {
+      "type": "boolean",
+      "description": "Active les logs de trace détaillés pour le débogage des scores",
+      "default": false
+    },
+    "gc_inactive_days": {
+      "type": "integer",
+      "description": "Archiver les entrées inactives depuis X jours (garbage collection optionnel, 0 = désactivé)",
+      "minimum": 0,
+      "default": 180
+    }
+  },
+  "default": {
+    "decay_lambda": 0.02,
+    "reinforcement_alpha": 0.1,
+    "top_k": 8,
+    "score_threshold": 0.2,
+    "enable_trace_logging": false,
+    "gc_inactive_days": 180
+  }
+}
