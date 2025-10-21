@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 12:05 CET (Claude Code : CI/CD GitHub Actions opérationnel ✅)
+**Dernière mise à jour** : 2025-10-21 14:30 CET (Claude Code : Benchmark rétention mémoire créé ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -45,6 +45,85 @@ Mis à jour automatiquement par hooks Git + Task Scheduler (6h).
 
 **Voir détails :** [PROMPT_CODEX_RAPPORTS.md](PROMPT_CODEX_RAPPORTS.md)
 **Setup complet :** [docs/CODEX_SUMMARY_SETUP.md](docs/CODEX_SUMMARY_SETUP.md)
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-21 14:30 CET) — Agent : Claude Code (Benchmark Rétention Mémoire)
+
+### Fichiers modifiés
+- `prompts/ground_truth.yml` (nouveau - faits de référence pour benchmark)
+- `scripts/memory_probe.py` (nouveau - script de test de rétention)
+- `scripts/plot_retention.py` (nouveau - génération graphiques)
+- `requirements.txt` (ajout PyYAML, matplotlib, pandas)
+- `MEMORY_BENCHMARK_README.md` (nouveau - documentation complète)
+- `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (à faire)
+
+### Actions réalisées
+
+**1. Création du module de benchmark de rétention mémoire**
+- ✅ Implémenté système de test pour mesurer la capacité des agents (Neo/Anima/Nexus) à retenir des informations
+- ✅ Tests à trois jalons temporels : **T+1h**, **T+24h**, **T+7j**
+- ✅ Mode **production** (délais réels 7 jours) + mode **debug** (délais 3 min)
+- 🎯 **Objectif** : Benchmark quantitatif de la mémoire temporelle des agents
+
+**2. Fichiers créés**
+
+**`prompts/ground_truth.yml`** :
+- Faits de référence à mémoriser (F1: code couleur, F2: client prioritaire, F3: port API)
+- Format YAML extensible pour ajouter nouveaux faits
+- Séparation prompt/answer pour scoring automatique
+
+**`scripts/memory_probe.py`** :
+- Script autonome pour tester un agent (paramètre `AGENT_NAME=Neo|Anima|Nexus`)
+- Injection du contexte initial via `/api/chat`
+- Re-prompt automatique aux jalons T+1h, T+24h, T+7j
+- Scoring : 1.0 (exact), 0.5 (contenu dans réponse), 0.0 (aucune correspondance)
+- Sortie CSV : `memory_results_{agent}.csv`
+- Mode debug : `DEBUG_MODE=true` → délais raccourcis (1min, 2min, 3min)
+- Utilise `httpx` au lieu de `requests` (déjà dans requirements.txt)
+
+**`scripts/plot_retention.py`** :
+- Agrégation des résultats CSV de tous les agents
+- Graphique comparatif : score moyen par agent à chaque jalon
+- Graphique détaillé (optionnel `DETAILED=true`) : score par fait (F1/F2/F3)
+- Support mode debug pour ticks courts
+- Sortie : `retention_curve_all.png` + `retention_curve_detailed.png`
+
+**`MEMORY_BENCHMARK_README.md`** :
+- Documentation complète (installation, usage, personnalisation)
+- Exemples d'exécution (local + Cloud Run)
+- Troubleshooting
+- Roadmap Phase P3 (intégration ChromaDB + Prometheus)
+
+**3. Dépendances ajoutées**
+- ✅ **PyYAML 6.0+** : Chargement `ground_truth.yml`
+- ✅ **matplotlib 3.7+** : Génération graphiques de rétention
+- ✅ **pandas 2.0+** : Pivot tables + agrégation CSV
+
+### Tests
+- ✅ `python -m py_compile scripts/memory_probe.py` → Syntaxe OK
+- ✅ `python -m py_compile scripts/plot_retention.py` → Syntaxe OK
+- ✅ Imports testés : PyYAML 6.0.2, matplotlib 3.10.7, pandas 2.2.3
+- ⚠️ **Tests fonctionnels non exécutés** (nécessite backend local ou Cloud Run actif)
+  - Test manuel recommandé : `DEBUG_MODE=true AGENT_NAME=Neo python scripts/memory_probe.py`
+
+### Impact
+- 🚀 **Nouveau module de benchmark** prêt pour Phase P2/P3
+- 🚀 **Mesure quantitative** de la mémoire temporelle des agents
+- 🚀 **Extensible** : ajout facile de nouveaux faits + délais personnalisables
+- 📊 **Visualisation** : graphiques comparatifs multi-agents
+- 📚 **Bien documenté** : README complet avec troubleshooting
+
+### Prochaines actions recommandées
+1. **Tester en local** : `DEBUG_MODE=true AGENT_NAME=Neo python scripts/memory_probe.py` (3 min)
+2. **Valider avec les 3 agents** : Lancer Neo, Anima, Nexus en parallèle
+3. **Générer graphiques** : `python scripts/plot_retention.py`
+4. **Phase P3** : Intégrer dans `/api/benchmarks/runs` + stockage ChromaDB + corrélation Prometheus
+5. **Optionnel** : Ajouter tests E2E pour le benchmark dans GitHub Actions
+
+### Blocages
+Aucun. Module complet et prêt à tester! 🚀
 
 ---
 

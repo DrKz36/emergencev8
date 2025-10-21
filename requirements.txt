@@ -70,3 +70,8 @@ pytest-asyncio>=1.2,<2           # async test support
 ruff>=0.13,<1                   # lint backend modules (Pydantic v2, style)
 mypy>=1.18,<2                   # static typing for backend
 types-psutil>=7.0.0             # stubs for psutil (mypy clean)
+
+# --- Benchmarks & Analytics ---
+PyYAML>=6.0,<7                  # memory_probe.py ground truth loading
+matplotlib>=3.7,<4              # retention curve plotting
+pandas>=2.0,<3                  # CSV aggregation & pivot tables

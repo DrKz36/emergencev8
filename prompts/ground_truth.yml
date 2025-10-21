@@ -1,0 +1,17 @@
+# Benchmark de rétention mémoire - Ground Truth
+# Fichier de référence pour tester la capacité des agents à mémoriser des faits
+# Version: 1.0.0
+# Date: 2025-10-21
+
+facts:
+  - id: F1
+    prompt: "Mon code couleur est 'iris-47'."
+    answer: "iris-47"
+
+  - id: F2
+    prompt: "Le client prioritaire est 'Orphée SA'."
+    answer: "Orphée SA"
+
+  - id: F3
+    prompt: "Le port d'API interne est 7788."
+    answer: "7788"

@@ -1,3 +1,111 @@
+## [2025-10-21 14:30 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `prompts/ground_truth.yml` (nouveau - faits de référence pour benchmark)
+- `scripts/memory_probe.py` (nouveau - script de test de rétention)
+- `scripts/plot_retention.py` (nouveau - génération graphiques)
+- `requirements.txt` (ajout PyYAML>=6.0, matplotlib>=3.7, pandas>=2.0)
+- `MEMORY_BENCHMARK_README.md` (nouveau - documentation complète 500+ lignes)
+- `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Implémentation complète d'un **module de benchmark de rétention mémoire** pour mesurer quantitativement la capacité des trois agents (Neo, Anima, Nexus) à mémoriser et rappeler des informations sur le long terme.
+
+**Besoin identifié:** Mesurer la performance du système mémoire d'ÉMERGENCE de manière objective, avec métriques reproductibles. Les agents doivent mémoriser des faits de référence et prouver qu'ils s'en souviennent après 1h, 24h et 7 jours.
+
+### Actions réalisées
+
+**1. Création fichier de référence `prompts/ground_truth.yml`:**
+- 3 faits de référence (F1: code couleur "iris-47", F2: client "Orphée SA", F3: port API "7788")
+- Format YAML extensible (facile d'ajouter nouveaux faits)
+- Structure : `{id, prompt, answer}` pour injection + scoring automatique
+
+**2. Script de test `scripts/memory_probe.py`:**
+- **Autonome et configurable** : `AGENT_NAME=Neo|Anima|Nexus python scripts/memory_probe.py`
+- **Workflow complet** :
+  1. Injection contexte initial via `/api/chat` (3 faits à mémoriser)
+  2. Attente automatique jusqu'aux jalons : T+1h, T+24h, T+7j
+  3. Re-prompt à chaque jalon pour tester le rappel
+  4. Scoring : 1.0 (exact), 0.5 (contenu dans réponse), 0.0 (aucune correspondance)
+- **Mode debug** : `DEBUG_MODE=true` → délais raccourcis (1min, 2min, 3min au lieu de 1h/24h/7j)
+- **Sortie CSV** : `memory_results_{agent}.csv` avec colonnes : `timestamp_utc, agent, session, tick, fact_id, score, truth, prediction`
+- **Utilise httpx** au lieu de requests (déjà dans requirements.txt)
+- **Gestion d'erreurs robuste** : retry automatique, timeouts, logs détaillés
+
+**3. Script de visualisation `scripts/plot_retention.py`:**
+- Agrège les CSV de tous les agents disponibles
+- **Graphique comparatif** : courbe de rétention avec score moyen par agent à chaque jalon
+- **Graphique détaillé** (optionnel `DETAILED=true`) : score par fait (F1/F2/F3)
+- Support mode debug (ticks courts)
+- Sortie : `retention_curve_all.png` + `retention_curve_detailed.png`
+- Style matplotlib professionnel (couleurs Neo=bleu, Anima=rouge, Nexus=vert)
+
+**4. Documentation `MEMORY_BENCHMARK_README.md`:**
+- **500+ lignes** de documentation complète
+- **Sections** :
+  - Installation (dépendances + setup backend)
+  - Usage (mode production + mode debug)
+  - Exemples d'exécution (parallèle Windows/Linux)
+  - Format résultats (CSV + graphiques)
+  - Personnalisation (ajout faits + modification délais + scoring custom)
+  - Intégration Phase P3 (ChromaDB + Prometheus + API `/api/benchmarks/runs`)
+  - Troubleshooting (backend unreachable, score 0.0, etc.)
+  - Validation du module (checklist complète)
+- **Exemples concrets** : commandes PowerShell/Bash, snippets code, graphiques ASCII
+
+**5. Ajout dépendances dans `requirements.txt`:**
+- **PyYAML>=6.0** : Lecture `ground_truth.yml` (déjà installé 6.0.2)
+- **matplotlib>=3.7** : Génération graphiques (installé 3.10.7)
+- **pandas>=2.0** : Agrégation CSV + pivot tables (déjà installé 2.2.3)
+
+### Tests
+- ✅ **Syntaxe validée** : `python -m py_compile` sur les 2 scripts → OK
+- ✅ **Imports vérifiés** : PyYAML 6.0.2, matplotlib 3.10.7, pandas 2.2.3 → tous OK
+- ⚠️ **Tests fonctionnels non exécutés** : nécessite backend actif (local ou Cloud Run)
+  - Test manuel recommandé : `DEBUG_MODE=true AGENT_NAME=Neo python scripts/memory_probe.py` (3 min)
+- ✅ **Documentation linting** : pas d'erreurs markdown
+
+### Travail de Codex GPT pris en compte
+Aucun (module créé from scratch). Codex n'a pas travaillé sur le benchmark mémoire. Future intégration possible :
+- Codex pourrait améliorer l'UI frontend pour afficher les résultats du benchmark en temps réel
+- Dashboard interactif avec graphiques live (via Chart.js)
+
+### Prochaines actions recommandées
+1. **Tester en local** :
+   ```bash
+   # Lancer backend
+   pwsh -File scripts/run-backend.ps1
+
+   # Test rapide (3 min mode debug)
+   DEBUG_MODE=true AGENT_NAME=Neo python scripts/memory_probe.py
+   ```
+
+2. **Validation complète** :
+   - Lancer tests pour les 3 agents en parallèle (mode debug)
+   - Générer graphiques comparatifs
+   - Vérifier que les scores sont cohérents
+
+3. **Phase P3 - Intégration avancée** :
+   - Créer endpoint `/api/benchmarks/runs` pour lancer benchmarks via API
+   - Stocker résultats dans ChromaDB (collection `emergence_benchmarks`)
+   - Corréler avec métriques Prometheus (`memory_analysis_duration_seconds`, etc.)
+   - Dashboard Grafana pour visualiser la rétention en production
+
+4. **Optionnel - CI/CD** :
+   - Ajouter test du benchmark dans GitHub Actions (mode debug 3 min)
+   - Upload résultats CSV + graphiques comme artifacts
+   - Fail le workflow si score moyen < seuil (ex: 0.5)
+
+5. **Documentation architecture** :
+   - Ajouter section "Benchmarks" dans `docs/architecture/10-Components.md`
+   - Diagramme C4 pour le flux benchmark (injection → attente → rappel → scoring)
+
+### Blocages
+Aucun. Module complet, testé (syntaxe), documenté et prêt à utiliser! 🚀
+
+---
+
 ## [2025-10-21 12:05 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
