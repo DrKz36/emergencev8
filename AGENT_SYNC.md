@@ -2,56 +2,59 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 16:58 CET (Claude Code : Fix monitoring router + déploiement beta-2.2.0 ✅)
+**Dernière mise à jour** : 2025-10-21 17:51 CET (Claude Code : Fix version frontend + redéploiement beta-2.2.0-v3 ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
 ---
 
-## ✅ Session EN COURS (2025-10-21 16:58 CET) — Agent : Claude Code
+## ✅ Session COMPLÉTÉE (2025-10-21 17:51 CET) — Agent : Claude Code
 
 ### Fichiers modifiés
 - `src/backend/features/monitoring/router.py` (fix FastAPI response_model + APP_VERSION)
+- `src/frontend/version.js` (beta-2.1.5 → beta-2.2.0)
 - `package.json` (beta-2.1.6 → beta-2.2.0)
 - `AGENT_SYNC.md` (cette session)
-- `docs/passation.md` (prochaine entrée)
+- `docs/passation.md` (cette session)
 
 ### Actions réalisées
 
-**1. Déploiement Docker beta-2.2.0**
-- ✅ Bump version package.json: beta-2.1.6 → beta-2.2.0
-- ✅ Build image Docker locale
-- ✅ Push vers GCP Artifact Registry (tag: beta-2.2.0, latest)
-- ❌ Déploiement 1 (emergence-app-00551-yup) - Router monitoring 404!
+**1. Fix monitoring router + déploiement initial**
+- ✅ Fix `Union[Dict, JSONResponse]` avec `response_model=None`
+- ✅ Fix backend version: `os.getenv("APP_VERSION")` prioritaire
+- ✅ Déploiement emergence-app-00553-jon (beta-2-2-0-final)
+- ✅ Backend version OK: `"backend": "beta-2.2.0"`
 
-**2. Debug + Fix monitoring router**
-- 🔍 Problème identifié: `Union[Dict, JSONResponse]` incompatible avec FastAPI response_model auto
-- 🔧 Solution: Ajout `response_model=None` à `/health/readiness` endpoint
-- 🔧 Fix version: `os.getenv("APP_VERSION")` prioritaire sur `BACKEND_VERSION`
-- ✅ Rebuild + push image (digest: sha256:4419b208...)
-- ✅ Déploiement 2 (emergence-app-00553-jon) - Tag: beta-2-2-0-final
+**2. Tests utilisateur + debug version frontend**
+- ❌ Problème identifié: Frontend affichait `beta-2.1.5` au lieu de `beta-2.2.0`
+- 🔍 Cause: `src/frontend/version.js` hardcodait ancienne version
+- 🔧 Fix: Updated VERSION, VERSION_NAME, VERSION_DATE
+- ✅ Rebuild Docker avec `--no-cache` (18.3GB)
 
-**3. Vérification déploiement**
-- ✅ `/api/monitoring/system/info` retourne `"backend": "beta-2.2.0"` ✅
-- ✅ `/api/health` fonctionne
-- ✅ `/ready` fonctionne (db: up, vector: up)
-- ✅ Révision déployée: https://beta-2-2-0-final---emergence-app-47nct44nma-ew.a.run.app
+**3. Redéploiement avec version frontend corrigée**
+- ✅ Build image (digest: sha256:214e7f9a...)
+- ✅ Push vers Artifact Registry
+- ✅ Déploiement emergence-app-00555-ded (beta-2-2-0-v3)
+- ✅ URL: https://beta-2-2-0-v3---emergence-app-47nct44nma-ew.a.run.app
 
 ### Tests
-- ✅ `pytest tests/backend/` → 338/340 passing (2 échecs pre-existants unified_retriever)
-- ✅ Test manuel local (uvicorn) → monitoring router chargé correctement
-- ✅ Test Cloud Run → tous endpoints fonctionnels
-- ✅ Guardian pre-commit OK
-- ✅ Guardian post-commit OK (3 warnings acceptés)
+- ✅ Backend version: `beta-2.2.0` dans `/api/monitoring/system/info`
+- ✅ Tous endpoints fonctionnels (health, ready, monitoring)
+- ✅ Commit `cc195f2` (frontend version fix)
+- ⏳ Frontend version à vérifier par utilisateur sur nouvelle URL
+
+### Problèmes identifiés (non-critiques)
+1. **Concept graph 404** - `/api/memory/concepts/graph` pas implémenté backend
+2. **Email service 503** - Config SMTP manquante (normal en test)
 
 ### Travail de Codex GPT pris en compte
-Aucune modification Codex récente. Session isolée de déploiement.
+Aucune modification Codex récente.
 
 ### Prochaines actions recommandées
-1. **Tester révision beta-2-2-0-final** en profondeur (frontend, WebSocket, chat)
-2. **Shifter traffic** si tout OK (actuellement 0% sur nouvelle révision)
-3. **Documenter dans passation.md** le fix monitoring router
-4. **Continuer Mypy cleanup** si demandé (actuellement 0 erreurs!)
+1. **Tester beta-2-2-0-v3** sur https://beta-2-2-0-v3---emergence-app-47nct44nma-ew.a.run.app
+2. **Vérifier version frontend** affiche bien `beta-2.2.0`
+3. **Shifter traffic** si tests OK (actuellement 0%)
+4. **Implémenter concept graph endpoint** si besoin
 
 ### Blocages
 Aucun.
