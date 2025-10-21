@@ -1,3 +1,47 @@
+## [2025-10-21 16:30 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/monitoring/router.py` (ajout endpoints legacy liveness/readiness)
+- `scripts/cloud_audit_job.py` (migration vers nouveaux endpoints)
+- `docs/P1.5-Implementation-Summary.md` (correction exemples health checks)
+- `AGENT_SYNC.md` (documentation session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Analyse logs production Cloud Run révèle des 404 errors récurrents:
+- `/api/monitoring/health/liveness` → 404
+- `/api/monitoring/health/readiness` → 404
+- Appelés par `cloud_audit_job.py` (User-Agent: Python/3.11 aiohttp)
+
+**Root cause:** Endpoints supprimés lors refactorisation précédente, remplacés par `/healthz` et `/ready` (root level). Mais monitoring externe utilise encore anciens endpoints.
+
+**Solution appliquée:**
+1. Ajout endpoints legacy dans `monitoring/router.py` pour backward compatibility
+2. Mise à jour `cloud_audit_job.py` pour utiliser nouveaux endpoints
+3. Correction documentation P1.5-Implementation-Summary.md
+
+### Tests
+- ✅ Build Docker local (106s)
+- ✅ Push Artifact Registry (digest sha256:dd3e1354...)
+- ✅ Déploiement Cloud Run: revision **emergence-app-00408-8ds** active
+- ✅ Test prod `/api/monitoring/health/liveness` → 200 OK
+- ✅ Test prod `/api/monitoring/health/readiness` → 200 OK
+- ✅ Test prod `/ready` → 200 OK
+- ❌ Test prod `/healthz` → 404 (problème séparé à investiguer)
+
+### Travail de Codex GPT pris en compte
+Aucune modification récente de Codex concernée.
+
+### Prochaines actions recommandées
+1. Monitorer logs prod 24h pour confirmer disparition des 404
+2. Investiguer pourquoi `/healthz` root endpoint retourne 404
+3. Vérifier emails audit automatisés cloud_audit_job.py
+
+### Blocages
+Aucun. Production stable.
+
+---
+
 ## [2025-10-21 15:45 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

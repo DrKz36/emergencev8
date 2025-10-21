@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-21T05:17:02.507112",
+  "timestamp": "2025-10-21T05:24:59.564837",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -14,8 +14,8 @@
   "errors": [],
   "warnings": [
     {
-      "time": "2025-10-21T03:16:04.207232Z",
-      "msg": "GET https://emergence-app.ch/onboarding.html?email=fernando36%40bluewin.ch → 404"
+      "time": "2025-10-21T03:23:10.583547Z",
+      "msg": "GET https://emergence-app-47nct44nma-ew.a.run.app/healthz/ → 404"
     }
   ],
   "critical_signals": [],
@@ -23,15 +23,15 @@
   "errors_detailed": [],
   "warnings_detailed": [
     {
-      "timestamp": "2025-10-21T03:16:04.207232Z",
+      "timestamp": "2025-10-21T03:23:10.583547Z",
       "severity": "WARNING",
-      "message": "GET https://emergence-app.ch/onboarding.html?email=fernando36%40bluewin.ch → 404",
+      "message": "GET https://emergence-app-47nct44nma-ew.a.run.app/healthz/ → 404",
       "stack_trace": null,
-      "endpoint": "https://emergence-app.ch/onboarding.html?email=fernando36%40bluewin.ch",
+      "endpoint": "https://emergence-app-47nct44nma-ew.a.run.app/healthz/",
       "http_method": "GET",
       "status_code": 404,
-      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
-      "request_id": "projects/emergence-469005/traces/cbff253687127671f2602ab33752110d",
+      "user_agent": "curl/8.12.1",
+      "request_id": "projects/emergence-469005/traces/14ae11835f0f070a0176cad529015ca5",
       "error_type": null,
       "file_path": null,
       "line_number": null,
@@ -48,15 +48,27 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "dea8521f",
+      "author": "Fernando Gonzalez",
+      "time": "10 seconds ago",
+      "message": "fix(monitoring): Fix 404 errors on health check endpoints"
+    },
+    {
+      "hash": "37ef138c",
+      "author": "Fernando Gonzalez",
+      "time": "8 minutes ago",
+      "message": "chore(guardian): Update prod_report.json - Final sync"
+    },
+    {
       "hash": "d685fc80",
       "author": "Fernando Gonzalez",
-      "time": "4 seconds ago",
+      "time": "8 minutes ago",
       "message": "chore(guardian): Update prod_report.json from pre-push hook"
     },
     {
       "hash": "e046f9df",
       "author": "Fernando Gonzalez",
-      "time": "54 seconds ago",
+      "time": "9 minutes ago",
       "message": "docs(sync): Synchronisation finale inter-agents - DÃ©pÃ´t propre"
     },
     {
@@ -64,18 +76,6 @@
       "author": "Fernando Gonzalez",
       "time": "11 hours ago",
       "message": "docs(session): Fix Gmail 500 + OOM prod - Session terminÃ©e âœ…"
-    },
-    {
-      "hash": "ec14d339",
-      "author": "Fernando Gonzalez",
-      "time": "11 hours ago",
-      "message": "fix(gmail-api): CODEX_API_KEY accessible + endpoint opÃ©rationnel pour Codex Cloud"
-    },
-    {
-      "hash": "60a45e5c",
-      "author": "Fernando Gonzalez",
-      "time": "11 hours ago",
-      "message": "fix(gmail): Change endpoint /api/gmail/read-reports POST â†’ GET"
     }
   ],
   "recommendations": [
