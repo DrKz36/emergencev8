@@ -1,21 +1,164 @@
 {
-  "timestamp": "2025-10-21T07:09:59.619770",
+  "timestamp": "2025-10-21T07:26:15.892889",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
   "freshness": "1h",
-  "status": "OK",
+  "status": "CRITICAL",
   "summary": {
-    "errors": 0,
+    "errors": 4,
     "warnings": 0,
-    "critical_signals": 0,
+    "critical_signals": 4,
     "latency_issues": 0
   },
-  "errors": [],
+  "errors": [
+    {
+      "time": "2025-10-21T05:25:41.125089Z",
+      "severity": "ERROR",
+      "msg": "Memory limit of 1024 MiB exceeded with 1062 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits"
+    },
+    {
+      "time": "2025-10-21T05:25:37.199853Z",
+      "severity": "ERROR",
+      "msg": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error\nWhile handling this request, the container "
+    },
+    {
+      "time": "2025-10-21T05:25:35.690196Z",
+      "severity": "ERROR",
+      "msg": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error\nWhile handling this request, the container "
+    },
+    {
+      "time": "2025-10-21T05:25:35.689725Z",
+      "severity": "ERROR",
+      "msg": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error\nWhile handling this request, the container "
+    }
+  ],
   "warnings": [],
-  "critical_signals": [],
+  "critical_signals": [
+    {
+      "type": "OOM",
+      "time": "2025-10-21T05:25:41.125089Z",
+      "msg": "Memory limit of 1024 MiB exceeded with 1062 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
+      "full_context": {
+        "timestamp": "2025-10-21T05:25:41.125089Z",
+        "severity": "ERROR",
+        "message": "Memory limit of 1024 MiB exceeded with 1062 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
+        "stack_trace": null,
+        "endpoint": null,
+        "http_method": null,
+        "status_code": null,
+        "user_agent": null,
+        "request_id": null,
+        "error_type": null,
+        "file_path": null,
+        "line_number": null,
+        "full_payload": null
+      }
+    },
+    {
+      "type": "CRASH",
+      "time": "2025-10-21T05:25:37.199853Z",
+      "msg": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error\nWhile handling this request, the container ",
+      "full_context": {
+        "timestamp": "2025-10-21T05:25:37.199853Z",
+        "severity": "ERROR",
+        "message": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error\nWhile handling this request, the container instance was found to be using too much memory and was terminated. This is likely to cause a new container instance to be used for the next request to this revision. If you see this message frequently, you may have a memory leak in your code or may need more memory. Consider creating a new revision with more memory.",
+        "stack_trace": null,
+        "endpoint": null,
+        "http_method": null,
+        "status_code": null,
+        "user_agent": null,
+        "request_id": null,
+        "error_type": null,
+        "file_path": null,
+        "line_number": null,
+        "full_payload": null
+      }
+    },
+    {
+      "type": "CRASH",
+      "time": "2025-10-21T05:25:35.690196Z",
+      "msg": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error\nWhile handling this request, the container ",
+      "full_context": {
+        "timestamp": "2025-10-21T05:25:35.690196Z",
+        "severity": "ERROR",
+        "message": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error\nWhile handling this request, the container instance was found to be using too much memory and was terminated. This is likely to cause a new container instance to be used for the next request to this revision. If you see this message frequently, you may have a memory leak in your code or may need more memory. Consider creating a new revision with more memory.",
+        "stack_trace": null,
+        "endpoint": null,
+        "http_method": null,
+        "status_code": null,
+        "user_agent": null,
+        "request_id": null,
+        "error_type": null,
+        "file_path": null,
+        "line_number": null,
+        "full_payload": null
+      }
+    }
+  ],
   "latency_issues": [],
-  "errors_detailed": [],
+  "errors_detailed": [
+    {
+      "timestamp": "2025-10-21T05:25:41.125089Z",
+      "severity": "ERROR",
+      "message": "Memory limit of 1024 MiB exceeded with 1062 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-21T05:25:37.199853Z",
+      "severity": "ERROR",
+      "message": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error\nWhile handling this request, the container instance was found to be using too much memory and was terminated. This is likely to cause a new container instance to be used for the next request to this revision. If you see this message frequently, you may have a memory leak in your code or may need more memory. Consider creating a new revision with more memory.",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-21T05:25:35.690196Z",
+      "severity": "ERROR",
+      "message": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error\nWhile handling this request, the container instance was found to be using too much memory and was terminated. This is likely to cause a new container instance to be used for the next request to this revision. If you see this message frequently, you may have a memory leak in your code or may need more memory. Consider creating a new revision with more memory.",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-21T05:25:35.689725Z",
+      "severity": "ERROR",
+      "message": "The request failed because either the HTTP response was malformed or connection to the instance had an error. Additional troubleshooting documentation can be found at: https://cloud.google.com/run/docs/troubleshooting#malformed-response-or-connection-error\nWhile handling this request, the container instance was found to be using too much memory and was terminated. This is likely to cause a new container instance to be used for the next request to this revision. If you see this message frequently, you may have a memory leak in your code or may need more memory. Consider creating a new revision with more memory.",
+      "stack_trace": null,
+      "endpoint": null,
+      "http_method": null,
+      "status_code": null,
+      "user_agent": null,
+      "request_id": null,
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    }
+  ],
   "warnings_detailed": [],
   "error_patterns": {
     "by_endpoint": {},
@@ -27,41 +170,49 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "388ad812",
+      "author": "Fernando Gonzalez",
+      "time": "9 seconds ago",
+      "message": "feat(guardian): Test dÃ©pendances Python + Fix qualitÃ© scripts Guardian"
+    },
+    {
       "hash": "a2acc79f",
       "author": "Fernando Gonzalez",
-      "time": "19 minutes ago",
+      "time": "35 minutes ago",
       "message": "chore(reports): Mise Ã  jour rapports post-push"
     },
     {
       "hash": "72b6c53a",
       "author": "Fernando Gonzalez",
-      "time": "19 minutes ago",
+      "time": "35 minutes ago",
       "message": "chore(guardian): Mise Ã  jour rapports Guardian automatiques"
     },
     {
       "hash": "fe4dc014",
       "author": "Fernando Gonzalez",
-      "time": "20 minutes ago",
+      "time": "36 minutes ago",
       "message": "feat(memory): IntÃ©gration complÃ¨te retrieval pondÃ©rÃ© + optimisations (cache, GC, mÃ©triques)"
     },
     {
       "hash": "04f0428e",
       "author": "Fernando Gonzalez",
-      "time": "23 minutes ago",
+      "time": "40 minutes ago",
       "message": "refactor(agents): Condenser prompt system Codex GPT (-63%)"
-    },
-    {
-      "hash": "21b8d45e",
-      "author": "Fernando Gonzalez",
-      "time": "30 minutes ago",
-      "message": "feat(agents): Prompt system Codex GPT unifiÃ© (local + cloud)"
     }
   ],
   "recommendations": [
     {
-      "priority": "LOW",
-      "action": "No immediate action required",
-      "details": "Production is healthy"
+      "priority": "HIGH",
+      "action": "Investigate critical issues immediately",
+      "details": "OOMKilled or container crashes detected",
+      "affected_files": [],
+      "affected_endpoints": []
+    },
+    {
+      "priority": "HIGH",
+      "action": "Increase memory limit",
+      "command": "gcloud run services update emergence-app --memory=1Gi --region=europe-west1",
+      "details": "Current limit likely insufficient for workload"
     }
   ]
 }
