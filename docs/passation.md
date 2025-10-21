@@ -1,3 +1,63 @@
+## [2025-10-21 18:10 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `scripts/generate_codex_summary.py` (fix KeyError dans fallbacks)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**Problème détecté:** Workflow GitHub Actions plantait sur le job "Guardian Validation" avec l'erreur `KeyError: 'errors_count'` lors de l'exécution du script `generate_codex_summary.py`.
+
+**Demande implicite:** Fixer le Guardian pour que les workflows CI/CD passent.
+
+### Actions réalisées
+
+**1. Investigation du problème**
+- Lecture du log GitHub Actions: `KeyError: 'errors_count'` ligne 289 dans `generate_markdown_summary()`
+- Analyse du code: La fonction accède à `prod_insights['errors_count']` mais ce champ manque quand le rapport prod est vide/manquant
+- **Cause identifiée:** Les fonctions `extract_*_insights()` retournaient des fallbacks incomplets (seulement `status` et `insights`)
+
+**2. Fix appliqué à tous les extractors**
+- `extract_prod_insights()`: Fallback complet avec 7 clés au lieu de 3
+  - Ajouté: `logs_analyzed`, `errors_count`, `warnings_count`, `critical_signals`, `recommendations`, `recent_commits`
+- `extract_docs_insights()`: Fallback complet avec 5 clés au lieu de 2
+  - Ajouté: `gaps_count`, `updates_count`, `backend_files_changed`, `frontend_files_changed`
+- `extract_integrity_insights()`: Fallback complet avec 3 clés au lieu de 2
+  - Ajouté: `issues_count`, `critical_count`
+- `extract_unified_insights()`: Fallback complet avec 6 clés au lieu de 2
+  - Ajouté: `total_issues`, `critical`, `warnings`, `statistics`
+
+**3. Tests et déploiement**
+- ✅ Test local: `python scripts/generate_codex_summary.py` → génère `codex_summary.md` sans erreur
+- ✅ Commit `ec5fbd4`: "fix(guardian): Fix KeyError dans generate_codex_summary.py - Fallbacks complets"
+- ✅ Guardian hooks locaux (pre-commit, post-commit, pre-push): tous OK
+- ✅ Push vers GitHub: en attente workflow Actions
+
+### Tests
+- ✅ Test local: Script génère résumé même avec rapports vides
+- ✅ Guardian pre-commit hook OK (aucun problème)
+- ✅ Guardian post-commit hook OK (rapport unifié généré)
+- ✅ Guardian pre-push hook OK (production healthy)
+- ⏳ Workflow GitHub Actions en cours (Guardian Validation devrait passer maintenant)
+
+### Travail de Codex GPT pris en compte
+Aucune modification Codex récente.
+
+### Prochaines actions recommandées
+1. **Vérifier workflow GitHub Actions** - Job "Guardian Validation" devrait passer avec ce fix
+2. **Système Guardian stable** - Plus de KeyError dans les rapports
+3. **Workflow fluide** - CI/CD ne devrait plus bloquer sur Guardian
+
+### Blocages
+Aucun.
+
+### Notes techniques importantes
+- **Leçon apprise:** Toujours retourner toutes les clés attendues dans les fallbacks, même si valeurs par défaut (0, [], {})
+- **Robustesse:** Script `generate_codex_summary.py` maintenant résilient aux rapports manquants/incomplets
+- **CI/CD:** Guardian Validation dans GitHub Actions dépend de ce script → critique pour merge
+
+---
+
 ## [2025-10-21 16:58 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

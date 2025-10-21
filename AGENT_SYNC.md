@@ -2,59 +2,47 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 17:51 CET (Claude Code : Fix version frontend + redéploiement beta-2.2.0-v3 ✅)
+**Dernière mise à jour** : 2025-10-21 18:10 CET (Claude Code : Fix Guardian workflow - generate_codex_summary.py ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
 ---
 
-## ✅ Session COMPLÉTÉE (2025-10-21 17:51 CET) — Agent : Claude Code
+## ✅ Session EN COURS (2025-10-21 18:10 CET) — Agent : Claude Code
 
 ### Fichiers modifiés
-- `src/backend/features/monitoring/router.py` (fix FastAPI response_model + APP_VERSION)
-- `src/frontend/version.js` (beta-2.1.5 → beta-2.2.0)
-- `package.json` (beta-2.1.6 → beta-2.2.0)
+- `scripts/generate_codex_summary.py` (fix KeyError fallbacks)
 - `AGENT_SYNC.md` (cette session)
-- `docs/passation.md` (cette session)
 
 ### Actions réalisées
 
-**1. Fix monitoring router + déploiement initial**
-- ✅ Fix `Union[Dict, JSONResponse]` avec `response_model=None`
-- ✅ Fix backend version: `os.getenv("APP_VERSION")` prioritaire
-- ✅ Déploiement emergence-app-00553-jon (beta-2-2-0-final)
-- ✅ Backend version OK: `"backend": "beta-2.2.0"`
+**Problème détecté**
+- 🔴 Workflow GitHub Actions plantait sur Guardian Validation job
+- 🔍 Erreur: `KeyError: 'errors_count'` dans `generate_codex_summary.py`
+- 🔎 Cause: Les fonctions `extract_*_insights()` retournaient des fallbacks incomplets quand rapports vides/manquants
 
-**2. Tests utilisateur + debug version frontend**
-- ❌ Problème identifié: Frontend affichait `beta-2.1.5` au lieu de `beta-2.2.0`
-- 🔍 Cause: `src/frontend/version.js` hardcodait ancienne version
-- 🔧 Fix: Updated VERSION, VERSION_NAME, VERSION_DATE
-- ✅ Rebuild Docker avec `--no-cache` (18.3GB)
-
-**3. Redéploiement avec version frontend corrigée**
-- ✅ Build image (digest: sha256:214e7f9a...)
-- ✅ Push vers Artifact Registry
-- ✅ Déploiement emergence-app-00555-ded (beta-2-2-0-v3)
-- ✅ URL: https://beta-2-2-0-v3---emergence-app-47nct44nma-ew.a.run.app
+**Fix appliqué**
+- ✅ `extract_prod_insights()`: Fallback complet avec toutes clés (logs_analyzed, errors_count, warnings_count, critical_signals, insights, recommendations, recent_commits)
+- ✅ `extract_docs_insights()`: Fallback complet (gaps_count, updates_count, backend_files_changed, frontend_files_changed, insights)
+- ✅ `extract_integrity_insights()`: Fallback complet (issues_count, critical_count, insights)
+- ✅ `extract_unified_insights()`: Fallback complet (total_issues, critical, warnings, insights, statistics)
+- ✅ Test local: Script génère `codex_summary.md` sans erreur
+- ✅ Commit `ec5fbd4` (fix guardian)
+- ✅ Push vers GitHub: Guardian local OK
 
 ### Tests
-- ✅ Backend version: `beta-2.2.0` dans `/api/monitoring/system/info`
-- ✅ Tous endpoints fonctionnels (health, ready, monitoring)
-- ✅ Commit `cc195f2` (frontend version fix)
-- ⏳ Frontend version à vérifier par utilisateur sur nouvelle URL
-
-### Problèmes identifiés (non-critiques)
-1. **Concept graph 404** - `/api/memory/concepts/graph` pas implémenté backend
-2. **Email service 503** - Config SMTP manquante (normal en test)
+- ✅ Test local: `python scripts/generate_codex_summary.py` OK
+- ✅ Guardian pre-commit hook OK
+- ✅ Guardian post-commit hook OK
+- ✅ Guardian pre-push hook OK
+- ⏳ Workflow GitHub Actions en cours (attente résultat Guardian Validation)
 
 ### Travail de Codex GPT pris en compte
 Aucune modification Codex récente.
 
 ### Prochaines actions recommandées
-1. **Tester beta-2-2-0-v3** sur https://beta-2-2-0-v3---emergence-app-47nct44nma-ew.a.run.app
-2. **Vérifier version frontend** affiche bien `beta-2.2.0`
-3. **Shifter traffic** si tests OK (actuellement 0%)
-4. **Implémenter concept graph endpoint** si besoin
+1. **Vérifier workflow GitHub Actions** - Guardian Validation job devrait passer maintenant
+2. **Continuer travail si workflow OK** - Système Guardian stable
 
 ### Blocages
 Aucun.
@@ -4750,6 +4738,26 @@ SMTP_PASSWORD=...
 ---
 
 ## 🤖 Synchronisation automatique
+### Consolidation - 2025-10-21T17:54:45.423816
+
+**Type de déclenchement** : `threshold`
+**Conditions** : {
+  "pending_changes": 5,
+  "threshold": 5
+}
+**Changements consolidés** : 5 événements sur 2 fichiers
+
+**Fichiers modifiés** :
+- **AGENT_SYNC.md** : 4 événement(s)
+  - `modified` à 2025-10-21T17:07:45.056755 (agent: unknown)
+  - `modified` à 2025-10-21T17:08:15.081707 (agent: unknown)
+  - `modified` à 2025-10-21T17:53:15.939789 (agent: unknown)
+  - `modified` à 2025-10-21T17:53:45.957501 (agent: unknown)
+- **docs/passation.md** : 1 événement(s)
+  - `modified` à 2025-10-21T17:08:45.104026 (agent: unknown)
+
+---
+
 ### Consolidation - 2025-10-19T22:16:32.904787
 
 **Type de déclenchement** : `threshold`
