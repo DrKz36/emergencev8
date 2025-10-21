@@ -1,6 +1,6 @@
 # 🛡️ Guardian - Résumé pour Codex GPT
 
-**Généré le:** 2025-10-21 06:50:39
+**Généré le:** 2025-10-21 06:51:00
 **Source:** Rapports automatiques Guardian (ProdGuardian, Anima, Neo, Nexus)
 
 ---
@@ -20,11 +20,11 @@
 
 ### 📝 Commits récents (contexte)
 
-- `fe4dc014` - feat(memory): IntÃ©gration complÃ¨te retrieval pondÃ©rÃ© + optimisations (cache, GC, mÃ©triques) (Fernando Gonzalez, 11 seconds ago)
+- `72b6c53a` - chore(guardian): Mise Ã  jour rapports Guardian automatiques (Fernando Gonzalez, 4 seconds ago)
+- `fe4dc014` - feat(memory): IntÃ©gration complÃ¨te retrieval pondÃ©rÃ© + optimisations (cache, GC, mÃ©triques) (Fernando Gonzalez, 32 seconds ago)
 - `04f0428e` - refactor(agents): Condenser prompt system Codex GPT (-63%) (Fernando Gonzalez, 4 minutes ago)
-- `21b8d45e` - feat(agents): Prompt system Codex GPT unifiÃ© (local + cloud) (Fernando Gonzalez, 10 minutes ago)
+- `21b8d45e` - feat(agents): Prompt system Codex GPT unifiÃ© (local + cloud) (Fernando Gonzalez, 11 minutes ago)
 - `4e54f24b` - docs(guardian): Documentation session automation Codex Summary (Fernando Gonzalez, 16 minutes ago)
-- `ca0a66c9` - feat(guardian): Task Scheduler pour rÃ©sumÃ© Codex auto toutes les 6h (Fernando Gonzalez, 18 minutes ago)
 
 ---
 
