@@ -1,3 +1,60 @@
+## [2025-10-21 17:15 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `CODEX_GPT_GUIDE.md` (ajout section 9.3 "Accéder aux rapports Guardian")
+- `claude-plugins/integrity-docs-guardian/README_GUARDIAN.md` (section agents IA)
+- `AGENT_SYNC.md` (ajout section rapports Guardian)
+- `PROMPT_RAPPORTS_GUARDIAN.md` (nouveau - prompt explicite pour Codex GPT)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**Problème identifié:** Codex GPT ne savait pas comment accéder aux rapports Guardian locaux.
+
+Quand demandé "vérifie les rapports Guardian", Codex répondait:
+> "Je n'ai pas accès à Cloud Run ni aux jobs planifiés..."
+
+**Alors que les rapports sont DÉJÀ dans le dépôt local** (`reports/*.json`) !
+
+**Solution appliquée:**
+1. Ajout section complète dans `CODEX_GPT_GUIDE.md` (Section 9.3)
+   - Explique que les rapports sont locaux
+   - Donne chemins absolus des fichiers
+   - Exemples de code Python/JS/PowerShell
+   - Exemple d'analyse multi-rapports
+
+2. Mise à jour `README_GUARDIAN.md`
+   - Section dédiée "Pour les agents IA"
+   - Emplacements rapports avec chemins absolus
+   - Exemples de code
+
+3. Ajout rappel dans `AGENT_SYNC.md`
+   - Section rapide avec chemins
+   - Lien vers CODEX_GPT_GUIDE.md
+
+4. Création `PROMPT_RAPPORTS_GUARDIAN.md`
+   - Prompt ultra-explicite pour Codex GPT
+   - Exemples complets de code
+   - Workflow recommandé
+   - Ce qu'il faut faire / ne pas faire
+
+### Tests
+- ✅ Vérification lecture rapports manuellement
+- ✅ Documentation complète et claire
+- ✅ Exemples de code testés
+
+### Travail de Codex GPT pris en compte
+Aucune modification récente concernée. Cette doc aidera Codex dans ses prochaines sessions.
+
+### Prochaines actions recommandées
+1. Tester avec Codex GPT lors de sa prochaine session
+2. Si Codex comprend bien → marqué comme résolu
+3. Si encore confusion → améliorer le prompt
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-21 16:30 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

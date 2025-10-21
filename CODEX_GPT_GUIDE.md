@@ -417,7 +417,98 @@ emergenceV8/
 
 **Ces agents suggèrent automatiquement la mise à jour de AGENT_SYNC.md** quand ils détectent des changements structurels importants.
 
-### 9.3 Support
+### 9.3 Accéder aux rapports Guardian
+
+**⚠️ IMPORTANT : Les rapports sont DÉJÀ dans le dépôt local, pas dans le cloud !**
+
+**Quand l'utilisateur demande "vérifie les rapports Guardian" :**
+
+```python
+# ❌ FAUX - Ne PAS faire ça
+"Je n'ai pas accès à Cloud Run ni aux jobs planifiés..."
+
+# ✅ CORRECT - Faire ça
+import os
+# Lire les fichiers JSON locaux directement !
+```
+
+**Fichiers rapports principaux (dans le dépôt) :**
+
+| Fichier | Chemin complet | Contenu |
+|---------|----------------|---------|
+| **prod_report.json** | `c:\dev\emergenceV8\reports\prod_report.json` | Monitoring production (erreurs, warnings, latence) |
+| **unified_report.json** | `c:\dev\emergenceV8\reports\unified_report.json` | Rapport unifié Nexus (Anima + Neo) |
+| **integrity_report.json** | `c:\dev\emergenceV8\reports\integrity_report.json` | Intégrité backend/frontend (Neo) |
+| **docs_report.json** | `c:\dev\emergenceV8\reports\docs_report.json` | Gaps documentation (Anima) |
+| **global_report.json** | `c:\dev\emergenceV8\reports\global_report.json` | Rapport global tous agents |
+
+**Comment accéder (exemples concrets) :**
+
+```python
+# Python
+import json
+with open('c:\\dev\\emergenceV8\\reports\\prod_report.json', 'r', encoding='utf-8') as f:
+    report = json.load(f)
+    print(f"Status prod: {report['status']}")
+    print(f"Erreurs: {report['summary']['errors']}")
+```
+
+```javascript
+// JavaScript/Node.js
+const fs = require('fs');
+const report = JSON.parse(fs.readFileSync('c:/dev/emergenceV8/reports/prod_report.json', 'utf-8'));
+console.log(`Status prod: ${report.status}`);
+console.log(`Erreurs: ${report.summary.errors}`);
+```
+
+```powershell
+# PowerShell
+$report = Get-Content 'c:\dev\emergenceV8\reports\prod_report.json' -Raw | ConvertFrom-Json
+Write-Host "Status prod: $($report.status)"
+Write-Host "Erreurs: $($report.summary.errors)"
+```
+
+**Ces rapports sont générés automatiquement par :**
+- ✅ Git Hooks (pre-commit, post-commit, pre-push)
+- ✅ Task Scheduler (toutes les 6h pour prod_report.json)
+- ✅ Scripts manuels (`.\run_audit.ps1`)
+
+**Donc : PAS BESOIN de se connecter à Cloud Run ou aux jobs planifiés !**
+
+Les rapports sont **toujours disponibles localement** dans `reports/` et `claude-plugins/integrity-docs-guardian/reports/`.
+
+**Exemple complet d'analyse des rapports :**
+
+```python
+import json
+from pathlib import Path
+
+# Base path rapports
+reports_dir = Path('c:/dev/emergenceV8/reports')
+
+# Lire prod report
+with open(reports_dir / 'prod_report.json', 'r', encoding='utf-8') as f:
+    prod = json.load(f)
+    print(f"🔴 Production: {prod['status']} - {prod['summary']['errors']} erreurs")
+
+# Lire unified report
+with open(reports_dir / 'unified_report.json', 'r', encoding='utf-8') as f:
+    unified = json.load(f)
+    status = unified['executive_summary']['status']
+    issues = unified['executive_summary']['total_issues']
+    print(f"📊 Global: {status} - {issues} issues totales")
+
+# Lire integrity report
+with open(reports_dir / 'integrity_report.json', 'r', encoding='utf-8') as f:
+    integrity = json.load(f)
+    print(f"🔍 Intégrité: {integrity['status']}")
+    print(f"   Backend files changed: {integrity['statistics']['backend_files_changed']}")
+    print(f"   Frontend files changed: {integrity['statistics']['frontend_files_changed']}")
+```
+
+**Résumé : TU AS DÉJÀ ACCÈS AUX RAPPORTS - JUSTE LES LIRE ! 🔥**
+
+### 9.4 Support
 
 **En cas de problème** :
 1. Vérifier `docs/passation.md` (dernières entrées)

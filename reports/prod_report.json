@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-21T05:24:59.564837",
+  "timestamp": "2025-10-21T05:37:02.305526",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -7,37 +7,16 @@
   "status": "OK",
   "summary": {
     "errors": 0,
-    "warnings": 1,
+    "warnings": 0,
     "critical_signals": 0,
     "latency_issues": 0
   },
   "errors": [],
-  "warnings": [
-    {
-      "time": "2025-10-21T03:23:10.583547Z",
-      "msg": "GET https://emergence-app-47nct44nma-ew.a.run.app/healthz/ → 404"
-    }
-  ],
+  "warnings": [],
   "critical_signals": [],
   "latency_issues": [],
   "errors_detailed": [],
-  "warnings_detailed": [
-    {
-      "timestamp": "2025-10-21T03:23:10.583547Z",
-      "severity": "WARNING",
-      "message": "GET https://emergence-app-47nct44nma-ew.a.run.app/healthz/ → 404",
-      "stack_trace": null,
-      "endpoint": "https://emergence-app-47nct44nma-ew.a.run.app/healthz/",
-      "http_method": "GET",
-      "status_code": 404,
-      "user_agent": "curl/8.12.1",
-      "request_id": "projects/emergence-469005/traces/14ae11835f0f070a0176cad529015ca5",
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    }
-  ],
+  "warnings_detailed": [],
   "error_patterns": {
     "by_endpoint": {},
     "by_error_type": {},
@@ -48,34 +27,34 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "f9c33d23",
+      "author": "Fernando Gonzalez",
+      "time": "5 seconds ago",
+      "message": "docs: Update AGENT_SYNC.md + passation.md for health check fix"
+    },
+    {
       "hash": "dea8521f",
       "author": "Fernando Gonzalez",
-      "time": "10 seconds ago",
+      "time": "12 minutes ago",
       "message": "fix(monitoring): Fix 404 errors on health check endpoints"
     },
     {
       "hash": "37ef138c",
       "author": "Fernando Gonzalez",
-      "time": "8 minutes ago",
+      "time": "20 minutes ago",
       "message": "chore(guardian): Update prod_report.json - Final sync"
     },
     {
       "hash": "d685fc80",
       "author": "Fernando Gonzalez",
-      "time": "8 minutes ago",
+      "time": "20 minutes ago",
       "message": "chore(guardian): Update prod_report.json from pre-push hook"
     },
     {
       "hash": "e046f9df",
       "author": "Fernando Gonzalez",
-      "time": "9 minutes ago",
+      "time": "21 minutes ago",
       "message": "docs(sync): Synchronisation finale inter-agents - DÃ©pÃ´t propre"
-    },
-    {
-      "hash": "239fa33a",
-      "author": "Fernando Gonzalez",
-      "time": "11 hours ago",
-      "message": "docs(session): Fix Gmail 500 + OOM prod - Session terminÃ©e âœ…"
     }
   ],
   "recommendations": [

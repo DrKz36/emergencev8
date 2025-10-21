@@ -117,17 +117,59 @@ cd c:\dev\emergenceV8\claude-plugins\integrity-docs-guardian\scripts
 
 ## 📊 RAPPORTS GÉNÉRÉS
 
-Tous les rapports sont dans : `claude-plugins/integrity-docs-guardian/reports/`
+**⚠️ POUR LES AGENTS IA (Claude Code, Codex GPT) : LISEZ CETTE SECTION !**
 
-### Rapports Principaux
+**Les rapports Guardian sont LOCAUX dans le dépôt Git, PAS dans le cloud !**
 
-| Fichier | Agent | Contenu |
-|---------|-------|---------|
-| `unified_report.json` | **NEXUS** | Vue unifiée Anima + Neo, priorisation issues |
-| `docs_report.json` | ANIMA | Gaps documentation, versioning |
-| `integrity_report.json` | NEO | Intégrité backend/frontend |
-| `prod_report.json` | PRODGUARDIAN | État production Cloud Run |
-| `global_report.json` | Master Orchestrator | Rapport global tous agents |
+Quand on vous demande "vérifie les rapports Guardian", vous devez **juste lire les fichiers JSON locaux** - pas besoin de se connecter à Cloud Run ou aux jobs planifiés.
+
+### Emplacements des rapports
+
+**Rapports principaux (à lire en priorité) :**
+
+| Fichier | Chemin absolu | Agent | Contenu |
+|---------|---------------|-------|---------|
+| `prod_report.json` | `c:\dev\emergenceV8\reports\prod_report.json` | PRODGUARDIAN | État production (erreurs, warnings, latence) |
+| `unified_report.json` | `c:\dev\emergenceV8\reports\unified_report.json` | NEXUS | Vue unifiée Anima + Neo, priorisation issues |
+| `integrity_report.json` | `c:\dev\emergenceV8\reports\integrity_report.json` | NEO | Intégrité backend/frontend |
+| `docs_report.json` | `c:\dev\emergenceV8\reports\docs_report.json` | ANIMA | Gaps documentation, versioning |
+| `global_report.json` | `c:\dev\emergenceV8\reports\global_report.json` | Master Orchestrator | Rapport global tous agents |
+
+**Rapports aussi disponibles dans :** `claude-plugins/integrity-docs-guardian/reports/` (copie sync)
+
+### Comment accéder aux rapports (agents IA)
+
+**❌ NE PAS FAIRE :**
+```
+"Je n'ai pas accès à Cloud Run ni aux jobs planifiés..."
+"Je ne peux pas récupérer les rapports Guardian en temps réel..."
+```
+
+**✅ FAIRE :**
+```python
+# Python
+import json
+with open('c:/dev/emergenceV8/reports/prod_report.json', 'r', encoding='utf-8') as f:
+    report = json.load(f)
+```
+
+```javascript
+// JavaScript/Node.js
+const fs = require('fs');
+const report = JSON.parse(fs.readFileSync('c:/dev/emergenceV8/reports/prod_report.json', 'utf-8'));
+```
+
+```powershell
+# PowerShell
+$report = Get-Content 'c:\dev\emergenceV8\reports\prod_report.json' -Raw | ConvertFrom-Json
+```
+
+**Ces fichiers sont mis à jour automatiquement par :**
+- Git Hooks (pre-commit, post-commit, pre-push)
+- Task Scheduler Windows (toutes les 6h)
+- Scripts manuels (`.\run_audit.ps1`)
+
+**Donc : PAS BESOIN d'aller chercher dans le cloud - tout est local et à jour ! 🔥**
 
 ### Structure d'un Rapport
 

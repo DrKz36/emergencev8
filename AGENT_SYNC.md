@@ -17,7 +17,71 @@
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
 5. `git status` + `git log --online -10` - état Git
 
-## ✅ Session EN COURS (2025-10-21 16:30 CET) — Agent : Claude Code (Fix health check 404 prod)
+## 📊 Accès rapports Guardian (IMPORTANT pour agents IA)
+
+**Les rapports Guardian sont LOCAUX dans le dépôt !**
+
+Quand l'utilisateur demande "vérifie les rapports Guardian" :
+- ✅ **FAIRE** : Lire les fichiers JSON dans `c:\dev\emergenceV8\reports\`
+- ❌ **NE PAS FAIRE** : Dire "je n'ai pas accès à Cloud Run..."
+
+**Fichiers principaux :**
+- `reports/prod_report.json` - Production (erreurs/warnings)
+- `reports/unified_report.json` - Rapport unifié (Nexus)
+- `reports/integrity_report.json` - Intégrité backend/frontend (Neo)
+- `reports/docs_report.json` - Documentation (Anima)
+
+Mis à jour automatiquement par hooks Git + Task Scheduler (6h).
+
+**Voir détails :** [CODEX_GPT_GUIDE.md Section 9.3](CODEX_GPT_GUIDE.md#93-accéder-aux-rapports-guardian)
+
+## ✅ Session EN COURS (2025-10-21 17:15 CET) — Agent : Claude Code (Doc accès rapports Guardian pour Codex GPT)
+
+### 🎯 Objectif
+- Corriger erreur de Codex GPT sur accès rapports Guardian
+- Créer documentation explicite pour agents IA
+- Fournir exemples de code Python/JS/PowerShell
+
+### 🐛 Problème identifié
+Codex GPT ne savait pas accéder aux rapports Guardian locaux. Quand demandé "vérifie les rapports Guardian", il répondait:
+> "Je n'ai pas accès à Cloud Run ni aux jobs planifiés..."
+
+**Alors que les rapports sont dans `c:\dev\emergenceV8\reports\` ! 🤦**
+
+### ✅ Actions réalisées
+1. **Mise à jour CODEX_GPT_GUIDE.md** - Section 9.3 complète
+   - Chemins absolus des rapports
+   - Exemples Python/JS/PowerShell
+   - Workflow recommandé
+   - Exemple analyse multi-rapports
+
+2. **Mise à jour README_GUARDIAN.md** - Section agents IA
+   - Emplacements rapports avec chemins
+   - Code d'accès
+   - Ce qu'il faut faire / ne pas faire
+
+3. **Mise à jour AGENT_SYNC.md** - Rappel rapide
+   - Fichiers principaux
+   - Lien vers doc complète
+
+4. **Création PROMPT_RAPPORTS_GUARDIAN.md** - Prompt ultra-explicite
+   - Guide étape par étape
+   - Exemples complets
+   - Ton direct et cash
+
+### 📌 État actuel
+- ✅ Documentation complète pour Codex GPT
+- ✅ Exemples de code testés
+- 🔄 À tester avec Codex dans sa prochaine session
+
+### 📝 Prochaines actions recommandées
+1. Committer les changements
+2. Tester avec Codex GPT
+3. Ajuster si besoin
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-21 16:30 CET) — Agent : Claude Code (Fix health check 404 prod)
 
 ### 🎯 Objectif
 - Analyser logs production pour détecter erreurs
