@@ -458,7 +458,41 @@ fi
 
 **Commit** : `c837a15` (2025-10-21 20:30)
 
-**Prochaine étape** : Batch 2 (66 → ~50 erreurs) - Google Cloud imports, Prometheus metrics
+**Prochaine étape** : ✅ Batch 2 complété → Batch 3 (44 → 30 erreurs)
+
+---
+
+#### 1.4 Corriger erreurs Mypy (batch 2/3) ✅ COMPLÉTÉ (2025-10-21 22:00)
+
+**Objectif** : Corriger 16 erreurs (66 → 50), focus Google Cloud imports, Prometheus metrics, Unified retriever.
+
+**Fichiers** : `src/backend/**/*.py` (focus features/guardian, features/memory, core/)
+
+**Résultat** : ✅ **22 erreurs corrigées** (66 → 44 erreurs, objectif 50 dépassé de 37% !)
+
+**Fichiers modifiés (8):**
+- features/guardian/storage_service.py (Google Cloud import + None check)
+- features/gmail/oauth_service.py (2x firestore import + oauth flow stub)
+- features/gmail/gmail_service.py (googleapiclient stubs)
+- features/memory/weighted_retrieval_metrics.py (Prometheus kwargs dict)
+- core/ws_outbox.py (Prometheus Optional types)
+- features/memory/unified_retriever.py (float score, Any import, rename)
+- cli/consolidate_all_archives.py (backend imports, params list[Any])
+- cli/consolidate_archived_threads.py (params list[Any])
+
+**Catégories corrigées :**
+- Google Cloud imports (5 erreurs) - type: ignore[attr-defined/import-untyped]
+- Prometheus metrics (9 erreurs) - Optional types + kwargs: dict
+- Unified retriever (4 erreurs) - float score, lambda types, rename variable
+- CLI scripts (4 erreurs) - imports backend.*, params: list[Any]
+
+**Tests** : ✅ 45/45 tests passent (aucune régression)
+
+**Commit** : En cours (cette session)
+
+**Prochaine étape** : Batch 3 (44 → 30 erreurs) - rag_cache.py, guardian/router.py, monitoring/router.py
+
+**Progression totale Mypy** : 100 → 66 → 44 erreurs (-56 erreurs, -56%)
 
 ---
 

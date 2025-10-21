@@ -74,7 +74,7 @@ async def get_unconsolidated_archived_threads(
         WHERE archived = 1
     """
 
-    params = []
+    params: list[Any] = []
 
     if not force:
         query += " AND consolidated_at IS NULL"

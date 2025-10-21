@@ -29,7 +29,7 @@ try:
 
     def _get_or_create_histogram(name: str, doc: str, labels: list, buckets: Optional[tuple] = None) -> Histogram:
         try:
-            kwargs = {"registry": REGISTRY}
+            kwargs: dict = {"registry": REGISTRY}
             if buckets:
                 kwargs["buckets"] = buckets
             return Histogram(name, doc, labels, **kwargs)

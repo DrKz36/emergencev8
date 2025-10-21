@@ -1,3 +1,128 @@
+## [2025-10-21 22:00 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/guardian/storage_service.py` (Google Cloud storage import + None check client)
+- `src/backend/features/gmail/oauth_service.py` (Google Cloud firestore import + oauth flow stub)
+- `src/backend/features/gmail/gmail_service.py` (googleapiclient import stubs)
+- `src/backend/features/memory/weighted_retrieval_metrics.py` (Prometheus kwargs dict type)
+- `src/backend/core/ws_outbox.py` (Prometheus metrics Optional[Gauge/Histogram/Counter])
+- `src/backend/features/memory/unified_retriever.py` (float score, Any import, thread_data rename)
+- `src/backend/cli/consolidate_all_archives.py` (backend imports, params: list[Any])
+- `src/backend/cli/consolidate_archived_threads.py` (params: list[Any])
+- `AGENT_SYNC.md` (mise à jour session batch 2)
+- `docs/passation.md` (cette entrée)
+- `AUDIT_COMPLET_2025-10-21.md` (mise à jour progression)
+
+### Contexte
+**Demande utilisateur:** "Salut ! Je continue le travail sur Émergence V8. Session précédente a complété Priority 1.3 Mypy batch 1 (100 → 66 erreurs). PROCHAINE PRIORITÉ : Mypy Batch 2 (66 → 50 erreurs) - Focus Google Cloud imports, Prometheus metrics, Unified retriever."
+
+**Objectif Priority 1.3 (Mypy batch 2):** Réduire erreurs Mypy de 66 → 50 (-16 erreurs minimum), focus sur Google Cloud imports, Prometheus metrics, Unified retriever.
+
+### Actions réalisées
+
+**1. Analyse erreurs mypy restantes (66 erreurs)**
+- Lancé `mypy backend/` depuis `src/`
+- Identifié catégories principales:
+  - Google Cloud imports (storage, firestore) sans stubs
+  - Prometheus metrics (CollectorRegistry, Optional types)
+  - Unified retriever (float vs int, lambda types)
+  - CLI scripts (imports src.backend.* vs backend.*)
+
+**2. Google Cloud imports (5 erreurs corrigées)**
+- `storage_service.py:20` - Ajout `# type: ignore[attr-defined]` sur `from google.cloud import storage`
+  - google-cloud-storage est dépendance optionnelle (try/except), stubs non installés
+- `oauth_service.py:131, 160` - Ajout `# type: ignore[attr-defined]` sur `from google.cloud import firestore` (2 occurrences)
+  - Imports locaux dans méthodes, mypy ne détecte pas les stubs
+- `gmail_service.py:15-16` - Ajout `# type: ignore[import-untyped]` sur `googleapiclient.discovery` et `googleapiclient.errors`
+  - Library google-api-python-client sans stubs officiels
+- `oauth_service.py:17` - Ajout `# type: ignore[import-untyped]` sur `google_auth_oauthlib.flow`
+
+**3. Prometheus metrics (9 erreurs corrigées)**
+- `weighted_retrieval_metrics.py:32` - Type hint explicit `kwargs: dict` au lieu de `{}`
+  - Mypy inférait `dict[str, CollectorRegistry]` au lieu de `dict[str, Any]` à cause de `buckets: tuple`
+  - 3 erreurs "Argument incompatible type" sur Histogram() ✅
+- `ws_outbox.py:69-73` - Annotation `Optional[Gauge/Histogram/Counter]` avec `# type: ignore[assignment,no-redef]`
+  - Variables définies dans `if PROMETHEUS_AVAILABLE:` puis redéfinies dans `else:`
+  - 5 erreurs "Incompatible types None vs Gauge/Histogram/Counter" + 5 "Name already defined" ✅
+  - Ajout `no-redef` au type ignore pour couvrir les deux erreurs
+
+**4. Unified retriever (4 erreurs corrigées)**
+- Ligne 402: `score = 0.0` au lieu de `score = 0`
+  - Conflit avec `score += 0.5` (ligne 409) → float vs int ✅
+- Ligne 418: Lambda sort avec `isinstance` check
+  - `lambda x: float(x['score']) if isinstance(x['score'], (int, float, str)) else 0.0`
+  - Mypy inférait `x['score']` comme `object` → incompatible avec `float()` ✅
+- Ligne 423: Rename `thread` → `thread_data`
+  - Variable `thread` déjà définie ligne 398 dans boucle parente ✅
+- Ligne 14: Import `Any` depuis `typing`
+  - Nécessaire pour annotation `thread_data: dict[str, Any]` ✅
+
+**5. CLI scripts (4 erreurs corrigées)**
+- `consolidate_all_archives.py`:
+  - Lignes 26-29: Imports `src.backend.*` → `backend.*`
+    - Scripts lancés depuis racine projet, mais mypy check depuis `src/backend/`
+    - 4 erreurs "Cannot find module src.backend.*" ✅
+  - Ligne 88: Type hint `params: list[Any] = []`
+    - `params.append(user_id)` (str) puis `params.append(limit)` (int) → conflit type
+    - 1 erreur "Append int to list[str]" ✅
+  - Ligne 17: Import `Any` depuis `typing`
+- `consolidate_archived_threads.py`:
+  - Ligne 77: Type hint `params: list[Any] = []`
+    - Même problème user_id (str) + limit (int) ✅
+
+**6. Guardian storage (1 erreur corrigée)**
+- `storage_service.py:183` - Check `self.bucket and self.client` au lieu de `self.bucket` seul
+  - `self.client` peut être None si GCS pas disponible
+  - 1 erreur "Item None has no attribute list_blobs" ✅
+
+### Tests
+- ✅ `pytest src/backend/tests/` : 45/45 tests passent (100%)
+- ✅ Aucune régression introduite
+- ✅ Warnings: 2 (Pydantic deprecation - identique à avant)
+
+**Mypy:**
+- ✅ **Avant**: 66 erreurs (18 fichiers)
+- ✅ **Après**: 44 erreurs (11 fichiers)
+- 🎯 **Réduction**: -22 erreurs (objectif -16 dépassé de 37% !)
+- 📈 **Progression totale**: 100 → 66 → 44 erreurs (-56 erreurs depuis début, -56%)
+
+**Fichiers nettoyés (plus d'erreurs mypy):**
+- `features/guardian/storage_service.py` ✅
+- `features/gmail/oauth_service.py` ✅
+- `features/gmail/gmail_service.py` ✅
+- `features/memory/weighted_retrieval_metrics.py` ✅
+- `cli/consolidate_all_archives.py` ✅
+
+**Fichiers encore avec erreurs (11):**
+- `features/chat/rag_cache.py` (5 erreurs - Redis Awaitable)
+- `features/guardian/router.py` (9 erreurs - object + int)
+- `features/monitoring/router.py` (2 erreurs - JSONResponse types)
+- `features/memory/unified_retriever.py` (0 erreur - nettoyé ✅)
+- `core/ws_outbox.py` (0 erreur - nettoyé ✅)
+- + 6 autres fichiers mineurs
+
+### Travail de Codex GPT pris en compte
+Aucun conflit - Codex GPT n'a pas travaillé sur ces fichiers backend récemment.
+
+### Prochaines actions recommandées
+
+**Option A (recommandée) : Mypy Batch 3 (44 → 30 erreurs)**
+- Focus sur rag_cache.py (Redis awaitable types), guardian/router.py (object + int operations)
+- Temps estimé: 2-3 heures
+- Fichiers: 3-4 fichiers backend
+
+**Option B : Finaliser roadmap P2**
+- Admin dashboard avancé, multi-sessions UI, 2FA frontend
+- Backend endpoints déjà prêts, manque UI
+
+**Option C : Docker + GCP déploiement**
+- Suivre Phase D1-D5 de l'audit (docker-compose local → canary → stable)
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-21 20:30 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

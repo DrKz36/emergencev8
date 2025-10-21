@@ -66,11 +66,11 @@ if PROMETHEUS_AVAILABLE:
         "Total number of send errors"
     )
 else:
-    ws_outbox_queue_size = None
-    ws_outbox_batch_size = None
-    ws_outbox_send_latency = None
-    ws_outbox_dropped_total = None
-    ws_outbox_send_errors_total = None
+    ws_outbox_queue_size: Optional[Gauge] = None  # type: ignore[assignment,no-redef]
+    ws_outbox_batch_size: Optional[Histogram] = None  # type: ignore[assignment,no-redef]
+    ws_outbox_send_latency: Optional[Histogram] = None  # type: ignore[assignment,no-redef]
+    ws_outbox_dropped_total: Optional[Counter] = None  # type: ignore[assignment,no-redef]
+    ws_outbox_send_errors_total: Optional[Counter] = None  # type: ignore[assignment,no-redef]
 
 
 class WsOutbox:

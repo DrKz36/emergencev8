@@ -11,7 +11,7 @@
 # Roadmap: MEMORY_REFACTORING_ROADMAP.md Sprint 3
 
 import logging
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -399,7 +399,7 @@ class UnifiedMemoryRetriever:
                 title = thread.get('title', '').lower()
 
                 # Score basique: mots clés dans title
-                score = 0
+                score = 0.0
                 for keyword in query_keywords:
                     if len(keyword) > 2 and keyword in title:
                         score += 1
@@ -415,17 +415,17 @@ class UnifiedMemoryRetriever:
                     })
 
             # Trier par score
-            scored_threads.sort(key=lambda x: x['score'], reverse=True)
+            scored_threads.sort(key=lambda x: float(x['score']) if isinstance(x['score'], (int, float, str)) else 0.0, reverse=True)
 
             # Formater résultats
             results = []
             for item in scored_threads[:limit]:
-                thread = item['thread']
+                thread_data: dict[str, Any] = item['thread']  # type: ignore[assignment]
                 results.append({
-                    'thread_id': thread.get('id'),
-                    'title': thread.get('title', 'Sans titre'),
-                    'date': self._format_date(thread.get('archived_at')),
-                    'summary': thread.get('title', '')[:200],
+                    'thread_id': thread_data.get('id'),
+                    'title': thread_data.get('title', 'Sans titre'),
+                    'date': self._format_date(thread_data.get('archived_at')),
+                    'summary': thread_data.get('title', '')[:200],
                     'relevance': item['score']
                 })
 

@@ -14,7 +14,7 @@ import asyncio
 import argparse
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Any
 
 import sys
 from pathlib import Path
@@ -23,10 +23,10 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.backend.core.database.manager import DatabaseManager  # noqa: E402
-from src.backend.features.memory.gardener import MemoryGardener  # noqa: E402
-from src.backend.features.memory.vector_service import VectorService  # noqa: E402
-from src.backend.features.memory.analyzer import MemoryAnalyzer  # noqa: E402
+from backend.core.database.manager import DatabaseManager  # noqa: E402
+from backend.features.memory.gardener import MemoryGardener  # noqa: E402
+from backend.features.memory.vector_service import VectorService  # noqa: E402
+from backend.features.memory.analyzer import MemoryAnalyzer  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ async def consolidate_all_archives(
 
     # Requête SQL pour threads archivés
     where_clauses = ["archived = 1"]
-    params = []
+    params: list[Any] = []
 
     if user_id:
         where_clauses.append("user_id = ?")

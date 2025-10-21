@@ -12,8 +12,8 @@ from typing import List, Dict, Optional
 from datetime import datetime
 import base64
 
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+from googleapiclient.discovery import build  # type: ignore[import-untyped]
+from googleapiclient.errors import HttpError  # type: ignore[import-untyped]
 import logging
 
 from backend.features.gmail.oauth_service import GmailOAuthService

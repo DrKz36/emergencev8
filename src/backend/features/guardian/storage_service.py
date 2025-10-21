@@ -17,7 +17,7 @@ PROJECT_ID = os.getenv("GCP_PROJECT_ID", "emergence-469005")
 
 # Try to import Cloud Storage (optional dependency)
 try:
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
     GCS_AVAILABLE = True
 except ImportError:
     logger.warning("google-cloud-storage not installed - Cloud Storage disabled")
@@ -180,7 +180,7 @@ class GuardianStorageService:
 
         try:
             # Try Cloud Storage first
-            if self.bucket:
+            if self.bucket and self.client:
                 blobs = self.client.list_blobs(self.bucket_name, prefix="reports/")
                 for blob in blobs:
                     if blob.name.endswith('.json'):

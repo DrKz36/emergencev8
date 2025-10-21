@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 20:30 CET (Claude Code : Mypy batch 1 - 100 → 66 erreurs ✅)
+**Dernière mise à jour** : 2025-10-21 22:00 CET (Claude Code : Mypy batch 2 - 66 → 44 erreurs ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -56,6 +56,88 @@ python scripts/generate_codex_summary.py
 ```
 
 **Note** : Les rapports sont **NON versionnés** mais **générés automatiquement** par les hooks Git
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-21 22:00 CET) — Agent : Claude Code (Mypy Batch 2 - 66 → 44 erreurs)
+
+### Fichiers modifiés
+- `src/backend/features/guardian/storage_service.py` (Google Cloud storage import + None check)
+- `src/backend/features/gmail/oauth_service.py` (Google Cloud firestore import + oauth flow stub)
+- `src/backend/features/gmail/gmail_service.py` (googleapiclient import stubs)
+- `src/backend/features/memory/weighted_retrieval_metrics.py` (Prometheus kwargs type hint)
+- `src/backend/core/ws_outbox.py` (Prometheus metrics Optional types)
+- `src/backend/features/memory/unified_retriever.py` (float score + Any import + variable rename)
+- `src/backend/cli/consolidate_all_archives.py` (backend imports + params list[Any])
+- `src/backend/cli/consolidate_archived_threads.py` (params list[Any])
+- `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (nouvelle entrée)
+- `AUDIT_COMPLET_2025-10-21.md` (mise à jour progression Priority 1.3)
+
+### Contexte
+**Demande utilisateur** : "Salut ! Je continue le travail sur Émergence V8. Session précédente a complété Priority 1.3 Mypy batch 1 (100 → 66 erreurs). PROCHAINE PRIORITÉ : Mypy Batch 2 (66 → 50 erreurs) - Focus Google Cloud imports, Prometheus metrics, Unified retriever."
+
+**Objectif batch 2** : Réduire erreurs mypy de 66 → 50 (objectif : -16 erreurs).
+
+### Actions réalisées
+
+**1. Google Cloud imports (5 erreurs corrigées)**
+- ✅ `storage_service.py:20` - Ajout `# type: ignore[attr-defined]` sur `from google.cloud import storage`
+- ✅ `oauth_service.py:131, 160` - Ajout `# type: ignore[attr-defined]` sur `from google.cloud import firestore`
+- ✅ `gmail_service.py:15-16` - Ajout `# type: ignore[import-untyped]` sur `googleapiclient` imports
+- ✅ `oauth_service.py:17` - Ajout `# type: ignore[import-untyped]` sur `google_auth_oauthlib.flow`
+
+**2. Prometheus metrics (9 erreurs corrigées)**
+- ✅ `weighted_retrieval_metrics.py:32` - Type hint `kwargs: dict` pour éviter inférence erronée CollectorRegistry
+- ✅ `ws_outbox.py:69-73` - Annotation `Optional[Gauge/Histogram/Counter]` avec `# type: ignore[assignment,no-redef]`
+
+**3. Unified retriever (4 erreurs corrigées)**
+- ✅ Ligne 402 : `score = 0.0` (était `0` → conflit avec `+= 0.5`)
+- ✅ Ligne 418 : Lambda sort avec `isinstance` check pour `float(x['score'])`
+- ✅ Ligne 423 : Rename `thread` → `thread_data` pour éviter redéfinition
+- ✅ Ligne 14 : Import `Any` depuis typing
+
+**4. CLI scripts (4 erreurs corrigées)**
+- ✅ `consolidate_all_archives.py:26-29` - Imports `src.backend.*` → `backend.*` (compatibilité mypy)
+- ✅ `consolidate_all_archives.py:88` - Type hint `params: list[Any] = []`
+- ✅ `consolidate_archived_threads.py:77` - Type hint `params: list[Any] = []`
+
+**5. Guardian storage (1 erreur corrigée)**
+- ✅ `storage_service.py:183` - Check `self.client` not None avant `list_blobs`
+
+### Résultats
+
+**Mypy :**
+- ✅ **Avant** : 66 erreurs
+- ✅ **Après** : 44 erreurs
+- 🎯 **Réduction** : -22 erreurs (objectif -16 dépassé !)
+- 📈 **Progression totale** : 100 → 66 → 44 erreurs (-56 erreurs depuis début)
+
+**Tests :**
+- ✅ `pytest` : 45/45 tests passent (100%)
+- ✅ Aucune régression introduite
+- ✅ Warnings : 2 (Pydantic deprecation - identique à avant)
+
+**Fichiers impactés :**
+- 8 fichiers backend modifiés
+- 11 fichiers avec erreurs mypy restantes (vs 18 avant)
+- 124 fichiers source checkés (inchangé)
+
+### Prochaines actions recommandées
+
+**Option A (recommandée) : Mypy Batch 3 (44 → 30 erreurs)**
+- Focus : rag_cache.py (Redis awaitable), monitoring/router.py (JSONResponse types), guardian/router.py (object + int)
+- Temps estimé : 2-3 heures
+
+**Option B : Finaliser roadmap features**
+- Phase P2 : Admin dashboard avancé, multi-sessions, 2FA
+- Backend déjà prêt, manque UI frontend
+
+**Option C : Docker + GCP déploiement**
+- Suivre plan Phase D1-D5 de l'audit (docker-compose → canary → stable)
+
+### Blocages
+Aucun.
 
 ---
 
