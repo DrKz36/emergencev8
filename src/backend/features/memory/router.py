@@ -1433,7 +1433,6 @@ async def merge_concepts(
         # Find target metadata
         target_idx = results["ids"].index(target_id)
         target_meta = {**results["metadatas"][target_idx]}
-        target_doc = results["documents"][target_idx]
 
         # Merge data from source concepts
         merged_tags = set(target_meta.get("tags", []))

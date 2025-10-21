@@ -23,10 +23,10 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.backend.core.database.manager import DatabaseManager
-from src.backend.features.memory.gardener import MemoryGardener
-from src.backend.features.memory.vector_service import VectorService
-from src.backend.features.memory.analyzer import MemoryAnalyzer
+from src.backend.core.database.manager import DatabaseManager  # noqa: E402
+from src.backend.features.memory.gardener import MemoryGardener  # noqa: E402
+from src.backend.features.memory.vector_service import VectorService  # noqa: E402
+from src.backend.features.memory.analyzer import MemoryAnalyzer  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

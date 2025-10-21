@@ -8,7 +8,7 @@
 # - Usage par agent
 
 import logging
-from typing import Optional
+from typing import Optional, List
 from contextlib import contextmanager
 from time import time
 

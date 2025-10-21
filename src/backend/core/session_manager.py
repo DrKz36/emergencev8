@@ -16,7 +16,7 @@ from backend.features.memory.analyzer import MemoryAnalyzer
 logger = logging.getLogger(__name__)
 
 # Configuration du timeout d'inactivité
-import os
+import os  # noqa: E402
 
 INACTIVITY_TIMEOUT_MINUTES = int(os.getenv("SESSION_INACTIVITY_TIMEOUT_MINUTES", "30"))
 CLEANUP_INTERVAL_SECONDS = int(os.getenv("SESSION_CLEANUP_INTERVAL_SECONDS", "60"))

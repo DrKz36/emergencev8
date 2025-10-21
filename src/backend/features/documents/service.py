@@ -66,14 +66,14 @@ class DocumentService:
 
         # Heuristique 3 : Détection de poème (ASSOUPLISSEMENT Phase 2)
         # Critères : lignes courtes + structure versifiée
-        non_empty_lines = [l for l in lines if l.strip()]
+        non_empty_lines = [line for line in lines if line.strip()]
         if len(non_empty_lines) >= 4:
-            avg_line_length = sum(len(l) for l in non_empty_lines) / len(non_empty_lines)
+            avg_line_length = sum(len(line) for line in non_empty_lines) / len(non_empty_lines)
 
             # Poème : lignes courtes (< 70 caractères en moyenne)
             if avg_line_length < 70:
                 # Vérifier densité de lignes courtes (>60% lignes < 80 car)
-                short_lines = [l for l in non_empty_lines if len(l) < 80]
+                short_lines = [line for line in non_empty_lines if len(line) < 80]
                 short_ratio = len(short_lines) / len(non_empty_lines)
 
                 # Si beaucoup de lignes courtes, c'est probablement un poème
