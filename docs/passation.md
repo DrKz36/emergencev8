@@ -51,6 +51,108 @@
 
 ---
 
+## [2025-10-21 15:10 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `.gitignore` (ajout `reports/*.json`, `reports/*.md`, exception `!reports/README.md`)
+- `reports/README.md` (nouveau - documentation stratégie rapports locaux)
+- `reports/.gitignore` (supprimé - override qui forçait le tracking)
+- `AGENT_SYNC.md` (mise à jour session + stratégie rapports locaux)
+- `docs/passation.md` (cette entrée)
+- 9 rapports supprimés du versioning Git (git rm --cached)
+
+### Contexte
+**Demande utilisateur** : "Corrige le problème des rapports en boucle des guardian, ça bloque souvent des processus de manière inutile. Établi une stratégie pour que ça soit fluide!"
+
+**Problème identifié** : Hooks Guardian (post-commit, pre-push) régénéraient les rapports à chaque commit/push, créant des modifications non committées infinies (timestamps changeant constamment) → **boucle infinie de commits**.
+
+**Symptôme** : Après chaque commit/push, `git status` montrait des fichiers modifiés (rapports avec nouveaux timestamps), nécessitant un nouveau commit → boucle sans fin.
+
+### Actions réalisées
+
+**1. Analyse approfondie du problème**
+- ✅ Lecture des hooks Git (`.git/hooks/post-commit`, `.git/hooks/pre-push`)
+- ✅ Vérification `.gitignore` root
+- 🔍 **Découverte** : `reports/.gitignore` avec des `!` forçait le tracking (override du .gitignore root)
+- 🔍 Détection : `git check-ignore -v` montrait que reports/.gitignore prenait le dessus
+
+**2. Stratégie établie : Rapports locaux NON versionnés**
+
+**Principe** : Les rapports sont générés automatiquement par les hooks, mais **ignorés par Git** pour éviter la boucle infinie.
+
+**Avantages** :
+- ✅ Rapports toujours frais localement (hooks les régénèrent)
+- ✅ Pas de pollution Git (pas de commits de timestamps)
+- ✅ Pas de boucle infinie (rapports ignorés)
+- ✅ Workflow fluide (commit/push sans blocage)
+- ✅ Codex GPT peut lire les rapports (fichiers locaux)
+- ✅ Pre-push garde sécurité (ProdGuardian peut bloquer si CRITICAL)
+
+**3. Implémentation**
+- ✅ Modifié `.gitignore` root :
+  ```gitignore
+  reports/*.json
+  reports/*.md
+  !reports/README.md  # Seul fichier versionné (doc)
+  ```
+- ✅ Supprimé `reports/.gitignore` (override qui forçait tracking avec `!`)
+- ✅ `git rm --cached reports/*.json reports/*.md` (9 fichiers supprimés du versioning)
+- ✅ Créé `reports/README.md` : Documentation complète de la stratégie
+
+**4. Tests du workflow complet**
+- ✅ Test 1 : `git commit` → post-commit hook génère rapports → `git status` = **clean** ✅
+- ✅ Test 2 : `git push` → pre-push hook vérifie prod + régénère rapports → `git status` = **clean** ✅
+- ✅ Test 3 : `git add .` → rapports NON ajoutés (ignorés par .gitignore) ✅
+- ✅ Test 4 : `git check-ignore -v reports/codex_summary.md` → bien ignoré par .gitignore root ✅
+
+**5. Documentation inter-agents**
+- ✅ `AGENT_SYNC.md` : Nouvelle section "STRATÉGIE RAPPORTS LOCAUX (2025-10-21 15:10)"
+- ✅ `AGENT_SYNC.md` : Nouvelle entrée session complète
+- ✅ `reports/README.md` : Guide complet pour devs et agents IA
+- ✅ `docs/passation.md` : Cette entrée
+
+### Tests
+- ✅ Workflow Git complet (commit + push) sans boucle infinie
+- ✅ Rapports générés automatiquement par hooks (visibles localement)
+- ✅ `git status` reste clean après hooks
+- ✅ ProdGuardian pré-push fonctionne (production OK)
+- ✅ Codex GPT peut lire `reports/codex_summary.md` localement
+
+### Travail de Codex GPT pris en compte
+Aucune modification Codex détectée depuis dernière session.
+
+### Résultats concrets
+
+**Avant (problématique) :**
+```bash
+git commit → hooks → rapports modifiés → git status montre changements
+→ git commit (rapports) → hooks → rapports modifiés → BOUCLE INFINIE
+```
+
+**Après (fix appliqué) :**
+```bash
+git commit → hooks → rapports régénérés (ignorés par Git) → git status CLEAN ✅
+git push → pre-push hook → prod vérifiée → rapports régénérés → git status CLEAN ✅
+```
+
+**Fichiers rapports (locaux uniquement, NON versionnés) :**
+- `reports/unified_report.json` (Nexus - rapport unifié)
+- `reports/codex_summary.md` (résumé enrichi pour LLM)
+- `reports/prod_report.json` (ProdGuardian - état production)
+- `reports/integrity_report.json` (Neo - intégrité backend/frontend)
+- `reports/docs_report.json` (Anima - documentation)
+- `reports/auto_update_report.json` (AutoUpdate service)
+
+### Prochaines actions recommandées
+1. **Docker Compose** : Vérifier que containers sont bien up and running
+2. **Correction Mypy** : Batch 1 des erreurs de typage (voir NEXT_SESSION_PROMPT.md)
+3. **Build image Docker** : Versionner et préparer déploiement GCP
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-21 14:54 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

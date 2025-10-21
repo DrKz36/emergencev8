@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 14:54 CET (Claude Code : Commit/push rapports Guardian + doc inter-agents ✅)
+**Dernière mise à jour** : 2025-10-21 15:10 CET (Claude Code : Fix boucle infinie rapports Guardian ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -19,9 +19,23 @@
 
 ## 📊 Accès rapports Guardian (IMPORTANT pour agents IA)
 
-**Les rapports Guardian sont LOCAUX dans le dépôt !**
+### 🆕 STRATÉGIE RAPPORTS LOCAUX (2025-10-21 15:10) - PLUS DE BOUCLE INFINIE
 
-### 🆕 NOUVELLE PROCÉDURE (2025-10-21)
+**PROBLÈME RÉSOLU** : Les hooks Guardian créaient une boucle infinie de commits (rapports régénérés avec nouveaux timestamps à chaque commit).
+
+**SOLUTION IMPLÉMENTÉE** : Rapports locaux NON versionnés dans Git
+
+✅ **Rapports générés automatiquement** par les hooks (post-commit, pre-push)
+✅ **Fichiers locaux** disponibles dans `reports/` pour lecture
+✅ **Ignorés par Git** (via `.gitignore`) → pas de pollution commits
+✅ **Workflow fluide** → commit/push sans blocage ni boucle infinie
+✅ **Codex GPT peut les lire** → fichiers présents localement
+
+**Voir détails complets** : [reports/README.md](reports/README.md)
+
+---
+
+### Accès rapports (pour agents IA)
 
 **Quand l'utilisateur demande "vérifie les rapports Guardian" :**
 
@@ -36,15 +50,87 @@
    - `reports/integrity_report.json` - Intégrité backend/frontend (Neo)
    - `reports/docs_report.json` - Documentation (Anima)
 
-**Génération du résumé :**
+**Génération manuelle (si nécessaire) :**
 ```bash
 python scripts/generate_codex_summary.py
 ```
 
-Mis à jour automatiquement par hooks Git + Task Scheduler (6h).
+**Note** : Les rapports sont **NON versionnés** mais **générés automatiquement** par les hooks Git
 
-**Voir détails :** [PROMPT_CODEX_RAPPORTS.md](PROMPT_CODEX_RAPPORTS.md)
-**Setup complet :** [docs/CODEX_SUMMARY_SETUP.md](docs/CODEX_SUMMARY_SETUP.md)
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-21 15:10 CET) — Agent : Claude Code (Fix Boucle Infinie Rapports Guardian)
+
+### Fichiers modifiés
+- `.gitignore` (ajout `reports/*.json`, `reports/*.md`, exception `!reports/README.md`)
+- `reports/README.md` (nouveau - documentation stratégie rapports locaux)
+- `reports/.gitignore` (supprimé - override qui forçait le tracking)
+- `AGENT_SYNC.md` (cette session + stratégie rapports locaux)
+- `docs/passation.md` (nouvelle entrée)
+- 9 rapports supprimés du versioning Git (git rm --cached)
+
+### Contexte
+**Demande utilisateur** : "Corrige le problème des rapports en boucle des guardian, ça bloque souvent des processus de manière inutile. Établi une stratégie pour que ça soit fluide!"
+
+**Problème identifié** : Hooks Guardian (post-commit, pre-push) régénéraient les rapports à chaque commit/push, créant des modifications non committées infinies (timestamps changeant constamment) → boucle infinie de commits.
+
+### Actions réalisées
+
+**1. Analyse du problème**
+- ✅ Hooks post-commit : Génèrent unified_report.json, codex_summary.md, etc.
+- ✅ Rapports versionnés → modifications détectées → commit → hooks → rapports → boucle
+- 🔍 Détection d'un `reports/.gitignore` qui forçait le tracking avec `!` (override)
+
+**2. Stratégie implémentée : Rapports locaux NON versionnés**
+- ✅ Ajout `reports/*.json` et `reports/*.md` au `.gitignore` root
+- ✅ Exception `!reports/README.md` (seul fichier versionné pour doc)
+- ✅ Suppression `reports/.gitignore` (override qui forçait tracking)
+- ✅ `git rm --cached` de 9 rapports existants (suppression du versioning, fichiers restent locaux)
+
+**3. Documentation complète**
+- ✅ `reports/README.md` : Documentation stratégie, commandes manuelles, FAQ
+- ✅ `AGENT_SYNC.md` : Section "STRATÉGIE RAPPORTS LOCAUX" mise à jour
+- ✅ `docs/passation.md` : Nouvelle entrée session
+
+**4. Tests complets du workflow**
+- ✅ Commit → post-commit hook génère rapports → `git status` = clean ✅
+- ✅ Push → pre-push hook vérifie prod + régénère rapports → `git status` = clean ✅
+- ✅ **Plus de boucle infinie !**
+
+### Résultats
+
+**Avantages de la stratégie :**
+- ✅ **Rapports toujours frais localement** - Hooks les génèrent automatiquement
+- ✅ **Pas de pollution Git** - Pas de commits inutiles avec timestamps
+- ✅ **Pas de boucle infinie** - Rapports ignorés par Git
+- ✅ **Workflow fluide** - Commit/push sans blocage
+- ✅ **Codex GPT peut lire** - Fichiers disponibles dans `reports/` localement
+- ✅ **Pre-push garde sécurité** - ProdGuardian peut bloquer si production CRITICAL
+
+**Fichiers rapports (locaux uniquement, NON versionnés) :**
+- `reports/unified_report.json` (Nexus)
+- `reports/codex_summary.md` (résumé enrichi pour LLM)
+- `reports/prod_report.json` (ProdGuardian)
+- `reports/integrity_report.json` (Neo)
+- `reports/docs_report.json` (Anima)
+- `reports/auto_update_report.json` (AutoUpdate)
+
+### Tests
+- ✅ `git commit` → hooks régénèrent rapports → dépôt propre
+- ✅ `git push` → pre-push hook vérifie prod → dépôt propre
+- ✅ `git add .` → rapports NON ajoutés (ignorés par .gitignore)
+- ✅ Rapports disponibles localement pour lecture Codex GPT
+
+### Travail de Codex GPT pris en compte
+Aucune modification Codex détectée depuis dernière session.
+
+### Prochaines actions recommandées
+1. **Docker Compose** : Vérifier que containers sont bien up and running
+2. **Correction Mypy** : Batch 1 des erreurs de typage (voir NEXT_SESSION_PROMPT.md)
+3. **Build image Docker** : Versionner et préparer déploiement GCP
+
+### Blocages
+Aucun.
 
 ---
 
