@@ -12,6 +12,13 @@ jobs:
     name: Backend Tests (Python 3.11)
     runs-on: ubuntu-latest
 
+    env:
+      # Variables d'environnement requises pour les tests
+      GOOGLE_API_KEY: "fake-key-for-tests"
+      GEMINI_API_KEY: "fake-key-for-tests"
+      OPENAI_API_KEY: "fake-key-for-tests"
+      ANTHROPIC_API_KEY: "fake-key-for-tests"
+
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +52,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
