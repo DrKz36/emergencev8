@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-21T09:30:26.615185",
+  "timestamp": "2025-10-21T09:39:17.800500",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -27,34 +27,34 @@
   "code_snippets": [],
   "recent_commits": [
     {
-      "hash": "1ff832f9",
+      "hash": "ccf2fc41",
       "author": "Fernando Gonzalez",
       "time": "5 seconds ago",
+      "message": "docs(guardian): Ajout prompt Phase 2 - Documentation + CI/CD"
+    },
+    {
+      "hash": "1ff832f9",
+      "author": "Fernando Gonzalez",
+      "time": "9 minutes ago",
       "message": "fix(guardian): auto_update_docs.py use unified reports/ path"
     },
     {
       "hash": "1583a926",
       "author": "Fernando Gonzalez",
-      "time": "34 seconds ago",
+      "time": "9 minutes ago",
       "message": "refactor(guardian): Phase 1 - Unification structure rapports (Quick Wins)"
     },
     {
       "hash": "ee0f0547",
       "author": "Fernando Gonzalez",
-      "time": "2 minutes ago",
+      "time": "10 minutes ago",
       "message": "chore(reports): Auto-update rapports Guardian post-docs"
     },
     {
       "hash": "2cb23c05",
       "author": "Fernando Gonzalez",
-      "time": "2 minutes ago",
+      "time": "11 minutes ago",
       "message": "docs(ws/cloudrun): Documentation complÃ¨te WsOutbox + Cloud Run Warm-up"
-    },
-    {
-      "hash": "401703e1",
-      "author": "Fernando Gonzalez",
-      "time": "4 minutes ago",
-      "message": "chore(reports): Auto-update rapports Guardian post-commit WsOutbox"
     }
   ],
   "recommendations": [

@@ -265,7 +265,7 @@ git commit --no-verify
 git push --no-verify
 ```
 
-**📚 Documentation complète :** `claude-plugins/integrity-docs-guardian/README_GUARDIAN.md`
+**📚 Documentation complète :** [docs/GUARDIAN_COMPLETE_GUIDE.md](docs/GUARDIAN_COMPLETE_GUIDE.md)
 
 ---
 

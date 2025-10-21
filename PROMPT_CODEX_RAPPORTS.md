@@ -159,4 +159,6 @@ Mais le **résumé markdown (`codex_summary.md`) est plus exploitable** pour un 
 
 ---
 
-**Doc complète :** [CODEX_GPT_GUIDE.md Section 9.3](CODEX_GPT_GUIDE.md#93-accéder-aux-rapports-guardian)
+**Docs complètes:**
+- [CODEX_GPT_GUIDE.md Section 9.3](CODEX_GPT_GUIDE.md#93-accéder-aux-rapports-guardian)
+- [docs/GUARDIAN_COMPLETE_GUIDE.md](docs/GUARDIAN_COMPLETE_GUIDE.md) - Guide Guardian complet (3.1.0)

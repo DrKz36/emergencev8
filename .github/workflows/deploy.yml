@@ -1,0 +1,74 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+
+env:
+  GCP_PROJECT_ID: emergence-469005
+  GCP_REGION: europe-west1
+  SERVICE_NAME: emergence-app
+  IMAGE_NAME: gcr.io/emergence-469005/emergence-app
+
+jobs:
+  deploy:
+    name: Build & Deploy to Cloud Run
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Setup gcloud CLI
+      - uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          export_default_credentials: true
+
+      # Configure Docker to use gcloud as credential helper
+      - name: Configure Docker
+        run: gcloud auth configure-docker
+
+      # Build Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker tag ${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.IMAGE_NAME }}:latest
+
+      # Push to Google Container Registry
+      - name: Push to GCR
+        run: |
+          docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.IMAGE_NAME }}:latest
+
+      # Deploy to Cloud Run
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --region ${{ env.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory 2Gi \
+            --cpu 2 \
+            --min-instances 0 \
+            --max-instances 10 \
+            --timeout 300s \
+            --quiet
+
+      # Get service URL
+      - name: Get Service URL
+        id: service-url
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)')
+          echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "✅ Deployed to: $SERVICE_URL"
+
+      # Health check
+      - name: Health Check
+        run: |
+          sleep 10  # Wait for service to be ready
+          curl -f ${{ steps.service-url.outputs.url }}/health || exit 1
+          echo "✅ Health check passed"
