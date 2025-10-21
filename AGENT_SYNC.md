@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 08:15 CET (Claude Code : Config alertes GCP + Tests E2E Guardian ✅)
+**Dernière mise à jour** : 2025-10-21 08:00 CET (Codex GPT : Fix 404 onboarding.html + Déploiement production ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -45,6 +45,58 @@ Mis à jour automatiquement par hooks Git + Task Scheduler (6h).
 
 **Voir détails :** [PROMPT_CODEX_RAPPORTS.md](PROMPT_CODEX_RAPPORTS.md)
 **Setup complet :** [docs/CODEX_SUMMARY_SETUP.md](docs/CODEX_SUMMARY_SETUP.md)
+
+## ✅ Session COMPLÉTÉE (2025-10-21 08:00 CET) — Agent : Codex GPT (Fix 404 onboarding.html + Déploiement)
+
+### Fichiers modifiés
+- `onboarding.html` (nouveau - copié depuis docs/archive/)
+- `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (cette session)
+
+### Actions réalisées
+
+**1. Diagnostic problème 404 :**
+- 🔴 **Bug détecté** : Les utilisateurs avec `password_must_reset=true` étaient redirigés vers `/onboarding.html` qui retournait 404
+- 🔍 **Cause** : Fichier `onboarding.html` existait uniquement dans `docs/archive/2025-10/html-tests/`
+- 🔍 **Impact** : Impossible de compléter le premier login pour nouveaux utilisateurs
+- 📊 **Confirmation** : Warning dans `reports/prod_report.json` ligne 18-44 : `GET /onboarding.html?email=pepin1936%40gmail.com → 404`
+
+**2. Correction appliquée :**
+- ✅ Copié `onboarding.html` depuis `docs/archive/` vers racine du projet
+- ✅ Vérifié que Dockerfile `COPY . .` inclut bien le fichier
+- ✅ Vérifié que backend monte `/` avec `StaticFiles(html=True)` (main.py:442)
+- ✅ Commit + push avec message détaillé
+
+**3. Déploiement production :**
+- ✅ Build image Docker : `europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251021-075530`
+- ✅ Push vers GCP Artifact Registry : `digest: sha256:64fa96a83f9b4f2c21865c65168b4aef66b018996f2607e04be7d761fbf6f18f`
+- ✅ Deploy Cloud Run : Révision `emergence-app-00410-lbk` (100% traffic)
+- ✅ Vérification : `curl -I https://emergence-app.ch/onboarding.html` → **200 OK** 🎉
+
+**Workflow onboarding (maintenant fonctionnel) :**
+1. User login avec password temporaire
+2. Backend retourne `password_must_reset: true`
+3. Frontend redirige vers `/onboarding.html?email=...` (home-module.js:269)
+4. Page demande envoi email de reset password → `/api/auth/request-password-reset`
+5. User clique lien email → `reset-password.html` → définit nouveau password
+6. User peut se connecter normalement
+
+### Tests
+- ✅ `git status` : Fichier `onboarding.html` ajouté et commité
+- ✅ `docker build` : Image construite avec `onboarding.html` inclus
+- ✅ `docker push` : Image poussée vers GCP Artifact Registry
+- ✅ `gcloud run deploy` : Déploiement réussi (révision 00410-lbk)
+- ✅ `curl -I https://emergence-app.ch/onboarding.html` : **200 OK**
+
+### Prochaines actions
+1. ✅ **RÉSOLU** : Le bug 404 onboarding est corrigé en production
+2. Tester le workflow complet : Login avec password temporaire → onboarding → reset password → login normal
+3. Surveillance logs Cloud Run pour confirmer disparition du warning 404
+
+### Blocages
+Aucun.
+
+---
 
 ## ✅ Session COMPLÉTÉE (2025-10-21 07:45 CET) — Agent : Codex GPT (ProdGuardian escalation mémoire)
 

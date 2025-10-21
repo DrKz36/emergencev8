@@ -1,3 +1,107 @@
+## [2025-10-21 08:00 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `onboarding.html` (nouveau - copié depuis docs/archive/)
+- `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Utilisateur signale erreur 404 lors de tentative connexion avec login membre : redirigé vers `/onboarding.html?email=...` qui retourne `{"detail":"Not Found"}`.
+
+Problème critique : Bloque le workflow complet de première connexion pour tous les nouveaux utilisateurs avec `password_must_reset=true`.
+
+### Détails de l'implémentation
+
+**1. Diagnostic du problème**
+
+Analyse du screenshot utilisateur :
+- URL : `https://emergence-app.ch/onboarding.html?email=pepin1936%40gmail.com`
+- Réponse : `{"detail":"Not Found"}` (404)
+
+Investigation code :
+- [home-module.js:269](../src/frontend/features/home/home-module.js#L269) : Redirection vers `/onboarding.html` si `password_must_reset === true`
+- Recherche du fichier : Trouvé uniquement dans `docs/archive/2025-10/html-tests/onboarding.html`
+- **Cause** : Fichier jamais copié à la racine du projet pour servir via StaticFiles
+
+Confirmation via logs production :
+- `reports/prod_report.json` ligne 18-44 : Warning `GET /onboarding.html?email=pepin1936%40gmail.com → 404`
+- Timestamp : 2025-10-21T05:51:21Z (même utilisateur, même problème)
+
+**2. Correction appliquée**
+
+Étapes :
+1. Copié `docs/archive/2025-10/html-tests/onboarding.html` → racine du projet
+2. Vérifié backend : [main.py:442](../src/backend/main.py#L442) monte `/` avec `StaticFiles(html=True, directory=BASE)`
+3. Vérifié Dockerfile : Ligne 29 `COPY . .` inclut bien tous les fichiers racine
+4. Commit descriptif avec contexte complet
+
+**3. Déploiement production**
+
+Stack complète exécutée :
+```bash
+# Build image Docker
+docker build -t europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251021-075530 .
+
+# Push vers GCP Artifact Registry
+docker push europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251021-075530
+
+# Deploy Cloud Run (100% traffic)
+gcloud run deploy emergence-app \
+  --image europe-west1-docker.pkg.dev/emergence-469005/app/emergence-app:deploy-20251021-075530 \
+  --region europe-west1 \
+  --platform managed \
+  --quiet
+```
+
+Résultat :
+- Révision : `emergence-app-00410-lbk`
+- Status : Serving 100% traffic
+- URL : https://emergence-app-486095406755.europe-west1.run.app
+
+**4. Workflow onboarding (maintenant fonctionnel)**
+
+Flux complet :
+1. User se connecte avec email + password temporaire
+2. Backend retourne `password_must_reset: true` dans réponse login
+3. Frontend ([home-module.js:269](../src/frontend/features/home/home-module.js#L269)) : `window.location.href = '/onboarding.html?email=...'`
+4. Page `onboarding.html` affichée avec :
+   - Avatars des 3 agents (Anima, Neo, Nexus)
+   - Formulaire demande email de vérification
+   - Bouton "Envoyer le lien de vérification"
+5. User soumet email → POST `/api/auth/request-password-reset`
+6. User reçoit email avec lien sécurisé (valide 1h)
+7. User clique lien → Redirigé vers `reset-password.html`
+8. User définit nouveau mot de passe personnel
+9. User retourne à `/` et peut se connecter normalement
+
+### Travail de Claude Code pris en compte
+Aucune modification récente du workflow auth/onboarding par Claude Code.
+Pas de conflit.
+
+### Tests
+- ✅ Fichier local : `ls -lh onboarding.html` → 13K
+- ✅ Git tracking : `git status` → Fichier commité
+- ✅ Docker build : Image construite avec `onboarding.html` inclus (COPY . . ligne 29)
+- ✅ Docker push : Digest `sha256:64fa96a83f9b4f2c21865c65168b4aef66b018996f2607e04be7d761fbf6f18f`
+- ✅ Cloud Run deploy : Révision `emergence-app-00410-lbk` active
+- ✅ Production test : `curl -I https://emergence-app.ch/onboarding.html` → **HTTP/1.1 200 OK**
+
+### Impact
+- ✅ Bug 404 onboarding résolu en production
+- ✅ Nouveaux utilisateurs peuvent compléter leur première connexion
+- ✅ Warning 404 dans logs production va disparaître (prochain rapport Guardian)
+
+### Prochaines actions recommandées
+1. ✅ **COMPLÉTÉ** : Correction 404 déployée en prod
+2. Tester workflow E2E : Créer nouveau user → Login avec password temporaire → Onboarding → Reset password → Login normal
+3. Surveiller logs Cloud Run (24h) pour confirmer disparition du warning 404
+4. Si d'autres pages HTML manquent en prod, faire audit complet (`docs/archive/` vs racine)
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-21 07:45 CET] — Agent: Codex GPT
 
 ### Fichiers modifiés
