@@ -517,7 +517,7 @@ class ChatService:
             }
 
         query_lower = query.lower()
-        intents = {}
+        intents: dict[str, Any] = {}
 
         # Détection citation intégrale / exacte
         integral_patterns = [

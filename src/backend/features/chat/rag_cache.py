@@ -212,11 +212,11 @@ class RAGCache:
         """Retourne des statistiques sur le cache."""
         if self.redis_client:
             try:
-                info = self.redis_client.info('stats')
+                info = self.redis_client.info('stats')  # type: ignore[union-attr]
                 return {
                     'backend': 'redis',
-                    'keyspace_hits': info.get('keyspace_hits', 0),
-                    'keyspace_misses': info.get('keyspace_misses', 0),
+                    'keyspace_hits': info.get('keyspace_hits', 0),  # type: ignore[union-attr]
+                    'keyspace_misses': info.get('keyspace_misses', 0),  # type: ignore[union-attr]
                     'connected': True,
                 }
             except Exception:
@@ -235,17 +235,17 @@ class RAGCache:
     def _get_from_redis(self, fingerprint: str) -> Optional[Dict[str, Any]]:
         """Récupère depuis Redis."""
         key = f"rag:query:{fingerprint}"
-        cached_str = self.redis_client.get(key)
+        cached_str = self.redis_client.get(key)  # type: ignore[union-attr]
         if cached_str:
             logger.debug(f"[RAG Cache] Redis HIT: {fingerprint}")
-            return json.loads(cached_str)
+            return json.loads(cached_str)  # type: ignore[arg-type]
         logger.debug(f"[RAG Cache] Redis MISS: {fingerprint}")
         return None
 
     def _set_in_redis(self, fingerprint: str, entry: Dict[str, Any]):
         """Stocke dans Redis avec TTL."""
         key = f"rag:query:{fingerprint}"
-        self.redis_client.setex(
+        self.redis_client.setex(  # type: ignore[union-attr]
             key,
             self.ttl_seconds,
             json.dumps(entry)
