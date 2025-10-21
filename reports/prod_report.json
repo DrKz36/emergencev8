@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-21T05:37:02.305526",
+  "timestamp": "2025-10-21T06:50:39.092325",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -27,34 +27,34 @@
   "code_snippets": [],
   "recent_commits": [
     {
-      "hash": "f9c33d23",
+      "hash": "fe4dc014",
       "author": "Fernando Gonzalez",
-      "time": "5 seconds ago",
-      "message": "docs: Update AGENT_SYNC.md + passation.md for health check fix"
+      "time": "11 seconds ago",
+      "message": "feat(memory): IntÃ©gration complÃ¨te retrieval pondÃ©rÃ© + optimisations (cache, GC, mÃ©triques)"
     },
     {
-      "hash": "dea8521f",
+      "hash": "04f0428e",
       "author": "Fernando Gonzalez",
-      "time": "12 minutes ago",
-      "message": "fix(monitoring): Fix 404 errors on health check endpoints"
+      "time": "4 minutes ago",
+      "message": "refactor(agents): Condenser prompt system Codex GPT (-63%)"
     },
     {
-      "hash": "37ef138c",
+      "hash": "21b8d45e",
       "author": "Fernando Gonzalez",
-      "time": "20 minutes ago",
-      "message": "chore(guardian): Update prod_report.json - Final sync"
+      "time": "10 minutes ago",
+      "message": "feat(agents): Prompt system Codex GPT unifiÃ© (local + cloud)"
     },
     {
-      "hash": "d685fc80",
+      "hash": "4e54f24b",
       "author": "Fernando Gonzalez",
-      "time": "20 minutes ago",
-      "message": "chore(guardian): Update prod_report.json from pre-push hook"
+      "time": "16 minutes ago",
+      "message": "docs(guardian): Documentation session automation Codex Summary"
     },
     {
-      "hash": "e046f9df",
+      "hash": "ca0a66c9",
       "author": "Fernando Gonzalez",
-      "time": "21 minutes ago",
-      "message": "docs(sync): Synchronisation finale inter-agents - DÃ©pÃ´t propre"
+      "time": "18 minutes ago",
+      "message": "feat(guardian): Task Scheduler pour rÃ©sumÃ© Codex auto toutes les 6h"
     }
   ],
   "recommendations": [

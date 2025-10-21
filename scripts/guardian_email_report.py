@@ -12,6 +12,7 @@ from datetime import datetime
 import json
 import hashlib
 import hmac
+from typing import Any, Iterable, Optional, Sequence
 
 # Charger .env
 from dotenv import load_dotenv
@@ -23,6 +24,52 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'src' / 'backend'))
 
 # Secret pour signer les tokens (doit matcher celui du backend)
 GUARDIAN_SECRET = os.getenv("GUARDIAN_SECRET", "dev-secret-change-in-prod")
+
+
+def normalize_status(raw_status: Any) -> str:
+    if raw_status is None:
+        return 'UNKNOWN'
+    status_str = str(raw_status).strip()
+    if not status_str:
+        return 'UNKNOWN'
+    upper = status_str.upper()
+    if upper in {'OK', 'HEALTHY', 'SUCCESS'}:
+        return 'OK'
+    if upper in {'WARNING', 'WARN'}:
+        return 'WARNING'
+    if upper in {'NEEDS_UPDATE', 'STALE'}:
+        return 'NEEDS_UPDATE'
+    if upper in {'ERROR', 'FAILED', 'FAILURE'}:
+        return 'ERROR'
+    if upper in {'CRITICAL', 'SEVERE'}:
+        return 'CRITICAL'
+    return upper
+
+
+def resolve_path(data: Any, path: Sequence[str]) -> Any:
+    current: Any = data
+    for key in path:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
+def extract_status(report: Any, fallback_paths: Optional[Iterable[Sequence[str]]] = None) -> str:
+    if not isinstance(report, dict):
+        return 'UNKNOWN'
+
+    candidates = [report.get('status')]
+    if fallback_paths:
+        for path in fallback_paths:
+            candidates.append(resolve_path(report, path))
+
+    for candidate in candidates:
+        normalized = normalize_status(candidate)
+        if normalized != 'UNKNOWN':
+            return normalized
+
+    return 'UNKNOWN'
 
 
 def generate_fix_token(report_id: str) -> str:
@@ -110,6 +157,7 @@ def format_status_badge(status):
         'OK': '#10b981',
         'WARNING': '#f59e0b',
         'CRITICAL': '#ef4444',
+        'ERROR': '#ef4444',
         'NEEDS_UPDATE': '#f59e0b',
         'UNKNOWN': '#6b7280'
     }
@@ -118,6 +166,7 @@ def format_status_badge(status):
         'OK': '✅',
         'WARNING': '⚠️',
         'CRITICAL': '🚨',
+        'ERROR': '🚨',
         'NEEDS_UPDATE': '📊',
         'UNKNOWN': '❓'
     }
@@ -132,15 +181,17 @@ async def generate_html_email(reports):
     timestamp = datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
 
     # Extraire les infos principales avec safe access
-    global_status = 'UNKNOWN'
     global_report = reports.get('global')
-    if global_report and isinstance(global_report, dict):
-        global_status = global_report.get('status', 'UNKNOWN')
-
     prod_report = reports.get('prod')
     docs_report = reports.get('docs')
     integrity_report = reports.get('integrity')
     unified_report = reports.get('unified')
+
+    global_status = extract_status(global_report, fallback_paths=[('executive_summary', 'status')])
+    prod_status = extract_status(prod_report)
+    docs_status = extract_status(docs_report)
+    integrity_status = extract_status(integrity_report)
+    unified_status = extract_status(unified_report, fallback_paths=[('executive_summary', 'status')])
 
     html = f"""
 <!DOCTYPE html>
@@ -303,20 +354,18 @@ async def generate_html_email(reports):
                 <span>☁️ Production Cloud Run</span>"""
 
     # Safe access pour prod status
-    prod_status = 'UNKNOWN'
     total_logs = 0
     error_count = 0
     warning_count = 0
     critical_count = 0
 
     if prod_report and isinstance(prod_report, dict):
-        prod_status = prod_report.get('status', 'UNKNOWN')
+        total_logs = prod_report.get('logs_analyzed', 0)
         summary = prod_report.get('summary')
         if summary and isinstance(summary, dict):
-            total_logs = summary.get('total_logs', 0)
-            error_count = summary.get('error_count', 0)
-            warning_count = summary.get('warning_count', 0)
-            critical_count = summary.get('critical_count', 0)
+            error_count = summary.get('errors', 0)
+            warning_count = summary.get('warnings', 0)
+            critical_count = summary.get('critical_signals', 0)
 
     html += f"""
                 {format_status_badge(prod_status)}
@@ -372,10 +421,6 @@ async def generate_html_email(reports):
 """
 
     # Safe access avec vérification de type
-    docs_status = 'UNKNOWN'
-    if docs_report and isinstance(docs_report, dict):
-        docs_status = docs_report.get('status', 'UNKNOWN')
-
     html += f"                {format_status_badge(docs_status)}\n"
 
     html += """
@@ -387,9 +432,9 @@ async def generate_html_email(reports):
     # Safe access avec vérification de type
     gaps_count = 0
     if docs_report and isinstance(docs_report, dict):
-        summary = docs_report.get('summary')
-        if summary and isinstance(summary, dict):
-            gaps_count = summary.get('total_gaps', 0)
+        documentation_gaps = docs_report.get('documentation_gaps')
+        if isinstance(documentation_gaps, list):
+            gaps_count = len(documentation_gaps)
 
     html += f"                <div class='metric-value'>{gaps_count}</div>\n"
 
@@ -402,9 +447,9 @@ async def generate_html_email(reports):
     # Safe access avec vérification de type
     updates_count = 0
     if docs_report and isinstance(docs_report, dict):
-        summary = docs_report.get('summary')
-        if summary and isinstance(summary, dict):
-            updates_count = summary.get('proposed_updates', 0)
+        proposed_updates = docs_report.get('proposed_updates')
+        if isinstance(proposed_updates, list):
+            updates_count = len(proposed_updates)
 
     html += f"                <div class='metric-value'>{updates_count}</div>\n"
 
@@ -419,10 +464,6 @@ async def generate_html_email(reports):
 """
 
     # Safe access avec vérification de type
-    integrity_status = 'UNKNOWN'
-    if integrity_report and isinstance(integrity_report, dict):
-        integrity_status = integrity_report.get('status', 'UNKNOWN')
-
     html += f"                {format_status_badge(integrity_status)}\n"
 
     html += """
@@ -466,10 +507,6 @@ async def generate_html_email(reports):
 """
 
     # Safe access avec vérification de type
-    unified_status = 'UNKNOWN'
-    if unified_report and isinstance(unified_report, dict):
-        unified_status = unified_report.get('status', 'UNKNOWN')
-
     html += f"                {format_status_badge(unified_status)}\n"
 
     html += """
@@ -661,25 +698,15 @@ async def send_guardian_email(reports):
     timestamp = datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
 
     # Safe extraction des statuts
-    global_status = 'UNKNOWN'
     global_report = reports.get('global')
-    if global_report and isinstance(global_report, dict):
-        global_status = global_report.get('status', 'UNKNOWN')
-
-    prod_status = 'UNKNOWN'
     prod_report = reports.get('prod')
-    if prod_report and isinstance(prod_report, dict):
-        prod_status = prod_report.get('status', 'UNKNOWN')
-
-    docs_status = 'UNKNOWN'
     docs_report = reports.get('docs')
-    if docs_report and isinstance(docs_report, dict):
-        docs_status = docs_report.get('status', 'UNKNOWN')
-
-    integrity_status = 'UNKNOWN'
     integrity_report = reports.get('integrity')
-    if integrity_report and isinstance(integrity_report, dict):
-        integrity_status = integrity_report.get('status', 'UNKNOWN')
+
+    global_status = extract_status(global_report, fallback_paths=[('executive_summary', 'status')])
+    prod_status = extract_status(prod_report)
+    docs_status = extract_status(docs_report)
+    integrity_status = extract_status(integrity_report)
 
     text_body = f"""
 GUARDIAN ÉMERGENCE V8

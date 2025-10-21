@@ -1,6 +1,6 @@
 # 🛡️ Guardian - Résumé pour Codex GPT
 
-**Généré le:** 2025-10-21 06:22:48
+**Généré le:** 2025-10-21 06:50:39
 **Source:** Rapports automatiques Guardian (ProdGuardian, Anima, Neo, Nexus)
 
 ---
@@ -20,11 +20,11 @@
 
 ### 📝 Commits récents (contexte)
 
-- `eb442603` - feat(memory): SystÃ¨me de retrieval pondÃ©rÃ© avec dÃ©croissance temporelle (Fernando Gonzalez, 11 seconds ago)
-- `3817bcef` - chore(sync): ClÃ´ture session enrichissement rapports Guardian (Fernando Gonzalez, 13 minutes ago)
-- `426a16a4` - feat(guardian): Script analyse rapports + prompt enrichi pour Codex (Fernando Gonzalez, 13 minutes ago)
-- `25750769` - docs(codex): Prompt court pour accÃ¨s rapports Guardian (Fernando Gonzalez, 21 minutes ago)
-- `cd4c809c` - chore(sync): Marquer session doc Guardian comme complÃ©tÃ©e (Fernando Gonzalez, 23 minutes ago)
+- `fe4dc014` - feat(memory): IntÃ©gration complÃ¨te retrieval pondÃ©rÃ© + optimisations (cache, GC, mÃ©triques) (Fernando Gonzalez, 11 seconds ago)
+- `04f0428e` - refactor(agents): Condenser prompt system Codex GPT (-63%) (Fernando Gonzalez, 4 minutes ago)
+- `21b8d45e` - feat(agents): Prompt system Codex GPT unifiÃ© (local + cloud) (Fernando Gonzalez, 10 minutes ago)
+- `4e54f24b` - docs(guardian): Documentation session automation Codex Summary (Fernando Gonzalez, 16 minutes ago)
+- `ca0a66c9` - feat(guardian): Task Scheduler pour rÃ©sumÃ© Codex auto toutes les 6h (Fernando Gonzalez, 18 minutes ago)
 
 ---
 

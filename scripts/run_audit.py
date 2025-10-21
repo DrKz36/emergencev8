@@ -14,7 +14,7 @@ import argparse
 import io
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # Fix encoding Windows
 if sys.platform == 'win32':
@@ -100,6 +100,51 @@ class AuditOrchestrator:
 
     async def _check_guardian_reports(self) -> Dict:
         """Vérifie l'existence et le statut des rapports Guardian"""
+
+        def normalize_status(raw_status: Any) -> str:
+            if raw_status is None:
+                return 'UNKNOWN'
+            status_str = str(raw_status).strip()
+            if not status_str:
+                return 'UNKNOWN'
+            upper = status_str.upper()
+            if upper in {'OK', 'HEALTHY', 'SUCCESS'}:
+                return 'OK'
+            if upper in {'WARNING', 'WARN'}:
+                return 'WARNING'
+            if upper in {'NEEDS_UPDATE', 'STALE'}:
+                return 'NEEDS_UPDATE'
+            if upper in {'ERROR', 'FAILED', 'FAILURE'}:
+                return 'ERROR'
+            if upper in {'CRITICAL', 'SEVERE'}:
+                return 'CRITICAL'
+            return upper
+
+        def extract_status(report_name: str, report_data: Dict[str, Any]) -> Tuple[str, str]:
+            candidates = [report_data.get('status')]
+
+            executive_summary = report_data.get('executive_summary')
+            if isinstance(executive_summary, dict):
+                candidates.append(executive_summary.get('status'))
+
+            if report_name == 'orchestration_report.json':
+                candidates.append(report_data.get('global_status'))
+
+            status = 'UNKNOWN'
+            for candidate in candidates:
+                normalized = normalize_status(candidate)
+                if normalized != 'UNKNOWN':
+                    status = normalized
+                    break
+
+            timestamp = report_data.get('timestamp')
+            if not timestamp:
+                metadata = report_data.get('metadata')
+                if isinstance(metadata, dict):
+                    timestamp = metadata.get('timestamp')
+
+            return status, timestamp or 'N/A'
+
         reports_status = {}
         expected_reports = [
             'global_report.json',
@@ -125,14 +170,18 @@ class AuditOrchestrator:
                 try:
                     with open(report_path, 'r', encoding='utf-8') as f:
                         report_data = json.load(f)
-                    status = report_data.get('status', 'UNKNOWN')
-                    timestamp = report_data.get('timestamp', 'N/A')
+
+                    if isinstance(report_data, dict):
+                        status, timestamp = extract_status(report_name, report_data)
+                    else:
+                        status, timestamp = 'UNKNOWN', 'N/A'
+
                     reports_status[report_name] = {
-                        'status': 'OK' if status in ['OK', 'ok', 'healthy'] else status,
+                        'status': status,
                         'path': str(report_path),
                         'timestamp': timestamp
                     }
-                    emoji = '✅' if status in ['OK', 'ok', 'healthy'] else '⚠️'
+                    emoji = '✅' if status == 'OK' else '⚠️'
                     print(f"  {emoji} {report_name}: {status} (màj: {timestamp})")
                 except Exception as e:
                     reports_status[report_name] = {

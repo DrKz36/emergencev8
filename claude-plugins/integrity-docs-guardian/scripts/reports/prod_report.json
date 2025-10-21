@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-21T05:29:42.372749",
+  "timestamp": "2025-10-21T06:29:42.425404",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -7,37 +7,16 @@
   "status": "OK",
   "summary": {
     "errors": 0,
-    "warnings": 1,
+    "warnings": 0,
     "critical_signals": 0,
     "latency_issues": 0
   },
   "errors": [],
-  "warnings": [
-    {
-      "time": "2025-10-21T03:26:32.389801Z",
-      "msg": "GET https://34.54.90.143/.git/HEAD → 404"
-    }
-  ],
+  "warnings": [],
   "critical_signals": [],
   "latency_issues": [],
   "errors_detailed": [],
-  "warnings_detailed": [
-    {
-      "timestamp": "2025-10-21T03:26:32.389801Z",
-      "severity": "WARNING",
-      "message": "GET https://34.54.90.143/.git/HEAD → 404",
-      "stack_trace": null,
-      "endpoint": "https://34.54.90.143/.git/HEAD",
-      "http_method": "GET",
-      "status_code": 404,
-      "user_agent": "Mozilla/5.0 (X11; U; Linux x86_64; en-gb) AppleWebKit/534.35 (KHTML, like Gecko) Chrome/11.0.696.65 Safari/534.35 Puffin/2.9174AP",
-      "request_id": "projects/emergence-469005/traces/ab4297716f1f275be3130f7f1260c1ee",
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    }
-  ],
+  "warnings_detailed": [],
   "error_patterns": {
     "by_endpoint": {},
     "by_error_type": {},
@@ -48,34 +27,34 @@
   "code_snippets": [],
   "recent_commits": [
     {
-      "hash": "dea8521f",
+      "hash": "7cdcffa5",
       "author": "Fernando Gonzalez",
-      "time": "5 minutes ago",
-      "message": "fix(monitoring): Fix 404 errors on health check endpoints"
+      "time": "3 minutes ago",
+      "message": "feat(guardian): RÃ©sumÃ© markdown enrichi pour Codex GPT"
     },
     {
-      "hash": "37ef138c",
+      "hash": "eb442603",
       "author": "Fernando Gonzalez",
-      "time": "12 minutes ago",
-      "message": "chore(guardian): Update prod_report.json - Final sync"
+      "time": "23 minutes ago",
+      "message": "feat(memory): SystÃ¨me de retrieval pondÃ©rÃ© avec dÃ©croissance temporelle"
     },
     {
-      "hash": "d685fc80",
+      "hash": "3817bcef",
       "author": "Fernando Gonzalez",
-      "time": "13 minutes ago",
-      "message": "chore(guardian): Update prod_report.json from pre-push hook"
+      "time": "36 minutes ago",
+      "message": "chore(sync): ClÃ´ture session enrichissement rapports Guardian"
     },
     {
-      "hash": "e046f9df",
+      "hash": "426a16a4",
       "author": "Fernando Gonzalez",
-      "time": "14 minutes ago",
-      "message": "docs(sync): Synchronisation finale inter-agents - DÃ©pÃ´t propre"
+      "time": "36 minutes ago",
+      "message": "feat(guardian): Script analyse rapports + prompt enrichi pour Codex"
     },
     {
-      "hash": "239fa33a",
+      "hash": "25750769",
       "author": "Fernando Gonzalez",
-      "time": "11 hours ago",
-      "message": "docs(session): Fix Gmail 500 + OOM prod - Session terminÃ©e âœ…"
+      "time": "44 minutes ago",
+      "message": "docs(codex): Prompt court pour accÃ¨s rapports Guardian"
     }
   ],
   "recommendations": [
