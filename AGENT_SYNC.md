@@ -4750,6 +4750,22 @@ SMTP_PASSWORD=...
 ---
 
 ## 🤖 Synchronisation automatique
+### Consolidation - 2025-10-21T19:54:46.581845
+
+**Type de déclenchement** : `time_based`
+**Conditions** : {
+  "pending_changes": 2,
+  "time_since_last_minutes": 60.007882583333334
+}
+**Changements consolidés** : 2 événements sur 1 fichiers
+
+**Fichiers modifiés** :
+- **AGENT_SYNC.md** : 2 événement(s)
+  - `modified` à 2025-10-21T18:54:47.206970 (agent: unknown)
+  - `modified` à 2025-10-21T19:35:48.135374 (agent: unknown)
+
+---
+
 ### Consolidation - 2025-10-21T18:54:46.105889
 
 **Type de déclenchement** : `time_based`
