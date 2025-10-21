@@ -1,259 +1,21 @@
 {
-  "timestamp": "2025-10-20T18:07:14.180385",
+  "timestamp": "2025-10-21T05:06:52.975005",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
   "freshness": "1h",
-  "status": "CRITICAL",
+  "status": "OK",
   "summary": {
-    "errors": 12,
+    "errors": 0,
     "warnings": 0,
-    "critical_signals": 9,
+    "critical_signals": 0,
     "latency_issues": 0
   },
-  "errors": [
-    {
-      "time": "2025-10-20T16:05:08.358644Z",
-      "severity": "ERROR",
-      "msg": "Memory limit of 512 MiB exceeded with 573 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits"
-    },
-    {
-      "time": "2025-10-20T16:05:01.915309Z",
-      "severity": "ERROR",
-      "msg": "Memory limit of 512 MiB exceeded with 671 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits"
-    },
-    {
-      "time": "2025-10-20T16:04:57.358386Z",
-      "severity": "ERROR",
-      "msg": "Memory limit of 512 MiB exceeded with 575 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits"
-    },
-    {
-      "time": "2025-10-20T16:04:55.408807Z",
-      "severity": "ERROR",
-      "msg": ""
-    },
-    {
-      "time": "2025-10-20T16:04:50.915051Z",
-      "severity": "ERROR",
-      "msg": "Memory limit of 512 MiB exceeded with 573 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits"
-    }
-  ],
+  "errors": [],
   "warnings": [],
-  "critical_signals": [
-    {
-      "type": "OOM",
-      "time": "2025-10-20T16:05:08.358644Z",
-      "msg": "Memory limit of 512 MiB exceeded with 573 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
-      "full_context": {
-        "timestamp": "2025-10-20T16:05:08.358644Z",
-        "severity": "ERROR",
-        "message": "Memory limit of 512 MiB exceeded with 573 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
-        "stack_trace": null,
-        "endpoint": null,
-        "http_method": null,
-        "status_code": null,
-        "user_agent": null,
-        "request_id": null,
-        "error_type": null,
-        "file_path": null,
-        "line_number": null,
-        "full_payload": null
-      }
-    },
-    {
-      "type": "OOM",
-      "time": "2025-10-20T16:05:01.915309Z",
-      "msg": "Memory limit of 512 MiB exceeded with 671 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
-      "full_context": {
-        "timestamp": "2025-10-20T16:05:01.915309Z",
-        "severity": "ERROR",
-        "message": "Memory limit of 512 MiB exceeded with 671 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
-        "stack_trace": null,
-        "endpoint": null,
-        "http_method": null,
-        "status_code": null,
-        "user_agent": null,
-        "request_id": null,
-        "error_type": null,
-        "file_path": null,
-        "line_number": null,
-        "full_payload": null
-      }
-    },
-    {
-      "type": "OOM",
-      "time": "2025-10-20T16:04:57.358386Z",
-      "msg": "Memory limit of 512 MiB exceeded with 575 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
-      "full_context": {
-        "timestamp": "2025-10-20T16:04:57.358386Z",
-        "severity": "ERROR",
-        "message": "Memory limit of 512 MiB exceeded with 575 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
-        "stack_trace": null,
-        "endpoint": null,
-        "http_method": null,
-        "status_code": null,
-        "user_agent": null,
-        "request_id": null,
-        "error_type": null,
-        "file_path": null,
-        "line_number": null,
-        "full_payload": null
-      }
-    }
-  ],
+  "critical_signals": [],
   "latency_issues": [],
-  "errors_detailed": [
-    {
-      "timestamp": "2025-10-20T16:05:08.358644Z",
-      "severity": "ERROR",
-      "message": "Memory limit of 512 MiB exceeded with 573 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
-      "stack_trace": null,
-      "endpoint": null,
-      "http_method": null,
-      "status_code": null,
-      "user_agent": null,
-      "request_id": null,
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-20T16:05:01.915309Z",
-      "severity": "ERROR",
-      "message": "Memory limit of 512 MiB exceeded with 671 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
-      "stack_trace": null,
-      "endpoint": null,
-      "http_method": null,
-      "status_code": null,
-      "user_agent": null,
-      "request_id": null,
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-20T16:04:57.358386Z",
-      "severity": "ERROR",
-      "message": "Memory limit of 512 MiB exceeded with 575 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
-      "stack_trace": null,
-      "endpoint": null,
-      "http_method": null,
-      "status_code": null,
-      "user_agent": null,
-      "request_id": null,
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-20T16:04:55.408807Z",
-      "severity": "ERROR",
-      "message": "",
-      "stack_trace": null,
-      "endpoint": null,
-      "http_method": null,
-      "status_code": null,
-      "user_agent": null,
-      "request_id": null,
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-20T16:04:50.915051Z",
-      "severity": "ERROR",
-      "message": "Memory limit of 512 MiB exceeded with 573 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
-      "stack_trace": null,
-      "endpoint": null,
-      "http_method": null,
-      "status_code": null,
-      "user_agent": null,
-      "request_id": null,
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-20T16:04:45.357714Z",
-      "severity": "ERROR",
-      "message": "Memory limit of 512 MiB exceeded with 534 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
-      "stack_trace": null,
-      "endpoint": null,
-      "http_method": null,
-      "status_code": null,
-      "user_agent": null,
-      "request_id": null,
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-20T16:04:40.914846Z",
-      "severity": "ERROR",
-      "message": "Memory limit of 512 MiB exceeded with 529 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
-      "stack_trace": null,
-      "endpoint": null,
-      "http_method": null,
-      "status_code": null,
-      "user_agent": null,
-      "request_id": null,
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-20T16:04:35.357431Z",
-      "severity": "ERROR",
-      "message": "Memory limit of 512 MiB exceeded with 535 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
-      "stack_trace": null,
-      "endpoint": null,
-      "http_method": null,
-      "status_code": null,
-      "user_agent": null,
-      "request_id": null,
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-20T16:04:32.914868Z",
-      "severity": "ERROR",
-      "message": "Memory limit of 512 MiB exceeded with 544 MiB used. Consider increasing the memory limit, see https://cloud.google.com/run/docs/configuring/memory-limits",
-      "stack_trace": null,
-      "endpoint": null,
-      "http_method": null,
-      "status_code": null,
-      "user_agent": null,
-      "request_id": null,
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-20T16:04:25.435180Z",
-      "severity": "ERROR",
-      "message": "",
-      "stack_trace": null,
-      "endpoint": null,
-      "http_method": null,
-      "status_code": null,
-      "user_agent": null,
-      "request_id": null,
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    }
-  ],
+  "errors_detailed": [],
   "warnings_detailed": [],
   "error_patterns": {
     "by_endpoint": {},
@@ -265,75 +27,41 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "239fa33a",
+      "author": "Fernando Gonzalez",
+      "time": "10 hours ago",
+      "message": "docs(session): Fix Gmail 500 + OOM prod - Session terminÃ©e âœ…"
+    },
+    {
+      "hash": "ec14d339",
+      "author": "Fernando Gonzalez",
+      "time": "11 hours ago",
+      "message": "fix(gmail-api): CODEX_API_KEY accessible + endpoint opÃ©rationnel pour Codex Cloud"
+    },
+    {
       "hash": "60a45e5c",
       "author": "Fernando Gonzalez",
-      "time": "50 seconds ago",
+      "time": "11 hours ago",
       "message": "fix(gmail): Change endpoint /api/gmail/read-reports POST â†’ GET"
     },
     {
       "hash": "4079829e",
       "author": "Fernando Gonzalez",
-      "time": "11 hours ago",
+      "time": "22 hours ago",
       "message": "docs(codex): PrÃ©requis Codex Cloud pour accÃ¨s Gmail Guardian"
     },
     {
       "hash": "eda86e26",
       "author": "Fernando Gonzalez",
-      "time": "11 hours ago",
+      "time": "22 hours ago",
       "message": "test(guardian): Test complet rapports email automatiques"
-    },
-    {
-      "hash": "b3e5a310",
-      "author": "Fernando Gonzalez",
-      "time": "11 hours ago",
-      "message": "docs(deployment): DÃ©ploiement production canary â†’ stable rÃ©ussi"
-    },
-    {
-      "hash": "e3c5a6bc",
-      "author": "Fernando Gonzalez",
-      "time": "11 hours ago",
-      "message": "fix(ui): Ajout bouton GÃ©nÃ©rer Rapports Guardian manquant"
     }
   ],
   "recommendations": [
     {
-      "priority": "HIGH",
-      "action": "Investigate critical issues immediately",
-      "details": "OOMKilled or container crashes detected",
-      "affected_files": [],
-      "affected_endpoints": []
-    },
-    {
-      "priority": "HIGH",
-      "action": "Increase memory limit",
-      "command": "gcloud run services update emergence-app --memory=1Gi --region=europe-west1",
-      "details": "Current limit likely insufficient for workload"
-    },
-    {
-      "priority": "HIGH",
-      "action": "Consider rollback to previous stable revision",
-      "details": "High error rate suggests recent deployment issue",
-      "recent_commits": [
-        {
-          "hash": "60a45e5c",
-          "author": "Fernando Gonzalez",
-          "time": "50 seconds ago",
-          "message": "fix(gmail): Change endpoint /api/gmail/read-reports POST â†’ GET"
-        },
-        {
-          "hash": "4079829e",
-          "author": "Fernando Gonzalez",
-          "time": "11 hours ago",
-          "message": "docs(codex): PrÃ©requis Codex Cloud pour accÃ¨s Gmail Guardian"
-        },
-        {
-          "hash": "eda86e26",
-          "author": "Fernando Gonzalez",
-          "time": "11 hours ago",
-          "message": "test(guardian): Test complet rapports email automatiques"
-        }
-      ],
-      "rollback_command": "gcloud run services update-traffic emergence-app --to-revisions=PREVIOUS=100 --region=europe-west1"
+      "priority": "LOW",
+      "action": "No immediate action required",
+      "details": "Production is healthy"
     }
   ]
 }

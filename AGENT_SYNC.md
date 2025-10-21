@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-20 18:40 CET (Claude Code : FIX GMAIL 500 + OOM PRODUCTION → DÉPLOYÉ ✅)
+**Dernière mise à jour** : 2025-10-21 15:45 CET (Claude Code : Commit final dépôt propre ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -17,6 +17,56 @@
 4. [`docs/passation.md`](docs/passation.md) - 3 dernières entrées minimum
 5. `git status` + `git log --online -10` - état Git
 
+## ✅ Session COMPLÉTÉE (2025-10-21 15:45 CET) — Agent : Claude Code (Commit final - Dépôt propre)
+
+### 🎯 Objectif
+- Commiter tous les fichiers modifiés par les sessions précédentes (Codex + Claude Code)
+- Nettoyer le dépôt local (git status propre)
+- Synchroniser toute la documentation inter-agents
+
+### ✅ Actions réalisées
+- `AGENT_SYNC.md` : session Codex marquée comme complétée + nouvelle entrée Claude Code
+- `docs/passation.md` : nouvelle entrée documentant le commit final
+- Commit de tous les fichiers modifiés (11 fichiers) :
+  - `AGENT_SYNC.md`
+  - `claude-plugins/integrity-docs-guardian/CODEX_GPT_SETUP.md`
+  - `claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json`
+  - `docs/CODEX_GMAIL_QUICKSTART.md`
+  - `docs/GMAIL_CODEX_INTEGRATION.md`
+  - `docs/GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md`
+  - `docs/PHASE_6_DEPLOYMENT_GUIDE.md`
+  - `docs/architecture/30-Contracts.md`
+  - `docs/passation.md`
+  - `reports/prod_report.json`
+  - `src/backend/features/gmail/router.py`
+
+### 📌 État final
+- ✅ Dépôt local clean (git status propre)
+- ✅ Push effectué vers origin/main
+- ✅ Documentation synchronisée entre agents
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-20 19:35 CET) — Agent : Codex (Nettoyage docs GET Gmail)
+
+### 🎯 Objectif
+- Résoudre les divergences restantes après le passage de `/api/gmail/read-reports` en GET.
+- Harmoniser la documentation Codex/Guardian et le message OAuth backend.
+
+### ✅ Actions réalisées
+- `src/backend/features/gmail/router.py` : message `next_step` mis à jour vers `GET /api/gmail/read-reports`.
+- Documentation synchronisée : `docs/GMAIL_CODEX_INTEGRATION.md`, `docs/CODEX_GMAIL_QUICKSTART.md`, `docs/GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md`, `docs/PHASE_6_DEPLOYMENT_GUIDE.md`, `docs/architecture/30-Contracts.md`, `claude-plugins/integrity-docs-guardian/CODEX_GPT_SETUP.md`, `docs/passation.md` (POST → GET).
+- `AGENT_SYNC.md` corrigé pour refléter l'état GET côté production.
+- Vérification `rg` → plus de références `POST /api/gmail/read-reports` hors logs d'audit.
+
+### 🧪 Tests
+- `pytest tests/backend/features/test_auth_login.py` (re-run OK)
+
+### 📌 Prochaines étapes recommandées
+1. Lancer `pytest tests/backend/features/test_auto_sync.py` si d'autres ajustements Guardian sont prévus.
+2. Préparer rebase/commit une fois la consolidation AutoSync terminée (vérifier dashboard 8000).
+
+---
 ## ✅ Session COMPLÉTÉE (2025-10-20 18:40 CET) — Agent : Claude Code (FIX GMAIL 500 + OOM PRODUCTION → DÉPLOYÉ)
 
 ### 🔥 URGENCE PRODUCTION RÉSOLUE : 2 bugs critiques corrigés + déployés
@@ -812,7 +862,7 @@ Production en état critique : déconnexions constantes, non-réponses agents, e
 **3. Gmail API Router** (router.py)
 - ✅ `GET /auth/gmail` - Initiate OAuth (admin one-time)
 - ✅ `GET /auth/callback/gmail` - OAuth callback handler
-- ✅ `POST /api/gmail/read-reports` - Codex API (X-Codex-API-Key auth)
+- ✅ `GET /api/gmail/read-reports` - Codex API (X-Codex-API-Key auth)
 - ✅ `GET /api/gmail/status` - Check OAuth status
 
 **4. Secrets GCP configurés:**
@@ -3539,4 +3589,8 @@ Aucun impact. Changements tests locaux uniquement.
 
 ### Blocages
 Aucun. Environnement dev opérationnel (99.7% tests OK).
+
+
+
+
 

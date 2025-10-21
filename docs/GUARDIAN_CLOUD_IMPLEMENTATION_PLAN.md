@@ -71,7 +71,7 @@
 │  │ Endpoints:                                                       │ │
 │  │  • GET  /auth/gmail (initiate OAuth)                            │ │
 │  │  • GET  /auth/callback/gmail (OAuth callback)                   │ │
-│  │  • POST /api/gmail/read-reports (Codex reads reports)           │ │
+│  │  • GET /api/gmail/read-reports (Codex reads reports)           │ │
 │  └────────────────────────────────────────────────────────────────┘ │
 │                                                                       │
 │  ┌────────────────────────────────────────────────────────────────┐ │
@@ -256,9 +256,8 @@
 - [ ] Créer API key Codex (Secret Manager)
 - [ ] Documenter API pour Codex:
   ```bash
-  curl -X GET https://emergence-app.../api/gmail/read-reports \
-    -H "X-Codex-API-Key: SECRET_KEY" \
-    -H "Content-Type: application/json"
+  curl "https://emergence-app.../api/gmail/read-reports?max_results=10" \
+    -H "X-Codex-API-Key: SECRET_KEY"
   ```
 
 - [ ] Codex workflow:
@@ -510,7 +509,7 @@
 
 - [ ] Test Gmail read (Codex API)
   ```bash
-  curl -X GET https://emergence-app.../api/gmail/read-reports \
+  curl "https://emergence-app.../api/gmail/read-reports?max_results=10" \
     -H "X-Codex-API-Key: KEY"
   # Devrait retourner derniers emails Guardian
   ```
@@ -706,3 +705,4 @@ Coût: Gratuit (Free tier: 3 jobs)
 2. Tracking users: quelles features exactement tracker ? (liste exhaustive)
 3. Codex auto-fix: validation humaine requise avant merge PR ?
 4. Admin UI: dashboard Guardian permanent ou modal popup ?
+

@@ -137,7 +137,7 @@ async def gmail_auth_callback(
                 content={
                     "success": True,
                     "message": "Gmail OAuth authentication successful! You can now use the Gmail API.",
-                    "next_step": "Codex can now call POST /api/gmail/read-reports with API key"
+                    "next_step": "Codex can now call GET /api/gmail/read-reports with API key"
                 }
             )
         else:

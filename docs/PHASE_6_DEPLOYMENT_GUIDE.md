@@ -138,10 +138,8 @@ curl https://emergence-app-486095406755.europe-west1.run.app/api/gmail/status
 #### Test 5.1: API Codex (Read Gmail Reports)
 
 ```bash
-curl -X GET https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports \
-  -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb" \
-  -H "Content-Type: application/json" \
-  -d '{"max_results": 10}'
+curl "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=10" \
+  -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb"
 ```
 
 **Réponse attendue:**
@@ -258,7 +256,7 @@ curl https://emergence-app-486095406755.europe-west1.run.app/api/gmail/status
 
 **3. Codex API:**
 ```bash
-curl -X GET https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports \
+curl "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=10" \
   -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb"
 # → {"success": true, "count": N, "emails": [...]}
 ```
@@ -491,7 +489,7 @@ git push origin main
 **Gmail API:**
 - `GET /auth/gmail` - Init OAuth flow
 - `GET /auth/callback/gmail` - OAuth callback
-- `POST /api/gmail/read-reports` - API Codex (lecture emails)
+- `GET /api/gmail/read-reports` - API Codex (lecture emails)
 - `GET /api/gmail/status` - OAuth status
 
 **Admin UI:**
@@ -538,3 +536,4 @@ git push origin main
 ---
 
 **FIN DU GUIDE - Phase 6 Guardian Cloud**
+

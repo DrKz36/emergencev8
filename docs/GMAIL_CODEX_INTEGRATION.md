@@ -21,7 +21,7 @@
                           ▼
               ┌───────────────────────┐
               │                       │
-              │  POST /api/gmail/     │
+              │  GET /api/gmail/     │
               │  read-reports         │
               │                       │
               │  Header:              │
@@ -78,17 +78,15 @@ https://emergence-app-486095406755.europe-west1.run.app/auth/gmail
 
 ### 2. API Codex - Lire Rapports Guardian
 
-**Endpoint:** `POST /api/gmail/read-reports`
+**Endpoint:** `GET /api/gmail/read-reports`
 
 **Authentification:** Header `X-Codex-API-Key: <secret>`
 
 **Requête:**
 
 ```bash
-curl -X GET https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports \
-  -H "X-Codex-API-Key: YOUR_SECRET_KEY_HERE" \
-  -H "Content-Type: application/json" \
-  -d '{"max_results": 10}'
+curl "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=10" \
+  -H "X-Codex-API-Key: YOUR_SECRET_KEY_HERE"
 ```
 
 **Réponse (200 OK):**
@@ -367,9 +365,8 @@ curl http://localhost:8000/api/gmail/status
 echo "CODEX_API_KEY=test-key-123" >> .env
 
 # 2. Appeler API
-curl -X GET http://localhost:8000/api/gmail/read-reports \
-  -H "X-Codex-API-Key: test-key-123" \
-  -H "Content-Type: application/json"
+curl "http://localhost:8000/api/gmail/read-reports?max_results=10" \
+  -H "X-Codex-API-Key: test-key-123"
 
 # 3. Vérifier emails retournés
 # → Devrait retourner liste emails Guardian
@@ -451,3 +448,7 @@ GCP_PROJECT_ID=emergence-469005
 ---
 
 **✅ Gmail API Integration - Phase 3 Guardian Cloud - Prêt pour production**
+
+
+
+

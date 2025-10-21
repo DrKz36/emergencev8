@@ -173,9 +173,9 @@
 
 ### API Codex (lecture rapports Guardian)
 
-- `POST /api/gmail/read-reports` → **Lire emails Guardian pour Codex GPT**
+- `GET /api/gmail/read-reports` → **Lire emails Guardian pour Codex GPT**
   - **Auth:** Header `X-Codex-API-Key: <secret>` (API key stockée dans Secret Manager GCP)
-  - **Payload (optionnel):** `{ max_results: 10 }`
+  - **Query params (optionnel):** `max_results=10`
   - **Query Gmail:** `subject:(emergence OR guardian OR audit)` (emails Guardian uniquement)
   - **Retourne:** 200 `{ success: true, count: 3, emails: [...] }`
     - Chaque email: `{ id, subject, from, date, timestamp, body, snippet }`
@@ -216,5 +216,4 @@ GCP_PROJECT_ID=emergence-469005  # Pour Secret Manager
 4. **Notify**: Slack/Email confirmation
 
 **Voir:** `docs/GMAIL_CODEX_INTEGRATION.md` pour doc complète Codex GPT.
-
 

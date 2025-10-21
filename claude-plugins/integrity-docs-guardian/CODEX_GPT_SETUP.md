@@ -417,7 +417,7 @@ src/backend/
 **Endpoints critiques:**
 - `POST /api/chat/message` - Traitement messages chat
 - `GET /api/chat/history` - Historique conversations
-- `POST /api/gmail/read-reports` - Lire rapports Guardian (TON endpoint!)
+- `GET /api/gmail/read-reports` - Lire rapports Guardian (TON endpoint!)
 
 ---
 
@@ -595,10 +595,8 @@ Action urgente requise: [Oui/Non]
 ### Test 1: Lire Emails Guardian
 
 ```bash
-curl -X GET https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports \
-  -H "Content-Type: application/json" \
-  -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb" \
-  -d '{}'
+curl "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=10" \
+  -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb"
 ```
 
 **Réponse attendue:**
@@ -654,10 +652,8 @@ curl -X GET https://emergence-app-486095406755.europe-west1.run.app/api/gmail/re
 
 1. **Tester l'accès API**
    ```bash
-   curl -X GET https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports \
-     -H "Content-Type: application/json" \
-     -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb" \
-     -d '{}'
+   curl "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=10" \
+     -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb"
    ```
 2. **Parser 1 email CRITICAL**
    - Extraire le **type d'erreur**, le **fichier**, le **code** et les **commits suspects**.
@@ -727,3 +723,4 @@ Production Healthy! 🔥
 Contacte l'architecte: `gonzalefernando@gmail.com`
 
 **Bonne surveillance! 🤖🔥**
+

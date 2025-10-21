@@ -1,3 +1,86 @@
+## [2025-10-21 15:45 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `AGENT_SYNC.md` (ajout session Claude Code + marquage session Codex comme complétée)
+- `docs/passation.md` (cette entrée)
+- Commit de tous les fichiers modifiés (11 fichiers au total) :
+  - `claude-plugins/integrity-docs-guardian/CODEX_GPT_SETUP.md`
+  - `claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json`
+  - `docs/CODEX_GMAIL_QUICKSTART.md`
+  - `docs/GMAIL_CODEX_INTEGRATION.md`
+  - `docs/GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md`
+  - `docs/PHASE_6_DEPLOYMENT_GUIDE.md`
+  - `docs/architecture/30-Contracts.md`
+  - `reports/prod_report.json`
+  - `src/backend/features/gmail/router.py`
+
+### Contexte
+Synchronisation finale après les sessions de nettoyage de la doc Gmail (POST → GET) par Codex.
+Objectif: nettoyer complètement le dépôt local et commiter tous les changements en suspens.
+Le travail de Codex sur l'harmonisation de la documentation GET est maintenant commité et pusher vers origin/main.
+
+### Tests
+- Pas de nouveaux tests (commit de documentation)
+- Précédents tests validés par Codex : `pytest tests/backend/features/test_auth_login.py` ✅
+
+### Prochaines actions recommandées
+1. Dépôt maintenant propre, prêt pour nouveaux développements
+2. Monitorer production pour confirmer stabilité endpoint Gmail GET
+3. Vérifier AutoSync dashboard si besoin
+
+### Blocages
+Aucun.
+
+---
+
+## [2025-10-20 19:35 CET] — Agent: Codex
+
+### Fichiers modifiés
+- `AGENT_SYNC.md` (statut session + actions « GET » actualisés)
+- `docs/passation.md` (références GET/POST harmonisées + entrée de session)
+
+### Contexte
+- Nettoyage final des divergences `POST /api/gmail/read-reports` → `GET` encore présentes dans la passation.
+- Mise à jour du suivi inter-agents pour refléter le nettoyage et rappeler les vérifications AutoSync.
+- Tentative `scripts/sync-workdir.ps1` (`-AllowDirty`) bloquée par l'état dirty attendu, rebase non lancé (documenté).
+
+### Tests
+- ✅ `pytest tests/backend/features/test_auth_login.py` (warnings pydantic 2.x connus)
+
+### Prochaines actions recommandées
+1. Exécuter `pytest tests/backend/features/test_auto_sync.py` avant les prochains ajustements Guardian.
+2. Lancer la consolidation AutoSync si besoin, puis préparer rebase/commit une fois la doc stabilisée.
+
+### Blocages
+- Aucun blocage fonctionnel. Rebase interrompu par l'état dirty contrôlé (attendu le temps de finaliser la session).
+
+## [2025-10-20 19:10 CET] - Agent: Codex
+
+### Fichiers modifiés
+- `src/backend/features/gmail/router.py` (message `next_step` → GET)
+- `docs/GMAIL_CODEX_INTEGRATION.md`
+- `docs/CODEX_GMAIL_QUICKSTART.md`
+- `docs/GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md`
+- `docs/PHASE_6_DEPLOYMENT_GUIDE.md`
+- `docs/architecture/30-Contracts.md`
+- `claude-plugins/integrity-docs-guardian/CODEX_GPT_SETUP.md`
+- `AGENT_SYNC.md` (nouvelle entrée + mise à jour en-tête)
+
+### Contexte
+- Harmonisation complète après le passage de `/api/gmail/read-reports` en GET : suppression des exemples `POST`, ajout des paramètres de requête et mise à jour de l'instruction OAuth backend.
+- Alignement des guides Codex/Guardian (Quickstart, plan de déploiement, setup Guardian) pour éviter les requêtes GET sans query string.
+- `claude-plugins/.../reports/prod_report.json` et `reports/prod_report.json` étaient déjà modifiés avant la session (logs AutoSync) → laissés tels quels.
+
+### Tests
+- ✅ `pytest tests/backend/features/test_auth_login.py`
+
+### Prochaines actions recommandées
+1. Lancer `pytest tests/backend/features/test_auto_sync.py` si des ajustements Guardian supplémentaires sont prévus.
+2. Vérifier les hooks Guardian lors du prochain commit pour s'assurer qu'aucun exemple POST n'est réintroduit.
+
+### Blocages
+- Aucun.
+
 ## [2025-10-20 18:40 CET] — Agent: Claude Code (FIX GMAIL 500 + OOM PRODUCTION → DÉPLOYÉ ✅)
 
 ### Fichiers modifiés
@@ -1037,7 +1120,7 @@ https://emergence-app-486095406755.europe-west1.run.app/auth/gmail
 {
   "success": true,
   "message": "Gmail OAuth authentication successful! You can now use the Gmail API.",
-  "next_step": "Codex can now call POST /api/gmail/read-reports with API key"
+  "next_step": "Codex can now call GET /api/gmail/read-reports with API key"
 }
 ```
 ✅ OAuth flow complet réussi (consent screen → callback → token stocké Firestore)
@@ -1294,7 +1377,7 @@ Production Healthy! 🔥
 - Store tokens dans Firestore
 - Redirige vers page confirmation
 
-**c) `POST /api/gmail/read-reports` (API pour Codex GPT) 🔥**
+**c) `GET /api/gmail/read-reports` (API pour Codex GPT) 🔥**
 - **Auth:** Header `X-Codex-API-Key` (77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb)
 - **Query param:** `max_results` (default: 10)
 - **Response:** JSON liste d'emails Guardian
@@ -3239,4 +3322,5 @@ git push
 Aucun. Environnement dev fonctionnel et validé.
 
 **Recommandation :** Commit + push maintenant.
+
 

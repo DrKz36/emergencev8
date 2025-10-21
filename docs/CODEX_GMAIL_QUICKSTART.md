@@ -60,8 +60,7 @@
 Exécute cette commande curl (ou équivalent dans Codex):
 
 ```bash
-curl -X POST \
-  "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=5" \
+curl "https://emergence-app-486095406755.europe-west1.run.app/api/gmail/read-reports?max_results=5" \
   -H "X-Codex-API-Key: 77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb"
 ```
 
@@ -109,7 +108,7 @@ curl -X POST \
 │                        │                                     │
 │                        ▼                                     │
 │  ┌──────────────────────────────────────────────┐           │
-│  │ Call API: POST /api/gmail/read-reports      │           │
+│  │ Call API: GET /api/gmail/read-reports      │           │
 │  │ Header: X-Codex-API-Key                     │           │
 │  └──────────────────────────────────────────────┘           │
 │                        │                                     │
@@ -458,3 +457,4 @@ CODEX_API_KEY=77bc68b9d3c0a2ebed19c0cdf73281b44d9b6736c21eae367766f4184d9951cb
 **🎉 Une fois tout validé, Guardian Cloud est 100% opérationnel !**
 
 **Contact:** Voir `docs/passation.md` pour historique complet des changements.
+
