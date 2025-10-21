@@ -75,9 +75,10 @@ def fetch_logs():
         print(f"✅ Fetched {len(logs)} log entries", file=sys.stderr)
         return logs
 
-    except subprocess.TimeoutExpired as e:
+    except subprocess.TimeoutExpired as exc:
         print("❌ Timeout fetching logs from gcloud (60s):", file=sys.stderr)
         print(f"   Command: {' '.join(cmd)}", file=sys.stderr)
+        print(f"   Error: {exc}", file=sys.stderr)
         print("   Suggestion: Check network connectivity or gcloud authentication", file=sys.stderr)
         return []
     except subprocess.CalledProcessError as e:
@@ -472,11 +473,81 @@ def analyze_logs(logs):
         })
 
         if any(sig["type"] == "OOM" for sig in critical_signals):
+            # Determine the current and peak memory usage from log context (if available)
+            import math
+            import re
+
+            memory_pattern = re.compile(
+                r"Memory limit of\s+(?P<limit>\d+)\s*MiB exceeded with\s+(?P<used>\d+)\s*MiB used",
+                re.IGNORECASE,
+            )
+
+            current_limit_mib = None
+            peak_usage_mib = None
+
+            for signal in critical_signals:
+                if signal.get("type") != "OOM":
+                    continue
+
+                context_message = (
+                    signal.get("full_context", {}).get("message")
+                    or signal.get("msg", "")
+                )
+                match = memory_pattern.search(context_message)
+                if match:
+                    limit_mib = int(match.group("limit"))
+                    used_mib = int(match.group("used"))
+                    current_limit_mib = max(current_limit_mib or 0, limit_mib)
+                    peak_usage_mib = max(peak_usage_mib or 0, used_mib)
+
+            # Cloud Run supported tiers in MiB
+            memory_tiers_mib = [512, 1024, 2048, 4096, 8192, 16384]
+
+            if current_limit_mib is not None:
+                desired_mib = current_limit_mib * 2
+                if peak_usage_mib is not None:
+                    desired_mib = max(
+                        desired_mib,
+                        int(math.ceil(peak_usage_mib * 1.25)),
+                    )
+
+                new_limit_mib = next(
+                    (tier for tier in memory_tiers_mib if tier >= desired_mib),
+                    memory_tiers_mib[-1],
+                )
+                current_human = (
+                    f"{current_limit_mib // 1024}Gi"
+                    if current_limit_mib % 1024 == 0
+                    else f"{current_limit_mib}Mi"
+                )
+                peak_human = (
+                    f"{peak_usage_mib // 1024}Gi"
+                    if peak_usage_mib and peak_usage_mib % 1024 == 0
+                    else (f"{peak_usage_mib}Mi" if peak_usage_mib else "unknown")
+                )
+            else:
+                # Fallback: assume current limit 1Gi and bump to 2Gi
+                new_limit_mib = 2048
+                current_human = "unknown"
+                peak_human = "unknown"
+
+            new_limit_human = (
+                f"{new_limit_mib // 1024}Gi"
+                if new_limit_mib % 1024 == 0
+                else f"{new_limit_mib}Mi"
+            )
+
             report["recommendations"].append({
                 "priority": "HIGH",
                 "action": "Increase memory limit",
-                "command": f"gcloud run services update {SERVICE} --memory=1Gi --region={REGION}",
-                "details": "Current limit likely insufficient for workload"
+                "command": f"gcloud run services update {SERVICE} --memory={new_limit_human} --region={REGION}",
+                "details": (
+                    "Current limit "
+                    + current_human
+                    + " insufficient; peak usage ~"
+                    + peak_human
+                    + f". Increase to {new_limit_human}."
+                ),
             })
 
         if len(errors) > 10:

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-21T06:59:42.657706",
+  "timestamp": "2025-10-21T07:29:42.407994",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -27,34 +27,34 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "c1bc1681",
+      "author": "Fernando Gonzalez",
+      "time": "3 minutes ago",
+      "message": "chore(reports): Sync final rapport Codex"
+    },
+    {
+      "hash": "782b365b",
+      "author": "Fernando Gonzalez",
+      "time": "3 minutes ago",
+      "message": "chore(reports): Mise Ã  jour rapports Guardian post-commit"
+    },
+    {
+      "hash": "388ad812",
+      "author": "Fernando Gonzalez",
+      "time": "4 minutes ago",
+      "message": "feat(guardian): Test dÃ©pendances Python + Fix qualitÃ© scripts Guardian"
+    },
+    {
       "hash": "a2acc79f",
       "author": "Fernando Gonzalez",
-      "time": "9 minutes ago",
+      "time": "39 minutes ago",
       "message": "chore(reports): Mise Ã  jour rapports post-push"
     },
     {
       "hash": "72b6c53a",
       "author": "Fernando Gonzalez",
-      "time": "9 minutes ago",
+      "time": "39 minutes ago",
       "message": "chore(guardian): Mise Ã  jour rapports Guardian automatiques"
-    },
-    {
-      "hash": "fe4dc014",
-      "author": "Fernando Gonzalez",
-      "time": "9 minutes ago",
-      "message": "feat(memory): IntÃ©gration complÃ¨te retrieval pondÃ©rÃ© + optimisations (cache, GC, mÃ©triques)"
-    },
-    {
-      "hash": "04f0428e",
-      "author": "Fernando Gonzalez",
-      "time": "13 minutes ago",
-      "message": "refactor(agents): Condenser prompt system Codex GPT (-63%)"
-    },
-    {
-      "hash": "21b8d45e",
-      "author": "Fernando Gonzalez",
-      "time": "19 minutes ago",
-      "message": "feat(agents): Prompt system Codex GPT unifiÃ© (local + cloud)"
     }
   ],
   "recommendations": [

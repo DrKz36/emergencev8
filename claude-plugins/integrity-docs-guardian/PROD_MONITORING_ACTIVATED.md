@@ -198,7 +198,7 @@ Set-ScheduledTask -TaskName "ProdGuardian_AutoMonitor" -TaskPath "\EMERGENCE\" -
     {
       "priority": "HIGH",
       "action": "Increase memory limit",
-      "command": "gcloud run services update emergence-app --memory=1Gi --region=europe-west1"
+      "command": "gcloud run services update emergence-app --memory=2Gi --region=europe-west1"
     }
   ]
 }
@@ -233,7 +233,7 @@ Set-ScheduledTask -TaskName "ProdGuardian_AutoMonitor" -TaskPath "\EMERGENCE\" -
 
 3. **Si OOMKilled:** Augmenter la mémoire
    ```bash
-   gcloud run services update emergence-app --memory=1Gi --region=europe-west1
+   gcloud run services update emergence-app --memory=2Gi --region=europe-west1
    ```
 
 4. **Si erreurs récurrentes:** Considérer un rollback

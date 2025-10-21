@@ -163,7 +163,7 @@ et d'alerter l'équipe sur les anomalies, erreurs critiques, et dégradations de
 2. **Increase memory limit:**
    ```bash
    gcloud run services update emergence-app \
-     --memory=1Gi --region=europe-west1
+     --memory=2Gi --region=europe-west1
    ```
 
 3. **Fix code issue in [src/backend/features/chat/post_session.py:142]:**

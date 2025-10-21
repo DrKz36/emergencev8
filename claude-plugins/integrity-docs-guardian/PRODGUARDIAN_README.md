@@ -154,7 +154,7 @@ ACTIONS IMMÉDIATES:
 
 2. Increase memory limit:
    gcloud run services update emergence-app \
-     --memory=1Gi --region=europe-west1
+     --memory=2Gi --region=europe-west1
 ```
 
 ---

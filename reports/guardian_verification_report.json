@@ -1,18 +1,18 @@
 {
-  "timestamp": "2025-10-19T06:08:34.285895+00:00",
+  "timestamp": "2025-10-21T05:42:42.876378+00:00",
   "revision_checked": "emergence-app-00501-zon",
   "previous_revision": "emergence-app-00298-g8j",
   "status": "OK",
-  "integrity_score": "87%",
+  "integrity_score": "95%",
   "checks": {
     "total": 24,
-    "passed": 21,
-    "failed": 3
+    "passed": 23,
+    "failed": 1
   },
   "files": {
-    "global_report.json": "UNKNOWN",
-    "unified_report.json": "UNKNOWN",
-    "orchestration_report.json": "UNKNOWN",
+    "global_report.json": "OK",
+    "unified_report.json": "OK",
+    "orchestration_report.json": "ERROR",
     "prod_report.json": "OK"
   },
   "summary": {
@@ -27,14 +27,14 @@
   "details": {
     "guardian_reports": {
       "global_report.json": {
-        "status": "UNKNOWN",
+        "status": "OK",
         "path": "c:\\dev\\emergenceV8\\reports\\global_report.json",
-        "timestamp": "N/A"
+        "timestamp": "2025-10-19T08:08:17.768435"
       },
       "prod_report.json": {
         "status": "OK",
         "path": "c:\\dev\\emergenceV8\\reports\\prod_report.json",
-        "timestamp": "2025-10-17T06:13:54.085393"
+        "timestamp": "2025-10-21T07:42:30.233071"
       },
       "integrity_report.json": {
         "status": "OK",
@@ -47,12 +47,12 @@
         "timestamp": "2025-10-19T08:08:17.927548"
       },
       "unified_report.json": {
-        "status": "UNKNOWN",
+        "status": "OK",
         "path": "c:\\dev\\emergenceV8\\reports\\unified_report.json",
-        "timestamp": "N/A"
+        "timestamp": "2025-10-19T08:08:21.475254"
       },
       "orchestration_report.json": {
-        "status": "UNKNOWN",
+        "status": "ERROR",
         "path": "c:\\dev\\emergenceV8\\reports\\orchestration_report.json",
         "timestamp": "2025-10-17T07:45:32.761866"
       }
@@ -68,7 +68,7 @@
         "latency_issues": 0
       },
       "revision_checked": "emergence-app-00501-zon",
-      "timestamp": "2025-10-17T06:13:54.085393"
+      "timestamp": "2025-10-21T07:42:30.233071"
     },
     "integrity": {
       "status": "OK",
@@ -77,7 +77,7 @@
       "details": {
         "src/backend/main.py": {
           "exists": true,
-          "size": 16842
+          "size": 18283
         },
         "src/backend/features/chat/service.py": {
           "exists": true,
@@ -89,7 +89,7 @@
         },
         "src/backend/features/auth/router.py": {
           "exists": true,
-          "size": 15314
+          "size": 15307
         },
         "src/backend/features/memory/router.py": {
           "exists": true,
@@ -97,7 +97,7 @@
         },
         "src/backend/features/memory/vector_service.py": {
           "exists": true,
-          "size": 40727
+          "size": 59383
         },
         "src/backend/features/dashboard/admin_router.py": {
           "exists": true,

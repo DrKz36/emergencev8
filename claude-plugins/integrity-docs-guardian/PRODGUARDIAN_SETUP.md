@@ -209,7 +209,7 @@ export ENABLE_PROD_CHECK=1
    🔴 [HIGH] Investigate critical issues immediately
       OOMKilled or container crashes detected
    🔴 [HIGH] Increase memory limit
-      Command: gcloud run services update emergence-app --memory=1Gi --region=europe-west1
+      Command: gcloud run services update emergence-app --memory=2Gi --region=europe-west1
    🔴 [HIGH] Consider rollback to previous stable revision
       High error rate suggests recent deployment issue
 ```

@@ -235,7 +235,7 @@ Get-Content .\claude-plugins\integrity-docs-guardian\logs\prodguardian_scheduler
 
 💡 Recommendations:
    🔴 [HIGH] Increase memory limit
-      Command: gcloud run services update emergence-app --memory=1Gi --region=europe-west1
+      Command: gcloud run services update emergence-app --memory=2Gi --region=europe-west1
 ```
 **Action:** Action immédiate requise! Consulter le rapport détaillé et appliquer les recommandations
 

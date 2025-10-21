@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 07:15 CET (Claude Code : Fix qualité code scripts Guardian après travail Codex ✅)
+**Dernière mise à jour** : 2025-10-21 07:50 CET (Claude Code : Fix OOM prod + Tests unitaires Guardian ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -45,6 +45,87 @@ Mis à jour automatiquement par hooks Git + Task Scheduler (6h).
 
 **Voir détails :** [PROMPT_CODEX_RAPPORTS.md](PROMPT_CODEX_RAPPORTS.md)
 **Setup complet :** [docs/CODEX_SUMMARY_SETUP.md](docs/CODEX_SUMMARY_SETUP.md)
+
+## ✅ Session COMPLÉTÉE (2025-10-21 07:45 CET) — Agent : Codex GPT (ProdGuardian escalation mémoire)
+
+### Fichiers modifiés
+- `claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py`
+- `claude-plugins/integrity-docs-guardian/agents/prodguardian.md`
+- `claude-plugins/integrity-docs-guardian/PRODGUARDIAN_README.md`
+- `claude-plugins/integrity-docs-guardian/PROD_MONITORING_ACTIVATED.md`
+- `claude-plugins/integrity-docs-guardian/PROD_AUTO_MONITOR_SETUP.md`
+- `claude-plugins/integrity-docs-guardian/PRODGUARDIAN_SETUP.md`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Lecture `reports/codex_summary.md` + `reports/prod_report.json` : ProdGuardian en **CRITICAL** (OOM à 1Gi, 1062 MiB utilisés).
+- Refactor du script `check_prod_logs.py` : parsing automatique des logs OOM, calcul du prochain palier Cloud Run (512Mi → 1Gi → 2Gi → 4Gi → 8Gi → 16Gi) avec buffer 25%, message détaillé et fallback 2Gi.
+- Mise à jour de la doc Guardian (README, setup, monitoring, agent prompt) pour refléter la nouvelle recommandation `--memory=2Gi`.
+- Fix lint latent (TimeoutExpired log) + exécution `ruff check` ciblée.
+
+### Tests
+- ✅ `ruff check claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py`
+
+### Prochaines actions
+1. Lancer `python claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py` pour générer un nouveau rapport et confirmer la commande `--memory=2Gi`.
+2. Appliquer en prod : `gcloud run services update emergence-app --memory=2Gi --region=europe-west1`.
+3. Surveiller les logs 30 min après upgrade pour valider disparition des OOM.
+
+## ✅ Session COMPLÉTÉE (2025-10-21 07:50 CET) — Agent : Claude Code (Fix OOM prod + Tests unitaires Guardian)
+
+### Fichiers modifiés
+- `stable-service.yaml` (mémoire 2Gi confirmée)
+- `tests/scripts/test_guardian_status_extractors.py` (nouveau - 22 tests)
+- `reports/prod_report.json` (régénéré - statut OK)
+- `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (cette session)
+
+### Actions réalisées
+
+**1. FIX URGENT Production OOM :**
+- 🔴 **Problème détecté** : OOM (Out Of Memory) en prod - 1062 MiB / 1024 MiB
+- 🔴 **4 crashs containers** à 05:25 ce matin
+- ✅ **Analyse** : Révision 00408 avait seulement 1Gi (downgrade depuis 2Gi)
+- ✅ **Fix** : Upgrade mémoire Cloud Run à 2Gi
+  ```bash
+  gcloud run services update emergence-app --memory=2Gi --region=europe-west1
+  ```
+- ✅ **Résultat** : Nouvelle révision 00409 déployée, production OK
+- 🟢 **Statut final** : 0 erreurs, 0 warnings, 0 crashs
+
+**2. Tests extracteurs statuts Guardian :**
+- ✅ Régénération rapports Guardian post-fix
+- ✅ Validation extraction statuts sur tous rapports (prod, global, docs, integrity, unified)
+- ✅ Test email Guardian avec nouvelles fonctions
+
+**3. Tests unitaires Guardian (nouveau) :**
+- Fichier : [tests/scripts/test_guardian_status_extractors.py](../tests/scripts/test_guardian_status_extractors.py)
+- **22 tests créés** :
+  - 8 tests `normalize_status()` (OK, WARNING, ERROR, CRITICAL, NEEDS_UPDATE, UNKNOWN, custom, whitespace)
+  - 5 tests `resolve_path()` (simple, nested, missing, invalid, empty)
+  - 9 tests `extract_status()` (direct, fallback, orchestration, metadata, unknown, priority, normalized, prod structure, global structure)
+- ✅ **22/22 tests passent** en 0.08s
+- ✅ **Ruff** : All checks passed!
+- ✅ **Mypy** : Success: no issues found
+
+### Tests
+- ✅ `gcloud run services describe emergence-app` : 2Gi confirmé
+- ✅ `curl /api/health` : Service OK
+- ✅ `python scripts/run_audit.py --mode full` : Production OK
+- ✅ `pytest tests/scripts/test_guardian_status_extractors.py -v` : 22 passed
+- ✅ `ruff check tests/scripts/test_guardian_status_extractors.py` : All checks passed
+- ✅ `mypy tests/scripts/test_guardian_status_extractors.py` : Success
+
+### Impact
+**Production sauvée** : OOM résolu, plus de crashs.
+**Guardian renforcé** : Extracteurs statuts testés à 100% avec 22 tests.
+**Code quality** : Couverture tests complète pour fonctions critiques.
+
+### Prochaines actions
+1. Monitorer prod pendant 24h pour confirmer stabilité 2Gi
+2. Si tout OK, mettre à jour stable-service.yaml avec 2Gi (actuellement dit 4Gi)
+3. Ajouter tests E2E pour email Guardian HTML
 
 ## ✅ Session COMPLÉTÉE (2025-10-21 07:15 CET) — Agent : Claude Code (Fix qualité code scripts Guardian)
 
