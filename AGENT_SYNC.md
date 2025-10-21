@@ -2,9 +2,59 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 23:30 CET (Claude Code : Mypy batch 3 - 44 → 34 erreurs ✅)
+**Dernière mise à jour** : 2025-10-21 16:58 CET (Claude Code : Fix monitoring router + déploiement beta-2.2.0 ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+---
+
+## ✅ Session EN COURS (2025-10-21 16:58 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/monitoring/router.py` (fix FastAPI response_model + APP_VERSION)
+- `package.json` (beta-2.1.6 → beta-2.2.0)
+- `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (prochaine entrée)
+
+### Actions réalisées
+
+**1. Déploiement Docker beta-2.2.0**
+- ✅ Bump version package.json: beta-2.1.6 → beta-2.2.0
+- ✅ Build image Docker locale
+- ✅ Push vers GCP Artifact Registry (tag: beta-2.2.0, latest)
+- ❌ Déploiement 1 (emergence-app-00551-yup) - Router monitoring 404!
+
+**2. Debug + Fix monitoring router**
+- 🔍 Problème identifié: `Union[Dict, JSONResponse]` incompatible avec FastAPI response_model auto
+- 🔧 Solution: Ajout `response_model=None` à `/health/readiness` endpoint
+- 🔧 Fix version: `os.getenv("APP_VERSION")` prioritaire sur `BACKEND_VERSION`
+- ✅ Rebuild + push image (digest: sha256:4419b208...)
+- ✅ Déploiement 2 (emergence-app-00553-jon) - Tag: beta-2-2-0-final
+
+**3. Vérification déploiement**
+- ✅ `/api/monitoring/system/info` retourne `"backend": "beta-2.2.0"` ✅
+- ✅ `/api/health` fonctionne
+- ✅ `/ready` fonctionne (db: up, vector: up)
+- ✅ Révision déployée: https://beta-2-2-0-final---emergence-app-47nct44nma-ew.a.run.app
+
+### Tests
+- ✅ `pytest tests/backend/` → 338/340 passing (2 échecs pre-existants unified_retriever)
+- ✅ Test manuel local (uvicorn) → monitoring router chargé correctement
+- ✅ Test Cloud Run → tous endpoints fonctionnels
+- ✅ Guardian pre-commit OK
+- ✅ Guardian post-commit OK (3 warnings acceptés)
+
+### Travail de Codex GPT pris en compte
+Aucune modification Codex récente. Session isolée de déploiement.
+
+### Prochaines actions recommandées
+1. **Tester révision beta-2-2-0-final** en profondeur (frontend, WebSocket, chat)
+2. **Shifter traffic** si tout OK (actuellement 0% sur nouvelle révision)
+3. **Documenter dans passation.md** le fix monitoring router
+4. **Continuer Mypy cleanup** si demandé (actuellement 0 erreurs!)
+
+### Blocages
+Aucun.
 
 ---
 

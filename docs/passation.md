@@ -1,3 +1,83 @@
+## [2025-10-21 16:58 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/monitoring/router.py` (fix FastAPI response_model + APP_VERSION support)
+- `package.json` (beta-2.1.6 → beta-2.2.0)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**Demande utilisateur:** "construit une nouvelle image via docker local et déploie une nouvelle révision! Verifie bien que le versionning est mis à jour et qu'il s'affiche partout ou il doit etre! Go mon salaud, bon boulot!"
+
+Suite à la finalisation de Mypy (0 erreurs), déploiement de la version beta-2.2.0 en production avec vérification du versioning.
+
+### Actions réalisées
+
+**1. Tentative déploiement initial (ÉCHEC)**
+- Bump version `package.json`: `beta-2.1.6` → `beta-2.2.0`
+- Build image Docker locale (tag: `beta-2.2.0`, `latest`)
+- Push vers GCP Artifact Registry (digest: `sha256:6d8b53...`)
+- Déploiement Cloud Run révision `emergence-app-00551-yup` (tag: `beta-2-2-0`)
+- ❌ **Problème détecté:** Endpoint `/api/monitoring/system/info` retourne 404!
+
+**2. Investigation du problème**
+- Test endpoints monitoring: `/api/monitoring/system/info` 404, `/api/monitoring/health/detailed` 404
+- Endpoints de base fonctionnels: `/api/health` ✅, `/ready` ✅
+- Analyse logs Cloud Run: `Router non trouvé: backend.features.monitoring.router`
+- **Cause identifiée:** Import du router échoue silencieusement à cause de type annotation invalide
+
+**3. Diagnostic racine**
+- Test local avec `uvicorn --log-level debug`
+- Erreur trouvée: `Invalid args for response field! [...] Union[Response, dict, None]`
+- Dans batch 3 mypy, j'avais ajouté `Union[Dict[str, Any], JSONResponse]` comme return type du endpoint `readiness_probe` ligne 318
+- FastAPI ne peut pas auto-générer un response_model pour `Union[Dict, JSONResponse]`
+- Résultat: import du module `monitoring.router` échoue → router = None → `_mount_router()` skip silencieusement
+
+**4. Fix appliqué**
+- Ajout `response_model=None` au decorator: `@router.get("/health/readiness", response_model=None)`
+- Fix version hardcodée: `backend_version = os.getenv("APP_VERSION") or os.getenv("BACKEND_VERSION", "beta-2.1.4")`
+  - Avant: utilisait uniquement `BACKEND_VERSION` (default: "beta-2.1.4")
+  - Après: priorité à `APP_VERSION` (variable env définie lors du déploiement)
+- Rebuild image Docker (nouveau digest: `sha256:4419b208...`)
+- Push vers Artifact Registry
+
+**5. Déploiement réussi**
+- Déploiement Cloud Run révision `emergence-app-00553-jon` avec digest exact
+- Tag: `beta-2-2-0-final`, 0% traffic (canary pattern)
+- URL test: https://beta-2-2-0-final---emergence-app-47nct44nma-ew.a.run.app
+
+### Tests
+- ✅ `pytest tests/backend/` → 338/340 passing (2 échecs pre-existants dans `test_unified_retriever.py` liés à mocks)
+- ✅ Test local (uvicorn port 8002): monitoring router chargé sans warning
+- ✅ Test Cloud Run `/api/monitoring/system/info`: retourne `"backend": "beta-2.2.0"` ✅
+- ✅ Test Cloud Run `/api/health`: `{"status":"ok"}`
+- ✅ Test Cloud Run `/ready`: `{"ok":true,"db":"up","vector":"up"}`
+- ✅ Guardian pre-commit OK
+- ✅ Guardian post-commit OK (3 warnings acceptés)
+
+### Travail de Codex GPT pris en compte
+Aucune modification Codex récente. Session isolée de déploiement et debug.
+
+### Prochaines actions recommandées
+1. **Tester révision beta-2-2-0-final** en profondeur:
+   - Frontend: chat, documents upload, memory dashboard
+   - WebSocket: streaming messages
+   - Endpoints critiques: /api/chat/message, /api/memory/*, /api/threads/*
+2. **Shifter traffic** vers nouvelle révision si tests OK (actuellement 0%)
+3. **Monitoring** post-déploiement (logs, erreurs, latence)
+4. **Cleanup** anciennes révisions Cloud Run si déploiement stable
+
+### Blocages
+Aucun.
+
+### Notes techniques importantes
+- **Leçon apprise:** Les annotations `Union[Response, dict]` dans FastAPI nécessitent `response_model=None` explicit
+- **Mypy cleanup impact:** Les fixes de type peuvent casser l'import des modules si les types sont incompatibles avec FastAPI
+- **Déploiement Cloud Run:** Toujours utiliser le digest exact (`@sha256:...`) pour garantir l'image déployée
+- **Version affichage:** Privilégier variable env `APP_VERSION` définie au déploiement plutôt que hardcodé dans code
+
+---
+
 ## [2025-10-21 22:00 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
