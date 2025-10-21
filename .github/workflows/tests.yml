@@ -26,7 +26,8 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run pytest
-        run: pytest tests/backend/ -v --tb=short
+        run: pytest tests/backend/ -v --tb=short --maxfail=5 -x
+        timeout-minutes: 10
 
       - name: Ruff check
         run: ruff check src/backend/
@@ -52,6 +53,7 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+        timeout-minutes: 5
 
   # Job 3 : Guardian Validation
   guardian:
@@ -71,16 +73,28 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run Anima (DocKeeper)
-        run: python claude-plugins/integrity-docs-guardian/scripts/scan_docs.py
+        run: |
+          python claude-plugins/integrity-docs-guardian/scripts/scan_docs.py
+          echo "✅ Anima completed"
+        timeout-minutes: 3
 
       - name: Run Neo (IntegrityWatcher)
-        run: python claude-plugins/integrity-docs-guardian/scripts/check_integrity.py
+        run: |
+          python claude-plugins/integrity-docs-guardian/scripts/check_integrity.py
+          echo "✅ Neo completed"
+        timeout-minutes: 3
 
       - name: Run Nexus (Coordinator)
-        run: python claude-plugins/integrity-docs-guardian/scripts/generate_report.py
+        run: |
+          python claude-plugins/integrity-docs-guardian/scripts/generate_report.py
+          echo "✅ Nexus completed"
+        timeout-minutes: 3
 
       - name: Generate Codex Summary
-        run: python scripts/generate_codex_summary.py
+        run: |
+          python scripts/generate_codex_summary.py
+          echo "✅ Codex summary completed"
+        timeout-minutes: 2
 
       - name: Upload Guardian Reports
         uses: actions/upload-artifact@v3
