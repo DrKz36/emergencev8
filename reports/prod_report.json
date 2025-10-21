@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-21T09:23:46.435481",
+  "timestamp": "2025-10-21T09:28:35.945790",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -7,16 +7,56 @@
   "status": "OK",
   "summary": {
     "errors": 0,
-    "warnings": 0,
+    "warnings": 2,
     "critical_signals": 0,
     "latency_issues": 0
   },
   "errors": [],
-  "warnings": [],
+  "warnings": [
+    {
+      "time": "2025-10-21T07:25:51.881410Z",
+      "msg": "GET https://34.8.149.118/.env → 404"
+    },
+    {
+      "time": "2025-10-21T07:25:15.040808Z",
+      "msg": "GET https://34.54.90.143/security.txt → 404"
+    }
+  ],
   "critical_signals": [],
   "latency_issues": [],
   "errors_detailed": [],
-  "warnings_detailed": [],
+  "warnings_detailed": [
+    {
+      "timestamp": "2025-10-21T07:25:51.881410Z",
+      "severity": "WARNING",
+      "message": "GET https://34.8.149.118/.env → 404",
+      "stack_trace": null,
+      "endpoint": "https://34.8.149.118/.env",
+      "http_method": "GET",
+      "status_code": 404,
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.2 Safari/605.1.15",
+      "request_id": "projects/emergence-469005/traces/c6da58f092ce8bf94e8a9130c76228fd",
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    },
+    {
+      "timestamp": "2025-10-21T07:25:15.040808Z",
+      "severity": "WARNING",
+      "message": "GET https://34.54.90.143/security.txt → 404",
+      "stack_trace": null,
+      "endpoint": "https://34.54.90.143/security.txt",
+      "http_method": "GET",
+      "status_code": 404,
+      "user_agent": "Mozilla/5.0 (compatible; CensysInspect/1.1; +https://about.censys.io/)",
+      "request_id": "projects/emergence-469005/traces/b1a13c666c176e6bf794f52b2c0516ee",
+      "error_type": null,
+      "file_path": null,
+      "line_number": null,
+      "full_payload": null
+    }
+  ],
   "error_patterns": {
     "by_endpoint": {},
     "by_error_type": {},
@@ -27,34 +67,34 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "2cb23c05",
+      "author": "Fernando Gonzalez",
+      "time": "6 seconds ago",
+      "message": "docs(ws/cloudrun): Documentation complÃ¨te WsOutbox + Cloud Run Warm-up"
+    },
+    {
+      "hash": "401703e1",
+      "author": "Fernando Gonzalez",
+      "time": "3 minutes ago",
+      "message": "chore(reports): Auto-update rapports Guardian post-commit WsOutbox"
+    },
+    {
       "hash": "b5351bf5",
       "author": "Fernando Gonzalez",
-      "time": "11 seconds ago",
+      "time": "5 minutes ago",
       "message": "feat(ws/cloudrun): WsOutbox + warm-up complet + healthcheck strict"
     },
     {
       "hash": "5569dcb9",
       "author": "Fernando Gonzalez",
-      "time": "12 minutes ago",
+      "time": "17 minutes ago",
       "message": "chore(reports): Auto-update codex_summary.md post-commit"
     },
     {
       "hash": "21f51c14",
       "author": "Fernando Gonzalez",
-      "time": "12 minutes ago",
+      "time": "17 minutes ago",
       "message": "fix(guardian): Sync rapports + Documentation accÃ¨s Codex GPT"
-    },
-    {
-      "hash": "c6369bc8",
-      "author": "Fernando Gonzalez",
-      "time": "80 minutes ago",
-      "message": "docs(sync): Mise Ã  jour AGENT_SYNC.md + passation.md (Fix 404 onboarding)"
-    },
-    {
-      "hash": "59ba90f1",
-      "author": "Fernando Gonzalez",
-      "time": "2 hours ago",
-      "message": "fix(onboarding): Ajouter onboarding.html manquant Ã  la racine"
     }
   ],
   "recommendations": [

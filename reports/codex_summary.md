@@ -1,6 +1,6 @@
 # 🛡️ Guardian - Résumé pour Codex GPT
 
-**Généré le:** 2025-10-21 09:23:46
+**Généré le:** 2025-10-21 09:28:36
 **Source:** Rapports automatiques Guardian (ProdGuardian, Anima, Neo, Nexus)
 
 ---
@@ -9,7 +9,7 @@
 
 | Guardian | Status | Métriques clés |
 |----------|--------|----------------|
-| **Production** | `OK` | 0 erreurs, 0 warnings, 80 logs analysés |
+| **Production** | `OK` | 0 erreurs, 2 warnings, 80 logs analysés |
 | **Documentation** | `ok` | 0 gaps, 0 mises à jour proposées |
 | **Intégrité** | `ok` | 0 issues (0 critiques) |
 | **Rapport Unifié** | `ok` | 0 issues totales |
@@ -20,11 +20,11 @@
 
 ### 📝 Commits récents (contexte)
 
-- `b5351bf5` - feat(ws/cloudrun): WsOutbox + warm-up complet + healthcheck strict (Fernando Gonzalez, 11 seconds ago)
-- `5569dcb9` - chore(reports): Auto-update codex_summary.md post-commit (Fernando Gonzalez, 12 minutes ago)
-- `21f51c14` - fix(guardian): Sync rapports + Documentation accÃ¨s Codex GPT (Fernando Gonzalez, 12 minutes ago)
-- `c6369bc8` - docs(sync): Mise Ã  jour AGENT_SYNC.md + passation.md (Fix 404 onboarding) (Fernando Gonzalez, 80 minutes ago)
-- `59ba90f1` - fix(onboarding): Ajouter onboarding.html manquant Ã  la racine (Fernando Gonzalez, 2 hours ago)
+- `2cb23c05` - docs(ws/cloudrun): Documentation complÃ¨te WsOutbox + Cloud Run Warm-up (Fernando Gonzalez, 6 seconds ago)
+- `401703e1` - chore(reports): Auto-update rapports Guardian post-commit WsOutbox (Fernando Gonzalez, 3 minutes ago)
+- `b5351bf5` - feat(ws/cloudrun): WsOutbox + warm-up complet + healthcheck strict (Fernando Gonzalez, 5 minutes ago)
+- `5569dcb9` - chore(reports): Auto-update codex_summary.md post-commit (Fernando Gonzalez, 17 minutes ago)
+- `21f51c14` - fix(guardian): Sync rapports + Documentation accÃ¨s Codex GPT (Fernando Gonzalez, 17 minutes ago)
 
 ---
 
@@ -58,7 +58,7 @@
 
 ## ⚡ Que faire maintenant ?
 
-✅ **Tout va bien !** Aucune action urgente requise.
+4. **🟡 PRIORITÉ MOYENNE** - Investiguer les warnings production
 
 ---
 
