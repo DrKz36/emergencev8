@@ -397,6 +397,8 @@ class MemoryAnalyzer:
             # Tentative primaire : neo_analysis (GPT-4o-mini - rapide pour JSON)
             # Bug #9 (P2): Timeout 30s pour éviter blocage indéfini
             try:
+                if not chat_service:
+                    raise RuntimeError("ChatService not available (offline mode)")
                 analysis_result = await asyncio.wait_for(
                     chat_service.get_structured_llm_response(
                         agent_id="neo_analysis",
@@ -433,6 +435,8 @@ class MemoryAnalyzer:
                 provider_used = "nexus"
                 start_time = datetime.now()
                 try:
+                    if not chat_service:
+                        raise RuntimeError("ChatService not available (offline mode)")
                     analysis_result = await asyncio.wait_for(
                         chat_service.get_structured_llm_response(
                             agent_id="nexus",
@@ -466,6 +470,8 @@ class MemoryAnalyzer:
                     provider_used = "anima"
                     start_time = datetime.now()
                     try:
+                        if not chat_service:
+                            raise RuntimeError("ChatService not available (offline mode)")
                         analysis_result = await chat_service.get_structured_llm_response(
                             agent_id="anima",
                             prompt=prompt,

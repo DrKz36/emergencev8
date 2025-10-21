@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 22:00 CET (Claude Code : Mypy batch 2 - 66 → 44 erreurs ✅)
+**Dernière mise à jour** : 2025-10-21 23:30 CET (Claude Code : Mypy batch 3 - 44 → 34 erreurs ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 

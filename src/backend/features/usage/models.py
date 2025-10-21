@@ -31,7 +31,7 @@ class UserSession(BaseModel):
 class FeatureUsage(BaseModel):
     """Utilisation d'une feature (endpoint appelé)"""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    user_email: str
+    user_email: str | None
     feature_name: str  # Ex: "chat_message", "document_upload", "thread_create"
     endpoint: str  # Ex: "/api/chat/message"
     method: str = "GET"  # GET, POST, PUT, DELETE, etc.
@@ -50,7 +50,7 @@ class FeatureUsage(BaseModel):
 class UserError(BaseModel):
     """Erreur rencontrée par un utilisateur"""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    user_email: str
+    user_email: str | None
     endpoint: str
     method: str  # GET, POST, etc.
     error_type: str  # "ValidationError", "HTTPException", "ServerError", etc.

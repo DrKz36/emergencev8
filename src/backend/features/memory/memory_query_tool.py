@@ -240,7 +240,7 @@ class MemoryQueryTool:
         Returns:
             Filtre compatible ChromaDB where clause
         """
-        base_conditions = [
+        base_conditions: list[dict[str, Any]] = [
             {"user_id": user_id},
             {"type": "concept"}
         ]
@@ -572,7 +572,7 @@ class MemoryQueryTool:
             cutoff_this_month = now - timedelta(days=30)
 
             # Grouper par période
-            timeline = {
+            timeline: dict[str, list] = {
                 "this_week": [],
                 "last_week": [],
                 "this_month": [],

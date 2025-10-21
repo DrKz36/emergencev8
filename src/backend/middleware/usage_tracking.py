@@ -192,7 +192,7 @@ class UsageTrackingMiddleware(BaseHTTPMiddleware):
 
     def _log_feature_usage_background(
         self,
-        user_email: str,
+        user_email: str | None,
         feature_name: str,
         endpoint: str,
         method: str,
@@ -229,7 +229,7 @@ class UsageTrackingMiddleware(BaseHTTPMiddleware):
 
     def _log_user_error_background(
         self,
-        user_email: str,
+        user_email: str | None,
         endpoint: str,
         method: str,
         error_type: str,

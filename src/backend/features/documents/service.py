@@ -457,7 +457,7 @@ class DocumentService:
 
         try:
             # IMPORTANT: TOUJOURS filtrer par user_id pour l'isolation des données
-            where_filter = {"document_id": int(doc_id)}
+            where_filter: dict[str, Any] = {"document_id": int(doc_id)}
             if user_id:
                 where_filter["user_id"] = user_id
             if session_id:

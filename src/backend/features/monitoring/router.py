@@ -3,7 +3,8 @@ Router pour les endpoints de monitoring et healthcheck
 """
 
 from fastapi import APIRouter, Depends, Request
-from typing import Dict, Any
+from fastapi.responses import JSONResponse
+from typing import Dict, Any, Union
 import psutil
 import platform
 import logging
@@ -315,7 +316,7 @@ async def liveness_probe() -> Dict[str, Any]:
 
 
 @router.get("/health/readiness")
-async def readiness_probe(request: Request) -> Dict[str, Any]:
+async def readiness_probe(request: Request) -> Union[Dict[str, Any], JSONResponse]:
     """
     Readiness probe - checks that all critical services are ready.
     Legacy endpoint for backward compatibility.
@@ -334,7 +335,6 @@ async def readiness_probe(request: Request) -> Dict[str, Any]:
         if db_ok and vector_ok:
             return {"ok": True, "db": "up", "vector": "up"}
         else:
-            from fastapi.responses import JSONResponse
             return JSONResponse(
                 status_code=503,
                 content={
@@ -345,7 +345,6 @@ async def readiness_probe(request: Request) -> Dict[str, Any]:
             )
     except Exception as e:
         logger.error(f"Readiness check failed: {e}", exc_info=True)
-        from fastapi.responses import JSONResponse
         return JSONResponse(
             status_code=503,
             content={"ok": False, "error": str(e)}
