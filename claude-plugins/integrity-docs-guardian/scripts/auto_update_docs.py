@@ -20,7 +20,7 @@ if sys.platform == 'win32':
 
 # Configuration des chemins
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
-REPORTS_DIR = REPO_ROOT / "claude-plugins" / "integrity-docs-guardian" / "reports"
+REPORTS_DIR = REPO_ROOT / "reports"  # UNIFIED: All reports in repo root
 DOCS_DIR = REPO_ROOT / "docs"
 AGENT_SYNC_FILE = REPO_ROOT / "AGENT_SYNC.md"
 
