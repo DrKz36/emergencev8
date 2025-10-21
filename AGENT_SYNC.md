@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-21 08:00 CET (Codex GPT : Fix 404 onboarding.html + Déploiement production ✅)
+**Dernière mise à jour** : 2025-10-21 09:10 CET (Claude Code : Sync rapports Guardian + Documentation Codex GPT ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -95,6 +95,54 @@ Mis à jour automatiquement par hooks Git + Task Scheduler (6h).
 
 ### Blocages
 Aucun.
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-21 09:10 CET) — Agent : Claude Code (Sync rapports Guardian + Documentation Codex)
+
+### Fichiers modifiés
+- `reports/codex_summary.md` (régénéré - status OK)
+- `reports/prod_report.json`, `docs_report.json`, `integrity_report.json`, `unified_report.json`, `global_report.json` (synchronisés)
+- `PROMPT_CODEX_RAPPORTS.md` (ajout section emplacements rapports)
+- `CODEX_GPT_SYSTEM_PROMPT.md` (précisions accès rapports)
+- `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (entrée complète)
+
+### Contexte & problème résolu
+Codex GPT Cloud a signalé que `codex_summary.md` était périmé (07:26) et montrait encore status CRITICAL alors que la prod est OK.
+
+**Diagnostic** :
+- 2 emplacements de rapports : `reports/` (racine) vs `claude-plugins/.../reports/`
+- `generate_codex_summary.py` lit depuis `reports/` mais certains rapports plus récents dans `claude-plugins/...`
+- Désynchronisation entre emplacements
+
+**Actions** :
+1. Run `check_prod_logs.py` → `reports/prod_report.json` à jour (status OK)
+2. Run `master_orchestrator.py` → Tous agents (Anima, Neo, ProdGuardian, Nexus) OK
+3. Copie rapports `claude-plugins/.../reports/` → `reports/`
+4. Régénération `codex_summary.md` → Status OK (0 erreurs, 0 warnings)
+5. Documentation complète pour Codex dans `PROMPT_CODEX_RAPPORTS.md`
+
+### État actuel production
+- **Production** : OK (0 erreurs, 0 warnings, 80 logs analysés)
+- **Documentation** : ok (0 gaps)
+- **Intégrité** : ok (0 issues)
+- **Orchestration** : 4/4 agents succeeded
+- **Action recommandée** : ✅ Tout va bien !
+
+### Tests
+- ✅ `python scripts/generate_codex_summary.py` → Succès
+- ✅ `python claude-plugins/.../master_orchestrator.py` → 4/4 agents OK
+- ✅ Test accès Codex : `codex_summary.md` lu avec succès
+- ✅ Email rapport envoyé aux admins
+
+### Prochaines actions
+1. Commit + push tous les changements
+2. Vérifier que hooks Git synchronisent bien les rapports automatiquement
+3. Tester workflow : commit → post-commit hook → `codex_summary.md` à jour
+
+### Travail de Codex GPT pris en compte
+- Session [2025-10-21 08:00 CET] : Fix bug 404 onboarding.html + Déploiement prod OK
 
 ---
 

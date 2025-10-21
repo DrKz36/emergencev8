@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "timestamp": "2025-10-19T08:08:21.475254",
-    "commit_hash": "7bfea506a4297bfc8b7d6b2aa41d993eb5adda88",
-    "commit_message": "docs(cloud): Documentation complÃ¨te audit cloud toutes les 2h\n\nAjout AUDIT_CLOUD_SETUP.md avec:\n- Guide complet utilisation locale et cloud\n- Tableau 12 schedulers (00h, 02h, ..., 22h)\n- Troubleshooting dÃ©taillÃ©\n- Commandes monitoring GCP\n- PrÃ©requis permissions\n\nStatus: Scripts prÃªts, dÃ©ploiement cloud en attente permissions GCP\n\nðŸ¤– Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "timestamp": "2025-10-21T09:07:23.225656",
+    "commit_hash": "c6369bc8924cf0c2027da08d41866e8b050ecf37",
+    "commit_message": "docs(sync): Mise à jour AGENT_SYNC.md + passation.md (Fix 404 onboarding)\n\nDocumentation complète de la correction du bug 404 onboarding.html :\n\nAGENT_SYNC.md:\n- Nouvelle session Codex GPT (2025-10-21 08:00 CET)\n- Diagnostic problème 404 (fichier manquant en racine)\n- Correction + déploiement production complet\n- Tests validation (curl 200 OK en prod)\n- Workflow onboarding maintenant fonctionnel\n\ndocs/passation.md:\n- Nouvelle entrée détaillée avec contexte utilisateur\n- Investigation code + logs production\n- Stack complète déploiement (build/push/deploy)\n- Workflow onboarding documenté (9 étapes)\n- Impact + prochaines actions\n\nRéférence commit fix: 59ba90f\nRéférence révision Cloud Run: emergence-app-00410-lbk\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
     "nexus_version": "1.0.0"
   },
   "executive_summary": {
@@ -31,25 +31,26 @@
   "priority_actions": [],
   "full_reports": {
     "anima": {
-      "timestamp": "2025-10-19T08:08:17.927548",
-      "commit_hash": "7bfea506a4297bfc8b7d6b2aa41d993eb5adda88",
-      "commit_message": "docs(cloud): Documentation complÃ¨te audit cloud toutes les 2h\n\nAjout AUDIT_CLOUD_SETUP.md avec:\n- Guide complet utilisation locale et cloud\n- Tableau 12 schedulers (00h, 02h, ..., 22h)\n- Troubleshooting dÃ©taillÃ©\n- Commandes monitoring GCP\n- PrÃ©requis permissions\n\nStatus: Scripts prÃªts, dÃ©ploiement cloud en attente permissions GCP\n\nðŸ¤– Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+      "timestamp": "2025-10-21T09:07:20.295954",
+      "commit_hash": "c6369bc8924cf0c2027da08d41866e8b050ecf37",
+      "commit_message": "docs(sync): Mise à jour AGENT_SYNC.md + passation.md (Fix 404 onboarding)\n\nDocumentation complète de la correction du bug 404 onboarding.html :\n\nAGENT_SYNC.md:\n- Nouvelle session Codex GPT (2025-10-21 08:00 CET)\n- Diagnostic problème 404 (fichier manquant en racine)\n- Correction + déploiement production complet\n- Tests validation (curl 200 OK en prod)\n- Workflow onboarding maintenant fonctionnel\n\ndocs/passation.md:\n- Nouvelle entrée détaillée avec contexte utilisateur\n- Investigation code + logs production\n- Stack complète déploiement (build/push/deploy)\n- Workflow onboarding documenté (9 étapes)\n- Impact + prochaines actions\n\nRéférence commit fix: 59ba90f\nRéférence révision Cloud Run: emergence-app-00410-lbk\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
       "status": "ok",
       "changes_detected": {
         "backend": [],
         "frontend": [],
         "docs": [
-          "AUDIT_CLOUD_SETUP.md"
+          "AGENT_SYNC.md",
+          "docs/passation.md"
         ],
         "other": []
       },
       "documentation_gaps": [],
       "proposed_updates": [],
       "statistics": {
-        "files_changed": 1,
+        "files_changed": 2,
         "backend_files": 0,
         "frontend_files": 0,
-        "docs_files": 1,
+        "docs_files": 2,
         "gaps_found": 0,
         "high_severity": 0,
         "medium_severity": 0,
@@ -59,7 +60,7 @@
       "summary": "0 documentation gap(s) found, 0 update(s) proposed"
     },
     "neo": {
-      "timestamp": "2025-10-19T08:08:18.058982",
+      "timestamp": "2025-10-21T09:07:20.426932",
       "status": "ok",
       "backend_changes": {
         "files": [],
@@ -92,10 +93,10 @@
     }
   },
   "statistics": {
-    "total_files_changed": 1,
+    "total_files_changed": 2,
     "backend_files": 0,
     "frontend_files": 0,
-    "docs_files": 1,
+    "docs_files": 2,
     "issues_by_severity": {
       "critical": 0,
       "warning": 0,

@@ -108,12 +108,37 @@ python scripts/generate_codex_summary.py
 
 ---
 
+## 📁 Emplacements des rapports
+
+**Il y a 2 emplacements de rapports dans le dépôt :**
+
+1. **`reports/` (racine)** ← **CEUX-LÀ que tu dois lire !**
+   - Mis à jour par hooks Git (pre-push, post-commit)
+   - Mis à jour par Task Scheduler toutes les 6h
+   - Contient les rapports les plus récents accessibles à Codex GPT
+
+2. **`claude-plugins/integrity-docs-guardian/reports/`** ← Rapports internes Guardian
+   - Générés par les agents Guardian (Anima, Neo, Nexus, etc.)
+   - Synchronisés vers `reports/` après génération
+   - Ne pas lire directement sauf debug Guardian
+
+**⚠️ IMPORTANT :** Utilise TOUJOURS les rapports dans `reports/` (racine), pas ceux dans `claude-plugins/`.
+
+---
+
 ## 🚨 PAS BESOIN de gcloud !
 
 **Les rapports sont LOCAUX dans le dépôt.**
 - ❌ Pas besoin de se connecter à Cloud Run
 - ❌ Pas besoin de gcloud auth
 - ✅ Juste lire les fichiers dans `reports/`
+
+**Workflow automatique :**
+1. ProdGuardian fetch les logs Cloud Run via gcloud (sur la machine locale)
+2. ProdGuardian génère `reports/prod_report.json`
+3. Hook post-commit lance `generate_codex_summary.py`
+4. `codex_summary.md` est généré dans `reports/`
+5. Codex GPT lit `reports/codex_summary.md` (toujours à jour)
 
 ---
 

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-21T07:42:30.233071",
+  "timestamp": "2025-10-21T09:06:39.557990",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -27,34 +27,34 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "c6369bc8",
+      "author": "Fernando Gonzalez",
+      "time": "63 minutes ago",
+      "message": "docs(sync): Mise Ã  jour AGENT_SYNC.md + passation.md (Fix 404 onboarding)"
+    },
+    {
+      "hash": "59ba90f1",
+      "author": "Fernando Gonzalez",
+      "time": "73 minutes ago",
+      "message": "fix(onboarding): Ajouter onboarding.html manquant Ã  la racine"
+    },
+    {
+      "hash": "20daec25",
+      "author": "Fernando Gonzalez",
+      "time": "74 minutes ago",
+      "message": "feat(monitoring): Config alertes GCP + Tests E2E Guardian + Fix YAML"
+    },
+    {
+      "hash": "af1aac4d",
+      "author": "Fernando Gonzalez",
+      "time": "81 minutes ago",
+      "message": "fix(prod): RÃ©solution OOM Cloud Run + Tests unitaires Guardian"
+    },
+    {
       "hash": "c1bc1681",
       "author": "Fernando Gonzalez",
-      "time": "16 minutes ago",
+      "time": "2 hours ago",
       "message": "chore(reports): Sync final rapport Codex"
-    },
-    {
-      "hash": "782b365b",
-      "author": "Fernando Gonzalez",
-      "time": "16 minutes ago",
-      "message": "chore(reports): Mise Ã  jour rapports Guardian post-commit"
-    },
-    {
-      "hash": "388ad812",
-      "author": "Fernando Gonzalez",
-      "time": "16 minutes ago",
-      "message": "feat(guardian): Test dÃ©pendances Python + Fix qualitÃ© scripts Guardian"
-    },
-    {
-      "hash": "a2acc79f",
-      "author": "Fernando Gonzalez",
-      "time": "51 minutes ago",
-      "message": "chore(reports): Mise Ã  jour rapports post-push"
-    },
-    {
-      "hash": "72b6c53a",
-      "author": "Fernando Gonzalez",
-      "time": "52 minutes ago",
-      "message": "chore(guardian): Mise Ã  jour rapports Guardian automatiques"
     }
   ],
   "recommendations": [

@@ -1,3 +1,99 @@
+## [2025-10-21 09:10 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `reports/codex_summary.md` (régénéré avec rapports à jour)
+- `reports/prod_report.json` (nouveau run ProdGuardian - status OK)
+- `reports/docs_report.json` (synchronisé depuis claude-plugins)
+- `reports/integrity_report.json` (synchronisé depuis claude-plugins)
+- `reports/unified_report.json` (synchronisé depuis claude-plugins)
+- `reports/global_report.json` (synchronisé depuis claude-plugins)
+- `PROMPT_CODEX_RAPPORTS.md` (documentation emplacements rapports)
+- `CODEX_GPT_SYSTEM_PROMPT.md` (précisions sur accès rapports)
+- `AGENT_SYNC.md` (cette session - à mettre à jour)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Codex GPT Cloud a signalé que les rapports Guardian étaient périmés (07:26) alors que la prod est OK depuis.
+Il a constaté que `codex_summary.md` montrait encore status CRITICAL (OOM) alors que la prod a été rerunnée et est OK.
+
+Problème : Désynchronisation entre les rapports lus par Codex et l'état réel de production.
+
+### Détails de l'implémentation
+
+**1. Diagnostic du problème**
+
+Investigation des emplacements de rapports :
+- `reports/` (racine) : Rapports lus par `generate_codex_summary.py`
+- `claude-plugins/integrity-docs-guardian/reports/` : Rapports générés par agents Guardian
+- Désynchronisation : Certains rapports plus récents dans `claude-plugins/...` que dans `reports/`
+
+Analyse du workflow :
+- Hooks Git (pre-commit, post-commit, pre-push) lancent les agents Guardian
+- Agents Guardian écrivent dans `claude-plugins/.../reports/`
+- `generate_codex_summary.py` lit depuis `reports/` (racine)
+- **Problème** : Certains rapports pas synchronisés entre les 2 emplacements
+
+**2. Actions réalisées**
+
+Synchronisation des rapports :
+1. Run `check_prod_logs.py` → Génère `reports/prod_report.json` à jour (status OK)
+2. Run `master_orchestrator.py` → Génère tous rapports à jour dans `claude-plugins/.../reports/`
+3. Copie rapports depuis `claude-plugins/.../reports/` vers `reports/` :
+   - `docs_report.json`
+   - `integrity_report.json`
+   - `unified_report.json`
+   - `global_report.json`
+4. Régénération `codex_summary.md` avec rapports à jour → Status OK maintenant
+
+Documentation pour Codex GPT :
+- Ajout section "📁 Emplacements des rapports" dans `PROMPT_CODEX_RAPPORTS.md`
+- Précisions dans `CODEX_GPT_SYSTEM_PROMPT.md` sur quel emplacement lire
+- Workflow automatique documenté (hooks Git + Task Scheduler)
+
+**3. État actuel des rapports**
+
+`codex_summary.md` (09:07:51) :
+- Production : OK (0 erreurs, 0 warnings)
+- Documentation : ok (0 gaps)
+- Intégrité : ok (0 issues)
+- Rapport Unifié : ok (0 issues)
+- Action : ✅ Tout va bien !
+
+Orchestration (09:07:20) :
+- 4/4 agents succeeded
+- Status : ok
+- Headline : "🎉 All checks passed - no issues detected"
+
+### Travail de Codex GPT pris en compte
+- Session [2025-10-21 08:00 CET] : Fix bug 404 onboarding.html
+- Déploiement production complet effectué
+- Workflow onboarding maintenant fonctionnel
+
+### Tests
+- ✅ `python scripts/generate_codex_summary.py` → Succès
+- ✅ `python claude-plugins/.../master_orchestrator.py` → 4/4 agents OK
+- ✅ `codex_summary.md` lu avec succès via Python (test encodage UTF-8)
+- ✅ Status production : OK (0 erreurs, 0 warnings)
+- ✅ Email rapport envoyé aux admins
+
+### Impact
+- ✅ Rapports Guardian synchronisés entre les 2 emplacements
+- ✅ `codex_summary.md` à jour avec status OK (plus de CRITICAL fantôme)
+- ✅ Codex GPT peut maintenant accéder aux rapports actualisés
+- ✅ Documentation claire pour éviter confusion sur emplacements
+- ✅ Workflow automatique documenté (hooks + Task Scheduler)
+
+### Prochaines actions recommandées
+1. Vérifier que les hooks Git synchronisent bien les rapports automatiquement
+2. Tester le workflow complet : commit → post-commit hook → `codex_summary.md` à jour
+3. Documenter dans AGENT_SYNC.md cette session
+4. Commit + push tous les changements
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-21 08:00 CET] — Agent: Codex GPT
 
 ### Fichiers modifiés

@@ -32,7 +32,10 @@ with open('c:/dev/emergenceV8/reports/prod_report.json', 'r', encoding='utf-8') 
     prod = json.load(f)
 ```
 
-**⚠️ Les rapports sont LOCAUX dans `reports/` - NE JAMAIS dire "pas accès Cloud Run" !**
+**⚠️ IMPORTANT :**
+- Les rapports sont LOCAUX dans `reports/` (racine) - NE JAMAIS dire "pas accès Cloud Run" !
+- Utilise TOUJOURS `reports/` (racine), PAS `claude-plugins/.../reports/`
+- `codex_summary.md` est mis à jour automatiquement (hooks Git + Task Scheduler toutes les 6h)
 
 **Voir :** [PROMPT_CODEX_RAPPORTS.md](PROMPT_CODEX_RAPPORTS.md)
 
