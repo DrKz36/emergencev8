@@ -455,12 +455,12 @@ class AuthService:
         expires_at_ts = claims.get("exp")
 
         try:
-            issued_at = datetime.fromtimestamp(int(issued_at_ts), tz=timezone.utc)
+            issued_at = datetime.fromtimestamp(int(issued_at_ts or 0), tz=timezone.utc)
         except Exception:
             issued_at = self._now()
 
         try:
-            expires_at = datetime.fromtimestamp(int(expires_at_ts), tz=timezone.utc)
+            expires_at = datetime.fromtimestamp(int(expires_at_ts or 0), tz=timezone.utc)
         except Exception:
             expires_at = issued_at + timedelta(seconds=self.config.token_ttl_seconds)
 
@@ -1387,7 +1387,7 @@ class AuthService:
     def _hash_subject(self, email: str) -> str:
         return hashlib.sha256(email.encode("utf-8")).hexdigest()
 
-    def _normalize_email(self, email: str) -> str:
+    def _normalize_email(self, email: str | None) -> str:
         return (email or "").strip().lower()
 
     def _now(self) -> datetime:

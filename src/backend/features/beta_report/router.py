@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 import json
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -203,7 +203,7 @@ async def send_beta_invitations(request: BetaInvitationRequest):
             detail="Email service is not configured. Please set EMAIL_ENABLED=1 and configure SMTP settings."
         )
 
-    results = {
+    results: dict[str, Any] = {
         "total": len(request.emails),
         "sent": [],
         "failed": []

@@ -268,7 +268,7 @@ class AdminDashboardService:
             cursor = await conn.execute(query, (user_id,))
             rows = await cursor.fetchall()
 
-            total_minutes = 0
+            total_minutes: float = 0
             for row in rows:
                 if row[0] and row[1]:
                     try:
@@ -521,7 +521,7 @@ class AdminDashboardService:
                         pass
 
                 # Calculate session duration
-                duration_minutes = 0
+                duration_minutes: float = 0
                 if created_at and updated_at:
                     try:
                         created = datetime.fromisoformat(created_at.replace('Z', '+00:00'))

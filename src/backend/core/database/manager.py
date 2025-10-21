@@ -157,6 +157,8 @@ class DatabaseManager:
                     await asyncio.sleep(wait_time)
                 else:
                     raise
+        # Unreachable, but satisfies mypy
+        raise RuntimeError("Database operation failed after all retries")
 
     async def executemany(
         self,
@@ -182,6 +184,8 @@ class DatabaseManager:
                     await asyncio.sleep(wait_time)
                 else:
                     raise
+        # Unreachable, but satisfies mypy
+        raise RuntimeError("Database operation failed after all retries")
 
     async def fetch_one(
         self,
@@ -204,6 +208,8 @@ class DatabaseManager:
                     await asyncio.sleep(wait_time)
                 else:
                     raise
+        # Unreachable, but satisfies mypy
+        raise RuntimeError("Database operation failed after all retries")
 
     async def fetch_all(
         self,
@@ -227,6 +233,8 @@ class DatabaseManager:
                     await asyncio.sleep(wait_time)
                 else:
                     raise
+        # Unreachable, but satisfies mypy
+        raise RuntimeError("Database operation failed after all retries")
 
     async def commit(self) -> None:
         conn = await self._ensure_connection()

@@ -199,7 +199,7 @@ def _extract_token_from_request(request: Request) -> str:
     if token:
         return token
 
-    cookie_candidates: list[str] = []
+    cookie_candidates: list[str | None] = []
     try:
         cookie_candidates.extend(
             [

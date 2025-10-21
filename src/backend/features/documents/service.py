@@ -175,13 +175,13 @@ class DocumentService:
         if not text or not text.strip():
             return []
 
-        chunks = []
+        chunks: list[dict[str, Any]] = []
         lines = text.split('\n')
         total_lines = len(lines)
 
         # Étape 1 : Découper par paragraphes (séparés par \n\n)
-        paragraphs = []
-        current_paragraph = []
+        paragraphs: list[dict[str, Any]] = []
+        current_paragraph: list[str] = []
         paragraph_line_start = 0
 
         for i, line in enumerate(lines):
@@ -206,7 +206,7 @@ class DocumentService:
             })
 
         # Étape 2 : Regrouper les paragraphes en chunks sémantiques
-        current_chunk_paragraphs = []
+        current_chunk_paragraphs: list[dict[str, Any]] = []
         current_chunk_size = 0
 
         for para_dict in paragraphs:

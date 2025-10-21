@@ -2,7 +2,7 @@
 Router pour les endpoints Guardian - Auto-fix et monitoring
 """
 from fastapi import APIRouter, HTTPException, Header, BackgroundTasks
-from typing import Optional
+from typing import Optional, Any
 import hashlib
 import hmac
 import json
@@ -65,7 +65,7 @@ def verify_fix_token(token: str, max_age_seconds: int = 86400) -> bool:
 
 async def execute_anima_fixes(recommendations: list) -> dict:
     """Exécute les corrections Anima (Documentation)"""
-    results = {
+    results: dict[str, list[dict[str, Any]]] = {
         "fixed": [],
         "failed": [],
         "skipped": []
@@ -100,7 +100,7 @@ async def execute_anima_fixes(recommendations: list) -> dict:
 
 async def execute_neo_fixes(recommendations: list) -> dict:
     """Exécute les corrections Neo (Intégrité)"""
-    results = {
+    results: dict[str, list[dict[str, Any]]] = {
         "fixed": [],
         "failed": [],
         "skipped": []
@@ -134,7 +134,7 @@ async def execute_neo_fixes(recommendations: list) -> dict:
 
 async def execute_prod_fixes(recommendations: list) -> dict:
     """Exécute les corrections Production (ATTENTION: très sensible)"""
-    results = {
+    results: dict[str, list[dict[str, Any]]] = {
         "fixed": [],
         "failed": [],
         "skipped": []

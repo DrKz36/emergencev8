@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import Optional, Any
 from pathlib import Path
 from collections import defaultdict
 
@@ -67,7 +67,7 @@ class UsageGuardian:
             )
 
             # Agréger par utilisateur
-            user_stats = defaultdict(
+            user_stats: defaultdict[str, dict[str, Any]] = defaultdict(
                 lambda: {
                     "email": "",
                     "requests_count": 0,

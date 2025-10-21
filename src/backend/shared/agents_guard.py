@@ -352,6 +352,7 @@ class ToolCircuitBreaker:
 
         # Check 1: Circuit ouvert?
         if circuit.is_open:
+            assert circuit.backoff_until is not None  # Garanti par is_open()
             wait_seconds = (circuit.backoff_until - datetime.now(timezone.utc)).total_seconds()
             logger.warning(
                 f"[ToolCircuitBreaker] Circuit OUVERT pour {tool_name} "
