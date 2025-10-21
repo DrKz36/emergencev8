@@ -330,7 +330,15 @@ def is_bot_scan_or_noise(full_context):
         "/install/update.html", "/.env", "/wp-admin", "/admin", "/phpmyadmin",
         "/config.json", "/web.config", "/.git/config", "/backup", "/setup",
         "/test", "/debug", "/api/v1/admin", "/api/admin", "/console",
-        "/.aws/credentials", "/server-status", "/cgi-bin", "/xmlrpc.php"
+        "/.aws/credentials", "/server-status", "/cgi-bin", "/xmlrpc.php",
+        # PHP vulnerability scans
+        "/xprober.php", "/.user.ini", "/user.ini", "/index.php",
+        # AWS/S3 scans
+        "/.s3cfg", "/.aws/", "/aws/",
+        # Path traversal attempts
+        "/etc/passwd", "/etc/shadow", "000~ROOT~000",
+        # Python/environment scans
+        "/venv/", "/.env", "/env/", "/.git/", "/requirements.txt"
     ]
 
     # Known bot scan hosts (cloud metadata, security scans)

@@ -1,42 +1,23 @@
 {
-  "timestamp": "2025-10-21T09:48:52.426490",
-  "commit_hash": "04d659142367790fe74f84f65fcc102761054ec3",
-  "commit_message": "feat(guardian): Phase 2 - Documentation consolidée + CI/CD GitHub Actions\n\nPhase 2.1 - Documentation Consolidée :\n✅ Créé docs/GUARDIAN_COMPLETE_GUIDE.md (800+ lignes)\n   - 9 sections : Vue d'ensemble, Agents, Installation, Workflows, Rapports, Commandes, Troubleshooting, Plans Cloud, FAQ\n   - Consolidation de 8+ docs fragmentées (PRODGUARDIAN_README.md, AUTOMATION_GUIDE.md, etc.)\n   - Pas de redondance, structure claire et navigable\n✅ Archivé 5 docs fragmentées dans claude-plugins/.../docs/archive/\n   - PRODGUARDIAN_README.md, PRODGUARDIAN_SETUP.md, PROD_MONITORING_ACTIVATED.md, PROD_AUTO_MONITOR_SETUP.md, AUTOMATION_GUIDE.md\n   - README.md d'archive expliquant la consolidation\n✅ Mis à jour tous les liens vers le guide complet\n   - CLAUDE.md : Lien vers GUARDIAN_COMPLETE_GUIDE.md\n   - PROMPT_CODEX_RAPPORTS.md : Référence au guide complet\n   - README_GUARDIAN.md : Transformé en alias vers guide complet\n\nPhase 2.2 - CI/CD GitHub Actions :\n✅ Créé .github/workflows/tests.yml (3 jobs parallèles)\n   - test-backend : pytest + ruff + mypy\n   - test-frontend : npm build\n   - guardian : Anima + Neo + Nexus + Codex Summary + upload artifacts\n✅ Créé .github/workflows/deploy.yml (déploiement automatique)\n   - Build Docker image\n   - Push to GCR (Google Container Registry)\n   - Deploy to Cloud Run (emergence-app)\n   - Health check post-déploiement\n✅ Créé docs/GITHUB_ACTIONS_SETUP.md (guide complet configuration)\n   - Création GCP Service Account\n   - Attribution permissions (run.admin, storage.admin, iam.serviceAccountUser)\n   - Génération clé JSON\n   - Configuration secret GitHub GCP_SA_KEY\n   - Troubleshooting complet\n   - Bonnes pratiques sécurité\n\nRésultat :\n- 📚 1 seul guide Guardian au lieu de 10+ docs\n- 🔍 Docs fragmentées archivées (référence historique)\n- ✅ Tests automatiques sur chaque PR\n- 🚀 Déploiement automatique Cloud Run sur push main\n- 📊 Validation Guardian intégrée CI/CD\n- 📦 Rapports Guardian dans artifacts GitHub (rétention 30j)\n\nProchaines étapes :\n- Configurer secret GCP_SA_KEY dans GitHub (voir docs/GITHUB_ACTIONS_SETUP.md)\n- Tester workflows sur une PR\n- Valider déploiement automatique\n\nTemps Phase 2 : ~5-7h\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "timestamp": "2025-10-21T12:50:41.931570",
+  "commit_hash": "215e28e9b56d05024fe10478ddb328b6e8d43275",
+  "commit_message": "docs(passation): Ajout session audit complet + Guardian + Docker\n\nEntrée de passation complète pour session 2025-10-21 16:45:\n- Audit complet application (backend, frontend, Guardian, GCP)\n- Correctifs Guardian (ProdGuardian faux positifs, pre-commit hook V2)\n- Docker Compose complet pour dev local\n- Document AUDIT_COMPLET_2025-10-21.md (400+ lignes)\n- Plan d'assainissement hiérarchisé\n- Roadmap Docker local → GCP\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
   "status": "ok",
   "changes_detected": {
     "backend": [],
     "frontend": [],
     "docs": [
-      "CLAUDE.md",
-      "PROMPT_CODEX_RAPPORTS.md",
-      "claude-plugins/integrity-docs-guardian/README_GUARDIAN.md",
-      "claude-plugins/integrity-docs-guardian/docs/archive/AUTOMATION_GUIDE.md",
-      "claude-plugins/integrity-docs-guardian/docs/archive/PRODGUARDIAN_README.md",
-      "claude-plugins/integrity-docs-guardian/docs/archive/PRODGUARDIAN_SETUP.md",
-      "claude-plugins/integrity-docs-guardian/docs/archive/PROD_AUTO_MONITOR_SETUP.md",
-      "claude-plugins/integrity-docs-guardian/docs/archive/PROD_MONITORING_ACTIVATED.md",
-      "claude-plugins/integrity-docs-guardian/docs/archive/README.md",
-      "docs/GITHUB_ACTIONS_SETUP.md",
-      "docs/GUARDIAN_COMPLETE_GUIDE.md",
-      "reports/codex_summary.md"
+      "docs/passation.md"
     ],
-    "other": [
-      ".github/workflows/deploy.yml",
-      ".github/workflows/tests.yml",
-      "reports/auto_update_report.json",
-      "reports/docs_report.json",
-      "reports/integrity_report.json",
-      "reports/prod_report.json",
-      "reports/unified_report.json"
-    ]
+    "other": []
   },
   "documentation_gaps": [],
   "proposed_updates": [],
   "statistics": {
-    "files_changed": 19,
+    "files_changed": 1,
     "backend_files": 0,
     "frontend_files": 0,
-    "docs_files": 12,
+    "docs_files": 1,
     "gaps_found": 0,
     "high_severity": 0,
     "medium_severity": 0,

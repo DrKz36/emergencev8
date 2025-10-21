@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "timestamp": "2025-10-21T09:47:29.909838",
-    "commit_hash": "ccf2fc41a25f9ead0102f54bf38d85635a355148",
-    "commit_message": "docs(guardian): Ajout prompt Phase 2 - Documentation + CI/CD\n\nCréé PROMPT_GUARDIAN_PHASE2.md (884 lignes) pour guider Phase 2:\n\nPhase 2.1 - Documentation consolidée :\n- Créer GUARDIAN_COMPLETE_GUIDE.md (guide unique)\n- Consolider 8+ docs fragmentées\n- Archiver docs obsolètes\n- Mettre à jour cross-références\n\nPhase 2.2 - CI/CD GitHub Actions :\n- Workflow tests.yml (pytest + ruff + mypy + Guardian)\n- Workflow deploy.yml (build Docker + push GCR + deploy Cloud Run)\n- Configuration GCP Service Account\n- Rapports Guardian dans artifacts\n\nTemps estimé : 5-7h\nRéférence : docs/GUARDIAN_AUDIT_RECOMMENDATIONS.md (Priorités 4-5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "timestamp": "2025-10-21T12:50:42.333161",
+    "commit_hash": "215e28e9b56d05024fe10478ddb328b6e8d43275",
+    "commit_message": "docs(passation): Ajout session audit complet + Guardian + Docker\n\nEntrée de passation complète pour session 2025-10-21 16:45:\n- Audit complet application (backend, frontend, Guardian, GCP)\n- Correctifs Guardian (ProdGuardian faux positifs, pre-commit hook V2)\n- Docker Compose complet pour dev local\n- Document AUDIT_COMPLET_2025-10-21.md (400+ lignes)\n- Plan d'assainissement hiérarchisé\n- Roadmap Docker local → GCP\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
     "nexus_version": "1.0.0"
   },
   "executive_summary": {
@@ -31,32 +31,25 @@
   "priority_actions": [],
   "full_reports": {
     "anima": {
-      "timestamp": "2025-10-21T09:47:29.655674",
-      "commit_hash": "ccf2fc41a25f9ead0102f54bf38d85635a355148",
-      "commit_message": "docs(guardian): Ajout prompt Phase 2 - Documentation + CI/CD\n\nCréé PROMPT_GUARDIAN_PHASE2.md (884 lignes) pour guider Phase 2:\n\nPhase 2.1 - Documentation consolidée :\n- Créer GUARDIAN_COMPLETE_GUIDE.md (guide unique)\n- Consolider 8+ docs fragmentées\n- Archiver docs obsolètes\n- Mettre à jour cross-références\n\nPhase 2.2 - CI/CD GitHub Actions :\n- Workflow tests.yml (pytest + ruff + mypy + Guardian)\n- Workflow deploy.yml (build Docker + push GCR + deploy Cloud Run)\n- Configuration GCP Service Account\n- Rapports Guardian dans artifacts\n\nTemps estimé : 5-7h\nRéférence : docs/GUARDIAN_AUDIT_RECOMMENDATIONS.md (Priorités 4-5)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+      "timestamp": "2025-10-21T12:50:41.931570",
+      "commit_hash": "215e28e9b56d05024fe10478ddb328b6e8d43275",
+      "commit_message": "docs(passation): Ajout session audit complet + Guardian + Docker\n\nEntrée de passation complète pour session 2025-10-21 16:45:\n- Audit complet application (backend, frontend, Guardian, GCP)\n- Correctifs Guardian (ProdGuardian faux positifs, pre-commit hook V2)\n- Docker Compose complet pour dev local\n- Document AUDIT_COMPLET_2025-10-21.md (400+ lignes)\n- Plan d'assainissement hiérarchisé\n- Roadmap Docker local → GCP\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
       "status": "ok",
       "changes_detected": {
         "backend": [],
         "frontend": [],
         "docs": [
-          "docs/PROMPT_GUARDIAN_PHASE2.md",
-          "reports/codex_summary.md"
+          "docs/passation.md"
         ],
-        "other": [
-          "reports/auto_update_report.json",
-          "reports/docs_report.json",
-          "reports/integrity_report.json",
-          "reports/prod_report.json",
-          "reports/unified_report.json"
-        ]
+        "other": []
       },
       "documentation_gaps": [],
       "proposed_updates": [],
       "statistics": {
-        "files_changed": 7,
+        "files_changed": 1,
         "backend_files": 0,
         "frontend_files": 0,
-        "docs_files": 2,
+        "docs_files": 1,
         "gaps_found": 0,
         "high_severity": 0,
         "medium_severity": 0,
@@ -66,7 +59,7 @@
       "summary": "0 documentation gap(s) found, 0 update(s) proposed"
     },
     "neo": {
-      "timestamp": "2025-10-21T09:47:29.759409",
+      "timestamp": "2025-10-21T12:50:42.034085",
       "status": "ok",
       "backend_changes": {
         "files": [],
@@ -99,10 +92,10 @@
     }
   },
   "statistics": {
-    "total_files_changed": 7,
+    "total_files_changed": 1,
     "backend_files": 0,
     "frontend_files": 0,
-    "docs_files": 2,
+    "docs_files": 1,
     "issues_by_severity": {
       "critical": 0,
       "warning": 0,
