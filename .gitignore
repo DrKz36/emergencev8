@@ -86,7 +86,14 @@ pnpm-lock.yaml
 .sync/sync_history.json
 
 # --- Guardian reports (générés automatiquement par hooks)
+# Anciens rapports dans claude-plugins (deprecated)
 claude-plugins/integrity-docs-guardian/reports/*.json
+
+# Nouveaux rapports dans reports/ (locaux uniquement, pas versionnés)
+reports/*.json
+reports/*.md
+# Exception: garder README explicatif
+!reports/README.md
 
 # --- Exceptions utiles
 !assets/**
