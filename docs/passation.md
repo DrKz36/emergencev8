@@ -1,3 +1,52 @@
+## [2025-10-21 11:30 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `docs/GUARDIAN_COMPLETE_GUIDE.md` (nouveau - guide unique Guardian 800+ lignes)
+- `docs/GITHUB_ACTIONS_SETUP.md` (nouveau - configuration GCP Service Account)
+- `.github/workflows/tests.yml` (nouveau - tests automatiques + Guardian)
+- `.github/workflows/deploy.yml` (nouveau - déploiement automatique Cloud Run)
+- `claude-plugins/integrity-docs-guardian/README_GUARDIAN.md` (transformé en alias)
+- `claude-plugins/integrity-docs-guardian/docs/archive/` (5 docs archivées)
+- `CLAUDE.md`, `PROMPT_CODEX_RAPPORTS.md` (liens mis à jour)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Implémentation **Phase 2 Guardian** (Documentation consolidée + CI/CD), suite Phase 1 (Quick Wins).
+
+### Actions réalisées
+
+**Phase 2.1 - Documentation** ✅
+- Créé guide complet 800 lignes (9 sections)
+- Archivé 5 docs fragmentées (~2200 lignes → 800 lignes claires)
+- Mis à jour tous les liens
+
+**Phase 2.2 - CI/CD** ✅
+- Créé tests.yml (3 jobs: backend + frontend + Guardian)
+- Créé deploy.yml (build Docker + push GCR + deploy Cloud Run)
+- Créé guide configuration GCP (Service Account + secret GitHub)
+
+### Travail de Codex GPT pris en compte
+Pas de session récente (dernière: 08:00 CET - fix onboarding). Pas de conflit.
+
+### Tests
+- ✅ Guardian pre-commit OK
+- ✅ Guardian pre-push OK (prod healthy)
+- ⏸️ Workflows GitHub Actions: Nécessitent config `GCP_SA_KEY` (voir GITHUB_ACTIONS_SETUP.md)
+
+### Impact
+- 1 guide au lieu de 10+ docs
+- Tests automatiques sur PR
+- Déploiement auto Cloud Run sur push main
+
+### Prochaines actions recommandées
+1. Configurer secret GCP_SA_KEY (guide GITHUB_ACTIONS_SETUP.md)
+2. Tester workflows sur PR
+
+### Blocages
+Aucun. Phase 2 ✅
+
+---
+
 ## [2025-10-21 09:25 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

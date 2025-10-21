@@ -1,6 +1,6 @@
 # 🛡️ Guardian - Résumé pour Codex GPT
 
-**Généré le:** 2025-10-21 09:39:17
+**Généré le:** 2025-10-21 09:48:57
 **Source:** Rapports automatiques Guardian (ProdGuardian, Anima, Neo, Nexus)
 
 ---
@@ -20,11 +20,11 @@
 
 ### 📝 Commits récents (contexte)
 
-- `ccf2fc41` - docs(guardian): Ajout prompt Phase 2 - Documentation + CI/CD (Fernando Gonzalez, 5 seconds ago)
-- `1ff832f9` - fix(guardian): auto_update_docs.py use unified reports/ path (Fernando Gonzalez, 9 minutes ago)
-- `1583a926` - refactor(guardian): Phase 1 - Unification structure rapports (Quick Wins) (Fernando Gonzalez, 9 minutes ago)
-- `ee0f0547` - chore(reports): Auto-update rapports Guardian post-docs (Fernando Gonzalez, 10 minutes ago)
-- `2cb23c05` - docs(ws/cloudrun): Documentation complÃ¨te WsOutbox + Cloud Run Warm-up (Fernando Gonzalez, 11 minutes ago)
+- `04d65914` - feat(guardian): Phase 2 - Documentation consolidÃ©e + CI/CD GitHub Actions (Fernando Gonzalez, 88 seconds ago)
+- `ccf2fc41` - docs(guardian): Ajout prompt Phase 2 - Documentation + CI/CD (Fernando Gonzalez, 10 minutes ago)
+- `1ff832f9` - fix(guardian): auto_update_docs.py use unified reports/ path (Fernando Gonzalez, 19 minutes ago)
+- `1583a926` - refactor(guardian): Phase 1 - Unification structure rapports (Quick Wins) (Fernando Gonzalez, 19 minutes ago)
+- `ee0f0547` - chore(reports): Auto-update rapports Guardian post-docs (Fernando Gonzalez, 20 minutes ago)
 
 ---
 
@@ -48,7 +48,7 @@
 
 - Fichiers backend modifiés: 0
 - Fichiers frontend modifiés: 0
-- Fichiers docs modifiés: 0
+- Fichiers docs modifiés: 2
 - Issues par sévérité:
   - critical: 0
   - warning: 0
