@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-21T13:09:59.329671",
+  "timestamp": "2025-10-21T14:56:28.494226",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -27,34 +27,34 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "b3245a83",
+      "author": "Fernando Gonzalez",
+      "time": "13 seconds ago",
+      "message": "docs(sync): Commit rapports Guardian + doc inter-agents"
+    },
+    {
       "hash": "b3298234",
       "author": "Fernando Gonzalez",
-      "time": "3 minutes ago",
+      "time": "2 hours ago",
       "message": "chore(release): Bump version beta-2.1.5 â†’ beta-2.1.6"
     },
     {
       "hash": "c89c75cb",
       "author": "Fernando Gonzalez",
-      "time": "5 minutes ago",
+      "time": "2 hours ago",
       "message": "fix(guardian): AmÃ©liorer filtre bot scans ProdGuardian + Tests Docker"
     },
     {
       "hash": "5b7cb718",
       "author": "Fernando Gonzalez",
-      "time": "19 minutes ago",
+      "time": "2 hours ago",
       "message": "docs: Ajout NEXT_SESSION_PROMPT.md pour prochaine instance"
     },
     {
       "hash": "215e28e9",
       "author": "Fernando Gonzalez",
-      "time": "23 minutes ago",
+      "time": "2 hours ago",
       "message": "docs(passation): Ajout session audit complet + Guardian + Docker"
-    },
-    {
-      "hash": "092d5c67",
-      "author": "Fernando Gonzalez",
-      "time": "25 minutes ago",
-      "message": "fix(guardian): AmÃ©liorer Guardian + Docker Compose + Audit complet"
     }
   ],
   "recommendations": [
