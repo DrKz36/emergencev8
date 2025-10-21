@@ -1,6 +1,6 @@
 # 🛡️ Guardian - Résumé pour Codex GPT
 
-**Généré le:** 2025-10-21 09:28:53
+**Généré le:** 2025-10-21 09:30:26
 **Source:** Rapports automatiques Guardian (ProdGuardian, Anima, Neo, Nexus)
 
 ---
@@ -9,7 +9,7 @@
 
 | Guardian | Status | Métriques clés |
 |----------|--------|----------------|
-| **Production** | `OK` | 0 erreurs, 2 warnings, 80 logs analysés |
+| **Production** | `OK` | 0 erreurs, 0 warnings, 80 logs analysés |
 | **Documentation** | `ok` | 0 gaps, 0 mises à jour proposées |
 | **Intégrité** | `ok` | 0 issues (0 critiques) |
 | **Rapport Unifié** | `ok` | 0 issues totales |
@@ -20,11 +20,11 @@
 
 ### 📝 Commits récents (contexte)
 
-- `ee0f0547` - chore(reports): Auto-update rapports Guardian post-docs (Fernando Gonzalez, 5 seconds ago)
-- `2cb23c05` - docs(ws/cloudrun): Documentation complÃ¨te WsOutbox + Cloud Run Warm-up (Fernando Gonzalez, 24 seconds ago)
-- `401703e1` - chore(reports): Auto-update rapports Guardian post-commit WsOutbox (Fernando Gonzalez, 3 minutes ago)
-- `b5351bf5` - feat(ws/cloudrun): WsOutbox + warm-up complet + healthcheck strict (Fernando Gonzalez, 5 minutes ago)
-- `5569dcb9` - chore(reports): Auto-update codex_summary.md post-commit (Fernando Gonzalez, 17 minutes ago)
+- `1ff832f9` - fix(guardian): auto_update_docs.py use unified reports/ path (Fernando Gonzalez, 5 seconds ago)
+- `1583a926` - refactor(guardian): Phase 1 - Unification structure rapports (Quick Wins) (Fernando Gonzalez, 34 seconds ago)
+- `ee0f0547` - chore(reports): Auto-update rapports Guardian post-docs (Fernando Gonzalez, 2 minutes ago)
+- `2cb23c05` - docs(ws/cloudrun): Documentation complÃ¨te WsOutbox + Cloud Run Warm-up (Fernando Gonzalez, 2 minutes ago)
+- `401703e1` - chore(reports): Auto-update rapports Guardian post-commit WsOutbox (Fernando Gonzalez, 4 minutes ago)
 
 ---
 
@@ -48,7 +48,7 @@
 
 - Fichiers backend modifiés: 0
 - Fichiers frontend modifiés: 0
-- Fichiers docs modifiés: 2
+- Fichiers docs modifiés: 6
 - Issues par sévérité:
   - critical: 0
   - warning: 0
@@ -58,7 +58,7 @@
 
 ## ⚡ Que faire maintenant ?
 
-4. **🟡 PRIORITÉ MOYENNE** - Investiguer les warnings production
+✅ **Tout va bien !** Aucune action urgente requise.
 
 ---
 

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-21T09:28:53.402466",
+  "timestamp": "2025-10-21T09:30:26.615185",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -7,56 +7,16 @@
   "status": "OK",
   "summary": {
     "errors": 0,
-    "warnings": 2,
+    "warnings": 0,
     "critical_signals": 0,
     "latency_issues": 0
   },
   "errors": [],
-  "warnings": [
-    {
-      "time": "2025-10-21T07:25:51.881410Z",
-      "msg": "GET https://34.8.149.118/.env → 404"
-    },
-    {
-      "time": "2025-10-21T07:25:15.040808Z",
-      "msg": "GET https://34.54.90.143/security.txt → 404"
-    }
-  ],
+  "warnings": [],
   "critical_signals": [],
   "latency_issues": [],
   "errors_detailed": [],
-  "warnings_detailed": [
-    {
-      "timestamp": "2025-10-21T07:25:51.881410Z",
-      "severity": "WARNING",
-      "message": "GET https://34.8.149.118/.env → 404",
-      "stack_trace": null,
-      "endpoint": "https://34.8.149.118/.env",
-      "http_method": "GET",
-      "status_code": 404,
-      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.2 Safari/605.1.15",
-      "request_id": "projects/emergence-469005/traces/c6da58f092ce8bf94e8a9130c76228fd",
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    },
-    {
-      "timestamp": "2025-10-21T07:25:15.040808Z",
-      "severity": "WARNING",
-      "message": "GET https://34.54.90.143/security.txt → 404",
-      "stack_trace": null,
-      "endpoint": "https://34.54.90.143/security.txt",
-      "http_method": "GET",
-      "status_code": 404,
-      "user_agent": "Mozilla/5.0 (compatible; CensysInspect/1.1; +https://about.censys.io/)",
-      "request_id": "projects/emergence-469005/traces/b1a13c666c176e6bf794f52b2c0516ee",
-      "error_type": null,
-      "file_path": null,
-      "line_number": null,
-      "full_payload": null
-    }
-  ],
+  "warnings_detailed": [],
   "error_patterns": {
     "by_endpoint": {},
     "by_error_type": {},
@@ -67,34 +27,34 @@
   "code_snippets": [],
   "recent_commits": [
     {
-      "hash": "ee0f0547",
+      "hash": "1ff832f9",
       "author": "Fernando Gonzalez",
       "time": "5 seconds ago",
+      "message": "fix(guardian): auto_update_docs.py use unified reports/ path"
+    },
+    {
+      "hash": "1583a926",
+      "author": "Fernando Gonzalez",
+      "time": "34 seconds ago",
+      "message": "refactor(guardian): Phase 1 - Unification structure rapports (Quick Wins)"
+    },
+    {
+      "hash": "ee0f0547",
+      "author": "Fernando Gonzalez",
+      "time": "2 minutes ago",
       "message": "chore(reports): Auto-update rapports Guardian post-docs"
     },
     {
       "hash": "2cb23c05",
       "author": "Fernando Gonzalez",
-      "time": "24 seconds ago",
+      "time": "2 minutes ago",
       "message": "docs(ws/cloudrun): Documentation complÃ¨te WsOutbox + Cloud Run Warm-up"
     },
     {
       "hash": "401703e1",
       "author": "Fernando Gonzalez",
-      "time": "3 minutes ago",
+      "time": "4 minutes ago",
       "message": "chore(reports): Auto-update rapports Guardian post-commit WsOutbox"
-    },
-    {
-      "hash": "b5351bf5",
-      "author": "Fernando Gonzalez",
-      "time": "5 minutes ago",
-      "message": "feat(ws/cloudrun): WsOutbox + warm-up complet + healthcheck strict"
-    },
-    {
-      "hash": "5569dcb9",
-      "author": "Fernando Gonzalez",
-      "time": "17 minutes ago",
-      "message": "chore(reports): Auto-update codex_summary.md post-commit"
     }
   ],
   "recommendations": [

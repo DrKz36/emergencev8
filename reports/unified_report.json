@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "timestamp": "2025-10-21T09:28:48.950907",
-    "commit_hash": "2cb23c05a22b93e880723d2ba98e40784b7dff9b",
-    "commit_message": "docs(ws/cloudrun): Documentation complète WsOutbox + Cloud Run Warm-up\n\nAjout de 2 documents techniques détaillés :\n\n1. docs/architecture/WsOutbox.md\n   - Architecture WsOutbox (queue, drain loop, batching)\n   - Guide utilisation (intégration ConnectionManager)\n   - Métriques Prometheus (5 métriques détaillées)\n   - Monitoring Grafana (dashboards + alertes)\n   - Troubleshooting (queue saturée, latency, drops)\n   - Tests de charge (script 1000 msgs/10s)\n\n2. docs/deployment/CloudRunWarmup.md\n   - Workflow startup détaillé (DB → SBERT → Chroma → DI)\n   - État global _warmup_ready (4 flags)\n   - Healthcheck strict /healthz (200 si ready, 503 sinon)\n   - Configuration Cloud Run (YAML + gcloud CLI)\n   - Monitoring logs + métriques Cloud Run\n   - Troubleshooting (503 permanent, warmup lent, restart loop)\n   - Checklist déploiement production\n\nCes docs permettent à l'équipe de :\n- Comprendre l'implémentation technique\n- Monitorer en production (Prometheus + Grafana)\n- Débugger les problèmes (troubleshooting détaillé)\n- Déployer en toute sécurité (checklists)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    "timestamp": "2025-10-21T09:30:22.082041",
+    "commit_hash": "1583a926460248dfd881675f8d57c65c0ce5e1f2",
+    "commit_message": "refactor(guardian): Phase 1 - Unification structure rapports (Quick Wins)\n\nPROBLÈMES RÉSOLUS :\n- 13 fichiers dupliqués entre reports/ et claude-plugins/.../reports/\n- 9 rapports obsolètes qui traînaient\n- 4 tâches Task Scheduler redondantes\n- Confusion sur quel emplacement lire\n\nACTIONS PHASE 1 :\n\n1. Unification rapports (1 seul emplacement)\n   - Modifié tous agents Guardian pour écrire dans reports/ (racine)\n   - Scripts: scan_docs.py, check_integrity.py, generate_report.py,\n     master_orchestrator.py, analyze_ai_costs.py\n   - REPORTS_DIR = REPO_ROOT / \"reports\" (au lieu de PLUGIN_DIR)\n   - Supprimé claude-plugins/.../reports/ (plus de duplication)\n\n2. Nettoyage rapports\n   - Créé reports/archive/ pour rapports historiques\n   - Archivé 9 rapports obsolètes :\n     * consolidated_report_*.json (3 fichiers)\n     * orchestration_report.json\n     * memory_phase3_validation_report.json\n     * guardian_verification_report.json\n     * archive_cleanup_report.json\n     * auto_update_report.json\n     * dev_logs_report.json\n   - Ajouté reports/.gitignore pour futurs rapports temporaires\n\n3. Unification Task Scheduler\n   - Supprimé 3 tâches redondantes :\n     * Guardian-ProdCheck\n     * Guardian_EmailReports\n     * ProdGuardian_AutoMonitor\n   - Gardé uniquement : EMERGENCE_Guardian_ProdMonitor\n\n4. Documentation mise à jour\n   - README_GUARDIAN.md : Section \"Emplacements rapports\" mise à jour\n   - Section Task Scheduler clarifiée (1 seule tâche)\n   - Suppression références ancien emplacement\n\n5. Tests complets\n   - ✅ Anima (DocKeeper) : reports/docs_report.json\n   - ✅ Neo (IntegrityWatcher) : reports/integrity_report.json\n   - ✅ Nexus (Coordinator) : reports/unified_report.json\n   - ✅ ProdGuardian : reports/prod_report.json\n   - ✅ Master Orchestrator : reports/global_report.json\n   - ✅ Codex Summary : reports/codex_summary.md\n\nRÉSULTAT :\n- 1 seul emplacement : reports/ (racine)\n- 0 duplication, 0 confusion\n- Structure propre : 7 rapports actifs + archive/\n- 1 tâche planifiée au lieu de 4\n- Agents IA toujours à jour\n\nAUDIT COMPLET :\nNouveau document : docs/GUARDIAN_AUDIT_RECOMMENDATIONS.md (626 lignes)\n- État actuel système\n- Problèmes identifiés\n- Recommandations Phases 1-4\n- Plans cloud integration\n\nTemps Phase 1 : ~3h\nProchaine étape : Phase 2 (CI/CD GitHub Actions)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
     "nexus_version": "1.0.0"
   },
   "executive_summary": {
@@ -31,26 +31,54 @@
   "priority_actions": [],
   "full_reports": {
     "anima": {
-      "timestamp": "2025-10-21T09:28:48.701867",
-      "commit_hash": "2cb23c05a22b93e880723d2ba98e40784b7dff9b",
-      "commit_message": "docs(ws/cloudrun): Documentation complète WsOutbox + Cloud Run Warm-up\n\nAjout de 2 documents techniques détaillés :\n\n1. docs/architecture/WsOutbox.md\n   - Architecture WsOutbox (queue, drain loop, batching)\n   - Guide utilisation (intégration ConnectionManager)\n   - Métriques Prometheus (5 métriques détaillées)\n   - Monitoring Grafana (dashboards + alertes)\n   - Troubleshooting (queue saturée, latency, drops)\n   - Tests de charge (script 1000 msgs/10s)\n\n2. docs/deployment/CloudRunWarmup.md\n   - Workflow startup détaillé (DB → SBERT → Chroma → DI)\n   - État global _warmup_ready (4 flags)\n   - Healthcheck strict /healthz (200 si ready, 503 sinon)\n   - Configuration Cloud Run (YAML + gcloud CLI)\n   - Monitoring logs + métriques Cloud Run\n   - Troubleshooting (503 permanent, warmup lent, restart loop)\n   - Checklist déploiement production\n\nCes docs permettent à l'équipe de :\n- Comprendre l'implémentation technique\n- Monitorer en production (Prometheus + Grafana)\n- Débugger les problèmes (troubleshooting détaillé)\n- Déployer en toute sécurité (checklists)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+      "timestamp": "2025-10-21T09:30:21.832533",
+      "commit_hash": "1583a926460248dfd881675f8d57c65c0ce5e1f2",
+      "commit_message": "refactor(guardian): Phase 1 - Unification structure rapports (Quick Wins)\n\nPROBLÈMES RÉSOLUS :\n- 13 fichiers dupliqués entre reports/ et claude-plugins/.../reports/\n- 9 rapports obsolètes qui traînaient\n- 4 tâches Task Scheduler redondantes\n- Confusion sur quel emplacement lire\n\nACTIONS PHASE 1 :\n\n1. Unification rapports (1 seul emplacement)\n   - Modifié tous agents Guardian pour écrire dans reports/ (racine)\n   - Scripts: scan_docs.py, check_integrity.py, generate_report.py,\n     master_orchestrator.py, analyze_ai_costs.py\n   - REPORTS_DIR = REPO_ROOT / \"reports\" (au lieu de PLUGIN_DIR)\n   - Supprimé claude-plugins/.../reports/ (plus de duplication)\n\n2. Nettoyage rapports\n   - Créé reports/archive/ pour rapports historiques\n   - Archivé 9 rapports obsolètes :\n     * consolidated_report_*.json (3 fichiers)\n     * orchestration_report.json\n     * memory_phase3_validation_report.json\n     * guardian_verification_report.json\n     * archive_cleanup_report.json\n     * auto_update_report.json\n     * dev_logs_report.json\n   - Ajouté reports/.gitignore pour futurs rapports temporaires\n\n3. Unification Task Scheduler\n   - Supprimé 3 tâches redondantes :\n     * Guardian-ProdCheck\n     * Guardian_EmailReports\n     * ProdGuardian_AutoMonitor\n   - Gardé uniquement : EMERGENCE_Guardian_ProdMonitor\n\n4. Documentation mise à jour\n   - README_GUARDIAN.md : Section \"Emplacements rapports\" mise à jour\n   - Section Task Scheduler clarifiée (1 seule tâche)\n   - Suppression références ancien emplacement\n\n5. Tests complets\n   - ✅ Anima (DocKeeper) : reports/docs_report.json\n   - ✅ Neo (IntegrityWatcher) : reports/integrity_report.json\n   - ✅ Nexus (Coordinator) : reports/unified_report.json\n   - ✅ ProdGuardian : reports/prod_report.json\n   - ✅ Master Orchestrator : reports/global_report.json\n   - ✅ Codex Summary : reports/codex_summary.md\n\nRÉSULTAT :\n- 1 seul emplacement : reports/ (racine)\n- 0 duplication, 0 confusion\n- Structure propre : 7 rapports actifs + archive/\n- 1 tâche planifiée au lieu de 4\n- Agents IA toujours à jour\n\nAUDIT COMPLET :\nNouveau document : docs/GUARDIAN_AUDIT_RECOMMENDATIONS.md (626 lignes)\n- État actuel système\n- Problèmes identifiés\n- Recommandations Phases 1-4\n- Plans cloud integration\n\nTemps Phase 1 : ~3h\nProchaine étape : Phase 2 (CI/CD GitHub Actions)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
       "status": "ok",
       "changes_detected": {
         "backend": [],
         "frontend": [],
         "docs": [
-          "docs/architecture/WsOutbox.md",
-          "docs/deployment/CloudRunWarmup.md"
+          "claude-plugins/integrity-docs-guardian/README_GUARDIAN.md",
+          "claude-plugins/integrity-docs-guardian/reports/ai_model_cost_audit_20251017.md",
+          "claude-plugins/integrity-docs-guardian/reports/ai_model_cost_audit_20251018.md",
+          "docs/GUARDIAN_AUDIT_RECOMMENDATIONS.md",
+          "reports/archive/README.md",
+          "reports/codex_summary.md"
         ],
-        "other": []
+        "other": [
+          "claude-plugins/integrity-docs-guardian/reports/test_report.html",
+          "claude-plugins/integrity-docs-guardian/scripts/analyze_ai_costs.py",
+          "claude-plugins/integrity-docs-guardian/scripts/check_integrity.py",
+          "claude-plugins/integrity-docs-guardian/scripts/generate_report.py",
+          "claude-plugins/integrity-docs-guardian/scripts/master_orchestrator.py",
+          "claude-plugins/integrity-docs-guardian/scripts/scan_docs.py",
+          "reports/.gitignore",
+          "reports/archive/.gitkeep",
+          "reports/archive/archive_cleanup_report.json",
+          "reports/archive/auto_update_report.json",
+          "reports/archive/consolidated_report_20251016_181816.json",
+          "reports/archive/consolidated_report_20251016_190853.json",
+          "reports/archive/consolidated_report_20251017_055101.json",
+          "reports/archive/dev_logs_report.json",
+          "reports/archive/guardian_verification_report.json",
+          "reports/archive/memory_phase3_validation_report.json",
+          "reports/archive/orchestration_report.json",
+          "reports/docs_report.json",
+          "reports/global_report.json",
+          "reports/integrity_report.json",
+          "reports/prod_report.json",
+          "reports/unified_report.json",
+          "scripts/analyze_guardian_structure.py"
+        ]
       },
       "documentation_gaps": [],
       "proposed_updates": [],
       "statistics": {
-        "files_changed": 2,
+        "files_changed": 29,
         "backend_files": 0,
         "frontend_files": 0,
-        "docs_files": 2,
+        "docs_files": 6,
         "gaps_found": 0,
         "high_severity": 0,
         "medium_severity": 0,
@@ -60,7 +88,7 @@
       "summary": "0 documentation gap(s) found, 0 update(s) proposed"
     },
     "neo": {
-      "timestamp": "2025-10-21T09:28:48.801400",
+      "timestamp": "2025-10-21T09:30:21.935021",
       "status": "ok",
       "backend_changes": {
         "files": [],
@@ -93,10 +121,10 @@
     }
   },
   "statistics": {
-    "total_files_changed": 2,
+    "total_files_changed": 29,
     "backend_files": 0,
     "frontend_files": 0,
-    "docs_files": 2,
+    "docs_files": 6,
     "issues_by_severity": {
       "critical": 0,
       "warning": 0,
