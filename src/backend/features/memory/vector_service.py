@@ -1383,9 +1383,10 @@ class VectorService:
                     results=final_results,
                 )
 
+            score_info = f", score_min={final_results[-1]['weighted_score']:.3f}" if final_results else ""
             logger.info(
                 f"[VectorService] Weighted query '{query_text[:30]}...': "
-                f"{len(final_results)} résultats (score_min={final_results[-1]['weighted_score']:.3f} si résultats)"
+                f"{len(final_results)} résultats{score_info}"
             )
 
             # 🆕 Métriques requête
