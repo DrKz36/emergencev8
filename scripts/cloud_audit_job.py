@@ -33,8 +33,8 @@ class CloudAuditJob:
 
         health_endpoints = [
             f"{SERVICE_URL}/api/health",
-            f"{SERVICE_URL}/api/monitoring/health/liveness",
-            f"{SERVICE_URL}/api/monitoring/health/readiness"
+            f"{SERVICE_URL}/healthz",
+            f"{SERVICE_URL}/ready"
         ]
 
         results = {}

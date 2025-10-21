@@ -299,11 +299,57 @@ async def _check_llm_providers(request: Request) -> Dict[str, Any]:
         return {"status": "down", "error": str(e)}
 
 
-# Liveness and readiness probes have been moved to main.py:
-# - /healthz (liveness)
-# - /ready (readiness with DB/Vector checks)
-#
-# These endpoints are simpler and at root level for Cloud Run compatibility.
+# Liveness and readiness probes:
+# - Primary endpoints in main.py: /healthz and /ready (root level for Cloud Run)
+# - Legacy endpoints below for backward compatibility with existing monitoring tools
+
+
+@router.get("/health/liveness")
+async def liveness_probe() -> Dict[str, Any]:
+    """
+    Liveness probe - simple check that the process is alive.
+    Legacy endpoint for backward compatibility.
+    Use /healthz instead for new implementations.
+    """
+    return {"ok": True}
+
+
+@router.get("/health/readiness")
+async def readiness_probe(request: Request) -> Dict[str, Any]:
+    """
+    Readiness probe - checks that all critical services are ready.
+    Legacy endpoint for backward compatibility.
+    Use /ready instead for new implementations.
+    """
+    try:
+        # Check DB
+        db_check = await _check_database(request)
+        # Check VectorService
+        vector_check = await _check_vector_service(request)
+
+        # Determine overall status
+        db_ok = db_check.get("status") == "up"
+        vector_ok = vector_check.get("status") == "up"
+
+        if db_ok and vector_ok:
+            return {"ok": True, "db": "up", "vector": "up"}
+        else:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "ok": False,
+                    "db": db_check.get("status", "unknown"),
+                    "vector": vector_check.get("status", "unknown")
+                }
+            )
+    except Exception as e:
+        logger.error(f"Readiness check failed: {e}", exc_info=True)
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=503,
+            content={"ok": False, "error": str(e)}
+        )
 
 
 @router.get("/system/info")
