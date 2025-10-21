@@ -315,7 +315,7 @@ async def liveness_probe() -> Dict[str, Any]:
     return {"ok": True}
 
 
-@router.get("/health/readiness")
+@router.get("/health/readiness", response_model=None)
 async def readiness_probe(request: Request) -> Union[Dict[str, Any], JSONResponse]:
     """
     Readiness probe - checks that all critical services are ready.
@@ -380,7 +380,7 @@ async def get_system_info(request: Request) -> Dict[str, Any]:
         disk = psutil.disk_usage('/')
 
         # Version info
-        backend_version = os.getenv("BACKEND_VERSION", "beta-2.1.4")
+        backend_version = os.getenv("APP_VERSION") or os.getenv("BACKEND_VERSION", "beta-2.1.4")
         env = os.getenv("ENVIRONMENT", "development")
 
         # Check services
