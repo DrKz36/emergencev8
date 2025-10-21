@@ -1,493 +1,295 @@
-# 🚀 PROMPT POUR PROCHAINE SESSION - ÉMERGENCE V8
+# 🚀 PROMPT NEXT SESSION - Émergence V8
 
-**Date de création** : 2025-10-21
-**Dernière session** : Audit complet + Correctifs Guardian + Docker Compose
-**Prochaines priorités** : Tests + Mypy + Déploiement
-
----
-
-## 📋 CONTEXTE RAPIDE
-
-### État Actuel (Post-Audit 2025-10-21)
-
-**✅ Ce qui est BON** :
-- Backend : 95+ endpoints, tests 45/45 passent ✅
-- Frontend : 53 modules, build OK ✅
-- Production GCP : Stable (0 erreurs réelles) ✅
-- Guardian : ProdGuardian faux positifs corrigés ✅
-- Guardian : Pre-commit hook V2 amélioré ✅
-- Docker : docker-compose.yml complet créé ✅
-- Roadmap : 61% complétée (P0 + P1 done) ✅
-
-**⚠️ Ce qui RESTE À FAIRE** :
-- Mypy : 95 erreurs (désactivé temporairement)
-- Docker Compose : Pas encore testé
-- Frontend : 2 warnings build (admin-icons, vendor chunk)
-- Tests : Endpoints HTTP désactivés
-- Docs Guardian : 45 fichiers (surchargée)
-- Phase P2 roadmap : 0% (admin avancé, 2FA, multi-sessions)
-
-**📄 Documents clés** :
-- `AUDIT_COMPLET_2025-10-21.md` - Audit complet 400+ lignes
-- `docker-compose.yml` - Stack dev complète (nouveau)
-- `docs/passation.md` - Entrée session 2025-10-21 16:45
-- `ROADMAP_OFFICIELLE.md` - Roadmap features
-- `ROADMAP_PROGRESS.md` - Suivi progression 61%
+**Date création** : 2025-10-21 20:45 CET
+**Session précédente** : Priority 1.3 Mypy batch 1 (100 → 66 erreurs) ✅
+**Prochaine session** : Priority 1.3 Mypy batch 2 (66 → 50 erreurs) ou Priority 2
 
 ---
 
-## 🎯 ACTIONS IMMÉDIATES (Priorité 1)
+## 📊 ÉTAT ACTUEL DU PROJET
 
-### 1️⃣ Tester Docker Compose (30 min)
+### ✅ Ce qui fonctionne parfaitement
+- **Tests backend** : 45/45 passent (100%)
+- **Build frontend** : Succès (warnings mineurs)
+- **Production GCP** : Stable (beta-2.1.6 déployé, 100% trafic)
+- **Guardian** : Fonctionnel (faux positifs filtrés: 9 → 7 warnings bots)
+- **Docker Compose** : Stack dev complète opérationnelle
+- **Priority 1** : **3/3 complétées** ✅
+  - 1.1 ProdGuardian faux positifs ✅
+  - 1.2 Pre-commit hook V2 ✅
+  - 1.3 Mypy batch 1 ✅ (100 → 66 erreurs, -34)
 
-**Objectif** : Vérifier que la stack dev complète fonctionne.
+### ⚠️ Ce qui nécessite encore du travail
+- **Mypy** : 66 erreurs (amélioration de 95 → 66, batch 1 complété)
+- **Documentation Guardian** : 45 fichiers (à réduire à 5)
+- **Warnings build frontend** : Chunks trop gros, import mixte
+- **Tests HTTP endpoints** : Désactivés (couverture à améliorer)
+
+---
+
+## 🎯 PROCHAINE PRIORITÉ RECOMMANDÉE
+
+### Option A : Mypy Batch 2 (2-3 heures) ⭐ RECOMMANDÉ
+
+**Objectif** : Réduire erreurs de 66 → 50 (-16 erreurs minimum)
+
+**Focus** :
+1. **Google Cloud imports** (erreurs critiques) :
+   - `google.cloud.storage` attribute not found
+   - `google.cloud.firestore` attribute not found
+   - **Solution** : Installer stubs : `pip install types-google-cloud-storage types-google-cloud-firestore`
+
+2. **Prometheus metrics** (weighted_retrieval_metrics.py ligne 34) :
+   - Incompatible assignment CollectorRegistry
+   - **Solution** : Fix type annotation ou restructurer
+
+3. **Unified retriever** (unified_retriever.py lignes 409, 418, 423) :
+   - Float → int assignments
+   - Object → dict[str, Any] conversion
+   - **Solution** : Add explicit casts or type annotations
 
 **Commandes** :
 ```bash
-# Lancer la stack
-docker-compose up -d
+# Lancer mypy pour voir erreurs restantes
+cd src && mypy backend/ --explicit-package-bases --no-error-summary 2>&1 | head -n 50
 
-# Vérifier les services
-docker-compose ps
+# Installer stubs Google Cloud
+pip install types-google-cloud-storage types-google-cloud-firestore
 
-# Vérifier les logs
-docker-compose logs backend
-docker-compose logs frontend
-
-# Tester l'app
-curl http://localhost:8000/api/health
-curl http://localhost:8000/api/ready
-
-# Accéder frontend
-# Navigateur: http://localhost:5173
-```
-
-**Critères de succès** :
-- ✅ Tous les services démarrent (backend, frontend, mongo, chromadb)
-- ✅ Backend répond sur http://localhost:8000
-- ✅ Frontend sert sur http://localhost:5173
-- ✅ MongoDB accessible (port 27017)
-- ✅ ChromaDB accessible (port 8001)
-- ✅ Logs propres (pas d'erreurs critiques)
-
-**Si problème** :
-- Vérifier les logs : `docker-compose logs -f [service]`
-- Vérifier variables env : `.env` correctement configuré
-- Vérifier ports : pas de conflit (8000, 5173, 27017, 8001)
-
----
-
-### 2️⃣ Tester Guardian ProdGuardian (15 min)
-
-**Objectif** : Vérifier que le filtre faux positifs 404 fonctionne.
-
-**Commandes** :
-```bash
-# Lancer ProdGuardian manuellement
-python claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py
-
-# Vérifier le rapport
-cat reports/prod_report.json | grep -A 5 "status"
-cat reports/prod_report.json | grep -A 5 "warnings"
-```
-
-**Critères de succès** :
-- ✅ Status = "OK" (pas DEGRADED si pas de vraies erreurs)
-- ✅ Warnings = 0 ou très peu (scans bots filtrés)
-- ✅ Si warnings, vérifier que ce sont de vraies erreurs applicatives
-
-**Si status DEGRADED** :
-- Lire `reports/prod_report.json` section `warnings_detailed`
-- Vérifier si ce sont des 404 de bots (ajouter dans filtre si besoin)
-- Vérifier si ce sont de vraies erreurs 5xx (à corriger)
-
----
-
-### 3️⃣ Corriger Mypy Batch 1 (4 heures)
-
-**Objectif** : Réduire erreurs Mypy de 95 → ~65.
-
-**Stratégie** :
-1. Lancer Mypy sur `src/backend/core/` d'abord (le plus critique)
-2. Fixer les erreurs les plus simples (missing type hints, imports)
-3. Fixer les erreurs de compatibilité Pydantic v2
-4. Re-lancer les tests après chaque correctif
-
-**Commandes** :
-```bash
-# Lancer Mypy sur core/
-cd src/backend
-mypy core/ --show-error-codes --pretty
-
-# Fixer erreurs + relancer
-mypy core/
-
-# Une fois core/ OK, passer à features/
-mypy features/auth/
-mypy features/chat/
-# etc.
-
-# Vérifier que tests passent toujours
+# Re-tester après corrections
 pytest -v
 ```
 
-**Types d'erreurs courants** :
-- `error: Missing type annotation` → Ajouter `: Type`
-- `error: Incompatible return value` → Fixer le type de retour
-- `error: Argument X to Y has incompatible type` → Caster ou fixer signature
-- `error: Module has no attribute` → Import manquant
-
-**Critères de succès** :
-- ✅ Mypy errors passent de 95 → ~65 (-30 erreurs)
-- ✅ Tests backend : 45/45 passent toujours ✅
-- ✅ Build frontend : OK toujours ✅
+**Temps estimé** : 2-3 heures
+**Difficulté** : Moyenne (imports externes, libs tierces)
 
 ---
 
-## 🔄 ACTIONS SUIVANTES (Priorité 2)
+### Option B : Nettoyer Documentation Guardian (2 heures)
 
-### 4️⃣ Nettoyer Documentation Guardian (2 heures)
+**Objectif** : Passer de 45 fichiers → 5 fichiers essentiels
 
-**Objectif** : Réduire 45 fichiers → 5 fichiers essentiels.
-
-**Fichiers à GARDER** :
+**Fichiers à garder** :
 1. `README.md` - Vue d'ensemble
 2. `SYSTEM_STATUS.md` - État actuel
 3. `CONFIGURATION.md` - Config Guardian
 4. `TROUBLESHOOTING.md` - Debug
 5. `CHANGELOG.md` - Historique
 
-**Fichiers à ARCHIVER** :
-- Tout le reste dans `docs/archive/`
-- Garder structure pour référence historique
+**Fichiers à archiver** : Déplacer vers `docs/archive/`
 
 **Commandes** :
 ```bash
-cd claude-plugins/integrity-docs-guardian
+# Lister fichiers Guardian
+ls -la claude-plugins/integrity-docs-guardian/docs/
 
-# Créer dossier archive
-mkdir -p docs/archive
+# Créer archive
+mkdir -p claude-plugins/integrity-docs-guardian/docs/archive
 
-# Déplacer fichiers obsolètes
-mv docs/*.md docs/archive/ (sauf les 5 à garder)
-
-# Commit
-git add .
-git commit -m "docs(guardian): Nettoyer documentation (45 → 5 fichiers essentiels)"
+# Déplacer fichiers non essentiels
+mv claude-plugins/integrity-docs-guardian/docs/*.md claude-plugins/integrity-docs-guardian/docs/archive/
+# (sauf les 5 à garder)
 ```
+
+**Temps estimé** : 2 heures
+**Difficulté** : Facile
 
 ---
 
-### 5️⃣ Corriger Warnings Build Frontend (2 heures)
+### Option C : Corriger Warnings Build Frontend (2 heures)
 
-**Objectif** : Éliminer warnings Vite.
+**Objectif** : Éliminer warnings Vite
 
-**5.1. Fix admin-icons.js (import mixte)**
+**Changements** :
 
-Fichier : `src/frontend/features/admin/admin-dashboard.js`
+**1. Fix admin-icons.js (import mixte)**
+- Fichier : `src/frontend/features/admin/admin-dashboard.js`
+- Remplacer import statique par dynamique
 
-```javascript
-// Remplacer import statique
-// import { ICONS } from './admin-icons.js';
+**2. Code-split vendor chunk**
+- Fichier : `vite.config.js`
+- Configurer manualChunks pour vendor libs
 
-// Par import dynamique
-const { ICONS } = await import('./admin-icons.js');
-```
-
-**5.2. Code-split vendor chunk**
-
-Créer fichier : `vite.config.js`
-
-```javascript
-import { defineConfig } from 'vite';
-
-export default defineConfig({
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'vendor-core': ['jspdf', 'jspdf-autotable', 'papaparse'],
-        }
-      }
-    },
-    chunkSizeWarningLimit: 600
-  }
-});
-```
-
-**Tests** :
+**Commandes** :
 ```bash
+# Build frontend pour voir warnings
 npm run build
 
-# Vérifier aucun warning
-# Vérifier chunks < 500 KB
+# Vérifier chunks
+ls -lh dist/assets/
 ```
+
+**Temps estimé** : 2 heures
+**Difficulté** : Facile
 
 ---
 
-### 6️⃣ Réactiver Tests HTTP Endpoints (4 heures)
+## 📋 INSTRUCTIONS POUR LA PROCHAINE SESSION
 
-**Objectif** : Augmenter couverture tests backend.
+### Étape 1 : Lecture obligatoire (5 min)
 
-**Actions** :
-1. Fixer mocks obsolètes dans `test_debate_service.py`
-2. Re-enable `test_concept_recall_tracker.py`
-3. Ajouter tests pour endpoints `/api/auth`, `/api/threads`, `/api/memory`
+**Dans cet ordre :**
+1. **`AGENT_SYNC.md`** ← État sync + dernière session
+2. **`AUDIT_COMPLET_2025-10-21.md`** ← Section Priority 1 et 2
+3. **`docs/passation.md`** ← 3 dernières entrées
+4. **`git status`** + **`git log --oneline -10`** ← État Git
 
-**Commandes** :
-```bash
-cd src/backend
+### Étape 2 : Choisir priorité (30 sec)
 
-# Identifier tests désactivés
-pytest --co -q | grep -i skip
+**Recommandation** : **Option A (Mypy Batch 2)** pour continuer momentum sur qualité code.
 
-# Re-enable un par un
-# Éditer fichiers test_*.py
+**Alternative** : Si mypy est trop complexe, basculer sur **Option B (Nettoyer docs)** ou **Option C (Frontend warnings)**.
 
-# Lancer tests
-pytest -v
+### Étape 3 : Exécuter (2-3h)
 
-# Vérifier couverture
-pytest --cov=. --cov-report=term
-```
+**Mode de travail** :
+- ✅ **Autonome** : Fonce directement sans demander
+- ✅ **Tests systématiques** : Après chaque batch de fixes
+- ✅ **Commits atomiques** : Un commit par batch de corrections
+- ✅ **Documentation** : Mettre à jour `AGENT_SYNC.md` et `docs/passation.md` en fin de session
 
-**Objectif** : Passer de 45 tests → 65+ tests
+### Étape 4 : Clôture (10 min)
 
----
-
-## 🚀 DÉPLOIEMENT DOCKER → GCP (2-3 jours)
-
-### Phase D1 : Docker Local (1-2 jours)
-
-**Actions** :
-1. ✅ Docker Compose testé (action 1 ci-dessus)
-2. Build image production locale :
-   ```bash
-   docker build -t emergence-v8:local .
-   docker run -p 8080:8080 emergence-v8:local
-   curl http://localhost:8080/api/health
-   ```
-3. Optimiser taille image (multi-stage build)
-
-### Phase D2 : Préparer GCP (1 jour)
-
-**Actions** :
-1. Vérifier secrets GCP :
-   ```bash
-   gcloud secrets list
-   gcloud secrets versions access latest --secret="OPENAI_API_KEY"
-   ```
-2. Vérifier Firestore collections
-3. Vérifier `stable-service.yaml`
-
-### Phase D3 : Build + Push (30 min)
-
-**Actions** :
-```bash
-gcloud config set project emergence-469005
-
-gcloud builds submit \
-  --tag gcr.io/emergence-469005/emergence-app:beta-2.1.6 \
-  --timeout=20m
-```
-
-### Phase D4 : Canary 10% (1h + 2h observation)
-
-**Actions** :
-```powershell
-.\scripts\deploy-canary.ps1 -ImageTag "beta-2.1.6" -TrafficPercent 10
-```
-
-**Monitoring** : 2 heures, vérifier :
-- Latence P95 < 2s
-- Taux d'erreur < 1%
-- Logs propres
-- Guardian status OK
-
-### Phase D5 : Stable 100% (30 min)
-
-**Actions** :
-```bash
-gcloud run services update emergence-app \
-  --image gcr.io/emergence-469005/emergence-app:beta-2.1.6 \
-  --region europe-west1
-
-gcloud run services update-traffic emergence-app \
-  --to-revisions emergence-app-00042-stable=100 \
-  --region europe-west1
-```
-
-**Monitoring** : 24 heures
-
----
-
-## 📝 CHECKLIST SESSION
-
-**Avant de commencer** :
-- [ ] Lire `AGENT_SYNC.md` (état sync)
-- [ ] Lire `docs/passation.md` (dernière entrée)
-- [ ] Lire `AUDIT_COMPLET_2025-10-21.md` (contexte)
-- [ ] `git status` propre
-- [ ] `git pull` pour sync
-- [ ] Virtualenv Python activé
-
-**Pendant la session** :
-- [ ] Utiliser TodoWrite pour tracker les tâches
-- [ ] Tester après chaque modification
-- [ ] Commiter régulièrement (commits atomiques)
-
-**Fin de session** :
-- [ ] Tests backend : `pytest` ✅
-- [ ] Build frontend : `npm run build` ✅
-- [ ] Mypy : Réduction erreurs visible
-- [ ] `AGENT_SYNC.md` mis à jour
-- [ ] `docs/passation.md` nouvelle entrée
+**Checklist finale :**
+- [ ] Tests backend : `pytest -v` ✅
+- [ ] Mypy (si batch 2) : Compter erreurs restantes
+- [ ] Build frontend (si warnings) : `npm run build` ✅
+- [ ] Mettre à jour `AGENT_SYNC.md`
+- [ ] Nouvelle entrée `docs/passation.md`
+- [ ] Mettre à jour `AUDIT_COMPLET_2025-10-21.md` (progression)
 - [ ] Commit + push
 
 ---
 
-## 🎯 PRIORITÉS PAR URGENCE
+## 🎯 EXEMPLE DE PROMPT POUR DÉMARRER
 
-**IMMÉDIAT (cette semaine)** :
-1. 🔥 **Tester Docker Compose** (30 min) - Critique
-2. 🔥 **Tester ProdGuardian** (15 min) - Critique
-3. ⚙️ **Corriger Mypy batch 1** (4h) - Important
+**Copier-coller ceci dans la prochaine session :**
 
-**COURT TERME (semaine prochaine)** :
-4. 📋 **Nettoyer docs Guardian** (2h) - Important
-5. 📋 **Fix warnings build** (2h) - Important
-6. 📋 **Tests HTTP endpoints** (4h) - Optionnel
+```
+Salut ! Je continue le travail sur Émergence V8.
 
-**MOYEN TERME (2-3 semaines)** :
-7. 🚀 **Déploiement Docker → GCP** (2-3 jours) - Planifié
-8. 🎨 **Phase P2 roadmap** (5-7 jours) - Planifié
+CONTEXTE :
+Session précédente a complété Priority 1.3 Mypy batch 1 (100 → 66 erreurs, -34 erreurs).
+L'audit complet est dans AUDIT_COMPLET_2025-10-21.md.
 
----
+PROCHAINE PRIORITÉ :
+Option A recommandée : Mypy Batch 2 (66 → 50 erreurs)
+Focus sur Google Cloud imports, Prometheus metrics, Unified retriever.
 
-## 🔗 FICHIERS DE RÉFÉRENCE
+ACTIONS IMMÉDIATES :
+1. Lis AGENT_SYNC.md (état sync)
+2. Lis AUDIT_COMPLET_2025-10-21.md (section Priority 1.3)
+3. Lance mypy pour voir erreurs restantes
+4. Corrige batch 2 (Google Cloud imports + Prometheus + Unified retriever)
+5. Teste avec pytest
+6. Commit + mets à jour docs (AGENT_SYNC.md, passation.md, AUDIT_COMPLET_2025-10-21.md)
 
-**Documentation** :
-- [AUDIT_COMPLET_2025-10-21.md](AUDIT_COMPLET_2025-10-21.md) - Audit complet
-- [ROADMAP_OFFICIELLE.md](ROADMAP_OFFICIELLE.md) - Roadmap features
-- [ROADMAP_PROGRESS.md](ROADMAP_PROGRESS.md) - Progression 61%
-- [docker-compose.yml](docker-compose.yml) - Stack dev
-- [AGENT_SYNC.md](AGENT_SYNC.md) - État sync
-- [docs/passation.md](docs/passation.md) - Journal sessions
-
-**Guardian** :
-- [claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py](claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py) - ProdGuardian
-- [.git/hooks/pre-commit](.git/hooks/pre-commit) - Hook V2
-- [reports/prod_report.json](reports/prod_report.json) - Rapport production
-- [reports/unified_report.json](reports/unified_report.json) - Rapport unifié
-
-**Tests** :
-- [src/backend/tests/](src/backend/tests/) - Tests backend
-- [pytest.ini](pytest.ini) - Config pytest
+Commence par lire AGENT_SYNC.md puis fonce sur le batch 2 ! 🚀
+```
 
 ---
 
-## 💡 COMMANDES UTILES
+## 📊 MÉTRIQUES CIBLES
 
-**Tests** :
+| Métrique | État actuel | Objectif batch 2 | Objectif final |
+|----------|-------------|------------------|----------------|
+| Mypy erreurs | 66 | 50 | 35 |
+| Tests backend | 45/45 | 45/45 | 65/65 |
+| Warnings frontend | 2 | 0 | 0 |
+| Docs Guardian | 45 fichiers | 5 fichiers | 5 fichiers |
+
+---
+
+## ⚠️ POINTS D'ATTENTION
+
+1. **Google Cloud stubs** : Installer `types-google-cloud-*` AVANT de corriger erreurs
+2. **Tests après mypy** : Toujours re-lancer pytest après corrections de types
+3. **Prometheus metrics** : Peut nécessiter refactoring (pas juste type annotations)
+4. **Git hooks** : Guardian tourne automatiquement (pre-commit/post-commit)
+5. **Documentation** : Mettre à jour `AUDIT_COMPLET_2025-10-21.md` avec progression
+
+---
+
+## 🔗 RESSOURCES UTILES
+
+**Fichiers clés :**
+- `AGENT_SYNC.md` - Sync inter-agents (dernière session: 2025-10-21 20:30)
+- `AUDIT_COMPLET_2025-10-21.md` - État projet (Priority 1: 3/3 ✅)
+- `docs/passation.md` - Journal sessions (dernière: 2025-10-21 20:30)
+- `mypy_clean_output.txt` - Erreurs mypy (premières 100 lignes)
+- `reports/unified_report.json` - Rapport Guardian unifié
+
+**Commandes rapides :**
 ```bash
-# Tests backend
-cd src/backend && pytest -v
+# Mypy check
+cd src && mypy backend/ --explicit-package-bases --no-error-summary 2>&1 | head -n 50
+
+# Tests
+pytest -v
 
 # Build frontend
 npm run build
 
-# Mypy
-cd src/backend && mypy . --show-error-codes
-
-# Ruff
-ruff check src/backend/
+# Git status
+git status && git log --oneline -10
 ```
 
-**Docker** :
+---
+
+## 📂 DÉTAILS BATCH 2 MYPY
+
+### Erreurs identifiées (66 erreurs totales)
+
+**Catégorie 1: Google Cloud imports (~10-15 erreurs)**
+```
+backend\features\guardian\storage_service.py:20: error: Module "google.cloud" has no attribute "storage"
+backend\features\guardian\storage_service.py:184: error: Item "None" of "Any | None" has no attribute "list_blobs"
+```
+
+**Solution** :
 ```bash
-# Stack complète
-docker-compose up -d
-
-# Logs
-docker-compose logs -f
-
-# Stop
-docker-compose down
-
-# Rebuild
-docker-compose up -d --build
+pip install types-google-cloud-storage types-google-cloud-firestore
 ```
 
-**Guardian** :
-```bash
-# ProdGuardian
-python claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py
-
-# Tous les agents
-pwsh -File claude-plugins/integrity-docs-guardian/scripts/run_audit.ps1
+**Catégorie 2: Prometheus metrics (~5 erreurs)**
+```
+backend\features\memory\weighted_retrieval_metrics.py:34: error: Incompatible types in assignment (expression has type "tuple[Any, ...]", target has type "CollectorRegistry")
 ```
 
-**Git** :
-```bash
-# Status
-git status
+**Solution** : Vérifier si confusion entre import/assignment, restructurer si nécessaire.
 
-# Sync
-git fetch --all --prune
-git pull
-
-# Commit
-git add .
-git commit -m "fix: Description des changements"
-git push
+**Catégorie 3: Unified retriever (~6-8 erreurs)**
+```
+backend\features\memory\unified_retriever.py:409: error: Incompatible types in assignment (expression has type "float", variable has type "int")
+backend\features\memory\unified_retriever.py:423: error: Incompatible types in assignment (expression has type "object", variable has type "dict[str, Any]")
 ```
 
----
+**Solution** : Type annotations explicites (float, cast to int si nécessaire).
 
-## ⚠️ PIÈGES À ÉVITER
-
-1. **Ne pas** lancer `docker-compose up` sans avoir configuré `.env` (API keys)
-2. **Ne pas** modifier Guardian sans tester les hooks après
-3. **Ne pas** corriger Mypy sans relancer les tests backend
-4. **Ne pas** push vers GCP sans tester canary d'abord
-5. **Ne pas** oublier de mettre à jour `AGENT_SYNC.md` et `docs/passation.md`
+**Reste (~35-40 erreurs)** : Union-attr, import-untyped, notes, etc. (à traiter en batch 3)
 
 ---
 
-## 🤝 COLLABORATION CODEX GPT
+## 📝 HISTORIQUE SESSIONS
 
-**Si Codex a travaillé** :
-1. Lire `AGENT_SYNC.md` section "Codex GPT"
-2. Lire `docs/passation.md` dernières entrées Codex
-3. Vérifier fichiers modifiés : `git log --oneline -10 | grep Codex`
-4. Compléter ou corriger le travail si nécessaire
+**Session 2025-10-21 20:30** :
+- ✅ Priority 1.3 Mypy batch 1 complété
+- ✅ 9 fichiers backend corrigés
+- ✅ 34 erreurs mypy éliminées (100 → 66)
+- ✅ Tests: 45/45 passent
+- ✅ Commits: `c837a15`, `3ba97e9`, `8d84393`
 
-**Zones Codex** (indicatif) :
-- Frontend JavaScript (features/, components/)
-- Scripts PowerShell
-- UI/UX responsive
-- Documentation utilisateur
+**Session 2025-10-21 18:15** :
+- ✅ Priority 1.1 ProdGuardian complété
+- ✅ 13 patterns bot scans ajoutés
+- ✅ Warnings production réduits (9 → 7)
+- ✅ Commit: `092d5c6`
 
-**Zones Claude Code** (indicatif) :
-- Backend Python (core/, features/)
-- Tests backend (pytest)
-- Architecture & refactoring
-- Documentation technique
-
----
-
-## 📞 CONTACT
-
-**Si bloqué** :
-- Architecte : Fernando Gonzalez (gonzalefernando@gmail.com)
-- Docs : Lire `TROUBLESHOOTING.md`, `AUDIT_COMPLET_2025-10-21.md`
-- Slack : #emergence-v8 (si configuré)
+**Session 2025-10-21 15:10** :
+- ✅ Docker Compose testé
+- ✅ Pre-commit hook V2 vérifié
+- ✅ Rapports Guardian non versionnés (fix boucle infinie)
 
 ---
 
-**Créé par** : Claude Code (Sonnet 4.5)
-**Date** : 2025-10-21
-**Dernière session** : Audit complet + Guardian + Docker Compose
-**Prochaine session** : Tests + Mypy + Déploiement
-
-🚀 **Fonce !**
+**Bonne session ! 🚀**
