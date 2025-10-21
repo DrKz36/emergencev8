@@ -3,6 +3,15 @@ name: Deploy to Cloud Run
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'Dockerfile'
+      - 'package.json'
+      - 'requirements.txt'
+      - 'pyproject.toml'
+      - '.github/workflows/deploy.yml'
+      - 'scripts/run-backend.ps1'
+      - 'scripts/run-backend.sh'
 
 env:
   GCP_PROJECT_ID: emergence-469005
