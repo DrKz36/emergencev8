@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-21T09:28:35.945790",
+  "timestamp": "2025-10-21T09:28:53.402466",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -67,9 +67,15 @@
   "code_snippets": [],
   "recent_commits": [
     {
+      "hash": "ee0f0547",
+      "author": "Fernando Gonzalez",
+      "time": "5 seconds ago",
+      "message": "chore(reports): Auto-update rapports Guardian post-docs"
+    },
+    {
       "hash": "2cb23c05",
       "author": "Fernando Gonzalez",
-      "time": "6 seconds ago",
+      "time": "24 seconds ago",
       "message": "docs(ws/cloudrun): Documentation complÃ¨te WsOutbox + Cloud Run Warm-up"
     },
     {
@@ -89,12 +95,6 @@
       "author": "Fernando Gonzalez",
       "time": "17 minutes ago",
       "message": "chore(reports): Auto-update codex_summary.md post-commit"
-    },
-    {
-      "hash": "21f51c14",
-      "author": "Fernando Gonzalez",
-      "time": "17 minutes ago",
-      "message": "fix(guardian): Sync rapports + Documentation accÃ¨s Codex GPT"
     }
   ],
   "recommendations": [

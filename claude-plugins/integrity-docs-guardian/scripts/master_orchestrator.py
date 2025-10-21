@@ -18,8 +18,8 @@ import logging
 # Setup paths
 SCRIPT_DIR = Path(__file__).parent
 ROOT_DIR = SCRIPT_DIR.parent
-PROJECT_ROOT = ROOT_DIR.parent
-REPORTS_DIR = ROOT_DIR / "reports"
+PROJECT_ROOT = ROOT_DIR.parent.parent  # Go up to repo root
+REPORTS_DIR = PROJECT_ROOT / "reports"  # UNIFIED: All reports in repo root
 LOCK_FILE = ROOT_DIR / ".guardian_lock"
 CONFIG_FILE = ROOT_DIR / "config" / "guardian_config.json"
 

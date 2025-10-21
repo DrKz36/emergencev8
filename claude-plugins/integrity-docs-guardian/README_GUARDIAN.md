@@ -83,11 +83,20 @@ Avant chaque push vers `main` :
 
 ### Task Scheduler (Background)
 
+**⚠️ IMPORTANT (2025-10-21) : Tâche unique !**
+
+**Tâche active :** `EMERGENCE_Guardian_ProdMonitor`
+
 **PRODGUARDIAN** s'exécute automatiquement toutes les 6h pour :
 - Analyser logs Cloud Run (erreurs, warnings, OOMKilled)
 - Détecter anomalies de trafic
-- Générer rapport `prod_report.json`
+- Générer rapport `prod_report.json` dans `reports/`
 - **(Optionnel)** Envoyer email si erreurs critiques
+
+**Tâches redondantes supprimées :**
+- ~~`Guardian-ProdCheck`~~
+- ~~`Guardian_EmailReports`~~
+- ~~`ProdGuardian_AutoMonitor`~~
 
 ---
 
@@ -125,17 +134,23 @@ Quand on vous demande "vérifie les rapports Guardian", vous devez **juste lire 
 
 ### Emplacements des rapports
 
-**Rapports principaux (à lire en priorité) :**
+**⚠️ IMPORTANT (2025-10-21) : Structure unifiée !**
 
-| Fichier | Chemin absolu | Agent | Contenu |
-|---------|---------------|-------|---------|
-| `prod_report.json` | `c:\dev\emergenceV8\reports\prod_report.json` | PRODGUARDIAN | État production (erreurs, warnings, latence) |
-| `unified_report.json` | `c:\dev\emergenceV8\reports\unified_report.json` | NEXUS | Vue unifiée Anima + Neo, priorisation issues |
-| `integrity_report.json` | `c:\dev\emergenceV8\reports\integrity_report.json` | NEO | Intégrité backend/frontend |
-| `docs_report.json` | `c:\dev\emergenceV8\reports\docs_report.json` | ANIMA | Gaps documentation, versioning |
-| `global_report.json` | `c:\dev\emergenceV8\reports\global_report.json` | Master Orchestrator | Rapport global tous agents |
+**Tous les rapports sont maintenant dans `reports/` (racine du projet)** :
 
-**Rapports aussi disponibles dans :** `claude-plugins/integrity-docs-guardian/reports/` (copie sync)
+| Fichier | Agent | Contenu |
+|---------|-------|---------|
+| `prod_report.json` | PRODGUARDIAN | État production (erreurs, warnings, latence) |
+| `docs_report.json` | ANIMA | Gaps documentation, versioning |
+| `integrity_report.json` | NEO | Intégrité backend/frontend |
+| `unified_report.json` | NEXUS | Vue unifiée Anima + Neo, priorisation issues |
+| `global_report.json` | Master Orchestrator | Rapport global tous agents |
+| `codex_summary.md` | Auto-généré | Résumé markdown pour agents IA (Codex GPT) |
+| `ai_model_cost_audit_*.json` | THEIA (optionnel) | Analyse coûts AI |
+
+**Rapports archivés :** `reports/archive/` (rapports obsolètes/historiques)
+
+**Ancien emplacement supprimé :** ~~`claude-plugins/integrity-docs-guardian/reports/`~~ (plus de duplication !)
 
 ### Comment accéder aux rapports (agents IA)
 

@@ -20,7 +20,7 @@ if sys.platform == 'win32':
 SCRIPT_DIR = Path(__file__).parent
 PLUGIN_DIR = SCRIPT_DIR.parent
 REPO_ROOT = PLUGIN_DIR.parent.parent
-REPORTS_DIR = PLUGIN_DIR / "reports"
+REPORTS_DIR = REPO_ROOT / "reports"  # UNIFIED: All reports in repo root
 
 # Ensure reports directory exists
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)

@@ -1,14 +1,14 @@
 {
-  "timestamp": "2025-10-21T09:07:20.295954",
-  "commit_hash": "c6369bc8924cf0c2027da08d41866e8b050ecf37",
-  "commit_message": "docs(sync): Mise à jour AGENT_SYNC.md + passation.md (Fix 404 onboarding)\n\nDocumentation complète de la correction du bug 404 onboarding.html :\n\nAGENT_SYNC.md:\n- Nouvelle session Codex GPT (2025-10-21 08:00 CET)\n- Diagnostic problème 404 (fichier manquant en racine)\n- Correction + déploiement production complet\n- Tests validation (curl 200 OK en prod)\n- Workflow onboarding maintenant fonctionnel\n\ndocs/passation.md:\n- Nouvelle entrée détaillée avec contexte utilisateur\n- Investigation code + logs production\n- Stack complète déploiement (build/push/deploy)\n- Workflow onboarding documenté (9 étapes)\n- Impact + prochaines actions\n\nRéférence commit fix: 59ba90f\nRéférence révision Cloud Run: emergence-app-00410-lbk\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "timestamp": "2025-10-21T09:28:48.701867",
+  "commit_hash": "2cb23c05a22b93e880723d2ba98e40784b7dff9b",
+  "commit_message": "docs(ws/cloudrun): Documentation complète WsOutbox + Cloud Run Warm-up\n\nAjout de 2 documents techniques détaillés :\n\n1. docs/architecture/WsOutbox.md\n   - Architecture WsOutbox (queue, drain loop, batching)\n   - Guide utilisation (intégration ConnectionManager)\n   - Métriques Prometheus (5 métriques détaillées)\n   - Monitoring Grafana (dashboards + alertes)\n   - Troubleshooting (queue saturée, latency, drops)\n   - Tests de charge (script 1000 msgs/10s)\n\n2. docs/deployment/CloudRunWarmup.md\n   - Workflow startup détaillé (DB → SBERT → Chroma → DI)\n   - État global _warmup_ready (4 flags)\n   - Healthcheck strict /healthz (200 si ready, 503 sinon)\n   - Configuration Cloud Run (YAML + gcloud CLI)\n   - Monitoring logs + métriques Cloud Run\n   - Troubleshooting (503 permanent, warmup lent, restart loop)\n   - Checklist déploiement production\n\nCes docs permettent à l'équipe de :\n- Comprendre l'implémentation technique\n- Monitorer en production (Prometheus + Grafana)\n- Débugger les problèmes (troubleshooting détaillé)\n- Déployer en toute sécurité (checklists)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
   "status": "ok",
   "changes_detected": {
     "backend": [],
     "frontend": [],
     "docs": [
-      "AGENT_SYNC.md",
-      "docs/passation.md"
+      "docs/architecture/WsOutbox.md",
+      "docs/deployment/CloudRunWarmup.md"
     ],
     "other": []
   },

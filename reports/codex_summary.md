@@ -1,6 +1,6 @@
 # 🛡️ Guardian - Résumé pour Codex GPT
 
-**Généré le:** 2025-10-21 09:28:36
+**Généré le:** 2025-10-21 09:28:53
 **Source:** Rapports automatiques Guardian (ProdGuardian, Anima, Neo, Nexus)
 
 ---
@@ -20,11 +20,11 @@
 
 ### 📝 Commits récents (contexte)
 
-- `2cb23c05` - docs(ws/cloudrun): Documentation complÃ¨te WsOutbox + Cloud Run Warm-up (Fernando Gonzalez, 6 seconds ago)
+- `ee0f0547` - chore(reports): Auto-update rapports Guardian post-docs (Fernando Gonzalez, 5 seconds ago)
+- `2cb23c05` - docs(ws/cloudrun): Documentation complÃ¨te WsOutbox + Cloud Run Warm-up (Fernando Gonzalez, 24 seconds ago)
 - `401703e1` - chore(reports): Auto-update rapports Guardian post-commit WsOutbox (Fernando Gonzalez, 3 minutes ago)
 - `b5351bf5` - feat(ws/cloudrun): WsOutbox + warm-up complet + healthcheck strict (Fernando Gonzalez, 5 minutes ago)
 - `5569dcb9` - chore(reports): Auto-update codex_summary.md post-commit (Fernando Gonzalez, 17 minutes ago)
-- `21f51c14` - fix(guardian): Sync rapports + Documentation accÃ¨s Codex GPT (Fernando Gonzalez, 17 minutes ago)
 
 ---
 
