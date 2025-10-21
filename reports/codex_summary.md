@@ -1,6 +1,6 @@
 # 🛡️ Guardian - Résumé pour Codex GPT
 
-**Généré le:** 2025-10-21 09:11:41
+**Généré le:** 2025-10-21 09:23:46
 **Source:** Rapports automatiques Guardian (ProdGuardian, Anima, Neo, Nexus)
 
 ---
@@ -20,11 +20,11 @@
 
 ### 📝 Commits récents (contexte)
 
-- `c6369bc8` - docs(sync): Mise Ã  jour AGENT_SYNC.md + passation.md (Fix 404 onboarding) (Fernando Gonzalez, 63 minutes ago)
-- `59ba90f1` - fix(onboarding): Ajouter onboarding.html manquant Ã  la racine (Fernando Gonzalez, 73 minutes ago)
-- `20daec25` - feat(monitoring): Config alertes GCP + Tests E2E Guardian + Fix YAML (Fernando Gonzalez, 74 minutes ago)
-- `af1aac4d` - fix(prod): RÃ©solution OOM Cloud Run + Tests unitaires Guardian (Fernando Gonzalez, 81 minutes ago)
-- `c1bc1681` - chore(reports): Sync final rapport Codex (Fernando Gonzalez, 2 hours ago)
+- `b5351bf5` - feat(ws/cloudrun): WsOutbox + warm-up complet + healthcheck strict (Fernando Gonzalez, 11 seconds ago)
+- `5569dcb9` - chore(reports): Auto-update codex_summary.md post-commit (Fernando Gonzalez, 12 minutes ago)
+- `21f51c14` - fix(guardian): Sync rapports + Documentation accÃ¨s Codex GPT (Fernando Gonzalez, 12 minutes ago)
+- `c6369bc8` - docs(sync): Mise Ã  jour AGENT_SYNC.md + passation.md (Fix 404 onboarding) (Fernando Gonzalez, 80 minutes ago)
+- `59ba90f1` - fix(onboarding): Ajouter onboarding.html manquant Ã  la racine (Fernando Gonzalez, 2 hours ago)
 
 ---
 
