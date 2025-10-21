@@ -1,3 +1,71 @@
+## [2025-10-21 17:55 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `PROMPT_CODEX_RAPPORTS.md` (enrichi avec TOUTES les infos utiles des rapports)
+- `scripts/analyze_guardian_reports.py` (nouveau - script d'analyse automatique)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**Problème identifié:** Le prompt court pour Codex était trop simpliste.
+
+Il ne montrait que `status`, `errors`, `warnings` alors que les rapports contiennent **BEAUCOUP plus d'infos utiles** :
+
+**prod_report.json contient:**
+- ✅ `errors_detailed` : Message, endpoint, file, line, stack trace
+- ✅ `error_patterns` : Patterns par endpoint, type, fichier, timeline
+- ✅ `code_snippets` : Code source impliqué
+- ✅ `recommendations` : Actions recommandées avec priorité
+- ✅ `recent_commits` : Contexte des commits récents
+
+**unified_report.json contient:**
+- ✅ `priority_actions` : Actions à faire en premier (P0-P4)
+- ✅ `documentation_gaps` : Gaps de doc trouvés par Anima
+- ✅ `proposed_updates` : Mises à jour suggérées
+- ✅ `backend_changes` / `frontend_changes` : Changements détectés par Neo
+- ✅ `issues` : Issues d'intégrité avec recommandations
+- ✅ `recommendations` : Par horizon (immediate, short-term, long-term)
+
+**Solution appliquée:**
+1. Enrichi `PROMPT_CODEX_RAPPORTS.md` avec:
+   - Section 2 détaillée : Comment analyser TOUTES les infos
+   - Exemples Python complets pour prod_report.json
+   - Exemples Python complets pour unified_report.json
+   - Section 3 : Format de résumé pour l'utilisateur
+   - Template clair avec toutes les sections
+
+2. Créé `scripts/analyze_guardian_reports.py`:
+   - Script Python prêt à l'emploi
+   - Lit les 2 rapports JSON
+   - Analyse toutes les infos utiles
+   - Affiche résumé complet et actionnable
+   - Fix encoding UTF-8 pour Windows
+   - Codex peut juste lancer ce script !
+
+3. Testé le script :
+   ```
+   python scripts/analyze_guardian_reports.py
+   ```
+   Résultat : Production OK, 0 issues, format nickel ✅
+
+### Tests
+- ✅ Script Python testé avec rapports actuels
+- ✅ Encoding UTF-8 Windows fonctionnel
+- ✅ Format de sortie clair et actionnable
+- ✅ Toutes les infos des rapports accessibles
+
+### Travail de Codex GPT pris en compte
+Cette amélioration répond à la remarque que les rapports semblaient trop peu informatifs.
+
+### Prochaines actions recommandées
+1. Tester avec Codex GPT lors de sa prochaine session
+2. Vérifier qu'il utilise le script ou le code d'exemple
+3. Affiner le format de sortie si besoin
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-21 17:15 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
@@ -5,6 +73,7 @@
 - `claude-plugins/integrity-docs-guardian/README_GUARDIAN.md` (section agents IA)
 - `AGENT_SYNC.md` (ajout section rapports Guardian)
 - `PROMPT_RAPPORTS_GUARDIAN.md` (nouveau - prompt explicite pour Codex GPT)
+- `PROMPT_CODEX_RAPPORTS.md` (nouveau - prompt court)
 - `docs/passation.md` (cette entrée)
 
 ### Contexte
