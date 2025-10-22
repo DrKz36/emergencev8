@@ -1,3 +1,131 @@
+## [2025-10-22 04:30 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/backend/core/tracing/trace_manager.py` (nouveau module TraceManager)
+- `src/backend/core/tracing/metrics.py` (métriques Prometheus pour tracing)
+- `src/backend/core/tracing/__init__.py` (exports)
+- `src/backend/features/tracing/router.py` (nouveau router avec endpoints /api/traces/*)
+- `src/backend/features/tracing/__init__.py` (exports)
+- `src/backend/features/chat/service.py` (intégration spans retrieval + llm_generate)
+- `src/backend/main.py` (enregistrement TRACING_ROUTER)
+- `tests/backend/core/test_trace_manager.py` (tests unitaires complets, 12/12 passent)
+- `tests/backend/features/test_chat_tracing.py` (tests intégration)
+- `AGENT_SYNC.md` (cette session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**Demande utilisateur:** Implémenter le système de traçage distribué pour ÉMERGENCE V8 (Phase P3).
+Objectif: Tracer toutes les interactions (utilisateur → RAG → LLM → outil → retour) avec des **spans** corrélés par `trace_id`, exposés en Prometheus/Grafana.
+
+### Actions réalisées
+
+**1. Module TraceManager (core/tracing/trace_manager.py)** 🎯
+- Classe `TraceManager` lightweight (sans OpenTelemetry)
+- Gestion spans: `start_span()`, `end_span()`, `export()`
+- Span structure: span_id, trace_id, parent_id, name, duration, status, attributes
+- ContextVars pour propager trace_id/span_id à travers async calls
+- Décorateur `@trace_span` pour tracer automatiquement fonctions async/sync
+- Buffer FIFO (max 1000 spans par défaut)
+- Support statuts: OK, ERROR, TIMEOUT
+
+**2. Métriques Prometheus (core/tracing/metrics.py)** 📊
+- Counter: `chat_trace_spans_total` (labels: span_name, agent, status)
+- Histogram: `chat_trace_span_duration_seconds` (labels: span_name, agent)
+  - Buckets optimisés latences LLM/RAG: [0.01s → 30s]
+- Fonction `record_span()` appelée automatiquement par TraceManager.end_span()
+- Export automatique vers Prometheus registry
+
+**3. Intégration ChatService** 🔍
+- Span "retrieval" dans `_build_memory_context()`
+  - Attributes: agent, top_k
+  - Couvre: recherche documents RAG + fallback mémoire conversationnelle
+  - Gère 3 cas: succès avec docs, succès avec mémoire, erreur
+- Span "llm_generate" dans `_get_llm_response_stream()`
+  - Attributes: agent, provider, model
+  - Couvre: appel OpenAI/Google/Anthropic stream
+  - Gère: succès, erreur provider invalide, exceptions stream
+
+**4. Router Tracing (features/tracing/router.py)** 🌐
+- GET `/api/traces/recent?limit=N` : Export N derniers spans (debug)
+- GET `/api/traces/stats` : Stats agrégées (count par name/status/agent, avg duration)
+- Monté dans main.py avec prefix `/api`
+
+**5. Tests** ✅
+- **Tests unitaires** (`test_trace_manager.py`): 12/12 passent
+  - Création/terminaison spans
+  - Calcul durée
+  - Buffer FIFO
+  - Nested spans (parent_id)
+  - Décorateur @trace_span (async + sync)
+  - Export format Prometheus
+- **Tests intégration** (`test_chat_tracing.py`): 1/5 passent (reste à stabiliser mocks)
+- **Linters**:
+  - ✅ ruff check: 2 erreurs fixées (unused imports)
+  - ✅ mypy: 0 erreurs (truthy-function warning fixé)
+
+### Tests
+- ✅ `pytest tests/backend/core/test_trace_manager.py -v` → 12/12 passed
+- ✅ `ruff check src/backend/core/tracing/ src/backend/features/tracing/` → 0 erreurs
+- ✅ `mypy src/backend/core/tracing/` → 0 erreurs
+- ✅ `mypy src/backend/features/chat/service.py` → 0 erreurs (pas de régression)
+
+### Impact
+
+| Aspect                  | Résultat                                                           |
+|-------------------------|--------------------------------------------------------------------|
+| Observabilité           | 🟢 Spans distribués corrélés (trace_id)                           |
+| Prometheus metrics      | 🟢 2 nouvelles métriques (counter + histogram)                    |
+| Grafana-ready           | 🟢 p50/p95/p99 latences par agent/span_name                       |
+| Performance overhead    | 🟢 Minime (in-memory, pas de dépendances externes)                |
+| Debug local             | 🟢 Endpoints /api/traces/recent + /api/traces/stats               |
+| Couverture spans        | 🟡 2/4 spans implémentés (retrieval, llm_generate)                |
+| memory_update span      | ⚪ TODO (pas encore implémenté)                                   |
+| tool_call span          | ⚪ TODO (pas de tools externes tracés pour l'instant)             |
+
+### Travail de Codex GPT pris en compte
+Aucune modification Codex récente (dernière session 2025-10-21 19:45 sur Guardian rapports).
+
+### Prochaines actions recommandées
+1. **Stabiliser tests intégration** - Fixer mocks ChatService pour test_chat_tracing.py
+2. **Ajouter span memory_update** - Tracer STM→LTM dans memory.gardener ou memory.vector_service
+3. **Ajouter span tool_call** - Tracer MemoryQueryTool, ProactiveHintEngine, etc.
+4. **Dashboard Grafana** - Importer dashboard pour visualiser métriques tracing
+5. **Frontend trace visualization** - Onglet "Traces" dans dashboard.js (optionnel P3)
+6. **Tests E2E** - Vérifier `/api/metrics` expose bien les nouvelles métriques
+
+### Blocages
+Aucun.
+
+### Notes techniques importantes
+- **Spans légers**: Pas d'OpenTelemetry (dépendance lourde évitée)
+- **Context propagation**: ContextVars pour async calls (trace_id partagé)
+- **Prometheus-ready**: Format export directement compatible registry
+- **Zero regression**: Aucune modif breaking, ChatService reste 100% compatible
+- **Extensible**: Facile d'ajouter nouveaux spans (décorateur ou manuel)
+
+---
+
+## [2025-10-21 19:45 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `scripts/generate_codex_summary.py` (fallbacks pour rapatrier les rapports Guardian)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Le hook Guardian post-commit affichait `UNKNOWN` partout parce que `reports/prod_report.json` n'existait plus à la racine. Les rapports vivaient seulement dans `claude-plugins/…/reports`, du coup `generate_codex_summary.py` sortait un résumé vide et impossible de savoir si la prod allait bien.
+
+### Actions réalisées
+1. Ajout de fallbacks dans `generate_codex_summary.py` pour lire les rapports depuis `claude-plugins/reports` ou `claude-plugins/integrity-docs-guardian/scripts/reports`.
+2. Synchronisation automatique des JSON vers `reports/` (copie best effort) pour que tous les outils (dashboard, email, résumé) retrouvent les fichiers attendus.
+3. Regénération manuelle du résumé Guardian : `python scripts/generate_codex_summary.py` → statut production `OK`, 80 logs analysés.
+
+### Tests
+- ✅ `python scripts/generate_codex_summary.py`
+
+### Blocages
+Aucun.
+
 ## [2025-10-21 18:10 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

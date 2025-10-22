@@ -48,6 +48,9 @@ from backend.features.chat.rag_cache import create_rag_cache, RAGCache
 # 🛡️ P2.3 - Garde-fous agents (RoutePolicy, BudgetGuard, ToolCircuitBreaker)
 from backend.shared.agents_guard import RoutePolicy, BudgetGuard, ToolCircuitBreaker, ModelTier
 
+# 🔍 Phase 3 Tracing: Distributed tracing pour observabilité
+from backend.core.tracing import get_trace_manager
+
 logger = logging.getLogger(__name__)
 
 VITALITY_RECALL_THRESHOLD = getattr(MemoryGardener, "RECALL_THRESHOLD", 0.3)
@@ -216,6 +219,10 @@ class ChatService:
                 logger.warning(f"[P2.3] Config agents_guard non trouvée: {config_path}")
         except Exception as e:
             logger.warning(f"[P2.3] Échec chargement agents_guard: {e}")
+
+        # 🔍 Phase 3 Tracing: Tracing distribué pour observabilité
+        self.trace_manager = get_trace_manager()
+        logger.info("[P3 Tracing] TraceManager initialisé pour spans distribués")
 
         self.prompts = self._load_prompts(self.settings.paths.prompts)
         self.broadcast_agents = self._compute_broadcast_agents()
@@ -1767,8 +1774,12 @@ class ChatService:
         1. Documents (avec scoring multi-critères)
         2. Mémoire conversationnelle (fallback si pas de documents)
         """
+        # 🔍 P3 Tracing: Start retrieval span
+        span_id = self.trace_manager.start_span("retrieval", attrs={"agent": agent_id or "unknown", "top_k": top_k})
+
         try:
             if not last_user_message:
+                self.trace_manager.end_span(span_id, status="OK")
                 return ""
 
             uid = self._try_get_user_id(session_id)
@@ -1797,6 +1808,8 @@ class ChatService:
                         )
 
                         # ✅ Phase 3.1: Formatter avec cadre visuel pour citations exactes
+                        # 🔍 P3 Tracing: End retrieval span (success with documents)
+                        self.trace_manager.end_span(span_id, status="OK")
                         return self._format_rag_context(document_results)
                 except Exception as e:
                     logger.error(f"Erreur recherche documents Phase 3: {e}", exc_info=True)
@@ -1895,9 +1908,14 @@ class ChatService:
                     self.vector_service.update_metadatas(knowledge_col, touched_ids, touched_metas)
                 except Exception as err:
                     logger.warning(f"Impossible de mettre à jour la vitalité mémoire: {err}")
+
+            # 🔍 P3 Tracing: End retrieval span (success)
+            self.trace_manager.end_span(span_id, status="OK")
             return "\n".join(lines[:top_k])
         except Exception as e:
             logger.warning(f"build_memory_context: {e}")
+            # 🔍 P3 Tracing: End retrieval span (error)
+            self.trace_manager.end_span(span_id, status="ERROR")
             return ""
 
     # ---------- normalisation historique ----------
@@ -1976,6 +1994,9 @@ class ChatService:
         Args:
             agent_id: ID de l'agent (anima, neo, nexus) pour tracking budget
         """
+        # 🔍 P3 Tracing: Start llm_generate span
+        span_id = self.trace_manager.start_span("llm_generate", attrs={"agent": agent_id, "provider": provider, "model": model})
+
         # 🛡️ P2.3 - BudgetGuard: Estimer tokens input avant appel
         estimated_input_tokens = 0
         if self.budget_guard:
@@ -1991,26 +2012,36 @@ class ChatService:
                 logger.error(f"[BudgetGuard] {agent_id} budget exceeded: {e}")
                 raise
 
-        if provider == "openai":
-            streamer = self._get_openai_stream(model, system_prompt, history, cost_info_container)
-        elif provider == "google":
-            streamer = self._get_gemini_stream(model, system_prompt, history, cost_info_container)
-        elif provider == "anthropic":
-            streamer = self._get_anthropic_stream(model, system_prompt, history, cost_info_container)
-        else:
-            raise ValueError(f"Fournisseur LLM non supporté: {provider}")
+        try:
+            if provider == "openai":
+                streamer = self._get_openai_stream(model, system_prompt, history, cost_info_container)
+            elif provider == "google":
+                streamer = self._get_gemini_stream(model, system_prompt, history, cost_info_container)
+            elif provider == "anthropic":
+                streamer = self._get_anthropic_stream(model, system_prompt, history, cost_info_container)
+            else:
+                # 🔍 P3 Tracing: End span on error
+                self.trace_manager.end_span(span_id, status="ERROR")
+                raise ValueError(f"Fournisseur LLM non supporté: {provider}")
 
-        async for chunk in streamer:
-            yield chunk
+            async for chunk in streamer:
+                yield chunk
 
-        # 🛡️ P2.3 - BudgetGuard: Consommer tokens réels APRÈS stream
-        if self.budget_guard and cost_info_container:
-            try:
-                total_tokens = cost_info_container.get("input_tokens", 0) + cost_info_container.get("output_tokens", 0)
-                if total_tokens > 0:
-                    self.budget_guard.consume(agent_id, total_tokens)
-            except Exception as e:
-                logger.warning(f"[BudgetGuard] Failed to consume tokens for {agent_id}: {e}")
+            # 🛡️ P2.3 - BudgetGuard: Consommer tokens réels APRÈS stream
+            if self.budget_guard and cost_info_container:
+                try:
+                    total_tokens = cost_info_container.get("input_tokens", 0) + cost_info_container.get("output_tokens", 0)
+                    if total_tokens > 0:
+                        self.budget_guard.consume(agent_id, total_tokens)
+                except Exception as e:
+                    logger.warning(f"[BudgetGuard] Failed to consume tokens for {agent_id}: {e}")
+
+            # 🔍 P3 Tracing: End llm_generate span (success)
+            self.trace_manager.end_span(span_id, status="OK")
+        except Exception as e:
+            # 🔍 P3 Tracing: End span on exception
+            self.trace_manager.end_span(span_id, status="ERROR")
+            raise
 
     async def _get_openai_stream(
         self, model: str, system_prompt: str, history: List[Dict[str, Any]], cost_info_container: Dict[str, Any]
