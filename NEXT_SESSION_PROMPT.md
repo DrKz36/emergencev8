@@ -10,7 +10,7 @@
 
 ### ✅ Ce qui fonctionne parfaitement
 - **Tests backend** : 45/45 passent (100%)
-- **Build frontend** : Succès (warnings mineurs)
+- **Build frontend** : Succès (warning mineurs)
 - **Production GCP** : Stable (beta-2.1.6 déployé, 100% trafic)
 - **Guardian** : Fonctionnel (faux positifs filtrés: 9 → 7 warnings bots)
 - **Docker Compose** : Stack dev complète opérationnelle
