@@ -66,6 +66,20 @@ jobs:
 
           echo "✅ Deployed with stable-service.yaml (auth config preserved)"
 
+      # Configure IAM Policy (remove public access)
+      - name: Configure IAM Policy
+        run: |
+          echo "🔐 Configuring IAM policy to remove public access..."
+
+          # Remove allUsers from IAM policy if present
+          gcloud run services remove-iam-policy-binding ${{ env.SERVICE_NAME }} \
+            --member="allUsers" \
+            --role="roles/run.invoker" \
+            --region ${{ env.GCP_REGION }} \
+            --quiet || echo "ℹ️  allUsers was not in IAM policy (already removed or never added)"
+
+          echo "✅ IAM policy configured - service requires authentication"
+
       # Get service URL
       - name: Get Service URL
         id: service-url
