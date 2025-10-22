@@ -53,20 +53,18 @@ jobs:
           docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
           docker push ${{ env.IMAGE_NAME }}:latest
 
-      # Deploy to Cloud Run
+      # Deploy to Cloud Run using stable-service.yaml to preserve auth config
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          # Update the image in stable-service.yaml
+          sed -i "s|image: .*|image: ${{ env.IMAGE_NAME }}:${{ github.sha }}|g" stable-service.yaml
+
+          # Deploy using the YAML config (preserves allowlist & all env vars)
+          gcloud run services replace stable-service.yaml \
             --region ${{ env.GCP_REGION }} \
-            --platform managed \
-            --allow-unauthenticated \
-            --memory 2Gi \
-            --cpu 2 \
-            --min-instances 0 \
-            --max-instances 10 \
-            --timeout 300s \
             --quiet
+
+          echo "✅ Deployed with stable-service.yaml (auth config preserved)"
 
       # Get service URL
       - name: Get Service URL
@@ -77,6 +75,23 @@ jobs:
             --format 'value(status.url)')
           echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
           echo "✅ Deployed to: $SERVICE_URL"
+
+      # Verify auth configuration
+      - name: Verify Auth Config
+        run: |
+          echo "🔐 Verifying authentication is enabled..."
+          IAM_POLICY=$(gcloud run services get-iam-policy ${{ env.SERVICE_NAME }} \
+            --region ${{ env.GCP_REGION }} \
+            --format json)
+
+          # Check if allUsers is NOT in the bindings (should be authenticated)
+          if echo "$IAM_POLICY" | grep -q "allUsers"; then
+            echo "❌ WARNING: Service is public (allUsers found in IAM policy)"
+            echo "This should not happen with stable-service.yaml deployment"
+            exit 1
+          else
+            echo "✅ Service is properly authenticated (no allUsers in IAM)"
+          fi
 
       # Health check
       - name: Health Check
