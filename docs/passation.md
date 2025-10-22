@@ -1,3 +1,106 @@
+## [2025-10-22 23:15 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+**Phase P2 + Infrastructure (14 fichiers modifiés/créés):**
+- `requirements.txt`, `package.json`, `package-lock.json`
+- `src/backend/core/migrations/20251022_2fa_totp.sql` (nouveau)
+- `src/backend/features/auth/service.py`, `auth/router.py`
+- `src/frontend/features/admin/admin-analytics.js` (nouveau)
+- `src/frontend/features/admin/admin-dashboard.js`
+- `src/frontend/styles/admin-analytics.css` (nouveau)
+- `src/frontend/features/settings/settings-security.js`, `settings-security.css`
+- `src/frontend/features/documentation/documentation.js`
+- `stable-service.yaml`
+- `ROADMAP_PROGRESS.md`
+- `AGENT_SYNC.md`, `docs/passation.md`
+
+### Contexte
+**🚀 TRIPLE ACTION : Phase P2 Complète + Fix Deploy Workflow + Update Docs "À propos"**
+
+**Tâche 1 : Compléter Phase P2 (déjà fait dans session précédente)**
+- ✅ Dashboard Admin avec graphiques Chart.js
+- ✅ Gestion multi-sessions (révocation, badges, device/IP)
+- ✅ 2FA TOTP complet (QR code, backup codes, vérification)
+
+**Tâche 2 : Fix Workflow GitHub Actions qui plantait**
+
+**Problème rencontré par utilisateur après push précédent:**
+```
+ERROR: Secret projects/.../secrets/AUTH_ALLOWLIST_SEED/versions/latest was not found
+Deployment failed
+```
+
+**Analyse:**
+- Le workflow utilise maintenant `gcloud run services replace stable-service.yaml` (fix auth allowlist)
+- Mais `stable-service.yaml` référence le secret `AUTH_ALLOWLIST_SEED` (lignes 108-112)
+- Ce secret n'existe **que pour seed la DB locale** (dev), pas en production
+- En prod, les users sont créés via l'interface admin, pas par seed
+
+**Solution appliquée:**
+- Retiré la référence au secret dans [stable-service.yaml:108-112](stable-service.yaml#L108-L112)
+- Remplacé par un commentaire explicatif :
+  ```yaml
+  # AUTH_ALLOWLIST_SEED removed - only used for local DB seeding, not needed in production
+  ```
+
+**Résultat:** Workflow ne devrait plus planter sur secret manquant.
+
+**Tâche 3 : Update Documentation "À propos"**
+
+**Problème:** Stats techniques obsolètes dans module "À propos"
+- Anciennes stats : ~73k lignes (50k frontend + 23k backend)
+- Dépendances pas documentées
+- Phase P2 pas mentionnée dans timeline Genèse
+
+**Actions:**
+1. **Comptage réel des lignes de code** (via `wc -l`):
+   - Backend Python: **41,247 lignes**
+   - Frontend JS: **39,531 lignes**
+   - Frontend CSS: **28,805 lignes**
+   - **Total: ~110,000 lignes** (50% de croissance depuis dernière update)
+
+2. **Mise à jour section technique** ([documentation.js:714-790](src/frontend/features/documentation/documentation.js#L714-L790)):
+   - Frontend: ajout "~68k lignes (40k JS + 29k CSS)"
+   - Backend: ajout "~41k lignes Python"
+   - Dépendances: Chart.js, jsPDF, PapaParse, Marked (frontend)
+   - Auth: JWT + bcrypt + TOTP 2FA (pyotp, qrcode) (backend)
+   - Versions: FastAPI 0.119.0, ChromaDB 0.5.23, Ruff 0.13+, MyPy 1.18+
+
+3. **Nouvelle section timeline Genèse** ([documentation.js:1124-1170](src/frontend/features/documentation/documentation.js#L1124-L1170)):
+   - **"Octobre 2025 - Phase P2"**
+   - Dashboard Admin (Chart.js, métriques temps réel)
+   - Gestion Multi-Sessions (GET/POST endpoints, UI complète)
+   - 2FA TOTP (migration SQL, QR codes, backup codes)
+   - Métriques: 17 fichiers modifiés, ~1,200 lignes ajoutées
+   - Roadmap 74% complétée
+
+4. **Update stats existantes**:
+   - "~73k lignes" → "~110k lignes"
+   - Ajout production "Google Cloud Run (europe-west1)"
+   - Comparaison économique Guardian mise à jour pour 110k lignes
+
+### Tests
+- ✅ `npm run build` → OK (3.92s, aucune erreur)
+- ✅ Guardian pre-commit → OK
+- ✅ Commit global effectué (14 fichiers, +2,930 lignes / -71 lignes)
+- ⏳ Push + workflow GitHub Actions à effectuer
+
+### Travail de Codex GPT pris en compte
+Aucun conflit. Session indépendante multi-tâches.
+
+### Prochaines actions recommandées
+1. **Push le commit** pour déclencher workflow GitHub Actions
+2. **Surveiller workflow** : ne devrait plus planter sur AUTH_ALLOWLIST_SEED
+3. **Vérifier déploiement Cloud Run** réussit
+4. **Tester auth allowlist** préservée (fix workflow précédent)
+5. **Tester login utilisateur** fonctionne
+6. **Explorer features Phase P2** (admin analytics, multi-sessions, 2FA)
+
+### Blocages
+Aucun. Commit prêt à push.
+
+---
+
 ## [2025-10-22 22:45 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
