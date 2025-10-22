@@ -63,6 +63,10 @@ secrets/
 id_token.txt
 gmail_client_secret.json
 *_client_secret.json
+# GCP Service Account Keys (GitHub Actions)
+*-key.json
+**/*-key.json
+github-actions-key*.json
 
 # --- Node / frontend
 node_modules/
