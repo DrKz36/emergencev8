@@ -1,6 +1,6 @@
 # 📦 CHANGELOG - EMERGENCE V8
 
-> **Suivi des versions et évolutions du projet**
+> **Suivi de versions et évolutions du projet**
 >
 > Format de versioning : `beta-X.Y.Z` jusqu'à la release V1.0.0
 > - **X (Major)** : Phases complètes (P0, P1, P2, P3) / Changements majeurs
