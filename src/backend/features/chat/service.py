@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import re
+from collections import Counter
 import yaml  # type: ignore[import-untyped]
 from uuid import uuid4
 from typing import Dict, Any, List, Tuple, Optional, AsyncGenerator, AsyncIterator, cast
@@ -1407,12 +1408,12 @@ class ChatService:
         Returns:
             Titre formaté (ex: "Infrastructure & Déploiement")
         """
-        # Concaténer tous les contenus
-        combined_text = " ".join([c.get("content", "") for c in concepts])
-
-        # Nettoyer et tokenizer
         import re
-        words = re.findall(r'\b[a-zA-ZÀ-ÿ]{4,}\b', combined_text.lower())
+
+        # Limite maximale de caractères analysés pour éviter les OOM
+        # Empêche la concaténation d'un texte gigantesque lors des regroupements.
+        max_chars = 20000
+        processed_chars = 0
 
         # Stop words simples (français + anglais)
         stop_words = {
@@ -1423,17 +1424,31 @@ class ChatService:
             'have', 'will', 'what', 'been', 'more', 'when', 'there'
         }
 
-        # Calculer fréquence
-        word_freq: dict[str, int] = {}
-        for word in words:
-            if word not in stop_words and len(word) > 3:
-                word_freq[word] = word_freq.get(word, 0) + 1
+        pattern = re.compile(r'\b[a-zA-ZÀ-ÿ]{4,}\b')
+        word_freq: Counter[str] = Counter()
+
+        for concept in concepts:
+            if processed_chars >= max_chars:
+                break
+
+            content = concept.get("content", "")
+            if not content:
+                continue
+
+            remaining = max_chars - processed_chars
+            snippet = content[:remaining]
+            processed_chars += len(snippet)
+
+            for match in pattern.finditer(snippet.lower()):
+                word = match.group(0)
+                if len(word) > 3 and word not in stop_words:
+                    word_freq[word] += 1
 
         # Prendre les 2-3 mots les plus fréquents
         if not word_freq:
             return "Discussion"
 
-        top_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:3]
+        top_words = word_freq.most_common(3)
 
         # Formater en titre (capitaliser)
         title_words = [w[0].capitalize() for w in top_words[:2]]  # Max 2 mots

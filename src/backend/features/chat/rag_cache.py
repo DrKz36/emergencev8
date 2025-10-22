@@ -16,7 +16,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from collections import OrderedDict
 
 try:
-    import redis
+    import redis  # type: ignore[import-not-found]
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False

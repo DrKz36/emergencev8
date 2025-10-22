@@ -1,10 +1,31 @@
-# Agent Sync — État de synchronisation inter-agents
+# Agent Sync - état de synchronisation inter-agents
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-22 14:45 CET (Claude Code : Fix linter ruff tracing ✅)
+**Dernière mise à jour** : 2025-10-22 16:05 CET (Codex GPT : Conflits résolus + validations ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+## ✅ Session COMPLÉTÉE (2025-10-22 16:05 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `AGENT_SYNC.md` (résolution conflit + nouvelle entrée)
+- `docs/passation.md` (résolution conflit + passation)
+
+### Actions réalisées
+- 🤝 Fusion des entrées Codex/Claude en conflit et restauration de l'ordre chronologique.
+- 🔎 Relecture des correctifs `_extract_group_title` et de `generate_codex_summary.py` pour vérifier l'absence de divergence.
+- 🧾 Harmonisation documentation (présente passation + `AGENT_SYNC.md`) et rappel des suivis Guardian.
+
+### Tests
+- ✅ `pytest tests/unit/test_chat_group_title_large.py`
+- ✅ `ruff check src/backend/features/chat/rag_cache.py src/backend/features/chat/service.py`
+- ✅ `python scripts/generate_codex_summary.py`
+
+### Prochaines actions
+1. Surveiller Guardian pour confirmer la consolidation automatique post-merge.
+2. Stabiliser `tests/backend/features/test_chat_tracing.py` dès que les mocks seront prêts.
+3. Compléter les stubs mypy pour les dépendances externes restantes (`fitz`, `docx`, `google.generativeai`, ...).
 
 ---
 
@@ -37,6 +58,33 @@ Aucune modification Codex récente.
 
 ### Blocages
 Aucun.
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-22 04:36 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/backend/features/chat/rag_cache.py` (annotation import redis ignorée pour mypy)
+- `tests/unit/test_chat_group_title_large.py` (import `ModuleType` + stubs deps)
+- `AGENT_SYNC.md` (présent fichier)
+- `docs/passation.md` (nouvelle entrée)
+
+### Actions réalisées
+
+- 🔍 Lecture des rapports Guardian (`reports/codex_summary.md`) → confirmation du crash `MemoryError` sur `_extract_group_title`.
+- 🛡️ Hygiène mypy : ajout `type: ignore[import-not-found]` sur `redis` pour que `mypy src/backend/features/chat/service.py` passe sans faux positifs.
+- 🧪 Test unitaire massif : correction de l'import `ModuleType` et exécution du test `test_extract_group_title_handles_large_inputs` pour verrouiller le fix OOM.
+- 📓 Documentation sync : mise à jour de `AGENT_SYNC.md` et ajout passation.
+
+### Tests
+- ✅ `ruff check src/backend/features/chat/rag_cache.py tests/unit/test_chat_group_title_large.py`
+- ✅ `mypy src/backend/features/chat/service.py`
+- ✅ `pytest tests/unit/test_chat_group_title_large.py`
+
+### Prochaines actions
+1. Surveiller Guardian après déploiement du patch pour confirmer la disparition des `MemoryError` en production.
+2. Envisager l'ajout de stubs ou d'ignores ciblés pour les autres dépendances externes (`fitz`, `docx`, `google.generativeai`, etc.) afin de fiabiliser les exécutions mypy globales.
+3. Planifier un test d'intégration couvrant la génération de titres avec des contenus multi-concepts pour valider la pertinence métier.
 
 ---
 

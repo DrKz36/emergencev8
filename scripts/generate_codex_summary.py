@@ -7,6 +7,7 @@ avec contexte actionnable, insights, et recommandations narratives.
 """
 
 import json
+import shutil
 import sys
 from pathlib import Path
 from datetime import datetime
@@ -15,17 +16,48 @@ from typing import Dict, List, Any, Optional
 # Paths
 REPO_ROOT = Path(__file__).parent.parent
 REPORTS_DIR = REPO_ROOT / "reports"
+FALLBACK_REPORT_DIRS = [
+    REPO_ROOT / "claude-plugins" / "reports",
+    REPO_ROOT / "claude-plugins" / "integrity-docs-guardian" / "reports",
+    REPO_ROOT / "claude-plugins" / "integrity-docs-guardian" / "scripts" / "reports",
+]
 OUTPUT_FILE = REPORTS_DIR / "codex_summary.md"
 
 # Fix Windows console encoding
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8') if hasattr(sys.stdout, 'reconfigure') else None
 
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
 
 def load_json_report(filename: str) -> Optional[Dict]:
     """Charge un rapport JSON avec gestion d'erreurs."""
     filepath = REPORTS_DIR / filename
     if not filepath.exists():
+        for fallback_dir in FALLBACK_REPORT_DIRS:
+            fallback_path = fallback_dir / filename
+            if fallback_path.exists():
+                try:
+                    with open(fallback_path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                except Exception as exc:  # pragma: no cover - fallback errors logged
+                    print(f"⚠️  Erreur lecture {fallback_path}: {exc}", file=sys.stderr)
+                    return None
+
+                try:
+                    shutil.copyfile(fallback_path, filepath)
+                except Exception as exc:  # pragma: no cover - copie best effort
+                    print(
+                        f"⚠️  Impossible de synchroniser {filename} depuis {fallback_path}: {exc}",
+                        file=sys.stderr,
+                    )
+                else:
+                    print(
+                        f"ℹ️  Rapport {filename} synchronisé depuis {fallback_path}",
+                        file=sys.stderr,
+                    )
+                return data
+
         return None
 
     try:

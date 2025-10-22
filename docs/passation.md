@@ -1,3 +1,172 @@
+## [2025-10-22 16:05 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `AGENT_SYNC.md` (résolution conflit + mise à jour session)
+- `docs/passation.md` (résolution conflit + nouvelle entrée)
+
+### Contexte
+- Merge bloqué par conflits sur `AGENT_SYNC.md` et `docs/passation.md`.
+- Validation des correctifs `_extract_group_title` avant reprise Guardian/CI.
+
+### Actions réalisées
+- Réconciliation manuelle des sessions Codex/Claude du 22/10 et restauration de l'ordre chronologique.
+- Relecture des patches `ChatService` / `rag_cache` et du script `generate_codex_summary.py` pour vérifier l'absence de divergence.
+- Harmonisation documentation (présente passation + `AGENT_SYNC.md`) et rappel des suivis Guardian.
+
+### Tests
+- ✅ `pytest tests/unit/test_chat_group_title_large.py`
+- ✅ `ruff check src/backend/features/chat/rag_cache.py src/backend/features/chat/service.py`
+- ✅ `python scripts/generate_codex_summary.py`
+
+### Prochaines actions recommandées
+1. Surveiller les prochains rapports Guardian pour confirmer la consolidation automatique post-merge.
+2. Relancer la stabilisation des tests tracing (`tests/backend/features/test_chat_tracing.py`).
+3. Préparer un lot dédié pour les stubs mypy manquants (`fitz`, `docx`, `google.generativeai`, ...).
+
+### Blocages
+Aucun — merge et validations locales achevés.
+
+---
+
+## [2025-10-22 14:45 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/chat/service.py` (ligne 2041: fix unused exception variable)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**🐛 Fix erreur linter ruff dans CI/CD GitHub Actions**
+
+**Problème détecté :**
+- Workflow GitHub "Tests & Guardian Validation" échouait sur `ruff check`
+- Erreur F841: Local variable `e` is assigned to but never used
+- Ligne 2041 dans `src/backend/features/chat/service.py`
+
+**Analyse du code :**
+```python
+# ❌ AVANT (ligne 2041)
+except Exception as e:
+    self.trace_manager.end_span(span_id, status="ERROR")
+    raise
+
+# ✅ APRÈS (ligne 2041)
+except Exception:
+    self.trace_manager.end_span(span_id, status="ERROR")
+    raise
+```
+
+**Raison :**
+- La variable `e` était capturée mais jamais utilisée dans le bloc except
+- Pas besoin de capturer l'exception puisqu'on fait juste `raise` pour la re-propager
+- Ruff F841 règle stricte : variable assignée = doit être utilisée
+
+### Actions réalisées
+
+**1. Fix linter :**
+- Remplacé `except Exception as e:` par `except Exception:`
+- 1 changement, 1 ligne modifiée
+
+**2. Validation locale :**
+```bash
+ruff check src/backend/features/chat/service.py
+# → All checks passed!
+```
+
+**3. Commit + Push :**
+```bash
+git add src/backend/features/chat/service.py
+git commit -m "fix(tracing): Remove unused exception variable in llm_generate"
+git push
+# → Guardian Pre-Push: OK (production healthy, 80 logs, 0 errors)
+```
+
+### Tests
+
+**Ruff local :**
+- ✅ `ruff check src/backend/features/chat/service.py` → All checks passed!
+
+**Guardian Hooks (auto-lancés) :**
+- ✅ Pre-Commit: OK (warnings acceptés, Anima crash non-bloquant)
+- ✅ Post-Commit: OK (Nexus + Codex Summary + Auto-update docs)
+- ✅ Pre-Push: OK (ProdGuardian production healthy)
+
+**CI/CD GitHub Actions :**
+- ⏳ En attente résultats workflow "Tests & Guardian Validation"
+- Commit poussé: `09a7c7e`
+- Branch: main
+
+### Résultats
+
+**Impact du fix :**
+- 🟢 Ruff local: 1 error → 0 errors
+- 🟢 Guardian: Tous les hooks passent
+- 🟢 Production: Healthy (80 logs, 0 errors)
+- ⏳ CI GitHub: En cours de validation
+
+**Changement minimal :**
+- 1 fichier modifié
+- 1 ligne changée (suppression variable `e` inutilisée)
+- 0 régression attendue (changement cosmétique)
+
+### Travail de Codex GPT pris en compte
+
+Aucune modification Codex récente. Travail autonome Claude Code sur fix linter.
+
+### Prochaines actions recommandées
+
+**PRIORITÉ 1 - Attendre validation CI (5-10 min) :**
+1. Vérifier que GitHub Actions workflow "Tests & Guardian Validation" passe au vert
+2. Si CI OK → Considérer fix ruff TERMINÉ ✅
+
+**PRIORITÉ 2 - Continuer Phase P3 Tracing (si CI OK) :**
+1. Ajouter span `memory_update` dans `memory.gardener` (tracer STM→LTM)
+2. Ajouter span `tool_call` dans MemoryQueryTool/ProactiveHintEngine
+3. Tests E2E: Vérifier `/api/metrics` expose les nouvelles métriques tracing
+
+**OPTIONNEL - Amélioration continue :**
+- Vérifier s'il reste d'autres warnings ruff F841 dans le codebase
+- Nettoyer autres variables inutilisées si présentes
+
+### Blocages
+
+Aucun. Fix simple appliqué, commit poussé, CI en cours.
+
+**Recommandation :** Attendre validation CI GitHub Actions avant de continuer Phase P3.
+
+---
+
+## [2025-10-22 04:36 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/backend/features/chat/rag_cache.py`
+- `tests/unit/test_chat_group_title_large.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- Lecture du rapport Guardian local (`reports/codex_summary.md`) signalant un `MemoryError` critique sur `_extract_group_title`.
+- Vérifications post-fix : sécuriser les imports et tests ajoutés lors de la session précédente pour éviter régressions (mypy + pytest).
+
+### Travail de Claude Code pris en compte
+- Reprise directe sur son refactor `_extract_group_title` + test massif. Aucun rollback, uniquement hygiène (import manquant, ignore mypy) pour fiabiliser le patch.
+
+### Actions réalisées
+- Ajout d'un `type: ignore[import-not-found]` sur l'import Redis afin que `mypy src/backend/features/chat/service.py` ne plante plus sur l'environnement léger.
+- Import explicite de `ModuleType` dans `tests/unit/test_chat_group_title_large.py` pour éviter les `NameError` et satisfaire Ruff.
+- Exécution ciblée des gardes qualité : `ruff check`, `mypy src/backend/features/chat/service.py`, `pytest tests/unit/test_chat_group_title_large.py` (OK, uniquement warnings Pydantic habituels).
+- Mise à jour de la documentation de session (`AGENT_SYNC.md`, présente passation).
+
+### Blocages
+- Aucun. Les dépendances manquantes pour mypy global restent connues (fitz, docx, google.generativeai, openai, anthropic, sklearn, dependency_injector, psutil) et à traiter dans un lot dédié.
+
+### Prochaines actions recommandées
+1. Surveiller les prochains rapports Guardian pour confirmer la disparition des `MemoryError` en production réelle.
+2. Ajouter des stubs/ignores pour les dépendances listées afin de fiabiliser `mypy src/backend/` complet.
+3. Étoffer les tests d'intégration autour de la génération de titres pour valider des cas multi-concepts et multi-langues.
+
+---
+
 ## [2025-10-22 04:30 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
@@ -104,27 +273,6 @@ Aucun.
 - **Extensible**: Facile d'ajouter nouveaux spans (décorateur ou manuel)
 
 ---
-
-## [2025-10-21 19:45 CET] — Agent: Codex GPT
-
-### Fichiers modifiés
-- `scripts/generate_codex_summary.py` (fallbacks pour rapatrier les rapports Guardian)
-- `AGENT_SYNC.md` (mise à jour session)
-- `docs/passation.md` (cette entrée)
-
-### Contexte
-Le hook Guardian post-commit affichait `UNKNOWN` partout parce que `reports/prod_report.json` n'existait plus à la racine. Les rapports vivaient seulement dans `claude-plugins/…/reports`, du coup `generate_codex_summary.py` sortait un résumé vide et impossible de savoir si la prod allait bien.
-
-### Actions réalisées
-1. Ajout de fallbacks dans `generate_codex_summary.py` pour lire les rapports depuis `claude-plugins/reports` ou `claude-plugins/integrity-docs-guardian/scripts/reports`.
-2. Synchronisation automatique des JSON vers `reports/` (copie best effort) pour que tous les outils (dashboard, email, résumé) retrouvent les fichiers attendus.
-3. Regénération manuelle du résumé Guardian : `python scripts/generate_codex_summary.py` → statut production `OK`, 80 logs analysés.
-
-### Tests
-- ✅ `python scripts/generate_codex_summary.py`
-
-### Blocages
-Aucun.
 
 ## [2025-10-21 18:10 CET] — Agent: Claude Code
 
@@ -5952,118 +6100,3 @@ git push
 3. Améliorer typage mypy progressivement
 
 ### Blocages
-
-Aucun. Environnement dev fonctionnel et validé.
-
-**Recommandation :** Commit + push maintenant.
-
-
-
----
-
-## [2025-10-22 14:45 CET] — Agent: Claude Code
-
-### Fichiers modifiés
-- `src/backend/features/chat/service.py` (ligne 2041: fix unused exception variable)
-- `AGENT_SYNC.md` (mise à jour session)
-- `docs/passation.md` (cette entrée)
-
-### Contexte
-**🐛 Fix erreur linter ruff dans CI/CD GitHub Actions**
-
-**Problème détecté :**
-- Workflow GitHub "Tests & Guardian Validation" échouait sur `ruff check`
-- Erreur F841: Local variable `e` is assigned to but never used
-- Ligne 2041 dans `src/backend/features/chat/service.py`
-
-**Analyse du code :**
-```python
-# ❌ AVANT (ligne 2041)
-except Exception as e:
-    self.trace_manager.end_span(span_id, status="ERROR")
-    raise
-
-# ✅ APRÈS (ligne 2041)
-except Exception:
-    self.trace_manager.end_span(span_id, status="ERROR")
-    raise
-```
-
-**Raison :**
-- La variable `e` était capturée mais jamais utilisée dans le bloc except
-- Pas besoin de capturer l'exception puisqu'on fait juste `raise` pour la re-propager
-- Ruff F841 règle stricte : variable assignée = doit être utilisée
-
-### Actions réalisées
-
-**1. Fix linter :**
-- Remplacé `except Exception as e:` par `except Exception:`
-- 1 changement, 1 ligne modifiée
-
-**2. Validation locale :**
-```bash
-ruff check src/backend/features/chat/service.py
-# → All checks passed!
-```
-
-**3. Commit + Push :**
-```bash
-git add src/backend/features/chat/service.py
-git commit -m "fix(tracing): Remove unused exception variable in llm_generate"
-git push
-# → Guardian Pre-Push: OK (production healthy, 80 logs, 0 errors)
-```
-
-### Tests
-
-**Ruff local :**
-- ✅ `ruff check src/backend/features/chat/service.py` → All checks passed!
-
-**Guardian Hooks (auto-lancés) :**
-- ✅ Pre-Commit: OK (warnings acceptés, Anima crash non-bloquant)
-- ✅ Post-Commit: OK (Nexus + Codex Summary + Auto-update docs)
-- ✅ Pre-Push: OK (ProdGuardian production healthy)
-
-**CI/CD GitHub Actions :**
-- ⏳ En attente résultats workflow "Tests & Guardian Validation"
-- Commit poussé: `09a7c7e`
-- Branch: main
-
-### Résultats
-
-**Impact du fix :**
-- 🟢 Ruff local: 1 error → 0 errors
-- 🟢 Guardian: Tous les hooks passent
-- 🟢 Production: Healthy (80 logs, 0 errors)
-- ⏳ CI GitHub: En cours de validation
-
-**Changement minimal :**
-- 1 fichier modifié
-- 1 ligne changée (suppression variable `e` inutilisée)
-- 0 régression attendue (changement cosmétique)
-
-### Travail de Codex GPT pris en compte
-
-Aucune modification Codex récente. Travail autonome Claude Code sur fix linter.
-
-### Prochaines actions recommandées
-
-**PRIORITÉ 1 - Attendre validation CI (5-10 min) :**
-1. Vérifier que GitHub Actions workflow "Tests & Guardian Validation" passe au vert
-2. Si CI OK → Considérer fix ruff TERMINÉ ✅
-
-**PRIORITÉ 2 - Continuer Phase P3 Tracing (si CI OK) :**
-1. Ajouter span `memory_update` dans `memory.gardener` (tracer STM→LTM)
-2. Ajouter span `tool_call` dans MemoryQueryTool/ProactiveHintEngine
-3. Tests E2E: Vérifier `/api/metrics` expose les nouvelles métriques tracing
-
-**OPTIONNEL - Amélioration continue :**
-- Vérifier s'il reste d'autres warnings ruff F841 dans le codebase
-- Nettoyer autres variables inutilisées si présentes
-
-### Blocages
-
-Aucun. Fix simple appliqué, commit poussé, CI en cours.
-
-**Recommandation :** Attendre validation CI GitHub Actions avant de continuer Phase P3.
-
