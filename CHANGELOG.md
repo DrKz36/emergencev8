@@ -21,7 +21,7 @@
 **1. Système d'envoi automatique des rapports Guardian par email**
 - Email automatique après chaque orchestration Guardian
 - Rapports HTML stylisés avec thème ÉMERGENCE (dégradés bleu/noir)
-- Version texte pour compatibilité
+- Version text pour compatibilité
 - Destinataire: Admin uniquement (`gonzalefernando@gmail.com`)
 
 **Fichiers créés:**
