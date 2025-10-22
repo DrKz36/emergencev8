@@ -1,3 +1,94 @@
+## [2025-10-22 22:45 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `.github/workflows/deploy.yml` (fix écrasement config auth)
+- `docs/DEPLOYMENT_AUTH_PROTECTION.md` (nouvelle documentation)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**🚨 FIX CRITIQUE: Workflow GitHub Actions écrasait l'authentification à chaque déploiement**
+
+**Problème découvert par l'utilisateur:**
+- Après dernier commit, déploiement automatique via GitHub Actions
+- L'utilisateur ne pouvait plus se connecter avec son mot de passe
+- Allowlist complètement perdue
+
+**Cause Root:**
+Le workflow [.github/workflows/deploy.yml:59-69](.github/workflows/deploy.yml#L59-L69) utilisait:
+```bash
+gcloud run deploy emergence-app \
+  --allow-unauthenticated \  # ← PUTAIN DE PROBLÈME ICI
+  --memory 2Gi \
+  --cpu 2 \
+  ...
+```
+
+**Résultat:** Chaque push sur `main` **réouvrait l'app en mode public** et **perdait TOUTE la config d'auth**:
+- Variables d'env `AUTH_*` écrasées
+- `GOOGLE_ALLOWED_EMAILS` perdu
+- `AUTH_ALLOWLIST_SEED` secret perdu
+- IAM policy réinitialisée avec `allUsers`
+
+**Solution implémentée:**
+
+1. **Workflow modifié** - Utilise maintenant `stable-service.yaml`:
+   ```yaml
+   # Update image in YAML
+   sed -i "s|image: .*|image: $IMAGE:$SHA|g" stable-service.yaml
+
+   # Deploy with YAML (preserves ALL config)
+   gcloud run services replace stable-service.yaml \
+     --region europe-west1 \
+     --quiet
+   ```
+
+2. **Vérification automatique ajoutée**:
+   ```yaml
+   # Verify Auth Config step
+   IAM_POLICY=$(gcloud run services get-iam-policy ...)
+   if echo "$IAM_POLICY" | grep -q "allUsers"; then
+     echo "❌ Service is public - FAIL"
+     exit 1
+   fi
+   ```
+
+   Si `allUsers` détecté → **workflow ÉCHOUE** et bloque le déploiement cassé.
+
+3. **Documentation complète créée** - [docs/DEPLOYMENT_AUTH_PROTECTION.md](docs/DEPLOYMENT_AUTH_PROTECTION.md):
+   - Explique le problème et la solution
+   - Checklist de déploiement sûr
+   - Commandes de rollback d'urgence
+   - Variables d'auth critiques à ne jamais perdre
+
+**Protection mise en place:**
+- ✅ Auth config (allowlist) préservée à chaque déploiement
+- ✅ Variables d'env complètes (OAuth, secrets) maintenues
+- ✅ Vérification auto si service devient public par erreur
+- ✅ Config déclarative versionnée ([stable-service.yaml](stable-service.yaml))
+- ✅ Workflow bloque si IAM policy invalide
+
+### Tests
+- ✅ Commit effectué avec Guardian OK
+- ⏳ Workflow GitHub Actions va se déclencher au push
+- ⏳ Step "Verify Auth Config" testera IAM policy
+- ⏳ Login post-déploiement à vérifier
+
+### Travail de Codex GPT pris en compte
+Aucun conflit. Fix critique infrastructure.
+
+### Prochaines actions recommandées
+1. **Push le commit** pour déclencher workflow corrigé
+2. **Surveiller GitHub Actions** (doit passer avec auth préservée)
+3. **Tester login utilisateur** après déploiement
+4. **Ajouter monitoring IAM** dans ProdGuardian (futur)
+5. **Script rollback automatique** si auth fails (TODO)
+
+### Blocages
+Aucun. Fix appliqué, commit local prêt à push.
+
+---
+
 ## [2025-10-22 03:56 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
