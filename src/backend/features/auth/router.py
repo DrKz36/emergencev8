@@ -220,6 +220,223 @@ async def get_session(claims: Dict[str, Any] = Depends(get_auth_claims)) -> Sess
     )
 
 
+@router.get("/my-sessions", response_model=SessionsListResponse)
+async def list_my_sessions(
+    claims: Dict[str, Any] = Depends(get_auth_claims),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> SessionsListResponse:
+    """
+    List all active sessions for the authenticated user.
+    Phase P2 - Feature 8: Gestion Multi-Sessions
+    """
+    email = claims.get("email")
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email not found in token"
+        )
+
+    # Get user ID from auth service
+    user = await auth_service.get_user_by_email(email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Get sessions for this specific user only
+    all_sessions = await auth_service.list_sessions(active_only=True)
+    user_sessions = [s for s in all_sessions if s.user_id == user.id]
+
+    return SessionsListResponse(items=user_sessions)
+
+
+@router.post("/my-sessions/{session_id}/revoke", response_model=SessionRevokeResult)
+async def revoke_my_session(
+    session_id: str,
+    claims: Dict[str, Any] = Depends(get_auth_claims),
+    auth_service: AuthService = Depends(get_auth_service),
+    session_manager: Optional[SessionManager] = Depends(get_session_manager_optional),
+) -> SessionRevokeResult:
+    """
+    Revoke one of the authenticated user's sessions.
+    User can only revoke their own sessions.
+    Phase P2 - Feature 8: Gestion Multi-Sessions
+    """
+    email = claims.get("email")
+    current_session_id = claims.get("session_id") or claims.get("sid")
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email not found in token"
+        )
+
+    # Prevent revoking current session (user should logout instead)
+    if session_id == current_session_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot revoke current session. Use /logout instead."
+        )
+
+    # Get user ID
+    user = await auth_service.get_user_by_email(email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Verify session belongs to user before revoking
+    all_sessions = await auth_service.list_sessions(active_only=True)
+    target_session = next((s for s in all_sessions if s.id == session_id), None)
+
+    if not target_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found"
+        )
+
+    if target_session.user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only revoke your own sessions"
+        )
+
+    # Revoke session
+    updated = await auth_service.revoke_session(session_id, actor=email)
+
+    # Notify session manager (close WebSocket if active)
+    if updated and session_manager:
+        await session_manager.handle_session_revocation(
+            session_id,
+            reason="user_revoke",
+            close_code=4401,
+        )
+
+    return SessionRevokeResult(updated=1 if updated else 0)
+
+
+# =========================================================================
+# 2FA / TOTP ENDPOINTS (Phase P2 - Feature 9)
+# =========================================================================
+
+@router.post("/2fa/enable")
+async def enable_2fa_endpoint(
+    claims: Dict[str, Any] = Depends(get_auth_claims),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> Dict[str, Any]:
+    """
+    Initiate 2FA setup by generating TOTP secret and backup codes.
+    Returns QR code and secret for authenticator app.
+    Phase P2 - Feature 9: Authentification 2FA
+    """
+    email = claims.get("email")
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email not found in token"
+        )
+
+    try:
+        result = await auth_service.enable_2fa(email)
+        return result
+    except AuthError as exc:
+        raise _map_auth_error(exc)
+
+
+@router.post("/2fa/verify")
+async def verify_and_enable_2fa_endpoint(
+    payload: Dict[str, str],
+    claims: Dict[str, Any] = Depends(get_auth_claims),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> Dict[str, Any]:
+    """
+    Verify TOTP code and enable 2FA for the user.
+    Requires 6-digit code from authenticator app.
+    Phase P2 - Feature 9: Authentification 2FA
+    """
+    email = claims.get("email")
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email not found in token"
+        )
+
+    totp_code = payload.get("code", "").strip()
+    if not totp_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="TOTP code is required"
+        )
+
+    try:
+        success = await auth_service.verify_and_enable_2fa(email, totp_code)
+        if success:
+            return {"success": True, "message": "2FA enabled successfully"}
+        else:
+            return {"success": False, "message": "Invalid TOTP code"}
+    except AuthError as exc:
+        raise _map_auth_error(exc)
+
+
+@router.post("/2fa/disable")
+async def disable_2fa_endpoint(
+    payload: Dict[str, str],
+    claims: Dict[str, Any] = Depends(get_auth_claims),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> Dict[str, Any]:
+    """
+    Disable 2FA for the user (requires password confirmation).
+    Phase P2 - Feature 9: Authentification 2FA
+    """
+    email = claims.get("email")
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email not found in token"
+        )
+
+    password = payload.get("password", "").strip()
+    if not password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password is required to disable 2FA"
+        )
+
+    try:
+        success = await auth_service.disable_2fa(email, password)
+        if success:
+            return {"success": True, "message": "2FA disabled successfully"}
+        else:
+            return {"success": False, "message": "Failed to disable 2FA"}
+    except AuthError as exc:
+        raise _map_auth_error(exc)
+
+
+@router.get("/2fa/status")
+async def get_2fa_status_endpoint(
+    claims: Dict[str, Any] = Depends(get_auth_claims),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> Dict[str, Any]:
+    """
+    Get 2FA status for the authenticated user.
+    Phase P2 - Feature 9: Authentification 2FA
+    """
+    email = claims.get("email")
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email not found in token"
+        )
+
+    try:
+        status_info = await auth_service.get_2fa_status(email)
+        return status_info
+    except AuthError as exc:
+        raise _map_auth_error(exc)
+
+
 @router.post("/change-password", response_model=ChangePasswordResponse)
 async def change_password(
     payload: ChangePasswordRequest,

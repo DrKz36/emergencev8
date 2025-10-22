@@ -6,12 +6,16 @@ import json
 import logging
 import os
 import secrets
+import base64
+import io
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping, Optional, Sequence
 from uuid import uuid4
 
 import bcrypt
 import jwt
+import pyotp
+import qrcode
 
 from backend.core.database.manager import DatabaseManager
 
@@ -1403,6 +1407,303 @@ class AuthService:
             return dt
         except Exception:
             return datetime.fromtimestamp(0, tz=timezone.utc)
+
+    # =========================================================================
+    # 2FA / TOTP METHODS (Phase P2 - Feature 9)
+    # =========================================================================
+
+    async def enable_2fa(self, email: str) -> dict[str, Any]:
+        """
+        Enable 2FA for a user by generating a TOTP secret and backup codes.
+
+        Returns:
+            dict with:
+                - secret: TOTP secret (base32 encoded)
+                - qr_code: QR code image data (base64 encoded PNG)
+                - backup_codes: list of 10 backup codes
+                - provisioning_uri: otpauth:// URI for manual entry
+        """
+        normalized = email.strip().lower()
+
+        # Get user from allowlist
+        allow_row = await self._fetch_one_dict(
+            "SELECT email, role FROM auth_allowlist WHERE email = ? AND revoked_at IS NULL",
+            (normalized,)
+        )
+
+        if not allow_row:
+            raise AuthError("User not found", status_code=404)
+
+        # Generate TOTP secret (16 bytes = 128 bits)
+        secret = pyotp.random_base32()
+
+        # Generate backup codes (10 codes, 8 characters each)
+        backup_codes = [secrets.token_hex(4).upper() for _ in range(10)]
+
+        # Create provisioning URI for QR code
+        totp = pyotp.TOTP(secret)
+        issuer_name = "Emergence V8"
+        provisioning_uri = totp.provisioning_uri(
+            name=normalized,
+            issuer_name=issuer_name
+        )
+
+        # Generate QR code image
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(provisioning_uri)
+        qr.make(fit=True)
+
+        img = qr.make_image(fill_color="black", back_color="white")
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
+        qr_code_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+        # Store in database (not enabled yet, will be enabled after verification)
+        await self.db.execute(
+            """
+            UPDATE auth_allowlist
+            SET totp_secret = ?, backup_codes = ?
+            WHERE email = ?
+            """,
+            (secret, json.dumps(backup_codes), normalized),
+            commit=True
+        )
+
+        # Audit log
+        await self._write_audit(
+            "2fa:setup_initiated",
+            email=normalized,
+            actor=normalized,
+            metadata={"backup_codes_count": len(backup_codes)}
+        )
+
+        return {
+            "secret": secret,
+            "qr_code": qr_code_base64,
+            "backup_codes": backup_codes,
+            "provisioning_uri": provisioning_uri
+        }
+
+    async def verify_and_enable_2fa(self, email: str, totp_code: str) -> bool:
+        """
+        Verify TOTP code and enable 2FA if valid.
+
+        Args:
+            email: User email
+            totp_code: 6-digit TOTP code from authenticator app
+
+        Returns:
+            True if verification successful and 2FA enabled
+        """
+        normalized = email.strip().lower()
+
+        # Get user with totp_secret
+        allow_row = await self._fetch_one_dict(
+            "SELECT email, totp_secret, totp_enabled_at FROM auth_allowlist WHERE email = ? AND revoked_at IS NULL",
+            (normalized,)
+        )
+
+        if not allow_row:
+            raise AuthError("User not found", status_code=404)
+
+        secret = allow_row.get("totp_secret")
+        if not secret:
+            raise AuthError("2FA not initiated. Call enable_2fa first.", status_code=400)
+
+        # Verify TOTP code
+        totp = pyotp.TOTP(secret)
+        if not totp.verify(totp_code, valid_window=1):  # Allow 1 window tolerance (30s before/after)
+            await self._write_audit(
+                "2fa:verification_failed",
+                email=normalized,
+                actor=normalized,
+                metadata={}
+            )
+            return False
+
+        # Enable 2FA
+        now = self._now()
+        await self.db.execute(
+            """
+            UPDATE auth_allowlist
+            SET totp_enabled_at = ?
+            WHERE email = ?
+            """,
+            (now.isoformat(), normalized),
+            commit=True
+        )
+
+        # Audit log
+        await self._write_audit(
+            "2fa:enabled",
+            email=normalized,
+            actor=normalized,
+            metadata={"enabled_at": now.isoformat()}
+        )
+
+        return True
+
+    async def verify_2fa_code(self, email: str, code: str) -> bool:
+        """
+        Verify a 2FA TOTP code or backup code.
+
+        Args:
+            email: User email
+            code: 6-digit TOTP code OR 8-character backup code
+
+        Returns:
+            True if code is valid
+        """
+        normalized = email.strip().lower()
+
+        # Get user
+        allow_row = await self._fetch_one_dict(
+            "SELECT email, totp_secret, totp_enabled_at, backup_codes FROM auth_allowlist WHERE email = ? AND revoked_at IS NULL",
+            (normalized,)
+        )
+
+        if not allow_row:
+            raise AuthError("User not found", status_code=404)
+
+        totp_enabled_at = allow_row.get("totp_enabled_at")
+        if not totp_enabled_at:
+            raise AuthError("2FA not enabled for this user", status_code=400)
+
+        secret = allow_row.get("totp_secret")
+        backup_codes_json = allow_row.get("backup_codes")
+
+        # Try TOTP code first (6 digits)
+        if len(code) == 6 and code.isdigit():
+            totp = pyotp.TOTP(secret)
+            if totp.verify(code, valid_window=1):
+                await self._write_audit(
+                    "2fa:verified",
+                    email=normalized,
+                    actor=normalized,
+                    metadata={"method": "totp"}
+                )
+                return True
+
+        # Try backup code (8 characters hex)
+        if len(code) == 8 and backup_codes_json:
+            backup_codes = json.loads(backup_codes_json)
+            code_upper = code.upper()
+
+            if code_upper in backup_codes:
+                # Remove used backup code
+                backup_codes.remove(code_upper)
+                await self.db.execute(
+                    "UPDATE auth_allowlist SET backup_codes = ? WHERE email = ?",
+                    (json.dumps(backup_codes), normalized),
+                    commit=True
+                )
+
+                await self._write_audit(
+                    "2fa:backup_code_used",
+                    email=normalized,
+                    actor=normalized,
+                    metadata={"remaining_codes": len(backup_codes)}
+                )
+
+                return True
+
+        # Verification failed
+        await self._write_audit(
+            "2fa:verification_failed",
+            email=normalized,
+            actor=normalized,
+            metadata={"code_length": len(code)}
+        )
+
+        return False
+
+    async def disable_2fa(self, email: str, password: str) -> bool:
+        """
+        Disable 2FA for a user (requires password confirmation).
+
+        Args:
+            email: User email
+            password: User's password for confirmation
+
+        Returns:
+            True if 2FA disabled successfully
+        """
+        normalized = email.strip().lower()
+
+        # Verify password first
+        allow_row = await self._fetch_one_dict(
+            "SELECT email, password_hash, totp_enabled_at FROM auth_allowlist WHERE email = ? AND revoked_at IS NULL",
+            (normalized,)
+        )
+
+        if not allow_row:
+            raise AuthError("User not found", status_code=404)
+
+        password_hash = allow_row.get("password_hash")
+        if not password_hash or not self._verify_password(password, password_hash):
+            raise AuthError("Invalid password", status_code=401)
+
+        totp_enabled_at = allow_row.get("totp_enabled_at")
+        if not totp_enabled_at:
+            raise AuthError("2FA not enabled", status_code=400)
+
+        # Disable 2FA
+        await self.db.execute(
+            """
+            UPDATE auth_allowlist
+            SET totp_secret = NULL, backup_codes = NULL, totp_enabled_at = NULL
+            WHERE email = ?
+            """,
+            (normalized,),
+            commit=True
+        )
+
+        # Audit log
+        await self._write_audit(
+            "2fa:disabled",
+            email=normalized,
+            actor=normalized,
+            metadata={}
+        )
+
+        return True
+
+    async def get_2fa_status(self, email: str) -> dict[str, Any]:
+        """
+        Get 2FA status for a user.
+
+        Returns:
+            dict with:
+                - enabled: bool
+                - enabled_at: ISO timestamp or None
+                - backup_codes_remaining: int
+        """
+        normalized = email.strip().lower()
+
+        allow_row = await self._fetch_one_dict(
+            "SELECT totp_enabled_at, backup_codes FROM auth_allowlist WHERE email = ? AND revoked_at IS NULL",
+            (normalized,)
+        )
+
+        if not allow_row:
+            raise AuthError("User not found", status_code=404)
+
+        totp_enabled_at = allow_row.get("totp_enabled_at")
+        backup_codes_json = allow_row.get("backup_codes")
+
+        backup_codes_remaining = 0
+        if backup_codes_json:
+            try:
+                backup_codes = json.loads(backup_codes_json)
+                backup_codes_remaining = len(backup_codes)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        return {
+            "enabled": bool(totp_enabled_at),
+            "enabled_at": totp_enabled_at,
+            "backup_codes_remaining": backup_codes_remaining
+        }
 
 
 TRUTHY = {"1", "true", "yes", "on"}

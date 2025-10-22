@@ -718,14 +718,15 @@ export class Documentation {
                                     Frontend
                                 </h3>
                                 <ul>
+                                    <li><strong>Code:</strong> ~68,000 lignes (40k JavaScript + 29k CSS)</li>
                                     <li><strong>Architecture:</strong> SPA modulaire sans framework (15 modules)</li>
                                     <li><strong>Pattern:</strong> Component-based avec modules ES6</li>
                                     <li><strong>State:</strong> StateManager centralisé + LocalStorage</li>
                                     <li><strong>Communication:</strong> WebSocket bidirectionnel + REST API</li>
                                     <li><strong>UI/UX:</strong> Glassmorphism, design system cohérent</li>
                                     <li><strong>Build:</strong> Vite 7.1.2 avec HMR</li>
+                                    <li><strong>Dépendances:</strong> Chart.js, jsPDF, PapaParse, Marked</li>
                                     <li><strong>Tests:</strong> Playwright pour tests E2E</li>
-                                    <li><strong>Tutoriel:</strong> Système interactif avec guides détaillés</li>
                                 </ul>
                             </div>
 
@@ -737,13 +738,15 @@ export class Documentation {
                                     Backend
                                 </h3>
                                 <ul>
-                                    <li><strong>Framework:</strong> FastAPI 0.109.2 (async/await)</li>
+                                    <li><strong>Code:</strong> ~41,000 lignes Python</li>
+                                    <li><strong>Framework:</strong> FastAPI 0.119.0 (async/await)</li>
                                     <li><strong>Pattern:</strong> Dependency Injection, Repository</li>
                                     <li><strong>Architecture:</strong> Microservices-ready, modulaire</li>
                                     <li><strong>API:</strong> REST + WebSocket bidirectionnel</li>
                                     <li><strong>Validation:</strong> Pydantic 2.6+ schemas</li>
+                                    <li><strong>Auth:</strong> JWT + bcrypt + TOTP 2FA (pyotp, qrcode)</li>
                                     <li><strong>Testing:</strong> 232 tests pytest avec fixtures async</li>
-                                    <li><strong>QA:</strong> Ruff (linter) + MyPy (types statiques)</li>
+                                    <li><strong>QA:</strong> Ruff 0.13+ (linter) + MyPy 1.18+ (types)</li>
                                     <li><strong>Monitoring:</strong> Prometheus + métriques custom</li>
                                 </ul>
                             </div>
@@ -777,11 +780,12 @@ export class Documentation {
                                 </h3>
                                 <ul>
                                     <li><strong>Cloud:</strong> Google Cloud Firestore (NoSQL)</li>
-                                    <li><strong>Vector:</strong> ChromaDB 0.4.22 + Qdrant (optionnel)</li>
+                                    <li><strong>Vector:</strong> ChromaDB 0.5.23 + Qdrant (optionnel)</li>
                                     <li><strong>Local:</strong> aiosqlite 0.21.0 (async SQLite)</li>
                                     <li><strong>Cache:</strong> LocalStorage (frontend state)</li>
-                                    <li><strong>Files:</strong> PyMuPDF, python-docx, aiofiles</li>
+                                    <li><strong>Files:</strong> PyMuPDF 1.24+, python-docx, aiofiles 24.1</li>
                                     <li><strong>Mémoire:</strong> Système STM/LTM avec embeddings</li>
+                                    <li><strong>Production:</strong> Google Cloud Run (europe-west1)</li>
                                 </ul>
                             </div>
                         </div>
@@ -1111,11 +1115,60 @@ export class Documentation {
                                         </ul>
                                         <p><strong>État actuel (Octobre 2025) :</strong></p>
                                         <ul>
-                                            <li>~73,000 lignes de code total (50k frontend + 23k backend)</li>
+                                            <li><strong>~110,000 lignes de code</strong> (41k backend Python + 40k frontend JS + 29k CSS)</li>
                                             <li>15 modules frontend opérationnels</li>
-                                            <li>Architecture multi-agents mature et testée</li>
+                                            <li>Architecture multi-agents mature et testée (232 tests pytest)</li>
                                             <li>Système de mémoire STM/LTM fonctionnel</li>
-                                            <li>Préparation beta testing avec utilisateurs pilotes</li>
+                                            <li><strong>Dépendances:</strong> 40+ packages Python, 7+ npm packages</li>
+                                            <li>Production sur Google Cloud Run (europe-west1)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="timeline-item">
+                                    <div class="timeline-marker">
+                                        <div class="marker-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="marker-date">Octobre 2025 - Phase P2</div>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <h4>Administration & Sécurité avancées (Phase P2)</h4>
+                                        <p>
+                                            <strong>Roadmap complétée à 74%</strong> avec la finalisation de la Phase P2
+                                            (Administration & Sécurité) en une seule session de développement (~9 heures).
+                                        </p>
+                                        <p><strong>Nouvelles fonctionnalités majeures :</strong></p>
+                                        <ul>
+                                            <li>
+                                                <strong>Dashboard Administrateur Avancé</strong>
+                                                <br/>Graphiques interactifs Chart.js : top 10 consommateurs, historique coûts 7j,
+                                                métriques système temps réel (uptime, latence, taux erreur), liste sessions actives avec révocation.
+                                            </li>
+                                            <li>
+                                                <strong>Gestion Multi-Sessions</strong>
+                                                <br/>Endpoints backend <code>/api/auth/my-sessions</code> (GET/POST),
+                                                UI complète avec device/IP/dates, protection ownership, badge "Session actuelle",
+                                                révocation individuelle ou globale avec confirmations.
+                                            </li>
+                                            <li>
+                                                <strong>Authentification 2FA (TOTP)</strong>
+                                                <br/>Migration SQL (totp_secret, backup_codes, totp_enabled_at),
+                                                génération QR code base64 PNG, 10 backup codes hexadécimaux,
+                                                modal UI 3 étapes (QR + copie secret + vérification code),
+                                                désactivation avec confirmation mot de passe.
+                                            </li>
+                                        </ul>
+                                        <p><strong>Métriques techniques Phase P2 :</strong></p>
+                                        <ul>
+                                            <li>17 fichiers modifiés (backend + frontend + styles)</li>
+                                            <li>Nouvelles dépendances : pyotp, qrcode (backend) / chart.js (frontend)</li>
+                                            <li>~1,200 lignes de code ajoutées (backend + frontend + CSS)</li>
+                                            <li>Migration SQL + 5 méthodes AuthService + 4 endpoints API</li>
+                                            <li>Tests : npm run build ✅, pytest backend ✅</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -1175,7 +1228,7 @@ export class Documentation {
                                             </li>
                                         </ul>
 
-                                        <p><strong>Comparaison économique (pour un projet de ~73k lignes) :</strong></p>
+                                        <p><strong>Comparaison économique (pour un projet de ~110k lignes) :</strong></p>
                                         <div style="background: rgba(59, 130, 246, 0.05); border-left: 3px solid #3b82f6; padding: 1rem; margin: 1rem 0;">
                                             <p style="margin: 0.5rem 0;"><strong>Équipe humaine traditionnelle :</strong></p>
                                             <ul style="margin: 0.5rem 0;">

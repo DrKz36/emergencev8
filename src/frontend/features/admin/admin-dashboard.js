@@ -6,6 +6,7 @@
 
 import { AdminIcons, getIcon } from './admin-icons.js';
 import { adminGuardianModule } from './admin-guardian.js';
+import { AdminAnalytics } from './admin-analytics.js';
 
 export class AdminDashboard {
     constructor() {
@@ -13,6 +14,7 @@ export class AdminDashboard {
         this.activeView = 'global';
         this.refreshInterval = null;
         this.currentUserDetails = null;
+        this.analyticsModule = null;
     }
 
     /**
@@ -134,8 +136,7 @@ export class AdminDashboard {
                     <!-- Analytics View -->
                     <div class="admin-view ${this.activeView === 'analytics' ? 'active' : ''}"
                          data-view="analytics">
-                        <div id="analytics-sessions" class="admin-section"></div>
-                        <div id="analytics-metrics" class="admin-section"></div>
+                        <!-- Analytics module will be injected here -->
                     </div>
 
                     <!-- Guardian View -->
@@ -813,31 +814,24 @@ export class AdminDashboard {
      * Render analytics view with threads and system metrics
      */
     async renderAnalyticsView() {
-        const sessionsContainer = this.container.querySelector('#analytics-sessions');
-        const metricsContainer = this.container.querySelector('#analytics-metrics');
+        const analyticsContainer = this.container.querySelector('[data-view="analytics"]');
 
-        // Show loading state
-        sessionsContainer.innerHTML = '<p class="loading">Chargement des threads...</p>';
-        metricsContainer.innerHTML = '<p class="loading">Chargement des métriques...</p>';
-
-        try {
-            // Load threads and metrics in parallel
-            const [threadsData, metricsData] = await Promise.all([
-                this.loadActiveThreads(),
-                this.loadSystemMetrics()
-            ]);
-
-            // Render threads list
-            this.renderThreadsList(threadsData, sessionsContainer);
-
-            // Render system metrics
-            this.renderSystemMetrics(metricsData, metricsContainer);
-
-        } catch (error) {
-            console.error('[AdminDashboard] Error loading analytics:', error);
-            sessionsContainer.innerHTML = '<p class="error">Erreur lors du chargement des threads</p>';
-            metricsContainer.innerHTML = '<p class="error">Erreur lors du chargement des métriques</p>';
+        if (!analyticsContainer) {
+            console.error('[AdminDashboard] Analytics container not found');
+            return;
         }
+
+        // Clear existing content
+        analyticsContainer.innerHTML = '<div id="analytics-content"></div>';
+
+        // Destroy previous analytics instance if exists
+        if (this.analyticsModule) {
+            this.analyticsModule.destroy();
+        }
+
+        // Create and initialize new analytics module
+        this.analyticsModule = new AdminAnalytics();
+        await this.analyticsModule.init('analytics-content');
     }
 
     /**

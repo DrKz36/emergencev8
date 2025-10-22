@@ -134,6 +134,39 @@ export class SettingsSecurity {
                         </div>
                     </div>
 
+                    <!-- Active Sessions (Phase P2 - Feature 8) -->
+                    <div class="settings-section">
+                        <div class="section-header-with-action">
+                            <h3>📱 Sessions Actives</h3>
+                            <button class="btn-revoke-all" title="Révoquer toutes les sessions sauf celle-ci">
+                                🚫 Révoquer toutes
+                            </button>
+                        </div>
+                        <div class="sessions-info">
+                            <p class="info-text">
+                                Gérez vos sessions actives. Vous pouvez révoquer une session pour la déconnecter immédiatement.
+                            </p>
+                        </div>
+                        <div class="sessions-list" id="sessions-list">
+                            <div class="log-loading">Chargement des sessions...</div>
+                        </div>
+                    </div>
+
+                    <!-- 2FA Authentication (Phase P2 - Feature 9) -->
+                    <div class="settings-section">
+                        <h3>🔐 Authentification à Deux Facteurs (2FA)</h3>
+                        <div class="twofa-info">
+                            <p class="info-text">
+                                L'authentification à deux facteurs ajoute une couche de sécurité supplémentaire en exigeant un code à 6 chiffres depuis votre application d'authentification (Google Authenticator, Authy, etc.).
+                            </p>
+                        </div>
+
+                        <!-- 2FA Status Container -->
+                        <div id="twofa-container">
+                            <div class="log-loading">Chargement du statut 2FA...</div>
+                        </div>
+                    </div>
+
                     <!-- Audit Log -->
                     <div class="settings-section">
                         <div class="section-header-with-action">
@@ -186,6 +219,8 @@ export class SettingsSecurity {
 
         this.attachEventListeners();
         this.loadAuditLog();
+        this.loadActiveSessions();
+        this.loadTwoFactorStatus();
     }
 
     /**
@@ -318,6 +353,12 @@ export class SettingsSecurity {
                 this.handleDangerAction(action);
             });
         });
+
+        // Sessions management (Phase P2 - Feature 8)
+        const revokeAllBtn = this.container.querySelector('.btn-revoke-all');
+        if (revokeAllBtn) {
+            revokeAllBtn.addEventListener('click', () => this.revokeAllSessions());
+        }
     }
 
     /**
@@ -575,6 +616,528 @@ export class SettingsSecurity {
      */
     showError(message) {
         console.error('✗', message);
+    }
+
+    /**
+     * Load active sessions (Phase P2 - Feature 8)
+     */
+    async loadActiveSessions() {
+        const sessionsContainer = this.container.querySelector('#sessions-list');
+        if (!sessionsContainer) return;
+
+        try {
+            const response = await api.fetch('/api/auth/my-sessions', {
+                method: 'GET'
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to load sessions: ${response.status}`);
+            }
+
+            const data = await response.json();
+            this.renderSessionsList(data.items || []);
+
+        } catch (error) {
+            console.error('[SettingsSecurity] Error loading sessions:', error);
+            sessionsContainer.innerHTML = `
+                <div class="error-message">
+                    ❌ Erreur lors du chargement des sessions: ${error.message}
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Render sessions list (Phase P2 - Feature 8)
+     */
+    renderSessionsList(sessions) {
+        const sessionsContainer = this.container.querySelector('#sessions-list');
+        if (!sessionsContainer) return;
+
+        // Get current session ID from state
+        const state = JSON.parse(localStorage.getItem('emergenceState-V14') || '{}');
+        const currentSessionId = state.auth?.session_id || '';
+
+        if (sessions.length === 0) {
+            sessionsContainer.innerHTML = `
+                <div class="empty-message">
+                    📱 Aucune session active trouvée
+                </div>
+            `;
+            return;
+        }
+
+        const sessionsHtml = sessions.map(session => {
+            const isCurrentSession = session.id === currentSessionId;
+            const createdAt = session.created_at
+                ? new Date(session.created_at).toLocaleString('fr-FR', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })
+                : 'N/A';
+
+            const lastActivity = session.last_activity
+                ? new Date(session.last_activity).toLocaleString('fr-FR', {
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })
+                : 'N/A';
+
+            const device = session.device_info || session.user_agent || 'Appareil inconnu';
+            const ip = session.ip_address || 'N/A';
+
+            return `
+                <div class="session-item ${isCurrentSession ? 'current-session' : ''}">
+                    <div class="session-header">
+                        <span class="session-device">
+                            📱 ${device}
+                        </span>
+                        ${isCurrentSession ? '<span class="session-badge current">Session actuelle</span>' : ''}
+                    </div>
+                    <div class="session-details">
+                        <div class="session-detail">
+                            <span class="detail-label">Créée le</span>
+                            <span class="detail-value">${createdAt}</span>
+                        </div>
+                        <div class="session-detail">
+                            <span class="detail-label">Dernière activité</span>
+                            <span class="detail-value">${lastActivity}</span>
+                        </div>
+                        <div class="session-detail">
+                            <span class="detail-label">Adresse IP</span>
+                            <span class="detail-value">${ip}</span>
+                        </div>
+                        <div class="session-detail">
+                            <span class="detail-label">ID Session</span>
+                            <span class="detail-value session-id">${session.id.substring(0, 12)}...</span>
+                        </div>
+                    </div>
+                    <div class="session-actions">
+                        ${!isCurrentSession ? `
+                            <button class="btn-revoke-session" data-session-id="${session.id}">
+                                🚫 Révoquer cette session
+                            </button>
+                        ` : `
+                            <button class="btn-disabled" disabled title="Utilisez le bouton de déconnexion pour terminer cette session">
+                                ✓ Session actuelle
+                            </button>
+                        `}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        sessionsContainer.innerHTML = sessionsHtml;
+
+        // Attach revoke handlers
+        sessionsContainer.querySelectorAll('.btn-revoke-session').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const sessionId = e.currentTarget.getAttribute('data-session-id');
+                this.revokeSession(sessionId);
+            });
+        });
+    }
+
+    /**
+     * Revoke a single session (Phase P2 - Feature 8)
+     */
+    async revokeSession(sessionId) {
+        if (!confirm('Voulez-vous vraiment révoquer cette session?\n\nL\'appareil sera déconnecté immédiatement.')) {
+            return;
+        }
+
+        try {
+            const response = await api.fetch(`/api/auth/my-sessions/${sessionId}/revoke`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `Erreur ${response.status}`);
+            }
+
+            this.showSuccess('Session révoquée avec succès');
+            // Reload sessions list
+            await this.loadActiveSessions();
+
+        } catch (error) {
+            console.error('[SettingsSecurity] Error revoking session:', error);
+            this.showError(`Erreur: ${error.message}`);
+        }
+    }
+
+    /**
+     * Revoke all sessions except current (Phase P2 - Feature 8)
+     */
+    async revokeAllSessions() {
+        if (!confirm('Voulez-vous vraiment révoquer TOUTES les autres sessions?\n\nTous les autres appareils seront déconnectés immédiatement.\n\nCette action est irréversible.')) {
+            return;
+        }
+
+        try {
+            const response = await api.fetch('/api/auth/my-sessions', {
+                method: 'GET'
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to load sessions: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const sessions = data.items || [];
+
+            // Get current session ID
+            const state = JSON.parse(localStorage.getItem('emergenceState-V14') || '{}');
+            const currentSessionId = state.auth?.session_id || '';
+
+            // Revoke all except current
+            const otherSessions = sessions.filter(s => s.id !== currentSessionId);
+
+            if (otherSessions.length === 0) {
+                this.showError('Aucune autre session à révoquer');
+                return;
+            }
+
+            let revokedCount = 0;
+            let failedCount = 0;
+
+            for (const session of otherSessions) {
+                try {
+                    const revokeResponse = await api.fetch(`/api/auth/my-sessions/${session.id}/revoke`, {
+                        method: 'POST'
+                    });
+
+                    if (revokeResponse.ok) {
+                        revokedCount++;
+                    } else {
+                        failedCount++;
+                    }
+                } catch (err) {
+                    console.error(`Failed to revoke session ${session.id}:`, err);
+                    failedCount++;
+                }
+            }
+
+            this.showSuccess(`${revokedCount} session(s) révoquée(s)`);
+
+            if (failedCount > 0) {
+                this.showError(`${failedCount} session(s) n'ont pas pu être révoquées`);
+            }
+
+            // Reload sessions list
+            await this.loadActiveSessions();
+
+        } catch (error) {
+            console.error('[SettingsSecurity] Error revoking all sessions:', error);
+            this.showError(`Erreur: ${error.message}`);
+        }
+    }
+
+    /**
+     * Load 2FA status (Phase P2 - Feature 9)
+     */
+    async loadTwoFactorStatus() {
+        const container = this.container.querySelector('#twofa-container');
+        if (!container) return;
+
+        try {
+            const response = await api.fetch('/api/auth/2fa/status', {
+                method: 'GET'
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to load 2FA status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            this.render2FAStatus(data);
+
+        } catch (error) {
+            console.error('[SettingsSecurity] Error loading 2FA status:', error);
+            container.innerHTML = `
+                <div class="error-message">
+                    ❌ Erreur lors du chargement du statut 2FA: ${error.message}
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Render 2FA status (Phase P2 - Feature 9)
+     */
+    render2FAStatus(status) {
+        const container = this.container.querySelector('#twofa-container');
+        if (!container) return;
+
+        const enabled = status.enabled || false;
+        const backupCodesRemaining = status.backup_codes_remaining || 0;
+
+        if (enabled) {
+            // 2FA is enabled
+            container.innerHTML = `
+                <div class="twofa-enabled">
+                    <div class="status-badge enabled">
+                        ✓ 2FA Activée
+                    </div>
+                    <div class="twofa-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Codes de secours restants</span>
+                            <span class="detail-value ${backupCodesRemaining < 3 ? 'warning' : ''}">${backupCodesRemaining} / 10</span>
+                        </div>
+                        ${backupCodesRemaining < 3 ? `
+                            <div class="warning-box">
+                                ⚠️ Attention : Il vous reste peu de codes de secours. Pensez à en régénérer.
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="twofa-actions">
+                        <button class="btn-disable-2fa">
+                            🚫 Désactiver la 2FA
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Attach disable handler
+            container.querySelector('.btn-disable-2fa')?.addEventListener('click', () => {
+                this.disable2FA();
+            });
+
+        } else {
+            // 2FA is disabled
+            container.innerHTML = `
+                <div class="twofa-disabled">
+                    <div class="status-badge disabled">
+                        ✗ 2FA Désactivée
+                    </div>
+                    <div class="twofa-actions">
+                        <button class="btn-enable-2fa">
+                            🔐 Activer la 2FA
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Attach enable handler
+            container.querySelector('.btn-enable-2fa')?.addEventListener('click', () => {
+                this.enable2FA();
+            });
+        }
+    }
+
+    /**
+     * Enable 2FA (Phase P2 - Feature 9)
+     */
+    async enable2FA() {
+        try {
+            const response = await api.fetch('/api/auth/2fa/enable', {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to enable 2FA: ${response.status}`);
+            }
+
+            const data = await response.json();
+            this.show2FASetupModal(data);
+
+        } catch (error) {
+            console.error('[SettingsSecurity] Error enabling 2FA:', error);
+            this.showError(`Erreur lors de l'activation de la 2FA: ${error.message}`);
+        }
+    }
+
+    /**
+     * Show 2FA setup modal with QR code (Phase P2 - Feature 9)
+     */
+    show2FASetupModal(data) {
+        const qrCode = data.qr_code;
+        const secret = data.secret;
+        const backupCodes = data.backup_codes || [];
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'twofa-modal';
+        modal.innerHTML = `
+            <div class="modal-overlay"></div>
+            <div class="modal-content twofa-modal-content">
+                <div class="modal-header">
+                    <h3>🔐 Activer l'Authentification 2FA</h3>
+                    <button class="btn-close-modal">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="setup-step">
+                        <h4>1️⃣ Scannez le QR Code</h4>
+                        <p>Utilisez votre application d'authentification (Google Authenticator, Authy, etc.) pour scanner ce code :</p>
+                        <div class="qr-code-container">
+                            <img src="data:image/png;base64,${qrCode}" alt="QR Code 2FA" />
+                        </div>
+                        <details class="manual-entry">
+                            <summary>Saisie manuelle</summary>
+                            <p>Si vous ne pouvez pas scanner le QR code, entrez ce secret manuellement :</p>
+                            <div class="secret-code">
+                                <code>${secret}</code>
+                                <button class="btn-copy-secret" data-secret="${secret}">📋 Copier</button>
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="setup-step">
+                        <h4>2️⃣ Codes de Secours</h4>
+                        <p>Conservez ces codes de secours dans un endroit sûr. Ils vous permettront de vous connecter si vous perdez accès à votre application d'authentification :</p>
+                        <div class="backup-codes">
+                            ${backupCodes.map(code => `<div class="backup-code">${code}</div>`).join('')}
+                        </div>
+                        <button class="btn-download-backup-codes">
+                            💾 Télécharger les codes de secours
+                        </button>
+                    </div>
+
+                    <div class="setup-step">
+                        <h4>3️⃣ Vérification</h4>
+                        <p>Entrez le code à 6 chiffres généré par votre application :</p>
+                        <div class="verification-form">
+                            <input type="text"
+                                   id="twofa-verification-code"
+                                   class="verification-input"
+                                   placeholder="000000"
+                                   maxlength="6"
+                                   pattern="[0-9]{6}"
+                                   autocomplete="off">
+                            <button class="btn-verify-2fa">
+                                ✓ Vérifier et Activer
+                            </button>
+                        </div>
+                        <div id="verification-error" class="error-message hidden"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Attach event handlers
+        modal.querySelector('.btn-close-modal')?.addEventListener('click', () => {
+            modal.remove();
+        });
+
+        modal.querySelector('.modal-overlay')?.addEventListener('click', () => {
+            modal.remove();
+        });
+
+        modal.querySelector('.btn-copy-secret')?.addEventListener('click', (e) => {
+            const secret = e.currentTarget.getAttribute('data-secret');
+            navigator.clipboard.writeText(secret);
+            this.showSuccess('Secret copié dans le presse-papier');
+        });
+
+        modal.querySelector('.btn-download-backup-codes')?.addEventListener('click', () => {
+            const content = backupCodes.join('\n');
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'emergence-2fa-backup-codes.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+            this.showSuccess('Codes de secours téléchargés');
+        });
+
+        modal.querySelector('.btn-verify-2fa')?.addEventListener('click', async () => {
+            const code = modal.querySelector('#twofa-verification-code')?.value.trim();
+            await this.verify2FA(code, modal);
+        });
+
+        // Allow Enter key to verify
+        modal.querySelector('#twofa-verification-code')?.addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter') {
+                const code = e.target.value.trim();
+                await this.verify2FA(code, modal);
+            }
+        });
+    }
+
+    /**
+     * Verify 2FA code (Phase P2 - Feature 9)
+     */
+    async verify2FA(code, modal) {
+        const errorElement = modal.querySelector('#verification-error');
+
+        if (!code || code.length !== 6) {
+            errorElement.textContent = 'Le code doit contenir 6 chiffres';
+            errorElement.classList.remove('hidden');
+            return;
+        }
+
+        try {
+            const response = await api.fetch('/api/auth/2fa/verify', {
+                method: 'POST',
+                body: JSON.stringify({ code })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to verify 2FA: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.showSuccess('2FA activée avec succès !');
+                modal.remove();
+                // Reload 2FA status
+                await this.loadTwoFactorStatus();
+            } else {
+                errorElement.textContent = 'Code invalide. Vérifiez le code sur votre application.';
+                errorElement.classList.remove('hidden');
+            }
+
+        } catch (error) {
+            console.error('[SettingsSecurity] Error verifying 2FA:', error);
+            errorElement.textContent = `Erreur: ${error.message}`;
+            errorElement.classList.remove('hidden');
+        }
+    }
+
+    /**
+     * Disable 2FA (Phase P2 - Feature 9)
+     */
+    async disable2FA() {
+        const password = prompt('Pour désactiver la 2FA, entrez votre mot de passe :');
+
+        if (!password) {
+            return;
+        }
+
+        try {
+            const response = await api.fetch('/api/auth/2fa/disable', {
+                method: 'POST',
+                body: JSON.stringify({ password })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `Erreur ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.showSuccess('2FA désactivée avec succès');
+                // Reload 2FA status
+                await this.loadTwoFactorStatus();
+            } else {
+                this.showError(result.message || 'Échec de la désactivation de la 2FA');
+            }
+
+        } catch (error) {
+            console.error('[SettingsSecurity] Error disabling 2FA:', error);
+            this.showError(`Erreur: ${error.message}`);
+        }
     }
 
     /**

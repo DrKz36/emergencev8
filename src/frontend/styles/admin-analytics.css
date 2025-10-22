@@ -1,0 +1,377 @@
+/**
+ * Admin Analytics Styles
+ * Phase P2 - Feature 7: Dashboard Administrateur Avancé
+ * V1.0.0 - 2025-10-22
+ */
+
+/* === Analytics Container === */
+.admin-analytics {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-md);
+}
+
+/* === Header === */
+.analytics-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.analytics-title h2 {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-xs) 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.analytics-subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.btn-refresh-analytics {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-refresh-analytics:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+/* === Charts Grid === */
+.analytics-charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+/* === Analytics Card === */
+.analytics-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.analytics-card.analytics-sessions,
+.analytics-card.analytics-metrics {
+    grid-column: 1 / -1;
+}
+
+/* === Card Header === */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-header h3 {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.card-icon {
+    font-size: var(--font-size-xl);
+}
+
+.card-badge {
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    color: var(--text-secondary);
+    background-color: var(--bg-secondary);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius-full);
+}
+
+/* === Card Body === */
+.card-body {
+    flex: 1;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-body canvas {
+    max-height: 300px !important;
+}
+
+/* === Card Footer === */
+.card-footer {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.summary-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.summary-value {
+    font-size: var(--font-size-lg);
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* === Sessions Grid === */
+.sessions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--spacing-md);
+    min-height: 200px;
+}
+
+/* === Session Card === */
+.session-card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    transition: all 0.2s ease;
+}
+
+.session-card:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-md);
+}
+
+.session-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.session-status {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius-full);
+    text-transform: uppercase;
+}
+
+.session-status.active {
+    background-color: rgba(34, 197, 94, 0.2);
+    color: rgb(22, 163, 74);
+}
+
+.session-status.inactive {
+    background-color: rgba(156, 163, 175, 0.2);
+    color: rgb(107, 114, 128);
+}
+
+.session-id {
+    font-size: var(--font-size-xs);
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+}
+
+.session-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    flex: 1;
+}
+
+.session-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.info-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    text-align: right;
+    word-break: break-word;
+}
+
+.session-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-revoke-session {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background-color: rgba(239, 68, 68, 0.1);
+    color: rgb(220, 38, 38);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--border-radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-revoke-session:hover {
+    background-color: rgba(239, 68, 68, 0.2);
+    border-color: rgb(220, 38, 38);
+    transform: translateY(-1px);
+}
+
+/* === Metrics Grid === */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+    min-height: 150px;
+}
+
+/* === Metric Card === */
+.metric-card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    transition: all 0.2s ease;
+}
+
+.metric-card:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-md);
+}
+
+.metric-icon {
+    font-size: 2rem;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--card-bg);
+    border-radius: var(--border-radius-md);
+}
+
+.metric-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.metric-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.metric-value {
+    font-size: var(--font-size-xl);
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+/* === Loading & Error States === */
+.loading,
+.error,
+.empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    text-align: center;
+    padding: var(--spacing-lg);
+}
+
+.error {
+    color: rgb(220, 38, 38);
+}
+
+/* === Responsive === */
+@media (max-width: 768px) {
+    .analytics-charts {
+        grid-template-columns: 1fr;
+    }
+
+    .sessions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .analytics-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+
+    .btn-refresh-analytics {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .card-footer {
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+}

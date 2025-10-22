@@ -11,6 +11,8 @@ python-multipart>=0.0.9
 PyJWT>=2.9,<3
 # --- Auth ---
 bcrypt>=4.1,<5
+pyotp>=2.9,<3  # TOTP 2FA (Phase P2 - Feature 9)
+qrcode>=8.0,<9  # QR code generation for 2FA setup
 
 # --- DI & Config ---
 dependency-injector>=4.41,<5
