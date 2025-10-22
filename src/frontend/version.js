@@ -18,14 +18,15 @@
  * - beta-2.1.3 : Guardian email reports automation
  * - beta-2.1.4 : Fix 404 production (reset-password, favicon)
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
- * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix [ACTUEL]
+ * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
+ * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3) [ACTUEL]
  */
 
-export const VERSION = 'beta-2.2.0';
-export const VERSION_NAME = 'Mypy 100% Clean + Monitoring Fix';
-export const VERSION_DATE = '2025-10-21';
-export const BUILD_PHASE = 'P1';
-export const COMPLETION_PERCENTAGE = 61; // 14/23 features
+export const VERSION = 'beta-3.0.0';
+export const VERSION_NAME = 'Admin & Sécurité (P2 Complétée)';
+export const VERSION_DATE = '2025-10-22';
+export const BUILD_PHASE = 'P2';
+export const COMPLETION_PERCENTAGE = 74; // 17/23 features
 export const TOTAL_FEATURES = 23;
 
 export default {
@@ -40,9 +41,9 @@ export default {
   phases: {
     P0: { status: 'completed', features: 3, completion: 100 },
     P1: { status: 'completed', features: 3, completion: 100 },
-    P2: { status: 'pending', features: 6, completion: 0 },
+    P2: { status: 'completed', features: 3, completion: 100 },
     P3: { status: 'pending', features: 4, completion: 0 },
-    P4: { status: 'pending', features: 7, completion: 0 },
+    P4: { status: 'pending', features: 10, completion: 0 },
   },
 
   // Display helpers
