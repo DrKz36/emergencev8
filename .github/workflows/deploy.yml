@@ -27,16 +27,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Setup gcloud CLI
-      - uses: google-github-actions/setup-gcloud@v1
+      # Authenticate to Google Cloud
+      - id: auth
+        uses: google-github-actions/auth@v2
         with:
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-          project_id: ${{ env.GCP_PROJECT_ID }}
-          export_default_credentials: true
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # Configure Docker to use gcloud as credential helper
+      # Setup gcloud CLI
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # Configure Docker to use gcloud as credential helper for GCR
       - name: Configure Docker
-        run: gcloud auth configure-docker
+        run: gcloud auth configure-docker gcr.io
 
       # Build Docker image
       - name: Build Docker image
