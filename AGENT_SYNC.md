@@ -2,9 +2,76 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-22 23:15 CET (Claude Code : Phase P2 + Fix deploy + Docs 🚀)
+**Dernière mise à jour** : 2025-10-22 17:50 CET (Claude Code : Fix prod down + Version beta-3.0.0 🚑)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+## 🚑 Session COMPLÉTÉE (2025-10-22 17:50 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/frontend/version.js` (version beta-3.0.0, completion 74%)
+- `dist/` (rebuild frontend)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (documentation incident)
+
+### Actions réalisées
+**🚨 INCIDENT PROD RÉSOLU: Révision Cloud Run 00423 cassée (401 sur toutes requêtes)**
+
+**Problème identifié:**
+- Révision `emergence-app-00423-scr` déployée à 05:58 → timeout "Deadline exceeded" au warm-up (>150s)
+- Cloud Run routait vers cette révision morte → **site inaccessible** (401 unauthorized)
+- Logs startup vides, startup probe fail après 30 retries (5s * 30 = 150s max)
+- Guardian n'a PAS détecté l'incident (intervalle 6h, incident duré ~30min)
+
+**Solution appliquée:**
+1. **Rollback immédiat** vers révision 00422 (fonctionnelle)
+   ```bash
+   gcloud run services update-traffic emergence-app --region=europe-west1 --to-revisions=emergence-app-00422-sj4=100
+   ```
+   - Résultat : /health répond 200, auth fonctionne ✅
+
+2. **Update version.js** : beta-2.2.0 → beta-3.0.0
+   - Phase P2 : pending → completed
+   - Completion : 61% → 74%
+   - Module "À propos" affichait version obsolète (beta-2.1.3)
+
+3. **Nouveau déploiement** (version beta-3.0.0)
+   - Commit + push déclenche GitHub Actions
+   - Surveillance attentive du warm-up
+
+**Analyse de la cause racine (révision 00423):**
+- Le Dockerfile a `HF_HUB_OFFLINE=1` + `TRANSFORMERS_OFFLINE=1` (ajoutés par Codex)
+- Le modèle SentenceTransformer est pré-téléchargé au build
+- Mais au runtime, le modèle est chargé en lazy loading (vector_service.py:452)
+- **Hypothèse:** Commits entre 00422 et 00423 (OOM fix, Phase P2) ont peut-être alourdi le démarrage
+- Ou problème de cache Docker / warm-up aléatoire
+
+**Constat Guardian:**
+- ✅ Guardian **fonctionne** : audit manuel post-incident détecte "status: OK"
+- ❌ Guardian **n'a pas alerté** pendant l'incident : intervalle 6h trop long
+- **Recommandations:**
+  - Réduire intervalle monitoring : 6h → 1h (mais + coûteux en API calls gcloud)
+  - Ajouter alerting temps réel : GCP Monitoring + webhooks
+  - Healthcheck externe : UptimeRobot, Pingdom, etc.
+
+### Tests
+- ✅ Prod health check : https://emergence-app-47nct44nma-ew.a.run.app/health → 200 OK
+- ✅ Frontend rebuild : `npm run build` → OK (3.93s)
+- ✅ Guardian audit manuel : status OK, 0 errors, 0 warnings
+- ✅ Commit + push effectué (version beta-3.0.0)
+- ⏳ Surveillance déploiement GitHub Actions nouvelle révision
+
+### Prochaines actions recommandées
+1. **Surveiller déploiement GitHub Actions** (révision 00424 attendue)
+2. **Vérifier warm-up < 150s** pour éviter timeout
+3. **Configurer alerting temps réel** GCP Monitoring (latence, erreurs 5xx)
+4. **Investiguer commits OOM fix** (de15ac2) si pb persiste
+5. **Considérer augmenter timeout startup probe** 150s → 300s si nécessaire
+
+### Blocages
+Aucun. Prod restaurée, nouvelle version en déploiement.
+
+---
 
 ## 🚀 Session COMPLÉTÉE (2025-10-22 23:15 CET) — Agent : Claude Code
 
@@ -5621,6 +5688,18 @@ Aucun. Environnement dev opérationnel (99.7% tests OK).
 **Status:** DEGRADED
 - Errors: 0
 - Warnings: 7
+
+**Recommendations:**
+- [MEDIUM] Monitor closely and investigate warnings
+
+
+<!-- Auto-update 2025-10-22T17:47:08.220071 -->
+
+## Production Status Update - 2025-10-22T17:46:13.633699
+
+**Status:** DEGRADED
+- Errors: 2
+- Warnings: 0
 
 **Recommendations:**
 - [MEDIUM] Monitor closely and investigate warnings

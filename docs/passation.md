@@ -1,3 +1,90 @@
+## [2025-10-22 17:50 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/frontend/version.js` (version beta-3.0.0, completion 74%)
+- `dist/` (rebuild frontend)
+- `AGENT_SYNC.md` (documentation incident)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**🚨 INCIDENT PROD RÉSOLU + MAJ Version beta-3.0.0**
+
+L'utilisateur signale : **impossible de se connecter en prod** (401 sur toutes les requêtes).
+
+Diagnostic révèle que la révision Cloud Run `emergence-app-00423-scr` (déployée à 05:58) ne démarre pas correctement :
+- Status: `False` (Deadline exceeded)
+- Startup probe timeout après 150s (30 retries * 5s)
+- Cloud Run route vers cette révision morte → site inaccessible
+- Logs vides, pas d'info sur la cause exacte
+
+**Commits entre 00422 (OK) et 00423 (fail):**
+- `de15ac2` : OOM fix (chat service optimisations)
+- `f8b8ed4` : Phase P2 complète (Admin dashboard, 2FA, multi-sessions)
+- `42b1869`, `409bf7a` : IAM policy fixes
+
+**Hypothèse cause racine:**
+- Dockerfile a `HF_HUB_OFFLINE=1` + modèle SentenceTransformer pré-téléchargé
+- Mais warm-up dépasse 150s (peut-être à cause des changements Phase P2 ou OOM fix)
+- Ou problème de cache Docker / warm-up aléatoire
+
+### Solution implémentée
+**1. Rollback immédiat vers révision 00422**
+```bash
+gcloud run services update-traffic emergence-app \
+  --region=europe-west1 \
+  --to-revisions=emergence-app-00422-sj4=100
+```
+✅ Résultat : `/health` répond 200, auth fonctionne à nouveau.
+
+**2. Update version.js (beta-3.0.0)**
+
+Problème secondaire détecté : module "À propos" affiche version obsolète (`beta-2.1.3`) alors que Phase P2 est complétée.
+
+Modifications [version.js:24-46](src/frontend/version.js#L24-L46):
+- `VERSION`: beta-2.2.0 → **beta-3.0.0**
+- `VERSION_NAME`: "Admin & Sécurité (P2 Complétée)"
+- `BUILD_PHASE`: P1 → **P2**
+- `COMPLETION_PERCENTAGE`: 61% → **74%** (17/23 features)
+- `phases.P2`: pending → **completed**
+- `phases.P4`: 7 features → **10 features** (correction selon roadmap)
+
+**3. Nouveau déploiement**
+- Frontend rebuild : `npm run build` ✅
+- Commit : "feat(version): Update to beta-3.0.0 - Phase P2 Complétée"
+- Push déclenche GitHub Actions → nouvelle révision attendue (00424)
+
+### Tests
+- ✅ Prod health : https://emergence-app-47nct44nma-ew.a.run.app/health → 200 OK
+- ✅ Frontend build : 3.93s, aucune erreur
+- ✅ Guardian audit manuel : status OK, 0 errors, 0 warnings
+- ✅ Commit + push effectué
+- ⏳ Surveillance déploiement en cours
+
+### Travail de Codex GPT pris en compte
+Codex avait documenté dans passation (07:05 CET) :
+- Révision 00423 bloquée en "Deadline exceeded"
+- Ajout `HF_HUB_OFFLINE=1` dans Dockerfile pour éviter appels Hugging Face
+- Mais le problème persiste (warm-up > 150s)
+
+J'ai complété l'analyse et appliqué le rollback + nouvelle version.
+
+### Prochaines actions recommandées
+1. **Surveiller warm-up révision 00424** (doit être < 150s)
+2. **Si timeout persiste:**
+   - Augmenter timeout startup probe : 150s → 300s
+   - Ou investiguer lazy loading du modèle (vector_service.py:452)
+   - Ou optimiser démarrage (async init, healthcheck sans modèle)
+3. **Améliorer monitoring Guardian:**
+   - Réduire intervalle : 6h → 1h (mais + coûteux en API)
+   - Ajouter alerting temps réel : GCP Monitoring + webhooks
+   - Healthcheck externe : UptimeRobot, Pingdom
+4. **Analyser commits OOM fix** (de15ac2) si le pb se reproduit
+
+### Blocages
+Aucun. Prod restaurée, nouvelle version en déploiement.
+
+---
+
 ## [2025-10-22 23:15 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
