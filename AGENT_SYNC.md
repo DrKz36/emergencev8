@@ -2,9 +2,44 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-22 16:05 CET (Codex GPT : Conflits résolus + validations ✅)
+**Dernière mise à jour** : 2025-10-22 03:56 CET (Claude Code : Fix versioning automatique ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+## ✅ Session COMPLÉTÉE (2025-10-22 03:56 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `index.html` (suppression version hardcodée beta-2.1.6 → placeholder dynamique)
+- `docs/passation.md` (nouvelle entrée)
+- `AGENT_SYNC.md` (cette mise à jour)
+
+### Actions réalisées
+**🐛 Fix versioning automatique dans page d'accueil et module "À propos"**
+
+- 🔍 Détection divergence : version hardcodée `beta-2.1.6` dans header vs source de vérité `beta-2.2.0`
+- ✅ Suppression hardcode dans [index.html:189](index.html#L189) → placeholder vide
+- ✅ Le système [version-display.js](src/frontend/core/version-display.js) prend le relais automatiquement
+- ✅ Version unique maintenant dans [src/frontend/version.js](src/frontend/version.js) (source de vérité)
+- ✅ Header + module "À propos" synchronisés automatiquement au chargement
+
+**Résultat :**
+Plus besoin de toucher à `index.html` lors des changements de version.
+Il suffit de modifier `src/frontend/version.js` et tout se met à jour automatiquement.
+
+### Tests
+- ✅ `npm run build` → Build propre, aucune erreur
+
+### Travail de Codex GPT pris en compte
+Aucun conflit avec sessions récentes de Codex.
+
+### Prochaines actions recommandées
+1. À chaque changement de version : modifier UNIQUEMENT `src/frontend/version.js`
+2. La version s'affichera automatiquement partout (header + page d'accueil + module À propos)
+
+### Blocages
+Aucun.
+
+---
 
 ## ✅ Session COMPLÉTÉE (2025-10-22 16:05 CET) — Agent : Codex GPT
 

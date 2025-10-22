@@ -1,3 +1,44 @@
+## [2025-10-22 03:56 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `index.html` (suppression version hardcodée beta-2.1.6)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**🐛 Fix versioning automatique dans page d'accueil (auth)**
+
+**Problème détecté :**
+- Version hardcodée `beta-2.1.6` dans [index.html:189](index.html#L189)
+- Divergence avec source de vérité [version.js](src/frontend/version.js) (`beta-2.2.0`)
+- Le module "À propos" affichait la bonne version mais le header non
+
+**Solution implémentée :**
+- Suppression version hardcodée dans `index.html` (placeholder vide maintenant)
+- Le système existant [version-display.js](src/frontend/core/version-display.js) prend le relais automatiquement
+- Import déjà présent dans [main.js:23](src/frontend/main.js#L23)
+- Auto-exécution au `DOMContentLoaded` ([version-display.js:60-66](src/frontend/core/version-display.js#L60-L66))
+
+**Résultat :**
+- ✅ Version unique dans [version.js:24](src/frontend/version.js#L24) comme source de vérité
+- ✅ Header `#app-version-display` mis à jour dynamiquement au chargement
+- ✅ Module "À propos" continue de fonctionner ([settings-main.js:152](src/frontend/features/settings/settings-main.js#L152))
+- ✅ Plus besoin de modifier `index.html` à chaque version
+
+### Tests
+- ✅ `npm run build` (aucune erreur, build propre)
+
+### Travail de Codex GPT pris en compte
+Aucun conflit avec sessions récentes de Codex.
+
+### Prochaines actions recommandées
+1. À chaque changement de version, ne modifier que `src/frontend/version.js`
+2. La version s'affichera automatiquement partout (header + module À propos)
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-22 16:05 CET] — Agent: Codex GPT
 
 ### Fichiers modifiés
