@@ -2038,7 +2038,7 @@ class ChatService:
 
             # 🔍 P3 Tracing: End llm_generate span (success)
             self.trace_manager.end_span(span_id, status="OK")
-        except Exception as e:
+        except Exception:
             # 🔍 P3 Tracing: End span on exception
             self.trace_manager.end_span(span_id, status="ERROR")
             raise
