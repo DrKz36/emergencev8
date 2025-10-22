@@ -66,26 +66,26 @@ jobs:
 
           echo "✅ Deployed with stable-service.yaml (auth config preserved)"
 
-      # Configure IAM Policy (remove public access)
+      # Configure IAM Policy (ensure proper access control)
       - name: Configure IAM Policy
         run: |
-          echo "🔐 Configuring IAM policy to remove public access..."
+          echo "🔐 Configuring IAM policy..."
 
-          # Remove allUsers from IAM policy if present
-          gcloud run services remove-iam-policy-binding ${{ env.SERVICE_NAME }} \
+          # Ensure allUsers has access (backend handles auth via allowlist)
+          gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
             --member="allUsers" \
             --role="roles/run.invoker" \
             --region ${{ env.GCP_REGION }} \
-            --quiet || echo "ℹ️  allUsers was not in IAM policy (already removed or never added)"
+            --quiet || echo "ℹ️  allUsers already in IAM policy"
 
-          # Remove allAuthenticatedUsers from IAM policy if present
+          # Remove allAuthenticatedUsers if present (too permissive, bypasses backend allowlist)
           gcloud run services remove-iam-policy-binding ${{ env.SERVICE_NAME }} \
             --member="allAuthenticatedUsers" \
             --role="roles/run.invoker" \
             --region ${{ env.GCP_REGION }} \
-            --quiet || echo "ℹ️  allAuthenticatedUsers was not in IAM policy (already removed or never added)"
+            --quiet || echo "ℹ️  allAuthenticatedUsers was not in IAM policy"
 
-          echo "✅ IAM policy configured - service requires authentication"
+          echo "✅ IAM policy configured - backend auth (allowlist) enforced"
 
       # Get service URL
       - name: Get Service URL
@@ -100,26 +100,26 @@ jobs:
       # Verify auth configuration
       - name: Verify Auth Config
         run: |
-          echo "🔐 Verifying authentication is enabled..."
+          echo "🔐 Verifying IAM policy configuration..."
           IAM_POLICY=$(gcloud run services get-iam-policy ${{ env.SERVICE_NAME }} \
             --region ${{ env.GCP_REGION }} \
             --format json)
 
-          # Check if allUsers is NOT in the bindings (should be authenticated)
-          if echo "$IAM_POLICY" | grep -q "allUsers"; then
-            echo "❌ WARNING: Service is public (allUsers found in IAM policy)"
-            echo "This should not happen with stable-service.yaml deployment"
+          # Check that allUsers IS in the bindings (backend handles auth)
+          if ! echo "$IAM_POLICY" | grep -q "allUsers"; then
+            echo "❌ ERROR: allUsers not found in IAM policy"
+            echo "Service won't be accessible publicly (backend auth won't work)"
             exit 1
           fi
 
-          # Check if allAuthenticatedUsers is NOT in the bindings (should be restricted to allowlist)
+          # Check that allAuthenticatedUsers is NOT in the bindings (would bypass allowlist)
           if echo "$IAM_POLICY" | grep -q "allAuthenticatedUsers"; then
-            echo "❌ WARNING: Service is open to all authenticated users (allAuthenticatedUsers found in IAM policy)"
-            echo "This should not happen - only allowlist users should have access"
+            echo "❌ ERROR: allAuthenticatedUsers found in IAM policy"
+            echo "This bypasses backend allowlist - anyone with a Google account can access"
             exit 1
           fi
 
-          echo "✅ Service is properly authenticated (no allUsers or allAuthenticatedUsers in IAM)"
+          echo "✅ IAM policy OK: allUsers present (backend auth), allAuthenticatedUsers absent"
 
       # Health check
       - name: Health Check
