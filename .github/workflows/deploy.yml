@@ -78,6 +78,13 @@ jobs:
             --region ${{ env.GCP_REGION }} \
             --quiet || echo "ℹ️  allUsers was not in IAM policy (already removed or never added)"
 
+          # Remove allAuthenticatedUsers from IAM policy if present
+          gcloud run services remove-iam-policy-binding ${{ env.SERVICE_NAME }} \
+            --member="allAuthenticatedUsers" \
+            --role="roles/run.invoker" \
+            --region ${{ env.GCP_REGION }} \
+            --quiet || echo "ℹ️  allAuthenticatedUsers was not in IAM policy (already removed or never added)"
+
           echo "✅ IAM policy configured - service requires authentication"
 
       # Get service URL
@@ -103,9 +110,16 @@ jobs:
             echo "❌ WARNING: Service is public (allUsers found in IAM policy)"
             echo "This should not happen with stable-service.yaml deployment"
             exit 1
-          else
-            echo "✅ Service is properly authenticated (no allUsers in IAM)"
           fi
+
+          # Check if allAuthenticatedUsers is NOT in the bindings (should be restricted to allowlist)
+          if echo "$IAM_POLICY" | grep -q "allAuthenticatedUsers"; then
+            echo "❌ WARNING: Service is open to all authenticated users (allAuthenticatedUsers found in IAM policy)"
+            echo "This should not happen - only allowlist users should have access"
+            exit 1
+          fi
+
+          echo "✅ Service is properly authenticated (no allUsers or allAuthenticatedUsers in IAM)"
 
       # Health check
       - name: Health Check
