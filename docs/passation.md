@@ -1,3 +1,69 @@
+## [2025-10-23 23:45 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `AGENTS.md` (ordre lecture unifié + section 13 simplifiée + Roadmap Strategique → ROADMAP.md)
+- `CLAUDE.md` (clarification "OBLIGATOIRE EN PREMIER" → "OBLIGATOIRE")
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**📚 Harmonisation AGENTS.md (suite harmonisation protocole multi-agents)**
+
+Demande utilisateur: Vérifier si AGENTS.md (lu par Codex) est cohérent avec CODEV_PROTOCOL.md et CLAUDE.md, harmoniser si nécessaire.
+
+**Problèmes identifiés:**
+1. **Ordre lecture incohérent** : Sections 10 et 13 avaient 2 ordres différents
+2. **Docs Architecture absentes** : Section 13 ne mentionnait pas docs architecture (alors que CODEV_PROTOCOL/CLAUDE oui)
+3. **AGENT_SYNC.md absent** : Section 13 oubliait AGENT_SYNC.md dans liste lecture !
+4. **Roadmap Strategique.txt obsolète** : 2 références vers fichier supprimé (fusionné en ROADMAP.md le 2025-10-23)
+5. **Redondance CODEV_PROTOCOL** : Section 13 dupliquait 38 lignes (principes, handoff, tests)
+
+### Travail réalisé
+
+**1. Unifié ordre lecture (sections 10 et 13) :**
+- **Ordre identique partout** : Archi → AGENT_SYNC → CODEV_PROTOCOL → passation → git
+- Ajouté Docs Architecture EN PREMIER (harmonisé avec CODEV_PROTOCOL/CLAUDE)
+- Ajouté AGENT_SYNC.md dans section 13 (était complètement absent !)
+- Sections 10 (Checklist) et 13 (Co-dev) maintenant identiques
+
+**2. Roadmap Strategique.txt → ROADMAP.md :**
+- Mis à jour 2 références obsolètes (sections 1 et 10)
+- ROADMAP.md = fichier unique (fusion roadmaps 2025-10-23 17:15)
+
+**3. Simplifié section 13 (38 → 20 lignes) :**
+- Supprimé redondances (principes, passation handoff, tests obligatoires)
+- Gardé overview principes clés + zones responsabilité
+- Référence vers CODEV_PROTOCOL.md pour détails complets
+- Comme CLAUDE.md fait (référence au lieu de duplication)
+
+**4. CLAUDE.md clarification mineure :**
+- "OBLIGATOIRE EN PREMIER" → "OBLIGATOIRE" (moins ambigu)
+- Section 1 (Archi) → Section 2 (Sync) déjà correct
+
+### Tests
+- ✅ Grep "Roadmap Strategique" : Aucune référence obsolète
+- ✅ Grep "AGENT_SYNC.md" : Présent dans tous les fichiers prompts
+- ✅ Grep "docs/architecture" : Présent en premier partout (AGENTS, CODEV_PROTOCOL, CLAUDE)
+- ✅ Ordre lecture cohérent : 4 fichiers (AGENTS, CODEV_PROTOCOL, CLAUDE, CODEX_GPT_GUIDE) harmonisés
+- ✅ Guardian pre-commit : OK
+
+### Prochaines actions recommandées
+
+**P1.2 Batch 2 (P2 - Moyenne priorité, 1h30)** :
+- Fixer `chat/service.py` (17 erreurs mypy)
+- Fixer `chat/rag_cache.py` (13 erreurs mypy)
+- Fixer `auth/service.py` (12 erreurs mypy)
+- **Objectif:** 437 → ~395 erreurs (-42 erreurs)
+
+**Après P1.2 complet:**
+- P2.1 Optimiser bundle frontend (Codex en cours ?)
+- P2.2 Cleanup TODOs backend (1-2h)
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-23 23:02 CET] — Agent: Claude Code + Codex GPT
 
 ### Fichiers modifiés

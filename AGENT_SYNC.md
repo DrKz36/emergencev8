@@ -2,9 +2,65 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-23 23:15 CET (Claude Code : Harmonisation CODEV_PROTOCOL.md ✅ - ARBO-LOCK viré ✅)
+**Dernière mise à jour** : 2025-10-23 23:45 CET (Claude Code : Harmonisation AGENTS.md ✅ - Protocole multi-agents unifié ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-23 23:45 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `AGENTS.md` (ordre lecture unifié + section 13 simplifiée + Roadmap Strategique → ROADMAP.md)
+- `CLAUDE.md` (clarification "OBLIGATOIRE EN PREMIER" → "OBLIGATOIRE")
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée)
+
+### Actions réalisées
+**📚 Harmonisation AGENTS.md - TERMINÉ ✅**
+
+**Objectif :** Harmoniser AGENTS.md avec CODEV_PROTOCOL.md et CLAUDE.md (suite harmonisation protocole)
+
+**Problèmes identifiés :**
+1. Ordre lecture incohérent (2 ordres différents dans sections 10 et 13)
+2. Docs Architecture absentes section 13
+3. AGENT_SYNC.md absent section 13
+4. Roadmap Strategique.txt obsolète (2 refs)
+5. Redondance avec CODEV_PROTOCOL.md (38 lignes dupliquées)
+
+**Travail fait :**
+1. **Unifié ordre lecture** (sections 10 et 13) :
+   - Ordre identique partout : Archi → AGENT_SYNC → CODEV_PROTOCOL → passation → git
+   - Ajouté Docs Architecture EN PREMIER (comme CODEV_PROTOCOL/CLAUDE)
+   - Ajouté AGENT_SYNC.md (était absent section 13 !)
+2. **Roadmap Strategique.txt → ROADMAP.md** (2 refs mises à jour)
+3. **Simplifié section 13** (38 → 20 lignes) :
+   - Supprimé redondances (principes, handoff, tests déjà dans CODEV_PROTOCOL)
+   - Gardé overview + zones responsabilité
+   - Référence vers CODEV_PROTOCOL.md pour détails
+4. **CLAUDE.md clarification** : "OBLIGATOIRE EN PREMIER" → "OBLIGATOIRE" (moins ambigu)
+
+**Résultat :**
+- ✅ AGENTS.md, CODEV_PROTOCOL.md, CLAUDE.md, CODEX_GPT_GUIDE.md tous cohérents
+- ✅ Ordre lecture identique partout
+- ✅ Pas de duplication (référence vers CODEV_PROTOCOL)
+- ✅ Codex et Claude Code lisent les mêmes docs dans le même ordre
+
+### Tests
+- ✅ Grep "Roadmap Strategique" : Aucune ref obsolète
+- ✅ Grep "AGENT_SYNC.md" : Présent partout
+- ✅ Grep "docs/architecture" : Présent en premier partout
+- ✅ Guardian pre-commit : OK
+
+### Prochaines actions recommandées
+**P1.2 Batch 2 (P2 - Moyenne priorité, 1h30)** :
+- Fixer `chat/service.py` (17 erreurs mypy)
+- Fixer `chat/rag_cache.py` (13 erreurs mypy)
+- Fixer `auth/service.py` (12 erreurs mypy)
+- **Objectif:** 437 → ~395 erreurs (-42 erreurs)
+
+### Blocages
+Aucun.
 
 ---
 
