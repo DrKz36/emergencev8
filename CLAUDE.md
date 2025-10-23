@@ -84,10 +84,11 @@
 - **`docs/architecture/10-Components.md`** - Services backend + Modules frontend (TOUS)
 - **`docs/architecture/30-Contracts.md`** - Contrats API (WebSocket + REST)
 - **`docs/architecture/ADR-*.md`** - Décisions architecturales (sessions/threads, etc.)
+- **`docs/MYPY_STYLE_GUIDE.md`** ⭐ - Guide de style mypy (type hints OBLIGATOIRES)
 
 **Pourquoi ?**
-- ❌ Sans lecture : Tu vas dupliquer du code existant, casser des contrats API, créer des bugs
-- ✅ Avec lecture : Tu comprends l'architecture, tu respectes les contrats, tu mets à jour les docs
+- ❌ Sans lecture : Tu vas dupliquer du code existant, casser des contrats API, créer des bugs, introduire des erreurs de types
+- ✅ Avec lecture : Tu comprends l'architecture, tu respectes les contrats, tu écris du code type-safe, tu mets à jour les docs
 
 **Après modification** :
 - ✅ Mettre à jour `10-Components.md` si nouveau service/module
@@ -201,6 +202,7 @@ Pour 99% des tâches dev normales: **FONCE**.
 ### Pendant le Dev
 
 - [ ] Code complet (pas de fragments, pas d'ellipses)
+- [ ] **Type hints complets** (voir `docs/MYPY_STYLE_GUIDE.md`)
 - [ ] Tests créés pour nouveau code
 - [ ] Pas de secrets dans le code
 - [ ] Architecture respectée

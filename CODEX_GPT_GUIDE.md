@@ -23,7 +23,8 @@ Vous travaillez en **égalité technique** avec Claude Code et d'autres agents I
 2. **Ce fichier (CODEX_GPT_GUIDE.md)** — Consignes spécifiques Codex GPT
 3. **[CODEV_PROTOCOL.md](CODEV_PROTOCOL.md)** — Protocole de co-développement multi-agents
 4. **[docs/passation.md](docs/passation.md)** — Dernières 3 entrées minimum (contexte, blocages, next actions)
-5. **`git status` + `git log --oneline -10`** — État Git actuel
+5. **[docs/MYPY_STYLE_GUIDE.md](docs/MYPY_STYLE_GUIDE.md)** ⭐ — Guide mypy (type hints OBLIGATOIRES pour code Python)
+6. **`git status` + `git log --oneline -10`** — État Git actuel
 
 **Temps de lecture estimé** : 10-15 minutes (investissement OBLIGATOIRE pour éviter erreurs et conflits)
 
@@ -120,6 +121,7 @@ Vous travaillez en **égalité technique** avec Claude Code et d'autres agents I
 - ❌ Livrer des fragments de code
 - ❌ Modifier sans tester
 - ❌ Ignorer l'architecture existante
+- ❌ **Coder Python sans type hints** (voir `docs/MYPY_STYLE_GUIDE.md`)
 - ❌ Oublier de documenter dans `docs/passation.md`
 
 ### 4.3 Clôture de session
@@ -129,7 +131,7 @@ Vous travaillez en **égalité technique** avec Claude Code et d'autres agents I
 - [ ] **Tests frontend** : `npm run build` ✅
 - [ ] **Tests backend** (si modifié) : `pytest` ✅
 - [ ] **Smoke tests** (si modifié) : `pwsh -File tests/run_all.ps1` ✅
-- [ ] **Linters** : `ruff check`, `mypy` (backend), ESLint (frontend si configuré) ✅
+- [ ] **Linters** : `ruff check src/backend/`, `mypy src/backend/` (STRICT - 0 erreurs), ESLint (frontend si configuré) ✅
 - [ ] **Documentation** : mise à jour `docs/passation.md` (nouvelle entrée complète en haut) ✅
 - [ ] **AGENT_SYNC.md** : mise à jour section "Codex GPT" avec timestamp et fichiers touchés ✅
 - [ ] **Git propre** : `git status` sans fichiers non suivis suspects ✅

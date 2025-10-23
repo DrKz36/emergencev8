@@ -27,9 +27,10 @@ Emergence V8 adopte une approche collaborative **multi-agents** pour le dévelop
 ### 1.2 Responsabilité partagée
 - Chaque agent est responsable de :
   - **Tester** ses modifications (`pytest`, `npm run build`, `pwsh -File tests/run_all.ps1`).
+  - **Type hints complets** pour code Python (voir `docs/MYPY_STYLE_GUIDE.md` - `mypy` STRICT 0 erreurs).
   - **Documenter** les changements (code comments, `docs/passation.md`, mise à jour architecture).
   - **Livrer du code complet** (pas d'ellipses, pas de fragments, cf. ARBO-LOCK).
-  - **Respecter l'architecture** existante (voir `docs/architecture/`, `AGENTS.md`, `CODex_GUIDE.md`).
+  - **Respecter l'architecture** existante (voir `docs/architecture/`, `AGENTS.md`, `CODEX_GPT_GUIDE.md`).
 
 ### 1.3 Validation finale
 - L'architecte humain (FG) est le **seul point de validation** avant :
@@ -96,8 +97,9 @@ Lorsqu'un agent termine une session de travail, il doit :
 
 **Lecture obligatoire avant toute session** (ordre harmonisé avec CLAUDE.md) :
 1. **Docs Architecture** : `docs/architecture/AGENTS_CHECKLIST.md`, `00-Overview.md`, `10-Components.md`, `30-Contracts.md`.
-2. `AGENT_SYNC.md` (état actuel du dépôt, progression, déploiement).
-3. `CODEV_PROTOCOL.md` (ce fichier) ou `CODex_GUIDE.md` (si Codex).
+2. **`docs/MYPY_STYLE_GUIDE.md`** ⭐ — Guide mypy (type hints OBLIGATOIRES pour code Python).
+3. `AGENT_SYNC.md` (état actuel du dépôt, progression, déploiement).
+4. `CODEV_PROTOCOL.md` (ce fichier) ou `CODEX_GPT_GUIDE.md` (si Codex).
 4. `docs/passation.md` (dernières 3 entrées minimum).
 5. `git status` et `git log --oneline -10` (état Git).
 
