@@ -562,8 +562,23 @@ async def update_document_processing_info(
 ) -> None:
     scope_sql, scope_params = _build_scope_condition(user_id, session_id)
     await db.execute(
-        f"UPDATE documents SET char_count = ?, chunk_count = ?, status = ? WHERE id = ? AND {scope_sql}",
+        f"UPDATE documents SET char_count = ?, chunk_count = ?, status = ?, error_message = NULL WHERE id = ? AND {scope_sql}",
         (char_count, chunk_count, status, doc_id, *scope_params),
+        commit=True,
+    )
+
+async def update_document_filepath(
+    db: DatabaseManager,
+    doc_id: int,
+    filepath: str,
+    session_id: Optional[str],
+    *,
+    user_id: Optional[str] = None,
+) -> None:
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
+    await db.execute(
+        f"UPDATE documents SET filepath = ? WHERE id = ? AND {scope_sql}",
+        (filepath, doc_id, *scope_params),
         commit=True,
     )
 async def set_document_error_status(
@@ -618,24 +633,23 @@ async def get_all_documents(
         user_id: User ID to filter by (required unless allow_global=True)
         allow_global: If True, allows querying all documents without user_id (ADMIN ONLY)
     """
-    # IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données utilisateur, sauf mode admin
-    if not user_id and not allow_global:
-        raise ValueError("user_id est obligatoire pour accéder aux documents")
+    # IMPORTANT: user_id ou session_id doivent être fournis pour isoler les données (hors mode admin).
+    if not user_id and not session_id and not allow_global:
+        raise ValueError("user_id ou session_id est obligatoire pour accéder aux documents")
 
-    # Si user_id est fourni, utiliser le filtrage normal
-    if user_id:
+    if user_id or session_id:
         scope_sql, scope_params = _build_scope_condition(user_id, session_id)
         rows = await db.fetch_all(
             f"SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents WHERE {scope_sql} ORDER BY uploaded_at DESC",
             scope_params,
         )
     else:
-        # Mode admin: récupérer tous les documents
         rows = await db.fetch_all(
             "SELECT id, filename, status, char_count, chunk_count, error_message, uploaded_at FROM documents ORDER BY uploaded_at DESC",
             (),
         )
     return [dict(row) for row in rows]
+
 async def get_document_by_id(
     db: DatabaseManager,
     doc_id: int,
@@ -643,9 +657,9 @@ async def get_document_by_id(
     *,
     user_id: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    # IMPORTANT: user_id est OBLIGATOIRE pour l'isolation des données utilisateur
-    if not user_id:
-        raise ValueError("user_id est obligatoire pour accéder aux documents")
+    # IMPORTANT: user_id ou session_id requis pour isoler les données utilisateur
+    if not user_id and not session_id:
+        raise ValueError("user_id ou session_id est obligatoire pour accéder aux documents")
 
     scope_sql, scope_params = _build_scope_condition(user_id, session_id)
     row = await db.fetch_one(
@@ -653,6 +667,39 @@ async def get_document_by_id(
         (doc_id, *scope_params),
     )
     return dict(row) if row else None
+
+async def get_document_chunks(
+    db: DatabaseManager,
+    doc_id: int,
+    session_id: Optional[str],
+    *,
+    user_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Retourne les chunks stockés pour un document donné, ordonnés par index."""
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
+    rows = await db.fetch_all(
+        f"SELECT id, document_id, chunk_index, content FROM document_chunks WHERE document_id = ? AND {scope_sql} ORDER BY chunk_index ASC",
+        (doc_id, *scope_params),
+    )
+    return [dict(row) for row in rows]
+
+
+async def delete_document_chunks(
+    db: DatabaseManager,
+    doc_id: int,
+    session_id: Optional[str],
+    *,
+    user_id: Optional[str] = None,
+) -> None:
+    """Supprime tous les chunks liés à un document pour un user/session donné."""
+    scope_sql, scope_params = _build_scope_condition(user_id, session_id)
+    await db.execute(
+        f"DELETE FROM document_chunks WHERE document_id = ? AND {scope_sql}",
+        (doc_id, *scope_params),
+        commit=True,
+    )
+
+
 async def delete_document(
     db: DatabaseManager,
     doc_id: int,

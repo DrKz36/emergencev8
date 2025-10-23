@@ -4,6 +4,7 @@ import logging
 import uuid
 import asyncio
 import re
+import mimetypes
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
@@ -20,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentService:
+    MAX_PREVIEW_CHARS = 20000
+
     def __init__(
         self,
         db_manager: DatabaseManager,
@@ -33,11 +36,158 @@ class DocumentService:
         self.document_collection = self.vector_service.get_or_create_collection(
             config.DOCUMENT_COLLECTION_NAME
         )
-        self.uploads_dir = Path(uploads_dir)
+        self.uploads_dir = Path(uploads_dir).resolve()
         self.uploads_dir.mkdir(parents=True, exist_ok=True)
         logger.info(
             f"DocumentService (V8.3) initialisé. Collection: '{config.DOCUMENT_COLLECTION_NAME}'"
         )
+
+    def _resolve_document_path(self, raw_path: str) -> Path:
+        if not raw_path:
+            raise HTTPException(status_code=404, detail="Chemin de document introuvable.")
+
+        normalized = raw_path.strip()
+        if not normalized:
+            raise HTTPException(status_code=404, detail="Chemin de document introuvable.")
+
+        uploads_root = self.uploads_dir
+        raw_candidate = Path(normalized)
+        candidates: list[Path] = []
+        seen: set[str] = set()
+
+        def register(path: Path) -> None:
+            try:
+                resolved = path.resolve(strict=False)
+            except RuntimeError:
+                resolved = (Path.cwd() / path).resolve(strict=False)
+            key = str(resolved)
+            if key in seen:
+                return
+            seen.add(key)
+            candidates.append(resolved)
+
+        if raw_candidate.is_absolute():
+            register(raw_candidate)
+        else:
+            register(self.uploads_dir / raw_candidate)
+            register(Path.cwd() / raw_candidate)
+            register(raw_candidate)
+
+        def register_tail(path: Path) -> None:
+            parts = [part for part in path.parts if part not in ("", ".")]
+            if "uploads" in parts:
+                idx = parts.index("uploads")
+                tail_parts = parts[idx + 1 :]
+                if tail_parts:
+                    register(self.uploads_dir.joinpath(*tail_parts))
+
+        register_tail(raw_candidate)
+        if raw_candidate.is_absolute():
+            register_tail(raw_candidate)
+
+        valid_candidates: list[Path] = []
+        for candidate in candidates:
+            try:
+                candidate.relative_to(uploads_root)
+            except ValueError:
+                continue
+            valid_candidates.append(candidate)
+            if candidate.is_file():
+                return candidate
+
+        error_status = 404 if valid_candidates else 400
+        detail = "Fichier source introuvable." if valid_candidates else "Chemin de document invalide."
+        logger.error(
+            "Document path %s invalide dans %s (candidats=%s)",
+            raw_path,
+            uploads_root,
+            ", ".join(str(c) for c in valid_candidates) or "∅",
+        )
+        raise HTTPException(status_code=error_status, detail=detail)
+
+    def _to_storage_path(self, path: Path) -> str:
+        try:
+            return str(path.relative_to(self.uploads_dir))
+        except ValueError:
+            return str(path)
+
+    async def _ensure_stored_filepath(
+        self,
+        document: Dict[str, Any],
+        resolved_path: Path,
+        *,
+        doc_id: int,
+        session_id: str,
+        user_id: Optional[str],
+    ) -> None:
+        stored = str(document.get("filepath", "") or "").strip()
+        normalized = self._to_storage_path(resolved_path)
+        if stored == normalized:
+            return
+        try:
+            await db_queries.update_document_filepath(
+                self.db_manager,
+                doc_id=doc_id,
+                filepath=normalized,
+                session_id=session_id,
+                user_id=user_id,
+            )
+            document["filepath"] = normalized
+            logger.debug(
+                "Document %s filepath normalisé: %s → %s",
+                doc_id,
+                stored or "<vide>",
+                normalized,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Impossible de normaliser le chemin du document %s: %s",
+                doc_id,
+                exc,
+            )
+
+    def _build_chunk_payloads(
+        self,
+        doc_id: int,
+        filename: str,
+        semantic_chunks: list[dict[str, Any]],
+        session_id: str,
+        user_id: Optional[str],
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        chunk_rows: list[dict[str, Any]] = []
+        vector_items: list[dict[str, Any]] = []
+        for chunk in semantic_chunks or []:
+            chunk_index = chunk.get('chunk_index')
+            text = chunk.get('text', '')
+            if chunk_index is None:
+                continue
+            chunk_id = f"{doc_id}_{chunk_index}"
+            chunk_rows.append({
+                'id': chunk_id,
+                'document_id': doc_id,
+                'chunk_index': chunk_index,
+                'content': text,
+            })
+            metadata = {
+                'document_id': doc_id,
+                'filename': filename,
+                'session_id': session_id,
+                'user_id': user_id,
+                'owner_id': user_id,
+                'chunk_type': chunk.get('chunk_type', 'prose'),
+                'section_title': chunk.get('section_title') or '',
+                'keywords': ','.join(chunk.get('keywords', [])),
+                'line_range': chunk.get('line_range', ''),
+                'line_start': chunk.get('line_start', 0),
+                'line_end': chunk.get('line_end', 0),
+                'is_complete': chunk.get('is_complete', False),
+            }
+            vector_items.append({
+                'id': chunk_id,
+                'text': text,
+                'metadata': metadata,
+            })
+        return chunk_rows, vector_items
 
     def _chunk_text(self, text: str) -> List[str]:
         # Simple chunking pour l'instant (aligné avec core/config.py si besoin)
@@ -345,10 +495,12 @@ class DocumentService:
             with open(filepath, "wb") as buffer:
                 buffer.write(await file.read())
 
+            stored_path = self._to_storage_path(filepath)
+
             doc_id = await db_queries.insert_document(
                 self.db_manager,
                 filename=filename,
-                filepath=str(filepath),
+                filepath=stored_path,
                 status="pending",
                 uploaded_at=datetime.now(timezone.utc).isoformat(),
                 session_id=session_id,
@@ -372,17 +524,10 @@ class DocumentService:
             )
 
             # Préparer les chunks pour la DB (compatibilité avec schéma existant)
-            chunk_rows = []
-            if semantic_chunks:
-                chunk_rows = [
-                    {
-                        "id": f"{doc_id}_{chunk['chunk_index']}",
-                        "document_id": doc_id,
-                        "chunk_index": chunk['chunk_index'],
-                        "content": chunk['text'],
-                    }
-                    for chunk in semantic_chunks
-                ]
+            chunk_rows, chunk_vectors = self._build_chunk_payloads(
+                doc_id, filename, semantic_chunks, session_id, user_id
+            )
+            if chunk_rows:
                 await db_queries.insert_document_chunks(
                     self.db_manager,
                     session_id=session_id,
@@ -390,29 +535,6 @@ class DocumentService:
                     user_id=user_id,
                 )
 
-            # ✅ Phase 2 RAG : Enrichir les métadonnées des vecteurs ChromaDB
-            chunk_vectors = [
-                {
-                    "id": f"{doc_id}_{chunk['chunk_index']}",
-                    "text": chunk['text'],
-                    "metadata": {
-                        "document_id": doc_id,
-                        "filename": filename,
-                        "session_id": session_id,
-                        "user_id": user_id,
-                        "owner_id": user_id,
-                        # Métadonnées sémantiques
-                        "chunk_type": chunk.get('chunk_type', 'prose'),
-                        "section_title": chunk.get('section_title') or '',
-                        "keywords": ','.join(chunk.get('keywords', [])),  # Convertir liste en string
-                        "line_range": chunk.get('line_range', ''),
-                        "line_start": chunk.get('line_start', 0),
-                        "line_end": chunk.get('line_end', 0),
-                        "is_complete": chunk.get('is_complete', False),
-                    },
-                }
-                for chunk in semantic_chunks
-            ]
             if chunk_vectors:
                 self.vector_service.add_items(
                     collection=self.document_collection, items=chunk_vectors
@@ -442,6 +564,231 @@ class DocumentService:
         return await db_queries.get_all_documents(
             self.db_manager, session_id=session_id, user_id=user_id
         )
+
+    async def get_document_content(
+        self,
+        doc_id: int,
+        session_id: str,
+        user_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        doc_id_int = int(doc_id)
+        if not session_id and not user_id:
+            raise HTTPException(status_code=400, detail="Portée de document invalide.")
+        try:
+            document = await db_queries.get_document_by_id(
+                self.db_manager,
+                doc_id_int,
+                session_id=session_id,
+                user_id=user_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        if not document:
+            raise HTTPException(status_code=404, detail="Document introuvable.")
+        try:
+            chunks = await db_queries.get_document_chunks(
+                self.db_manager,
+                doc_id_int,
+                session_id=session_id,
+                user_id=user_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        text_segments = [chunk.get('content', '') for chunk in chunks if chunk.get('content')]
+        full_text = "\n\n".join(text_segments)
+        source = 'chunks'
+        if not full_text:
+            source = 'file'
+            try:
+                path = self._resolve_document_path(str(document.get('filepath', '')))
+                await self._ensure_stored_filepath(
+                    document,
+                    path,
+                    doc_id=doc_id_int,
+                    session_id=session_id,
+                    user_id=user_id,
+                )
+                full_text = path.read_text(encoding='utf-8', errors='ignore')
+            except Exception:
+                full_text = ''
+        truncated = len(full_text) > self.MAX_PREVIEW_CHARS
+        preview_text = full_text[: self.MAX_PREVIEW_CHARS] if truncated else full_text
+        preview_chunks = [
+            {
+                'chunk_index': chunk.get('chunk_index'),
+                'content': chunk.get('content', ''),
+            }
+            for chunk in (chunks[:25])
+        ]
+        return {
+            'id': doc_id_int,
+            'filename': document.get('filename'),
+            'status': document.get('status'),
+            'char_count': document.get('char_count'),
+            'chunk_count': document.get('chunk_count'),
+            'content': preview_text,
+            'truncated': truncated,
+            'total_length': len(full_text),
+            'source': source,
+            'chunk_preview': preview_chunks,
+        }
+
+    async def get_document_file(
+        self,
+        doc_id: int,
+        session_id: str,
+        user_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        doc_id_int = int(doc_id)
+        if not session_id and not user_id:
+            raise HTTPException(status_code=400, detail="Portée de document invalide.")
+        try:
+            document = await db_queries.get_document_by_id(
+                self.db_manager,
+                doc_id_int,
+                session_id=session_id,
+                user_id=user_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        if not document:
+            raise HTTPException(status_code=404, detail="Document introuvable.")
+        path = self._resolve_document_path(str(document.get('filepath', '')))
+        if not path.is_file():
+            raise HTTPException(status_code=404, detail="Fichier source introuvable.")
+        await self._ensure_stored_filepath(
+            document,
+            path,
+            doc_id=doc_id_int,
+            session_id=session_id,
+            user_id=user_id,
+        )
+        filename = document.get('filename') or path.name
+        media_type, _ = mimetypes.guess_type(str(path))
+        return {
+            'path': path,
+            'filename': filename,
+            'media_type': media_type or 'application/octet-stream',
+        }
+
+    async def reindex_document(
+        self,
+        doc_id: int,
+        session_id: str,
+        user_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        doc_id_int = int(doc_id)
+        if not session_id and not user_id:
+            raise HTTPException(status_code=400, detail="Portée de document invalide.")
+        try:
+            document = await db_queries.get_document_by_id(
+                self.db_manager,
+                doc_id_int,
+                session_id=session_id,
+                user_id=user_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        if not document:
+            raise HTTPException(status_code=404, detail="Document introuvable.")
+        path = self._resolve_document_path(str(document.get('filepath', '')))
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="Fichier source introuvable.")
+        await self._ensure_stored_filepath(
+            document,
+            path,
+            doc_id=doc_id_int,
+            session_id=session_id,
+            user_id=user_id,
+        )
+        try:
+            parser = self.parser_factory.get_parser(path.suffix)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail="Type de fichier non supporté pour la ré-indexation.") from exc
+        try:
+            text_content = await asyncio.to_thread(parser.parse, str(path))
+        except Exception as exc:
+            logger.error("Erreur lors du parsing du document %s: %s", doc_id_int, exc, exc_info=True)
+            error_message = str(exc)[:512]
+            await db_queries.set_document_error_status(
+                self.db_manager,
+                doc_id_int,
+                session_id,
+                error_message=error_message,
+                user_id=user_id,
+            )
+            raise HTTPException(status_code=500, detail="Erreur lors du parsing du document.") from exc
+        semantic_chunks = self._chunk_text_semantic(text_content, document.get('filename') or path.name)
+        chunk_rows, chunk_vectors = self._build_chunk_payloads(
+            doc_id_int,
+            document.get('filename') or path.name,
+            semantic_chunks,
+            session_id,
+            user_id,
+        )
+        try:
+            await db_queries.delete_document_chunks(
+                self.db_manager,
+                doc_id_int,
+                session_id=session_id,
+                user_id=user_id,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        except Exception as exc:
+            logger.error("Erreur lors de la purge des chunks du document %s: %s", doc_id_int, exc, exc_info=True)
+            raise HTTPException(status_code=500, detail="Impossible de purger les chunks existants.") from exc
+        if chunk_rows:
+            await db_queries.insert_document_chunks(
+                self.db_manager,
+                session_id=session_id,
+                chunks=chunk_rows,
+                user_id=user_id,
+            )
+        try:
+            where_filter: Dict[str, Any] = {'document_id': doc_id_int}
+            if user_id:
+                where_filter['user_id'] = user_id
+            if session_id:
+                where_filter['session_id'] = session_id
+            self.vector_service.delete_vectors(
+                collection=self.document_collection,
+                where_filter=where_filter,
+            )
+        except Exception as exc:
+            logger.warning("Suppression des vecteurs impossible pour le document %s: %s", doc_id_int, exc)
+        if chunk_vectors:
+            try:
+                self.vector_service.add_items(
+                    collection=self.document_collection,
+                    items=chunk_vectors,
+                )
+            except Exception as exc:
+                logger.error("Erreur lors de la mise à jour des vecteurs du document %s: %s", doc_id_int, exc, exc_info=True)
+                error_message = str(exc)[:512]
+                await db_queries.set_document_error_status(
+                    self.db_manager,
+                    doc_id_int,
+                    session_id,
+                    error_message=error_message,
+                    user_id=user_id,
+                )
+                raise HTTPException(status_code=500, detail="Impossible de mettre à jour l'index vectoriel.") from exc
+        await db_queries.update_document_processing_info(
+            self.db_manager,
+            doc_id=doc_id_int,
+            session_id=session_id,
+            user_id=user_id,
+            char_count=len(text_content),
+            chunk_count=len(chunk_rows),
+            status='ready',
+        )
+        return {
+            'document_id': doc_id_int,
+            'filename': document.get('filename') or path.name,
+            'chunk_count': len(chunk_rows),
+            'char_count': len(text_content),
+        }
 
     async def delete_document(self, doc_id: int, session_id: str, user_id: Optional[str] = None) -> bool:
         """

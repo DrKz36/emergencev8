@@ -14,7 +14,7 @@ from datetime import datetime
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import Flow  # type: ignore[import-not-found]
+from google_auth_oauthlib.flow import Flow  # type: ignore[import-untyped]
 import logging
 
 logger = logging.getLogger("emergence.gmail.oauth")
@@ -128,7 +128,7 @@ class GmailOAuthService:
             user_email: Email utilisateur
             credentials: Credentials Google
         """
-        from google.cloud import firestore
+        from google.cloud import firestore  # type: ignore[attr-defined]
 
         db = firestore.Client()
         tokens_ref = db.collection('gmail_oauth_tokens').document(user_email)
@@ -157,7 +157,7 @@ class GmailOAuthService:
         Returns:
             Credentials: Google credentials (refreshed if needed)
         """
-        from google.cloud import firestore
+        from google.cloud import firestore  # type: ignore[attr-defined]
 
         db = firestore.Client()
         tokens_ref = db.collection('gmail_oauth_tokens').document(user_email)

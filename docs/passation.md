@@ -1,3 +1,107 @@
+## [2025-10-24 16:30 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+Relecture des journaux partagés : fusion interrompue (marqueurs `<<<<<<<` / `=======`) empêchant la synchronisation AutoSync. L’objectif est de restaurer les entrées Codex du 23-24/10 pour permettre la suite des travaux backend.
+
+### Travail réalisé
+- Résolution manuelle des conflits dans `AGENT_SYNC.md` et `docs/passation.md`, conservation des sessions 2025-10-23/24 et remise en forme (séparateurs `---`, sections Contexte/Tests/Blocages).
+- Vérification `git status` + staging des journaux, mention du blocage `scripts/sync-workdir.ps1` dû au working tree sale pour suivi.
+- Lecture/prise en compte des instructions AutoSync (appel `curl` ⇒ réponse vide, service probablement inactif).
+
+### Tests
+- Non exécutés (documentation uniquement).
+
+### Travail de Claude Code pris en compte
+- Entrées précédentes conservées telles quelles ; aucune modification de son contenu.
+
+### Blocages
+- `scripts/sync-workdir.ps1` échoue tant que les autres fichiers modifiés (backend/frontend) ne sont pas consolidés ; dépendances backend manquantes toujours signalées dans les entrées antérieures.
+
+---
+
+## [2025-10-24 09:45 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/backend/features/debate/service.py`
+- `tests/backend/features/test_debate_service.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+Tests prod post-maintenance : le mode débat mourait net après la première exception LLM. Les logs Guardian (`reports/codex_summary.md`, `reports/prod_report.json`) confirment qu'on ne voit pas d'erreurs HTTP, juste des débats avortés côté utilisateurs.
+
+### Travail réalisé
+- `DebateService._say_once` renvoie maintenant un bloc fallback structuré (message ⚠️ + métadonnée `error`, coûts/tokens nuls) au lieu de relancer l'exception.
+- `DebateService.run` inclut `meta.error` sur chaque tour et sur la synthèse ; les coûts restent agrégés même quand un agent plante.
+- Refactor massif de `tests/backend/features/test_debate_service.py` : suppression des imports doublons + second test dupliqué, helpers RecorderConnectionManager, nouveaux tests couvrant le fallback et la poursuite du débat quand un agent crashe.
+- Re-activé le suivi Git de `home-module.js` (bruit CRLF legacy toujours présent, voir TODO).
+
+### Tests
+- `ruff check tests/backend/features/test_debate_service.py`
+- `pytest tests/backend/features/test_debate_service.py -q`
+
+### Travail de Claude Code pris en compte
+Poursuite directe de sa refonte du service débat (fallback LLM + nouveaux tests). Rien à corriger côté backend, j'ai juste terminé le cleanup demandé dans ses notes.
+
+### Blocages
+`src/frontend/features/home/home-module.js` continue de ressortir en diff à cause des CRLF historiques. Re-généré la version commit (hash f517555...) mais Git détecte toujours un renormalisation potentielle. À traiter dans une future session (probable conversion globale LF).
+
+---
+
+## [2025-10-23 19:05 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/backend/features/documents/service.py`
+- `src/backend/core/database/queries.py`
+- `src/frontend/features/home/home-module.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+En prod, la prévisualisation/téléchargement/ré-indexation tombaient toujours en 404: les `filepath` persistés (`data/uploads/...` ou chemins absolus d'anciens déploiements) étaient à présent résolus en `/app/data/uploads/data/uploads/...` → `_resolve_document_path` levait 400/404. Le module UI restait bloqué malgré l'ajout des routes lors de la session précédente.
+
+### Travail de Claude Code pris en compte
+- Conserve le wiring DI `document_service` + normalisation SQL ajoutés précédemment.
+- S'appuie sur les helpers `SessionContext`/fallback session-id déjà implémentés pour éviter tout changement de contrat.
+
+### Tests
+- ✅ `ruff check src/backend/`
+- ⚠️ `mypy src/backend/` — dépendances `fastapi`, `pydantic`, `httpx`, `aiosqlite`, `dependency_injector` absentes.
+- ⚠️ `pytest tests/backend/ -q` — échoue à l'import (`aiosqlite`, `httpx`).
+
+### Blocages
+Environnement dépourvu des dépendances backend lourdes, impossibilité de valider `mypy`/`pytest` jusqu'à installation de `fastapi`, `pydantic`, `httpx`, `aiosqlite`, `dependency_injector`.
+
+---
+
+## [2025-10-23 17:15 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/backend/features/documents/service.py`
+- `src/backend/features/documents/router.py`
+- `src/backend/core/database/queries.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+Le module Documents affichait la liste mais toutes les actions (prévisualisation, téléchargement, ré-indexation) tombaient en 404/503: les endpoints backend avaient disparu. Ajout des services manquants, sécurisation du chemin d'upload et fallback session_id côté SQL pour rendre le module exploitable en prod.
+
+### Travail de Claude Code pris en compte
+- Réutilisation du wiring DI document_service (containers.py) mis en place lors des sessions précédentes.
+- Respect des corrections mypy (types explicites, aucune suppression d'ignores).
+
+### Tests
+- ✅ `ruff check src/backend/`
+- ⚠️ `mypy src/backend/` (FastAPI/Pydantic/etc. absents dans l'environnement d'exécution)
+- ⚠️ `pytest tests/backend/ -q` (`aiosqlite`, `httpx`, `fastapi` non installés)
+
+### Blocages
+Dépendances backend non installées dans le conteneur (fastapi/pydantic/aiosqlite/httpx). Impossible d'exécuter `mypy` et `pytest` entièrement sans setup complet.
+
 ## [2025-10-23 15:20 CET] - Agent: Claude Code
 
 ### Fichiers modifiés
@@ -9236,3 +9340,22 @@ git push
 
 ### Blocages
 
+## [2025-10-24 11:15 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/backend/core/migrations/20251024_auth_sessions_user_id.sql`
+- `src/backend/features/auth/service.py`
+- `src/backend/features/auth/models.py`
+- `tests/backend/features/test_auth_login.py`
+- `AGENT_SYNC.md`
+
+### Contexte
+- Reproduction bug client : impossible de se reconnecter (admin + membre) après logout.
+- Cause racine : migration 20250926 crée `auth_sessions` sans colonne `user_id` alors que le nouveau code l'écrit/lit ⇒ insertion échoue → login 500.
+- Fix livré : migration additive `20251024_auth_sessions_user_id.sql` + garde-fous runtime (fallback insert/select, backfill, cache schema) + test garantissant compat legacy.
+
+### Travail de Claude Code pris en compte
+- Les derniers commits mypy ont introduit les accès `user_id`; on garde la logique mais on l'abrite derrière la détection de colonne + on restaure les sessions manquantes.
+
+### Blocages
+- `mypy` + `pytest` bloqués par dépendances manquantes (`fastapi`, `httpx`, `pydantic`, stubs). À relancer dès que l'environnement dispose des libs.

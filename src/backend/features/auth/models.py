@@ -81,6 +81,7 @@ class SessionInfo(BaseModel):
     ip_address: Optional[str] = None
     revoked_at: Optional[datetime] = None
     revoked_by: Optional[str] = None
+    user_id: Optional[str] = None
 
 
 class AllowlistEntry(BaseModel):

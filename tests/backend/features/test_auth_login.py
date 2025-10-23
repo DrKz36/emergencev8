@@ -89,6 +89,50 @@ def test_login_wrong_password(auth_app_factory):
     asyncio.run(scenario())
 
 
+def test_login_with_legacy_auth_sessions_schema(auth_app_factory):
+    async def scenario():
+        member_email = "member@example.com"
+        member_password = "MemberPass123!"
+        ctx = await auth_app_factory(
+            "auth-legacy-schema",
+            admin_emails={member_email},
+        )
+        await ctx.service.set_allowlist_password(member_email, member_password, actor="tests")
+
+        await ctx.db.execute("DROP TABLE auth_sessions", commit=True)
+        await ctx.db.execute(
+            """
+            CREATE TABLE auth_sessions (
+                id TEXT PRIMARY KEY,
+                email TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'member',
+                ip_address TEXT,
+                user_agent TEXT,
+                issued_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                revoked_at TEXT,
+                revoked_by TEXT,
+                metadata JSON
+            )
+            """,
+            commit=True,
+        )
+
+        transport = ASGITransport(app=ctx.app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            resp = await client.post(
+                "/api/auth/login",
+                json={"email": member_email, "password": member_password},
+            )
+            assert resp.status_code == 200
+            body = LoginResponse(**resp.json())
+            assert body.email == member_email
+            claims = await ctx.service.verify_token(body.token)
+            assert claims["email"] == member_email
+
+    asyncio.run(scenario())
+
+
 def test_dev_login_auto_session(auth_app_factory):
     async def scenario():
         admin_email = "admin@example.com"

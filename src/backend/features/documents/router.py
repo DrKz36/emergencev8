@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Awaitable, Callable, cast
 
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Request
+from fastapi.responses import FileResponse
 
 from .service import DocumentService
 from backend.shared import dependencies as deps  # <- module, pas l'attribut direct
@@ -100,6 +101,54 @@ async def get_document(
     except Exception as exc:
         logger.error(f"Erreur lors de la récupération du document {document_id}: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail="Erreur interne lors de la récupération du document")
+
+
+@router.get("/{document_id}/content", response_model=Dict[str, Any])
+async def get_document_content(
+    document_id: int,
+    session: deps.SessionContext = Depends(deps.get_session_context),
+    service: DocumentService = Depends(_get_document_service),
+) -> Dict[str, Any]:
+    return await service.get_document_content(
+        document_id,
+        session.session_id,
+        user_id=session.user_id,
+    )
+
+
+@router.get("/{document_id}/download", response_class=FileResponse)
+async def download_document(
+    document_id: int,
+    session: deps.SessionContext = Depends(deps.get_session_context),
+    service: DocumentService = Depends(_get_document_service),
+) -> FileResponse:
+    file_info = await service.get_document_file(
+        document_id,
+        session.session_id,
+        user_id=session.user_id,
+    )
+    return FileResponse(
+        path=file_info['path'],
+        filename=file_info['filename'],
+        media_type=file_info['media_type'],
+    )
+
+
+@router.post("/{document_id}/reindex", response_model=Dict[str, Any])
+async def reindex_document(
+    document_id: int,
+    session: deps.SessionContext = Depends(deps.get_session_context),
+    service: DocumentService = Depends(_get_document_service),
+) -> Dict[str, Any]:
+    result = await service.reindex_document(
+        document_id,
+        session.session_id,
+        user_id=session.user_id,
+    )
+    return {
+        "message": "Document ré-indexé avec succès.",
+        "document": result,
+    }
 
 
 @router.delete("/{document_id}", status_code=200)

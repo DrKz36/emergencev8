@@ -246,7 +246,7 @@ async def list_my_sessions(
 
     # Get sessions for this specific user only
     all_sessions = await auth_service.list_sessions(active_only=True)
-    user_sessions = [s for s in all_sessions if s.user_id == user.id]  # type: ignore[attr-defined]
+    user_sessions = [s for s in all_sessions if s.user_id == user.id]
 
     return SessionsListResponse(items=user_sessions)
 
@@ -297,7 +297,7 @@ async def revoke_my_session(
             detail="Session not found"
         )
 
-    if target_session.user_id != user.id:  # type: ignore[attr-defined]
+    if target_session.user_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only revoke your own sessions"

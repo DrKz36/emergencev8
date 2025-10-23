@@ -1,114 +1,105 @@
-from pathlib import Path
-import sys
 import asyncio
+import sys
 import types
+from pathlib import Path
+from typing import Any
 
 import pytest
 
 sys.path.append(str(Path(__file__).resolve().parents[3] / "src"))
 
-import backend.features.chat.service as chat_service_module
-from backend.features.chat.service import ChatService
 from backend.features.debate.service import DebateService
-from backend.shared.config import Settings
 
 
-class DummySessionManager:
-    def get_full_history(self, session_id):
-        return []
-
-    async def add_message_to_session(self, *args, **kwargs):
-        return None
-
-
-class DummyCostTracker:
+class RecorderConnectionManager:
     def __init__(self):
-        self.records = []
+        self.messages: list[tuple[str, dict[str, Any]]] = []
 
-    async def record_cost(self, *, agent, model, input_tokens, output_tokens, total_cost, feature):
-        self.records.append(
-            {
-                "agent": agent,
-                "model": model,
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "total_cost": total_cost,
-                "feature": feature,
-            }
-        )
+    async def send_personal_message(self, payload: dict[str, Any], session_id: str) -> None:
+        self.messages.append((session_id, payload))
 
 
-class DummyVectorService:
-    def get_or_create_collection(self, *args, **kwargs):
-        return None
-
-    def query(self, *args, **kwargs):
-        return []
+def run_async(coro):
+    return asyncio.run(coro)
 
 
-class DummyConnectionManager:
-    async def send_personal_message(self, *args, **kwargs):
-        return None
+def test_debate_say_once_handles_chat_failure():
+    class FailingChatService:
+        async def get_llm_response_for_debate(self, *args, **kwargs):
+            raise RuntimeError("anthropic timeout")
 
+    debate_service = DebateService(FailingChatService(), RecorderConnectionManager())
 
-class DummyAsyncClient:
-    def __init__(self, *args, **kwargs):
-        pass
-
-
-class DummySyncClient:
-    def __init__(self, *args, **kwargs):
-        pass
-
-
-@pytest.mark.skip(reason="Mock fake_stream obsolete - missing agent_id parameter")
-def test_debate_say_once_short_response(monkeypatch):
-    monkeypatch.setattr(chat_service_module, "AsyncOpenAI", DummyAsyncClient)
-    monkeypatch.setattr(chat_service_module, "OpenAI", DummySyncClient)
-    monkeypatch.setattr(chat_service_module, "AsyncAnthropic", DummyAsyncClient)
-    monkeypatch.setattr(chat_service_module, "Anthropic", DummySyncClient)
-    monkeypatch.setattr(chat_service_module.genai, "configure", lambda **kwargs: None)
-    monkeypatch.setenv("EMERGENCE_FORCE_CHEAP_ANIMA", "0")
-
-    async def fake_stream(self, provider, model, system_prompt, history, cost_info_container):
-        if provider == "openai":
-            raise RuntimeError("primary failure")
-        cost_info_container.update({"input_tokens": 7, "output_tokens": 2, "total_cost": 0.00042})
-        yield "Salut"
-
-    monkeypatch.setattr(ChatService, "_get_llm_response_stream", fake_stream, raising=False)
-
-    async def _run():
-        settings = Settings(openai_api_key="sk-test", google_api_key="sk-test", anthropic_api_key="sk-test")
-        cost_tracker = DummyCostTracker()
-        chat_service = ChatService(DummySessionManager(), cost_tracker, DummyVectorService(), settings)
-        debate_service = DebateService(chat_service, DummyConnectionManager())
-
-        response = await debate_service._say_once(
-            session_id="sess-1",
-            agent_id="anima",
+    response = run_async(
+        debate_service._say_once(
+            session_id="sess-err",
+            agent_id="neo",
             prompt="Expose le sujet",
             use_rag=False,
         )
+    )
 
-        assert isinstance(response, dict)
-        assert response.get("text") == "Salut"
-        assert set(response.keys()) >= {"text", "cost_info", "provider", "model", "fallback"}
-        assert response["cost_info"]["output_tokens"] == 2
-        assert isinstance(response["fallback"], bool)
-        assert response["provider"]
-        assert response["model"]
+    assert response["fallback"] is True
+    assert response["provider"] is None
+    assert response["model"] is None
+    assert response["cost_info"] == {"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0}
+    assert "indisponible" in response["text"]
+    assert "anthropic timeout" in response["text"]
+    assert response["error"]["type"] == "RuntimeError"
 
-        assert len(cost_tracker.records) == 1
-        record = cost_tracker.records[0]
-        assert record["agent"] == "anima"
-        assert record["input_tokens"] == 7
-        assert record["output_tokens"] == 2
-        assert record["total_cost"] == pytest.approx(0.00042)
-        assert record["feature"] == "debate"
-        assert record["model"] == response["model"]
 
-    asyncio.run(_run())
+def test_debate_run_continues_when_agent_fails():
+    class MixedChatService:
+        def __init__(self):
+            self.calls: list[str] = []
+
+        def _sanitize_doc_ids(self, doc_ids):
+            return []
+
+        async def get_llm_response_for_debate(self, agent_id, prompt, **kwargs):
+            self.calls.append(agent_id)
+            if agent_id == "nexus":
+                raise RuntimeError("upstream 500")
+            return {
+                "text": f"{agent_id} reply",
+                "cost_info": {"total_cost": 0.01, "input_tokens": 10, "output_tokens": 5},
+                "provider": "stub",
+                "model": "stub-model",
+                "fallback": False,
+            }
+
+    conn = RecorderConnectionManager()
+    chat_service = MixedChatService()
+    debate_service = DebateService(chat_service, conn)
+
+    result = run_async(
+        debate_service.run(
+            session_id="sess-fallback",
+            topic="Test",
+            agentOrder=["neo", "nexus", "anima"],
+            rounds=1,
+            use_rag=False,
+        )
+    )
+
+    assert chat_service.calls.count("neo") == 1
+    assert chat_service.calls.count("nexus") == 1
+    assert chat_service.calls.count("anima") == 1
+
+    turns = {turn["agent"]: turn for turn in result["turns"]}
+    assert "neo" in turns and "nexus" in turns
+    assert turns["nexus"]["meta"]["fallback"] is True
+    assert turns["nexus"]["meta"]["error"]["type"] == "RuntimeError"
+    assert turns["nexus"]["text"].startswith("⚠️ Agent nexus indisponible")
+
+    cost = result["cost"]
+    assert cost["by_agent"]["nexus"]["usd"] == pytest.approx(0.0)
+    assert cost["by_agent"]["neo"]["usd"] == pytest.approx(0.01)
+    assert cost["by_agent"]["anima"]["usd"] == pytest.approx(0.01)
+
+    message_types = {payload["type"] for _, payload in conn.messages}
+    assert "ws:debate_turn_update" in message_types
+    assert "ws:debate_result" in message_types
 
 
 def test_debate_run_cost_summary_aggregation():
@@ -118,7 +109,7 @@ def test_debate_run_cost_summary_aggregation():
 
     async def _run():
         chat_service = StubChatService()
-        debate_service = DebateService(chat_service, DummyConnectionManager())
+        debate_service = DebateService(chat_service, RecorderConnectionManager())
 
         async def _no_op(self, *args, **kwargs):
             return None
@@ -189,4 +180,4 @@ def test_debate_run_cost_summary_aggregation():
 
         assert result["config"]["docIds"] == [101, 202]
 
-    asyncio.run(_run())
+    run_async(_run())

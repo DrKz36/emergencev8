@@ -52,6 +52,7 @@ class AuthService:
         self.jwt_algorithm = resolved_config.algorithm or "HS256"
         self.access_token_expire_minutes = max(1, resolved_config.token_ttl_seconds // 60)
         self.rate_limiter = rate_limiter or SlidingWindowRateLimiter(RateLimiterConfig())
+        self._auth_sessions_has_user_id: Optional[bool] = None
 
     def _resolve_config(self, config: Optional[AuthConfig | Mapping[str, Any]]) -> AuthConfig:
         payload: AuthConfig | Mapping[str, Any] | None = config
@@ -171,6 +172,64 @@ class AuthService:
             except Exception as exc:
                 logger.error("Unexpected error while seeding allowlist entry for %s: %s", email, exc, exc_info=True)
 
+    async def _auth_sessions_supports_user_id(self) -> bool:
+        if self._auth_sessions_has_user_id is not None:
+            return self._auth_sessions_has_user_id
+
+        try:
+            rows = await self.db.fetch_all("PRAGMA table_info(auth_sessions)")
+        except Exception as exc:
+            logger.warning("Unable to inspect auth_sessions schema: %s", exc)
+            self._auth_sessions_has_user_id = False
+            return False
+
+        has_column = False
+        for row in rows or []:
+            name: Optional[str] = None
+            try:
+                # Row peut être dict-like ou avoir un attribut name
+                if hasattr(row, "keys"):
+                    name = dict(row).get("name")
+                else:
+                    name = getattr(row, "name", None)
+            except Exception:
+                name = getattr(row, "name", None)
+
+            if isinstance(name, str) and name.lower() == "user_id":
+                has_column = True
+                break
+
+        self._auth_sessions_has_user_id = has_column
+        return has_column
+
+    async def _backfill_auth_session_user_ids(self) -> None:
+        if not await self._auth_sessions_supports_user_id():
+            return
+
+        rows = await self._fetch_all_dicts(
+            "SELECT id, email, user_id FROM auth_sessions WHERE user_id IS NULL OR TRIM(user_id) = ''"
+        )
+        if not rows:
+            return
+
+        updates: list[tuple[str, str]] = []
+        for row in rows:
+            session_id = str(row.get("id") or "").strip()
+            email = self._normalize_email(str(row.get("email") or ""))
+            if not session_id or not email:
+                continue
+            updates.append((self._hash_subject(email), session_id))
+
+        if not updates:
+            return
+
+        await self.db.executemany(
+            "UPDATE auth_sessions SET user_id = ? WHERE id = ?",
+            updates,
+            commit=True,
+        )
+        logger.info("Backfilled user_id for %d auth session(s)", len(updates))
+
     # ------------------------------------------------------------------
     async def bootstrap(self) -> None:
         for email in self.config.admin_emails:
@@ -186,6 +245,8 @@ class AuthService:
         )
 
         await self._seed_allowlist_from_env()
+        self._auth_sessions_has_user_id = None
+        await self._backfill_auth_session_user_ids()
 
     async def login(self, email: str, password: str, ip_address: Optional[str], user_agent: Optional[str]) -> LoginResponse:
         normalized = self._normalize_email(email)
@@ -477,36 +538,85 @@ class AuthService:
             "restored_at": self._now().isoformat(),
         }
 
+        metadata_json = json.dumps(metadata)
+        supports_user_id = await self._auth_sessions_supports_user_id()
+        insert_with_user_id = """
+            INSERT OR IGNORE INTO auth_sessions (id, email, role, ip_address, user_id, user_agent, issued_at, expires_at, metadata)
+            VALUES (?, ?, ?, NULL, ?, NULL, ?, ?, ?)
+        """
+        insert_without_user_id = """
+            INSERT OR IGNORE INTO auth_sessions (id, email, role, ip_address, user_agent, issued_at, expires_at, metadata)
+            VALUES (?, ?, ?, NULL, NULL, ?, ?, ?)
+        """
+
         try:
-            await self.db.execute(
-                """
-                INSERT OR IGNORE INTO auth_sessions (id, email, role, ip_address, user_id, user_agent, issued_at, expires_at, metadata)
-                VALUES (?, ?, ?, NULL, ?, NULL, ?, ?, ?)
-                """,
-                (
+            if supports_user_id:
+                await self.db.execute(
+                    insert_with_user_id,
+                    (
+                        session_id,
+                        email,
+                        role,
+                        user_id or None,
+                        issued_at.isoformat(),
+                        expires_at.isoformat(),
+                        metadata_json,
+                    ),
+                    commit=True,
+                )
+            else:
+                await self.db.execute(
+                    insert_without_user_id,
+                    (
+                        session_id,
+                        email,
+                        role,
+                        issued_at.isoformat(),
+                        expires_at.isoformat(),
+                        metadata_json,
+                    ),
+                    commit=True,
+                )
+        except Exception as exc:
+            if supports_user_id and "user_id" in str(exc).lower():
+                logger.warning(
+                    "auth_sessions.user_id column missing during restore, falling back to legacy schema: %s",
+                    exc,
+                )
+                self._auth_sessions_has_user_id = False
+                await self.db.execute(
+                    insert_without_user_id,
+                    (
+                        session_id,
+                        email,
+                        role,
+                        issued_at.isoformat(),
+                        expires_at.isoformat(),
+                        metadata_json,
+                    ),
+                    commit=True,
+                )
+            else:
+                logger.warning(
+                    "Unable to restore missing auth session %s for %s: %s",
                     session_id,
                     email,
-                    role,
-                    user_id or None,
-                    issued_at.isoformat(),
-                    expires_at.isoformat(),
-                    json.dumps(metadata),
-                ),
-                commit=True,
-            )
-        except Exception as exc:
-            logger.warning(
-                "Unable to restore missing auth session %s for %s: %s",
-                session_id,
-                email,
-                exc,
-            )
-            return None
+                    exc,
+                )
+                return None
 
-        return await self._fetch_one_dict(
-            "SELECT expires_at, revoked_at, user_id FROM auth_sessions WHERE id = ?",
+        select_columns = "expires_at, revoked_at, user_id"
+        if not await self._auth_sessions_supports_user_id():
+            select_columns = "expires_at, revoked_at"
+
+        row = await self._fetch_one_dict(
+            f"SELECT {select_columns} FROM auth_sessions WHERE id = ?",
             (session_id,),
         )
+        if row is None:
+            return None
+        row.setdefault("user_id", None)
+        return row
 
     async def _issue_session(
         self,
@@ -547,24 +657,72 @@ class AuthService:
 
         # CRITICAL WRITE: Utilise execute_critical_write() pour sérialiser les écritures auth_sessions
         # Évite "database is locked" sur connexions concurrentes multiples
-        await self.db.execute_critical_write(
-            """
+        supports_user_id = await self._auth_sessions_supports_user_id()
+        metadata_payload = json.dumps(session_meta) if session_meta else None
+        insert_with_user_id = """
             INSERT INTO auth_sessions (id, email, role, ip_address, user_id, user_agent, issued_at, expires_at, metadata)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                session_id,
-                email,
-                role,
-                ip_address,
-                claims.get("sub"),
-                user_agent,
-                now.isoformat(),
-                expires_at.isoformat(),
-                json.dumps(session_meta) if session_meta else None,
-            ),
-            commit=True,
-        )
+        """
+        insert_without_user_id = """
+            INSERT INTO auth_sessions (id, email, role, ip_address, user_agent, issued_at, expires_at, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """
+
+        try:
+            if supports_user_id:
+                await self.db.execute_critical_write(
+                    insert_with_user_id,
+                    (
+                        session_id,
+                        email,
+                        role,
+                        ip_address,
+                        claims.get("sub"),
+                        user_agent,
+                        now.isoformat(),
+                        expires_at.isoformat(),
+                        metadata_payload,
+                    ),
+                    commit=True,
+                )
+            else:
+                await self.db.execute_critical_write(
+                    insert_without_user_id,
+                    (
+                        session_id,
+                        email,
+                        role,
+                        ip_address,
+                        user_agent,
+                        now.isoformat(),
+                        expires_at.isoformat(),
+                        metadata_payload,
+                    ),
+                    commit=True,
+                )
+        except Exception as exc:
+            if supports_user_id and "user_id" in str(exc).lower():
+                logger.warning(
+                    "auth_sessions.user_id column missing during insert, falling back to legacy schema: %s",
+                    exc,
+                )
+                self._auth_sessions_has_user_id = False
+                await self.db.execute_critical_write(
+                    insert_without_user_id,
+                    (
+                        session_id,
+                        email,
+                        role,
+                        ip_address,
+                        user_agent,
+                        now.isoformat(),
+                        expires_at.isoformat(),
+                        metadata_payload,
+                    ),
+                    commit=True,
+                )
+            else:
+                raise
 
         audit_meta: dict[str, Any] = {"session_id": session_id}
         if ip_address:
@@ -716,10 +874,15 @@ class AuthService:
         role_value = allow_row.get("role") or claims.get("role") or "member"
         role = str(role_value).strip() or "member"
 
+        select_columns = "expires_at, revoked_at, user_id"
+        if not await self._auth_sessions_supports_user_id():
+            select_columns = "expires_at, revoked_at"
         session = await self._fetch_one_dict(
-            "SELECT expires_at, revoked_at, user_id FROM auth_sessions WHERE id = ?",
+            f"SELECT {select_columns} FROM auth_sessions WHERE id = ?",
             (session_id,),
         )
+        if session and "user_id" not in session:
+            session["user_id"] = None
         if not session:
             session = await self._restore_session_from_claims(
                 email=email,
@@ -733,6 +896,7 @@ class AuthService:
                     session_id,
                     email,
                 )
+                session.setdefault("user_id", None)
         if not session:
             raise AuthError("Session inconnue.", status_code=401)
 
@@ -768,6 +932,8 @@ class AuthService:
     async def get_user_id_for_session(self, session_id: str) -> Optional[str]:
         normalized = (session_id or "").strip()
         if not normalized:
+            return None
+        if not await self._auth_sessions_supports_user_id():
             return None
         row = await self._fetch_one_dict(
             "SELECT user_id FROM auth_sessions WHERE id = ?",
@@ -1176,15 +1342,23 @@ class AuthService:
         return True
 
     async def list_sessions(self, active_only: bool = False) -> list[SessionInfo]:
+        columns = "id, email, role, ip_address, issued_at, expires_at, revoked_at, revoked_by"
+        if await self._auth_sessions_supports_user_id():
+            columns = columns + ", user_id"
         if active_only:
             rows = await self._fetch_all_dicts(
-                "SELECT id, email, role, ip_address, issued_at, expires_at, revoked_at, revoked_by FROM auth_sessions WHERE revoked_at IS NULL ORDER BY issued_at DESC"
+                f"SELECT {columns} FROM auth_sessions WHERE revoked_at IS NULL ORDER BY issued_at DESC"
             )
         else:
             rows = await self._fetch_all_dicts(
-                "SELECT id, email, role, ip_address, issued_at, expires_at, revoked_at, revoked_by FROM auth_sessions ORDER BY issued_at DESC"
+                f"SELECT {columns} FROM auth_sessions ORDER BY issued_at DESC"
             )
-        return [self._row_to_session(r) for r in rows]
+        normalized_rows: list[dict[str, Any]] = []
+        for payload in rows:
+            if "user_id" not in payload:
+                payload["user_id"] = None
+            normalized_rows.append(payload)
+        return [self._row_to_session(r) for r in normalized_rows]
 
     # ------------------------------------------------------------------
     async def _upsert_allowlist(
@@ -1373,6 +1547,7 @@ class AuthService:
             ip_address=row.get("ip_address"),
             revoked_at=self._parse_dt(revoked_at) if revoked_at else None,
             revoked_by=row.get("revoked_by"),
+            user_id=str(row.get("user_id") or "").strip() or None,
         )
 
     def _hash_password(self, password: str) -> str:

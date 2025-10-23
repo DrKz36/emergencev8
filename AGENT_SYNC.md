@@ -1,3 +1,90 @@
+## ✅ Session COMPLÉTÉE (2025-10-24 16:30 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- 🔧 Résolution des conflits de fusion `ours/theirs` sur les journaux 2025-10-23/24 pour restaurer toutes les sessions Codex.
+- 📚 Réintroduction des séparateurs et sections (Contexte, Tests, Blocages) afin d'aligner la mise en page avec le protocole multi-agents.
+- 🔍 Vérification du working tree (`git status`) et staging des journaux ; tentative `pwsh -File scripts/sync-workdir.ps1` bloquée par l’état sale notée pour suivi.
+
+### Tests
+- ⚪ Non exécutés (mise à jour documentation uniquement).
+
+### Prochaines actions
+1. ▶️ Relancer `pwsh -File scripts/sync-workdir.ps1` une fois les autres fichiers consolidés.
+2. 🧪 Rejouer `ruff`, `pytest`, `mypy` quand les dépendances manquantes seront installées pour valider les changements backend toujours en attente.
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-24 09:45 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/backend/features/debate/service.py`
+- `tests/backend/features/test_debate_service.py`
+- `AGENT_SYNC.md`, `docs/passation.md`
+
+### Actions réalisées
+- ✅ Analyse rapports Guardian (`reports/codex_summary.md`, `reports/prod_report.json`) : aucun crash mais mode débat bloqué par `_say_once` qui relançait les exceptions → débat interrompu.
+- ✅ `DebateService._say_once` : conversion en fallback résilient (message ⚠️, coût nul, provider/model `None`, métadonnée `error` sérialisée) au lieu de `raise`.
+- ✅ `DebateService.run` : inclusion systématique de `meta.error` pour chaque tour + synthèse afin que le front puisse afficher la panne.
+- ✅ `tests/backend/features/test_debate_service.py` : grand ménage (imports uniques, suppression du doublon `test_debate_run_cost_summary_aggregation`, helpers RecorderConnectionManager) + nouveaux tests couvrant la branche fallback.
+
+### Tests
+- ✅ `ruff check tests/backend/features/test_debate_service.py`
+- ✅ `pytest tests/backend/features/test_debate_service.py -q`
+
+### Prochaines actions
+1. 🧪 Prévoir un test WS/integration qui vérifie que le front rend bien le message fallback côté débat.
+2. 📊 Étendre la couverture pour le scénario double panne (challenger + médiateur HS) afin de valider l’agrégation des coûts.
+3. 🛠️ Revoir `home-module.js` (CRLF legacy) avant conversion globale pour éviter les faux diff lors des prochaines sessions.
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-23 19:05 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/backend/features/documents/service.py`
+- `src/backend/core/database/queries.py`
+- `src/frontend/features/home/home-module.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Diagnostic prod : les chemins `filepath` en base (ex: `data/uploads/...`) n'étaient plus résolus → `_resolve_document_path` concaténait l'uploads_dir une seconde fois (`/app/data/uploads/data/uploads/...`) ⇒ 404/500 sur preview, download et ré-indexation.
+- Refacto `_resolve_document_path` : support des chemins relatifs/absolus legacy (`data/uploads`, `uploads`, anciens prefixes) avec sécurisation `relative_to` + logs.
+- Normalisation automatique : stockage relatif des nouveaux uploads + mise à jour BDD à la volée (`update_document_filepath`) dès qu'un chemin legacy est résolu.
+- Sécurisation des actions `content/download/reindex` → appel `_ensure_stored_filepath` pour corriger la BDD et éviter les doublons.
+- Hygiène front : suppression des CRLF résiduels sur `home-module.js` (diff fantôme documenté dans TODO précédent).
+
+### Tests
+- ✅ `ruff check src/backend/`
+- ⚠️ `mypy src/backend/` *(pydantic, fastapi, httpx, aiosqlite, dependency_injector manquants dans le conteneur)*
+- ⚠️ `pytest tests/backend/ -q` *(échoue en import sur `aiosqlite` + `httpx`)*
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-23 17:15 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/backend/features/documents/service.py`
+- `src/backend/features/documents/router.py`
+- `src/backend/core/database/queries.py`
+
+### Actions réalisées
+- Diagnostic: le module Documents n'exposait plus les routes `/content`, `/download`, `/reindex` en prod \(UI en erreur/404\).
+- Ajout des méthodes `get_document_content`, `get_document_file`, `reindex_document` côté service avec factorisation `_resolve_document_path` et `_build_chunk_payloads`.
+- Nouvelles routes REST `/content` `/download` `/reindex` dans le router Documents \+ téléchargement via `FileResponse`.
+- Requêtes SQL Documents compatibles scope session \(fallback si user_id absent\) et remise à zéro automatique de `error_message`.
+
+### Tests
+- ✅ `ruff check src/backend/`
+- ⚠️ `mypy src/backend/` *(dépendances FastAPI/Pydantic etc. manquantes sur l'environnement)*
+- ⚠️ `pytest tests/backend/ -q` *(modules externes `aiosqlite`, `httpx`, `fastapi` non installés)*
+
+---
+
 ## ✅ Session COMPLÉTÉE (2025-10-23 15:20 CET) — Agent : Claude Code
 
 ### Fichiers modifiés
@@ -7466,3 +7553,26 @@ Implémentation métrique nDCG@k avec pénalisation exponentielle pour évaluer 
 **Tests:** ✅ pytest (16/16), ruff, mypy --strict
 
 **Prochaines actions:** Créer dataset d'évaluation pour benchmarker le moteur de ranking.
+## ✅ Session COMPLÉTÉE (2025-10-24 11:15 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/backend/core/migrations/20251024_auth_sessions_user_id.sql`
+- `src/backend/features/auth/service.py`
+- `src/backend/features/auth/models.py`
+- `tests/backend/features/test_auth_login.py`
+- `AGENT_SYNC.md`, `docs/passation.md`
+
+### Actions réalisées
+- 🐛 **Hotfix auth** : identifié la panne login (colonne `user_id` manquante dans `auth_sessions` en prod après logout) qui cassait toutes les nouvelles connexions.
+- ➕ Ajout d'une **migration SQL** `20251024_auth_sessions_user_id.sql` pour créer la colonne `user_id`.
+- 🔄 Mise à jour d'`AuthService` : détection dynamique du schéma, fallback insert/SELECT sans `user_id`, backfill automatique et cache invalidé au bootstrap.
+- ✅ `SessionInfo` expose désormais `user_id` + requêtes `list_sessions` compatibles legacy.
+- 🧪 Nouveau test `test_login_with_legacy_auth_sessions_schema` couvrant l'ancien schéma (table recréée sans colonne) pour garantir la compat rétro.
+
+### Tests
+- ✅ `ruff check src/backend/`
+- ⚠️ `mypy src/backend/` (échoue : dépendances/stubs FastAPI, Pydantic, httpx manquants dans l'environnement runner)
+- ⚠️ `pytest tests/backend/features/test_auth_login.py::test_login_with_legacy_auth_sessions_schema -q` (échoue : dépendance `httpx` absente)
+
+### Blocages
+- Environnement container sans libs/stubs (`fastapi`, `httpx`, `pydantic`, etc.) ⇒ mypy & pytest bloqués. À relancer une fois les deps installées.

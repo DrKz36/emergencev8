@@ -122,22 +122,51 @@ class DebateService:
                 session_id=session_id,
                 doc_ids=doc_ids,
             )
-        except Exception as e:
-            logger.error(f"_say_once error (agent={agent_id}): {e}", exc_info=True)
-            raise
+        except Exception as exc:
+            agent_label = (agent_id or "inconnu").strip() or "inconnu"
+            logger.error(
+                "_say_once error (agent=%s): %s",
+                agent_label,
+                exc,
+                exc_info=True,
+            )
+            raw_message = str(exc).replace("\n", " ").strip()
+            if len(raw_message) > 200:
+                raw_message = raw_message[:197] + "..."
+            fallback_message = (
+                f"⚠️ Agent {agent_label} indisponible — contribution ignorée."
+            )
+            if raw_message:
+                fallback_message = f"{fallback_message} (erreur: {raw_message})"
+
+            return {
+                "text": fallback_message,
+                "cost_info": {"input_tokens": 0, "output_tokens": 0, "total_cost": 0.0},
+                "provider": None,
+                "model": None,
+                "fallback": True,
+                "error": {
+                    "type": exc.__class__.__name__,
+                    "message": raw_message,
+                },
+            }
 
         text = (res or {}).get("text", "") or ""
         cost_info = (res or {}).get("cost_info", {}) or {}
         provider = (res or {}).get("provider")
         model = (res or {}).get("model")
         fallback = bool((res or {}).get("fallback"))
-        return {
+        payload: Dict[str, Any] = {
             "text": text,
             "cost_info": cost_info,
             "provider": provider,
             "model": model,
             "fallback": fallback,
         }
+        error_info = (res or {}).get("error")
+        if error_info:
+            payload["error"] = error_info
+        return payload
 
     @staticmethod
     def _normalize_config(config: Optional[DebateConfig], kwargs: Dict[str, Any]) -> DebateConfig:
@@ -295,6 +324,7 @@ class DebateService:
                         "model": attacker_response.get("model"),
                         "fallback": attacker_response.get("fallback"),
                         "cost": attacker_response.get("cost_info"),
+                        "error": attacker_response.get("error"),
                     },
                 }
                 turns.append(turn_a)
@@ -311,6 +341,7 @@ class DebateService:
                         "model": challenger_response.get("model"),
                         "fallback": challenger_response.get("fallback"),
                         "cost": challenger_response.get("cost_info"),
+                        "error": challenger_response.get("error"),
                     },
                 }
                 turns.append(turn_c)
@@ -346,6 +377,7 @@ class DebateService:
                         "model": attacker_response.get("model"),
                         "fallback": attacker_response.get("fallback"),
                         "cost": attacker_response.get("cost_info"),
+                        "error": attacker_response.get("error"),
                     },
                 }
                 turns.append(turn_a)
@@ -379,6 +411,7 @@ class DebateService:
                         "model": challenger_response.get("model"),
                         "fallback": challenger_response.get("fallback"),
                         "cost": challenger_response.get("cost_info"),
+                        "error": challenger_response.get("error"),
                     },
                 }
                 turns.append(turn_c)
@@ -408,6 +441,7 @@ class DebateService:
             "model": synthesis_response.get("model"),
             "fallback": synthesis_response.get("fallback"),
             "cost": synthesis_response.get("cost_info"),
+            "error": synthesis_response.get("error"),
         }
         accumulate_cost(mediator, synthesis_response.get("cost_info"))
 

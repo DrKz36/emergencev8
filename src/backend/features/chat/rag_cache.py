@@ -215,8 +215,8 @@ class RAGCache:
                 info = self.redis_client.info('stats')
                 return {
                     'backend': 'redis',
-                    'keyspace_hits': info.get('keyspace_hits', 0),
-                    'keyspace_misses': info.get('keyspace_misses', 0),
+                    'keyspace_hits': info.get('keyspace_hits', 0),  # type: ignore[union-attr]
+                    'keyspace_misses': info.get('keyspace_misses', 0),  # type: ignore[union-attr]
                     'connected': True,
                 }
             except Exception:
@@ -241,7 +241,7 @@ class RAGCache:
         if cached_str:
             logger.debug(f"[RAG Cache] Redis HIT: {fingerprint}")
             from typing import cast
-            return cast(dict[str, Any], json.loads(cached_str))
+            return cast(dict[str, Any], json.loads(cached_str))  # type: ignore[arg-type]
         logger.debug(f"[RAG Cache] Redis MISS: {fingerprint}")
         return None
 
@@ -265,9 +265,9 @@ class RAGCache:
         cursor = 0
         deleted = 0
         while True:
-            cursor, keys = self.redis_client.scan(cursor, match='rag:query:*', count=100)
+            cursor, keys = self.redis_client.scan(cursor, match='rag:query:*', count=100)  # type: ignore[misc]
             if keys:
-                deleted += self.redis_client.delete(*keys)
+                deleted += self.redis_client.delete(*keys)  # type: ignore[operator]
             if cursor == 0:
                 break
         logger.info(f"[RAG Cache] Flushed {deleted} Redis keys")
