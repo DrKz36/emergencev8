@@ -32,21 +32,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # TEMPORAIREMENT DÉSACTIVÉ - Mocks obsolètes, nécessite refactoring complet
-      # TODO: Refactoriser les tests avec mocks à jour (session dédiée)
-      # Problème: 11 tests skipped + nouveaux fails à chaque run (mocks obsolètes)
-      # - name: Run pytest
-      #   run: pytest tests/backend/ -v --tb=short --maxfail=5 -x
-      #   timeout-minutes: 10
+      - name: Run pytest
+        run: pytest tests/backend/ -v --tb=short --maxfail=5
+        timeout-minutes: 10
+        continue-on-error: true
 
       - name: Ruff check
         run: ruff check src/backend/
 
-      # TEMPORAIREMENT DÉSACTIVÉ - 95 erreurs de typing à corriger
-      # TODO: Session dédiée pour fixer type hints (session future)
-      # Problème: Mypy trouve 95 erreurs dans 24 fichiers après fix du double module naming
-      # - name: Mypy type checking
-      #   run: mypy src/backend/ --ignore-missing-imports --explicit-package-bases
+      - name: Mypy type checking
+        run: mypy src/backend/ --ignore-missing-imports --explicit-package-bases
+        continue-on-error: true
 
   # Job 2 : Tests Frontend
   test-frontend:
@@ -68,11 +64,10 @@ jobs:
         run: npm run build
         timeout-minutes: 5
 
-  # Job 3 : Guardian Validation
+  # Job 3 : Guardian Validation (parallèle aux tests)
   guardian:
     name: Guardian Validation
     runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend]
 
     steps:
       - uses: actions/checkout@v4
@@ -126,3 +121,36 @@ jobs:
             exit 1
           fi
           echo "✅ Guardian validation OK"
+
+  # Job 4 : Quality Gate final (après tous les jobs)
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, guardian]
+    if: always()
+
+    steps:
+      - name: Check all jobs status
+        run: |
+          echo "🔍 Checking all jobs status..."
+          echo "Backend tests: ${{ needs.test-backend.result }}"
+          echo "Frontend tests: ${{ needs.test-frontend.result }}"
+          echo "Guardian: ${{ needs.guardian.result }}"
+
+          # Fail si Guardian ou frontend ont échoué (critiques)
+          if [[ "${{ needs.guardian.result }}" != "success" ]]; then
+            echo "❌ Guardian failed - blocking merge"
+            exit 1
+          fi
+
+          if [[ "${{ needs.test-frontend.result }}" != "success" ]]; then
+            echo "❌ Frontend tests failed - blocking merge"
+            exit 1
+          fi
+
+          # Warning si backend tests échouent (mais ne bloque pas)
+          if [[ "${{ needs.test-backend.result }}" != "success" ]]; then
+            echo "⚠️  Backend tests failed - should be fixed but not blocking"
+          fi
+
+          echo "✅ Quality gate passed"
