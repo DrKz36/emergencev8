@@ -2,9 +2,85 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-22 17:50 CET (Claude Code : Fix prod down + Version beta-3.0.0 🚑)
+**Dernière mise à jour** : 2025-10-23 (Claude Code : Fix Vite dependencies pour Docker build 🔧)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+## 🔧 Session EN COURS (2025-10-23) — Agent : Claude Code
+
+### Fichiers modifiés
+- `package.json` (déplacé Vite de devDependencies vers dependencies)
+- `AGENT_SYNC.md` (cette mise à jour)
+
+### Actions réalisées
+**🐛 FIX CRITIQUE: Docker build échoue car Vite pas installé**
+
+**Problème identifié après déploiement #26 (échec GitHub Actions):**
+```
+#18 0.266 sh: 1: vite: not found
+ERROR: failed to build: process "/bin/sh -c npm run build" did not complete successfully: exit code 127
+```
+
+**Analyse de la cause racine:**
+1. `Dockerfile` ligne 36: `npm ci --only=production` ✅
+2. Mais **Vite était dans `devDependencies`** ❌
+3. Donc `npm ci --only=production` n'installe PAS Vite
+4. Ensuite `npm run build` appelle `vite build` → **command not found**
+
+**Solution appliquée:**
+- **Déplacé Vite** de `devDependencies` vers `dependencies` dans `package.json`
+- Vite EST nécessaire pour le build de production Docker
+- Testé localement: `npm run build` ✅ (build en 4.62s, 364 modules)
+
+**Résultat attendu:**
+- Prochain push → GitHub Actions build réussira
+- Déploiement Cloud Run fonctionnel
+- Frontend beta-3.0.0 enfin déployé en prod
+
+### Tests
+- ✅ `npm run build` local (4.62s, 18 chunks générés, warnings mineurs)
+- ⏳ Commit + push en cours
+- ⏳ GitHub Actions build à surveiller
+
+### Prochaines actions recommandées
+1. **Commit + push** les changements
+2. **Surveiller GitHub Actions** (build devrait passer maintenant)
+3. **Valider déploiement Cloud Run** (révision 00426 attendue)
+4. **Tester site prod** après déploiement réussi
+
+### Blocages
+Aucun. Fix appliqué et testé localement.
+
+---
+
+## 🚑 Session COMPLÉTÉE (2025-10-22 18:05 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `Dockerfile` (ajout build frontend Node.js + copie dist/ vers racine)
+- `AGENT_SYNC.md` (mise à jour)
+
+### Actions réalisées
+**🐛 FIX PARTIEL: Ajout build frontend dans Dockerfile**
+
+Modification `Dockerfile` pour build le frontend **pendant le docker build**:
+1. Install Node.js 18 (apt-get + curl nodesource)
+2. Copie `package.json` + `npm ci --only=production`
+3. Copie code source + `npm run build` (génère dist/ avec version.js à jour)
+4. **`cp -r dist/* . && rm -rf dist`** → copie files buildés vers racine
+5. FastAPI sert maintenant les **fichiers buildés** avec la bonne version
+
+**❌ ÉCHEC: Déploiement échoué car Vite manquant**
+- Le fix Dockerfile était bon MAIS incomplet
+- Vite était en devDependencies donc pas installé avec `--only=production`
+- Fix complété dans session suivante (2025-10-23)
+
+### Tests
+- ❌ Déploiement GitHub Actions échoué (vite: not found)
+
+### Résultat
+Session incomplète. Fix finalisé dans session suivante.
+
+---
 
 ## 🚑 Session COMPLÉTÉE (2025-10-22 17:50 CET) — Agent : Claude Code
 
