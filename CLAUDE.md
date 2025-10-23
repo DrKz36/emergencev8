@@ -397,6 +397,42 @@ function send_message(text) {
 - `stable-service.yaml` - Config Cloud Run
 - ⚠️ **IMPORTANT** : Déploiements MANUELS uniquement (pas d'auto-deploy sur push)
 
+**🚀 Déploiement Docker Local → GCR → Cloud Run (Procédure Rapide)**
+
+**ATTENTION:** Les noms d'image et de service sont DIFFÉRENTS (piège à éviter !)
+- **Image Docker** : `gcr.io/emergence-469005/emergence-backend` ← backend dans l'image
+- **Service Cloud Run** : `emergence-app` ← app pour le service
+- **Region** : `europe-west1` ← PAS us-central1 !!!
+
+**Commandes exactes (copier-coller direct) :**
+```bash
+# 1. Build Docker (cache OK, --no-cache si besoin)
+docker build -t gcr.io/emergence-469005/emergence-backend:beta-2.2.0-hotfix \
+             -t gcr.io/emergence-469005/emergence-backend:latest \
+             -f Dockerfile .
+
+# 2. Push vers GCR (les 2 tags)
+docker push gcr.io/emergence-469005/emergence-backend:beta-2.2.0-hotfix
+docker push gcr.io/emergence-469005/emergence-backend:latest
+
+# 3. Deploy sur Cloud Run (ATTENTION: service = emergence-app, pas emergence-backend !)
+gcloud run deploy emergence-app \
+  --image gcr.io/emergence-469005/emergence-backend:beta-2.2.0-hotfix \
+  --region europe-west1 \
+  --platform managed \
+  --allow-unauthenticated
+
+# 4. Vérifier le déploiement
+curl https://emergence-app-486095406755.europe-west1.run.app/ready
+# Attendu: {"ok":true,"db":"up","vector":"up"}
+```
+
+**Pièges à éviter absolument:**
+- ❌ NE PAS utiliser `us-central1` → c'est `europe-west1`
+- ❌ NE PAS déployer sur `emergence-backend` → c'est `emergence-app`
+- ❌ NE PAS tester `/healthz` → c'est `/ready` qui marche
+- ❌ NE PAS oublier `--allow-unauthenticated` sinon 403
+
 ---
 
 ## 💡 EXEMPLES DE SITUATIONS
