@@ -102,9 +102,13 @@
    - Zones de travail en cours
    - Fichiers modifiés par l'autre agent
 
-2. **`docs/passation.md`** - 3 dernières entrées minimum
+2. **`CODEV_PROTOCOL.md`** - Protocole collaboration multi-agents
+   - Lire sections 2.1 (template passation), 4 (checklist), 6 (anti-patterns)
+   - Gestion conflits Git si collision
 
-3. **`git status` + `git log --oneline -10`** - État Git
+3. **`docs/passation.md`** - 3 dernières entrées minimum
+
+4. **`git status` + `git log --oneline -10`** - État Git
 
 **⚠️ NE JAMAIS commencer à coder sans avoir lu AGENT_SYNC.md + Docs Architecture**
 
@@ -132,7 +136,7 @@
 ### Workflow Standard
 
 ```
-1. Lis AGENT_SYNC.md pour voir état actuel + travail de Codex
+1. Lis Docs Architecture + AGENT_SYNC.md + CODEV_PROTOCOL.md + passation.md
 2. Analyse la demande utilisateur
 3. Identifie TOUS les fichiers à modifier
 4. Fais TOUTES les modifs d'un coup
@@ -358,42 +362,7 @@ function send_message(text) {
 
 ## 🎯 TEMPLATE PASSATION
 
-**Format standard pour `docs/passation.md`:**
-
-```markdown
-## [2025-10-18 14:30] — Agent: Claude Code
-
-### Fichiers modifiés
-- `src/backend/features/chat/service.py` (ajout détection topic shift)
-- `src/frontend/features/chat/chat.js` (intégration WebSocket event)
-- `docs/passation.md` (cette entrée)
-- `AGENT_SYNC.md` (mise à jour session)
-
-### Contexte
-Implémentation détection automatique de changement de sujet (topic shift).
-Ajout méthode `detect_topic_shift()` dans ChatService.
-Émission événement WebSocket `ws:topic_shifted` si similarité < 0.5.
-Frontend écoute l'événement et affiche notification.
-
-### Tests
-- ✅ `pytest tests/backend/features/test_chat.py` (nouveau test topic shift)
-- ✅ `npm run build` (aucune erreur)
-- ✅ Test manuel: changement de sujet détecté correctement
-- ❌ Tests E2E frontend à ajouter (TODO)
-
-### Travail de Codex GPT pris en compte
-- Codex avait créé UI notification toast dans dernière session
-- J'ai intégré avec le backend topic shift
-- Tout fonctionne ensemble maintenant
-
-### Prochaines actions recommandées
-1. Ajouter tests E2E frontend pour topic shift
-2. Améliorer seuil de détection (0.5 → configurable)
-3. Documenter feature dans GUIDE_INTERFACE_BETA.md
-
-### Blocages
-Aucun.
-```
+**Voir [CODEV_PROTOCOL.md](CODEV_PROTOCOL.md) section 2.1 pour le template complet.**
 
 ---
 

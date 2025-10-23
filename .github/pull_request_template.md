@@ -1,20 +1,15 @@
-# PR - Emergence (ARBO-LOCK)
+# PR - Emergence V8
 
 ## Description
-> Decris precisement ce que fait cette PR : corrections, nouvelles fonctionnalites, ajustements UI, etc.
+> Décris précisément ce que fait cette PR : corrections, nouvelles fonctionnalités, ajustements UI, etc.
 
 ---
 
-## Checklist ARBO-LOCK
-- [ ] Fichiers complets fournis (pas de `...`, remplacement 1:1).
-- [ ] Aucune derive d''architecture (chemins et imports conformes a `arborescence_synchronisee_*.txt`).
-- [ ] Snapshot ARBO ajoute si creation/deplacement/suppression de fichiers :
-  ```powershell
-  (tree /F /A | Out-String) | Set-Content -Encoding UTF8 .\arborescence_synchronisee_YYYYMMDD.txt
-  git add .\arborescence_synchronisee_YYYYMMDD.txt
-  git commit -m "chore(arbo): snapshot YYYY-MM-DD"
-  git push
-  ```
+## Checklist qualité code
+- [ ] Fichiers complets fournis (pas d'ellipses `...`, code complet).
+- [ ] Architecture respectée (voir `docs/architecture/`).
+- [ ] Contrats API respectés (voir `docs/architecture/30-Contracts.md`).
+- [ ] Type hints corrects (mypy clean).
 
 ---
 

@@ -111,7 +111,7 @@ Vous travaillez en **égalité technique** avec Claude Code et d'autres agents I
 
 1. **Avancer sans interruption** : bouclage de l'ensemble des tâches identifiées avant de solliciter l'utilisateur, sauf dépendance bloquante
 2. **Respecter la structure** : `src/backend`, `src/frontend`, `docs`, etc.
-3. **Code complet obligatoire** : pas d'ellipses, pas de fragments (voir ARBO-LOCK)
+3. **Code complet obligatoire** : pas d'ellipses, pas de fragments
 4. **Tests systématiques** : créer les tests pour tout nouveau fichier
 5. **Documentation synchronisée** : mettre à jour `docs/` si changement d'architecture ou de responsabilités
 

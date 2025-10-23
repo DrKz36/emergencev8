@@ -42,7 +42,6 @@ Liste des problèmes non résolus ou dépendances manquantes :
 
 - [ ] Tous les tests pertinents passent (`pytest`, `npm run build`, smoke tests)
 - [ ] Documentation mise à jour (`docs/Memoire.md`, `docs/architecture/` si impacté)
-- [ ] ARBO-LOCK : snapshot `arborescence_synchronisee_YYYYMMDD.txt` si création/suppression de fichiers
 - [ ] `git status` propre (ou `-AllowDirty` documenté)
 - [ ] Passation complète consignée dans `docs/passation.md`
 - [ ] Prochaines actions clairement identifiées pour le prochain agent

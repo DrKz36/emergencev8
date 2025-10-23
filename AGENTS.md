@@ -197,7 +197,6 @@ Chaque agent doit consigner systematiquement dans `docs/passation.md` :
 - [ ] Smoke tests : `pwsh -File tests/run_all.ps1`.
 - [ ] Linters : `ruff check`, `mypy`.
 - [ ] Documentation : mise a jour `docs/passation.md`, architecture si impactee.
-- [ ] ARBO-LOCK : snapshot si creation/deplacement/suppression de fichiers.
 
 ### Zones de responsabilite suggerees (non bloquantes)
 - **Claude Code** : Backend Python, architecture, tests, documentation technique.

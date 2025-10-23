@@ -94,9 +94,9 @@ Lorsqu'un agent termine une session de travail, il doit :
 - **Passation** : `docs/passation.md` (journal chronologique).
 - **Architecture** : `docs/architecture/` (mise à jour si flux/composants changent).
 
-**Lecture obligatoire avant toute session** (ordre harmonisé avec AGENT_SYNC.md) :
-1. `AGENT_SYNC.md` (état actuel du dépôt, progression, déploiement).
-2. `AGENTS.md` (consignes générales).
+**Lecture obligatoire avant toute session** (ordre harmonisé avec CLAUDE.md) :
+1. **Docs Architecture** : `docs/architecture/AGENTS_CHECKLIST.md`, `00-Overview.md`, `10-Components.md`, `30-Contracts.md`.
+2. `AGENT_SYNC.md` (état actuel du dépôt, progression, déploiement).
 3. `CODEV_PROTOCOL.md` (ce fichier) ou `CODex_GUIDE.md` (si Codex).
 4. `docs/passation.md` (dernières 3 entrées minimum).
 5. `git status` et `git log --oneline -10` (état Git).
@@ -145,7 +145,6 @@ Avant de demander validation (commit/push), **tout agent doit** :
 - [ ] **Smoke tests** : `pwsh -File tests/run_all.ps1` ✅
 - [ ] **Linters** : `ruff check`, `mypy` (backend) ✅
 - [ ] **Documentation** : `docs/passation.md`, `docs/Memoire.md`, architecture si impacté ✅
-- [ ] **ARBO-LOCK** : snapshot `arborescence_synchronisee_YYYYMMDD.txt` si création/déplacement/suppression ✅
 - [ ] **Git propre** : `git status` sans fichiers non suivis suspects ✅
 - [ ] **Passation** : entrée complète dans `docs/passation.md` ✅
 
@@ -284,7 +283,7 @@ git push --no-verify
 
 ❌ **"Ce fichier est à moi"** → Pas d'ownership exclusif.
 ❌ **Committer sans tester** → Toujours exécuter tests pertinents.
-❌ **Livrer des fragments** → Code complet obligatoire (ARBO-LOCK).
+❌ **Livrer des fragments** → Code complet obligatoire.
 ❌ **Modifier sans documenter** → Passation systématique.
 ❌ **Ignorer l'architecture existante** → Consulter `docs/architecture/` avant refactor.
 ❌ **Pousser directement** → Validation architecte requise.
