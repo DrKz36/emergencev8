@@ -1,3 +1,80 @@
+## [2025-10-23 07:09 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `.github/workflows/tests.yml` (réactivation tests + Guardian parallèle + quality gate)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**🔧 Workflows CI/CD pétés - Fix complet**
+
+L'utilisateur a signalé que les workflows GitHub Actions étaient défectueux. Analyse et correction complète.
+
+**Problèmes identifiés :**
+1. **Pytest désactivé** - Commenté dans tests.yml (mocks obsolètes)
+2. **Mypy désactivé** - Commenté dans tests.yml (95 erreurs de typing)
+3. **Guardian séquentiel** - Attendait la fin des tests (lent)
+4. **Pas de quality gate** - Aucune validation globale
+
+**Solution implémentée (Option A) :**
+1. ✅ Réactivation pytest + mypy avec `continue-on-error: true`
+2. ✅ Guardian parallélisé (retrait de `needs: [test-backend, test-frontend]`)
+3. ✅ Quality gate final qui vérifie tous les jobs
+4. ✅ Deploy reste MANUEL (workflow_dispatch)
+
+**Changements apportés :**
+
+**1. Tests backend réactivés (.github/workflows/tests.yml:35-45)** :
+- Pytest réactivé avec `continue-on-error: true` (timeout 10min)
+- Mypy réactivé avec `continue-on-error: true`
+- Les tests tournent et montrent les fails, mais ne bloquent pas le workflow
+- Permet de voir progressivement ce qui doit être fixé
+
+**2. Guardian parallélisé (.github/workflows/tests.yml:67-71)** :
+- Retiré `needs: [test-backend, test-frontend]`
+- Guardian tourne maintenant EN PARALLÈLE des tests (pas après)
+- Gain de temps: tests + guardian en même temps au lieu de séquentiel
+
+**3. Quality gate final (.github/workflows/tests.yml:125-156)** :
+- Nouveau job qui attend tous les autres (`needs: [test-backend, test-frontend, guardian]`)
+- Check le statut de chaque job avec `${{ needs.*.result }}`
+- **BLOQUE** si Guardian fail (critique)
+- **BLOQUE** si frontend fail (critique)
+- **WARNING** si backend fail (doit être fixé mais pas bloquant)
+- Permet de merger même si backend tests temporairement pétés
+
+**4. Deploy reste MANUEL (inchangé)** :
+- [deploy.yml](../.github/workflows/deploy.yml) toujours sur `workflow_dispatch`
+- Aucun auto-deploy sur push (comme demandé)
+
+### Tests
+- ✅ Syntaxe YAML validée (`yaml.safe_load()`)
+- ✅ Commit f9dbcf3 créé et pushé avec succès
+- ✅ Guardian pre-commit/post-commit/pre-push OK
+- ✅ ProdGuardian : Production healthy (0 errors, 0 warnings)
+
+### Prochaines actions recommandées
+
+**Pour Codex GPT (ou autre agent) :**
+1. 🔴 **NE PAS TOUCHER** : `.github/workflows/tests.yml` (fraîchement fixé)
+2. ✅ **Zones libres** : Frontend, scripts PowerShell, UI/UX
+3. 📖 **Lire** : Cette entrée pour comprendre les changements CI/CD
+
+**Pour fixing backend tests (session future) :**
+1. Fixer les mocks obsolètes dans tests backend (11 tests skipped)
+2. Corriger les 95 erreurs de typing mypy
+3. Une fois fixé, retirer `continue-on-error: true` des steps pytest/mypy
+
+**Monitoring CI :**
+- Les prochains pushs vont déclencher le nouveau workflow tests.yml
+- Guardian va tourner en parallèle des tests (plus rapide)
+- Quality gate va bloquer si Guardian ou frontend fail
+- Backend tests vont fail temporairement (continue-on-error) jusqu'à correction
+
+### Blocages
+Aucun. Implémentation complète, testée, documentée, et pushée.
+
+---
+
 ## [2025-10-23 22:15 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
