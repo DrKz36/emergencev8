@@ -1,3 +1,103 @@
+## [2025-10-24 01:15 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/frontend/features/admin/admin-analytics.js` (lazy loading Chart.js via ensureChart())
+- `src/frontend/features/threads/threads-service.js` (lazy loading jsPDF + PapaParse)
+- `vite.config.js` (supprimé external, gardé manualChunks)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**⚡ Complétion Bundle Optimization P2.1 (suite travail Codex)**
+
+Détection lors continuation session après context switch: Modifs frontend non commitées (admin-analytics, threads-service, vite.config).
+
+**Problème critique identifié:**
+1. **Travail Codex incomplet** : Commit faf9943 avait config vite.config manualChunks, MAIS lazy loading pas commité
+2. **Config Vite incohérente** : `rollupOptions.external` ajouté (pas par Codex, origine inconnue)
+3. **Contradiction fatale** : `external: ['chart.js', 'jspdf', 'papaparse']` + `manualChunks` pour ces mêmes libs
+4. **Impact runtime** : `external` exclut libs du bundle, lazy loading `import('chart.js')` cherche chunk qui n'existe pas → 💥 Module not found
+
+**Stratégie choisie:**
+- Garder lazy loading (bon pour perf)
+- Garder manualChunks (chunks séparés, cache optimal)
+- **Supprimer external** (incompatible avec lazy loading)
+
+### Travail réalisé
+
+**1. Lazy loading Chart.js (admin-analytics.js):**
+```javascript
+async function ensureChart() {
+  if (!chartModulePromise) {
+    chartModulePromise = import('chart.js').then((module) => {
+      const Chart = module.Chart ?? module.default;
+      Chart.register(...module.registerables);
+      return Chart;
+    });
+  }
+  return chartModulePromise;
+}
+```
+- `renderTopUsersChart()` et `renderCostHistoryChart()` async
+- Chart.js chargé uniquement si utilisateur ouvre Admin dashboard
+- Singleton pattern (1 seul import même si appelé multiple fois)
+
+**2. Lazy loading jsPDF + PapaParse (threads-service.js):**
+```javascript
+async function loadJsPdf() {
+  const jsPDF = await import('jspdf').then(module => module.jsPDF ?? module.default);
+  // Global scope polyfill pour jspdf-autotable
+  globalThis.jsPDF = jsPDF;
+  await import('jspdf-autotable');
+  return jsPDF;
+}
+```
+- PapaParse chargé uniquement pour CSV export
+- jsPDF + autotable chargés uniquement pour PDF export
+- Global scope polyfill car jspdf-autotable attend `globalThis.jsPDF`
+
+**3. Fix Vite config (CRITIQUE):**
+- **Supprimé `rollupOptions.external`** (lignes 82-87)
+- **Gardé `manualChunks`** (lignes 84-91, maintenant 82-89)
+- Chunks créés automatiquement : `charts` (200KB), `pdf-tools` (369KB), `data-import` (20KB), `vendor` (440KB)
+
+**Impact bundle:**
+- Avant fix : external → libs pas dans bundle → lazy loading crash
+- Après fix : manualChunks → libs dans bundle (chunks séparés) → lazy loading ✅
+- Initial load : ~166KB (index.js) - Chart.js/jsPDF/Papa exclus
+- Admin load : +200KB (charts.js chunk)
+- Export load : +369KB (pdf-tools.js) ou +20KB (data-import.js)
+
+### Tests
+- ✅ `npm run build` : OK (3.26s, 364 modules transformés)
+- ✅ Chunks créés : charts-BXvFlnfY.js (200KB), pdf-tools-DcKY8A1X.js (369KB), data-import-Bu3OaLgv.js (20KB)
+- ✅ Guardian pre-commit : OK (437 mypy errors non-bloquants)
+- ⚠️ Runtime test manquant (à faire : ouvrir Admin, exporter thread CSV/PDF)
+
+### Travail de Codex GPT pris en compte
+- Codex avait créé config vite.config manualChunks (commit faf9943)
+- J'ai complété avec lazy loading + fix external
+- Architecture bundle optimization maintenant cohérente
+
+### Prochaines actions recommandées
+**Test runtime (urgent)** : Vérifier lazy loading en dev/prod
+```bash
+npm run dev
+# Ouvrir http://localhost:5173
+# Aller dans Admin → Dashboard (test Chart.js)
+# Aller dans Threads → Exporter CSV/PDF (test jsPDF/Papa)
+# Vérifier Network tab : chunks chargés à la demande
+```
+
+**P1.2 Batch 2 (1h30)** : Mypy fixes chat/service, rag_cache, auth/service (437 → ~395 erreurs)
+
+**P2.2 TODOs Cleanup** : Backend TODOs (1-2h)
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-24 00:30 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

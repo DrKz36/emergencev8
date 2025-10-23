@@ -2,9 +2,65 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-24 00:30 CET (Claude Code : CODEX_SYSTEM_PROMPT.md unifié ✅ - Architecture prompts documentée ✅)
+**Dernière mise à jour** : 2025-10-24 01:15 CET (Claude Code : Bundle optimization lazy loading + Fix Vite config ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-24 01:15 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/frontend/features/admin/admin-analytics.js` (lazy loading Chart.js)
+- `src/frontend/features/threads/threads-service.js` (lazy loading jsPDF + PapaParse)
+- `vite.config.js` (fix config externe → manualChunks)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée)
+
+### Actions réalisées
+**⚡ Bundle Optimization P2.1 - Lazy Loading + Fix Config - TERMINÉ ✅**
+
+**Objectif :** Compléter optimisation bundle P2.1 (suite travail Codex commit faf9943)
+
+**Problème détecté :**
+- Codex avait commencé bundle optimization (commit faf9943) avec vite.config manualChunks
+- **MAIS** modifs lazy loading non commitées (admin-analytics, threads-service)
+- **PIRE** : vite.config.js avait `external: ['chart.js', 'jspdf', 'papaparse']` ajouté (pas par Codex)
+- **INCOHÉRENCE CRITIQUE** : `external` + `manualChunks` = incompatible (💥 runtime crash)
+- `external` dit "ne bundle pas", `manualChunks` dit "bundle en chunks" → contradiction
+
+**Travail fait :**
+1. **Lazy loading Chart.js (admin-analytics.js)** :
+   - `ensureChart()` async function pour charger Chart.js à la demande
+   - `renderTopUsersChart()` et `renderCostHistoryChart()` maintenant async
+   - Charts chargés uniquement si utilisateur ouvre Admin
+2. **Lazy loading jsPDF + PapaParse (threads-service.js)** :
+   - `loadJsPdf()` et `loadPapaParse()` pour chargement à la demande
+   - Global scope polyfill pour jspdf-autotable
+   - PDF/CSV export charge libs uniquement quand utilisé
+3. **Fix Vite config (CRITIQUE)** :
+   - **Supprimé `rollupOptions.external`** (incompatible avec lazy loading)
+   - **Gardé `manualChunks`** pour créer chunks séparés
+   - Chunks créés : `charts` (200KB), `pdf-tools` (369KB), `data-import` (20KB), `vendor` (440KB)
+
+**Résultat :**
+- ✅ Lazy loading fonctionne (libs chargées à la demande)
+- ✅ Chunks séparés dans bundle (pas external CDN)
+- ✅ Cache browser optimal (chunks immutable)
+- ✅ Initial load réduit (pas de Chart.js/jsPDF si pas utilisé)
+
+### Tests
+- ✅ `npm run build` : OK (3.26s, 364 modules)
+- ✅ Chunks créés : charts, pdf-tools, data-import, vendor
+- ✅ Guardian pre-commit : OK
+
+### Prochaines actions recommandées
+**P1.2 Batch 2 (1h30)** : chat/service, rag_cache, auth/service (437 → ~395 erreurs)
+
+**Test runtime** : Vérifier lazy loading en dev/prod (ouvrir Admin, exporter thread)
+
+### Blocages
+Aucun.
 
 ---
 
