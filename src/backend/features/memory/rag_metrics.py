@@ -79,6 +79,14 @@ rag_score_component = Gauge(
     ['collection', 'component']  # component: bm25 or vector
 )
 
+# P2.1 - Precision score (specificity + rerank)
+memory_rag_precision_score = Histogram(
+    'memory_rag_precision_score',
+    'RAG precision scores combining specificity and rerank',
+    ['collection', 'metric_type'],  # metric_type: specificity, jaccard, combined
+    buckets=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+)
+
 
 # ============================================================
 # Helpers pour tracking des métriques
@@ -292,4 +300,5 @@ __all__ = [
     "rag_query_duration_seconds",
     "rag_results_count",
     "rag_score_component",
+    "memory_rag_precision_score",
 ]

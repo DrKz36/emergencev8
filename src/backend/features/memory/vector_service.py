@@ -342,6 +342,166 @@ def mmr(
     return [candidates[idx] for idx in selected_indices]
 
 
+def compute_specificity_score(text: str) -> float:
+    """
+    Calcule un score de spécificité basé sur la densité de contenu informatif.
+
+    Critères:
+    - Densité de tokens rares (long tokens > 6 caractères)
+    - Densité de nombres/dates
+    - Densité d'entités nommées (mots capitalisés)
+
+    Args:
+        text: Texte du chunk à analyser
+
+    Returns:
+        Score de spécificité entre 0 et 1 (0 = peu spécifique, 1 = très spécifique)
+
+    Examples:
+        >>> compute_specificity_score("The configuration parameter is 0.75")
+        0.82  # Haute spécificité (nombres + tokens longs)
+
+        >>> compute_specificity_score("this is a simple text")
+        0.15  # Basse spécificité (mots communs courts)
+    """
+    if not text or not text.strip():
+        return 0.0
+
+    import re
+
+    # Tokenize (split by whitespace and punctuation)
+    tokens = re.findall(r'\b\w+\b', text)
+    if not tokens:
+        return 0.0
+
+    total_tokens = len(tokens)
+
+    # 1. Densité tokens rares (IDF approximé)
+    # Heuristique: tokens longs (> 6 car) + tokens mixtes alphanumériques
+    rare_tokens = [
+        t for t in tokens
+        if len(t) > 6 or any(c.isdigit() for c in t)
+    ]
+    rare_density = len(rare_tokens) / total_tokens
+
+    # 2. Densité nombres/dates
+    # Regex: nombres décimaux, années, dates
+    numbers = re.findall(r'\b\d+\.?\d*\b|\b\d{4}\b|\b\d{1,2}/\d{1,2}/\d{2,4}\b', text)
+    number_density = len(numbers) / total_tokens
+
+    # 3. Densité entités nommées (heuristique: mots capitalisés hors début de phrase)
+    # Split en phrases
+    sentences = re.split(r'[.!?]+', text)
+    capitalized = []
+    for sentence in sentences:
+        words = re.findall(r'\b[A-Z][a-z]+\b', sentence)
+        # Exclure le premier mot (probablement début de phrase)
+        if len(words) > 1:
+            capitalized.extend(words[1:])
+        elif len(words) == 1:
+            # Si un seul mot et pas en début de phrase, c'est probablement une entité
+            if sentence.strip() and not sentence.strip().startswith(words[0]):
+                capitalized.append(words[0])
+
+    ner_density = len(capitalized) / total_tokens if capitalized else 0.0
+
+    # Combinaison pondérée des 3 facteurs
+    # Poids: rare_tokens (40%), numbers (30%), NER (30%)
+    specificity_score = (
+        rare_density * 0.40 +
+        number_density * 0.30 +
+        ner_density * 0.30
+    )
+
+    # Normaliser sur [0, 1] avec saturation douce (tanh)
+    import math
+    normalized_score = math.tanh(specificity_score * 2.0)  # tanh(x*2) → saturation à ~0.96 pour x=1
+
+    return max(0.0, min(1.0, normalized_score))
+
+
+def rerank_with_lexical_overlap(
+    query: str,
+    results: List[Dict[str, Any]],
+    topk: int = 8,
+    cosine_weight: float = 0.7,
+    lexical_weight: float = 0.3,
+) -> List[Dict[str, Any]]:
+    """
+    Re-ranke les résultats en combinant score cosine et overlap lexical (Jaccard).
+
+    Formule: rerank_score = cosine_weight * cosine_sim + lexical_weight * jaccard(query, text)
+
+    Args:
+        query: Requête utilisateur
+        results: Liste de résultats avec {text, distance, ...}
+        topk: Nombre de résultats à retourner après re-ranking
+        cosine_weight: Poids du score cosine (défaut: 0.7)
+        lexical_weight: Poids du score Jaccard (défaut: 0.3)
+
+    Returns:
+        Liste de résultats re-rankés (top-k)
+
+    Examples:
+        >>> results = [
+        ...     {"text": "machine learning model training", "distance": 0.3},
+        ...     {"text": "deep learning neural networks", "distance": 0.4},
+        ... ]
+        >>> reranked = rerank_with_lexical_overlap("train ML model", results, topk=2)
+        >>> reranked[0]["text"]
+        "machine learning model training"  # Meilleur score lexical
+    """
+    if not results or topk <= 0:
+        return []
+
+    import re
+
+    # Fonction de lemmatisation simple (lowercase + strip)
+    def simple_lemmatize(text: str) -> set[str]:
+        """Tokenize et normalise le texte (lowercase, alphanumérique uniquement)."""
+        tokens = re.findall(r'\b\w+\b', text.lower())
+        return set(tokens)
+
+    # Lemmatiser la query
+    query_lemmas = simple_lemmatize(query)
+
+    # Calculer Jaccard similarity pour chaque résultat
+    scored_results = []
+    for r in results:
+        text = r.get("text", "")
+        distance = r.get("distance", 1.0)
+
+        # Score cosine (distance L2 squared → cosine)
+        # ChromaDB L2 squared: distance = 2 * (1 - cosine_sim)
+        cosine_sim = max(0.0, 1.0 - (distance / 2.0))
+
+        # Score Jaccard
+        text_lemmas = simple_lemmatize(text)
+        if query_lemmas and text_lemmas:
+            intersection = len(query_lemmas & text_lemmas)
+            union = len(query_lemmas | text_lemmas)
+            jaccard_score = intersection / union if union > 0 else 0.0
+        else:
+            jaccard_score = 0.0
+
+        # Score de rerank combiné
+        rerank_score = cosine_weight * cosine_sim + lexical_weight * jaccard_score
+
+        # Enrichir résultat avec les scores
+        result_copy = dict(r)
+        result_copy["cosine_sim"] = round(cosine_sim, 4)
+        result_copy["jaccard_score"] = round(jaccard_score, 4)
+        result_copy["rerank_score"] = round(rerank_score, 4)
+
+        scored_results.append(result_copy)
+
+    # Trier par rerank_score décroissant
+    scored_results.sort(key=lambda x: x.get("rerank_score", 0.0), reverse=True)
+
+    # Retourner top-k
+    return scored_results[:topk]
+
+
 class QdrantCollectionAdapter:
     """Adapte l'API collection Chroma attendue par le code pour Qdrant."""
 
@@ -972,9 +1132,11 @@ class VectorService:
         apply_mmr: bool = True,      # P2.2 - Enable MMR diversity
         recency_half_life: float = 90.0,  # P2.2 - Half-life in days
         mmr_lambda: float = 0.7,     # P2.2 - MMR balance (0.7 = 70% relevance, 30% diversity)
+        apply_specificity_boost: bool = True,  # P2.1 - Enable specificity scoring
+        apply_rerank: bool = True,   # P2.1 - Enable lexical rerank
     ) -> List[Dict[str, Any]]:
         """
-        Recherche vectorielle avec support optionnel de recency decay et MMR.
+        Recherche vectorielle avec support optionnel de recency decay, MMR, specificity boost et rerank.
 
         Args:
             collection: Collection Chroma/Qdrant
@@ -985,9 +1147,11 @@ class VectorService:
             apply_mmr: Appliquer MMR pour diversité (défaut: True)
             recency_half_life: Demi-vie pour recency decay en jours (défaut: 90)
             mmr_lambda: Balance MMR (1.0 = full relevance, 0.0 = full diversity)
+            apply_specificity_boost: Appliquer boost spécificité (densité IDF/NER/nombres) (défaut: True)
+            apply_rerank: Appliquer rerank lexical avec Jaccard (défaut: True)
 
         Returns:
-            Liste de résultats avec {id, text, metadata, distance, [age_days, recency_score]}
+            Liste de résultats avec {id, text, metadata, distance, [age_days, recency_score, specificity_score, rerank_score]}
         """
         self._ensure_inited()
         if not query_text:
@@ -1061,6 +1225,81 @@ class VectorService:
 
             # Sort by adjusted distance (lower = better)
             raw_results.sort(key=lambda x: x.get("distance", float("inf")))
+
+            # P2.1 - Apply specificity boost if enabled
+            if apply_specificity_boost and raw_results:
+                specificity_weight = float(os.getenv("RAG_SPECIFICITY_WEIGHT", "0.15"))
+                collection_name = getattr(collection, "name", "unknown")
+
+                for result in raw_results:
+                    text = result.get("text", "")
+                    distance = result.get("distance", 1.0)
+
+                    # Calculer score de spécificité
+                    specificity_score = compute_specificity_score(text)
+                    result["specificity_score"] = round(specificity_score, 4)
+
+                    # 📊 Enregistrer métrique Prometheus
+                    try:
+                        from backend.features.memory.rag_metrics import memory_rag_precision_score
+                        memory_rag_precision_score.labels(
+                            collection=collection_name,
+                            metric_type="specificity"
+                        ).observe(specificity_score)
+                    except Exception:
+                        pass  # Graceful degradation si Prometheus indisponible
+
+                    # Combiner avec score cosine
+                    # Distance ChromaDB → Score cosine : cosine = 1 - (distance / 2)
+                    cosine_score = max(0.0, 1.0 - (distance / 2.0))
+
+                    # Score final combiné : weighted average
+                    # final_score = (1 - weight) * cosine + weight * specificity
+                    combined_score = (1 - specificity_weight) * cosine_score + specificity_weight * specificity_score
+
+                    # 📊 Enregistrer score combiné
+                    try:
+                        memory_rag_precision_score.labels(
+                            collection=collection_name,
+                            metric_type="combined"
+                        ).observe(combined_score)
+                    except Exception:
+                        pass
+
+                    # Convertir score en distance (pour tri) : distance = 2 * (1 - score)
+                    result["distance"] = 2.0 * (1.0 - combined_score)
+                    result["combined_score"] = round(combined_score, 4)
+
+                # Re-trier par distance ajustée
+                raw_results.sort(key=lambda x: x.get("distance", float("inf")))
+
+            # P2.1 - Apply lexical rerank if enabled
+            if apply_rerank and len(raw_results) > 1:
+                rerank_topk = int(os.getenv("RAG_RERANK_TOPK", "8"))
+                collection_name = getattr(collection, "name", "unknown")
+                # Reranker avec top-k initial (on prend plus que n_results pour avoir du choix pour MMR)
+                fetch_for_rerank = max(n_results * 2, rerank_topk * 2)
+                candidates_for_rerank = raw_results[:fetch_for_rerank]
+
+                raw_results = rerank_with_lexical_overlap(
+                    query=query_text,
+                    results=candidates_for_rerank,
+                    topk=min(len(candidates_for_rerank), rerank_topk * 2),  # Garder assez pour MMR
+                    cosine_weight=0.7,
+                    lexical_weight=0.3,
+                )
+
+                # 📊 Enregistrer métriques jaccard pour résultats reranked
+                try:
+                    from backend.features.memory.rag_metrics import memory_rag_precision_score
+                    for r in raw_results[:5]:  # Top-5 pour éviter trop de métriques
+                        jaccard = r.get("jaccard_score", 0.0)
+                        memory_rag_precision_score.labels(
+                            collection=collection_name,
+                            metric_type="jaccard"
+                        ).observe(jaccard)
+                except Exception:
+                    pass
 
             # P2.2 - Apply MMR if enabled
             if apply_mmr and len(raw_results) > 1:
