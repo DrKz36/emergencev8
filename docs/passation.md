@@ -1,3 +1,80 @@
+## [2025-10-24 00:30 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `CODEX_SYSTEM_PROMPT.md` (NOUVEAU - prompt système Codex unifié, 350+ lignes)
+- `docs/PROMPTS_AGENTS_ARCHITECTURE.md` (NOUVEAU - documentation architecture prompts)
+- `docs/archive/2025-10/prompts-sessions/CODEX_GPT_SYSTEM_PROMPT.md` (marqué OBSOLÈTE)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**📚 Unification prompts Codex + Documentation architecture prompts**
+
+Demande utilisateur: Codex cloud dit utiliser `CODEX_GPT_SYSTEM_PROMPT.md` (archive), vérifier cohérence et unifier TOUS les prompts Codex.
+
+**Problème critique détecté:**
+1. **Prompt Codex dans `/archive/`** : Codex utilisait `docs/archive/2025-10/prompts-sessions/CODEX_GPT_SYSTEM_PROMPT.md` (déplacé par erreur lors cleanup)
+2. **3 prompts Codex différents** : CODEX_GPT_GUIDE.md (racine), CODEX_GPT_SYSTEM_PROMPT.md (archive), AGENTS.md (racine)
+3. **Ordre lecture désynchronisé** : Prompt archive n'avait pas Docs Architecture ni CODEV_PROTOCOL.md
+4. **Redondance massive** : CODEX_GPT_GUIDE.md dupliquait contenu
+
+### Travail réalisé
+
+**1. CODEX_SYSTEM_PROMPT.md créé (racine) - 350+ lignes:**
+- Fusion meilleur de CODEX_GPT_SYSTEM_PROMPT.md (archive) + CODEX_GPT_GUIDE.md (racine)
+- **Ordre lecture harmonisé** : Archi → AGENT_SYNC → CODEV → passation → git (identique CLAUDE.md)
+- **Ton "Mode vrai"** : Vulgarité autorisée (putain, bordel, merde), argot tech, tutoiement (identique CLAUDE.md)
+- **Autonomie totale** : Pas de demande permission, fonce direct
+- **Template passation détaillé** : Référence CODEV_PROTOCOL.md section 2.1
+- **Accès rapports Guardian** : `reports/codex_summary.md` (Python code snippets)
+- **Workflow standard** : 7 étapes (lecture → analyse → modif → test → doc → résumé)
+- **Git workflow** : Format commits, rebase, tests
+- **Collaboration Claude Code** : Zones responsabilité indicatives (peut modifier n'importe quoi)
+
+**2. PROMPTS_AGENTS_ARCHITECTURE.md créé (docs/) - Documentation complète:**
+- **Structure prompts** : 4 actifs (CLAUDE, CODEX, AGENTS, CODEV) + archives
+- **Matrice cohérence** : Ordre lecture, Docs Archi, Ton, Autonomie, Template, Guardian (tous harmonisés)
+- **Workflow utilisation** : Claude Code (auto), Codex local (manuel/config), Codex cloud (Custom GPT)
+- **Différences spécifiques** : Ton (Mode vrai vs Pro), Focus (backend vs frontend), Tools (IDE vs Python)
+- **Règles absolues** : Jamais archives, ordre identique, template unique, pas duplication, sync
+- **Maintenance** : Ajouter règle, modifier ordre, archiver (workflows détaillés)
+- **Diagnostic cohérence** : Grep commands pour vérifier refs croisées
+- **Checklist harmonisation** : 11/13 complété (reste supprimer redondants, tester Codex)
+
+**3. Ancien prompt marqué OBSOLÈTE:**
+- Header warning ajouté dans `CODEX_GPT_SYSTEM_PROMPT.md` (archive)
+- Référence explicite vers nouveau `CODEX_SYSTEM_PROMPT.md` racine
+- Raison archivage documentée
+
+### Tests
+- ✅ Grep "CODEX*.md" : Tous prompts identifiés (20 fichiers)
+- ✅ Ordre lecture cohérent : 4 fichiers harmonisés (CLAUDE, CODEX, AGENTS, CODEV)
+- ✅ Matrice cohérence : Docs Archi ✅, AGENT_SYNC ✅, CODEV ✅, passation ✅
+- ✅ Guardian pre-commit : OK
+
+### Prochaines actions recommandées
+
+**Immédiat (validation Codex):**
+- Copier/coller prompt diagnostic dans chat Codex local (fourni dans résumé)
+- Vérifier Codex utilise bien `CODEX_SYSTEM_PROMPT.md` (nouveau racine)
+- Tester ordre lecture respecté (Archi → AGENT_SYNC → CODEV → passation)
+- Supprimer `CODEX_GPT_GUIDE.md` (redondant) après validation Codex
+
+**P1.2 Batch 2 (P2 - Moyenne priorité, 1h30):**
+- Fixer `chat/service.py` (17 erreurs mypy)
+- Fixer `chat/rag_cache.py` (13 erreurs mypy)
+- Fixer `auth/service.py` (12 erreurs mypy)
+- **Objectif:** 437 → ~395 erreurs (-42 erreurs, -10%)
+
+**Après P1.2 complet:**
+- P2.1 Optimiser bundle frontend (Codex en cours?)
+- P2.2 Cleanup TODOs backend (1-2h)
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-23 23:45 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

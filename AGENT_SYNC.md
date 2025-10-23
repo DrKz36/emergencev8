@@ -2,9 +2,53 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-23 23:45 CET (Claude Code : Harmonisation AGENTS.md ✅ - Protocole multi-agents unifié ✅)
+**Dernière mise à jour** : 2025-10-24 00:30 CET (Claude Code : CODEX_SYSTEM_PROMPT.md unifié ✅ - Architecture prompts documentée ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-24 00:30 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `CODEX_SYSTEM_PROMPT.md` (NOUVEAU - prompt système Codex unifié racine)
+- `docs/PROMPTS_AGENTS_ARCHITECTURE.md` (NOUVEAU - doc architecture prompts)
+- `docs/archive/2025-10/prompts-sessions/CODEX_GPT_SYSTEM_PROMPT.md` (marqué OBSOLÈTE)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée)
+
+### Actions réalisées
+**📚 Création CODEX_SYSTEM_PROMPT.md + Architecture Prompts - TERMINÉ ✅**
+
+**Objectif :** Unifier TOUS les prompts Codex + documenter architecture prompts agents
+
+**Problème détecté :**
+- Codex cloud disait utiliser `docs/archive/2025-10/prompts-sessions/CODEX_GPT_SYSTEM_PROMPT.md`
+- Mais ce fichier était dans `/archive/` (déplacé par erreur lors cleanup)
+- Ordre lecture désynchronisé (pas de Docs Architecture, pas de CODEV_PROTOCOL)
+- 3 prompts Codex différents (CODEX_GPT_GUIDE.md, CODEX_GPT_SYSTEM_PROMPT.md archive, AGENTS.md)
+
+**Travail fait :**
+1. **CODEX_SYSTEM_PROMPT.md créé (racine)** - 350+ lignes
+2. **PROMPTS_AGENTS_ARCHITECTURE.md créé (docs/)** - Doc complète
+3. **Ancien prompt marqué OBSOLÈTE** (archive)
+
+**Résultat :**
+- ✅ 1 seul prompt système Codex (CODEX_SYSTEM_PROMPT.md racine)
+- ✅ Ordre lecture identique Claude Code + Codex GPT
+- ✅ Architecture prompts documentée
+
+### Tests
+- ✅ Grep prompts Codex : Tous identifiés
+- ✅ Guardian pre-commit : OK
+
+### Prochaines actions recommandées
+**Validation Codex local** : Utiliser prompt diagnostic (dans chat direct)
+
+**P1.2 Batch 2 (1h30)** : chat/service, rag_cache, auth/service (437 → ~395 erreurs)
+
+### Blocages
+Aucun.
 
 ---
 
