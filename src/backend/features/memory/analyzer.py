@@ -141,7 +141,7 @@ class MemoryAnalyzer:
             self.offline_mode,
         )
 
-    def set_chat_service(self, chat_service: "ChatService"):
+    def set_chat_service(self, chat_service: "ChatService") -> None:
         self.chat_service = chat_service
         if self.chat_service:
             self.offline_mode = False
@@ -159,7 +159,7 @@ class MemoryAnalyzer:
         async with self._cache_lock:
             return _ANALYSIS_CACHE.get(key)
 
-    async def _put_in_cache(self, key: str, value: Dict[str, Any], timestamp: datetime):
+    async def _put_in_cache(self, key: str, value: Dict[str, Any], timestamp: datetime) -> None:
         """Ajoute entrée au cache de manière thread-safe avec éviction agressive"""
         async with self._cache_lock:
             _ANALYSIS_CACHE[key] = (value, timestamp)
@@ -186,7 +186,7 @@ class MemoryAnalyzer:
             if PROMETHEUS_AVAILABLE:
                 CACHE_SIZE.set(len(_ANALYSIS_CACHE))
 
-    async def _remove_from_cache(self, key: str):
+    async def _remove_from_cache(self, key: str) -> None:
         """Supprime entrée du cache de manière thread-safe"""
         async with self._cache_lock:
             _ANALYSIS_CACHE.pop(key, None)
@@ -656,11 +656,11 @@ class MemoryAnalyzer:
 
     async def analyze_session_for_concepts(
         self, session_id: str, history: List[Dict[str, Any]], *, force: bool = False, user_id: Optional[str] = None
-    ):
+    ) -> Dict[str, Any]:
         """Mode historique (sessions) : persiste dans la table sessions."""
         return await self._analyze(session_id, history, persist=True, force=force, user_id=user_id)
 
-    async def analyze_history(self, session_id: str, history: List[Dict[str, Any]]):
+    async def analyze_history(self, session_id: str, history: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Mode «thread-only» : renvoie le résultat sans écrire dans la table sessions."""
         return await self._analyze(session_id, history, persist=False, force=False)
 

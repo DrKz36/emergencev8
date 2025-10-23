@@ -6,8 +6,9 @@
   <title>&Eacute;MERGENCE V8</title>
 
   <!-- Favicon/Logo -->
-  <link rel="icon" type="image/png" href="/assets/emergence_logo.png" />
-  <link rel="apple-touch-icon" href="/assets/emergence_logo.png" />
+  <link rel="icon" type="image/png" href="/assets/emergence_logo_icon.png" />
+  <link rel="apple-touch-icon" href="/assets/emergence_logo_icon.png" />
+  <link rel="preload" as="image" href="/assets/emergence_logo.webp" type="image/webp" />
 
 
   <!-- Import map pour React et ReactDOM -->
@@ -167,7 +168,10 @@
 </head>
 <body class="loading">
   <div id="app-loader">
-    <img src="/assets/emergence_logo.png" alt="&Eacute;MERGENCE">
+    <picture class="app-loader__logo">
+      <source srcset="/assets/emergence_logo.webp" type="image/webp" />
+      <img src="/assets/emergence_logo.png" alt="&Eacute;MERGENCE" width="256" height="256" decoding="async" />
+    </picture>
     <span class="loader-word">&Eacute;MERGENCE&hellip;</span>
   </div>
 
@@ -187,7 +191,10 @@
   <div id="app-container" class="app-container">
     <header id="app-header" class="app-header" role="banner">
       <div class="header-logo-title">
-        <img src="/assets/emergence_logo.png" alt="&Eacute;MERGENCE" class="header-logo">
+        <picture class="header-logo-picture">
+          <source srcset="/assets/emergence_logo.webp" type="image/webp" />
+          <img src="/assets/emergence_logo.png" alt="&Eacute;MERGENCE" class="header-logo" width="32" height="32" decoding="async" />
+        </picture>
         <span class="header-title">&Eacute;MERGENCE <span class="app-version" id="app-version-display" style="font-size: 0.65em; font-weight: 400; opacity: 0.6; letter-spacing: 0.05em;"></span></span>
       </div>
       <div class="header-actions">
@@ -206,7 +213,10 @@
     </header>
     <aside id="app-sidebar" class="app-sidebar" role="complementary">
       <div class="brand-block">
-        <img src="/assets/emergence_logo.png" alt="&Eacute;MERGENCE" class="brand-logo">
+        <picture class="brand-logo-picture">
+          <source srcset="/assets/emergence_logo.webp" type="image/webp" />
+          <img src="/assets/emergence_logo.png" alt="&Eacute;MERGENCE" class="brand-logo" width="1024" height="1024" loading="lazy" decoding="async" />
+        </picture>
       </div>
         <nav id="app-tabs" class="sidebar-nav" aria-label="Sections"></nav>
         <div id="sidebar-auth-status" class="sidebar-auth-status" role="status" aria-live="polite"></div>
@@ -303,4 +313,6 @@
   <script type="module" src="/src/frontend/main.js" defer></script>
 </body>
 </html>
+
+
 

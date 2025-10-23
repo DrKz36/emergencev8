@@ -66,11 +66,11 @@ if PROMETHEUS_AVAILABLE:
         "Total number of send errors"
     )
 else:
-    ws_outbox_queue_size: Optional[Gauge] = None  # type: ignore[assignment,no-redef]
-    ws_outbox_batch_size: Optional[Histogram] = None  # type: ignore[assignment,no-redef]
-    ws_outbox_send_latency: Optional[Histogram] = None  # type: ignore[assignment,no-redef]
-    ws_outbox_dropped_total: Optional[Counter] = None  # type: ignore[assignment,no-redef]
-    ws_outbox_send_errors_total: Optional[Counter] = None  # type: ignore[assignment,no-redef]
+    ws_outbox_queue_size: Optional[Gauge] = None  # type: ignore[no-redef]
+    ws_outbox_batch_size: Optional[Histogram] = None  # type: ignore[no-redef]
+    ws_outbox_send_latency: Optional[Histogram] = None  # type: ignore[no-redef]
+    ws_outbox_dropped_total: Optional[Counter] = None  # type: ignore[no-redef]
+    ws_outbox_send_errors_total: Optional[Counter] = None  # type: ignore[no-redef]
 
 
 class WsOutbox:
@@ -86,8 +86,8 @@ class WsOutbox:
 
     def __init__(self, websocket: WebSocket):
         self.ws = websocket
-        self.q: asyncio.Queue = asyncio.Queue(maxsize=OUTBOX_MAX)
-        self._task: Optional[asyncio.Task] = None
+        self.q: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=OUTBOX_MAX)
+        self._task: Optional[asyncio.Task[None]] = None
         self._closed = asyncio.Event()
         self._stats = {
             "sent_batches": 0,
@@ -185,7 +185,7 @@ class WsOutbox:
                 logger.error(f"[WsOutbox] Unexpected error in drain loop: {e}", exc_info=True)
                 # Continue la loop malgré l'erreur
 
-    async def _send_batch(self, batch: list) -> None:
+    async def _send_batch(self, batch: list[dict[str, Any]]) -> None:
         """
         Envoie un batch de messages (newline-delimited JSON).
         """

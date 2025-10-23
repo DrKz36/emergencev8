@@ -31,7 +31,7 @@ from backend.features.memory.analyzer import MemoryAnalyzer  # noqa: E402
 logger = logging.getLogger(__name__)
 
 
-async def is_already_consolidated(vector_service, thread_id: str) -> bool:
+async def is_already_consolidated(vector_service: Any, thread_id: str) -> bool:
     """
     Vérifie si thread déjà consolidé en cherchant concepts dans ChromaDB.
 
@@ -61,13 +61,13 @@ async def is_already_consolidated(vector_service, thread_id: str) -> bool:
 
 async def consolidate_all_archives(
     db: DatabaseManager,
-    gardener: MemoryGardener,
+    gardener: Any,
     vector_service: VectorService,
     *,
     user_id: Optional[str] = None,
     limit: int = 1000,
     force: bool = False
-):
+) -> None:
     """
     Consolide tous threads archivés non traités.
 
@@ -195,7 +195,7 @@ async def main():
     logger.info(f"Connected to {args.db}")
 
     # Setup vector service + analyzer + gardener
-    vector_service = VectorService()
+    vector_service = VectorService()  # type: ignore[call-arg]
     analyzer = MemoryAnalyzer(db, enable_offline_mode=True)
     gardener = MemoryGardener(db, vector_service, analyzer)
 

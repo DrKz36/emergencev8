@@ -8,7 +8,7 @@
 # - Usage par agent
 
 import logging
-from typing import Optional, List
+from typing import Optional, List, Iterator
 from contextlib import contextmanager
 from time import time
 
@@ -174,7 +174,7 @@ if PROMETHEUS_AVAILABLE:
 # ==========================================
 
 @contextmanager
-def track_duration(histogram: Optional['Histogram']):
+def track_duration(histogram: Optional['Histogram']) -> Iterator[None]:
     """Context manager pour mesurer durée d'exécution."""
     if not PROMETHEUS_AVAILABLE or histogram is None:
         yield
@@ -188,55 +188,55 @@ def track_duration(histogram: Optional['Histogram']):
         histogram.observe(duration)
 
 
-def record_query(agent_id: str, has_intent: bool = False):
+def record_query(agent_id: str, has_intent: bool = False) -> None:
     """Enregistre une requête RAG."""
     if PROMETHEUS_AVAILABLE:
         rag_queries_total.labels(agent_id=agent_id, has_intent=str(has_intent)).inc()
 
 
-def record_cache_hit():
+def record_cache_hit() -> None:
     """Enregistre un cache hit."""
     if PROMETHEUS_AVAILABLE:
         rag_cache_hits_total.inc()
 
 
-def record_cache_miss():
+def record_cache_miss() -> None:
     """Enregistre un cache miss."""
     if PROMETHEUS_AVAILABLE:
         rag_cache_misses_total.inc()
 
 
-def record_chunks_merged(count: int):
+def record_chunks_merged(count: int) -> None:
     """Enregistre le nombre de chunks fusionnés."""
     if PROMETHEUS_AVAILABLE:
         rag_chunks_merged_total.inc(count)
 
 
-def record_content_type_query(content_type: str):
+def record_content_type_query(content_type: str) -> None:
     """Enregistre une requête par type de contenu."""
     if PROMETHEUS_AVAILABLE and content_type:
         rag_queries_by_content_type.labels(content_type=content_type).inc()
 
 
-def update_avg_chunks_returned(avg: float):
+def update_avg_chunks_returned(avg: float) -> None:
     """Met à jour la moyenne de chunks retournés."""
     if PROMETHEUS_AVAILABLE:
         rag_avg_chunks_returned.set(avg)
 
 
-def update_avg_merge_ratio(ratio: float):
+def update_avg_merge_ratio(ratio: float) -> None:
     """Met à jour le ratio de fusion moyen."""
     if PROMETHEUS_AVAILABLE:
         rag_avg_merge_ratio.set(ratio)
 
 
-def update_avg_relevance_score(score: float):
+def update_avg_relevance_score(score: float) -> None:
     """Met à jour le score de pertinence moyen."""
     if PROMETHEUS_AVAILABLE:
         rag_avg_relevance_score.set(score)
 
 
-def update_source_diversity(diversity: float):
+def update_source_diversity(diversity: float) -> None:
     """Met à jour la diversité des sources."""
     if PROMETHEUS_AVAILABLE:
         rag_avg_source_diversity.set(diversity)
@@ -248,7 +248,7 @@ def set_rag_config(
     chunk_tolerance: int,
     cache_enabled: bool,
     cache_ttl: int
-):
+) -> None:
     """Configure les métadonnées de configuration RAG."""
     if PROMETHEUS_AVAILABLE:
         rag_config_info.info({
@@ -284,7 +284,7 @@ class RAGMetricsAggregator:
         merged_blocks: int,
         top_score: float,
         unique_docs: int
-    ):
+    ) -> None:
         """Ajoute un résultat et met à jour les métriques."""
         # Ajouter aux historiques
         self.chunks_returned_history.append(chunks_returned)
@@ -340,13 +340,13 @@ def get_aggregator() -> RAGMetricsAggregator:
 # Phase 3 - Helper functions Mémoire Temporelle
 # ==========================================
 
-def record_temporal_query(is_temporal: bool):
+def record_temporal_query(is_temporal: bool) -> None:
     """Enregistre une question temporelle (détectée ou non)."""
     if PROMETHEUS_AVAILABLE:
         memory_temporal_queries_total.labels(detected=str(is_temporal).lower()).inc()
 
 
-def record_temporal_concepts_found(count: int):
+def record_temporal_concepts_found(count: int) -> None:
     """Enregistre le nombre de concepts consolidés trouvés."""
     if PROMETHEUS_AVAILABLE:
         # Classifier par range
@@ -362,19 +362,19 @@ def record_temporal_concepts_found(count: int):
         memory_temporal_concepts_found_total.labels(count_range=range_label).inc()
 
 
-def record_temporal_search_duration(duration_seconds: float):
+def record_temporal_search_duration(duration_seconds: float) -> None:
     """Enregistre la durée d'une recherche ChromaDB pour mémoire consolidée."""
     if PROMETHEUS_AVAILABLE:
         memory_temporal_search_duration_seconds.observe(duration_seconds)
 
 
-def record_temporal_context_size(size_bytes: int):
+def record_temporal_context_size(size_bytes: int) -> None:
     """Enregistre la taille du contexte temporel enrichi."""
     if PROMETHEUS_AVAILABLE:
         memory_temporal_context_size_bytes.observe(size_bytes)
 
 
-def update_temporal_cache_hit_rate(hit_rate_percentage: float):
+def update_temporal_cache_hit_rate(hit_rate_percentage: float) -> None:
     """Met à jour le hit rate du cache temporel."""
     if PROMETHEUS_AVAILABLE:
         memory_temporal_cache_hit_rate.set(hit_rate_percentage)

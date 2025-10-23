@@ -6,7 +6,7 @@ import time
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-from typing import Callable
+from typing import Any, Callable, cast
 
 from backend.core.monitoring import (
     metrics,
@@ -20,7 +20,7 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
     Middleware qui monitore automatiquement toutes les requêtes
     """
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         # Capturer le début
         start_time = time.time()
         endpoint = request.url.path
@@ -73,7 +73,7 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
             response.headers["X-Response-Time"] = f"{duration * 1000:.2f}ms"
             response.headers["X-Request-ID"] = str(id(request))
 
-            return response
+            return cast(Response, response)
 
         except RuntimeError as exc:
             # Gérer le cas spécifique "No response returned"
@@ -118,7 +118,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
     Middleware de sécurité pour détecter les comportements suspects
     """
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         # Vérifier la taille du body
         content_length = request.headers.get("content-length")
         if content_length:
@@ -180,7 +180,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             response.headers["X-XSS-Protection"] = "1; mode=block"
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
-            return response
+            return cast(Response, response)
 
         except RuntimeError as exc:
             if "No response returned" in str(exc):
@@ -216,7 +216,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.requests_per_minute = requests_per_minute
         self.request_counts: dict[str, list[tuple[float, int]]] = {}  # {ip: [(timestamp, count)]}
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         client_ip = request.client.host if request.client else "unknown"
         current_time = time.time()
 
@@ -273,7 +273,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             response.headers["X-RateLimit-Limit"] = str(self.requests_per_minute)
             response.headers["X-RateLimit-Remaining"] = str(max(0, remaining))
 
-            return response
+            return cast(Response, response)
 
         except RuntimeError as exc:
             if "No response returned" in str(exc):
@@ -312,7 +312,7 @@ class CORSSecurityMiddleware(BaseHTTPMiddleware):
             "https://emergence.app",  # Production
         ]
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         origin = request.headers.get("origin")
 
         # OPTIONS (preflight)
@@ -342,4 +342,4 @@ class CORSSecurityMiddleware(BaseHTTPMiddleware):
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
 
-        return response
+        return cast(Response, response)

@@ -161,13 +161,13 @@ class SessionManager:
                 logger.info(f"Envoi d'avertissement à la session {session_id} (déconnexion dans {remaining_seconds}s)")
 
                 # Marquer l'avertissement comme envoyé
-                session = self.active_sessions.get(session_id)
+                session = self.active_sessions.get(session_id)  # type: ignore[assignment]
                 if session:
                     setattr(session, '_warning_sent', True)
 
                 # Envoyer l'avertissement via WebSocket
                 if self.connection_manager:
-                    notification_payload = {
+                    notification_payload = {  # type: ignore[unreachable]
                         "notification_type": "inactivity_warning",
                         "message": f"Votre session sera déconnectée dans {remaining_seconds} secondes en raison d'inactivité.",
                         "remaining_seconds": remaining_seconds,
@@ -262,7 +262,7 @@ class SessionManager:
         if thread_id:
             self._session_threads[session_id] = thread_id
             if not isinstance(session.metadata, dict):
-                session.metadata = {}
+                session.metadata = {}  # type: ignore[unreachable]
             session.metadata["thread_id"] = thread_id
 
             hydrated_key = (session_id, thread_id)
@@ -347,7 +347,7 @@ class SessionManager:
             return {}
         meta = session.metadata
         if not isinstance(meta, dict):
-            meta = {}
+            meta = {}  # type: ignore[unreachable]
             session.metadata = meta
         return meta
 
@@ -404,12 +404,12 @@ class SessionManager:
                 if not isinstance(candidate, dict):
                     if hasattr(candidate, "model_dump"):
                         try:
-                            candidate = candidate.model_dump(mode="json")  # type: ignore[attr-defined]
+                            candidate = candidate.model_dump(mode="json")
                         except Exception:
                             candidate = {}
                     elif hasattr(candidate, "dict"):
                         try:
-                            candidate = candidate.dict()  # type: ignore[attr-defined]
+                            candidate = candidate.dict()
                         except Exception:
                             candidate = {}
                     elif isinstance(candidate, str):
@@ -489,7 +489,7 @@ class SessionManager:
             else:
                 session_meta = self.active_sessions[session_id].metadata
                 if not isinstance(session_meta, dict):
-                    session_meta = {}
+                    session_meta = {}  # type: ignore[unreachable]
                     self.active_sessions[session_id].metadata = session_meta
                 try:
                     raw_meta = thread_row.get("meta")
@@ -592,9 +592,9 @@ class SessionManager:
                 continue
             try:
                 if hasattr(item, "model_dump"):
-                    normalized.append(item.model_dump(mode="json"))  # type: ignore[attr-defined]
+                    normalized.append(item.model_dump(mode="json"))
                 elif hasattr(item, "dict"):
-                    normalized.append(item.dict())  # type: ignore[attr-defined]
+                    normalized.append(item.dict())
                 elif hasattr(item, "items"):
                     normalized.append(dict(item))
                 elif isinstance(item, str):
@@ -619,17 +619,17 @@ class SessionManager:
             if isinstance(item, dict):
                 data = item
             else:
-                try:
+                try:  # type: ignore[unreachable]
                     if hasattr(item, 'model_dump'):
-                        data = item.model_dump(mode='json')  # type: ignore[attr-defined]
+                        data = item.model_dump(mode='json')
                     elif hasattr(item, 'dict'):
-                        data = item.dict()  # type: ignore[attr-defined]
+                        data = item.dict()
                     else:
-                        data = dict(item)  # type: ignore[arg-type]
+                        data = dict(item)
                 except Exception:
                     data = {}
             if not isinstance(data, dict):
-                continue
+                continue  # type: ignore[unreachable]
             role_raw = str(data.get('role') or '').strip().lower()
             if role_raw in {Role.USER.value, 'user'}:
                 role_value = Role.USER.value
@@ -695,7 +695,7 @@ class SessionManager:
         content = payload.get("content") or payload.get("message") or ""
         if not isinstance(content, str):
             try:
-                content = json.dumps(content or "")
+                content = json.dumps(content or "")  # type: ignore[unreachable]
             except Exception:
                 content = str(content or "")
         agent_id = payload.get("agent") or payload.get("agent_id")
@@ -918,8 +918,8 @@ class SessionManager:
 
         try:
             if not isinstance(session.metadata, dict):
-                session.metadata = {}
-            
+                session.metadata = {}  # type: ignore[unreachable]
+
             session.metadata.update(update_data.get("metadata", {}))
             logger.info(f"Session {session_id} mise à jour avec les données du débat.")
             

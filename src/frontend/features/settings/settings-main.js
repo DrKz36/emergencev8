@@ -9,7 +9,8 @@ import { settingsUI } from './settings-ui.js';
 import { settingsSecurity } from './settings-security.js';
 import { settingsRAG } from './settings-rag.js';
 import versionInfo from '../../version.js';
-import logoUrl from '../../../../assets/emergence_logo.png';
+import logoWebpUrl from '../../../../assets/emergence_logo.webp';
+import logoPngUrl from '../../../../assets/emergence_logo.png';
 
 export class Settings {
     constructor() {
@@ -44,6 +45,13 @@ export class Settings {
      * Render settings structure
      */
     render() {
+        const brandLogoMarkup = `
+            <picture class="brand-logo-picture">
+                <source srcset="${logoWebpUrl}" type="image/webp" />
+                <img src="${logoPngUrl}" alt="ÉMERGENCE" class="brand-logo" width="1024" height="1024" loading="lazy" decoding="async" />
+            </picture>
+        `;
+
         this.container.innerHTML = `
             <div class="settings-container">
                 <!-- Settings Header -->
@@ -64,7 +72,7 @@ export class Settings {
 
                 <!-- ÉMERGENCE Brand Panel -->
                 <div class="emergence-brand-panel">
-                    <img src="${logoUrl}" alt="ÉMERGENCE" class="brand-logo">
+                    ${brandLogoMarkup}
                     <div class="brand-info">
                         <h2 class="brand-title">ÉMERGENCE V8</h2>
                         <p class="brand-version">${versionInfo.fullVersion}</p>

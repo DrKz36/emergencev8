@@ -43,7 +43,7 @@ async def get_usage_summary(
     hours: int = Query(2, ge=1, le=720, description="Heures à analyser (1-720)"),
     admin_claims: Dict[str, Any] = Depends(require_admin_claims),
     repository: UsageRepository = Depends(_get_usage_repository),
-) -> dict:
+) -> dict[str, Any]:
     """
     Retourne rapport d'usage pour dashboard admin
 
@@ -82,7 +82,7 @@ async def generate_usage_report_file(
     hours: int = Query(2, ge=1, le=720),
     admin_claims: Dict[str, Any] = Depends(require_admin_claims),
     repository: UsageRepository = Depends(_get_usage_repository),
-) -> dict:
+) -> dict[str, Any]:
     """
     Génère rapport usage ET le sauvegarde dans reports/usage_report.json
 
@@ -122,7 +122,7 @@ async def generate_usage_report_file(
 
 
 @router.get("/health")
-async def usage_tracking_health() -> dict:
+async def usage_tracking_health() -> dict[str, Any]:
     """
     Health check pour usage tracking system
     Public endpoint (pas besoin admin)

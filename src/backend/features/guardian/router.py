@@ -63,7 +63,7 @@ def verify_fix_token(token: str, max_age_seconds: int = 86400) -> bool:
         return False
 
 
-async def execute_anima_fixes(recommendations: list) -> dict[str, list[dict[str, Any]]]:
+async def execute_anima_fixes(recommendations: list[Any]) -> dict[str, list[dict[str, Any]]]:
     """Exécute les corrections Anima (Documentation)"""
     results: dict[str, list[dict[str, Any]]] = {
         "fixed": [],
@@ -98,7 +98,7 @@ async def execute_anima_fixes(recommendations: list) -> dict[str, list[dict[str,
     return results
 
 
-async def execute_neo_fixes(recommendations: list) -> dict[str, list[dict[str, Any]]]:
+async def execute_neo_fixes(recommendations: list[Any]) -> dict[str, list[dict[str, Any]]]:
     """Exécute les corrections Neo (Intégrité)"""
     results: dict[str, list[dict[str, Any]]] = {
         "fixed": [],
@@ -132,7 +132,7 @@ async def execute_neo_fixes(recommendations: list) -> dict[str, list[dict[str, A
     return results
 
 
-async def execute_prod_fixes(recommendations: list) -> dict[str, list[dict[str, Any]]]:
+async def execute_prod_fixes(recommendations: list[Any]) -> dict[str, list[dict[str, Any]]]:
     """Exécute les corrections Production (ATTENTION: très sensible)"""
     results: dict[str, list[dict[str, Any]]] = {
         "fixed": [],
@@ -151,7 +151,7 @@ async def execute_prod_fixes(recommendations: list) -> dict[str, list[dict[str, 
     return results
 
 
-async def apply_guardian_fixes(report_data: dict) -> dict:
+async def apply_guardian_fixes(report_data: dict[str, Any]) -> dict[str, Any]:
     """Applique les corrections Guardian selon les rapports"""
     fixes_summary: dict[str, Any] = {
         "timestamp": datetime.now().isoformat(),
@@ -203,7 +203,7 @@ async def apply_guardian_fixes(report_data: dict) -> dict:
 async def auto_fix_endpoint(
     background_tasks: BackgroundTasks,
     x_guardian_token: Optional[str] = Header(None)
-):
+) -> dict[str, Any]:
     """
     Endpoint pour appliquer automatiquement les corrections Guardian
 
@@ -260,7 +260,7 @@ async def auto_fix_endpoint(
 
 
 @router.get("/status")
-async def get_guardian_status():
+async def get_guardian_status() -> dict[str, Any]:
     """Récupère le statut actuel des Guardians (sans auth requise)"""
     reports_dir = Path(__file__).parent.parent.parent.parent.parent / "reports"
 
@@ -271,7 +271,7 @@ async def get_guardian_status():
         "unified": "unified_report.json"
     }
 
-    status = {
+    status: dict[str, Any] = {
         "timestamp": datetime.now().isoformat(),
         "reports_available": [],
         "reports_missing": []
@@ -291,7 +291,7 @@ async def get_guardian_status():
 async def scheduled_guardian_report(
     background_tasks: BackgroundTasks,
     x_guardian_scheduler_token: Optional[str] = Header(None, alias="X-Guardian-Scheduler-Token")
-):
+) -> dict[str, Any]:
     """
     Endpoint appelé par Cloud Scheduler toutes les 2h
     Génère et envoie le rapport Guardian par email
@@ -455,7 +455,7 @@ async def run_guardian_audit():
             }
 
         # Extraire summary de chaque rapport
-        summary = {
+        summary: dict[str, Any] = {
             "timestamp": datetime.now().isoformat(),
             "status": "unknown",
             "reports_loaded": [],

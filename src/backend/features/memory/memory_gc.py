@@ -12,7 +12,7 @@
 # Date création: 2025-10-21
 
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, cast
 from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ try:
             )
             if existing is None:
                 raise
-            return existing
+            return cast(Counter, existing)
 
     def _get_gc_gauge() -> Gauge:
         try:
@@ -51,7 +51,7 @@ try:
             )
             if existing is None:
                 raise
-            return existing
+            return cast(Gauge, existing)
 
     MEMORY_GC_ARCHIVED = _get_gc_counter()
     MEMORY_GC_LAST_RUN = _get_gc_gauge()
@@ -73,7 +73,7 @@ class MemoryGarbageCollector:
     - Métriques Prometheus
     """
 
-    def __init__(self, vector_service, gc_inactive_days: int = 180):
+    def __init__(self, vector_service: Any, gc_inactive_days: int = 180) -> None:
         """
         Initialize MemoryGarbageCollector.
 

@@ -6,7 +6,8 @@
 import { EVENTS } from '../../shared/constants.js';
 import { t } from '../../shared/i18n.js';
 import { api } from '../../shared/api-client.js';
-import logoUrl from '../../../../assets/emergence_logo.png';
+import logoWebpUrl from '../../../../assets/emergence_logo.webp';
+import logoPngUrl from '../../../../assets/emergence_logo.png';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -127,6 +128,12 @@ export class HomeModule {
     const legal = t('home.legal');
 
     const brandAlt = t('home.brand_alt');
+    const logoPictureMarkup = `
+      <picture class="home__logo-picture">
+        <source srcset="${logoWebpUrl}" type="image/webp" />
+        <img src="${logoPngUrl}" alt="${brandAlt}" class="home__logo" width="1024" height="1024" decoding="async" fetchpriority="high" />
+      </picture>
+    `;
 
     const versionMarkup = version ? `<span class="home__version">${version}</span>` : '';
 
@@ -150,7 +157,7 @@ export class HomeModule {
 
                 <span class="home__emblem-spark"></span>
 
-                <img src="${logoUrl}" alt="${brandAlt}" class="home__logo" loading="lazy" />
+                ${logoPictureMarkup}
 
               </div>
 

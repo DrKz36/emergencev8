@@ -384,20 +384,20 @@ async def _log_index_dump(db: DatabaseManager, tables: Iterable[str]) -> None:
 
 
 # ---------------------- Helpers rétro-compatibilité ---------------------- #
-async def _get_columns(db: DatabaseManager, table: str):
+async def _get_columns(db: DatabaseManager, table: str) -> set[str]:
     try:
         rows = await db.fetch_all(f"PRAGMA table_info({table})")
         return {r["name"] for r in rows} if rows else set()
     except Exception:
         return set()
 
-async def _add_column_if_missing(db: DatabaseManager, table: str, col_name: str, col_def: str):
+async def _add_column_if_missing(db: DatabaseManager, table: str, col_name: str, col_def: str) -> None:
     cols = await _get_columns(db, table)
     if col_name not in cols:
         await db.execute(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_def}", commit=True)
         logger.info(f"[DDL] Colonne ajoutée: {table}.{col_name} {col_def}")
 
-async def _ensure_messages_backward_compat(db: DatabaseManager):
+async def _ensure_messages_backward_compat(db: DatabaseManager) -> None:
     """
     Pour les bases locales créées avant V6 (messages sans thread_id/created_at).
     On ajoute les colonnes manquantes (nullable), puis on (re)crée l'index.
@@ -426,7 +426,7 @@ async def _ensure_messages_backward_compat(db: DatabaseManager):
         logger.warning(f"[DDL] Index idx_messages_thread_created non créé: {e}")
 
 
-async def _ensure_allowlist_password_columns(db: DatabaseManager):
+async def _ensure_allowlist_password_columns(db: DatabaseManager) -> None:
     """Ensure legacy allowlist tables get password columns and index."""
     cols = await _get_columns(db, "auth_allowlist")
     if not cols:
@@ -454,7 +454,7 @@ async def _ensure_allowlist_password_columns(db: DatabaseManager):
     except Exception as e:
         logger.warning(f"[DDL] Could not update password_must_reset for existing users: {e}")
 
-async def _ensure_session_isolation_columns(db: DatabaseManager):
+async def _ensure_session_isolation_columns(db: DatabaseManager) -> None:
     await _add_column_if_missing(db, "threads", "session_id", "TEXT")
     await _add_column_if_missing(db, "threads", "user_id", "TEXT")
     await _add_column_if_missing(db, "messages", "session_id", "TEXT")
@@ -479,7 +479,7 @@ async def _ensure_session_isolation_columns(db: DatabaseManager):
     await _log_index_dump(db, INDEX_DEFINITIONS.keys())
 # ------------------------------------------------------------------------ #
 
-async def _ensure_costs_enriched_columns(db: DatabaseManager):
+async def _ensure_costs_enriched_columns(db: DatabaseManager) -> None:
     """Garantit la présence des colonnes session_id / user_id pour la table des coûts."""
     try:
         await _add_column_if_missing(db, "costs", "session_id", "TEXT")
@@ -490,7 +490,7 @@ async def _ensure_costs_enriched_columns(db: DatabaseManager):
 
 # ------------------------------------------------------------------------ #
 
-async def _ensure_threads_enriched_columns(db: DatabaseManager):
+async def _ensure_threads_enriched_columns(db: DatabaseManager) -> None:
     """Ajoute les colonnes d'enrichissement threads (conversation_id, consolidated_at, last_message_at, message_count, archival_reason)."""
     cols = await _get_columns(db, "threads")
     if not cols:
@@ -528,7 +528,7 @@ async def _ensure_threads_enriched_columns(db: DatabaseManager):
 
 # ------------------------------------------------------------------------ #
 
-async def create_tables(db_manager: DatabaseManager):
+async def create_tables(db_manager: DatabaseManager) -> None:
     logger.info("Vérification et création des tables de la base de données...")
     if not db_manager.is_connected():
         await db_manager.connect()
@@ -578,7 +578,7 @@ async def create_tables(db_manager: DatabaseManager):
 
     logger.info("Toutes les tables/index requis sont en place (avec backcompat au besoin).")
 
-async def run_migrations(db_manager: DatabaseManager, migrations_dir: str):
+async def run_migrations(db_manager: DatabaseManager, migrations_dir: str) -> None:
     logger.info("Démarrage du processus de migration de la base de données...")
     if not db_manager.is_connected():
         await db_manager.connect()
@@ -637,7 +637,7 @@ async def run_migrations(db_manager: DatabaseManager, migrations_dir: str):
             logger.debug(f"Migration {filename} déjà appliquée, ignorée.")
     logger.info("Processus de migration terminé.")
 
-async def initialize_database(db_manager: DatabaseManager, migrations_dir: str):
+async def initialize_database(db_manager: DatabaseManager, migrations_dir: str) -> None:
     await db_manager.connect()
     await create_tables(db_manager)
     await run_migrations(db_manager, migrations_dir)

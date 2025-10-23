@@ -205,8 +205,8 @@ class MemorySyncManager:
     def build_sync_payload(
         self,
         context: AgentContext,
-        stm_items: List[Dict],
-        ltm_items: List[Dict]
+        stm_items: List[Dict[str, Any]],
+        ltm_items: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
         Construit le payload SYNC pour resynchroniser le contexte.

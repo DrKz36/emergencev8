@@ -3,22 +3,28 @@
  * Service utilitaire pour orchestrer les appels HTTP de la persistance des threads.
  */
 import { api } from '../../shared/api-client.js';
+
 const HEX32 = /^[0-9a-f]{32}$/i;
 const UUID36 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const PAPAPARSE_CDN_URL = 'https://cdn.jsdelivr.net/npm/papaparse@5.5.3/+esm';
+const JSPDF_CDN_URL = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.es.min.js';
+const JSPDF_AUTOTABLE_CDN_URL = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@5.0.2/dist/jspdf.plugin.autotable.mjs';
 
 let papaPromise;
 let jsPdfPromise;
 
 async function loadPapaParse() {
   if (!papaPromise) {
-    papaPromise = import('papaparse').then((module) => module.default ?? module);
+    papaPromise = import(/* @vite-ignore */ PAPAPARSE_CDN_URL)
+      .then((module) => module.default ?? module);
   }
   return papaPromise;
 }
 
 async function loadJsPdf() {
   if (!jsPdfPromise) {
-    jsPdfPromise = import('jspdf')
+    jsPdfPromise = import(/* @vite-ignore */ JSPDF_CDN_URL)
       .then(async (module) => {
         const jsPDF = module.jsPDF ?? module.default ?? module;
         try {
@@ -35,7 +41,7 @@ async function loadJsPdf() {
         } catch {
           // ignore if global scope is not writable
         }
-        await import('jspdf-autotable');
+        await import(/* @vite-ignore */ JSPDF_AUTOTABLE_CDN_URL);
         return jsPDF;
       });
   }

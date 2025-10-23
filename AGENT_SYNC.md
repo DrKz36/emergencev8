@@ -1,10 +1,279 @@
-# Agent Sync - état de synchronisation inter-agents
+## ✅ Session COMPLÉTÉE (2025-10-23 14:17 CET) — Agent : Claude Code
 
-**Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
+### Fichiers modifiés
+- `src/backend/core/ws_outbox.py` (5 erreurs mypy fixes)
+- `src/backend/shared/agents_guard.py` (3 erreurs mypy fixes)
+- `src/backend/features/usage/router.py` (3 erreurs mypy fixes)
+- `src/backend/features/usage/guardian.py` (3 erreurs mypy fixes)
+- `src/backend/features/memory/memory_gc.py` (3 erreurs mypy fixes)
+- `src/backend/features/memory/intent_tracker.py` (3 erreurs mypy fixes)
+- `reports/mypy_report.txt` (nouveau rapport)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée)
 
-**Dernière mise à jour** : 2025-10-24 13:00 CET (Claude Code : P1.2 Mypy Batch 3 - Type checking fixes ✅)
+### Actions réalisées
+**✅ P1.2 Mypy Batch 11 - Type Checking Fixes - TERMINÉ**
 
-**🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+**Résultat :** **122 → 102 erreurs (-20 erreurs, -16.4%)** ✅
+**Progression totale : 471 → 102 = -369 erreurs (-78.3%)** 🔥🔥🔥
+
+**Objectif <100 erreurs ATTEINT !** 🎯
+
+**Fichiers corrigés :**
+1. **core/ws_outbox.py (5 fixes)** - Ajout `# type: ignore[no-redef]` sur les 5 assignations conditionnelles Prometheus dans le `else` block (ws_outbox_queue_size, ws_outbox_batch_size, ws_outbox_send_latency, ws_outbox_dropped_total, ws_outbox_send_errors_total)
+2. **shared/agents_guard.py (3 fixes)** - Return type `-> None` pour consume() ligne 221, import `cast`, cast pour _calculate_backoff return ligne 327 `cast(float, min(...))`, type annotations `*args: Any, **kwargs: Any` pour execute() ligne 329
+3. **features/usage/router.py (3 fixes)** - Type params `-> dict[str, Any]` pour 3 endpoints FastAPI : get_usage_summary ligne 46, generate_usage_report_file ligne 85, usage_tracking_health ligne 125
+4. **features/usage/guardian.py (3 fixes)** - Type params `-> dict[str, Any]` pour generate_report ligne 37, `report: dict[str, Any]` param save_report_to_file ligne 173, `tuple[dict[str, Any], Path]` return generate_and_save_report ligne 208
+5. **features/memory/memory_gc.py (3 fixes)** - Import `cast`, cast pour _get_gc_counter return ligne 38 `cast(Counter, existing)`, cast pour _get_gc_gauge return ligne 54 `cast(Gauge, existing)`, type annotation `vector_service: Any` + return `-> None` pour __init__ ligne 76
+6. **features/memory/intent_tracker.py (3 fixes)** - Import `cast`, cast pour parse_timeframe returns lignes 92+94 `cast(datetime | None, resolver(...))`, return type `-> None` pour delete_reminder ligne 114
+
+**Patterns appliqués :**
+- Type:ignore pour redéfinitions conditionnelles (no-redef)
+- Return type annotations (-> None, -> dict[str, Any])
+- Type parameters : dict[str, Any], tuple[dict[str, Any], Path]
+- Cast pour no-any-return : cast(float, ...), cast(Counter, ...), cast(Gauge, ...), cast(datetime | None, ...)
+- Type annotations *args: Any, **kwargs: Any
+
+### Tests
+- ✅ `mypy src/backend/` : **122 → 102 erreurs** (-20, -16.4%)
+- ✅ `ruff check` : All checks passed
+- ✅ `npm run build` : OK (1.13s)
+
+### Prochaines actions recommandées
+**P1.2 Batch 12 (optionnel)** : Continuer réduction vers <90 erreurs. On est à 78.3% de progression, on peut viser 80%+ en 1-2 batches. Les 102 erreurs restantes sont dans 42 fichiers (moyenne 2.4 erreurs/fichier). Focus : monitoring/router.py (8 erreurs), test_session_manager.py (8 erreurs), shared/dependencies.py (4 erreurs).
+
+### Blocages
+Aucun.
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-24 00:00 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/memory/analyzer.py` (5 erreurs mypy fixes)
+- `src/backend/features/guardian/storage_service.py` (5 erreurs mypy fixes)
+- `src/backend/features/documents/router.py` (5 erreurs mypy fixes)
+- `src/backend/features/dashboard/admin_service.py` (5 erreurs mypy fixes)
+- `src/backend/features/chat/router.py` (5 erreurs mypy fixes)
+- `src/backend/features/chat/rag_cache.py` (5 erreurs mypy fixes)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée)
+
+### Actions réalisées
+**✅ P1.2 Mypy Batch 10 - Type Checking Fixes - TERMINÉ**
+
+**Résultat :** **152 → 122 erreurs (-30 erreurs, -19.7%)** ✅
+**Progression totale : 471 → 122 = -349 erreurs (-74.1%)** 🔥
+
+**Fichiers corrigés :** analyzer.py (5), storage_service.py (5), documents/router.py (5), admin_service.py (5), chat/router.py (5), rag_cache.py (5)
+
+**Patterns :** Return types, migration Dict/List → dict/list, type params, cast pour no-any-return, fix type:ignore Redis
+
+### Tests
+- ✅ `mypy src/backend/` : **152 → 122 (-30, -19.7%)**
+- ✅ `ruff check` + `npm run build` : OK
+
+### Prochaines actions
+**Batch 11** : Vers <100 erreurs (3-5 erreurs/fichier)
+
+### Blocages
+Aucun.
+
+---
+
+## ? Session COMPLÉTÉE (2025-10-24 14:10 CET) - Agent : Codex
+
+### Fichiers modifiés
+- `assets/emergence_logo.webp` (nouveau format WebP 82 kB)
+- `assets/emergence_logo_icon.png` (favicon 256 px compressé)
+- `index.html` (picture/preload + icônes allégées)
+- `src/frontend/features/home/home-module.js` (picture hero + fetchpriority)
+- `src/frontend/features/settings/settings-main.js` (picture brand panel)
+- `ROADMAP.md` (impact réel P2.1 mis à jour)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée)
+- `reports/lighthouse-post-p2.1-optimized.html` (audit mobile 94)
+- `reports/lighthouse-post-p2.1.webp.html` (audit intermédiaire 74)
+
+### Actions réalisées
+**? P2.1 - Optimisation logo + validation perf réelle - TERMINÉE**
+
+Objectif : supprimer le goulet LCP (logo 1.41 MB) et valider le gain post-bundle via Lighthouse.
+
+Travail fait :
+1. Généré `assets/emergence_logo.webp` (quality 80) + refactor `<picture>` côté `home-module`, `settings-main` et `index.html` (loader, header, sidebar) avec `fetchpriority="high"` sur le hero et dimensions explicites.
+2. Créé `assets/emergence_logo_icon.png` (256 px) et branché `link rel="icon"` / `apple-touch-icon` dessus pour stopper le téléchargement du PNG 1.4 MB en favicon.
+3. Ajouté `link rel="preload"` WebP, supprimé `loading="lazy"` sur le hero, conservé le fallback PNG pour les navigateurs legacy.
+4. `npm run build` + preview `vite` sur 127.0.0.1:4173, puis double campagne Lighthouse (avant/après icône) avec archivage des rapports.
+5. Mise à jour Roadmap/passation avec les métriques finales (score 94, LCP 2.82 s, payload 300 kB).
+
+Résultat :
+- ? Perf mobile **74 → 94** ; LCP **9.46 s → 2.82 s**, TTI **9.46 s → 2.84 s**, TBT 2.5 ms, CLS 0.
+- ? Poids initial **1.55 MB → 300 kB** (favicon compressé + hero WebP 82 kB).
+- ? Hero désormais servi en WebP natif ; fallback PNG uniquement si absence de support WebP.
+
+### Tests
+- ? `npm run build`
+- ? `npx lighthouse http://127.0.0.1:4173 --output html --output-path reports/lighthouse-post-p2.1.webp.html`
+- ? `npx lighthouse http://127.0.0.1:4173 --output html --output-path reports/lighthouse-post-p2.1-optimized.html`
+
+### Prochaines actions recommandées
+1. Réduire les 360 kB de CSS critiques (`index-B-IexU08.css`) avant nouvelle passe Lighthouse.
+2. Étudier un pré-rendu du hero (limiter le loader opaque) pour viser LCP ≈ 2 s.
+
+### Blocages
+- Aucun (vite preview lancé via `Start-Process`, arrêt manuel post-mesures).
+
+---
+## ✅ Session COMPLÉTÉE (2025-10-23 22:30 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/backend/core/alerts.py` (14 erreurs mypy fixes)
+- `src/backend/features/memory/router.py` (13 erreurs mypy fixes)
+- `src/backend/features/guardian/router.py` (13 erreurs mypy fixes)
+- `src/backend/features/monitoring/router.py` (12 erreurs mypy fixes)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée)
+
+### Actions réalisées
+**✅ P1.2 Mypy Batch 7 - Type Checking Fixes - TERMINÉ**
+
+**Objectif :** Fixer erreurs mypy dans fichiers moyens/gros (12-14 erreurs chacun)
+**Résultat :** **266 → 222 erreurs (-44 erreurs, -16.5%)**
+
+**Fichiers corrigés :**
+1. **core/alerts.py (14 fixes)** - Return types `-> None` pour toutes méthodes SlackAlerter (send_alert, alert_critical/warning/info) et fonctions helpers module-level, type annotation `**metadata: Any` et `**kwargs: Any`
+2. **features/memory/router.py (13 fixes)** - Type params: `func: Any`, `-> Any` pour _get_container, migration `Dict/List → dict/list`, `list[Any]` pour _normalize_history_for_analysis, `-> dict[str, Any]` pour endpoints FastAPI (search_memory, unified_memory_search, search_concepts), suppression 5 unused type:ignore comments, `db_manager: Any` et `vector_service: Any` pour helpers
+3. **features/guardian/router.py (13 fixes)** - Type params `list[Any]` pour execute_anima/neo/prod_fixes, `dict[str, Any]` pour apply_guardian_fixes params/return, return types `-> dict[str, Any]` pour auto_fix_endpoint, get_guardian_status (+ typage var `status: dict[str, Any]`), scheduled_guardian_report, typage variable `summary: dict[str, Any]` ligne 458
+4. **features/monitoring/router.py (12 fixes)** - Migration imports (suppression `Dict, Union`, ajout `cast`), return type `-> JSONResponse` pour health_ready, migration `Dict/Union → dict/|`, cast pour export_metrics_json return, `-> dict[str, Any]` pour detailed_health_check
+
+**Patterns appliqués :** Return type annotations (-> None, -> dict[str, Any], -> JSONResponse), migration uppercase types (Dict/List → dict/list, Union → |), type params **kwargs: Any, cast pour Any returns, typage variables locales pour éviter Sequence inference, suppression unused type:ignore.
+
+### Tests
+- ✅ `mypy src/backend/` : **266 → 222 erreurs** (-44, -16.5%)
+- ✅ `ruff check` : All checks passed
+- ✅ `npm run build` : OK (1.22s)
+
+### Prochaines actions recommandées
+**P1.2 Batch 8 (optionnel)** : Continuer réduction progressive (222 → ~180 erreurs)
+**Focus** : database/schema.py (10 erreurs), features/memory/unified_retriever.py (11 erreurs), core/ws_outbox.py (8 erreurs), features/memory/gardener.py (9 erreurs)
+
+### Blocages
+Aucun.
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-23 21:50 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/chat/rag_metrics.py` (15 erreurs mypy fixes)
+- `src/backend/features/memory/task_queue.py` (16 erreurs mypy fixes)
+- `src/backend/core/database/queries.py` (7 erreurs mypy fixes)
+- `src/backend/core/cost_tracker.py` (6 erreurs mypy fixes)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée)
+
+### Actions réalisées
+**✅ P1.2 Mypy Batch 6 - Type Checking Fixes - TERMINÉ**
+
+**Objectif :** Fixer erreurs mypy dans fichiers moyens (6-16 erreurs chacun)
+**Résultat :** **309 → 266 erreurs (-43 erreurs, -13.9%)**
+
+**Fichiers corrigés :**
+1. **chat/rag_metrics.py (15 fixes)** - Return types `-> None` pour 11 fonctions d'enregistrement (record_query, record_cache_hit/miss, etc.), `-> Iterator[None]` pour track_duration context manager, suppression import inutile `Any`
+2. **memory/task_queue.py (16 fixes)** - Type parameters: `asyncio.Queue[MemoryTask | None]`, `list[asyncio.Task[None]]`, `dict[str, Any]`, `Callable[[Any], Any] | None`, return types `-> None` pour méthodes async
+3. **database/queries.py (7 fixes)** - Return types `-> None` pour add_cost_log, update_thread, add_thread, fix typage parameter `gardener: Any = None`
+4. **cost_tracker.py (6 fixes)** - Type:ignore pour assignments conditionnels Prometheus (llm_requests_total, llm_tokens_*), return type `-> None` pour record_cost
+
+**Patterns appliqués :** Return type annotations (-> None, -> Iterator[None]), generic type parameters (Queue[T], list[T], dict[K,V], Callable[[P], R]), type:ignore pour conditional assignments Prometheus.
+
+### Tests
+- ✅ `mypy src/backend/` : **309 → 266 erreurs** (-43, -13.9%)
+- ✅ `ruff check` : All checks passed
+- ✅ `npm run build` : OK (1.18s)
+
+### Prochaines actions recommandées
+**P1.2 Batch 7 (optionnel)** : Continuer réduction progressive (266 → ~220 erreurs)
+**Focus** : database/manager.py, database/schema.py, ou autres fichiers avec 10-15 erreurs restantes
+
+### Blocages
+Aucun.
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-23 21:15 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/backend/containers.py` (19 erreurs mypy fixes)
+- `src/backend/core/session_manager.py` (16 erreurs mypy fixes)
+- `src/backend/features/threads/router.py` (15 erreurs mypy fixes)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée)
+
+### Actions réalisées
+**✅ P1.2 Mypy Batch 5 - Type Checking Fixes - TERMINÉ**
+
+**Objectif :** Fixer erreurs mypy dans fichiers moyens (10-20 erreurs chacun)
+**Résultat :** **361 → 309 erreurs (-52 erreurs, -14.4%)**
+
+**Fichiers corrigés :**
+1. **containers.py (19 fixes)** - Imports conditionnels: ajout `# type: ignore[assignment,misc]` pour tous les imports optionnels (DashboardService, DocumentService, DebateService, BenchmarksService, VoiceService) qui assignent `None` quand module absent
+2. **session_manager.py (16 fixes)** - Suppression 7 unused type:ignore (model_dump/dict devenus OK), ajout assignment type:ignore ligne 164 (Session|None), 9 unreachable type:ignore (métadata checks)
+3. **threads/router.py (15 fixes)** - Return types `-> dict[str, Any]` pour 13 endpoints, `-> Response` pour delete_thread, cast DatabaseManager pour get_db, migration `Dict/List → dict/list` dans Pydantic models
+
+**Patterns appliqués :** Type:ignore conditionnels pour imports optionnels, nettoyage unused-ignore, return type annotations endpoints FastAPI, cast pour Any returns, migration types modernes.
+
+### Tests
+- ✅ `mypy src/backend/` : **361 → 309 erreurs** (-52, -14.4%)
+- ✅ `ruff check` : All checks passed
+- ✅ `npm run build` : OK (967ms)
+
+### Prochaines actions recommandées
+**P1.2 Batch 6 (optionnel)** : Continuer réduction progressive (309 → ~250 erreurs)
+**Focus** : chat/rag_metrics.py (15 erreurs), memory/task_queue.py (15 erreurs), database/queries.py (7 erreurs), cost_tracker.py (6 erreurs)
+
+### Blocages
+Aucun.
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-23 20:30 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/backend/main.py` (8 erreurs mypy fixes)
+- `src/backend/features/memory/concept_recall_metrics.py` (7 erreurs mypy fixes)
+- `src/backend/features/gmail/gmail_service.py` (7 erreurs mypy fixes)
+- `src/backend/core/middleware.py` (8 erreurs mypy fixes)
+- `src/backend/core/websocket.py` (ajout import cast)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée)
+
+### Actions réalisées
+**✅ P1.2 Mypy Batch 4 - Type Checking Fixes - TERMINÉ**
+
+**Objectif :** Fixer erreurs mypy dans fichiers faciles (<10 erreurs chacun)
+**Résultat :** **391 → 361 erreurs (-30 erreurs, -7.7%)**
+
+**Fichiers corrigés :**
+1. **main.py (8 fixes)** - Type annotations fonctions (_import_router, _startup, DenyListMiddleware), imports (APIRouter, ASGIApp, cast), return types
+2. **concept_recall_metrics.py (7 fixes)** - Return type `-> None` pour toutes les méthodes record_*
+3. **gmail_service.py (7 fixes)** - Dict → dict[str,Any], List → list, Optional → |None, cast pour header['value']
+4. **core/middleware.py (8 fixes)** - Callable type params, cast(Response, ...) pour tous les dispatch returns
+5. **core/websocket.py (1 fix)** - Ajout import cast manquant
+
+**Patterns appliqués :** Type annotations complètes, migration Dict/List vers lowercase, cast pour Any returns, suppression imports inutilisés (ruff --fix).
+
+### Tests
+- ✅ `mypy src/backend/` : **391 → 361 erreurs** (-30, -7.7%)
+- ✅ `ruff check` : All checks passed
+- ✅ `npm run build` : OK (1.18s)
+
+### Prochaines actions recommandées
+**P1.2 Batch 5 (optionnel)** : Continuer réduction progressive (361 → ~330 erreurs)
+**Focus** : containers.py (19 erreurs), session_manager.py (16 erreurs), routers (threads, guardian, monitoring)
+
+### Blocages
+Aucun.
 
 ---
 

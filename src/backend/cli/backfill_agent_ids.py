@@ -13,7 +13,7 @@
 import asyncio
 import logging
 import argparse
-from typing import Optional, Any
+from typing import Optional, cast, Any
 
 from backend.features.memory.vector_service import VectorService
 from backend.core.database.manager import DatabaseManager
@@ -38,7 +38,7 @@ async def infer_agent_from_thread(db: DatabaseManager, thread_id: str) -> Option
         if thread:
             agent_id = thread.get('agent_id')
             if agent_id:
-                return agent_id.lower()
+                return cast(str, agent_id.lower())
         return 'anima'  # Défaut si pas d'agent_id dans thread
     except Exception as e:
         logger.warning(f"Failed to infer agent from thread {thread_id}: {e}")
@@ -51,7 +51,7 @@ async def backfill_missing_agent_ids(
     *,
     user_id: Optional[str] = None,
     dry_run: bool = False
-) -> dict:
+) -> dict[str, Any]:
     """
     Backfill agent_id pour concepts sans agent_id.
 
@@ -168,7 +168,7 @@ async def main():
     db = DatabaseManager(args.db)
     await db.connect()
 
-    vector_service = VectorService()
+    vector_service = VectorService()  # type: ignore[call-arg]
 
     # Validation args
     user_id = None if args.all else args.user_id

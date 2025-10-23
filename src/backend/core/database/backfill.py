@@ -5,14 +5,14 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Any
 
 from backend.core.database.manager import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
 
-def _extract_email(row) -> str | None:
+def _extract_email(row: Any) -> str | None:
     if row is None:
         return None
     value = None
@@ -20,10 +20,10 @@ def _extract_email(row) -> str | None:
         value = row.get("email")
     else:
         try:
-            value = row["email"]  # type: ignore[index]
+            value = row["email"]
         except Exception:
             try:
-                value = row[0]  # type: ignore[index]
+                value = row[0]
             except Exception:
                 value = None
     return _normalize_email(value)

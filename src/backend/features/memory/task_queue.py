@@ -11,7 +11,7 @@ Usage:
 
 import asyncio
 import logging
-from typing import Callable
+from typing import Any, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -23,8 +23,8 @@ class MemoryTask:
     """Tâche d'analyse/jardinage mémoire"""
 
     task_type: str  # "analyze" | "garden" | "consolidate_thread"
-    payload: dict
-    callback: Callable | None = None
+    payload: dict[str, Any]
+    callback: Callable[[Any], Any] | None = None
     created_at: datetime = field(default_factory=datetime.utcnow)
 
 
@@ -39,9 +39,9 @@ class MemoryTaskQueue:
     """
 
     def __init__(self, max_workers: int = 2):
-        self.queue: asyncio.Queue = asyncio.Queue()
+        self.queue: asyncio.Queue[MemoryTask | None] = asyncio.Queue()
         self.max_workers = max_workers
-        self.workers: list[asyncio.Task] = []
+        self.workers: list[asyncio.Task[None]] = []
         self.running = False
 
     async def start(self):
@@ -68,14 +68,14 @@ class MemoryTaskQueue:
         logger.info("MemoryTaskQueue stopped")
 
     async def enqueue(
-        self, task_type: str, payload: dict, callback: Callable | None = None
-    ):
+        self, task_type: str, payload: dict[str, Any], callback: Callable[[Any], Any] | None = None
+    ) -> None:
         """Ajoute une tâche à la file"""
         task = MemoryTask(task_type=task_type, payload=payload, callback=callback)
         await self.queue.put(task)
         logger.debug(f"Task enqueued: {task_type} - {payload.get('session_id', 'N/A')}")
 
-    async def _worker(self, worker_id: int):
+    async def _worker(self, worker_id: int) -> None:
         """Worker qui consomme la file"""
         logger.info(f"Worker {worker_id} started")
 
@@ -97,7 +97,7 @@ class MemoryTaskQueue:
 
         logger.info(f"Worker {worker_id} stopped")
 
-    async def _process_task(self, task: MemoryTask, worker_id: int):
+    async def _process_task(self, task: MemoryTask, worker_id: int) -> None:
         """Traite une tâche mémoire"""
         start = datetime.utcnow()
 
@@ -125,7 +125,7 @@ class MemoryTaskQueue:
         except Exception as e:
             logger.error(f"Task {task.task_type} failed: {e}", exc_info=True)
 
-    async def _run_analysis(self, payload: dict):
+    async def _run_analysis(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Exécute MemoryAnalyzer.analyze_session_for_concepts"""
         from backend.containers import ServiceContainer
 
@@ -155,7 +155,7 @@ class MemoryTaskQueue:
         )
         return {"status": "completed", "session_id": session_id, "result": result}
 
-    async def _run_gardening(self, payload: dict):
+    async def _run_gardening(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Exécute MemoryGardener.garden_thread"""
         from backend.containers import ServiceContainer
 
@@ -167,7 +167,7 @@ class MemoryTaskQueue:
         await gardener.garden_thread(thread_id, user_sub=user_sub)
         return {"status": "gardened", "thread_id": thread_id}
 
-    async def _run_thread_consolidation(self, payload: dict):
+    async def _run_thread_consolidation(self, payload: dict[str, Any]) -> dict[str, Any]:
         """
         🆕 Phase P0: Consolide un thread archivé dans LTM.
 

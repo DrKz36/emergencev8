@@ -5,7 +5,7 @@ Permet d'envoyer des alertes critiques/warning/info
 
 import os
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Any, Literal
 import httpx
 
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
@@ -22,8 +22,8 @@ class SlackAlerter:
         self,
         message: str,
         severity: Literal["critical", "warning", "info"] = "warning",
-        **metadata
-    ):
+        **metadata: Any
+    ) -> None:
         """
         Envoie une alerte Slack
 
@@ -79,15 +79,15 @@ class SlackAlerter:
             import logging
             logging.error(f"Erreur envoi alerte Slack: {e}")
 
-    async def alert_critical(self, message: str, **metadata):
+    async def alert_critical(self, message: str, **metadata: Any) -> None:
         """Alerte critique (rouge)"""
         await self.send_alert(message, severity="critical", **metadata)
 
-    async def alert_warning(self, message: str, **metadata):
+    async def alert_warning(self, message: str, **metadata: Any) -> None:
         """Alerte warning (orange)"""
         await self.send_alert(message, severity="warning", **metadata)
 
-    async def alert_info(self, message: str, **metadata):
+    async def alert_info(self, message: str, **metadata: Any) -> None:
         """Alerte info (vert)"""
         await self.send_alert(message, severity="info", **metadata)
 
@@ -97,17 +97,17 @@ slack_alerter = SlackAlerter()
 
 
 # Fonctions helpers pour usage direct
-async def alert_critical(message: str, **kwargs):
+async def alert_critical(message: str, **kwargs: Any) -> None:
     """Envoie une alerte critique"""
     await slack_alerter.alert_critical(message, **kwargs)
 
 
-async def alert_warning(message: str, **kwargs):
+async def alert_warning(message: str, **kwargs: Any) -> None:
     """Envoie une alerte warning"""
     await slack_alerter.alert_warning(message, **kwargs)
 
 
-async def alert_info(message: str, **kwargs):
+async def alert_info(message: str, **kwargs: Any) -> None:
     """Envoie une alerte info"""
     await slack_alerter.alert_info(message, **kwargs)
 

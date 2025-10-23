@@ -8,7 +8,7 @@ Architecture:
 - Auto-refresh tokens
 """
 
-from typing import List, Dict, Optional
+from typing import Any, cast
 from datetime import datetime
 import base64
 
@@ -31,7 +31,7 @@ class GmailService:
         self,
         max_results: int = 10,
         user_email: str = "admin"
-    ) -> List[Dict]:
+    ) -> list[dict[str, Any]]:
         """
         Lit les derniers emails Guardian depuis Gmail.
 
@@ -82,7 +82,7 @@ class GmailService:
             logger.error(f"Error reading Guardian emails: {e}")
             return []
 
-    async def _get_email_details(self, service, message_id: str) -> Optional[Dict]:
+    async def _get_email_details(self, service: Any, message_id: str) -> dict[str, Any] | None:
         """
         Récupère les détails d'un email (subject, body, timestamp, from).
 
@@ -126,14 +126,14 @@ class GmailService:
             logger.error(f"Error getting email details for {message_id}: {e}")
             return None
 
-    def _get_header(self, headers: List[Dict], name: str) -> str:
+    def _get_header(self, headers: list[dict[str, Any]], name: str) -> str:
         """Récupère la valeur d'un header."""
         for header in headers:
             if header['name'].lower() == name.lower():
-                return header['value']
+                return cast(str, header['value'])
         return ''
 
-    def _get_email_body(self, payload: Dict) -> str:
+    def _get_email_body(self, payload: dict[str, Any]) -> str:
         """
         Extrait le body d'un email (HTML ou plaintext).
 
@@ -198,7 +198,7 @@ class GmailService:
         subject_keywords: str,
         max_results: int = 10,
         user_email: str = "admin"
-    ) -> List[Dict]:
+    ) -> list[dict[str, Any]]:
         """
         Recherche emails par mots-clés dans le sujet.
 

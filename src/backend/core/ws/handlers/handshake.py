@@ -35,7 +35,7 @@ class HandshakeHandler:
 
     async def send_hello(
         self,
-        connection_manager,
+        connection_manager: Any,
         session_id: str,
         agent_id: str,
         model: str,
@@ -133,7 +133,7 @@ class HandshakeHandler:
 
     async def send_sync_if_needed(
         self,
-        connection_manager,
+        connection_manager: Any,
         session_id: str,
         agent_id: str,
         user_id: str,
@@ -192,7 +192,7 @@ class HandshakeHandler:
 
     async def handle_client_hello(
         self,
-        connection_manager,
+        connection_manager: Any,
         session_id: str,
         payload: Dict[str, Any]
     ) -> None:

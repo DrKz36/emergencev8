@@ -10,7 +10,7 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Optional, Dict, Any
+from typing import Any, Optional, cast
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime
@@ -79,7 +79,7 @@ class EmailService:
             and bool(self.config.smtp_password)
         )
 
-    def _render_template(self, template_name: str, context: Dict[str, Any]) -> str:
+    def _render_template(self, template_name: str, context: dict[str, Any]) -> str:
         """Render a Jinja2 template with given context"""
         try:
             template = self.jinja_env.get_template(template_name)
@@ -229,7 +229,7 @@ class EmailService:
     async def send_guardian_report(
         self,
         to_email: str,
-        reports: Dict[str, Optional[Dict]],
+        reports: dict[str, Optional[dict[str, Any]]],
         base_url: str = "https://emergence-app.ch",
     ) -> bool:
         """
@@ -283,12 +283,12 @@ class EmailService:
             text_body=text_body,
         )
 
-    def _determine_global_status(self, reports: Dict[str, Optional[Dict]]) -> str:
+    def _determine_global_status(self, reports: dict[str, Optional[dict[str, Any]]]) -> str:
         """Determine global status from all reports"""
         # Try global_report first
         global_report = reports.get('global_report.json')
         if global_report and isinstance(global_report, dict):
-            return global_report.get('status', 'UNKNOWN')
+            return cast(str, global_report.get('status', 'UNKNOWN'))
 
         # Otherwise aggregate from individual reports
         has_critical = False
@@ -309,7 +309,7 @@ class EmailService:
         else:
             return 'OK'
 
-    def _prepare_summary(self, reports: Dict[str, Optional[Dict]]) -> Dict[str, int]:
+    def _prepare_summary(self, reports: dict[str, Optional[dict[str, Any]]]) -> dict[str, int]:
         """Prepare summary metrics from all reports"""
         summary = {
             'critical_count': 0,
@@ -326,7 +326,7 @@ class EmailService:
 
         return summary
 
-    def _collect_all_problems(self, reports: Dict[str, Optional[Dict]]) -> list:
+    def _collect_all_problems(self, reports: dict[str, Optional[dict[str, Any]]]) -> list[dict[str, Any]]:
         """Collect all problems/recommendations from reports"""
         all_problems = []
 

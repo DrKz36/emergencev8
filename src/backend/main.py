@@ -7,12 +7,14 @@ import re
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator, Callable, cast
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, RedirectResponse, PlainTextResponse, Response
+from fastapi.routing import APIRouter
 from starlette.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
 
 logger = logging.getLogger("emergence")
 logging.basicConfig(
@@ -45,7 +47,7 @@ _warmup_ready = {
 }
 
 
-def _import_router(dotted: str):
+def _import_router(dotted: str) -> APIRouter | None:
     try:
         module = __import__(dotted, fromlist=["router"])
         return getattr(module, "router", None)
@@ -80,7 +82,7 @@ def _migrations_dir() -> str:
     return str(Path(__file__).resolve().parent / "core" / "migrations")
 
 
-async def _startup(container: ServiceContainer):
+async def _startup(container: ServiceContainer) -> None:
     """
     Startup avec warm-up complet (Cloud Run optimized).
 
@@ -232,12 +234,12 @@ async def _startup(container: ServiceContainer):
 
 # --- Middleware Deny-list (404 early) ---
 class DenyListMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, enabled: bool, patterns: list[str]):
+    def __init__(self, app: ASGIApp, enabled: bool, patterns: list[str]) -> None:
         super().__init__(app)
         self.enabled = enabled
         self.patterns = [(p, re.compile(p, re.IGNORECASE)) for p in patterns]
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         if self.enabled and request.scope.get("type") == "http":
             path = request.url.path
             for raw, rx in self.patterns:
@@ -253,7 +255,7 @@ class DenyListMiddleware(BaseHTTPMiddleware):
                 logger.error(f"No response returned in DenyListMiddleware for {request.url.path}")
                 return PlainTextResponse("Internal server error: no response", status_code=500)
 
-            return response
+            return cast(Response, response)
         except RuntimeError as exc:
             # Gérer le cas où call_next() lève "No response returned"
             if "No response returned" in str(exc):
@@ -453,7 +455,7 @@ def create_app() -> FastAPI:
             )
 
     @app.get("/ready", tags=["Health"], include_in_schema=False)
-    async def ready_check(request: Request):
+    async def ready_check(request: Request) -> dict[str, Any] | JSONResponse:
         """Readiness check - vérifie DB + Chroma disponibles"""
         try:
             # Check DB
@@ -480,7 +482,7 @@ def create_app() -> FastAPI:
         return {"status": "test", "message": "Direct endpoint works!"}
 
     # --- Mount REST routers (prefix si nécessaire) ---
-    def _mount_router(router, desired_prefix: str = ""):
+    def _mount_router(router: APIRouter | None, desired_prefix: str = "") -> None:
         if router is None:
             return
         try:

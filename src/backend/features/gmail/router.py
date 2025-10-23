@@ -8,7 +8,7 @@ Endpoints:
 """
 
 import os
-from typing import Optional
+from typing import Optional, Any
 
 from fastapi import APIRouter, Request, Header, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -63,7 +63,7 @@ def get_base_url(request: Request) -> str:
 
 
 @router.get("/auth/gmail")
-async def gmail_auth_init(request: Request):
+async def gmail_auth_init(request: Request) -> RedirectResponse:
     """
     Initie le flow OAuth2 Gmail.
 
@@ -93,7 +93,7 @@ async def gmail_auth_callback(
     request: Request,
     code: Optional[str] = None,
     error: Optional[str] = None
-):
+) -> JSONResponse:
     """
     Callback OAuth2 Gmail après consentement utilisateur.
 
@@ -158,7 +158,7 @@ async def gmail_auth_callback(
 async def read_gmail_reports(
     x_codex_api_key: str = Header(..., alias="X-Codex-API-Key"),
     max_results: int = 10
-):
+) -> JSONResponse:
     """
     API Codex - Lit les rapports Guardian par email.
 

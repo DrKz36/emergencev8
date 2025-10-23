@@ -72,7 +72,7 @@ class UsageReportUser(BaseModel):
     features_used: list[str]
     requests_count: int
     errors_count: int
-    errors: list[dict]  # Liste des erreurs avec détails
+    errors: list[dict[str, Any]]  # Liste des erreurs avec détails
 
 
 class UsageReport(BaseModel):
@@ -83,7 +83,7 @@ class UsageReport(BaseModel):
     total_requests: int
     total_errors: int
     users: list[UsageReportUser]
-    top_features: list[dict]  # [{"name": "chat_message", "count": 567}, ...]
+    top_features: list[dict[str, Any]]  # [{"name": "chat_message", "count": 567}, ...]
     error_breakdown: dict[str, int]  # {"400": 5, "500": 2}
 
     class Config:

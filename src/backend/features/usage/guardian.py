@@ -34,7 +34,7 @@ class UsageGuardian:
         hours: int = 2,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Génère rapport d'usage sur période donnée
 
@@ -170,7 +170,7 @@ class UsageGuardian:
 
     async def save_report_to_file(
         self,
-        report: dict,
+        report: dict[str, Any],
         output_path: Optional[Path] = None,
     ) -> Path:
         """
@@ -205,7 +205,7 @@ class UsageGuardian:
         self,
         hours: int = 2,
         output_path: Optional[Path] = None,
-    ) -> tuple[dict, Path]:
+    ) -> tuple[dict[str, Any], Path]:
         """
         Génère rapport ET le sauvegarde dans fichier
 

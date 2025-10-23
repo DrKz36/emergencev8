@@ -6,7 +6,7 @@ Permet persistence des rapports entre redémarrages Cloud Run
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Optional, List
+from typing import Any, Optional, cast
 import os
 
 logger = logging.getLogger("emergence.guardian.storage")
@@ -55,7 +55,7 @@ class GuardianStorageService:
         else:
             logger.warning("Cloud Storage not available - using local fallback only")
 
-    def upload_report(self, report_name: str, report_data: Dict) -> bool:
+    def upload_report(self, report_name: str, report_data: dict[str, Any]) -> bool:
         """
         Upload rapport Guardian vers Cloud Storage
 
@@ -108,7 +108,7 @@ class GuardianStorageService:
 
             return False
 
-    def download_report(self, report_name: str) -> Optional[Dict]:
+    def download_report(self, report_name: str) -> Optional[dict[str, Any]]:
         """
         Download rapport Guardian depuis Cloud Storage
 
@@ -133,7 +133,7 @@ class GuardianStorageService:
                 json_data = blob.download_as_text(encoding='utf-8')
                 data = json.loads(json_data)
                 logger.info(f"✅ Downloaded {report_name} from Cloud Storage")
-                return data
+                return cast(dict[str, Any], data)
 
             # Use local fallback
             elif self.use_local_fallback:
@@ -152,7 +152,7 @@ class GuardianStorageService:
 
             return None
 
-    def _load_local_report(self, report_name: str) -> Optional[Dict]:
+    def _load_local_report(self, report_name: str) -> Optional[dict[str, Any]]:
         """Load rapport depuis filesystem local (fallback)"""
         local_path = self.local_reports_dir / report_name
 
@@ -164,12 +164,12 @@ class GuardianStorageService:
             with open(local_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             logger.info(f"✅ Loaded {report_name} from local filesystem")
-            return data
+            return cast(dict[str, Any], data)
         except Exception as e:
             logger.error(f"Error loading local report {report_name}: {e}")
             return None
 
-    def list_reports(self) -> List[str]:
+    def list_reports(self) -> list[str]:
         """
         Liste tous les rapports disponibles
 

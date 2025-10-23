@@ -9,7 +9,7 @@ import json
 import re
 import hashlib
 import unicodedata
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 from datetime import datetime, timezone
 
 from math import isfinite, floor, ceil
@@ -442,7 +442,7 @@ class MemoryGardener:
         min_value: Optional[float] = None,
         max_value: Optional[float] = None,
         as_int: bool = False,
-    ):
+    ) -> int | float:
         raw = os.getenv(env_name)
         if raw is None or str(raw).strip() == "":
             return int(default) if as_int else float(default)
@@ -494,7 +494,7 @@ class MemoryGardener:
         filtered: List[Dict[str, Any]] = []
         for item in history:
             if not isinstance(item, dict):
-                continue
+                continue  # type: ignore[unreachable]
             role = str(item.get("role") or "").strip().lower()
             if role == "assistant":
                 agent_value = MemoryGardener._normalize_agent_id(item.get("agent_id") or item.get("agent"))
@@ -1487,9 +1487,9 @@ class MemoryGardener:
                 else session_data
             )
             if isinstance(parsed, list):
-                return parsed
+                return cast(list[dict[str, Any]], parsed)
             if isinstance(parsed, dict) and "history" in parsed:
-                return parsed["history"]
+                return cast(list[dict[str, Any]], parsed["history"])
         except Exception as e:
             logger.warning(f"Parsing session_data KO: {e}")
         return []
@@ -1580,7 +1580,7 @@ class MemoryGardener:
 
     async def _record_concepts_in_sql(
         self, concepts: List[str], session: Dict[str, Any], user_id: Optional[str]
-    ):
+    ) -> None:
         now = _now_iso()
         for concept_text in concepts:
             concept_id = uuid.uuid4().hex
@@ -1610,7 +1610,7 @@ class MemoryGardener:
         facts: List[Dict[str, Any]],
         session: Dict[str, Any],
         user_id: Optional[str],
-    ):
+    ) -> None:
         now = _now_iso()
         for fact in facts:
             rec = {
@@ -1638,7 +1638,7 @@ class MemoryGardener:
 
     async def _vectorize_concepts(
         self, concepts: List[str], session: Dict[str, Any], user_id: Optional[str], agent_id: Optional[str] = None
-    ):
+    ) -> None:
         payload = []
         now_iso = _now_iso()
 
@@ -1701,7 +1701,7 @@ class MemoryGardener:
         session: Dict[str, Any],
         user_id: Optional[str],
         agent_id: Optional[str] = None,
-    ):
+    ) -> None:
         payload = []
         now_iso = _now_iso()
         for f in facts:
@@ -1755,7 +1755,7 @@ class MemoryGardener:
                 )
                 raise
 
-    async def _mark_sessions_as_consolidated(self, session_ids: List[str]):
+    async def _mark_sessions_as_consolidated(self, session_ids: List[str]) -> None:
         if not session_ids:
             return
         now = _now_iso()
@@ -1866,7 +1866,7 @@ class MemoryGardener:
         for idx, vec_id in enumerate(ids):
             meta = metadatas[idx] if idx < len(metadatas) else {}
             if not isinstance(meta, dict):
-                meta = {}
+                meta = {}  # type: ignore[unreachable]
 
             # 🆕 Phase 1.3: Skip decay pour éléments protégés
             is_protected = meta.get("protected", False)

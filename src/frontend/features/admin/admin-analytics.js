@@ -7,11 +7,13 @@
 
 import { AdminIcons, getIcon } from './admin-icons.js';
 
+const CHART_JS_CDN_URL = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.js';
+
 let chartModulePromise;
 
 async function ensureChart() {
     if (!chartModulePromise) {
-        chartModulePromise = import('chart.js').then((module) => {
+        chartModulePromise = import(/* @vite-ignore */ CHART_JS_CDN_URL).then((module) => {
             const Chart = module.Chart ?? module.default;
             if (!Chart) {
                 throw new Error('[AdminAnalytics] Chart.js module unavailable');

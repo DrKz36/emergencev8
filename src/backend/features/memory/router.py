@@ -3,7 +3,7 @@
 import os
 import logging
 import inspect
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Request, Body, Query
 
@@ -20,7 +20,7 @@ _DEFAULT_KNOWLEDGE_NAME = "emergence_knowledge"
 
 
 
-def _supports_kwarg(func, name: str) -> bool:
+def _supports_kwarg(func: Any, name: str) -> bool:
     try:
         signature = inspect.signature(func)
     except (ValueError, TypeError):
@@ -29,7 +29,7 @@ def _supports_kwarg(func, name: str) -> bool:
         if param.name == name and param.kind in (inspect.Parameter.KEYWORD_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
             return True
     return False
-def _get_container(request: Request):
+def _get_container(request: Request) -> Any:
     container = getattr(request.app.state, "service_container", None)
     if container is None:
         raise HTTPException(status_code=503, detail="Service container indisponible.")
@@ -46,20 +46,20 @@ def _get_gardener_from_request(request: Request) -> MemoryGardener:
 
 
 def _normalize_history_for_analysis(
-    history: Optional[List[Any]],
-) -> List[Dict[str, Any]]:
-    normalized: List[Dict[str, Any]] = []
+    history: Optional[list[Any]],
+) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
     for item in history or []:
         if isinstance(item, dict):
             normalized.append(item)
             continue
         try:
             if hasattr(item, "model_dump"):
-                normalized.append(item.model_dump(mode="json"))  # type: ignore[attr-defined]
+                normalized.append(item.model_dump(mode="json"))
             elif hasattr(item, "dict"):
-                normalized.append(item.dict())  # type: ignore[attr-defined]
+                normalized.append(item.dict())
             else:
-                normalized.append(dict(item))  # type: ignore[arg-type]
+                normalized.append(dict(item))
         except Exception:
             normalized.append({})
     return normalized
@@ -111,13 +111,13 @@ def _resolve_session_id(request: Request, provided: Optional[str]) -> str:
 
 @router.post(
     "/sync-stm",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Hydrate le SessionManager avec l'historique persistant.",
     description="Recharge la STM depuis la base pour un couple session/thread et renvoie les messages normalisÃ©s.",
 )
 async def sync_short_term_memory(
-    request: Request, data: Dict[str, Any] = Body(default={})
-) -> Dict[str, Any]:
+    request: Request, data: dict[str, Any] = Body(default={})
+) -> dict[str, Any]:
     container = _get_container(request)
     session_manager = container.session_manager()
     try:
@@ -172,7 +172,7 @@ async def sync_short_term_memory(
         if metadata.get(k)
     }
 
-    response: Dict[str, Any] = {
+    response: dict[str, Any] = {
         "status": "ok",
         "session_id": session_id,
         "thread_id": resolved_thread_id,
@@ -189,7 +189,7 @@ async def sync_short_term_memory(
     return response
 
 
-async def _purge_stm(db_manager, session_id: str) -> bool:
+async def _purge_stm(db_manager: Any, session_id: str) -> bool:
     try:
         await db_manager.execute(
             """
@@ -211,7 +211,7 @@ async def _purge_stm(db_manager, session_id: str) -> bool:
         return False
 
 
-def _count_ids_from_get_result(got: Dict[str, Any]) -> int:
+def _count_ids_from_get_result(got: dict[str, Any]) -> int:
     ids = got.get("ids") or []
     if not isinstance(ids, list):
         return 0
@@ -221,13 +221,13 @@ def _count_ids_from_get_result(got: Dict[str, Any]) -> int:
 
 
 
-def _session_vector_clause(session_id: str) -> Dict[str, Any]:
+def _session_vector_clause(session_id: str) -> dict[str, Any]:
     return {"$or": [{"session_id": session_id}, {"source_session_id": session_id}]}
 
 def _build_where_filter(
     session_id: Optional[str], agent_id: Optional[str], user_id: Optional[str]
-) -> Dict[str, Any]:
-    clauses: List[Dict[str, Any]] = []
+) -> dict[str, Any]:
+    clauses: list[dict[str, Any]] = []
     if session_id:
         clauses.append(_session_vector_clause(session_id))
     if agent_id:
@@ -241,7 +241,7 @@ def _build_where_filter(
     return clauses[0] if len(clauses) == 1 else {"$and": clauses}
 
 
-def _purge_ltm(vector_service, where_filter: Dict[str, Any]) -> Tuple[int, int]:
+def _purge_ltm(vector_service: Any, where_filter: dict[str, Any]) -> tuple[int, int]:
     try:
         collection_name = os.getenv(_KNOWLEDGE_COLLECTION_ENV, _DEFAULT_KNOWLEDGE_NAME)
         col = vector_service.get_or_create_collection(collection_name)
@@ -267,13 +267,13 @@ def _purge_ltm(vector_service, where_filter: Dict[str, Any]) -> Tuple[int, int]:
 
 @router.post(
     "/analyze",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Analyse sÃ©mantique d'une session (STM)",
     description="GÃ©nÃ¨re ou rÃ©gÃ©nÃ¨re le rÃ©sumÃ©/concepts d'une session en utilisant le MemoryAnalyzer.",
 )
 async def analyze_session_endpoint(
-    request: Request, payload: Dict[str, Any] = Body(default={})
-) -> Dict[str, Any]:
+    request: Request, payload: dict[str, Any] = Body(default={})
+) -> dict[str, Any]:
     container = _get_container(request)
     analyzer = container.memory_analyzer()
     session_manager = container.session_manager()
@@ -341,7 +341,7 @@ async def analyze_session_endpoint(
     has_summary = bool((analysis or {}).get("summary")) or bool(
         updated_meta.get("summary")
     )
-    response: Dict[str, Any] = {
+    response: dict[str, Any] = {
         "status": "completed" if has_summary else "skipped",
         "session_id": session_id,
         "force": force,
@@ -355,13 +355,13 @@ async def analyze_session_endpoint(
 
 @router.post(
     "/tend-garden",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="DÃ©clenche la consolidation de la mÃ©moire (gardener).",
     description="Lance le 'MemoryGardener' pour analyser/consolider les sessions rÃ©centes ou un thread prÃ©cis si 'thread_id' est fourni.",
 )
 async def tend_garden_endpoint(
-    request: Request, data: Dict[str, Any] = Body(default={})
-) -> Dict[str, Any]:
+    request: Request, data: dict[str, Any] = Body(default={})
+) -> dict[str, Any]:
     logger.info("RequÃªte reÃ§ue sur /api/memory/tend-garden.")
 
     try:
@@ -416,7 +416,7 @@ async def tend_garden_endpoint(
         }
         if _supports_kwarg(gardener.tend_the_garden, 'user_id'):
             call_kwargs['user_id'] = user_id
-        report = await gardener.tend_the_garden(**call_kwargs)  # type: ignore[arg-type]
+        report = await gardener.tend_the_garden(**call_kwargs)
 
         # Invalider cache préférences après jardinage (Bug #5 P1)
         memory_ctx = getattr(request.app.state, "memory_context", None)
@@ -437,13 +437,13 @@ async def tend_garden_endpoint(
 
 @router.get(
     "/tend-garden",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Retourne l'état de consolidation mémoire.",
     description="Renvoie l'historique des consolidations (STM/LTM) et des métriques associées.",
 )
 async def tend_garden_get(
     request: Request, limit: Optional[int] = Query(default=None, ge=1, le=50)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     user_id = await shared_dependencies.get_user_id(request)
     use_fallback = False
     try:
@@ -459,7 +459,7 @@ async def tend_garden_get(
         call_kwargs: dict[str, Any] = {}
         if _supports_kwarg(gardener.tend_the_garden, 'user_id'):
             call_kwargs['user_id'] = user_id
-        report = await gardener.tend_the_garden(**call_kwargs)  # type: ignore[arg-type]
+        report = await gardener.tend_the_garden(**call_kwargs)
         return {
             "status": report.get("status", "success"),
             "summaries": [],
@@ -480,7 +480,7 @@ async def tend_garden_get(
     if limit is not None and limit >= 1:
         rows = rows[: int(limit)]
 
-    summaries: List[Dict[str, Any]] = []
+    summaries: list[dict[str, Any]] = []
     for row in rows:
         summaries.append(
             {
@@ -518,7 +518,7 @@ async def tend_garden_get(
 
 @router.delete(
     "/clear",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Efface la mÃ©moire de la session (STM+LTM).",
     description="Supprime le rÃ©sumÃ© et les entitÃ©s extraites de la session (STM) et purge les embeddings associÃ©s (LTM).",
 )
@@ -526,7 +526,7 @@ async def clear_memory_delete(
     request: Request,
     session_id: Optional[str] = Query(default=None),
     agent_id: Optional[str] = Query(default=None),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     requester_id = await shared_dependencies.get_user_id(request)
     container = _get_container(request)
     sid = _resolve_session_id(request, session_id)
@@ -569,13 +569,13 @@ async def clear_memory_delete(
 
 @router.post(
     "/clear",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Efface la mÃ©moire de la session (STM+LTM) â€” compat POST.",
     description="Ã‰quivalent DELETE avec body JSON.",
 )
 async def clear_memory_post(
-    request: Request, data: Dict[str, Any] = Body(default={})
-) -> Dict[str, Any]:
+    request: Request, data: dict[str, Any] = Body(default={})
+) -> dict[str, Any]:
     session_id = (data or {}).get("session_id")
     agent_id = (data or {}).get("agent_id")
     requester_id = await shared_dependencies.get_user_id(request)
@@ -629,7 +629,7 @@ async def search_memory(
     limit: int = Query(10, ge=1, le=50, description="Nombre max de résultats"),
     start_date: Optional[str] = Query(None, description="Date de début (ISO 8601)"),
     end_date: Optional[str] = Query(None, description="Date de fin (ISO 8601)"),
-):
+) -> dict[str, Any]:
     """
     Recherche temporelle dans l'historique des messages.
 
@@ -704,7 +704,7 @@ async def unified_memory_search(
     include_archived: bool = Query(True, description="Inclure threads archivés"),
     start_date: Optional[str] = Query(None, description="Date de début (ISO 8601)"),
     end_date: Optional[str] = Query(None, description="Date de fin (ISO 8601)"),
-):
+) -> dict[str, Any]:
     """
     Recherche unifiée dans STM + LTM + threads + messages archivés.
 
@@ -856,7 +856,7 @@ async def search_concepts(
     request: Request,
     q: str = Query(..., min_length=3, description="Search query for concepts"),
     limit: int = Query(10, ge=1, le=50, description="Max number of results"),
-):
+) -> dict[str, Any]:
     """
     Search for concepts in user's memory history.
 
@@ -903,7 +903,7 @@ async def search_concepts(
     }
 
 
-async def _thread_already_consolidated(vector_service, thread_id: str) -> bool:
+async def _thread_already_consolidated(vector_service: Any, thread_id: str) -> bool:
     """
     Vérifie si thread déjà consolidé en cherchant concepts dans ChromaDB.
 
@@ -935,13 +935,13 @@ async def _thread_already_consolidated(vector_service, thread_id: str) -> bool:
 
 @router.get(
     "/user/stats",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Get user's memory statistics and top items",
     description="Returns user's memory stats: preferences, concepts, sessions analyzed, etc.",
 )
 async def get_user_memory_stats(
     request: Request
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get user's memory statistics and top items.
 
@@ -1122,7 +1122,7 @@ async def get_user_memory_stats(
 
 @router.get(
     "/concepts",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="List all concepts with pagination",
     description="Retrieve user's concepts with pagination, sorting and filtering",
 )
@@ -1131,7 +1131,7 @@ async def get_concepts(
     limit: int = Query(20, ge=1, le=100, description="Number of concepts per page"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     sort: str = Query("recent", regex="^(recent|frequent|alphabetical)$", description="Sort order"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get paginated list of user's concepts."""
     try:
         user_id = await shared_dependencies.get_user_id(request)
@@ -1200,14 +1200,14 @@ async def get_concepts(
 
 @router.get(
     "/concepts/{concept_id}",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Get concept details by ID",
     description="Retrieve full details for a specific concept",
 )
 async def get_concept(
     request: Request,
     concept_id: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get detailed information about a specific concept."""
     try:
         user_id = await shared_dependencies.get_user_id(request)
@@ -1258,15 +1258,15 @@ async def get_concept(
 
 @router.patch(
     "/concepts/{concept_id}",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Update concept metadata",
     description="Update description, tags, or relations for a concept",
 )
 async def update_concept(
     request: Request,
     concept_id: str,
-    data: Dict[str, Any] = Body(...),
-) -> Dict[str, Any]:
+    data: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
     """Update concept metadata (description, tags, relations)."""
     try:
         user_id = await shared_dependencies.get_user_id(request)
@@ -1324,14 +1324,14 @@ async def update_concept(
 
 @router.delete(
     "/concepts/{concept_id}",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Delete a concept",
     description="Permanently delete a concept from memory",
 )
 async def delete_concept(
     request: Request,
     concept_id: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Delete a concept from user's memory."""
     try:
         user_id = await shared_dependencies.get_user_id(request)
@@ -1377,14 +1377,14 @@ async def delete_concept(
 
 @router.post(
     "/concepts/merge",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Merge multiple concepts into one",
     description="Combine 2+ concepts into a single concept, preserving all metadata and history",
 )
 async def merge_concepts(
     request: Request,
-    data: Dict[str, Any] = Body(...),
-) -> Dict[str, Any]:
+    data: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
     """
     Merge multiple concepts into one.
 
@@ -1510,14 +1510,14 @@ async def merge_concepts(
 
 @router.post(
     "/concepts/split",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Split a concept into multiple concepts",
     description="Divide a concept into multiple separate concepts with distinct meanings",
 )
 async def split_concept(
     request: Request,
-    data: Dict[str, Any] = Body(...),
-) -> Dict[str, Any]:
+    data: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
     """
     Split a concept into multiple new concepts.
 
@@ -1629,14 +1629,14 @@ async def split_concept(
 
 @router.post(
     "/concepts/bulk-delete",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Delete multiple concepts at once",
     description="Bulk delete operation for cleaning up multiple concepts",
 )
 async def bulk_delete_concepts(
     request: Request,
-    data: Dict[str, Any] = Body(...),
-) -> Dict[str, Any]:
+    data: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
     """
     Delete multiple concepts in one operation.
 
@@ -1695,14 +1695,14 @@ async def bulk_delete_concepts(
 
 @router.post(
     "/concepts/bulk-tag",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Add tags to multiple concepts at once",
     description="Bulk tagging operation for categorizing multiple concepts",
 )
 async def bulk_tag_concepts(
     request: Request,
-    data: Dict[str, Any] = Body(...),
-) -> Dict[str, Any]:
+    data: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
     """
     Add tags to multiple concepts in one operation.
 
@@ -1785,13 +1785,13 @@ async def bulk_tag_concepts(
 
 @router.get(
     "/concepts/export",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Export all user concepts",
     description="Export all concepts in JSON format for backup or transfer",
 )
 async def export_concepts(
     request: Request,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Export all user concepts."""
     try:
         user_id = await shared_dependencies.get_user_id(request)
@@ -1841,14 +1841,14 @@ async def export_concepts(
 
 @router.post(
     "/concepts/import",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Import concepts from backup",
     description="Import concepts from JSON export (merge with existing)",
 )
 async def import_concepts(
     request: Request,
-    data: Dict[str, Any] = Body(...),
-) -> Dict[str, Any]:
+    data: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
     """
     Import concepts from export file.
 
@@ -1934,14 +1934,14 @@ async def import_concepts(
 
 @router.get(
     "/concepts/graph",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Get concept graph data for visualization",
     description="Returns concepts and their relationships for graph visualization",
 )
 async def get_concepts_graph(
     request: Request,
     limit: int = Query(100, ge=1, le=500, description="Max concepts to include"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get concept graph data for visualization.
 
@@ -2023,14 +2023,14 @@ async def get_concepts_graph(
 
 @router.post(
     "/consolidate-archived",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Consolide threads archivés dans LTM (batch)",
     description="Consolide tous threads archivés non encore traités. Utile pour migration ou rattrapage batch.",
 )
 async def consolidate_archived_threads(
     request: Request,
-    data: Dict[str, Any] = Body(default={})
-) -> Dict[str, Any]:
+    data: dict[str, Any] = Body(default={})
+) -> dict[str, Any]:
     """
     Consolide tous les threads archivés non encore traités.
     Utile pour migration ou rattrapage batch.
@@ -2124,13 +2124,13 @@ async def consolidate_archived_threads(
 # Sprint 5 - Dashboard Unifié
 @router.get(
     "/dashboard",
-    response_model=Dict[str, Any],
+    response_model=dict[str, Any],
     summary="Get unified memory dashboard",
     description="Returns complete memory overview: stats, preferences, concepts, archived conversations",
 )
 async def get_memory_dashboard(
     request: Request
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     🆕 Sprint 5: Dashboard mémoire unifié.
 

@@ -5,6 +5,7 @@ import logging
 from uuid import uuid4
 from datetime import datetime, timezone
 from json import JSONDecodeError
+from typing import Any
 
 from fastapi import APIRouter, WebSocket, Depends, HTTPException
 from dependency_injector.wiring import inject, Provide
@@ -40,7 +41,7 @@ def _norm_list(payload, snake_key, camel_key):
     return val
 
 
-def _norm_doc_ids(payload, snake_key="doc_ids", camel_key="docIds") -> list[str]:
+def _norm_doc_ids(payload: dict[str, Any], snake_key: str = "doc_ids", camel_key: str = "docIds") -> list[str]:
     raw = _norm_list(payload, snake_key, camel_key)
     if raw is None:
         return []
@@ -78,7 +79,7 @@ def _norm_type(t: str) -> str:
     return t.replace(".", ":", 1) if t.startswith("debate.") else t
 
 
-def _history_has_opinion_request(history, *, target_agent: str, source_agent: str | None, message_id: str) -> bool:
+def _history_has_opinion_request(history: list[Any], *, target_agent: str, source_agent: str | None, message_id: str) -> bool:
     target = (target_agent or '').strip().lower()
     source = (source_agent or '').strip().lower() if source_agent else ''
     message = (message_id or '').strip()
@@ -202,7 +203,7 @@ async def _ws_core(
     connection_manager: ConnectionManager,
     chat_service: ChatService,
     debate_service: DebateService,
-):
+) -> None:
     """Boucle WS commune. Les deps sont dÃ©jÃ  rÃ©solues par les endpoints."""
     thread_id = None
     try:
@@ -596,7 +597,7 @@ async def websocket_with_session(
     ),
     chat_service: ChatService = Depends(Provide[ServiceContainer.chat_service]),
     debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service]),
-):
+) -> None:
     await _ws_core(
         websocket=websocket,
         session_id=session_id,
@@ -615,7 +616,7 @@ async def websocket_without_session(
     ),
     chat_service: ChatService = Depends(Provide[ServiceContainer.chat_service]),
     debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service]),
-):
+) -> None:
     await _ws_core(
         websocket=websocket,
         session_id=uuid4().hex,

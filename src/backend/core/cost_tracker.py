@@ -54,11 +54,11 @@ if METRICS_ENABLED:
     )
 else:
     # Stubs si métriques désactivées
-    llm_requests_total = None
-    llm_tokens_prompt_total = None
-    llm_tokens_completion_total = None
-    llm_cost_usd_total = None
-    llm_latency_seconds = None
+    llm_requests_total = None  # type: ignore[assignment]
+    llm_tokens_prompt_total = None  # type: ignore[assignment]
+    llm_tokens_completion_total = None  # type: ignore[assignment]
+    llm_cost_usd_total = None  # type: ignore[assignment]
+    llm_latency_seconds = None  # type: ignore[assignment]
 
 
 class CostTracker:
@@ -105,7 +105,7 @@ class CostTracker:
         session_id: Optional[str] = None,
         user_id: Optional[str] = None,
         latency_seconds: Optional[float] = None,
-    ):
+    ) -> None:
         """
         Enregistre le coût d'une opération via le module requêtes.
         V13.2: Incrémente aussi les métriques Prometheus (requests, tokens, cost).

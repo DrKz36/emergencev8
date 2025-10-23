@@ -76,7 +76,7 @@ class MemoryContextBuilder:
         db_manager = getattr(session_manager, 'db_manager', None)
 
         if db_manager:
-            self.unified_retriever = UnifiedMemoryRetriever(
+            self.unified_retriever: Optional[UnifiedMemoryRetriever] = UnifiedMemoryRetriever(
                 session_manager=session_manager,
                 vector_service=vector_service,
                 db_manager=db_manager,
@@ -274,7 +274,7 @@ class MemoryContextBuilder:
             logger.warning(f"build_memory_context: {e}")
             return ""
 
-    def _fetch_active_preferences_cached(self, collection, user_id: str) -> str:
+    def _fetch_active_preferences_cached(self, collection: Any, user_id: str) -> str:
         """
         Fetch active preferences with in-memory cache (TTL=5min).
 
@@ -309,7 +309,7 @@ class MemoryContextBuilder:
 
         return prefs
 
-    def _fetch_active_preferences(self, collection, user_id: str) -> str:
+    def _fetch_active_preferences(self, collection: Any, user_id: str) -> str:
         """Fetch active preferences with high confidence (>0.6) for immediate injection."""
         try:
             where = {
@@ -519,7 +519,7 @@ class MemoryContextBuilder:
         - "" (empty if no temporal data)
         """
         if not isinstance(metadata, dict):
-            return ""
+            return ""  # type: ignore[unreachable]
 
         first_mentioned = metadata.get("first_mentioned_at") or metadata.get("created_at")
         mention_count = metadata.get("mention_count", 1)

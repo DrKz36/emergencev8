@@ -10,7 +10,7 @@
 # Date création: 2025-10-21
 
 import logging
-from typing import Optional
+from typing import Any, Optional, cast
 
 logger = logging.getLogger(__name__)
 
@@ -18,18 +18,18 @@ logger = logging.getLogger(__name__)
 try:
     from prometheus_client import Counter, Histogram, Gauge, REGISTRY
 
-    def _get_or_create_counter(name: str, doc: str, labels: list) -> Counter:
+    def _get_or_create_counter(name: str, doc: str, labels: list[str]) -> Counter:
         try:
             return Counter(name, doc, labels, registry=REGISTRY)
         except ValueError:
             existing = getattr(REGISTRY, "_names_to_collectors", {}).get(name)
             if existing is None:
                 raise
-            return existing
+            return cast(Counter, existing)
 
-    def _get_or_create_histogram(name: str, doc: str, labels: list, buckets: Optional[tuple] = None) -> Histogram:
+    def _get_or_create_histogram(name: str, doc: str, labels: list[str], buckets: Optional[tuple[float, ...]] = None) -> Histogram:
         try:
-            kwargs: dict = {"registry": REGISTRY}
+            kwargs: dict[str, Any] = {"registry": REGISTRY}
             if buckets:
                 kwargs["buckets"] = buckets
             return Histogram(name, doc, labels, **kwargs)
@@ -37,9 +37,9 @@ try:
             existing = getattr(REGISTRY, "_names_to_collectors", {}).get(name)
             if existing is None:
                 raise
-            return existing
+            return cast(Histogram, existing)
 
-    def _get_or_create_gauge(name: str, doc: str, labels: Optional[list] = None) -> Gauge:
+    def _get_or_create_gauge(name: str, doc: str, labels: Optional[list[str]] = None) -> Gauge:
         try:
             if labels:
                 return Gauge(name, doc, labels, registry=REGISTRY)
@@ -49,7 +49,7 @@ try:
             existing = getattr(REGISTRY, "_names_to_collectors", {}).get(name)
             if existing is None:
                 raise
-            return existing
+            return cast(Gauge, existing)
 
     # Métriques latence scoring
     WEIGHTED_SCORING_DURATION = _get_or_create_histogram(

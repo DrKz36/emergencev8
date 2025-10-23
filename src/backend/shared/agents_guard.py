@@ -14,7 +14,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Awaitable
+from typing import Any, Callable, Dict, List, Optional, TypeVar, Awaitable, cast
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -218,7 +218,7 @@ class BudgetGuard:
 
         return True
 
-    def consume(self, agent_id: str, actual_tokens: int):
+    def consume(self, agent_id: str, actual_tokens: int) -> None:
         """
         Enregistre la consommation réelle de tokens.
 
@@ -324,14 +324,14 @@ class ToolCircuitBreaker:
     def _calculate_backoff(self, failures: int) -> float:
         """Calcule le délai de backoff exponentiel"""
         delay = self.backoff_base * (2 ** failures)
-        return min(delay, self.backoff_max)
+        return cast(float, min(delay, self.backoff_max))
 
     async def execute(
         self,
         tool_name: str,
         func: Callable[..., Awaitable[T]],
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> T:
         """
         Exécute une fonction tool avec timeout et circuit breaker.

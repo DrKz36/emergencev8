@@ -2,7 +2,7 @@
 # V3.2 - Prefix retiré (évite double /api/dashboard) + safe resolver
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional, cast
 
 from backend.features.dashboard.service import DashboardService
 from backend.features.dashboard.timeline_service import TimelineService
@@ -17,7 +17,7 @@ def _resolve_get_dashboard_service() -> Callable[..., Awaitable[DashboardService
     try:
         candidate = getattr(deps, "get_dashboard_service")
         if callable(candidate):
-            return candidate  # type: ignore[return-value]
+            return cast(Callable[..., Awaitable[DashboardService]], candidate)
     except Exception:
         logger.debug(
             "get_dashboard_service not available from dependencies", exc_info=True
@@ -33,7 +33,7 @@ def _resolve_get_timeline_service() -> Callable[..., Awaitable[TimelineService]]
     try:
         candidate = getattr(deps, "get_timeline_service")
         if callable(candidate):
-            return candidate  # type: ignore[return-value]
+            return cast(Callable[..., Awaitable[TimelineService]], candidate)
     except Exception:
         logger.debug(
             "get_timeline_service not available from dependencies", exc_info=True

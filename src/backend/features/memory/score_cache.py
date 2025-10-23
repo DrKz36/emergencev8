@@ -14,7 +14,7 @@
 
 import logging
 import hashlib
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, cast
 from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ try:
             existing = getattr(REGISTRY, "_names_to_collectors", {}).get(name)
             if existing is None:
                 raise
-            return existing
+            return cast(Counter, existing)
 
     def _get_cache_gauge(name: str, doc: str) -> Gauge:
         try:
@@ -39,7 +39,7 @@ try:
             existing = getattr(REGISTRY, "_names_to_collectors", {}).get(name)
             if existing is None:
                 raise
-            return existing
+            return cast(Gauge, existing)
 
     SCORE_CACHE_OPS = _get_cache_counter(
         'score_cache_operations_total',
@@ -83,7 +83,7 @@ class ScoreCache:
         self.ttl_seconds = ttl_seconds
         self._cache: Dict[str, Dict[str, Any]] = {}
         # Map entry_id -> set de clés de cache pour invalidation rapide
-        self._entry_to_keys: Dict[str, set] = {}
+        self._entry_to_keys: Dict[str, set[str]] = {}
         logger.info(
             f"[ScoreCache] Initialisé (max_size={max_size}, ttl={ttl_seconds}s)"
         )
@@ -130,7 +130,7 @@ class ScoreCache:
             SCORE_CACHE_OPS.labels(operation='hit').inc()
 
         logger.debug(f"[ScoreCache] Cache hit pour {cache_key[:16]}...")
-        return cached["score"]
+        return cast(float | None, cached["score"])
 
     def set(
         self,

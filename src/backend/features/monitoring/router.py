@@ -4,7 +4,7 @@ Router pour les endpoints de monitoring et healthcheck
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
-from typing import Dict, Any, Union
+from typing import Any, cast
 import psutil
 import platform
 import logging
@@ -35,7 +35,7 @@ router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
 
 
 @router.get("/health/ready")
-async def health_ready(request: Request) -> Dict[str, Any]:
+async def health_ready(request: Request) -> JSONResponse:
     """
     V13.2 - Readiness probe enrichi avec diagnostics vector store.
 
@@ -111,7 +111,7 @@ async def health_ready(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/health/detailed")
-async def detailed_health_check() -> Dict[str, Any]:
+async def detailed_health_check() -> dict[str, Any]:
     """
     Healthcheck détaillé avec métriques système
     """
@@ -141,7 +141,7 @@ async def detailed_health_check() -> Dict[str, Any]:
 
 
 @router.get("/metrics")
-async def get_metrics(_: dict = Depends(verify_admin)) -> Dict[str, Any]:
+async def get_metrics(_: dict[str, Any] = Depends(verify_admin)) -> dict[str, Any]:
     """
     Récupère les métriques de l'application
     Nécessite authentification admin
@@ -155,16 +155,16 @@ async def get_metrics(_: dict = Depends(verify_admin)) -> Dict[str, Any]:
 
 
 @router.get("/metrics/export")
-async def export_metrics(_: dict = Depends(verify_admin)) -> Dict[str, Any]:
+async def export_metrics(_: dict[str, Any] = Depends(verify_admin)) -> dict[str, Any]:
     """
     Exporte les métriques en JSON
     Nécessite authentification admin
     """
-    return export_metrics_json()
+    return cast(dict[str, Any], export_metrics_json())
 
 
 @router.get("/metrics/endpoints")
-async def get_endpoint_metrics(_: dict = Depends(verify_admin)) -> Dict[str, Any]:
+async def get_endpoint_metrics(_: dict[str, Any] = Depends(verify_admin)) -> dict[str, Any]:
     """
     Métriques détaillées par endpoint
     """
@@ -175,7 +175,7 @@ async def get_endpoint_metrics(_: dict = Depends(verify_admin)) -> Dict[str, Any
 
 
 @router.get("/security/alerts")
-async def get_security_alerts(_: dict = Depends(verify_admin)) -> Dict[str, Any]:
+async def get_security_alerts(_: dict[str, Any] = Depends(verify_admin)) -> dict[str, Any]:
     """
     Récupère les alertes de sécurité
     """
@@ -191,7 +191,7 @@ async def get_security_alerts(_: dict = Depends(verify_admin)) -> Dict[str, Any]
 
 
 @router.get("/performance/slow-queries")
-async def get_slow_queries(_: dict = Depends(verify_admin)) -> Dict[str, Any]:
+async def get_slow_queries(_: dict[str, Any] = Depends(verify_admin)) -> dict[str, Any]:
     """
     Liste des requêtes lentes
     """
@@ -203,7 +203,7 @@ async def get_slow_queries(_: dict = Depends(verify_admin)) -> Dict[str, Any]:
 
 
 @router.get("/performance/ai-stats")
-async def get_ai_stats(_: dict = Depends(verify_admin)) -> Dict[str, Any]:
+async def get_ai_stats(_: dict[str, Any] = Depends(verify_admin)) -> dict[str, Any]:
     """
     Statistiques des temps de réponse IA
     """
@@ -228,7 +228,7 @@ async def get_ai_stats(_: dict = Depends(verify_admin)) -> Dict[str, Any]:
 
 
 @router.post("/alerts/test")
-async def test_alert(_: dict = Depends(verify_admin)) -> Dict[str, str]:
+async def test_alert(_: dict[str, Any] = Depends(verify_admin)) -> dict[str, str]:
     """
     Endpoint de test pour vérifier le système d'alertes
     """
@@ -248,7 +248,7 @@ async def test_alert(_: dict = Depends(verify_admin)) -> Dict[str, str]:
 
 
 @router.delete("/metrics/reset")
-async def reset_metrics(_: dict = Depends(verify_admin)) -> Dict[str, str]:
+async def reset_metrics(_: dict[str, Any] = Depends(verify_admin)) -> dict[str, str]:
     """
     Reset toutes les métriques (utile pour tests)
     """
@@ -273,7 +273,7 @@ async def reset_metrics(_: dict = Depends(verify_admin)) -> Dict[str, str]:
 # 🏥 HEALTH CHECKS AVANCÉS (P1.5 - Émergence V8)
 # ============================================================
 
-async def _check_database(request: Request) -> Dict[str, Any]:
+async def _check_database(request: Request) -> dict[str, Any]:
     """Vérifie la connexion à la base de données"""
     try:
         container = getattr(request.app.state, "service_container", None)
@@ -296,7 +296,7 @@ async def _check_database(request: Request) -> Dict[str, Any]:
         return {"status": "down", "error": str(e)}
 
 
-async def _check_vector_service(request: Request) -> Dict[str, Any]:
+async def _check_vector_service(request: Request) -> dict[str, Any]:
     """Vérifie le VectorService (Chroma/Qdrant)"""
     try:
         container = getattr(request.app.state, "service_container", None)
@@ -329,7 +329,7 @@ async def _check_vector_service(request: Request) -> Dict[str, Any]:
         return {"status": "down", "error": str(e)}
 
 
-async def _check_llm_providers(request: Request) -> Dict[str, Any]:
+async def _check_llm_providers(request: Request) -> dict[str, Any]:
     """Vérifie les clients LLM (OpenAI, Anthropic, Google)"""
     try:
         container = getattr(request.app.state, "service_container", None)
@@ -382,7 +382,7 @@ async def _check_llm_providers(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/health/liveness")
-async def liveness_probe() -> Dict[str, Any]:
+async def liveness_probe() -> dict[str, Any]:
     """
     Liveness probe - simple check that the process is alive.
     Legacy endpoint for backward compatibility.
@@ -392,7 +392,7 @@ async def liveness_probe() -> Dict[str, Any]:
 
 
 @router.get("/health/readiness", response_model=None)
-async def readiness_probe(request: Request) -> Union[Dict[str, Any], JSONResponse]:
+async def readiness_probe(request: Request) -> dict[str, Any] | JSONResponse:
     """
     Readiness probe - checks that all critical services are ready.
     Legacy endpoint for backward compatibility.
@@ -428,7 +428,7 @@ async def readiness_probe(request: Request) -> Union[Dict[str, Any], JSONRespons
 
 
 @router.get("/system/info")
-async def get_system_info(request: Request) -> Dict[str, Any]:
+async def get_system_info(request: Request) -> dict[str, Any]:
     """
     Get comprehensive system information for About page.
 

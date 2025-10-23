@@ -237,7 +237,7 @@ async def list_my_sessions(
         )
 
     # Get user ID from auth service
-    user = await auth_service.get_user_by_email(email)
+    user = await auth_service.get_user_by_email(email)  # type: ignore[attr-defined]
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -246,7 +246,7 @@ async def list_my_sessions(
 
     # Get sessions for this specific user only
     all_sessions = await auth_service.list_sessions(active_only=True)
-    user_sessions = [s for s in all_sessions if s.user_id == user.id]
+    user_sessions = [s for s in all_sessions if s.user_id == user.id]  # type: ignore[attr-defined]
 
     return SessionsListResponse(items=user_sessions)
 
@@ -280,7 +280,7 @@ async def revoke_my_session(
         )
 
     # Get user ID
-    user = await auth_service.get_user_by_email(email)
+    user = await auth_service.get_user_by_email(email)  # type: ignore[attr-defined]
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -297,7 +297,7 @@ async def revoke_my_session(
             detail="Session not found"
         )
 
-    if target_session.user_id != user.id:
+    if target_session.user_id != user.id:  # type: ignore[attr-defined]
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only revoke your own sessions"

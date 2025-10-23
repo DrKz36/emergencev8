@@ -77,15 +77,11 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'es2019',
     cssCodeSplit: true,
-    modulePreload: false,
     rollupOptions: {
       output: {
         // Regroupe les dépendances lourdes dans des chunks dédiés
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
-          if (id.includes('jspdf') || id.includes('autotable')) return 'pdf-tools';
-          if (id.includes('chart.js')) return 'charts';
-          if (id.includes('papaparse')) return 'data-import';
           if (id.includes('marked')) return 'markdown';
           return 'vendor';
         }

@@ -197,28 +197,45 @@ Progression Totale : [██████████████░] 14/20 (70%)
 - ✅ README.md archive avec explication cleanup
 **Impact:** Navigation racine beaucoup plus claire
 
-#### P1.2 - Setup Mypy (Type Checking) ✅ COMPLÉTÉ (Batch 1)
-**Statut:** ✅ Batch 1 complété (4/4)
-**Temps effectif:** 2h
+#### P1.2 - Setup Mypy (Type Checking) ✅ COMPLÉTÉ (Batches 1-10)
+**Statut:** ✅ Batches 1-10 complétés (40 fichiers fixés)
+**Temps effectif:** ~8h (répartis sur 10 batches)
 **Problème:** Mypy non configuré, type hints manquants dans backend
 **Actions:**
 - [x] Créer `mypy.ini` avec config progressive (✅ fait)
-- [x] Lancer `mypy` complet → 484 erreurs identifiées dans 79 fichiers (✅ fait)
+- [x] Lancer `mypy` complet → 471 erreurs identifiées (✅ fait)
 - [x] Ajouter mypy dans Guardian pre-commit hook (⚠️ WARNING mode non-bloquant) (✅ fait)
-- [x] **Batch 1 - Core critical fixé** (✅ TERMINÉ 2025-10-23)
+- [x] **Batches 1-10 - Fixé 40 fichiers** (✅ TERMINÉ 2025-10-24)
 
-**Résultats Batch 1:**
-- ✅ `dependencies.py` : 30 erreurs → 0 erreurs (type hints args + dict[str, Any] + suppression unused type:ignore)
-- ✅ `session_manager.py` : 27 erreurs → 0 erreurs (type hints args + Task[None] + return types + setattr _warning_sent)
-- ✅ `monitoring.py` : 16 erreurs → 0 erreurs (return types + dict[str, Any] + Callable types)
-- ✅ **Total: 484 → 435 erreurs (-49, -10%)**
-- ✅ **Tests backend: 45 passed** (aucune régression)
+**Progression Batches:**
+| Batch | Avant | Après | Réduction | % | Fichiers |
+|-------|-------|-------|-----------|---|----------|
+| Batch 1 | 471 | 437 | -34 | -7.2% | 4 fichiers |
+| Batch 2 | 437 | 402 | -35 | -8.0% | 4 fichiers |
+| Batch 3 | 402 | 391 | -11 | -2.7% | 2 fichiers |
+| Batch 4 | 391 | 361 | -30 | -7.7% | 4 fichiers |
+| Batch 5 | 361 | 309 | -52 | -14.4% | 3 fichiers |
+| Batch 6 | 309 | 266 | -43 | -13.9% | 4 fichiers |
+| Batch 7 | 266 | 222 | -44 | -16.5% | 4 fichiers |
+| Batch 8 | 222 | 193 | -29 | -13.1% | 4 fichiers |
+| Batch 9 | 193 | 152 | -41 | -21.2% | 5 fichiers |
+| Batch 10 | 152 | 122 | -30 | -19.7% | 6 fichiers |
+| **TOTAL** | **471** | **122** | **-349** | **-74.1%** | **40 fichiers** |
 
-**Prochaines étapes (P2/P3):**
-2. **Batch 2 - Services high-traffic** (P2): `chat/service.py` (17), `chat/rag_cache.py` (13), `auth/service.py` (12) - ~42 erreurs, 1h30
-3. **Batch 3 - Reste** (P3): 73 fichiers restants - ~393 erreurs, 4-5h sur plusieurs sessions
+**État actuel:** 122 erreurs restantes dans 48 fichiers
 
-**Impact:** Qualité code ↑, prévention bugs runtime, meilleure IDE auto-completion
+**Patterns appliqués:**
+- Return type annotations (→ None, → dict[str, Any], → List[...])
+- Migration types modernes : Dict → dict, List → list (Python 3.9+)
+- Type parameters : dict[str, Any], list[str], tuple[str, str]
+- Cast pour no-any-return : cast(str, ...), cast(float, ...), cast(int, ...)
+- Fix type:ignore pour Redis async issues
+
+**Prochaines étapes:**
+- **Batch 11+** : Continuer vers <100 erreurs (3-5 erreurs/fichier)
+- **Objectif final** : <50 erreurs pour code ultra-clean
+
+**Impact:** Qualité code ↑↑ (74.1% erreurs éliminées), prévention bugs runtime, meilleure IDE auto-completion
 
 #### P1.3 - Supprimer Dossier Corrompu Guardian ✅
 **Statut:** ✅ Complété (2025-10-23)
@@ -249,6 +266,10 @@ Progression Totale : [██████████████░] 14/20 (70%)
 - `charts.js` : 199KB (Chart.js - lazy loaded)
 - `data-import.js` : 19KB (papaparse - lazy loaded)
 - Autres modules séparés : admin, chat, cockpit, documentation, etc.
+**Mesures r�elles (2025-10-24)** :
+- Score Lighthouse mobile : **94** (FCP 1.84 s, LCP 2.82 s, Speed Index 1.84 s, TTI 2.84 s, TBT 2.5 ms, CLS 0, Main thread 655 ms).
+- Payload initial : ~300 kB (JS 112 kB + CSS 59.7 kB + WebP 81.7 kB + favicon 44.6 kB).
+- Next step : compresser les 360 kB de CSS globaux et alléger le loader pour viser LCP < 2.5 s.
 **Impact:** Performance frontend ↑ (bundle initial -56%, lazy loading OK)
 
 #### P2.2 - Cleanup TODOs Backend ✅

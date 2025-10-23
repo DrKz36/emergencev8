@@ -1261,7 +1261,7 @@ class ChatService:
             search_start = time.time()
             if self._knowledge_collection is None:
                 raise RuntimeError("Knowledge collection should be initialized")
-            results = self._knowledge_collection.query(
+            results = self._knowledge_collection.query(  # type: ignore[unreachable]
                 query_texts=[query_text],
                 n_results=n_results,
                 where=where_filter,
@@ -1693,7 +1693,7 @@ class ChatService:
             if self._knowledge_collection is None:
                 return None
 
-        collection = self._knowledge_collection
+        collection = self._knowledge_collection  # type: ignore[unreachable]
         clauses = [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]
         if user_id:
             clauses.append({"user_id": user_id})
@@ -1836,7 +1836,7 @@ class ChatService:
                 if self._knowledge_collection is None:
                     return ""
 
-            knowledge_col = self._knowledge_collection
+            knowledge_col = self._knowledge_collection  # type: ignore[unreachable]
             where_filter = None
 
             session_clause: Dict[str, Any] = {

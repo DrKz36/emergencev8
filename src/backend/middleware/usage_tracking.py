@@ -17,7 +17,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Optional, Callable
+from typing import Any, Callable, Optional, cast
 from datetime import datetime, timezone
 
 from fastapi import Request, Response
@@ -35,10 +35,10 @@ class UsageTrackingMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app: ASGIApp):
         super().__init__(app)
-        self._repository_getter: Optional[Callable] = None
+        self._repository_getter: Optional[Callable[[], Any]] = None
         self._initialized = False
 
-    def set_repository_getter(self, getter: Callable):
+    def set_repository_getter(self, getter: Callable[[], Any]) -> None:
         """Injecte getter pour UsageRepository (DI)"""
         self._repository_getter = getter
         self._initialized = True
@@ -122,11 +122,11 @@ class UsageTrackingMiddleware(BaseHTTPMiddleware):
         )
         return any(path.startswith(prefix) for prefix in skip_prefixes)
 
-    async def dispatch(self, request: Request, call_next) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         """Intercepte toutes les requêtes pour tracking"""
         # Skip health/metrics endpoints
         if self._should_skip_endpoint(request.url.path):
-            return await call_next(request)
+            return cast(Response, await call_next(request))
 
         # Infos de base
         user_email = self._extract_user_email(request)
@@ -157,7 +157,7 @@ class UsageTrackingMiddleware(BaseHTTPMiddleware):
                 error_message=None,
             )
 
-            return response
+            return cast(Response, response)
 
         except Exception as e:
             # Log error (fire-and-forget)
@@ -200,7 +200,7 @@ class UsageTrackingMiddleware(BaseHTTPMiddleware):
         status_code: int,
         duration_ms: int,
         error_message: Optional[str],
-    ):
+    ) -> None:
         """Log feature usage en background (fire-and-forget)"""
         try:
             repo = self._get_repository()
@@ -235,7 +235,7 @@ class UsageTrackingMiddleware(BaseHTTPMiddleware):
         error_type: str,
         error_code: int,
         error_message: str,
-    ):
+    ) -> None:
         """Log user error en background (fire-and-forget)"""
         try:
             repo = self._get_repository()

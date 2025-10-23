@@ -35,20 +35,20 @@ try:
     from backend.features.dashboard.service import DashboardService
     from backend.features.dashboard.admin_service import AdminDashboardService
 except Exception:  # pragma: no cover
-    DashboardService = None
-    AdminDashboardService = None
+    DashboardService = None  # type: ignore[assignment,misc]
+    AdminDashboardService = None  # type: ignore[assignment,misc]
 
 try:
     from backend.features.documents.service import DocumentService
     from backend.features.documents.parser import ParserFactory  # requis par DocumentService
 except Exception:  # pragma: no cover
-    DocumentService = None
-    ParserFactory = None
+    DocumentService = None  # type: ignore[assignment,misc]
+    ParserFactory = None  # type: ignore[assignment,misc]
 
 try:
     from backend.features.debate.service import DebateService
 except Exception:  # pragma: no cover
-    DebateService = None
+    DebateService = None  # type: ignore[assignment,misc]
 
 try:
     from backend.features.benchmarks.service import BenchmarksService
@@ -57,16 +57,16 @@ try:
         build_firestore_client,
     )
 except Exception:  # pragma: no cover
-    BenchmarksService = None
-    BenchmarksRepository = None
-    build_firestore_client = None
+    BenchmarksService = None  # type: ignore[assignment,misc]
+    BenchmarksRepository = None  # type: ignore[assignment,misc]
+    build_firestore_client = None  # type: ignore[assignment]
 
 try:
     from backend.features.voice.service import VoiceService
     from backend.features.voice.models import VoiceServiceConfig
 except Exception:  # pragma: no cover
-    VoiceService = None
-    VoiceServiceConfig = None
+    VoiceService = None  # type: ignore[assignment,misc]
+    VoiceServiceConfig = None  # type: ignore[assignment,misc]
 
 _VOICE_STT_MODEL_DEFAULT = "whisper-1"
 _VOICE_TTS_MODEL_DEFAULT = "a_model_id_here"

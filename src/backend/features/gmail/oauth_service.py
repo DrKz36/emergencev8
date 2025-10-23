@@ -9,7 +9,7 @@ Architecture:
 
 import json
 import os
-from typing import Optional
+from typing import Any, Optional, cast
 from datetime import datetime
 
 from google.auth.transport.requests import Request
@@ -28,7 +28,7 @@ class GmailOAuthService:
     def __init__(self):
         self.client_config = self._load_client_config()
 
-    def _load_client_config(self) -> dict:
+    def _load_client_config(self) -> dict[str, Any]:
         """
         Charge client_secret depuis Secret Manager ou fichier local.
 
@@ -43,7 +43,7 @@ class GmailOAuthService:
                 project_id = os.getenv("GCP_PROJECT_ID", "emergence-469005")
                 secret_name = f"projects/{project_id}/secrets/gmail-oauth-client-secret/versions/latest"
                 response = client.access_secret_version(request={"name": secret_name})
-                return json.loads(response.payload.data.decode('UTF-8'))
+                return cast(dict[str, Any], json.loads(response.payload.data.decode('UTF-8')))
             except Exception as e:
                 logger.error(f"Failed to load OAuth secret from Secret Manager: {e}")
                 raise
@@ -57,7 +57,7 @@ class GmailOAuthService:
             )
 
         with open(secret_path, 'r') as f:
-            return json.load(f)
+            return cast(dict[str, Any], json.load(f))
 
     def initiate_oauth(self, redirect_uri: str) -> str:
         """
@@ -81,14 +81,14 @@ class GmailOAuthService:
         )
 
         logger.info(f"OAuth flow initiated, state={state}")
-        return authorization_url
+        return cast(str, authorization_url)
 
     async def handle_callback(
         self,
         code: str,
         redirect_uri: str,
         user_email: str = "admin"
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Échange le code OAuth contre des tokens et les stocke.
 
@@ -120,7 +120,7 @@ class GmailOAuthService:
             logger.error(f"OAuth callback failed: {e}")
             return {"success": False, "message": f"OAuth failed: {str(e)}"}
 
-    async def _store_tokens(self, user_email: str, credentials: Credentials):
+    async def _store_tokens(self, user_email: str, credentials: Credentials) -> None:
         """
         Stocke les tokens OAuth dans Firestore (encrypted).
 

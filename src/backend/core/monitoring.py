@@ -6,7 +6,7 @@ Centralise logging, métriques et alertes
 import logging
 import time
 from functools import wraps
-from typing import Optional, Callable, Any
+from typing import Optional, Any, cast
 from datetime import datetime, timezone
 from collections import defaultdict
 from pathlib import Path
@@ -58,7 +58,7 @@ class MetricsCollector:
         """Calcule la latence moyenne"""
         if self.latency_count[endpoint] == 0:
             return 0.0
-        return self.latency_sum[endpoint] / self.latency_count[endpoint]
+        return cast(float, self.latency_sum[endpoint] / self.latency_count[endpoint])
 
     def get_error_rate(self, endpoint: str) -> float:
         """Calcule le taux d'erreur"""
@@ -72,7 +72,7 @@ class MetricsCollector:
         )
         if total_requests == 0:
             return 0.0
-        return (total_errors / total_requests) * 100
+        return cast(float, (total_errors / total_requests) * 100)
 
     def get_metrics_summary(self) -> dict[str, Any]:
         """Retourne un résumé des métriques"""
@@ -349,7 +349,7 @@ class PerformanceMonitor:
 performance_monitor = PerformanceMonitor()
 
 
-def export_metrics_json(filepath: str = "logs/metrics.json") -> None:
+def export_metrics_json(filepath: str = "logs/metrics.json") -> dict[str, Any]:
     """Exporte toutes les métriques en JSON"""
     all_metrics = {
         "application": metrics.get_metrics_summary(),

@@ -15,7 +15,7 @@ Métriques exposées :
 
 import logging
 from prometheus_client import Counter, Gauge, Histogram
-from typing import Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class RAGMetricsTracker:
         """
         self.collection = collection
         self.query_type = query_type
-        self.timer = None
+        self.timer: Any = None
         self.status = "success"
 
     def __enter__(self):
@@ -148,7 +148,7 @@ class RAGMetricsTracker:
         if self.timer:
             self.timer.__exit__(exc_type, exc_val, exc_tb)
 
-    def record_results(self, results: list, avg_score: Optional[float] = None):
+    def record_results(self, results: list[dict[str, Any]], avg_score: Optional[float] = None) -> None:
         """
         Enregistre les résultats de la requête.
 
@@ -192,7 +192,7 @@ class RAGMetricsTracker:
                     component="vector"
                 ).set(avg_vector)
 
-    def record_filtered(self, count: int, reason: str = "below_threshold"):
+    def record_filtered(self, count: int, reason: str = "below_threshold") -> None:
         """
         Enregistre le nombre de résultats filtrés.
 
@@ -212,10 +212,10 @@ class RAGMetricsTracker:
 
 def track_hybrid_query(
     collection: str,
-    results: list,
+    results: list[dict[str, Any]],
     avg_score: Optional[float] = None,
     filtered_count: int = 0
-):
+) -> None:
     """
     Shortcut pour tracker une requête hybride sans context manager.
 
@@ -262,7 +262,7 @@ def track_hybrid_query(
     )
 
 
-def get_rag_metrics_summary(collection: Optional[str] = None) -> dict:
+def get_rag_metrics_summary(collection: Optional[str] = None) -> dict[str, Any]:
     """
     Récupère un résumé des métriques RAG actuelles.
 

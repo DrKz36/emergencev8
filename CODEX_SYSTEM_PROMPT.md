@@ -5,6 +5,21 @@
 
 ---
 
+## 🚀 Chargement rapide du prompt
+
+**PowerShell**
+```powershell
+.\scripts\load-codex-prompt.ps1 | Set-Clipboard
+# Puis CTRL+V dans Windsurf chat
+```
+
+**Bash (Git Bash)**
+```bash
+cat CODEX_SYSTEM_PROMPT.md | clip.exe
+```
+
+---
+
 ## ⚠️ COMMENT UTILISER CE PROMPT
 
 ### Pour Codex Local (Windsurf/CLI)

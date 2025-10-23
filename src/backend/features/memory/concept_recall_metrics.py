@@ -189,7 +189,7 @@ class ConceptRecallMetrics:
         similarity_score: float,
         thread_count: int,
         duration_seconds: float
-    ):
+    ) -> None:
         """Record a successful concept recall detection."""
         if not self.enabled:
             return
@@ -210,7 +210,7 @@ class ConceptRecallMetrics:
             thread_count_range=thread_range
         ).inc()
 
-    def record_event_emitted(self, user_id: str, recall_count: int):
+    def record_event_emitted(self, user_id: str, recall_count: int) -> None:
         """Record WebSocket event emission."""
         if not self.enabled:
             return
@@ -218,21 +218,21 @@ class ConceptRecallMetrics:
         user_hash = _hash_user_id(user_id)
         EVENTS_EMITTED_TOTAL.labels(user_id_hash=user_hash).inc()
 
-    def record_vector_search(self, duration_seconds: float):
+    def record_vector_search(self, duration_seconds: float) -> None:
         """Record vector search duration."""
         if not self.enabled:
             return
 
         VECTOR_SEARCH_DURATION.observe(duration_seconds)
 
-    def record_metadata_update(self, duration_seconds: float):
+    def record_metadata_update(self, duration_seconds: float) -> None:
         """Record metadata update duration."""
         if not self.enabled:
             return
 
         METADATA_UPDATE_DURATION.observe(duration_seconds)
 
-    def record_interaction(self, user_id: str, action: str):
+    def record_interaction(self, user_id: str, action: str) -> None:
         """
         Record user interaction with banner.
 
@@ -253,7 +253,7 @@ class ConceptRecallMetrics:
         if action == 'dismiss':
             FALSE_POSITIVES_TOTAL.labels(user_id_hash=user_hash).inc()
 
-    def record_concept_reuse(self, user_id: str, mention_count: int):
+    def record_concept_reuse(self, user_id: str, mention_count: int) -> None:
         """Record concept being reused (mention_count > 1)."""
         if not self.enabled:
             return
@@ -262,7 +262,7 @@ class ConceptRecallMetrics:
             user_hash = _hash_user_id(user_id)
             CONCEPT_REUSE_TOTAL.labels(user_id_hash=user_hash).inc()
 
-    def update_concepts_total(self, user_id: str, count: int):
+    def update_concepts_total(self, user_id: str, count: int) -> None:
         """Update total concepts gauge for user."""
         if not self.enabled:
             return

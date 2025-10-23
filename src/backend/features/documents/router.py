@@ -37,7 +37,7 @@ async def _get_document_service(request: Request) -> DocumentService:
 async def list_documents(
     session: deps.SessionContext = Depends(deps.get_session_context),
     service: DocumentService = Depends(_get_document_service),
-):
+) -> List[Dict[str, Any]]:
     """Retourne la liste de tous les documents uploades."""
     return await service.get_all_documents(session.session_id, user_id=session.user_id)
 
@@ -46,7 +46,7 @@ async def list_documents(
 async def list_documents_alias(
     session: deps.SessionContext = Depends(deps.get_session_context),
     service: DocumentService = Depends(_get_document_service),
-):
+) -> List[Dict[str, Any]]:
     """Alias sans slash final pour eviter 404."""
     return await service.get_all_documents(session.session_id, user_id=session.user_id)
 
@@ -56,7 +56,7 @@ async def upload_document(
     file: UploadFile = File(...),
     session: deps.SessionContext = Depends(deps.get_session_context),
     service: DocumentService = Depends(_get_document_service),
-):
+) -> Dict[str, Any]:
     supported_types = [".pdf", ".txt", ".docx"]
     filename = file.filename or ""
     if not filename:
@@ -87,7 +87,7 @@ async def get_document(
     document_id: int,
     session: deps.SessionContext = Depends(deps.get_session_context),
     service: DocumentService = Depends(_get_document_service),
-):
+) -> Dict[str, Any]:
     """Retourne les détails d'un document spécifique."""
     try:
         docs = await service.get_all_documents(session.session_id, user_id=session.user_id)
@@ -107,7 +107,7 @@ async def delete_document(
     document_id: int,
     session: deps.SessionContext = Depends(deps.get_session_context),
     service: DocumentService = Depends(_get_document_service),
-):
+) -> Dict[str, str]:
     """Supprime un document, ses chunks et ses vecteurs."""
     success = await service.delete_document(document_id, session.session_id, user_id=session.user_id)
     if success:

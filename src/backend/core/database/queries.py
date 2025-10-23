@@ -304,7 +304,7 @@ async def add_cost_log(
     *,
     session_id: Optional[str] = None,
     user_id: Optional[str] = None,
-):
+) -> None:
     await db.execute(
         """
         INSERT INTO costs (timestamp, session_id, user_id, agent, model, input_tokens, output_tokens, total_cost, feature)
@@ -559,7 +559,7 @@ async def update_document_processing_info(
     char_count: int,
     chunk_count: int,
     status: str,
-):
+) -> None:
     scope_sql, scope_params = _build_scope_condition(user_id, session_id)
     await db.execute(
         f"UPDATE documents SET char_count = ?, chunk_count = ?, status = ? WHERE id = ? AND {scope_sql}",
@@ -568,7 +568,7 @@ async def update_document_processing_info(
     )
 async def set_document_error_status(
     db: DatabaseManager, doc_id: int, session_id: Optional[str], error_message: str, *, user_id: Optional[str] = None
-):
+) -> None:
     scope_sql, scope_params = _build_scope_condition(user_id, session_id)
     await db.execute(
         f"UPDATE documents SET status = 'error', error_message = ? WHERE id = ? AND {scope_sql}",
@@ -581,7 +581,7 @@ async def insert_document_chunks(
     chunks: List[Dict[str, Any]],
     *,
     user_id: Optional[str] = None,
-):
+) -> None:
     if not chunks:
         return
     user_value = _resolve_user_scope(user_id, session_id)
@@ -757,7 +757,7 @@ async def update_session_analysis_data(
     summary: str,
     concepts: List[str],
     entities: List[str],
-):
+) -> None:
     await db.execute(
         """
         UPDATE sessions
@@ -951,7 +951,7 @@ async def update_thread(
     agent_id: Optional[str] = None,
     archived: Optional[bool] = None,
     meta: Optional[Dict[str, Any]] = None,
-    gardener = None,  # ✅ NOUVEAU Sprint 2: injection MemoryGardener pour consolidation auto
+    gardener: Any = None,  # ✅ NOUVEAU Sprint 2: injection MemoryGardener pour consolidation auto
 ) -> None:
     """
     Met à jour un thread existant.
@@ -1089,7 +1089,7 @@ async def add_message(
     session_value = normalized_session or _resolve_user_scope(user_id, session_id)
     user_value = _resolve_user_scope(user_id, session_id)
 
-    def _cols_vals(base_cols: List[str], base_vals: List[Any]):
+    def _cols_vals(base_cols: List[str], base_vals: List[Any]) -> tuple[List[str], List[Any]]:
         cols, vals = list(base_cols), list(base_vals)
         if need_session:
             cols.append("session_id")

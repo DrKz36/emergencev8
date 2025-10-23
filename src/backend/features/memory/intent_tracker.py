@@ -1,7 +1,7 @@
 # intent_tracker.py - Suivi et expiration des intentions
 import logging
 import asyncio
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, cast
 from datetime import datetime, timezone, timedelta
 import re
 
@@ -89,9 +89,9 @@ class IntentTracker:
 
                         sig = inspect.signature(resolver)
                         if len(sig.parameters) == 1:
-                            return resolver(match)
+                            return cast(datetime | None, resolver(match))
                         else:
-                            return resolver()
+                            return cast(datetime | None, resolver())
                 except Exception as e:
                     logger.debug(
                         f"Erreur résolution timeframe pour '{pattern}': {e}"
@@ -111,7 +111,7 @@ class IntentTracker:
         async with self._reminder_lock:
             return self.reminder_counts.get(intent_id, 0)
 
-    async def delete_reminder(self, intent_id: str):
+    async def delete_reminder(self, intent_id: str) -> None:
         """Supprime compteur de rappel de manière thread-safe"""
         async with self._reminder_lock:
             self.reminder_counts.pop(intent_id, None)

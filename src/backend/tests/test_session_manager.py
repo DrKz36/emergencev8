@@ -147,7 +147,11 @@ class TestMessageManagement:
             role=Role.USER,
             agent="user",
             content="Hello, world!",
-            timestamp=datetime.now(timezone.utc).isoformat()
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            cost=None,
+            tokens=None,
+            agents=None,
+            use_rag=False
         )
 
         # La méthode est async
@@ -172,7 +176,11 @@ class TestMessageManagement:
             role=Role.USER,
             agent="user",
             content="Test message",
-            timestamp=datetime.now(timezone.utc).isoformat()
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            cost=None,
+            tokens=None,
+            agents=None,
+            use_rag=False
         )
 
         # L'implémentation actuelle log une erreur mais ne lève pas d'exception

@@ -9,7 +9,7 @@ import logging
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, cast
 
 from fastapi import Request, HTTPException, Query
 from fastapi import WebSocket
@@ -102,7 +102,7 @@ async def _ensure_user_id_in_claims(claims: Dict[str, Any], scope_holder: Any) -
 # -----------------------------
 def _try_json(s: str) -> dict[str, Any]:
     try:
-        return json.loads(s)
+        return cast(dict[str, Any], json.loads(s))
     except Exception:
         return {}
 
@@ -180,7 +180,7 @@ def _maybe_get_auth_service(scope_holder: Any) -> Optional["AuthService"]:
     if getter is None:
         return None
     try:
-        return getter()
+        return cast("AuthService | None", getter())
     except Exception as exc:
         logger.debug("AuthService indisponible: %s", exc)
         return None
@@ -532,7 +532,7 @@ async def get_user_id_from_websocket(ws: WebSocket, user_id: Optional[str] = Que
 # NB: pas d'import de ServiceContainer ici (évite les cycles).
 # On récupère le conteneur déjà instancié via request.app.state.service_container
 
-async def get_auth_service(request: Request):
+async def get_auth_service(request: Request) -> "AuthService":
     service = _maybe_get_auth_service(request)
     if service is None:
         raise HTTPException(status_code=503, detail="AuthService indisponible.")
@@ -568,7 +568,7 @@ async def get_session_manager_optional(request: Request) -> Optional["SessionMan
     if provider is None:
         return None
     try:
-        return provider()
+        return cast("SessionManager | None", provider())
     except Exception as exc:
         logger.debug("SessionManager indisponible: %s", exc)
         return None

@@ -8,7 +8,7 @@
 # - Reduced error noise in production logs
 import logging
 import asyncio
-from typing import Dict, Any, List, Optional, Callable
+from typing import Dict, Any, List, Optional, Callable, cast
 
 from fastapi import APIRouter, WebSocket, HTTPException
 from starlette.websockets import WebSocketDisconnect
@@ -180,7 +180,7 @@ class ConnectionManager:
                 err,
             )
             await self.disconnect(session_id, websocket)
-            return
+            return session_id
 
         try:
             history_export = self.session_manager.export_history_for_transport(
@@ -387,7 +387,7 @@ def get_websocket_router(container: Any) -> APIRouter:
     router = APIRouter()
 
     @router.websocket("/ws/{session_id}")
-    async def websocket_endpoint(websocket: WebSocket, session_id: str):
+    async def websocket_endpoint(websocket: WebSocket, session_id: str) -> None:
         requested_session_id = session_id
         user_id_hint = websocket.query_params.get("user_id")
         thread_id = websocket.query_params.get("thread_id")

@@ -11,7 +11,7 @@
 # Roadmap: MEMORY_REFACTORING_ROADMAP.md Sprint 3
 
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Any, Optional, cast
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ try:
             )
             if existing is None:
                 raise
-            return existing
+            return cast(Counter, existing)
 
     def _get_unified_retriever_duration() -> Histogram:
         try:
@@ -50,7 +50,7 @@ try:
             )
             if existing is None:
                 raise
-            return existing
+            return cast(Histogram, existing)
 
     UNIFIED_RETRIEVER_CALLS = _get_unified_retriever_counter()
     UNIFIED_RETRIEVER_DURATION = _get_unified_retriever_duration()
@@ -72,12 +72,12 @@ class MemoryContext:
     """
 
     def __init__(self):
-        self.stm_history: List[Dict] = []
-        self.ltm_concepts: List[Dict] = []
-        self.ltm_preferences: List[Dict] = []
-        self.archived_conversations: List[Dict] = []
+        self.stm_history: list[dict[str, Any]] = []
+        self.ltm_concepts: list[dict[str, Any]] = []
+        self.ltm_preferences: list[dict[str, Any]] = []
+        self.archived_conversations: list[dict[str, Any]] = []
 
-    def to_prompt_sections(self) -> List[tuple[str, str]]:
+    def to_prompt_sections(self) -> list[tuple[str, str]]:
         """
         Formatte pour injection dans prompt système.
 
@@ -240,7 +240,7 @@ class UnifiedMemoryRetriever:
 
         return context
 
-    async def _get_stm_context(self, session_id: str) -> List[Dict]:
+    async def _get_stm_context(self, session_id: str) -> list[dict[str, Any]]:
         """
         Récupère historique session active depuis SessionManager.
 
@@ -253,12 +253,12 @@ class UnifiedMemoryRetriever:
         try:
             # Try get_full_history first
             if hasattr(self.session_manager, 'get_full_history'):
-                return self.session_manager.get_full_history(session_id)
+                return cast(list[dict[str, Any]], self.session_manager.get_full_history(session_id))
 
             # Fallback: get_session puis extraire history
             session = self.session_manager.get_session(session_id)
             if session and hasattr(session, 'history'):
-                return session.history
+                return cast(list[dict[str, Any]], session.history)
 
             return []
         except Exception as e:
@@ -267,7 +267,7 @@ class UnifiedMemoryRetriever:
 
     async def _get_ltm_context(
         self, user_id: str, agent_id: str, query: str, top_k: int
-    ) -> Dict[str, List[Dict]]:
+    ) -> dict[str, list[dict[str, Any]]]:
         """
         Récupère préférences + concepts depuis ChromaDB.
 
@@ -354,7 +354,7 @@ class UnifiedMemoryRetriever:
 
     async def _get_archived_context(
         self, user_id: str, agent_id: str, query: str, limit: int
-    ) -> List[Dict]:
+    ) -> list[dict[str, Any]]:
         """
         🆕 Récupère conversations archivées pertinentes.
 

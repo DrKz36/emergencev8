@@ -6,7 +6,7 @@ V1.0 - Provides global aggregated data across all users and sessions
 from __future__ import annotations
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from datetime import datetime, timezone, timedelta
 
 from backend.core.database.manager import DatabaseManager
@@ -89,7 +89,7 @@ class AdminDashboardService:
                 },
             }
 
-    async def _build_user_email_map(self) -> Dict[str, tuple]:
+    async def _build_user_email_map(self) -> Dict[str, tuple[str, str]]:
         """
         Build a mapping from user_id to (email, role).
 
@@ -233,7 +233,7 @@ class AdminDashboardService:
             cursor = await conn.execute(query, (user_id,))
             row = await cursor.fetchone()
             if row and row[0]:
-                return row[0]
+                return cast(str, row[0])
         except Exception as e:
             logger.debug(f"Error getting last activity for {user_id}: {e}")
         return None
@@ -250,7 +250,7 @@ class AdminDashboardService:
             cursor = await conn.execute(query, (user_id,))
             row = await cursor.fetchone()
             if row and row[0]:
-                return row[0]
+                return cast(str, row[0])
         except Exception as e:
             logger.debug(f"Error getting first session for {user_id}: {e}")
         return None
@@ -689,7 +689,7 @@ class AdminDashboardService:
         total_errors = summary.get('total_errors', 0)
         if total_requests == 0:
             return 0.0
-        return (total_errors / total_requests) * 100
+        return cast(float, (total_errors / total_requests) * 100)
 
     async def _get_average_latency(self) -> float:
         """Calculate average API latency from MetricsCollector."""
@@ -705,7 +705,7 @@ class AdminDashboardService:
         """Count total errors from MetricsCollector."""
         from backend.core.monitoring import metrics
         summary = metrics.get_metrics_summary()
-        return summary.get('total_errors', 0)
+        return cast(int, summary.get('total_errors', 0))
 
     async def get_audit_history(self, limit: int = 10) -> Dict[str, Any]:
         """
