@@ -9,9 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 ARG EMBED_MODEL_NAME=all-MiniLM-L6-v2
 ENV EMBED_MODEL_NAME=${EMBED_MODEL_NAME}
 ENV SENTENCE_TRANSFORMERS_HOME=/root/.cache/sentence_transformers \
-    HF_HOME=/root/.cache/huggingface \
-    HF_HUB_OFFLINE=1 \
-    TRANSFORMERS_OFFLINE=1
+    HF_HOME=/root/.cache/huggingface
 
 # System dependencies (build essentials + libmagic + node.js for frontend build)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -26,8 +24,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN python -m pip install --upgrade pip && pip install -r requirements.txt
 
-# Pre-download the embedding model so Cloud Run stays offline-friendly
+# Pre-download the embedding model (requires online access)
 RUN python -c "import os; from sentence_transformers import SentenceTransformer; model_name = os.environ.get('EMBED_MODEL_NAME', 'all-MiniLM-L6-v2'); SentenceTransformer(model_name)"
+
+# Now set offline mode to prevent runtime downloads
+ENV HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1
 
 # Frontend dependencies and build
 COPY package.json package-lock.json ./
