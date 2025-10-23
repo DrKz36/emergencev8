@@ -581,9 +581,27 @@ export default class ChatModule {
   hydrateFromThread(thread) {
     const threadId = (thread && (thread.id || thread.thread_id)) || this.getCurrentThreadId();
     const msgsRaw = Array.isArray(thread?.messages) ? [...thread.messages] : [];
-    const msgs = msgsRaw.sort((a, b) => (a?.created_at ?? 0) - (b?.created_at ?? 0));
+    const msgsSorted = msgsRaw.sort((a, b) => (a?.created_at ?? 0) - (b?.created_at ?? 0));
 
-    console.log(`[Chat] 🔍 hydrateFromThread called: threadId=${threadId}, messages count=${msgs.length}`);
+    // 🔥 FIX: Déduplication des messages par ID (garde le plus récent si doublons)
+    const seenIds = new Set();
+    const msgs = [];
+    for (let i = msgsSorted.length - 1; i >= 0; i--) {
+      const msg = msgsSorted[i];
+      const msgId = msg?.id;
+      if (!msgId) {
+        msgs.unshift(msg); // Pas d'ID → garde quand même (sera généré plus tard)
+        continue;
+      }
+      if (!seenIds.has(msgId)) {
+        seenIds.add(msgId);
+        msgs.unshift(msg); // Garde le plus récent (on parcourt de la fin)
+      } else {
+        console.warn(`[Chat] ⚠️ Message dupliqué détecté et ignoré: ${msgId}`);
+      }
+    }
+
+    console.log(`[Chat] 🔍 hydrateFromThread called: threadId=${threadId}, messages count=${msgs.length} (${msgsSorted.length - msgs.length} doublons supprimés)`);
 
     const buckets = {};
     let lastAssistantAgent = null;

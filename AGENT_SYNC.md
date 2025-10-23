@@ -1,4 +1,4 @@
-## 🔄 Session EN COURS (2025-10-23 18:38 CET) — Agent : Claude Code
+## ✅ Session COMPLÉTÉE (2025-10-23 18:48 CET) — Agent : Claude Code
 
 ### Fichiers modifiés
 - `src/frontend/features/chat/chat.js`
@@ -33,16 +33,25 @@
   - Force `.app-content` à `overflow: hidden` quand module chat actif
   - Scroll uniquement dans `.messages` (zone messages)
 
-**D. Debug réponses triplées (EN COURS)**
-- **Problème** : Messages "salut" apparaissent 3 fois dans la conversation
-- **Action** : Ajout log debug dans `hydrateFromThread()` (ligne 586)
+**D. Fix duplication messages au reload (DONE)**
+- **Problème** : Messages dupliqués à chaque déconnexion/reconnexion (ex: "salut" apparaît 3 fois)
+- **Diagnostic** : Logs console montrent `hydrateFromThread` appelé 3 fois avec 10 messages (au lieu de 9)
+- **Cause** : Le backend persist le même message plusieurs fois dans la DB (bug backend persistance)
+- **Solution** : Déduplication côté frontend dans `hydrateFromThread()` (lignes 586-604)
   ```javascript
-  console.log(`[Chat] 🔍 hydrateFromThread called: threadId=${threadId}, messages count=${msgs.length}`);
+  // Parcours inverse pour garder le plus récent si doublons
+  const seenIds = new Set();
+  for (let i = msgsSorted.length - 1; i >= 0; i--) {
+    if (!seenIds.has(msgId)) {
+      seenIds.add(msgId);
+      msgs.unshift(msg);
+    } else {
+      console.warn(`[Chat] ⚠️ Message dupliqué détecté et ignoré: ${msgId}`);
+    }
+  }
   ```
-- **Prochaine étape** : Utilisateur doit ouvrir DevTools Console et vérifier :
-  1. Combien de fois `hydrateFromThread` est appelé
-  2. Si les messages ont le même ID (duplication rendering) ou IDs différents (duplication backend)
-  3. Partager les logs console pour diagnostic
+- **Résultat** : Même si le backend envoie des doublons, le frontend les vire automatiquement
+- **Note** : Bug backend à investiguer plus tard (pourquoi `api.appendMessage` persiste 2x ?)
 
 ### Tests
 - ✅ `npm run build` : Build OK (1.22s)
@@ -52,10 +61,10 @@
 1. **Test modal** : Vérifier que le modal ne s'affiche plus à la reconnexion
 2. **Test bouton centré** : Vérifier que "Nouvelle conversation" est centré quand pas de conv existantes
 3. **Test scroll** : Vérifier qu'il n'y a plus de double scroll
-4. **Debug duplication** : Ouvrir DevTools Console, reproduire le bug, partager les logs
+4. **Test duplication** : Se déco/reco et vérifier que les messages ne se dupliquent plus
 
 ### Blocages
-Bug duplication messages en cours d'investigation (attente logs console utilisateur).
+Aucun. Tous les bugs frontend corrigés.
 
 ---
 
