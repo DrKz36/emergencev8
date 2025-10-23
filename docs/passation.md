@@ -1,3 +1,35 @@
+## [2025-10-23 19:30 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `docs/NEXT_SESSION_MYPY_BATCH1.md` (NOUVEAU - prompt détaillé 250+ lignes)
+- `AGENT_SYNC.md` (référence prompt batch 1)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**📝 Création prompt détaillé pour P1.2 Batch 1 mypy fixes**
+
+Préparation session suivante pour fixes 73 erreurs Core critical (2-3h travail).
+
+### Travail réalisé
+
+**Créé prompt complet `docs/NEXT_SESSION_MYPY_BATCH1.md`:**
+- État actuel mypy (484 erreurs, config OK, hook OK)
+- Batch 1 détails: 3 fichiers (dependencies.py 30, session_manager.py 27, monitoring.py 16)
+- Liste exhaustive fonctions à typer avec AVANT/APRÈS
+- Stratégie 3 phases (quick wins 30min, type hints 1h, complexes 1h)
+- Commandes rapides + critères succès (484 → ~410 erreurs)
+
+### Tests
+- ✅ Prompt structuré (250+ lignes markdown)
+
+### Prochaines actions recommandées
+**🔥 PROCHAINE SESSION:** Lire `docs/NEXT_SESSION_MYPY_BATCH1.md` + fixer Batch 1 (2-3h)
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-23 18:45 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

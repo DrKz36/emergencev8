@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-23 18:45 CET (Claude Code : P1.1 ✅ + Fusion roadmaps ✅ + P1.2 Mypy setup 🟡)
+**Dernière mise à jour** : 2025-10-23 19:30 CET (Claude Code : P1.1 ✅ + P1.3 ✅ + Fusion roadmaps ✅ + P1.2 Mypy setup 🟡 + Prompt Batch 1 créé)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -58,10 +58,19 @@
 - ✅ Pre-commit hook mypy fonctionne (WARNING mode)
 
 ### Prochaines actions recommandées
-**Option 1 - Continuer P1.2 Fix Batch 1** (2h):
-- Fixer `dependencies.py` (30), `session_manager.py` (27), `monitoring.py` (16)
+**🔥 PRIORITÉ - P1.2 Fix Batch 1 (2-3h)** :
+- Fixer `src/backend/shared/dependencies.py` (30 erreurs)
+- Fixer `src/backend/core/session_manager.py` (27 erreurs)
+- Fixer `src/backend/core/monitoring.py` (16 erreurs)
+- **Prompt détaillé créé:** `docs/NEXT_SESSION_MYPY_BATCH1.md` ⭐
+  - Liste complète fonctions à typer
+  - Stratégie phase 1/2/3
+  - Commandes rapides
+  - Critères de succès (484 → ~410 erreurs)
 
-**Option 2 - P1.3 Supprimer dossier corrompu** (5 min rapide)
+**Après Batch 1:**
+- Batch 2 (P2): Services high-traffic (~42 erreurs, 1h30)
+- Batch 3 (P3): Reste (~369 erreurs, 4-5h)
 
 ### Blocages
 Aucun.
