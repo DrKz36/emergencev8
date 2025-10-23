@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-21T08:59:42.535430",
+  "timestamp": "2025-10-22T17:48:17.770629",
   "service": "emergence-app",
   "region": "europe-west1",
   "logs_analyzed": 80,
@@ -27,34 +27,34 @@
   "code_snippets": [],
   "recent_commits": [
     {
-      "hash": "c6369bc8",
+      "hash": "3ad9fb6a",
       "author": "Fernando Gonzalez",
-      "time": "56 minutes ago",
-      "message": "docs(sync): Mise Ã  jour AGENT_SYNC.md + passation.md (Fix 404 onboarding)"
+      "time": "2 minutes ago",
+      "message": "feat(version): Update to beta-3.0.0 - Phase P2 ComplÃ©tÃ©e (Admin & SÃ©curitÃ©)"
     },
     {
-      "hash": "59ba90f1",
-      "author": "Fernando Gonzalez",
-      "time": "66 minutes ago",
-      "message": "fix(onboarding): Ajouter onboarding.html manquant Ã  la racine"
+      "hash": "09d24ea0",
+      "author": "DrKz36",
+      "time": "5 hours ago",
+      "message": "Fix minor typo in frontend build status"
     },
     {
-      "hash": "20daec25",
-      "author": "Fernando Gonzalez",
-      "time": "67 minutes ago",
-      "message": "feat(monitoring): Config alertes GCP + Tests E2E Guardian + Fix YAML"
+      "hash": "f0a3048c",
+      "author": "DrKz36",
+      "time": "8 hours ago",
+      "message": "Update CHANGELOG.md"
     },
     {
-      "hash": "af1aac4d",
-      "author": "Fernando Gonzalez",
-      "time": "74 minutes ago",
-      "message": "fix(prod): RÃ©solution OOM Cloud Run + Tests unitaires Guardian"
+      "hash": "00d5e9be",
+      "author": "DrKz36",
+      "time": "8 hours ago",
+      "message": "Fix typo in CHANGELOG.md"
     },
     {
-      "hash": "c1bc1681",
+      "hash": "6fa966cf",
       "author": "Fernando Gonzalez",
-      "time": "2 hours ago",
-      "message": "chore(reports): Sync final rapport Codex"
+      "time": "10 hours ago",
+      "message": "fix(frontend): Ajouter Chart.js dans import map pour module admin"
     }
   ],
   "recommendations": [

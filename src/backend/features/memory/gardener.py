@@ -731,16 +731,9 @@ class MemoryGardener:
                 }
 
             sid = thr.get("session_id") or normalized_session or tid
-            if normalized_session and sid and normalized_session != sid:
-                logger.warning(
-                    f"Thread {tid} introuvable pour la session {normalized_session}."
-                )
-                return {
-                    "status": "success",
-                    "message": "Thread introuvable pour cette session.",
-                    "consolidated_sessions": 0,
-                    "new_concepts": 0,
-                }
+            # ✅ FIX: Ne pas bloquer si session_id différent lors de consolidation d'archivage
+            # Le thread peut avoir été créé dans une ancienne session WebSocket.
+            # La sécurité est assurée par la vérification user_id ci-dessous.
 
             uid = thr.get("user_id")
             if user_id and uid and uid != user_id:

@@ -539,22 +539,29 @@ export class ThreadsPanel {
 
   hydrateStateFromList(items) {
     const threadsState = this.state.get('threads') || {};
-    const { map, order } = cloneThreadsState(threadsState);
+    const existingMap = threadsState?.map || {};
+
+    // ✅ FIX: Créer un nouveau map qui ne contient QUE les threads de la liste API
+    // (évite de fusionner avec les threads archivés/obsolètes)
+    const map = {};
     const nextOrder = [];
 
     for (const item of Array.isArray(items) ? items : []) {
       const id = normalizeId(item?.id);
       if (!id) continue;
       const threadRecord = { ...(item || {}), id };
-      const existing = map[id] || { id, messages: [], docs: [] };
+
+      // Préserver messages et docs si déjà chargés
+      const existing = existingMap[id] || { id, messages: [], docs: [] };
       map[id] = { ...existing, id, thread: threadRecord };
       nextOrder.push(id);
     }
 
-    const mergedOrder = [...new Set([...nextOrder, ...order])];
+    // ✅ FIX: Utiliser nextOrder directement (PAS de fusion avec l'ancien order)
+    // Cela évite que les threads archivés réapparaissent après reconnexion
     const fetchedAt = Date.now();
     this.state.set('threads.map', map);
-    this.state.set('threads.order', mergedOrder);
+    this.state.set('threads.order', nextOrder);
     this.state.set('threads.lastFetchedAt', fetchedAt);
     this.state.set('threads.error', null);
 
@@ -564,14 +571,14 @@ export class ThreadsPanel {
       const stored = this.readStoredThreadId();
       if (stored && map[stored]) currentId = stored;
     }
-    if (!currentId && mergedOrder.length) {
-      currentId = mergedOrder[0];
+    if (!currentId && nextOrder.length) {
+      currentId = nextOrder[0];
     }
     if (currentId) {
       this.state.set('threads.currentId', currentId);
     }
 
-    return { map, order: mergedOrder, fetchedAt };
+    return { map, order: nextOrder, fetchedAt };
   }
 
   readStoredThreadId() {
