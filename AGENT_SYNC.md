@@ -2,9 +2,79 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-23 16:00 CET (Claude Code : Plan d'action hiérarchisé post-audit)
+**Dernière mise à jour** : 2025-10-23 16:30 CET (Claude Code : P1.1 Cleanup docs racine terminé)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-23 16:30 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- 18 fichiers .md déplacés vers `docs/archive/2025-10/` (audits anciens, bugs résolus, prompts, setup, guides obsolètes)
+- `docs/archive/2025-10/README.md` (NOUVEAU - documentation archive)
+- `CLEANUP_ANALYSIS.md` (créé puis supprimé - analyse temporaire)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (entrée session)
+
+### Actions réalisées
+**🧹 P1.1 - CLEANUP DOCS RACINE TERMINÉ ✅**
+
+**Objectif :** Nettoyer fichiers .md racine (33 → 15 fichiers, -55%)
+
+**Catégorisation 33 fichiers** :
+- 🟢 11 critiques (référencés docs archi) → GARDÉS
+- 🟡 4 utiles (récents/pertinents) → GARDÉS
+- 🔴 18 obsolètes → ARCHIVÉS
+
+**Archive créée `docs/archive/2025-10/`** :
+- `audits-anciens/` - 3 fichiers (AUDIT_2025-10-18, 10-21, AUDIT_CLOUD_SETUP)
+- `bugs-resolus/` - 2 fichiers (BUG_STREAMING_CHUNKS, FIX_PRODUCTION_DEPLOYMENT)
+- `prompts-sessions/` - 6 fichiers (NEXT_SESSION_PROMPT, PROMPT_*.md, CODEX_GPT_SYSTEM_PROMPT)
+- `setup/` - 3 fichiers (CLAUDE_AUTO_MODE_SETUP, GUARDIAN_SETUP_COMPLETE, CODEX_CLOUD_GMAIL_SETUP)
+- `guides-obsoletes/` - 2 fichiers (CLAUDE_CODE_GUIDE v1.0, GUARDIAN_AUTOMATION)
+- `temporaire/` - 1 fichier (TEST_WORKFLOWS)
+- `benchmarks/` - 1 fichier (MEMORY_BENCHMARK_README)
+
+**Fichiers conservés racine (15)** :
+- AGENT_SYNC.md, AGENTS.md, CLAUDE.md, CODEV_PROTOCOL.md, CODEX_GPT_GUIDE.md ✅
+- ROADMAP_OFFICIELLE.md, ROADMAP_PROGRESS.md ✅
+- DEPLOYMENT_MANUAL.md, DEPLOYMENT_SUCCESS.md ✅
+- AUDIT_COMPLET_2025-10-23.md (plus récent) ✅
+- CHANGELOG.md, README.md, CONTRIBUTING.md ✅
+- GUIDE_INTERFACE_BETA.md, CANARY_DEPLOYMENT.md ✅
+
+**Résultat :**
+- **33 → 15 fichiers** (-18, -55% ✅)
+- Navigation racine beaucoup plus claire
+- Docs obsolètes archivées mais récupérables
+- README.md explicatif dans archive
+- Aucun fichier critique supprimé
+
+### État actuel du dépôt
+**Production** : 🟢 EXCELLENT (100% uptime)
+**Tests** : 🟢 BON (285 passed)
+**Build** : 🟢 BON
+**Docs racine** : 🟢 EXCELLENT (15 fichiers, cleanup terminé ✅)
+
+**État global** : 🟢 PRODUCTION READY
+
+### Prochaines actions recommandées
+**P1.2 - Setup Mypy** (effort 2-3h)
+- Créer pyproject.toml config mypy
+- Fixer ~66 typing errors backend
+- Ajouter mypy dans Guardian pre-commit
+
+**P1.3 - Supprimer Dossier Corrompu** (effort 5min)
+- Remove-Item "c:devemergenceV8srcbackendfeaturesguardian" -Recurse -Force
+
+### Notes pour Codex GPT
+P1.1 cleanup docs racine ✅ TERMINÉ. Racine maintenant propre (15 fichiers .md au lieu de 33). Tous fichiers obsolètes archivés dans `docs/archive/2025-10/` avec README explicatif.
+
+Prochaine priorité : P1.2 (Setup Mypy) ou P1.3 (Supprimer dossier corrompu).
+
+### Blocages
+Aucun.
 
 ---
 

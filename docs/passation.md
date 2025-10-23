@@ -1,3 +1,138 @@
+## [2025-10-23 16:30 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- 18 fichiers .md déplacés vers `docs/archive/2025-10/` (git mv)
+- `docs/archive/2025-10/README.md` (NOUVEAU - documentation archive cleanup)
+- `CLEANUP_ANALYSIS.md` (créé puis supprimé - analyse temporaire)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**🧹 P1.1 - Cleanup documentation racine**
+
+Suite au plan d'action hiérarchisé établi dans `AUDIT_COMPLET_2025-10-23.md`, exécution de la première priorité P1.1 : nettoyer les fichiers .md de la racine du projet.
+
+**Demande utilisateur :**
+> "On va nettoyer les fichiers obsolètes avant d'attaquer la roadmap. Il y a des fichiers md de différents protocoles, roadmap, etc qui sont obsolètes/plus à jour le répertoire racine est un vrai foutoir. Assure toi de ne pas archiver/supprimer des fichiers encore utile! Base toi sur la doc d'archi pour etre précis et propre"
+
+### Travail réalisé
+
+**1. Lecture docs architecture** (validation fichiers critiques) :
+- `docs/architecture/00-Overview.md` - Contexte C4
+- `docs/architecture/AGENTS_CHECKLIST.md` - Checklist agents
+- `CLAUDE.md` - Config Claude Code
+
+**Fichiers référencés identifiés** :
+- AGENT_SYNC.md, AGENTS.md, CLAUDE.md, CODEV_PROTOCOL.md, CODEX_GPT_GUIDE.md
+- ROADMAP_OFFICIELLE.md, ROADMAP_PROGRESS.md
+- DEPLOYMENT_MANUAL.md, DEPLOYMENT_SUCCESS.md
+- CHANGELOG.md, README.md
+
+**2. Inventaire complet racine** :
+- 33 fichiers .md trouvés
+- Analyse détaillée dans `CLEANUP_ANALYSIS.md` (temporaire)
+
+**3. Catégorisation 33 fichiers** :
+- 🟢 **11 critiques** (référencés docs archi) → GARDÉS
+- 🟡 **4 utiles** (récents/pertinents) → GARDÉS
+- 🔴 **18 obsolètes** → ARCHIVÉS
+
+**4. Structure archive créée** `docs/archive/2025-10/` :
+
+**Audits anciens (3)** :
+- AUDIT_COMPLET_2025-10-18.md (remplacé par 2025-10-23)
+- AUDIT_COMPLET_2025-10-21.md (remplacé par 2025-10-23)
+- AUDIT_CLOUD_SETUP.md
+
+**Bugs résolus (2)** :
+- BUG_STREAMING_CHUNKS_INVESTIGATION.md (✅ RÉSOLU - fix implémenté)
+- FIX_PRODUCTION_DEPLOYMENT.md (✅ RÉSOLU)
+
+**Prompts sessions (6)** :
+- NEXT_SESSION_PROMPT.md (2025-10-21, session Mypy batch 2 dépassée)
+- PROMPT_CODEX_RAPPORTS.md (dupliqué avec CODEX_GPT_GUIDE.md section 9.3)
+- PROMPT_PHASE_2_GUARDIAN.md (2025-10-19, Phase 2 Guardian Cloud)
+- PROMPT_RAPPORTS_GUARDIAN.md (dupliqué)
+- PROMPT_SUITE_AUDIT.md (2025-10-18, suite audit dashboard)
+- CODEX_GPT_SYSTEM_PROMPT.md (obsolète)
+
+**Setup terminés (3)** :
+- CLAUDE_AUTO_MODE_SETUP.md (fait, documenté dans CLAUDE.md)
+- GUARDIAN_SETUP_COMPLETE.md
+- CODEX_CLOUD_GMAIL_SETUP.md
+
+**Guides obsolètes (2)** :
+- CLAUDE_CODE_GUIDE.md (v1.0 2025-10-16, remplacé par CLAUDE.md 2025-10-23)
+- GUARDIAN_AUTOMATION.md (redondant avec docs/GUARDIAN_COMPLETE_GUIDE.md)
+
+**Temporaires (1)** :
+- TEST_WORKFLOWS.md (11 lignes, test GitHub Actions)
+
+**Benchmarks (1)** :
+- MEMORY_BENCHMARK_README.md
+
+**5. Déplacement fichiers** :
+```bash
+git mv [18 fichiers] docs/archive/2025-10/[catégories]
+```
+
+**6. Documentation archive** :
+- Créé `docs/archive/2025-10/README.md` avec explication complète cleanup
+- Liste tous fichiers archivés avec raisons
+- Instructions récupération si nécessaire
+
+**7. Vérification finale** :
+- Racine contient 15 fichiers .md (objectif atteint)
+- CLEANUP_ANALYSIS.md supprimé (temporaire)
+
+### Résultat
+
+**Avant cleanup :** 33 fichiers .md
+**Après cleanup :** 15 fichiers .md
+**Réduction :** -18 fichiers (-55% ✅)
+
+**Fichiers conservés racine (15)** :
+1. AGENT_SYNC.md ✅
+2. AGENTS.md ✅
+3. AUDIT_COMPLET_2025-10-23.md ✅ (plus récent)
+4. CANARY_DEPLOYMENT.md ✅
+5. CHANGELOG.md ✅
+6. CLAUDE.md ✅ (v2, remplace CLAUDE_CODE_GUIDE v1.0)
+7. CODEV_PROTOCOL.md ✅
+8. CODEX_GPT_GUIDE.md ✅
+9. CONTRIBUTING.md ✅
+10. DEPLOYMENT_MANUAL.md ✅
+11. DEPLOYMENT_SUCCESS.md ✅
+12. GUIDE_INTERFACE_BETA.md ✅
+13. README.md ✅
+14. ROADMAP_OFFICIELLE.md ✅
+15. ROADMAP_PROGRESS.md ✅
+
+**Bénéfices** :
+- Navigation racine beaucoup plus claire
+- Fichiers essentiels facilement identifiables
+- Docs obsolètes archivées mais récupérables
+- Aucun fichier critique supprimé (validation docs archi)
+
+### Tests
+Aucun test nécessaire (cleanup docs uniquement).
+
+### Prochaines actions recommandées
+
+**P1.2 - Setup Mypy** (effort 2-3h)
+- Créer pyproject.toml config mypy
+- Fixer ~66 typing errors backend
+- Ajouter mypy dans Guardian pre-commit
+
+**P1.3 - Supprimer Dossier Corrompu** (effort 5min)
+- Path bizarre : `c:devemergenceV8srcbackendfeaturesguardian` (sans slashes)
+- Remove-Item -Recurse -Force
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-23 16:00 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
