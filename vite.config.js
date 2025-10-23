@@ -1,10 +1,22 @@
 // vite.config.js
 import { defineConfig } from 'vite';
 import { fileURLToPath, URL } from 'url';
+import { visualizer } from 'rollup-plugin-visualizer';
+
+const shouldAnalyze = process.env.ANALYZE_BUNDLE === '1';
 
 export default defineConfig({
   clearScreen: false,
   cacheDir: 'node_modules/.vite-emergence',
+  plugins: [
+    shouldAnalyze && visualizer({
+      filename: 'dist/bundle-report.html',
+      template: 'treemap',
+      gzipSize: true,
+      brotliSize: true,
+      emitFile: true,
+    }),
+  ].filter(Boolean),
 
   server: {
     port: 5173,
@@ -60,9 +72,14 @@ export default defineConfig({
     cssCodeSplit: true,
     rollupOptions: {
       output: {
-        // Sépare tout node_modules en "vendor"
+        // Regroupe les dépendances lourdes dans des chunks dédiés
         manualChunks(id) {
-          return id.includes('node_modules') ? 'vendor' : undefined;
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('jspdf') || id.includes('autotable')) return 'pdf-tools';
+          if (id.includes('chart.js')) return 'charts';
+          if (id.includes('papaparse')) return 'data-import';
+          if (id.includes('marked')) return 'markdown';
+          return 'vendor';
         }
       }
     }

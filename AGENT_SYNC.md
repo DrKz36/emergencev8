@@ -2,9 +2,63 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-23 22:51 CET (Claude Code : P1.2 Batch 1 COMPLÉTÉ ✅ - 484 → 435 erreurs mypy)
+**Dernière mise à jour** : 2025-10-23 23:15 CET (Claude Code : Harmonisation CODEV_PROTOCOL.md ✅ - ARBO-LOCK viré ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-23 23:15 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `CODEV_PROTOCOL.md` (harmonisation ordre lecture + suppression ARBO-LOCK)
+- `CLAUDE.md` (ajout référence CODEV_PROTOCOL.md + suppression template redondant)
+- `AGENTS.md` (suppression mention ARBO-LOCK)
+- `CODEX_GPT_GUIDE.md` (suppression mention ARBO-LOCK)
+- `docs/passation-template.md` (suppression checklist ARBO-LOCK)
+- `.github/pull_request_template.md` (refonte complète: virer ARBO-LOCK, moderniser checklist)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée)
+
+### Actions réalisées
+**📚 Harmonisation protocole collaboration multi-agents - TERMINÉ ✅**
+
+**Objectif :** Harmoniser CODEV_PROTOCOL.md avec CLAUDE.md et éliminer ARBO-LOCK obsolète
+
+**Travail fait :**
+1. **Supprimé ARBO-LOCK** (protocole obsolète) dans 6 fichiers
+2. **Harmonisé ordre de lecture** dans CODEV_PROTOCOL.md section 2.2 :
+   - Docs Architecture EN PREMIER (comme CLAUDE.md)
+   - Ordre: Docs Archi → AGENT_SYNC.md → CODEV_PROTOCOL.md → passation.md → git
+3. **Ajouté référence CODEV_PROTOCOL.md** dans CLAUDE.md :
+   - Section "État Sync Inter-Agents" référence maintenant CODEV_PROTOCOL.md
+   - Workflow Standard mis à jour
+   - Lire sections 2.1 (template), 4 (checklist), 6 (anti-patterns)
+4. **Éliminé redondances** :
+   - Template passation de CLAUDE.md → référence vers CODEV_PROTOCOL.md
+   - PR template modernisé (type hints, architecture, contrats API)
+
+**Résultat :**
+- ✅ CODEV_PROTOCOL.md et CLAUDE.md maintenant cohérents
+- ✅ Ordre de lecture identique pour Claude Code et Codex
+- ✅ ARBO-LOCK complètement supprimé (6 fichiers)
+- ✅ Documentation unifiée (pas de duplication)
+
+### Tests
+- ✅ Grep refs croisées (cohérence docs)
+- ✅ Guardian pre-commit OK
+- ✅ Mypy 437 erreurs (inchangé, normal)
+
+### Prochaines actions recommandées
+**P1.2 Batch 2 (P2 - Moyenne priorité) :**
+- Fixer `chat/service.py` (17 erreurs)
+- Fixer `chat/rag_cache.py` (13 erreurs)
+- Fixer `auth/service.py` (12 erreurs)
+- **Objectif:** 437 → ~395 erreurs (-42 erreurs)
+- **Temps estimé:** 1h30
+
+### Blocages
+Aucun.
 
 ---
 

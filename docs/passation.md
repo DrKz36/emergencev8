@@ -1,3 +1,99 @@
+## [2025-10-23 23:15 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `CODEV_PROTOCOL.md` (harmonisation ordre lecture + suppression ARBO-LOCK)
+- `CLAUDE.md` (ajout référence CODEV_PROTOCOL.md + suppression template redondant)
+- `AGENTS.md` (suppression mention ARBO-LOCK)
+- `CODEX_GPT_GUIDE.md` (suppression mention ARBO-LOCK)
+- `docs/passation-template.md` (suppression checklist ARBO-LOCK)
+- `.github/pull_request_template.md` (refonte complète)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**📚 Harmonisation protocole collaboration multi-agents**
+
+Demande utilisateur: Examiner CODEV_PROTOCOL.md, vérifier s'il entre en conflit avec AGENT_SYNC.md et passation.md, vérifier pertinence et éliminer redondances.
+
+**Problèmes identifiés:**
+1. **ARBO-LOCK obsolète** : Référencé dans 6 fichiers actifs mais protocole plus utilisé
+2. **Ordre de lecture incohérent** : CODEV_PROTOCOL.md mettait AGENT_SYNC.md AVANT docs architecture (inverse de CLAUDE.md)
+3. **Redondance template passation** : Dupliqué dans CLAUDE.md et CODEV_PROTOCOL.md
+4. **CLAUDE.md n'utilisait pas CODEV_PROTOCOL.md** : Pas de référence explicite
+
+**Solution - Option A (approuvée) :**
+1. Supprimer toutes mentions ARBO-LOCK (6 fichiers)
+2. Harmoniser ordre de lecture CODEV_PROTOCOL.md avec CLAUDE.md
+3. Ajouter référence CODEV_PROTOCOL.md dans CLAUDE.md
+4. Éliminer template passation redondant dans CLAUDE.md
+
+### Travail réalisé
+
+**1. ARBO-LOCK supprimé (6 fichiers) :**
+- CODEV_PROTOCOL.md ligne 148 (checklist), ligne 315 (anti-patterns)
+- AGENTS.md ligne 200 (checklist)
+- CODEX_GPT_GUIDE.md ligne 114 (règles d'or)
+- docs/passation-template.md ligne 45 (checklist)
+- .github/pull_request_template.md (refonte complète du template PR)
+
+**2. CODEV_PROTOCOL.md section 2.2 harmonisée :**
+```markdown
+1. Docs Architecture (AGENTS_CHECKLIST.md, 00-Overview.md, 10-Components.md, 30-Contracts.md)
+2. AGENT_SYNC.md
+3. CODEV_PROTOCOL.md ou CODex_GUIDE.md
+4. docs/passation.md
+5. git status + git log
+```
+
+**3. CLAUDE.md mis à jour :**
+- Section "État Sync Inter-Agents" : Ajout point 2 "CODEV_PROTOCOL.md" avec sections à lire
+- Section "Workflow Standard" : Ajout lecture CODEV_PROTOCOL.md
+- Section "Template Passation" : Remplacé par référence vers CODEV_PROTOCOL.md section 2.1
+
+**4. PR template modernisé (.github/pull_request_template.md) :**
+- Titre : "PR - Emergence V8" (au lieu de "ARBO-LOCK")
+- Checklist : Type hints, architecture, contrats API (au lieu de snapshots ARBO)
+- Supprimé toutes instructions `tree /F /A` snapshot arborescence
+
+### Tests
+- ✅ Grep `ARBO-LOCK` : Vérifié suppression dans fichiers actifs (reste seulement dans archives)
+- ✅ Grep `CODEV_PROTOCOL.md` : Vérifié cohérence références croisées
+- ✅ Guardian pre-commit : OK (aucun problème)
+- ✅ Mypy : 437 erreurs (inchangé, normal - aucune modif code backend)
+
+### Travail de Codex GPT en cours
+**⚠️ Modifs unstaged détectées (non committées) :**
+- `package.json`, `package-lock.json` (dépendances frontend probablement)
+- `vite.config.js` (config build)
+- `src/backend/features/dashboard/admin_service.py` (backend)
+- `src/frontend/features/threads/threads-service.js` (frontend)
+
+**Aucune collision** : Mes modifs docs uniquement, Codex a touché code.
+**Action requise** : Codex doit documenter ses changements dans AGENT_SYNC.md/passation.md et commit.
+
+### Prochaines actions recommandées
+
+**Immédiat (Codex ou session suivante) :**
+- Vérifier modifs unstaged package.json/vite/admin/threads
+- Documenter travail de Codex dans AGENT_SYNC.md
+- Commit changements de Codex
+
+**P1.2 Batch 2 (Moyenne priorité) :**
+- Fixer `chat/service.py` (17 erreurs mypy)
+- Fixer `chat/rag_cache.py` (13 erreurs mypy)
+- Fixer `auth/service.py` (12 erreurs mypy)
+- **Objectif:** 437 → ~395 erreurs (-42 erreurs)
+- **Temps estimé:** 1h30
+
+**Après P1.2 complet :**
+- P2.1 Optimiser bundle frontend (si Codex pas fini)
+- P2.2 Cleanup TODOs backend (1-2h)
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-23 22:51 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
