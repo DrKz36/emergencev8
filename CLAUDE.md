@@ -416,8 +416,7 @@ Aucun.
 - `docs/architecture/30-Contracts.md` - Contrats API
 
 **Roadmap:**
-- `ROADMAP_OFFICIELLE.md` - Roadmap unique
-- `ROADMAP_PROGRESS.md` - Suivi quotidien (61%)
+- `ROADMAP.md` - Roadmap unique (features + maintenance)
 - `CHANGELOG.md` - Historique versions
 
 **Déploiement:**

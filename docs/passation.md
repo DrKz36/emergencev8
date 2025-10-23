@@ -1,3 +1,108 @@
+## [2025-10-23 17:15 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `ROADMAP.md` (NOUVEAU - roadmap unique unifié, 570+ lignes)
+- `docs/archive/2025-10/roadmaps/ROADMAP_OFFICIELLE.md` (archivé via git mv)
+- `docs/archive/2025-10/roadmaps/ROADMAP_PROGRESS.md` (archivé via git mv)
+- `docs/archive/2025-10/audits-anciens/AUDIT_COMPLET_2025-10-23.md` (archivé via git mv)
+- `CLAUDE.md` (ligne 419-420 : référence vers ROADMAP.md)
+- `docs/architecture/AGENTS_CHECKLIST.md` (ligne 222 : référence vers ROADMAP.md)
+- `AGENT_SYNC.md` (nouvelle entrée session complète)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**🗺️ Fusion des 3 roadmaps en UN SEUL roadmap cohérent**
+
+Suite au cleanup P1.1 réussi, l'utilisateur a demandé de fusionner tous les roadmaps en un seul document cohérent.
+
+**Demande utilisateur :**
+> "pour ROADMAP_OFFICIELLE.md, ROADMAP_PROGRESS.md et AUDIT_COMPLET_2025-10-23.md (le plus récent), fusionne le tout en t'assurant que tout est cohérent et qu'on perde pas le file. Je veux un seul roadmap pour tout ce qu'on va faire ensuite"
+
+### Travail réalisé
+
+**1. Analyse des 3 roadmaps existants** :
+
+**ROADMAP_OFFICIELLE.md :**
+- 13 features tutoriel détaillées (P0/P1/P2/P3)
+- P0 : Archivage, Graphe, Export CSV/PDF ✅
+- P1 : Hints, Thème, Concepts avancés ✅
+- P2 : Dashboard Admin, Multi-Sessions, 2FA ✅
+- P3 : PWA, Webhooks, API Publique, Agents Custom ⏳
+
+**ROADMAP_PROGRESS.md :**
+- Claimed 17/23 features (74%) - INCOHÉRENT avec ROADMAP_OFFICIELLE (13 features)
+- Tracking quotidien avec dates mais math incorrect
+- Problème : 74% de 23 = incohérent avec 13 features officielles
+
+**AUDIT_COMPLET_2025-10-23.md :**
+- Plan d'action post-audit avec 7 tâches maintenance technique
+- P1 : Cleanup docs (fait ✅), Setup Mypy, Supprimer dossier corrompu
+- P2 : Optimiser bundle, Cleanup TODOs
+- P3 : Migration sessions→threads, Tests E2E
+
+**Problème identifié :** Incohérence progression - PROGRESS disait 74%, réalité = 69% features
+
+**2. Création ROADMAP.md unifié** :
+
+**Structure intelligente** :
+- Séparation claire : **Features Tutoriel** (P0/P1/P2/P3) vs **Maintenance Technique** (P1/P2/P3)
+- Progression réaliste : 10/20 tâches (50%)
+
+**Features Tutoriel (13 features) :** 9/13 complété (69%)
+- P0 ✅ : 3/3 (Archivage conversations, Graphe connaissances, Export CSV/PDF)
+- P1 ✅ : 3/3 (Hints proactifs, Thème clair/sombre, Gestion avancée concepts)
+- P2 ✅ : 3/3 (Dashboard admin, Multi-sessions, 2FA TOTP)
+- P3 ⏳ : 0/4 (PWA, Webhooks, API publique, Agents custom)
+
+**Maintenance Technique (7 tâches) :** 1/7 complété (14%)
+- P1 Critique : 1/3 (Cleanup docs ✅, Setup Mypy ⏳, Supprimer dossier corrompu ⏳)
+- P2 Importante : 0/2 (Bundle optimization, Cleanup TODOs)
+- P3 Futur : 0/2 (Migration sessions→threads DB, Tests E2E)
+
+**Total honnête : 10/20 tâches (50%) au lieu de 74% bullshit**
+
+**3. Archivage anciens roadmaps** :
+- Créé `docs/archive/2025-10/roadmaps/`
+- `git mv ROADMAP_OFFICIELLE.md docs/archive/2025-10/roadmaps/`
+- `git mv ROADMAP_PROGRESS.md docs/archive/2025-10/roadmaps/`
+- `git mv AUDIT_COMPLET_2025-10-23.md docs/archive/2025-10/audits-anciens/`
+
+**4. Mise à jour références** :
+- `CLAUDE.md` ligne 419-420 : Remplacé 2 roadmaps par ROADMAP.md unique
+- `docs/architecture/AGENTS_CHECKLIST.md` ligne 222 : Remplacé 2 roadmaps + progression corrigée (50%)
+- Grep pour identifier 34 fichiers référençant les anciens roadmaps (majorité = .git cache, archives OK)
+
+### Tests
+- ✅ Lecture complète des 3 roadmaps (vérification cohérence)
+- ✅ Vérification math progression (détection incohérence 74% vs 69%)
+- ✅ Grep références (`ROADMAP_OFFICIELLE|ROADMAP_PROGRESS|AUDIT_COMPLET_2025-10-23`)
+- ✅ Validation structure ROADMAP.md (570+ lignes, complet)
+
+### Travail de Codex GPT pris en compte
+Aucun travail récent de Codex dans cette session.
+
+### Prochaines actions recommandées
+
+**P1.2 - Setup Mypy strict (PRIORITÉ SUIVANTE)** :
+1. Configurer mypy.ini strict pour `src/backend/`
+2. Lancer mypy et fixer tous les type hints manquants
+3. Ajouter pre-commit hook mypy
+4. Documenter dans `docs/CODE_QUALITY.md`
+
+**P1.3 - Supprimer dossier corrompu** :
+- Identifier `.git/rr-cache/` qui pollue (visible dans grep)
+- Nettoyer cache Git si nécessaire
+
+**P2.1 - Optimiser bundle frontend** :
+- Analyser bundle size actuel
+- Code splitting routes
+- Lazy loading modules
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-23 16:30 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

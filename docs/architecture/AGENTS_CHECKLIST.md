@@ -219,8 +219,7 @@ grep -r "function myFunction" src/frontend/
 - `CODEX_GPT_GUIDE.md` : Guide pour Codex GPT
 
 ### Roadmaps
-- `ROADMAP_OFFICIELLE.md` : Roadmap master (P0/P1/P2/P3)
-- `ROADMAP_PROGRESS.md` : Suivi progression (74% complété)
+- `ROADMAP.md` : Roadmap unique (features + maintenance, 10/20 complété = 50%)
 
 ### Déploiement
 - `DEPLOYMENT_MANUAL.md` : Procédure déploiement manuel Cloud Run

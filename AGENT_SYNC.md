@@ -2,9 +2,72 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-23 16:30 CET (Claude Code : P1.1 Cleanup docs racine terminé)
+**Dernière mise à jour** : 2025-10-23 17:15 CET (Claude Code : P1.1 Cleanup + Fusion roadmaps terminés)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-23 17:15 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `ROADMAP.md` (NOUVEAU - roadmap unique unifié, 570+ lignes)
+- `docs/archive/2025-10/roadmaps/ROADMAP_OFFICIELLE.md` (archivé)
+- `docs/archive/2025-10/roadmaps/ROADMAP_PROGRESS.md` (archivé)
+- `docs/archive/2025-10/audits-anciens/AUDIT_COMPLET_2025-10-23.md` (archivé)
+- `CLAUDE.md` (référence vers ROADMAP.md)
+- `docs/architecture/AGENTS_CHECKLIST.md` (référence vers ROADMAP.md)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (entrée session)
+
+### Actions réalisées
+**🗺️ FUSION ROADMAPS - TERMINÉ ✅**
+
+**Objectif :** Fusionner 3 roadmaps (OFFICIELLE, PROGRESS, AUDIT) en UN SEUL roadmap cohérent
+
+**Problèmes identifiés anciens roadmaps :**
+- ROADMAP_OFFICIELLE.md : 13 features détaillées (P0/P1/P2/P3)
+- ROADMAP_PROGRESS.md : Claimed 17/23 (74%) mais math incohérente
+- AUDIT_COMPLET_2025-10-23.md : 7 tâches techniques maintenance supplémentaires
+- **Incohérence progression :** PROGRESS disait 74%, réalité = 69% features + 14% maintenance
+
+**Solution - ROADMAP.md unifié :**
+- **Features Tutoriel** (13 features P0/P1/P2/P3) : 9/13 complété (69%)
+  - P0 ✅ : 3/3 (Archivage, Graphe, Export CSV/PDF)
+  - P1 ✅ : 3/3 (Hints, Thème, Concepts avancés)
+  - P2 ✅ : 3/3 (Dashboard Admin, Multi-Sessions, 2FA)
+  - P3 ⏳ : 0/4 (PWA, Webhooks, API Publique, Agents Custom)
+
+- **Maintenance Technique** (7 tâches P1/P2/P3) : 1/7 complété (14%)
+  - P1 Critique : 1/3 (Cleanup docs ✅, Setup Mypy ⏳, Supprimer dossier corrompu ⏳)
+  - P2 Importante : 0/2 (Bundle optimization, Cleanup TODOs)
+  - P3 Futur : 0/2 (Migration sessions→threads DB, Tests E2E)
+
+**Total : 10/20 tâches (50%) - Progression RÉALISTE**
+
+**Résultat :**
+- **1 seul fichier ROADMAP.md** au lieu de 3
+- Séparation claire : Features tutoriel vs Maintenance technique
+- Progression honnête et réaliste (50% vs 74% bullshit)
+- Toutes les références docs mises à jour (CLAUDE.md, AGENTS_CHECKLIST.md)
+
+### Tests
+- ✅ Vérification cohérence features (lecture 3 roadmaps)
+- ✅ Vérification références dans docs actives
+- ✅ Grep pour trouver toutes références obsolètes
+
+### Prochaines actions recommandées
+**P1.2 - Setup Mypy strict (PRIORITÉ)** :
+- Configurer mypy strict pour `src/backend/`
+- Fixer tous les type hints manquants
+- Ajouter pre-commit hook mypy
+
+**P1.3 - Supprimer dossier corrompu** :
+- Identifier dossier `.git/rr-cache/` qui pollue (visible dans grep)
+- Nettoyer cache Git corrompu si nécessaire
+
+### Blocages
+Aucun.
 
 ---
 
