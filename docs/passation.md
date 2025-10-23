@@ -1,3 +1,63 @@
+## [2025-10-23 22:15 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/benchmarks/metrics/__init__.py` (créé - module métriques ranking)
+- `src/backend/features/benchmarks/metrics/temporal_ndcg.py` (créé - métrique nDCG@k temporelle)
+- `tests/backend/features/test_benchmarks_metrics.py` (créé - 16 tests complets)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**🎯 Métrique nDCG@k temporelle pour évaluation ranking**
+
+Implémentation d'une métrique d'évaluation pour mesurer la qualité du classement de documents avec pénalisation temporelle exponentielle.
+
+**Objectif :**
+- Quantifier l'impact des boosts de fraîcheur et entropie dans le moteur de ranking ÉMERGENCE V8
+- Combiner pertinence (relevance) et fraîcheur (timestamp) dans un score unique
+- Formule : `DCG^time@k = Σ (2^rel_i - 1) * exp(-λ * Δt_i) / log2(i+1)`
+
+**Implémentation :**
+- Module : `src/backend/features/benchmarks/metrics/temporal_ndcg.py`
+- Fonction : `ndcg_time_at_k(ranked, k=10, now=None, T_days=7.0, lam=0.3)`
+- Entrées : liste d'items avec clés `'rel'` (float) et `'ts'` (datetime)
+- Sortie : score nDCG entre 0 (pire) et 1 (parfait)
+- Paramètres configurables : k (cutoff), T_days (normalisation), λ (taux décroissance)
+
+**Caractéristiques :**
+- ✅ Type hints stricts (mypy --strict)
+- ✅ Code propre (ruff)
+- ✅ 16 tests unitaires couvrant tous les cas (edge cases, validation, scénarios réels)
+- ✅ Documentation complète (docstrings + exemples)
+
+**Points techniques clés :**
+1. **Classement idéal basé sur gain temporel réel** : tri par `(2^rel - 1) * tau(ts)` DESC, pas juste rel puis ts séparément
+2. **Pénalisation temporelle** : `tau(ts) = exp(-λ * Δt)` où `Δt = (now - ts) / T_days`
+3. **Gestion items sans timestamp** : traités comme très anciens (tau = 0)
+4. **Éviter division par zéro** : si IDCG nul (tous items rel=0), retourne 1.0
+
+### Tests
+- ✅ `pytest tests/backend/features/test_benchmarks_metrics.py` (16/16 passed)
+- ✅ `ruff check` (all checks passed)
+- ✅ `mypy --strict` (success: no issues found)
+
+**Tests couverts :**
+- Liste vide, item unique, pénalisation temporelle
+- Trade-off pertinence vs fraîcheur
+- Classements parfait/pire/suboptimal
+- Cutoff k, items sans timestamp
+- Validation paramètres (k, T_days, λ)
+- Scénario réel (bon vs mauvais classement)
+
+### Prochaines actions recommandées
+1. **Intégration optionnelle** : ajouter métrique dans un script d'évaluation RAG (non fait car hors scope du prompt)
+2. **Benchmarks ranking** : créer dataset test pour évaluer le moteur de recherche avec cette métrique
+3. **Tunage hyperparamètres** : expérimenter avec T_days et λ selon cas d'usage (docs techniques vs news)
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-23 20:45 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

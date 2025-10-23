@@ -6189,3 +6189,33 @@ Aucun. Environnement dev opérationnel (99.7% tests OK).
 
 **Recommendations:**
 - [MEDIUM] Monitor closely and investigate warnings
+
+## Claude Code Session - 2025-10-23T22:15:00+01:00
+
+**Feature:** Métrique nDCG@k temporelle
+
+**Fichiers créés:**
+- \ - Métrique ranking avec pénalisation temporelle
+- \ - 16 tests (100% passed)
+
+**Description:**
+Implémentation métrique nDCG@k avec pénalisation exponentielle pour évaluer la qualité du classement en combinant pertinence et fraîcheur. Formule: \.
+
+**Tests:** ✅ pytest (16/16), ruff, mypy --strict
+
+**Prochaines actions:** Créer dataset d'évaluation pour benchmarker le moteur de ranking.
+
+## Claude Code Session - 2025-10-23T22:15:00+01:00
+
+**Feature:** Métrique nDCG@k temporelle
+
+**Fichiers créés:**
+- `src/backend/features/benchmarks/metrics/temporal_ndcg.py` - Métrique ranking avec pénalisation temporelle
+- `tests/backend/features/test_benchmarks_metrics.py` - 16 tests (100% passed)
+
+**Description:**
+Implémentation métrique nDCG@k avec pénalisation exponentielle pour évaluer la qualité du classement en combinant pertinence et fraîcheur. Formule: DCG^time@k = Σ (2^rel_i - 1) * exp(-λ * Δt_i) / log2(i+1).
+
+**Tests:** ✅ pytest (16/16), ruff, mypy --strict
+
+**Prochaines actions:** Créer dataset d'évaluation pour benchmarker le moteur de ranking.
