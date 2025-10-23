@@ -1,7 +1,7 @@
 # CLAUDE.md - Configuration Claude Code Emergence V8
 
-**Mode:** Développement Autonome Multi-Agents  
-**Dernière mise à jour:** 2025-10-18
+**Mode:** Développement Autonome Multi-Agents
+**Dernière mise à jour:** 2025-10-23 (+ Checklist Architecture Obligatoire)
 
 ---
 
@@ -69,25 +69,44 @@
 
 ---
 
-## 🔴 RÈGLE ABSOLUE #1 - SYNCHRONISATION INTER-AGENTS
+## 🔴 RÈGLE ABSOLUE #1 - ARCHITECTURE & SYNCHRONISATION
 
 **AVANT TOUTE ACTION DE CODE, LIRE DANS CET ORDRE:**
+
+### 1. 📚 Docs Architecture (CRITIQUE - Ajout 2025-10-23)
+
+**⚠️ NOUVELLE RÈGLE OBLIGATOIRE** : Consulter les docs architecture AVANT toute implémentation.
+
+**Checklist complète** : [docs/architecture/AGENTS_CHECKLIST.md](docs/architecture/AGENTS_CHECKLIST.md) ← **LIRE EN ENTIER**
+
+**Docs obligatoires** :
+- **`docs/architecture/00-Overview.md`** - Contexte C4 (conteneurs, invariants)
+- **`docs/architecture/10-Components.md`** - Services backend + Modules frontend (TOUS)
+- **`docs/architecture/30-Contracts.md`** - Contrats API (WebSocket + REST)
+- **`docs/architecture/ADR-*.md`** - Décisions architecturales (sessions/threads, etc.)
+
+**Pourquoi ?**
+- ❌ Sans lecture : Tu vas dupliquer du code existant, casser des contrats API, créer des bugs
+- ✅ Avec lecture : Tu comprends l'architecture, tu respectes les contrats, tu mets à jour les docs
+
+**Après modification** :
+- ✅ Mettre à jour `10-Components.md` si nouveau service/module
+- ✅ Mettre à jour `30-Contracts.md` si nouveau endpoint
+- ✅ Créer ADR si décision architecturale (template : ADR-001)
+
+### 2. 🔄 État Sync Inter-Agents
 
 1. **`AGENT_SYNC.md`** ← OBLIGATOIRE EN PREMIER
    - État actuel du dépôt
    - Ce que Codex GPT a fait récemment
    - Zones de travail en cours
    - Fichiers modifiés par l'autre agent
-   
-2. **`AGENTS.md`** - Consignes générales
 
-3. **`CODEV_PROTOCOL.md`** - Protocole multi-agents
+2. **`docs/passation.md`** - 3 dernières entrées minimum
 
-4. **`docs/passation.md`** - 3 dernières entrées minimum
+3. **`git status` + `git log --oneline -10`** - État Git
 
-5. **`git status` + `git log --oneline -10`** - État Git
-
-**⚠️ NE JAMAIS commencer à coder sans avoir lu AGENT_SYNC.md**
+**⚠️ NE JAMAIS commencer à coder sans avoir lu AGENT_SYNC.md + Docs Architecture**
 
 ---
 

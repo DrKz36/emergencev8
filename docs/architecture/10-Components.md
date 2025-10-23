@@ -39,22 +39,109 @@
 
 ## Modules Frontend Additionnels
 
-### Timeline Module
+### Cockpit Module
 
-**Fichier** : `src/frontend/features/timeline/timeline.js`
-**Styles** : `src/frontend/features/timeline/timeline.css`
+**Fichier** : `src/frontend/features/cockpit/cockpit.js`
+**Styles** : `src/frontend/features/cockpit/cockpit.css`
 
-**Responsabilité** : Visualisation chronologique des événements.
+**Responsabilité** : Dashboard principal avec métriques temps réel, graphiques activité et coûts.
 
 **Fonctionnalités** :
-- Affichage timeline interactive
-- Filtrage par type/agent/période
-- Liens vers conversations/documents
+- Vue d'ensemble activité (messages, tokens, coûts)
+- Graphiques temporels (7j, 30j, 90j, 1 an)
+- Statistiques par agent/provider
+- Export données
 
-**Événements consommés** :
-- `EVENTS.TIMELINE_UPDATE`
+**API** :
+- `GET /api/dashboard/timeline/activity`
+- `GET /api/dashboard/timeline/costs`
+- `GET /api/dashboard/costs/summary`
 
-**État** : ⚠️ Module présent, intégration partielle.
+**État** : ✅ Module actif, dashboard principal de l'app.
+
+---
+
+### Settings Module
+
+**Fichier** : `src/frontend/features/settings/settings.js`
+**Styles** : `src/frontend/features/settings/settings.css`
+
+**Responsabilité** : Configuration utilisateur (préférences système, modèles, notifications).
+
+**Fonctionnalités** :
+- Sélection modèles IA par agent (GPT-4, Claude, Gemini)
+- Thème clair/sombre
+- Préférences RAG (seuils, nb docs)
+- Notifications
+
+**Stockage** :
+- LocalStorage (clé `emergence_settings`)
+- Sync backend futur
+
+**État** : ✅ Module actif.
+
+---
+
+### Threads Module
+
+**Fichier** : `src/frontend/features/threads/threads.js`
+**Styles** : `src/frontend/features/threads/threads.css`
+
+**Responsabilité** : Gestion des threads de conversation (liste, création, archivage, suppression).
+
+**Fonctionnalités** :
+- Liste threads avec preview dernier message
+- Création nouveau thread
+- Archivage threads anciens
+- Suppression avec confirmation
+
+**API** :
+- `GET /api/threads`
+- `POST /api/threads`
+- `DELETE /api/threads/{id}`
+
+**État** : ✅ Module actif, panneau latéral gauche.
+
+---
+
+### Conversations Module
+
+**Fichier** : `src/frontend/features/conversations/conversations.js`
+
+**Responsabilité** : Module legacy pour compatibilité historique.
+
+**État** : ⚠️ Module legacy, utilisé pour migration données anciennes versions. Considérer archivage.
+
+---
+
+### Hymn Module
+
+**Fichier** : `src/frontend/features/hymn/hymn.js`
+**Styles** : `src/frontend/features/hymn/hymn.css`
+
+**Responsabilité** : Easter egg / module artistique (animation audio-visuelle).
+
+**Fonctionnalités** :
+- Animation visuelle synchronisée
+- Easter egg caché dans UI
+
+**État** : ✅ Module actif, feature bonus.
+
+---
+
+### Documentation Module
+
+**Fichier** : `src/frontend/features/documentation/documentation.js`
+**Styles** : `src/frontend/features/documentation/documentation.css`
+
+**Responsabilité** : Viewer markdown pour documentation intégrée (guides, aide).
+
+**Fonctionnalités** :
+- Rendu markdown
+- Navigation sections
+- Recherche documentation
+
+**État** : ✅ Module actif, accessible via menu aide.
 
 ---
 
@@ -126,25 +213,138 @@
 
 ## Services Backend Additionnels
 
-### TimelineService
+### GmailService (Phase 3 Guardian Cloud)
 
-**Fichier** : `src/backend/features/timeline/service.py`
-**Router** : `src/backend/features/timeline/router.py`
-**Modèles** : `src/backend/features/timeline/models.py`
+**Fichier** : `src/backend/features/gmail/service.py`
+**Router** : `src/backend/features/gmail/router.py`
 
-**Responsabilité** : Gestion de la chronologie des événements système.
+**Responsabilité** : Intégration Gmail API pour lecture emails Guardian (Codex GPT).
 
 **Fonctionnalités** :
-- Enregistrement événements horodatés
-- Filtrage par type/période
-- Agrégation statistiques temporelles
+- OAuth2 flow Gmail (admin uniquement)
+- Lecture emails avec query `subject:(emergence OR guardian OR audit)`
+- Auth via API key `X-Codex-API-Key` pour Codex
+- Stockage tokens OAuth dans Firestore (encrypted)
 
 **Endpoints** :
-- `GET /api/timeline` - Liste événements
-- `POST /api/timeline/event` - Enregistrer événement
-- `GET /api/timeline/stats` - Statistiques
+- `GET /auth/gmail` - Initier OAuth2 flow
+- `GET /auth/callback/gmail` - Callback OAuth2
+- `GET /api/gmail/read-reports` - Lire emails Guardian (Codex auth)
+- `GET /api/gmail/status` - Vérifier status OAuth
 
-**État** : ⚠️ Service présent mais peu documenté, à auditer.
+**État** : ✅ Service actif, utilisé par Codex GPT (Phase 3 Guardian Cloud).
+
+---
+
+### GuardianService
+
+**Fichier** : `src/backend/features/guardian/router.py`
+
+**Responsabilité** : Auto-fix et audit rapports Guardian (hooks Git).
+
+**Fonctionnalités** :
+- Endpoint pour déclencher audit manuel
+- Intégration avec Guardian agents (Anima, Neo, Nexus, ProdGuardian)
+- Génération rapports unifiés
+
+**Endpoints** :
+- `POST /api/guardian/run-audit` - Déclencher audit manuel
+
+**État** : ✅ Service actif, intégré Git hooks.
+
+---
+
+### TracingService (Phase 3)
+
+**Fichier** : `src/backend/features/tracing/router.py`
+**Core** : `src/backend/core/tracing/trace_manager.py`
+
+**Responsabilité** : Distributed tracing pour observabilité (spans retrieval, llm_generate).
+
+**Fonctionnalités** :
+- Création spans avec attributs (agent, provider, model)
+- Export traces pour analyse
+- Métriques Prometheus associées (duration, status)
+
+**Endpoints** :
+- `GET /api/tracing/spans` - Export spans récents
+
+**État** : ✅ Service actif, instrumentation ChatService complète.
+
+---
+
+### UsageService (Phase 2 Guardian Cloud)
+
+**Fichier** : `src/backend/features/usage/router.py`
+**Middleware** : `src/backend/core/middleware/usage_tracker.py`
+
+**Responsabilité** : Tracking usage endpoints pour monitoring prod (Guardian Cloud).
+
+**Fonctionnalités** :
+- Middleware auto-tracking toutes requêtes HTTP
+- Persistance usage dans SQLite (table `api_usage`)
+- Statistiques par endpoint/user/période
+
+**Endpoints** :
+- `GET /api/usage/stats` - Statistiques usage API
+
+**État** : ✅ Service actif, middleware global activé.
+
+---
+
+### SyncService
+
+**Fichier** : `src/backend/features/sync/router.py`
+
+**Responsabilité** : Auto-sync inter-agents (AGENT_SYNC.md updates automatiques).
+
+**Fonctionnalités** :
+- Monitoring fichiers AGENT_SYNC.md, docs/passation.md
+- Notifications WebSocket quand changements détectés
+- Auto-update documentation
+
+**Endpoints** :
+- `GET /api/sync/status` - Status synchronisation
+
+**État** : ✅ Service actif, intégration Guardian.
+
+---
+
+### BetaReportService
+
+**Fichier** : `src/backend/features/beta_report/router.py`
+
+**Responsabilité** : Collecte feedback beta testeurs.
+
+**Fonctionnalités** :
+- Formulaire feedback bug/feature request
+- Catégorisation automatique
+- Export rapports pour équipe
+
+**Endpoints** :
+- `POST /api/beta/report` - Soumettre rapport beta
+- `GET /api/beta/reports` - Liste rapports (admin)
+
+**État** : ✅ Service actif, utilisé par beta testeurs.
+
+---
+
+### SettingsService
+
+**Fichier** : `src/backend/features/settings/router.py`
+
+**Responsabilité** : Gestion settings application (config système, toggles features).
+
+**Fonctionnalités** :
+- Get/Set settings globaux
+- Feature flags
+- Configuration agents (modèles par défaut)
+
+**Endpoints** :
+- `GET /api/settings` - Récupérer settings
+- `PUT /api/settings` - Modifier settings (admin)
+
+**État** : ✅ Service actif.
 
 ---
 
