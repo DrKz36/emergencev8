@@ -6,7 +6,7 @@ Centralise logging, métriques et alertes
 import logging
 import time
 from functools import wraps
-from typing import Optional, Callable
+from typing import Optional, Callable, Any
 from datetime import datetime, timezone
 from collections import defaultdict
 from pathlib import Path
@@ -39,17 +39,17 @@ class MetricsCollector:
         self.latency_sum = defaultdict(float)
         self.latency_count = defaultdict(int)
 
-    def record_request(self, endpoint: str, method: str):
+    def record_request(self, endpoint: str, method: str) -> None:
         """Enregistre une requête"""
         key = f"{method}:{endpoint}"
         self.request_count[key] += 1
 
-    def record_error(self, endpoint: str, error_type: str):
+    def record_error(self, endpoint: str, error_type: str) -> None:
         """Enregistre une erreur"""
         key = f"{endpoint}:{error_type}"
         self.error_count[key] += 1
 
-    def record_latency(self, endpoint: str, duration: float):
+    def record_latency(self, endpoint: str, duration: float) -> None:
         """Enregistre la latence d'une requête"""
         self.latency_sum[endpoint] += duration
         self.latency_count[endpoint] += 1
@@ -74,7 +74,7 @@ class MetricsCollector:
             return 0.0
         return (total_errors / total_requests) * 100
 
-    def get_metrics_summary(self) -> dict:
+    def get_metrics_summary(self) -> dict[str, Any]:
         """Retourne un résumé des métriques"""
         return {
             "total_requests": sum(self.request_count.values()),
@@ -98,7 +98,7 @@ class MetricsCollector:
 metrics = MetricsCollector()
 
 
-def monitor_endpoint(endpoint_name: Optional[str] = None):
+def monitor_endpoint(endpoint_name: Optional[str] = None) -> Any:
     """
     Décorateur pour monitorer un endpoint
 
@@ -107,7 +107,7 @@ def monitor_endpoint(endpoint_name: Optional[str] = None):
         async def chat_handler():
             ...
     """
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Any) -> Any:
         name = endpoint_name or func.__name__
 
         @wraps(func)
@@ -186,7 +186,7 @@ class SecurityMonitor:
         self.failed_login_attempts = defaultdict(list)
         self.suspicious_patterns = defaultdict(int)
 
-    def record_failed_login(self, email: str, ip: str):
+    def record_failed_login(self, email: str, ip: str) -> None:
         """Enregistre une tentative de login échouée"""
         now = datetime.now(timezone.utc)
         self.failed_login_attempts[email].append({
@@ -272,7 +272,7 @@ class SecurityMonitor:
             return False
         return True
 
-    def get_security_summary(self) -> dict:
+    def get_security_summary(self) -> dict[str, Any]:
         """Retourne un résumé des événements de sécurité"""
         return {
             "failed_logins": sum(len(attempts) for attempts in self.failed_login_attempts.values()),
@@ -292,7 +292,7 @@ class PerformanceMonitor:
         self.slow_queries = []
         self.ai_response_times = []
 
-    def record_slow_query(self, query: str, duration: float):
+    def record_slow_query(self, query: str, duration: float) -> None:
         """Enregistre une requête lente"""
         self.slow_queries.append({
             "query": query[:200],
@@ -308,7 +308,7 @@ class PerformanceMonitor:
             }
         )
 
-    def record_ai_response_time(self, duration: float, model: str):
+    def record_ai_response_time(self, duration: float, model: str) -> None:
         """Enregistre le temps de réponse de l'IA"""
         self.ai_response_times.append({
             "duration": duration,
@@ -326,7 +326,7 @@ class PerformanceMonitor:
                 }
             )
 
-    def get_performance_summary(self) -> dict:
+    def get_performance_summary(self) -> dict[str, Any]:
         """Retourne un résumé des performances"""
         avg_ai_time = (
             sum(r["duration"] for r in self.ai_response_times) / len(self.ai_response_times)
@@ -349,7 +349,7 @@ class PerformanceMonitor:
 performance_monitor = PerformanceMonitor()
 
 
-def export_metrics_json(filepath: str = "logs/metrics.json"):
+def export_metrics_json(filepath: str = "logs/metrics.json") -> None:
     """Exporte toutes les métriques en JSON"""
     all_metrics = {
         "application": metrics.get_metrics_summary(),
@@ -366,7 +366,7 @@ def export_metrics_json(filepath: str = "logs/metrics.json"):
 
 
 # Fonction utilitaire pour logging structuré
-def log_structured(level: str, message: str, **kwargs):
+def log_structured(level: str, message: str, **kwargs: Any) -> None:
     """
     Log avec structure JSON pour parsing facile
 

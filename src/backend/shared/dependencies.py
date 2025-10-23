@@ -30,7 +30,7 @@ class SessionContext:
     claims: Dict[str, Any]
 
 
-def _normalize_identifier(value) -> Optional[str]:
+def _normalize_identifier(value: Any) -> Optional[str]:
     if value is None:
         return None
     try:
@@ -63,7 +63,7 @@ def _resolve_session_id_from_request(request: Request) -> Optional[str]:
     return None
 
 
-async def _resolve_user_id_from_session(session_id: Optional[str], scope_holder) -> Optional[str]:
+async def _resolve_user_id_from_session(session_id: Optional[str], scope_holder: Any) -> Optional[str]:
     normalized = _normalize_identifier(session_id)
     if not normalized:
         return None
@@ -78,7 +78,7 @@ async def _resolve_user_id_from_session(session_id: Optional[str], scope_holder)
     return _normalize_identifier(resolved)
 
 
-async def _ensure_user_id_in_claims(claims: Dict[str, Any], scope_holder) -> Optional[str]:
+async def _ensure_user_id_in_claims(claims: Dict[str, Any], scope_holder: Any) -> Optional[str]:
     user_candidate = _normalize_identifier(claims.get("sub") or claims.get("user_id"))
     if user_candidate:
         claims.setdefault("sub", user_candidate)
@@ -100,13 +100,13 @@ async def _ensure_user_id_in_claims(claims: Dict[str, Any], scope_holder) -> Opt
 # -----------------------------
 # Helpers JWT
 # -----------------------------
-def _try_json(s: str) -> dict:
+def _try_json(s: str) -> dict[str, Any]:
     try:
         return json.loads(s)
     except Exception:
         return {}
 
-def _read_bearer_claims_from_token(token: str) -> dict:
+def _read_bearer_claims_from_token(token: str) -> dict[str, Any]:
     try:
         parts = token.split(".")
         if len(parts) != 3:
@@ -117,7 +117,7 @@ def _read_bearer_claims_from_token(token: str) -> dict:
     except Exception:
         return {}
 
-def _read_bearer_claims(request: Request) -> dict:
+def _read_bearer_claims(request: Request) -> dict[str, Any]:
     auth = request.headers.get("Authorization") or ""
     if not auth.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Authorization Bearer requis.")
@@ -132,7 +132,7 @@ def _looks_like_jwt(s: str) -> bool:
 _DEV_BYPASS_TRUTHY = {"1", "true", "yes", "on", "enable"}
 
 
-def _is_global_dev_mode(scope_holder) -> bool:
+def _is_global_dev_mode(scope_holder: Any) -> bool:
     auth_service = _maybe_get_auth_service(scope_holder)
     if auth_service is not None:
         try:
@@ -144,7 +144,7 @@ def _is_global_dev_mode(scope_holder) -> bool:
     return env_flag in _DEV_BYPASS_TRUTHY
 
 
-def _has_dev_bypass(headers) -> bool:
+def _has_dev_bypass(headers: Any) -> bool:
     try:
         if not headers:
             return False
@@ -154,7 +154,7 @@ def _has_dev_bypass(headers) -> bool:
         return False
 
 
-def _has_dev_bypass_query(params) -> bool:
+def _has_dev_bypass_query(params: Any) -> bool:
     try:
         if not params:
             return False
@@ -165,9 +165,9 @@ def _has_dev_bypass_query(params) -> bool:
 
 
 
-def _maybe_get_auth_service(scope_holder) -> Optional["AuthService"]:
+def _maybe_get_auth_service(scope_holder: Any) -> Optional["AuthService"]:
     try:
-        app = scope_holder.app  # type: ignore[attr-defined]
+        app = scope_holder.app
     except AttributeError:
         app = getattr(scope_holder, "app", None)
     if app is None:
@@ -234,7 +234,7 @@ def _extract_token_from_request(request: Request) -> str:
 
     return ""
 
-async def _resolve_token_claims(token: str, scope_holder, *, allow_revoked: bool = False) -> Dict[str, Any]:
+async def _resolve_token_claims(token: str, scope_holder: Any, *, allow_revoked: bool = False) -> Dict[str, Any]:
     if not token:
         raise HTTPException(status_code=401, detail="ID token invalide ou absent.")
     auth_service = _maybe_get_auth_service(scope_holder)
@@ -284,7 +284,7 @@ def _is_admin_claims(claims: Dict[str, Any], auth_service: Optional["AuthService
     if not email or auth_service is None:
         return False
     try:
-        return email in getattr(auth_service, "config").admin_emails  # type: ignore[attr-defined]
+        return email in getattr(auth_service, "config").admin_emails
     except Exception:
         return False
 # -----------------------------
@@ -306,7 +306,7 @@ def _normalize_bearer_value(value: str) -> str:
     return candidate
 
 
-def _iter_ws_protocol_candidates(ws: WebSocket):
+def _iter_ws_protocol_candidates(ws: WebSocket) -> Any:
     try:
         scope_protocols = ws.scope.get("subprotocols") if isinstance(ws.scope, dict) else None
         if scope_protocols:
@@ -433,7 +433,7 @@ async def get_session_id(request: Request) -> str:
 
 
 
-async def enforce_allowlist(request: Request):
+async def enforce_allowlist(request: Request) -> None:
     if _has_dev_bypass(request.headers):
         logger.debug("Allowlist bypass via X-Dev-Bypass header.")
         return
@@ -561,7 +561,7 @@ async def require_admin_claims(request: Request) -> Dict[str, Any]:
     raise HTTPException(status_code=403, detail="Accès admin requis.")
 
 async def get_session_manager_optional(request: Request) -> Optional["SessionManager"]:
-    container = getattr(request.app.state, "service_container", None)  # type: ignore[attr-defined]
+    container = getattr(request.app.state, "service_container", None)
     if container is None:
         return None
     provider = getattr(container, "session_manager", None)
@@ -573,21 +573,21 @@ async def get_session_manager_optional(request: Request) -> Optional["SessionMan
         logger.debug("SessionManager indisponible: %s", exc)
         return None
 
-async def get_dashboard_service(request: Request):
-    container = getattr(request.app.state, "service_container", None)  # type: ignore
+async def get_dashboard_service(request: Request) -> Any:
+    container = getattr(request.app.state, "service_container", None)
     if container is None:
         raise HTTPException(status_code=503, detail="Service container indisponible.")
     return container.dashboard_service()
 
-async def get_timeline_service(request: Request):
+async def get_timeline_service(request: Request) -> Any:
     """Retourne le TimelineService pour les endpoints de graphiques."""
-    container = getattr(request.app.state, "service_container", None)  # type: ignore
+    container = getattr(request.app.state, "service_container", None)
     if container is None:
         raise HTTPException(status_code=503, detail="Service container indisponible.")
     return container.timeline_service()
 
-async def get_benchmarks_service(request: Request):
-    container = getattr(request.app.state, "service_container", None)  # type: ignore[attr-defined]
+async def get_benchmarks_service(request: Request) -> Any:
+    container = getattr(request.app.state, "service_container", None)
     if container is None:
         raise HTTPException(status_code=503, detail="Service container indisponible.")
     provider = getattr(container, "benchmarks_service", None)
@@ -598,15 +598,15 @@ async def get_benchmarks_service(request: Request):
     except Exception as exc:
         logger.debug("BenchmarksService indisponible: %s", exc)
         raise HTTPException(status_code=503, detail="BenchmarksService indisponible.")
-async def get_document_service(request: Request):
-    container = getattr(request.app.state, "service_container", None)  # type: ignore
+async def get_document_service(request: Request) -> Any:
+    container = getattr(request.app.state, "service_container", None)
     if container is None:
         raise HTTPException(status_code=503, detail="Service container indisponible.")
     return container.document_service()
 
-async def get_admin_dashboard_service(request: Request):
+async def get_admin_dashboard_service(request: Request) -> Any:
     """Get admin dashboard service from container."""
-    container = getattr(request.app.state, "service_container", None)  # type: ignore
+    container = getattr(request.app.state, "service_container", None)
     if container is None:
         raise HTTPException(status_code=503, detail="Service container indisponible.")
     provider = getattr(container, "admin_dashboard_service", None)

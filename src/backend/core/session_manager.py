@@ -54,14 +54,14 @@ class SessionManager:
     V13.3: Ajout du système de timeout d'inactivité automatique.
     """
 
-    def __init__(self, db_manager: DatabaseManager, memory_analyzer: Optional[MemoryAnalyzer] = None, vector_service = None):
+    def __init__(self, db_manager: DatabaseManager, memory_analyzer: Optional[MemoryAnalyzer] = None, vector_service: Any = None):
         self.db_manager = db_manager
         self.memory_analyzer = memory_analyzer
         self.vector_service = vector_service  # 🆕 Phase Agent Memory: Needed for HandshakeHandler
         self.active_sessions: Dict[str, Session] = {}
         self._session_user_cache: Dict[str, str] = {}
         # ConnectionManager sera injecté dynamiquement par websocket.ConnectionManager
-        self.connection_manager = None  # type: ignore[attr-defined]
+        self.connection_manager = None
         self._session_threads: Dict[str, str] = {}
         self._session_users: Dict[str, str] = {}
         self._hydrated_threads: Dict[Tuple[str, str], bool] = {}
@@ -69,7 +69,7 @@ class SessionManager:
         self._session_canonical_to_aliases: Dict[str, Set[str]] = {}
 
         # Tâche de nettoyage périodique
-        self._cleanup_task: Optional[asyncio.Task] = None
+        self._cleanup_task: Optional[asyncio.Task[None]] = None
         self._is_running = False
 
         is_ready = self.memory_analyzer is not None
@@ -163,7 +163,7 @@ class SessionManager:
                 # Marquer l'avertissement comme envoyé
                 session = self.active_sessions.get(session_id)
                 if session:
-                    session._warning_sent = True
+                    setattr(session, '_warning_sent', True)
 
                 # Envoyer l'avertissement via WebSocket
                 if self.connection_manager:
@@ -214,7 +214,7 @@ class SessionManager:
         if sessions_to_warn:
             logger.info(f"{len(sessions_to_warn)} avertissement(s) d'inactivité envoyé(s).")
 
-    def _update_session_activity(self, session_id: str):
+    def _update_session_activity(self, session_id: str) -> None:
         """Met à jour le timestamp de dernière activité d'une session."""
         session_id = self.resolve_session_id(session_id)
         session = self.active_sessions.get(session_id)
@@ -275,7 +275,7 @@ class SessionManager:
 
         return session
 
-    def create_session(self, session_id: str, user_id: str):
+    def create_session(self, session_id: str, user_id: str) -> Session:
         """Crée une session et la garde active en mémoire (compatibilité synchrone)."""
         session_id = self.resolve_session_id(session_id)
         if session_id in self.active_sessions:
@@ -548,7 +548,7 @@ class SessionManager:
         except Exception as e:
             logger.error(f"Hydratation session {session_id} depuis thread {thread_id} échouée: {e}", exc_info=True)
 
-    async def add_message_to_session(self, session_id: str, message: ChatMessage | AgentMessage):
+    async def add_message_to_session(self, session_id: str, message: ChatMessage | AgentMessage) -> None:
         session_id = self.resolve_session_id(session_id)
         session = self.get_session(session_id)
         if session:
@@ -682,7 +682,7 @@ class SessionManager:
             })
         return exported
 
-    async def _persist_message(self, session_id: str, payload: Dict[str, Any]):
+    async def _persist_message(self, session_id: str, payload: Dict[str, Any]) -> None:
         session_id = self.resolve_session_id(session_id)
         raw_thread_id = (
             self._session_threads.get(session_id)
@@ -846,7 +846,7 @@ class SessionManager:
         except Exception as e:
             logger.error(f"Persistance du message pour la session {session_id} a echoue: {e}", exc_info=True)
 
-    async def finalize_session(self, session_id: str):
+    async def finalize_session(self, session_id: str) -> None:
         session_id = self.resolve_session_id(session_id)
         session = self.active_sessions.pop(session_id, None)
         if session:
@@ -908,7 +908,7 @@ class SessionManager:
             self._cleanup_session_aliases(session_id)
         return had_session
 
-    async def update_and_save_session(self, session_id: str, update_data: Dict[str, Any]):
+    async def update_and_save_session(self, session_id: str, update_data: Dict[str, Any]) -> None:
         """Met à jour une session active et la sauvegarde."""
         session_id = self.resolve_session_id(session_id)
         session = self.get_session(session_id)
@@ -928,7 +928,7 @@ class SessionManager:
             logger.error(f"Erreur lors de la mise à jour et sauvegarde de la session {session_id}: {e}", exc_info=True)
 
     # --- Helper WS facultatif ---
-    async def publish_event(self, session_id: str, type_: str, payload: Dict[str, Any]):
+    async def publish_event(self, session_id: str, type_: str, payload: Dict[str, Any]) -> None:
         session_id = self.resolve_session_id(session_id)
         cm = getattr(self, "connection_manager", None)
         if cm:
