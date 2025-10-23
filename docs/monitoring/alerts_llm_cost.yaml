@@ -1,0 +1,155 @@
+# Prometheus Alerting Rules - LLM Cost Monitoring V13.2
+# Usage: Charger ce fichier dans prometheus.yml sous `rule_files:`
+#
+# Exemple prometheus.yml:
+#   rule_files:
+#     - /etc/prometheus/alerts_llm_cost.yaml
+#
+# Documentation: https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+
+groups:
+  - name: llm_cost_alerts
+    interval: 1m
+    rules:
+      # Alerte: Coût LLM dépasse $5 sur la dernière heure
+      - alert: LLMCostHourlyThresholdExceeded
+        expr: |
+          sum(increase(llm_cost_usd_total[1h])) > 5.0
+        for: 5m
+        labels:
+          severity: warning
+          component: llm_cost
+        annotations:
+          summary: "Coût LLM élevé détecté (${{ $value | printf \"%.2f\" }} sur 1h)"
+          description: |
+            Le coût LLM total a dépassé $5 sur la dernière heure.
+            Valeur actuelle: ${{ $value | printf "%.2f" }}
+            Seuil: $5.00
+            Vérifier les agents et modèles avec: sum by (agent, model) (increase(llm_cost_usd_total[1h]))
+
+      # Alerte: Coût LLM par agent dépasse $2 sur 1h
+      - alert: LLMCostPerAgentHigh
+        expr: |
+          sum by (agent) (increase(llm_cost_usd_total[1h])) > 2.0
+        for: 5m
+        labels:
+          severity: warning
+          component: llm_cost
+        annotations:
+          summary: "Agent {{ $labels.agent }} a coûté ${{ $value | printf \"%.2f\" }} en 1h"
+          description: |
+            L'agent {{ $labels.agent }} a généré un coût élevé sur la dernière heure.
+            Valeur: ${{ $value | printf "%.2f" }}
+            Seuil: $2.00
+            Modèles utilisés: sum by (model) (increase(llm_cost_usd_total{agent="{{ $labels.agent }}"}[1h]))
+
+      # Alerte: Taux de requêtes LLM anormalement élevé (> 100 req/min)
+      - alert: LLMRequestRateHigh
+        expr: |
+          sum(rate(llm_requests_total[5m])) * 60 > 100
+        for: 10m
+        labels:
+          severity: info
+          component: llm_cost
+        annotations:
+          summary: "Taux de requêtes LLM élevé ({{ $value | printf \"%.0f\" }} req/min)"
+          description: |
+            Le taux de requêtes LLM dépasse 100 req/min.
+            Taux actuel: {{ $value | printf "%.0f" }} req/min
+            Vérifier charge applicative et usage anormal.
+
+      # Alerte: Latence LLM P95 > 10s
+      - alert: LLMLatencyP95High
+        expr: |
+          histogram_quantile(0.95, sum by (agent, model, le) (rate(llm_latency_seconds_bucket[5m]))) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: llm_cost
+        annotations:
+          summary: "Latence LLM P95 élevée ({{ $value | printf \"%.2f\" }}s)"
+          description: |
+            La latence P95 des requêtes LLM dépasse 10s.
+            Agent: {{ $labels.agent }}
+            Modèle: {{ $labels.model }}
+            P95: {{ $value | printf "%.2f" }}s
+            Vérifier performances provider LLM ou timeout réseau.
+
+      # Alerte: Consommation tokens par agent anormalement élevée (> 1M tokens/h)
+      - alert: LLMTokenConsumptionHigh
+        expr: |
+          sum by (agent) (increase(llm_tokens_prompt_total[1h]) + increase(llm_tokens_completion_total[1h])) > 1000000
+        for: 10m
+        labels:
+          severity: warning
+          component: llm_cost
+        annotations:
+          summary: "Agent {{ $labels.agent }} a consommé {{ $value | printf \"%.0f\" }} tokens en 1h"
+          description: |
+            L'agent {{ $labels.agent }} a consommé plus de 1M tokens sur la dernière heure.
+            Tokens consommés: {{ $value | printf "%.0f" }}
+            Vérifier si conversations anormalement longues ou boucles infinies.
+
+      # Alerte: Ratio completion/prompt tokens anormal (> 5:1)
+      - alert: LLMCompletionRatioAbnormal
+        expr: |
+          sum by (agent, model) (rate(llm_tokens_completion_total[10m]))
+          /
+          sum by (agent, model) (rate(llm_tokens_prompt_total[10m])) > 5
+        for: 15m
+        labels:
+          severity: info
+          component: llm_cost
+        annotations:
+          summary: "Ratio completion/prompt anormal pour {{ $labels.agent }}/{{ $labels.model }}"
+          description: |
+            L'agent {{ $labels.agent }} avec le modèle {{ $labels.model }} génère
+            beaucoup plus de tokens en completion qu'en prompt (ratio: {{ $value | printf "%.2f" }}:1).
+            Ratio normal attendu: 1-3:1
+            Vérifier si génération de texte trop longue ou hallucinations.
+
+  - name: llm_cost_daily_reports
+    interval: 1h
+    rules:
+      # Métrique agrégée: Coût total quotidien
+      - record: llm_cost_daily_total
+        expr: |
+          sum(increase(llm_cost_usd_total[24h]))
+
+      # Métrique agrégée: Coût par agent sur 24h
+      - record: llm_cost_daily_by_agent
+        expr: |
+          sum by (agent) (increase(llm_cost_usd_total[24h]))
+
+      # Métrique agrégée: Coût par modèle sur 24h
+      - record: llm_cost_daily_by_model
+        expr: |
+          sum by (model) (increase(llm_cost_usd_total[24h]))
+
+      # Métrique agrégée: Tokens totaux quotidiens
+      - record: llm_tokens_daily_total
+        expr: |
+          sum(increase(llm_tokens_prompt_total[24h]) + increase(llm_tokens_completion_total[24h]))
+
+      # Métrique agrégée: Requêtes quotidiennes
+      - record: llm_requests_daily_total
+        expr: |
+          sum(increase(llm_requests_total[24h]))
+
+# Notes d'implémentation:
+# 1. Adapter les seuils ($5, $2, 100 req/min, 1M tokens) selon budget et usage.
+# 2. Créer des notifications via Alertmanager (Slack, email, PagerDuty).
+# 3. Combiner avec logs backend pour investigation (agent_id, session_id, user_id).
+# 4. Dashboard Grafana complémentaire: grafana_llm_cost_dashboard.json
+#
+# Exemple Alertmanager config (envoyer vers Slack):
+#   receivers:
+#     - name: slack_llm_cost
+#       slack_configs:
+#         - api_url: https://hooks.slack.com/services/YOUR/WEBHOOK
+#           channel: '#llm-cost-alerts'
+#           title: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+#
+# Documentation Emergence V8:
+# - DEPLOYMENT_MANUAL.md - Déploiement Cloud Run
+# - docs/monitoring/prometheus-phase3-setup.md - Setup Prometheus complet

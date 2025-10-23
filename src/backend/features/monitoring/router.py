@@ -34,6 +34,82 @@ router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
 # This router only provides DETAILED monitoring endpoints.
 
 
+@router.get("/health/ready")
+async def health_ready(request: Request) -> Dict[str, Any]:
+    """
+    V13.2 - Readiness probe enrichi avec diagnostics vector store.
+
+    Retourne:
+    - status: "ok" (tous OK), "degraded" (vector readonly), "down" (DB KO)
+    - vector_store: {reachable, mode, last_error}
+    - HTTP 200 si ok/degraded, 503 si down
+
+    Usage: Probes K8s/Cloud Run avec tolérance mode degraded.
+    """
+    try:
+        # Check DB
+        db_status = await _check_database(request)
+        db_ok = db_status.get("status") == "up"
+
+        # Check Vector Store avec diagnostics V13.2
+        container = getattr(request.app.state, "service_container", None)
+        vector_service = container.vector_service() if container else None
+
+        if vector_service:
+            vector_service._ensure_inited()  # Trigger lazy init
+            vector_mode = vector_service.get_vector_mode()
+            vector_reachable = vector_service.is_vector_store_reachable()
+            vector_error = vector_service.get_last_init_error()
+            backend = getattr(vector_service, "backend", "unknown")
+        else:
+            vector_mode = "unknown"
+            vector_reachable = False
+            vector_error = "VectorService not initialized"
+            backend = "unknown"
+
+        # Determine overall status
+        if not db_ok:
+            status = "down"
+            http_code = 503
+        elif vector_mode == "readonly":
+            status = "degraded"
+            http_code = 200  # Degraded mais accepté
+        elif vector_reachable:
+            status = "ok"
+            http_code = 200
+        else:
+            status = "degraded"
+            http_code = 200
+
+        response = {
+            "status": status,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "database": {"reachable": db_ok},
+            "vector_store": {
+                "reachable": vector_reachable,
+                "mode": vector_mode,
+                "backend": backend,
+                "last_error": vector_error if vector_error else None,
+            },
+        }
+
+        # Return JSONResponse avec code HTTP approprié
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content=response, status_code=http_code)
+
+    except Exception as e:
+        logger.error(f"/health/ready check failed: {e}", exc_info=True)
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            content={
+                "status": "down",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "error": str(e),
+            },
+            status_code=503,
+        )
+
+
 @router.get("/health/detailed")
 async def detailed_health_check() -> Dict[str, Any]:
     """

@@ -1,21 +1,73 @@
 # src/backend/core/cost_tracker.py
-# V13.1 - Mapping tolérant des clés de coûts pour les alertes (compat v5.x)
+# V13.2 - Télémétrie Prometheus pour coûts LLM (requests, tokens, cost par agent/model)
 import logging
 import asyncio
+import os
 from typing import Dict, List, Tuple, Optional
 from datetime import datetime, timezone
 
 from backend.core.database.manager import DatabaseManager
 from backend.core.database import queries as db_queries
 
+# V13.2 - Prometheus metrics pour LLM cost tracking
+try:
+    from prometheus_client import Counter, Histogram, REGISTRY
+    METRICS_ENABLED = os.getenv("CONCEPT_RECALL_METRICS_ENABLED", "true").lower() == "true"
+except ImportError:
+    METRICS_ENABLED = False
+
 logger = logging.getLogger(__name__)
+
+
+# V13.2 - Métriques Prometheus LLM Cost
+if METRICS_ENABLED:
+    llm_requests_total = Counter(
+        "llm_requests_total",
+        "Total LLM API requests",
+        ["agent", "model"],
+        registry=REGISTRY,
+    )
+    llm_tokens_prompt_total = Counter(
+        "llm_tokens_prompt_total",
+        "Total prompt/input tokens consumed",
+        ["agent", "model"],
+        registry=REGISTRY,
+    )
+    llm_tokens_completion_total = Counter(
+        "llm_tokens_completion_total",
+        "Total completion/output tokens consumed",
+        ["agent", "model"],
+        registry=REGISTRY,
+    )
+    llm_cost_usd_total = Counter(
+        "llm_cost_usd_total",
+        "Total LLM cost in USD",
+        ["agent", "model"],
+        registry=REGISTRY,
+    )
+    llm_latency_seconds = Histogram(
+        "llm_latency_seconds",
+        "LLM API call latency in seconds",
+        ["agent", "model"],
+        buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0],
+        registry=REGISTRY,
+    )
+else:
+    # Stubs si métriques désactivées
+    llm_requests_total = None
+    llm_tokens_prompt_total = None
+    llm_tokens_completion_total = None
+    llm_cost_usd_total = None
+    llm_latency_seconds = None
 
 
 class CostTracker:
     """
-    COST TRACKER V13.1
+    COST TRACKER V13.2
     - Enregistre les coûts (async, aiosqlite).
     - Fournit un résumé & des alertes avec mapping tolérant des clés.
+    - 🆕 V13.2: Télémétrie Prometheus (llm_requests_total, llm_tokens_*, llm_cost_usd_total, llm_latency_seconds).
+      Métriques exposées sur /metrics par agent et modèle.
     """
 
     DAILY_LIMIT = 3.0
@@ -38,7 +90,8 @@ class CostTracker:
                 )
             self.db_manager = db_manager
             self.initialized = True
-            logger.info("CostTracker V13.1 initialisé.")
+            metrics_status = "enabled" if METRICS_ENABLED else "disabled"
+            logger.info(f"CostTracker V13.2 initialisé (Prometheus metrics: {metrics_status}).")
 
     async def record_cost(
         self,
@@ -51,8 +104,12 @@ class CostTracker:
         *,
         session_id: Optional[str] = None,
         user_id: Optional[str] = None,
+        latency_seconds: Optional[float] = None,
     ):
-        """Enregistre le coût d'une opération via le module requêtes."""
+        """
+        Enregistre le coût d'une opération via le module requêtes.
+        V13.2: Incrémente aussi les métriques Prometheus (requests, tokens, cost).
+        """
         async with self._lock:
             try:
                 await db_queries.add_cost_log(
@@ -67,6 +124,16 @@ class CostTracker:
                     session_id=session_id,
                     user_id=user_id,
                 )
+
+                # V13.2 - Prometheus metrics
+                if METRICS_ENABLED and llm_requests_total:
+                    llm_requests_total.labels(agent=agent, model=model).inc()
+                    llm_tokens_prompt_total.labels(agent=agent, model=model).inc(input_tokens)
+                    llm_tokens_completion_total.labels(agent=agent, model=model).inc(output_tokens)
+                    llm_cost_usd_total.labels(agent=agent, model=model).inc(total_cost)
+                    if latency_seconds is not None and llm_latency_seconds:
+                        llm_latency_seconds.labels(agent=agent, model=model).observe(latency_seconds)
+
                 logger.info(
                     f"Coût de {total_cost:.6f} pour '{agent}' ('{model}') enregistré."
                 )

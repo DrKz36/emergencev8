@@ -1,10 +1,14 @@
 ﻿# mypy: ignore-errors
 # src/backend/features/memory/vector_service.py
-# V3.0.0 - Lazy-load sûr (double-checked lock) + télémétrie ultra-OFF conservée
+# V3.6.0 (V13.2 - Startup-safe RAG)
+#          - Lazy-load sûr (double-checked lock) + télémétrie ultra-OFF conservée
 #          - __init__ ne charge plus ni SBERT ni Chroma
 #          - _ensure_inited() déclenché au 1er appel public
 #          - Pré-check corruption + backup AVANT init Chroma (inchangé)
 #          - API publique identique
+#          - 🆕 V13.2: Mode READ-ONLY fallback si ChromaDB indisponible au démarrage
+#            Écritures bloquées (upsert/update/delete) avec logs structurés
+#            Nouvelles méthodes: get_vector_mode(), get_last_init_error(), is_vector_store_reachable()
 
 import logging
 import os
@@ -523,13 +527,15 @@ class QdrantCollectionAdapter:
 
 class VectorService:
     """
-    VectorService V3.5.0
+    VectorService V3.6.0 (V13.2 - Startup-safe RAG)
     - API identique.
     - Lazy-load: modèle SBERT + backend vectoriel (Chroma ou Qdrant) instanciés au 1er usage.
     - Auto-reset AVANT instanciation Chroma si DB corrompue (évite locks Windows).
     - Télémétrie Chroma/PostHog durcie (env + shim).
     - Normalisation des filtres where conservée.
     - Backend Qdrant optionnel (via qdrant-client) avec fallback automatique sur Chroma.
+    - 🆕 V13.2: Mode READ-ONLY fallback si ChromaDB indisponible au démarrage.
+      Écritures bloquées avec logs structurés. Endpoint /health/ready expose status.
     """
 
     def __init__(
@@ -562,6 +568,10 @@ class VectorService:
         # Guard thread-safe (double-checked lock)
         self._init_lock = threading.Lock()
         self._inited = False
+
+        # V13.2 - Startup-safe mode
+        self._vector_mode = "readwrite"  # "readwrite" | "readonly"
+        self._last_init_error: Optional[str] = None
 
         # 🆕 Score cache pour performance
         from backend.features.memory.score_cache import ScoreCache
@@ -643,6 +653,44 @@ class VectorService:
                 backend.upper(),
             )
 
+    # ---------- V13.2 - Startup-safe READ-ONLY mode ----------
+    def _check_write_allowed(self, operation: str, collection_name: str = "") -> None:
+        """
+        Vérifie si les écritures sont autorisées. Si mode readonly, log structuré et raise.
+        """
+        if self._vector_mode == "readonly":
+            error_msg = (
+                f"⚠️  Opération d'écriture bloquée (mode READ-ONLY): "
+                f"op={operation}, collection={collection_name}, "
+                f"reason=ChromaDB unavailable, last_error={self._last_init_error}"
+            )
+            logger.warning(error_msg)
+            raise RuntimeError(
+                f"VectorService en mode READ-ONLY (écritures bloquées). "
+                f"Opération: {operation}"
+            )
+
+    def get_vector_mode(self) -> str:
+        """Retourne le mode actuel: 'readwrite' ou 'readonly'"""
+        return self._vector_mode
+
+    def get_last_init_error(self) -> Optional[str]:
+        """Retourne la dernière erreur d'initialisation (si readonly)"""
+        return self._last_init_error
+
+    def is_vector_store_reachable(self) -> bool:
+        """
+        Vérifie si le vector store (ChromaDB/Qdrant) est accessible.
+        Retourne False si mode readonly ou si client non initialisé.
+        """
+        if self._vector_mode == "readonly":
+            return False
+        if self.backend == "chroma":
+            return self.client is not None
+        if self.backend == "qdrant":
+            return self.qdrant_client is not None
+        return False
+
     # ---------- Pré-check SQLite ----------
     def _is_sqlite_corrupted(self, path: str) -> bool:
         db_path = os.path.join(path, "chroma.sqlite3")
@@ -705,11 +753,16 @@ class VectorService:
                 )
                 return client
             else:
-                logger.error(
-                    f"Échec de l'initialisation du client Chroma (auto-reset={allow_auto_reset}). Message: {e}",
-                    exc_info=True,
+                # V13.2 - Fallback READ-ONLY au lieu de crash
+                error_msg = f"ChromaDB init failed: {e}"
+                self._last_init_error = error_msg
+                self._vector_mode = "readonly"
+                logger.warning(
+                    f"⚠️  VectorService basculé en mode READ-ONLY (ChromaDB indisponible). "
+                    f"Écritures bloquées. Erreur: {e}",
+                    exc_info=False,
                 )
-                raise
+                return None  # Signal échec init sans crash
 
     def _backup_persist_dir(self, path: str) -> str:
         ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -1066,6 +1119,8 @@ class VectorService:
         self, collection, items: List[Dict[str, Any]], item_text_key: str = "text"
     ) -> None:
         self._ensure_inited()
+        collection_name = getattr(collection, "name", str(collection))
+        self._check_write_allowed("vector_upsert", collection_name)
         if not items:
             logger.warning(f"Tentative d'ajout d'items vides à '{collection.name}'.")
             return
@@ -1331,6 +1386,8 @@ class VectorService:
         self, collection: Collection, ids: List[str], metadatas: List[Dict[str, Any]]
     ) -> None:
         self._ensure_inited()
+        collection_name = getattr(collection, "name", str(collection))
+        self._check_write_allowed("metadata_update", collection_name)
         if not ids:
             return
         if len(ids) != len(metadatas):
@@ -1376,6 +1433,8 @@ class VectorService:
         self, collection: Collection, where_filter: Dict[str, Any]
     ) -> None:
         self._ensure_inited()
+        collection_name = getattr(collection, "name", str(collection))
+        self._check_write_allowed("vector_delete", collection_name)
         if self._is_filter_empty(where_filter):
             logger.error(
                 f"[VectorService] Suppression refusée sur '{collection.name}': "
