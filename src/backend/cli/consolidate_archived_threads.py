@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 
 async def get_unconsolidated_archived_threads(
-    db_manager,
+    db_manager: Any,
     user_id: Optional[str] = None,
     limit: Optional[int] = None,
     force: bool = False
@@ -94,7 +94,7 @@ async def get_unconsolidated_archived_threads(
 
 
 async def consolidate_thread(
-    gardener,
+    gardener: Any,
     thread: Dict[str, Any],
     verbose: bool = False
 ) -> Dict[str, Any]:
@@ -127,7 +127,8 @@ async def consolidate_thread(
             new_concepts = result.get('new_concepts', 0)
             logger.info(f"    ✓ Success: {new_concepts} concepts/items added to LTM")
 
-        return result
+        from typing import cast
+        return cast(Dict[str, Any], result)
 
     except Exception as e:
         logger.error(f"    ✗ Error consolidating thread {thread_id[:8]}...: {e}")
@@ -145,7 +146,7 @@ async def run_consolidation(
     force: bool = False,
     dry_run: bool = False,
     verbose: bool = False
-):
+) -> None:
     """
     Main consolidation logic.
 

@@ -13,11 +13,12 @@ logger = logging.getLogger(__name__)
 
 
 async def _resolve_benchmarks_service(request: Request) -> BenchmarksService:
+    from typing import cast
     try:
         provider = getattr(deps, "get_benchmarks_service")
     except AttributeError as exc:  # pragma: no cover - defensive
         raise HTTPException(status_code=503, detail="Benchmarks service unavailable.") from exc
-    return await provider(request)
+    return cast(BenchmarksService, await provider(request))
 
 
 @router.get(

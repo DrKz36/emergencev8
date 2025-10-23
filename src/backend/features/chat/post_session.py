@@ -2,13 +2,14 @@
 from __future__ import annotations
 import inspect
 import logging
+from typing import Any
 from backend.core.websocket import ConnectionManager
 
 logger = logging.getLogger(__name__)
 
 
 async def run_analysis_and_notify(
-    session_manager,
+    session_manager: Any,
     connection_manager: ConnectionManager,
     session_id: str,
     agent_id: str,

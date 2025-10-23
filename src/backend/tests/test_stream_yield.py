@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 def test_stream_cleanup():
     app = FastAPI()
-    flag = {"exit_order": []}
+    flag: dict[str, list[str]] = {"exit_order": []}
 
     async def get_resource():
         yield "db_session"

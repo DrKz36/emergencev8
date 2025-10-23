@@ -20,7 +20,7 @@ _EDGE_ENV_VALUES = {"1", "true", "yes", "on"}
 def _detect_edge_mode_flag() -> bool:
     raw = os.getenv("EDGE_MODE", "0")
     if raw is None:
-        return False
+        return False  # type: ignore[unreachable]
     return raw.strip().lower() in _EDGE_ENV_VALUES
 
 

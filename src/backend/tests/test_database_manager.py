@@ -232,7 +232,7 @@ class TestErrorHandling:
         # Ne pas connecter explicitement : execute() doit gérer la connexion
         cursor = await manager.execute("SELECT 1")
         result = await cursor.fetchone()
-
+        assert result is not None
         assert result[0] == 1
         assert manager.is_connected() is True
 
@@ -274,7 +274,7 @@ class TestDatabasePath:
 
         cursor = await manager.execute("SELECT data FROM test")
         result = await cursor.fetchone()
-
+        assert result is not None
         assert result[0] == "in_memory"
 
         await manager.disconnect()

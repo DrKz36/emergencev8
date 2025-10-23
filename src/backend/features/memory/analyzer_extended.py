@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 async def detect_topic_shift(
-    analyzer_instance,
+    analyzer_instance: Any,
     session_id: str,
     recent_messages: List[Dict[str, Any]],
     stm_summary: Optional[str] = None,

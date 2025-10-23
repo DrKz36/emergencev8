@@ -205,6 +205,8 @@ class ConnectionManager:
         except Exception as restore_err:
             logger.debug("Unable to send restored history for %s: %s", session_id, restore_err)
 
+        return session_id
+
     def _resolve_session_id(self, session_id: str) -> str:
         resolver = getattr(self.session_manager, "resolve_session_id", None)
         if callable(resolver):

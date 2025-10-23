@@ -67,7 +67,7 @@ async def consolidate_all_archives(
     user_id: Optional[str] = None,
     limit: int = 1000,
     force: bool = False
-) -> None:
+) -> dict[str, Any]:
     """
     Consolide tous threads archivés non traités.
 

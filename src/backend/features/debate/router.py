@@ -27,19 +27,21 @@ async def get_debate_details(
     session = getattr(debate_service, "active_debates", {}).get(debate_id)
     if not session:
         raise HTTPException(status_code=404, detail="Debat non trouve dans les sessions actives.")
-    return session.model_dump(mode="json")
+    from typing import cast
+    return cast(dict[str, Any], session.model_dump(mode="json"))
 
 
 @router.get("/", summary="List Active Debates", tags=TAGS)
 @inject
 async def list_active_debates(
     debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service]),
-) -> dict[str, list[str]]:
+) -> dict[str, Any]:
     """Liste des debats actuellement en cours (vue synthetique)."""
     active = getattr(debate_service, "active_debates", {})
+    debate_list: list[dict[str, Any]] = [
+        {"debate_id": debate_id, "topic": state.config.topic, "status": state.status}
+        for debate_id, state in active.items()
+    ]
     return {
-        "active_debates": [
-            {"debate_id": debate_id, "topic": state.config.topic, "status": state.status}
-            for debate_id, state in active.items()
-        ]
+        "active_debates": debate_list
     }

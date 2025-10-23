@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 def _ensure_voice_service(websocket: WebSocket) -> VoiceService:
-    container = getattr(websocket.app.state, "service_container", None)  # type: ignore[attr-defined]
+    container = getattr(websocket.app.state, "service_container", None)
     if container is None:
         raise HTTPException(status_code=503, detail="Voice service unavailable.")
     provider = getattr(container, "voice_service", None)
@@ -89,6 +89,7 @@ async def voice_chat_ws(
         except Exception:
             pass
     finally:
-        if websocket.client_state != "DISCONNECTED":
+        from fastapi.websockets import WebSocketState
+        if websocket.client_state != WebSocketState.DISCONNECTED:
             await websocket.close()
             logger.info("Connexion WebSocket fermee pour la session %s.", session_id)

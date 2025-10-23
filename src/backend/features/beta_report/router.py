@@ -299,7 +299,7 @@ async def submit_beta_report(report: BetaReportRequest) -> dict[str, str]:
         return {
             "status": "success",
             "message": "Merci pour votre rapport! Il a été transmis à l'équipe.",
-            "email_sent": email_sent,
+            "email_sent": str(email_sent),
             "timestamp": datetime.now().isoformat()
         }
 

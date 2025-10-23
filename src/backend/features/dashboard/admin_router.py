@@ -14,7 +14,7 @@ router = APIRouter(tags=["Admin Dashboard"])
 logger = logging.getLogger(__name__)
 
 
-async def verify_admin_role(user_role: str = Depends(deps.get_user_role)):
+async def verify_admin_role(user_role: str = Depends(deps.get_user_role)) -> bool:
     """Dependency to verify user has admin role."""
     if user_role != "admin":
         raise HTTPException(
@@ -97,7 +97,7 @@ async def get_user_detailed_data(
 )
 async def get_allowlist_emails(
     _admin_verified: bool = Depends(verify_admin_role),
-    auth_service = Depends(deps.get_auth_service),
+    auth_service: Any = Depends(deps.get_auth_service),
 ) -> Dict[str, Any]:
     """
     Get all allowlist emails - admin only.

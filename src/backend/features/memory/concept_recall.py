@@ -33,8 +33,8 @@ class ConceptRecallTracker:
         self,
         db_manager: DatabaseManager,
         vector_service: VectorService,
-        connection_manager=None,
-    ):
+        connection_manager: Any = None,
+    ) -> None:
         self.db = db_manager
         self.vector_service = vector_service
         self.connection_manager = connection_manager

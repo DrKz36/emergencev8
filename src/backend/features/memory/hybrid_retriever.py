@@ -17,7 +17,7 @@ Architecture :
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 from collections import Counter
 import math
 
@@ -329,7 +329,7 @@ def hybrid_query(
     corpus = [r.get("text", "") for r in vector_results if r.get("text")]
 
     if not corpus:
-        return vector_results[:n_results]
+        return cast(list[dict[str, Any]], vector_results[:n_results])
 
     # 3. Appliquer le retriever hybride
     retriever = HybridRetriever(

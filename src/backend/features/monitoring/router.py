@@ -4,7 +4,7 @@ Router pour les endpoints de monitoring et healthcheck
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
-from typing import Any, cast
+from typing import Any
 import psutil
 import platform
 import logging
@@ -160,7 +160,7 @@ async def export_metrics(_: dict[str, Any] = Depends(verify_admin)) -> dict[str,
     Exporte les métriques en JSON
     Nécessite authentification admin
     """
-    return cast(dict[str, Any], export_metrics_json())
+    return export_metrics_json()
 
 
 @router.get("/metrics/endpoints")

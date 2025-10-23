@@ -44,7 +44,8 @@ class VoiceService:
             result = response.json()
             transcribed_text = result.get("text", "").strip()
             logger.info("Texte transcrit: '%s'", transcribed_text)
-            return transcribed_text
+            from typing import cast
+            return cast(str, transcribed_text)
         except httpx.HTTPStatusError as exc:
             error_body = await exc.response.aread()
             logger.error(

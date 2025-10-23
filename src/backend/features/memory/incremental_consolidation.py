@@ -18,11 +18,11 @@ class IncrementalConsolidator:
 
     def __init__(
         self,
-        memory_analyzer,
-        vector_service,
-        db_manager,
+        memory_analyzer: Any,
+        vector_service: Any,
+        db_manager: Any,
         consolidation_threshold: int = 10,
-    ):
+    ) -> None:
         self.memory_analyzer = memory_analyzer
         self.vector_service = vector_service
         self.db_manager = db_manager

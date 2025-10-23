@@ -387,10 +387,11 @@ class BenchmarksRunner:
 
     def _compute_backoff_seconds(self, attempt: int) -> float:
         """Calcule le délai de backoff exponentiel (avec plafonnement)."""
+        from typing import cast
 
         capped_attempt = min(max(attempt, 1), 6)
         delay = self.base_backoff_seconds * (2 ** (capped_attempt - 1))
-        return round(delay, 3)
+        return cast(float, round(delay, 3))
 
     @staticmethod
     def _format_exception(exc: BaseException) -> str:

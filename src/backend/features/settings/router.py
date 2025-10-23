@@ -45,10 +45,11 @@ class ModelSettings(BaseModel):
 
 def load_settings() -> Dict[str, Any]:
     """Load settings from file"""
+    from typing import cast
     try:
         if os.path.exists(SETTINGS_FILE):
             with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                return cast(Dict[str, Any], json.load(f))
     except Exception as e:
         logger.error(f"Failed to load settings: {e}")
     return {}
