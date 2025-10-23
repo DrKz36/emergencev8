@@ -96,7 +96,7 @@
 
 ### 2. 🔄 État Sync Inter-Agents
 
-1. **`AGENT_SYNC.md`** ← OBLIGATOIRE EN PREMIER
+1. **`AGENT_SYNC.md`** ← OBLIGATOIRE
    - État actuel du dépôt
    - Ce que Codex GPT a fait récemment
    - Zones de travail en cours

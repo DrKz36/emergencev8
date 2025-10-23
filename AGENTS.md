@@ -13,13 +13,13 @@
   - Le système AutoSyncService surveille automatiquement 8 fichiers critiques
   - Dashboard disponible : http://localhost:8000/sync-dashboard.html
   - Vérifier le statut de sync avant de commencer : `curl http://localhost:8000/api/sync/status`
-- **OBLIGATOIRE** : Lire `AGENT_SYNC.md` (etat sync inter-agents) AVANT toute action de code.
-  - ⚠️ Ce fichier est maintenant surveillé automatiquement - toute modification sera détectée
-- Lire integralement ce fichier ainsi que tout `AGENTS.md` specifique au dossier courant.
-- Consulter `docs/passation.md` (3 dernieres entrees minimum) pour contexte recent.
-  - ⚠️ Ce fichier est maintenant surveillé automatiquement
-- Consulter les references clefs : `docs/architecture/`, `docs/Roadmap Strategique.txt`, `docs/Memoire.md`.
-  - ⚠️ Fichiers architecture surveillés automatiquement : 00-Overview.md, 30-Contracts.md, 10-Memoire.md
+- **OBLIGATOIRE - Lecture ordre harmonisé** :
+  1. **Docs Architecture** : `docs/architecture/AGENTS_CHECKLIST.md`, `00-Overview.md`, `10-Components.md`, `30-Contracts.md`
+  2. `AGENT_SYNC.md` : état sync inter-agents (⚠️ surveillé automatiquement)
+  3. `CODEV_PROTOCOL.md` : protocole co-développement (sections 2.1, 4, 6)
+  4. `docs/passation.md` : 3 dernières entrées minimum (⚠️ surveillé automatiquement)
+  5. `git status` et `git log --oneline -10` : état actuel du dépôt
+- Consulter `ROADMAP.md` et `docs/Memoire.md` si pertinent pour la tâche.
 - Lancer `pwsh -File scripts/sync-workdir.ps1` (option par defaut) ou realiser l'equivalent manuel (`git fetch --all --prune`, rebase, tests rapides).
 - Verifier que `git status` est propre et que l'environnement (virtualenv Python + Node.js) est pret.
 - Verifier que Codex/Copilot est configure en auto-completion auto-apply (settings VS Code/Windsurf) pour eviter les demandes d'approbation.
@@ -64,7 +64,7 @@
 - Lire integralement ce fichier et tout `AGENTS.md` specifique dans un sous-dossier avant toute action.
 - Consulter systematiquement les documents clefs dans `docs/` avant de modifier du code :
   - `docs/architecture/` pour l'architecture, les composants, les sequences et les contrats.
-  - `docs/Roadmap Strategique.txt` pour l'etat des priorites.
+  - `ROADMAP.md` pour l'etat des priorites (features + maintenance).
   - `docs/Memoire.md` pour les interactions memoire/RAG.
 - Appliquer immediatement toute nouvelle consigne decouverte pendant la session et l'articuler avec les decisions en cours.
 - Verifier que les choix techniques et fonctionnels restent coherents avec ces sources et mettre a jour la documentation si necessaire.
@@ -170,41 +170,30 @@
 
 ---
 
-## 13. Co-developpement multi-agents (Claude Code ? Codex)
+## 13. Co-developpement multi-agents (Claude Code ↔ Codex)
 
-### Principes fondamentaux
-- **Egalite technique** : Claude Code et Codex sont des co-developpeurs de niveau ingenieur equivalent.
-- **Modification croisee autorisee** : tout agent peut modifier n'importe quel fichier du depot.
-- **Validation architecte** : l'architecte humain (FG) valide avant commit/push/deploy.
-- **Communication asynchrone** : via Git (commits, branches) et documentation (passation).
+### Lecture obligatoire avant toute session (ordre harmonisé)
+1. **Docs Architecture** : `docs/architecture/AGENTS_CHECKLIST.md`, `00-Overview.md`, `10-Components.md`, `30-Contracts.md`
+2. `AGENT_SYNC.md` : état actuel du dépôt, progression, fichiers modifiés par l'autre agent
+3. `CODEV_PROTOCOL.md` : protocole complet de co-développement
+   - Lire sections 2.1 (template passation), 4 (checklist), 6 (anti-patterns)
+   - Principes fondamentaux, handoff, gestion conflits Git
+4. `docs/passation.md` : dernières 3 entrées minimum (contexte, blocages, next actions)
+5. `git status` et `git log --oneline -10` : état actuel du dépôt
 
-### Lecture obligatoire avant toute session
-1. `CODEV_PROTOCOL.md` : protocole complet de co-developpement.
-2. `docs/passation.md` : derni?res 3 entr?es minimum (contexte, blocages, next actions).
-3. `git status` et `git log --oneline -10` : etat actuel du depot.
+### Principes clés (détails dans CODEV_PROTOCOL.md)
+- **Égalité technique** : Claude Code et Codex sont des co-développeurs de niveau ingénieur équivalent
+- **Modification croisée autorisée** : tout agent peut modifier n'importe quel fichier du dépôt
+- **Validation architecte** : l'architecte humain (FG) valide avant commit/push/deploy
+- **Communication asynchrone** : via Git (commits, branches) et documentation (passation)
 
-### Passation de relais (handoff)
-Chaque agent doit consigner systematiquement dans `docs/passation.md` :
-- Date/heure (Europe/Zurich), agent (Claude Code | Codex).
-- Fichiers modifies (liste exhaustive).
-- Contexte et decisions prises.
-- Actions recommandees pour le prochain agent.
-- Blocages eventuels (dependances, tests echoues).
-
-### Tests obligatoires avant validation
-- [ ] Backend : `pytest` (ou sous-ensemble pertinent).
-- [ ] Frontend : `npm run build`.
-- [ ] Smoke tests : `pwsh -File tests/run_all.ps1`.
-- [ ] Linters : `ruff check`, `mypy`.
-- [ ] Documentation : mise a jour `docs/passation.md`, architecture si impactee.
-
-### Zones de responsabilite suggerees (non bloquantes)
-- **Claude Code** : Backend Python, architecture, tests, documentation technique.
-- **Codex** : Frontend JavaScript, UI/UX, scripts PowerShell, documentation utilisateur.
+### Zones de responsabilité suggérées (non bloquantes)
+- **Claude Code** : Backend Python, architecture, tests, documentation technique
+- **Codex** : Frontend JavaScript, UI/UX, scripts PowerShell, documentation utilisateur
 - **Important** : ces zones sont indicatives. Tout agent peut intervenir partout.
 
-### Ressources
-- `CODEV_PROTOCOL.md` : protocole detaille.
-- `docs/passation.md` : journal inter-agents.
-- `docs/git-workflow.md` : workflow Git.
-- `docs/workflow-sync.md` : synchronisation cloud/local.
+### Ressources complètes
+- `CODEV_PROTOCOL.md` : protocole détaillé (principes, handoff, tests, anti-patterns, exemples)
+- `docs/passation.md` : journal inter-agents
+- `docs/git-workflow.md` : workflow Git
+- `docs/workflow-sync.md` : synchronisation cloud/local
