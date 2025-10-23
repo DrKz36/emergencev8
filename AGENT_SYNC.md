@@ -10,46 +10,66 @@
 
 ### Fichiers modifiés
 - `package.json` (déplacé Vite de devDependencies vers dependencies)
+- `Dockerfile` (upgrade Node.js 18 → 20 pour Vite 7.1.2)
 - `AGENT_SYNC.md` (cette mise à jour)
 
 ### Actions réalisées
-**🐛 FIX CRITIQUE: Docker build échoue car Vite pas installé**
+**🐛 DOUBLE FIX: Docker build échoue (Vite manquant + mauvaise version Node.js)**
 
-**Problème identifié après déploiement #26 (échec GitHub Actions):**
+**Problème #1 - déploiement #26 (échec GitHub Actions):**
 ```
 #18 0.266 sh: 1: vite: not found
 ERROR: failed to build: process "/bin/sh -c npm run build" did not complete successfully: exit code 127
 ```
 
-**Analyse de la cause racine:**
-1. `Dockerfile` ligne 36: `npm ci --only=production` ✅
-2. Mais **Vite était dans `devDependencies`** ❌
-3. Donc `npm ci --only=production` n'installe PAS Vite
-4. Ensuite `npm run build` appelle `vite build` → **command not found**
+**Analyse cause #1:**
+- Vite était dans `devDependencies` ❌
+- `npm ci --only=production` n'installe pas les devDependencies
+- Résultat: `vite: not found`
 
-**Solution appliquée:**
-- **Déplacé Vite** de `devDependencies` vers `dependencies` dans `package.json`
-- Vite EST nécessaire pour le build de production Docker
-- Testé localement: `npm run build` ✅ (build en 4.62s, 364 modules)
+**Solution #1:**
+- **Déplacé Vite** de `devDependencies` vers `dependencies` ✅
+
+---
+
+**Problème #2 - déploiement #27 (échec GitHub Actions):**
+```
+#18 0.593 [vite:build-html] crypto.hash is not a function
+npm warn EBADENGINE   required: node: '^20.19.0 || >=22.12.0'
+npm warn EBADENGINE   current: node: 'v18.20.8'
+```
+
+**Analyse cause #2:**
+- Vite 7.1.2 nécessite **Node.js 20.19+ ou 22.12+**
+- Dockerfile installait Node.js 18 via `setup_18.x`
+- `crypto.hash` est une nouvelle API de Node 20+
+- Vite 7 l'utilise → crash sur Node 18 ❌
+
+**Solution #2:**
+- **Upgrade Dockerfile:** `setup_18.x` → `setup_20.x` ✅
+- Node 20 LTS supporte Vite 7.1.2 nativement
 
 **Résultat attendu:**
-- Prochain push → GitHub Actions build réussira
-- Déploiement Cloud Run fonctionnel
-- Frontend beta-3.0.0 enfin déployé en prod
+- Prochain push (#28) → GitHub Actions build avec Node 20 + Vite en dependencies
+- Docker build réussira enfin 🔥
+- Déploiement Cloud Run OK (révision 00427)
+- Frontend beta-3.0.0 enfin en prod 🚀
 
 ### Tests
-- ✅ `npm run build` local (4.62s, 18 chunks générés, warnings mineurs)
-- ⏳ Commit + push en cours
-- ⏳ GitHub Actions build à surveiller
+- ✅ `npm run build` local (Node 20, 4.62s, 364 modules)
+- ✅ Vite installé en dependencies
+- ✅ Dockerfile upgrade Node 20
+- ⏳ Commit + push double fix en cours
+- ⏳ GitHub Actions build #28 à surveiller (DOIT passer)
 
 ### Prochaines actions recommandées
-1. **Commit + push** les changements
-2. **Surveiller GitHub Actions** (build devrait passer maintenant)
-3. **Valider déploiement Cloud Run** (révision 00426 attendue)
-4. **Tester site prod** après déploiement réussi
+1. **Commit + push** double fix (Vite deps + Node 20)
+2. **Surveiller GitHub Actions #28** (devrait ENFIN passer après 2 échecs)
+3. **Valider déploiement Cloud Run** (révision 00427)
+4. **Tester site prod** : vérifier beta-3.0.0 affichée
 
 ### Blocages
-Aucun. Fix appliqué et testé localement.
+Aucun. Double fix appliqué et testé localement.
 
 ---
 

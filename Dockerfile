@@ -14,7 +14,7 @@ ENV SENTENCE_TRANSFORMERS_HOME=/root/.cache/sentence_transformers \
 # System dependencies (build essentials + libmagic + node.js for frontend build)
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential libmagic1 curl \
-    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
