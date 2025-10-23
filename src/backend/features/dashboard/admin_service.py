@@ -682,22 +682,30 @@ class AdminDashboardService:
             return {"total_tables": 0, "size_mb": 0}
 
     async def _get_error_rate(self) -> float:
-        """Calculate error rate based on recent activity (placeholder)."""
-        # TODO: Implement actual error tracking
-        # For now, return a placeholder value
-        return 0.0
+        """Calculate error rate based on recent activity from MetricsCollector."""
+        from backend.core.monitoring import metrics
+        summary = metrics.get_metrics_summary()
+        total_requests = summary.get('total_requests', 0)
+        total_errors = summary.get('total_errors', 0)
+        if total_requests == 0:
+            return 0.0
+        return (total_errors / total_requests) * 100
 
     async def _get_average_latency(self) -> float:
-        """Calculate average API latency (placeholder)."""
-        # TODO: Implement actual latency tracking
-        # For now, return a placeholder value
-        return 150.0
+        """Calculate average API latency from MetricsCollector."""
+        from backend.core.monitoring import metrics
+        # Calculate average latency across all endpoints
+        if not metrics.latency_count:
+            return 0.0
+        total_latency = sum(metrics.latency_sum.values())
+        total_count = sum(metrics.latency_count.values())
+        return total_latency / total_count if total_count > 0 else 0.0
 
     async def _count_recent_errors(self) -> int:
-        """Count errors in the last hour (placeholder)."""
-        # TODO: Implement actual error counting
-        # For now, return a placeholder value
-        return 0
+        """Count total errors from MetricsCollector."""
+        from backend.core.monitoring import metrics
+        summary = metrics.get_metrics_summary()
+        return summary.get('total_errors', 0)
 
     async def get_audit_history(self, limit: int = 10) -> Dict[str, Any]:
         """
