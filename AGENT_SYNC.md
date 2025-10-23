@@ -2,7 +2,7 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-23 (Claude Code : Fix Vite dependencies pour Docker build 🔧)
+**Dernière mise à jour** : 2025-10-23 (Claude Code : Fix version frontend 🔧)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
 
@@ -10,11 +10,11 @@
 
 ### Fichiers modifiés
 - `package.json` (déplacé Vite de devDependencies vers dependencies)
-- `Dockerfile` (upgrade Node.js 18 → 20 pour Vite 7.1.2)
+- `Dockerfile` (upgrade Node.js 18 → 20 + fix écrasement fichiers buildés)
 - `AGENT_SYNC.md` (cette mise à jour)
 
 ### Actions réalisées
-**🐛 DOUBLE FIX: Docker build échoue (Vite manquant + mauvaise version Node.js)**
+**🐛 TRIPLE FIX: Docker build + version frontend affichée**
 
 **Problème #1 - déploiement #26 (échec GitHub Actions):**
 ```
@@ -49,27 +49,51 @@ npm warn EBADENGINE   current: node: 'v18.20.8'
 - **Upgrade Dockerfile:** `setup_18.x` → `setup_20.x` ✅
 - Node 20 LTS supporte Vite 7.1.2 nativement
 
+---
+
+**Problème #3 - déploiement #28 (SUCCESS mais version affichée incorrecte):**
+```
+[Version] beta-2.1.3 - Guardian Email Reports (61% completed)
+```
+- Build #28 SUCCESS ✅
+- Révision 00425 déployée ✅
+- **MAIS** frontend affiche toujours `beta-2.1.3` au lieu de `beta-3.0.0` ❌
+
+**Analyse cause #3:**
+- `index.html` et `assets/` sont versionnés dans Git
+- Dockerfile fait `COPY . .` → copie vieux fichiers Git
+- Puis `npm run build` → génère `dist/` avec nouveaux fichiers
+- Puis `cp -r dist/* .` → copie **sans forcer écrasement**
+- **Résultat:** Vieux `index.html` de Git pas écrasé ❌
+
+**Solution #3:**
+- **Supprimer vieux fichiers** AVANT copie : `rm -rf index.html assets/`
+- Puis copier dist: `cp -r dist/* .`
+- Garantit que seuls les fichiers buildés sont servis ✅
+
 **Résultat attendu:**
-- Prochain push (#28) → GitHub Actions build avec Node 20 + Vite en dependencies
-- Docker build réussira enfin 🔥
-- Déploiement Cloud Run OK (révision 00427)
-- Frontend beta-3.0.0 enfin en prod 🚀
+- Prochain push (#29) → GitHub Actions build réussira
+- Révision 00426 déployée avec **fichiers buildés corrects**
+- Frontend affichera **beta-3.0.0** (74% completion, P2 completed) 🚀
+- Auth devrait fonctionner (problème 401 probablement lié à cache navigateur)
 
 ### Tests
 - ✅ `npm run build` local (Node 20, 4.62s, 364 modules)
 - ✅ Vite installé en dependencies
 - ✅ Dockerfile upgrade Node 20
-- ⏳ Commit + push double fix en cours
-- ⏳ GitHub Actions build #28 à surveiller (DOIT passer)
+- ✅ Dockerfile supprime vieux index.html avant copie dist/
+- ⏳ Commit + push triple fix en cours
+- ⏳ GitHub Actions build #29 à surveiller
 
 ### Prochaines actions recommandées
-1. **Commit + push** double fix (Vite deps + Node 20)
-2. **Surveiller GitHub Actions #28** (devrait ENFIN passer après 2 échecs)
-3. **Valider déploiement Cloud Run** (révision 00427)
-4. **Tester site prod** : vérifier beta-3.0.0 affichée
+1. **Commit + push** triple fix (Vite deps + Node 20 + rm old files)
+2. **Surveiller déploiement** (révision 00426 attendue)
+3. **Tester site prod** avec hard refresh (Ctrl+Shift+R)
+4. **Vérifier version** affichée : doit être beta-3.0.0
+5. **Tester auth** : si toujours 401 → investiguer backend logs
 
 ### Blocages
-Aucun. Double fix appliqué et testé localement.
+Aucun. Triple fix appliqué.
 
 ---
 

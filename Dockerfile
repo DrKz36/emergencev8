@@ -41,8 +41,8 @@ COPY . .
 # Build frontend (generates dist/ with updated version.js)
 RUN npm run build
 
-# Copy built frontend files to root for FastAPI to serve
-RUN cp -r dist/* . && rm -rf dist
+# Remove old frontend files before copying built ones
+RUN rm -rf index.html assets/ && cp -r dist/* . && rm -rf dist
 
 # Cloud Run exposes $PORT
 ENV PORT=8080
