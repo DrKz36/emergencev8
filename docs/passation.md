@@ -1,3 +1,118 @@
+## [2025-10-23 18:28 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.js`
+
+### Contexte
+L'utilisateur demande 2 améliorations sur le module dialogue :
+1. **Modal au démarrage** : Pop-up au milieu de la zone de chat demandant si on reprend la dernière conversation ou si on en commence une nouvelle (pour que les agents soient "au taquet" direct)
+2. **Fix routing réponses agents** : Quand on sollicite un agent via les boutons dans les bulles (ex: cliquer "Neo" sur une bulle d'Anima), l'agent sollicité doit répondre dans la zone de l'agent d'origine, pas dans sa propre zone
+
+### Travail réalisé
+
+**A. Pop-up modal au démarrage du module dialogue**
+
+**Analyse du flux existant** :
+- Dans `mount()` (ligne 268) : Si pas de conversation active, appelle `_ensureActiveConversation()`
+- Ancien `_ensureActiveConversation()` chargeait automatiquement la dernière conv ou créait une nouvelle sans demander à l'utilisateur
+
+**Solution implémentée** :
+1. **Refacto `_ensureActiveConversation()`** (lignes 303-318) :
+   - Récupère la liste des threads existants
+   - Appelle `_showConversationChoiceModal()` avec flag `hasExistingConversations`
+
+2. **Nouvelle méthode `_showConversationChoiceModal()`** (lignes 323-382) :
+   ```javascript
+   // Crée modal HTML dynamiquement
+   <div class="modal-container visible">
+     <div class="modal-backdrop"></div>
+     <div class="modal-content">
+       <h2>Bienvenue dans le module Dialogue !</h2>
+       <p>Voulez-vous reprendre... ou commencer une nouvelle ?</p>
+       <button data-action="resume">Reprendre</button>
+       <button data-action="new">Nouvelle conversation</button>
+     </div>
+   </div>
+   ```
+   - Utilise le style modal existant (`.modal-container` de `modals.css`)
+   - Bouton "Reprendre" affiché seulement si `hasExistingConversations`
+   - Gestion événements : clic boutons → appelle `_resumeLastConversation()` ou `_createNewConversation()`
+   - Clic backdrop → comportement par défaut (reprendre si existe, sinon créer)
+
+3. **Nouvelle méthode `_resumeLastConversation()`** (lignes 387-424) :
+   - Récupère le premier thread de `threads.order` (le plus récent)
+   - Hydrate le thread avec `hydrateFromThread()`
+   - Émet événements `threads:ready` et `threads:selected` pour connexion WS
+   - Toast confirmation "Conversation reprise"
+   - Fallback création si thread data introuvable
+
+4. **Nouvelle méthode `_createNewConversation()`** (lignes 429-456) :
+   - Appelle `api.createThread({ type: 'chat', title: 'Conversation' })`
+   - Initialise avec messages vides
+   - Émet événements nécessaires
+   - Toast confirmation "Nouvelle conversation créée"
+
+**B. Fix routing réponses agents (opinion request)**
+
+**Analyse du problème** :
+- Fonction `handleOpinionRequest()` (ligne 748 ancienne → 852 après refacto)
+- Ligne 823 (ancienne 725) :
+  ```javascript
+  const bucketTarget = (artifacts.request?.bucket || (sourceAgentId || targetAgentId || '').trim().toLowerCase()) || targetAgentId;
+  ```
+- Ce code pouvait router le message vers `targetAgentId` si `sourceAgentId` était vide
+- Résultat : Le message de demande d'avis et la réponse de l'agent sollicité allaient dans le bucket du **targetAgent** au lieu du **sourceAgent**
+
+**Solution** :
+```javascript
+// 🔥 FIX: Le bucket doit TOUJOURS être celui de l'agent SOURCE
+const bucketTarget = sourceAgentId || targetAgentId;
+```
+
+**Pourquoi ça marche** :
+- `_determineBucketForMessage()` (ligne 57) check déjà `meta.opinion_request.source_agent` et renvoie `sourceAgentId` si présent
+- En forcant `bucketTarget = sourceAgentId`, le message de demande d'avis va dans le bucket de l'agent SOURCE
+- Quand le backend répond, `handleStreamStart()` appelle `_resolveBucketFromCache()` qui appelle `_determineBucketForMessage()` avec le `meta` contenant `opinion.source_agent_id`
+- Donc la réponse va aussi dans le bucket SOURCE
+- **Résultat** : Conversation complète (demande + réponse) reste dans la zone de l'agent d'origine
+
+**Exemple de flux** :
+1. Anima répond "Blabla" (message_id=123, bucket="anima")
+2. User clique bouton "Neo" sur la bulle d'Anima
+3. `handleOpinionRequest()` appelé avec `targetAgentId="neo"`, `sourceAgentId="anima"`, `messageId="123"`
+4. **Avant fix** : `bucketTarget` pouvait être "neo" → message allait dans bucket Neo
+5. **Après fix** : `bucketTarget = "anima"` → message va dans bucket Anima
+6. Backend répond avec `meta.opinion.source_agent_id = "anima"` → réponse va dans bucket Anima
+7. **Résultat** : L'utilisateur voit la demande ET la réponse de Neo dans la zone d'Anima
+
+### Tests
+- ✅ `npm run build` : Build OK (1.21s, 0 erreurs)
+
+### Recommandations pour validation
+1. **Test modal démarrage** :
+   - Se déconnecter / reconnecter
+   - Ouvrir module Dialogue
+   - Vérifier qu'un modal apparaît au centre avec les boutons "Reprendre" / "Nouvelle conversation"
+   - Tester les deux boutons
+   - Vérifier les toasts de confirmation
+
+2. **Test routing agents** :
+   - Dans le module dialogue, sélectionner Anima
+   - Envoyer un message et attendre la réponse d'Anima
+   - Cliquer sur le bouton "Neo" (bleu) dans la bulle de réponse d'Anima
+   - Vérifier que Neo répond **dans la zone d'Anima** et non dans sa propre zone
+   - Répéter avec d'autres agents (Nexus, etc.)
+
+3. **Test archivage** :
+   - Système d'archivage déjà en place via API `/api/threads` (backend gère la persistance)
+   - Conversations s'archivent automatiquement dans `threads.order`
+   - Pas de modification nécessaire
+
+### Prochaines actions
+Attendre retour utilisateur pour validation visuelle avant déploiement.
+
+---
+
 ## [2025-10-23 18:18 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

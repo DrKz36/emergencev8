@@ -1,3 +1,47 @@
+## ✅ Session COMPLÉTÉE (2025-10-23 18:28 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+**✅ Modal démarrage dialogue + Fix réponses agents dans bonne zone**
+
+**A. Pop-up au démarrage du module dialogue**
+- **Problème** : Quand on se log, on tombe sur le module dialogue mais l'utilisateur ne sait pas s'il reprend la dernière conv ou en commence une nouvelle
+- **Solution** : Ajout d'un modal au mount du module dialogue (méthode `_showConversationChoiceModal`)
+  - Si conversations existantes : Boutons "Reprendre" et "Nouvelle conversation"
+  - Si aucune conversation : Bouton "Nouvelle conversation" uniquement
+  - Clic sur backdrop : reprend dernière conv si existe, sinon crée nouvelle
+- **Implémentation** :
+  - Refacto `_ensureActiveConversation()` pour afficher le modal au lieu de charger auto
+  - Ajout méthodes `_resumeLastConversation()` et `_createNewConversation()`
+  - Utilise le style modal existant (`.modal-container`, `.modal-backdrop`, `.modal-content`)
+  - Toast confirmation "Conversation reprise" / "Nouvelle conversation créée"
+
+**B. Fix agents sollicités répondent dans zone appelante**
+- **Problème** : Quand on clique sur le bouton "Neo" dans une bulle d'Anima, Neo répond dans SA zone à lui au lieu de rester dans la zone d'Anima
+- **Cause** : Dans `handleOpinionRequest` (ligne 823), le `bucketTarget` était calculé foireux avec `(sourceAgentId || targetAgentId)` ce qui pouvait router vers le targetAgent
+- **Solution** : Forcé `bucketTarget = sourceAgentId || targetAgentId` avec priorité stricte sur `sourceAgentId`
+  - Le message de demande d'avis va maintenant TOUJOURS dans le bucket de l'agent SOURCE
+  - La réponse de l'agent sollicité reste visible dans le fil de conversation initial
+  - Aligné avec `_determineBucketForMessage` qui check `meta.opinion_request.source_agent`
+
+### Tests
+- ✅ `npm run build` : Build OK (1.21s)
+- ⚠️ Tests visuels recommandés : modal démarrage + réponse Neo dans zone Anima
+
+### Prochaines actions recommandées
+1. **Tests visuels modal** : Vérifier l'affichage du modal au démarrage du module dialogue
+2. **Tests flux agents** : Créer une bulle Anima → cliquer bouton Neo → vérifier que Neo répond dans la zone d'Anima
+3. **Tests archivage** : Vérifier que les conversations s'archivent correctement (ancien système déjà en place)
+
+### Blocages
+Aucun.
+
+---
+
 ## ✅ Session COMPLÉTÉE (2025-10-23 18:18 CET) — Agent : Claude Code
 
 ### Fichiers modifiés

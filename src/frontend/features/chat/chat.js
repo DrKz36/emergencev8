@@ -298,42 +298,137 @@ export default class ChatModule {
 
   /**
    * S'assure qu'une conversation est active au chargement du module.
-   * Récupère la dernière conversation existante ou en crée une nouvelle.
+   * Affiche un modal demandant si l'utilisateur veut reprendre la dernière conversation ou en créer une nouvelle.
    */
   async _ensureActiveConversation() {
     try {
-      console.log('[Chat] Aucune conversation active détectée, récupération/création en cours...');
+      console.log('[Chat] Aucune conversation active détectée, affichage du modal de choix...');
 
       // Récupérer la liste des threads depuis le state (déjà chargés par app.js)
       const threadsOrder = this.state.get('threads.order') || [];
+      const hasExistingConversations = threadsOrder.length > 0;
 
-      if (threadsOrder.length > 0) {
-        // Prendre le premier thread de la liste (le plus récent)
-        const latestThreadId = threadsOrder[0];
-        const threadData = this.state.get(`threads.map.${latestThreadId}`);
+      // Afficher le modal de choix
+      this._showConversationChoiceModal(hasExistingConversations);
+    } catch (error) {
+      console.error('[Chat] Erreur lors de l\'affichage du modal de conversation:', error);
+      // En cas d'erreur, créer une nouvelle conversation par défaut
+      await this._createNewConversation();
+    }
+  }
 
-        if (threadData) {
-          console.log('[Chat] Activation de la dernière conversation:', latestThreadId);
-          this.loadedThreadId = latestThreadId;
-          this.threadId = latestThreadId;
-          this.state.set('chat.threadId', latestThreadId);
-          this.state.set('threads.currentId', latestThreadId);
-          try { localStorage.setItem('emergence.threadId', latestThreadId); } catch {}
+  /**
+   * Affiche le modal demandant à l'utilisateur s'il veut reprendre la dernière conversation ou en créer une nouvelle.
+   */
+  _showConversationChoiceModal(hasExistingConversations) {
+    // Créer le HTML du modal
+    const modalHTML = `
+      <div class="modal-container visible" id="conversation-choice-modal">
+        <div class="modal-backdrop" data-action="close"></div>
+        <div class="modal-content">
+          <h2 class="modal-title">Bienvenue dans le module Dialogue !</h2>
+          <div class="modal-body">
+            ${hasExistingConversations
+              ? '<p>Voulez-vous reprendre votre dernière conversation ou commencer une nouvelle ?</p>'
+              : '<p>Vous n\'avez pas encore de conversation. Prêt à démarrer ?</p>'}
+          </div>
+          <div class="modal-actions">
+            ${hasExistingConversations
+              ? '<button class="btn" data-action="resume">Reprendre</button>'
+              : ''}
+            <button class="btn btn-primary" data-action="new">Nouvelle conversation</button>
+          </div>
+        </div>
+      </div>
+    `;
 
-          // Charger les messages de cette conversation
-          this.hydrateFromThread(threadData);
+    // Insérer le modal dans le container
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = modalHTML;
+    const modal = tempDiv.firstElementChild;
+    this.container.appendChild(modal);
 
-          // Émettre l'événement pour que le WebSocket se connecte
-          this.eventBus.emit('threads:ready', { id: latestThreadId });
-          this.eventBus.emit(EVENTS.THREADS_SELECTED || 'threads:selected', { id: latestThreadId });
+    // Gérer les clics sur les boutons
+    const resumeBtn = modal.querySelector('[data-action="resume"]');
+    const newBtn = modal.querySelector('[data-action="new"]');
+    const backdrop = modal.querySelector('[data-action="close"]');
 
-          console.log('[Chat] ✅ Conversation active chargée automatiquement');
-          return;
-        }
+    const closeModal = () => {
+      modal.classList.remove('visible');
+      setTimeout(() => modal.remove(), 300);
+    };
+
+    if (resumeBtn) {
+      resumeBtn.addEventListener('click', async () => {
+        closeModal();
+        await this._resumeLastConversation();
+      });
+    }
+
+    newBtn.addEventListener('click', async () => {
+      closeModal();
+      await this._createNewConversation();
+    });
+
+    backdrop.addEventListener('click', async () => {
+      // Si l'utilisateur clique sur le backdrop, créer une nouvelle conversation par défaut
+      closeModal();
+      if (hasExistingConversations) {
+        await this._resumeLastConversation();
+      } else {
+        await this._createNewConversation();
+      }
+    });
+  }
+
+  /**
+   * Reprend la dernière conversation existante.
+   */
+  async _resumeLastConversation() {
+    try {
+      const threadsOrder = this.state.get('threads.order') || [];
+      if (threadsOrder.length === 0) {
+        console.warn('[Chat] Aucune conversation à reprendre, création d\'une nouvelle');
+        await this._createNewConversation();
+        return;
       }
 
-      // Si aucun thread n'existe dans la liste, créer un nouveau
-      console.log('[Chat] Aucune conversation existante, création d\'une nouvelle...');
+      const latestThreadId = threadsOrder[0];
+      const threadData = this.state.get(`threads.map.${latestThreadId}`);
+
+      if (threadData) {
+        console.log('[Chat] Reprise de la dernière conversation:', latestThreadId);
+        this.loadedThreadId = latestThreadId;
+        this.threadId = latestThreadId;
+        this.state.set('chat.threadId', latestThreadId);
+        this.state.set('threads.currentId', latestThreadId);
+        try { localStorage.setItem('emergence.threadId', latestThreadId); } catch {}
+
+        // Charger les messages de cette conversation
+        this.hydrateFromThread(threadData);
+
+        // Émettre l'événement pour que le WebSocket se connecte
+        this.eventBus.emit('threads:ready', { id: latestThreadId });
+        this.eventBus.emit(EVENTS.THREADS_SELECTED || 'threads:selected', { id: latestThreadId });
+
+        console.log('[Chat] ✅ Dernière conversation reprise avec succès');
+        this.showToast('Conversation reprise');
+      } else {
+        console.warn('[Chat] Thread data introuvable, création d\'une nouvelle conversation');
+        await this._createNewConversation();
+      }
+    } catch (error) {
+      console.error('[Chat] Erreur lors de la reprise de conversation:', error);
+      await this._createNewConversation();
+    }
+  }
+
+  /**
+   * Crée une nouvelle conversation.
+   */
+  async _createNewConversation() {
+    try {
+      console.log('[Chat] Création d\'une nouvelle conversation...');
       const created = await api.createThread({ type: 'chat', title: 'Conversation' });
       const newThreadId = created?.id;
 
@@ -351,11 +446,12 @@ export default class ChatModule {
         this.eventBus.emit('threads:ready', { id: newThreadId });
         this.eventBus.emit(EVENTS.THREADS_CREATED || 'threads:created', created);
 
-        console.log('[Chat] ✅ Nouvelle conversation créée et activée:', newThreadId);
+        console.log('[Chat] ✅ Nouvelle conversation créée:', newThreadId);
+        this.showToast('Nouvelle conversation créée');
       }
     } catch (error) {
-      console.error('[Chat] Erreur lors de l\'activation automatique de conversation:', error);
-      // En cas d'erreur, continuer sans conversation active (mode dégradé)
+      console.error('[Chat] Erreur lors de la création de conversation:', error);
+      this.showToast('Erreur lors de la création de conversation');
     }
   }
 
@@ -722,7 +818,9 @@ export default class ChatModule {
         }
       };
 
-      const bucketTarget = (artifacts.request?.bucket || (sourceAgentId || targetAgentId || '').trim().toLowerCase()) || targetAgentId;
+      // 🔥 FIX: Le bucket doit TOUJOURS être celui de l'agent SOURCE (celui dont on commente la réponse)
+      // pour que la réponse de l'agent sollicité reste visible dans le fil de conversation initial
+      const bucketTarget = sourceAgentId || targetAgentId;
       const existing = this.state.get(`chat.messages.${bucketTarget}`) || [];
       this.state.set(`chat.messages.${bucketTarget}`, [...existing, requestMessage]);
       this._rememberMessageBucket(requestId, bucketTarget);
