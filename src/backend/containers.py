@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 from dependency_injector import containers, providers
 import httpx
@@ -32,41 +32,41 @@ logger = logging.getLogger(__name__)
 
 # --- Features optionnelles (tolérance à l'absence) ---
 try:
-    from backend.features.dashboard.service import DashboardService  # type: ignore
-    from backend.features.dashboard.admin_service import AdminDashboardService  # type: ignore
+    from backend.features.dashboard.service import DashboardService
+    from backend.features.dashboard.admin_service import AdminDashboardService
 except Exception:  # pragma: no cover
-    DashboardService = None  # type: ignore
-    AdminDashboardService = None  # type: ignore
+    DashboardService = None
+    AdminDashboardService = None
 
 try:
-    from backend.features.documents.service import DocumentService  # type: ignore
+    from backend.features.documents.service import DocumentService
     from backend.features.documents.parser import ParserFactory  # requis par DocumentService
 except Exception:  # pragma: no cover
-    DocumentService = None  # type: ignore
-    ParserFactory = None    # type: ignore
+    DocumentService = None
+    ParserFactory = None
 
 try:
-    from backend.features.debate.service import DebateService  # type: ignore
+    from backend.features.debate.service import DebateService
 except Exception:  # pragma: no cover
-    DebateService = None  # type: ignore
+    DebateService = None
 
 try:
-    from backend.features.benchmarks.service import BenchmarksService  # type: ignore
+    from backend.features.benchmarks.service import BenchmarksService
     from backend.benchmarks.persistence import (
         BenchmarksRepository,
         build_firestore_client,
-    )  # type: ignore
+    )
 except Exception:  # pragma: no cover
-    BenchmarksService = None  # type: ignore
-    BenchmarksRepository = None  # type: ignore
-    build_firestore_client = None  # type: ignore
+    BenchmarksService = None
+    BenchmarksRepository = None
+    build_firestore_client = None
 
 try:
-    from backend.features.voice.service import VoiceService  # type: ignore
-    from backend.features.voice.models import VoiceServiceConfig  # type: ignore
+    from backend.features.voice.service import VoiceService
+    from backend.features.voice.models import VoiceServiceConfig
 except Exception:  # pragma: no cover
-    VoiceService = None  # type: ignore
-    VoiceServiceConfig = None  # type: ignore
+    VoiceService = None
+    VoiceServiceConfig = None
 
 _VOICE_STT_MODEL_DEFAULT = "whisper-1"
 _VOICE_TTS_MODEL_DEFAULT = "a_model_id_here"
@@ -242,9 +242,9 @@ def _build_voice_config(settings: Settings) -> VoiceServiceConfig:
     )
 
 
-def _build_benchmarks_firestore_client(settings: Settings):
+def _build_benchmarks_firestore_client(settings: Settings) -> Any:
     if build_firestore_client is None:
-        return None
+        return None  # type: ignore[unreachable]
     project_id = None
     candidate = getattr(settings, 'benchmarks_firestore_project', None)
     if isinstance(candidate, str) and candidate.strip():
@@ -350,7 +350,7 @@ class AppContainer(containers.DeclarativeContainer):
             uploads_dir=uploads_dir,
         )
     else:
-        document_service = None
+        document_service = None  # type: ignore[unreachable]
 
     # --- Chat ---
     chat_service = providers.Singleton(
@@ -372,7 +372,7 @@ class AppContainer(containers.DeclarativeContainer):
 
     # TimelineService pour les graphiques dashboard
     try:
-        from backend.features.dashboard.timeline_service import TimelineService  # type: ignore
+        from backend.features.dashboard.timeline_service import TimelineService
         timeline_service = providers.Singleton(
             TimelineService,
             db_manager=db_manager,

@@ -1,3 +1,65 @@
+## [2025-10-24 13:00 CET] - Agent: Claude Code
+
+### Fichiers modifiés
+- `src/backend/containers.py`
+- `src/backend/features/debate/service.py`
+- `src/backend/core/websocket.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+P1.2 Mypy Batch 3 - Type checking improvements. Réduction 402 → 392 erreurs (-10, -2.5%). Travail en parallèle avec session Codex P2.1 tests bundle (aucun conflit Git).
+
+### Travail réalisé
+**containers.py (12 fixes)** : Suppression 9 `# type: ignore` devenus inutiles (imports modernes OK), return type `-> Any` pour _build_benchmarks_firestore_client, type:ignore unreachable pour faux positifs Mypy.
+
+**debate/service.py (8 fixes)** : Type params `Dict[str,Any]` au lieu de `Dict` (lignes 99, 117, 173, 239, 458, 471), type annotation `chat_service: Any` pour __init__, `**kwargs: Any` pour run().
+
+**websocket.py (15 fixes)** : Return type annotations (connect → str, disconnect/send_* → None), dict params → dict[str,Any], cast `Callable[..., Any]` pour _find_handler retour, suppression 2 `# type: ignore[attr-defined]` devenus inutiles, type annotation `container: Any` pour get_websocket_router.
+
+**Patterns réutilisables** : Suppression type:ignore obsolètes, return types, dict[str,Any], cast callbacks.
+
+### Tests
+```
+mypy src/backend/  # 402 → 392 (-10)
+ruff check         # All checks passed
+npm run build      # OK 1.27s
+```
+
+### Prochaines actions recommandées
+**P1.2 Batch 4** : main.py (4 erreurs faciles), services restants (392 → ~350).
+
+### Blocages
+Aucun.
+
+---
+
+## [2025-10-24 12:30 CET] - Agent: Codex
+
+### Fichiers modifiés
+- `scripts/load-codex-prompt.ps1`
+- `CODEX_SYSTEM_PROMPT.md`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+Simplifier le chargement du prompt système Codex côté Windsurf sans devoir recopier tout le fichier à chaque session.
+
+### Travail réalisé
+- Ajout du script `scripts/load-codex-prompt.ps1` qui renvoie le contenu de `CODEX_SYSTEM_PROMPT.md` (utilisation `| Set-Clipboard`).
+- Ajout d’une section « Chargement rapide du prompt » dans `CODEX_SYSTEM_PROMPT.md` (instructions PowerShell/Bash).
+- Mise à jour des journaux (`AGENT_SYNC.md`, `docs/passation.md`).
+
+### Tests
+- N/A (script manuel vérifié via `./scripts/load-codex-prompt.ps1 | Set-Clipboard`).
+
+### Prochaines actions recommandées
+1. Optionnel : préparer un alias VS Code/Windsurf si nécessaire.
+2. Revoir plus tard un hook automatique si Windsurf le permet.
+
+### Blocages
+Aucun.
+
 ## [2025-10-24 12:00 CET] - Agent: Claude Code
 
 ### Fichiers modifiés
@@ -60,7 +122,7 @@ P2.1 – Optimiser le bundle frontend. La build précédente contenait un chunk 
 ### Tests
 - ✅ `npm run build`
 - ✅ `ANALYZE_BUNDLE=1 npm run build`
-- ⚠️ Tentative Lighthouse (`npx lighthouse ... --headless`) encore bloquée par l’interstitiel Chrome malgré `--allow-insecure-localhost` → métriques FCP/LCP à collecter plus tard.
+- ⚠️ `npm run preview` depuis script → connexion refusée, puis Lighthouse toujours bloqué sur l’interstitiel (`--allow-insecure-localhost`). FCP/LCP à mesurer manuellement plus tard.
 
 ### Prochaines actions recommandées
 1. S’assurer que prod/staging autorisent jsDelivr (prévoir fallback local si nécessaire).

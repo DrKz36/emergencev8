@@ -82,7 +82,7 @@ class ConnectionManager:
         thread_id: Optional[str] = None,
         *,
         client_session_id: Optional[str] = None,
-    ):
+    ) -> str:
         await self._accept_with_subprotocol(websocket)
 
         history_limit = 200
@@ -99,7 +99,7 @@ class ConnectionManager:
             )
             if alias:
                 try:
-                    self.session_manager.register_session_alias(session_id, alias)  # type: ignore[attr-defined]
+                    self.session_manager.register_session_alias(session_id, alias)
                 except Exception as exc:
                     logger.debug(
                         "WS alias registration failed (%s -> %s): %s",
@@ -139,7 +139,7 @@ class ConnectionManager:
             )
             if alias:
                 try:
-                    self.session_manager.register_session_alias(session_id, alias)  # type: ignore[attr-defined]
+                    self.session_manager.register_session_alias(session_id, alias)
                 except Exception as exc:
                     logger.debug(
                         "WS alias refresh failed (%s -> %s): %s",
@@ -216,7 +216,7 @@ class ConnectionManager:
                 pass
         return session_id
 
-    async def disconnect(self, session_id: str, websocket: WebSocket):
+    async def disconnect(self, session_id: str, websocket: WebSocket) -> None:
         # 🆕 Arrêter WsOutbox proprement
         outbox = self.outboxes.pop(websocket, None)
         if outbox:
@@ -253,7 +253,7 @@ class ConnectionManager:
                 resolved_id,
             )
 
-    async def send_personal_message(self, message: dict, session_id: str):
+    async def send_personal_message(self, message: dict[str, Any], session_id: str) -> None:
         """
         Envoie un message à tous les clients d'une session via WsOutbox.
 
@@ -299,7 +299,7 @@ class ConnectionManager:
                 )
                 await self.disconnect(resolved_id, ws)
 
-    async def send_system_message(self, session_id: str, payload: dict):
+    async def send_system_message(self, session_id: str, payload: dict[str, Any]) -> None:
         """Envoie un message système à une session (ex: avertissement d'inactivité)."""
         message = {
             "type": "ws:system_notification",
@@ -307,7 +307,7 @@ class ConnectionManager:
         }
         await self.send_personal_message(message, session_id)
 
-    async def send_to_session(self, session_id: str, message: dict):
+    async def send_to_session(self, session_id: str, message: dict[str, Any]) -> None:
         """Envoie un message générique à une session (wrapper pour handshake)."""
         await self.send_personal_message(message, session_id)
 
@@ -318,7 +318,7 @@ class ConnectionManager:
         model: str,
         provider: str,
         user_id: str
-    ):
+    ) -> None:
         """
         Envoie un message HELLO pour synchroniser le contexte agent.
 
@@ -380,10 +380,10 @@ def _find_handler(sm: SessionManager) -> Optional[Callable[..., Any]]:
     for name in ("on_client_message", "ingest_ws_message", "handle_client_message", "dispatch"):
         fn = getattr(sm, name, None)
         if callable(fn):
-            return fn
+            return cast(Callable[..., Any], fn)
     return None
 
-def get_websocket_router(container) -> APIRouter:
+def get_websocket_router(container: Any) -> APIRouter:
     router = APIRouter()
 
     @router.websocket("/ws/{session_id}")
@@ -392,7 +392,7 @@ def get_websocket_router(container) -> APIRouter:
         user_id_hint = websocket.query_params.get("user_id")
         thread_id = websocket.query_params.get("thread_id")
 
-        async def _reject_ws(reason: str, close_code: int = 4401):
+        async def _reject_ws(reason: str, close_code: int = 4401) -> None:
             try:
                 requested = websocket.headers.get("sec-websocket-protocol") or ""
                 selected = None

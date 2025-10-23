@@ -25,7 +25,7 @@ class DebateConfig:
 class DebateService:
     def __init__(
         self,
-        chat_service,
+        chat_service: Any,
         connection_manager: ConnectionManager,
         session_manager: Optional[object] = None,
         vector_service: Optional[object] = None,
@@ -96,7 +96,7 @@ class DebateService:
             return f"{prefix}{agent_txt} intervient."
         return stage.replace("_", " " ).capitalize() or "Progression en cours."
 
-    async def _emit(self, session_id: str, type_: str, payload: Dict) -> None:
+    async def _emit(self, session_id: str, type_: str, payload: Dict[str, Any]) -> None:
         try:
             await self.connection_manager.send_personal_message(
                 {"type": type_, "payload": payload}, session_id
@@ -114,7 +114,7 @@ class DebateService:
         doc_ids: Optional[List[int]] = None,
     ) -> Dict[str, Any]:
         try:
-            res: Dict = await self.chat_service.get_llm_response_for_debate(
+            res: Dict[str, Any] = await self.chat_service.get_llm_response_for_debate(
                 agent_id,
                 prompt,
                 system_override=None,
@@ -170,7 +170,7 @@ class DebateService:
                 doc_ids = None
         return DebateConfig(topic=topic, rounds=rounds, agent_order=agent_order, use_rag=use_rag, doc_ids=doc_ids)
 
-    async def run(self, session_id: str, config: Optional[DebateConfig] = None, **kwargs) -> Dict:
+    async def run(self, session_id: str, config: Optional[DebateConfig] = None, **kwargs: Any) -> Dict[str, Any]:
         cfg = self._normalize_config(config, kwargs)
         topic = (cfg.topic or "").strip()
         attacker, challenger, mediator = (cfg.agent_order + ["", "", ""])[:3]
@@ -236,7 +236,7 @@ class DebateService:
             message="Initialisation du debat...",
         )
 
-        turns: List[Dict] = []
+        turns: List[Dict[str, Any]] = []
 
         for r in range(1, rounds + 1):
             # ⚡ Optimisation Phase 2: Round 1 en parallèle (attacker + challenger indépendants)
@@ -455,7 +455,7 @@ class DebateService:
         )
         return payload
 
-    def _build_turn_prompt(self, topic: str, turns: List[Dict], *, speaker: str, agent: str) -> str:
+    def _build_turn_prompt(self, topic: str, turns: List[Dict[str, Any]], *, speaker: str, agent: str) -> str:
         assert speaker in ("attacker", "challenger")
         if not turns:
             return f"Sujet: {topic}\n\nTon rôle ({agent}) : ouvre le débat de manière concise et percutante en 4-6 phrases."
@@ -468,7 +468,7 @@ class DebateService:
             f"Ton rôle ({agent}) : réponds précisément, 4-6 phrases, pas de résumé global."
         )
 
-    def _build_synthesis_prompt(self, topic: str, turns: List[Dict], mediator: str) -> str:
+    def _build_synthesis_prompt(self, topic: str, turns: List[Dict[str, Any]], mediator: str) -> str:
         lines = [f"Sujet: {topic}", "Débat (chronologique):"]
         for t in turns:
             lines.append(f"- {t.get('agent','?')}: {t.get('text','').strip()}")
