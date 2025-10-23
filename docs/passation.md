@@ -1,3 +1,86 @@
+## [2025-10-23 06:28 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/frontend/core/app.js` (fix thread archivé chargé au login)
+- `dist/` (rebuild frontend)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**🐛 FIX UX : Thread archivé chargé automatiquement au login**
+
+L'utilisateur signale un problème d'UX frustrant :
+- Il archive toutes ses conversations
+- À la reconnexion, l'app **charge automatiquement la dernière conversation archivée**
+- Au lieu de créer une **nouvelle conversation fraîche**
+
+**Diagnostic :**
+Le problème est dans [app.js:556-589](src/frontend/core/app.js#L556-L589), méthode `ensureCurrentThread()` :
+
+1. Au démarrage, elle récupère `threads.currentId` du state (persisté dans localStorage)
+2. Si ce thread est **valide**, elle le charge directement **sans vérifier s'il est archivé**
+3. Donc un thread archivé est rechargé systématiquement
+
+### Solution implémentée
+
+Modification de `ensureCurrentThread()` dans [app.js:556-589](src/frontend/core/app.js#L556-L589) :
+
+**Avant :**
+```javascript
+let currentId = this.state.get('threads.currentId');
+if (!this._isValidThreadId(currentId)) {
+  const list = await api.listThreads({ type: 'chat', limit: 1 });
+  // ...
+}
+// → Charge directement currentId même si archivé
+```
+
+**Après :**
+```javascript
+let currentId = this.state.get('threads.currentId');
+
+// ✅ NOUVEAU : Vérifier si le thread est archivé
+if (this._isValidThreadId(currentId)) {
+  try {
+    const threadData = await api.getThreadById(currentId, { messages_limit: 1 });
+    const thread = threadData?.thread || threadData;
+    if (thread?.archived === true) {
+      console.log('[App] Thread courant archivé, création d\'un nouveau thread frais');
+      currentId = null; // Reset pour créer un nouveau thread
+    }
+  } catch (err) {
+    console.warn('[App] Thread courant inaccessible, création d\'un nouveau thread', err);
+    currentId = null;
+  }
+}
+
+if (!this._isValidThreadId(currentId)) {
+  const list = await api.listThreads({ type: 'chat', limit: 1 });
+  // ...
+}
+```
+
+**Comportement après fix :**
+1. ✅ Si `currentId` existe et est archivé → **créer nouveau thread frais**
+2. ✅ Si `currentId` existe et n'est pas archivé → **charger ce thread**
+3. ✅ Si aucun `currentId` → **chercher dans la liste ou créer un nouveau**
+
+### Tests
+- ✅ `npm run build` : OK (4.05s)
+- ⏳ **Test manuel requis** : Recharger la page après avoir archivé toutes les conversations
+
+### Travail de Codex GPT pris en compte
+Aucune modification Codex récente. Travail autonome.
+
+### Prochaines actions recommandées
+1. **Test manuel** : Vérifier que la reconnexion crée bien un nouveau thread si le dernier est archivé
+2. **(Optionnel)** Ajouter une notification "Nouvelle conversation créée" pour clarté UX
+3. Commit + push
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-22 17:50 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

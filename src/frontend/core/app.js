@@ -556,6 +556,26 @@ export class App {
   async ensureCurrentThread() {
     try {
       let currentId = this.state.get('threads.currentId');
+      let needsNewThread = false;
+
+      // Si un currentId existe, vérifier s'il est archivé
+      if (this._isValidThreadId(currentId)) {
+        try {
+          const threadData = await api.getThreadById(currentId, { messages_limit: 1 });
+          const thread = threadData?.thread || threadData;
+          if (thread?.archived === true) {
+            console.log('[App] Thread courant archivé, création d\'un nouveau thread frais');
+            needsNewThread = true;
+            currentId = null; // Reset pour créer un nouveau thread
+          }
+        } catch (err) {
+          // Si le thread n'est plus accessible, on en créera un nouveau
+          console.warn('[App] Thread courant inaccessible, création d\'un nouveau thread', err);
+          needsNewThread = true;
+          currentId = null;
+        }
+      }
+
       if (!this._isValidThreadId(currentId)) {
         const list = await api.listThreads({ type: 'chat', limit: 1 });
         // tolere 'items' ou liste brute
