@@ -1,3 +1,121 @@
+## [2025-10-23 16:00 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `AUDIT_COMPLET_2025-10-23.md` (NOUVEAU - plan d'action hiérarchisé complet post-audit)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**📋 Finalisation audit complet - Création plan d'action hiérarchisé**
+
+Suite à la demande initiale :
+> "On va refaire un audit complet de l'app! [...] **Etabli un plan détaillé et hiarchisé à la fin**"
+
+Après avoir effectué :
+1. Phase 1 : État des lieux (tests, production, roadmaps)
+2. Phase 2 : Fix 5 tests backend (179→285 passed)
+3. Phase 3 : Consolidation roadmaps (5→2 fichiers)
+4. Phase 4 : Audit architecture (50%→100% coverage)
+5. Phase 5 : Règles agents (AGENTS_CHECKLIST.md)
+
+**Il manquait le plan détaillé et hiérarchisé final.**
+
+### Travail réalisé
+
+**Création document `AUDIT_COMPLET_2025-10-23.md`** (rapport complet audit) :
+
+**Structure du document** :
+1. **Résumé exécutif** avec tableau état global :
+   - Production : 🟢 EXCELLENT (100% uptime)
+   - Tests : 🟢 BON (285 passed)
+   - Build : 🟢 BON (warnings vendor)
+   - Linting : 🟢 EXCELLENT (100% clean)
+   - Docs : 🟢 EXCELLENT (100% coverage)
+   - Type Checking : 🟠 MOYEN (mypy non configuré)
+   - **Verdict : L'app tourne nickel en prod**
+
+2. **Détail 5 phases audit** :
+   - Phase 1 : Tests initiaux (npm, pytest, ruff, mypy)
+   - Phase 2 : Fix 5 tests (AsyncMock → MagicMock patterns, trace_manager mock)
+   - Phase 3 : Archivage 4 roadmaps redondantes
+   - Phase 4 : Audit architecture (modules fantômes, docs manquantes)
+   - Phase 5 : Création AGENTS_CHECKLIST.md + ADR-002
+
+3. **Plan d'action hiérarchisé P0/P1/P2/P3** :
+
+**P0 - CRITIQUE (Aujourd'hui)** : Aucun - Tout fixé ✅
+
+**P1 - IMPORTANT (Cette semaine)** :
+- **P1.1 - Cleanup docs racine** (effort 1h)
+  - Objectif : 34 → 27 fichiers .md
+  - Action : Archiver redondances (NEXT_STEPS, IMMEDIATE_ACTIONS)
+  - Impact : Clarté navigation
+
+- **P1.2 - Setup Mypy** (effort 2-3h)
+  - Créer pyproject.toml config mypy
+  - Fixer ~66 typing errors backend
+  - Ajouter mypy dans Guardian pre-commit
+  - Impact : Qualité code, prévention bugs
+
+- **P1.3 - Supprimer dossier corrompu** (effort 5min)
+  - Path bizarre : `c:devemergenceV8srcbackendfeaturesguardian` (sans slashes)
+  - Action : Remove-Item -Recurse -Force
+
+**P2 - NICE TO HAVE (Semaine prochaine)** :
+- **P2.1 - Optimiser bundle vendor** (effort 2-3h)
+  - vendor.js = 1MB → 300KB initial
+  - Code splitting Vite
+  - Lazy load modules (Hymn, Documentation)
+
+- **P2.2 - Cleanup TODOs backend** (effort 1-2h)
+  - 22 TODOs à catégoriser (obsolètes/quick wins/long terme)
+  - Créer issues GitHub pour long terme
+
+**P3 - FUTUR (À planifier)** :
+- **P3.1 - Migration table sessions→threads** (1-2 jours)
+  - SQLite migration + update services
+  - Cohérence totale DB+API+UI (suite ADR-001)
+
+- **P3.2 - Tests E2E frontend** (3-4 jours)
+  - Setup Playwright/Cypress
+  - Tests login/chat/WebSocket/memory
+
+4. **Métriques avant/après** :
+   - Tests : 179 passed/5 failed → 285 passed/0 failed (+106 tests)
+   - Roadmaps : 5+ fichiers → 2 fichiers
+   - Docs coverage : 50-55% → 100% (+45-50%)
+   - Modules fantômes : 2 → 0
+   - Règles agents : Implicites → Explicites (CHECKLIST)
+
+5. **Leçons apprises** :
+   - ✅ Production rock solid (Guardian efficace)
+   - ⚠️ Docs lifecycle nécessite process strict → AGENTS_CHECKLIST
+   - ⚠️ Type checking manquant → P1.2
+   - ⚠️ Cleanup régulier nécessaire → P1.1 + P2.2
+
+6. **Recommandations stratégiques** pour agents :
+   - Checklist obligatoire AVANT implémentation
+   - Mise à jour docs APRÈS modification
+   - ADRs pour décisions architecturales
+   - Guardian automatise validation
+
+### Tests
+Aucun test nécessaire (documentation uniquement).
+
+### Prochaines actions recommandées
+
+**Prêt à exécuter (P1)** :
+1. **P1.1 - Cleanup docs racine** (1h)
+2. **P1.2 - Setup Mypy** (2-3h)
+3. **P1.3 - Supprimer dossier corrompu** (5min)
+
+Ces 3 tâches sont **indépendantes** et peuvent être faites dans n'importe quel ordre ou en parallèle par Claude Code + Codex GPT.
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-23 15:30 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
