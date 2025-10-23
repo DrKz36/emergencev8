@@ -2,9 +2,69 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-23 17:15 CET (Claude Code : P1.1 Cleanup + Fusion roadmaps terminés)
+**Dernière mise à jour** : 2025-10-23 18:45 CET (Claude Code : P1.1 ✅ + Fusion roadmaps ✅ + P1.2 Mypy setup 🟡)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+---
+
+## 🟡 Session EN COURS (2025-10-23 18:45 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `mypy.ini` (NOUVEAU - config mypy progressif strict)
+- `.git/hooks/pre-commit` (ajout mypy WARNING mode non-bloquant)
+- `ROADMAP.md` (P1.2 détaillé: 484 erreurs identifiées + plan progressif)
+- `reports/` directory (créé si manquant)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (entrée session à venir)
+
+### Actions réalisées
+**🔍 P1.2 - Setup Mypy (Type Checking) - PARTIELLEMENT COMPLÉTÉ 🟡**
+
+**Objectif :** Configurer mypy strict pour src/backend/ et identifier erreurs type hints
+
+**Travail fait :**
+1. **Créé `mypy.ini` avec config progressif strict** :
+   - `check_untyped_defs = True` (check bodies sans types)
+   - `disallow_incomplete_defs = True` (force return types)
+   - `warn_return_any = True`, `warn_no_return = True`, `strict_equality = True`
+   - Ignore external libs (google, anthropic, openai, sqlalchemy, redis, etc.)
+
+2. **Lancé audit mypy complet** :
+   - **484 erreurs** dans **79 fichiers** (sur 131 fichiers total)
+   - Top 5 fichiers problématiques :
+     - `shared/dependencies.py` : 30 erreurs
+     - `core/session_manager.py` : 27 erreurs
+     - `features/chat/service.py` : 17 erreurs
+     - `core/monitoring.py` : 16 erreurs
+     - `features/threads/router.py` : 15 erreurs
+
+3. **Ajouté mypy au pre-commit hook (WARNING mode non-bloquant)** :
+   - Hook exécute `python -m mypy` avant chaque commit
+   - Génère `reports/mypy_report.txt` automatiquement
+   - Affiche count erreurs mais **NE BLOQUE PAS** le commit
+   - Permet progression graduelle sans casser workflow
+
+4. **Créé plan progressif fix dans ROADMAP.md** :
+   - Batch 1 (P1): Core critical - ~73 erreurs, 2h
+   - Batch 2 (P2): Services high-traffic - ~42 erreurs, 1h30
+   - Batch 3 (P3): Reste - ~369 erreurs, 4-5h
+
+**État :** P1.2 = 3/4 complété (reste fixes progressifs)
+
+### Tests
+- ✅ Mypy config validée
+- ✅ Mypy run complet réussi (484 erreurs identifiées)
+- ✅ Pre-commit hook mypy fonctionne (WARNING mode)
+
+### Prochaines actions recommandées
+**Option 1 - Continuer P1.2 Fix Batch 1** (2h):
+- Fixer `dependencies.py` (30), `session_manager.py` (27), `monitoring.py` (16)
+
+**Option 2 - P1.3 Supprimer dossier corrompu** (5 min rapide)
+
+### Blocages
+Aucun.
 
 ---
 

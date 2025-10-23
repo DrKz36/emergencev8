@@ -1,3 +1,55 @@
+## [2025-10-23 18:45 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `mypy.ini` (NOUVEAU - configuration mypy strict progressif)
+- `.git/hooks/pre-commit` (ajout mypy WARNING mode non-bloquant, lignes 8-18)
+- `ROADMAP.md` (P1.2 maj: détails 484 erreurs + plan progressif)
+- `reports/` directory (créé)
+- `AGENT_SYNC.md` (nouvelle session P1.2)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**🔍 P1.2 - Setup Mypy (Type Checking) - PARTIELLEMENT COMPLÉTÉ 🟡**
+
+Suite au cleanup docs P1.1 et fusion roadmaps, poursuite avec P1.2 : setup mypy pour améliorer qualité code backend.
+
+### Travail réalisé
+
+**1. Création mypy.ini avec config strict progressif** :
+- `check_untyped_defs = True` - Vérifie bodies sans types
+- `disallow_incomplete_defs = True` - Force return types
+- `warn_return_any = True`, `warn_no_return = True`, `strict_equality = True`
+- Ignore external libs sans stubs (google, anthropic, openai, etc.)
+
+**2. Audit mypy complet - 484 erreurs identifiées** :
+- **484 erreurs** dans **79 fichiers** (sur 131 total)
+- Top 5: `dependencies.py` (30), `session_manager.py` (27), `chat/service.py` (17), `monitoring.py` (16), `threads/router.py` (15)
+- Types erreurs: `[no-untyped-def]`, `[type-arg]`, `[no-any-return]`, `[union-attr]`
+
+**3. Ajout mypy au pre-commit hook (WARNING mode)** :
+- Exécute `python -m mypy` avant commit
+- Génère `reports/mypy_report.txt`
+- Affiche warnings mais **NE BLOQUE PAS** commit (progression graduelle)
+
+**4. Plan progressif fix créé dans ROADMAP.md** :
+- Batch 1 (P1): Core critical (~73 erreurs, 2h)
+- Batch 2 (P2): Services high-traffic (~42 erreurs, 1h30)
+- Batch 3 (P3): Reste (~369 erreurs, 4-5h)
+
+### Tests
+- ✅ Mypy config validée
+- ✅ Mypy run complet réussi (484 erreurs identifiées)
+- ✅ Pre-commit hook mypy testé (WARNING mode OK)
+
+### Prochaines actions recommandées
+**Option 1:** Continuer P1.2 Fix Batch 1 (2h) - `dependencies.py`, `session_manager.py`, `monitoring.py`
+**Option 2:** P1.3 Supprimer dossier corrompu (5 min rapide)
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-23 17:15 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

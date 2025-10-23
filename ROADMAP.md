@@ -15,12 +15,11 @@
 ### Métriques Globales
 
 ```
-Progression Totale : [████████░░] 20/30 (67%)
+Progression Totale : [████████░░] 11/30 (37%)
 
 ✅ Features Complètes    : 9/13 (69%)  - Fonctionnalités tutoriel
-✅ Maintenance Complète  : 1/7 (14%)   - Tâches techniques
-🟡 En cours              : 0/30 (0%)
-⏳ À faire               : 20/30 (67%)
+🟡 Maintenance En Cours  : 2/7 (29%)   - Tâches techniques (P1.1 ✅, P1.2 🟡)
+⏳ À faire               : 19/30 (63%)
 ```
 
 **Production Cloud Run:**
@@ -198,16 +197,28 @@ Progression Totale : [████████░░] 20/30 (67%)
 - ✅ README.md archive avec explication cleanup
 **Impact:** Navigation racine beaucoup plus claire
 
-#### P1.2 - Setup Mypy (Type Checking) ⏳
-**Statut:** ⏳ À faire
-**Temps estimé:** 2-3h
-**Problème:** Mypy non configuré, ~66 typing errors backend
-**Action:**
-- [ ] Créer `pyproject.toml` avec config mypy
-- [ ] Lancer `mypy src/backend/` complet
-- [ ] Fixer ~66 erreurs typing
-- [ ] Ajouter mypy dans Guardian pre-commit hook
-**Impact:** Qualité code, prévention bugs
+#### P1.2 - Setup Mypy (Type Checking) 🟡 EN COURS
+**Statut:** 🟡 Partiellement complété (3/4)
+**Temps estimé:** 2-3h (reste ~2h pour fixes progressifs)
+**Problème:** Mypy non configuré, type hints manquants dans backend
+**Actions:**
+- [x] Créer `mypy.ini` avec config progressive (✅ fait)
+- [x] Lancer `mypy` complet → **484 erreurs dans 79 fichiers** (✅ identifié)
+- [x] Ajouter mypy dans Guardian pre-commit hook (⚠️ WARNING mode non-bloquant) (✅ fait)
+- [ ] Fixer erreurs progressivement (⏳ plan ci-dessous)
+
+**État actuel:**
+- Config: `mypy.ini` strict progressif (check_untyped_defs=True, disallow_incomplete_defs=True)
+- Erreurs: 484 (79 fichiers)
+- Hook: Pre-commit mypy active (WARNING mode, génère `reports/mypy_report.txt`)
+- Top 5 fichiers: `dependencies.py` (30), `session_manager.py` (27), `chat/service.py` (17), `monitoring.py` (16), `threads/router.py` (15)
+
+**Plan progressif fix (recommandé):**
+1. **Batch 1 - Core critical** (P1): `shared/dependencies.py`, `core/session_manager.py`, `core/monitoring.py` (~73 erreurs, 2h)
+2. **Batch 2 - Services high-traffic** (P2): `chat/service.py`, `chat/rag_cache.py`, `auth/service.py` (~42 erreurs, 1h30)
+3. **Batch 3 - Reste** (P3): Autres fichiers (~369 erreurs, 4-5h sur plusieurs sessions)
+
+**Impact:** Qualité code ↑, prévention bugs runtime, meilleure IDE auto-completion
 
 #### P1.3 - Supprimer Dossier Corrompu Guardian ⏳
 **Statut:** ⏳ À faire
