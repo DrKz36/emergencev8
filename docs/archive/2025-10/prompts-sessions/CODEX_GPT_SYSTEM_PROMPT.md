@@ -1,4 +1,8 @@
-# 🤖 Prompt System - Codex GPT (Local & Cloud)
+# 🤖 [OBSOLÈTE - 2025-10-24] Prompt System - Codex GPT (Local & Cloud)
+
+**⚠️ CE FICHIER EST OBSOLÈTE ⚠️**
+**Nouveau prompt système :** `CODEX_SYSTEM_PROMPT.md` (racine du dépôt)
+**Raison archivage :** Harmonisation complète protocole multi-agents + déplacement vers racine
 
 **Version :** 2025-10-21 23:45 CET | **Dépôt :** `emergencev8`
 **Dernière MAJ :** Intégration complète retrieval pondéré + optimisations (cache, GC, métriques)
