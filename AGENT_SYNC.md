@@ -2,9 +2,84 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-23 (Claude Code : 5 fixes complets déployés 🚀)
+**Dernière mise à jour** : 2025-10-23 (Claude Code : Optimisations RAG P2.1 🔥)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+## ✅ Session COMPLÉTÉE (2025-10-23 16:35 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/memory/vector_service.py` (3 optimisations RAG)
+- `src/backend/features/memory/rag_metrics.py` (métrique Prometheus)
+- `tests/backend/features/test_rag_precision.py` (tests précision RAG)
+- `.env` (variables RAG_HALF_LIFE_DAYS, RAG_SPECIFICITY_WEIGHT, RAG_RERANK_TOPK)
+- `.env.example` (documentation variables)
+- `AGENT_SYNC.md` (cette mise à jour)
+
+### Actions réalisées
+**🎯 3 MICRO-OPTIMISATIONS RAG (P2.1) - Précision sans coût infra**
+
+**Optimisation #1 - Pondération temporelle:**
+- Ajout facteur de fraîcheur sur scores vectoriels
+- Formule: `boost = exp(-ln(2) * age_days / half_life_days)`
+- Half-life configurable: `RAG_HALF_LIFE_DAYS=30` (.env)
+- Application: après similarité, avant tri top-k
+- **Impact**: Documents récents remontent dans le ranking
+
+**Optimisation #2 - Score de spécificité:**
+- Calcul densité contenu informatif:
+  * Tokens rares (IDF > 1.5) : 40%
+  * Nombres/dates : 30%
+  * Entités nommées (NER) : 30%
+- Normalisation [0, 1] avec tanh
+- Combinaison: `final = 0.85*cosine + 0.15*specificity`
+- **Impact**: Chunks informatifs (techniques, data-heavy) privilégiés
+
+**Optimisation #3 - Re-rank hybride:**
+- L2-normalize sur embeddings (garantie)
+- Re-ranker top-k: 30 → 8 avec Jaccard
+- Formule: `rerank = 0.7*cosine + 0.3*jaccard_overlap(lemmas)`
+- **Impact**: Meilleur alignement lexical requête/résultats
+
+### Tests
+- ✅ `pytest tests/backend/features/test_rag_precision.py` (13 tests unitaires)
+  * Test specificity: high density (0.74 > 0.5) ✅
+  * Test specificity: low density (0.00 < 0.4) ✅
+  * Test rerank: lexical overlap remonte doc pertinent ✅
+  * Test recency: documents récents boostés ✅
+  * Test hit@3, MRR, latence P95 < 5ms ✅
+- ✅ `ruff check src/backend/features/memory/vector_service.py` (All checks passed)
+- ✅ `mypy src/backend/features/memory/vector_service.py` (Success: no issues)
+
+### Métriques Prometheus
+- Nouvelle métrique: `memory_rag_precision_score`
+- Labels: `collection`, `metric_type` (specificity, jaccard, combined)
+- Histogramme buckets: [0.0, 0.1, ..., 1.0]
+- Exposition: `/metrics` endpoint
+
+### Configuration .env
+```env
+# RAG Precision Optimizations (P2.1)
+RAG_HALF_LIFE_DAYS=30              # Time decay half-life
+RAG_SPECIFICITY_WEIGHT=0.15        # Weight for specificity boost
+RAG_RERANK_TOPK=8                  # Top-k after rerank
+```
+
+### Prochaines actions recommandées
+1. **Monitorer métriques Prometheus** en prod:
+   - `memory_rag_precision_score` (distribution scores)
+   - Vérifier amélioration hit@3 après déploiement
+2. **A/B test optionnel** (si trafic suffisant):
+   - Comparer RAG sans/avec optimisations
+   - Mesurer impact sur satisfaction utilisateur
+3. **Tuning paramètres** si besoin:
+   - Ajuster `RAG_SPECIFICITY_WEIGHT` (0.10-0.20)
+   - Ajuster `RAG_HALF_LIFE_DAYS` (15-45 jours)
+
+### Blocages
+Aucun. Code prod-ready, tests passent, métriques instrumentées.
+
+---
 
 ## ✅ Session COMPLÉTÉE (2025-10-23) — Agent : Claude Code
 

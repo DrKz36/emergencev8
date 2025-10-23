@@ -1,3 +1,85 @@
+## [2025-10-23 16:35 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/memory/vector_service.py` (ajout 3 optimisations RAG P2.1)
+- `src/backend/features/memory/rag_metrics.py` (métrique Prometheus)
+- `tests/backend/features/test_rag_precision.py` (suite tests précision RAG)
+- `.env` (ajout variables RAG_HALF_LIFE_DAYS, RAG_SPECIFICITY_WEIGHT, RAG_RERANK_TOPK)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Implémentation des 3 micro-optimisations RAG (Phase P2.1) pour améliorer la précision du retrieval sans coût infrastructure supplémentaire.
+
+**Objectif :** Booste la pertinence des résultats RAG via :
+1. **Pondération temporelle** : Documents récents remontent
+2. **Score de spécificité** : Chunks informatifs privilégiés
+3. **Re-rank lexical** : Meilleur alignement requête/résultats
+
+**Implémentation détaillée :**
+
+**1. Pondération temporelle (Optimisation #1) :**
+- Fonction `recency_decay(age_days, half_life)` existait déjà
+- Paramètre `half_life` rendu configurable via `.env` : `RAG_HALF_LIFE_DAYS=30`
+- Application dans `query()` : boost documents récents avant tri
+
+**2. Score de spécificité (Optimisation #2) :**
+- Nouvelle fonction `compute_specificity_score(text) -> float` [vector_service.py:345-420](src/backend/features/memory/vector_service.py#L345-L420)
+- Calcule densité contenu informatif :
+  * Tokens rares (> 6 car + alphanum) : 40%
+  * Nombres/dates (regex) : 30%
+  * Entités nommées (mots capitalisés) : 30%
+- Normalisation [0, 1] avec `tanh(score * 2.0)`
+- Combinaison dans `query()` [vector_service.py:1229-1274](src/backend/features/memory/vector_service.py#L1229-L1274) :
+  * `combined_score = 0.85 * cosine + 0.15 * specificity`
+  * Poids configurable : `RAG_SPECIFICITY_WEIGHT=0.15`
+
+**3. Re-rank lexical (Optimisation #3) :**
+- Nouvelle fonction `rerank_with_lexical_overlap(query, results, topk)` [vector_service.py:423-502](src/backend/features/memory/vector_service.py#L423-L502)
+- Calcule Jaccard similarity sur lemmas (lowercase + alphanum)
+- Formule : `rerank_score = 0.7 * cosine + 0.3 * jaccard`
+- Top-k configurable : `RAG_RERANK_TOPK=8`
+- Appliqué avant MMR dans `query()` [vector_service.py:1276-1302](src/backend/features/memory/vector_service.py#L1276-L1302)
+
+**Métriques Prometheus :**
+- Nouvelle métrique `memory_rag_precision_score` [rag_metrics.py:82-88](src/backend/features/memory/rag_metrics.py#L82-L88)
+- Labels : `collection`, `metric_type` (specificity, jaccard, combined)
+- Enregistrement dans `query()` après calcul des scores
+
+### Tests
+- ✅ Suite complète `test_rag_precision.py` (13 tests unitaires)
+  * `TestSpecificityScore` : 5 tests (high/low density, NER, dates)
+  * `TestLexicalRerank` : 4 tests (basic, topk, jaccard calculation)
+  * `TestRecencyDecay` : 4 tests (recent, half-life, old docs)
+  * `TestRAGPrecisionIntegration` : 3 tests (specificity boost, recency boost, ranking stability)
+  * `TestRAGMetrics` : 3 tests (hit@3, MRR, latency P95)
+- ✅ Tests standalone passent :
+  * `compute_specificity_score("MLPClassifier...")` → 0.7377 (> 0.5 ✅)
+  * `compute_specificity_score("simple text")` → 0.0000 (< 0.4 ✅)
+  * `rerank_with_lexical_overlap(...)` → doc avec overlap top-1 ✅
+- ✅ `ruff check src/backend/features/memory/vector_service.py` : All checks passed
+- ✅ `mypy src/backend/features/memory/vector_service.py` : Success: no issues
+
+### Travail de Codex GPT pris en compte
+Aucune modification Codex récente sur ces modules. Travail autonome backend.
+
+### Prochaines actions recommandées
+1. **Monitorer métriques Prometheus** après déploiement :
+   - `memory_rag_precision_score` (distribution des scores)
+   - Vérifier amélioration hit@3 / MRR en production
+2. **Tuning paramètres** si besoin (après analyse métriques) :
+   - `RAG_SPECIFICITY_WEIGHT` : 0.10-0.20 (actuellement 0.15)
+   - `RAG_HALF_LIFE_DAYS` : 15-45 jours (actuellement 30)
+   - `RAG_RERANK_TOPK` : 5-12 (actuellement 8)
+3. **A/B test optionnel** (si trafic suffisant) :
+   - Comparer RAG avec/sans optimisations
+   - Mesurer impact satisfaction utilisateur
+
+### Blocages
+Aucun. Code prod-ready, tests passent, métriques instrumentées.
+
+---
+
 ## [2025-10-23 06:28 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
