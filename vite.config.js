@@ -1,7 +1,6 @@
 // vite.config.js
 import { defineConfig } from 'vite';
 import { fileURLToPath, URL } from 'url';
-import { visualizer } from 'rollup-plugin-visualizer';
 
 const shouldAnalyze = process.env.ANALYZE_BUNDLE === '1';
 
@@ -9,21 +8,32 @@ export default defineConfig({
   clearScreen: false,
   cacheDir: 'node_modules/.vite-emergence',
   plugins: [
-    shouldAnalyze && visualizer({
-      filename: 'dist/bundle-report.html',
-      template: 'treemap',
-      gzipSize: true,
-      brotliSize: true,
-      emitFile: true,
-    }),
-    shouldAnalyze && visualizer({
-      filename: 'dist/bundle-report.json',
-      template: 'raw-data',
-      gzipSize: true,
-      brotliSize: true,
-      emitFile: true,
-    }),
-  ].filter(Boolean),
+    // Bundle analyzer plugin (optional dev dependency)
+    ...(shouldAnalyze ? (() => {
+      try {
+        const { visualizer } = require('rollup-plugin-visualizer');
+        return [
+          visualizer({
+            filename: 'dist/bundle-report.html',
+            template: 'treemap',
+            gzipSize: true,
+            brotliSize: true,
+            emitFile: true,
+          }),
+          visualizer({
+            filename: 'dist/bundle-report.json',
+            template: 'raw-data',
+            gzipSize: true,
+            brotliSize: true,
+            emitFile: true,
+          }),
+        ];
+      } catch (e) {
+        console.warn('rollup-plugin-visualizer not installed, skipping bundle analysis');
+        return [];
+      }
+    })() : []),
+  ],
 
   server: {
     port: 5173,
