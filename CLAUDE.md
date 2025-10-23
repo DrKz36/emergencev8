@@ -402,9 +402,11 @@ Aucun.
 - `CHANGELOG.md` - Historique versions
 
 **Déploiement:**
-- `DEPLOYMENT_SUCCESS.md` - État production
-- `CANARY_DEPLOYMENT.md` - Procédure déploiement
+- `DEPLOYMENT_MANUAL.md` - ⭐ **Procédure officielle** (déploiement manuel uniquement)
+- `DEPLOYMENT_SUCCESS.md` - État production actuel
+- `CANARY_DEPLOYMENT.md` - Procédure canary (avancé)
 - `stable-service.yaml` - Config Cloud Run
+- ⚠️ **IMPORTANT** : Déploiements MANUELS uniquement (pas d'auto-deploy sur push)
 
 ---
 
@@ -454,8 +456,9 @@ pwsh -File tests/run_all.ps1
 # Démarrer backend local
 pwsh -File scripts/run-backend.ps1
 
-# Déploiement canary (après validation)
-pwsh -File scripts/deploy-canary.ps1
+# Déploiement manuel (UNIQUEMENT sur demande explicite)
+pwsh -File scripts/deploy-manual.ps1
+# Ou avec raison: pwsh -File scripts/deploy-manual.ps1 -Reason "Fix bug auth"
 ```
 
 ---

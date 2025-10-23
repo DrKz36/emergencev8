@@ -1,17 +1,17 @@
 name: Deploy to Cloud Run
 
+# Déploiement MANUEL uniquement (évite les deploys automatiques à chaque push)
+# Pour déployer:
+#   1. Via GitHub UI: Actions → Deploy to Cloud Run → Run workflow
+#   2. Via CLI: gh workflow run deploy.yml
+#   3. Via script local: pwsh -File scripts/deploy-manual.ps1
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'Dockerfile'
-      - 'package.json'
-      - 'requirements.txt'
-      - 'pyproject.toml'
-      - '.github/workflows/deploy.yml'
-      - 'scripts/run-backend.ps1'
-      - 'scripts/run-backend.sh'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Raison du déploiement (optionnel)'
+        required: false
+        type: string
 
 env:
   GCP_PROJECT_ID: emergence-469005
