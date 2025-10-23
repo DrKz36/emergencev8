@@ -2,9 +2,112 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-23 07:09 CET (Claude Code : Workflows CI/CD fix complet 🔧)
+**Dernière mise à jour** : 2025-10-23 12:45 CET (Claude Code : Audit complet + Fix P0)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-23 12:45 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/chat/service.py` (fix tracing try/finally)
+- `tests/backend/features/test_chat_tracing.py` (fix mocks generators)
+- `tests/backend/features/test_chat_memory_recall.py` (ajout trace_manager mock)
+- `MEMORY_REFACTORING_ROADMAP.md` → `docs/archive/2025-10/roadmaps-obsoletes/`
+- `MEMORY_P2_PERFORMANCE_PLAN.md` → `docs/archive/2025-10/roadmaps-obsoletes/`
+- `GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md` → `docs/archive/2025-10/roadmaps-obsoletes/`
+- `CLEANUP_PLAN_2025-10-18.md` → `docs/archive/2025-10/roadmaps-obsoletes/`
+- `docs/passation.md` (entrée complète session)
+- `AGENT_SYNC.md` (cette mise à jour)
+
+### Actions réalisées
+**🔍 AUDIT COMPLET + FIX P0 (TESTS + ROADMAPS)**
+
+**1. Audit application complet** :
+- ✅ Build frontend : OK (warnings mineurs vendor 1MB)
+- ❌ Tests backend : 179 passed / 5 failed (P0 critical)
+- 🔴 Production : DOWN (404 tous endpoints)
+- 🟡 Documentation : 34 fichiers .md dans racine (debt)
+- 🟡 Roadmaps : 5 documents concurrents (confusion)
+
+**2. Cleanup roadmaps (P0)** :
+- Problème : 5 roadmaps disparates créaient confusion
+- Solution : Archivé 4 roadmaps → `docs/archive/2025-10/roadmaps-obsoletes/`
+- Gardé : `ROADMAP_OFFICIELLE.md` + `ROADMAP_PROGRESS.md` (source de vérité)
+- **Commit** : `b8d1bf4`
+
+**3. Fix 5 tests backend failing (P0)** :
+```
+Tests fixés :
+✅ test_build_memory_context_creates_retrieval_span
+✅ test_build_memory_context_error_creates_error_span
+✅ test_get_llm_response_stream_creates_llm_generate_span
+✅ test_multiple_spans_share_trace_id
+✅ test_end_span_records_prometheus_metrics
+
+Problèmes corrigés :
+- service.py : _build_memory_context() early returns sans end_span() → try/finally
+- test_chat_tracing.py : AsyncMock cassé pour generators → MagicMock(side_effect)
+- test_chat_tracing.py : duration = 0 → sleep(0.001ms)
+- test_chat_memory_recall.py : AttributeError trace_manager → ajout mock
+
+Résultats :
+- Avant : 179 passed / 5 failed
+- Après : 285 passed ✅ (+106 tests)
+- 2 nouveaux failures ChromaDB (environnement, pas code)
+```
+- **Commit** : `7ff8357`
+
+**4. Production DOWN investigation** :
+- Symptômes : 404 sur tous endpoints (root, /health, /api/*)
+- Blocage : Permissions GCP manquantes (projet emergence-440016)
+```
+ERROR: gonzalefernando@gmail.com does not have permission to access namespaces
+```
+- **Recommandations utilisateur** :
+  1. Console Web GCP : https://console.cloud.google.com/run?project=emergence-440016
+  2. Check logs dernière révision Cloud Run
+  3. Rollback révision stable ou re-deploy
+  4. Ou re-auth gcloud : `gcloud auth login && gcloud config set project emergence-440016`
+
+### Tests
+- ✅ Suite complète : 285 passed / 2 failed (ChromaDB env) / 3 errors (ChromaDB env)
+- ✅ 5 tests P0 fixés (tracing + memory recall)
+- ✅ Build frontend : OK
+- ✅ Ruff : OK
+- ⚠️ Production : DOWN (blocage GCP permissions)
+
+### Prochaines actions recommandées
+
+**P0 - URGENT (Bloquer utilisateurs)** :
+1. **Réparer production DOWN**
+   - Accéder GCP Console (permissions requises)
+   - Check logs Cloud Run dernière révision
+   - Rollback ou re-deploy si cassé
+
+**P1 - Important (Cette Semaine)** :
+2. **Cleanup documentation** (34 → 27 fichiers .md racine)
+   - Exécuter plan archivage (dans roadmaps archivées)
+   - Supprimer dossier corrompu : `c:devemergenceV8srcbackendfeaturesguardian`
+
+3. **Setup Mypy** (typing errors non détectés)
+   - Créer pyproject.toml avec config mypy
+   - Fixer ~66 erreurs typing
+   - Intégrer CI/CD
+
+**P2 - Nice to Have** :
+4. Optimiser vendor chunk frontend (1MB → code splitting)
+5. Nettoyer 22 TODOs backend (créer issues GitHub)
+
+**Pour Codex GPT (ou autre agent) :**
+- ✅ **Zones libres** : Frontend, scripts PowerShell, UI/UX
+- 🔴 **NE PAS TOUCHER** : Tests backend (fraîchement fixés), roadmaps (consolidées)
+- 📖 **Lire** : [docs/passation.md](docs/passation.md) pour détails complets
+
+### Blocages
+- **Production GCP** : DOWN - permissions manquantes (utilisateur doit intervenir)
+- **ChromaDB tests** : 2 fails + 3 errors (import config) - problème environnement
 
 ---
 

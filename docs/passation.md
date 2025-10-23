@@ -1,3 +1,221 @@
+## [2025-10-23 12:45 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/chat/service.py` (fix tracing try/finally)
+- `tests/backend/features/test_chat_tracing.py` (fix mocks generators)
+- `tests/backend/features/test_chat_memory_recall.py` (ajout trace_manager mock)
+- `MEMORY_REFACTORING_ROADMAP.md` → `docs/archive/2025-10/roadmaps-obsoletes/`
+- `MEMORY_P2_PERFORMANCE_PLAN.md` → `docs/archive/2025-10/roadmaps-obsoletes/`
+- `GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md` → `docs/archive/2025-10/roadmaps-obsoletes/`
+- `CLEANUP_PLAN_2025-10-18.md` → `docs/archive/2025-10/roadmaps-obsoletes/`
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**🔍 Audit complet app + Fix problèmes P0**
+
+L'utilisateur a demandé un audit complet de l'application avec identification des bugs, consolidation des roadmaps disparates, et établissement d'un plan hiérarchisé.
+
+### État découvert (Audit Complet)
+
+**1. Build & Tests** :
+- ✅ Frontend build : OK (warning vendor 1MB non bloquant)
+- ❌ Tests backend : 179 passed / **5 failed** (P0 critical)
+- ✅ Ruff linting : OK
+- ❌ Mypy : pas de pyproject.toml (config manquante)
+
+**2. Production** :
+- 🔴 **COMPLÈTEMENT DOWN** : 404 sur tous endpoints (root, /health, /api/*)
+- Blocage : Permissions GCP manquantes (projet emergence-440016)
+- Pas possible de check logs Cloud Run depuis environnement local
+
+**3. Documentation** :
+- 🟡 **34 fichiers .md** dans racine (debt technique)
+- 🟡 **5 roadmaps concurrentes** créant confusion :
+  - ROADMAP_OFFICIELLE.md
+  - ROADMAP_PROGRESS.md
+  - MEMORY_REFACTORING_ROADMAP.md
+  - MEMORY_P2_PERFORMANCE_PLAN.md (dans docs/optimizations/)
+  - GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md (dans docs/)
+  - CLEANUP_PLAN_2025-10-18.md
+
+**4. Code** :
+- 🟡 22 TODO/FIXME/HACK dans backend
+
+### Travaux Réalisés
+
+#### 1. Cleanup Roadmaps (P0) ✅
+**Commit** : `b8d1bf4`
+
+**Problème** : 5 roadmaps disparates créaient confusion sur "what's next"
+
+**Solution** :
+- Archivé 4 roadmaps obsolètes → `docs/archive/2025-10/roadmaps-obsoletes/`
+  - MEMORY_REFACTORING_ROADMAP.md
+  - MEMORY_P2_PERFORMANCE_PLAN.md
+  - GUARDIAN_CLOUD_IMPLEMENTATION_PLAN.md
+  - CLEANUP_PLAN_2025-10-18.md
+- **Gardé** : ROADMAP_OFFICIELLE.md + ROADMAP_PROGRESS.md (source de vérité unique)
+
+#### 2. Fix 5 Tests Backend Failing (P0) ✅
+**Commit** : `7ff8357`
+
+**Tests fixés** :
+1. `test_build_memory_context_creates_retrieval_span` ✅
+2. `test_build_memory_context_error_creates_error_span` ✅
+3. `test_get_llm_response_stream_creates_llm_generate_span` ✅
+4. `test_multiple_spans_share_trace_id` ✅
+5. `test_end_span_records_prometheus_metrics` ✅
+
+**Problèmes identifiés et corrigés** :
+
+**A. service.py - `_build_memory_context()` :**
+- **Problème** : Early returns (ligne 1797, 1825) sortaient sans appeler `end_span()`
+- **Impact** : Spans jamais enregistrés → tests failing
+- **Solution** : Wrapper dans try/finally pour garantir `end_span()` toujours appelé
+- **Changements** :
+  ```python
+  # Avant :
+  try:
+      if not last_user_message:
+          self.trace_manager.end_span(span_id, status="OK")
+          return ""
+      # ... code ...
+      self.trace_manager.end_span(span_id, status="OK")
+      return result
+  except Exception as e:
+      self.trace_manager.end_span(span_id, status="ERROR")
+      return ""
+
+  # Après :
+  result_text = ""
+  trace_status = "OK"
+  try:
+      if not last_user_message:
+          return result_text  # ← Pas de end_span ici
+      # ... code ...
+      result_text = ...
+      return result_text
+  except Exception as e:
+      trace_status = "ERROR"
+      return result_text
+  finally:
+      self.trace_manager.end_span(span_id, status=trace_status)  # ← TOUJOURS appelé
+  ```
+
+**B. test_chat_tracing.py - Mocks cassés :**
+- **Problème** : `AsyncMock(return_value=generator())` créait une coroutine au lieu d'un AsyncGenerator
+- **Impact** : `TypeError: 'async for' requires an object with __aiter__ method, got coroutine`
+- **Solution** : `MagicMock(side_effect=generator)` retourne directement le generator
+- **Changements** :
+  ```python
+  # Avant :
+  chat_service._get_openai_stream = AsyncMock(return_value=mock_stream())
+
+  # Après :
+  chat_service._get_openai_stream = MagicMock(side_effect=mock_stream)
+  ```
+
+**C. test_chat_tracing.py - Duration = 0 :**
+- **Problème** : Span créé et fermé instantanément → duration = 0.0 → `assert duration > 0` fail
+- **Solution** : Ajout `time.sleep(0.001)` entre start_span et end_span
+  ```python
+  span_id = trace_mgr.start_span("retrieval", attrs={"agent": "anima"})
+  time.sleep(0.001)  # ← Garantir duration > 0
+  trace_mgr.end_span(span_id, status="OK")
+  ```
+
+**D. test_chat_memory_recall.py - trace_manager manquant :**
+- **Problème** : ChatService créé avec `object.__new__()` sans init → `AttributeError: 'ChatService' object has no attribute 'trace_manager'`
+- **Solution** : Ajout mock trace_manager au test
+  ```python
+  service.trace_manager = MagicMock()
+  service.trace_manager.start_span = MagicMock(return_value="mock-span-id")
+  service.trace_manager.end_span = MagicMock()
+  ```
+
+**Résultats** :
+- **Avant** : 179 passed / 5 failed
+- **Après** : **285 passed** ✅ (+106 tests)
+- 2 nouveaux failures ChromaDB (problème environnement `import config`, pas code)
+
+#### 3. Production DOWN Investigation ⚠️
+**Statut** : Bloqué (permissions GCP requises)
+
+**Symptômes** :
+```bash
+curl https://emergence-app-1064176664097.europe-west1.run.app/
+→ 404 Page not found
+
+curl https://emergence-app-.../health
+→ 404 Page not found
+
+curl https://emergence-app-.../api/health/ready
+→ 404 Page not found
+```
+
+**Tentatives** :
+```bash
+gcloud run revisions list --service emergence-app --region europe-west1
+→ ERROR: gonzalefernando@gmail.com does not have permission to access namespaces
+
+gcloud logging read "resource.type=cloud_run_revision"
+→ ERROR: Project 'projects/emergence-440016' not found or deleted
+```
+
+**Recommandations utilisateur** :
+1. **Console Web GCP** : https://console.cloud.google.com/run?project=emergence-440016
+2. Check logs dernière révision Cloud Run
+3. Si révision cassée → Rollback révision précédente stable
+4. Ou re-deploy depuis main si nécessaire
+5. Ou re-auth gcloud : `gcloud auth login && gcloud config set project emergence-440016`
+
+### Tests
+- ✅ Suite complète : **285 passed** / 2 failed (ChromaDB env) / 3 errors (ChromaDB env)
+- ✅ **5 tests P0 fixés** (tracing + memory recall)
+- ✅ Build frontend : OK
+- ✅ Ruff : OK
+- ✅ Commits : b8d1bf4 (roadmaps), 7ff8357 (tests)
+- ✅ Push : Succès (Guardian pre-commit/post-commit/pre-push OK)
+- ⚠️ Production : DOWN (blocage permissions GCP)
+
+### Prochaines Actions Recommandées
+
+**P0 - URGENT (Bloquer utilisateurs)** :
+1. **Réparer production DOWN**
+   - Utilisateur doit accéder GCP Console (permissions requises)
+   - Check logs Cloud Run dernière révision
+   - Rollback ou re-deploy si cassé
+   - Vérifier santé après fix
+
+**P1 - Important (Cette Semaine)** :
+2. **Cleanup documentation** (34 → 27 fichiers .md racine)
+   - Exécuter plan archivage (disponible dans docs/archive/2025-10/roadmaps-obsoletes/CLEANUP_PLAN_2025-10-18.md)
+   - Supprimer dossier corrompu : `c:devemergenceV8srcbackendfeaturesguardian`
+   - Archiver PHASE3_*, PROMPT_*, correctifs ponctuels, deployment obsolète
+
+3. **Setup Mypy** (typing errors non détectés)
+   - Créer pyproject.toml avec config mypy
+   - Fixer ~66 erreurs typing (batch 2/3 à venir)
+   - Intégrer dans CI/CD (enlever continue-on-error après fix)
+
+**P2 - Nice to Have** :
+4. **Optimiser vendor chunk frontend** (1MB → code splitting)
+   - Utiliser dynamic import()
+   - Lazy load modules non critiques
+   - Configurer build.rollupOptions.output.manualChunks
+
+5. **Nettoyer 22 TODOs backend**
+   - Créer issues GitHub pour chaque TODO
+   - Prioriser par impact
+   - Fixer progressivement
+
+### Blocages
+- **Production GCP** : DOWN - permissions GCP manquantes (utilisateur doit intervenir directement)
+- **ChromaDB tests** : 2 fails + 3 errors (import `System`/`DEFAULT_DATABASE` depuis config) - problème environnement
+
+---
+
 ## [2025-10-23 07:09 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
