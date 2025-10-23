@@ -1,3 +1,180 @@
+## [2025-10-23 18:18 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/frontend/features/home/home.css`
+
+### Contexte
+L'utilisateur signale 2 bugs UI sur la homepage d'auth en prod :
+1. Logo pas centré dans le cercle (décalé verticalement)
+2. Double scroll dégueulasse à droite (pas de scroll du tout attendu)
+
+### Travail réalisé
+
+**A. Fix centrage logo dans cercle**
+
+**Analyse** :
+- CSS `.home__logo` (ligne 160) : `width: 62%` mais pas de positionnement absolu
+- Le logo était positionné en flux normal au lieu d'être centré dans `.home__emblem`
+
+**Solution** :
+```css
+.home__logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -31% 0 0 -31%;  /* -31% = -50% de width (62%) */
+  width: 62%;
+  height: auto;
+  /* ... */
+}
+```
+
+**Pourquoi margin au lieu de transform ?**
+- L'animation `home-logo-breathe` utilise déjà `transform: scale() rotate()`
+- Si on ajoutait `transform: translate(-50%, -50%)`, ça serait écrasé par l'animation
+- Donc on centre avec `margin` négatif calculé (-31% = moitié de 62%)
+
+**B. Fix double scroll**
+
+**Analyse** :
+- `body.home-active` (ligne 7-8) : `overflow-x: hidden; overflow-y: auto;`
+- `#home-root` (ligne 31-33) : `overflow-x: hidden; overflow-y: auto; scrollbar-gutter: stable both-edges;`
+- 2 éléments parents avec scroll → double barre visible
+
+**Solution** :
+```css
+body.home-active {
+  overflow: hidden;  /* Au lieu de overflow-x: hidden; overflow-y: auto; */
+  /* ... */
+}
+
+#home-root {
+  overflow: hidden;  /* Au lieu de overflow-x: hidden; overflow-y: auto; scrollbar-gutter: ... */
+  /* ... */
+}
+```
+
+**Résultat** : Plus aucun scroll sur la page d'auth (contenu tient dans viewport)
+
+### Tests
+- ✅ `npm run build` : Build OK (1.29s, 0 erreurs)
+
+### Recommandations pour validation
+1. **Tests visuels locaux** : Ouvrir `/` dans navigateur et vérifier :
+   - Logo bien centré dans le cercle
+   - Pas de barre de scroll visible
+2. **Tests responsive** : Vérifier mobile/tablet que le contenu tient sans scroll
+3. **Déploiement** : Si tests visuels OK, déployer en prod
+
+### Prochaines actions
+Attendre retour utilisateur pour validation visuelle avant déploiement.
+
+---
+
+## [2025-10-23 18:40 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- Aucun (déploiement uniquement)
+- Image Docker : `gcr.io/emergence-469005/emergence-backend:deploy-8012e36`
+- Cloud Run : Révision `emergence-app-00432-mb4`
+
+### Contexte
+L'utilisateur signale des erreurs en prod (tests effectués) et demande à Codex Cloud d'appliquer des correctifs. Après vérification, Codex a bien documenté ses fixes dans le commit `062609e` (debate/docs/auth). L'utilisateur demande maintenant de build une nouvelle image Docker et de déployer la nouvelle révision sur Cloud Run.
+
+### Travail réalisé
+
+**A. Vérification des fixes Codex**
+
+Lecture de `AGENT_SYNC.md` (dernières entrées) et `git log` :
+- Commit `062609e` : **Consolidation fixes Codex (debate/docs/auth) + mypy cleanup**
+- 3 fixes majeurs appliqués par Codex :
+  1. **Debate service** - Fallback résilient dans `_say_once` (message warning au lieu de raise), inclusion `meta.error`, tests étendus (8 tests ✅)
+  2. **Documents service** - Fix chemins documents prod (data/uploads/* normalisation), refacto `_resolve_document_path`, routes `/content`, `/download`, `/reindex` restaurées, sécurisation paths
+  3. **Auth service** - Migration `user_id` sur `auth_sessions` (backward compat legacy schema), tests auth étendus, fallback `session_id` sur requêtes SQL Documents
+
+**Tests locaux avant déploiement** :
+```bash
+pytest tests/backend/features/test_debate_service.py tests/backend/features/test_auth_login.py -v
+# Résultat : 8 passed, 2 warnings in 1.57s ✅
+```
+
+**B. Build image Docker locale**
+
+```bash
+docker build -t gcr.io/emergence-469005/emergence-backend:latest \
+             -t gcr.io/emergence-469005/emergence-backend:deploy-8012e36 \
+             -f Dockerfile .
+```
+
+- Build context : **3.60GB** (transfert 158s)
+- Layers cachés : 8/11 (seuls layers 9-11 rebuild : COPY + npm build)
+- Vite build : ✅ 111 modules transformés, 1.12s
+- Image finale : **2 tags** (latest + deploy-8012e36)
+- Digest : `sha256:b1d6e6f7498a9a8cdb7a68fa5b907086c3ebb4fe3ab6804b938fff94b1a4a488`
+
+**C. Push vers GCR**
+
+```bash
+docker push gcr.io/emergence-469005/emergence-backend:latest
+docker push gcr.io/emergence-469005/emergence-backend:deploy-8012e36
+```
+
+- Les 2 tags pushés avec succès ✅
+- La plupart des layers déjà présents (cache GCR optimal)
+
+**D. Déploiement Cloud Run**
+
+```bash
+gcloud run deploy emergence-app \
+  --image gcr.io/emergence-469005/emergence-backend:deploy-8012e36 \
+  --region europe-west1 \
+  --platform managed \
+  --allow-unauthenticated
+```
+
+**Résultat** :
+- ✅ Nouvelle révision : **emergence-app-00432-mb4**
+- ✅ Trafic routé : 100% sur la nouvelle révision
+- ✅ Service URL : https://emergence-app-486095406755.europe-west1.run.app
+- ✅ Stable URL : https://stable---emergence-app-47nct44nma-ew.a.run.app
+
+**E. Vérification health check prod**
+
+```bash
+curl https://emergence-app-486095406755.europe-west1.run.app/ready
+# {"ok": true, "db": "up", "vector": "up"} ✅
+```
+
+**Headers** :
+- `HTTP/1.1 200 OK` ✅
+- `x-response-time: 3.53ms` (rapide !)
+- `x-ratelimit-limit: 300` (rate limiting actif)
+- Security headers : HSTS, XSS Protection, X-Frame-Options DENY, Content-Type nosniff
+
+### Résultat
+
+**Déploiement réussi** 🔥🚀
+
+- Tous les fixes de Codex sont maintenant en production
+- Health checks OK (DB + Vector store UP)
+- Performance stable (3.53ms response time)
+- Sécurité renforcée (headers + rate limiting)
+
+### Tests
+
+- ✅ Tests backend locaux (8/8 debate + auth)
+- ✅ Health check prod `/ready`
+- ✅ Main endpoint prod (200 OK)
+- ✅ Headers sécurité + rate limiting
+
+### Prochaines actions recommandées
+
+1. **Monitoring prod** : Surveiller logs Cloud Run pendant 30min pour vérifier stabilité
+2. **Test fonctionnel complet** : Login + documents + debate en prod
+3. **Rollback plan** : Si problème, rollback vers révision précédente via `gcloud run services update-traffic emergence-app --to-revisions=emergence-app-00431-xyz=100`
+
+---
+
 ## [2025-10-24 20:45 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

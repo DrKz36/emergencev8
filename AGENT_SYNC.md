@@ -1,3 +1,37 @@
+## ✅ Session COMPLÉTÉE (2025-10-23 18:18 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/frontend/features/home/home.css`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+**✅ Fix UI homepage auth (centrage logo + double scroll)**
+
+**A. Logo décalé dans le cercle**
+- **Problème** : Logo pas centré verticalement dans le cercle `.home__emblem`
+- **Fix** : Ajouté `position: absolute; top: 50%; left: 50%; margin: -31% 0 0 -31%;` sur `.home__logo`
+- Utilise margin négatif au lieu de `transform: translate()` car l'animation `home-logo-breathe` écrase transform
+
+**B. Double scroll dégueulasse**
+- **Problème** : `overflow-y: auto` à la fois sur `body.home-active` ET `#home-root` → double barre scroll
+- **Fix** : Remplacé par `overflow: hidden` sur les deux
+- Plus aucun scroll sur la page d'auth (contenu tient dans viewport)
+
+### Tests
+- ✅ `npm run build` : Build OK (1.29s)
+- ⚠️ Tests visuels en local recommandés (ouvrir `/` dans navigateur)
+
+### Prochaines actions recommandées
+1. **Tests visuels** : Ouvrir la homepage d'auth et vérifier le centrage du logo + pas de scroll
+2. **Responsive check** : Tester sur mobile/tablet pour être sûr que ça tient sans scroll
+3. **Déployer si OK** : Si tests visuels OK, déployer en prod
+
+### Blocages
+Aucun.
+
+---
+
 ## ✅ Session COMPLÉTÉE (2025-10-24 20:45 CET) — Agent : Claude Code
 
 ### Fichiers modifiés
@@ -7725,3 +7759,89 @@ Implémentation métrique nDCG@k avec pénalisation exponentielle pour évaluer 
 
 **Recommendations:**
 - [MEDIUM] Monitor closely and investigate warnings
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-23 18:40 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- Aucun (déploiement uniquement)
+- Image Docker : `gcr.io/emergence-469005/emergence-backend:deploy-8012e36`
+- Cloud Run : Révision `emergence-app-00432-mb4`
+- `AGENT_SYNC.md`, `docs/passation.md` (documentation)
+
+### Contexte
+Suite aux erreurs en prod signalées par l'utilisateur, Codex Cloud a appliqué des correctifs (commit `062609e`). L'utilisateur demande maintenant de build une nouvelle image Docker et de déployer la nouvelle révision sur Cloud Run pour appliquer tous les fixes en production.
+
+### Actions réalisées
+
+**1. Vérification des fixes Codex**
+- ✅ Lecture `AGENT_SYNC.md` + `git log` pour identifier les changements
+- ✅ Commit `062609e` validé : 3 fixes (debate/documents/auth) + mypy cleanup
+- ✅ Tests locaux : `pytest tests/backend/features/test_debate_service.py tests/backend/features/test_auth_login.py` → **8/8 passed** ✅
+
+**2. Build image Docker locale**
+```bash
+docker build -t gcr.io/emergence-469005/emergence-backend:latest \
+             -t gcr.io/emergence-469005/emergence-backend:deploy-8012e36 \
+             -f Dockerfile .
+```
+- Build context : 3.60GB (transfert 158s)
+- Layers cachés : 8/11 (optimal)
+- Vite build : ✅ 111 modules, 1.12s
+- 2 tags créés : `latest` + `deploy-8012e36`
+- Digest : `sha256:b1d6e6f7498a9a8cdb7a68fa5b907086c3ebb4fe3ab6804b938fff94b1a4a488`
+
+**3. Push vers Google Container Registry**
+```bash
+docker push gcr.io/emergence-469005/emergence-backend:latest
+docker push gcr.io/emergence-469005/emergence-backend:deploy-8012e36
+```
+- ✅ Les 2 tags pushés avec succès
+- Cache GCR optimal (layers déjà présents)
+
+**4. Déploiement Cloud Run**
+```bash
+gcloud run deploy emergence-app \
+  --image gcr.io/emergence-469005/emergence-backend:deploy-8012e36 \
+  --region europe-west1 \
+  --platform managed \
+  --allow-unauthenticated
+```
+- ✅ Nouvelle révision : **emergence-app-00432-mb4**
+- ✅ Trafic routé : 100% sur nouvelle révision
+- ✅ Service URL : https://emergence-app-486095406755.europe-west1.run.app
+
+**5. Vérification health check prod**
+```bash
+curl https://emergence-app-486095406755.europe-west1.run.app/ready
+# {"ok": true, "db": "up", "vector": "up"} ✅
+```
+- HTTP 200 OK ✅
+- Response time : 3.53ms (rapide)
+- Rate limiting : 300 req/min (actif)
+- Security headers : HSTS, XSS Protection, X-Frame-Options DENY
+
+### Résultat
+
+**Déploiement réussi** 🔥🚀
+
+Tous les fixes de Codex (debate/documents/auth) sont maintenant **en production** avec la révision `emergence-app-00432-mb4`. Health checks OK, performance stable, sécurité renforcée.
+
+### Tests
+- ✅ Tests backend locaux (8/8 debate + auth)
+- ✅ Health check prod `/ready`
+- ✅ Main endpoint prod (200 OK)
+- ✅ Headers sécurité + rate limiting
+
+### Prochaines actions recommandées
+1. **Monitoring prod** : Surveiller logs Cloud Run pendant 30min pour vérifier stabilité
+2. **Test fonctionnel complet** : Login + documents + debate en prod
+3. **Rollback plan** : Si problème, rollback via `gcloud run services update-traffic`
+
+### État production actuel
+- **Révision active** : `emergence-app-00432-mb4` (100% trafic)
+- **Commit déployé** : `8012e36` (fixes Codex debate/documents/auth)
+- **Health** : DB UP, Vector UP
+- **Performance** : 3.53ms response time
+- **Sécurité** : Rate limiting + headers HSTS/XSS/Frame protection

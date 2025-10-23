@@ -4,8 +4,7 @@ body.home-active {
   background: radial-gradient(circle at 18% 22%, rgba(59, 130, 246, 0.32), transparent 58%),
               radial-gradient(circle at 82% 18%, rgba(236, 72, 153, 0.32), transparent 60%),
               linear-gradient(180deg, #0b0f1a 0%, #060914 100%);
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   min-height: 100vh;
   min-height: 100dvh;
   min-height: 100svh;
@@ -28,9 +27,7 @@ body.home-active #app-loader {
   padding: clamp(18px, 4vh, 48px);
   box-sizing: border-box;
   position: relative;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-gutter: stable both-edges;
+  overflow: hidden;
 }
 
 body.home-active #home-root {
@@ -158,6 +155,10 @@ body.home-active #home-root {
 }
 
 .home__logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -31% 0 0 -31%;
   width: 62%;
   height: auto;
   filter: drop-shadow(0 20px 32px rgba(59, 130, 246, 0.42));
