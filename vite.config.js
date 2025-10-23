@@ -16,6 +16,13 @@ export default defineConfig({
       brotliSize: true,
       emitFile: true,
     }),
+    shouldAnalyze && visualizer({
+      filename: 'dist/bundle-report.json',
+      template: 'raw-data',
+      gzipSize: true,
+      brotliSize: true,
+      emitFile: true,
+    }),
   ].filter(Boolean),
 
   server: {
@@ -70,6 +77,7 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'es2019',
     cssCodeSplit: true,
+    modulePreload: false,
     rollupOptions: {
       output: {
         // Regroupe les dépendances lourdes dans des chunks dédiés

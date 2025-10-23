@@ -3,12 +3,44 @@
  * Service utilitaire pour orchestrer les appels HTTP de la persistance des threads.
  */
 import { api } from '../../shared/api-client.js';
-import Papa from 'papaparse';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
-
 const HEX32 = /^[0-9a-f]{32}$/i;
 const UUID36 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+let papaPromise;
+let jsPdfPromise;
+
+async function loadPapaParse() {
+  if (!papaPromise) {
+    papaPromise = import('papaparse').then((module) => module.default ?? module);
+  }
+  return papaPromise;
+}
+
+async function loadJsPdf() {
+  if (!jsPdfPromise) {
+    jsPdfPromise = import('jspdf')
+      .then(async (module) => {
+        const jsPDF = module.jsPDF ?? module.default ?? module;
+        try {
+          const scope = typeof globalThis !== 'undefined' ? globalThis : window;
+          if (scope) {
+            scope.jspdf = scope.jspdf || {};
+            if (!scope.jspdf.jsPDF) {
+              scope.jspdf.jsPDF = jsPDF;
+            }
+            if (!scope.jsPDF) {
+              scope.jsPDF = jsPDF;
+            }
+          }
+        } catch {
+          // ignore if global scope is not writable
+        }
+        await import('jspdf-autotable');
+        return jsPDF;
+      });
+  }
+  return jsPdfPromise;
+}
 
 function sanitizeThreadId(value) {
   if (typeof value === 'string') {
@@ -282,7 +314,7 @@ export async function exportThreadToCSV(threadId) {
     ];
 
     const allData = [...headerData, ...csvData];
-
+    const Papa = await loadPapaParse();
     const csv = Papa.unparse(allData, {
       quotes: true,
       delimiter: ',',
@@ -309,6 +341,7 @@ export async function exportThreadToPDF(threadId) {
   try {
     const threadData = await fetchThreadDetail(safeId, { include_messages: true });
 
+    const jsPDF = await loadJsPdf();
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();

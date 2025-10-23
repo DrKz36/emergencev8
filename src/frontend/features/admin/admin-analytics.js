@@ -5,11 +5,26 @@
  * V1.0.0 - 2025-10-22
  */
 
-import { Chart, registerables } from 'chart.js';
 import { AdminIcons, getIcon } from './admin-icons.js';
 
-// Register Chart.js components
-Chart.register(...registerables);
+let chartModulePromise;
+
+async function ensureChart() {
+    if (!chartModulePromise) {
+        chartModulePromise = import('chart.js').then((module) => {
+            const Chart = module.Chart ?? module.default;
+            if (!Chart) {
+                throw new Error('[AdminAnalytics] Chart.js module unavailable');
+            }
+            const registerables = Array.isArray(module.registerables) ? module.registerables : [];
+            if (registerables.length > 0) {
+                Chart.register(...registerables);
+            }
+            return Chart;
+        });
+    }
+    return chartModulePromise;
+}
 
 export class AdminAnalytics {
     constructor() {
@@ -148,15 +163,18 @@ export class AdminAnalytics {
             this.showLoading();
 
             // Load data in parallel
-            const [costsData, sessionsData, metricsData] = await Promise.all([
+            const [costsData, sessionsData, metricsData, costHistory] = await Promise.all([
                 this.fetchCostsBreakdown(),
                 this.fetchActiveSessions(),
                 this.fetchSystemMetrics(),
+                this.fetchCostHistory(),
             ]);
 
             // Render charts
-            this.renderTopUsersChart(costsData);
-            this.renderCostHistoryChart(costsData);
+            await Promise.all([
+                this.renderTopUsersChart(costsData),
+                this.renderCostHistoryChart(costHistory),
+            ]);
 
             // Render sessions
             this.renderSessionsList(sessionsData);
@@ -263,7 +281,7 @@ export class AdminAnalytics {
     /**
      * Render Top 10 Users Chart (Bar Chart)
      */
-    renderTopUsersChart(data) {
+    async renderTopUsersChart(data) {
         const users = data.users || [];
         const totalCost = data.total_cost || 0;
 
@@ -293,6 +311,7 @@ export class AdminAnalytics {
         const ctx = this.container.querySelector('#chart-top-users');
         if (!ctx) return;
 
+        const Chart = await ensureChart();
         this.charts.topUsers = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -355,24 +374,18 @@ export class AdminAnalytics {
     /**
      * Render Cost History Chart (Line Chart - 7 days)
      */
-    renderCostHistoryChart(data) {
-        // Get cost history from global dashboard data
-        // We need to make another call or extract from existing data
-        // For now, let's fetch it separately
-        this.fetchCostHistory().then(historyData => {
-            const history = historyData.history || [];
+    async renderCostHistoryChart(historyData) {
+        try {
+            const history = historyData?.history || [];
 
-            // Take last 7 days
             const last7Days = history.slice(-7);
 
-            // Prepare data
             const labels = last7Days.map(item => {
                 const date = new Date(item.date);
                 return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
             });
             const costs = last7Days.map(item => (item.cost || 0).toFixed(2));
 
-            // Calculate average and trend
             const avgCost = costs.length > 0
                 ? (costs.reduce((sum, c) => sum + parseFloat(c), 0) / costs.length).toFixed(2)
                 : 0;
@@ -381,17 +394,16 @@ export class AdminAnalytics {
                 ? (parseFloat(costs[costs.length - 1]) - parseFloat(costs[0])).toFixed(2)
                 : 0;
 
-            const trendIcon = trend > 0 ? '📈' : (trend < 0 ? '📉' : '➡️');
+            const trendIcon = trend > 0 ? '??' : (trend < 0 ? '??' : '??');
 
-            // Destroy previous chart if exists
             if (this.charts.costHistory) {
                 this.charts.costHistory.destroy();
             }
 
-            // Create chart
             const ctx = this.container.querySelector('#chart-cost-history');
             if (!ctx) return;
 
+            const Chart = await ensureChart();
             this.charts.costHistory = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -435,7 +447,6 @@ export class AdminAnalytics {
                 }
             });
 
-            // Update summary
             const summary = this.container.querySelector('#cost-history-summary');
             if (summary) {
                 summary.innerHTML = `
@@ -449,9 +460,9 @@ export class AdminAnalytics {
                     </div>
                 `;
             }
-        }).catch(error => {
+        } catch (error) {
             console.error('[AdminAnalytics] Error loading cost history:', error);
-        });
+        }
     }
 
     /**
