@@ -18,7 +18,8 @@ class TestRAGStartupSafe:
 
     def test_normal_boot_readwrite_mode(self):
         """Test boot normal: ChromaDB OK → mode readwrite"""
-        with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = tempfile.mkdtemp()
+        try:
             service = VectorService(
                 persist_directory=tmpdir,
                 embed_model_name="sentence-transformers/all-MiniLM-L6-v2",
@@ -33,6 +34,22 @@ class TestRAGStartupSafe:
             assert service.is_vector_store_reachable() is True
             assert service.get_last_init_error() is None
             assert service.client is not None
+
+            # Cleanup ChromaDB connection explicitly
+            if service.client is not None:
+                service.client = None
+        finally:
+            # Cleanup with retry on Windows
+            import time
+            for attempt in range(3):
+                try:
+                    shutil.rmtree(tmpdir)
+                    break
+                except PermissionError:
+                    if attempt < 2:
+                        time.sleep(0.5)
+                    else:
+                        pass  # Ignore cleanup errors in tests
 
     def test_chromadb_failure_readonly_fallback(self):
         """Test boot KO: ChromaDB fail → mode readonly"""
@@ -59,7 +76,8 @@ class TestRAGStartupSafe:
 
     def test_write_operations_blocked_in_readonly_mode(self):
         """Test refus d'écriture en mode readonly"""
-        with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = tempfile.mkdtemp()
+        try:
             service = VectorService(
                 persist_directory=tmpdir,
                 embed_model_name="sentence-transformers/all-MiniLM-L6-v2",
@@ -97,6 +115,22 @@ class TestRAGStartupSafe:
                     mock_collection,
                     {"user_id": "123"},
                 )
+
+            # Cleanup ChromaDB connection explicitly
+            if service.client is not None:
+                service.client = None
+        finally:
+            # Cleanup with retry on Windows
+            import time
+            for attempt in range(3):
+                try:
+                    shutil.rmtree(tmpdir)
+                    break
+                except PermissionError:
+                    if attempt < 2:
+                        time.sleep(0.5)
+                    else:
+                        pass  # Ignore cleanup errors in tests
 
     def test_read_operations_allowed_in_readonly_mode(self):
         """Test que les opérations de lecture fonctionnent en readonly"""

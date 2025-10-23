@@ -147,10 +147,17 @@ class TestUnifiedMemoryRetriever:
         })
 
         service.get_or_create_collection = Mock(return_value=collection)
-        service.query = Mock(return_value=[
+        service.query = AsyncMock(return_value=[
             {
                 'text': 'Concept Docker containerisation',
-                'score': 0.9,
+                'weighted_score': 0.9,
+                'metadata': {'created_at': '2025-10-18T10:00:00Z'}
+            }
+        ])
+        service.query_weighted = Mock(return_value=[
+            {
+                'text': 'Concept Docker containerisation',
+                'weighted_score': 0.9,
                 'metadata': {'created_at': '2025-10-18T10:00:00Z'}
             }
         ])
