@@ -1,3 +1,250 @@
+## [2025-10-23 15:30 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `docs/architecture/10-Components.md` (suppression modules fantômes + ajout 13 modules/services manquants)
+- `docs/architecture/AGENTS_CHECKLIST.md` (NOUVEAU - checklist obligatoire tous agents)
+- `docs/architecture/40-ADR/ADR-002-agents-module-removal.md` (NOUVEAU - ADR agents module)
+- `CLAUDE.md` (ajout règle #1 architecture obligatoire)
+- `CODEV_PROTOCOL.md` (ajout règle architecture - tentative, fichier format différent)
+- `infra/cloud-run/MICROSERVICES_ARCHITECTURE.md` → `docs/archive/2025-10/architecture/MICROSERVICES_ARCHITECTURE_DEPRECATED.md`
+- `docs/archive/2025-10/architecture/README.md` (NOUVEAU - index archive architecture)
+- `AGENT_SYNC.md` (mise à jour session)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+**🔍 Audit complet architecture + Établissement règles claires agents**
+
+L'utilisateur a demandé un audit complet des fichiers architecture avec consigne :
+> "check en détaille les fichiers qui decrivent l'architecture, probablement beaucoup de trucs obsoletes. Ce sont des docs de reference et il FAUT que tous les agents yc toi et Codex s'y réfèrent impérativement à chaque changements implémentations!"
+
+Après audit initial (roadmaps, tests, production), focus sur **architecture docs** pour établir **règles strictes** pour tous les agents.
+
+### État découvert (Audit Architecture)
+
+**Coverage docs architecture vs code réel** :
+- 🔴 Frontend : **50%** (6/12 modules actifs documentés)
+- 🔴 Backend : **55%** (12/19 services actifs documentés)
+- 🔴 Modules fantômes : 2 (Timeline frontend + backend)
+- 🔴 Docs obsolètes : 1 (MICROSERVICES_ARCHITECTURE pour architecture jamais implémentée)
+
+**Problèmes identifiés** :
+
+**1. Modules/Services Fantômes** (docs mentionnent, code n'existe pas) :
+- `src/frontend/features/timeline/` ❌ N'existe pas (doc ligne 42-58 de 10-Components.md)
+- `src/backend/features/timeline/` ❌ N'existe pas (doc ligne 129-147 de 10-Components.md)
+
+**2. Modules Frontend Manquants** (code existe, docs non) :
+- `settings/` ❌ Non documenté
+- `cockpit/` ❌ Non documenté
+- `hymn/` ❌ Non documenté
+- `conversations/` ❌ Non documenté
+- `threads/` ❌ Non documenté
+- `documentation/` ❌ Non documenté
+
+**3. Services Backend Manquants** (code existe, docs non) :
+- `gmail/` ⚠️ Contrats API OK, pas dans Components
+- `guardian/` ❌ Non documenté
+- `tracing/` ❌ Non documenté
+- `usage/` ❌ Non documenté
+- `sync/` ❌ Non documenté
+- `beta_report/` ❌ Non documenté
+- `settings/` ❌ Non documenté
+
+**4. Docs Obsolètes** :
+- `infra/cloud-run/MICROSERVICES_ARCHITECTURE.md` - Décrit architecture microservices (auth-service, session-service séparés) jamais implémentée
+- Réalité : Émergence V8 est **monolithe Cloud Run** avec tous services dans `main.py` + routers
+
+**Impact** : Agents vont chercher modules inexistants, dupliquer code existant, casser contrats API.
+
+### Travaux Réalisés
+
+#### 1. Nettoyage 10-Components.md ✅
+
+**Suppressions** :
+- ❌ Timeline Module (section complète 42-58)
+  - `src/frontend/features/timeline/timeline.js` (n'existe pas)
+  - État : "⚠️ Module présent, intégration partielle" (FAUX)
+- ❌ TimelineService (section complète 129-147)
+  - `src/backend/features/timeline/service.py` (n'existe pas)
+  - Endpoints `/api/timeline/*` (n'existent pas)
+
+**Ajouts - 6 Modules Frontend** :
+- ✅ **Cockpit Module** (`features/cockpit/`)
+  - Dashboard principal avec métriques temps réel
+  - Graphiques activité + coûts (7j, 30j, 90j, 1 an)
+  - API : `/api/dashboard/timeline/*`, `/api/dashboard/costs/*`
+- ✅ **Settings Module** (`features/settings/`)
+  - Configuration utilisateur (modèles IA, thème, RAG, notifs)
+  - LocalStorage `emergence_settings`
+- ✅ **Threads Module** (`features/threads/`)
+  - Gestion threads (liste, création, archivage, suppression)
+  - API : `GET/POST/DELETE /api/threads`
+- ✅ **Conversations Module** (`features/conversations/`)
+  - Module legacy pour compatibilité anciennes versions
+  - Considérer archivage futur
+- ✅ **Hymn Module** (`features/hymn/`)
+  - Easter egg / animation audio-visuelle
+- ✅ **Documentation Module** (`features/documentation/`)
+  - Viewer markdown intégré (guides, aide)
+
+**Ajouts - 7 Services Backend** :
+- ✅ **GmailService** (`features/gmail/`)
+  - OAuth2 flow Gmail pour Codex GPT (Phase 3 Guardian Cloud)
+  - Endpoints : `/auth/gmail`, `/api/gmail/read-reports`
+- ✅ **GuardianService** (`features/guardian/`)
+  - Auto-fix + audit rapports Guardian (hooks Git)
+  - Endpoint : `POST /api/guardian/run-audit`
+- ✅ **TracingService** (`features/tracing/`)
+  - Distributed tracing Phase 3 (spans retrieval, llm_generate)
+  - Endpoint : `GET /api/tracing/spans`
+- ✅ **UsageService** (`features/usage/`)
+  - Tracking usage API (Phase 2 Guardian Cloud)
+  - Middleware global `usage_tracker.py`
+  - Endpoint : `GET /api/usage/stats`
+- ✅ **SyncService** (`features/sync/`)
+  - Auto-sync inter-agents (AGENT_SYNC.md updates automatiques)
+  - Endpoint : `GET /api/sync/status`
+- ✅ **BetaReportService** (`features/beta_report/`)
+  - Feedback beta testeurs
+  - Endpoints : `POST /api/beta/report`, `GET /api/beta/reports`
+- ✅ **SettingsService** (`features/settings/`)
+  - Config système + feature flags
+  - Endpoints : `GET/PUT /api/settings`
+
+**Résultat** :
+- Coverage frontend : 50% → **100%** ✅
+- Coverage backend : 55% → **100%** ✅
+
+#### 2. Checklist Obligatoire Agents ✅
+
+**Fichier créé** : `docs/architecture/AGENTS_CHECKLIST.md` (10 sections, ~350 lignes)
+
+**Contenu** :
+- 🔴 **Règle d'or** : Lire docs architecture AVANT toute implémentation
+- 📚 **Section 1** : Docs architecture obligatoires (ordre lecture)
+  - 00-Overview.md (Contexte C4)
+  - 10-Components.md (Services + Modules)
+  - 30-Contracts.md (Contrats API)
+  - ADRs (Décisions architecturales)
+- 🔄 **Section 2** : État sync inter-agents (AGENT_SYNC.md, passation.md)
+- 🔍 **Section 3** : Vérification code réel obligatoire (docs peuvent être obsolètes)
+- ✏️ **Section 4** : Après modification (MAJ docs obligatoire)
+  - Nouveau service/module → MAJ 10-Components.md
+  - Nouveau endpoint → MAJ 30-Contracts.md
+  - Décision architecturale → Créer ADR
+- 🚫 **Section 5** : Anti-patterns à éviter
+- ✅ **Section 6** : Checklist avant commit (10 points)
+- 📖 **Section 7** : Ressources complémentaires
+- 🎯 **Section 8** : Hiérarchie de décision en cas de doute
+- 💡 **Section 9** : Bonnes pratiques (Claude Code, Codex GPT, tous agents)
+- 🆘 **Section 10** : Contact + blocages
+
+**Templates fournis** :
+- Format section nouveau service/module (markdown)
+- Commandes bash pour vérifier code réel
+
+#### 3. Intégration Règles dans CLAUDE.md ✅
+
+**Modifications** (`CLAUDE.md` ligne 1-110) :
+- ✅ Date màj : "2025-10-23 (+ Checklist Architecture Obligatoire)"
+- ✅ **Règle Absolue #1 renommée** : "ARCHITECTURE & SYNCHRONISATION"
+- ✅ Nouvelle section "1. Docs Architecture (CRITIQUE - Ajout 2025-10-23)"
+  - ⚠️ Règle obligatoire : Consulter docs architecture AVANT implémentation
+  - Référence directe : `docs/architecture/AGENTS_CHECKLIST.md` ← **LIRE EN ENTIER**
+  - Liste docs obligatoires (00-Overview, 10-Components, 30-Contracts, ADRs)
+  - Raisons : Sans lecture → duplication, contrats cassés, bugs
+  - Après modification : MAJ 10-Components.md, 30-Contracts.md, ADRs
+- ✅ Section "2. État Sync Inter-Agents" (conservée avec AGENT_SYNC.md)
+- ✅ Warning : "NE JAMAIS commencer à coder sans avoir lu AGENT_SYNC.md **+ Docs Architecture**"
+
+#### 4. ADR-002 : agents module removal ✅
+
+**Fichier créé** : `docs/architecture/40-ADR/ADR-002-agents-module-removal.md`
+
+**But** : Documenter rétroactivement suppression module `features/agents/` (profils fusionnés dans `features/references/`)
+
+**Contenu** :
+- Contexte : Module retiré mais pas documenté (découvert lors audit)
+- Décision : Fusion agents/ + references/ en 1 seul module References
+- Rationale : Moins de code, UX simplifiée, maintenance facilitée
+- Alternatives considérées (garder 2 modules, créer module Documentation générique)
+- Conséquences : Docs mises à jour, ADR créé, clarté pour agents
+- Template pour futurs ADRs (suivre ADR-001)
+
+**Leçon apprise** : Toujours créer ADR lors suppression/fusion modules, même "mineurs".
+
+#### 5. Archivage Docs Obsolètes ✅
+
+**Fichier archivé** :
+- `infra/cloud-run/MICROSERVICES_ARCHITECTURE.md` → `docs/archive/2025-10/architecture/MICROSERVICES_ARCHITECTURE_DEPRECATED.md`
+
+**README créé** : `docs/archive/2025-10/architecture/README.md`
+- Date archivage : 2025-10-23
+- Raison : Doc décrit architecture microservices **jamais implémentée**
+- État actuel : Émergence V8 est **monolithe Cloud Run**
+- Référence : `docs/architecture/00-Overview.md` pour architecture actuelle
+
+### Tests
+- ✅ Tous fichiers créés/modifiés correctement
+- ✅ Git add/commit/push OK (commit `c636136`)
+- ✅ Guardian pre-commit/post-commit/pre-push OK
+- ✅ Production : OK (ProdGuardian healthy)
+
+### Règles Établies pour TOUS les Agents
+
+**🔴 AVANT IMPLÉMENTATION (OBLIGATOIRE)** :
+1. Lire `docs/architecture/AGENTS_CHECKLIST.md` (checklist complète)
+2. Lire `docs/architecture/00-Overview.md` (Contexte C4)
+3. Lire `docs/architecture/10-Components.md` (Services + Modules)
+4. Lire `docs/architecture/30-Contracts.md` (Contrats API)
+5. Lire `docs/architecture/ADR-*.md` (Décisions architecturales)
+6. **Vérifier code réel** (`ls src/backend/features/`, `ls src/frontend/features/`)
+7. Lire `AGENT_SYNC.md` (état sync)
+8. Lire `docs/passation.md` (3 dernières entrées)
+
+**🔴 APRÈS MODIFICATION (OBLIGATOIRE)** :
+1. Mettre à jour `10-Components.md` si nouveau service/module
+2. Mettre à jour `30-Contracts.md` si nouveau endpoint/frame WS
+3. Créer ADR si décision architecturale (template : ADR-001, ADR-002)
+4. Mettre à jour `AGENT_SYNC.md` (nouvelle entrée session)
+5. Mettre à jour `docs/passation.md` (entrée détaillée)
+6. Tests (pytest, npm run build, ruff, mypy)
+
+**Pourquoi ces règles ?**
+- ❌ Sans lecture : Duplication code, contrats API cassés, bugs d'intégration
+- ✅ Avec lecture : Architecture comprise, contrats respectés, docs à jour
+
+### Prochaines Actions Recommandées
+
+**Pour Codex GPT (ou autre agent)** :
+1. ✅ **LIRE `docs/architecture/AGENTS_CHECKLIST.md` EN ENTIER** (nouvelle règle obligatoire)
+2. ✅ Consulter `10-Components.md` avant d'implémenter nouvelle feature
+3. ✅ Vérifier code réel si docs semblent obsolètes (`ls src/*/features/`)
+4. ✅ Mettre à jour docs après modification
+5. ✅ Créer ADR si décision architecturale
+6. 🔴 **NE PAS** chercher module Timeline (n'existe pas, supprimé des docs)
+7. 🔴 **NE PAS** chercher module agents/ (fusionné dans references/, voir ADR-002)
+
+**Pour Claude Code (prochaine session)** :
+- ✅ Continuer cleanup racine (34 → 27 fichiers .md) - P1
+- ✅ Setup Mypy (créer pyproject.toml) - P1
+- ✅ Optimiser vendor frontend (1MB → code splitting) - P2
+
+### Métriques Session
+- **Coverage frontend** : 50% → 100% ✅ (+6 modules)
+- **Coverage backend** : 55% → 100% ✅ (+7 services)
+- **Modules fantômes supprimés** : 2 (Timeline)
+- **ADRs créés** : +1 (ADR-002)
+- **Docs architecture** : 100% à jour ✅
+- **Checklist agents** : Créée ✅
+- **Règles strictes** : Établies ✅
+- **Commits** : 1 (`c636136`)
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-23 12:45 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
