@@ -1,4 +1,110 @@
-## [2025-10-23 18:30 CET] - Agent: Claude Code
+## [2025-10-23 15:20 CET] - Agent: Claude Code
+
+### Fichiers modifiés
+- `src/backend/main.py` (fix FastAPI Union response type)
+- `src/backend/features/monitoring/router.py` (fix FastAPI Union response type)
+- `src/backend/features/guardian/storage_service.py` (cleanup unused type:ignore)
+- `src/backend/features/chat/rag_cache.py` (cleanup + fix None checks)
+- `src/backend/features/gmail/oauth_service.py` (cleanup unused type:ignore)
+- `AGENT_SYNC.md`, `docs/passation.md`
+
+### Contexte
+**HOTFIX CRITIQUE** : Backend plantait au startup après P1.2 Mypy cleanup (session précédente). L'utilisateur a testé en local et découvert l'erreur FastAPI.
+
+### Travail réalisé
+**P1.2 Mypy - FIX CRITIQUE Backend Startup (FastAPI Union Response Type) + Cleanup Final**
+
+**Problème identifié :**
+```
+fastapi.exceptions.FastAPIError: Invalid args for response field!
+Hint: check that dict[str, typing.Any] | starlette.responses.JSONResponse
+is a valid Pydantic field type
+```
+
+**Cause racine :**
+Lors du cleanup mypy, j'avais ajouté des return type annotations `-> dict[str, Any] | JSONResponse` sur les health check endpoints `/ready` et `/health/ready`. FastAPI ne peut pas inférer le response model automatiquement quand le return type est un Union avec JSONResponse.
+
+**Solution (2 patterns) :**
+
+**Pattern 1 : response_model=None (RECOMMANDÉ)**
+```python
+# ✅ BON - Désactive inférence Pydantic
+@app.get("/ready", response_model=None)
+async def ready_check() -> dict[str, Any] | JSONResponse:
+    return {"ok": True}  # or JSONResponse(status_code=503, ...)
+```
+
+**Pattern 2 : Response base class (alternative)**
+```python
+from fastapi import Response
+
+@app.get("/ready")
+async def ready_check() -> Response:
+    return JSONResponse(content={"ok": True})
+```
+
+**Fixes appliqués :**
+1. **main.py:457** - Ajout `response_model=None` sur `/ready`
+2. **monitoring/router.py:37** - Ajout `response_model=None` sur `/health/ready`
+3. **monitoring/router.py:394** - Déjà présent (legacy endpoint)
+
+**Cleanup unused type:ignore (10 erreurs mypy découvertes) :**
+
+**A. storage_service.py (1 fix)**
+```python
+# ❌ Avant
+from google.cloud import storage  # type: ignore[attr-defined]
+
+# ✅ Après (google-cloud-storage installé)
+from google.cloud import storage
+```
+
+**B. rag_cache.py (5 fixes + 2 guards)**
+```python
+# ❌ Avant
+cached_str = self.redis_client.get(key)  # type: ignore[union-attr]
+
+# ✅ Après (guard + pas de type:ignore)
+if self.redis_client is None:
+    return None
+cached_str = self.redis_client.get(key)  # Mypy knows redis_client is not None
+```
+
+**C. oauth_service.py (3 fixes)**
+```python
+# ❌ Avant
+from google_auth_oauthlib.flow import Flow  # type: ignore[import-untyped]
+from google.cloud import firestore  # type: ignore[attr-defined]
+
+# ✅ Après
+from google_auth_oauthlib.flow import Flow  # type: ignore[import-not-found]
+from google.cloud import firestore  # (lib installée, pas besoin type:ignore)
+```
+
+**Résultat FINAL :**
+- ✅ Backend startup OK (testé : `python -c "from backend.main import create_app"`)
+- ✅ Mypy 0 erreurs (131 source files checked) 🔥
+- ✅ Codebase 100% type-safe maintenu après fix bug production-blocking
+
+**Leçons apprises :**
+1. **Toujours tester le backend startup** après modifs dans main.py
+2. **FastAPI + Union[dict, JSONResponse]** requiert `response_model=None`
+3. **Retirer type:ignore peut révéler de vraies erreurs** (ex: redis_client None checks manquants)
+
+### Tests
+- ✅ `python -c "from backend.main import create_app"` : Backend OK
+- ✅ `mypy src/backend/` : **Success: no issues found in 131 source files** 🔥
+
+### Prochaines actions recommandées
+**Tester app complète** : Backend + Frontend + endpoints health checks
+**P2.1 suite** : Compresser CSS globaux (360KB → <100KB), viser Lighthouse 95+
+
+### Blocages
+Aucun.
+
+---
+
+## [2025-10-23 18:30 CET] - Agent: Claude Code (PRÉCÉDENTE SESSION)
 
 ### Fichiers modifiés
 - **23 fichiers** backend Python (mypy cleanup final)

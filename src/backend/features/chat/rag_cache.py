@@ -215,8 +215,8 @@ class RAGCache:
                 info = self.redis_client.info('stats')
                 return {
                     'backend': 'redis',
-                    'keyspace_hits': info.get('keyspace_hits', 0),  # type: ignore[union-attr]
-                    'keyspace_misses': info.get('keyspace_misses', 0),  # type: ignore[union-attr]
+                    'keyspace_hits': info.get('keyspace_hits', 0),
+                    'keyspace_misses': info.get('keyspace_misses', 0),
                     'connected': True,
                 }
             except Exception:
@@ -234,19 +234,23 @@ class RAGCache:
 
     def _get_from_redis(self, fingerprint: str) -> Optional[Dict[str, Any]]:
         """Récupère depuis Redis."""
+        if self.redis_client is None:
+            return None
         key = f"rag:query:{fingerprint}"
-        cached_str = self.redis_client.get(key)  # type: ignore[union-attr]
+        cached_str = self.redis_client.get(key)
         if cached_str:
             logger.debug(f"[RAG Cache] Redis HIT: {fingerprint}")
             from typing import cast
-            return cast(dict[str, Any], json.loads(cached_str))  # type: ignore[arg-type]
+            return cast(dict[str, Any], json.loads(cached_str))
         logger.debug(f"[RAG Cache] Redis MISS: {fingerprint}")
         return None
 
     def _set_in_redis(self, fingerprint: str, entry: Dict[str, Any]) -> None:
         """Stocke dans Redis avec TTL."""
+        if self.redis_client is None:
+            return
         key = f"rag:query:{fingerprint}"
-        self.redis_client.setex(  # type: ignore[union-attr]
+        self.redis_client.setex(
             key,
             self.ttl_seconds,
             json.dumps(entry)
@@ -261,9 +265,9 @@ class RAGCache:
         cursor = 0
         deleted = 0
         while True:
-            cursor, keys = self.redis_client.scan(cursor, match='rag:query:*', count=100)  # type: ignore[misc]
+            cursor, keys = self.redis_client.scan(cursor, match='rag:query:*', count=100)
             if keys:
-                deleted += self.redis_client.delete(*keys)  # type: ignore[operator]
+                deleted += self.redis_client.delete(*keys)
             if cursor == 0:
                 break
         logger.info(f"[RAG Cache] Flushed {deleted} Redis keys")

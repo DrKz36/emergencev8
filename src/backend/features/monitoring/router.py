@@ -34,7 +34,7 @@ router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
 # This router only provides DETAILED monitoring endpoints.
 
 
-@router.get("/health/ready")
+@router.get("/health/ready", response_model=None)
 async def health_ready(request: Request) -> JSONResponse:
     """
     V13.2 - Readiness probe enrichi avec diagnostics vector store.

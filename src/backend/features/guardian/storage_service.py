@@ -17,7 +17,7 @@ PROJECT_ID = os.getenv("GCP_PROJECT_ID", "emergence-469005")
 
 # Try to import Cloud Storage (optional dependency)
 try:
-    from google.cloud import storage  # type: ignore[attr-defined]
+    from google.cloud import storage
     GCS_AVAILABLE = True
 except ImportError:
     logger.warning("google-cloud-storage not installed - Cloud Storage disabled")

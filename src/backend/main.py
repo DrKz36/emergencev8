@@ -454,7 +454,7 @@ def create_app() -> FastAPI:
                 }
             )
 
-    @app.get("/ready", tags=["Health"], include_in_schema=False)
+    @app.get("/ready", tags=["Health"], include_in_schema=False, response_model=None)
     async def ready_check(request: Request) -> dict[str, Any] | JSONResponse:
         """Readiness check - vérifie DB + Chroma disponibles"""
         try:
