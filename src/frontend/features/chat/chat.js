@@ -289,6 +289,10 @@ export default class ChatModule {
         this.state.set('chat.threadId', currentId);
         this.hydrateFromThread(cached);
         console.log('[Chat] mount() → hydratation tardive depuis state pour', currentId);
+      } else if (!cached || !cached.messages) {
+        // Thread ID existe mais pas de data en cache → charger sans modal
+        console.log('[Chat] mount() → Thread ID existe mais pas en cache, chargement silencieux');
+        // Ne rien faire, le thread sera chargé par le flow normal
       }
     } else {
       // ✅ Pas de conversation active : en récupérer une ou en créer une nouvelle
@@ -332,7 +336,7 @@ export default class ChatModule {
               ? '<p>Voulez-vous reprendre votre dernière conversation ou commencer une nouvelle ?</p>'
               : '<p>Vous n\'avez pas encore de conversation. Prêt à démarrer ?</p>'}
           </div>
-          <div class="modal-actions">
+          <div class="modal-actions" style="${hasExistingConversations ? '' : 'justify-content: center;'}">
             ${hasExistingConversations
               ? '<button class="btn" data-action="resume">Reprendre</button>'
               : ''}
@@ -578,6 +582,8 @@ export default class ChatModule {
     const threadId = (thread && (thread.id || thread.thread_id)) || this.getCurrentThreadId();
     const msgsRaw = Array.isArray(thread?.messages) ? [...thread.messages] : [];
     const msgs = msgsRaw.sort((a, b) => (a?.created_at ?? 0) - (b?.created_at ?? 0));
+
+    console.log(`[Chat] 🔍 hydrateFromThread called: threadId=${threadId}, messages count=${msgs.length}`);
 
     const buckets = {};
     let lastAssistantAgent = null;

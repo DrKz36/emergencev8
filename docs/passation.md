@@ -1,3 +1,157 @@
+## [2025-10-23 18:38 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.js`
+- `src/frontend/features/chat/chat.css`
+
+### Contexte
+L'utilisateur signale 4 bugs après test du modal dialogue :
+1. **Bouton "Nouvelle conversation" décalé** - Doit être centré en bas, pas à gauche
+2. **Barre horizontale en bas** - Overflow horizontal visible
+3. **Modal s'affiche à chaque reconnexion** - Devrait s'afficher SEULEMENT si aucune conv active
+4. **Double scroll à droite** - Deux barres de scroll superposées
+5. **Réponses triplées** - Les messages "salut" apparaissent 3 fois
+
+### Travail réalisé
+
+**A. Fix centrage bouton modal (DONE)**
+
+**Problème** :
+- Bouton "Nouvelle conversation" aligné à gauche au lieu d'être centré
+- CSS `.modal-actions` a `justify-content: flex-end` par défaut
+
+**Solution** :
+```javascript
+// Ligne 339
+<div class="modal-actions" style="${hasExistingConversations ? '' : 'justify-content: center;'}">
+```
+- Si conversations existantes : `justify-content: flex-end` (boutons "Reprendre" + "Nouvelle" alignés à droite)
+- Si aucune conversation : `justify-content: center` (bouton "Nouvelle" seul centré)
+
+**B. Fix modal s'affiche à chaque reconnexion (DONE)**
+
+**Problème** :
+- Modal s'affichait à chaque ouverture du module dialogue, même quand une conv était active
+- Utilisateur devait re-choisir à chaque fois
+
+**Analyse** :
+- `mount()` ligne 283 : `const currentId = this.getCurrentThreadId();`
+- `currentId` peut exister (stocké dans localStorage) mais `cached.messages` peut être vide
+- Ancien code :
+  ```javascript
+  if (currentId) {
+    if (cached && cached.messages && this.loadedThreadId !== currentId) {
+      // Hydrate
+    }
+  } else {
+    // Affiche modal ← BUG: ne gérait pas le cas "currentId existe mais pas de cache"
+  }
+  ```
+
+**Solution** (lignes 292-296) :
+```javascript
+if (currentId) {
+  if (cached && cached.messages && this.loadedThreadId !== currentId) {
+    // Hydrate from cache
+  } else if (!cached || !cached.messages) {
+    // Thread ID existe mais pas de data en cache → chargement silencieux (pas de modal)
+    console.log('[Chat] mount() → Thread ID existe mais pas en cache, chargement silencieux');
+  }
+} else {
+  // Vraiment aucune conv → affiche modal
+  this._ensureActiveConversation();
+}
+```
+
+**Résultat** :
+- Modal affiché UNIQUEMENT si `currentId` est null (première visite ou toutes les convs supprimées)
+- Si thread ID existe dans localStorage → pas de modal, chargement normal
+
+**C. Fix double scroll (DONE)**
+
+**Problème** :
+- Deux barres de scroll à droite :
+  1. Une sur `.app-content` (définie dans `index.html` ligne 162)
+  2. Une sur `.messages` (définie dans `chat.css` ligne 411)
+
+**Cause** :
+```css
+/* index.html ligne 162 */
+.app-content{ overflow-y:auto; overflow-x:hidden; }
+
+/* chat.css ligne 411 */
+.messages{ overflow:auto; }
+```
+
+**Solution** (chat.css lignes 61-63) :
+```css
+/* Fix double scroll: forcer app-content à ne pas avoir de scroll quand module chat actif */
+#tab-content-chat.active {
+  overflow: hidden !important;
+}
+```
+
+**Résultat** :
+- Quand module chat actif : `.app-content` a `overflow: hidden`
+- Scroll uniquement dans `.messages` (zone de conversation)
+- Plus de double scroll
+
+**D. Debug réponses triplées (EN COURS)**
+
+**Problème** :
+- Messages "salut" apparaissent 3 fois dans la conversation
+- Impossible de diagnostiquer sans logs console
+
+**Actions de debug** :
+1. Ajout log dans `hydrateFromThread()` (ligne 586) :
+   ```javascript
+   console.log(`[Chat] 🔍 hydrateFromThread called: threadId=${threadId}, messages count=${msgs.length}`);
+   ```
+
+2. Vérifications nécessaires (DevTools Console) :
+   - Combien de fois `hydrateFromThread` est appelé ?
+   - Les 3 "salut" ont-ils le même message ID (bug rendering) ou IDs différents (bug backend) ?
+   - Y a-t-il d'autres logs suspects (duplicate, append, etc.) ?
+
+**Hypothèses possibles** :
+- **Hypothèse 1** : `hydrateFromThread` appelé 3 fois avec les mêmes messages → bug de duplication d'appel
+- **Hypothèse 2** : Le backend a créé 3 messages identiques dans la DB → bug backend (triple envoi WS/REST)
+- **Hypothèse 3** : Rendering bug (même message rendu 3 fois dans le DOM)
+
+**Prochaine étape** : Attendre logs console de l'utilisateur pour diagnostiquer.
+
+### Tests
+- ✅ `npm run build` : Build OK (1.22s)
+- ⚠️ Fixes modal + scroll à tester visuellement
+- ⚠️ Bug duplication en cours d'investigation
+
+### Recommandations pour validation
+1. **Test modal** :
+   - Se déconnecter / reconnecter
+   - Ouvrir module Dialogue
+   - Vérifier que le modal ne s'affiche PAS (conv existante chargée automatiquement)
+   - Créer une nouvelle conv → se déconnecter → reconnecter → vérifier modal ne s'affiche PAS
+
+2. **Test bouton centré** :
+   - Supprimer toutes les conversations
+   - Ouvrir module Dialogue
+   - Vérifier que le bouton "Nouvelle conversation" est centré
+
+3. **Test scroll** :
+   - Ouvrir module Dialogue
+   - Vérifier qu'il n'y a qu'UNE seule barre de scroll (dans la zone messages)
+
+4. **Debug duplication** :
+   - Ouvrir DevTools (F12) → onglet Console
+   - Reproduire le bug (envoyer message, voir duplication)
+   - Chercher logs `[Chat] 🔍 hydrateFromThread called`
+   - Copier/coller tous les logs console et partager
+
+### Prochaines actions
+Attendre retour utilisateur avec logs console pour résoudre le bug de duplication.
+
+---
+
 ## [2025-10-23 18:28 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

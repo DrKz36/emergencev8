@@ -1,3 +1,64 @@
+## 🔄 Session EN COURS (2025-10-23 18:38 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.js`
+- `src/frontend/features/chat/chat.css`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+**✅ Fixes post-feedback utilisateur (modal + scroll + debug duplication)**
+
+**A. Fix centrage bouton modal (DONE)**
+- **Problème** : Bouton "Nouvelle conversation" décalé à gauche au lieu d'être centré
+- **Solution** : Ajout `style="justify-content: center;"` sur `.modal-actions` quand `!hasExistingConversations`
+- Ligne 339 : `${hasExistingConversations ? '' : 'justify-content: center;'}`
+
+**B. Fix modal s'affiche à chaque reconnexion (DONE)**
+- **Problème** : Modal s'affichait à chaque fois qu'on ouvrait le module dialogue, même si une conv était active
+- **Cause** : Dans `mount()`, condition `if (!currentId)` ne gérait pas le cas où `currentId` existe mais `cached.messages` est vide/absent
+- **Solution** : Ajout branche `else if (!cached || !cached.messages)` dans `mount()` (lignes 292-296)
+  - Si thread ID existe mais pas de data en cache → chargement silencieux (pas de modal)
+  - Modal affiché UNIQUEMENT si `currentId` est null (vraiment aucune conv)
+
+**C. Fix double scroll (DONE)**
+- **Problème** : Double barre de scroll à droite (une sur `.app-content`, une sur `.messages`)
+- **Cause** : `index.html` ligne 162 : `.app-content{ overflow-y:auto; }` + `.messages{ overflow:auto; }` dans chat.css
+- **Solution** : Ajout override CSS dans `chat.css` (lignes 61-63)
+  ```css
+  #tab-content-chat.active {
+    overflow: hidden !important;
+  }
+  ```
+  - Force `.app-content` à `overflow: hidden` quand module chat actif
+  - Scroll uniquement dans `.messages` (zone messages)
+
+**D. Debug réponses triplées (EN COURS)**
+- **Problème** : Messages "salut" apparaissent 3 fois dans la conversation
+- **Action** : Ajout log debug dans `hydrateFromThread()` (ligne 586)
+  ```javascript
+  console.log(`[Chat] 🔍 hydrateFromThread called: threadId=${threadId}, messages count=${msgs.length}`);
+  ```
+- **Prochaine étape** : Utilisateur doit ouvrir DevTools Console et vérifier :
+  1. Combien de fois `hydrateFromThread` est appelé
+  2. Si les messages ont le même ID (duplication rendering) ou IDs différents (duplication backend)
+  3. Partager les logs console pour diagnostic
+
+### Tests
+- ✅ `npm run build` : Build OK (1.22s)
+- ⚠️ Tests visuels en attente retour utilisateur
+
+### Prochaines actions recommandées
+1. **Test modal** : Vérifier que le modal ne s'affiche plus à la reconnexion
+2. **Test bouton centré** : Vérifier que "Nouvelle conversation" est centré quand pas de conv existantes
+3. **Test scroll** : Vérifier qu'il n'y a plus de double scroll
+4. **Debug duplication** : Ouvrir DevTools Console, reproduire le bug, partager les logs
+
+### Blocages
+Bug duplication messages en cours d'investigation (attente logs console utilisateur).
+
+---
+
 ## ✅ Session COMPLÉTÉE (2025-10-23 18:28 CET) — Agent : Claude Code
 
 ### Fichiers modifiés

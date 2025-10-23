@@ -57,6 +57,11 @@
   border:0;
 }
 /* === Conteneur chat === */
+/* Fix double scroll: forcer app-content à ne pas avoir de scroll quand module chat actif */
+#tab-content-chat.active {
+  overflow: hidden !important;
+}
+
 .chat-container{
   background:var(--glass-bg);
   -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px);
