@@ -1,3 +1,76 @@
+## [2025-10-24 12:00 CET] - Agent: Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/chat/service.py` (17 erreurs mypy fixes)
+- `src/backend/features/chat/rag_cache.py` (13 erreurs mypy fixes)
+- `src/backend/features/auth/service.py` (12 erreurs mypy fixes)
+- `src/backend/features/auth/models.py` (1 erreur mypy fix)
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+P1.2 Mypy Batch 2 - Type checking improvements. Réduction erreurs mypy 437 → 402 (-35, -8%). Travail en parallèle avec session Codex P2.1 bundle optimization (aucun conflit Git backend vs frontend).
+
+### Travail réalisé
+**chat/service.py (17 fixes)** : Cast explicites (float, dict), type params complets (List[Dict[str,Any]]), guards narrowing (get_or_create_collection None check), suppression assert → if/raise, suppression type:ignore devenus inutiles (sklearn import), return type annotations, cast json.loads.
+
+**rag_cache.py (13 fixes)** : Return type annotations (-> None pour set/invalidate/flush), cast json.loads Redis/memory, guards Redis None check, type:ignore pour scan/delete async typing issue.
+
+**auth/service.py (12 fixes)** : Type params dict[str,Any] (AuthError payload, AuditEvent metadata), suppression check legacy bytes (PyJWT moderne), cast jwt.decode, guards TOTP secret type, return type annotations DB methods, suppression type:ignore row.keys/dict.
+
+**Patterns réutilisables** : Cast explicites, type parameters complets, return types, guards narrowing, suppression checks legacy/type:ignore.
+
+### Tests
+```
+mypy src/backend/  # 437 → 402 (-35)
+ruff check         # 1 import inutile (non bloquant)
+pytest auth tests  # 4/4 passed
+npm run build      # OK 974ms
+```
+
+### Prochaines actions recommandées
+**P1.2 Batch 3** : debate/service, core/websocket, containers (402 → ~360 erreurs). Patterns similaires attendus.
+
+### Blocages
+Aucun.
+
+---
+
+## [2025-10-24 11:10 CET] - Agent: Codex
+
+### Fichiers modifiés
+- `src/frontend/features/threads/threads-service.js`
+- `src/frontend/features/admin/admin-analytics.js`
+- `vite.config.js`
+- `docs/passation.md`
+- `AGENT_SYNC.md`
+
+### Contexte
+P2.1 – Optimiser le bundle frontend. La build précédente contenait un chunk `vendor` de 1,03 MB (Chart.js, jsPDF, html2canvas…). L’objectif était de ramener le payload initial autour de 300 kB sans régresser sur les exports PDF/CSV ni sur le dashboard admin.
+
+### Travail réalisé
+- Audit de l’ancien bundle (`ANALYZE_BUNDLE=1 npm run build`) pour récupérer les tailles et le Top 5 librairies (html2canvas 410 kB, chart.js 405 kB, jsPDF 342 kB, canvg 169 kB, pako 106 kB).
+- Refactor lazy loading :
+  - `threads-service` charge désormais `jsPDF`, `jspdf-autotable` et `papaparse` via jsDelivr (`/* @vite-ignore */`) uniquement quand l’utilisateur exporte un thread.
+  - `admin-analytics` fait la même chose avec `Chart.js`, toujours via CDN, en conservant l’enregistrement des `registerables`.
+  - Polyfill `globalThis.jspdf/jsPDF` pour que autop-table s’injecte correctement.
+- Nettoyage `vite.config.js` : suppression de l’ancien `external`, conservation d’un `manualChunks` minimal (`marked`), ce qui évite le conflit `external` vs lazy loading.
+- Nouveau build : entry scripts `main` 55.7 kB + `index` 167.7 kB (gzip ≃ 50 kB). Charge utile initiale ≃ 223 kB (‑78 % vs 1.03 MB). Le bundle report ne contient plus que du code maison (< 120 kB par module).
+
+### Tests
+- ✅ `npm run build`
+- ✅ `ANALYZE_BUNDLE=1 npm run build`
+- ⚠️ Tentative Lighthouse (`npx lighthouse ... --headless`) encore bloquée par l’interstitiel Chrome malgré `--allow-insecure-localhost` → métriques FCP/LCP à collecter plus tard.
+
+### Prochaines actions recommandées
+1. S’assurer que prod/staging autorisent jsDelivr (prévoir fallback local si nécessaire).
+2. Rejouer Lighthouse/WebPageTest une fois le script LHCI ajusté pour capturer les nouveaux FCP/LCP.
+3. Continuer P2.1 : envisager un prefetch conditionnel (admin, hymn) si l’usage le justifie.
+
+### Blocages
+- LHCI ne passe pas encore l’interstitiel Chrome → pas de rapport FCP/LCP pour cette session.
+- `src/backend/features/chat/service.py` contient des modifications préexistantes hors périmètre.
+
 ## [2025-10-24 01:15 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
@@ -8479,3 +8552,4 @@ git push
 3. Améliorer typage mypy progressivement
 
 ### Blocages
+

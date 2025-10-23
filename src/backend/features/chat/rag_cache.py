@@ -16,7 +16,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from collections import OrderedDict
 
 try:
-    import redis  # type: ignore[import-not-found]
+    import redis
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
@@ -148,7 +148,7 @@ class RAGCache:
         doc_hits: List[Dict[str, Any]],
         rag_sources: List[Dict[str, Any]],
         selected_doc_ids: Optional[List[int]] = None
-    ):
+    ) -> None:
         """
         Stocke un résultat dans le cache.
         """
@@ -174,7 +174,7 @@ class RAGCache:
         except Exception as e:
             logger.error(f"[RAG Cache] Error storing cache: {e}")
 
-    def invalidate_by_document(self, document_id: int):
+    def invalidate_by_document(self, document_id: int) -> None:
         """
         Invalide toutes les entrées cache contenant un document_id donné.
 
@@ -215,8 +215,8 @@ class RAGCache:
                 info = self.redis_client.info('stats')  # type: ignore[union-attr]
                 return {
                     'backend': 'redis',
-                    'keyspace_hits': info.get('keyspace_hits', 0),  # type: ignore[union-attr]
-                    'keyspace_misses': info.get('keyspace_misses', 0),  # type: ignore[union-attr]
+                    'keyspace_hits': info.get('keyspace_hits', 0),
+                    'keyspace_misses': info.get('keyspace_misses', 0),
                     'connected': True,
                 }
             except Exception:
@@ -238,11 +238,12 @@ class RAGCache:
         cached_str = self.redis_client.get(key)  # type: ignore[union-attr]
         if cached_str:
             logger.debug(f"[RAG Cache] Redis HIT: {fingerprint}")
-            return json.loads(cached_str)  # type: ignore[arg-type]
+            from typing import cast
+            return cast(dict[str, Any], json.loads(cached_str))  # type: ignore[arg-type]
         logger.debug(f"[RAG Cache] Redis MISS: {fingerprint}")
         return None
 
-    def _set_in_redis(self, fingerprint: str, entry: Dict[str, Any]):
+    def _set_in_redis(self, fingerprint: str, entry: Dict[str, Any]) -> None:
         """Stocke dans Redis avec TTL."""
         key = f"rag:query:{fingerprint}"
         self.redis_client.setex(  # type: ignore[union-attr]
@@ -252,15 +253,17 @@ class RAGCache:
         )
         logger.debug(f"[RAG Cache] Redis SET: {fingerprint} (TTL={self.ttl_seconds}s)")
 
-    def _flush_redis(self):
+    def _flush_redis(self) -> None:
         """Flush toutes les clés rag:* dans Redis."""
         # Attention: SCAN peut être coûteux en prod, on flush tout le namespace
+        if self.redis_client is None:
+            return
         cursor = 0
         deleted = 0
         while True:
-            cursor, keys = self.redis_client.scan(cursor, match='rag:query:*', count=100)
+            cursor, keys = self.redis_client.scan(cursor, match='rag:query:*', count=100)  # type: ignore[misc]
             if keys:
-                deleted += self.redis_client.delete(*keys)
+                deleted += self.redis_client.delete(*keys)  # type: ignore[misc]
             if cursor == 0:
                 break
         logger.info(f"[RAG Cache] Flushed {deleted} Redis keys")
@@ -279,7 +282,8 @@ class RAGCache:
                 # Move to end (LRU)
                 self.memory_cache.move_to_end(fingerprint)
                 logger.debug(f"[RAG Cache] Memory HIT: {fingerprint} (age={age:.1f}s)")
-                return entry
+                from typing import cast
+                return cast(dict[str, Any], entry)
             else:
                 # Expiré
                 del self.memory_cache[fingerprint]
@@ -288,7 +292,7 @@ class RAGCache:
         logger.debug(f"[RAG Cache] Memory MISS: {fingerprint}")
         return None
 
-    def _set_in_memory(self, fingerprint: str, entry: Dict[str, Any]):
+    def _set_in_memory(self, fingerprint: str, entry: Dict[str, Any]) -> None:
         """Stocke dans cache mémoire avec LRU eviction."""
         # Supprimer le plus ancien si plein
         if len(self.memory_cache) >= self.max_memory_items:
@@ -299,7 +303,7 @@ class RAGCache:
         self.memory_cache[fingerprint] = (datetime.utcnow(), entry)
         logger.debug(f"[RAG Cache] Memory SET: {fingerprint}")
 
-    def _invalidate_memory_by_doc(self, document_id: int):
+    def _invalidate_memory_by_doc(self, document_id: int) -> None:
         """Invalide les entrées mémoire contenant un document_id."""
         to_delete = []
         for fingerprint, (timestamp, entry) in self.memory_cache.items():

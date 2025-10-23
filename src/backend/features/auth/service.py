@@ -33,7 +33,7 @@ logger = logging.getLogger("emergence.auth")
 
 
 class AuthError(Exception):
-    def __init__(self, message: str, *, status_code: int = 400, payload: Optional[dict] = None) -> None:
+    def __init__(self, message: str, *, status_code: int = 400, payload: Optional[dict[str, Any]] = None) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.payload = payload or {}
@@ -255,21 +255,21 @@ class AuthService:
             "exp": int(expires_at.timestamp()),
         }
         token = jwt.encode(payload, self.config.secret, algorithm=self.jwt_algorithm)
-        if isinstance(token, bytes):
-            token = token.decode("utf-8")
-        return token
+        # Modern PyJWT always returns str, not bytes
+        return str(token)
 
     def decode_token(self, token: str) -> Optional[dict[str, Any]]:
         if not token or not isinstance(token, str):
             return None
         try:
-            return jwt.decode(
+            from typing import cast
+            return cast(dict[str, Any], jwt.decode(
                 token,
                 self.config.secret,
                 algorithms=[self.jwt_algorithm],
                 audience=self.config.audience,
                 options={"verify_aud": bool(self.config.audience)},
-            )
+            ))
         except jwt.PyJWTError:
             return None
 
@@ -762,7 +762,8 @@ class AuthService:
         })
         if revoked_at:
             claims["revoked_at"] = revoked_at
-        return claims
+        from typing import cast
+        return cast(dict[str, Any], claims)
 
     async def get_user_id_for_session(self, session_id: str) -> Optional[str]:
         normalized = (session_id or "").strip()
@@ -872,9 +873,8 @@ class AuthService:
         password_updated_at: Optional[str] = None
         password_length: Optional[int] = None
         if password is not None:
-            if not isinstance(password, str):
-                password = str(password)
-            cleaned_password = password.strip()
+            # Defensive cast (password is Optional[str], narrowed to str here)
+            cleaned_password = str(password).strip()
             self._validate_password_strength(cleaned_password)
             password_hash = self._hash_password(cleaned_password)
             password_updated_at = self._now().isoformat()
@@ -1296,9 +1296,9 @@ class AuthService:
         try:
             return tuple(params)
         except TypeError:
-            return (params,)  # type: ignore[arg-type]
+            return (params,)
 
-    async def _db_fetchone(self, query: str, params: Sequence[Any] | None = None):
+    async def _db_fetchone(self, query: str, params: Sequence[Any] | None = None) -> Optional[Any]:
         tuple_params = self._prepare_params(params)
         fetch_one = getattr(self.db, "fetch_one", None)
         if callable(fetch_one):
@@ -1333,17 +1333,17 @@ class AuthService:
         rows = await self._db_fetchall(query, params)
         return [d for d in (self._row_to_dict(r) for r in rows or []) if d]
 
-    def _row_to_dict(self, row) -> Optional[dict[str, Any]]:
+    def _row_to_dict(self, row: Any) -> Optional[dict[str, Any]]:
         if row is None:
             return None
         if isinstance(row, dict):
             return row
         try:
-            keys = row.keys()  # type: ignore[attr-defined]
+            keys = row.keys()
             return {key: row[key] for key in keys}
         except Exception:
             try:
-                return dict(row)  # type: ignore[arg-type]
+                return dict(row)
             except Exception:
                 return None
 
@@ -1574,6 +1574,8 @@ class AuthService:
 
         # Try TOTP code first (6 digits)
         if len(code) == 6 and code.isdigit():
+            if not secret or not isinstance(secret, str):
+                raise AuthError("Invalid TOTP secret", status_code=500)
             totp = pyotp.TOTP(secret)
             if totp.verify(code, valid_window=1):
                 await self._write_audit(

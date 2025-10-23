@@ -730,7 +730,7 @@ class ChatService:
             0.05 * content_type_score
         )
 
-        return final_score
+        return float(final_score)
 
     def _merge_adjacent_chunks(
         self,
@@ -893,7 +893,7 @@ class ChatService:
                 elif 'espoir' in keywords.lower() and chunk_type == 'poem':
                     boost *= 0.7
 
-                return base_distance * boost
+                return float(base_distance * boost)
 
             merged_hits.sort(key=compute_sort_key)
 
@@ -1252,14 +1252,15 @@ class ChatService:
             # Métriques
             rag_metrics.record_cache_hit()
 
-            return consolidated_entries
+            return cast(list[dict[str, Any]], consolidated_entries)
 
         # Cache MISS - Recherche dans ChromaDB
         logger.debug(f"[TemporalCache] MISS: Recherche ChromaDB pour '{query_text[:50]}'")
 
         try:
             search_start = time.time()
-            assert self._knowledge_collection is not None, "Knowledge collection should be initialized"
+            if self._knowledge_collection is None:
+                raise RuntimeError("Knowledge collection should be initialized")
             results = self._knowledge_collection.query(
                 query_texts=[query_text],
                 n_results=n_results,
@@ -1355,7 +1356,7 @@ class ChatService:
             embeddings = self.vector_service.model.encode(contents)
 
             # Calculer similarité cosine
-            from sklearn.metrics.pairwise import cosine_similarity  # type: ignore[import-untyped]
+            from sklearn.metrics.pairwise import cosine_similarity
             similarity_matrix = cosine_similarity(embeddings)
 
             # Clustering simple avec seuil
@@ -1689,11 +1690,10 @@ class ChatService:
         if self._knowledge_collection is None:
             knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
             self._knowledge_collection = self.vector_service.get_or_create_collection(knowledge_name)
+            if self._knowledge_collection is None:
+                return None
 
         collection = self._knowledge_collection
-        if collection is None:
-            return None
-
         clauses = [{"type": "fact"}, {"key": "mot-code"}, {"agent": (agent_id or "").lower()}]
         if user_id:
             clauses.append({"user_id": user_id})
@@ -1833,10 +1833,10 @@ class ChatService:
             if self._knowledge_collection is None:
                 knowledge_name = os.getenv("EMERGENCE_KNOWLEDGE_COLLECTION", "emergence_knowledge")
                 self._knowledge_collection = self.vector_service.get_or_create_collection(knowledge_name)
+                if self._knowledge_collection is None:
+                    return ""
 
             knowledge_col = self._knowledge_collection
-            if knowledge_col is None:
-                return ""
             where_filter = None
 
             session_clause: Dict[str, Any] = {
@@ -1938,11 +1938,11 @@ class ChatService:
     def _normalize_history_for_llm(
         self,
         provider: str,
-        history: List[Dict],
+        history: List[Dict[str, Any]],
         rag_context: str = "",
         use_rag: bool = False,
         agent_id: Optional[str] = None,
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         normalized: List[Dict[str, Any]] = []
         # 🔥 FIX: Injecter le contexte même si use_rag=False quand c'est du contexte temporel
         # (pour les questions "résume sujets", Anima doit voir le header même si RAG désactivé)
@@ -1997,12 +1997,12 @@ class ChatService:
         if inspect.isawaitable(stream_candidate):
             stream_candidate = await stream_candidate
         if hasattr(stream_candidate, "__aiter__"):
-            return stream_candidate
+            return cast(AsyncIterator[str], stream_candidate)
         raise TypeError("LLM stream must be an awaitable or async iterable")
 
     # ---------- providers (stream) ----------
     async def _get_llm_response_stream(
-        self, provider: str, model: str, system_prompt: str, history: List[Dict], cost_info_container: Dict, agent_id: str = "unknown"
+        self, provider: str, model: str, system_prompt: str, history: List[Dict[str, Any]], cost_info_container: Dict[str, Any], agent_id: str = "unknown"
     ) -> AsyncGenerator[str, None]:
         """
         Stream LLM response avec BudgetGuard (P2.3).
@@ -2222,10 +2222,10 @@ class ChatService:
                 if t:
                     text += t
             try:
-                return json.loads(text)
+                return cast(dict[str, Any], json.loads(text))
             except Exception:
                 m = re.search(r"\{.*\}", text, re.S)
-                return json.loads(m.group(0)) if m else {}
+                return cast(dict[str, Any], json.loads(m.group(0))) if m else {}
         return {}
 
     # ---------- pipeline chat (stream) ----------
@@ -2238,7 +2238,7 @@ class ChatService:
         doc_ids: Optional[List[int]] = None,
         origin_agent_id: Optional[str] = None,
         opinion_request: Optional[Dict[str, Any]] = None,
-    ):
+    ) -> None:
         temp_message_id = str(uuid4())
         full_response_text = ""
         cost_info_container: Dict[str, Any] = {}
@@ -3170,8 +3170,9 @@ class ChatService:
                 )
                 raise last_error
 
+        # Normaliser cost_info (peut être None si fallback a échoué partiellement)
         if not isinstance(cost_info, dict):
-            cost_info = {}
+            cost_info = {}  # type: ignore[unreachable]
         cost_info.setdefault("input_tokens", 0)
         cost_info.setdefault("output_tokens", 0)
         cost_info.setdefault("total_cost", 0.0)
@@ -3205,7 +3206,7 @@ class ChatService:
         chat_request: Any,
         connection_manager: Optional[ConnectionManager] = None,
     ) -> None:
-        def _get_value(key: str):
+        def _get_value(key: str) -> Any:
             if isinstance(chat_request, dict):
                 return chat_request.get(key)
             return getattr(chat_request, key, None)
@@ -3382,8 +3383,7 @@ class ChatService:
             user_prompt = None
 
         candidate_note_id = request_id or ""
-        if isinstance(candidate_note_id, bytes):
-            candidate_note_id = candidate_note_id.decode("utf-8", "ignore")
+        # Legacy check removed: request_id is always str, never bytes
         note_id = str(candidate_note_id).strip() if candidate_note_id else ""
         if len(note_id) > 256:
             note_id = note_id[:256]

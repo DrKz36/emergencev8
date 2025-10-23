@@ -2,9 +2,92 @@
 
 **Objectif** : Éviter que Claude Code, Codex (local) et Codex (cloud) se marchent sur les pieds.
 
-**Dernière mise à jour** : 2025-10-24 01:15 CET (Claude Code : Bundle optimization lazy loading + Fix Vite config ✅)
+**Dernière mise à jour** : 2025-10-24 12:00 CET (Claude Code : P1.2 Mypy Batch 2 - Type checking fixes ✅)
 
 **🔄 SYNCHRONISATION AUTOMATIQUE ACTIVÉE** : Ce fichier est maintenant surveillé et mis à jour automatiquement par le système AutoSyncService
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-24 12:00 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/chat/service.py` (17 erreurs mypy fixes)
+- `src/backend/features/chat/rag_cache.py` (13 erreurs mypy fixes)
+- `src/backend/features/auth/service.py` (12 erreurs mypy fixes)
+- `src/backend/features/auth/models.py` (1 erreur mypy fix)
+- `AGENT_SYNC.md` (cette mise à jour)
+- `docs/passation.md` (nouvelle entrée)
+
+### Actions réalisées
+**✅ P1.2 Mypy Batch 2 - Type Checking Fixes - TERMINÉ**
+
+**Objectif :** Fixer erreurs mypy dans chat/service (17), rag_cache (13), auth/service (12)
+**Résultat :** **437 → 402 erreurs (-35 erreurs, -8%)**
+
+**Fichiers corrigés :**
+1. **chat/service.py (17 fixes)** - Cast explicites float/dict, type params complets, guards narrowing
+2. **rag_cache.py (13 fixes)** - Return type annotations, cast json.loads, Redis guards
+3. **auth/service.py (12 fixes)** - Type params dict[str,Any], cast jwt.decode, TOTP guard
+
+**Patterns appliqués :** Cast explicites, type parameters complets, return type annotations, suppression type:ignore devenus inutiles, guards pour narrowing type.
+
+### Tests
+- ✅ `mypy src/backend/` : **437 → 402 erreurs** (-35, objectif -42 visé mais OK)
+- ✅ `ruff check` : 1 import inutile (non bloquant)
+- ✅ `pytest` auth tests : 4/4 passed
+- ✅ `npm run build` : OK (974ms)
+
+### Prochaines actions recommandées
+**P1.2 Batch 3 (1h30)** : debate/service, core/websocket, containers (402 → ~360 erreurs)
+
+### Blocages
+Aucun.
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-24 11:10 CET) — Agent : Codex
+
+### Fichiers modifiés
+- `src/frontend/features/threads/threads-service.js` (chargement CDN pour jsPDF/PapaParse)
+- `src/frontend/features/admin/admin-analytics.js` (chargement CDN pour Chart.js)
+- `vite.config.js` (nettoyage manualChunks, retrait config externe conflictuelle)
+- `docs/passation.md` (nouvelle entrée)
+- `AGENT_SYNC.md` (cette mise à jour)
+
+### Actions réalisées
+**🎯 P2.1 - Optimisation bundle front (phase CDN) - TERMINÉE**
+
+1. **Audit initial (build 2025-10-23)**  
+   - `assets/vendor-H3-JC5tQ.js` : **1 029.5 kB** (gzip 323 kB)  
+   - Top 5 libs : html2canvas 410 kB, chart.js 405 kB, jspdf 342 kB, canvg 169 kB, pako 106 kB.
+
+2. **Externalisation contrôlée via CDN (lazy loading)**  
+   - `threads-service` : import asynchrone de `jsPDF` + `jspdf-autotable` + `papaparse` depuis jsDelivr (`/* @vite-ignore */`).  
+   - `admin-analytics` : import asynchrone de `chart.js` depuis jsDelivr + enregistrement dynamique des `registerables`.  
+   - Garde-fous : polyfill `globalThis.jspdf` pour compatibilité auto-table, promesses mises en cache.
+
+3. **Vite config remise à plat**  
+   - Suppression de l’ancien `rollupOptions.external` (contradictoire avec lazy loading).  
+   - Conservation d’un `manualChunks` minimal (`marked` uniquement) pour les assets encore bundlés.
+
+4. **Nouveau bundle (2025-10-24 11:05 CET)**  
+   - Entry scripts : `index-W_L_TdeZ.js` **167.7 kB** (gzip 50.0 kB) + `main-Dg4sbbTl.js` **55.7 kB**.  
+   - Charge utile initiale ≃ **223 kB** (‑78 % vs vendor 1.03 MB).  
+   - Bundle report : top modules = uniquement code maison (documentation.js 116 kB, chat.js 73 kB, settings-main.js 66 kB, etc.).
+
+### Tests
+- ✅ `npm run build`
+- ✅ `ANALYZE_BUNDLE=1 npm run build` (génération rapports treemap + JSON)
+- ⚠️ Tentative script `npm run preview` → connexion refusée (tester manuellement avant de relancer LHCI).
+
+### Prochaines actions recommandées
+1. **Monitoring/CDN** : valider que les environnements autorisent jsDelivr ; prévoir fallback offline si besoin.  
+2. **Perf réelle** : relancer Lighthouse/WebPageTest une fois le script LHCI ajusté (pour figer FCP/LCP).  
+3. **P2.1 suite** : envisager `prefetch` conditionnels ou cache warm-up pour Admin/Hymn si usage fréquent.
+
+### Blocages
+- Lighthouse CLI bloque encore sur l’interstitiel Chrome malgré `--allow-insecure-localhost`.  
+- Fichier backend `src/backend/features/chat/service.py` déjà modifié par une session précédente (aucune action).
 
 ---
 

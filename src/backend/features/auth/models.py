@@ -139,7 +139,7 @@ class AuditEvent(BaseModel):
     event_type: str
     email: Optional[str] = None
     actor: Optional[str] = None
-    metadata: dict = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
 
 
