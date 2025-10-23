@@ -8,12 +8,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 ARG EMBED_MODEL_NAME=all-MiniLM-L6-v2
 ENV EMBED_MODEL_NAME=${EMBED_MODEL_NAME}
-ENV SENTENCE_TRANSFORMERS_HOME=/root/.cache/sentence_transformers
-ENV HF_HOME=/root/.cache/huggingface
+ENV SENTENCE_TRANSFORMERS_HOME=/root/.cache/sentence_transformers \
+    HF_HOME=/root/.cache/huggingface \
+    HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1
 
-# System dependencies (build essentials + libmagic for python-magic)
+# System dependencies (build essentials + libmagic + node.js for frontend build)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      build-essential libmagic1 \
+      build-essential libmagic1 curl \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -25,8 +29,18 @@ RUN python -m pip install --upgrade pip && pip install -r requirements.txt
 # Pre-download the embedding model so Cloud Run stays offline-friendly
 RUN python -c "import os; from sentence_transformers import SentenceTransformer; model_name = os.environ.get('EMBED_MODEL_NAME', 'all-MiniLM-L6-v2'); SentenceTransformer(model_name)"
 
-# Application code
+# Frontend dependencies and build
+COPY package.json package-lock.json ./
+RUN npm ci --only=production
+
+# Copy application code
 COPY . .
+
+# Build frontend (generates dist/ with updated version.js)
+RUN npm run build
+
+# Copy built frontend files to root for FastAPI to serve
+RUN cp -r dist/* . && rm -rf dist
 
 # Cloud Run exposes $PORT
 ENV PORT=8080
