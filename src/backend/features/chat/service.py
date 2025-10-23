@@ -1791,11 +1791,12 @@ class ChatService:
         """
         # 🔍 P3 Tracing: Start retrieval span
         span_id = self.trace_manager.start_span("retrieval", attrs={"agent": agent_id or "unknown", "top_k": top_k})
+        result_text = ""
+        trace_status = "OK"
 
         try:
             if not last_user_message:
-                self.trace_manager.end_span(span_id, status="OK")
-                return ""
+                return result_text
 
             uid = self._try_get_user_id(session_id)
 
@@ -1823,9 +1824,8 @@ class ChatService:
                         )
 
                         # ✅ Phase 3.1: Formatter avec cadre visuel pour citations exactes
-                        # 🔍 P3 Tracing: End retrieval span (success with documents)
-                        self.trace_manager.end_span(span_id, status="OK")
-                        return self._format_rag_context(document_results)
+                        result_text = self._format_rag_context(document_results)
+                        return result_text
                 except Exception as e:
                     logger.error(f"Erreur recherche documents Phase 3: {e}", exc_info=True)
 
@@ -1924,14 +1924,15 @@ class ChatService:
                 except Exception as err:
                     logger.warning(f"Impossible de mettre à jour la vitalité mémoire: {err}")
 
-            # 🔍 P3 Tracing: End retrieval span (success)
-            self.trace_manager.end_span(span_id, status="OK")
-            return "\n".join(lines[:top_k])
+            result_text = "\n".join(lines[:top_k])
+            return result_text
         except Exception as e:
             logger.warning(f"build_memory_context: {e}")
-            # 🔍 P3 Tracing: End retrieval span (error)
-            self.trace_manager.end_span(span_id, status="ERROR")
-            return ""
+            trace_status = "ERROR"
+            return result_text
+        finally:
+            # 🔍 P3 Tracing: Always end span (success or error)
+            self.trace_manager.end_span(span_id, status=trace_status)
 
     # ---------- normalisation historique ----------
     def _normalize_history_for_llm(

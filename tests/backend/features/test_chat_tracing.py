@@ -98,12 +98,12 @@ async def test_build_memory_context_error_creates_error_span(chat_service):
 @pytest.mark.asyncio
 async def test_get_llm_response_stream_creates_llm_generate_span(chat_service):
     """Test: _get_llm_response_stream génère un span 'llm_generate'."""
-    # Mock OpenAI stream
+    # Mock OpenAI stream - retourner directement le generator, pas wrapped dans AsyncMock
     async def mock_openai_stream(*args, **kwargs):
         yield "Hello"
         yield " world"
 
-    chat_service._get_openai_stream = AsyncMock(return_value=mock_openai_stream())
+    chat_service._get_openai_stream = MagicMock(side_effect=mock_openai_stream)
 
     # Appeler _get_llm_response_stream
     cost_container = {}
@@ -142,7 +142,7 @@ async def test_multiple_spans_share_trace_id(chat_service):
     async def mock_stream(*args, **kwargs):
         yield "test"
 
-    chat_service._get_openai_stream = AsyncMock(return_value=mock_stream())
+    chat_service._get_openai_stream = MagicMock(side_effect=mock_stream)
 
     # Simuler retrieval + LLM
     await chat_service._build_memory_context(
@@ -185,8 +185,10 @@ class TestTracingMetricsIntegration:
     def test_end_span_records_prometheus_metrics(self, trace_mgr):
         """Test: end_span enregistre les métriques Prometheus."""
         # Patch metrics recorder
+        import time
         with patch("backend.core.tracing.trace_manager.record_span") as mock_record:
             span_id = trace_mgr.start_span("retrieval", attrs={"agent": "anima"})
+            time.sleep(0.001)  # Attendre 1ms pour duration > 0
             trace_mgr.end_span(span_id, status="OK")
 
             # Vérifier que record_span a été appelé

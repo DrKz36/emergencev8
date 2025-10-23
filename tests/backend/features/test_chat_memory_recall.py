@@ -71,11 +71,16 @@ async def _run_memory_context_scenario():
     vector_service = StubVectorService(stored_meta)
     session_manager = StubSessionManager(user_id)
 
+    from unittest.mock import MagicMock
+
     service = object.__new__(ChatService)
     service.vector_service = vector_service
     service.session_manager = session_manager
     service._knowledge_collection = None
     service.document_service = None  # Required by _build_memory_context
+    service.trace_manager = MagicMock()  # Mock trace_manager for P3 tracing
+    service.trace_manager.start_span = MagicMock(return_value="mock-span-id")
+    service.trace_manager.end_span = MagicMock()
 
     memory_block = await service._build_memory_context(
         session_id=session_id,
