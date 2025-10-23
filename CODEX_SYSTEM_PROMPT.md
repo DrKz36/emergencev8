@@ -5,6 +5,38 @@
 
 ---
 
+## ⚠️ COMMENT UTILISER CE PROMPT
+
+### Pour Codex Local (Windsurf/CLI)
+
+**Ce fichier N'EST PAS chargé automatiquement !**
+
+Tu dois **MANUELLEMENT** copier/coller le contenu dans le chat Codex au début de chaque session :
+
+1. Ouvre le chat Codex
+2. Copie/colle ce message :
+
+```
+Lis et applique le prompt système complet :
+
+Get-Content -Raw C:\dev\emergenceV8\CODEX_SYSTEM_PROMPT.md
+```
+
+3. Codex va charger le prompt et te confirmer qu'il le suit
+
+**Alternative rapide** (si déjà dans la session) :
+```
+Applique le protocole complet de CODEX_SYSTEM_PROMPT.md (racine)
+```
+
+### Pour Codex Cloud (ChatGPT Custom GPT)
+
+1. Aller dans les paramètres du Custom GPT
+2. Copier tout le contenu de ce fichier dans "Instructions"
+3. Sauvegarder
+
+---
+
 ## 🔴 RÈGLE ABSOLUE - ORDRE DE LECTURE AVANT DE CODER
 
 **OBLIGATOIRE - Respecter cet ordre (harmonisé avec Claude Code) :**
