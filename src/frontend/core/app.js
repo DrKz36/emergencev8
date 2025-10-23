@@ -567,6 +567,13 @@ export class App {
             console.log('[App] Thread courant archivé, création d\'un nouveau thread frais');
             needsNewThread = true;
             currentId = null; // Reset pour créer un nouveau thread
+
+            // Notification visuelle pour l'utilisateur
+            this.eventBus?.emit?.('ui:toast', {
+              kind: 'info',
+              text: '💬 Nouvelle conversation créée (la précédente était archivée)',
+              duration: 4000
+            });
           }
         } catch (err) {
           // Si le thread n'est plus accessible, on en créera un nouveau
