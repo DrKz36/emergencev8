@@ -9,6 +9,7 @@ import { settingsUI } from './settings-ui.js';
 import { settingsSecurity } from './settings-security.js';
 import { settingsRAG } from './settings-rag.js';
 import versionInfo from '../../version.js';
+import logoUrl from '../../../../assets/emergence_logo.png';
 
 export class Settings {
     constructor() {
@@ -63,7 +64,7 @@ export class Settings {
 
                 <!-- ÉMERGENCE Brand Panel -->
                 <div class="emergence-brand-panel">
-                    <img src="/assets/emergence_logo.png" alt="ÉMERGENCE" class="brand-logo">
+                    <img src="${logoUrl}" alt="ÉMERGENCE" class="brand-logo">
                     <div class="brand-info">
                         <h2 class="brand-title">ÉMERGENCE V8</h2>
                         <p class="brand-version">${versionInfo.fullVersion}</p>

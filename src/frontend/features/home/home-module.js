@@ -6,6 +6,7 @@
 import { EVENTS } from '../../shared/constants.js';
 import { t } from '../../shared/i18n.js';
 import { api } from '../../shared/api-client.js';
+import logoUrl from '../../../../assets/emergence_logo.png';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -149,7 +150,7 @@ export class HomeModule {
 
                 <span class="home__emblem-spark"></span>
 
-                <img src="/assets/emergence_logo.png" alt="${brandAlt}" class="home__logo" loading="lazy" />
+                <img src="${logoUrl}" alt="${brandAlt}" class="home__logo" loading="lazy" />
 
               </div>
 
