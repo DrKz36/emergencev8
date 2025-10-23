@@ -342,7 +342,7 @@ class DatabaseManager:
 
     # --------------------------------------------
 
-    async def save_session(self, session_data: "Session"):
+    async def save_session(self, session_data: "Session") -> None:
         history_json = json.dumps(getattr(session_data, "history", []))
         metadata = getattr(session_data, "metadata", {})
         summary = metadata.get("summary")

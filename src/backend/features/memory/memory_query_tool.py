@@ -572,7 +572,7 @@ class MemoryQueryTool:
             cutoff_this_month = now - timedelta(days=30)
 
             # Grouper par période
-            timeline: dict[str, list] = {
+            timeline: dict[str, list[Any]] = {
                 "this_week": [],
                 "last_week": [],
                 "this_month": [],

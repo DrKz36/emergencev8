@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Any
 
 from backend.core.database.manager import DatabaseManager
 from .models import UserSession, FeatureUsage, UserError
@@ -302,7 +302,7 @@ class UsageRepository:
 
     async def get_top_features(
         self, start: datetime, end: datetime, limit: int = 10
-    ) -> List[dict]:
+    ) -> List[dict[str, Any]]:
         """Top N features utilisées"""
         try:
             rows = await self.db.fetch_all(

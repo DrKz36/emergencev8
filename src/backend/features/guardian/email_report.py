@@ -7,7 +7,7 @@ UPDATED 2025-10-20: Now uses Cloud Storage for report persistence (Cloud Run sta
 """
 import os
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 import logging
 
 from backend.features.auth.email_service import EmailService
@@ -38,7 +38,7 @@ class GuardianEmailService:
         self.email_service = EmailService()
         logger.info(f"GuardianEmailService initialized with Cloud Storage (fallback: {self.reports_dir})")
 
-    def load_report(self, report_name: str) -> Optional[Dict]:
+    def load_report(self, report_name: str) -> Optional[Dict[str, Any]]:
         """
         Load a single Guardian report from Cloud Storage (or local fallback)
 
@@ -51,7 +51,7 @@ class GuardianEmailService:
         # Use Cloud Storage service (handles fallback automatically)
         return self.storage_service.download_report(report_name)
 
-    def load_all_reports(self) -> Dict[str, Optional[Dict]]:
+    def load_all_reports(self) -> Dict[str, Optional[Dict[str, Any]]]:
         """
         Load all standard Guardian reports
 

@@ -4,7 +4,7 @@
 # - Endpoints: GET / (liste), GET /{debate_id} (detail)
 import logging
 from enum import Enum
-from typing import List
+from typing import List, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from dependency_injector.wiring import Provide, inject
@@ -22,7 +22,7 @@ TAGS: List[str | Enum] = ["Debate"]  # optionnel, pour la doc si activee
 async def get_debate_details(
     debate_id: str,
     debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service]),
-):
+) -> dict[str, Any]:
     """Recupere les details d'un debat actif (structure Pydantic serialisable)."""
     session = getattr(debate_service, "active_debates", {}).get(debate_id)
     if not session:
@@ -34,7 +34,7 @@ async def get_debate_details(
 @inject
 async def list_active_debates(
     debate_service: DebateService = Depends(Provide[ServiceContainer.debate_service]),
-):
+) -> dict[str, list[str]]:
     """Liste des debats actuellement en cours (vue synthetique)."""
     active = getattr(debate_service, "active_debates", {})
     return {

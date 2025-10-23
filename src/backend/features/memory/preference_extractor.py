@@ -111,7 +111,7 @@ class PreferenceExtractor:
         self.stats = {"extracted": 0, "filtered": 0, "classified": 0}
 
     async def extract(
-        self, messages: List[Dict], user_sub: Optional[str] = None, thread_id: Optional[str] = None, user_id: Optional[str] = None
+        self, messages: List[Dict[str, Any]], user_sub: Optional[str] = None, thread_id: Optional[str] = None, user_id: Optional[str] = None
     ) -> List[PreferenceRecord]:
         """
         Extrait préférences/intentions depuis messages.

@@ -8,7 +8,7 @@ Endpoints:
 """
 
 import os
-from typing import Optional, Any
+from typing import Optional
 
 from fastapi import APIRouter, Request, Header, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse

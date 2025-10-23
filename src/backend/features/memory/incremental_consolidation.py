@@ -42,7 +42,7 @@ class IncrementalConsolidator:
         async with self._counter_lock:
             return self.message_counters.get(key, 0)
 
-    async def reset_counter(self, key: str):
+    async def reset_counter(self, key: str) -> None:
         """Remet compteur à zéro de manière thread-safe"""
         async with self._counter_lock:
             self.message_counters[key] = 0

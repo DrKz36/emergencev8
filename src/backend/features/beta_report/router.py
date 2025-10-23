@@ -186,7 +186,7 @@ class BetaInvitationRequest(BaseModel):
 
 
 @router.post("/beta-invite")
-async def send_beta_invitations(request: BetaInvitationRequest):
+async def send_beta_invitations(request: BetaInvitationRequest) -> dict[str, Any]:
     """
     Send beta invitation emails to a list of users
 
@@ -239,7 +239,7 @@ async def send_beta_invitations(request: BetaInvitationRequest):
 
 
 @router.post("/beta-report")
-async def submit_beta_report(report: BetaReportRequest):
+async def submit_beta_report(report: BetaReportRequest) -> dict[str, str]:
     """
     Endpoint to submit beta test report.
     Sends the report via email to gonzalefernando@gmail.com

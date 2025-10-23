@@ -45,7 +45,7 @@ class BM25Scorer:
         self.k1 = k1
         self.b = b
         self.corpus = corpus
-        self.doc_freqs: List[Counter] = []
+        self.doc_freqs: List[Counter[str]] = []
         self.idf: Dict[str, float] = {}
         self.doc_len: List[int] = []
         self.avgdl: float = 0.0

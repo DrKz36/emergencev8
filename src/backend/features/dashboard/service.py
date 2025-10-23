@@ -33,7 +33,7 @@ class DashboardService:
     # Helpers internes
     # -------------------------
     @staticmethod
-    def _coerce_list(maybe_list) -> List[Any]:
+    def _coerce_list(maybe_list: Any) -> List[Any]:
         if isinstance(maybe_list, list):
             return maybe_list
         return [] if maybe_list is None else list(maybe_list)

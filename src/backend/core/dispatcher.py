@@ -1,6 +1,7 @@
 ﻿# src/backend/core/dispatcher.py
 import json
 import logging
+from typing import Any
 from fastapi import WebSocket
 
 from backend.features.chat.service import ChatService
@@ -52,7 +53,7 @@ class WebSocketDispatcher:
                 exc_info=True,
             )
 
-    async def _handle_chat_message(self, session_id: str, payload: dict) -> None:
+    async def _handle_chat_message(self, session_id: str, payload: dict[str, Any]) -> None:
         """Gere les messages destines au service de chat."""
         try:
             chat_request = ChatMessage(**payload)
@@ -67,7 +68,7 @@ class WebSocketDispatcher:
                 payload,
             )
 
-    async def _handle_debate_create(self, session_id: str, payload: dict) -> None:
+    async def _handle_debate_create(self, session_id: str, payload: dict[str, Any]) -> None:
         """Gere les demandes de creation de debat."""
         try:
             debate_config_model = DebateConfigModel(**payload)

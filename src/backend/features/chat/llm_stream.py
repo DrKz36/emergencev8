@@ -31,7 +31,7 @@ class LLMStreamer:
         self._rate_base_delay = float(base_delay)
         self._rate_max_retries = int(max_retries)
 
-    async def with_rate_limit_retries(self, provider: str, op_coro_factory):
+    async def with_rate_limit_retries(self, provider: str, op_coro_factory: Any) -> Any:
         max_tries = max(1, self._rate_max_retries + 1)
         for attempt in range(max_tries):
             try:
