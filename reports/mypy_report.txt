@@ -1,14 +1,1 @@
-src\backend\features\guardian\storage_service.py:20:5: error: Module "google.cloud" has no attribute "storage"  [attr-defined]
-src\backend\features\chat\rag_cache.py:218:38: error: Item "Awaitable[Any]" of "Awaitable[Any] | Any" has no attribute "get"  [union-attr]
-src\backend\features\chat\rag_cache.py:219:40: error: Item "Awaitable[Any]" of "Awaitable[Any] | Any" has no attribute "get"  [union-attr]
-src\backend\features\chat\rag_cache.py:244:52: error: Argument 1 to "loads" has incompatible type "Awaitable[Any] | Any"; expected "str | bytes | bytearray"  [arg-type]
-src\backend\features\chat\rag_cache.py:268:28: error: "Awaitable[Any]" object is not iterable  [misc]
-src\backend\features\chat\rag_cache.py:270:17: error: Unsupported operand types for + ("int" and "Awaitable[Any]")  [operator]
-src\backend\features\chat\rag_cache.py:270:17: note: Right operand is of type "Awaitable[Any] | Any"
-src\backend\features\gmail\oauth_service.py:17: error: Unused "type: ignore" comment  [unused-ignore]
-src\backend\features\gmail\oauth_service.py:17:1: error: Skipping analyzing "google_auth_oauthlib.flow": module is installed, but missing library stubs or py.typed marker  [import-untyped]
-src\backend\features\gmail\oauth_service.py:17:1: note: Error code "import-untyped" not covered by "type: ignore" comment
-src\backend\features\gmail\oauth_service.py:17:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-src\backend\features\gmail\oauth_service.py:131:9: error: Module "google.cloud" has no attribute "firestore"  [attr-defined]
-src\backend\features\gmail\oauth_service.py:160:9: error: Module "google.cloud" has no attribute "firestore"  [attr-defined]
-Found 10 errors in 3 files (checked 131 source files)
+Success: no issues found in 131 source files
