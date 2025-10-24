@@ -14,7 +14,7 @@ from typing import Any, Optional
 
 import httpx
 
-from ...core.database import DatabaseManager
+from ...core.database.manager import DatabaseManager
 from .models import WebhookEventPayload
 
 logger = logging.getLogger(__name__)

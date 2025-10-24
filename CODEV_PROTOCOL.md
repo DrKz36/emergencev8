@@ -92,7 +92,8 @@ Lorsqu'un agent termine une session de travail, il doit :
 **Via Git et documentation** (pas de canal externe requis) :
 - **Commits atomiques** : messages clairs (ex: `feat: add topic shift detection in MemoryAnalyzer`).
 - **Branches** : nommage explicite (`feat/memory-proactive-enhancements-20251004`).
-- **Passation** : `docs/passation.md` (journal chronologique).
+- **Passation** : `docs/passation.md` (journal chronologique, **max 48h**, archiver ancien).
+- **Archives** : `docs/archives/passation_archive_*.md` (sessions >48h).
 - **Architecture** : `docs/architecture/` (mise à jour si flux/composants changent).
 
 **Lecture obligatoire avant toute session** (ordre harmonisé avec CLAUDE.md) :
@@ -100,8 +101,14 @@ Lorsqu'un agent termine une session de travail, il doit :
 2. **`docs/MYPY_STYLE_GUIDE.md`** ⭐ — Guide mypy (type hints OBLIGATOIRES pour code Python).
 3. `AGENT_SYNC.md` (état actuel du dépôt, progression, déploiement).
 4. `CODEV_PROTOCOL.md` (ce fichier) ou `CODEX_GPT_GUIDE.md` (si Codex).
-4. `docs/passation.md` (dernières 3 entrées minimum).
-5. `git status` et `git log --oneline -10` (état Git).
+5. `docs/passation.md` (dernières 48h uniquement - archives dans `docs/archives/` si besoin).
+6. `git status` et `git log --oneline -10` (état Git).
+
+**⚠️ RÈGLE ARCHIVAGE (NEW - 2025-10-24):**
+- Avant chaque session, si `docs/passation.md` contient des entrées >48h, archiver dans `docs/archives/passation_archive_YYYY-MM-DD_to_YYYY-MM-DD.md`
+- Garder uniquement les entrées des 48 dernières heures dans `passation.md`
+- Format synthétique : 1 entrée par session (5-10 lignes max)
+- Lien vers archives dans header passation.md
 
 ### 2.3 Gestion des conflits
 

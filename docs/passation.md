@@ -11198,389 +11198,139 @@ git push
 ### Blocages
 
 Aucun. Environnement opérationnel, tests OK, prêt pour commit.
+# 📝 Journal de Passation Inter-Agents
+
+**Dernière mise à jour:** 2025-10-24 19:30 CET
+**Période couverte:** Dernières 48 heures (23-24 octobre)
+**Archive complète:** [docs/archives/passation_archive_2025-10-14_to_2025-10-22.md](archives/passation_archive_2025-10-14_to_2025-10-22.md)
 
 ---
 
-## [2025-10-24 05:13 CET] — Agent: Claude Code Local
+## 🔄 Sessions Actives - 24 Octobre 2025
 
-### Fichiers modifiés
-- `claude-plugins/integrity-docs-guardian/scripts/setup_guardian.sh`
-- `docs/GUARDIAN_COMPLETE_GUIDE.md`
-- `AGENT_SYNC.md`
-- `docs/passation.md`
+### [14:00 CET] Claude Code - Fix test_unified_retriever mock obsolete
+- **Fichiers:** `tests/backend/features/test_unified_retriever.py`
+- **Problème:** Test skippé, Mock sync au lieu d'AsyncMock
+- **Fix:** Mock() → AsyncMock() pour query_weighted()
+- **Résultat:** Tests skippés 6 → 5 ✅
 
-### Contexte
+### [13:40 CET] Claude Code - Audit post-merge complet
+- **Rapport:** `docs/audits/AUDIT_POST_MERGE_20251024.md`
+- **PRs auditées:** #12 (Webhooks), #11/#10/#7 (Cockpit SQL), #8 (Sync)
+- **Verdict:** ⚠️ Env tests à configurer (deps manquantes local)
+- **Code quality:** ✅ Ruff OK, ✅ Architecture OK, ⚠️ Tests KO (env)
 
-**🤝 Handoff Claude Code Web → Claude Code Local**
+### [18:45 CET] Claude Code - Documentation sync + commit propre
+- **Fichiers:** `AGENT_SYNC.md`, `docs/passation.md`
+- **Actions:** Mise à jour docs inter-agents + commit propre dépôt
 
-Session démarrée suite à demande utilisateur "Lis HANDOFF_TO_LOCAL_CLAUDE.md et fais ce qui est marqué". Fichier trouvé dans branche `claude/web-interface-work-011CUREAb6uez6CSUgh3aPxH` (Claude Web).
+### [17:30 CET] Codex GPT - Résolution conflits merge
+- **Fichiers:** `AGENT_SYNC.md`, `docs/passation.md`
+- **Actions:** Consolidation entrées sessions 23-24/10 sans perte info
 
-**Mission de Claude Web (2025-10-24 02:40 UTC) :**
-- Audit complet repo
-- Guardian hooks Linux installés
-- Dependencies core installées (httpx, fastapi, pydantic)
-- **Blocage** : pas gcloud CLI, deps lourdes impossibles (torch ~800MB, chromadb)
-- Passation vers Claude Local pour finalisation
+### [16:00 CET] Claude Code - Implémentation Webhooks (P3.11) ✅
+- **Branche:** `claude/implement-webhooks-011CURfewj5NWZskkCoQcHi8`
+- **Fichiers créés:** Backend (router, service, delivery, events, models) + Frontend (settings-webhooks.js)
+- **Features:** CRUD webhooks, HMAC SHA256, retry 3x, 5 event types
+- **Tests:** ✅ Ruff OK, ✅ Build OK, ✅ Type hints complets
 
-### Actions réalisées
+### [11:45 CET] Codex GPT - Branche codex/codex-gpt
+- **Actions:** Création branche dédiée pour futures sessions (fin work)
 
-**1. Fetch branche Claude Web**
-```bash
-git fetch --all --prune
-# Nouvelle branche: claude/web-interface-work-011CUREAb6uez6CSUgh3aPxH
-# Commits: 5e04e1b (Guardian Linux), 1a62135 (HANDOFF doc), +8 autres
-```
+### [11:30 CET] Claude Code - Fix Cockpit agents fantômes + graphiques vides
+- **Fichiers:** `service.py`, `timeline_service.py`, `cockpit-charts.js`
+- **Bugs fixés:**
+  - Agents fantômes dans Distribution (whitelist stricte ajoutée)
+  - Distribution par Threads vide (fetch + backend metric ajouté)
+- **Tests:** ✅ npm build, ✅ ruff, ✅ mypy
 
-**2. Récupération Guardian hooks Linux**
-```bash
-git checkout origin/claude/web-interface-work-011CUREAb6uez6CSUgh3aPxH -- \
-  claude-plugins/integrity-docs-guardian/scripts/setup_guardian.sh
-```
-- Script bash 231 lignes récupéré
-- Hooks Git Windows PowerShell déjà actifs (pas besoin de réinstaller)
+### [06:15 CET] Claude Code - Fix 3 bugs SQL critiques Cockpit
+- **Fichiers:** `timeline_service.py`, `router.py`
+- **Bugs fixés:**
+  - Bug SQL `no such column: agent` (agent_id)
+  - Bug filtrage session_id trop restrictif
+  - Bug alias SQL manquant
+- **Résultat:** Graphiques Distribution fonctionnels ✅
 
-**3. Validation environnement local complet**
-
-**Différence majeure vs Claude Web (cloud sandbox) :**
-
-| Item | Claude Web ❌ | Claude Local ✅ |
-|------|---------------|-----------------|
-| torch | ModuleNotFoundError | 2.7.0+cpu |
-| chromadb | Non installable (800MB) | 0.5.23 |
-| pyotp, openai, anthropic | Manquants | Installés |
-| gcloud CLI | Absent | Disponible |
-| pytest complet | Crash (deps manquantes) | 411 PASSED |
-
-**Tests backend :**
-```bash
-pytest tests/backend/ -v
-# ✅ 411 PASSED, 10 skipped (57.55s)
-# Vs Claude Web: pytest crash avec ModuleNotFoundError: pyotp
-```
-
-Test `test_debate_say_once_short_response` mentionné par Claude Web n'existe plus (probablement renommé/supprimé).
-
-**4. Production monitoring (impossible pour Claude Web)**
-
-```bash
-gcloud config get-value project
-# emergence-469005 ✅
-
-curl https://emergence-app-486095406755.europe-west1.run.app/ready
-# {"ok": true, "db": "up", "vector": "up"} ✅
-
-gcloud logging read "resource.type=cloud_run_revision" --limit 30
-# Errors: 0, Warnings: 0 ✅
-```
-
-**Résultat :** Production OK (plus DEGRADED). Les 4 warnings signalés par Claude Web ont été résolus par les fixes dashboard/timeline du commit précédent (3eafd11).
-
-**5. Documentation collaboration Web ↔ Local**
-
-Ajout section **3.4 Guardian sur Différents Environnements** dans [docs/GUARDIAN_COMPLETE_GUIDE.md](docs/GUARDIAN_COMPLETE_GUIDE.md:323-418) :
-
-**Environnements documentés :**
-
-| Environnement | Script | Hooks | Agents | gcloud | Deps lourdes |
-|---------------|--------|-------|--------|--------|--------------|
-| **Windows Local** | setup_guardian.ps1 | ✅ | ✅ | ✅ | ✅ torch/chromadb |
-| **Linux/macOS Local** | setup_guardian.sh | ✅ | ✅ | ✅ | ✅ torch/chromadb |
-| **Claude Web** | setup_guardian.sh | ⚠️ basique | ❌ deps manquantes | ❌ | ❌ sandbox limité |
-
-**Workflow collaboration :**
-1. Claude Web → Dev initial, audit, fixes légers, `HANDOFF_TO_LOCAL_CLAUDE.md`
-2. Claude Local → Validation complète (deps, tests, prod, déploiement)
-
-**Cas d'usage :**
-- Claude Web : modifications légères, documentation, audits rapides
-- Claude Local : features complexes, tests E2E, monitoring prod, déploiements
-
-### Résultats
-
-**Handoff complété** 🔥🤝
-
-Toutes les missions de Claude Web validées :
-
-| Mission | Claude Web | Claude Local |
-|---------|------------|--------------|
-| Guardian Linux | ✅ Créé (231 LOC) | ✅ Récupéré + validé |
-| Dependencies | ⚠️ Core only (httpx, fastapi) | ✅ Complètes (torch, chromadb, pyotp) |
-| Tests backend | ❌ Crash (ModuleNotFoundError) | ✅ 411 PASSED (100%) |
-| Production | ❌ Pas gcloud CLI | ✅ OK (0 errors, 0 warnings) |
-| Documentation | ✅ HANDOFF créé | ✅ Guardian guide complété |
-
-**Production status évolution :**
-- Claude Web (02:40 UTC) : DEGRADED (0 errors, 4 warnings)
-- Claude Local (05:13 CET) : OK (0 errors, 0 warnings) - résolu par commit 3eafd11
-
-### Tests
-
-**Backend :**
-- ✅ pytest : 411/421 PASSED (97.6%, 57.55s)
-- ✅ mypy : 0 erreurs
-- ✅ Dependencies : torch 2.7.0, chromadb 0.5.23, pyotp, openai, anthropic
-
-**Production :**
-- ✅ Endpoint `/ready` : {"ok": true, "db": "up", "vector": "up"}
-- ✅ Cloud Run logs : 0 errors, 0 warnings (30 derniers logs)
-- ✅ gcloud CLI opérationnel (projet emergence-469005)
-
-### Travail de Claude Code Web pris en compte
-
-Session Claude Web (2025-10-24 02:40 UTC, commit 5e04e1b) :
-
-**Réalisations :**
-- Audit complet repo (git status, deps, tests, prod)
-- Guardian Linux : `setup_guardian.sh` 231 lignes bash créé
-- Hooks Git : pre-commit, post-commit, pre-push installés
-- Dependencies core : httpx, fastapi, pydantic, pytest, aiosqlite, bcrypt, pyjwt
-- Documentation : `HANDOFF_TO_LOCAL_CLAUDE.md` 350+ lignes (instructions détaillées)
-
-**Limitations cloud sandbox documentées :**
-- ❌ torch non installable (800MB)
-- ❌ chromadb non installable
-- ❌ pyotp, qrcode, PyMuPDF, google-cloud-* manquants
-- ❌ gcloud CLI absent → monitoring prod impossible
-- pytest crash → validation tests impossible
-
-**Handoff exécuté :**
-- Toutes instructions suivies
-- Environnement local complet validé
-- Production OK (DEGRADED résolu)
-- Documentation collaboration Web ↔ Local complétée
-
-### Prochaines actions recommandées
-
-**PRIORITÉ 1 - Commit & push (immédiat) :**
-```bash
-git add claude-plugins/integrity-docs-guardian/scripts/setup_guardian.sh \
-        docs/GUARDIAN_COMPLETE_GUIDE.md \
-        AGENT_SYNC.md \
-        docs/passation.md
-
-git commit -m "docs(guardian): Add multi-environment support (Web/Local)
-
-- Récupéré setup_guardian.sh depuis branche Claude Web
-- Ajout section 3.4 dans GUARDIAN_COMPLETE_GUIDE.md
-- Documentation collaboration Claude Code Web ↔ Local
-- Validation complète environnement local (deps, tests, prod)
-
-Handoff Claude Web → Local complété:
-- Dependencies: torch/chromadb/pyotp OK (vs cloud sandbox limité)
-- Tests: 411 PASSED (vs pytest crash cloud)
-- Production: OK 0 errors (vs DEGRADED résolu)
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
-"
-
-git push
-```
-
-**PRIORITÉ 2 - Merge branche Claude Web (optionnel) :**
-
-Analyser les autres commits de la branche avant merge :
-```bash
-git log origin/claude/web-interface-work-011CUREAb6uez6CSUgh3aPxH --oneline -10
-# 5e04e1b Guardian Linux + handoff
-# 1a62135 HANDOFF doc
-# baf8109 Passation session (déjà dans main)
-# a616ae9 Fix documents layout (déjà dans main)
-# ...
-
-# Si commits utiles non mergés:
-git merge --no-ff origin/claude/web-interface-work-011CUREAb6uez6CSUgh3aPxH
-```
-
-Verdict : Commits 5e04e1b (Guardian) et 1a62135 (HANDOFF) sont les seuls nouveaux. On a déjà récupéré `setup_guardian.sh`. Le `HANDOFF_TO_LOCAL_CLAUDE.md` est optionnel (doc de passation, pas de code).
-
-**PRIORITÉ 3 - Template handoff standardisé (futur) :**
-
-Créer `.sync/templates/agent-handoff.md` pour passations futures :
-```markdown
-# HANDOFF: [Agent Source] → [Agent Destination]
-
-**Date:**
-**De:**
-**À:**
-**Branche:**
-**Commit:**
-
-## ✅ CE QUE J'AI FAIT
-## 🎯 TON BOULOT
-## 📋 CHECKLIST COMPLÈTE
-## 🔥 SPÉCIFICITÉS TON ENVIRONNEMENT
-## 📝 DOCUMENTATION À ADAPTER
-```
-
-### Blocages
-
-Aucun. Handoff complété, environnement validé, documentation à jour, prêt pour commit.
+### [04:12 CET] Claude Code - Déploiement production stable
+- **Service:** `emergence-app` (europe-west1)
+- **URL:** https://emergence-app-486095406755.europe-west1.run.app
+- **Status:** ✅ Production stable
 
 ---
 
-## [2025-10-24 05:31 CET] — Agent: Claude Code Local
+## 🔄 Sessions Clés - 23 Octobre 2025
 
-### Fichiers modifiés
-- `HANDOFF_TO_LOCAL_CLAUDE.md` (récupéré via merge Claude Web)
-- `AGENT_SYNC.md`
-- `docs/passation.md`
+### [18:38 CET] Claude Code - Fix 4 bugs module Dialogue
+- **Fichiers:** `chat.js`, `chat.css`
+- **Bugs fixés:**
+  - Bouton "Nouvelle conversation" décalé (centrage CSS)
+  - Barre horizontale overflow
+  - Modal s'affiche à chaque reconnexion (fix condition mount)
+  - Double scroll (fix overflow app-content)
+- **Bug en cours:** Réponses triplées (investigation logs nécessaire)
 
-### Contexte
+### [18:28 CET] Claude Code - Modal démarrage Dialogue + Fix routing agents
+- **Fichiers:** `chat.js`
+- **Features:**
+  - Pop-up modal au démarrage (Reprendre / Nouvelle conversation)
+  - Fix routing réponses agents (bucketTarget = sourceAgentId)
+- **Méthodes ajoutées:** `_showConversationChoiceModal()`, `_resumeLastConversation()`, `_createNewConversation()`
 
-**Mission : Nettoyage automatique complet du repo Git**
+### [18:18 CET] Claude Code - Fix bugs UI homepage auth
+- **Fichiers:** `home.css`
+- **Bugs fixés:**
+  - Logo pas centré dans cercle (position absolute + margin négatif)
+  - Double scroll dégueulasse (overflow: hidden)
 
-User demande "fais tout en auto!" pour merger toutes les branches et nettoyer le repo. Toutes les branches non mergées sont 500-633 commits en retard (septembre 2025). Décision : archiver au lieu de merger (éviter conflits + code obsolète).
-
-### Actions réalisées
-
-1. Merge branche Claude Web (`255c29b`)
-2. Archivage 13 branches obsolètes (tags `archive/*`)
-3. Suppression 13 branches locales + 16 distantes origin
-4. Repo propre : 1 branche locale (`main`), ~9 distantes restantes
-
-### Résultats
-
-**Nettoyage complet réussi** 🔥🧹
-
-- ✅ Branches locales : 1 seule (`main`)
-- ✅ Branches distantes origin : ~9 restantes (propres)
-- ✅ Tags archive : 13 créés (code préservé)
-- ✅ HANDOFF_TO_LOCAL_CLAUDE.md récupéré (template passation)
-
-### Tests
-- ✅ Guardian pre-push : OK (8 exécutions)
-- ✅ Production : healthy
-
-### Travail de Claude Code Web pris en compte
-- Branche mergée dans main
-- Template HANDOFF récupéré
-
-### Blocages
-Aucun.
+### Sessions multiples (15:20 - 19:05 CET)
+- **Codex GPT:** Travaux frontend, documentation Codex, coordination Guardian
+- **Claude Code:** Refactor Guardian v3.0.0, déploiement prod, fixes critiques OOM, OAuth Gmail
 
 ---
-## 📝 Passation — 2025-10-24 (Claude Code Web) → Codex GPT
 
-**Agent:** Claude Code Web
-**Timestamp:** 2025-10-24 18:45 CET
-**Branche:** `claude/implement-webhooks-011CURfewj5NWZskkCoQcHi8`
-**Status:** ✅ Feature complète + pushed
+## 📊 Résumé de la Période
 
-### 🎯 Tâche Complétée : Webhooks et Intégrations (P3.11)
+**Progression Roadmap:** 15/20 features (75%)
+- ✅ P0/P1/P2 Features: 9/9 (100%)
+- ✅ P1/P2 Maintenance: 5/7 (71%)
+- ✅ P3 Features: 1/4 (Webhooks terminés)
+- ⏳ P3 Maintenance: 0/2
 
-**Objectif:**
-Implémenter système de webhooks pour permettre intégrations externes (Slack, Discord, Zapier, etc.)
+**PRs Mergées:**
+- #12: Webhooks & Intégrations ✅
+- #11, #10, #7: Fix Cockpit SQL ✅
+- #8: Sync commits ✅
 
-**Implémentation réalisée:**
+**Production:**
+- ✅ Service stable (emergence-app europe-west1)
+- ✅ Guardian système actif (pre-commit hooks)
+- ✅ Tests: 471 passed, 13 failed (ChromaDB env), 6 errors
 
-1. **Backend (Python):**
-   - Migration SQL `010_add_webhooks_table.sql` (tables + indexes)
-   - Models Pydantic complets (WebhookEvent, WebhookCreatePayload, etc.)
-   - Service CRUD (create, list, update, delete, stats)
-   - Event dispatcher (thread.created, message.sent, analysis.completed, debate.completed, document.uploaded)
-   - Delivery service: HTTP POST + signature HMAC SHA256 + retry 3x (5s, 15s, 60s)
-   - Router REST `/api/webhooks/*` avec auth JWT
-
-2. **Frontend (JavaScript):**
-   - Module `settings-webhooks.js` (UI complète)
-   - Intégration dans Settings > Webhooks (nouvel onglet)
-   - Modal création webhook + liste cards + deliveries logs + stats temps réel
-   - Empty state + loading states + error handling
-
-3. **Intégration:**
-   - `main.py`: Router monté, delivery service init/shutdown
-   - Type hints complets (mypy compliant)
-
-**Fichiers créés (8):**
-- `migrations/010_add_webhooks_table.sql`
-- `src/backend/features/webhooks/__init__.py`
-- `src/backend/features/webhooks/models.py`
-- `src/backend/features/webhooks/service.py`
-- `src/backend/features/webhooks/events.py`
-- `src/backend/features/webhooks/delivery.py`
-- `src/backend/features/webhooks/router.py`
-- `src/frontend/features/settings/settings-webhooks.js`
-
-**Fichiers modifiés (2):**
-- `src/backend/main.py` (router + init/shutdown)
-- `src/frontend/features/settings/settings-main.js` (onglet Webhooks)
-
-**Tests:**
-- ✅ ruff check: All checks passed
-- ✅ npm run build: Build successful (1.32s)
-- ✅ Type hints complets (mypy compliant)
-
-**Acceptance Criteria:**
-- ✅ Webhooks CRUD complets (create, list, update, delete)
-- ✅ Delivery automatique events sélectionnés
-- ✅ Signature HMAC vérifiable côté destinataire (exemple fourni)
-- ✅ Retry automatique 3x si échec (5xx, timeout)
-- ✅ UI intuitive (modal création, liste, stats)
-
-### 📊 Résultats
-
-**Durée:** 1 session (estimation initiale: 3 jours)
-**LOC ajoutées:** ~1749 lignes (backend + frontend + tests)
-**Progression roadmap:** 15/20 (75%) - P3 Features: 1/4 complété
-
-### 🔄 Prochaines Actions Recommandées
-
-1. **Codex GPT** - PWA Mode Hors Ligne (P3.10) en cours
-2. **Tests E2E** - Tester webhooks complets avec vrai endpoint externe
-3. **Documentation utilisateur** - Guide setup webhooks Slack/Discord
-4. **Merge PR** - Demander review FG avant merge vers main
-
-### 💡 Notes Techniques
-
-**Event dispatcher:**
-- Singleton global `get_webhook_dispatcher()`
-- Fire and forget (asyncio.create_task)
-- Delivery service injectable
-
-**Delivery retry:**
-- Max 3 attempts (1, 2, 3)
-- Delays: 5s, 15s, 60s
-- Retry si 5xx ou timeout
-- Pas de retry si 4xx (client error)
-
-**HMAC signature:**
-```python
-signature = hmac.new(
-    secret.encode('utf-8'),
-    payload.encode('utf-8'),
-    hashlib.sha256
-).hexdigest()
-```
-
-Header envoyé: `X-Webhook-Signature: <signature>`
-
-**Frontend:**
-- Pas de dependency framework (Vanilla JS)
-- Toast notifications via EventBus global
-- Modal overlay avec backdrop blur
-
-### ⚠️ Points d'Attention
-
-1. **Migration 010** doit être exécutée avant déploiement
-2. **Delivery service** stocké dans `app.state._webhook_delivery_service` (shutdown propre)
-3. **Events** doivent être émis manuellement dans le code (ex: chat.router après message.sent)
-4. **HMAC secret** généré automatiquement (non modifiable, stocké en DB)
-
-### 🚀 Commit
-
-```
-feat(webhooks): Système de webhooks complet avec intégrations externes (P3.11)
-
-Implémentation complète du système de webhooks pour intégrations externes
-(Slack, Discord, Zapier, etc.) avec delivery HMAC signé et retry automatique.
-```
-
-**Commit SHA:** 6ecc604
-**Branch pushed:** `claude/implement-webhooks-011CURfewj5NWZskkCoQcHi8`
+**Tâches en cours:**
+- Codex GPT: PWA Mode Hors Ligne (P3.10) - branch `feature/pwa-offline`
+- Claude Code: Monitoring, maintenance, support
 
 ---
-**Signature:** Claude Code Web
-**Prochaine session:** Codex GPT (PWA)
 
+## 🔍 Notes de Collaboration
+
+**Branches actives:**
+- `main` : Production stable
+- `feature/pwa-offline` : Codex GPT (PWA)
+
+**Règles de travail:**
+1. Tester localement AVANT push (npm + pytest)
+2. Documenter dans passation.md après session
+3. Créer PR vers main quand feature complète
+4. Ne PAS merger sans validation FG
+
+**Synchronisation:**
+- AGENT_SYNC.md : État temps réel des tâches
+- passation.md : Journal sessions (max 48h)
+- Archives : docs/archives/ (>48h)
+
+---
+
+**Pour consulter l'historique complet (14-22 octobre):**
+Voir [docs/archives/passation_archive_2025-10-14_to_2025-10-22.md](archives/passation_archive_2025-10-14_to_2025-10-22.md)
