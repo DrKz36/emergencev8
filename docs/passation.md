@@ -1,3 +1,73 @@
+## [2025-10-24 18:45 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+L'utilisateur a demandé de mettre à jour la documentation de coopération inter-agents (AGENT_SYNC.md + docs/passation.md) et de faire un commit push Git propre pour nettoyer le dépôt local.
+
+### Travail réalisé
+1. **Lecture état actuel**
+   - `AGENT_SYNC.md` : 233 lignes, dernière session Codex GPT 17:30 (résolution conflits merge)
+   - `docs/passation.md` : 449KB (énorme), 5 entrées du 2025-10-24
+   - Git status : 2 fichiers modifiés (AGENT_SYNC.md, passation.md), 2 scripts Python non versionnés
+
+2. **Mise à jour documentation**
+   - Ajout session courante 18:45 CET dans `AGENT_SYNC.md`
+   - Ajout session courante 18:45 CET dans `docs/passation.md` (en tête de fichier)
+   - Documentation complète des actions (lecture, édition, commit)
+
+3. **Commit Git propre**
+   - Staging des 2 fichiers modifiés (`git add AGENT_SYNC.md docs/passation.md`)
+   - Commit avec message conventionnel `docs(passation): Session doc sync + commit propre depot`
+   - Push vers origin/chore/sync-local-commits
+
+**Note importante:**
+- Les 2 scripts Python dans `scripts/` (`debug_passation.py`, `update_passation_insert.py`) sont des scripts temporaires de debug/analyse, non versionnés volontairement (pas dans .gitignore, juste pas staged).
+- Si besoin de les versionner plus tard : `git add scripts/*.py`
+
+### Tests
+- ⚠️ Non lancés (documentation uniquement, pas de code applicatif modifié)
+
+### Prochaines actions recommandées
+1. Continuer les travaux sur tâches P3 assignées :
+   - **Codex GPT** : PWA Mode Hors Ligne (branche `feature/pwa-offline`)
+   - **Claude Web** : Webhooks Intégrations (branche `feature/webhooks-integrations`)
+2. Lancer Guardian si besoin d'audit complet : `pwsh -File claude-plugins\integrity-docs-guardian\scripts\run_audit.ps1`
+3. Vérifier que les branches features sont à jour avec `main`
+
+### Blocages
+Aucun.
+
+---
+
+## [2025-10-24 17:30 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+AutoSync bloqué par des marqueurs de fusion sur la documentation partagée (`AGENT_SYNC.md`, `docs/passation.md`). Objectif : restaurer les entrées Codex/Claude des 23-24/10 sans perte d'information.
+
+### Travail réalisé
+- Fusion manuelle des entrées Codex/Claude (23-24/10) et suppression des marqueurs de conflit.
+- Ajout de cette entrée pour tracer la résolution et signaler que seul le périmètre documentation est impacté.
+- Aucun changement applicatif ni modification de configuration.
+
+### Tests
+- ⚠️ Tests non lancés (documentation uniquement).
+
+### Prochaines actions recommandées
+1. Reprendre les développements PWA / Webhooks à partir des tâches synchronisées.
+2. Déclencher une consolidation AutoSync si nécessaire via le dashboard (port 8000).
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-24 16:00 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
@@ -138,6 +208,30 @@ git checkout main
 Aucun blocage. Specs claires, branches prêtes, agents peuvent démarrer immédiatement.
 
 **Note déploiement:** Le déploiement Cloud Run nécessite le secret `GCP_SA_KEY` qui était vide. J'ai généré une nouvelle service account key (github-actions@emergence-469005.iam.gserviceaccount.com), mais l'utilisateur doit la copier manuellement dans GitHub Secrets. Pas bloquant pour dev P3.
+
+---
+## [2025-10-24 11:45 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+Création de la branche `codex/codex-gpt` pour disposer d'une branche Codex dédiée (fin du travail sur `work`).
+
+### Travail réalisé
+- Créé la branche `codex/codex-gpt` et documenté la transition dans `AGENT_SYNC.md` et `docs/passation.md`.
+- Aucun autre changement de code ou de configuration.
+
+### Tests
+- ⚠️ Tests non lancés (opérations Git/documentation).
+
+### Prochaines actions recommandées
+1. Basculer sur `codex/codex-gpt` pour les prochaines modifications.
+2. Attendre la prochaine demande utilisateur avant d'engager du développement.
+
+### Blocages
+Aucun.
 
 ---
 ## [2025-10-24 06:15 CET] — Agent: Claude Code

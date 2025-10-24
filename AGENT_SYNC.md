@@ -93,7 +93,6 @@ Implémenter système de webhooks pour permettre intégrations externes (Slack, 
 - Codex GPT: Frontend principalement (PWA)
 - Claude Web: Backend principalement (Webhooks)
 - Pas de dépendances entre les 2 tâches → parallélisation OK
-
 ---
 ## ✅ Session COMPLÉTÉE (2025-10-24 06:15 CET) — Agent : Claude Code
 
@@ -146,7 +145,6 @@ Implémenter système de webhooks pour permettre intégrations externes (Slack, 
 - Éventuellement ajouter données de test en DB pour démo
 
 ---
-
 ## ✅ Session COMPLÉTÉE (2025-10-24 11:30 CET) — Agent : Claude Code
 
 ### Fichiers modifiés
@@ -194,4 +192,74 @@ Implémenter système de webhooks pour permettre intégrations externes (Slack, 
 - ✅ `npm run build`: OK (1.24s, pas d'erreurs JS)
 - ✅ `ruff check`: OK (All checks passed)
 - ✅ `mypy`: OK (Success: no issues)
+
+---
+## ✅ Session COMPLÉTÉE (2025-10-24 11:45 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Création de la branche `codex/codex-gpt` pour les futures sessions Codex (fin des travaux sur `work`).
+- Aucune modification fonctionnelle côté code.
+
+### Tests
+- ⚠️ Aucun test lancé (mise à jour Git/documentation uniquement).
+
+### Prochaines actions
+1. Se basculer sur `codex/codex-gpt` pour les prochains développements.
+2. Avancer sur la demande utilisateur dès réception.
+
+---
+## ✅ Session COMPLÉTÉE (2025-10-24 17:30 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Résolution des conflits de fusion détectés sur `AGENT_SYNC.md` et `docs/passation.md`.
+- Consolidation des entrées de sessions Claude Code / Codex (23-24/10) sans perte d'information.
+- Aucun changement applicatif en dehors de la documentation de synchronisation.
+
+### Tests
+- ⚠️ Non lancés (documentation uniquement).
+
+### Prochaines actions
+1. Reprendre les travaux PWA / Webhooks en s'appuyant sur les sections synchronisées.
+2. Déclencher la consolidation AutoSync si nécessaire via le dashboard (port 8000).
+
+---
+## ✅ Session COMPLÉTÉE (2025-10-24 18:45 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+- `scripts/debug_passation.py` (non versionné - script temporaire)
+- `scripts/update_passation_insert.py` (non versionné - script temporaire)
+
+### Actions réalisées
+**📝 Mise à jour documentation inter-agents + commit propre**
+
+**Contexte:**
+L'utilisateur a demandé de mettre à jour la doc de coopération inter-agents (AGENT_SYNC.md + passation.md) et de faire un commit push propre de tous les fichiers modifiés/créés pour avoir un dépôt local clean.
+
+**Travail réalisé:**
+1. Lecture état Git : 2 fichiers modifiés (`AGENT_SYNC.md`, `docs/passation.md`), 2 scripts Python non versionnés
+2. Ajout entrée dans `AGENT_SYNC.md` (session courante 18:45 CET)
+3. Ajout entrée dans `docs/passation.md` (même session)
+4. Commit Git de toutes les modifications
+
+**Note:**
+- Les 2 scripts Python (`scripts/debug_passation.py`, `scripts/update_passation_insert.py`) sont des scripts temporaires de debug (non versionnés volontairement)
+- Si besoin de les versionner, ajouter explicitement via `git add scripts/*.py`
+
+### Tests
+- ⚠️ Non lancés (documentation uniquement)
+
+### Prochaines actions recommandées
+1. Continuer travaux tâches P3 (PWA pour Codex, Webhooks pour Claude Web)
+2. Vérifier que les branches `feature/pwa-offline` et `feature/webhooks-integrations` sont bien à jour
+3. Lancer Guardian si besoin (`pwsh -File claude-plugins\integrity-docs-guardian\scripts\run_audit.ps1`)
 
