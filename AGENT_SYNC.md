@@ -3,6 +3,57 @@
 **Dernière mise à jour:** 2025-10-24 19:30 CET
 **Mode:** Développement collaboratif multi-agents
 
+### 🛠️ NOUVELLE TÂCHE - Workflow Scripts Claude Code (2025-10-24 14:30)
+**Agent:** Claude Code Local (à implémenter)
+**Priorité:** P1 (IMPORTANT - améliore workflow dev)
+**Prompt:** `docs/PROMPT_CLAUDE_LOCAL_SETUP.md`
+
+**Objectif:**
+Créer scripts manquants pour workflow optimal Claude Code Cloud (alter ego qui tourne en environnement éphémère sans deps).
+
+**Tâches:**
+1. **P0:** `scripts/run-all-tests.ps1` - Script test complet rapide (pytest + ruff + mypy + npm)
+2. **P1:** `scripts/check-prod-health.ps1` - Vérif santé prod avec JWT (résout 403)
+3. **P1:** `docs/CLAUDE_CODE_WORKFLOW.md` - Doc workflow pour Claude Code
+4. **P2:** `scripts/pre-commit-check.ps1` - Validation avant commit
+5. **P3:** Améliorer `scripts/check-github-workflows.ps1` - Dashboard CI/CD
+
+**Pourquoi:**
+- Claude Code Cloud tourne en env éphémère (pas de deps installées)
+- Impossible de lancer tests localement → besoin scripts pour valider code
+- Production répond 403 → besoin script avec JWT pour healthchecks
+- Pas de doc workflow spécifique AI → deviner comment utiliser scripts existants
+
+### 🔍 AUDIT POST-MERGE (2025-10-24 13:40 CET)
+**Agent:** Claude Code
+**Rapport:** `docs/audits/AUDIT_POST_MERGE_20251024.md`
+
+**Verdict:** ⚠️ **ATTENTION - Environnement tests à configurer**
+
+**Résultats:**
+- ✅ Code quality: Ruff check OK
+- ✅ Sécurité: Pas de secrets hardcodés
+- ✅ Architecture: Docs à jour, structure cohérente
+- ⚠️ Tests backend: KO (deps manquantes: httpx, pydantic, fastapi)
+- ⚠️ Build frontend: KO (node_modules manquants)
+- ⚠️ Production: Endpoints répondent 403 (à vérifier si normal)
+
+**PRs auditées:**
+- #12: Webhooks ✅ (code propre, HMAC, retry 3x)
+- #11, #10, #7: Fix cockpit SQL ✅ (3 bugs corrigés)
+- #8: Sync commits ✅
+
+**Tests skippés analysés (6 → 5 après fix):**
+- ✅ test_guardian_email_e2e.py: Skip normal (reports/ dans .gitignore)
+- ✅ test_cost_telemetry.py (3x): Skip normal (Prometheus optionnel)
+- ✅ test_hybrid_retriever.py: Placeholder E2E (TODO)
+- ✅ test_unified_retriever.py: **FIXÉ** (Mock → AsyncMock)
+
+**Actions requises:**
+1. Configurer environnement tests (venv + npm install)
+2. Lancer pytest + build pour valider merges
+3. Vérifier prod Cloud Run (403 sur /ready anormal?)
+
 ---
 
 ## 🎯 État Roadmap Actuel
