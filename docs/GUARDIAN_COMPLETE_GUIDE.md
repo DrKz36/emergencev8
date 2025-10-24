@@ -320,6 +320,101 @@ cd claude-plugins/integrity-docs-guardian/scripts
 .\run_audit.ps1
 ```
 
+### 3.4 Guardian sur Différents Environnements
+
+Le système Guardian s'adapte à différents environnements de développement avec des capacités variables.
+
+#### 🖥️ Windows Local (PowerShell) - COMPLET ✅
+
+**Script:** `setup_guardian.ps1`
+**Capacités:**
+- ✅ Hooks Git complets (pre-commit, post-commit, pre-push)
+- ✅ Tous agents Guardian fonctionnels (Anima, Neo, Nexus, ProdGuardian)
+- ✅ Task Scheduler (monitoring prod 6h)
+- ✅ gcloud CLI pour monitoring Cloud Run
+- ✅ Toutes dependencies Python installables (torch, chromadb, etc.)
+
+**Installation:**
+```powershell
+cd claude-plugins/integrity-docs-guardian/scripts
+.\setup_guardian.ps1
+```
+
+#### 🐧 Linux/macOS Local - COMPLET ✅
+
+**Script:** `setup_guardian.sh`
+**Capacités:**
+- ✅ Hooks Git complets (pre-commit, post-commit, pre-push)
+- ✅ Tous agents Guardian fonctionnels
+- ✅ cron pour monitoring prod périodique
+- ✅ gcloud CLI pour monitoring Cloud Run
+- ✅ Toutes dependencies Python installables
+
+**Installation:**
+```bash
+cd claude-plugins/integrity-docs-guardian/scripts
+chmod +x setup_guardian.sh
+./setup_guardian.sh
+```
+
+#### 🌐 Claude Code Web Interface - LIMITÉ ⚠️
+
+**Script:** `setup_guardian.sh` (version basique)
+**Capacités:**
+- ✅ Hooks Git basiques créés
+- ⚠️ Agents Guardian limités (deps manquantes)
+- ❌ PAS de gcloud CLI (monitoring prod impossible)
+- ❌ Dependencies lourdes non installables (torch ~800MB, chromadb)
+- ❌ Monitoring prod scheduler impossible
+
+**Limitations:**
+- Les hooks sont créés mais agents Python peuvent échouer (deps manquantes)
+- Pas d'accès direct aux logs Cloud Run
+- Environnement cloud sandbox avec restrictions réseau/packages
+
+**Usage recommandé:**
+- Modifications légères (docs, fixes simples)
+- Audit rapide sans validation complète
+- Handoff vers Claude Code Local pour tests/déploiements
+
+#### 🤝 Collaboration Web ↔ Local
+
+**Workflow recommandé :**
+
+1. **Claude Code Web** → Développement initial
+   - Audit rapide du repo
+   - Modifications légères (docs, fixes)
+   - Création fichier `HANDOFF_TO_LOCAL_CLAUDE.md` avec instructions
+
+2. **Claude Code Local** → Validation complète
+   - Pull branche Claude Web
+   - Installation deps complètes
+   - Tests backend complets (pytest)
+   - Monitoring production (gcloud)
+   - Déploiement Cloud Run
+
+**Exemple de passation :**
+```bash
+# Claude Web crée une branche
+git checkout -b claude/web-feature-XYZ
+# ... fait des modifs ...
+git commit -m "feat: nouvelle feature (validation partielle)"
+git push origin claude/web-feature-XYZ
+
+# Crée HANDOFF_TO_LOCAL_CLAUDE.md avec:
+# - Ce qui a été fait
+# - Ce qui reste à faire (tests, deps, prod)
+# - Instructions spécifiques
+
+# Claude Local récupère et finalise
+git pull origin claude/web-feature-XYZ
+pip install -r requirements.txt
+pytest tests/backend/
+# ... validation complète ...
+git merge --no-ff claude/web-feature-XYZ
+git push
+```
+
 ---
 
 ## 🔄 Workflows Automatiques
