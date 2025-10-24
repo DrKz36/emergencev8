@@ -76,6 +76,7 @@ GUARDIAN_ROUTER = _import_router("backend.features.guardian.router")  # Guardian
 USAGE_ROUTER = _import_router("backend.features.usage.router")  # Usage tracking (Phase 2 Guardian Cloud)
 GMAIL_ROUTER = _import_router("backend.features.gmail.router")  # Gmail API (Phase 3 Guardian Cloud)
 TRACING_ROUTER = _import_router("backend.features.tracing.router")  # Distributed tracing (Phase 3)
+WEBHOOKS_ROUTER = _import_router("backend.features.webhooks.router")  # Webhooks & external integrations (P3.11)
 
 
 def _migrations_dir() -> str:
@@ -219,6 +220,22 @@ async def _startup(container: ServiceContainer) -> None:
     except Exception as e:
         logger.warning(f"Usage tracking tables initialization failed: {e}")
 
+    # 🔗 P3.11: Initialize webhooks system
+    try:
+        from backend.features.webhooks.delivery import WebhookDeliveryService
+        from backend.features.webhooks.events import get_webhook_dispatcher
+
+        # Initialize delivery service
+        delivery_service = WebhookDeliveryService(db_manager)
+
+        # Initialize event dispatcher
+        dispatcher = get_webhook_dispatcher()
+        dispatcher.set_delivery_service(delivery_service)
+
+        logger.info("Webhooks system initialized (delivery + events)")
+    except Exception as e:
+        logger.warning(f"Webhooks system initialization failed: {e}")
+
     # Log startup duration + readiness
     startup_duration_ms = int((time.perf_counter() - startup_start) * 1000)
     all_ready = all(_warmup_ready.values())
@@ -308,6 +325,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.warning(f"SessionManager cleanup task startup failed: {e}")
 
+    # 🔗 Store webhook delivery service in app.state for shutdown
+    try:
+        from backend.features.webhooks.delivery import WebhookDeliveryService
+        db_manager = container.db_manager()
+        app.state._webhook_delivery_service = WebhookDeliveryService(db_manager)
+        logger.info("Webhook delivery service stored in app.state")
+    except Exception as e:
+        logger.warning(f"Webhook delivery service storage failed: {e}")
+
     logger.info("✅ Lifespan: Backend prêt")
 
     yield  # Application running
@@ -340,6 +366,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("SessionManager cleanup task stopped")
     except Exception as e:
         logger.warning(f"SessionManager cleanup task shutdown failed: {e}")
+
+    # 🔗 Arrêter le delivery service des webhooks
+    try:
+        if hasattr(app.state, '_webhook_delivery_service'):
+            await app.state._webhook_delivery_service.close()
+            logger.info("Webhook delivery service stopped")
+    except Exception as e:
+        logger.warning(f"Webhook delivery service shutdown failed: {e}")
 
     # Fermer DB
     try:
@@ -514,6 +548,7 @@ def create_app() -> FastAPI:
     _mount_router(USAGE_ROUTER)  # Usage tracking at /api/usage/* (Phase 2 Guardian Cloud)
     _mount_router(GMAIL_ROUTER)  # Gmail API at /auth/gmail + /api/gmail/* (Phase 3 Guardian Cloud)
     _mount_router(TRACING_ROUTER, "/api")  # Tracing endpoints at /api/traces/* (Phase 3)
+    _mount_router(WEBHOOKS_ROUTER)  # Webhooks at /api/webhooks/* (P3.11)
 
     # ⚠️ WS: **uniquement** features.chat.router (déclare /ws/{session_id})
     _mount_router(CHAT_ROUTER)  # pas de prefix → garde /ws/{session_id}
