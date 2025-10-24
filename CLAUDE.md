@@ -303,7 +303,8 @@ emergenceV8/
 ├── CODEV_PROTOCOL.md      ← Protocole multi-agents
 ├── CODEX_GPT_GUIDE.md     ← Guide de l'autre agent
 ├── docs/
-│   ├── passation.md       ← Journal inter-agents
+│   ├── passation.md       ← Journal inter-agents (48h max)
+│   ├── archives/          ← Archives passation (>48h)
 │   ├── architecture/      ← Architecture C4
 │   └── AGENTS_COORDINATION.md
 ├── src/
@@ -311,6 +312,12 @@ emergenceV8/
 │   └── frontend/          ← JavaScript (ESM)
 └── scripts/               ← PowerShell/Bash
 ```
+
+**⚠️ RÈGLE ARCHIVAGE (NEW - 2025-10-24):**
+- `docs/passation.md` : Garder UNIQUEMENT dernières 48h
+- Sessions >48h : Archiver dans `docs/archives/passation_archive_YYYY-MM-DD_to_YYYY-MM-DD.md`
+- Format synthétique : 1 entrée par session (5-10 lignes max)
+- Mettre lien vers archives dans header passation.md
 
 ---
 
