@@ -7,6 +7,30 @@
 - ✅ P3 Features: 1/4 (25%) - Webhooks terminés
 - ⏳ P3 Maintenance: 0/2 (À faire)
 
+### 🔍 AUDIT POST-MERGE (2025-10-24 13:40 CET)
+**Agent:** Claude Code
+**Rapport:** `docs/audits/AUDIT_POST_MERGE_20251024.md`
+
+**Verdict:** ⚠️ **ATTENTION - Environnement tests à configurer**
+
+**Résultats:**
+- ✅ Code quality: Ruff check OK
+- ✅ Sécurité: Pas de secrets hardcodés
+- ✅ Architecture: Docs à jour, structure cohérente
+- ⚠️ Tests backend: KO (deps manquantes: httpx, pydantic, fastapi)
+- ⚠️ Build frontend: KO (node_modules manquants)
+- ⚠️ Production: Endpoints répondent 403 (à vérifier si normal)
+
+**PRs auditées:**
+- #12: Webhooks ✅ (code propre, HMAC, retry 3x)
+- #11, #10, #7: Fix cockpit SQL ✅ (3 bugs corrigés)
+- #8: Sync commits ✅
+
+**Actions requises:**
+1. Configurer environnement tests (venv + npm install)
+2. Lancer pytest + build pour valider merges
+3. Vérifier prod Cloud Run (403 sur /ready anormal?)
+
 ---
 
 ### 🔧 TÂCHE CODEX GPT — PWA Mode Hors Ligne (P3.10)
