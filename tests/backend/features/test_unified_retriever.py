@@ -154,7 +154,7 @@ class TestUnifiedMemoryRetriever:
                 'metadata': {'created_at': '2025-10-18T10:00:00Z'}
             }
         ])
-        service.query_weighted = Mock(return_value=[
+        service.query_weighted = AsyncMock(return_value=[  # Fixed: Mock() → AsyncMock() pour méthode async
             {
                 'text': 'Concept Docker containerisation',
                 'weighted_score': 0.9,
@@ -204,7 +204,6 @@ class TestUnifiedMemoryRetriever:
 
         assert history == []
 
-    @pytest.mark.skip(reason="Mock obsolete - 'Mock' object is not iterable")
     @pytest.mark.asyncio
     async def test_get_ltm_context_success(self, retriever):
         """Test _get_ltm_context avec succès"""
