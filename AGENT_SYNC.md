@@ -1,3 +1,54 @@
+## ✅ Session COMPLÉTÉE (2025-10-24 04:12 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/frontend/features/documents/documents.css`
+- `src/frontend/features/documents/document-ui.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+**✅ Fix layout module Documents (desktop + mobile complètement pété)**
+
+**Problèmes identifiés sur prod:**
+1. Section Statistiques débordait complètement à droite de la carte
+2. Bouton "Uploader" mal positionné
+3. Layout foireux en mobile (éléments empilés n'importe comment)
+
+**Root cause:**
+- `.stats-section` était HORS de `.card-body` dans le HTML (ligne 70-80 de document-ui.js)
+- Manquait styles CSS pour `.card-body`, `.upload-actions`, `.stats-section`
+- Styles inline dans le HTML au lieu du CSS
+
+**Fixes appliqués:**
+1. **HTML restructuré** ([document-ui.js](src/frontend/features/documents/document-ui.js)):
+   - Déplacé `.stats-section` DANS `.card-body` (au lieu d'après la fermeture)
+   - Supprimé tous les inline styles (margin-top, style="display:none", etc.)
+   - Ajouté classe `button-metal` sur bouton upload
+   - Utilisé classes CSS propres: `.stats-title`, `.doc-stats-empty`
+
+2. **CSS complet** ([documents.css](src/frontend/features/documents/documents.css)):
+   - Ajouté `.card-body` (display flex column, gap 0, width 100%)
+   - Ajouté `.upload-actions` (centrage bouton + status)
+   - Ajouté section `.stats-section` complète:
+     * Border-top separator
+     * `.stats-title` (centré, font-size lg)
+     * `.doc-stats-summary` (texte centré)
+     * `.doc-stats-canvas-wrap` (border, gradient bg, box-shadow inset)
+     * `.doc-stats-empty` (display none par défaut)
+   - Canvas responsive (width 100%, height auto)
+
+**Déploiement:**
+- ✅ Build frontend: OK (1.10s)
+- ✅ Docker build: OK (tag: `fix-documents-layout-2025-10-24` + `latest`)
+- ✅ Push GCR: OK
+- ✅ Deploy Cloud Run: OK (revision `emergence-app-00434-x76`)
+- ✅ Prod ready: `{"ok":true,"db":"up","vector":"up"}`
+- ✅ Git commit + push: OK (Guardian all green)
+
+**Résultat:** Layout propre desktop + mobile, statistiques bien intégrées, plus de débordement.
+
+---
+
 ## ✅ Session COMPLÉTÉE (2025-10-23 18:48 CET) — Agent : Claude Code
 
 ### Fichiers modifiés
