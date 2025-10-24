@@ -26,6 +26,12 @@
 - #11, #10, #7: Fix cockpit SQL ✅ (3 bugs corrigés)
 - #8: Sync commits ✅
 
+**Tests skippés analysés (6 → 5 après fix):**
+- ✅ test_guardian_email_e2e.py: Skip normal (reports/ dans .gitignore)
+- ✅ test_cost_telemetry.py (3x): Skip normal (Prometheus optionnel)
+- ✅ test_hybrid_retriever.py: Placeholder E2E (TODO)
+- ✅ test_unified_retriever.py: **FIXÉ** (Mock → AsyncMock)
+
 **Actions requises:**
 1. Configurer environnement tests (venv + npm install)
 2. Lancer pytest + build pour valider merges

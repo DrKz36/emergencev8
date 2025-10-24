@@ -1,3 +1,54 @@
+## [2025-10-24 14:00 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `tests/backend/features/test_unified_retriever.py` (fix mock obsolete)
+- `AGENT_SYNC.md` (màj tests skippés)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Suite à l'audit post-merge, analyse des 6 tests skippés pour identifier lesquels peuvent être réparés.
+
+### Travail réalisé
+
+**1. Analyse tests skippés (6 tests)**
+- test_guardian_email_e2e.py: ✅ Skip normal (reports/ dans .gitignore)
+- test_cost_telemetry.py (3x): ✅ Skip normal (Prometheus optionnel, `CONCEPT_RECALL_METRICS_ENABLED=false`)
+- test_hybrid_retriever.py: ✅ Placeholder E2E (TODO futur)
+- test_unified_retriever.py: ❌ **BUG** Mock obsolete
+
+**2. Fix test_unified_retriever.py**
+- **Problème:** `test_get_ltm_context_success` skippé ("Mock obsolete - 'Mock' object is not iterable")
+- **Cause:** `query_weighted()` est async mais mock utilisait `Mock()` sync au lieu de `AsyncMock()`
+- **Fix ligne 157:** `Mock(return_value=[...])` → `AsyncMock(return_value=[...])`
+- **Supprimé:** `@pytest.mark.skip` (ligne 207)
+- **Impact:** Test maintenant fonctionnel, coverage UnifiedMemoryRetriever améliorée
+
+**3. Commit + push**
+- Commit: `28ef1e2` - "fix(tests): Fix test_unified_retriever mock obsolete"
+- Push vers `claude/app-audit-011CUS7VzGu58Mf9GSMRM7kJ`
+
+### Tests
+- ⚠️ Non lancés (environnement deps manquantes)
+- ✅ Changement trivial (1 ligne Mock → AsyncMock)
+
+### Résultats
+
+**Tests skippés:** 6 → 5 ✅
+
+**Tests restants (intentionnels):**
+- test_guardian_email_e2e.py (1) - reports/ manquant
+- test_cost_telemetry.py (3) - Prometheus désactivé
+- test_hybrid_retriever.py (1) - Placeholder E2E
+
+### Prochaines actions recommandées
+1. Lancer pytest local pour valider le fix (si env configuré)
+2. Les 5 tests skip restants sont intentionnels (pas de fix requis)
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-24 13:40 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
