@@ -1,10 +1,10 @@
 ## 📋 TÂCHES EN COURS (2025-10-24) — Multi-Agents
 
 ### 🎯 État Roadmap Actuel
-**Progression globale:** 14/20 (70%)
+**Progression globale:** 15/20 (75%)
 - ✅ P0/P1/P2 Features: 9/9 (100%)
 - ✅ P1/P2 Maintenance: 5/7 (71%)
-- ⏳ P3 Features: 0/4 (À faire)
+- ✅ P3 Features: 1/4 (25%) - Webhooks terminés
 - ⏳ P3 Maintenance: 0/2 (À faire)
 
 ---
@@ -41,37 +41,47 @@ Implémenter le mode hors ligne (Progressive Web App) pour permettre l'accès au
 
 ---
 
-### 🌐 TÂCHE CLAUDE CODE WEB — Webhooks et Intégrations (P3.11)
-**Branche:** `feature/webhooks-integrations`
-**Durée estimée:** 3 jours
-**Priorité:** P3 (BASSE - Nice-to-have)
+### ✅ TÂCHE TERMINÉE — Webhooks et Intégrations (P3.11)
+**Branche:** `claude/implement-webhooks-011CURfewj5NWZskkCoQcHi8`
+**Durée réelle:** 1 session (2025-10-24)
+**Status:** ✅ COMPLÉTÉ + PUSHED
 
 **Objectif:**
 Implémenter système de webhooks pour permettre intégrations externes (Slack, Discord, Zapier, etc.)
 
-**Spécifications détaillées (ROADMAP.md:154-163):**
-- [ ] Backend: table `webhooks` (migration SQL)
-- [ ] Endpoints POST/GET/DELETE webhooks
-- [ ] Système événements (thread.created, message.sent, analysis.completed)
-- [ ] POST vers webhook URL avec signature HMAC
-- [ ] UI: onglet "Webhooks" (Paramètres > Intégrations)
-- [ ] Retry automatique si échec (3 tentatives)
+**Implémentation réalisée:**
+- ✅ Backend: table `webhooks` + `webhook_deliveries` (migration 010)
+- ✅ Endpoints REST complets `/api/webhooks/*` (CRUD + deliveries + stats)
+- ✅ Système événements (thread.created, message.sent, analysis.completed, debate.completed, document.uploaded)
+- ✅ Delivery HTTP POST avec signature HMAC SHA256
+- ✅ Retry automatique 3x (delays: 5s, 15s, 60s)
+- ✅ UI complète: Settings > Webhooks (modal création, liste, deliveries logs, stats)
 
-**Fichiers à créer:**
-- `migrations/add_webhooks_table.sql`
-- `src/backend/features/webhooks/models.py`
-- `src/backend/features/webhooks/service.py`
-- `src/backend/features/webhooks/events.py`
-- `src/backend/features/webhooks/delivery.py`
-- `src/backend/features/webhooks/router.py`
-- `src/frontend/features/settings/webhooks.js`
+**Fichiers créés:**
+- `migrations/010_add_webhooks_table.sql` (tables + indexes)
+- `src/backend/features/webhooks/models.py` (Pydantic schemas)
+- `src/backend/features/webhooks/service.py` (CRUD logic)
+- `src/backend/features/webhooks/events.py` (Event dispatcher)
+- `src/backend/features/webhooks/delivery.py` (HTTP POST + HMAC + retry)
+- `src/backend/features/webhooks/router.py` (REST endpoints)
+- `src/backend/features/webhooks/__init__.py` (Module exports)
+- `src/frontend/features/settings/settings-webhooks.js` (UI complète)
+
+**Fichiers modifiés:**
+- `src/backend/main.py` (router monté, delivery service init/shutdown)
+- `src/frontend/features/settings/settings-main.js` (onglet Webhooks ajouté)
+
+**Tests:**
+- ✅ ruff check: All checks passed
+- ✅ npm run build: Build successful (1.32s)
+- ✅ Type hints complets (mypy compliant)
 
 **Acceptance Criteria:**
 - ✅ Webhooks CRUD complets (create, list, update, delete)
 - ✅ Delivery automatique events sélectionnés
-- ✅ Signature HMAC vérifiable côté destinataire
+- ✅ Signature HMAC vérifiable côté destinataire (exemple fourni dans docstring)
 - ✅ Retry automatique 3x si échec (5xx, timeout)
-- ✅ UI intuitive (modal création, liste, stats)
+- ✅ UI intuitive (modal création, liste cards, deliveries logs, stats)
 
 ---
 
