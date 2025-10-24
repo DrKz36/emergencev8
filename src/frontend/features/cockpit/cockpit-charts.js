@@ -267,61 +267,44 @@ export class CockpitCharts {
             // Add dev bypass header for development mode
             headers['X-Dev-Bypass'] = '1';
 
-            // Fetch real data from API
-            const response = await fetch('/api/dashboard/costs/by-agent', {
-                method: 'GET',
-                headers: headers
-            });
+            // Fetch all distributions in parallel
+            const [costsResp, threadsResp, messagesResp, tokensResp] = await Promise.all([
+                fetch('/api/dashboard/costs/by-agent', { method: 'GET', headers }),
+                fetch(`/api/dashboard/distribution/threads?period=${period}`, { method: 'GET', headers }),
+                fetch(`/api/dashboard/distribution/messages?period=${period}`, { method: 'GET', headers }),
+                fetch(`/api/dashboard/distribution/tokens?period=${period}`, { method: 'GET', headers })
+            ]);
 
-            if (!response.ok) {
-                throw new Error(`Failed to fetch costs by agent: ${response.status}`);
-            }
+            // Parse responses (handle failures gracefully)
+            const [agentCosts, threadsData, messagesData, tokensData] = await Promise.all([
+                costsResp.ok ? costsResp.json() : [],
+                threadsResp.ok ? threadsResp.json() : {},
+                messagesResp.ok ? messagesResp.json() : {},
+                tokensResp.ok ? tokensResp.json() : {}
+            ]);
 
-            const agentCosts = await response.json();
-
-            // Transform data to the expected format
             const result = {
-                messages: {},
-                threads: {},
-                tokens: {},
+                messages: messagesData,
+                threads: threadsData,
+                tokens: tokensData,
                 costs: {}
             };
 
-            // Aggregate by agent (sum across different models)
+            // Aggregate costs by agent (sum across different models)
             agentCosts.forEach(item => {
                 const agent = item.agent;
-
-                // For now, use request_count as proxy for messages
-                result.messages[agent] = (result.messages[agent] || 0) + item.request_count;
-
-                // Tokens
-                const totalTokens = item.input_tokens + item.output_tokens;
-                result.tokens[agent] = (result.tokens[agent] || 0) + totalTokens;
-
-                // Costs
                 result.costs[agent] = (result.costs[agent] || 0) + item.total_cost;
             });
 
             return result;
         } catch (error) {
             console.error('Error fetching distribution data:', error);
-            // Fallback to mock data with real agent names
+            // Fallback to empty data (no mock data)
             return {
-                messages: {
-                    'Anima': 450,
-                    'Neo': 320,
-                    'Nexus': 280
-                },
-                threads: {
-                    'Anima': 45,
-                    'Neo': 28,
-                    'Nexus': 22
-                },
-                tokens: {
-                    'Anima': 850000,
-                    'Neo': 620000,
-                    'Nexus': 580000
-                }
+                messages: {},
+                threads: {},
+                tokens: {},
+                costs: {}
             };
         }
     }
@@ -565,9 +548,18 @@ export class CockpitCharts {
         }
 
         // Find max values
-        const maxMessages = Math.max(...data.map(d => d.messages));
-        const maxThreads = Math.max(...data.map(d => d.threads));
+        const maxMessages = Math.max(...data.map(d => d.messages || 0));
+        const maxThreads = Math.max(...data.map(d => d.threads || 0));
         const max = Math.max(maxMessages, maxThreads);
+
+        // Si toutes les données sont à 0, afficher un message
+        if (max === 0) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Aucune activité pour cette période', width / 4, height / 4);
+            return;
+        }
 
         // Draw bars
         const barWidth = chartWidth / data.length * 0.8;
@@ -584,8 +576,8 @@ export class CockpitCharts {
 
         data.forEach((item, i) => {
             const x = padding + i * (barWidth + barGap);
-            const messagesHeight = (item.messages / max) * chartHeight;
-            const threadsHeight = (item.threads / max) * chartHeight;
+            const messagesHeight = ((item.messages || 0) / max) * chartHeight;
+            const threadsHeight = ((item.threads || 0) / max) * chartHeight;
 
             // Messages bars
             ctx.fillStyle = '#4a90e2';

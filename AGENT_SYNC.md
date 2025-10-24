@@ -1,3 +1,74 @@
+## 🚧 Session EN COURS (2025-10-24 11:30 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/dashboard/service.py`
+- `src/backend/features/dashboard/timeline_service.py`
+- `src/frontend/features/cockpit/cockpit-charts.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+**🔧 Debug module Cockpit - Fix agents fantômes + graphiques vides**
+
+**Problèmes identifiés:**
+1. **Agents fantômes** dans Distribution: `GPT_CODEX_CLOUD`, `CLAUDE_LOCAL_REMOTE_PROMPT`, `MESSAGE_TO_GPT_CODEX_CLOUD` apparaissaient dans le graphique
+2. **Distribution par Threads vide**: Le graph affichait rien quand on passait de "Par Messages" à "Par Threads"
+3. **Graphiques Timeline/Tokens/Coûts vides**: Pas de données affichées (problème probable DB vide en local, mais code OK pour prod)
+
+**Root cause:**
+- Backend ne filtrait PAS les agents invalides → agents legacy/fantômes remontaient de la DB
+- Frontend ne fetcha PAS les données threads → `result.threads` restait vide `{}`
+- Backend endpoint `/api/dashboard/distribution/threads` existait mais `get_distribution_by_agent()` ne gérait pas le metric "threads"
+
+**Fixes appliqués:**
+
+1. **Backend - Filtrage agents fantômes** ([service.py](src/backend/features/dashboard/service.py:110-147)):
+   - Ajout whitelist stricte: `valid_agents = {"anima", "neo", "nexus", "user", "system"}`
+   - Tout agent hors whitelist est filtré (logged en debug)
+   - Mapping vers noms affichage (Anima, Neo, Nexus, User, System)
+
+2. **Backend - Support metric "threads"** ([timeline_service.py](src/backend/features/dashboard/timeline_service.py:243-287)):
+   - Ajout branch `if metric == "threads"` dans `get_distribution_by_agent()`
+   - Query SQL: `SELECT agent, COUNT(DISTINCT thread_id) FROM messages GROUP BY agent`
+   - Même filtrage agents invalides + mapping noms
+   - Aussi ajouté metric "messages" (comptage messages par agent)
+
+3. **Frontend - Fetch vraies données threads** ([cockpit-charts.js](src/frontend/features/cockpit/cockpit-charts.js:249-310)):
+   - Remplacé single fetch `/api/dashboard/costs/by-agent` par 4 fetches parallèles:
+     * `/api/dashboard/costs/by-agent` → costs
+     * `/api/dashboard/distribution/threads?period=X` → threads
+     * `/api/dashboard/distribution/messages?period=X` → messages
+     * `/api/dashboard/distribution/tokens?period=X` → tokens
+   - Supprimé mock data fallback (retourne `{}` vide si erreur)
+
+**Tests:**
+- ✅ `npm run build`: OK (1.24s, pas d'erreurs JS)
+- ✅ `ruff check`: OK (All checks passed)
+- ✅ `mypy`: OK (Success: no issues)
+
+**4. CRITIQUE - Fix bug COALESCE('now')** ([timeline_service.py](src/backend/features/dashboard/timeline_service.py)):
+   - **BUG MAJEUR identifié**: `COALESCE(created_at, 'now')` groupait TOUS les enregistrements avec `created_at = NULL` sur aujourd'hui !
+   - Résultat: Gros blob bleu à droite du graphique Timeline (tous les NULL comptés aujourd'hui)
+   - **Fix**: Remplacé par `created_at IS NOT NULL` + `date(created_at) = dates.date`
+   - Appliqué partout:
+     * `get_activity_timeline()` - messages et threads
+     * `get_costs_timeline()` - costs
+     * `get_tokens_timeline()` - tokens
+     * `get_distribution_by_agent()` - tous les metrics
+
+5. **Frontend - Fallback graphique vide** ([cockpit-charts.js](src/frontend/features/cockpit/cockpit-charts.js:555-562)):
+   - Ajout check `if (max === 0)` pour afficher "Aucune activité pour cette période"
+   - Évite division par 0 (NaN dans les heights de barres)
+
+**Impact:**
+- ✅ **Timeline d'Activité**: N'affichera plus le gros blob (données NULL ignorées)
+- ✅ **Distribution agents**: N'affiche plus que Anima, Neo, Nexus, User, System
+- ✅ **Distribution par Threads**: Affichera des données réelles quand switch dropdown
+- ✅ **Graphiques à 0**: Message "Aucune activité" au lieu de graph vide
+- Code prêt pour prod, résultat attendu après déploiement
+
+---
+
 ## ✅ Session COMPLÉTÉE (2025-10-24 04:12 CET) — Agent : Claude Code
 
 ### Fichiers modifiés
@@ -8010,3 +8081,70 @@ Tous les fixes de Codex (debate/documents/auth) sont maintenant **en production*
 - **Health** : DB UP, Vector UP
 - **Performance** : 3.53ms response time
 - **Sécurité** : Rate limiting + headers HSTS/XSS/Frame protection
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-24 04:50 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/dashboard/service.py`
+- `src/backend/features/dashboard/timeline_service.py`
+- `src/frontend/features/cockpit/cockpit-charts.js`
+- `AGENT_SYNC.md`, `docs/passation.md`
+
+### Contexte
+Récupération session Claude Code local. Pas de `HANDOFF_TO_LOCAL_CLAUDE.md` trouvé, mais lecture de `AGENT_SYNC.md` + `docs/passation.md` montre des modifs non committées. Dernière session Codex GPT signalait blocage pytest/mypy (dépendances manquantes) → **RÉSOLU** (toutes les deps sont installées).
+
+### Actions réalisées
+
+**1. Validation environnement**
+- ✅ Python 3.11.9 activé
+- ✅ Dépendances installées : fastapi 0.119.0, httpx 0.27.2, pydantic 2.11.5, pytest 8.4.1, mypy 1.18.2
+- ✅ Blocage Codex GPT résolu (deps présentes)
+
+**2. Analyse des modifs non committées**
+
+**Backend - Dashboard Service ([src/backend/features/dashboard/service.py](src/backend/features/dashboard/service.py)):**
+- ✅ **Filtrage agents fantômes** : Whitelist `{anima, neo, nexus, user, system}` pour éviter agents type `CLAUDE_LOCAL_REMOTE_PROMPT` dans les stats
+- ✅ Logging debug pour agents filtrés
+
+**Backend - Timeline Service ([src/backend/features/dashboard/timeline_service.py](src/backend/features/dashboard/timeline_service.py)):**
+- ✅ **Fix bug COALESCE critique** : AVANT `COALESCE(timestamp, 'now')` groupait tous les NULL sur aujourd'hui → graphes timeline faussés
+- ✅ APRÈS : filtre `timestamp IS NOT NULL` AVANT `date(timestamp)` → seules les vraies dates comptées
+- ✅ Impacte 3 méthodes : `get_activity_timeline()`, `get_costs_timeline()`, `get_tokens_timeline()`
+
+**Frontend - Cockpit Charts ([src/frontend/features/cockpit/cockpit-charts.js](src/frontend/features/cockpit/cockpit-charts.js)):**
+- ✅ **Refactor API calls parallèles** : `Promise.all()` au lieu de séquentiel
+- ✅ Fetch 4 endpoints simultanément : costs/threads/messages/tokens by agent
+- ✅ Gestion erreurs gracieuse (fallback `[]` ou `{}` si API fail)
+
+**3. Tests validation**
+```bash
+pytest tests/backend/ -v --tb=short -q
+# ✅ 411 PASSED, 10 skipped (69.64s)
+
+mypy src/backend/features/dashboard/service.py src/backend/features/dashboard/timeline_service.py
+# ✅ Aucune erreur
+
+npm run build
+# ✅ Built in 1.01s (111 modules)
+```
+
+### Résultat
+
+Tous les tests passent. Modifs validées et prêtes pour commit.
+
+**Fixes appliqués :**
+1. **Dashboard agents fantômes** : Filtrés (whitelist stricte)
+2. **Timeline NULL grouping bug** : Corrigé (pas de `COALESCE('now')`)
+3. **Cockpit perf** : API calls parallélisées (Promise.all)
+
+### Tests
+- ✅ pytest backend : 411/421 PASSED (97.6%)
+- ✅ mypy types : OK
+- ✅ npm build : OK (1.01s)
+
+### Prochaines actions recommandées
+1. **Commit & push** : Les modifs sont validées
+2. **Monitoring cockpit** : Vérifier que le filtrage agents fonctionne en prod
+3. **Timeline debug** : Tester les graphes avec données historiques pour confirmer fix NULL

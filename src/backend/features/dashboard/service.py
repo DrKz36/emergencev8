@@ -107,6 +107,10 @@ class DashboardService:
 
             where_clause = " WHERE " + " AND ".join(conditions)
 
+            # Whitelist des agents valides (filtrage agents fantômes/legacy)
+            # Tout ce qui n'est pas dans cette liste est ignoré
+            valid_agents = {"anima", "neo", "nexus", "user", "system"}
+
             # Mapping des noms d'agents techniques vers les noms d'affichage
             agent_display_names = {
                 "anima": "Anima",
@@ -135,8 +139,14 @@ class DashboardService:
             for row in rows:
                 # Convert sqlite3.Row to dict for .get() method access
                 row_dict = dict(row)
-                agent_name = row_dict.get("agent", "unknown")
-                display_name = agent_display_names.get(agent_name.lower(), agent_name.capitalize())
+                agent_name = row_dict.get("agent", "unknown").lower()
+
+                # Filtrer les agents invalides (agents fantômes type CLAUDE_LOCAL_REMOTE_PROMPT, etc.)
+                if agent_name not in valid_agents:
+                    logger.debug(f"[dashboard] Agent filtré (non valide): {agent_name}")
+                    continue
+
+                display_name = agent_display_names.get(agent_name, agent_name.capitalize())
 
                 result.append({
                     "agent": display_name,

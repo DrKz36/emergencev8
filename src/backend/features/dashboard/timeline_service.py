@@ -41,9 +41,16 @@ class TimelineService:
         days = self._parse_period(period)
 
         # Construire les conditions de filtrage
-        # Fix Phase 1.6: messages a created_at (pas timestamp), threads a created_at/updated_at
-        message_filters = ["date(COALESCE(m.created_at, 'now')) = dates.date"]
-        thread_filters = ["date(COALESCE(t.created_at, t.updated_at, 'now')) = dates.date"]
+        # Fix: NE PAS utiliser COALESCE avec 'now' - ça groupe tous les NULL sur aujourd'hui !
+        # On filtre juste les NULL avec m.created_at IS NOT NULL
+        message_filters = [
+            "m.created_at IS NOT NULL",
+            "date(m.created_at) = dates.date"
+        ]
+        thread_filters = [
+            "(t.created_at IS NOT NULL OR t.updated_at IS NOT NULL)",
+            "date(COALESCE(t.created_at, t.updated_at)) = dates.date"
+        ]
         params: List[Any] = []
 
         # Si user_id est fourni, filtrer par user_id (mode prod)
@@ -105,8 +112,11 @@ class TimelineService:
         """
         days = self._parse_period(period)
 
-        # Fix Phase 1.6: costs table a timestamp (pas created_at)
-        cost_filters = ["date(COALESCE(c.timestamp, 'now')) = dates.date"]
+        # Fix: NE PAS utiliser COALESCE avec 'now' - filtre NULL au lieu de les grouper sur aujourd'hui
+        cost_filters = [
+            "c.timestamp IS NOT NULL",
+            "date(c.timestamp) = dates.date"
+        ]
         params: List[Any] = []
 
         # Si user_id est fourni, filtrer par user_id
@@ -162,8 +172,11 @@ class TimelineService:
         """
         days = self._parse_period(period)
 
-        # Fix Phase 1.6: costs table a timestamp (pas created_at)
-        token_filters = ["date(COALESCE(c.timestamp, 'now')) = dates.date"]
+        # Fix: NE PAS utiliser COALESCE avec 'now' - filtre NULL au lieu de les grouper sur aujourd'hui
+        token_filters = [
+            "c.timestamp IS NOT NULL",
+            "date(c.timestamp) = dates.date"
+        ]
         params: List[Any] = []
 
         # Si user_id est fourni, filtrer par user_id
@@ -228,19 +241,116 @@ class TimelineService:
         """
         days = self._parse_period(period)
 
-        if metric == "messages":
-            # Messages n'ont pas de champ agent direct, simuler avec des données
-            # Pour l'instant, retourner une distribution basique
-            return {
-                "Assistant": 50,
-                "Orchestrator": 30,
-                "Researcher": 20
-            }
+        # Whitelist des agents valides (filtrage agents fantômes/legacy)
+        valid_agents = {"anima", "neo", "nexus", "user", "system"}
+
+        # Mapping des noms d'agents techniques vers les noms d'affichage
+        agent_display_names = {
+            "anima": "Anima",
+            "neo": "Neo",
+            "nexus": "Nexus",
+            "user": "User",
+            "system": "System"
+        }
+
+        if metric == "threads":
+            # Compter les threads par agent via les messages associés
+            # On utilise la table messages qui lie thread_id -> agent
+            conditions = [
+                "m.created_at IS NOT NULL",
+                f"date(m.created_at) >= date('now', '-{days} days')"
+            ]
+            params = []
+
+            if user_id:
+                conditions.append("m.user_id = ?")
+                params.append(user_id)
+
+            if session_id:
+                conditions.append("m.session_id = ?")
+                params.append(session_id)
+
+            where_clause = " WHERE " + " AND ".join(conditions)
+
+            query = f"""
+                SELECT agent, COUNT(DISTINCT thread_id) as total
+                FROM messages{where_clause}
+                GROUP BY agent
+                ORDER BY total DESC
+            """
+
+            try:
+                rows = await self.db.fetch_all(query, tuple(params) if params else ())
+                logger.info(f"[Timeline] Distribution threads returned {len(rows)} agents")
+
+                result = {}
+                for row in rows:
+                    agent_name = row["agent"].lower() if row["agent"] else "unknown"
+
+                    # Filtrer les agents invalides
+                    if agent_name not in valid_agents:
+                        logger.debug(f"[Timeline] Agent filtré (non valide): {agent_name}")
+                        continue
+
+                    display_name = agent_display_names.get(agent_name, agent_name.capitalize())
+                    result[display_name] = int(row["total"])
+
+                return result
+            except Exception as e:
+                logger.error(f"Erreur get_distribution threads: {e}", exc_info=True)
+                return {}
+
+        elif metric == "messages":
+            # Compter les messages par agent
+            conditions = [
+                "created_at IS NOT NULL",
+                f"date(created_at) >= date('now', '-{days} days')"
+            ]
+            params = []
+
+            if user_id:
+                conditions.append("user_id = ?")
+                params.append(user_id)
+
+            if session_id:
+                conditions.append("session_id = ?")
+                params.append(session_id)
+
+            where_clause = " WHERE " + " AND ".join(conditions)
+
+            query = f"""
+                SELECT agent, COUNT(*) as total
+                FROM messages{where_clause}
+                GROUP BY agent
+                ORDER BY total DESC
+            """
+
+            try:
+                rows = await self.db.fetch_all(query, tuple(params) if params else ())
+                logger.info(f"[Timeline] Distribution messages returned {len(rows)} agents")
+
+                result = {}
+                for row in rows:
+                    agent_name = row["agent"].lower() if row["agent"] else "unknown"
+
+                    # Filtrer les agents invalides
+                    if agent_name not in valid_agents:
+                        logger.debug(f"[Timeline] Agent filtré (non valide): {agent_name}")
+                        continue
+
+                    display_name = agent_display_names.get(agent_name, agent_name.capitalize())
+                    result[display_name] = int(row["total"])
+
+                return result
+            except Exception as e:
+                logger.error(f"Erreur get_distribution messages: {e}", exc_info=True)
+                return {}
 
         elif metric in ["tokens", "costs"]:
-            # Fix Phase 1.6: costs table a timestamp (pas created_at)
+            # Fix: NE PAS utiliser COALESCE avec 'now' - filtre NULL au lieu de les grouper sur aujourd'hui
             conditions = [
-                f"date(COALESCE(timestamp, 'now')) >= date('now', '-{days} days')"
+                "timestamp IS NOT NULL",
+                f"date(timestamp) >= date('now', '-{days} days')"
             ]
             params = []
 
@@ -267,7 +377,21 @@ class TimelineService:
             try:
                 rows = await self.db.fetch_all(query, tuple(params) if params else ())
                 logger.info(f"[Timeline] Distribution by agent returned {len(rows)} agents for metric={metric}")
-                return {row["agent"]: int(row["total"]) for row in rows}
+
+                # Filtrer les agents invalides et mapper les noms
+                result = {}
+                for row in rows:
+                    agent_name = row["agent"].lower()
+
+                    # Filtrer les agents invalides (agents fantômes)
+                    if agent_name not in valid_agents:
+                        logger.debug(f"[Timeline] Agent filtré (non valide): {agent_name}")
+                        continue
+
+                    display_name = agent_display_names.get(agent_name, agent_name.capitalize())
+                    result[display_name] = int(row["total"])
+
+                return result
             except Exception as e:
                 logger.error(f"Erreur get_distribution_by_agent: {e}", exc_info=True)
                 return {}
