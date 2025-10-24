@@ -44,6 +44,14 @@
 .card-title { font-size: var(--text-xl); font-weight: var(--weight-semibold); color: #f8fafc !important; }
 .card-subtitle { font-size: var(--text-sm); color: rgba(226, 232, 240, 0.8) !important; margin-top: var(--space-2); }
 
+/* Corps de carte */
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+
 /* Upload */
 .upload-section {
   width: 100%;
@@ -103,14 +111,33 @@
 }
 .btn-clear-selection:hover { color: var(--color-error); }
 
-#upload-button { margin-top: var(--space-4); width: 100%; }
+/* Upload actions container */
+.upload-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  width: 100%;
+}
+
+#upload-button {
+  width: 100%;
+  max-width: 300px;
+}
+
 /* Bouton métal — lisible même désactivé */
 .button-metal[disabled] {
   opacity: 0.95; filter: grayscale(10%); color: #f8fafc !important; cursor: not-allowed;
 }
 
 /* États upload */
-.upload-status { margin-top: var(--space-3); min-height: 1.2em; font-size: 0.9em; text-align: center; }
+.upload-status {
+  min-height: 1.2em;
+  font-size: 0.9em;
+  text-align: center;
+  width: 100%;
+}
 .upload-status.info { color: rgba(226, 232, 240, 0.8) !important; }
 .upload-status.success { color: var(--color-success); font-weight: 500; }
 .upload-status.error { color: var(--color-error); }
@@ -444,6 +471,57 @@
   white-space: pre-wrap;
   word-wrap: break-word;
 }
+
+/* ===== Statistics Section ===== */
+.stats-section {
+  border-top: 1px solid var(--glass-border-color);
+  padding-top: var(--space-5);
+  margin-top: var(--space-5);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.stats-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+  color: #f8fafc !important;
+  margin: 0 0 var(--space-2) 0;
+  text-align: center;
+}
+
+.doc-stats-summary {
+  text-align: center;
+  color: rgba(226, 232, 240, 0.85) !important;
+  font-size: var(--text-sm);
+  margin: 0 0 var(--space-3) 0;
+}
+
+.doc-stats-canvas-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+  box-shadow: 0 10px 30px rgba(0,0,0,.25) inset;
+}
+
+.doc-stats-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.doc-stats-empty {
+  display: none;
+  margin-top: var(--space-2);
+  text-align: center;
+  color: rgba(226, 232, 240, 0.7) !important;
+  font-size: var(--text-sm);
+}
+
 /* ===== Mobile Portrait : centrage garanti ===== */
 @media (max-width: 760px){
   .documents-view-wrapper{

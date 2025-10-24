@@ -44,7 +44,7 @@ export class DocumentsUI {
                             </div>
 
                             <div class="upload-actions">
-                                <button id="upload-button" class="button primary">Uploader</button>
+                                <button id="upload-button" class="button primary button-metal">Uploader</button>
                                 <div id="upload-status" class="upload-status info" aria-live="polite"></div>
                             </div>
                         </section>
@@ -68,15 +68,15 @@ export class DocumentsUI {
                         </section>
 
                         <!-- === Statistiques === -->
-                        <section class="stats-section" aria-label="Statistiques des documents" style="margin-top: 24px;">
-                            <h3 class="list-title">Statistiques</h3>
-                            <div id="doc-stats-summary" class="doc-stats-summary" aria-live="polite" style="margin: 6px 0 10px;">
+                        <section class="stats-section" aria-label="Statistiques des documents">
+                            <h3 class="stats-title">Statistiques</h3>
+                            <div id="doc-stats-summary" class="doc-stats-summary" aria-live="polite">
                                 Total : 0 - (aucune extension)
                             </div>
-                            <div class="doc-stats-canvas-wrap" style="width:100%;max-width:100%;overflow:hidden;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));box-shadow:0 10px 30px rgba(0,0,0,.25) inset;">
+                            <div class="doc-stats-canvas-wrap">
                                 <canvas id="doc-stats-canvas" width="640" height="220" role="img" aria-label="R&#233;partition des documents par extension"></canvas>
                             </div>
-                            <p id="doc-stats-empty" style="display:none;margin-top:8px;opacity:.8;">Aucune donn&#233;e &#224; afficher.</p>
+                            <p id="doc-stats-empty" class="doc-stats-empty" style="display:none;">Aucune donn&#233;e &#224; afficher.</p>
                         </section>
                     </div>
                 </div>
