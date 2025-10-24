@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from ...core.database import DatabaseManager
+from ...core.database.manager import DatabaseManager
 from .models import (
     WebhookCreatePayload,
     WebhookDeliveryListResponse,
@@ -88,7 +88,7 @@ class WebhookService:
         if not row:
             raise ValueError(f"Webhook {webhook_id} not found")
 
-        return self._webhook_from_row(row)
+        return self._webhook_from_row(dict(row))
 
     async def list_webhooks(self, user_id: str) -> WebhookListResponse:
         """List all webhooks for a user"""
@@ -100,7 +100,7 @@ class WebhookService:
         """
         rows = await self.db.fetch_all(query, (user_id,))
 
-        webhooks = [self._webhook_from_row(row) for row in rows]
+        webhooks = [self._webhook_from_row(dict(row)) for row in rows]
 
         return WebhookListResponse(
             items=webhooks,
@@ -189,7 +189,7 @@ class WebhookService:
         """
         rows = await self.db.fetch_all(query, (webhook_id, limit))
 
-        deliveries = [self._delivery_from_row(row) for row in rows]
+        deliveries = [self._delivery_from_row(dict(row)) for row in rows]
 
         return WebhookDeliveryListResponse(
             items=deliveries,
