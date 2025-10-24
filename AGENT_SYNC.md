@@ -1,11 +1,41 @@
 ## 📋 TÂCHES EN COURS (2025-10-24) — Multi-Agents
 
 ### 🎯 État Roadmap Actuel
-**Progression globale:** 14/20 (70%)
+**Progression globale:** 15/20 (75%)
 - ✅ P0/P1/P2 Features: 9/9 (100%)
 - ✅ P1/P2 Maintenance: 5/7 (71%)
-- ⏳ P3 Features: 0/4 (À faire)
+- ✅ P3 Features: 1/4 (25%) - Webhooks terminés
 - ⏳ P3 Maintenance: 0/2 (À faire)
+
+### 🔍 AUDIT POST-MERGE (2025-10-24 13:40 CET)
+**Agent:** Claude Code
+**Rapport:** `docs/audits/AUDIT_POST_MERGE_20251024.md`
+
+**Verdict:** ⚠️ **ATTENTION - Environnement tests à configurer**
+
+**Résultats:**
+- ✅ Code quality: Ruff check OK
+- ✅ Sécurité: Pas de secrets hardcodés
+- ✅ Architecture: Docs à jour, structure cohérente
+- ⚠️ Tests backend: KO (deps manquantes: httpx, pydantic, fastapi)
+- ⚠️ Build frontend: KO (node_modules manquants)
+- ⚠️ Production: Endpoints répondent 403 (à vérifier si normal)
+
+**PRs auditées:**
+- #12: Webhooks ✅ (code propre, HMAC, retry 3x)
+- #11, #10, #7: Fix cockpit SQL ✅ (3 bugs corrigés)
+- #8: Sync commits ✅
+
+**Tests skippés analysés (6 → 5 après fix):**
+- ✅ test_guardian_email_e2e.py: Skip normal (reports/ dans .gitignore)
+- ✅ test_cost_telemetry.py (3x): Skip normal (Prometheus optionnel)
+- ✅ test_hybrid_retriever.py: Placeholder E2E (TODO)
+- ✅ test_unified_retriever.py: **FIXÉ** (Mock → AsyncMock)
+
+**Actions requises:**
+1. Configurer environnement tests (venv + npm install)
+2. Lancer pytest + build pour valider merges
+3. Vérifier prod Cloud Run (403 sur /ready anormal?)
 
 ---
 
@@ -41,37 +71,47 @@ Implémenter le mode hors ligne (Progressive Web App) pour permettre l'accès au
 
 ---
 
-### 🌐 TÂCHE CLAUDE CODE WEB — Webhooks et Intégrations (P3.11)
-**Branche:** `feature/webhooks-integrations`
-**Durée estimée:** 3 jours
-**Priorité:** P3 (BASSE - Nice-to-have)
+### ✅ TÂCHE TERMINÉE — Webhooks et Intégrations (P3.11)
+**Branche:** `claude/implement-webhooks-011CURfewj5NWZskkCoQcHi8`
+**Durée réelle:** 1 session (2025-10-24)
+**Status:** ✅ COMPLÉTÉ + PUSHED
 
 **Objectif:**
 Implémenter système de webhooks pour permettre intégrations externes (Slack, Discord, Zapier, etc.)
 
-**Spécifications détaillées (ROADMAP.md:154-163):**
-- [ ] Backend: table `webhooks` (migration SQL)
-- [ ] Endpoints POST/GET/DELETE webhooks
-- [ ] Système événements (thread.created, message.sent, analysis.completed)
-- [ ] POST vers webhook URL avec signature HMAC
-- [ ] UI: onglet "Webhooks" (Paramètres > Intégrations)
-- [ ] Retry automatique si échec (3 tentatives)
+**Implémentation réalisée:**
+- ✅ Backend: table `webhooks` + `webhook_deliveries` (migration 010)
+- ✅ Endpoints REST complets `/api/webhooks/*` (CRUD + deliveries + stats)
+- ✅ Système événements (thread.created, message.sent, analysis.completed, debate.completed, document.uploaded)
+- ✅ Delivery HTTP POST avec signature HMAC SHA256
+- ✅ Retry automatique 3x (delays: 5s, 15s, 60s)
+- ✅ UI complète: Settings > Webhooks (modal création, liste, deliveries logs, stats)
 
-**Fichiers à créer:**
-- `migrations/add_webhooks_table.sql`
-- `src/backend/features/webhooks/models.py`
-- `src/backend/features/webhooks/service.py`
-- `src/backend/features/webhooks/events.py`
-- `src/backend/features/webhooks/delivery.py`
-- `src/backend/features/webhooks/router.py`
-- `src/frontend/features/settings/webhooks.js`
+**Fichiers créés:**
+- `migrations/010_add_webhooks_table.sql` (tables + indexes)
+- `src/backend/features/webhooks/models.py` (Pydantic schemas)
+- `src/backend/features/webhooks/service.py` (CRUD logic)
+- `src/backend/features/webhooks/events.py` (Event dispatcher)
+- `src/backend/features/webhooks/delivery.py` (HTTP POST + HMAC + retry)
+- `src/backend/features/webhooks/router.py` (REST endpoints)
+- `src/backend/features/webhooks/__init__.py` (Module exports)
+- `src/frontend/features/settings/settings-webhooks.js` (UI complète)
+
+**Fichiers modifiés:**
+- `src/backend/main.py` (router monté, delivery service init/shutdown)
+- `src/frontend/features/settings/settings-main.js` (onglet Webhooks ajouté)
+
+**Tests:**
+- ✅ ruff check: All checks passed
+- ✅ npm run build: Build successful (1.32s)
+- ✅ Type hints complets (mypy compliant)
 
 **Acceptance Criteria:**
 - ✅ Webhooks CRUD complets (create, list, update, delete)
 - ✅ Delivery automatique events sélectionnés
-- ✅ Signature HMAC vérifiable côté destinataire
+- ✅ Signature HMAC vérifiable côté destinataire (exemple fourni dans docstring)
 - ✅ Retry automatique 3x si échec (5xx, timeout)
-- ✅ UI intuitive (modal création, liste, stats)
+- ✅ UI intuitive (modal création, liste cards, deliveries logs, stats)
 
 ---
 
@@ -93,7 +133,6 @@ Implémenter système de webhooks pour permettre intégrations externes (Slack, 
 - Codex GPT: Frontend principalement (PWA)
 - Claude Web: Backend principalement (Webhooks)
 - Pas de dépendances entre les 2 tâches → parallélisation OK
-
 ---
 ## ✅ Session COMPLÉTÉE (2025-10-24 06:15 CET) — Agent : Claude Code
 
@@ -194,4 +233,74 @@ Implémenter système de webhooks pour permettre intégrations externes (Slack, 
 - ✅ `npm run build`: OK (1.24s, pas d'erreurs JS)
 - ✅ `ruff check`: OK (All checks passed)
 - ✅ `mypy`: OK (Success: no issues)
+
+---
+## ✅ Session COMPLÉTÉE (2025-10-24 11:45 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Création de la branche `codex/codex-gpt` pour les futures sessions Codex (fin des travaux sur `work`).
+- Aucune modification fonctionnelle côté code.
+
+### Tests
+- ⚠️ Aucun test lancé (mise à jour Git/documentation uniquement).
+
+### Prochaines actions
+1. Se basculer sur `codex/codex-gpt` pour les prochains développements.
+2. Avancer sur la demande utilisateur dès réception.
+
+---
+## ✅ Session COMPLÉTÉE (2025-10-24 17:30 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Résolution des conflits de fusion détectés sur `AGENT_SYNC.md` et `docs/passation.md`.
+- Consolidation des entrées de sessions Claude Code / Codex (23-24/10) sans perte d'information.
+- Aucun changement applicatif en dehors de la documentation de synchronisation.
+
+### Tests
+- ⚠️ Non lancés (documentation uniquement).
+
+### Prochaines actions
+1. Reprendre les travaux PWA / Webhooks en s'appuyant sur les sections synchronisées.
+2. Déclencher la consolidation AutoSync si nécessaire via le dashboard (port 8000).
+
+---
+## ✅ Session COMPLÉTÉE (2025-10-24 18:45 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+- `scripts/debug_passation.py` (non versionné - script temporaire)
+- `scripts/update_passation_insert.py` (non versionné - script temporaire)
+
+### Actions réalisées
+**📝 Mise à jour documentation inter-agents + commit propre**
+
+**Contexte:**
+L'utilisateur a demandé de mettre à jour la doc de coopération inter-agents (AGENT_SYNC.md + passation.md) et de faire un commit push propre de tous les fichiers modifiés/créés pour avoir un dépôt local clean.
+
+**Travail réalisé:**
+1. Lecture état Git : 2 fichiers modifiés (`AGENT_SYNC.md`, `docs/passation.md`), 2 scripts Python non versionnés
+2. Ajout entrée dans `AGENT_SYNC.md` (session courante 18:45 CET)
+3. Ajout entrée dans `docs/passation.md` (même session)
+4. Commit Git de toutes les modifications
+
+**Note:**
+- Les 2 scripts Python (`scripts/debug_passation.py`, `scripts/update_passation_insert.py`) sont des scripts temporaires de debug (non versionnés volontairement)
+- Si besoin de les versionner, ajouter explicitement via `git add scripts/*.py`
+
+### Tests
+- ⚠️ Non lancés (documentation uniquement)
+
+### Prochaines actions recommandées
+1. Continuer travaux tâches P3 (PWA pour Codex, Webhooks pour Claude Web)
+2. Vérifier que les branches `feature/pwa-offline` et `feature/webhooks-integrations` sont bien à jour
+3. Lancer Guardian si besoin (`pwsh -File claude-plugins\integrity-docs-guardian\scripts\run_audit.ps1`)
 
