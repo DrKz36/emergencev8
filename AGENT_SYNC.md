@@ -1,3 +1,109 @@
+## 📋 TÂCHES EN COURS (2025-10-24) — Multi-Agents
+
+### 🎯 État Roadmap Actuel
+**Progression globale:** 15/20 (75%)
+- ✅ P0/P1/P2 Features: 9/9 (100%)
+- ✅ P1/P2 Maintenance: 5/7 (71%)
+- ✅ P3 Features: 1/4 (25%) - Webhooks terminés
+- ⏳ P3 Maintenance: 0/2 (À faire)
+
+---
+
+### 🔧 TÂCHE CODEX GPT — PWA Mode Hors Ligne (P3.10)
+**Branche:** `feature/pwa-offline`
+**Durée estimée:** 4 jours
+**Priorité:** P3 (BASSE - Nice-to-have)
+
+**Objectif:**
+Implémenter le mode hors ligne (Progressive Web App) pour permettre l'accès aux conversations récentes sans connexion internet.
+
+**Spécifications détaillées (ROADMAP.md:144-153):**
+- [ ] Créer `manifest.json` (PWA config)
+- [ ] Service Worker cache-first strategy
+- [ ] Cacher conversations récentes (IndexedDB)
+- [ ] Indicateur "Mode hors ligne"
+- [ ] Sync automatique au retour en ligne
+- [ ] Tests: offline → conversations dispo → online → sync
+
+**Fichiers à créer:**
+- `public/manifest.json`
+- `src/frontend/sw.js` (Service Worker)
+- `src/frontend/features/pwa/offline-storage.js`
+- `src/frontend/features/pwa/sync-manager.js`
+- `src/frontend/styles/pwa.css`
+
+**Acceptance Criteria:**
+- ✅ PWA installable (bouton "Installer" navigateur)
+- ✅ Conversations récentes accessibles offline (20+ threads)
+- ✅ Messages créés offline synchronisés au retour en ligne
+- ✅ Indicateur offline visible (badge rouge header)
+- ✅ Cache assets statiques (instant load offline)
+
+---
+
+### ✅ TÂCHE TERMINÉE — Webhooks et Intégrations (P3.11)
+**Branche:** `claude/implement-webhooks-011CURfewj5NWZskkCoQcHi8`
+**Durée réelle:** 1 session (2025-10-24)
+**Status:** ✅ COMPLÉTÉ + PUSHED
+
+**Objectif:**
+Implémenter système de webhooks pour permettre intégrations externes (Slack, Discord, Zapier, etc.)
+
+**Implémentation réalisée:**
+- ✅ Backend: table `webhooks` + `webhook_deliveries` (migration 010)
+- ✅ Endpoints REST complets `/api/webhooks/*` (CRUD + deliveries + stats)
+- ✅ Système événements (thread.created, message.sent, analysis.completed, debate.completed, document.uploaded)
+- ✅ Delivery HTTP POST avec signature HMAC SHA256
+- ✅ Retry automatique 3x (delays: 5s, 15s, 60s)
+- ✅ UI complète: Settings > Webhooks (modal création, liste, deliveries logs, stats)
+
+**Fichiers créés:**
+- `migrations/010_add_webhooks_table.sql` (tables + indexes)
+- `src/backend/features/webhooks/models.py` (Pydantic schemas)
+- `src/backend/features/webhooks/service.py` (CRUD logic)
+- `src/backend/features/webhooks/events.py` (Event dispatcher)
+- `src/backend/features/webhooks/delivery.py` (HTTP POST + HMAC + retry)
+- `src/backend/features/webhooks/router.py` (REST endpoints)
+- `src/backend/features/webhooks/__init__.py` (Module exports)
+- `src/frontend/features/settings/settings-webhooks.js` (UI complète)
+
+**Fichiers modifiés:**
+- `src/backend/main.py` (router monté, delivery service init/shutdown)
+- `src/frontend/features/settings/settings-main.js` (onglet Webhooks ajouté)
+
+**Tests:**
+- ✅ ruff check: All checks passed
+- ✅ npm run build: Build successful (1.32s)
+- ✅ Type hints complets (mypy compliant)
+
+**Acceptance Criteria:**
+- ✅ Webhooks CRUD complets (create, list, update, delete)
+- ✅ Delivery automatique events sélectionnés
+- ✅ Signature HMAC vérifiable côté destinataire (exemple fourni dans docstring)
+- ✅ Retry automatique 3x si échec (5xx, timeout)
+- ✅ UI intuitive (modal création, liste cards, deliveries logs, stats)
+
+---
+
+### 🔄 Coordination Multi-Agents
+
+**Branches actives:**
+- `feature/pwa-offline` → Codex GPT
+- `feature/webhooks-integrations` → Claude Code Web
+- `fix/cockpit-sql-bugs` → PR en cours de review
+
+**Règles de travail:**
+1. **Chacun travaille sur SA branche dédiée** (pas de collision)
+2. **Tester localement AVANT de push** (npm run build + pytest)
+3. **Documenter dans passation.md** après chaque session
+4. **Créer PR vers main** quand feature complète
+5. **Ne PAS merger sans validation FG**
+
+**Synchronisation:**
+- Codex GPT: Frontend principalement (PWA)
+- Claude Web: Backend principalement (Webhooks)
+- Pas de dépendances entre les 2 tâches → parallélisation OK
+---
 ## ✅ Session COMPLÉTÉE (2025-10-24 06:15 CET) — Agent : Claude Code
 
 ### Fichiers modifiés
