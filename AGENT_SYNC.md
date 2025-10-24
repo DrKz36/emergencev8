@@ -7,6 +7,27 @@
 - ✅ P3 Features: 1/4 (25%) - Webhooks terminés
 - ⏳ P3 Maintenance: 0/2 (À faire)
 
+### 🛠️ NOUVELLE TÂCHE - Workflow Scripts Claude Code (2025-10-24 14:30)
+**Agent:** Claude Code Local (à implémenter)
+**Priorité:** P1 (IMPORTANT - améliore workflow dev)
+**Prompt:** `docs/PROMPT_CLAUDE_LOCAL_SETUP.md`
+
+**Objectif:**
+Créer scripts manquants pour workflow optimal Claude Code Cloud (alter ego qui tourne en environnement éphémère sans deps).
+
+**Tâches:**
+1. **P0:** `scripts/run-all-tests.ps1` - Script test complet rapide (pytest + ruff + mypy + npm)
+2. **P1:** `scripts/check-prod-health.ps1` - Vérif santé prod avec JWT (résout 403)
+3. **P1:** `docs/CLAUDE_CODE_WORKFLOW.md` - Doc workflow pour Claude Code
+4. **P2:** `scripts/pre-commit-check.ps1` - Validation avant commit
+5. **P3:** Améliorer `scripts/check-github-workflows.ps1` - Dashboard CI/CD
+
+**Pourquoi:**
+- Claude Code Cloud tourne en env éphémère (pas de deps installées)
+- Impossible de lancer tests localement → besoin scripts pour valider code
+- Production répond 403 → besoin script avec JWT pour healthchecks
+- Pas de doc workflow spécifique AI → deviner comment utiliser scripts existants
+
 ### 🔍 AUDIT POST-MERGE (2025-10-24 13:40 CET)
 **Agent:** Claude Code
 **Rapport:** `docs/audits/AUDIT_POST_MERGE_20251024.md`

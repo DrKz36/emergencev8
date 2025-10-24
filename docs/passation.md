@@ -1,3 +1,99 @@
+## [2025-10-24 14:30 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `docs/PROMPT_CLAUDE_LOCAL_SETUP.md` (créé - prompt alter ego local)
+- `AGENT_SYNC.md` (nouvelle tâche workflow scripts)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+L'utilisateur demande ce dont Claude Code a besoin pour travailler de manière optimale sur le projet.
+
+### Analyse besoins
+
+**Problèmes identifiés (Claude Code Cloud):**
+1. ❌ Environnement éphémère sans deps Python/Node → impossible lancer tests
+2. ❌ Production répond 403 sur healthchecks → impossible vérifier déploiements
+3. ❌ Pas de doc workflow spécifique AI → deviner comment utiliser scripts
+4. ❌ Tests éparpillés (pytest, ruff, mypy, npm) → pas de validation rapide
+5. ❌ Pas d'accès GitHub Actions runs → impossible voir résultats tests CI/CD
+
+**Ce qui existe déjà:**
+- ✅ `bootstrap.ps1` - Setup environnement
+- ✅ `run-backend.ps1` - Lancer backend local
+- ✅ `check-github-workflows.ps1` - Check status workflows GitHub
+- ✅ GitHub Actions workflows - Tests automatiques
+- ✅ Guardian hooks - Validation pre-commit (pas installés localement)
+
+**Ce qui manque:**
+- ❌ Script test complet rapide (1 commande pour tout valider)
+- ❌ Script santé prod avec JWT (résoudre 403)
+- ❌ Documentation workflow Claude Code
+- ❌ Pre-commit validation light (éviter commits cassés)
+
+### Travail réalisé
+
+**1. Création prompt complet pour alter ego local**
+
+Fichier: `docs/PROMPT_CLAUDE_LOCAL_SETUP.md` (détaillé, 350+ lignes)
+
+**5 tâches définies:**
+1. **P0:** `scripts/run-all-tests.ps1` - Test complet (pytest + ruff + mypy + npm + rapport markdown)
+2. **P1:** `scripts/check-prod-health.ps1` - Santé prod avec JWT (healthchecks + métriques + logs)
+3. **P1:** `docs/CLAUDE_CODE_WORKFLOW.md` - Workflow doc pour AI (actions rapides, pas de blabla)
+4. **P2:** `scripts/pre-commit-check.ps1` - Validation avant commit (version light de run-all-tests)
+5. **P3:** Améliorer `check-github-workflows.ps1` - Dashboard CI/CD (mode --summary)
+
+**Specs détaillées pour chaque script:**
+- Fonctionnalités requises
+- Format output attendu
+- Error handling
+- Cas de test (nominal, échec, env pas setup)
+- Contraintes (PowerShell 7+, exit codes, rapports markdown)
+
+**2. Mise à jour AGENT_SYNC.md**
+
+Ajout nouvelle section "Tâche Workflow Scripts Claude Code" avec:
+- Objectif (scripts manquants pour workflow optimal)
+- Priorités (P0/P1/P2/P3)
+- Pourquoi (résoudre blocages alter ego Cloud)
+- Référence prompt (`docs/PROMPT_CLAUDE_LOCAL_SETUP.md`)
+
+### Tests
+- ⚠️ Non lancés (création prompt uniquement)
+
+### Résultats
+
+**Prompt créé:** `docs/PROMPT_CLAUDE_LOCAL_SETUP.md`
+
+**Contenu:**
+- 5 tâches détaillées (run-all-tests, check-prod-health, workflow doc, pre-commit, dashboard)
+- Specs complètes (fonctionnalités, format output, validation)
+- Contraintes techniques (PowerShell 7+, error handling, rapports markdown)
+- Checklist finale (tests, docs, commit)
+
+**Impact attendu après implémentation:**
+- 🔥 Workflow dev 10x plus rapide pour Claude Code
+- 🔥 Validation code en 1 commande (run-all-tests.ps1)
+- 🔥 Vérification prod automatisée (check-prod-health.ps1)
+- 🔥 Documentation claire pour AI (CLAUDE_CODE_WORKFLOW.md)
+- 🔥 Moins de commits qui cassent CI/CD (pre-commit-check.ps1)
+
+### Prochaines actions recommandées
+
+**Pour l'utilisateur (sur poste local):**
+1. Lancer Claude Code Local
+2. Lui donner le prompt: `docs/PROMPT_CLAUDE_LOCAL_SETUP.md`
+3. Laisser implémenter les 5 tâches (priorité P0 > P1 > P2 > P3)
+4. Tester les scripts créés
+5. Merge dans main quand validé
+
+**Branche suggérée:** `feature/claude-code-workflow-scripts`
+
+### Blocages
+Aucun - prompt complet, prêt pour implémentation.
+
+---
+
 ## [2025-10-24 14:00 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
