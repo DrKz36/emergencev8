@@ -102,10 +102,10 @@ async def get_activity_timeline(
     timeline_service: TimelineService = Depends(_resolve_get_timeline_service()),
     user_id: Optional[str] = Depends(deps.get_user_id_optional),
 ) -> List[Dict[str, Any]]:
-    session_id = request.headers.get("X-Session-Id") or request.headers.get("x-session-id")
-    logger.info(f"Timeline activité period={period}, session_id={session_id}, user_id={user_id}")
+    # Timeline affiche TOUTES les données de l'utilisateur (pas de filtre session_id)
+    logger.info(f"Timeline activité period={period}, user_id={user_id} (toutes sessions)")
     return await timeline_service.get_activity_timeline(
-        period=period, user_id=user_id, session_id=session_id
+        period=period, user_id=user_id, session_id=None
     )
 
 
@@ -121,9 +121,9 @@ async def get_costs_timeline(
     timeline_service: TimelineService = Depends(_resolve_get_timeline_service()),
     user_id: Optional[str] = Depends(deps.get_user_id_optional),
 ) -> List[Dict[str, Any]]:
-    session_id = request.headers.get("X-Session-Id") or request.headers.get("x-session-id")
+    # Timeline affiche TOUTES les données de l'utilisateur (pas de filtre session_id)
     return await timeline_service.get_costs_timeline(
-        period=period, user_id=user_id, session_id=session_id
+        period=period, user_id=user_id, session_id=None
     )
 
 
@@ -139,9 +139,9 @@ async def get_tokens_timeline(
     timeline_service: TimelineService = Depends(_resolve_get_timeline_service()),
     user_id: Optional[str] = Depends(deps.get_user_id_optional),
 ) -> List[Dict[str, Any]]:
-    session_id = request.headers.get("X-Session-Id") or request.headers.get("x-session-id")
+    # Timeline affiche TOUTES les données de l'utilisateur (pas de filtre session_id)
     return await timeline_service.get_tokens_timeline(
-        period=period, user_id=user_id, session_id=session_id
+        period=period, user_id=user_id, session_id=None
     )
 
 
@@ -158,9 +158,9 @@ async def get_distribution(
     timeline_service: TimelineService = Depends(_resolve_get_timeline_service()),
     user_id: Optional[str] = Depends(deps.get_user_id_optional),
 ) -> Dict[str, int]:
-    session_id = request.headers.get("X-Session-Id") or request.headers.get("x-session-id")
+    # Distribution affiche TOUTES les données de l'utilisateur (pas de filtre session_id)
     return await timeline_service.get_distribution_by_agent(
-        metric=metric, period=period, user_id=user_id, session_id=session_id
+        metric=metric, period=period, user_id=user_id, session_id=None
     )
 
 

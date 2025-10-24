@@ -1,4 +1,56 @@
-## 🚧 Session EN COURS (2025-10-24 11:30 CET) — Agent : Claude Code
+## ✅ Session COMPLÉTÉE (2025-10-24 06:15 CET) — Agent : Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/dashboard/timeline_service.py` (3 bugs SQL fixés)
+- `src/backend/features/dashboard/router.py` (suppression filtrage session_id)
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+**🔥 Fix 3 bugs critiques Cockpit - Graphiques distribution vides**
+
+**Problèmes utilisateur:**
+- Graphiques Distribution des Agents complètement vides (0 données affichées)
+- Timeline vide (mais normal si DB vide en local)
+
+**Bugs SQL identifiés et corrigés:**
+
+1. **Bug SQL `no such column: agent`** ([timeline_service.py:276,278,288,322,324,334](src/backend/features/dashboard/timeline_service.py)):
+   - Table `messages` a colonne `agent_id` (pas `agent`)
+   - Code utilisait `SELECT agent, ... GROUP BY agent` → crash SQL
+   - **Fix**: Remplacé par `SELECT agent_id, ... GROUP BY agent_id`
+   - Impact: `/api/dashboard/distribution/threads` et `/messages` crashaient systématiquement
+
+2. **Bug filtrage session_id trop restrictif** ([router.py:105-164](src/backend/features/dashboard/router.py)):
+   - Frontend envoie header `X-Session-Id` (session WebSocket actuelle)
+   - Backend filtrait UNIQUEMENT les données de cette session → graphiques vides si conversations dans autres sessions
+   - **Fix**: Passé `session_id=None` dans tous les endpoints timeline/distribution
+   - Impact: Cockpit affiche maintenant TOUTES les données de l'utilisateur (toutes sessions confondues)
+
+3. **Bug alias SQL manquant** ([timeline_service.py:277](src/backend/features/dashboard/timeline_service.py)):
+   - Conditions WHERE utilisaient `m.created_at`, `m.user_id`, `m.session_id`
+   - Mais requête SQL disait `FROM messages` (sans alias `m`) → crash `no such column: m.created_at`
+   - **Fix**: Ajouté alias `FROM messages m`
+   - Impact: `/api/dashboard/distribution/threads` crashait sur ce bug après le fix du bug #1
+
+**Tests:**
+- ✅ Backend relancé avec les 3 fixes
+- ✅ Distribution des Agents s'affiche maintenant (pie chart visible)
+- ⚠️ Timeline reste vide (DB locale vide - pas de messages historiques)
+
+**État final:**
+- Code prêt pour prod (3 bugs SQL corrigés)
+- Graphiques Distribution fonctionnent ✅
+- Graphiques Timeline fonctionneront dès que l'utilisateur aura créé des conversations
+
+**Prochaines actions recommandées (Codex GPT):**
+- Tester en créant 2-3 conversations dans module Dialogue
+- Vérifier que tous les graphiques Cockpit se remplissent
+- Éventuellement ajouter données de test en DB pour démo
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-24 11:30 CET) — Agent : Claude Code
 
 ### Fichiers modifiés
 - `src/backend/features/dashboard/service.py`
