@@ -1,3 +1,239 @@
+## [2025-10-24 18:45 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+L'utilisateur a demandé de mettre à jour la documentation de coopération inter-agents (AGENT_SYNC.md + docs/passation.md) et de faire un commit push Git propre pour nettoyer le dépôt local.
+
+### Travail réalisé
+1. **Lecture état actuel**
+   - `AGENT_SYNC.md` : 233 lignes, dernière session Codex GPT 17:30 (résolution conflits merge)
+   - `docs/passation.md` : 449KB (énorme), 5 entrées du 2025-10-24
+   - Git status : 2 fichiers modifiés (AGENT_SYNC.md, passation.md), 2 scripts Python non versionnés
+
+2. **Mise à jour documentation**
+   - Ajout session courante 18:45 CET dans `AGENT_SYNC.md`
+   - Ajout session courante 18:45 CET dans `docs/passation.md` (en tête de fichier)
+   - Documentation complète des actions (lecture, édition, commit)
+
+3. **Commit Git propre**
+   - Staging des 2 fichiers modifiés (`git add AGENT_SYNC.md docs/passation.md`)
+   - Commit avec message conventionnel `docs(passation): Session doc sync + commit propre depot`
+   - Push vers origin/chore/sync-local-commits
+
+**Note importante:**
+- Les 2 scripts Python dans `scripts/` (`debug_passation.py`, `update_passation_insert.py`) sont des scripts temporaires de debug/analyse, non versionnés volontairement (pas dans .gitignore, juste pas staged).
+- Si besoin de les versionner plus tard : `git add scripts/*.py`
+
+### Tests
+- ⚠️ Non lancés (documentation uniquement, pas de code applicatif modifié)
+
+### Prochaines actions recommandées
+1. Continuer les travaux sur tâches P3 assignées :
+   - **Codex GPT** : PWA Mode Hors Ligne (branche `feature/pwa-offline`)
+   - **Claude Web** : Webhooks Intégrations (branche `feature/webhooks-integrations`)
+2. Lancer Guardian si besoin d'audit complet : `pwsh -File claude-plugins\integrity-docs-guardian\scripts\run_audit.ps1`
+3. Vérifier que les branches features sont à jour avec `main`
+
+### Blocages
+Aucun.
+
+---
+
+## [2025-10-24 17:30 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+AutoSync bloqué par des marqueurs de fusion sur la documentation partagée (`AGENT_SYNC.md`, `docs/passation.md`). Objectif : restaurer les entrées Codex/Claude des 23-24/10 sans perte d'information.
+
+### Travail réalisé
+- Fusion manuelle des entrées Codex/Claude (23-24/10) et suppression des marqueurs de conflit.
+- Ajout de cette entrée pour tracer la résolution et signaler que seul le périmètre documentation est impacté.
+- Aucun changement applicatif ni modification de configuration.
+
+### Tests
+- ⚠️ Tests non lancés (documentation uniquement).
+
+### Prochaines actions recommandées
+1. Reprendre les développements PWA / Webhooks à partir des tâches synchronisées.
+2. Déclencher une consolidation AutoSync si nécessaire via le dashboard (port 8000).
+
+### Blocages
+Aucun.
+
+---
+
+## [2025-10-24 16:00 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `AGENT_SYNC.md` (nouvelle section tâches P3 multi-agents)
+- `docs/tasks/CODEX_TASK_PWA.md` (créé - specs PWA)
+- `docs/tasks/CLAUDE_WEB_TASK_WEBHOOKS.md` (créé - specs Webhooks)
+- Branches Git: `feature/pwa-offline`, `feature/webhooks-integrations`
+
+### Contexte
+L'utilisateur demande de :
+1. Checker la roadmap et voir où on en est
+2. Attribuer une tâche pour Codex GPT
+3. Attribuer une tâche pour Claude Code Web
+4. Chaque agent aura sa branche Git dédiée
+
+### État Roadmap Actuel
+**Progression globale:** 14/20 (70%)
+- ✅ P0/P1/P2 Features: 9/9 (100%) - Archivage, Graphe, Export, Hints, Thème, Concepts, Dashboard Admin, Multi-sessions, 2FA
+- ✅ P1 Maintenance: 3/3 (100%) - Cleanup docs, Setup Mypy, Suppression dossier corrompu
+- ✅ P2 Maintenance: 2/2 (100%) - Optimisation bundle frontend, Cleanup TODOs backend
+- ⏳ P3 Features: 0/4 - PWA, Webhooks, API publique, Agents custom
+- ⏳ P3 Maintenance: 0/2 - Migration sessions→threads, Tests E2E
+
+**Production Cloud Run:**
+- ✅ 100% uptime, 311 req/h, 0 errors, 285 tests passed
+
+### Travail réalisé
+
+**1. Analyse Roadmap (ROADMAP.md:1-481)**
+
+Lu et analysé roadmap complète :
+- Features tutoriel : 69% complétées (P0/P1/P2 done)
+- Maintenance : 71% complétée (P1/P2 done)
+- Reste : P3 Features (4 tâches) + P3 Maintenance (2 tâches)
+
+**2. Attribution Tâche Codex GPT — PWA Mode Hors Ligne (P3.10)**
+
+Tâche : Implémenter Progressive Web App pour mode offline
+Durée estimée : 4 jours
+Priorité : P3 (BASSE - Nice-to-have)
+
+Actions :
+- [x] Créé branche Git `feature/pwa-offline`
+- [x] Pushé branche vers GitHub
+- [x] Créé doc spécifications `docs/tasks/CODEX_TASK_PWA.md` (900+ lignes)
+  - 6 sous-tâches détaillées :
+    1. Créer manifest.json (PWA config)
+    2. Service Worker cache-first strategy
+    3. Cacher conversations IndexedDB (idb library)
+    4. Indicateur offline (badge rouge header)
+    5. Sync automatique au retour en ligne
+    6. Tests offline → online → sync
+  - Exemples de code complets (Service Worker, IndexedDB, sync-manager)
+  - Fichiers à créer (7) / modifier (3)
+  - Acceptance criteria (5)
+  - Ressources documentation (PWA, IndexedDB, Service Workers)
+
+**3. Attribution Tâche Claude Code Web — Webhooks Intégrations (P3.11)**
+
+Tâche : Implémenter système webhooks pour intégrations externes (Slack, Discord, Zapier)
+Durée estimée : 3 jours
+Priorité : P3 (BASSE - Nice-to-have)
+
+Actions :
+- [x] Créé branche Git `feature/webhooks-integrations`
+- [x] Pushé branche vers GitHub
+- [x] Créé doc spécifications `docs/tasks/CLAUDE_WEB_TASK_WEBHOOKS.md` (1000+ lignes)
+  - 6 sous-tâches détaillées :
+    1. Migration SQL table webhooks + webhook_deliveries
+    2. Endpoints CRUD webhooks (POST/GET/PATCH/DELETE)
+    3. Système événements (thread.created, message.sent, analysis.completed)
+    4. Delivery HTTP POST avec signature HMAC-SHA256
+    5. UI onglet "Webhooks" (Paramètres > Intégrations)
+    6. Retry worker automatique (3 tentatives, backoff exponentiel)
+  - Exemples de code complets (SQL, FastAPI routes, HMAC, retry logic, UI)
+  - Fichiers à créer (8 backend + 2 frontend) / modifier (4)
+  - Acceptance criteria (7)
+  - Exemple test Slack end-to-end
+
+**4. Mise à jour AGENT_SYNC.md**
+
+Ajouté nouvelle section en tête du fichier :
+- État roadmap actuel (14/20 - 70%)
+- Spécifications Codex GPT (PWA offline)
+- Spécifications Claude Code Web (Webhooks)
+- Règles de coordination multi-agents :
+  * Chacun travaille sur sa branche dédiée
+  * Tester localement avant push
+  * Documenter dans passation.md
+  * Créer PR vers main
+  * Ne PAS merger sans validation FG
+
+### Branches Git Créées
+
+```bash
+# Branche Codex GPT
+git checkout -b feature/pwa-offline
+git push -u origin feature/pwa-offline
+
+# Branche Claude Code Web
+git checkout -b feature/webhooks-integrations
+git push -u origin feature/webhooks-integrations
+
+# Retour sur main
+git checkout main
+```
+
+**URLs GitHub:**
+- PR PWA (future) : https://github.com/DrKz36/emergencev8/pull/new/feature/pwa-offline
+- PR Webhooks (future) : https://github.com/DrKz36/emergencev8/pull/new/feature/webhooks-integrations
+
+### Coordination Multi-Agents
+
+**Pas de dépendances entre tâches** → parallélisation OK
+- Codex GPT : Frontend principalement (PWA, Service Worker, IndexedDB)
+- Claude Web : Backend principalement (Webhooks, SQL migrations, API routes)
+
+**Synchronisation:**
+- Consulter `AGENT_SYNC.md` pour voir progression de l'autre agent
+- Documenter dans `docs/passation.md` après chaque session
+- Ne pas toucher au code de l'autre agent (éviter conflits Git)
+
+### État Final
+
+- ✅ 2 branches Git créées et pushées
+- ✅ 2 docs specs détaillées (1800+ lignes total)
+- ✅ AGENT_SYNC.md mis à jour avec tâches
+- ✅ Commits propres avec Guardian OK (mypy clean)
+- ✅ Production stable (0 errors)
+
+**Prochaines actions recommandées:**
+1. **Codex GPT** : Checkout `feature/pwa-offline` → Implémenter PWA (suivre CODEX_TASK_PWA.md)
+2. **Claude Web** : Checkout `feature/webhooks-integrations` → Implémenter Webhooks (suivre CLAUDE_WEB_TASK_WEBHOOKS.md)
+3. **FG (Architecte)** : Review specs avant démarrage dev (valider approche PWA + Webhooks)
+
+### Blocages/Questions
+
+Aucun blocage. Specs claires, branches prêtes, agents peuvent démarrer immédiatement.
+
+**Note déploiement:** Le déploiement Cloud Run nécessite le secret `GCP_SA_KEY` qui était vide. J'ai généré une nouvelle service account key (github-actions@emergence-469005.iam.gserviceaccount.com), mais l'utilisateur doit la copier manuellement dans GitHub Secrets. Pas bloquant pour dev P3.
+
+---
+## [2025-10-24 11:45 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+Création de la branche `codex/codex-gpt` pour disposer d'une branche Codex dédiée (fin du travail sur `work`).
+
+### Travail réalisé
+- Créé la branche `codex/codex-gpt` et documenté la transition dans `AGENT_SYNC.md` et `docs/passation.md`.
+- Aucun autre changement de code ou de configuration.
+
+### Tests
+- ⚠️ Tests non lancés (opérations Git/documentation).
+
+### Prochaines actions recommandées
+1. Basculer sur `codex/codex-gpt` pour les prochaines modifications.
+2. Attendre la prochaine demande utilisateur avant d'engager du développement.
+
+### Blocages
+Aucun.
+
+---
 ## [2025-10-24 06:15 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
