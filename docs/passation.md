@@ -1,3 +1,96 @@
+## [2025-10-24 06:15 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/backend/features/dashboard/timeline_service.py` (3 bugs SQL corrigés)
+- `src/backend/features/dashboard/router.py` (filtrage session_id retiré)
+
+### Contexte
+L'utilisateur remonte que les graphiques Cockpit sont vides :
+- Distribution des Agents : rien ne s'affiche
+- Timeline : vide (mais DB locale vide donc normal)
+
+### Diagnostic
+
+**Problème racine :** 3 bugs SQL critiques
+
+1. **Bug `no such column: agent`**
+   - Table `messages` a colonne `agent_id` (pas `agent`)
+   - Code utilisait `SELECT agent FROM messages` → crash SQL
+   - Endpoints `/api/dashboard/distribution/threads` et `/messages` crashaient
+
+2. **Bug filtrage session_id trop restrictif**
+   - Frontend envoie header `X-Session-Id` (session WebSocket courante)
+   - Backend filtrait UNIQUEMENT cette session → exclut conversations passées
+   - Résultat : graphiques vides même si l'user a des données dans d'autres sessions
+
+3. **Bug alias SQL manquant**
+   - Conditions WHERE utilisaient `m.created_at` mais query disait `FROM messages` (sans alias `m`)
+   - Crash `no such column: m.created_at`
+
+### Travail réalisé
+
+**1. Fix bug SQL `agent` → `agent_id`** ([timeline_service.py:276,278,288,322,324,334](../src/backend/features/dashboard/timeline_service.py))
+
+Remplacé toutes les occurrences :
+```python
+# AVANT (crashait)
+SELECT agent, COUNT(*) FROM messages GROUP BY agent
+
+# APRÈS (fix)
+SELECT agent_id, COUNT(*) FROM messages GROUP BY agent_id
+
+# Et dans le code Python
+agent_name = row["agent_id"].lower() if row["agent_id"] else "unknown"
+```
+
+**2. Fix filtrage session_id** ([router.py:105-164](../src/backend/features/dashboard/router.py))
+
+Passé `session_id=None` dans tous les endpoints timeline/distribution :
+```python
+# AVANT (filtrait juste session actuelle)
+session_id = request.headers.get("X-Session-Id")
+return await timeline_service.get_activity_timeline(
+    period=period, user_id=user_id, session_id=session_id
+)
+
+# APRÈS (toutes sessions de l'utilisateur)
+# Timeline affiche TOUTES les données de l'utilisateur (pas de filtre session_id)
+return await timeline_service.get_activity_timeline(
+    period=period, user_id=user_id, session_id=None
+)
+```
+
+**3. Fix alias SQL manquant** ([timeline_service.py:277](../src/backend/features/dashboard/timeline_service.py))
+
+Ajouté alias `m` :
+```python
+# AVANT (crashait)
+conditions = ["m.created_at IS NOT NULL", ...]
+query = "SELECT agent_id FROM messages WHERE ..."
+
+# APRÈS (fix)
+query = "SELECT agent_id FROM messages m WHERE ..."
+```
+
+### Résultat
+
+**Tests effectués :**
+- ✅ Backend relancé avec les 3 fixes
+- ✅ Distribution des Agents s'affiche (pie chart visible avec données)
+- ⚠️ Timeline reste vide (DB locale vide - pas de messages historiques créés par l'utilisateur)
+
+**État final :**
+- Code prêt pour prod (3 bugs SQL éliminés)
+- Graphiques Distribution fonctionnels ✅
+- Graphiques Timeline fonctionneront dès création de conversations
+
+**Handoff pour Codex GPT :**
+- Tester en créant 2-3 conversations dans module Dialogue
+- Vérifier que tous les graphiques Cockpit se remplissent correctement
+- Considérer ajout de données de test en DB pour démo
+
+---
+
 ## [2025-10-24 11:30 CET] — Agent: Claude Code
 
 ### Fichiers modifiés

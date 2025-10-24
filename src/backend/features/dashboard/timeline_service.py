@@ -273,9 +273,9 @@ class TimelineService:
             where_clause = " WHERE " + " AND ".join(conditions)
 
             query = f"""
-                SELECT agent, COUNT(DISTINCT thread_id) as total
-                FROM messages{where_clause}
-                GROUP BY agent
+                SELECT agent_id, COUNT(DISTINCT thread_id) as total
+                FROM messages m{where_clause}
+                GROUP BY agent_id
                 ORDER BY total DESC
             """
 
@@ -285,7 +285,7 @@ class TimelineService:
 
                 result = {}
                 for row in rows:
-                    agent_name = row["agent"].lower() if row["agent"] else "unknown"
+                    agent_name = row["agent_id"].lower() if row["agent_id"] else "unknown"
 
                     # Filtrer les agents invalides
                     if agent_name not in valid_agents:
@@ -319,9 +319,9 @@ class TimelineService:
             where_clause = " WHERE " + " AND ".join(conditions)
 
             query = f"""
-                SELECT agent, COUNT(*) as total
+                SELECT agent_id, COUNT(*) as total
                 FROM messages{where_clause}
-                GROUP BY agent
+                GROUP BY agent_id
                 ORDER BY total DESC
             """
 
@@ -331,7 +331,7 @@ class TimelineService:
 
                 result = {}
                 for row in rows:
-                    agent_name = row["agent"].lower() if row["agent"] else "unknown"
+                    agent_name = row["agent_id"].lower() if row["agent_id"] else "unknown"
 
                     # Filtrer les agents invalides
                     if agent_name not in valid_agents:
