@@ -8010,3 +8010,89 @@ Tous les fixes de Codex (debate/documents/auth) sont maintenant **en production*
 - **Health** : DB UP, Vector UP
 - **Performance** : 3.53ms response time
 - **Sécurité** : Rate limiting + headers HSTS/XSS/Frame protection
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-24 02:40 UTC) — Agent : Claude Code (Web Interface)
+
+### Fichiers modifiés
+- `claude-plugins/integrity-docs-guardian/scripts/setup_guardian.sh` (nouveau)
+- `.git/hooks/pre-commit` (créé via script)
+- `.git/hooks/post-commit` (créé via script)
+- `.git/hooks/pre-push` (créé via script)
+- `AGENT_SYNC.md` (cette entrée)
+
+### Contexte
+User demande audit complet du repo et fix des problèmes détectés. Diagnostic :
+1. **Guardian hooks pas installés** (PowerShell script incompatible Linux)
+2. **Dependencies Python manquantes** (httpx, fastapi, etc.)
+3. **Production DEGRADED** (4 warnings)
+4. **Test backend fail** (non vérifiable sans deps complètes)
+
+### Actions réalisées
+
+**1. Audit complet du repo**
+- ✅ Lecture AGENT_SYNC.md, CODEV_PROTOCOL.md, passation.md
+- ✅ Git status : working tree clean, branche `claude/web-interface-work-011CUREAb6uez6CSUgh3aPxH`
+- ✅ Commits récents : fixes layout/dialogue/tests par Codex
+- ✅ Outils dev : pytest 8.4.2, mypy 1.18.2, ruff 0.14.1 ✅
+
+**2. Fix Guardian hooks (Linux)**
+- ✅ Création `setup_guardian.sh` (équivalent bash du PowerShell)
+  - Pre-commit hook : validation basique
+  - Post-commit hook : feedback commit
+  - Pre-push hook : vérification basique
+- ✅ Fix CRLF line endings → LF
+- ✅ Installation hooks : `chmod +x` + `./setup_guardian.sh`
+- ✅ Vérification : 3 hooks actifs et exécutables
+
+**3. Tentative fix dependencies Python**
+- ⚠️ Installation complète `requirements.txt` trop lourde (torch, chromadb, etc.)
+- ✅ Installation deps essentielles : httpx, fastapi, pydantic, pytest, aiosqlite, bcrypt
+- ⚠️ Tests pytest bloqués : manque pyotp, OpenAI, Anthropic, ChromaDB, etc.
+- 📝 **Limitation environnement cloud** : impossible d'installer toutes les deps
+
+**4. Vérification production**
+- ⚠️ Endpoint `/ready` : 403 Forbidden (gcloud CLI non disponible dans environnement cloud)
+- 📝 Status prod (d'après AGENT_SYNC) : DEGRADED (0 errors, 4 warnings)
+
+### Résultat
+
+**✅ Succès partiels :**
+1. **Guardian hooks Linux** : Installés et fonctionnels 🔥
+2. **Script setup_guardian.sh** : Créé et testé ✅
+3. **Deps Python core** : httpx, fastapi, pydantic installés ✅
+
+**⚠️ Limitations environnement cloud :**
+1. **Tests pytest** : Impossible sans deps complètes (pyotp, OpenAI, ChromaDB, torch)
+2. **Production check** : Impossible sans gcloud CLI
+3. **Installation complète** : Environment cloud trop limité pour torch/chromadb
+
+### Tests
+- ⚠️ pytest : Bloqué (deps manquantes)
+- ✅ Guardian hooks : Testés et fonctionnels
+- ✅ setup_guardian.sh : Exécution OK
+
+### Prochaines actions recommandées
+
+**POUR L'UTILISATEUR (en local) :**
+1. **Pull cette branche** : `git pull origin claude/web-interface-work-011CUREAb6uez6CSUgh3aPxH`
+2. **Installer deps Python** : `pip install -r requirements.txt` (en local)
+3. **Valider tests** : `pytest tests/backend/ -v`
+4. **Vérifier Guardian** : Les hooks sont déjà installés ici, mais peut les réinstaller via `./claude-plugins/integrity-docs-guardian/scripts/setup_guardian.sh`
+
+**POUR CODEX/CLAUDE (prochaine session) :**
+1. Investiguer prod DEGRADED (4 warnings Cloud Run)
+2. Fixer test `test_debate_service.py::test_debate_say_once_short_response` (si confirmé fail)
+3. Compléter Guardian hooks avec agents Python (Anima, Neo, ProdGuardian)
+
+### État actuel
+- **Git** : Working tree clean + nouveau fichier `setup_guardian.sh` (staged)
+- **Guardian** : Hooks Linux installés et actifs ✅
+- **Dependencies** : Core deps OK, deps lourdes manquantes (limitation cloud)
+- **Production** : Status DEGRADED (à investiguer)
+
+### Blocages
+- Tests pytest incomplets (environnement cloud limité)
+- Production monitoring limité (pas de gcloud CLI)
+
