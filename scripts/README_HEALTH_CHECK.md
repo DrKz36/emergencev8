@@ -17,9 +17,23 @@ Résout le problème: Production répond 403 sur `/ready` et autres endpoints ca
    ```
 
 2. **Python 3 + PyJWT** installé:
-   ```bash
-   pip install pyjwt
+
+   **Windows:**
+   ```powershell
+   # Utilise python standard (pas python3 WindowsApps)
+   python -m pip install pyjwt
+   # Ou si tu as py launcher
+   py -m pip install pyjwt
    ```
+
+   **Linux/Mac:**
+   ```bash
+   pip3 install pyjwt
+   # Ou
+   python3 -m pip install pyjwt
+   ```
+
+   **Note:** Le script détecte automatiquement l'OS et utilise la commande Python appropriée (`python` sur Windows, `python3` sur Linux/Mac).
 
 3. **gcloud CLI** (optionnel, pour métriques et logs):
    ```bash
@@ -114,9 +128,29 @@ gcloud config set project emergence-469005
 
 ### Erreur: PyJWT non installé
 
-**Solution:**
+**Windows:**
+```powershell
+python -m pip install pyjwt
+# Ou avec py launcher
+py -m pip install pyjwt
+```
+
+**Linux/Mac:**
 ```bash
-pip install pyjwt
+pip3 install pyjwt
+# Ou
+python3 -m pip install pyjwt
+```
+
+### Erreur: Python non trouvé (Windows)
+
+**Cause:** `python3` WindowsApps sans PyJWT
+
+**Solution:** Installe Python standard depuis python.org et ajoute au PATH
+```powershell
+# Télécharge depuis https://www.python.org/downloads/
+# Puis installe PyJWT
+python -m pip install pyjwt
 ```
 
 ## 🔐 Sécurité
