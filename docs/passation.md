@@ -1,3 +1,64 @@
+## [2025-10-25 21:30 CET] — Agent: Claude Code Web
+
+### Fichiers modifiés
+- `AGENT_SYNC.md` (màj - review PR #17 + merge confirmé)
+- `docs/passation.md` (cette entrée)
+
+### Contexte
+Review + merge PR #17 (Production Health Check Script) créée par Claude Code Local.
+
+### Travail réalisé
+
+**1. Review script check-prod-health.ps1**
+- ✅ Code quality: Excellent (structure, gestion erreurs, exit codes)
+- ✅ Sécurité: JWT dynamique depuis .env, pas de secrets hardcodés
+- ✅ Logique: Résout 403 Forbidden sur /ready avec Bearer token
+- ⚠️ Windows compat: Script utilise `python3` (PyJWT issue sur Windows), OK pour prod Linux/Mac
+
+**2. Tests effectués**
+- ✅ Script fail propre si JWT_SECRET manquant
+- ✅ Logique génération JWT validée
+- ❌ Test end-to-end bloqué (Windows env, python3/PyJWT issue)
+
+**3. Vérification état branches**
+- ✅ Branche `claude/prod-health-script-011CUT6y9i5BBd44UKDTjrpo` pushée par Local
+- ✅ Branche `chore/sync-multi-agents-pwa-codex` (PWA Codex) existe avec modifs PWA
+- ⏳ Codex GPT bosse encore localement sur PWA (pas de nouveaux commits pushés)
+
+**4. Merge PR #17**
+- ✅ PR #17 mergée par user vers main (commit `d8d6441`)
+- ✅ Script health check en production
+- ✅ Résoud problème 403 healthcheck prod
+
+### Résultats
+
+**Branche:** `main` (merged from claude/prod-health-script-011CUT6y9i5BBd44UKDTjrpo)
+**PR:** #17 - Merged ✅
+**Commit main:** `d8d6441`
+
+**Impact:**
+- 🔥 Script production health check disponible
+- 🔥 Résout 403 sur /ready endpoint avec JWT auth
+- 🔥 Workflow Claude Code amélioré (P1 health check done)
+
+**État workflow scripts (Claude Code Local):**
+- ✅ P1 Health: check-prod-health.ps1 (PR #17 MERGED)
+- ⏳ P0: run-all-tests.ps1 (branche `feature/claude-code-workflow-scripts`)
+- ⏳ P1 Doc: CLAUDE_CODE_WORKFLOW.md (branche `feature/claude-code-workflow-scripts`)
+- ⏳ P2/P3: À faire
+
+**État PWA (Codex GPT):**
+- ⏳ En cours localement (pas de nouveaux commits pushés)
+- ✅ Modifs PWA commitées sur branche `chore/sync-multi-agents-pwa-codex` (par Claude Web)
+- ⏳ Attente Codex finisse tests offline/online + push branche dédiée
+
+### Prochaines actions
+- Attendre que Codex push branche PWA
+- Review branche `feature/claude-code-workflow-scripts` (P0 + P1 doc)
+- Monitoring production
+
+---
+
 ## [2025-10-25 02:15 UTC] — Agent: Claude Code Local
 
 ### Fichiers modifiés
