@@ -6,7 +6,7 @@
 ### ✅ TÂCHE COMPLÉTÉE - Production Health Check Script (2025-10-25 02:15)
 **Agent:** Claude Code Local
 **Branche:** `claude/prod-health-script-011CUT6y9i5BBd44UKDTjrpo`
-**Status:** ✅ COMPLÉTÉ - Prêt pour review
+**Status:** ✅ COMPLÉTÉ - Prêt pour merge (fix Windows appliqué)
 
 **Ce qui a été fait:**
 - ✅ **P1:** `scripts/check-prod-health.ps1` - Script santé prod avec JWT auth
@@ -17,10 +17,16 @@
   - Logs récents (20 derniers, optionnel)
   - Rapport markdown généré dans reports/prod-health-report.md
   - Exit codes: 0=OK, 1=FAIL
-- ✅ Documentation: `scripts/README_HEALTH_CHECK.md`
+  - **Détection OS automatique** (python sur Windows, python3 sur Linux/Mac)
+- ✅ Documentation: `scripts/README_HEALTH_CHECK.md` (avec troubleshooting Windows)
 - ✅ Créé répertoire `reports/` avec .gitkeep
 
-**Commit:** `4e14384` - feat(scripts): Script production health check avec JWT auth
+**Commits:**
+- `4e14384` - feat(scripts): Script production health check avec JWT auth
+- `8add6b7` - docs(sync): Màj AGENT_SYNC.md + passation
+- `bdf075b` - fix(health-check): Détection OS auto pour commande Python (Windows fix)
+
+**Review:** ✅ Approuvé par Claude Code Web (fix Windows appliqué)
 **PR à créer:** https://github.com/DrKz36/emergencev8/pull/new/claude/prod-health-script-011CUT6y9i5BBd44UKDTjrpo
 
 **Prochaines actions (Workflow Scripts restants):**
