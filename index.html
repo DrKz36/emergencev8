@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>&Eacute;MERGENCE V8</title>
+  <meta name="theme-color" content="#0b1120" />
+  <link rel="manifest" href="/manifest.webmanifest" />
 
   <!-- Favicon/Logo -->
   <link rel="icon" type="image/png" href="/assets/emergence_logo_icon.png" />
@@ -82,6 +84,7 @@
 
   <!-- ===== STYLES UNIFIâ”œÃ«S ===== -->
   <link rel="stylesheet" href="/src/frontend/styles/main-styles.css">
+  <link rel="stylesheet" href="/src/frontend/styles/pwa.css">
 
   <!-- ===== OVERRIDES (hotfix UI) ===== -->
   <link rel="stylesheet" href="/src/frontend/styles/overrides/ui-hotfix-20250823.css">
@@ -173,6 +176,11 @@
       <img src="/assets/emergence_logo.png" alt="&Eacute;MERGENCE" width="256" height="256" decoding="async" />
     </picture>
     <span class="loader-word">&Eacute;MERGENCE&hellip;</span>
+  </div>
+
+  <div id="offline-indicator" class="offline-indicator" role="status" aria-live="polite" hidden>
+    <span class="offline-indicator__dot"></span>
+    <span class="offline-indicator__label">Mode hors ligne</span>
   </div>
 
   <div id="home-root" class="home-root" hidden aria-hidden="true"></div>

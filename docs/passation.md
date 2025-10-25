@@ -1,12 +1,38 @@
 # 📝 Journal de Passation Inter-Agents
 
-**Dernière mise à jour:** 2025-10-24 19:30 CET
-**Période couverte:** Dernières 48 heures (23-24 octobre)
+**Dernière mise à jour:** 2025-10-25 21:15 CET
+**Période couverte:** Dernières 48 heures (24-25 octobre)
 **Archive complète:** [docs/archives/passation_archive_2025-10-14_to_2025-10-22.md](archives/passation_archive_2025-10-14_to_2025-10-22.md)
 
 ---
 
+## 🔄 Sessions Actives - 25 Octobre 2025
+
+### [21:15 CET] Claude Code Web - Sync multi-agents + Commit modifs PWA Codex
+- **Fichiers:** `AGENT_SYNC.md`, `docs/passation.md`, + modifs PWA Codex (manifest, sw.js, pwa/*.js, etc.)
+- **Actions:**
+  - Review travail Claude Code Local (branche `feature/claude-code-workflow-scripts`)
+  - Review travail Codex GPT (modifs PWA locales, pas encore commitées)
+  - Mise à jour docs coordination inter-agents (AGENT_SYNC.md + passation.md)
+  - Commit + push TOUTES les modifs (PWA Codex + docs sync) pour dépôt propre
+- **Analyse:**
+  - ✅ Claude Code Local: P0 (run-all-tests.ps1) + P1 doc (CLAUDE_CODE_WORKFLOW.md) FAITS, reste P1 health (2-3h)
+  - ✅ Codex GPT: PWA 80% FAIT (manifest, SW, storage, sync), reste tests manuels (30 min)
+- **Recommandation:** Option 1 - Les 2 continuent et finissent leurs tâches
+- **Next:**
+  - Claude Code Local: Finir P1 health script → commit/push → PR
+  - Codex GPT: Tests PWA offline/online → commit/push → PR
+  - Claude Code Web: Review des 2 PR avant merge
+
+---
+
 ## 🔄 Sessions Actives - 24 Octobre 2025
+
+### [20:45 CET] Codex GPT - PWA offline sync + manifest
+- **Fichiers:** `manifest.webmanifest`, `sw.js`, `index.html`, `src/frontend/main.js`, `src/frontend/shared/constants.js`, `src/frontend/features/pwa/offline-storage.js`, `src/frontend/features/pwa/sync-manager.js`, `src/frontend/styles/pwa.css`, `docs/architecture/10-Components.md`, `AGENT_SYNC.md`
+- **Actions:** Ajout manifest + service worker racine, gestionnaire offline (IndexedDB + outbox WS) branché dans `main.js`, badge UI + CSS dédiée, mise à jour docs architecture/AGENT_SYNC pour la PWA.
+- **Tests:** ✅ `npm run build`
+- **Next:** Vérifier manuellement syncing offline→online, documenter guide utilisateur PWA si validé.
 
 ### [14:00 CET] Claude Code - Fix test_unified_retriever mock obsolete
 - **Fichiers:** `tests/backend/features/test_unified_retriever.py`
