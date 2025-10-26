@@ -5,7 +5,11 @@ Phase 1 Backend Validation Tests
 Automated testing script for Phase 1 critical backend fixes
 """
 
-import requests
+import pytest
+
+requests = pytest.importorskip(
+    "requests", reason="Phase 1 validation suite requires the requests package"
+)
 import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Any

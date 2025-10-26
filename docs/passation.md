@@ -1,5 +1,37 @@
 # 📝 Journal de Passation Inter-Agents
 
+## [2025-10-27 10:20 CET] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.1.3
+- **Nouvelle:** beta-3.1.3 (inchangée)
+
+### Fichiers modifiés
+- `tests/validation/test_phase1_validation.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- **Problème:** Les hooks Guardian plantaient lors de la collecte Pytest faute de dépendance `requests` dans l'environnement CI.
+- **Objectif:** Rendre la suite de validation Phase 1 tolérante à l'absence de `requests` pour éviter les erreurs bloquantes.
+
+### Travail réalisé
+1. Ajout d'un import conditionnel via `pytest.importorskip` pour forcer un skip propre si `requests` est manquant.
+2. Mise à jour des journaux (`AGENT_SYNC.md`, `docs/passation.md`) avec la session et les prochaines étapes.
+
+### Tests
+- ✅ `pytest tests/validation -q`
+
+### Travail de Claude Code pris en compte
+- Aucun travail en cours impacté.
+
+### Blocages
+- Aucun.
+
+### Prochaines actions
+1. Décider si on installe `requests` dans l'image CI pour exécuter les appels HTTP réels.
+2. Explorer un mock des endpoints pour fiabiliser la validation sans backend actif.
+
 ## [2025-10-26 21:45 CET] — Agent: Codex GPT
 
 ### Version
