@@ -1,7 +1,30 @@
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
-**Dernière mise à jour:** 2025-10-26 18:05 CET (Codex GPT)
+**Dernière mise à jour:** 2025-10-26 21:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 18:10 CET (Codex GPT)
+
+## ✅ Session COMPLÉTÉE (2025-10-26 21:45 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.css`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Offset du footer chat mobile pour rester au-dessus de la bottom nav en mode portrait (sticky + padding dynamique).
+- Ajustement du padding messages mobile pour supprimer la zone morte sous la barre de navigation.
+- Bump version `beta-3.1.3` + patch notes/changelog synchronisés.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions
+1. QA sur iOS/Android pour valider le positionnement du composer face aux variations de safe-area.
+2. Vérifier que le z-index du composer ne masque pas la navigation quand le clavier est fermé.
 
 ## ✅ Session COMPLÉTÉE (2025-10-26 18:10 CET) — Agent : Codex GPT
 

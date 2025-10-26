@@ -20,13 +20,14 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.1.2 : Refactor docs inter-agents (fichiers séparés - zéro conflit merge) [ACTUEL]
+ * - beta-3.1.3 : Chat mobile composer guard (offset bottom nav) [ACTUEL]
+ * - beta-3.1.2 : Refactor docs inter-agents (fichiers séparés - zéro conflit merge)
  * - beta-3.1.1 : Dialogue - Modal reprise multi-conversations
  * - beta-3.1.0 : Webhooks + Health Check Scripts + Qualité (mypy 100%)
  */
 
-export const VERSION = 'beta-3.1.2';
-export const VERSION_NAME = 'Multi-Agent Sync Refactor';
+export const VERSION = 'beta-3.1.3';
+export const VERSION_NAME = 'Chat Mobile Composer Guard';
 export const VERSION_DATE = '2025-10-26';
 export const BUILD_PHASE = 'P3';
 export const COMPLETION_PERCENTAGE = 78; // 18/23 features (P3.11 webhooks complété)
@@ -37,6 +38,14 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.1.3',
+    date: '2025-10-26',
+    changes: [
+      { type: 'fix', text: 'Dialogue mobile – Le composer reste accessible en mode portrait (offset bottom nav + sticky guard)' },
+      { type: 'quality', text: 'Messages mobile – Padding dynamique pour éviter les zones mortes sous la barre de navigation' }
+    ]
+  },
   {
     version: 'beta-3.1.2',
     date: '2025-10-26',
