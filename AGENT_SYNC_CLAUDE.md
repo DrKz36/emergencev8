@@ -1,6 +1,6 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-10-26 22:30 CET (Claude Code)
+**Dernière mise à jour:** 2025-10-26 16:20 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
 
 ---
@@ -14,6 +14,74 @@
 4. **`docs/passation_claude.md`** ← Ton journal (48h max)
 5. **`docs/passation_codex.md`** ← Journal de Codex (pour contexte)
 6. **`git status` + `git log --oneline -10`** ← État Git
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-26 16:20 CET)
+
+### ✅ FIXES CRITIQUES + CHANGELOG ENRICHI DOCUMENTATION - beta-3.2.1
+
+**Branche:** `fix/rag-button-grid-changelog-enriched`
+**Status:** ✅ COMPLÉTÉ - 3 bugs corrigés + Changelog enrichi ajouté dans Documentation
+
+**Ce qui a été fait:**
+
+**🔧 Corrections (3 fixes critiques):**
+
+1. **Fix bouton RAG dédoublé en Dialogue (mode desktop)**
+   - Problème: 2 boutons RAG affichés simultanément en desktop
+   - Solution: `.rag-control--mobile { display: none !important }`
+   - Ajout media query `@media (min-width: 761px)` pour forcer masquage
+   - Fichier: `src/frontend/styles/components/rag-power-button.css`
+
+2. **Fix chevauchement grid tutos (page À propos/Documentation)**
+   - Problème: `minmax(320px)` trop étroit → chevauchement 640-720px
+   - Solution: minmax augmenté de 320px à 380px
+   - Fichier: `src/frontend/features/documentation/documentation.css`
+
+3. **Fix changelog manquant version beta-3.2.1**
+   - Problème: FULL_CHANGELOG démarrait à beta-3.2.0
+   - Solution: Ajout entrée complète beta-3.2.1 avec 3 fixes détaillés
+   - Fichiers: `src/version.js` + `src/frontend/version.js`
+
+**🆕 Fonctionnalité majeure:**
+
+- **Changelog enrichi dans page "À propos" (Documentation)**
+  - Import `FULL_CHANGELOG` dans `documentation.js`
+  - Nouvelle section "Historique des Versions" après Statistiques
+  - 3 méthodes de rendu ajoutées:
+    - `renderChangelog()` - Affiche 6 versions complètes
+    - `renderChangelogSection()` - Affiche sections (Features/Fixes/Quality/Impact/Files)
+    - `renderChangelogSectionItems()` - Affiche items détaillés ou simples
+  - Styles CSS complets copiés (273 lignes) : badges, animations, hover
+  - Affichage des 6 dernières versions : beta-3.2.1 → beta-3.1.0
+
+**📁 Fichiers modifiés (5):**
+- `src/frontend/styles/components/rag-power-button.css` (+11 lignes)
+- `src/frontend/features/documentation/documentation.css` (+273 lignes)
+- `src/frontend/features/documentation/documentation.js` (+139 lignes)
+- `src/version.js` (+90 lignes - FULL_CHANGELOG enrichi)
+- `src/frontend/version.js` (+90 lignes - sync FULL_CHANGELOG)
+
+**Total: +603 lignes ajoutées**
+
+**✅ Tests:**
+- ✅ `npm run build` - OK (build réussi)
+- ✅ Guardian Pre-commit - OK (mypy, docs, intégrité)
+- ✅ Guardian Pre-push - OK (production healthy - 80 logs, 0 erreurs)
+
+**🎯 Impact:**
+- UX propre: Plus de bouton RAG dédoublé
+- Layout correct: Grid tutos ne chevauche plus
+- Transparence totale: Changelog complet accessible directement dans Documentation
+- Documentation vivante: 6 versions avec détails techniques complets
+
+**🚀 Next Steps:**
+- Créer PR: `fix/rag-button-grid-changelog-enriched` → `main`
+- Merger après review
+- Changelog désormais disponible dans 2 endroits :
+  - Réglages > À propos (module Settings)
+  - À propos (page Documentation - sidebar)
 
 ---
 
