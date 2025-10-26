@@ -1,5 +1,38 @@
 # 📝 Journal de Passation Inter-Agents
 
+## [2025-10-27 10:45 CET] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.1.3
+- **Nouvelle:** beta-3.1.3 (inchangée)
+
+### Fichiers modifiés
+- `src/version.js`
+- `src/frontend/version.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- **Problème:** Le build frontend Guardian pétait à cause de `VERSION_NAME` dupliqué et d'une virgule manquante dans les patch notes.
+- **Objectif:** Stabiliser le module de versioning centralisé pour que `npm run build` passe sans broncher.
+
+### Travail réalisé
+1. Retrait du double export `VERSION_NAME` pour beta-3.1.3 et alignement du libellé (métrique nDCG + fix composer mobile).
+2. Correction des patch notes (virgule manquante + fusion des entrées beta-3.1.3) côté backend et frontend.
+
+### Tests
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Aucun impact direct sur son dernier delivery.
+
+### Blocages
+- Aucun.
+
+### Prochaines actions
+1. Garder une seule entrée patch note par version pour éviter les doublons lors des prochains hotfixes.
+2. Anticiper un bump `beta-3.1.4` si un nouveau fix chat mobile arrive.
+
 ## [2025-10-27 10:20 CET] — Agent: Codex GPT
 
 ### Version

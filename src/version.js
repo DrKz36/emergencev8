@@ -28,8 +28,7 @@
  */
 
 export const VERSION = 'beta-3.1.3';
-export const VERSION_NAME = 'Temporal nDCG Metric';
-export const VERSION_NAME = 'Chat Mobile Composer Guard';
+export const VERSION_NAME = 'Temporal nDCG Metric + Chat Composer Guard';
 export const VERSION_DATE = '2025-10-26';
 export const BUILD_PHASE = 'P3';
 export const COMPLETION_PERCENTAGE = 78; // 18/23 features (P3.11 webhooks complété)
@@ -48,7 +47,7 @@ export const PATCH_NOTES = [
       { type: 'feature', text: 'Endpoint POST /api/benchmarks/metrics/ndcg-temporal - Calcul métrique à la demande' },
       { type: 'quality', text: 'BenchmarksService.calculate_temporal_ndcg() - Méthode helper pour intégrations futures' },
       { type: 'quality', text: 'Tests complets (18 tests) - Cas edge, décroissance temporelle, trade-offs, validation params' },
-      { type: 'quality', text: 'Documentation formule DCG temporelle - Mesure impact boosts fraîcheur/entropie moteur ranking' }
+      { type: 'quality', text: 'Documentation formule DCG temporelle - Mesure impact boosts fraîcheur/entropie moteur ranking' },
       { type: 'fix', text: 'Dialogue mobile – Le composer reste accessible en mode portrait (offset bottom nav + sticky guard)' },
       { type: 'quality', text: 'Messages mobile – Padding dynamique pour éviter les zones mortes sous la barre de navigation' }
     ]

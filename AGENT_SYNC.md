@@ -1,8 +1,28 @@
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
+**Dernière mise à jour:** 2025-10-27 10:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 10:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 21:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 18:10 CET (Codex GPT)
+
+## ✅ Session COMPLÉTÉE (2025-10-27 10:45 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/version.js`
+- `src/frontend/version.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Réparé les doubles exports `VERSION_NAME` et les virgules manquantes dans les fichiers de version centralisée.
+- Fusionné les notes de version beta-3.1.3 pour inclure à la fois la métrique nDCG temporelle et le fix composer mobile.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions
+1. Harmoniser les intitulés des patch notes backend/front si d'autres hotfixes s'ajoutent sur la même version.
+2. Préparer un bump `beta-3.1.4` si un autre patch UI arrive pour garder l'historique lisible.
 
 ## ✅ Session COMPLÉTÉE (2025-10-27 10:20 CET) — Agent : Codex GPT
 
