@@ -1,5 +1,12 @@
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
+**Dernière mise à jour:** 2025-10-25 02:15 UTC (Claude Code Local)
+**Mode:** Développement collaboratif multi-agents
+
+### ✅ TÂCHE COMPLÉTÉE - Production Health Check Script (2025-10-25 02:15)
+**Agent:** Claude Code Local
+**Branche:** `claude/prod-health-script-011CUT6y9i5BBd44UKDTjrpo`
+**Status:** ✅ COMPLÉTÉ - Prêt pour merge (fix Windows appliqué)
 **Dernière mise à jour:** 2025-10-25 21:15 CET
 **Mode:** Développement collaboratif multi-agents
 
@@ -14,12 +21,26 @@
 **Ce qui a été fait:**
 - ✅ **P1:** `scripts/check-prod-health.ps1` - Script santé prod avec JWT auth
   - Génération JWT depuis .env (AUTH_JWT_SECRET)
+  - Healthcheck /ready avec Bearer token (résout 403)
   - Healthcheck /ready avec Bearer token (**résout 403** ✅)
   - Healthcheck /api/monitoring/health (optionnel)
   - Métriques Cloud Run via gcloud (optionnel)
   - Logs récents (20 derniers, optionnel)
   - Rapport markdown généré dans reports/prod-health-report.md
   - Exit codes: 0=OK, 1=FAIL
+  - **Détection OS automatique** (python sur Windows, python3 sur Linux/Mac)
+- ✅ Documentation: `scripts/README_HEALTH_CHECK.md` (avec troubleshooting Windows)
+- ✅ Créé répertoire `reports/` avec .gitkeep
+
+**Commits:**
+- `4e14384` - feat(scripts): Script production health check avec JWT auth
+- `8add6b7` - docs(sync): Màj AGENT_SYNC.md + passation
+- `bdf075b` - fix(health-check): Détection OS auto pour commande Python (Windows fix)
+
+**Review:** ✅ Approuvé par Claude Code Web (fix Windows appliqué)
+**PR à créer:** https://github.com/DrKz36/emergencev8/pull/new/claude/prod-health-script-011CUT6y9i5BBd44UKDTjrpo
+
+**Prochaines actions (Workflow Scripts restants):**
 - ✅ Documentation: `scripts/README_HEALTH_CHECK.md`
 - ✅ Créé répertoire `reports/` avec .gitkeep
 

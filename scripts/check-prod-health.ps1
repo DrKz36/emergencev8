@@ -105,6 +105,57 @@ token = jwt.encode(payload, secret, algorithm="HS256")
 print(token)
 "@
 
+    # Détecter OS et choisir commande Python appropriée
+    # Windows: python (standard) ou python3 (WindowsApps)
+    # Linux/Mac: python3 (standard)
+    $pythonCmd = if ($IsWindows) {
+        # Windows: Essayer python d'abord (plus fiable pour PyJWT)
+        if (Get-Command python -ErrorAction SilentlyContinue) {
+            "python"
+        }
+        elseif (Get-Command python3 -ErrorAction SilentlyContinue) {
+            "python3"
+        }
+        else {
+            $null
+        }
+    }
+    else {
+        # Linux/Mac: python3 standard
+        if (Get-Command python3 -ErrorAction SilentlyContinue) {
+            "python3"
+        }
+        elseif (Get-Command python -ErrorAction SilentlyContinue) {
+            "python"
+        }
+        else {
+            $null
+        }
+    }
+
+    if (-not $pythonCmd) {
+        Write-ColorOutput "❌ Python non trouvé. Installe Python 3.8+" "Red"
+        exit 1
+    }
+
+    if ($Verbose) {
+        Write-ColorOutput "   Utilise: $pythonCmd" "Green"
+    }
+
+    try {
+        $token = & $pythonCmd -c $pythonScript $jwtSecret 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-ColorOutput "❌ Erreur génération JWT: $token" "Red"
+
+            # Message d'aide contextuel selon OS
+            if ($IsWindows) {
+                Write-ColorOutput "   Installe PyJWT: python -m pip install pyjwt" "Yellow"
+                Write-ColorOutput "   Ou: py -m pip install pyjwt" "Yellow"
+            }
+            else {
+                Write-ColorOutput "   Installe PyJWT: pip3 install pyjwt" "Yellow"
+                Write-ColorOutput "   Ou: python3 -m pip install pyjwt" "Yellow"
+            }
     try {
         $token = python3 -c $pythonScript $jwtSecret 2>&1
         if ($LASTEXITCODE -ne 0) {
