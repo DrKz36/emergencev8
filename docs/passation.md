@@ -1,5 +1,38 @@
 # 📝 Journal de Passation Inter-Agents
 
+## [2025-10-27 16:45 CET] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.2.0
+- **Nouvelle:** beta-3.2.0 (inchangée)
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.js`
+- `src/frontend/styles/components/modals.css`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- Sur mobile portrait, le popup de choix de conversation s'affichait collé à gauche sans bouton « Reprendre » alors que des threads existaient, et le module Dialogue était tronqué en bas.
+
+### Travail réalisé
+1. Injecté le modal dans `document.body` avec gestion ESC/backdrop et nettoyage dédié pour corriger le décalage et éviter les fuites.
+2. Observé l'état `threads` afin d'activer dynamiquement le bouton « Reprendre » dès qu'une conversation est disponible.
+3. Ajusté `modals.css` pour un rendu responsive (largeur 92 %, boutons empilés) qui centre le popup et évite le tronquage mobile.
+
+### Tests
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Aucun impact backend détecté sur ses travaux en cours.
+
+### Blocages
+- Aucun.
+
+### Prochaines actions
+1. QA sur device mobile réel pour valider centrage + reprise du dernier thread.
+2. Décider si un verrouillage du scroll de fond est nécessaire lorsque le modal est affiché.
+
 ## [2025-10-27 14:20 CET] — Agent: Codex GPT
 
 ### Version

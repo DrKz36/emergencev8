@@ -1,10 +1,31 @@
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
+**Dernière mise à jour:** 2025-10-27 16:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 14:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 10:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 10:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 21:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 18:10 CET (Codex GPT)
+
+## ✅ Session COMPLÉTÉE (2025-10-27 16:45 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.js`
+- `src/frontend/styles/components/modals.css`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Repositionné le modal de choix de conversation dans `document.body` pour corriger le décalage mobile et ajouté un cycle de vie propre (ESC, nettoyage, backdrop).
+- Relié le modal à l'état `threads` pour activer dynamiquement le bouton « Reprendre » dès qu'une conversation existe.
+- Ajusté le style des modals sur mobile (largeur pleine, boutons empilés) afin d'éliminer le tronquage en bas du module Dialogue.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions
+1. QA mobile portrait pour valider le centrage du modal et la reprise de thread existant.
+2. Vérifier si un verrouillage du scroll de fond est nécessaire pendant l'affichage du modal.
 
 ## ✅ Session COMPLÉTÉE (2025-10-27 14:20 CET) — Agent : Codex GPT
 
