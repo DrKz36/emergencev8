@@ -1,5 +1,6 @@
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
+**Dernière mise à jour:** 2025-10-26 18:05 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 18:10 CET (Codex GPT)
 
 ## ✅ Session COMPLÉTÉE (2025-10-26 18:10 CET) — Agent : Codex GPT
@@ -29,6 +30,27 @@
 
 **Dernière mise à jour:** 2025-10-26 15:30 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
+
+## ✅ Session COMPLÉTÉE (2025-10-26 18:05 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `manifest.webmanifest`
+- `src/frontend/main.js`
+- `src/frontend/features/chat/chat.css`
+- `src/frontend/styles/overrides/mobile-menu-fix.css`
+
+### Actions réalisées
+- Verrou portrait côté PWA (manifest + garde runtime) avec overlay d'avertissement en paysage.
+- Ajusté la zone de saisie chat pour intégrer le safe-area iOS et assurer l'accès au composer sur mobile.
+- Amélioré l'affichage des métadonnées de conversation et des sélecteurs agents en mode portrait.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions
+1. QA sur device iOS/Android pour valider l'overlay orientation et le padding du composer.
+2. Vérifier que le guard portrait n'interfère pas avec le mode desktop (résolution > 900px).
+3. Ajuster si besoin la copie/UX de l'overlay selon retours utilisateur.
 
 ### ✅ NOUVELLE VERSION - beta-3.1.0 (2025-10-26 15:30)
 

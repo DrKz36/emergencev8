@@ -377,6 +377,82 @@ function setupMobileShell(appInstance, eventBus) {
   updateAria();
 }
 
+function setupOrientationGuard() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (window.__emergenceOrientationGuard) {
+    try { window.__emergenceOrientationGuard.update(); } catch (_) {}
+    return window.__emergenceOrientationGuard;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'orientation-lock-overlay';
+  overlay.setAttribute('role', 'alert');
+  overlay.setAttribute('aria-live', 'assertive');
+  overlay.setAttribute('hidden', 'hidden');
+  overlay.setAttribute('aria-hidden', 'true');
+  overlay.innerHTML = `
+    <div class="orientation-lock-card">
+      <div class="orientation-lock-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false" role="img" aria-hidden="true">
+          <path d="M6.75 2A4.75 4.75 0 0 0 2 6.75v10.5A4.75 4.75 0 0 0 6.75 22h10.5A4.75 4.75 0 0 0 22 17.25V6.75A4.75 4.75 0 0 0 17.25 2H6.75Zm0 1.5h10.5A3.25 3.25 0 0 1 20.5 6.75v10.5A3.25 3.25 0 0 1 17.25 20.5H6.75A3.25 3.25 0 0 1 3.5 17.25V6.75A3.25 3.25 0 0 1 6.75 3.5Zm1.5 2A1.25 1.25 0 0 0 7 6.75v10.5A1.25 1.25 0 0 0 8.25 18.5h7.5A1.25 1.25 0 0 0 17 17.25V6.75A1.25 1.25 0 0 0 15.75 5.5h-7.5Z"></path>
+          <path d="M4.5 4.5 19.5 19.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+        </svg>
+      </div>
+      <h2 class="orientation-lock-title">Mode paysage indisponible</h2>
+      <p class="orientation-lock-text">Tourne ton appareil pour continuer en mode portrait.</p>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const isMobileViewport = () => {
+    try {
+      const minSide = Math.min(window.innerWidth || 0, window.innerHeight || 0);
+      return minSide <= 900;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const orientationMedia = window.matchMedia('(orientation: landscape)');
+
+  const update = () => {
+    const landscape = orientationMedia?.matches ?? false;
+    const smallViewport = isMobileViewport();
+    const shouldShow = landscape && smallViewport;
+    if (shouldShow) {
+      overlay.removeAttribute('hidden');
+      overlay.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('orientation-locked');
+    } else {
+      overlay.setAttribute('hidden', 'hidden');
+      overlay.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('orientation-locked');
+    }
+  };
+
+  if (orientationMedia) {
+    if (typeof orientationMedia.addEventListener === 'function') {
+      orientationMedia.addEventListener('change', update);
+    } else if (typeof orientationMedia.addListener === 'function') {
+      orientationMedia.addListener(update);
+    }
+  }
+  window.addEventListener('resize', update, { passive: true });
+  window.addEventListener('orientationchange', update, { passive: true });
+
+  try {
+    const scr = window.screen?.orientation;
+    if (scr && typeof scr.lock === 'function') {
+      scr.lock('portrait').catch(() => {});
+    }
+  } catch (_) {}
+
+  setTimeout(update, 0);
+
+  window.__emergenceOrientationGuard = { overlay, update };
+  return window.__emergenceOrientationGuard;
+}
+
 /* ---------------------- Toast minimal ---------------------- */
 function mountToastHost() {
   let host = document.getElementById('toast-host');
@@ -1432,6 +1508,14 @@ class EmergenceClient {
     loader.classList.add('fade-out');
     setTimeout(() => { try { loader.remove(); } catch {} document.body.classList.remove('loading'); }, 300);
   }
+}
+
+/* ---------- Orientation guard (mobile portrait only) ---------- */
+try {
+  setupOrientationGuard();
+  console.info('[Orientation] Guard actif (portrait uniquement)');
+} catch (err) {
+  console.warn('[Orientation] Impossible d\'initialiser le verrou portrait', err);
 }
 
 /* ---------- Init global notifications ---------- */
