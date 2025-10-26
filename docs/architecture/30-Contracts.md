@@ -128,6 +128,7 @@
 - `GET /api/benchmarks/results` → nécessite un token utilisateur ; accepte `scenario_id`/`limit` et renvoie les matrices triées par `created_at` avec `summary` agrégé (succès, coûts, latence) et la liste complète des `runs`. Fallback SQLite automatique si Firestore est absent ou si `EDGE_MODE=1`.
 - `GET /api/benchmarks/scenarios` → catalogue des scénarios disponibles (défaut ARE|Gaia2) enrichi avec `success_threshold`, `base_cost`, `tasks`. Peut être surchargé via `BENCHMARKS_SCENARIO_INDEX`.
 - `POST /api/benchmarks/run` → 202 + `{ matrix }`, déclenche un run synchrone de la matrice demandée. Accès admin requis (`require_admin_claims`).
+- `POST /api/benchmarks/metrics/ndcg-temporal` → Calcule la métrique **nDCG@k temporelle** pour évaluer la qualité d'un classement avec pénalisation temporelle exponentielle. Nécessite un token utilisateur. Payload : `{ ranked_items: [{ rel: float, ts: datetime }], k: int (défaut 10), now?: datetime, T_days?: float (défaut 7.0), lam?: float (défaut 0.3) }`. Retourne `{ "ndcg_time@k": float [0-1], k: int, num_items: int, parameters: { T_days, lambda } }`. Utilisé pour mesurer l'impact des boosts de fraîcheur/entropie dans le moteur de ranking.
 > Persistance cloud : activer `EMERGENCE_FIRESTORE_PROJECT` + credentials Google (ou `GOOGLE_APPLICATION_CREDENTIALS`) pour répliquer les résultats dans Firestore ; sinon seul SQLite est alimenté.
 
 ### Débats

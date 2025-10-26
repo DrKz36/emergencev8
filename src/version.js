@@ -22,6 +22,8 @@
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
  * - beta-3.2.0 : Module À Propos avec Changelog enrichi (13 versions affichées) [ACTUEL]
  * - beta-3.1.3 : Chat mobile composer guard (offset bottom nav)
+ * - beta-3.1.3 : Métrique nDCG@k temporelle (benchmarking fraîcheur/entropie) [ACTUEL]
+ * - beta-3.1.3 : Chat mobile composer guard (offset bottom nav) [ACTUEL]
  * - beta-3.1.2 : Refactor docs inter-agents (fichiers séparés - zéro conflit merge)
  * - beta-3.1.1 : Dialogue - Modal reprise multi-conversations
  * - beta-3.1.0 : Webhooks + Health Check Scripts + Qualité (mypy 100%)
@@ -29,6 +31,9 @@
 
 export const VERSION = 'beta-3.2.0';
 export const VERSION_NAME = 'Module À Propos avec Changelog Enrichi';
+export const VERSION = 'beta-3.1.3';
+export const VERSION_NAME = 'Temporal nDCG Metric';
+export const VERSION_NAME = 'Chat Mobile Composer Guard';
 export const VERSION_DATE = '2025-10-26';
 export const BUILD_PHASE = 'P3';
 export const COMPLETION_PERCENTAGE = 78; // 18/23 features (P3.11 webhooks complété)
@@ -54,6 +59,11 @@ export const PATCH_NOTES = [
     version: 'beta-3.1.3',
     date: '2025-10-26',
     changes: [
+      { type: 'feature', text: 'Métrique nDCG@k temporelle - Évalue qualité ranking avec pénalisation fraîcheur exponentielle' },
+      { type: 'feature', text: 'Endpoint POST /api/benchmarks/metrics/ndcg-temporal - Calcul métrique à la demande' },
+      { type: 'quality', text: 'BenchmarksService.calculate_temporal_ndcg() - Méthode helper pour intégrations futures' },
+      { type: 'quality', text: 'Tests complets (18 tests) - Cas edge, décroissance temporelle, trade-offs, validation params' },
+      { type: 'quality', text: 'Documentation formule DCG temporelle - Mesure impact boosts fraîcheur/entropie moteur ranking' }
       { type: 'fix', text: 'Dialogue mobile – Le composer reste accessible en mode portrait (offset bottom nav + sticky guard)' },
       { type: 'quality', text: 'Messages mobile – Padding dynamique pour éviter les zones mortes sous la barre de navigation' }
     ]
