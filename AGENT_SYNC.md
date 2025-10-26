@@ -3,6 +3,73 @@
 **Dernière mise à jour:** 2025-10-25 21:15 CET
 **Mode:** Développement collaboratif multi-agents
 
+**Dernière mise à jour:** 2025-10-25 21:30 CET (Claude Code Web - Review PR #17)
+**Mode:** Développement collaboratif multi-agents
+
+### ✅ TÂCHE COMPLÉTÉE - Production Health Check Script (2025-10-25 02:15 → MERGED 21:30 CET)
+**Agent:** Claude Code Local → Review: Claude Code Web
+**Branche:** `claude/prod-health-script-011CUT6y9i5BBd44UKDTjrpo` → **PR #17 MERGED** ✅
+**Status:** ✅ COMPLÉTÉ & MERGÉ vers main
+
+**Ce qui a été fait:**
+- ✅ **P1:** `scripts/check-prod-health.ps1` - Script santé prod avec JWT auth
+  - Génération JWT depuis .env (AUTH_JWT_SECRET)
+  - Healthcheck /ready avec Bearer token (**résout 403** ✅)
+  - Healthcheck /api/monitoring/health (optionnel)
+  - Métriques Cloud Run via gcloud (optionnel)
+  - Logs récents (20 derniers, optionnel)
+  - Rapport markdown généré dans reports/prod-health-report.md
+  - Exit codes: 0=OK, 1=FAIL
+- ✅ Documentation: `scripts/README_HEALTH_CHECK.md`
+- ✅ Créé répertoire `reports/` avec .gitkeep
+
+**Review (Claude Code Web - 2025-10-25 21:15 CET):**
+- ✅ Code quality: Excellent (structure, gestion d'erreurs, exit codes)
+- ✅ Sécurité: Pas de secrets hardcodés, JWT dynamique
+- ✅ Logique: Résout 403 Forbidden sur /ready
+- ⚠️ Windows compat: Script utilise `python3` (PyJWT issue sur Windows), OK pour prod Linux
+
+**Commit:** `4e14384` + `8add6b7`
+**PR:** #17 (Merged to main - 2025-10-25 21:30 CET)
+
+**Prochaines actions (Workflow Scripts restants - Claude Code Local):**
+1. **P0:** `scripts/run-all-tests.ps1` - Script test complet rapide (pytest + ruff + mypy + npm)
+2. **P1:** `docs/CLAUDE_CODE_WORKFLOW.md` - Doc workflow pour Claude Code
+3. **P2:** `scripts/pre-commit-check.ps1` - Validation avant commit
+4. **P3:** Améliorer `scripts/check-github-workflows.ps1` - Dashboard CI/CD
+
+**Note:** Ces scripts sont sur branche `feature/claude-code-workflow-scripts` (commit `5b3c413`), pas encore pushée/mergée.
+
+### 🔍 AUDIT POST-MERGE (2025-10-24 13:40 CET)
+**Agent:** Claude Code
+**Rapport:** `docs/audits/AUDIT_POST_MERGE_20251024.md`
+
+**Verdict:** ⚠️ **ATTENTION - Environnement tests à configurer**
+
+**Résultats:**
+- ✅ Code quality: Ruff check OK
+- ✅ Sécurité: Pas de secrets hardcodés
+- ✅ Architecture: Docs à jour, structure cohérente
+- ⚠️ Tests backend: KO (deps manquantes: httpx, pydantic, fastapi)
+- ⚠️ Build frontend: KO (node_modules manquants)
+- ⚠️ Production: Endpoints répondent 403 (à vérifier si normal)
+
+**PRs auditées:**
+- #12: Webhooks ✅ (code propre, HMAC, retry 3x)
+- #11, #10, #7: Fix cockpit SQL ✅ (3 bugs corrigés)
+- #8: Sync commits ✅
+
+**Tests skippés analysés (6 → 5 après fix):**
+- ✅ test_guardian_email_e2e.py: Skip normal (reports/ dans .gitignore)
+- ✅ test_cost_telemetry.py (3x): Skip normal (Prometheus optionnel)
+- ✅ test_hybrid_retriever.py: Placeholder E2E (TODO)
+- ✅ test_unified_retriever.py: **FIXÉ** (Mock → AsyncMock)
+
+**Actions requises:**
+1. Configurer environnement tests (venv + npm install)
+2. Lancer pytest + build pour valider merges
+3. Vérifier prod Cloud Run (403 sur /ready anormal?)
+
 ---
 
 ## 🎯 État Roadmap Actuel
