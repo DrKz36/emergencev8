@@ -12,6 +12,128 @@
 
 ---
 
+## [beta-3.1.0] - 2025-10-26
+
+### 🆕 Fonctionnalités Ajoutées
+
+**1. Système de Webhooks Complet (P3.11)**
+- Endpoints REST `/api/webhooks/*` (CRUD + deliveries + stats)
+- Événements: thread.created, message.sent, analysis.completed, debate.completed, document.uploaded
+- Delivery HTTP POST avec HMAC SHA256 pour sécurité
+- Retry automatique 3x avec backoff (5s, 15s, 60s)
+- UI complète: Settings > Webhooks (modal, liste, logs, stats)
+- Tables BDD: `webhooks` + `webhook_deliveries` (migration 010)
+
+**Fichiers:**
+- Backend: [webhooks/router.py](src/backend/features/webhooks/router.py)
+- Frontend: [settings-webhooks.js](src/frontend/features/settings/settings-webhooks.js)
+- **PR:** #12
+
+**2. Scripts de Monitoring Production**
+- Script health check avec JWT auth: [check-prod-health.ps1](scripts/check-prod-health.ps1)
+- Vérification endpoint `/ready` avec Bearer token (résout 403)
+- Métriques Cloud Run via gcloud (optionnel)
+- Logs récents (20 derniers, optionnel)
+- Rapport markdown auto-généré dans `reports/prod-health-report.md`
+- Détection OS automatique (python/python3)
+- Documentation complète: [README_HEALTH_CHECK.md](scripts/README_HEALTH_CHECK.md)
+
+**Fichiers:**
+- [scripts/check-prod-health.ps1](scripts/check-prod-health.ps1)
+- **PR:** #17
+
+**3. Système de Patch Notes**
+- Patch notes centralisées dans `src/version.js`
+- Affichage automatique dans module "À propos" (Paramètres)
+- Historique des 2 dernières versions visible
+- Icônes par type de changement (feature, fix, quality, perf, phase)
+- Mise en évidence de la version actuelle
+
+**Fichiers:**
+- [src/version.js](src/version.js) - Système centralisé
+- [settings-main.js](src/frontend/features/settings/settings-main.js) - Affichage UI
+
+### ✨ Qualité & Performance
+
+**4. Mypy 100% Clean - Type Safety Complet**
+- 471 erreurs mypy corrigées → **0 erreurs** restantes
+- Type hints complets sur tout le backend Python
+- Strict mode mypy activé
+- Guide de style mypy intégré: [MYPY_STYLE_GUIDE.md](docs/MYPY_STYLE_GUIDE.md)
+
+**Commits:**
+- Batch final: `439f8f4` (471→0 erreurs)
+- Documentation: `e9bd1e5`
+
+**5. Bundle Optimization Frontend**
+- Lazy loading: Chart.js, jsPDF, PapaParse
+- Réduction taille bundle initial
+- Amélioration temps de chargement page
+
+**Fichiers:**
+- [vite.config.js](vite.config.js) - Config optimisation
+- **Commit:** `fa6c87c`
+
+### 🔧 Corrections
+
+**6. Cockpit - 3 Bugs SQL Critiques**
+- Bug SQL `no such column: agent` → `agent_id`
+- Filtrage session_id trop restrictif → `session_id=None`
+- Agents fantômes dans Distribution → whitelist stricte
+- Graphiques vides → fetch données + backend metrics
+
+**Fichiers:**
+- [cockpit/router.py](src/backend/features/cockpit/router.py)
+- **PRs:** #11, #10, #7
+
+**7. Module Documents - Layout Desktop/Mobile**
+- Fix layout foireux desktop et mobile
+- Résolution problèmes d'affichage et scroll
+
+**Commit:** `a616ae9`
+
+**8. Module Chat - 4 Bugs UI/UX Critiques**
+- Modal démarrage corrigé
+- Scroll automatique résolu
+- Routing réponses agents fixé
+- Duplication messages éliminée
+
+**Commits:**
+- `bd197d7`, `fdc59a4`, `a9289e2`
+
+**9. Tests - 5 Flaky Tests Corrigés**
+- ChromaDB Windows compatibility
+- Mocks RAG améliorés
+- Stabilité suite de tests
+
+**Commit:** `598d456`
+
+### 📝 Documentation
+
+**10. Harmonisation Documentation Multi-Agents**
+- AGENTS.md harmonisé avec CODEV_PROTOCOL.md et CLAUDE.md
+- CODEX_SYSTEM_PROMPT.md unifié
+- Suppression ARBO-LOCK (obsolète)
+- Ajout directives versioning obligatoires
+
+**Commits:**
+- `9dfd2f1`, `16dbdc8`, `58e4ede`
+
+**11. Guide Versioning Complet**
+- [VERSIONING_GUIDE.md](docs/VERSIONING_GUIDE.md) mis à jour
+- Règles d'incrémentation clarifiées
+- Workflow de mise à jour documenté
+
+### 🎯 Impact Global
+
+- ✅ **78% features complétées** (18/23) - +4% vs beta-3.0.0
+- ✅ **Phase P3 démarrée** (1/4 features done - P3.11 webhooks)
+- ✅ **Qualité code maximale** (mypy 100% clean)
+- ✅ **Monitoring production** automatisé
+- ✅ **Intégrations externes** possibles via webhooks
+
+---
+
 ## [beta-2.1.3] - 2025-10-17
 
 ### 📧 Guardian Email Reports - Notification Automatique

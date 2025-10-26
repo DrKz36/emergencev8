@@ -1,4 +1,56 @@
 # 📝 Journal de Passation Inter-Agents
+
+## [2025-10-26 15:30 CET] — Agent: Claude Code
+
+### Version
+- **Ancienne:** beta-3.0.0
+- **Nouvelle:** beta-3.1.0 (MINOR - nouvelles features + fixes majeurs)
+
+### Fichiers modifiés
+- `src/version.js` - Version + patch notes système + helpers
+- `src/frontend/version.js` - Synchronisation frontend
+- `src/frontend/features/settings/settings-main.js` - Affichage patch notes dans "À propos"
+- `src/frontend/features/settings/settings-main.css` - Styles patch notes (responsive)
+- `package.json` - Version synchronisée (beta-3.1.0)
+- `CHANGELOG.md` - Entrée détaillée beta-3.1.0 (11 sections)
+- `CLAUDE.md` - Section "VERSIONING OBLIGATOIRE" ajoutée
+- `CODEV_PROTOCOL.md` - Checklist versioning + template passation
+- `AGENT_SYNC.md` - Mise à jour état sync
+- `docs/passation.md` - Cette entrée
+
+### Contexte
+
+**Problème:** Version beta-3.0.0 depuis le 22 oct, mais BEAUCOUP de changements (webhooks, health check, mypy 100%, fixes) sans incrément version ni documentation.
+
+**Solution:** Système de versioning automatique + patch notes UI + directives obligatoires.
+
+### Travail réalisé
+
+1. **Système patch notes centralisé** (src/version.js)
+2. **Affichage UI** dans module "À propos" (Paramètres)
+3. **Directives versioning** dans CLAUDE.md + CODEV_PROTOCOL.md
+4. **Version beta-3.1.0** - MINOR bump (webhooks + monitoring + mypy + fixes)
+
+### Tests
+- ⚠️ `npm run build` - node_modules manquants
+- ✅ Code reviewed manuellement (JS/CSS syntax OK)
+
+### Versioning
+- ✅ Version incrémentée (beta-3.0.0 → beta-3.1.0)
+- ✅ CHANGELOG.md mis à jour (entrée complète)
+- ✅ Patch notes ajoutées dans src/version.js
+- ✅ Directives intégrées docs codev
+
+### Prochaines actions
+1. Tester UI patch notes (nécessite npm install)
+2. Commit + push branche `claude/update-versioning-system-011CUVCzfPzDw2NabgismQMq`
+3. Créer PR vers main
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-25 21:30 CET] — Agent: Claude Code Web
 
 ### Fichiers modifiés

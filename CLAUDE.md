@@ -199,6 +199,30 @@ Pour 99% des tâches dev normales: **FONCE**.
 - [ ] Virtualenv Python activé
 - [ ] Node.js 18+ disponible
 
+### 🔢 VERSIONING OBLIGATOIRE (NOUVEAU - 2025-10-26)
+
+**⚠️ RÈGLE CRITIQUE:** Chaque changement de code DOIT impliquer une mise à jour de version.
+
+**Workflow versioning:**
+1. **Avant de coder:** Note la version actuelle (`src/version.js`)
+2. **Pendant le dev:** Identifie le type de changement (PATCH/MINOR/MAJOR)
+3. **Après le dev:** Incrémente la version dans `src/version.js` + `src/frontend/version.js`
+4. **Synchronise:** `package.json` avec la même version
+5. **Documente:** Ajoute entrée dans `CHANGELOG.md` avec changements détaillés
+6. **Patch notes:** Ajoute changements dans `PATCH_NOTES` de `src/version.js`
+
+**Types de changements:**
+- **PATCH** (X.Y.Z+1): Bugfixes, corrections mineures, refactoring interne
+  - Exemple: `beta-3.1.0` → `beta-3.1.1`
+- **MINOR** (X.Y+1.0): Nouvelle feature, amélioration significative
+  - Exemple: `beta-3.1.1` → `beta-3.2.0`
+- **MAJOR** (X+1.0.0): Phase complète, breaking change, architecture majeure
+  - Exemple: `beta-3.9.5` → `beta-4.0.0`
+
+**⚠️ NE JAMAIS:** Pusher du code sans avoir incrémenté la version si changement réel.
+
+**Voir guide complet:** [docs/VERSIONING_GUIDE.md](docs/VERSIONING_GUIDE.md)
+
 ### Pendant le Dev
 
 - [ ] Code complet (pas de fragments, pas d'ellipses)
@@ -208,6 +232,12 @@ Pour 99% des tâches dev normales: **FONCE**.
 - [ ] Architecture respectée
 
 ### Clôture (OBLIGATOIRE)
+
+**Versioning (CRITIQUE - NOUVEAU):**
+- [ ] **Version incrémentée** dans `src/version.js` + `src/frontend/version.js`
+- [ ] **`package.json` synchronisé** avec la même version
+- [ ] **`CHANGELOG.md` mis à jour** avec entrée détaillée de la version
+- [ ] **Patch notes ajoutées** dans `PATCH_NOTES` de `src/version.js`
 
 **Tests:**
 - [ ] `npm run build` ✅ (si frontend touché)
@@ -226,7 +256,7 @@ Pour 99% des tâches dev normales: **FONCE**.
 
 **Git:**
 - [ ] `git diff` relu (pas de secrets)
-- [ ] Commit atomique avec message clair
+- [ ] Commit atomique avec message clair incluant la version (ex: `chore: bump version to beta-3.1.1`)
 - [ ] `git push` (sauf instruction contraire)
 
 ---

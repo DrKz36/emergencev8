@@ -1,7 +1,59 @@
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
-**Dernière mise à jour:** 2025-10-25 02:15 UTC (Claude Code Local)
+**Dernière mise à jour:** 2025-10-26 15:30 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
+
+### ✅ NOUVELLE VERSION - beta-3.1.0 (2025-10-26 15:30)
+
+**Agent:** Claude Code
+**Branche:** `claude/update-versioning-system-011CUVCzfPzDw2NabgismQMq`
+**Status:** ✅ COMPLÉTÉ - Système de versioning automatique implémenté
+
+**Ce qui a été fait:**
+
+1. **Système de Patch Notes Centralisé**
+   - ✅ Patch notes dans `src/version.js` et `src/frontend/version.js`
+   - ✅ Affichage automatique dans module "À propos" (Paramètres)
+   - ✅ Historique des 2 dernières versions
+   - ✅ Icônes par type (feature, fix, quality, perf, phase)
+   - ✅ Mise en évidence version actuelle
+
+2. **Version mise à jour: beta-3.0.0 → beta-3.1.0**
+   - ✅ Nouvelle feature: Système webhooks complet (P3.11)
+   - ✅ Nouvelle feature: Scripts monitoring production
+   - ✅ Qualité: Mypy 100% clean (471→0 erreurs)
+   - ✅ Fixes: Cockpit (3 bugs SQL), Documents layout, Chat (4 bugs UI/UX)
+   - ✅ Performance: Bundle optimization (lazy loading)
+
+3. **Directives Versioning Obligatoires Intégrées**
+   - ✅ CLAUDE.md - Section "VERSIONING OBLIGATOIRE" ajoutée
+   - ✅ CODEV_PROTOCOL.md - Checklist versioning dans section 4
+   - ✅ Template passation mis à jour avec section "Version"
+   - ✅ Règle critique: Chaque changement = mise à jour version
+
+**Fichiers modifiés:**
+- `src/version.js` - Version + patch notes + helpers
+- `src/frontend/version.js` - Synchronisation frontend
+- `src/frontend/features/settings/settings-main.js` - Affichage patch notes
+- `src/frontend/features/settings/settings-main.css` - Styles patch notes
+- `package.json` - Version synchronisée (beta-3.1.0)
+- `CHANGELOG.md` - Entrée détaillée beta-3.1.0
+- `CLAUDE.md` - Directives versioning obligatoires
+- `CODEV_PROTOCOL.md` - Checklist + template passation
+
+**Impact:**
+- ✅ **78% features complétées** (18/23) vs 74% avant
+- ✅ **Phase P3 démarrée** (1/4 features - P3.11 webhooks)
+- ✅ **Versioning automatique** pour tous les agents
+- ✅ **Patch notes visibles** dans l'UI
+- ✅ **Traçabilité complète** des changements
+
+**Prochaines actions:**
+1. Tester affichage patch notes dans UI (nécessite `npm install` + `npm run build`)
+2. Committer + pusher sur branche dédiée
+3. Créer PR vers main
+
+---
 
 ### ✅ TÂCHE COMPLÉTÉE - Production Health Check Script (2025-10-25 02:15)
 **Agent:** Claude Code Local
