@@ -57,6 +57,17 @@ Implémentation d'une métrique d'évaluation interne pour mesurer l'impact des 
 - `tests/backend/features/test_benchmarks_metrics.py` - 18 tests
 
 **Référence:** Prompt ÉMERGENCE révision 00298-g8j (Phase P2 complétée)
+### 🔧 Corrections
+
+- **Chat Mobile – Composer & Scroll**
+  - Décale le footer du chat au-dessus de la barre de navigation portrait pour garder la zone de saisie accessible.
+  - Ajoute un padding dynamique côté messages pour éviter les zones mortes sous la bottom nav sur iOS/Android.
+  - **Fichiers :** [`chat.css`](src/frontend/features/chat/chat.css)
+
+### 📦 Versioning & Patch Notes
+
+- `src/version.js` & `src/frontend/version.js` — Version `beta-3.1.3`, patch notes mises à jour.
+- `package.json` — Synchronisation version npm (`beta-3.1.3`).
 
 ---
 
