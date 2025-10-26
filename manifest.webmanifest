@@ -6,7 +6,7 @@
   "description": "Plateforme Emergence multi-agents avec chat, mémoire progressive et RAG.",
   "background_color": "#0b1120",
   "theme_color": "#38bdf8",
-  "orientation": "any",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/assets/emergence_logo_icon.png",

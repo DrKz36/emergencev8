@@ -1,5 +1,36 @@
 # 📝 Journal de Passation Inter-Agents
 
+## [2025-10-26 18:05 CET] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.1.0
+- **Nouvelle:** beta-3.1.0 (inchangée)
+
+### Fichiers modifiés
+- `manifest.webmanifest`
+- `src/frontend/main.js`
+- `src/frontend/features/chat/chat.css`
+- `src/frontend/styles/overrides/mobile-menu-fix.css`
+- `AGENT_SYNC.md` (section session Codex)
+
+### Contexte
+- **Problème:** L'app reste utilisable en paysage alors que le besoin est 100% portrait. En mode portrait mobile, le composer est mangé par le safe area iOS et les métadonnées de thread se compressent mal.
+- **Objectif:** Forcer l'expérience portrait + rendre le chat exploitable sur mobile (input accessible, header/meta lisibles).
+
+### Travail réalisé
+1. Verrou orientation portrait côté manifest + garde runtime avec overlay UX en paysage (bloque l'interaction).
+2. Ajusté le footer/chat composer pour intégrer `env(safe-area-inset-bottom)` et garantir l'accès à la saisie en mode portrait.
+3. Refonte responsive des métadonnées de conversation (wrap + centrage) et rafraîchissement des styles mobile.
+
+### Tests
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Préserve le système de versioning 3.1.0 en place (pas de bump requis).
+
+### Blocages
+- Aucun.
+
 ## [2025-10-26 15:30 CET] — Agent: Claude Code
 
 ### Version
