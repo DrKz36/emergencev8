@@ -1,9 +1,29 @@
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
+**Dernière mise à jour:** 2025-10-27 14:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 10:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 10:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 21:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 18:10 CET (Codex GPT)
+
+## ✅ Session COMPLÉTÉE (2025-10-27 14:20 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/version.js`
+- `src/frontend/version.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Factorisé `CURRENT_RELEASE` pour partager une source unique des constantes de version (backend + frontend) et éliminer les doubles exports.
+- Ajouté les taglines dans les patch notes `beta-3.2.0` / `beta-3.1.3` + exposé `currentRelease` dans `versionInfo` pour usage UI/Guardian.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions
+1. Surveiller le prochain workflow GitHub Actions pour confirmer la résolution du build frontend.
+2. Planifier un éventuel bump `beta-3.2.x` si on livre un nouveau hotfix UI.
 
 ## ✅ Session COMPLÉTÉE (2025-10-27 10:45 CET) — Agent : Codex GPT
 
