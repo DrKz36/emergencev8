@@ -63,11 +63,22 @@ export default class ChatModule {
     if (metaObj) {
       const opinion = (metaObj.opinion && typeof metaObj.opinion === 'object') ? metaObj.opinion : null;
       if (opinion) {
+        // 🔥 FIX: Pour les opinions, on veut le bucket de l'agent qui DONNE l'avis (reviewer),
+        // pas l'agent source du message évalué
+        const reviewer = String(opinion.reviewer_agent_id ?? opinion.reviewer_agent ?? opinion.agent_id ?? '').trim().toLowerCase();
+        if (reviewer) return reviewer;
+
+        // Fallback sur source_agent si reviewer manque (ne devrait pas arriver)
         const source = String(opinion.source_agent_id ?? opinion.source_agent ?? opinion.agent ?? '').trim().toLowerCase();
         if (source) return source;
       }
       const opinionRequest = (metaObj.opinion_request && typeof metaObj.opinion_request === 'object') ? metaObj.opinion_request : null;
       if (opinionRequest) {
+        // Pour les requêtes d'opinion, on veut le bucket de l'agent CIBLE de la requête
+        const target = String(opinionRequest.target_agent ?? opinionRequest.target_agent_id ?? '').trim().toLowerCase();
+        if (target) return target;
+
+        // Fallback sur source si target manque
         const sourceReq = String(opinionRequest.source_agent ?? opinionRequest.source_agent_id ?? '').trim().toLowerCase();
         if (sourceReq) return sourceReq;
       }
@@ -311,15 +322,24 @@ export default class ChatModule {
     try {
       if (this._conversationModalVisible) return;
 
-      console.log('[Chat] Aucune conversation active détectée, affichage du modal de choix...');
+      console.log('[Chat] Vérification conversation active...');
 
+      // Attendre le bootstrap des threads pour avoir les données complètes
       if (!this._hasExistingConversations()) {
+        console.log('[Chat] Attente du chargement des conversations...');
         await this._waitForThreadsBootstrap(5000);
       }
 
-      if (this.getCurrentThreadId()) {
-        console.log('[Chat] Thread actif détecté pendant l\'attente, aucun modal nécessaire.');
-        return;
+      // Vérifier si on a un thread ID ET ses données chargées
+      const currentThreadId = this.getCurrentThreadId();
+      if (currentThreadId) {
+        const threadData = this.state.get(`threads.map.${currentThreadId}`);
+        if (threadData && threadData.messages !== undefined) {
+          console.log('[Chat] Thread actif avec données chargées, aucun modal nécessaire.');
+          return;
+        } else {
+          console.warn('[Chat] Thread ID présent mais données manquantes, affichage du modal...');
+        }
       }
 
       const hasExistingConversations = this._hasExistingConversations();
