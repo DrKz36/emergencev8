@@ -7,7 +7,7 @@ import { TUTORIAL_GUIDES } from '../../components/tutorial/tutorialGuides.js';
 import { generateHymnHTML, initializeHymnSection } from './hymn-section.js';
 import { glossaryNavigator } from '../../utils/glossary-navigation.js';
 import { initGlossaryModal } from '../../components/tutorial/GlossaryModal.js';
-import versionInfo from '../../version.js';
+import versionInfo, { FULL_CHANGELOG } from '../../version.js';
 
 export class Documentation {
     constructor() {
@@ -284,6 +284,27 @@ export class Documentation {
                                 </div>
                             </div>
                         </div>
+                    </section>
+
+                    <!-- Changelog Section (Enriched - 6 versions) -->
+                    <section id="changelog" class="doc-section">
+                        <h2>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 1.2em; height: 1.2em; vertical-align: -0.2em; display: inline-block; margin-right: 0.3em;">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                            Historique des Versions
+                        </h2>
+
+                        <p style="font-size: 14px; color: rgba(226, 232, 240, 0.75); margin-bottom: 24px;">
+                            Découvrez les évolutions et améliorations apportées à ÉMERGENCE au fil des versions.
+                            Affichage détaillé des 6 dernières révisions avec fonctionnalités complètes.
+                        </p>
+
+                        ${this.renderChangelog()}
                     </section>
 
                     <!-- Architecture Section -->
@@ -1476,6 +1497,122 @@ export class Documentation {
                         </div>
                     </section>
                 </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Render changelog section (enriched - 6 latest versions with full details)
+     */
+    renderChangelog() {
+        const fullChangelog = FULL_CHANGELOG || [];
+
+        return `
+            <div class="changelog-container">
+                ${fullChangelog.map(version => `
+                    <div class="changelog-version ${version.version === versionInfo.version ? 'changelog-current' : ''}">
+                        <div class="changelog-header">
+                            <div class="changelog-title-group">
+                                ${version.version === versionInfo.version ? '<span class="changelog-current-badge">Version actuelle</span>' : ''}
+                                <h4 class="changelog-version-number">${version.version}</h4>
+                                <p class="changelog-version-title">${version.title}</p>
+                            </div>
+                            <span class="changelog-date">${version.date}</span>
+                        </div>
+
+                        <div class="changelog-description">
+                            <p>${version.description}</p>
+                        </div>
+
+                        <div class="changelog-sections">
+                            ${version.sections.map(section => this.renderChangelogSection(section)).join('')}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+
+            <div class="changelog-footer">
+                <p class="changelog-footer-text">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; display: inline; margin-right: 4px; vertical-align: -2px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    Pour consulter l'historique complet, voir le fichier
+                    <code>CHANGELOG.md</code> à la racine du projet.
+                </p>
+            </div>
+        `;
+    }
+
+    /**
+     * Render a single changelog section (features, fixes, quality, impact, files)
+     */
+    renderChangelogSection(section) {
+        const typeBadges = {
+            features: 'badge-feature',
+            fixes: 'badge-fix',
+            quality: 'badge-quality',
+            impact: 'badge-impact',
+            files: 'badge-files'
+        };
+
+        const badgeClass = typeBadges[section.type] || 'badge-default';
+
+        return `
+            <div class="changelog-section">
+                <h5 class="changelog-section-title">
+                    <span class="changelog-section-badge ${badgeClass}">${section.title}</span>
+                </h5>
+                <div class="changelog-section-content">
+                    ${this.renderChangelogSectionItems(section.items, section.type)}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Render section items (detailed or simple list)
+     */
+    renderChangelogSectionItems(items, sectionType) {
+        if (!items || items.length === 0) {
+            return '<p class="changelog-no-items">Aucun changement</p>';
+        }
+
+        // For impact and files sections, render as simple list
+        if (sectionType === 'impact' || sectionType === 'files') {
+            return `
+                <ul class="changelog-simple-list">
+                    ${items.map(item => `<li>${item}</li>`).join('')}
+                </ul>
+            `;
+        }
+
+        // For features, fixes, quality sections, render with details
+        return `
+            <div class="changelog-detailed-items">
+                ${items.map(item => `
+                    <div class="changelog-detailed-item">
+                        <div class="changelog-item-header">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px; flex-shrink: 0; color: #22c55e;">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                            <strong class="changelog-item-title">${item.title}</strong>
+                        </div>
+                        <p class="changelog-item-description">${item.description}</p>
+                        ${item.file ? `<code class="changelog-item-file">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; display: inline; margin-right: 4px; vertical-align: -2px;">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                            ${item.file}
+                        </code>` : ''}
+                    </div>
+                `).join('')}
             </div>
         `;
     }

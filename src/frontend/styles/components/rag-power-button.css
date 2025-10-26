@@ -81,9 +81,16 @@
   outline-offset: 2px;
 }
 
-/* Bouton mobile caché par défaut */
+/* Bouton mobile caché par défaut en desktop */
 .rag-control--mobile {
-  display: none;
+  display: none !important;
+}
+
+/* Assurer que le bouton mobile reste caché en desktop même avec d'autres règles */
+@media (min-width: 761px) {
+  .rag-control--mobile {
+    display: none !important;
+  }
 }
 
 /* ===== RESPONSIVE - Mobile portrait ===== */

@@ -206,6 +206,96 @@ export const PATCH_NOTES = [
  */
 export const FULL_CHANGELOG = [
   {
+    version: 'beta-3.2.1',
+    date: '2025-10-26',
+    title: 'Changelog Enrichi - 5 Dernières Révisions Détaillées',
+    description: 'Amélioration majeure du module "À propos" avec affichage complet et détaillé des 5 dernières versions du changelog incluant toutes les sections, descriptions longues et fichiers modifiés.',
+    sections: [
+      {
+        type: 'features',
+        title: '🆕 Fonctionnalités Ajoutées',
+        items: [
+          {
+            title: 'Changelog enrichi - Affichage détaillé complet',
+            description: 'Affichage des 5 dernières versions avec toutes les sections complètes du CHANGELOG.md (Fonctionnalités, Corrections, Qualité, Impact, Fichiers modifiés)',
+            file: 'src/frontend/features/settings/settings-about.js'
+          },
+          {
+            title: 'Sections techniques détaillées',
+            description: 'Pour chaque version : descriptions longues de chaque changement, fichiers touchés avec chemins, contexte complet technique et business, badges colorés par type de changement',
+            file: 'src/frontend/features/settings/settings-about.js'
+          },
+          {
+            title: 'Export FULL_CHANGELOG structuré',
+            description: 'Nouvelle structure JavaScript complète exportée depuis CHANGELOG.md pour les 5 dernières versions, format réutilisable dans tout le frontend',
+            file: 'src/version.js'
+          }
+        ]
+      },
+      {
+        type: 'quality',
+        title: '🧹 Améliorations Qualité',
+        items: [
+          {
+            title: 'Nouvelles classes CSS pour sections enrichies',
+            description: 'Styles dédiés pour sections détaillées (changelog-detailed-item, changelog-item-description), badges impact/files avec couleurs différenciées, mise en page optimisée pour longues descriptions',
+            file: 'src/frontend/features/settings/settings-about.css'
+          },
+          {
+            title: 'Méthodes de rendu améliorées',
+            description: 'renderChangelogSection() gère maintenant sections simples et détaillées, renderChangelogSectionItems() avec support descriptions riches, groupement automatique par type de changement',
+            file: 'src/frontend/features/settings/settings-about.js'
+          }
+        ]
+      },
+      {
+        type: 'fixes',
+        title: '🔧 Corrections',
+        items: [
+          {
+            title: 'Fix bouton RAG dédoublé en Dialogue (mode desktop)',
+            description: 'Correction du problème d\'affichage de 2 boutons RAG en mode desktop dans le module Dialogue. Ajout de !important et media query explicite @media (min-width: 761px) pour forcer le masquage du bouton mobile en desktop',
+            file: 'src/frontend/styles/components/rag-power-button.css'
+          },
+          {
+            title: 'Fix chevauchement tutos Dashboard/Config (page À propos)',
+            description: 'Grid des tutos avec minmax(320px) trop étroit causait chevauchements entre 640px-720px de largeur. Augmentation du minmax de 320px à 380px pour éviter tout chevauchement des cartes tutoriels',
+            file: 'src/frontend/features/documentation/documentation.css'
+          },
+          {
+            title: 'Fix critique orientation lock desktop',
+            description: 'Desktop landscape (écrans < 900px hauteur) ne force plus le mode portrait, media query corrigé pour détecter uniquement vrais mobiles (largeur <= 960px)',
+            file: 'src/frontend/styles/overrides/mobile-menu-fix.css'
+          }
+        ]
+      },
+      {
+        type: 'impact',
+        title: '🎯 Impact',
+        items: [
+          'Transparence technique maximale - Utilisateurs voient TOUT le détail des évolutions',
+          'Documentation vivante - Changelog complet accessible directement dans l\'app',
+          'Traçabilité complète - Fichiers modifiés et contexte pour chaque changement',
+          'UX moderne - Design enrichi avec sections organisées et badges colorés'
+        ]
+      },
+      {
+        type: 'files',
+        title: '📁 Fichiers Modifiés',
+        items: [
+          'src/version.js - Ajout FULL_CHANGELOG enrichi (6 versions) + Fixes détaillés',
+          'src/frontend/version.js - Synchronisation FULL_CHANGELOG',
+          'src/frontend/features/settings/settings-about.js - Méthodes rendu détaillées',
+          'src/frontend/features/settings/settings-about.css - Styles sections enrichies',
+          'src/frontend/styles/components/rag-power-button.css - Fix bouton RAG dédoublé',
+          'src/frontend/features/documentation/documentation.css - Fix grid tutos (380px)',
+          'package.json - Version beta-3.2.1',
+          'CHANGELOG.md - Entrée beta-3.2.1'
+        ]
+      }
+    ]
+  },
+  {
     version: 'beta-3.2.0',
     date: '2025-10-26',
     title: 'Module À Propos avec Changelog Enrichi',
