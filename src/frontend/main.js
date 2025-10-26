@@ -406,8 +406,9 @@ function setupOrientationGuard() {
 
   const isMobileViewport = () => {
     try {
-      const minSide = Math.min(window.innerWidth || 0, window.innerHeight || 0);
-      return minSide <= 900;
+      // Check width only (not min side) to match CSS breakpoint (960px)
+      // Desktop landscape should NOT be considered mobile viewport
+      return window.innerWidth <= 960;
     } catch (_) {
       return false;
     }
