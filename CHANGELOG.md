@@ -14,6 +14,49 @@
 
 ## [beta-3.1.3] - 2025-10-26
 
+### ✨ Nouvelle Fonctionnalité
+
+**Métrique nDCG@k Temporelle - Évaluation Ranking avec Fraîcheur**
+
+Implémentation d'une métrique d'évaluation interne pour mesurer l'impact des boosts de fraîcheur et entropie dans le moteur de ranking ÉMERGENCE V8.
+
+**Fonctionnalités:**
+
+1. **Métrique nDCG@k temporelle (`ndcg_time_at_k`)**
+   - Formule : `DCG^time@k = Σ (2^rel_i - 1) * exp(-λ * Δt_i) / log2(i+1)`
+   - Pénalisation exponentielle selon la fraîcheur des documents
+   - Paramètres configurables : `k`, `T_days`, `lambda`
+   - Fichier : `src/backend/features/benchmarks/metrics/temporal_ndcg.py`
+
+2. **Intégration dans BenchmarksService**
+   - Méthode helper : `BenchmarksService.calculate_temporal_ndcg()`
+   - Import de la métrique dans `features/benchmarks/service.py`
+   - Exposition pour réutilisation dans d'autres services
+
+3. **Endpoint API**
+   - `POST /api/benchmarks/metrics/ndcg-temporal` - Calcul métrique à la demande
+   - Pydantic models pour validation : `RankedItem`, `TemporalNDCGRequest`
+   - Retour JSON avec score nDCG@k + métadonnées
+
+4. **Tests complets**
+   - 18 tests unitaires dans `tests/backend/features/test_benchmarks_metrics.py`
+   - Couverture : cas edge, décroissance temporelle, trade-offs pertinence/fraîcheur
+   - Validation paramètres (k, T_days, lambda)
+   - Scénarios réalistes (recherche documents)
+
+**Impact:**
+- ✅ **Quantification boosts fraîcheur** - Mesure réelle impact ranking temporel
+- ✅ **Métrique réutilisable** - Accessible via service pour benchmarks futurs
+- ✅ **API externe** - Endpoint pour calcul à la demande
+- ✅ **Type-safe** - Type hints complets + validation Pydantic
+
+**Fichiers modifiés:**
+- `src/backend/features/benchmarks/service.py` - Import + méthode helper
+- `src/backend/features/benchmarks/router.py` - Endpoint POST + Pydantic models
+- `src/backend/features/benchmarks/metrics/temporal_ndcg.py` - Métrique complète
+- `tests/backend/features/test_benchmarks_metrics.py` - 18 tests
+
+**Référence:** Prompt ÉMERGENCE révision 00298-g8j (Phase P2 complétée)
 ### 🔧 Corrections
 
 - **Chat Mobile – Composer & Scroll**

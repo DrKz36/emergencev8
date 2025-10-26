@@ -8,6 +8,17 @@ Multi agent conversation stack (Anima, Neo, Nexus) with cockpit, retrieval augme
 >
 > **Bugs critiques:** 2 P0 en cours de correction | [Prompt fixes](PROMPT_NEXT_SESSION_AUDIT_FIXES_P0.md)
 
+## Features
+
+- **Multi-Agent Conversations** : Chat avec agents spécialisés (Anima, Neo, Nexus)
+- **RAG (Retrieval Augmented Generation)** : Recherche vectorielle dans documents
+- **Memory System** : Mémoire à court terme (STM) et long terme (LTM)
+- **Debate Mode** : Débats multi-agents structurés
+- **Cockpit Dashboard** : Monitoring activité, coûts, tokens
+- **Benchmarks & Metrics** *(v3.1.3)* : Évaluation performances agents avec métriques avancées (nDCG@k temporelle pour mesurer impact boosts fraîcheur/entropie)
+
+See [docs/backend/](docs/backend/) for detailed module documentation.
+
 ## Local environment
 
 The project targets Python 3.11 and Node.js 18 or newer. Always isolate work inside a virtual environment and a dedicated node installation to keep parity with CI.

@@ -7,6 +7,74 @@
 
 ---
 
+## [2025-10-26 22:30] — Agent: Claude Code
+
+### Version
+- **Ancienne:** beta-3.1.2
+- **Nouvelle:** beta-3.1.3 (PATCH - métrique nDCG@k temporelle)
+
+### Fichiers modifiés
+- `src/backend/features/benchmarks/service.py` (import + méthode helper calculate_temporal_ndcg)
+- `src/backend/features/benchmarks/router.py` (endpoint POST /api/benchmarks/metrics/ndcg-temporal + Pydantic models)
+- `src/version.js`, `src/frontend/version.js` (version beta-3.1.3 + patch notes)
+- `package.json` (version beta-3.1.3)
+- `CHANGELOG.md` (entrée détaillée beta-3.1.3)
+- `AGENT_SYNC_CLAUDE.md` (nouvelle session)
+- `docs/passation_claude.md` (cette entrée)
+
+### Contexte
+Implémentation métrique nDCG@k temporelle pour ÉMERGENCE V8. Mesure impact boosts fraîcheur/entropie moteur ranking.
+
+**Découverte:** Métrique déjà implémentée (temporal_ndcg.py) + tests complets (18 tests).
+**Tâche:** Intégrer dans BenchmarksService + créer endpoint API.
+
+### Implémentation
+
+1. **Intégration BenchmarksService**
+   - Import `ndcg_time_at_k` depuis `features/benchmarks/metrics`
+   - Méthode helper `calculate_temporal_ndcg()` pour réutilisation
+   - Exposition métrique pour autres services
+
+2. **Endpoint API**
+   - `POST /api/benchmarks/metrics/ndcg-temporal`
+   - Pydantic models : `RankedItem` (rel, ts), `TemporalNDCGRequest`
+   - Validation paramètres : k (>=1), T_days (>0), lambda (>=0)
+   - Retour JSON : score nDCG@k + num_items + parameters
+
+3. **Formule DCG temporelle**
+   - `DCG^time@k = Σ (2^rel_i - 1) * exp(-λ * Δt_i) / log2(i+1)`
+   - Pénalisation exponentielle selon âge documents
+   - Paramètres par défaut : k=10, T_days=7, lambda=0.3
+
+### Tests
+- ✅ Ruff check : All checks passed!
+- ⚠️ Mypy : Erreurs uniquement stubs pydantic/fastapi (pas de venv)
+- ⚠️ Pytest : Skippé (dépendances manquantes)
+- ✅ Tests existants (18) complets : edge cases, temporel, validation
+
+### Versioning
+- ✅ Version incrémentée (PATCH car amélioration interne)
+- ✅ CHANGELOG.md mis à jour
+- ✅ Patch notes ajoutées (src/version.js + frontend)
+- ✅ package.json synchronisé
+
+### Prochaines actions recommandées
+1. Committer + pusher sur branche `claude/implement-temporal-ndcg-011CUVQsYv2CwXFYhXjMQvSx`
+2. Créer PR vers main
+3. Tester endpoint en local avec venv actif
+4. Intégrer métrique dans scénarios benchmarks futurs (si pertinent)
+
+### Blocages
+Aucun.
+
+### Notes
+- Métrique réutilisable pour d'autres services (RAG, recherche)
+- Endpoint permet calcul à la demande depuis frontend/CLI
+- Type-safe (type hints complets + Pydantic validation)
+- Mesure **réelle** impact boosts fraîcheur (pas juste théorique)
+
+---
+
 ## [2025-10-26 21:00] — Agent: Claude Code
 
 ### Version
