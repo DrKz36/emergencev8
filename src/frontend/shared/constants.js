@@ -116,6 +116,7 @@ export const EVENTS = {
   MODAL_OPEN: 'ui:modal_open',
   MODAL_CLOSE: 'ui:modal_close',
   SHOW_NOTIFICATION: 'ui:show_notification',
+  OFFLINE_STATUS_CHANGED: 'app:offline_status',
 };
 
 export const ANIMATIONS = Object.freeze({
@@ -157,5 +158,4 @@ export const AGENTS = {
 export const AGENT_IDS = Object.keys(AGENTS);
 export const PRIMARY_AGENT_IDS = AGENT_IDS.filter((id) => id !== 'global');
 export const BROADCAST_AGENT_IDS = PRIMARY_AGENT_IDS;
-
 

@@ -23,6 +23,8 @@
 - **`core/state-manager.js`** : store global, bootstrap auth + threads (REST), conserve map des threads/messages.
 - **`core/websocket.js`** : ouverture WS post-auth (sub-proto `jwt`), gestion reconnexion, diffusion evenements sur `EventBus` et anti-duplication des frames `chat.opinion` (cache glissant 1,2 s).
 - **`main.js`** : bootstrap EventBus/State, badge auth et instrumentation QA (`window.__EMERGENCE_QA_METRICS__.authRequired`) via `installAuthRequiredInstrumentation` (trace des états auth sans bannière visible).
+- **`features/pwa/sync-manager.js` / `features/pwa/offline-storage.js`** : enregistrement service worker, détection offline, snapshots IndexedDB (threads/messages) et file d'attente WS persistée.
+- **`/sw.js` & `manifest.webmanifest`** : shell PWA cache-first (Cache API) + manifeste installable (icônes, thème, start_url).
 - **`features/dashboard/benchmarks.js`** : matrice benchmarks (statut, coût, latence) avec styles dark mode.
 - **`components/onboarding/onboarding-tour.js`** : legacy overlay (desactive v20250926, conserver pour audit historique).
 - **`features/agents/agents.js`** : module retire (profils agents fusionnes dans `ReferencesModule`).

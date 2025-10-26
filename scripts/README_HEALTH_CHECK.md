@@ -35,6 +35,10 @@ Résout le problème: Production répond 403 sur `/ready` et autres endpoints ca
 
    **Note:** Le script détecte automatiquement l'OS et utilise la commande Python appropriée (`python` sur Windows, `python3` sur Linux/Mac).
 
+   ```bash
+   pip install pyjwt
+   ```
+
 3. **gcloud CLI** (optionnel, pour métriques et logs):
    ```bash
    gcloud auth login
@@ -151,6 +155,9 @@ python3 -m pip install pyjwt
 # Télécharge depuis https://www.python.org/downloads/
 # Puis installe PyJWT
 python -m pip install pyjwt
+**Solution:**
+```bash
+pip install pyjwt
 ```
 
 ## 🔐 Sécurité

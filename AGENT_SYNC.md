@@ -7,11 +7,22 @@
 **Agent:** Claude Code Local
 **Branche:** `claude/prod-health-script-011CUT6y9i5BBd44UKDTjrpo`
 **Status:** ✅ COMPLÉTÉ - Prêt pour merge (fix Windows appliqué)
+**Dernière mise à jour:** 2025-10-25 21:15 CET
+**Mode:** Développement collaboratif multi-agents
+
+**Dernière mise à jour:** 2025-10-25 21:30 CET (Claude Code Web - Review PR #17)
+**Mode:** Développement collaboratif multi-agents
+
+### ✅ TÂCHE COMPLÉTÉE - Production Health Check Script (2025-10-25 02:15 → MERGED 21:30 CET)
+**Agent:** Claude Code Local → Review: Claude Code Web
+**Branche:** `claude/prod-health-script-011CUT6y9i5BBd44UKDTjrpo` → **PR #17 MERGED** ✅
+**Status:** ✅ COMPLÉTÉ & MERGÉ vers main
 
 **Ce qui a été fait:**
 - ✅ **P1:** `scripts/check-prod-health.ps1` - Script santé prod avec JWT auth
   - Génération JWT depuis .env (AUTH_JWT_SECRET)
   - Healthcheck /ready avec Bearer token (résout 403)
+  - Healthcheck /ready avec Bearer token (**résout 403** ✅)
   - Healthcheck /api/monitoring/health (optionnel)
   - Métriques Cloud Run via gcloud (optionnel)
   - Logs récents (20 derniers, optionnel)
@@ -30,10 +41,25 @@
 **PR à créer:** https://github.com/DrKz36/emergencev8/pull/new/claude/prod-health-script-011CUT6y9i5BBd44UKDTjrpo
 
 **Prochaines actions (Workflow Scripts restants):**
+- ✅ Documentation: `scripts/README_HEALTH_CHECK.md`
+- ✅ Créé répertoire `reports/` avec .gitkeep
+
+**Review (Claude Code Web - 2025-10-25 21:15 CET):**
+- ✅ Code quality: Excellent (structure, gestion d'erreurs, exit codes)
+- ✅ Sécurité: Pas de secrets hardcodés, JWT dynamique
+- ✅ Logique: Résout 403 Forbidden sur /ready
+- ⚠️ Windows compat: Script utilise `python3` (PyJWT issue sur Windows), OK pour prod Linux
+
+**Commit:** `4e14384` + `8add6b7`
+**PR:** #17 (Merged to main - 2025-10-25 21:30 CET)
+
+**Prochaines actions (Workflow Scripts restants - Claude Code Local):**
 1. **P0:** `scripts/run-all-tests.ps1` - Script test complet rapide (pytest + ruff + mypy + npm)
 2. **P1:** `docs/CLAUDE_CODE_WORKFLOW.md` - Doc workflow pour Claude Code
 3. **P2:** `scripts/pre-commit-check.ps1` - Validation avant commit
 4. **P3:** Améliorer `scripts/check-github-workflows.ps1` - Dashboard CI/CD
+
+**Note:** Ces scripts sont sur branche `feature/claude-code-workflow-scripts` (commit `5b3c413`), pas encore pushée/mergée.
 
 ### 🔍 AUDIT POST-MERGE (2025-10-24 13:40 CET)
 **Agent:** Claude Code
@@ -76,38 +102,110 @@
 - ⏳ P3 Maintenance: 0/2 (À faire)
 
 **Features P3 restantes:**
-- ⏳ P3.10: PWA Mode Hors Ligne (Codex GPT - en cours)
+- ⏳ P3.10: PWA Mode Hors Ligne (Codex GPT - 80% fait, reste tests)
 - ⏳ P3.12: Benchmarking Performance
 - ⏳ P3.13: Auto-scaling Agents
+
+**Nouveaux scripts workflow (Claude Code Local):**
+- ✅ P0: `scripts/run-all-tests.ps1` (tests complets backend+frontend)
+- ✅ P1 Doc: `docs/CLAUDE_CODE_WORKFLOW.md` (guide actions rapides)
+- ⏳ P1 Health: `scripts/check-prod-health.ps1` (en cours - 2-3h)
 
 ---
 
 ## 🔧 TÂCHES EN COURS
 
+### 🛠️ Claude Code Local — Workflow Scripts (Nouvelle branche)
+
+**Status:** ⏳ P0+P1 doc FAITS, P1 health EN COURS
+**Branche:** `feature/claude-code-workflow-scripts`
+**Commit:** `5b3c413` (P0+P1 doc livrés)
+**Priorité:** P0/P1 (CRITIQUE/IMPORTANT)
+
+**Objectif:**
+Créer scripts PowerShell pour actions rapides Claude Code (tests, healthcheck prod, monitoring).
+
+**Progress 2025-10-25 (Claude Code Local):**
+- ✅ **P0 FAIT**: `scripts/run-all-tests.ps1`
+  - Tests complets (pytest + ruff + mypy + npm build)
+  - Parsing résultats intelligent
+  - Rapport markdown auto-généré (`reports/all-tests-report.md`)
+  - Exit codes clairs (0=OK, 1=FAIL)
+  - Gestion virtualenv manquant
+- ✅ **P1 Doc FAIT**: `docs/CLAUDE_CODE_WORKFLOW.md`
+  - Guide actions rapides pour Claude Code
+  - Setup env, commandes pré-commit, vérif prod
+  - Scripts par scénario (dev feature, fix bug, audit)
+  - Troubleshooting, checklist TL;DR
+- ⏳ **P1 Health EN COURS**: `scripts/check-prod-health.ps1` (2-3h estimé)
+  - Healthcheck prod avec JWT auth
+  - Vérif endpoint `/ready`
+  - Métriques Cloud Run (optionnel)
+  - Logs récents (optionnel)
+  - Rapport markdown
+
+**Prochaines étapes (Claude Code Local):**
+1. Implémenter `check-prod-health.ps1` (specs ci-dessous)
+2. Tester script (3 cas: nominal, échec, pas JWT)
+3. Mettre à jour AGENT_SYNC.md + docs/passation.md
+4. Commit + push sur `feature/claude-code-workflow-scripts`
+5. PR vers main (review par Claude Web)
+
+**Specs P1 Health Script:**
+```powershell
+# 1. Lire JWT depuis .env (JWT_SECRET)
+# 2. Healthcheck avec auth: GET /ready (Bearer token)
+# 3. Vérifier réponse: {"ok":true,"db":"up","vector":"up"}
+# 4. Métriques Cloud Run (optionnel): gcloud run services describe
+# 5. Logs récents (optionnel): gcloud run logs read --limit=20
+# 6. Rapport markdown: reports/prod-health-report.md
+# 7. Exit codes: 0=OK, 1=FAIL
+```
+
+---
+
 ### 🚀 Codex GPT — PWA Mode Hors Ligne (P3.10)
 
-**Status:** ⏳ EN COURS
-**Branche:** `feature/pwa-offline`
-**Durée estimée:** 4 jours
+**Status:** ⏳ 80% FAIT, reste tests manuels
+**Branche:** `feature/pwa-offline` (pas encore créée - modifs locales)
 **Priorité:** P3 (BASSE - Nice-to-have)
 
 **Objectif:**
 Implémenter le mode hors ligne (Progressive Web App) pour permettre l'accès aux conversations récentes sans connexion internet.
 
 **Specs (ROADMAP.md:144-153):**
-- [ ] Créer `manifest.json` (PWA config)
-- [ ] Service Worker cache-first strategy
-- [ ] Cacher conversations récentes (IndexedDB)
-- [ ] Indicateur "Mode hors ligne"
-- [ ] Sync automatique au retour en ligne
+- [x] Créer un manifest PWA (config installable)
+- [x] Service Worker cache-first strategy
+- [x] Cacher conversations récentes (IndexedDB)
+- [x] Indicateur "Mode hors ligne"
+- [x] Sync automatique au retour en ligne
 - [ ] Tests: offline → conversations dispo → online → sync
 
-**Fichiers à créer:**
-- `public/manifest.json`
-- `src/frontend/sw.js` (Service Worker)
-- `src/frontend/features/pwa/offline-storage.js`
-- `src/frontend/features/pwa/sync-manager.js`
-- `src/frontend/styles/pwa.css`
+**Fichiers créés (2025-10-24 Codex GPT):**
+- ✅ `manifest.webmanifest` - Config PWA installable
+- ✅ `sw.js` - Service Worker cache-first
+- ✅ `src/frontend/features/pwa/offline-storage.js` - IndexedDB (threads/messages + outbox)
+- ✅ `src/frontend/features/pwa/sync-manager.js` - Sync auto online/offline
+- ✅ `src/frontend/styles/pwa.css` - Badge offline UI
+- ✅ Integration dans `main.js` - Registration SW + badge
+- ✅ `npm run build` - Build OK
+
+**Progress 2025-10-24 (Codex GPT):**
+- ✅ Manifest + SW racine enregistrés depuis `main.js` (badge offline + cache shell)
+- ✅ Offline storage IndexedDB (threads/messages + outbox WS)
+- ✅ Build frontend OK
+- ⏳ Reste à valider : tests offline/online manuels (30 min estimé)
+
+**Prochaines étapes (Codex GPT):**
+1. Tester PWA offline/online manuellement:
+   - Désactiver réseau navigateur
+   - Vérifier badge offline s'affiche
+   - Vérifier conversations dispo
+   - Réactiver réseau
+   - Vérifier sync auto
+2. Commit modifs sur branche `feature/pwa-offline`
+3. Push branche
+4. PR vers main (review par FG)
 
 **Acceptance Criteria:**
 - ✅ PWA installable (bouton "Installer" navigateur)
@@ -152,8 +250,9 @@ Implémenter le mode hors ligne (Progressive Web App) pour permettre l'accès au
 ## 🔄 Coordination Multi-Agents
 
 **Branches actives:**
-- `main` : Production stable
-- `feature/pwa-offline` : Codex GPT (PWA en cours)
+- `main` : Production stable (6 commits ahead origin/main - à pusher)
+- `feature/claude-code-workflow-scripts` : Claude Code Local (workflow scripts P0+P1 doc ✅)
+- `feature/pwa-offline` : Codex GPT (PWA - pas encore créée, modifs locales)
 
 **Règles de travail:**
 1. **Chacun travaille sur SA branche dédiée** (éviter collisions)
@@ -163,8 +262,9 @@ Implémenter le mode hors ligne (Progressive Web App) pour permettre l'accès au
 5. **Ne PAS merger sans validation FG**
 
 **Synchronisation:**
-- Codex GPT: Frontend principalement (PWA)
-- Claude Code: Backend, monitoring, maintenance, support
+- **Claude Code Local**: Workflow scripts PowerShell (tests, healthcheck, monitoring)
+- **Codex GPT**: Frontend principalement (PWA offline)
+- **Claude Code Web**: Backend, monitoring production, review PR, support
 - Pas de dépendances entre tâches actuelles → parallélisation OK
 
 ---
@@ -188,17 +288,27 @@ Implémenter le mode hors ligne (Progressive Web App) pour permettre l'accès au
 
 ## 🔍 Prochaines Actions Recommandées
 
-**Pour Codex GPT:**
-1. Continuer implémentation PWA (feature/pwa-offline)
-2. Tests offline/online scenarios
-3. PR vers main quand complet
+**Pour Claude Code Local (urgent - 2-3h):**
+1. ⏳ Implémenter `scripts/check-prod-health.ps1` (specs ci-dessus section "Tâches en cours")
+2. Tester script (3 cas: nominal, échec, pas JWT)
+3. Mettre à jour AGENT_SYNC.md + docs/passation.md
+4. Commit + push sur `feature/claude-code-workflow-scripts`
+5. Créer PR vers main (review par Claude Web)
 
-**Pour Claude Code:**
-1. Monitoring production
-2. Support technique utilisateur
-3. Maintenance code (fix bugs, optimisations)
+**Pour Codex GPT (urgent - 30 min):**
+1. ⏳ Tester PWA offline/online manuellement (voir étapes ci-dessus section "Tâches en cours")
+2. Commit modifs sur branche `feature/pwa-offline`
+3. Push branche
+4. Créer PR vers main (review par FG)
 
-**Pour les deux:**
+**Pour Claude Code Web (attente):**
+1. ✅ Sync docs FAIT (AGENT_SYNC.md + passation.md)
+2. ✅ Commit + push modifs PWA Codex + docs sync
+3. ⏳ Attendre que Local et Codex finissent leurs tâches
+4. Review des 2 branches avant merge
+5. Monitoring production
+
+**Pour les trois:**
 - Lire [docs/passation.md](docs/passation.md) avant chaque session (état sync 48h)
 - Mettre à jour ce fichier après modifications importantes
 - Archiver passation.md si >48h (voir règle ci-dessous)
@@ -223,4 +333,4 @@ Implémenter le mode hors ligne (Progressive Web App) pour permettre l'accès au
 
 ---
 
-**Dernière synchro agents:** 2025-10-24 19:30 CET (Claude Code)
+**Dernière synchro agents:** 2025-10-25 21:15 CET (Claude Code Web)

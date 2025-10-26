@@ -156,6 +156,11 @@ print(token)
                 Write-ColorOutput "   Installe PyJWT: pip3 install pyjwt" "Yellow"
                 Write-ColorOutput "   Ou: python3 -m pip install pyjwt" "Yellow"
             }
+    try {
+        $token = python3 -c $pythonScript $jwtSecret 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-ColorOutput "❌ Erreur génération JWT: $token" "Red"
+            Write-ColorOutput "   Installe PyJWT: pip install pyjwt" "Yellow"
             exit 1
         }
 
