@@ -12,6 +12,73 @@
 
 ---
 
+## [beta-3.2.1] - 2025-10-26
+
+### 🆕 Fonctionnalités Ajoutées
+
+**Module "À Propos" - Changelog Enrichi avec 5 Dernières Révisions Détaillées**
+
+Enrichissement majeur du module "À propos" créé en beta-3.2.0. Le changelog affiche désormais les **5 dernières versions avec le contenu COMPLET du CHANGELOG.md**, au lieu des bullet points courts.
+
+**Changements:**
+
+1. **Export `FULL_CHANGELOG` dans `src/version.js`**
+   - Structure JavaScript complète des 5 dernières versions
+   - Chaque version contient: `version`, `date`, `title`, `description`, `sections[]`
+   - Chaque section contient: `type` (features/fixes/quality/impact/files), `title`, `items[]`
+   - Chaque item contient: `title`, `description`, `file` (optionnel)
+   - **Fichiers:** [`src/version.js`](src/version.js), [`src/frontend/version.js`](src/frontend/version.js)
+
+2. **Refonte `renderChangelog()` dans `settings-about.js`**
+   - Utilise `FULL_CHANGELOG` au lieu de `PATCH_NOTES` (13 versions courtes)
+   - Affichage structuré avec titre version, description, sections détaillées
+   - Nouvelles méthodes: `renderChangelogSection()`, `renderChangelogSectionItems()`
+   - **Fichier:** [`settings-about.js`](src/frontend/features/settings/settings-about.js)
+
+3. **Styles CSS enrichis**
+   - 16 nouvelles classes CSS pour affichage détaillé
+   - Badges `badge-impact` et `badge-files` (orange, gris)
+   - Cartes détaillées avec icônes, titres, descriptions, fichiers
+   - Listes simples pour sections Impact/Files
+   - Cartes détaillées pour sections Features/Fixes/Quality
+   - **Fichier:** [`settings-about.css`](src/frontend/features/settings/settings-about.css)
+
+**Fichiers modifiés:**
+- `src/version.js` - Export `FULL_CHANGELOG` (5 versions)
+- `src/frontend/version.js` - Synchronisation
+- `src/frontend/features/settings/settings-about.js` - Refonte renderChangelog()
+- `src/frontend/features/settings/settings-about.css` - 16 classes CSS enrichies
+- `package.json` - Version beta-3.2.1
+- `CHANGELOG.md` - Entrée beta-3.2.1
+
+### 🔧 Corrections
+
+**Fix Critique - Orientation Lock Desktop**
+
+Correction du bug d'affichage desktop qui forçait le mode mobile portrait sur certains écrans.
+
+**Problème:**
+- La fonction `isMobileViewport()` utilisait `Math.min(width, height) <= 900` au lieu de vérifier la largeur uniquement
+- Sur desktop avec petite résolution (ex: 1366x768), le côté minimum (768px) était considéré comme mobile
+- En mode landscape → overlay "Tourne ton appareil" affiché → application inutilisable sur desktop
+
+**Solution:**
+- Changé la détection pour vérifier `window.innerWidth <= 960` uniquement
+- Correspond maintenant au breakpoint CSS `--orientation-lock-max-width: 960px`
+- Desktop landscape n'est plus considéré comme viewport mobile
+
+**Fichier modifié:**
+- [`src/frontend/main.js`](src/frontend/main.js) - Fonction `isMobileViewport()` ligne 407-415
+
+**Impact Global:**
+- ✅ **Détails complets** - Utilisateurs voient toutes les sections du CHANGELOG.md (Features, Impact, Files)
+- ✅ **Contexte technique** - Descriptions longues, fichiers modifiés, contexte complet
+- ✅ **Meilleure lisibilité** - Sections séparées avec badges colorés, icônes, cards
+- ✅ **5 dernières versions** - Focus sur les révisions récentes (au lieu de 13 versions courtes)
+- ✅ **Desktop utilisable** - Fix critique orientation lock qui bloquait certains écrans desktop
+
+---
+
 ## [beta-3.2.0] - 2025-10-26
 
 ### 🆕 Fonctionnalités Ajoutées

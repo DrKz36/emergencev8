@@ -5,7 +5,7 @@
 
 import './settings-about.css';
 import { getIcon } from './settings-icons.js';
-import versionInfo from '../../version.js';
+import versionInfo, { FULL_CHANGELOG } from '../../version.js';
 import logoWebpUrl from '../../../../assets/emergence_logo.webp';
 import logoPngUrl from '../../../../assets/emergence_logo.png';
 
@@ -102,34 +102,10 @@ class SettingsAbout {
     }
 
     /**
-     * Render changelog section
+     * Render changelog section (enriched - 5 latest versions with full details)
      */
     renderChangelog() {
-        const allPatchNotes = versionInfo.getFormattedPatchNotes(10); // Afficher 10 versions
-
-        const typeIcons = {
-            feature: '🆕',
-            fix: '🔧',
-            quality: '✨',
-            perf: '⚡',
-            phase: '🎉'
-        };
-
-        const typeLabels = {
-            feature: 'Nouveauté',
-            fix: 'Correction',
-            quality: 'Qualité',
-            perf: 'Performance',
-            phase: 'Phase'
-        };
-
-        const typeBadges = {
-            feature: 'badge-feature',
-            fix: 'badge-fix',
-            quality: 'badge-quality',
-            perf: 'badge-perf',
-            phase: 'badge-phase'
-        };
+        const fullChangelog = FULL_CHANGELOG || []; // Use enriched changelog (5 versions)
 
         return `
             <div class="about-section about-changelog">
@@ -138,21 +114,27 @@ class SettingsAbout {
                 </h3>
                 <p class="about-section-subtitle">
                     Découvrez les évolutions et améliorations apportées à ÉMERGENCE au fil des versions.
+                    Affichage détaillé des 5 dernières révisions avec fonctionnalités complètes.
                 </p>
 
                 <div class="changelog-container">
-                    ${allPatchNotes.map(note => `
-                        <div class="changelog-version ${note.version === versionInfo.version ? 'changelog-current' : ''}">
+                    ${fullChangelog.map(version => `
+                        <div class="changelog-version ${version.version === versionInfo.version ? 'changelog-current' : ''}">
                             <div class="changelog-header">
                                 <div class="changelog-title-group">
-                                    ${note.version === versionInfo.version ? '<span class="changelog-current-badge">Version actuelle</span>' : ''}
-                                    <h4 class="changelog-version-number">${note.version}</h4>
+                                    ${version.version === versionInfo.version ? '<span class="changelog-current-badge">Version actuelle</span>' : ''}
+                                    <h4 class="changelog-version-number">${version.version}</h4>
+                                    <p class="changelog-version-title">${version.title}</p>
                                 </div>
-                                <span class="changelog-date">${note.date}</span>
+                                <span class="changelog-date">${version.date}</span>
                             </div>
 
-                            <div class="changelog-changes">
-                                ${this.groupChangesByType(note.changes, typeIcons, typeLabels, typeBadges)}
+                            <div class="changelog-description">
+                                <p>${version.description}</p>
+                            </div>
+
+                            <div class="changelog-sections">
+                                ${version.sections.map(section => this.renderChangelogSection(section)).join('')}
                             </div>
                         </div>
                     `).join('')}
@@ -170,39 +152,63 @@ class SettingsAbout {
     }
 
     /**
-     * Group changes by type for better readability
+     * Render a single changelog section (features, fixes, quality, impact, files)
      */
-    groupChangesByType(changes, typeIcons, typeLabels, typeBadges) {
-        // Group changes by type
-        const grouped = changes.reduce((acc, change) => {
-            if (!acc[change.type]) {
-                acc[change.type] = [];
-            }
-            acc[change.type].push(change);
-            return acc;
-        }, {});
+    renderChangelogSection(section) {
+        const typeBadges = {
+            features: 'badge-feature',
+            fixes: 'badge-fix',
+            quality: 'badge-quality',
+            impact: 'badge-impact',
+            files: 'badge-files'
+        };
 
-        // Define display order
-        const order = ['phase', 'feature', 'quality', 'perf', 'fix'];
+        const badgeClass = typeBadges[section.type] || 'badge-default';
 
-        // Build HTML for each group
-        return order
-            .filter(type => grouped[type])
-            .map(type => `
-                <div class="changelog-type-group">
-                    <div class="changelog-type-header">
-                        <span class="changelog-type-badge ${typeBadges[type]}">
-                            ${typeIcons[type]} ${typeLabels[type]}
-                        </span>
-                        <span class="changelog-type-count">${grouped[type].length}</span>
-                    </div>
-                    <ul class="changelog-items">
-                        ${grouped[type].map(change => `
-                            <li class="changelog-item">${change.text}</li>
-                        `).join('')}
-                    </ul>
+        return `
+            <div class="changelog-section">
+                <h5 class="changelog-section-title">
+                    <span class="changelog-section-badge ${badgeClass}">${section.title}</span>
+                </h5>
+                <div class="changelog-section-content">
+                    ${this.renderChangelogSectionItems(section.items, section.type)}
                 </div>
-            `).join('');
+            </div>
+        `;
+    }
+
+    /**
+     * Render section items (detailed or simple list)
+     */
+    renderChangelogSectionItems(items, sectionType) {
+        if (!items || items.length === 0) {
+            return '<p class="changelog-no-items">Aucun changement</p>';
+        }
+
+        // For impact and files sections, render as simple list
+        if (sectionType === 'impact' || sectionType === 'files') {
+            return `
+                <ul class="changelog-simple-list">
+                    ${items.map(item => `<li>${item}</li>`).join('')}
+                </ul>
+            `;
+        }
+
+        // For features, fixes, quality sections, render with details
+        return `
+            <div class="changelog-detailed-items">
+                ${items.map(item => `
+                    <div class="changelog-detailed-item">
+                        <div class="changelog-item-header">
+                            <span class="changelog-item-icon">${getIcon('checkCircle')}</span>
+                            <strong class="changelog-item-title">${item.title}</strong>
+                        </div>
+                        <p class="changelog-item-description">${item.description}</p>
+                        ${item.file ? `<code class="changelog-item-file">${getIcon('fileText')} ${item.file}</code>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        `;
     }
 
     /**
