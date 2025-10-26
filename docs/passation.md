@@ -1,5 +1,39 @@
 # 📝 Journal de Passation Inter-Agents
 
+## [2025-10-27 14:20 CET] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.2.0
+- **Nouvelle:** beta-3.2.0 (inchangée)
+
+### Fichiers modifiés
+- `src/version.js`
+- `src/frontend/version.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- Build frontend CI explosait (`npm run build`) à cause de doubles exports `VERSION`/`VERSION_NAME` laissés par merge.
+- Objectif : nettoyer le module de versioning centralisé et garantir une source unique pour Guardian et l'app.
+
+### Travail réalisé
+1. Factorisation `CURRENT_RELEASE` + exports uniques (`VERSION`, `VERSION_NAME`, `VERSION_DATE`) côté backend/front.
+2. Ajout des taglines dans les patch notes `beta-3.2.0` et `beta-3.1.3` pour conserver les slogans sans redéclarer les constantes.
+3. Exposition `currentRelease` dans `versionInfo` pour usage UI à venir (module À propos, widgets Guardian).
+
+### Tests
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Alignement avec ses patch notes beta-3.1.3 précédents (aucun conflit).
+
+### Blocages
+- Aucun.
+
+### Prochaines actions
+1. Checker le prochain run GitHub Actions pour confirmer le build frontend OK.
+2. Planifier un bump `beta-3.2.x` si un nouveau fix UI arrive.
+
 ## [2025-10-27 10:45 CET] — Agent: Codex GPT
 
 ### Version
