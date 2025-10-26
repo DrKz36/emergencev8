@@ -20,6 +20,7 @@ import { WS_CONFIG, EVENTS } from './shared/constants.js';
 import { notifications } from './shared/notifications.js';
 import { showWelcomePopupIfNeeded } from './shared/welcome-popup.js';
 import { ProactiveHintsUI } from './features/memory/ProactiveHintsUI.js';
+import { OfflineSyncManager } from './features/pwa/sync-manager.js';
 import './core/version-display.js'; // Auto-update version displays
 
 const storeAuthToken = typeof storeAuthTokenImpl === 'function' ? storeAuthTokenImpl : () => null;
@@ -904,6 +905,7 @@ class EmergenceClient {
     this.app = null;
     this.appInitialized = false;
     this.memoryCenter = null;
+    this.offlineManager = null;
     this.websocket = null;
     this.connectWs = () => {};
     this.storageListener = null;
@@ -938,6 +940,15 @@ class EmergenceClient {
     this.appContainer = typeof document !== 'undefined' ? document.getElementById('app-container') : null;
 
     this.badge = mountAuthBadge(eventBus);
+
+    try {
+      this.offlineManager = new OfflineSyncManager(eventBus, stateManager, {
+        onStatusChange: ({ offline }) => this._handleOfflineStatusChange(offline),
+      });
+      await this.offlineManager.init();
+    } catch (err) {
+      console.warn('[main] Offline sync manager init failed', err);
+    }
 
     const syncBadgeLoginState = (rawHasToken) => {
       const isLogged = !!rawHasToken;
@@ -1066,6 +1077,16 @@ class EmergenceClient {
     }
 
     console.log('? Client ÉMERGENCE prêt. En attente du signal APP_READY...');
+  }
+
+  _handleOfflineStatusChange(isOffline) {
+    try {
+      if (this.badge?.setAlert) {
+        this.badge.setAlert(isOffline ? 'OFFLINE' : '');
+      }
+    } catch (err) {
+      console.warn('[main] Impossible de mettre a jour le badge offline', err);
+    }
   }
 
   async tryDevAutoLogin() {

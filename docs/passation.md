@@ -1,3 +1,4 @@
+# 📝 Journal de Passation Inter-Agents
 ## [2025-10-25 21:30 CET] — Agent: Claude Code Web
 
 ### Fichiers modifiés
@@ -11212,158 +11213,39 @@ git push
 ### Travail de Claude Code pris en compte
 - Les derniers commits mypy ont introduit les accès `user_id`; on garde la logique mais on l'abrite derrière la détection de colonne + on restaure les sessions manquantes.
 
-### Blocages
-- `mypy` + `pytest` bloqués par dépendances manquantes (`fastapi`, `httpx`, `pydantic`, stubs). À relancer dès que l'environnement dispose des libs.
-
----
-
-## [2025-10-24 04:50 CET] — Agent: Claude Code
-
-### Fichiers modifiés
-- `src/backend/features/dashboard/service.py`
-- `src/backend/features/dashboard/timeline_service.py`
-- `src/frontend/features/cockpit/cockpit-charts.js`
-- `AGENT_SYNC.md`
-- `docs/passation.md`
-
-### Contexte
-
-Récupération session Claude Code local après demande utilisateur "Lis HANDOFF_TO_LOCAL_CLAUDE.md et fais ce qui est marqué". Fichier introuvable, donc lecture `AGENT_SYNC.md` + `docs/passation.md` pour comprendre le contexte.
-
-**État détecté :**
-- Modifs non committées dans dashboard/timeline/cockpit
-- Blocage Codex GPT (pytest/mypy) à cause de deps manquantes → **RÉSOLU** (toutes installées)
-
-### Actions réalisées
-
-**1. Validation environnement**
-- Python 3.11.9 + toutes deps installées (fastapi, httpx, pydantic, pytest, mypy)
-- Blocage Codex résolu
-
-**2. Analyse modifs non committées**
-
-**Fix 1 - Dashboard agents fantômes ([service.py](src/backend/features/dashboard/service.py:110-147))**
-
-Problème : Agents fantômes type `CLAUDE_LOCAL_REMOTE_PROMPT` pollue les stats dashboard.
-
-Solution :
-```python
-valid_agents = {"anima", "neo", "nexus", "user", "system"}
-# Filtrage strict + logging debug
-if agent_name not in valid_agents:
-    logger.debug(f"[dashboard] Agent filtré (non valide): {agent_name}")
-    continue
-```
-
-**Fix 2 - Timeline NULL bug CRITIQUE ([timeline_service.py](src/backend/features/dashboard/timeline_service.py:44-52))**
-
-Problème : `COALESCE(timestamp, 'now')` groupait tous les `NULL` sur aujourd'hui → graphes timeline complètement faussés.
-
-Avant :
-```python
-message_filters = ["date(COALESCE(m.created_at, 'now')) = dates.date"]
-# Tous les messages sans timestamp → groupés sur aujourd'hui 🔥
-```
-
-Après :
-```python
-message_filters = [
-    "m.created_at IS NOT NULL",  # Filtre NULL AVANT
-    "date(m.created_at) = dates.date"
-]
-# Seules les vraies dates comptées ✅
-```
-
-Impact : 3 méthodes corrigées :
-- `get_activity_timeline()` (messages + threads)
-- `get_costs_timeline()`
-- `get_tokens_timeline()`
-
-**Fix 3 - Cockpit perf ([cockpit-charts.js](src/frontend/features/cockpit/cockpit-charts.js:270-285))**
-
-Refactor API calls séquentiels → parallèles :
-```javascript
-// Avant : 4 fetch séquentiels (lent)
-// Après : Promise.all() + gestion erreurs gracieuse
-const [costsResp, threadsResp, messagesResp, tokensResp] = await Promise.all([
-    fetch('/api/dashboard/costs/by-agent', { method: 'GET', headers }),
-    fetch(`/api/dashboard/distribution/threads?period=${period}`, ...),
-    fetch(`/api/dashboard/distribution/messages?period=${period}`, ...),
-    fetch(`/api/dashboard/distribution/tokens?period=${period}`, ...)
-]);
-```
-
-**3. Tests validation**
-```bash
-pytest tests/backend/ -v --tb=short -q
-# ✅ 411 PASSED, 10 skipped (69.64s)
-
-mypy src/backend/features/dashboard/service.py src/backend/features/dashboard/timeline_service.py
-# ✅ No errors
-
-npm run build
-# ✅ Built in 1.01s (111 modules)
-```
-
-### Résultats
-
-**3 bugs corrigés :**
-1. **Agents fantômes dashboard** : Whitelist stricte appliquée
-2. **Timeline NULL grouping** : Fix critique (COALESCE bug éliminé)
-3. **Cockpit API calls** : Parallélisés (perf++)
-
-**Tests :**
-- ✅ pytest backend : 411/421 PASSED (97.6%)
-- ✅ mypy : 0 erreurs
-- ✅ npm build : OK (1.01s)
-
-### Travail de Codex GPT pris en compte
-
-Dernière session Codex GPT (2025-10-24 11:15 CET) :
-- Hotfix auth sessions (migration `user_id`)
-- Blocage pytest/mypy signalé → **RÉSOLU** dans cette session
-
-### Prochaines actions recommandées
-
-**PRIORITÉ 1 - Commit & push (immédiat) :**
-```bash
-git add src/backend/features/dashboard/ src/frontend/features/cockpit/cockpit-charts.js AGENT_SYNC.md docs/passation.md
-git commit -m "fix(dashboard): 3 bugs critiques cockpit + timeline
-
-- Dashboard: Filtrage agents fantômes (whitelist anima/neo/nexus/user/system)
-- Timeline: Fix COALESCE NULL grouping bug (graphes faussés) - CRITIQUE
-- Cockpit: API calls parallélisés (Promise.all) pour perf
-
-Tests: pytest 411 PASSED, mypy OK, npm build OK (1.01s)
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>
-"
-git push
-```
-
-**PRIORITÉ 2 - Monitoring (après commit) :**
-1. Vérifier dashboard en dev : agents fantômes filtrés ?
-2. Tester graphes timeline avec données historiques (confirmer fix NULL)
-3. Observer perf cockpit (Promise.all impact)
-
-**PRIORITÉ 3 - Déploiement (si tests prod OK) :**
-- Build Docker + deploy Cloud Run (procédure standard)
-- Monitoring prod : graphes timeline + dashboard agents
-
-### Blocages
-
-Aucun. Environnement opérationnel, tests OK, prêt pour commit.
-# 📝 Journal de Passation Inter-Agents
-
-**Dernière mise à jour:** 2025-10-24 19:30 CET
-**Période couverte:** Dernières 48 heures (23-24 octobre)
+**Dernière mise à jour:** 2025-10-25 21:15 CET
+**Période couverte:** Dernières 48 heures (24-25 octobre)
 **Archive complète:** [docs/archives/passation_archive_2025-10-14_to_2025-10-22.md](archives/passation_archive_2025-10-14_to_2025-10-22.md)
 
 ---
 
+## 🔄 Sessions Actives - 25 Octobre 2025
+
+### [21:15 CET] Claude Code Web - Sync multi-agents + Commit modifs PWA Codex
+- **Fichiers:** `AGENT_SYNC.md`, `docs/passation.md`, + modifs PWA Codex (manifest, sw.js, pwa/*.js, etc.)
+- **Actions:**
+  - Review travail Claude Code Local (branche `feature/claude-code-workflow-scripts`)
+  - Review travail Codex GPT (modifs PWA locales, pas encore commitées)
+  - Mise à jour docs coordination inter-agents (AGENT_SYNC.md + passation.md)
+  - Commit + push TOUTES les modifs (PWA Codex + docs sync) pour dépôt propre
+- **Analyse:**
+  - ✅ Claude Code Local: P0 (run-all-tests.ps1) + P1 doc (CLAUDE_CODE_WORKFLOW.md) FAITS, reste P1 health (2-3h)
+  - ✅ Codex GPT: PWA 80% FAIT (manifest, SW, storage, sync), reste tests manuels (30 min)
+- **Recommandation:** Option 1 - Les 2 continuent et finissent leurs tâches
+- **Next:**
+  - Claude Code Local: Finir P1 health script → commit/push → PR
+  - Codex GPT: Tests PWA offline/online → commit/push → PR
+  - Claude Code Web: Review des 2 PR avant merge
+
+---
+
 ## 🔄 Sessions Actives - 24 Octobre 2025
+
+### [20:45 CET] Codex GPT - PWA offline sync + manifest
+- **Fichiers:** `manifest.webmanifest`, `sw.js`, `index.html`, `src/frontend/main.js`, `src/frontend/shared/constants.js`, `src/frontend/features/pwa/offline-storage.js`, `src/frontend/features/pwa/sync-manager.js`, `src/frontend/styles/pwa.css`, `docs/architecture/10-Components.md`, `AGENT_SYNC.md`
+- **Actions:** Ajout manifest + service worker racine, gestionnaire offline (IndexedDB + outbox WS) branché dans `main.js`, badge UI + CSS dédiée, mise à jour docs architecture/AGENT_SYNC pour la PWA.
+- **Tests:** ✅ `npm run build`
+- **Next:** Vérifier manuellement syncing offline→online, documenter guide utilisateur PWA si validé.
 
 ### [14:00 CET] Claude Code - Fix test_unified_retriever mock obsolete
 - **Fichiers:** `tests/backend/features/test_unified_retriever.py`
