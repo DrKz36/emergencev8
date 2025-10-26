@@ -1,5 +1,42 @@
 # 📝 Journal de Passation Inter-Agents
 
+## [2025-10-26 21:45 CET] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.1.2
+- **Nouvelle:** beta-3.1.3 (PATCH – chat mobile composer)
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.css`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- **Problème:** Sur mobile portrait, le composer restait planqué derrière la bottom nav → impossible d'envoyer un message.
+- **Objectif:** Garantir que la zone de saisie et les derniers messages restent accessibles malgré la nav fixe et le safe-area iOS.
+
+### Travail réalisé
+1. Décalage du footer chat via `bottom` sticky + padding dynamique pour tenir compte de `--mobile-nav-height` + safe-area.
+2. Ajustement du padding des listes de messages (chat + legacy) pour éviter la zone morte sous la nav.
+3. Incrément version `beta-3.1.3` + synchro patch notes, changelog et package.json.
+
+### Tests
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Conserve le verrou portrait + overlay orientation posés précédemment.
+
+### Blocages
+- Aucun.
+
+### Prochaines actions
+1. QA sur devices réels (Safari iOS + Chrome Android) pour valider le repositionnement du composer.
+2. Vérifier que la nav reste cliquable quand le clavier est fermé (z-index vs transform).
+
 ## [2025-10-26 18:05 CET] — Agent: Codex GPT
 
 ### Version

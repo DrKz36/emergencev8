@@ -1,6 +1,6 @@
 # 🔄 État Synchronisation Multi-Agents
 
-**Dernière mise à jour:** 2025-10-26 18:10 CET (auto-généré)
+**Dernière mise à jour:** 2025-10-26 21:45 CET (auto-généré)
 
 ---
 
@@ -9,7 +9,7 @@
 | Agent | Dernière session | Status | Version | Fichiers modifiés |
 |-------|-----------------|--------|---------|-------------------|
 | **Claude Code** | 2025-10-26 15:30 | ✅ Complété | beta-3.1.0 | 8 fichiers |
-| **Codex GPT** | 2025-10-26 18:10 | ✅ Complété | beta-3.1.1 | 6 fichiers |
+| **Codex GPT** | 2025-10-26 21:45 | ✅ Complété | beta-3.1.3 | 7 fichiers |
 
 ---
 
@@ -46,19 +46,27 @@
 - Review branche PWA de Codex
 - P3 Features restantes (benchmarking, auto-scaling)
 
+### Codex GPT (2025-10-26 21:45)
+**Tâche:** Chat mobile — Composer au-dessus de la bottom nav
+**Status:** ✅ COMPLÉTÉ
+**Version:** beta-3.1.3 (PATCH)
+**Impact:** Permet l'envoi de messages sur mobile portrait (composer visible + zone messages accessible)
+
+**Fichiers clés:**
+- `src/frontend/features/chat/chat.css` — Offsets mobile + padding dynamique
+- `src/version.js` / `src/frontend/version.js` — Version + patch notes `beta-3.1.3`
+- `CHANGELOG.md` — Entrée patch `beta-3.1.3`
+
+**Prochaines actions:**
+- QA mobile iOS/Android pour valider sticky + safe-area
+- Vérifier interaction entre composer (z-index) et navigation mobile
+- Finaliser QA PWA offline avant PR
+
 ### Codex GPT (2025-10-26 18:10)
 **Tâche:** Fix modal reprise conversation
 **Status:** ✅ COMPLÉTÉ
 **Version:** beta-3.1.1 (PATCH)
 **Impact:** Fix bug UX empêchant reprise conversation après connexion
-
-**Fichiers clés:**
-- `src/frontend/features/chat/chat.js` - Fix wiring modal
-
-**Prochaines actions:**
-- Finir tests PWA offline/online (P3.10)
-- QA mobile iOS/Android
-- Créer PR pour PWA feature
 
 ---
 

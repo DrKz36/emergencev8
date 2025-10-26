@@ -1515,6 +1515,22 @@
   }
 }
 
+@media (max-width: 760px) and (orientation: portrait){
+  .chat-messages{
+    padding-bottom: calc(140px + var(--mobile-nav-height, 64px) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 640px) and (orientation: portrait){
+  .messages{
+    padding-bottom: calc(110px + var(--mobile-nav-height, 64px) + env(safe-area-inset-bottom, 0px));
+  }
+  .chat-footer{
+    bottom: calc(var(--mobile-nav-height, 64px) + env(safe-area-inset-bottom, 0px) + 12px);
+    z-index: 32;
+  }
+}
+
 
 
 
