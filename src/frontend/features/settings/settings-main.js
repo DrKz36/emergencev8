@@ -9,6 +9,7 @@ import { settingsUI } from './settings-ui.js';
 import { settingsSecurity } from './settings-security.js';
 import { settingsRAG } from './settings-rag.js';
 import { settingsWebhooks } from './settings-webhooks.js';
+import { settingsAbout } from './settings-about.js';
 import versionInfo from '../../version.js';
 import logoWebpUrl from '../../../../assets/emergence_logo.webp';
 import logoPngUrl from '../../../../assets/emergence_logo.png';
@@ -22,7 +23,8 @@ export class Settings {
             ui: settingsUI,
             security: settingsSecurity,
             rag: settingsRAG,
-            webhooks: settingsWebhooks
+            webhooks: settingsWebhooks,
+            about: settingsAbout
         };
         this.initialized = false;
         this.hasUnsavedChanges = false;
@@ -116,6 +118,14 @@ export class Settings {
                             <span class="nav-hint">Intégrations externes</span>
                         </div>
                     </button>
+                    <button class="settings-nav-item ${this.activeTab === 'about' ? 'active' : ''}"
+                            data-tab="about">
+                        <span class="nav-icon">${SettingsIcons.info}</span>
+                        <div class="nav-content">
+                            <span class="nav-label">À propos</span>
+                            <span class="nav-hint">Versions & Changelog</span>
+                        </div>
+                    </button>
                 </div>
 
                 <!-- Settings Content -->
@@ -142,6 +152,12 @@ export class Settings {
                     <div class="settings-panel ${this.activeTab === 'webhooks' ? 'active' : ''}"
                          data-panel="webhooks">
                         <div id="settings-webhooks-container"></div>
+                    </div>
+
+                    <!-- About Tab -->
+                    <div class="settings-panel ${this.activeTab === 'about' ? 'active' : ''}"
+                         data-panel="about">
+                        <div id="settings-about-container"></div>
                     </div>
                 </div>
 
@@ -1190,6 +1206,9 @@ Envoyé depuis ÉMERGENCE V8
                 break;
             case 'webhooks':
                 await this.modules.webhooks.init(document.getElementById('settings-webhooks-container'));
+                break;
+            case 'about':
+                this.modules.about.init('settings-about-container');
                 break;
         }
     }

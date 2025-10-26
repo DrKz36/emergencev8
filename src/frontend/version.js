@@ -20,14 +20,15 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.1.3 : Chat mobile composer guard (offset bottom nav) [ACTUEL]
+ * - beta-3.2.0 : Module À Propos avec Changelog enrichi (13 versions affichées) [ACTUEL]
+ * - beta-3.1.3 : Chat mobile composer guard (offset bottom nav)
  * - beta-3.1.2 : Refactor docs inter-agents (fichiers séparés - zéro conflit merge)
  * - beta-3.1.1 : Dialogue - Modal reprise multi-conversations
  * - beta-3.1.0 : Webhooks + Health Check Scripts + Qualité (mypy 100%)
  */
 
-export const VERSION = 'beta-3.1.3';
-export const VERSION_NAME = 'Chat Mobile Composer Guard';
+export const VERSION = 'beta-3.2.0';
+export const VERSION_NAME = 'Module À Propos avec Changelog Enrichi';
 export const VERSION_DATE = '2025-10-26';
 export const BUILD_PHASE = 'P3';
 export const COMPLETION_PERCENTAGE = 78; // 18/23 features (P3.11 webhooks complété)
@@ -38,6 +39,17 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.2.0',
+    date: '2025-10-26',
+    changes: [
+      { type: 'feature', text: 'Nouveau module "À propos" dans Paramètres - Affichage complet du changelog avec 13 versions' },
+      { type: 'feature', text: 'Historique des versions enrichi - Classement par type (Phase, Nouveauté, Qualité, Performance, Correction)' },
+      { type: 'feature', text: 'Modules installés - Vue d\'ensemble des 15 modules actifs avec versions' },
+      { type: 'feature', text: 'Crédits complets - Informations développeur, technologies, écosystème Guardian' },
+      { type: 'quality', text: 'Design glassmorphism moderne avec badges colorés et animations fluides' }
+    ]
+  },
   {
     version: 'beta-3.1.3',
     date: '2025-10-26',
@@ -86,6 +98,77 @@ export const PATCH_NOTES = [
       { type: 'phase', text: 'Phase P2 complétée - Admin & Sécurité (3/3 features)' },
       { type: 'feature', text: 'Système de permissions avancé' },
       { type: 'feature', text: 'Audit logs et traçabilité' }
+    ]
+  },
+  {
+    version: 'beta-2.2.0',
+    date: '2025-10-20',
+    changes: [
+      { type: 'quality', text: 'Mypy 100% clean - 0 erreurs de type restantes' },
+      { type: 'fix', text: 'Correction monitoring router - endpoints /ready et /metrics' }
+    ]
+  },
+  {
+    version: 'beta-2.1.5',
+    date: '2025-10-19',
+    changes: [
+      { type: 'fix', text: 'Dashboard admin - Responsive mobile corrigé (graphiques et layout)' }
+    ]
+  },
+  {
+    version: 'beta-2.1.4',
+    date: '2025-10-18',
+    changes: [
+      { type: 'fix', text: 'Production - Correction 404 sur /reset-password et /favicon.ico' }
+    ]
+  },
+  {
+    version: 'beta-2.1.3',
+    date: '2025-10-17',
+    changes: [
+      { type: 'feature', text: 'Guardian - Rapports automatiques par email (SMTP intégré)' },
+      { type: 'quality', text: 'Orchestration Guardian - Envoi automatique des rapports après audit' }
+    ]
+  },
+  {
+    version: 'beta-2.1.2',
+    date: '2025-10-17',
+    changes: [
+      { type: 'fix', text: 'Synchronisation versioning - Production affiche maintenant la bonne version' },
+      { type: 'fix', text: 'Bug password_must_reset - Fin de la boucle infinie de demande de reset' },
+      { type: 'fix', text: 'Thread mobile - Chargement automatique au retour sur module chat' },
+      { type: 'feature', text: 'Script PowerShell - Synchronisation automatique de version entre fichiers' }
+    ]
+  },
+  {
+    version: 'beta-2.0.0',
+    date: '2025-10-15',
+    changes: [
+      { type: 'phase', text: 'Phase P1 complétée - UX Essentielle (3/3 features)' },
+      { type: 'feature', text: 'Mémoire - Feedback temps réel consolidation avec barre de progression' },
+      { type: 'fix', text: 'Mémoire - Détection questions temporelles et enrichissement contexte historique' },
+      { type: 'quality', text: 'Documentation - Guide utilisateur beta + Guide QA mémoire' }
+    ]
+  },
+  {
+    version: 'beta-1.1.0',
+    date: '2025-10-15',
+    changes: [
+      { type: 'feature', text: 'Archivage conversations - Toggle Actifs/Archivés avec compteurs' },
+      { type: 'feature', text: 'Fonction de désarchivage - Restauration conversations depuis archives' },
+      { type: 'quality', text: 'Menu contextuel adaptatif - Actions selon mode actif/archivé' }
+    ]
+  },
+  {
+    version: 'beta-1.0.0',
+    date: '2025-10-15',
+    changes: [
+      { type: 'phase', text: 'Version bêta de référence - État initial documenté' },
+      { type: 'feature', text: 'Système d\'authentification et gestion utilisateurs' },
+      { type: 'feature', text: 'Chat multi-agents - 5 agents (Analyste, Généraliste, Créatif, Technique, Éthique)' },
+      { type: 'feature', text: 'Centre Mémoire avec extraction de concepts' },
+      { type: 'feature', text: 'Documentation interactive intégrée' },
+      { type: 'feature', text: 'Métriques Prometheus activées par défaut' }
     ]
   }
 ];
