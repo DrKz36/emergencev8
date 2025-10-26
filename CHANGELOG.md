@@ -12,6 +12,20 @@
 
 ---
 
+## [beta-3.1.1] - 2025-10-26
+
+### 🔧 Corrections
+
+- **Module Dialogue - Modal de reprise**
+  - Attente automatique du chargement des threads pour proposer l'option « Reprendre » quand des conversations existent.
+  - Mise à jour dynamique du contenu du modal si les données arrivent après affichage.
+  - **Fichiers :** [chat.js](src/frontend/features/chat/chat.js)
+
+### 📦 Versioning & Patch Notes
+
+- `src/version.js` & `src/frontend/version.js` — Version `beta-3.1.1`, entrée patch notes dédiée.
+- `package.json` — Synchronisation version npm (`beta-3.1.1`).
+
 ## [beta-3.1.0] - 2025-10-26
 
 ### 🆕 Fonctionnalités Ajoutées

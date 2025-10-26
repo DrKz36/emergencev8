@@ -20,11 +20,12 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.1.0 : Webhooks + Health Check Scripts + Qualité (mypy 100%) [ACTUEL]
+ * - beta-3.1.1 : Dialogue - Modal reprise multi-conversations [ACTUEL]
+ * - beta-3.1.0 : Webhooks + Health Check Scripts + Qualité (mypy 100%)
  */
 
-export const VERSION = 'beta-3.1.0';
-export const VERSION_NAME = 'Webhooks & Scripts Monitoring';
+export const VERSION = 'beta-3.1.1';
+export const VERSION_NAME = 'Dialogue Resume Reliability';
 export const VERSION_DATE = '2025-10-26';
 export const BUILD_PHASE = 'P3';
 export const COMPLETION_PERCENTAGE = 78; // 18/23 features (P3.11 webhooks complété)
@@ -35,6 +36,14 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.1.1',
+    date: '2025-10-26',
+    changes: [
+      { type: 'fix', text: 'Module Dialogue - L\'option "Reprendre" réapparaît dès que des conversations existent (attente bootstrap threads)' },
+      { type: 'quality', text: 'Modal d\'accueil dynamique selon la disponibilité des conversations (mise à jour live du contenu)' }
+    ]
+  },
   {
     version: 'beta-3.1.0',
     date: '2025-10-26',
