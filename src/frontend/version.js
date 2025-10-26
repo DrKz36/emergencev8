@@ -20,12 +20,13 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.1.1 : Dialogue - Modal reprise multi-conversations [ACTUEL]
+ * - beta-3.1.2 : Refactor docs inter-agents (fichiers séparés - zéro conflit merge) [ACTUEL]
+ * - beta-3.1.1 : Dialogue - Modal reprise multi-conversations
  * - beta-3.1.0 : Webhooks + Health Check Scripts + Qualité (mypy 100%)
  */
 
-export const VERSION = 'beta-3.1.1';
-export const VERSION_NAME = 'Dialogue Resume Reliability';
+export const VERSION = 'beta-3.1.2';
+export const VERSION_NAME = 'Multi-Agent Sync Refactor';
 export const VERSION_DATE = '2025-10-26';
 export const BUILD_PHASE = 'P3';
 export const COMPLETION_PERCENTAGE = 78; // 18/23 features (P3.11 webhooks complété)
@@ -36,6 +37,17 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.1.2',
+    date: '2025-10-26',
+    changes: [
+      { type: 'quality', text: 'Refactor complet docs inter-agents - Fichiers séparés par agent (AGENT_SYNC_CLAUDE.md / AGENT_SYNC_CODEX.md)' },
+      { type: 'quality', text: 'Nouvelle structure passation - Journaux séparés (passation_claude.md / passation_codex.md) avec rotation 48h stricte' },
+      { type: 'quality', text: 'SYNC_STATUS.md - Vue d\'ensemble centralisée des activités multi-agents' },
+      { type: 'quality', text: 'Résultat : Zéro conflit merge sur docs de sync, meilleure coordination agents' },
+      { type: 'quality', text: 'Mise à jour prompts agents (CLAUDE.md, CODEV_PROTOCOL.md, CODEX_GPT_GUIDE.md)' }
+    ]
+  },
   {
     version: 'beta-3.1.1',
     date: '2025-10-26',

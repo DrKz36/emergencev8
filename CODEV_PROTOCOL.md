@@ -43,7 +43,9 @@ Emergence V8 adopte une approche collaborative **multi-agents** pour le dévelop
 
 ## 2. Workflow inter-agents
 
-### 2.1 Handoff protocol (passation de relais)
+### 2.1 Handoff protocol (passation de relais) — NOUVELLE STRUCTURE
+
+**⚠️ CHANGEMENT MAJEUR (2025-10-26):** Fichiers séparés par agent pour éviter conflits merge.
 
 Lorsqu'un agent termine une session de travail, il doit :
 
@@ -54,20 +56,36 @@ Lorsqu'un agent termine une session de travail, il doit :
    - Ajouter patch notes dans `PATCH_NOTES` de `src/version.js`
    - **Voir:** [docs/VERSIONING_GUIDE.md](docs/VERSIONING_GUIDE.md)
 
-2. **Consigner dans `docs/passation.md`** :
-   - Date et heure (Europe/Zurich).
-   - Agent (ex: "Claude Code" ou "Codex").
-   - **Version mise à jour** (si applicable).
-   - Fichiers modifiés (liste exhaustive).
-   - Contexte et décisions prises.
-   - Actions recommandées pour le prochain agent.
-   - Blocages éventuels (dépendances manquantes, tests échoués).
+2. **Consigner dans TON fichier de passation** :
+   - **Claude Code:** Écrit dans `docs/passation_claude.md`
+   - **Codex GPT:** Écrit dans `docs/passation_codex.md`
 
-2. **S'assurer que l'environnement est propre** :
-   - Version incrémentée si changement de code.
-   - `git status` propre (ou documenter l'usage de `-AllowDirty`).
-   - Tests passés (`pytest`, `npm run build`, smoke tests).
-   - Documentation à jour (`docs/Memoire.md`, `docs/architecture/*`, `CHANGELOG.md`).
+   **Contenu obligatoire:**
+   - Date et heure (Europe/Zurich)
+   - Agent (ex: "Claude Code" ou "Codex GPT")
+   - **Version mise à jour** (si applicable)
+   - Fichiers modifiés (liste exhaustive)
+   - Contexte et décisions prises
+   - Actions recommandées pour le prochain agent
+   - Blocages éventuels (dépendances manquantes, tests échoués)
+
+3. **Mettre à jour TON fichier de synchronisation** :
+   - **Claude Code:** Met à jour `AGENT_SYNC_CLAUDE.md`
+   - **Codex GPT:** Met à jour `AGENT_SYNC_CODEX.md`
+
+   **Contenu obligatoire:**
+   - Timestamp (Europe/Zurich)
+   - Fichiers modifiés
+   - Résumé des changements
+   - Prochaines actions recommandées
+
+4. **S'assurer que l'environnement est propre** :
+   - Version incrémentée si changement de code
+   - `git status` propre (ou documenter l'usage de `-AllowDirty`)
+   - Tests passés (`pytest`, `npm run build`, smoke tests)
+   - Documentation à jour (`docs/Memoire.md`, `docs/architecture/*`, `CHANGELOG.md`)
+
+**IMPORTANT:** Ne PAS modifier les fichiers de l'autre agent sauf en cas de correction de bug urgent.
 
 3. **Format de passation** (template) :
    ```markdown
@@ -109,41 +127,76 @@ Lorsqu'un agent termine une session de travail, il doit :
    Aucun.
    ```
 
-### 2.2 Communication entre agents
+### 2.2 Communication entre agents — NOUVELLE STRUCTURE
 
 **Via Git et documentation** (pas de canal externe requis) :
-- **Commits atomiques** : messages clairs (ex: `feat: add topic shift detection in MemoryAnalyzer`).
-- **Branches** : nommage explicite (`feat/memory-proactive-enhancements-20251004`).
-- **Passation** : `docs/passation.md` (journal chronologique, **max 48h**, archiver ancien).
-- **Archives** : `docs/archives/passation_archive_*.md` (sessions >48h).
-- **Architecture** : `docs/architecture/` (mise à jour si flux/composants changent).
+- **Commits atomiques** : messages clairs (ex: `feat: add topic shift detection in MemoryAnalyzer`)
+- **Branches** : nommage explicite (`feat/memory-proactive-enhancements-20251004`)
+- **Passation** : Fichiers séparés par agent
+  - Claude Code → `docs/passation_claude.md`
+  - Codex GPT → `docs/passation_codex.md`
+  - **Max 48h** dans chaque fichier, archivage automatique
+- **Archives** : `docs/archives/passation_archive_*.md` (sessions >48h)
+- **Synchronisation** : Fichiers séparés par agent
+  - Claude Code → `AGENT_SYNC_CLAUDE.md`
+  - Codex GPT → `AGENT_SYNC_CODEX.md`
+  - Vue d'ensemble → `SYNC_STATUS.md` (auto-généré)
+- **Architecture** : `docs/architecture/` (mise à jour si flux/composants changent)
 
 **Lecture obligatoire avant toute session** (ordre harmonisé avec CLAUDE.md) :
-1. **Docs Architecture** : `docs/architecture/AGENTS_CHECKLIST.md`, `00-Overview.md`, `10-Components.md`, `30-Contracts.md`.
-2. **`docs/MYPY_STYLE_GUIDE.md`** ⭐ — Guide mypy (type hints OBLIGATOIRES pour code Python).
-3. `AGENT_SYNC.md` (état actuel du dépôt, progression, déploiement).
-4. `CODEV_PROTOCOL.md` (ce fichier) ou `CODEX_GPT_GUIDE.md` (si Codex).
-5. `docs/passation.md` (dernières 48h uniquement - archives dans `docs/archives/` si besoin).
-6. `git status` et `git log --oneline -10` (état Git).
 
-**⚠️ RÈGLE ARCHIVAGE (NEW - 2025-10-24):**
-- Avant chaque session, si `docs/passation.md` contient des entrées >48h, archiver dans `docs/archives/passation_archive_YYYY-MM-DD_to_YYYY-MM-DD.md`
-- Garder uniquement les entrées des 48 dernières heures dans `passation.md`
-- Format synthétique : 1 entrée par session (5-10 lignes max)
-- Lien vers archives dans header passation.md
+1. **Docs Architecture** :
+   - `docs/architecture/AGENTS_CHECKLIST.md`
+   - `docs/architecture/00-Overview.md`
+   - `docs/architecture/10-Components.md`
+   - `docs/architecture/30-Contracts.md`
+
+2. **`docs/MYPY_STYLE_GUIDE.md`** ⭐ — Guide mypy (type hints OBLIGATOIRES pour code Python)
+
+3. **SYNC_STATUS.md** — Vue d'ensemble rapide (qui a fait quoi récemment - 2 min)
+
+4. **TON fichier AGENT_SYNC** :
+   - Claude Code → `AGENT_SYNC_CLAUDE.md`
+   - Codex GPT → `AGENT_SYNC_CODEX.md`
+
+5. **Fichier AGENT_SYNC de l'autre agent** — Comprendre ce qu'il a fait (2 min)
+
+6. **TON fichier de passation** :
+   - Claude Code → `docs/passation_claude.md`
+   - Codex GPT → `docs/passation_codex.md`
+
+7. **Fichier de passation de l'autre agent** — Contexte croisé (1 min)
+
+8. **CODEV_PROTOCOL.md** (ce fichier) ou **CODEX_GPT_GUIDE.md** (si Codex)
+
+9. **`git status` et `git log --oneline -10`** — État Git
+
+**Temps total:** 10 minutes (OBLIGATOIRE - évite conflits et bugs)
+
+**⚠️ RÈGLE ARCHIVAGE STRICTE (48h):**
+- Avant chaque session, vérifier si ton fichier `docs/passation_*.md` contient des entrées >48h
+- Archiver dans `docs/archives/passation_archive_YYYY-MM-DD_to_YYYY-MM-DD.md`
+- Garder uniquement les entrées des 48 dernières heures
+- Format synthétique pour archives : 1 entrée par session (5-10 lignes max)
+- Lien vers archives dans header de chaque fichier passation
 
 ### 2.3 Gestion des conflits
 
 **Si un agent détecte une incohérence ou un conflit avec du code existant** :
-1. **Documenter** le problème dans `docs/passation.md` (section "Blocages").
-2. **Proposer une solution** (commentaire en code ou dans passation).
-3. **Ne pas forcer** : laisser l'architecte arbitrer.
-4. **Continuer** sur d'autres tâches non bloquantes si possible.
+1. **Documenter** le problème dans TON fichier `docs/passation_*.md` (section "Blocages")
+2. **Proposer une solution** (commentaire en code ou dans passation)
+3. **Ne pas forcer** : laisser l'architecte arbitrer
+4. **Continuer** sur d'autres tâches non bloquantes si possible
 
-**Si deux agents modifient le même fichier** :
-- Pas de problème : Git gère les conflits.
-- Le dernier agent à synchroniser doit résoudre (`git rebase`, `git merge`).
-- Documenter la résolution dans `docs/passation.md`.
+**Si deux agents modifient le même fichier CODE** :
+- Pas de problème : Git gère les conflits
+- Le dernier agent à synchroniser doit résoudre (`git rebase`, `git merge`)
+- Documenter la résolution dans TON fichier `docs/passation_*.md`
+
+**Nouveauté - Plus de conflits sur docs de sync** :
+- ✅ Chaque agent a SES propres fichiers de passation et sync
+- ✅ Pas de collision possible sur `AGENT_SYNC_*.md` ou `docs/passation_*.md`
+- ✅ `SYNC_STATUS.md` auto-généré par hook Git (ou manuellement si besoin)
 
 ---
 
@@ -194,9 +247,10 @@ Avant de demander validation (commit/push), **tout agent doit** :
 
 ### Documentation
 
-- [ ] **Documentation** : `docs/passation.md`, `docs/Memoire.md`, architecture si impacté ✅
+- [ ] **Passation** : entrée complète dans TON fichier `docs/passation_*.md` (Claude ou Codex) ✅
+- [ ] **Synchronisation** : mise à jour TON fichier `AGENT_SYNC_*.md` (Claude ou Codex) ✅
+- [ ] **Documentation** : `docs/Memoire.md`, architecture si impacté ✅
 - [ ] **Git propre** : `git status` sans fichiers non suivis suspects ✅
-- [ ] **Passation** : entrée complète dans `docs/passation.md` ✅
 
 ### 🤖 NOUVEAU - Vérifications Automatiques (Guardian Phase 3)
 
