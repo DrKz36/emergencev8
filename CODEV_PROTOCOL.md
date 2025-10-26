@@ -47,26 +47,43 @@ Emergence V8 adopte une approche collaborative **multi-agents** pour le dévelop
 
 Lorsqu'un agent termine une session de travail, il doit :
 
-1. **Consigner dans `docs/passation.md`** :
+1. **Mettre à jour le versioning (OBLIGATOIRE si changement de code)** :
+   - Incrémenter version dans `src/version.js` + `src/frontend/version.js`
+   - Synchroniser `package.json` avec même version
+   - Ajouter entrée dans `CHANGELOG.md` avec détails
+   - Ajouter patch notes dans `PATCH_NOTES` de `src/version.js`
+   - **Voir:** [docs/VERSIONING_GUIDE.md](docs/VERSIONING_GUIDE.md)
+
+2. **Consigner dans `docs/passation.md`** :
    - Date et heure (Europe/Zurich).
    - Agent (ex: "Claude Code" ou "Codex").
+   - **Version mise à jour** (si applicable).
    - Fichiers modifiés (liste exhaustive).
    - Contexte et décisions prises.
    - Actions recommandées pour le prochain agent.
    - Blocages éventuels (dépendances manquantes, tests échoués).
 
 2. **S'assurer que l'environnement est propre** :
+   - Version incrémentée si changement de code.
    - `git status` propre (ou documenter l'usage de `-AllowDirty`).
    - Tests passés (`pytest`, `npm run build`, smoke tests).
-   - Documentation à jour (`docs/Memoire.md`, `docs/architecture/*`).
+   - Documentation à jour (`docs/Memoire.md`, `docs/architecture/*`, `CHANGELOG.md`).
 
 3. **Format de passation** (template) :
    ```markdown
    ## [YYYY-MM-DD HH:MM] — Agent: [Claude Code | Codex]
 
+   ### Version
+   - **Ancienne:** beta-3.1.0
+   - **Nouvelle:** beta-3.1.1 (PATCH - bugfix topic shift)
+
    ### Fichiers modifiés
    - `src/backend/features/memory/gardener.py` (ajout détection topic shift)
    - `docs/Memoire.md` (section 3.Flux, ajout événement ws:topic_shifted)
+   - `src/version.js` (version + patch notes)
+   - `src/frontend/version.js` (version sync)
+   - `package.json` (version sync)
+   - `CHANGELOG.md` (entrée beta-3.1.1)
 
    ### Contexte
    Implémentation Quick Win #3 (détection topic shift) selon audit mémoire.
@@ -77,6 +94,11 @@ Lorsqu'un agent termine une session de travail, il doit :
    - ✅ `pytest tests/backend/features/test_topic_shift.py` (nouveau)
    - ✅ `pwsh -File tests/run_all.ps1`
    - ❌ `npm run build` (warning TypeScript mineur, non bloquant)
+
+   ### Versioning
+   - ✅ Version incrémentée (PATCH car bugfix)
+   - ✅ CHANGELOG.md mis à jour
+   - ✅ Patch notes ajoutées
 
    ### Prochaines actions recommandées
    1. Implémenter P1 : consolidation incrémentale (voir audit).
@@ -149,10 +171,29 @@ Pour optimiser l'efficacité, chaque agent peut **privilégier** (mais pas exclu
 
 Avant de demander validation (commit/push), **tout agent doit** :
 
+### 🔢 Versioning (OBLIGATOIRE - Nouveau 2025-10-26)
+
+- [ ] **Version incrémentée** dans `src/version.js` + `src/frontend/version.js` ✅
+  - PATCH (X.Y.Z+1) : Bugfixes, corrections mineures
+  - MINOR (X.Y+1.0) : Nouvelle feature, amélioration significative
+  - MAJOR (X+1.0.0) : Phase complète, breaking change
+- [ ] **`package.json` synchronisé** avec même version ✅
+- [ ] **`CHANGELOG.md` mis à jour** avec entrée détaillée ✅
+- [ ] **Patch notes** ajoutées dans `PATCH_NOTES` de `src/version.js` ✅
+
+**⚠️ RÈGLE CRITIQUE:** Chaque changement de code (feature, fix, refactor) DOIT impliquer une mise à jour de version. Ne JAMAIS pusher sans incrémenter la version si changement réel.
+
+**Guide complet:** [docs/VERSIONING_GUIDE.md](docs/VERSIONING_GUIDE.md)
+
+### Tests & Qualité
+
 - [ ] **Tests backend** : `pytest` (ou sous-ensemble pertinent) ✅
 - [ ] **Tests frontend** : `npm run build` ✅
 - [ ] **Smoke tests** : `pwsh -File tests/run_all.ps1` ✅
 - [ ] **Linters** : `ruff check`, `mypy` (backend) ✅
+
+### Documentation
+
 - [ ] **Documentation** : `docs/passation.md`, `docs/Memoire.md`, architecture si impacté ✅
 - [ ] **Git propre** : `git status` sans fichiers non suivis suspects ✅
 - [ ] **Passation** : entrée complète dans `docs/passation.md` ✅

@@ -163,6 +163,52 @@ export class Settings {
     }
 
     /**
+     * Render patch notes section
+     */
+    renderPatchNotes() {
+        const patchNotes = versionInfo.getFormattedPatchNotes(2);
+
+        const typeIcons = {
+            feature: '🆕',
+            fix: '🔧',
+            quality: '✨',
+            perf: '⚡',
+            phase: '🎉'
+        };
+
+        const typeLabels = {
+            feature: 'Nouveauté',
+            fix: 'Correction',
+            quality: 'Qualité',
+            perf: 'Performance',
+            phase: 'Phase'
+        };
+
+        return `
+            <div class="patch-notes-container">
+                ${patchNotes.map(note => `
+                    <div class="patch-note ${note.version === versionInfo.version ? 'current-version' : ''}">
+                        <div class="patch-note-header">
+                            <h4 class="patch-note-version">
+                                ${note.version === versionInfo.version ? '📍 ' : ''}${note.version}
+                            </h4>
+                            <span class="patch-note-date">${note.date}</span>
+                        </div>
+                        <ul class="patch-note-changes">
+                            ${note.changes.map(change => `
+                                <li class="patch-note-change patch-note-${change.type}">
+                                    <span class="change-icon" title="${typeLabels[change.type] || change.type}">${typeIcons[change.type] || '•'}</span>
+                                    <span class="change-text">${change.text}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    /**
      * Render about section
      */
     renderAbout() {
@@ -193,6 +239,11 @@ export class Settings {
                                 <span class="info-value">15 modules actifs</span>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="about-section full-width">
+                        <h3>${getIcon('fileText', 'section-icon')} Notes de Version</h3>
+                        ${this.renderPatchNotes()}
                     </div>
 
                     <div class="about-section full-width">
