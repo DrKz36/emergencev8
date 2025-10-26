@@ -1,6 +1,34 @@
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
 **Dernière mise à jour:** 2025-10-26 18:05 CET (Codex GPT)
+**Dernière mise à jour:** 2025-10-26 18:10 CET (Codex GPT)
+
+## ✅ Session COMPLÉTÉE (2025-10-26 18:10 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `docs/passation.md`
+- `AGENT_SYNC.md`
+
+### Actions réalisées
+- Ajout d'une attente explicite sur les events `threads:*` avant d'afficher le modal de choix conversation.
+- Reconstruction du modal quand les conversations arrivent pour garantir le wiring du bouton « Reprendre ».
+- Bump version `beta-3.1.1` + patch notes + changelog synchronisés.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions
+1. Vérifier côté backend que `threads.currentId` reste cohérent avec la reprise utilisateur.
+2. QA UI sur l'app pour valider le flux complet (connexion → modal → reprise thread).
+
+---
+
+**Dernière mise à jour:** 2025-10-26 15:30 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
 
 ## ✅ Session COMPLÉTÉE (2025-10-26 18:05 CET) — Agent : Codex GPT

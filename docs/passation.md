@@ -21,6 +21,30 @@
 1. Verrou orientation portrait côté manifest + garde runtime avec overlay UX en paysage (bloque l'interaction).
 2. Ajusté le footer/chat composer pour intégrer `env(safe-area-inset-bottom)` et garantir l'accès à la saisie en mode portrait.
 3. Refonte responsive des métadonnées de conversation (wrap + centrage) et rafraîchissement des styles mobile.
+## [2025-10-26 18:10 CET] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.1.0
+- **Nouvelle:** beta-3.1.1 (PATCH – modal reprise Dialogue)
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.js` — Attente bootstrap threads + modal recréé dynamiquement.
+- `src/version.js` — Bump version + patch notes `beta-3.1.1`.
+- `src/frontend/version.js` — Synchronisation frontend.
+- `package.json` — Version npm `beta-3.1.1`.
+- `CHANGELOG.md` — Nouvelle entrée patch `beta-3.1.1`.
+- `AGENT_SYNC.md` — État de session mis à jour.
+- `docs/passation.md` — Présente note.
+
+### Contexte
+
+Le modal d'accueil du module Dialogue n'affichait que « Nouvelle conversation » même quand des threads existaient. Les utilisateurs ne pouvaient pas reprendre la dernière discussion.
+
+### Travail réalisé
+
+1. Ajout d'un temps d'attente sur le chargement des threads + fallback localStorage pour détecter les conversations existantes.
+2. Recrée le modal avec wiring complet quand l'état change pour garantir le bouton « Reprendre ».
+3. Incrément version applicative en `beta-3.1.1` + patch notes + changelog.
 
 ### Tests
 - ✅ `npm run build`
@@ -30,6 +54,9 @@
 
 ### Blocages
 - Aucun.
+### Prochaines actions
+1. Vérifier côté backend que la sélection automatique du thread courant reste cohérente avec le nouveau flux.
+2. QA manuelle dans le navigateur (connexion, modal, reprise conversation) dès que possible.
 
 ## [2025-10-26 15:30 CET] — Agent: Claude Code
 

@@ -25,6 +25,8 @@ export default class ChatModule {
     // Threads / convo
     this.threadId = null;
     this.loadedThreadId = null;
+    this._conversationModalVisible = false;
+    this._threadsBootstrapPromise = null;
 
     // Connexion & flux
     this._wsConnected = false;
@@ -306,11 +308,20 @@ export default class ChatModule {
    */
   async _ensureActiveConversation() {
     try {
+      if (this._conversationModalVisible) return;
+
       console.log('[Chat] Aucune conversation active détectée, affichage du modal de choix...');
 
-      // Récupérer la liste des threads depuis le state (déjà chargés par app.js)
-      const threadsOrder = this.state.get('threads.order') || [];
-      const hasExistingConversations = threadsOrder.length > 0;
+      if (!this._hasExistingConversations()) {
+        await this._waitForThreadsBootstrap(5000);
+      }
+
+      if (this.getCurrentThreadId()) {
+        console.log('[Chat] Thread actif détecté pendant l\'attente, aucun modal nécessaire.');
+        return;
+      }
+
+      const hasExistingConversations = this._hasExistingConversations();
 
       // Afficher le modal de choix
       this._showConversationChoiceModal(hasExistingConversations);
@@ -323,8 +334,14 @@ export default class ChatModule {
 
   /**
    * Affiche le modal demandant à l'utilisateur s'il veut reprendre la dernière conversation ou en créer une nouvelle.
-   */
+  */
   _showConversationChoiceModal(hasExistingConversations) {
+    if (this._conversationModalVisible) {
+      const existing = this.container?.querySelector('#conversation-choice-modal');
+      if (existing) existing.remove();
+      this._conversationModalVisible = false;
+    }
+
     // Créer le HTML du modal
     const modalHTML = `
       <div class="modal-container visible" id="conversation-choice-modal">
@@ -351,6 +368,7 @@ export default class ChatModule {
     tempDiv.innerHTML = modalHTML;
     const modal = tempDiv.firstElementChild;
     this.container.appendChild(modal);
+    this._conversationModalVisible = true;
 
     // Gérer les clics sur les boutons
     const resumeBtn = modal.querySelector('[data-action="resume"]');
@@ -360,6 +378,7 @@ export default class ChatModule {
     const closeModal = () => {
       modal.classList.remove('visible');
       setTimeout(() => modal.remove(), 300);
+      this._conversationModalVisible = false;
     };
 
     if (resumeBtn) {
@@ -375,7 +394,7 @@ export default class ChatModule {
     });
 
     backdrop.addEventListener('click', async () => {
-      // Si l'utilisateur clique sur le backdrop, créer une nouvelle conversation par défaut
+      // Si l'utilisateur clique sur le backdrop, reprendre si possible sinon créer une nouvelle
       closeModal();
       if (hasExistingConversations) {
         await this._resumeLastConversation();
@@ -383,6 +402,91 @@ export default class ChatModule {
         await this._createNewConversation();
       }
     });
+  }
+
+  _hasExistingConversations() {
+    try {
+      const order = this.state.get('threads.order');
+      if (Array.isArray(order) && order.length > 0) return true;
+    } catch {}
+
+    try {
+      const map = this.state.get('threads.map');
+      if (map && typeof map === 'object' && Object.keys(map).length > 0) return true;
+    } catch {}
+
+    try {
+      const stored = localStorage.getItem('emergence.threadId');
+      if (stored && stored.trim()) return true;
+    } catch {}
+
+    return false;
+  }
+
+  async _waitForThreadsBootstrap(timeoutMs = 3000) {
+    if (this._hasExistingConversations()) return true;
+
+    if (this._threadsBootstrapPromise) {
+      return this._threadsBootstrapPromise;
+    }
+
+    if (!this.eventBus?.on) {
+      this._threadsBootstrapPromise = new Promise((resolve) => {
+        setTimeout(() => resolve(this._hasExistingConversations()), timeoutMs);
+      });
+      const result = await this._threadsBootstrapPromise;
+      this._threadsBootstrapPromise = null;
+      return result;
+    }
+
+    this._threadsBootstrapPromise = new Promise((resolve) => {
+      let settled = false;
+      const listeners = [];
+
+      const cleanup = () => {
+        if (settled) return;
+        settled = true;
+        for (const off of listeners) {
+          try { if (typeof off === 'function') off(); } catch {}
+        }
+        listeners.length = 0;
+      };
+
+      const finalize = () => {
+        cleanup();
+        resolve(this._hasExistingConversations());
+      };
+
+      const safeOn = (eventName) => {
+        if (!eventName || !this.eventBus?.on) return;
+        try {
+          const off = this.eventBus.on(eventName, () => {
+            if (settled) return;
+            finalize();
+          });
+          if (typeof off === 'function') listeners.push(off);
+        } catch {}
+      };
+
+      safeOn(EVENTS?.THREADS_READY || 'threads:ready');
+      safeOn(EVENTS?.THREADS_LIST_UPDATED || 'threads:list_updated');
+
+      const timer = setTimeout(() => {
+        if (settled) return;
+        cleanup();
+        resolve(this._hasExistingConversations());
+      }, timeoutMs);
+
+      listeners.push(() => {
+        clearTimeout(timer);
+      });
+    });
+
+    try {
+      return await this._threadsBootstrapPromise;
+    } finally {
+      this._threadsBootstrapPromise = null;
+    }
   }
 
   /**
