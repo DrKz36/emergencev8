@@ -17,16 +17,27 @@ Vous travaillez en **égalité technique** avec Claude Code et d'autres agents I
 
 ## 1. Lecture obligatoire avant toute session
 
+**⚠️ NOUVELLE STRUCTURE (2025-10-26)** : Fichiers séparés par agent pour éviter conflits merge !
+
 **Ordre de lecture (RESPECTER CET ORDRE)** :
 
-1. **[AGENT_SYNC.md](AGENT_SYNC.md)** — État actuel du dépôt, progression, déploiement
-2. **Ce fichier (CODEX_GPT_GUIDE.md)** — Consignes spécifiques Codex GPT
-3. **[CODEV_PROTOCOL.md](CODEV_PROTOCOL.md)** — Protocole de co-développement multi-agents
-4. **[docs/passation.md](docs/passation.md)** — Dernières 3 entrées minimum (contexte, blocages, next actions)
-5. **[docs/MYPY_STYLE_GUIDE.md](docs/MYPY_STYLE_GUIDE.md)** ⭐ — Guide mypy (type hints OBLIGATOIRES pour code Python)
-6. **`git status` + `git log --oneline -10`** — État Git actuel
+1. **[SYNC_STATUS.md](SYNC_STATUS.md)** — Vue d'ensemble rapide (qui a fait quoi - 2 min)
+2. **[AGENT_SYNC_CODEX.md](AGENT_SYNC_CODEX.md)** — TON fichier (état détaillé - 3 min)
+3. **[AGENT_SYNC_CLAUDE.md](AGENT_SYNC_CLAUDE.md)** — Fichier Claude Code (comprendre l'autre agent - 2 min)
+4. **[docs/passation_codex.md](docs/passation_codex.md)** — TON journal (48h max - 2 min)
+5. **[docs/passation_claude.md](docs/passation_claude.md)** — Journal Claude (contexte croisé - 1 min)
+6. **Ce fichier (CODEX_GPT_GUIDE.md)** — Consignes spécifiques Codex GPT
+7. **[CODEV_PROTOCOL.md](CODEV_PROTOCOL.md)** — Protocole de co-développement multi-agents
+8. **[docs/MYPY_STYLE_GUIDE.md](docs/MYPY_STYLE_GUIDE.md)** ⭐ — Guide mypy (type hints OBLIGATOIRES pour code Python)
+9. **`git status` + `git log --oneline -10`** — État Git actuel
 
 **Temps de lecture estimé** : 10-15 minutes (investissement OBLIGATOIRE pour éviter erreurs et conflits)
+
+**Bénéfices nouvelle structure:**
+- ✅ **Zéro conflit merge** sur docs de sync (fichiers séparés par agent)
+- ✅ **Lecture rapide** (SYNC_STATUS.md comme index)
+- ✅ **Rotation auto 48h** (passation_*.md toujours légers)
+- ✅ **Meilleure coordination** (tu vois ce que Claude a fait)
 
 ---
 
@@ -89,10 +100,13 @@ Vous travaillez en **égalité technique** avec Claude Code et d'autres agents I
 
 **Checklist obligatoire** :
 
-- [ ] Lire `AGENT_SYNC.md` (état actuel du dépôt)
+- [ ] Lire `SYNC_STATUS.md` (vue d'ensemble rapide - 2 min)
+- [ ] Lire `AGENT_SYNC_CODEX.md` (ton état détaillé - 3 min)
+- [ ] Lire `AGENT_SYNC_CLAUDE.md` (état Claude Code - 2 min)
+- [ ] Lire `docs/passation_codex.md` (ton journal 48h - 2 min)
+- [ ] Lire `docs/passation_claude.md` (journal Claude - 1 min)
 - [ ] Lire ce fichier (`CODEX_GPT_GUIDE.md`)
 - [ ] Lire `CODEV_PROTOCOL.md` (protocole inter-agents)
-- [ ] Lire les 3 dernières entrées de `docs/passation.md`
 - [ ] Exécuter `git status` et `git log --oneline -10`
 - [ ] Vérifier que l'environnement est propre (pas de fichiers non suivis suspects)
 
@@ -132,10 +146,9 @@ Vous travaillez en **égalité technique** avec Claude Code et d'autres agents I
 - [ ] **Tests backend** (si modifié) : `pytest` ✅
 - [ ] **Smoke tests** (si modifié) : `pwsh -File tests/run_all.ps1` ✅
 - [ ] **Linters** : `ruff check src/backend/`, `mypy src/backend/` (STRICT - 0 erreurs), ESLint (frontend si configuré) ✅
-- [ ] **Documentation** : mise à jour `docs/passation.md` (nouvelle entrée complète en haut) ✅
-- [ ] **AGENT_SYNC.md** : mise à jour section "Codex GPT" avec timestamp et fichiers touchés ✅
+- [ ] **Passation** : mise à jour `docs/passation_codex.md` (nouvelle entrée complète en haut) ✅
+- [ ] **Synchronisation** : mise à jour `AGENT_SYNC_CODEX.md` avec timestamp et fichiers touchés ✅
 - [ ] **Git propre** : `git status` sans fichiers non suivis suspects ✅
-- [ ] **Passation** : entrée complète dans `docs/passation.md` avec format standard ✅
 
 **Format de passation** (template) :
 
@@ -145,7 +158,8 @@ Vous travaillez en **égalité technique** avec Claude Code et d'autres agents I
 ### Fichiers modifiés
 - `src/frontend/features/chat/chat-ui.js` (ajout bouton export)
 - `src/frontend/styles/modules/chat.css` (styles bouton)
-- `docs/passation.md` (cette entrée)
+- `docs/passation_codex.md` (cette entrée)
+- `AGENT_SYNC_CODEX.md` (mise à jour état)
 
 ### Contexte
 Implémentation feature export conversations en CSV/PDF selon roadmap P0.3.
@@ -529,9 +543,12 @@ with open(reports_dir / 'integrity_report.json', 'r', encoding='utf-8') as f:
 ## 10. Checklist express
 
 ### Avant de commencer
-- [ ] Lire `AGENT_SYNC.md`
+- [ ] Lire `SYNC_STATUS.md` (vue d'ensemble)
+- [ ] Lire `AGENT_SYNC_CODEX.md` (ton état)
+- [ ] Lire `AGENT_SYNC_CLAUDE.md` (état Claude)
+- [ ] Lire `docs/passation_codex.md` (ton journal)
+- [ ] Lire `docs/passation_claude.md` (journal Claude)
 - [ ] Lire `CODEV_PROTOCOL.md`
-- [ ] Lire `docs/passation.md` (3 dernières entrées)
 - [ ] `git status` propre
 - [ ] Environnement prêt (Node.js 18+, Python 3.11)
 
@@ -544,8 +561,8 @@ with open(reports_dir / 'integrity_report.json', 'r', encoding='utf-8') as f:
 - [ ] `npm run build` ✅
 - [ ] `pytest` (si backend modifié) ✅
 - [ ] `git diff` relu (pas de secrets)
-- [ ] `docs/passation.md` mis à jour ✅
-- [ ] `AGENT_SYNC.md` mis à jour ✅
+- [ ] `docs/passation_codex.md` mis à jour ✅
+- [ ] `AGENT_SYNC_CODEX.md` mis à jour ✅
 
 ---
 

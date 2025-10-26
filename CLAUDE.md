@@ -95,23 +95,53 @@
 - ✅ Mettre à jour `30-Contracts.md` si nouveau endpoint
 - ✅ Créer ADR si décision architecturale (template : ADR-001)
 
-### 2. 🔄 État Sync Inter-Agents
+### 2. 🔄 État Sync Inter-Agents (NOUVELLE STRUCTURE - 2025-10-26)
 
-1. **`AGENT_SYNC.md`** ← OBLIGATOIRE
-   - État actuel du dépôt
-   - Ce que Codex GPT a fait récemment
-   - Zones de travail en cours
-   - Fichiers modifiés par l'autre agent
+**⚠️ NOUVELLE STRUCTURE FICHIERS SÉPARÉS** : Plus de conflits merge !
 
-2. **`CODEV_PROTOCOL.md`** - Protocole collaboration multi-agents
+**Ordre de lecture obligatoire:**
+
+1. **`SYNC_STATUS.md`** ← VUE D'ENSEMBLE (qui a fait quoi - 2 min)
+   - Résumé activités récentes des 2 agents
+   - Progression roadmap globale
+   - Tâches en cours (éviter collisions)
+   - État production
+
+2. **`AGENT_SYNC_CLAUDE.md`** ← TON FICHIER (état détaillé - 3 min)
+   - Tes tâches complétées/en cours
+   - Tes prochaines actions
+   - Fichiers que tu as modifiés
+
+3. **`AGENT_SYNC_CODEX.md`** ← FICHIER CODEX (comprendre l'autre agent - 2 min)
+   - Ce que Codex a fait récemment
+   - Ses zones de travail en cours
+   - Fichiers qu'il a modifiés (éviter conflits)
+
+4. **`docs/passation_claude.md`** ← TON JOURNAL (48h max - 2 min)
+   - Tes dernières entrées détaillées
+   - Contexte, décisions, blocages
+   - Auto-archivé si >48h
+
+5. **`docs/passation_codex.md`** ← JOURNAL CODEX (contexte croisé - 1 min)
+   - Dernières entrées de Codex
+   - Comprendre ses choix
+   - Détecter éventuels problèmes
+
+6. **`CODEV_PROTOCOL.md`** - Protocole collaboration multi-agents
    - Lire sections 2.1 (template passation), 4 (checklist), 6 (anti-patterns)
    - Gestion conflits Git si collision
 
-3. **`docs/passation.md`** - 3 dernières entrées minimum
+7. **`git status` + `git log --oneline -10`** - État Git
 
-4. **`git status` + `git log --oneline -10`** - État Git
+**Temps total:** 10 minutes (OBLIGATOIRE - évite conflits et bugs)
 
-**⚠️ NE JAMAIS commencer à coder sans avoir lu AGENT_SYNC.md + Docs Architecture**
+**⚠️ NE JAMAIS commencer à coder sans avoir lu SYNC_STATUS.md + Ton fichier AGENT_SYNC + Fichier de l'autre agent + Docs Architecture**
+
+**Bénéfices nouvelle structure:**
+- ✅ **Zéro conflit merge** (fichiers séparés par agent)
+- ✅ **Lecture rapide** (SYNC_STATUS.md comme index)
+- ✅ **Rotation auto 48h** (passation_*.md légers)
+- ✅ **Meilleure coordination** (tu vois ce que fait l'autre)
 
 ---
 
@@ -180,8 +210,8 @@ Pour 99% des tâches dev normales: **FONCE**.
 
 **Si tu détectes un problème dans le code de Codex:**
 1. Corrige directement le problème
-2. Documente dans `docs/passation.md` ce qui a été corrigé
-3. Mentionne dans `AGENT_SYNC.md` section "Claude Code"
+2. Documente dans `docs/passation_claude.md` ce qui a été corrigé
+3. Mentionne dans `AGENT_SYNC_CLAUDE.md` section appropriée
 4. Continue ton travail
 
 **Pas besoin de permission. Tu es co-responsable du code entier.**
@@ -190,10 +220,13 @@ Pour 99% des tâches dev normales: **FONCE**.
 
 ## 📋 CHECKLIST DE SESSION
 
-### Démarrage (5 min max)
+### Démarrage (10 min max)
 
-- [ ] Lire `AGENT_SYNC.md` (état sync + travail Codex)
-- [ ] Lire `docs/passation.md` (3 dernières entrées)
+- [ ] Lire `SYNC_STATUS.md` (vue d'ensemble - 2 min)
+- [ ] Lire `AGENT_SYNC_CLAUDE.md` (ton état - 3 min)
+- [ ] Lire `AGENT_SYNC_CODEX.md` (état Codex - 2 min)
+- [ ] Lire `docs/passation_claude.md` (ton journal 48h - 2 min)
+- [ ] Lire `docs/passation_codex.md` (journal Codex - 1 min)
 - [ ] `git status` propre
 - [ ] `git fetch --all --prune`
 - [ ] Virtualenv Python activé
@@ -246,12 +279,13 @@ Pour 99% des tâches dev normales: **FONCE**.
 - [ ] `mypy src/backend/` ✅
 
 **Documentation (CRITIQUE):**
-- [ ] `AGENT_SYNC.md` mis à jour avec:
+- [ ] `AGENT_SYNC_CLAUDE.md` mis à jour avec:
   - Timestamp (Europe/Zurich)
   - Fichiers modifiés
   - Résumé des changements
   - Prochaines actions recommandées
-- [ ] `docs/passation.md` nouvelle entrée complète
+- [ ] `docs/passation_claude.md` nouvelle entrée complète (en haut du fichier)
+- [ ] `SYNC_STATUS.md` sera auto-généré par hook Git (optionnel manuel si besoin)
 - [ ] Architecture docs si flux/composants changés
 
 **Git:**
@@ -326,28 +360,40 @@ git push --no-verify
 
 ## 📁 STRUCTURE CRITIQUE DU PROJET
 
+**⚠️ NOUVELLE STRUCTURE (2025-10-26) - Fichiers séparés par agent**
+
 ```
 emergenceV8/
-├── AGENT_SYNC.md          ← LIRE EN PREMIER (état sync)
-├── AGENTS.md              ← Consignes générales
-├── CODEV_PROTOCOL.md      ← Protocole multi-agents
-├── CODEX_GPT_GUIDE.md     ← Guide de l'autre agent
+├── SYNC_STATUS.md            ← 📊 VUE D'ENSEMBLE (lire en 1er - index)
+├── AGENT_SYNC_CLAUDE.md      ← 🤖 TON fichier (état Claude Code)
+├── AGENT_SYNC_CODEX.md       ← 🤖 Fichier Codex GPT
+├── AGENTS.md                 ← Consignes générales (legacy)
+├── CODEV_PROTOCOL.md         ← Protocole multi-agents
+├── CODEX_GPT_GUIDE.md        ← Guide de Codex GPT
 ├── docs/
-│   ├── passation.md       ← Journal inter-agents (48h max)
-│   ├── archives/          ← Archives passation (>48h)
-│   ├── architecture/      ← Architecture C4
+│   ├── passation_claude.md  ← 📝 TON journal (48h max, auto-archivé)
+│   ├── passation_codex.md   ← 📝 Journal Codex (48h max, auto-archivé)
+│   ├── archives/            ← 📦 Archives passation (>48h)
+│   │   └── passation_archive_YYYY-MM-DD_to_YYYY-MM-DD.md
+│   ├── architecture/        ← 🏗️ Architecture C4
 │   └── AGENTS_COORDINATION.md
 ├── src/
-│   ├── backend/           ← Python (FastAPI)
-│   └── frontend/          ← JavaScript (ESM)
-└── scripts/               ← PowerShell/Bash
+│   ├── backend/             ← Python (FastAPI)
+│   └── frontend/            ← JavaScript (ESM)
+└── scripts/                 ← PowerShell/Bash
 ```
 
-**⚠️ RÈGLE ARCHIVAGE (NEW - 2025-10-24):**
-- `docs/passation.md` : Garder UNIQUEMENT dernières 48h
-- Sessions >48h : Archiver dans `docs/archives/passation_archive_YYYY-MM-DD_to_YYYY-MM-DD.md`
+**⚠️ RÈGLE ARCHIVAGE (STRICTE - 48h):**
+- `docs/passation_claude.md` et `docs/passation_codex.md` : Garder UNIQUEMENT dernières **48h** (pas 7 jours !)
+- Sessions >48h : Archiver automatiquement dans `docs/archives/passation_archive_YYYY-MM-DD_to_YYYY-MM-DD.md`
 - Format synthétique : 1 entrée par session (5-10 lignes max)
-- Mettre lien vers archives dans header passation.md
+- Lien vers archives dans header de chaque fichier passation
+
+**Bénéfices:**
+- ✅ **Zéro conflit merge** (fichiers séparés par agent)
+- ✅ **Rotation auto 48h** (fichiers toujours légers <50KB)
+- ✅ **Lecture rapide** (SYNC_STATUS.md = index)
+- ✅ **Coordination claire** (tu vois ce que fait Codex)
 
 ---
 

@@ -12,6 +12,49 @@
 
 ---
 
+## [beta-3.1.2] - 2025-10-26
+
+### ✨ Amélioration Qualité
+
+**Refactor Complet Documentation Inter-Agents**
+
+**Problème résolu:** Conflits merge récurrents sur `AGENT_SYNC.md` et `docs/passation.md` (454KB !) lors de travail parallèle des agents.
+
+**Solution implémentée - Structure fichiers séparés par agent:**
+
+1. **Fichiers de synchronisation séparés:**
+   - `AGENT_SYNC_CLAUDE.md` ← Claude Code écrit ici
+   - `AGENT_SYNC_CODEX.md` ← Codex GPT écrit ici
+   - `SYNC_STATUS.md` ← Vue d'ensemble centralisée (index)
+
+2. **Journaux de passation séparés:**
+   - `docs/passation_claude.md` ← Journal Claude (48h max, auto-archivé)
+   - `docs/passation_codex.md` ← Journal Codex (48h max, auto-archivé)
+   - `docs/archives/passation_archive_*.md` ← Archives >48h
+
+3. **Rotation stricte 48h:**
+   - Anciennes entrées archivées automatiquement
+   - Fichiers toujours légers (<50KB)
+
+**Résultat:**
+- ✅ **Zéro conflit merge** sur docs de synchronisation (fichiers séparés)
+- ✅ **Meilleure coordination** (chaque agent voit clairement ce que fait l'autre)
+- ✅ **Lecture rapide** (SYNC_STATUS.md = 2 min vs 10 min avant)
+- ✅ **Rotation auto** (passation.md archivé de 454KB → <20KB)
+
+**Fichiers modifiés:**
+- Créés: `SYNC_STATUS.md`, `AGENT_SYNC_CLAUDE.md`, `AGENT_SYNC_CODEX.md`
+- Créés: `docs/passation_claude.md`, `docs/passation_codex.md`
+- Archivé: `docs/passation.md` (454KB) → `docs/archives/passation_archive_2025-10-01_to_2025-10-26.md`
+- Mis à jour: `CLAUDE.md`, `CODEV_PROTOCOL.md`, `CODEX_GPT_GUIDE.md` (nouvelle structure de lecture)
+
+### 📦 Versioning & Patch Notes
+
+- `src/version.js` & `src/frontend/version.js` — Version `beta-3.1.2`, patch notes ajoutées.
+- `package.json` — Synchronisation version npm (`beta-3.1.2`).
+
+---
+
 ## [beta-3.1.1] - 2025-10-26
 
 ### 🔧 Corrections
