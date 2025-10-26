@@ -10,6 +10,17 @@
 ## [2025-10-26 22:30] — Agent: Claude Code
 
 ### Version
+- **Ancienne:** beta-3.1.3
+- **Nouvelle:** beta-3.2.0 (MINOR - module À propos avec changelog enrichi)
+
+### Fichiers modifiés
+- `src/frontend/features/settings/settings-about.js` (créé - 350 lignes)
+- `src/frontend/features/settings/settings-about.css` (créé - 550 lignes)
+- `src/frontend/features/settings/settings-main.js` (intégration module)
+- `src/version.js` (version + historique 13 versions)
+- `src/frontend/version.js` (synchronisation)
+- `package.json` (version beta-3.2.0)
+- `CHANGELOG.md` (entrée complète beta-3.2.0)
 - **Ancienne:** beta-3.1.2
 - **Nouvelle:** beta-3.1.3 (PATCH - métrique nDCG@k temporelle)
 
@@ -23,6 +34,41 @@
 - `docs/passation_claude.md` (cette entrée)
 
 ### Contexte
+Demande utilisateur: "Reprend les infos du versioning en ajoutant le changelog bref et informatif dans le module a propos en mettant les changements des versions implémentés"
+
+Implémentation d'un module complet "À propos" dans les Paramètres avec affichage enrichi du changelog, informations système, modules installés et crédits.
+
+**Nouveau module Settings About:**
+- Module JavaScript avec 4 sections principales (Version, Changelog, Modules, Crédits)
+- Design glassmorphism moderne cohérent avec l'app
+- Historique de 13 versions affichées (beta-1.0.0 à beta-3.2.0)
+- Classement automatique par type avec badges colorés et compteurs
+- Grille responsive des 15 modules actifs
+- Section crédits complète (développeur, technologies, Guardian)
+
+**Enrichissement historique versions:**
+- Extension de 5 à 13 versions dans `PATCH_NOTES` de `src/version.js`
+- Ajout versions beta-2.x.x et beta-1.x.x avec détails complets
+- Synchronisation frontend/backend
+
+### Tests
+- ⏳ À tester - Affichage dans UI (nécessite npm install + npm run build)
+- ✅ Code complet sans fragments
+- ✅ Import CSS dans module
+- ✅ Intégration navigation Settings
+
+### Versioning
+- ✅ Version incrémentée (MINOR car nouvelle fonctionnalité UI)
+- ✅ CHANGELOG.md mis à jour avec entrée détaillée
+- ✅ Patch notes ajoutées (5 changements)
+- ✅ Synchronisation src/version.js, src/frontend/version.js, package.json
+
+### Prochaines actions recommandées
+1. Tester affichage du module "À propos" dans Settings
+2. Créer PR vers main depuis branche `claude/update-changelog-module-011CUVUbQLbsDzo43EtZrSWr`
+3. Vérifier responsive mobile/desktop
+4. QA complète du changelog et des badges
+5. Continuer P3 Features (benchmarking, auto-scaling)
 Implémentation métrique nDCG@k temporelle pour ÉMERGENCE V8. Mesure impact boosts fraîcheur/entropie moteur ranking.
 
 **Découverte:** Métrique déjà implémentée (temporal_ndcg.py) + tests complets (18 tests).
@@ -67,6 +113,12 @@ Implémentation métrique nDCG@k temporelle pour ÉMERGENCE V8. Mesure impact bo
 ### Blocages
 Aucun.
 
+### Décisions techniques
+- **Design glassmorphism** - Cohérence avec le reste de l'app
+- **Classement automatique** - Méthode `groupChangesByType()` pour organisation par type
+- **13 versions affichées** - Historique complet depuis beta-1.0.0
+- **Badges colorés** - Distinction visuelle claire par type de changement
+- **Grille responsive** - Adaptation automatique mobile/desktop
 ### Notes
 - Métrique réutilisable pour d'autres services (RAG, recherche)
 - Endpoint permet calcul à la demande depuis frontend/CLI

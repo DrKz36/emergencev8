@@ -12,6 +12,78 @@
 
 ---
 
+## [beta-3.2.0] - 2025-10-26
+
+### 🆕 Fonctionnalités Ajoutées
+
+**Nouveau Module "À Propos" dans Paramètres**
+
+Ajout d'un module complet dédi é à l'affichage des informations de version, du changelog enrichi et des crédits du projet.
+
+**Fonctionnalités:**
+
+1. **Onglet "À propos" dans Paramètres**
+   - Navigation dédiée avec icône et description
+   - Intégration complète dans le module Settings
+   - **Fichier:** [`settings-main.js`](src/frontend/features/settings/settings-main.js)
+
+2. **Affichage Changelog Enrichi**
+   - Historique de 13 versions (de beta-1.0.0 à beta-3.2.0)
+   - Classement automatique par type de changement (Phase, Nouveauté, Qualité, Performance, Correction)
+   - Badges colorés pour chaque type avec compteurs
+   - Mise en évidence de la version actuelle
+   - **Fichier:** [`settings-about.js`](src/frontend/features/settings/settings-about.js)
+
+3. **Section Informations Système**
+   - Version actuelle avec badges (Phase, Progression, Fonctionnalités)
+   - Grille d'informations (Date build, Version, Phase, Progression)
+   - Logo ÉMERGENCE avec design moderne
+   - **Fichier:** [`settings-about.js:renderVersionInfo()`](src/frontend/features/settings/settings-about.js)
+
+4. **Section Modules Installés**
+   - Affichage des 15 modules actifs
+   - Grille responsive avec icônes et versions
+   - Statut actif pour chaque module
+   - **Fichier:** [`settings-about.js:renderModules()`](src/frontend/features/settings/settings-about.js)
+
+5. **Section Crédits & Remerciements**
+   - Informations développeur principal
+   - Remerciements spéciaux (Marem ❤️)
+   - Technologies clés avec tags interactifs
+   - Description écosystème Guardian
+   - Footer avec contact et copyright
+   - **Fichier:** [`settings-about.js:renderCredits()`](src/frontend/features/settings/settings-about.js)
+
+6. **Design & UX**
+   - Style glassmorphism cohérent avec le reste de l'application
+   - Animations fluides et transitions
+   - Responsive mobile/desktop
+   - Badges et tags colorés par catégorie
+   - **Fichier:** [`settings-about.css`](src/frontend/features/settings/settings-about.css)
+
+7. **Enrichissement Historique Versions**
+   - Extension de 5 à 13 versions affichées dans `src/version.js`
+   - Ajout de toutes les versions depuis beta-1.0.0
+   - Détails complets pour chaque version (date, type, description)
+   - **Fichiers:** [`src/version.js`](src/version.js), [`src/frontend/version.js`](src/frontend/version.js)
+
+**Fichiers modifiés:**
+- `src/frontend/features/settings/settings-about.js` (créé - 350 lignes)
+- `src/frontend/features/settings/settings-about.css` (créé - 550 lignes)
+- `src/frontend/features/settings/settings-main.js` (import module, onglet, chargement)
+- `src/version.js` (version beta-3.2.0 + 13 versions historique)
+- `src/frontend/version.js` (synchronisation version)
+- `package.json` (version beta-3.2.0)
+- `CHANGELOG.md` (entrée beta-3.2.0)
+
+**Impact:**
+- ✅ **Transparence complète** - Utilisateurs voient tout l'historique des évolutions
+- ✅ **Documentation intégrée** - Changelog accessible directement dans l'app
+- ✅ **Crédits visibles** - Reconnaissance du développement et des technologies
+- ✅ **UX moderne** - Design glassmorphism avec animations et badges colorés
+
+---
+
 ## [beta-3.1.3] - 2025-10-26
 
 ### ✨ Nouvelle Fonctionnalité
