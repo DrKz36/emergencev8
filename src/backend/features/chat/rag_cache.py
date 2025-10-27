@@ -12,7 +12,7 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 from collections import OrderedDict
 
 try:
@@ -212,11 +212,13 @@ class RAGCache:
         """Retourne des statistiques sur le cache."""
         if self.redis_client:
             try:
-                info = self.redis_client.info('stats')
+                from typing import cast
+
+                info = cast(Mapping[str, Any], self.redis_client.info('stats'))
                 return {
                     'backend': 'redis',
-                    'keyspace_hits': info.get('keyspace_hits', 0),  # type: ignore[union-attr]
-                    'keyspace_misses': info.get('keyspace_misses', 0),  # type: ignore[union-attr]
+                    'keyspace_hits': info.get('keyspace_hits', 0),
+                    'keyspace_misses': info.get('keyspace_misses', 0),
                     'connected': True,
                 }
             except Exception:
@@ -237,11 +239,13 @@ class RAGCache:
         if self.redis_client is None:
             return None
         key = f"rag:query:{fingerprint}"
-        cached_str = self.redis_client.get(key)
-        if cached_str:
+        cached_raw = self.redis_client.get(key)
+        if cached_raw:
             logger.debug(f"[RAG Cache] Redis HIT: {fingerprint}")
             from typing import cast
-            return cast(dict[str, Any], json.loads(cached_str))  # type: ignore[arg-type]
+
+            payload = cast(Union[str, bytes, bytearray], cached_raw)
+            return cast(dict[str, Any], json.loads(payload))
         logger.debug(f"[RAG Cache] Redis MISS: {fingerprint}")
         return None
 
@@ -265,9 +269,14 @@ class RAGCache:
         cursor = 0
         deleted = 0
         while True:
-            cursor, keys = self.redis_client.scan(cursor, match='rag:query:*', count=100)  # type: ignore[misc]
+            from typing import cast
+
+            cursor, keys = cast(
+                Tuple[int, Sequence[Any]],
+                self.redis_client.scan(cursor, match='rag:query:*', count=100),
+            )
             if keys:
-                deleted += self.redis_client.delete(*keys)  # type: ignore[operator]
+                deleted += int(self.redis_client.delete(*keys))
             if cursor == 0:
                 break
         logger.info(f"[RAG Cache] Flushed {deleted} Redis keys")

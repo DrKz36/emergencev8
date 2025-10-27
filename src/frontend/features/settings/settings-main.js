@@ -9,6 +9,7 @@ import { settingsUI } from './settings-ui.js';
 import { settingsSecurity } from './settings-security.js';
 import { settingsRAG } from './settings-rag.js';
 import { settingsWebhooks } from './settings-webhooks.js';
+import { settingsAbout } from './settings-about.js';
 import versionInfo from '../../version.js';
 import logoWebpUrl from '../../../../assets/emergence_logo.webp';
 import logoPngUrl from '../../../../assets/emergence_logo.png';
@@ -22,7 +23,8 @@ export class Settings {
             ui: settingsUI,
             security: settingsSecurity,
             rag: settingsRAG,
-            webhooks: settingsWebhooks
+            webhooks: settingsWebhooks,
+            about: settingsAbout
         };
         this.initialized = false;
         this.hasUnsavedChanges = false;
@@ -116,6 +118,14 @@ export class Settings {
                             <span class="nav-hint">Intégrations externes</span>
                         </div>
                     </button>
+                    <button class="settings-nav-item ${this.activeTab === 'about' ? 'active' : ''}"
+                            data-tab="about">
+                        <span class="nav-icon">${SettingsIcons.info}</span>
+                        <div class="nav-content">
+                            <span class="nav-label">À propos</span>
+                            <span class="nav-hint">Versions & Changelog</span>
+                        </div>
+                    </button>
                 </div>
 
                 <!-- Settings Content -->
@@ -143,6 +153,12 @@ export class Settings {
                          data-panel="webhooks">
                         <div id="settings-webhooks-container"></div>
                     </div>
+
+                    <!-- About Tab -->
+                    <div class="settings-panel ${this.activeTab === 'about' ? 'active' : ''}"
+                         data-panel="about">
+                        <div id="settings-about-container"></div>
+                    </div>
                 </div>
 
                 <!-- Unsaved Changes Warning -->
@@ -160,6 +176,52 @@ export class Settings {
         `;
 
         this.attachEventListeners();
+    }
+
+    /**
+     * Render patch notes section
+     */
+    renderPatchNotes() {
+        const patchNotes = versionInfo.getFormattedPatchNotes(2);
+
+        const typeIcons = {
+            feature: '🆕',
+            fix: '🔧',
+            quality: '✨',
+            perf: '⚡',
+            phase: '🎉'
+        };
+
+        const typeLabels = {
+            feature: 'Nouveauté',
+            fix: 'Correction',
+            quality: 'Qualité',
+            perf: 'Performance',
+            phase: 'Phase'
+        };
+
+        return `
+            <div class="patch-notes-container">
+                ${patchNotes.map(note => `
+                    <div class="patch-note ${note.version === versionInfo.version ? 'current-version' : ''}">
+                        <div class="patch-note-header">
+                            <h4 class="patch-note-version">
+                                ${note.version === versionInfo.version ? '📍 ' : ''}${note.version}
+                            </h4>
+                            <span class="patch-note-date">${note.date}</span>
+                        </div>
+                        <ul class="patch-note-changes">
+                            ${note.changes.map(change => `
+                                <li class="patch-note-change patch-note-${change.type}">
+                                    <span class="change-icon" title="${typeLabels[change.type] || change.type}">${typeIcons[change.type] || '•'}</span>
+                                    <span class="change-text">${change.text}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `).join('')}
+            </div>
+        `;
     }
 
     /**
@@ -193,6 +255,11 @@ export class Settings {
                                 <span class="info-value">15 modules actifs</span>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="about-section full-width">
+                        <h3>${getIcon('fileText', 'section-icon')} Notes de Version</h3>
+                        ${this.renderPatchNotes()}
                     </div>
 
                     <div class="about-section full-width">
@@ -1139,6 +1206,9 @@ Envoyé depuis ÉMERGENCE V8
                 break;
             case 'webhooks':
                 await this.modules.webhooks.init(document.getElementById('settings-webhooks-container'));
+                break;
+            case 'about':
+                this.modules.about.init('settings-about-container');
                 break;
         }
     }

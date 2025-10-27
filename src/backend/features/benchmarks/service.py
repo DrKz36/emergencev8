@@ -20,6 +20,7 @@ from backend.benchmarks.scenarios import (
     ScenarioDefinition,
     ScenarioTask,
 )
+from backend.features.benchmarks.metrics import ndcg_time_at_k
 
 logger = logging.getLogger(__name__)
 _EDGE_VALUES = {"1", "true", "yes", "on"}
@@ -63,7 +64,9 @@ class BenchmarksService:
             matrix_id=matrix_id,
             scenario_id=scenario.id,
         )
-        sinks: list[SQLiteBenchmarkResultSink | FirestoreBenchmarkResultSink] = [sqlite_sink]
+        sinks: list[
+            SQLiteBenchmarkResultSink | FirestoreBenchmarkResultSink
+        ] = [sqlite_sink]
         if self._firestore_client is not None:
             sinks.append(
                 FirestoreBenchmarkResultSink(
@@ -125,10 +128,46 @@ class BenchmarksService:
             )
         return catalogue
 
+    def calculate_temporal_ndcg(
+        self,
+        ranked_items: List[Dict[str, Any]],
+        k: int = 10,
+        **kwargs: Any,
+    ) -> float:
+        """
+        Calcule la métrique nDCG@k temporelle sur une liste de résultats classés.
+
+        Cette méthode expose la métrique `ndcg_time_at_k` pour mesurer la qualité
+        d'un classement en intégrant la fraîcheur temporelle des documents.
+
+        Args:
+            ranked_items: Liste ordonnée d'items avec clés 'rel' (float)
+                         et 'ts' (datetime)
+            k: Nombre d'items considérés dans le top-k (défaut: 10)
+            **kwargs: Arguments supplémentaires passés à ndcg_time_at_k
+                     (now, T_days, lam)
+
+        Returns:
+            float: Score nDCG@k temporel entre 0 (pire) et 1 (parfait)
+
+        Example:
+            >>> from datetime import datetime, timedelta, timezone
+            >>> now = datetime.now(timezone.utc)
+            >>> items = [
+            ...     {'rel': 3.0, 'ts': now - timedelta(days=1)},
+            ...     {'rel': 2.0, 'ts': now - timedelta(days=30)},
+            ... ]
+            >>> service.calculate_temporal_ndcg(items, k=2)
+            0.95
+        """
+        return ndcg_time_at_k(ranked_items, k=k, **kwargs)
+
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
-    def _load_catalog(self, scenario_index: Optional[str]) -> Dict[str, ScenarioDefinition]:
+    def _load_catalog(
+        self, scenario_index: Optional[str]
+    ) -> Dict[str, ScenarioDefinition]:
         if self._edge_mode:
             logger.info("EDGE_MODE enabled -> using static scenario catalogue.")
             return dict(SCENARIO_DEFINITIONS)
@@ -139,7 +178,11 @@ class BenchmarksService:
 
         path = Path(path_hint)
         if not path.exists():
-            logger.warning("Scenario index path %s not found. Falling back to built-in catalogue.", path)
+            logger.warning(
+                "Scenario index path %s not found. "
+                "Falling back to built-in catalogue.",
+                path,
+            )
             return dict(SCENARIO_DEFINITIONS)
 
         try:
@@ -181,8 +224,10 @@ class BenchmarksService:
         try:
             return self._scenarios[scenario_id]
         except KeyError as exc:
+            supported = ", ".join(sorted(self._scenarios.keys()))
             raise ValueError(
-                f"Scenario '{scenario_id}' not supported. Supported: {', '.join(sorted(self._scenarios.keys()))}"
+                f"Scenario '{scenario_id}' not supported. "
+                f"Supported: {supported}"
             ) from exc
 
 

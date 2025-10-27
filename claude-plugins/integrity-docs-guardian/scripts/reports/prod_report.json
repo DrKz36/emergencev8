@@ -63,5 +63,6 @@
       "action": "No immediate action required",
       "details": "Production is healthy"
     }
-  ]
+  ],
+  "log_samples": []
 }

@@ -60,21 +60,20 @@ Applique le protocole complet de CODEX_SYSTEM_PROMPT.md (racine)
    - ⚠️ **CRITIQUE** : Comprendre l'architecture AVANT de coder (évite bugs, duplication, casse contrats API)
    - Checklist complète : [AGENTS_CHECKLIST.md](docs/architecture/AGENTS_CHECKLIST.md)
 
-2. **`AGENT_SYNC.md`** : État sync inter-agents
-   - État actuel du dépôt
-   - Ce que Claude Code a fait récemment
-   - Zones de travail en cours
-   - Fichiers modifiés par l'autre agent
+2. **`SYNC_STATUS.md`** puis **`AGENT_SYNC_CODEX.md`**
+   - `SYNC_STATUS.md` : résumé global et derniers mouvements
+   - `AGENT_SYNC_CODEX.md` : ton journal de bord détaillé (à maintenir en priorité)
+   - Consulte `AGENT_SYNC_CLAUDE.md` si besoin de contexte côté Claude Code
 
 3. **`CODEV_PROTOCOL.md`** : Protocole co-développement multi-agents
    - Lire sections 2.1 (template passation), 4 (checklist), 6 (anti-patterns)
    - Principes fondamentaux, handoff, gestion conflits Git
 
-4. **`docs/passation.md`** : Journal inter-agents (3 dernières entrées minimum)
+4. **`docs/passation_codex.md`** : Ton journal (48h max, à jour après chaque session)
 
 5. **`git status` + `git log --oneline -10`** : État Git actuel
 
-**⚠️ NE JAMAIS coder sans avoir lu Docs Architecture + AGENT_SYNC.md**
+**⚠️ NE JAMAIS coder sans avoir lu Docs Architecture + `AGENT_SYNC_CODEX.md`**
 
 ---
 
@@ -137,12 +136,12 @@ with open('c:/dev/emergenceV8/reports/prod_report.json', 'r', encoding='utf-8') 
 
 **Workflow Standard :**
 ```
-1. Lis Docs Architecture + AGENT_SYNC.md + CODEV_PROTOCOL.md + passation.md
+1. Lis Docs Architecture + `AGENT_SYNC_CODEX.md` + `CODEV_PROTOCOL.md` + `docs/passation_codex.md`
 2. Analyse la demande utilisateur
 3. Identifie TOUS les fichiers à modifier
 4. Fais TOUTES les modifs d'un coup
 5. Teste si approprié
-6. MET À JOUR AGENT_SYNC.md + docs/passation.md
+6. MET À JOUR `AGENT_SYNC_CODEX.md` + `docs/passation_codex.md`
 7. Résume ce qui a été fait APRÈS coup
 ```
 
@@ -229,7 +228,7 @@ git push origin <branche>
 
 **Si bug dans code Claude Code :**
 1. Corrige directement le problème
-2. Documente dans `docs/passation.md`
+2. Documente dans `docs/passation_codex.md`
 3. Continue ton travail
 
 **Pas besoin de permission. Tu es co-responsable du code entier.**
@@ -257,7 +256,9 @@ git push --no-verify
 
 **OBLIGATOIRE : Après chaque session, mets à jour :**
 
-### AGENT_SYNC.md
+### AGENT_SYNC_CODEX.md
+
+🚫 **NE PAS** écrire dans `AGENT_SYNC.md` (maintenu automatiquement). Tout passe par `AGENT_SYNC_CODEX.md`.
 
 Ajouter UNE NOUVELLE SECTION en haut du fichier :
 
@@ -267,8 +268,8 @@ Ajouter UNE NOUVELLE SECTION en haut du fichier :
 ### Fichiers modifiés
 - `fichier1.js` (description modif)
 - `fichier2.py` (description modif)
-- `AGENT_SYNC.md` (cette mise à jour)
-- `docs/passation.md` (nouvelle entrée)
+- `AGENT_SYNC_CODEX.md` (cette mise à jour)
+- `docs/passation_codex.md` (nouvelle entrée)
 
 ### Actions réalisées
 **[Titre de la tâche - TERMINÉ ✅]**
@@ -296,7 +297,9 @@ Résultat :
 Aucun. [ou décrire blocage]
 ```
 
-### docs/passation.md
+### docs/passation_codex.md
+
+🚫 **NE PAS** écrire dans `docs/passation.md` (auto-sync). Utilise uniquement `docs/passation_codex.md`.
 
 Ajouter UNE NOUVELLE SECTION en haut du fichier (format détaillé dans CODEV_PROTOCOL.md section 2.1) :
 
@@ -357,8 +360,8 @@ with open('c:/dev/emergenceV8/reports/codex_summary.md', 'r', encoding='utf-8') 
 
 **Avant de dire "j'ai fini" :**
 - [ ] Tests passent (pytest, npm run build)
-- [ ] `AGENT_SYNC.md` mis à jour (nouvelle section en haut)
-- [ ] `docs/passation.md` nouvelle entrée (en haut)
+- [ ] `AGENT_SYNC_CODEX.md` mis à jour (nouvelle section en haut)
+- [ ] `docs/passation_codex.md` nouvelle entrée (en haut)
 - [ ] Code complet (pas de fragments, pas d'ellipses)
 - [ ] Commit + push effectué
 - [ ] Résumé clair des changements
@@ -369,9 +372,9 @@ with open('c:/dev/emergenceV8/reports/codex_summary.md', 'r', encoding='utf-8') 
 
 **Ordre lecture (à suivre AVANT de coder) :**
 1. `docs/architecture/AGENTS_CHECKLIST.md` + `00-Overview.md` + `10-Components.md` + `30-Contracts.md`
-2. `AGENT_SYNC.md`
+2. `SYNC_STATUS.md` + `AGENT_SYNC_CODEX.md`
 3. `CODEV_PROTOCOL.md`
-4. `docs/passation.md`
+4. `docs/passation_codex.md`
 5. `git status` + `git log`
 
 **Documentation :**
@@ -382,4 +385,4 @@ with open('c:/dev/emergenceV8/reports/codex_summary.md', 'r', encoding='utf-8') 
 
 ---
 
-**🤖 Lis Docs Architecture + AGENT_SYNC.md AVANT de coder. Fonce. 🚀**
+**🤖 Lis Docs Architecture + `AGENT_SYNC_CODEX.md` AVANT de coder. Fonce. 🚀**

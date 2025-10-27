@@ -1,2 +1,3 @@
 src\backend\features\chat\rag_cache.py:279:32: error: Argument 1 to "int" has incompatible type "Awaitable[Any] | Any"; expected "str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc"  [arg-type]
 Found 1 error in 1 file (checked 137 source files)
+Success: no issues found in 137 source files

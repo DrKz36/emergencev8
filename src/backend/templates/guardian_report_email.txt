@@ -24,6 +24,22 @@ Statut: {{ prod_report.status | default('UNKNOWN') }}
 {% endfor %}
 {% endif %}
 
+{% if prod_report.log_samples %}
+📝 EXTRAITS DE LOGS (dernier run)
+{'-'*70}
+{% for log in prod_report.log_samples[:5] %}
+- [{{ log.severity | default('DEFAULT') }}] {{ log.timestamp }}
+  {% if log.http_method or log.endpoint %}{{ log.http_method | default('GET') }} {{ log.endpoint | default('') }}{% if log.status_code %} → {{ log.status_code }}{% endif %}
+  {% endif %}
+  {{ log.message | default('') }}
+  {% if log.request_id %}request_id={{ log.request_id }}{% endif %}
+{% if log.payload_excerpt %}  payload={{ log.payload_excerpt }}{% if log.payload_excerpt|length == 500 %}...{% endif %}{% endif %}
+{% endfor %}
+{% if prod_report.log_samples | length > 5 %}
+... {{ prod_report.log_samples | length - 5 }} autres entrées dans le rapport JSON
+{% endif %}
+{% endif %}
+
 {% endif %}
 
 {% if docs_report %}
@@ -113,7 +129,7 @@ Statut: {{ unified_report.status | default('UNKNOWN') }}
 🤖 Guardian Autonomous Monitoring System
 ÉMERGENCE V8 - Rapports automatiques toutes les 2h
 
-Contact: gonzalefernando@gmail.com
+Contact: emergence.app.ch@gmail.com
 
 ---
 Cet email a été envoyé automatiquement par ÉMERGENCE.

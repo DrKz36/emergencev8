@@ -109,7 +109,7 @@ class GuardianEmailService:
 
         # Determine recipient
         if not to_email:
-            to_email = os.getenv("GUARDIAN_ADMIN_EMAIL", "gonzalefernando@gmail.com")
+            to_email = os.getenv("GUARDIAN_ADMIN_EMAIL", "emergence.app.ch@gmail.com")
 
         logger.info(f"Sending Guardian report to: {to_email}")
 
