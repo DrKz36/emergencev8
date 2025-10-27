@@ -26,12 +26,12 @@ async def main():
     # Créer le service (il va charger depuis reports/ du repo)
     service = GuardianEmailService()
 
-    print("📧 Envoi du rapport à gonzalefernando@gmail.com...")
+    print("📧 Envoi du rapport à emergence.app.ch@gmail.com...")
     print()
 
     # Envoyer l'email
     success = await service.send_report(
-        to_email="gonzalefernando@gmail.com",
+        to_email="emergence.app.ch@gmail.com",
         base_url="https://emergence-app-486095406755.europe-west1.run.app"
     )
 
@@ -46,7 +46,7 @@ async def main():
         print("   - 💻 Code snippets suspects")
         print("   - 🔀 Commits récents (coupables potentiels)")
         print()
-        print("👀 Vérifie ta boîte mail: gonzalefernando@gmail.com")
+        print("👀 Vérifie ta boîte mail: emergence.app.ch@gmail.com")
     else:
         print("❌ Échec de l'envoi de l'email")
         print()
