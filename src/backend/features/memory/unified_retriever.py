@@ -11,6 +11,7 @@
 # Roadmap: MEMORY_REFACTORING_ROADMAP.md Sprint 3
 
 import logging
+import inspect
 from typing import Any, Optional, cast
 from datetime import datetime
 
@@ -59,6 +60,16 @@ try:
 except ImportError:
     PROMETHEUS_AVAILABLE = False
     logger.debug("[UnifiedRetriever] Prometheus client non disponible")
+
+
+async def _await_if_needed(value):
+    """
+    Await value if it's awaitable, otherwise return it directly.
+    Permet de supporter des implementations sync et async du vector_service.
+    """
+    if inspect.isawaitable(value):
+        return await value
+    return value
 
 
 class MemoryContext:
@@ -287,16 +298,18 @@ class UnifiedMemoryRetriever:
 
             # Préférences actives (confidence >= 0.6)
             try:
-                prefs_result = collection.get(
-                    where={
-                        "$and": [
-                            {"user_id": user_id},
-                            {"agent_id": agent_id},
-                            {"type": "preference"},
-                            {"confidence": {"$gte": 0.6}}
-                        ]
-                    },
-                    include=["documents", "metadatas"]
+                prefs_result = await _await_if_needed(
+                    collection.get(
+                        where={
+                            "$and": [
+                                {"user_id": user_id},
+                                {"agent_id": agent_id},
+                                {"type": "preference"},
+                                {"confidence": {"$gte": 0.6}}
+                            ]
+                        },
+                        include=["documents", "metadatas"]
+                    )
                 )
 
                 preferences = [
@@ -317,17 +330,19 @@ class UnifiedMemoryRetriever:
             # Concepts pertinents (requête vectorielle pondérée)
             # Utilise query_weighted() pour scoring temporel + fréquence
             try:
-                concepts_results = self.vector_service.query_weighted(
-                    collection=collection,
-                    query_text=query,
-                    n_results=top_k,
-                    where_filter={
-                        "$and": [
-                            {"user_id": user_id},
-                            {"agent_id": agent_id},
-                            {"type": "concept"}
-                        ]
-                    }
+                concepts_results = await _await_if_needed(
+                    self.vector_service.query_weighted(
+                        collection=collection,
+                        query_text=query,
+                        n_results=top_k,
+                        where_filter={
+                            "$and": [
+                                {"user_id": user_id},
+                                {"agent_id": agent_id},
+                                {"type": "concept"}
+                            ]
+                        }
+                    )
                 )
 
                 concepts = [
