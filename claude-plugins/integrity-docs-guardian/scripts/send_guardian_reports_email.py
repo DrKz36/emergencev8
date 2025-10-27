@@ -47,8 +47,8 @@ sys.path.insert(0, str(backend_path))
 from features.auth.email_service import EmailService, build_email_config_from_env
 
 # Configuration
-ADMIN_EMAIL = "gonzalefernando@gmail.com"  # Email admin uniquement
-REPORTS_DIR = Path(__file__).parent.parent / "reports"
+ADMIN_EMAIL = "emergence.app.ch@gmail.com"  # Email admin principal (redirige vers gonzalefernando@gmail.com)
+REPORTS_DIR = Path(__file__).parent / "reports"  # Les rapports sont dans scripts/reports/
 
 
 def load_report(report_path: Path) -> Optional[Dict]:
@@ -114,8 +114,15 @@ def format_report_summary(report_name: str, report_data: Optional[Dict]) -> str:
     return summary
 
 
+def escape_html(text):
+    """Escape HTML special characters"""
+    if not text:
+        return ""
+    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
 def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
-    """Génère un rapport HTML stylisé des rapports Guardian"""
+    """Génère un rapport HTML ENRICHI avec TOUS les détails (stack traces, patterns, code snippets, etc.)"""
 
     # Déterminer le statut global
     global_status = "OK"
@@ -129,130 +136,226 @@ def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
                 global_status = "WARNING"
 
     status_color = {
-        "OK": "#10b981",
-        "WARNING": "#f59e0b",
-        "CRITICAL": "#ef4444"
-    }.get(global_status, "#6b7280")
+        "OK": "#44ff44",
+        "WARNING": "#ffaa00",
+        "CRITICAL": "#ff4444"
+    }.get(global_status, "#4a9eff")
 
     status_emoji = format_status_emoji(global_status)
-
     timestamp = datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
 
-    # Construction du HTML
-    html = f"""
-<!DOCTYPE html>
-<html>
+    # Header HTML avec styles enrichis
+    html = f"""<!DOCTYPE html>
+<html lang="fr">
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guardian Report - ÉMERGENCE V8</title>
     <style>
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 800px;
-            margin: 0 auto;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: #0a0e27;
+            color: #e0e0e0;
+            margin: 0;
             padding: 20px;
+            line-height: 1.6;
         }}
         .container {{
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            border-radius: 16px;
-            padding: 40px;
-            color: #e2e8f0;
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: #1a1f3a;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }}
-        .header {{
-            text-align: center;
-            margin-bottom: 30px;
+        h1 {{
+            color: #ffffff;
+            margin-top: 0;
+            border-bottom: 3px solid {status_color};
+            padding-bottom: 15px;
         }}
-        .header h1 {{
-            color: #3b82f6;
-            margin: 0;
-            font-size: 28px;
+        h2 {{
+            color: #4a9eff;
+            border-bottom: 2px solid #2a3f5f;
+            padding-bottom: 10px;
+            margin-top: 30px;
         }}
         .status-badge {{
             display: inline-block;
-            padding: 8px 16px;
+            padding: 10px 20px;
             border-radius: 20px;
-            font-weight: 600;
-            margin: 10px 0;
-            background: {status_color};
-            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            background-color: {status_color};
+            color: #ffffff;
+            margin-bottom: 20px;
+        }}
+        .summary-box {{
+            background-color: #252b4a;
+            border-left: 4px solid {status_color};
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }}
+        .summary-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }}
+        .summary-item {{
+            background-color: #1a1f3a;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }}
+        .summary-item .number {{
+            font-size: 32px;
+            font-weight: bold;
+            color: {status_color};
+        }}
+        .summary-item .label {{
+            font-size: 12px;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            margin-top: 5px;
         }}
         .report-section {{
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
+            background-color: #252b4a;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
             padding: 20px;
             margin: 20px 0;
-            border-left: 4px solid #3b82f6;
         }}
         .report-title {{
             color: #3b82f6;
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 600;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }}
-        .report-status {{
+        .error-card {{
+            background-color: #2a1f1f;
+            border-left: 4px solid #ff4444;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }}
+        .code-block {{
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            margin: 10px 0;
+            color: #c9d1d9;
+        }}
+        .code-block pre {{
+            margin: 0;
+            white-space: pre-wrap;
+        }}
+        .endpoint-tag {{
             display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
+            background-color: #3a3f5a;
+            color: #4a9eff;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+            margin: 5px 5px 5px 0;
+        }}
+        .file-tag {{
+            display: inline-block;
+            background-color: #3a3f5a;
+            color: #ffaa00;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+            margin: 5px 5px 5px 0;
+        }}
+        .error-type-tag {{
+            display: inline-block;
+            background-color: #3a3f5a;
+            color: #ff4444;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+            margin: 5px 5px 5px 0;
+        }}
+        .pattern-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }}
+        .pattern-box {{
+            background-color: #252b4a;
+            padding: 15px;
+            border-radius: 6px;
+        }}
+        .pattern-box h4 {{
+            margin-top: 0;
+            color: #4a9eff;
             font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 10px;
         }}
-        .status-ok {{
-            background: rgba(16, 185, 129, 0.2);
-            color: #10b981;
+        .pattern-item {{
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #2a3f5f;
         }}
-        .status-warning {{
-            background: rgba(245, 158, 11, 0.2);
-            color: #f59e0b;
+        .pattern-item:last-child {{
+            border-bottom: none;
         }}
-        .status-critical {{
-            background: rgba(239, 68, 68, 0.2);
-            color: #ef4444;
+        .badge-count {{
+            background-color: #ff4444;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
         }}
-        .detail-item {{
-            margin: 8px 0;
-            padding-left: 20px;
-            color: #cbd5e1;
+        .recommendation {{
+            background-color: #252b4a;
+            border-left: 4px solid #4a9eff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }}
+        .recommendation.high {{
+            border-left-color: #ff4444;
+        }}
+        .recommendation.medium {{
+            border-left-color: #ffaa00;
+        }}
+        .recommendation.low {{
+            border-left-color: #44ff44;
         }}
         .timestamp {{
-            color: #94a3b8;
-            font-size: 14px;
-            margin-top: 10px;
+            color: #a0a0a0;
+            font-size: 12px;
         }}
         .footer {{
-            margin-top: 30px;
+            margin-top: 40px;
             padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 14px;
-            color: #94a3b8;
+            border-top: 1px solid #2a3f5f;
             text-align: center;
-        }}
-        .recommendations {{
-            background: rgba(59, 130, 246, 0.1);
-            border-left: 4px solid #3b82f6;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }}
-        .rec-item {{
-            margin: 10px 0;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 6px;
+            color: #a0a0a0;
+            font-size: 12px;
         }}
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🛡️ Rapport Guardian ÉMERGENCE V8</h1>
-            <div class="status-badge">{status_emoji} Statut Global: {global_status}</div>
-            <p class="timestamp">Généré le {timestamp}</p>
-        </div>
+        <h1>🛡️ Guardian Report - ÉMERGENCE V8</h1>
+        <div class="status-badge">{status_emoji} Statut Global: {global_status}</div>
+        <p class="timestamp">Généré le {timestamp}</p>
 """
 
-    # Ajouter chaque rapport
+    # Ajouter chaque rapport avec détails enrichis
     report_names = {
         'global_report.json': 'Rapport Global (Master)',
         'prod_report.json': 'Production Guardian',
@@ -268,60 +371,261 @@ def generate_html_report(reports: Dict[str, Optional[Dict]]) -> str:
             continue
 
         status = report_data.get('status', 'unknown')
-        status_class = 'status-ok'
-        if status.lower() in ['warning', 'degraded']:
-            status_class = 'status-warning'
-        elif status.lower() in ['critical', 'error', 'failed']:
-            status_class = 'status-critical'
-
         html += f"""
         <div class="report-section">
             <div class="report-title">{report_title}</div>
-            <span class="report-status {status_class}">{format_status_emoji(status)} {status.upper()}</span>
+            <div class="status-badge" style="background: {status_color}; font-size: 14px; padding: 6px 12px;">{format_status_emoji(status)} {status.upper()}</div>
 """
 
-        # Ajouter les détails selon le type de rapport
+        # Summary avec grid
         if 'summary' in report_data:
             summary = report_data['summary']
             if isinstance(summary, dict):
-                html += "            <div style='margin-top: 10px;'>\n"
+                html += """
+            <div class="summary-box">
+                <h3 style="margin-top: 0;">📊 Summary</h3>
+                <div class="summary-grid">
+"""
                 for key, value in summary.items():
                     if key != 'status':
                         display_key = key.replace('_', ' ').title()
-                        html += f"                <div class='detail-item'>• {display_key}: {value}</div>\n"
-                html += "            </div>\n"
+                        html += f"""
+                    <div class="summary-item">
+                        <div class="number">{escape_html(str(value))}</div>
+                        <div class="label">{escape_html(display_key)}</div>
+                    </div>
+"""
+                html += """
+                </div>
+            </div>
+"""
 
-        # Recommendations
+        # Error Patterns (NOUVEAU - enrichi)
+        if 'error_patterns' in report_data:
+            patterns = report_data['error_patterns']
+            if isinstance(patterns, dict) and patterns:
+                html += """
+            <h3>🔍 Error Patterns Analysis</h3>
+            <div class="pattern-grid">
+"""
+                if patterns.get('by_endpoint'):
+                    html += """
+                <div class="pattern-box">
+                    <h4>🌐 By Endpoint</h4>
+"""
+                    for endpoint, count in list(patterns['by_endpoint'].items())[:5]:
+                        html += f"""
+                    <div class="pattern-item">
+                        <span class="endpoint-tag">{escape_html(endpoint)}</span>
+                        <span class="badge-count">{count}</span>
+                    </div>
+"""
+                    html += """
+                </div>
+"""
+
+                if patterns.get('by_error_type'):
+                    html += """
+                <div class="pattern-box">
+                    <h4>⚠️ By Error Type</h4>
+"""
+                    for error_type, count in list(patterns['by_error_type'].items())[:5]:
+                        html += f"""
+                    <div class="pattern-item">
+                        <span class="error-type-tag">{escape_html(error_type)}</span>
+                        <span class="badge-count">{count}</span>
+                    </div>
+"""
+                    html += """
+                </div>
+"""
+
+                if patterns.get('by_file'):
+                    html += """
+                <div class="pattern-box">
+                    <h4>📁 By File</h4>
+"""
+                    for file_path, count in list(patterns['by_file'].items())[:5]:
+                        html += f"""
+                    <div class="pattern-item">
+                        <span class="file-tag">{escape_html(file_path)}</span>
+                        <span class="badge-count">{count}</span>
+                    </div>
+"""
+                    html += """
+                </div>
+"""
+                html += """
+            </div>
+"""
+
+        # Detailed Errors (NOUVEAU - enrichi avec stack traces)
+        if 'errors_detailed' in report_data:
+            errors = report_data['errors_detailed']
+            if isinstance(errors, list) and len(errors) > 0:
+                html += f"""
+            <h3>❌ Detailed Errors (Top {len(errors)})</h3>
+"""
+                for error in errors[:10]:  # Max 10 erreurs détaillées
+                    html += """
+            <div class="error-card">
+"""
+                    if error.get('timestamp'):
+                        html += f"""
+                <p><strong>⏰ Time:</strong> <span class="timestamp">{escape_html(error['timestamp'])}</span></p>
+"""
+                    if error.get('severity'):
+                        html += f"""
+                <p><strong>🔴 Severity:</strong> {escape_html(error['severity'])}</p>
+"""
+                    if error.get('endpoint'):
+                        method = error.get('http_method', '')
+                        html += f"""
+                <p><strong>🌐 Endpoint:</strong> <span class="endpoint-tag">{escape_html(method)} {escape_html(error['endpoint'])}</span></p>
+"""
+                    if error.get('error_type'):
+                        html += f"""
+                <p><strong>⚠️ Type:</strong> <span class="error-type-tag">{escape_html(error['error_type'])}</span></p>
+"""
+                    if error.get('file_path'):
+                        line = error.get('line_number', '')
+                        html += f"""
+                <p><strong>📁 File:</strong> <span class="file-tag">{escape_html(error['file_path'])}:{line}</span></p>
+"""
+                    if error.get('message'):
+                        html += f"""
+                <p><strong>💬 Message:</strong></p>
+                <div class="code-block"><pre>{escape_html(error['message'])}</pre></div>
+"""
+                    if error.get('stack_trace'):
+                        html += f"""
+                <p><strong>📚 Stack Trace:</strong></p>
+                <div class="code-block"><pre>{escape_html(error['stack_trace'])}</pre></div>
+"""
+                    if error.get('request_id'):
+                        html += f"""
+                <p><strong>🔍 Request ID:</strong> <code>{escape_html(error['request_id'])}</code></p>
+"""
+                    html += """
+            </div>
+"""
+
+        # Code Snippets (NOUVEAU - enrichi)
+        if 'code_snippets' in report_data:
+            snippets = report_data['code_snippets']
+            if isinstance(snippets, list) and len(snippets) > 0:
+                html += """
+            <h3>💻 Suspect Code Snippets</h3>
+"""
+                for snippet in snippets[:5]:  # Max 5 snippets
+                    error_count = snippet.get('error_count', 0)
+                    html += f"""
+            <div class="pattern-box">
+                <h4>📁 {escape_html(snippet.get('file', ''))} <span style="color: #ff4444;">({error_count} errors)</span></h4>
+                <p style="font-size: 12px; color: #a0a0a0;">Line {snippet.get('line', '')} (showing lines {snippet.get('start_line', '')}-{snippet.get('end_line', '')})</p>
+                <div class="code-block"><pre>{escape_html(snippet.get('code_snippet', ''))}</pre></div>
+            </div>
+"""
+
+        # Recent Commits (NOUVEAU - enrichi)
+        if 'recent_commits' in report_data:
+            commits = report_data['recent_commits']
+            if isinstance(commits, list) and len(commits) > 0:
+                html += """
+            <h3>🔀 Recent Commits (Potential Culprits)</h3>
+"""
+                for commit in commits[:5]:  # Max 5 commits
+                    html += f"""
+            <div class="pattern-box" style="margin-bottom: 10px;">
+                <span style="color: #4a9eff; font-family: monospace;">{escape_html(commit.get('hash', ''))}</span>
+                by <span style="color: #ffaa00;">{escape_html(commit.get('author', ''))}</span>
+                <span class="timestamp">({escape_html(commit.get('time', ''))})</span>
+                <p style="margin: 5px 0 0 0;">{escape_html(commit.get('message', ''))}</p>
+            </div>
+"""
+
+        # Recommendations (ENRICHI avec commandes, fichiers affectés, etc.)
         if 'recommendations' in report_data:
             recommendations = report_data['recommendations']
             if isinstance(recommendations, list) and len(recommendations) > 0:
-                html += "            <div class='recommendations' style='margin-top: 15px;'>\n"
-                html += "                <strong>📋 Recommandations:</strong>\n"
-                for rec in recommendations[:3]:  # Max 3 recommandations
-                    if isinstance(rec, dict):
-                        priority = rec.get('priority', 'MEDIUM')
-                        action = rec.get('action', rec.get('recommendation', ''))
-                        html += f"                <div class='rec-item'>\n"
-                        html += f"                    <strong>[{priority}]</strong> {action}\n"
-                        if 'details' in rec:
-                            html += f"                    <div style='margin-top: 5px; font-size: 13px; color: #94a3b8;'>{rec['details']}</div>\n"
-                        html += "                </div>\n"
-                html += "            </div>\n"
+                html += """
+            <h3>💡 Recommendations</h3>
+"""
+                for rec in recommendations:
+                    priority = rec.get('priority', 'MEDIUM')
+                    priority_class = priority.lower()
+                    action = rec.get('action', '')
+                    details = rec.get('details', '')
+
+                    html += f"""
+            <div class="recommendation {priority_class}">
+                <p><strong>🚨 [{escape_html(priority)}] {escape_html(action)}</strong></p>
+                <p>{escape_html(details)}</p>
+"""
+                    if rec.get('command'):
+                        html += f"""
+                <p><strong>Command:</strong></p>
+                <div class="code-block"><pre>{escape_html(rec['command'])}</pre></div>
+"""
+                    if rec.get('rollback_command'):
+                        html += f"""
+                <p><strong>Rollback Command:</strong></p>
+                <div class="code-block"><pre>{escape_html(rec['rollback_command'])}</pre></div>
+"""
+                    if rec.get('suggested_fix'):
+                        html += f"""
+                <p><strong>Suggested Fix:</strong> {escape_html(rec['suggested_fix'])}</p>
+"""
+                    if rec.get('affected_endpoints'):
+                        html += """
+                <p><strong>Affected Endpoints:</strong></p>
+"""
+                        for endpoint in rec['affected_endpoints']:
+                            html += f"""
+                <span class="endpoint-tag">{escape_html(endpoint)}</span>
+"""
+                    if rec.get('affected_files'):
+                        html += """
+                <p><strong>Affected Files:</strong></p>
+"""
+                        for file_path in rec['affected_files']:
+                            html += f"""
+                <span class="file-tag">{escape_html(file_path)}</span>
+"""
+                    if rec.get('suggested_investigation'):
+                        html += """
+                <p><strong>Investigation Steps:</strong></p>
+                <ul>
+"""
+                        for step in rec['suggested_investigation']:
+                            html += f"""
+                    <li>{escape_html(step)}</li>
+"""
+                        html += """
+                </ul>
+"""
+                    html += """
+            </div>
+"""
 
         # Timestamp du rapport
         if 'timestamp' in report_data:
-            html += f"            <div class='timestamp'>Dernier scan: {report_data['timestamp']}</div>\n"
+            html += f"""
+            <p class="timestamp">Dernier scan: {escape_html(report_data['timestamp'])}</p>
+"""
 
-        html += "        </div>\n"
+        html += """
+        </div>
+"""
 
     # Footer
-    html += """
+    html += f"""
         <div class="footer">
-            <p><strong>🤖 Guardian Autonomous Monitoring System</strong></p>
-            <p>Ce rapport est envoyé automatiquement aux administrateurs uniquement.</p>
-            <p style="margin-top: 15px; font-size: 12px;">
-                ÉMERGENCE V8 - Guardian System<br>
-                Pour toute question: gonzalefernando@gmail.com
+            <p><strong>🤖 Guardian System 3.0.0 - Automated Production Monitoring</strong></p>
+            <p>ÉMERGENCE V8 Production Monitoring | Généré {timestamp}</p>
+            <p style="margin-top: 10px; font-size: 11px;">
+                Rapport enrichi avec stack traces, patterns, code snippets et recommandations détaillées.<br>
+                Pour toute question: emergence.app.ch@gmail.com
             </p>
         </div>
     </div>

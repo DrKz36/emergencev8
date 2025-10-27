@@ -1,0 +1,29 @@
+{
+  "name": "EMERGENCE V8",
+  "short_name": "Emergence",
+  "start_url": "/",
+  "display": "standalone",
+  "description": "Plateforme Emergence multi-agents avec chat, mémoire progressive et RAG.",
+  "background_color": "#0b1120",
+  "theme_color": "#38bdf8",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/assets/emergence_logo_icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/emergence_logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/emergence_logo.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any"
+    }
+  ]
+}

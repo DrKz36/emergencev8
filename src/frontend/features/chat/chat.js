@@ -25,6 +25,9 @@ export default class ChatModule {
     // Threads / convo
     this.threadId = null;
     this.loadedThreadId = null;
+    this._conversationModalVisible = false;
+    this._conversationModalCleanup = null;
+    this._threadsBootstrapPromise = null;
 
     // Connexion & flux
     this._wsConnected = false;
@@ -60,11 +63,22 @@ export default class ChatModule {
     if (metaObj) {
       const opinion = (metaObj.opinion && typeof metaObj.opinion === 'object') ? metaObj.opinion : null;
       if (opinion) {
+        // 🔥 FIX: Pour les opinions, on veut le bucket de l'agent qui DONNE l'avis (reviewer),
+        // pas l'agent source du message évalué
+        const reviewer = String(opinion.reviewer_agent_id ?? opinion.reviewer_agent ?? opinion.agent_id ?? '').trim().toLowerCase();
+        if (reviewer) return reviewer;
+
+        // Fallback sur source_agent si reviewer manque (ne devrait pas arriver)
         const source = String(opinion.source_agent_id ?? opinion.source_agent ?? opinion.agent ?? '').trim().toLowerCase();
         if (source) return source;
       }
       const opinionRequest = (metaObj.opinion_request && typeof metaObj.opinion_request === 'object') ? metaObj.opinion_request : null;
       if (opinionRequest) {
+        // Pour les requêtes d'opinion, on veut le bucket de l'agent CIBLE de la requête
+        const target = String(opinionRequest.target_agent ?? opinionRequest.target_agent_id ?? '').trim().toLowerCase();
+        if (target) return target;
+
+        // Fallback sur source si target manque
         const sourceReq = String(opinionRequest.source_agent ?? opinionRequest.source_agent_id ?? '').trim().toLowerCase();
         if (sourceReq) return sourceReq;
       }
@@ -306,11 +320,29 @@ export default class ChatModule {
    */
   async _ensureActiveConversation() {
     try {
-      console.log('[Chat] Aucune conversation active détectée, affichage du modal de choix...');
+      if (this._conversationModalVisible) return;
 
-      // Récupérer la liste des threads depuis le state (déjà chargés par app.js)
-      const threadsOrder = this.state.get('threads.order') || [];
-      const hasExistingConversations = threadsOrder.length > 0;
+      console.log('[Chat] Vérification conversation active...');
+
+      // Attendre le bootstrap des threads pour avoir les données complètes
+      if (!this._hasExistingConversations()) {
+        console.log('[Chat] Attente du chargement des conversations...');
+        await this._waitForThreadsBootstrap(5000);
+      }
+
+      // Vérifier si on a un thread ID ET ses données chargées
+      const currentThreadId = this.getCurrentThreadId();
+      if (currentThreadId) {
+        const threadData = this.state.get(`threads.map.${currentThreadId}`);
+        if (threadData && threadData.messages !== undefined) {
+          console.log('[Chat] Thread actif avec données chargées, aucun modal nécessaire.');
+          return;
+        } else {
+          console.warn('[Chat] Thread ID présent mais données manquantes, affichage du modal...');
+        }
+      }
+
+      const hasExistingConversations = this._hasExistingConversations();
 
       // Afficher le modal de choix
       this._showConversationChoiceModal(hasExistingConversations);
@@ -323,44 +355,127 @@ export default class ChatModule {
 
   /**
    * Affiche le modal demandant à l'utilisateur s'il veut reprendre la dernière conversation ou en créer une nouvelle.
-   */
+  */
   _showConversationChoiceModal(hasExistingConversations) {
-    // Créer le HTML du modal
+    this._teardownConversationModal(true);
+
+    const host = typeof document !== 'undefined' && document.body
+      ? document.body
+      : this.container || null;
+
+    if (!host) {
+      console.warn('[Chat] Impossible d\'afficher le modal : aucun conteneur disponible.');
+      return;
+    }
+
     const modalHTML = `
-      <div class="modal-container visible" id="conversation-choice-modal">
+      <div class="modal-container visible" id="conversation-choice-modal" role="presentation">
         <div class="modal-backdrop" data-action="close"></div>
-        <div class="modal-content">
-          <h2 class="modal-title">Bienvenue dans le module Dialogue !</h2>
-          <div class="modal-body">
-            ${hasExistingConversations
-              ? '<p>Voulez-vous reprendre votre dernière conversation ou commencer une nouvelle ?</p>'
-              : '<p>Vous n\'avez pas encore de conversation. Prêt à démarrer ?</p>'}
-          </div>
-          <div class="modal-actions" style="${hasExistingConversations ? '' : 'justify-content: center;'}">
-            ${hasExistingConversations
-              ? '<button class="btn" data-action="resume">Reprendre</button>'
-              : ''}
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="conversation-choice-title">
+          <h2 class="modal-title" id="conversation-choice-title">Bienvenue dans le module Dialogue !</h2>
+          <div class="modal-body" data-role="modal-message"></div>
+          <div class="modal-actions" data-role="modal-actions">
+            <button class="btn" data-action="resume">Reprendre</button>
             <button class="btn btn-primary" data-action="new">Nouvelle conversation</button>
           </div>
         </div>
       </div>
     `;
 
-    // Insérer le modal dans le container
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = modalHTML;
+    tempDiv.innerHTML = modalHTML.trim();
     const modal = tempDiv.firstElementChild;
-    this.container.appendChild(modal);
+    host.appendChild(modal);
+    this._conversationModalVisible = true;
 
-    // Gérer les clics sur les boutons
     const resumeBtn = modal.querySelector('[data-action="resume"]');
     const newBtn = modal.querySelector('[data-action="new"]');
     const backdrop = modal.querySelector('[data-action="close"]');
+    const messageEl = modal.querySelector('[data-role="modal-message"]');
+    const actionsEl = modal.querySelector('[data-role="modal-actions"]');
 
-    const closeModal = () => {
-      modal.classList.remove('visible');
-      setTimeout(() => modal.remove(), 300);
+    if (!newBtn || !backdrop || !messageEl || !actionsEl) {
+      console.warn('[Chat] Modal de conversation incomplet, fermeture.');
+      modal.remove();
+      this._conversationModalVisible = false;
+      return;
+    }
+
+    const applyModalState = (existing) => {
+      if (!modal.isConnected) return;
+      const hasConversations = !!existing;
+      messageEl.textContent = hasConversations
+        ? 'Voulez-vous reprendre votre dernière conversation ou commencer une nouvelle ?'
+        : 'Vous n\'avez pas encore de conversation. Prêt à démarrer ?';
+      if (resumeBtn) {
+        resumeBtn.hidden = !hasConversations;
+        resumeBtn.disabled = !hasConversations;
+      }
+      actionsEl.classList.toggle('modal-actions--single', !hasConversations);
     };
+
+    applyModalState(hasExistingConversations);
+
+    let unsubOrder = null;
+    let unsubMap = null;
+
+    const handleThreadsUpdate = () => {
+      applyModalState(this._hasExistingConversations());
+    };
+
+    if (typeof this.state?.subscribe === 'function') {
+      try { unsubOrder = this.state.subscribe('threads.order', handleThreadsUpdate); } catch (error) {
+        console.warn('[Chat] Impossible d\'observer threads.order pour le modal:', error);
+      }
+      try { unsubMap = this.state.subscribe('threads.map', handleThreadsUpdate); } catch (error) {
+        console.warn('[Chat] Impossible d\'observer threads.map pour le modal:', error);
+      }
+    }
+
+    handleThreadsUpdate();
+
+    const cleanupSubscriptions = () => {
+      if (typeof unsubOrder === 'function') {
+        try { unsubOrder(); } catch {}
+        unsubOrder = null;
+      }
+      if (typeof unsubMap === 'function') {
+        try { unsubMap(); } catch {}
+        unsubMap = null;
+      }
+    };
+
+    const removeModal = () => {
+      cleanupSubscriptions();
+      document.removeEventListener('keydown', onKeyDown, true);
+      if (modal.isConnected) {
+        try { modal.remove(); } catch {}
+      }
+      this._conversationModalCleanup = null;
+    };
+
+    const closeModal = ({ skipAnimation = false } = {}) => {
+      if (!this._conversationModalVisible) {
+        removeModal();
+        return;
+      }
+      this._conversationModalVisible = false;
+      if (skipAnimation) {
+        modal.classList.remove('visible');
+        removeModal();
+        return;
+      }
+      modal.classList.remove('visible');
+      setTimeout(removeModal, 220);
+    };
+
+    const onKeyDown = (event) => {
+      if (event?.key === 'Escape') {
+        closeModal();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown, true);
 
     if (resumeBtn) {
       resumeBtn.addEventListener('click', async () => {
@@ -375,14 +490,117 @@ export default class ChatModule {
     });
 
     backdrop.addEventListener('click', async () => {
-      // Si l'utilisateur clique sur le backdrop, créer une nouvelle conversation par défaut
       closeModal();
-      if (hasExistingConversations) {
+      if (this._hasExistingConversations()) {
         await this._resumeLastConversation();
       } else {
         await this._createNewConversation();
       }
     });
+
+    this._conversationModalCleanup = (force = false) => {
+      closeModal({ skipAnimation: force === true });
+    };
+  }
+
+  _teardownConversationModal(force = false) {
+    if (typeof this._conversationModalCleanup === 'function') {
+      try { this._conversationModalCleanup(force === true); } catch (error) {
+        console.warn('[Chat] Impossible de détruire le modal de conversation proprement:', error);
+      }
+    } else {
+      const existing = typeof document !== 'undefined' ? document.getElementById('conversation-choice-modal') : null;
+      if (existing) {
+        try { existing.remove(); } catch {}
+      }
+    }
+    this._conversationModalVisible = false;
+    this._conversationModalCleanup = null;
+  }
+
+  _hasExistingConversations() {
+    try {
+      const order = this.state.get('threads.order');
+      if (Array.isArray(order) && order.length > 0) return true;
+    } catch {}
+
+    try {
+      const map = this.state.get('threads.map');
+      if (map && typeof map === 'object' && Object.keys(map).length > 0) return true;
+    } catch {}
+
+    try {
+      const stored = localStorage.getItem('emergence.threadId');
+      if (stored && stored.trim()) return true;
+    } catch {}
+
+    return false;
+  }
+
+  async _waitForThreadsBootstrap(timeoutMs = 3000) {
+    if (this._hasExistingConversations()) return true;
+
+    if (this._threadsBootstrapPromise) {
+      return this._threadsBootstrapPromise;
+    }
+
+    if (!this.eventBus?.on) {
+      this._threadsBootstrapPromise = new Promise((resolve) => {
+        setTimeout(() => resolve(this._hasExistingConversations()), timeoutMs);
+      });
+      const result = await this._threadsBootstrapPromise;
+      this._threadsBootstrapPromise = null;
+      return result;
+    }
+
+    this._threadsBootstrapPromise = new Promise((resolve) => {
+      let settled = false;
+      const listeners = [];
+
+      const cleanup = () => {
+        if (settled) return;
+        settled = true;
+        for (const off of listeners) {
+          try { if (typeof off === 'function') off(); } catch {}
+        }
+        listeners.length = 0;
+      };
+
+      const finalize = () => {
+        cleanup();
+        resolve(this._hasExistingConversations());
+      };
+
+      const safeOn = (eventName) => {
+        if (!eventName || !this.eventBus?.on) return;
+        try {
+          const off = this.eventBus.on(eventName, () => {
+            if (settled) return;
+            finalize();
+          });
+          if (typeof off === 'function') listeners.push(off);
+        } catch {}
+      };
+
+      safeOn(EVENTS?.THREADS_READY || 'threads:ready');
+      safeOn(EVENTS?.THREADS_LIST_UPDATED || 'threads:list_updated');
+
+      const timer = setTimeout(() => {
+        if (settled) return;
+        cleanup();
+        resolve(this._hasExistingConversations());
+      }, timeoutMs);
+
+      listeners.push(() => {
+        clearTimeout(timer);
+      });
+    });
+
+    try {
+      return await this._threadsBootstrapPromise;
+    } finally {
+      this._threadsBootstrapPromise = null;
+    }
   }
 
   /**
@@ -390,6 +608,7 @@ export default class ChatModule {
    */
   async _resumeLastConversation() {
     try {
+      this._teardownConversationModal(true);
       const threadsOrder = this.state.get('threads.order') || [];
       if (threadsOrder.length === 0) {
         console.warn('[Chat] Aucune conversation à reprendre, création d\'une nouvelle');
@@ -432,6 +651,7 @@ export default class ChatModule {
    */
   async _createNewConversation() {
     try {
+      this._teardownConversationModal(true);
       console.log('[Chat] Création d\'une nouvelle conversation...');
       const created = await api.createThread({ type: 'chat', title: 'Conversation' });
       const newThreadId = created?.id;

@@ -1069,3 +1069,105 @@
         color: #ffc107;
     }
 }
+
+/* Patch Notes Styles */
+.patch-notes-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.patch-note {
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.patch-note.current-version {
+    background: rgba(56, 189, 248, 0.05);
+    border-color: rgba(56, 189, 248, 0.3);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
+}
+
+.patch-note-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.patch-note-version {
+    font-size: 18px;
+    font-weight: 600;
+    color: rgba(56, 189, 248, 0.95);
+    margin: 0;
+}
+
+.patch-note.current-version .patch-note-version {
+    color: rgba(56, 189, 248, 1);
+}
+
+.patch-note-date {
+    font-size: 14px;
+    color: rgba(148, 163, 184, 0.7);
+}
+
+.patch-note-changes {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.patch-note-change {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: rgba(226, 232, 240, 0.85);
+}
+
+.change-icon {
+    flex-shrink: 0;
+    font-size: 16px;
+    margin-top: 2px;
+}
+
+.change-text {
+    flex: 1;
+}
+
+/* Type-specific styling */
+.patch-note-feature .change-icon { opacity: 1; }
+.patch-note-fix .change-icon { opacity: 0.9; }
+.patch-note-quality .change-icon { opacity: 1; }
+.patch-note-perf .change-icon { opacity: 1; }
+.patch-note-phase .change-icon { opacity: 1; }
+
+/* Responsive patch notes */
+@media (max-width: 640px) {
+    .patch-note-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .patch-note-version {
+        font-size: 16px;
+    }
+
+    .patch-note-date {
+        font-size: 13px;
+    }
+
+    .patch-note-change {
+        font-size: 14px;
+    }
+}

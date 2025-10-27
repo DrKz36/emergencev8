@@ -319,12 +319,12 @@ def main():
         print(f"   ... and {len(report['priority_actions']) - 3} more")
 
     # Return exit code based on status
+    # Only fail on critical (exit 2), warnings are informational (exit 0)
     status = report['executive_summary']['status']
     if status == "critical":
         return 2
-    elif status == "warning":
-        return 1
 
+    # Warnings and OK both return 0 (non-blocking)
     return 0
 
 

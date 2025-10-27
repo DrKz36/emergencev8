@@ -672,7 +672,7 @@ async def generate_html_email(reports):
             <p><strong>🤖 Guardian Autonomous Monitoring System</strong></p>
             <p>ÉMERGENCE V8 - Rapports automatiques toutes les 2h</p>
             <p style="margin-top:15px;">
-                Contact: gonzalefernando@gmail.com
+                Contact: emergence.app.ch@gmail.com
             </p>
         </div>
     </div>
@@ -728,8 +728,9 @@ Guardian Autonomous Monitoring System
     subject = f"🛡️ Guardian ÉMERGENCE - {global_status} - {datetime.now().strftime('%d/%m %H:%M')}"
 
     print("Envoi de l'email Guardian...")
+    admin_email = os.getenv("GUARDIAN_ADMIN_EMAIL", "emergence.app.ch@gmail.com")
     success = await email_service.send_custom_email(
-        to_email="gonzalefernando@gmail.com",
+        to_email=admin_email,
         subject=subject,
         html_body=html_body,
         text_body=text_body
@@ -765,7 +766,7 @@ async def main():
     print()
     print("=" * 60)
     if success:
-        print("SUCCÈS - Email envoyé à gonzalefernando@gmail.com")
+        print(f"SUCCÈS - Email envoyé à {os.getenv('GUARDIAN_ADMIN_EMAIL', 'emergence.app.ch@gmail.com')}")
     else:
         print("ÉCHEC - Vérifier la configuration SMTP")
     print("=" * 60)

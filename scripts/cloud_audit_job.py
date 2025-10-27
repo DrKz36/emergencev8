@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 # Configuration
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "gonzalefernando@gmail.com")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "emergence.app.ch@gmail.com")
 TARGET_REVISION = "emergence-app-00501-zon"
 SERVICE_URL = os.getenv("SERVICE_URL", "https://emergence-app-574876800592.europe-west1.run.app")
 

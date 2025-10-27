@@ -91,6 +91,76 @@
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.7)) !important;
 }
 
+/* ===== ORIENTATION LOCK OVERLAY ===== */
+body.orientation-locked {
+  overflow: hidden !important;
+  touch-action: none !important;
+  overscroll-behavior: contain !important;
+}
+
+#orientation-lock-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 32px calc(24px + env(safe-area-inset-left, 0px)) calc(32px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-right, 0px)) !important;
+  background: rgba(10, 14, 24, 0.92) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  z-index: 2147483647 !important;
+  pointer-events: auto !important;
+}
+
+#orientation-lock-overlay[hidden] {
+  display: none !important;
+}
+
+#orientation-lock-overlay .orientation-lock-card {
+  width: min(90%, 320px) !important;
+  padding: 28px 24px !important;
+  border-radius: 24px !important;
+  border: 1px solid rgba(148, 163, 184, 0.35) !important;
+  background: rgba(15, 23, 42, 0.88) !important;
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.65) !important;
+  text-align: center !important;
+  color: #e2e8f0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+
+#orientation-lock-overlay .orientation-lock-icon {
+  width: 64px !important;
+  height: 64px !important;
+  margin: 0 auto !important;
+  border-radius: 20px !important;
+  display: grid !important;
+  place-items: center !important;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(37, 99, 235, 0.55)) !important;
+  color: #f1f5f9 !important;
+  box-shadow: 0 12px 34px rgba(37, 99, 235, 0.4) !important;
+}
+
+#orientation-lock-overlay .orientation-lock-icon svg {
+  width: 34px !important;
+  height: 34px !important;
+}
+
+#orientation-lock-overlay .orientation-lock-title {
+  font-size: 1.05rem !important;
+  margin: 0 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+#orientation-lock-overlay .orientation-lock-text {
+  margin: 0 !important;
+  font-size: 0.95rem !important;
+  line-height: 1.5 !important;
+  color: rgba(226, 232, 240, 0.85) !important;
+}
+
 /* ===== MENU DÉROULANT - VISIBILITÉ DES LIENS ===== */
 .app-header .mobile-nav,
 .header-mobile-nav {

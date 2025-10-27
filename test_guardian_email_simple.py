@@ -97,7 +97,7 @@ async def main():
         return False
 
     # Send email
-    to_email = "gonzalefernando@gmail.com"
+    to_email = "emergence.app.ch@gmail.com"
     print(f"📧 Sending Guardian report to: {to_email}")
     print()
 
@@ -144,7 +144,7 @@ async def main():
         print("   - 💻 Code snippets suspects (2 fichiers)")
         print("   - 🔀 Commits récents (3 commits)")
         print()
-        print("👀 Vérifie ta boîte mail: gonzalefernando@gmail.com")
+        print("👀 Vérifie ta boîte mail: emergence.app.ch@gmail.com")
         print()
         print("📧 Si l'email n'apparaît pas, check:")
         print("   - Dossier Spam/Junk")

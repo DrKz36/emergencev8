@@ -121,6 +121,425 @@ npm run dev     # Dev server (PWA fonctionnel en HTTPS/localhost)
 - [PWA Checklist](https://web.dev/pwa-checklist/) - Best practices PWA
 - [Service Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API) - Documentation MDN
 - [IndexedDB API](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API) - Stockage offline
+## [beta-3.2.2] - 2025-10-27
+
+### ✅ Qualité & Maintenance
+
+**Configuration Email Officielle - emergence.app.ch@gmail.com**
+
+Migration du compte email système vers le compte officiel `emergence.app.ch@gmail.com` avec configuration SMTP Gmail complète.
+
+**Changements:**
+
+1. **Configuration SMTP Gmail**
+   - Compte: `emergence.app.ch@gmail.com`
+   - App Password Gmail configuré: `lubmqvvmxubdqsxm`
+   - SMTP: `smtp.gmail.com:587` avec TLS activé
+   - Utilisé pour: Password reset, Guardian reports, Beta invitations
+   - **Fichiers:** [`.env`](.env), [`.env.example`](.env.example)
+
+2. **Script de test email**
+   - Nouveau script: `scripts/test/test_email_config.py`
+   - Valide configuration SMTP avec envoi de test
+   - Affiche diagnostic complet (host, port, user, password, TLS)
+   - Fix encoding UTF-8 pour console Windows (emojis supportés)
+   - **Fichier:** [`scripts/test/test_email_config.py`](scripts/test/test_email_config.py)
+
+3. **Documentation mise à jour**
+   - `.env.example` synchronisé avec nouvelle config
+   - Commentaires explicites sur usage (password reset, Guardian, beta)
+   - **Fichier:** [`.env.example`](.env.example)
+
+**Impact:**
+- ✅ Email professionnel dédié au projet ÉMERGENCE
+- ✅ Séparation compte personnel vs. compte app
+- ✅ Configuration testée et validée (envoi test réussi)
+- ✅ Script de validation reproductible
+
+**Fichiers modifiés:**
+- `.env` - Configuration email officielle
+- `.env.example` - Documentation config
+- `scripts/test/test_email_config.py` - Script de test créé
+- `src/version.js` - Version beta-3.2.2
+- `src/frontend/version.js` - Synchronisation version
+- `package.json` - Version beta-3.2.2
+
+---
+
+## [beta-3.2.1] - 2025-10-26
+
+### 🆕 Fonctionnalités Ajoutées
+
+**Module "À Propos" - Changelog Enrichi avec 5 Dernières Révisions Détaillées**
+
+Enrichissement majeur du module "À propos" créé en beta-3.2.0. Le changelog affiche désormais les **5 dernières versions avec le contenu COMPLET du CHANGELOG.md**, au lieu des bullet points courts.
+
+**Changements:**
+
+1. **Export `FULL_CHANGELOG` dans `src/version.js`**
+   - Structure JavaScript complète des 5 dernières versions
+   - Chaque version contient: `version`, `date`, `title`, `description`, `sections[]`
+   - Chaque section contient: `type` (features/fixes/quality/impact/files), `title`, `items[]`
+   - Chaque item contient: `title`, `description`, `file` (optionnel)
+   - **Fichiers:** [`src/version.js`](src/version.js), [`src/frontend/version.js`](src/frontend/version.js)
+
+2. **Refonte `renderChangelog()` dans `settings-about.js`**
+   - Utilise `FULL_CHANGELOG` au lieu de `PATCH_NOTES` (13 versions courtes)
+   - Affichage structuré avec titre version, description, sections détaillées
+   - Nouvelles méthodes: `renderChangelogSection()`, `renderChangelogSectionItems()`
+   - **Fichier:** [`settings-about.js`](src/frontend/features/settings/settings-about.js)
+
+3. **Styles CSS enrichis**
+   - 16 nouvelles classes CSS pour affichage détaillé
+   - Badges `badge-impact` et `badge-files` (orange, gris)
+   - Cartes détaillées avec icônes, titres, descriptions, fichiers
+   - Listes simples pour sections Impact/Files
+   - Cartes détaillées pour sections Features/Fixes/Quality
+   - **Fichier:** [`settings-about.css`](src/frontend/features/settings/settings-about.css)
+
+**Fichiers modifiés:**
+- `src/version.js` - Export `FULL_CHANGELOG` (5 versions)
+- `src/frontend/version.js` - Synchronisation
+- `src/frontend/features/settings/settings-about.js` - Refonte renderChangelog()
+- `src/frontend/features/settings/settings-about.css` - 16 classes CSS enrichies
+- `package.json` - Version beta-3.2.1
+- `CHANGELOG.md` - Entrée beta-3.2.1
+
+### 🔧 Corrections
+
+**Fix Critique - Orientation Lock Desktop**
+
+Correction du bug d'affichage desktop qui forçait le mode mobile portrait sur certains écrans.
+
+**Problème:**
+- La fonction `isMobileViewport()` utilisait `Math.min(width, height) <= 900` au lieu de vérifier la largeur uniquement
+- Sur desktop avec petite résolution (ex: 1366x768), le côté minimum (768px) était considéré comme mobile
+- En mode landscape → overlay "Tourne ton appareil" affiché → application inutilisable sur desktop
+
+**Solution:**
+- Changé la détection pour vérifier `window.innerWidth <= 960` uniquement
+- Correspond maintenant au breakpoint CSS `--orientation-lock-max-width: 960px`
+- Desktop landscape n'est plus considéré comme viewport mobile
+
+**Fichier modifié:**
+- [`src/frontend/main.js`](src/frontend/main.js) - Fonction `isMobileViewport()` ligne 407-415
+
+**Impact Global:**
+- ✅ **Détails complets** - Utilisateurs voient toutes les sections du CHANGELOG.md (Features, Impact, Files)
+- ✅ **Contexte technique** - Descriptions longues, fichiers modifiés, contexte complet
+- ✅ **Meilleure lisibilité** - Sections séparées avec badges colorés, icônes, cards
+- ✅ **5 dernières versions** - Focus sur les révisions récentes (au lieu de 13 versions courtes)
+- ✅ **Desktop utilisable** - Fix critique orientation lock qui bloquait certains écrans desktop
+
+---
+
+## [beta-3.2.0] - 2025-10-26
+
+### 🆕 Fonctionnalités Ajoutées
+
+**Nouveau Module "À Propos" dans Paramètres**
+
+Ajout d'un module complet dédi é à l'affichage des informations de version, du changelog enrichi et des crédits du projet.
+
+**Fonctionnalités:**
+
+1. **Onglet "À propos" dans Paramètres**
+   - Navigation dédiée avec icône et description
+   - Intégration complète dans le module Settings
+   - **Fichier:** [`settings-main.js`](src/frontend/features/settings/settings-main.js)
+
+2. **Affichage Changelog Enrichi**
+   - Historique de 13 versions (de beta-1.0.0 à beta-3.2.0)
+   - Classement automatique par type de changement (Phase, Nouveauté, Qualité, Performance, Correction)
+   - Badges colorés pour chaque type avec compteurs
+   - Mise en évidence de la version actuelle
+   - **Fichier:** [`settings-about.js`](src/frontend/features/settings/settings-about.js)
+
+3. **Section Informations Système**
+   - Version actuelle avec badges (Phase, Progression, Fonctionnalités)
+   - Grille d'informations (Date build, Version, Phase, Progression)
+   - Logo ÉMERGENCE avec design moderne
+   - **Fichier:** [`settings-about.js:renderVersionInfo()`](src/frontend/features/settings/settings-about.js)
+
+4. **Section Modules Installés**
+   - Affichage des 15 modules actifs
+   - Grille responsive avec icônes et versions
+   - Statut actif pour chaque module
+   - **Fichier:** [`settings-about.js:renderModules()`](src/frontend/features/settings/settings-about.js)
+
+5. **Section Crédits & Remerciements**
+   - Informations développeur principal
+   - Remerciements spéciaux (Marem ❤️)
+   - Technologies clés avec tags interactifs
+   - Description écosystème Guardian
+   - Footer avec contact et copyright
+   - **Fichier:** [`settings-about.js:renderCredits()`](src/frontend/features/settings/settings-about.js)
+
+6. **Design & UX**
+   - Style glassmorphism cohérent avec le reste de l'application
+   - Animations fluides et transitions
+   - Responsive mobile/desktop
+   - Badges et tags colorés par catégorie
+   - **Fichier:** [`settings-about.css`](src/frontend/features/settings/settings-about.css)
+
+7. **Enrichissement Historique Versions**
+   - Extension de 5 à 13 versions affichées dans `src/version.js`
+   - Ajout de toutes les versions depuis beta-1.0.0
+   - Détails complets pour chaque version (date, type, description)
+   - **Fichiers:** [`src/version.js`](src/version.js), [`src/frontend/version.js`](src/frontend/version.js)
+
+**Fichiers modifiés:**
+- `src/frontend/features/settings/settings-about.js` (créé - 350 lignes)
+- `src/frontend/features/settings/settings-about.css` (créé - 550 lignes)
+- `src/frontend/features/settings/settings-main.js` (import module, onglet, chargement)
+- `src/version.js` (version beta-3.2.0 + 13 versions historique)
+- `src/frontend/version.js` (synchronisation version)
+- `package.json` (version beta-3.2.0)
+- `CHANGELOG.md` (entrée beta-3.2.0)
+
+**Impact:**
+- ✅ **Transparence complète** - Utilisateurs voient tout l'historique des évolutions
+- ✅ **Documentation intégrée** - Changelog accessible directement dans l'app
+- ✅ **Crédits visibles** - Reconnaissance du développement et des technologies
+- ✅ **UX moderne** - Design glassmorphism avec animations et badges colorés
+
+---
+
+## [beta-3.1.3] - 2025-10-26
+
+### ✨ Nouvelle Fonctionnalité
+
+**Métrique nDCG@k Temporelle - Évaluation Ranking avec Fraîcheur**
+
+Implémentation d'une métrique d'évaluation interne pour mesurer l'impact des boosts de fraîcheur et entropie dans le moteur de ranking ÉMERGENCE V8.
+
+**Fonctionnalités:**
+
+1. **Métrique nDCG@k temporelle (`ndcg_time_at_k`)**
+   - Formule : `DCG^time@k = Σ (2^rel_i - 1) * exp(-λ * Δt_i) / log2(i+1)`
+   - Pénalisation exponentielle selon la fraîcheur des documents
+   - Paramètres configurables : `k`, `T_days`, `lambda`
+   - Fichier : `src/backend/features/benchmarks/metrics/temporal_ndcg.py`
+
+2. **Intégration dans BenchmarksService**
+   - Méthode helper : `BenchmarksService.calculate_temporal_ndcg()`
+   - Import de la métrique dans `features/benchmarks/service.py`
+   - Exposition pour réutilisation dans d'autres services
+
+3. **Endpoint API**
+   - `POST /api/benchmarks/metrics/ndcg-temporal` - Calcul métrique à la demande
+   - Pydantic models pour validation : `RankedItem`, `TemporalNDCGRequest`
+   - Retour JSON avec score nDCG@k + métadonnées
+
+4. **Tests complets**
+   - 18 tests unitaires dans `tests/backend/features/test_benchmarks_metrics.py`
+   - Couverture : cas edge, décroissance temporelle, trade-offs pertinence/fraîcheur
+   - Validation paramètres (k, T_days, lambda)
+   - Scénarios réalistes (recherche documents)
+
+**Impact:**
+- ✅ **Quantification boosts fraîcheur** - Mesure réelle impact ranking temporel
+- ✅ **Métrique réutilisable** - Accessible via service pour benchmarks futurs
+- ✅ **API externe** - Endpoint pour calcul à la demande
+- ✅ **Type-safe** - Type hints complets + validation Pydantic
+
+**Fichiers modifiés:**
+- `src/backend/features/benchmarks/service.py` - Import + méthode helper
+- `src/backend/features/benchmarks/router.py` - Endpoint POST + Pydantic models
+- `src/backend/features/benchmarks/metrics/temporal_ndcg.py` - Métrique complète
+- `tests/backend/features/test_benchmarks_metrics.py` - 18 tests
+
+**Référence:** Prompt ÉMERGENCE révision 00298-g8j (Phase P2 complétée)
+### 🔧 Corrections
+
+- **Chat Mobile – Composer & Scroll**
+  - Décale le footer du chat au-dessus de la barre de navigation portrait pour garder la zone de saisie accessible.
+  - Ajoute un padding dynamique côté messages pour éviter les zones mortes sous la bottom nav sur iOS/Android.
+  - **Fichiers :** [`chat.css`](src/frontend/features/chat/chat.css)
+
+### 📦 Versioning & Patch Notes
+
+- `src/version.js` & `src/frontend/version.js` — Version `beta-3.1.3`, patch notes mises à jour.
+- `package.json` — Synchronisation version npm (`beta-3.1.3`).
+
+---
+
+## [beta-3.1.2] - 2025-10-26
+
+### ✨ Amélioration Qualité
+
+**Refactor Complet Documentation Inter-Agents**
+
+**Problème résolu:** Conflits merge récurrents sur `AGENT_SYNC.md` et `docs/passation.md` (454KB !) lors de travail parallèle des agents.
+
+**Solution implémentée - Structure fichiers séparés par agent:**
+
+1. **Fichiers de synchronisation séparés:**
+   - `AGENT_SYNC_CLAUDE.md` ← Claude Code écrit ici
+   - `AGENT_SYNC_CODEX.md` ← Codex GPT écrit ici
+   - `SYNC_STATUS.md` ← Vue d'ensemble centralisée (index)
+
+2. **Journaux de passation séparés:**
+   - `docs/passation_claude.md` ← Journal Claude (48h max, auto-archivé)
+   - `docs/passation_codex.md` ← Journal Codex (48h max, auto-archivé)
+   - `docs/archives/passation_archive_*.md` ← Archives >48h
+
+3. **Rotation stricte 48h:**
+   - Anciennes entrées archivées automatiquement
+   - Fichiers toujours légers (<50KB)
+
+**Résultat:**
+- ✅ **Zéro conflit merge** sur docs de synchronisation (fichiers séparés)
+- ✅ **Meilleure coordination** (chaque agent voit clairement ce que fait l'autre)
+- ✅ **Lecture rapide** (SYNC_STATUS.md = 2 min vs 10 min avant)
+- ✅ **Rotation auto** (passation.md archivé de 454KB → <20KB)
+
+**Fichiers modifiés:**
+- Créés: `SYNC_STATUS.md`, `AGENT_SYNC_CLAUDE.md`, `AGENT_SYNC_CODEX.md`
+- Créés: `docs/passation_claude.md`, `docs/passation_codex.md`
+- Archivé: `docs/passation.md` (454KB) → `docs/archives/passation_archive_2025-10-01_to_2025-10-26.md`
+- Mis à jour: `CLAUDE.md`, `CODEV_PROTOCOL.md`, `CODEX_GPT_GUIDE.md` (nouvelle structure de lecture)
+
+### 📦 Versioning & Patch Notes
+
+- `src/version.js` & `src/frontend/version.js` — Version `beta-3.1.2`, patch notes ajoutées.
+- `package.json` — Synchronisation version npm (`beta-3.1.2`).
+
+---
+
+## [beta-3.1.1] - 2025-10-26
+
+### 🔧 Corrections
+
+- **Module Dialogue - Modal de reprise**
+  - Attente automatique du chargement des threads pour proposer l'option « Reprendre » quand des conversations existent.
+  - Mise à jour dynamique du contenu du modal si les données arrivent après affichage.
+  - **Fichiers :** [chat.js](src/frontend/features/chat/chat.js)
+
+### 📦 Versioning & Patch Notes
+
+- `src/version.js` & `src/frontend/version.js` — Version `beta-3.1.1`, entrée patch notes dédiée.
+- `package.json` — Synchronisation version npm (`beta-3.1.1`).
+
+## [beta-3.1.0] - 2025-10-26
+
+### 🆕 Fonctionnalités Ajoutées
+
+**1. Système de Webhooks Complet (P3.11)**
+- Endpoints REST `/api/webhooks/*` (CRUD + deliveries + stats)
+- Événements: thread.created, message.sent, analysis.completed, debate.completed, document.uploaded
+- Delivery HTTP POST avec HMAC SHA256 pour sécurité
+- Retry automatique 3x avec backoff (5s, 15s, 60s)
+- UI complète: Settings > Webhooks (modal, liste, logs, stats)
+- Tables BDD: `webhooks` + `webhook_deliveries` (migration 010)
+
+**Fichiers:**
+- Backend: [webhooks/router.py](src/backend/features/webhooks/router.py)
+- Frontend: [settings-webhooks.js](src/frontend/features/settings/settings-webhooks.js)
+- **PR:** #12
+
+**2. Scripts de Monitoring Production**
+- Script health check avec JWT auth: [check-prod-health.ps1](scripts/check-prod-health.ps1)
+- Vérification endpoint `/ready` avec Bearer token (résout 403)
+- Métriques Cloud Run via gcloud (optionnel)
+- Logs récents (20 derniers, optionnel)
+- Rapport markdown auto-généré dans `reports/prod-health-report.md`
+- Détection OS automatique (python/python3)
+- Documentation complète: [README_HEALTH_CHECK.md](scripts/README_HEALTH_CHECK.md)
+
+**Fichiers:**
+- [scripts/check-prod-health.ps1](scripts/check-prod-health.ps1)
+- **PR:** #17
+
+**3. Système de Patch Notes**
+- Patch notes centralisées dans `src/version.js`
+- Affichage automatique dans module "À propos" (Paramètres)
+- Historique des 2 dernières versions visible
+- Icônes par type de changement (feature, fix, quality, perf, phase)
+- Mise en évidence de la version actuelle
+
+**Fichiers:**
+- [src/version.js](src/version.js) - Système centralisé
+- [settings-main.js](src/frontend/features/settings/settings-main.js) - Affichage UI
+
+### ✨ Qualité & Performance
+
+**4. Mypy 100% Clean - Type Safety Complet**
+- 471 erreurs mypy corrigées → **0 erreurs** restantes
+- Type hints complets sur tout le backend Python
+- Strict mode mypy activé
+- Guide de style mypy intégré: [MYPY_STYLE_GUIDE.md](docs/MYPY_STYLE_GUIDE.md)
+
+**Commits:**
+- Batch final: `439f8f4` (471→0 erreurs)
+- Documentation: `e9bd1e5`
+
+**5. Bundle Optimization Frontend**
+- Lazy loading: Chart.js, jsPDF, PapaParse
+- Réduction taille bundle initial
+- Amélioration temps de chargement page
+
+**Fichiers:**
+- [vite.config.js](vite.config.js) - Config optimisation
+- **Commit:** `fa6c87c`
+
+### 🔧 Corrections
+
+**6. Cockpit - 3 Bugs SQL Critiques**
+- Bug SQL `no such column: agent` → `agent_id`
+- Filtrage session_id trop restrictif → `session_id=None`
+- Agents fantômes dans Distribution → whitelist stricte
+- Graphiques vides → fetch données + backend metrics
+
+**Fichiers:**
+- [cockpit/router.py](src/backend/features/cockpit/router.py)
+- **PRs:** #11, #10, #7
+
+**7. Module Documents - Layout Desktop/Mobile**
+- Fix layout foireux desktop et mobile
+- Résolution problèmes d'affichage et scroll
+
+**Commit:** `a616ae9`
+
+**8. Module Chat - 4 Bugs UI/UX Critiques**
+- Modal démarrage corrigé
+- Scroll automatique résolu
+- Routing réponses agents fixé
+- Duplication messages éliminée
+
+**Commits:**
+- `bd197d7`, `fdc59a4`, `a9289e2`
+
+**9. Tests - 5 Flaky Tests Corrigés**
+- ChromaDB Windows compatibility
+- Mocks RAG améliorés
+- Stabilité suite de tests
+
+**Commit:** `598d456`
+
+### 📝 Documentation
+
+**10. Harmonisation Documentation Multi-Agents**
+- AGENTS.md harmonisé avec CODEV_PROTOCOL.md et CLAUDE.md
+- CODEX_SYSTEM_PROMPT.md unifié
+- Suppression ARBO-LOCK (obsolète)
+- Ajout directives versioning obligatoires
+
+**Commits:**
+- `9dfd2f1`, `16dbdc8`, `58e4ede`
+
+**11. Guide Versioning Complet**
+- [VERSIONING_GUIDE.md](docs/VERSIONING_GUIDE.md) mis à jour
+- Règles d'incrémentation clarifiées
+- Workflow de mise à jour documenté
+
+### 🎯 Impact Global
+
+- ✅ **78% features complétées** (18/23) - +4% vs beta-3.0.0
+- ✅ **Phase P3 démarrée** (1/4 features done - P3.11 webhooks)
+- ✅ **Qualité code maximale** (mypy 100% clean)
+- ✅ **Monitoring production** automatisé
+- ✅ **Intégrations externes** possibles via webhooks
 
 ---
 
