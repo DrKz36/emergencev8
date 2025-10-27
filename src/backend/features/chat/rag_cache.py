@@ -276,7 +276,7 @@ class RAGCache:
                 self.redis_client.scan(cursor, match='rag:query:*', count=100),
             )
             if keys:
-                deleted += int(self.redis_client.delete(*keys))
+                deleted += cast(int, self.redis_client.delete(*keys))
             if cursor == 0:
                 break
         logger.info(f"[RAG Cache] Flushed {deleted} Redis keys")

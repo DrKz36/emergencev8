@@ -1,11 +1,125 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-10-27 15:55 CET (Claude Code)
+**Dernière mise à jour:** 2025-10-27 18:25 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
 
 ---
 
-## ✅ Session COMPLÉTÉE (2025-10-27 15:55 CET)
+## ✅ Session COMPLÉTÉE (2025-10-27 18:25 CET)
+
+### ✅ AUDIT P2 COMPLÉTÉ - OPTIMISATIONS + PWA TEST GUIDE
+
+**Status:** ✅ COMPLÉTÉ - Toutes optimisations P2 terminées
+
+**Ce qui a été fait:**
+
+**🔧 Problèmes identifiés (P2):**
+- P2.1 : Archivage docs passation >48h (si nécessaire)
+- P2.2 : Tests PWA offline/online (validation build + guide manuel)
+
+**🔨 Solutions appliquées:**
+
+1. **P2.1 - Docs passation analysées**
+   - Fichiers: passation_claude.md (36KB), passation_codex.md (6.6KB)
+   - Maintenant: 2025-10-27 18:12, Cutoff 48h: 2025-10-25 18:12
+   - Entrées les plus anciennes: 2025-10-26 15:30 (26h, dans fenêtre 48h)
+   - ✅ Résultat: Aucune entrée à archiver (tout <48h, fichiers <50KB)
+
+2. **P2.2 - PWA build validé + guide test manuel créé**
+   - ✅ dist/sw.js (2.7KB) - Service Worker cache shell 17 fichiers
+   - ✅ dist/manifest.webmanifest (689B) - Config PWA (nom, icônes, thème)
+   - ✅ OfflineSyncManager intégré dans main.js (ligne 23, 1022)
+   - ✅ Manifest lié dans index.html (ligne 8)
+   - ✅ Guide test complet créé: docs/PWA_TEST_GUIDE.md (196 lignes)
+
+**📁 Fichiers modifiés (1):**
+- `docs/PWA_TEST_GUIDE.md` (créé - 196 lignes) - guide test PWA complet
+
+**✅ PWA Test Guide inclut:**
+- 6 tests manuels (Service Worker, Cache, Offline, Outbox, Sync, Install)
+- Acceptance criteria checklist
+- Troubleshooting section
+- Known limitations (30 snapshots max, 200 msg/thread, 750ms sync delay)
+- Next steps (manual browser tests, production, mobile, E2E automation)
+
+**🎯 Impact:**
+- ✅ P2 (optimisations) : 2/2 complétées
+- ✅ PWA ready for manual testing (Chrome DevTools)
+- ✅ Documentation test complète pour Codex/QA
+
+**📊 Commits:**
+- `5be68be` - docs(pwa): Add comprehensive PWA testing guide
+
+**🚀 Prochaines Actions Recommandées:**
+- Tests manuels PWA (Chrome DevTools - voir PWA_TEST_GUIDE.md)
+- Continuer roadmap features P3 (API publique, agents custom)
+- E2E automation PWA (Playwright - futur)
+
+---
+
+## ✅ Session PRÉCÉDENTE (2025-10-27 17:40 CET)
+
+### ✅ AUDIT P1 COMPLÉTÉ - VERSIONING UNIFIÉ + MYPY 100% CLEAN
+
+**Status:** ✅ COMPLÉTÉ - Tous les problèmes mineurs (P1) résolus
+
+**Ce qui a été fait:**
+
+**🔧 Problèmes identifiés (P1):**
+- P1.1 : Versioning incohérent (package.json double déclaration, src/version.js contradictions)
+- P1.2 : Guardian warnings (Argus lancé sans params)
+- P1.3 : Mypy 1 erreur restante (rag_cache.py ligne 279)
+
+**🔨 Solutions appliquées:**
+
+1. **P1.1 - Versioning unifié (beta-3.3.0)**
+   - Fix package.json : supprimé double déclaration "version" (ligne 4 et 5 → ligne 4 seulement)
+   - Fix src/version.js : unifié CURRENT_RELEASE à beta-3.3.0 (PWA Mode Hors Ligne)
+   - Fix src/frontend/version.js : synchronisé avec src/version.js
+   - Fix ROADMAP.md : 4 corrections pour uniformiser à beta-3.3.0
+   - Build frontend : OK (1.18s)
+
+2. **P1.2 - Guardian warnings analysés**
+   - Argus (DevLogs) : warning non-critique (script lancé sans --session-id/--output)
+   - Guardian déjà non-bloquant en CI (fix P0.4 précédent)
+   - Acceptable tel quel (Argus optionnel pour logs dev locaux)
+
+3. **P1.3 - Mypy 100% clean (rag_cache.py)**
+   - Fix ligne 279 : `int(self.redis_client.delete(*keys))` → `cast(int, self.redis_client.delete(*keys))`
+   - Conforme MYPY_STYLE_GUIDE.md (cast pour clarifier type)
+   - Mypy backend complet : ✅ Success (137 fichiers, 0 erreurs)
+
+**📁 Fichiers modifiés (5):**
+- `package.json` (+0 -1) - supprimé double déclaration version
+- `src/version.js` (+3 -7) - unifié CURRENT_RELEASE beta-3.3.0
+- `src/frontend/version.js` (+3 -4) - synchronisé version
+- `ROADMAP.md` (+4 -4) - uniformisé beta-3.3.0 (4 corrections)
+- `src/backend/features/chat/rag_cache.py` (+1 -1) - cast(int, ...) pour mypy
+
+**✅ Tests:**
+- ✅ Build frontend : OK (1.18s)
+- ✅ Mypy backend : Success (137 fichiers)
+- ✅ Tests backend : 407 passed, 5 failed (51.72s)
+  - 5 échecs préexistants (test_consolidated_memory_cache.py import backend.shared.config)
+  - Mes fixes P1 n'ont cassé aucun test ✅
+
+**🎯 Impact:**
+- ✅ Version cohérente dans tous les fichiers (beta-3.3.0)
+- ✅ Type safety 100% backend (mypy clean)
+- ✅ Guardian warnings identifiés (non-critiques)
+- ✅ P1 (problèmes mineurs) : 3/3 complétés
+
+**📊 Commit:**
+- `179fce5` - fix(audit): Complete P1 fixes - Versioning + Mypy clean
+
+**🚀 Prochaines Actions Recommandées:**
+- P2 : Optimisations (optionnelles) - Cleanup docs passation >48h, tests PWA offline/online
+- Continuer roadmap features P3 (API publique, agents custom)
+- Fixer 5 tests cassés backend.shared.config import (hors scope P1)
+
+---
+
+## ✅ Session PRÉCÉDENTE (2025-10-27 15:55 CET)
 
 ### ✅ FIX TESTS GUARDIAN EMAIL + DEPRECATION + TIMESTAMPS
 
