@@ -7,6 +7,82 @@
 
 ---
 
+## [2025-10-27 11:45] — Agent: Claude Code
+
+### Contexte
+Configuration du système email avec le compte Gmail officiel du projet `emergence.app.ch@gmail.com` au lieu du compte personnel. Demande explicite de l'utilisateur avec app password fourni.
+
+### Problème identifié
+- Email système utilisait le compte personnel `gonzalefernando@gmail.com`
+- Besoin de séparer compte app vs. compte perso
+- Besoin d'un compte email professionnel dédié au projet
+
+### Actions effectuées
+
+**✅ Configuration SMTP Gmail officielle:**
+
+1. **Variables d'environnement mises à jour** (`.env` + `.env.example`)
+   - `SMTP_USER`: `gonzalefernando@gmail.com` → `emergence.app.ch@gmail.com`
+   - `SMTP_PASSWORD`: App password Gmail fourni par utilisateur (`lubmqvvmxubdqsxm`)
+   - `SMTP_FROM_EMAIL`: Synchronisé avec SMTP_USER
+   - `SMTP_HOST`: `smtp.gmail.com` (inchangé)
+   - `SMTP_PORT`: `587` (inchangé)
+   - `SMTP_USE_TLS`: `1` (inchangé)
+   - `EMAIL_ENABLED`: `1` (inchangé)
+
+2. **Script de test créé** (`scripts/test/test_email_config.py`)
+   - Charge `.env` avec dotenv
+   - Affiche diagnostic complet (host, port, user, password, TLS)
+   - Envoie email de test à gonzalefernando@gmail.com
+   - Fix encoding UTF-8 Windows pour support emojis console
+   - **Test réussi** : Email envoyé avec succès ✅
+
+3. **Documentation mise à jour**
+   - `.env.example` : Section "Email Configuration" enrichie avec commentaires
+   - Mention explicite : "utilisé pour password reset, Guardian reports, beta invitations"
+
+4. **Versioning** (beta-3.2.1 → beta-3.2.2)
+   - PATCH car changement de config, pas de code fonctionnel
+   - `src/version.js` + `src/frontend/version.js` + `package.json` synchronisés
+   - Patch notes ajoutées (5 changements de type quality/fix)
+   - `CHANGELOG.md` : Entrée complète beta-3.2.2 avec impact et fichiers modifiés
+
+### Résultat
+- ✅ **Email professionnel dédié** - Compte emergence.app.ch configuré
+- ✅ **Séparation claire** - App vs. compte perso
+- ✅ **Configuration validée** - Test email envoyé avec succès
+- ✅ **Script reproductible** - Test automatisé pour validation future
+- ✅ **Documentation synchronisée** - .env.example à jour
+
+### Tests effectués
+- ✅ Script `test_email_config.py` : Email envoyé avec succès
+- ✅ `npm run build` : OK (969ms)
+- ✅ `ruff check src/backend/` : All checks passed!
+
+### Fichiers modifiés
+- `.env` (config email officielle)
+- `.env.example` (documentation)
+- `scripts/test/test_email_config.py` (créé)
+- `src/version.js` (beta-3.2.2)
+- `src/frontend/version.js` (sync)
+- `package.json` (beta-3.2.2)
+- `CHANGELOG.md` (entrée beta-3.2.2)
+
+### Prochaines actions recommandées
+1. Committer + pusher sur main
+2. Tester en production : Password reset email
+3. Tester en production : Guardian report email
+
+### Décisions techniques
+- **Choix PATCH** : Config change uniquement, pas de code nouveau
+- **Script test** : Réutilisable pour valider config email à tout moment
+- **Fix encoding Windows** : Support UTF-8 console pour emojis
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-26 16:20] — Agent: Claude Code
 
 ### Contexte

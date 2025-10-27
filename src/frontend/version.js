@@ -29,9 +29,9 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.2.1',
-  name: 'Changelog Enrichi - 5 Dernières Révisions Détaillées',
-  date: '2025-10-26',
+  version: 'beta-3.2.2',
+  name: 'Configuration Email Officielle - emergence.app.ch@gmail.com',
+  date: '2025-10-27',
 };
 
 export const VERSION = CURRENT_RELEASE.version;
@@ -46,6 +46,18 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.2.2',
+    tagline: 'Configuration Email Officielle - emergence.app.ch@gmail.com',
+    date: '2025-10-27',
+    changes: [
+      { type: 'quality', text: 'Configuration email officielle - Compte emergence.app.ch@gmail.com configuré avec app password Gmail' },
+      { type: 'quality', text: 'SMTP Gmail - smtp.gmail.com:587 avec TLS activé pour tous les emails (password reset, Guardian reports, beta invitations)' },
+      { type: 'quality', text: 'Script de test email - scripts/test/test_email_config.py créé pour valider la configuration SMTP' },
+      { type: 'quality', text: 'Documentation .env.example - Mise à jour avec la nouvelle configuration email officielle' },
+      { type: 'fix', text: 'Fix encoding Windows - Correction du script de test pour supporter les emojis UTF-8 sur console Windows' }
+    ]
+  },
   {
     version: 'beta-3.2.1',
     tagline: 'Changelog Enrichi - 5 Dernières Révisions Détaillées',
