@@ -20,7 +20,9 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.2.1 : Changelog enrichi - 5 révisions détaillées avec sections complètes [ACTUEL]
+ * - beta-3.3.0 : PWA Mode Hors Ligne (P3.10 Complétée) [ACTUEL]
+ * - beta-3.2.2 : Configuration Email Officielle - emergence.app.ch@gmail.com
+ * - beta-3.2.1 : Changelog enrichi - 5 révisions détaillées avec sections complètes
  * - beta-3.2.0 : Module À Propos avec Changelog enrichi (13 versions affichées)
  * - beta-3.1.3 : Métrique nDCG@k temporelle + garde composer mobile
  * - beta-3.1.2 : Refactor docs inter-agents (fichiers séparés - zéro conflit merge)
@@ -29,8 +31,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.2.2',
-  name: 'Configuration Email Officielle - emergence.app.ch@gmail.com',
+  version: 'beta-3.3.0',
+  name: 'PWA Mode Hors Ligne (P3.10)',
   date: '2025-10-27',
 };
 
