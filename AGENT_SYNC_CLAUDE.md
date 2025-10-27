@@ -1,11 +1,63 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-10-27 17:40 CET (Claude Code)
+**Dernière mise à jour:** 2025-10-27 18:25 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
 
 ---
 
-## ✅ Session COMPLÉTÉE (2025-10-27 17:40 CET)
+## ✅ Session COMPLÉTÉE (2025-10-27 18:25 CET)
+
+### ✅ AUDIT P2 COMPLÉTÉ - OPTIMISATIONS + PWA TEST GUIDE
+
+**Status:** ✅ COMPLÉTÉ - Toutes optimisations P2 terminées
+
+**Ce qui a été fait:**
+
+**🔧 Problèmes identifiés (P2):**
+- P2.1 : Archivage docs passation >48h (si nécessaire)
+- P2.2 : Tests PWA offline/online (validation build + guide manuel)
+
+**🔨 Solutions appliquées:**
+
+1. **P2.1 - Docs passation analysées**
+   - Fichiers: passation_claude.md (36KB), passation_codex.md (6.6KB)
+   - Maintenant: 2025-10-27 18:12, Cutoff 48h: 2025-10-25 18:12
+   - Entrées les plus anciennes: 2025-10-26 15:30 (26h, dans fenêtre 48h)
+   - ✅ Résultat: Aucune entrée à archiver (tout <48h, fichiers <50KB)
+
+2. **P2.2 - PWA build validé + guide test manuel créé**
+   - ✅ dist/sw.js (2.7KB) - Service Worker cache shell 17 fichiers
+   - ✅ dist/manifest.webmanifest (689B) - Config PWA (nom, icônes, thème)
+   - ✅ OfflineSyncManager intégré dans main.js (ligne 23, 1022)
+   - ✅ Manifest lié dans index.html (ligne 8)
+   - ✅ Guide test complet créé: docs/PWA_TEST_GUIDE.md (196 lignes)
+
+**📁 Fichiers modifiés (1):**
+- `docs/PWA_TEST_GUIDE.md` (créé - 196 lignes) - guide test PWA complet
+
+**✅ PWA Test Guide inclut:**
+- 6 tests manuels (Service Worker, Cache, Offline, Outbox, Sync, Install)
+- Acceptance criteria checklist
+- Troubleshooting section
+- Known limitations (30 snapshots max, 200 msg/thread, 750ms sync delay)
+- Next steps (manual browser tests, production, mobile, E2E automation)
+
+**🎯 Impact:**
+- ✅ P2 (optimisations) : 2/2 complétées
+- ✅ PWA ready for manual testing (Chrome DevTools)
+- ✅ Documentation test complète pour Codex/QA
+
+**📊 Commits:**
+- `5be68be` - docs(pwa): Add comprehensive PWA testing guide
+
+**🚀 Prochaines Actions Recommandées:**
+- Tests manuels PWA (Chrome DevTools - voir PWA_TEST_GUIDE.md)
+- Continuer roadmap features P3 (API publique, agents custom)
+- E2E automation PWA (Playwright - futur)
+
+---
+
+## ✅ Session PRÉCÉDENTE (2025-10-27 17:40 CET)
 
 ### ✅ AUDIT P1 COMPLÉTÉ - VERSIONING UNIFIÉ + MYPY 100% CLEAN
 
