@@ -5,7 +5,7 @@ import pytest
 
 sys.path.append(str(Path(__file__).resolve().parents[3] / "src"))
 
-from backend.shared.config import Settings
+from backend.shared.app_settings import Settings
 
 
 @pytest.fixture(autouse=True)
