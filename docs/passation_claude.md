@@ -7,6 +7,88 @@
 
 ---
 
+## ✅ [2025-10-27 21:30 CET] — Agent: Claude Code
+
+### Version
+- **Ancienne:** beta-3.2.1
+- **Nouvelle:** beta-3.2.1 (inchangée - fix tests uniquement)
+
+### Fichiers modifiés
+- `src/backend/features/memory/unified_retriever.py` (-3 lignes)
+- `tests/backend/features/test_unified_retriever.py` (-4 lignes, +1 ligne)
+- `AGENT_SYNC_CLAUDE.md` (mise à jour session)
+- `docs/passation_claude.md` (cette entrée)
+
+### Contexte
+Validation Git CI échouait sur GitHub Actions après déploiement de l'email app (emergence.app.ch@gmail.com). L'utilisateur a signalé l'échec du workflow: https://github.com/DrKz36/emergencev8/actions/runs/18830940643
+
+### Problèmes identifiés
+
+**🔴 Problème critique:** Backend Tests (Python 3.11) échouaient dans le CI.
+
+**Root cause:**
+- Le mock `query_weighted` dans `test_unified_retriever.py` utilisait `AsyncMock()` au lieu de `Mock()`
+- La méthode réelle `query_weighted` dans `vector_service.py` est **SYNCHRONE** (`def`, pas `async def`)
+- Un workaround `inspect.isawaitable()` avait été ajouté dans le code de prod pour gérer ce cas
+- Ce workaround masquait le vrai problème au lieu de corriger le mock
+
+**Diagnostic:**
+1. Analysé le dernier commit qui a causé l'échec (`c155284`)
+2. Identifié le mock incorrect dans les tests (ligne 157)
+3. Vérifié que `query_weighted` est bien synchrone (ligne 1510 de `vector_service.py`)
+4. Trouvé le workaround dans `unified_retriever.py` (lignes 333-334)
+
+### Actions effectuées
+
+**1. Correction du mock dans les tests:**
+```python
+# AVANT (incorrect):
+service.query_weighted = AsyncMock(return_value=[...])  # FAUX
+
+# APRÈS (correct):
+service.query_weighted = Mock(return_value=[...])  # OK - méthode synchrone
+```
+
+**2. Suppression du workaround dans le code de prod:**
+```python
+# AVANT (hack):
+concepts_results = self.vector_service.query_weighted(...)
+if inspect.isawaitable(concepts_results):
+    concepts_results = await concepts_results
+
+# APRÈS (propre):
+concepts_results = self.vector_service.query_weighted(...)
+# Pas de await car méthode synchrone
+```
+
+**3. Nettoyage imports inutilisés:**
+- Supprimé `import inspect` dans `unified_retriever.py`
+- Supprimé `MagicMock` et `datetime` dans le test
+
+### Tests
+- ✅ `ruff check src/backend/` - All checks passed!
+- ✅ `ruff check tests/backend/` - All checks passed!
+- ⏳ CI GitHub Actions - En attente du prochain run
+
+### Travail de Codex GPT pris en compte
+Codex avait ajouté le workaround `inspect.isawaitable()` dans le commit `c155284` pour essayer de fixer les tests, mais ce n'était pas la bonne approche. Le vrai problème était le mock incorrect.
+
+### Blocages
+Aucun.
+
+### Prochaines actions recommandées
+1. Surveiller le prochain run GitHub Actions pour confirmer que le CI passe
+2. Si CI passe → tout est résolu
+3. Si CI échoue encore → investiguer les logs détaillés du workflow
+
+### Impact
+- Tests backend devraient maintenant passer dans le CI
+- Code plus propre sans hack workaround
+- Mock correspond au comportement réel de la méthode
+- Fix minimaliste (seulement 2 fichiers modifiés)
+
+---
+
 ## [2025-10-26 16:20] — Agent: Claude Code
 
 ### Contexte
