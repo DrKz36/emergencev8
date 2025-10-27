@@ -10,8 +10,7 @@
 # - UnifiedMemoryRetriever.retrieve_context (full integration)
 
 import pytest
-from unittest.mock import Mock, AsyncMock, MagicMock, patch
-from datetime import datetime
+from unittest.mock import Mock, AsyncMock, patch
 from backend.features.memory.unified_retriever import (
     MemoryContext,
     UnifiedMemoryRetriever
@@ -154,7 +153,7 @@ class TestUnifiedMemoryRetriever:
                 'metadata': {'created_at': '2025-10-18T10:00:00Z'}
             }
         ])
-        service.query_weighted = AsyncMock(return_value=[  # Fixed: Mock() → AsyncMock() pour méthode async
+        service.query_weighted = Mock(return_value=[  # query_weighted est SYNCHRONE, pas async
             {
                 'text': 'Concept Docker containerisation',
                 'weighted_score': 0.9,

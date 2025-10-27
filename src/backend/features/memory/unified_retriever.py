@@ -10,7 +10,6 @@
 # Date création: 2025-10-18
 # Roadmap: MEMORY_REFACTORING_ROADMAP.md Sprint 3
 
-import inspect
 import logging
 from typing import Any, Optional, cast
 from datetime import datetime
@@ -330,8 +329,6 @@ class UnifiedMemoryRetriever:
                         ]
                     }
                 )
-                if inspect.isawaitable(concepts_results):
-                    concepts_results = await concepts_results
 
                 concepts = [
                     {
