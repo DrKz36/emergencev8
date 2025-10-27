@@ -1,5 +1,39 @@
 # 📝 Journal de Passation Inter-Agents
 
+## ✅ [2025-10-28 11:45 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py`
+- `claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json`
+- `scripts/cloud_audit_job.py`
+- `scripts/guardian_email_report.py`
+- `src/backend/features/guardian/email_report.py`
+- `src/backend/templates/guardian_report_email.html`
+- `src/backend/templates/guardian_report_email.txt`
+- `test_guardian_email.py`
+- `test_guardian_email_simple.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- Les emails Guardian n'offraient aucun exemple de logs, rendant la revue quasi inutile et empêchant les devs de reproduire les erreurs signalées. Le contact pointait encore sur l'ancien compte Gmail.
+
+### Travail réalisé
+1. Ajout d'une collecte `log_samples` dans ProdGuardian (15 entrées max avec endpoint/status/payload) et exposition dans `prod_report.json`.
+2. Mise à jour des templates email Guardian (HTML/texte) pour afficher ces extraits de logs avec badges de sévérité + métadonnées.
+3. Harmonisation de l'adresse d'envoi/contact (`emergence.app.ch@gmail.com`) côté scripts CLI, backend et tests.
+
+### Tests
+- ✅ `ruff check src/backend`
+- ⚠️ `mypy src/backend` *(dépendances FastAPI/Pydantic absentes dans l'image CI)*
+- ⚠️ `pytest tests/backend` *(collection bloquée: `aiosqlite`, `httpx`, `fastapi` non installés)*
+
+### Travail de Claude Code pris en compte
+- Conservation de la structure Nexus/ProdGuardian existante ; uniquement ajout de champs et rendu UI.
+
+### Blocages
+- Stack backend non installée dans le container → tests mypy/pytest échouent avant exécution.
+
 ## ✅ [2025-10-28 08:10 CET] - Agent: Codex GPT
 
 ### Fichiers modifiés

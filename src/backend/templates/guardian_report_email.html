@@ -97,6 +97,57 @@
 .priority-MEDIUM { background: #3b82f6; color: white; }
 .priority-LOW { background: #6b7280; color: white; }
 
+.log-sample {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin: 12px 0;
+}
+.log-sample-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    color: #cbd5f5;
+    font-size: 13px;
+}
+.log-sample-severity {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+.log-sample-message {
+    font-family: monospace;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 6px;
+    padding: 10px;
+    color: #e2e8f0;
+    font-size: 12px;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+.log-sample-meta {
+    font-size: 12px;
+    color: #94a3b8;
+    margin: 4px 0;
+}
+.log-sample-payload {
+    font-family: monospace;
+    background: rgba(30, 41, 59, 0.6);
+    padding: 8px;
+    border-radius: 6px;
+    margin-top: 8px;
+    color: #cbd5e1;
+    font-size: 11px;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+
 .timestamp {
     color: #94a3b8;
     font-size: 14px;
@@ -344,6 +395,59 @@
     </div>
     {% endif %}
 
+    {% if prod_report.log_samples %}
+    <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+        <div class="metric-label" style="font-size: 16px; color: #38bdf8; margin-bottom: 15px;">📜 Extraits de logs (dernière analyse)</div>
+
+        {% for log in prod_report.log_samples[:5] %}
+        {% set severity = log.severity | default('DEFAULT') %}
+        {% set severity_color = '#6b7280' %}
+        {% if severity in ['CRITICAL', 'ERROR', 'ALERT', 'EMERGENCY'] %}
+            {% set severity_color = '#ef4444' %}
+        {% elif severity in ['WARNING', 'WARN', 'DEGRADED'] %}
+            {% set severity_color = '#f59e0b' %}
+        {% elif severity in ['INFO', 'NOTICE'] %}
+            {% set severity_color = '#0ea5e9' %}
+        {% elif severity in ['DEBUG'] %}
+            {% set severity_color = '#64748b' %}
+        {% endif %}
+
+        <div class="log-sample">
+            <div class="log-sample-header">
+                <span class="log-sample-severity" style="background: {{ severity_color }}; color: #0f172a;">
+                    {{ severity }}
+                </span>
+                <span class="log-sample-meta">{{ log.timestamp }}</span>
+            </div>
+
+            {% if log.endpoint %}
+            <div class="log-sample-meta">
+                🌐 {{ log.http_method | default('GET') }} {{ log.endpoint }}{% if log.status_code %} → {{ log.status_code }}{% endif %}
+            </div>
+            {% endif %}
+
+            {% if log.request_id %}
+            <div class="log-sample-meta">
+                🧾 Request ID: <code style="background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px;">{{ log.request_id }}</code>
+            </div>
+            {% endif %}
+
+            <div class="log-sample-message">{{ log.message | default('') }}</div>
+
+            {% if log.payload_excerpt %}
+            <div class="log-sample-payload">{{ log.payload_excerpt }}{% if log.payload_excerpt|length == 500 %}...{% endif %}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        {% if prod_report.log_samples | length > 5 %}
+        <div class="log-sample-meta" style="margin-top: 12px;">
+            ... {{ prod_report.log_samples | length - 5 }} autres entrées disponibles dans le rapport JSON.
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
     {% if prod_report.recommendations %}
     <div class="recommendations">
         <div class="recommendations-title">📋 Recommandations</div>
@@ -576,6 +680,6 @@
 <p><strong>🤖 Guardian Autonomous Monitoring System</strong></p>
 <p>ÉMERGENCE V8 - Rapports automatiques toutes les 2h</p>
 <p style="margin-top: 15px;">
-    📧 Contact : gonzalefernando@gmail.com
+    📧 Contact : emergence.app.ch@gmail.com
 </p>
 {% endblock %}

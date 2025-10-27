@@ -1,5 +1,6 @@
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
+**Dernière mise à jour:** 2025-10-28 11:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-28 08:10 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 22:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 20:05 CET (Codex GPT)
@@ -11,6 +12,38 @@
 **Dernière mise à jour:** 2025-10-27 10:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 21:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 18:10 CET (Codex GPT)
+
+## ✅ Session COMPLÉTÉE (2025-10-28 11:45 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `claude-plugins/integrity-docs-guardian/scripts/check_prod_logs.py`
+- `claude-plugins/integrity-docs-guardian/scripts/reports/prod_report.json`
+- `scripts/cloud_audit_job.py`
+- `scripts/guardian_email_report.py`
+- `src/backend/features/guardian/email_report.py`
+- `src/backend/templates/guardian_report_email.html`
+- `src/backend/templates/guardian_report_email.txt`
+- `test_guardian_email.py`
+- `test_guardian_email_simple.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Ajout d'une extraction `log_samples` dans ProdGuardian pour capturer 15 entrées de logs (timestamp, endpoint, payload) et les exposer dans les rapports JSON.
+- Enrichissement des templates email Guardian (HTML/texte) avec une section "Extraits de logs" + badges sévérité, afin de fournir des exemples concrets aux devs.
+- Harmonisation des emails Guardian côté scripts/backend vers l'adresse officielle `emergence.app.ch@gmail.com` (contact footer, destinataire par défaut, scripts de test).
+
+### Tests
+- ✅ `ruff check src/backend`
+- ⚠️ `mypy src/backend` *(deps FastAPI/Pydantic manquantes dans l'environnement container)*
+- ⚠️ `pytest tests/backend` *(collection bloquée: `aiosqlite`, `httpx`, `fastapi` absents)*
+
+### Prochaines actions
+1. Déployer les scripts Guardian mis à jour et vérifier que `log_samples` est bien présent dans les rapports Cloud Storage.
+2. Lancer un envoi réel pour valider le rendu email et confirmer la réception depuis `emergence.app.ch@gmail.com`.
+
+### Blocages
+- Tests mypy/pytest impossibles à compléter faute de dépendances backend (FastAPI, aiosqlite, httpx, pydantic, etc.).
 
 ## ✅ Session COMPLÉTÉE (2025-10-28 08:10 CET) — Agent : Codex GPT
 

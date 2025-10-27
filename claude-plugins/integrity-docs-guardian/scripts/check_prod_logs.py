@@ -384,6 +384,7 @@ def analyze_logs(logs):
     latency_issues = []
     critical_signals = []
     info_logs = []
+    log_samples = []
 
     for log in logs:
         severity = log.get("severity", "DEFAULT")
@@ -392,6 +393,30 @@ def analyze_logs(logs):
 
         # NEW: Extract full context
         full_context = extract_full_context(log)
+
+        # Collect representative sample for the email report (cap later)
+        if len(log_samples) < 20:
+            sample = {
+                "timestamp": timestamp,
+                "severity": severity,
+                "message": (full_context.get("message") or message or "")[:500],
+                "endpoint": full_context.get("endpoint"),
+                "http_method": full_context.get("http_method"),
+                "status_code": full_context.get("status_code"),
+                "request_id": full_context.get("request_id"),
+                "source": log.get("logName")
+                or log.get("resource", {}).get("labels", {}).get("revision_name"),
+            }
+
+            payload_excerpt = full_context.get("full_payload")
+            if payload_excerpt and isinstance(payload_excerpt, dict):
+                try:
+                    sample["payload_excerpt"] = json.dumps(payload_excerpt)[:500]
+                except Exception:
+                    # Don't block report generation if payload can't be serialized
+                    pass
+
+            log_samples.append(sample)
 
         # Categorize by severity
         if severity in ["ERROR", "CRITICAL", "ALERT", "EMERGENCY"]:
@@ -521,6 +546,8 @@ def analyze_logs(logs):
         "error_patterns": error_patterns,
         "code_snippets": code_snippets,
         "recent_commits": recent_commits,
+
+        "log_samples": log_samples[:15],
 
         "recommendations": []
     }
