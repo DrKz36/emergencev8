@@ -19,7 +19,7 @@ import types
 import threading
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Union, cast
 
 
 
@@ -83,6 +83,66 @@ def _monkeypatch_posthog_noop() -> None:
 
 _force_disable_telemetry_env()
 _monkeypatch_posthog_noop()
+
+
+def _env_flag(name: str, default: str = "0") -> bool:
+    value = os.getenv(name, default)
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+class _StubSentenceTransformer:
+    """Minimal stub used when SentenceTransformer cannot be loaded (tests/offline)."""
+
+    def __init__(self, embedding_dim: int = 384) -> None:
+        self.embedding_dim = embedding_dim
+
+    def encode(
+        self,
+        sentences: Union[str, Iterable[str]],
+        show_progress_bar: bool = False,
+        convert_to_tensor: bool = False,
+        **_: Any,
+    ) -> Any:
+        if isinstance(sentences, str):
+            normalized: List[str] = [sentences]
+        else:
+            normalized = list(sentences or [])
+
+        try:
+            import numpy as np
+
+            embeddings = np.zeros((len(normalized), self.embedding_dim), dtype="float32")
+        except Exception:
+            embeddings = [[0.0] * self.embedding_dim for _ in normalized]
+
+        if convert_to_tensor:
+            try:
+                import torch
+
+                return torch.as_tensor(embeddings)
+            except Exception:
+                pass
+
+        return embeddings
+
+    __call__ = encode
+
+
+class _VectorEmbeddingFunction:
+    """Embedding function wrapper compatible with Chroma's interface."""
+
+    def __init__(self, service: "VectorService") -> None:
+        self._service = service
+
+    def __call__(self, input: Sequence[str]) -> List[List[float]]:
+        if not input:
+            return []
+        encoded = self._service.model.encode(list(input), show_progress_bar=False)  # type: ignore[union-attr]
+        if hasattr(encoded, "tolist"):
+            return encoded.tolist()
+        return cast(List[List[float]], encoded)
 
 # Imports de libs (on garde les imports module-level, l'instanciation sera lazy)
 import chromadb  # noqa: E402
@@ -573,6 +633,19 @@ class VectorService:
         self._vector_mode = "readwrite"  # "readwrite" | "readonly"
         self._last_init_error: Optional[str] = None
 
+        # 🧪 Tests/offline: autoriser un stub SBERT si configuré
+        self._allow_stub_model = _env_flag("VECTOR_SERVICE_ALLOW_STUB") or _env_flag(
+            "ALLOW_SENTENCE_TRANSFORMER_STUB"
+        )
+        stub_dim_env = os.getenv("VECTOR_SERVICE_STUB_DIM") or os.getenv(
+            "SENTENCE_TRANSFORMER_STUB_DIM"
+        )
+        try:
+            self._stub_embedding_dim = int(stub_dim_env) if stub_dim_env else 384
+        except (TypeError, ValueError):
+            self._stub_embedding_dim = 384
+        self._using_stub_model = False
+
         # 🆕 Score cache pour performance
         from backend.features.memory.score_cache import ScoreCache
         cache_size = int(os.getenv("MEMORY_SCORE_CACHE_SIZE", "10000"))
@@ -628,7 +701,17 @@ class VectorService:
                         f"Échec du chargement du modèle '{self.embed_model_name}': {e}",
                         exc_info=True,
                     )
-                    raise
+                    if self._allow_stub_model:
+                        logger.warning(
+                            "VectorService: fallback stub activé pour '%s' (dim=%s).",
+                            self.embed_model_name,
+                            self._stub_embedding_dim,
+                        )
+                        self.model = _StubSentenceTransformer(self._stub_embedding_dim)
+                        self._using_stub_model = True
+                    else:
+                        self._last_init_error = str(e)
+                        raise
 
             # 2) Sélectionner et initialiser le backend vectoriel
             backend = self._select_backend()
@@ -652,6 +735,9 @@ class VectorService:
                 "VectorService initialisé (lazy) : SBERT + backend %s prêts.",
                 backend.upper(),
             )
+
+    def _build_collection_embedding_function(self):
+        return _VectorEmbeddingFunction(self)
 
     # ---------- V13.2 - Startup-safe READ-ONLY mode ----------
     def _check_write_allowed(self, operation: str, collection_name: str = "") -> None:
@@ -1099,11 +1185,19 @@ class VectorService:
                 # No explicit index creation needed
             }
 
+        embedding_fn = self._build_collection_embedding_function()
+
         try:
             collection = self.client.get_or_create_collection(  # type: ignore[union-attr]
                 name=name,
-                metadata=metadata
+                metadata=metadata,
+                embedding_function=embedding_fn,
             )
+            # Certaines versions de Chroma ignorent embedding_function si collection existante
+            try:
+                setattr(collection, "_embedding_function", embedding_fn)
+            except Exception:
+                pass
             logger.info(
                 f"Collection '{name}' chargée/créée avec HNSW optimisé "
                 f"(M={metadata.get('hnsw:M', 'default')}, space={metadata.get('hnsw:space', 'default')})"

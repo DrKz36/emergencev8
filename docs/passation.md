@@ -1,5 +1,41 @@
 # 📝 Journal de Passation Inter-Agents
 
+## ✅ [2025-10-27 22:45 CET] - Agent: Codex GPT
+
+### Version
+- **Ancienne :** beta-3.2.1
+- **Nouvelle :** beta-3.2.1 (inchangée)
+
+### Fichiers modifiés
+- `src/backend/features/memory/vector_service.py`
+- `src/backend/features/chat/rag_cache.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- La validation finale backend devait tourner offline : les tests échouaient faute de modèle SentenceTransformer téléchargeable et mypy 1.18 râlait sur des `type: ignore` devenus inutiles.
+
+### Travail réalisé
+1. Ajout d’un stub SentenceTransformer optionnel (`VECTOR_SERVICE_ALLOW_STUB=1`) + fallback propre dans `VectorService` pour garantir le chargement en environnement sans réseau.
+2. Fourniture d’une fonction d’embedding custom à Chroma (`get_or_create_collection`) afin d’éviter l’embedder ONNX interne qui tente un download.
+3. Nettoyage de `RAGCache` (casts explicites) pour que mypy reste vert avec la nouvelle version.
+4. Installation des dépendances backend et exécution de la suite complète `pytest tests/backend` + lint (`ruff`, `mypy`).
+
+### Tests
+- ✅ `ruff check src/backend`
+- ✅ `mypy src/backend`
+- ✅ `pytest tests/backend` *(env: `VECTOR_SERVICE_ALLOW_STUB=1`, clés API factices)*
+
+### Travail de Claude Code pris en compte
+- Respect du workflow mémoire (pas de régression sur les handlers existants) ; les adaptations restent transparentes pour les appels existants de Claude.
+
+### Blocages
+- Aucun, suite backend full green en mode offline.
+
+### Prochaines actions
+1. Ajouter une note de doc pour signaler l’option stub et les variables d’environnement nécessaires aux tests.
+2. Préparer un cache local du modèle pour les environnements connectés (éliminer le stub en prod).
+
 ## ✅ [2025-10-27 20:05 CET] - Agent: Codex GPT
 
 ### Version
