@@ -210,6 +210,7 @@ test('ensureCurrentThread regenere un thread inaccessible sans auth:missing', as
     const bus = createEventBusStub();
     const originalBootstrap = App.prototype.bootstrapFeatures;
     App.prototype.bootstrapFeatures = function bootstrapNoop() {};
+    const originalListThreads = api.listThreads;
     const originalGetThreadById = api.getThreadById;
     const originalCreateThread = api.createThread;
 
@@ -220,6 +221,7 @@ test('ensureCurrentThread regenere un thread inaccessible sans auth:missing', as
     const getCalls = [];
     let createCalls = 0;
 
+    api.listThreads = async () => ({ items: [] });
     api.getThreadById = async (id) => {
       getCalls.push(id);
       if (id === 'thread-private') {
@@ -237,6 +239,7 @@ test('ensureCurrentThread regenere un thread inaccessible sans auth:missing', as
       const app = new App(bus, state);
       await app.ensureCurrentThread();
     } finally {
+      api.listThreads = originalListThreads;
       api.getThreadById = originalGetThreadById;
       api.createThread = originalCreateThread;
       App.prototype.bootstrapFeatures = originalBootstrap;

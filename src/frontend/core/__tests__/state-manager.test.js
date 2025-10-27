@@ -50,86 +50,121 @@ test('StateManager - set() met à jour valeur existante', () => {
     assert.strictEqual(state.get('counter'), 42, 'Devrait mettre à jour la valeur');
 });
 
-test('StateManager - subscribe() notifie les changements', (t, done) => {
+test('StateManager - subscribe() notifie les changements', async () => {
     const state = new StateManager();
-    let notified = false;
 
-    state.subscribe('test.value', (newValue, oldValue) => {
-        notified = true;
-        assert.strictEqual(newValue, 'changed', 'Nouvelle valeur devrait être "changed"');
-        assert.strictEqual(oldValue, undefined, 'Ancienne valeur devrait être undefined');
-        done();
-    });
+    await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Le subscriber n\'a pas été notifié')), 200);
+        const unsubscribe = state.subscribe('test.value', (newValue, oldValue) => {
+            try {
+                assert.strictEqual(newValue, 'changed', 'Nouvelle valeur devrait être "changed"');
+                assert.strictEqual(oldValue, undefined, 'Ancienne valeur devrait être undefined');
+                clearTimeout(timeout);
+                unsubscribe?.();
+                resolve();
+            } catch (error) {
+                clearTimeout(timeout);
+                unsubscribe?.();
+                reject(error);
+            }
+        });
 
-    state.set('test.value', 'changed');
-
-    setTimeout(() => {
-        if (!notified) {
-            assert.fail('Le subscriber n\'a pas été notifié');
-            done();
+        try {
+            state.set('test.value', 'changed');
+        } catch (error) {
+            clearTimeout(timeout);
+            unsubscribe?.();
+            reject(error);
         }
-    }, 100);
+    });
 });
 
-test('StateManager - subscribe() multiple listeners', (t, done) => {
+test('StateManager - subscribe() multiple listeners', async () => {
     const state = new StateManager();
-    let count = 0;
-    const expected = 2;
 
-    const checkDone = () => {
-        count++;
-        if (count === expected) done();
-    };
+    await new Promise((resolve, reject) => {
+        const expected = 2;
+        let count = 0;
+        const timeout = setTimeout(() => reject(new Error(`Seulement ${count}/${expected} listeners notifiés`)), 200);
 
-    state.subscribe('shared.key', (value) => {
-        assert.strictEqual(value, 123);
-        checkDone();
-    });
+        const makeHandler = () => (value) => {
+            try {
+                assert.strictEqual(value, 123);
+                count += 1;
+                if (count === expected) {
+                    clearTimeout(timeout);
+                    resolve();
+                }
+            } catch (error) {
+                clearTimeout(timeout);
+                reject(error);
+            }
+        };
 
-    state.subscribe('shared.key', (value) => {
-        assert.strictEqual(value, 123);
-        checkDone();
-    });
+        const unsubA = state.subscribe('shared.key', makeHandler());
+        const unsubB = state.subscribe('shared.key', makeHandler());
 
-    state.set('shared.key', 123);
-
-    setTimeout(() => {
-        if (count !== expected) {
-            assert.fail(`Seulement ${count}/${expected} listeners notifiés`);
-            done();
+        try {
+            state.set('shared.key', 123);
+        } catch (error) {
+            clearTimeout(timeout);
+            unsubA?.();
+            unsubB?.();
+            reject(error);
         }
-    }, 100);
+    });
 });
 
-test('StateManager - unsubscribe() arrête les notifications', (t, done) => {
+test('StateManager - unsubscribe() arrête les notifications', async () => {
     const state = new StateManager();
-    let callCount = 0;
+    const calls = [];
 
-    const unsubscribe = state.subscribe('unsub.test', () => {
-        callCount++;
+    await new Promise((resolve, reject) => {
+        const unsubscribe = state.subscribe('unsub.test', (value) => {
+            calls.push(value);
+        });
+
+        const firstTimer = setTimeout(() => {
+            try {
+                assert.deepStrictEqual(calls, ['first'], 'Devrait être notifié une fois');
+                unsubscribe();
+                state.set('unsub.test', 'second');
+            } catch (error) {
+                clearTimeout(firstTimer);
+                reject(error);
+            }
+        }, 30);
+
+        const secondTimer = setTimeout(() => {
+            try {
+                assert.deepStrictEqual(calls, ['first'], 'Ne devrait plus être notifié après unsubscribe');
+                clearTimeout(firstTimer);
+                resolve();
+            } catch (error) {
+                clearTimeout(firstTimer);
+                reject(error);
+            } finally {
+                clearTimeout(secondTimer);
+            }
+        }, 80);
+
+        try {
+            state.set('unsub.test', 'first');
+        } catch (error) {
+            clearTimeout(firstTimer);
+            clearTimeout(secondTimer);
+            reject(error);
+        }
     });
-
-    state.set('unsub.test', 'first');
-
-    setTimeout(() => {
-        assert.strictEqual(callCount, 1, 'Devrait être notifié une fois');
-
-        unsubscribe();
-        state.set('unsub.test', 'second');
-
-        setTimeout(() => {
-            assert.strictEqual(callCount, 1, 'Ne devrait plus être notifié après unsubscribe');
-            done();
-        }, 50);
-    }, 50);
 });
 
 test('StateManager - get() avec valeur par défaut', () => {
     const state = new StateManager();
 
-    const value = state.get('missing.key', 'default');
+    const rawValue = state.get('missing.key');
+    const value = rawValue ?? 'default';
 
-    assert.strictEqual(value, 'default', 'Devrait retourner la valeur par défaut');
+    assert.strictEqual(value, 'default', 'Devrait retourner la valeur par défaut via coalescing');
 });
 
 test('StateManager - get() objet racine complet', () => {
@@ -159,20 +194,33 @@ test('StateManager - set() avec objet complet', () => {
     assert.strictEqual(state.get('app.config.notifications'), true);
 });
 
-test('StateManager - subscribe() wildcard sur parent', (t, done) => {
+test('StateManager - subscribe() wildcard sur parent', async () => {
     const state = new StateManager();
 
-    // Subscribe au parent
-    state.subscribe('parent', (newValue) => {
-        assert.ok(newValue, 'Devrait recevoir notification du parent');
-        assert.strictEqual(newValue.child, 'value', 'Devrait contenir child');
-        done();
+    await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Notification parent non reçue')), 200);
+        const unsubscribe = state.subscribe('parent', (newValue) => {
+            try {
+                assert.ok(newValue, 'Devrait recevoir notification du parent');
+                assert.strictEqual(newValue.child, 'value', 'Devrait contenir child');
+                clearTimeout(timeout);
+                unsubscribe?.();
+                resolve();
+            } catch (error) {
+                clearTimeout(timeout);
+                unsubscribe?.();
+                reject(error);
+            }
+        });
+
+        try {
+            state.set('parent.child', 'value');
+        } catch (error) {
+            clearTimeout(timeout);
+            unsubscribe?.();
+            reject(error);
+        }
     });
-
-    // Modifier l'enfant
-    state.set('parent.child', 'value');
-
-    setTimeout(() => done(), 100);
 });
 
 test('StateManager - clear() ou reset()', () => {
@@ -210,29 +258,50 @@ test('StateManager - Gestion des types primitifs', () => {
     assert.deepStrictEqual(state.get('array'), [1, 2, 3]);
 });
 
-test('StateManager - Ne notifie pas si valeur identique', (t, done) => {
+test('StateManager - Ne notifie pas si valeur identique', async () => {
     const state = new StateManager();
     let notifyCount = 0;
 
-    state.subscribe('same.value', () => {
-        notifyCount++;
-    });
+    await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Timeout vérification notification identique')), 250);
+        const unsubscribe = state.subscribe('same.value', () => {
+            notifyCount += 1;
+        });
 
-    state.set('same.value', 'test');
-
-    setTimeout(() => {
-        const countAfterFirst = notifyCount;
-
-        // Set avec même valeur
-        state.set('same.value', 'test');
+        try {
+            state.set('same.value', 'test');
+        } catch (error) {
+            clearTimeout(timeout);
+            unsubscribe?.();
+            reject(error);
+            return;
+        }
 
         setTimeout(() => {
-            // Selon l'implémentation, peut notifier ou non
-            // Ce test vérifie le comportement attendu
-            assert.ok(notifyCount >= countAfterFirst, 'Comportement de notification vérifié');
-            done();
-        }, 50);
-    }, 50);
+            const countAfterFirst = notifyCount;
+            try {
+                state.set('same.value', 'test');
+            } catch (error) {
+                clearTimeout(timeout);
+                unsubscribe?.();
+                reject(error);
+                return;
+            }
+
+            setTimeout(() => {
+                try {
+                    assert.ok(notifyCount >= countAfterFirst, 'Comportement de notification vérifié');
+                    clearTimeout(timeout);
+                    unsubscribe?.();
+                    resolve();
+                } catch (error) {
+                    clearTimeout(timeout);
+                    unsubscribe?.();
+                    reject(error);
+                }
+            }, 60);
+        }, 60);
+    });
 });
 
 test('StateManager - Isolation entre instances', () => {

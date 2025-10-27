@@ -1,7 +1,58 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-10-26 16:20 CET (Claude Code)
+**Dernière mise à jour:** 2025-10-27 21:30 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-27 21:30 CET)
+
+### ✅ FIX VALIDATION GIT CI - Corriger mock query_weighted
+
+**Branche:** `claude/fix-git-validation-011CUXAVAmmrZM93uDqCeQPm`
+**Status:** ✅ COMPLÉTÉ - Fix pushed, CI devrait passer maintenant
+
+**Ce qui a été fait:**
+
+**🔧 Problème identifié:**
+- GitHub Actions Backend Tests échouaient après déploiement email app
+- Le mock `query_weighted` dans les tests utilisait `AsyncMock()` alors que la méthode est **SYNCHRONE**
+- Un workaround `inspect.isawaitable()` avait été ajouté dans le code de prod pour gérer ce cas
+- Ce workaround était un hack dégueulasse qui masquait le vrai problème
+
+**🔨 Solution appliquée:**
+1. **Corrigé le mock dans les tests:**
+   - `AsyncMock(return_value=[...])` → `Mock(return_value=[...])`
+   - Commentaire mis à jour: "query_weighted est SYNCHRONE, pas async"
+
+2. **Supprimé le workaround dans le code de prod:**
+   - Supprimé `if inspect.isawaitable(concepts_results): await concepts_results`
+   - Supprimé l'import `inspect` inutilisé
+
+3. **Nettoyage imports inutilisés:**
+   - Supprimé `MagicMock` et `datetime` dans le test
+
+**📁 Fichiers modifiés (2):**
+- `src/backend/features/memory/unified_retriever.py` (-3 lignes)
+- `tests/backend/features/test_unified_retriever.py` (-4 lignes, +1 ligne)
+
+**✅ Tests:**
+- ✅ `ruff check src/backend/` - All checks passed!
+- ✅ `ruff check tests/backend/` - All checks passed!
+- ⏳ CI GitHub Actions - En attente du prochain run
+
+**🎯 Impact:**
+- Tests backend devraient maintenant passer dans le CI
+- Code plus propre sans hack workaround
+- Mock correspond au comportement réel de la méthode
+
+**📊 Commit:**
+- `6f50f36` - fix(tests): Corriger mock query_weighted et supprimer workaround inspect
+
+**🚀 Next Steps:**
+- Surveiller le prochain run GitHub Actions
+- Si CI passe, tout est bon
+- Si CI échoue encore, investiguer les logs détaillés
 
 ---
 

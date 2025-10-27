@@ -508,6 +508,7 @@ def create_app() -> FastAPI:
 
             # Check VectorService existe (SANS forcer init du modèle)
             vector_service = app.state.service_container.vector_service()
+            # Juste vérifier que le service est accessible
 
             return {"ok": True, "db": "up", "vector": "lazy" if not vector_service._inited else "ready"}
         except Exception as e:
