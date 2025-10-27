@@ -1,5 +1,6 @@
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
+**Dernière mise à jour:** 2025-10-27 22:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 20:05 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 19:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 18:05 CET (Codex GPT)
@@ -9,6 +10,32 @@
 **Dernière mise à jour:** 2025-10-27 10:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 21:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 18:10 CET (Codex GPT)
+
+## ✅ Session COMPLÉTÉE (2025-10-27 22:45 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/backend/features/memory/vector_service.py`
+- `src/backend/features/chat/rag_cache.py`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Ajout d’un mode stub SentenceTransformer activable (`VECTOR_SERVICE_ALLOW_STUB=1`) pour permettre le chargement offline du modèle d’embedding durant les tests et journalisation du fallback.
+- Injection d’une fonction d’embedding custom dans `VectorService.get_or_create_collection` pour by-passer l’embedder ONNX de Chroma et éviter les téléchargements réseau.
+- Nettoyage des `type: ignore` obsolètes dans `RAGCache` via des casts explicites (`Mapping`, `Sequence`) pour rester compatible avec mypy 1.18.
+- Exécution complète des tests backend après installation des deps (`pip install -r requirements.txt`) avec les clés API factices nécessaires (GOOGLE/OPENAI/ANTHROPIC).
+
+### Tests
+- ✅ `ruff check src/backend`
+- ✅ `mypy src/backend`
+- ✅ `pytest tests/backend` *(avec `VECTOR_SERVICE_ALLOW_STUB=1` + clés API factices)*
+
+### Prochaines actions
+1. Étudier un cache local du modèle SentenceTransformer pour éviter le stub en environnement connecté.
+2. Documenter dans le README test l’usage de `VECTOR_SERVICE_ALLOW_STUB` + API keys dummy.
+
+### Blocages
+- Aucun : suite backend verte en offline (stub activé).
 
 ## ✅ Session COMPLÉTÉE (2025-10-27 20:05 CET) — Agent : Codex GPT
 
