@@ -164,12 +164,12 @@ export class App {
     });
   }
 
-  init() {
+  async init() {
     if (this.initialized) return;
     this.renderNavigation();
     this.setupMobileNav();
     this.listenToNavEvents();
-    this.bootstrapFeatures();
+    await this.bootstrapFeatures(); // Attend le health check + premier module
     this.initialized = true;
     this.handleRoleChange(this.state?.get?.('auth.role'));
   }
@@ -461,7 +461,27 @@ export class App {
     });
   }
 
-  bootstrapFeatures() { this.showModule(this.activeModule, true); }
+  async bootstrapFeatures() {
+    // Attendre que le backend soit prêt avant de commencer (fix warm-up lent)
+    // TIMEOUT COURT (10s max) pour éviter chargement infini si backend down
+    try {
+      const { waitForBackendReadyWithFeedback } = await import('../shared/backend-health.js');
+      await Promise.race([
+        waitForBackendReadyWithFeedback(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Health check timeout 10s')), 10000)
+        )
+      ]);
+      console.log('[App] Backend health check passed - starting bootstrap');
+    } catch (healthError) {
+      console.warn('[App] Backend health check failed or timeout - continuing anyway:', healthError.message);
+      // Continuer quand même (fallback gracieux)
+      // Le code existant gère déjà les erreurs réseau dans ensureCurrentThread()
+    }
+
+    // Bootstrap du premier module (active le chat par défaut)
+    await this.showModule(this.activeModule, true);
+  }
 
   clearSkeleton() {
     if (this._skeletonCleared) return;
