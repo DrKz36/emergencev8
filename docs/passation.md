@@ -1,5 +1,26 @@
 # 📝 Journal de Passation Inter-Agents
 
+## ✅ [2025-10-28 08:10 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `stable-service.yaml`
+- `canary-service.yaml`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- Le nouvel expéditeur `emergence.app.ch@gmail.com` plantait en prod : les manifests Cloud Run (stable/canary) exposaient encore `SMTP_USER`/`SMTP_FROM_EMAIL` sur l'ancien compte `gonzalefernando@gmail.com`.
+
+### Travail de Claude Code pris en compte
+- Lecture de `docs/passation_claude.md` pour confirmer la migration Gmail + app password déjà effectuée côté secrets.
+
+### Actions réalisées
+1. Audit des manifest Cloud Run (`stable-service.yaml`, `canary-service.yaml`) → confirmation de l'ancien login SMTP.
+2. Mise à jour des deux manifest pour utiliser `emergence.app.ch@gmail.com` sur `SMTP_USER` et `SMTP_FROM_EMAIL`.
+
+### Blocages
+- Aucun.
+
 ## ✅ [2025-10-27 22:45 CET] - Agent: Codex GPT
 
 ### Version

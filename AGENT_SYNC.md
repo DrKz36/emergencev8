@@ -1,5 +1,6 @@
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
+**Dernière mise à jour:** 2025-10-28 08:10 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 22:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 20:05 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 19:20 CET (Codex GPT)
@@ -10,6 +11,28 @@
 **Dernière mise à jour:** 2025-10-27 10:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 21:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 18:10 CET (Codex GPT)
+
+## ✅ Session COMPLÉTÉE (2025-10-28 08:10 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `stable-service.yaml`
+- `canary-service.yaml`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Vérification des manifests Cloud Run (stable/canary) : `SMTP_USER`/`SMTP_FROM_EMAIL` pointaient encore vers `gonzalefernando@gmail.com` malgré la migration communiquée.
+- Mise à jour des deux manifests pour utiliser l'expéditeur officiel `emergence.app.ch@gmail.com` et aligner la production avec les secrets existants.
+
+### Tests
+- ⚠️ Non exécutés (mise à jour de manifests uniquement, aucun code Python/JS touché).
+
+### Prochaines actions
+1. Déployer les manifests mis à jour sur Cloud Run pour rétablir l'envoi des emails.
+2. Lancer un envoi test (password reset ou script `scripts/test/test_email_config.py`) pour valider la nouvelle configuration en prod.
+
+### Blocages
+- Aucun.
 
 ## ✅ Session COMPLÉTÉE (2025-10-27 22:45 CET) — Agent : Codex GPT
 
