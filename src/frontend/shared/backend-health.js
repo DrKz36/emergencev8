@@ -7,6 +7,40 @@
  */
 
 /**
+ * Crée un signal d'annulation avec timeout en s'adaptant aux navigateurs sans AbortSignal.timeout.
+ *
+ * @param {number} timeoutMs - Durée du timeout en millisecondes.
+ * @returns {{signal: AbortSignal|undefined, cleanup: function}} Signal d'annulation et fonction de nettoyage.
+ */
+function createTimeoutSignal(timeoutMs) {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return {
+      signal: AbortSignal.timeout(timeoutMs),
+      cleanup: () => {},
+    };
+  }
+
+  if (typeof AbortController !== 'undefined') {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      // Abort sans raison explicite pour rester compatible avec les implémentations legacy.
+      controller.abort();
+    }, timeoutMs);
+
+    return {
+      signal: controller.signal,
+      cleanup: () => clearTimeout(timeoutId),
+    };
+  }
+
+  // Navigateur très ancien : pas d'annulation possible, mais on conserve l'API uniforme.
+  return {
+    signal: undefined,
+    cleanup: () => {},
+  };
+}
+
+/**
  * Attend que le backend réponde sur /ready avec retry exponential backoff.
  *
  * @param {object} options - Options de configuration
@@ -39,11 +73,22 @@ export async function waitForBackendReady(options = {}) {
 
     try {
       // Ping /ready (rapide, ne force pas le chargement du modèle)
-      const response = await fetch('/ready', {
+      const { signal, cleanup } = createTimeoutSignal(5000); // 5s timeout par requête
+      const fetchOptions = {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(5000), // 5s timeout par requête
-      });
+      };
+
+      if (signal) {
+        fetchOptions.signal = signal;
+      }
+
+      let response;
+      try {
+        response = await fetch('/ready', fetchOptions);
+      } finally {
+        cleanup();
+      }
 
       if (response.ok) {
         const data = await response.json();

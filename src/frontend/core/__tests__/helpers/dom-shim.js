@@ -57,6 +57,27 @@ function ensureWindow() {
     },
     matchMedia: () => ({ matches: false, addEventListener: noop, removeEventListener: noop }),
   };
+
+  if (typeof globalScope.localStorage === 'undefined') {
+    globalScope.localStorage = globalScope.window.localStorage;
+  }
+  if (typeof globalScope.sessionStorage === 'undefined') {
+    globalScope.sessionStorage = globalScope.window.sessionStorage;
+  }
+}
+
+function ensureAnimationFrame() {
+  if (typeof globalScope.requestAnimationFrame === 'undefined') {
+    globalScope.requestAnimationFrame = (cb) => {
+      if (typeof cb === 'function') {
+        try { cb(); } catch {}
+      }
+      return 0;
+    };
+  }
+  if (typeof globalScope.cancelAnimationFrame === 'undefined') {
+    globalScope.cancelAnimationFrame = () => {};
+  }
 }
 
 function ensureNavigator() {
@@ -76,4 +97,5 @@ function ensureNavigator() {
 
 ensureDocument();
 ensureWindow();
+ensureAnimationFrame();
 ensureNavigator();
