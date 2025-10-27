@@ -1130,7 +1130,7 @@ async def get_concepts(
     request: Request,
     limit: int = Query(20, ge=1, le=100, description="Number of concepts per page"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
-    sort: str = Query("recent", regex="^(recent|frequent|alphabetical)$", description="Sort order"),
+    sort: str = Query("recent", pattern="^(recent|frequent|alphabetical)$", description="Sort order"),
 ) -> dict[str, Any]:
     """Get paginated list of user's concepts."""
     try:
