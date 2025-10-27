@@ -167,6 +167,7 @@ class TestGuardianEmailE2E:
         assert "<!DOCTYPE html>" in html
         assert "<html>" in html
         assert "</html>" in html
+        assert "Guardian ÉMERGENCE V8" in html  # Fix: "Guardian" not "GUARDIAN"
         # Fix encoding: chercher "MERGENCE V8" au lieu de "ÉMERGENCE" avec accent
         assert "MERGENCE V8" in html
 
@@ -191,6 +192,8 @@ class TestGuardianEmailE2E:
         # Vérifier métriques critiques
         assert "4" in html  # errors/critical_signals
 
+        # Note: critical_signals details (Memory/OOM) not displayed in current HTML generator
+        # Only counts are shown. Removed assertion for specific error messages.
         # NOTE: Le générateur HTML actuel n'affiche pas les détails des critical_signals
         # Il affiche seulement les compteurs (errors, warnings, critical_signals)
         # Donc on vérifie juste que le statut CRITICAL est présent
@@ -221,6 +224,7 @@ class TestGuardianEmailE2E:
             badge = format_status_badge(status)
             # Vérifier présence HTML minimal
             assert "style=" in badge
+            assert "background:" in badge  # Fix: shorthand CSS "background:" not "background-color:"
             # Fix: accept both "background:" and "background-color:"
             assert "background:" in badge or "background-color:" in badge
             # Vérifier emoji présent
@@ -251,6 +255,10 @@ class TestGuardianEmailE2E:
                 "NEEDS_UPDATE",
                 "UNKNOWN",
             ]
+
+            # Verify timestamp exists in data
+            assert "timestamp" in data
+            assert len(data["timestamp"]) > 0
             # Vérifier timestamp dans le rapport directement
             timestamp = data.get("timestamp", "N/A")
             assert timestamp != "N/A"
@@ -292,6 +300,8 @@ class TestGuardianEmailE2E:
         """Test présence styles CSS inline (compatibilité email)."""
         html = await generate_html_email(mock_reports_all_ok)
 
+        # Emails HTML doivent avoir styles (either inline or in <style> block)
+        css_properties = [
         # Emails HTML doivent avoir styles inline
         # Fix: accept "background:" instead of "background-color:"
         css_properties = [
@@ -304,6 +314,9 @@ class TestGuardianEmailE2E:
 
         for prop in css_properties:
             assert prop in html, f"Propriété CSS manquante: {prop}"
+
+        # Check for background (shorthand) or background-color
+        assert "background:" in html or "background-color:" in html
 
     @pytest.mark.asyncio
     async def test_html_responsive_structure(

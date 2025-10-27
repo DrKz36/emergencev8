@@ -15,7 +15,7 @@ from backend.core.database.manager import DatabaseManager
 from backend.core.database import queries as db_queries
 from backend.features.documents.parser import ParserFactory
 from backend.features.memory.vector_service import VectorService
-from backend.core import config
+from backend.core import emergence_config as config
 
 logger = logging.getLogger(__name__)
 

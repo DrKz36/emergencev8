@@ -33,8 +33,8 @@ from backend.core.cost_tracker import CostTracker
 from backend.core.websocket import ConnectionManager
 from backend.shared.models import AgentMessage, Role, ChatMessage
 from backend.features.memory.vector_service import VectorService
-from backend.shared.config import Settings, DEFAULT_AGENT_CONFIGS
-from backend.core import config
+from backend.shared.app_settings import Settings, DEFAULT_AGENT_CONFIGS
+from backend.core import emergence_config as config
 from backend.core.database import queries
 
 from backend.features.memory.gardener import MemoryGardener

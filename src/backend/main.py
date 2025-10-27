@@ -36,7 +36,7 @@ for path in (SRC_DIR, REPO_ROOT):
 
 from backend.containers import ServiceContainer  # noqa: E402
 from backend.core.database.schema import initialize_database  # noqa: E402
-from backend.core.config import DENYLIST_ENABLED, DENYLIST_PATTERNS  # noqa: E402
+from backend.core.emergence_config import DENYLIST_ENABLED, DENYLIST_PATTERNS  # noqa: E402
 
 # État global du warm-up (pour healthcheck)
 _warmup_ready = {

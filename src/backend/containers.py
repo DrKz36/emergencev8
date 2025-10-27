@@ -17,7 +17,7 @@ from typing import Optional, Any
 from dependency_injector import containers, providers
 import httpx
 
-from backend.shared.config import Settings
+from backend.shared.app_settings import Settings
 from backend.core.database.manager import DatabaseManager
 from backend.core.cost_tracker import CostTracker
 from backend.core.session_manager import SessionManager
