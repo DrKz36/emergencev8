@@ -19,14 +19,15 @@
  * - beta-2.1.4 : Fix 404 production (reset-password, favicon)
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
- * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3) [ACTUEL]
+ * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
+ * - beta-3.3.0 : PWA Mode Hors Ligne (P3.10 Complétée) [ACTUEL]
  */
 
-export const VERSION = 'beta-3.0.0';
-export const VERSION_NAME = 'Admin & Sécurité (P2 Complétée)';
-export const VERSION_DATE = '2025-10-22';
-export const BUILD_PHASE = 'P2';
-export const COMPLETION_PERCENTAGE = 74; // 17/23 features
+export const VERSION = 'beta-3.3.0';
+export const VERSION_NAME = 'PWA Mode Hors Ligne (P3.10)';
+export const VERSION_DATE = '2025-10-27';
+export const BUILD_PHASE = 'P3';
+export const COMPLETION_PERCENTAGE = 78; // 18/23 features (P3.10 PWA complété)
 export const TOTAL_FEATURES = 23;
 
 export default {

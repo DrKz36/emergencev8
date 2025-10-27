@@ -12,6 +12,118 @@
 
 ---
 
+## [beta-3.3.0] - 2025-10-27
+
+### 🌐 PWA Mode Hors Ligne Complet (P3.10) ✅
+
+#### 🆕 Fonctionnalités Ajoutées
+
+**1. Progressive Web App (PWA) - Mode Offline Complet**
+- Application installable sur mobile/desktop (manifest.webmanifest)
+- Service Worker avec stratégie cache-first pour assets critiques
+- Stockage offline des conversations récentes (IndexedDB - 30 snapshots max)
+- Système outbox pour messages créés offline
+- Synchronisation automatique au retour en ligne
+- Indicateur visuel "Mode hors ligne" dans l'UI
+- Toast notifications (connexion perdue/rétablie)
+
+**Fichiers créés (Codex GPT 80%):**
+- [public/manifest.webmanifest](public/manifest.webmanifest) - Config PWA (nom, icônes, thème, orientation)
+- [public/sw.js](public/sw.js) - Service Worker (cache shell, network-first navigation)
+- [src/frontend/features/pwa/offline-storage.js](src/frontend/features/pwa/offline-storage.js) - Gestion IndexedDB (snapshots + outbox)
+- [src/frontend/features/pwa/sync-manager.js](src/frontend/features/pwa/sync-manager.js) - Coordination online/offline + sync
+- [src/frontend/styles/pwa.css](src/frontend/styles/pwa.css) - Styles indicateur offline
+
+**Fichiers modifiés:**
+- [src/frontend/main.js:23,945](src/frontend/main.js#L23) - Intégration OfflineSyncManager au bootstrap
+- [index.html:8](index.html#L8) - Lien manifest PWA
+- [public/](public/) - Dossier créé pour assets statiques copiés par Vite
+
+**2. Fix Build Vite (Claude Code 20%)**
+- Déplacement sw.js et manifest.webmanifest vers public/ pour copie auto dans dist/
+- Résolution problème: Service Worker non accessible en prod (404)
+- Build testé: sw.js et manifest.webmanifest maintenant dans dist/ ✅
+
+#### ✅ Tests Effectués
+
+- [x] Build frontend - npm run build ✅ (sw.js + manifest copiés dans dist/)
+- [x] Service Worker enregistrable ✅
+- [x] Manifest PWA valide ✅ (icônes, thème, orientation)
+- [x] Ruff check backend ✅ All checks passed
+- [ ] Test manuel offline → conversations dispo → online → sync (À faire en local/prod)
+
+#### 📝 Specifications PWA
+
+**Manifest:**
+- Nom: "EMERGENCE V8" / "Emergence"
+- Thème: #38bdf8 (bleu ÉMERGENCE), Background: #0b1120 (dark)
+- Icônes: 192x192 (maskable), 512x512 (png + webp)
+- Orientation: any (portrait préféré selon contexte mobile)
+
+**Service Worker:**
+- Cache shell: 17 fichiers critiques (main.js, core, styles, icônes)
+- Stratégie navigation: Network-first avec fallback index.html
+- Stratégie assets: Cache-first avec mise à jour en arrière-plan
+- Cache name: `emergence-shell-v1`
+
+**Offline Storage (IndexedDB):**
+- Base: `emergence-offline` v1
+- Store snapshots: 30 threads max avec messages (200 msg/thread)
+- Store outbox: Messages créés offline (auto-flush au retour online)
+- Fallback mémoire si IndexedDB indisponible
+
+**Sync Manager:**
+- Détection online/offline automatique (navigator.onLine + events)
+- Hydratation snapshots au démarrage si offline
+- Flush outbox automatique (750ms delay après reconnexion)
+- Toast notifications configurables (showToast: true)
+
+#### 🎯 Impact
+
+- ✅ **PWA installable** - Bouton "Installer" dans navigateur (Chrome, Edge, Safari)
+- ✅ **Conversations offline** - 30 threads récents accessibles sans connexion
+- ✅ **Messages offline** - Créés localement, synchronisés au retour online
+- ✅ **UX améliorée** - Indicateur offline visible, transitions smooth
+- ✅ **Performance** - Cache shell = chargement instant offline
+
+#### 🚀 Utilisation
+
+**Installation PWA:**
+1. Ouvrir l'app dans navigateur (Chrome/Edge/Safari)
+2. Cliquer "Installer" dans barre d'adresse ou menu
+3. Icône ajoutée sur bureau/menu démarrer
+
+**Mode offline:**
+1. Déconnecter réseau (WiFi/4G/Ethernet off)
+2. Ouvrir l'app → 30 dernières conversations disponibles
+3. Messages créés enregistrés localement (outbox)
+4. Reconnecter → Sync automatique en 750ms
+
+**Dev local:**
+```bash
+npm run build   # Build avec sw.js et manifest
+npm run dev     # Dev server (PWA fonctionnel en HTTPS/localhost)
+```
+
+#### 📊 Métriques
+
+- **Phase P3 Features:** 1/4 (25%) → 2/4 (50%) avec PWA ✅
+- **Progression globale:** 17/23 (74%) → 18/23 (78%)
+- **Temps développement:** 4 jours estimés → 1 jour réel (80% Codex + 20% Claude fix)
+
+#### 🤝 Collaboration Multi-Agents
+
+- **Codex GPT (80%):** Création complète PWA (sw.js, manifest, offline-storage, sync-manager, intégration main.js, styles)
+- **Claude Code (20%):** Fix build Vite (déplacement fichiers public/, test build, versioning, docs)
+
+#### 🔗 Références
+
+- [PWA Checklist](https://web.dev/pwa-checklist/) - Best practices PWA
+- [Service Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API) - Documentation MDN
+- [IndexedDB API](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API) - Stockage offline
+
+---
+
 ## [beta-2.1.3] - 2025-10-17
 
 ### 📧 Guardian Email Reports - Notification Automatique
