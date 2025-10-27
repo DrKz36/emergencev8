@@ -3,8 +3,8 @@
 > **Document de Référence Unique** - Roadmap complète features + maintenance technique
 
 **Date création:** 2025-10-23
-**Dernière mise à jour:** 2025-10-23
-**Version:** 2.0 (fusion ROADMAP_OFFICIELLE + ROADMAP_PROGRESS + AUDIT_COMPLET)
+**Dernière mise à jour:** 2025-10-27
+**Version:** 2.1 (sync avec état réel après audit + fixes tests)
 
 ---
 
@@ -15,11 +15,11 @@
 ### Métriques Globales
 
 ```
-Progression Totale : [███████████████░] 15/20 (75%)
+Progression Totale : [████████████████] 16/20 (80%)
 
-✅ Features Complètes    : 10/13 (77%)  - Fonctionnalités tutoriel (P3.10 PWA ✅)
+✅ Features Complètes    : 11/13 (85%)  - P0/P1/P2 (9/9) + P3 (PWA + Webhooks ✅)
 ✅ Maintenance Complète  : 5/7 (71%)   - P1 (3/3) ✅ + P2 (2/2) ✅
-⏳ À faire               : 5/20 (25%)
+⏳ À faire               : 4/20 (20%)
 ```
 
 **Production Cloud Run:**
@@ -137,9 +137,9 @@ Progression Totale : [███████████████░] 15/20 (7
 
 ---
 
-### PHASE P3 - FONCTIONNALITÉS AVANCÉES ⏳ EN COURS (1/4)
+### PHASE P3 - FONCTIONNALITÉS AVANCÉES ⏳ EN COURS (2/4)
 > **Priorité:** BASSE - Nice-to-have, améliore la plateforme
-> **Durée estimée:** 8-12 jours
+> **Durée estimée restante:** 5-8 jours (API + Agents)
 
 #### 10. Mode Hors Ligne (PWA) ✅
 **Statut:** ✅ Complété (2025-10-27, ~1 jour)
@@ -152,15 +152,15 @@ Progression Totale : [███████████████░] 15/20 (7
 - [x] Tests build: sw.js + manifest copiés dans dist/ ✅
 - [ ] Tests manuels offline/online (À faire en local/prod)
 
-#### 11. Webhooks et Intégrations ⏳
-**Statut:** ⏳ À faire
-**Temps estimé:** 3 jours
-- [ ] Backend: table `webhooks`
-- [ ] Endpoints POST/GET/DELETE webhooks
-- [ ] Système événements (nouvelle conversation, analyse, etc.)
-- [ ] POST vers webhook URL avec signature HMAC
-- [ ] UI: onglet "Webhooks" (Paramètres > Intégrations)
-- [ ] Retry automatique si échec (3 tentatives)
+#### 11. Webhooks et Intégrations ✅
+**Statut:** ✅ Complété (2025-10-24, PR #12 merged)
+**Temps réel:** 1 jour (Claude Code Web)
+- [x] Backend: tables `webhooks` + `webhook_deliveries` (migration 010)
+- [x] Endpoints REST `/api/webhooks/*` (CRUD + deliveries + stats)
+- [x] Événements: thread.created, message.sent, analysis.completed, debate.completed, document.uploaded
+- [x] Delivery HTTP POST avec HMAC SHA256
+- [x] Retry automatique 3x (5s, 15s, 60s)
+- [x] UI: Settings > Webhooks (modal, liste, logs, stats)
 
 #### 12. API Publique Développeurs ⏳
 **Statut:** ⏳ À faire

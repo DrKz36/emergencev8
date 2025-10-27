@@ -279,6 +279,7 @@ class ConceptRecallTracker:
         concept_text: str,
         user_id: str,
         limit: int = 10,
+        min_score: float = 0.6,
     ) -> List[Dict[str, Any]]:
         """
         Recherche explicite d'un concept dans l'historique (pour requête utilisateur).
@@ -286,6 +287,12 @@ class ConceptRecallTracker:
         Usage:
             USER: "Est-ce qu'on a déjà parlé de containerisation ?"
             AGENT: appelle query_concept_history("containerisation", user_id)
+
+        Args:
+            concept_text: Texte du concept à rechercher
+            user_id: ID de l'utilisateur
+            limit: Nombre max de résultats
+            min_score: Seuil de similarité minimum (0.0-1.0), défaut 0.6
 
         Returns:
             [
@@ -299,16 +306,16 @@ class ConceptRecallTracker:
         """
         try:
             # Utilise query_weighted() pour bénéficier du scoring temporel
+            # Note: score_threshold=0.0 pour ne pas filtrer par score pondéré (seul min_score est utilisé)
             results = self.vector_service.query_weighted(
                 collection=self.collection,
                 query_text=concept_text,
                 n_results=limit,
                 where_filter={
-                    "$and": [
-                        {"user_id": user_id},
-                        {"type": "concept"}
-                    ]
-                }
+                    "user_id": user_id,
+                    "type": "concept"
+                },
+                score_threshold=0.0  # Disable weighted score filtering (use min_score instead)
             )
 
             history = []
@@ -317,7 +324,7 @@ class ConceptRecallTracker:
                 # Récupérer weighted_score calculé par query_weighted()
                 score = res.get("weighted_score", 0.0)
 
-                if score >= 0.6:  # Seuil plus permissif pour requête explicite
+                if score >= min_score:  # Seuil configurable (défaut 0.6)
                     # Decode thread_ids from JSON
                     thread_ids_json = meta.get("thread_ids_json", "[]")
                     thread_ids = json.loads(thread_ids_json) if thread_ids_json else []

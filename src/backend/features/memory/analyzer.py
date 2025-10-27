@@ -222,22 +222,52 @@ class MemoryAnalyzer:
             summary_parts.append(assistant_messages[0])
         summary = " ".join(" ".join(summary_parts).split())[:280]
 
-        concept_candidates = user_messages + assistant_messages
+        # Extract technical concepts (short keywords) instead of full sentences
+        corpus = " ".join(corpus_parts)
         concepts: List[str] = []
         seen_concepts: set[str] = set()
-        for candidate in concept_candidates:
-            normalized = " ".join(candidate.split())
+
+        # Pattern 1: Technical terms with special chars (CI/CD, APIs, URLs, etc.)
+        technical_terms = re.findall(
+            r'\b[A-Za-z0-9]+[/-][A-Za-z0-9/-]+\b|'  # CI/CD, API/REST, etc.
+            r'\b(?:Docker|Kubernetes|PostgreSQL|Redis|ChromaDB|Git|API|REST|GraphQL|WebSocket|JWT|OAuth|'
+            r'Python|JavaScript|TypeScript|React|Vue|FastAPI|Flask|Django|'
+            r'AWS|GCP|Azure|Cloud|Serverless|Microservices|CI|CD|DevOps|'
+            r'Database|Cache|Queue|Pub/Sub|Event|Stream|Pipeline|Container|'
+            r'Machine Learning|ML|AI|LLM|GPT|Claude|RAG|Vector|Embedding)\b',
+            corpus,
+            re.IGNORECASE
+        )
+
+        for term in technical_terms:
+            normalized = term.strip()
             lowered = normalized.lower()
-            if not lowered or lowered in seen_concepts:
-                continue
-            seen_concepts.add(lowered)
-            concepts.append(normalized[:160])
-            if len(concepts) >= 5:
-                break
+            if lowered and lowered not in seen_concepts and len(normalized) >= 2:
+                seen_concepts.add(lowered)
+                concepts.append(normalized)
+                if len(concepts) >= 10:
+                    break
+
+        # Pattern 2: Noun phrases (2-4 words) - common technical patterns
+        if len(concepts) < 5:
+            noun_phrases = re.findall(
+                r'\b([A-Z][a-z]+(?:\s+[A-Za-z]+){1,3})\b',
+                corpus
+            )
+            for phrase in noun_phrases:
+                normalized = " ".join(phrase.split())
+                lowered = normalized.lower()
+                if lowered and lowered not in seen_concepts and len(normalized) <= 50:
+                    seen_concepts.add(lowered)
+                    concepts.append(normalized)
+                    if len(concepts) >= 10:
+                        break
+
+        # Fallback: use first message if no concepts extracted
         if not concepts and summary:
             concepts.append(summary[:160])
 
-        corpus = " ".join(corpus_parts)
+        # Extract entities (proper nouns, acronyms)
         raw_entities = re.findall(r"[A-Z][A-Za-z0-9\-/\+]{1,}", corpus)
         entities: List[str] = []
         seen_entities: set[str] = set()
