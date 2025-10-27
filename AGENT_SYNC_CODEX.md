@@ -1,5 +1,6 @@
 # 📋 AGENT_SYNC — Codex GPT
 
+**Dernière mise à jour:** 2025-10-27 21:05 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 20:05 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 19:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 18:10 CET (Codex GPT)
@@ -16,6 +17,28 @@
 4. **`docs/passation_codex.md`** ← Ton journal (48h max)
 5. **`docs/passation_claude.md`** ← Journal de Claude (pour contexte)
 6. **`git status` + `git log --oneline -10`** ← État Git
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-27 21:05 CET)
+
+### Fichiers modifiés
+- `src/backend/features/memory/unified_retriever.py`
+- `src/backend/main.py`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Actions réalisées
+- Corrigé `_get_ltm_context` pour supporter les mocks/implémentations async (`query_weighted` attendable) et restauré les tests `UnifiedMemoryRetriever`.
+- Nettoyé l’endpoint `/ready` pour supprimer la variable inutilisée signalée par Ruff (CI rouge).
+
+### Tests
+- ✅ `pytest tests/backend/features/test_unified_retriever.py`
+- ✅ `ruff check src/backend`
+
+### Prochaines actions
+1. Surveiller le prochain run CI backend pour confirmer la suppression des échecs.
+2. Ajouter un stub `localStorage` Python si des tests backend supplémentaires en ont besoin.
 
 ---
 

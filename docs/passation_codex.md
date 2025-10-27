@@ -7,6 +7,41 @@
 
 ---
 
+## ✅ [2025-10-27 21:05] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.2.1
+- **Nouvelle:** beta-3.2.1 (inchangée)
+
+### Fichiers modifiés
+- `src/backend/features/memory/unified_retriever.py`
+- `src/backend/main.py`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+- La CI backend pétait encore : `_get_ltm_context` renvoyait des concepts vides (mock AsyncMock non awaité) et Ruff signalait `vector_ready` jamais utilisé dans `/ready`.
+
+### Travail réalisé
+1. Détecté les résultats awaitables dans `_get_ltm_context` via `inspect.isawaitable` et attendu `query_weighted` pour corriger les tests `UnifiedMemoryRetriever`.
+2. Supprimé la variable `vector_ready` inutilisée dans l’endpoint `/ready` (Ruff F841).
+
+### Tests
+- ✅ `pytest tests/backend/features/test_unified_retriever.py`
+- ✅ `ruff check src/backend`
+
+### Travail de Claude Code pris en compte
+- Aucun impact direct sur ses livraisons ; corrections ciblées CI backend.
+
+### Prochaines actions recommandées
+1. Valider le prochain run GitHub Actions Backend Tests (Python 3.11).
+2. Étendre le pattern `isawaitable` aux autres appels vectoriels si on ajoute des mocks async.
+
+### Blocages
+- Aucun.
+
+---
+
 ## ✅ [2025-10-27 20:05] — Agent: Codex GPT
 
 ### Version
