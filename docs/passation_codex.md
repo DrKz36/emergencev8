@@ -7,6 +7,81 @@
 
 ---
 
+## ✅ [2025-10-27 20:05] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.2.1
+- **Nouvelle:** beta-3.2.1 (inchangée)
+
+### Fichiers modifiés
+- `src/frontend/core/__tests__/app.ensureCurrentThread.test.js`
+- `src/frontend/core/__tests__/helpers/dom-shim.js`
+- `src/frontend/core/__tests__/state-manager.test.js`
+- `src/frontend/features/chat/__tests__/chat-opinion.flow.test.js`
+- `src/frontend/shared/__tests__/backend-health.timeout.test.js`
+- `src/frontend/shared/backend-health.js`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+- Stabilisation de la suite `node --test` après l’ajout du fallback `AbortController` : DOM manquant, mocks incomplets et tests StateManager basés sur `done()` plantaient régulièrement.
+
+### Travail réalisé
+1. Ajout du helper `withDomStub()` dans le test opinion pour simuler `document`/`requestAnimationFrame` et alignement des assertions sur le bucket reviewer.
+2. Refactor des tests StateManager sur promesses (plus de `done()` double) + coalescing explicite pour `get()`.
+3. Stub `api.listThreads` dans `ensureCurrentThread` + extension du `dom-shim` pour exposer `localStorage/sessionStorage` et `requestAnimationFrame`, puis validation `npm run test` + `npm run build`.
+
+### Tests
+- ✅ `npm run test`
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Respect des conventions récentes (bucket reviewer, comportement `get`) sans toucher au backend.
+
+### Prochaines actions recommandées
+1. Factoriser un stub `localStorage` partagé si d’autres suites en ont besoin.
+2. QA Safari 16 / Chrome 108 pour confirmer la disparition des délais du loader.
+
+### Blocages
+- Aucun. Warnings `localStorage` disparus grâce au shim.
+
+---
+
+## ✅ [2025-10-27 19:20] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.2.1
+- **Nouvelle:** beta-3.2.1 (inchangée)
+
+### Fichiers modifiés
+- `src/frontend/shared/__tests__/backend-health.timeout.test.js`
+- `src/frontend/shared/backend-health.js`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+- Les navigateurs dépourvus d’`AbortSignal.timeout` (Safari < 17, Chromium/Firefox anciens) faisaient planter le health-check `/ready`, bloquant le bootstrap.
+
+### Travail réalisé
+1. Création d’un test `node:test` qui retire `AbortSignal.timeout`, stub `setTimeout`/`fetch` et vérifie le cleanup du fallback `AbortController`.
+2. Ajustement du helper `backend-health` pour annoter et nettoyer systématiquement le timeout.
+
+### Tests
+- ✅ `npm run build`
+- ❌ `npm run test` (suite Node encore instable avant le fix 20:05 CET)
+
+### Travail de Claude Code pris en compte
+- Aucun impact backend détecté ; modification purement front/test.
+
+### Prochaines actions recommandées
+1. Stabiliser `node --test` (réalisé à 20:05 CET — voir entrée ci-dessus).
+2. QA manuelle Safari 16 / Chrome 108 pour confirmer la réduction du délai loader.
+
+### Blocages
+- Tests Node échouent encore (DOM/mocks manquants) — résolus dans l’entrée suivante.
+
+---
+
 ## [2025-10-26 18:10] — Agent: Codex GPT
 
 ### Version

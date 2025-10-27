@@ -1,5 +1,7 @@
 # 📋 AGENT_SYNC — Codex GPT
 
+**Dernière mise à jour:** 2025-10-27 20:05 CET (Codex GPT)
+**Dernière mise à jour:** 2025-10-27 19:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 18:10 CET (Codex GPT)
 **Mode:** Développement collaboratif multi-agents
 
@@ -14,6 +16,55 @@
 4. **`docs/passation_codex.md`** ← Ton journal (48h max)
 5. **`docs/passation_claude.md`** ← Journal de Claude (pour contexte)
 6. **`git status` + `git log --oneline -10`** ← État Git
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-27 20:05 CET)
+
+### Fichiers modifiés
+- `src/frontend/core/__tests__/app.ensureCurrentThread.test.js`
+- `src/frontend/core/__tests__/helpers/dom-shim.js`
+- `src/frontend/core/__tests__/state-manager.test.js`
+- `src/frontend/features/chat/__tests__/chat-opinion.flow.test.js`
+- `src/frontend/shared/__tests__/backend-health.timeout.test.js`
+- `src/frontend/shared/backend-health.js`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Actions réalisées
+- Stabilisation complète des tests `node --test` : stub DOM `withDomStub`, mock `api.listThreads`, refactor StateManager en promesses + coalescing.
+- Ajout d’un shim `localStorage/sessionStorage` et `requestAnimationFrame` dans `dom-shim` pour éliminer les warnings résiduels.
+- Validation intégrale via `npm run test` + `npm run build`.
+
+### Tests
+- ✅ `npm run test`
+- ✅ `npm run build`
+
+### Prochaines actions
+1. Factoriser un helper partagé pour stubs `localStorage` si d’autres suites en ont besoin.
+2. Vérifier si d’autres specs `chat/*` gagnent à utiliser `withDomStub`.
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-27 19:20 CET)
+
+### Fichiers modifiés
+- `src/frontend/shared/__tests__/backend-health.timeout.test.js`
+- `src/frontend/shared/backend-health.js`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Actions réalisées
+- Ajout d’un test Node simulant l’absence d’`AbortSignal.timeout` et vérifiant le cleanup du fallback `AbortController`.
+- Adaptation du helper `backend-health` pour annoter et nettoyer systématiquement le timeout.
+
+### Tests
+- ✅ `npm run build`
+- ❌ `npm run test` (suite Node encore instable avant stabilisation 20:05 CET)
+
+### Prochaines actions
+1. Stabiliser la suite `node --test` (promesse réalisée à 20:05 CET, voir entrée ci-dessus).
+2. QA Safari 16 / Chrome 108 pour confirmer la disparition des délais de loader.
 
 ---
 
