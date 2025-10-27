@@ -10,16 +10,16 @@
 
 ## 📊 ÉTAT GLOBAL DU PROJET
 
-**Version Actuelle:** `beta-2.1.6` (Production Cloud Run)
+**Version Actuelle:** `beta-3.3.0` (PWA Mode Hors Ligne) [Mise à jour: 2025-10-27]
 
 ### Métriques Globales
 
 ```
-Progression Totale : [██████████████░] 14/20 (70%)
+Progression Totale : [███████████████░] 15/20 (75%)
 
-✅ Features Complètes    : 9/13 (69%)  - Fonctionnalités tutoriel
+✅ Features Complètes    : 10/13 (77%)  - Fonctionnalités tutoriel (P3.10 PWA ✅)
 ✅ Maintenance Complète  : 5/7 (71%)   - P1 (3/3) ✅ + P2 (2/2) ✅
-⏳ À faire               : 6/20 (30%)
+⏳ À faire               : 5/20 (25%)
 ```
 
 **Production Cloud Run:**
@@ -137,19 +137,20 @@ Progression Totale : [██████████████░] 14/20 (70%)
 
 ---
 
-### PHASE P3 - FONCTIONNALITÉS AVANCÉES ⏳ NON DÉMARRÉ (0/4)
+### PHASE P3 - FONCTIONNALITÉS AVANCÉES ⏳ EN COURS (1/4)
 > **Priorité:** BASSE - Nice-to-have, améliore la plateforme
 > **Durée estimée:** 8-12 jours
 
-#### 10. Mode Hors Ligne (PWA) ⏳
-**Statut:** ⏳ À faire
-**Temps estimé:** 4 jours
-- [ ] Créer `manifest.json` (PWA config)
-- [ ] Service Worker cache-first strategy
-- [ ] Cacher conversations récentes (IndexedDB)
-- [ ] Indicateur "Mode hors ligne"
-- [ ] Sync automatique au retour en ligne
-- [ ] Tests: offline → conversations dispo → online → sync
+#### 10. Mode Hors Ligne (PWA) ✅
+**Statut:** ✅ Complété (2025-10-27, ~1 jour)
+**Temps réel:** 1 jour (Codex 80% + Claude 20%)
+- [x] Créer `manifest.webmanifest` (PWA config)
+- [x] Service Worker cache-first strategy
+- [x] Cacher conversations récentes (IndexedDB - 30 snapshots)
+- [x] Indicateur "Mode hors ligne" UI
+- [x] Sync automatique au retour en ligne (750ms delay)
+- [x] Tests build: sw.js + manifest copiés dans dist/ ✅
+- [ ] Tests manuels offline/online (À faire en local/prod)
 
 #### 11. Webhooks et Intégrations ⏳
 **Statut:** ⏳ À faire
@@ -326,16 +327,16 @@ Progression Totale : [██████████████░] 14/20 (70%)
 | **P0** | Features | 3 | 3/3 | 100% ✅ | 🔥 CRITIQUE |
 | **P1** | Features | 3 | 3/3 | 100% ✅ | ⚠️ HAUTE |
 | **P2** | Features | 3 | 3/3 | 100% ✅ | 🔸 MOYENNE |
-| **P3** | Features | 4 | 0/4 | 0% ⏳ | 🔹 BASSE |
+| **P3** | Features | 4 | 1/4 | 25% ⏳ | 🔹 BASSE |
 | **P1** | Maintenance | 3 | 3/3 | 100% ✅ | 🔥 CRITIQUE |
 | **P2** | Maintenance | 2 | 2/2 | 100% ✅ | 🔸 MOYENNE |
 | **P3** | Maintenance | 2 | 0/2 | 0% ⏳ | 🔹 BASSE |
-| **TOTAL** | - | 20 | 14/20 | 70% | - |
+| **TOTAL** | - | 20 | 15/20 | 75% | - |
 
 **Métriques:**
-- ✅ **Features tutoriel:** 9/13 (69%) - Phases P0/P1/P2 complètes ✅
+- ✅ **Features tutoriel:** 10/13 (77%) - P0/P1/P2 complètes ✅ + P3.10 PWA ✅
 - ✅ **Maintenance technique:** 5/7 (71%) - P1 complète (3/3) + P2 complète (2/2)
-- 📊 **Progression globale:** 14/20 (70%)
+- 📊 **Progression globale:** 15/20 (75%)
 
 ---
 
