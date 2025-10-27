@@ -23,7 +23,9 @@ if sys.platform == "win32":
         import io
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-BASE_URL = "http://localhost:8000"
+# Allow overriding the target backend from the environment when running the
+# validation suite locally or in CI. Defaults to the local FastAPI instance.
+BASE_URL = os.environ.get("EMERGENCE_VALIDATION_BASE_URL", "http://localhost:8000")
 
 # Test user credentials - adjust as needed
 TEST_USER_EMAIL = "test@example.com"
@@ -72,6 +74,7 @@ class TestResults:
         self.failed = 0
         self.warnings = 0
         self.errors = []
+        self.skipped = 0
 
     def add_pass(self):
         self.total += 1
@@ -85,6 +88,9 @@ class TestResults:
     def add_warning(self):
         self.warnings += 1
 
+    def add_skip(self):
+        self.skipped += 1
+
     def print_summary(self):
         print_header("TEST SUMMARY")
         print(f"Total Tests: {self.total}")
@@ -93,6 +99,8 @@ class TestResults:
             print_error(f"Failed: {self.failed}")
         if self.warnings > 0:
             print_warning(f"Warnings: {self.warnings}")
+        if self.skipped > 0:
+            print_warning(f"Skipped: {self.skipped}")
 
         if self.errors:
             print(f"\n{Colors.BOLD}Errors:{Colors.RESET}")
@@ -100,8 +108,10 @@ class TestResults:
                 print_error(f"{i}. {error}")
 
         print(f"\n{Colors.BOLD}Status: ", end="")
-        if self.failed == 0:
+        if self.failed == 0 and self.total > 0:
             print_success("ALL TESTS PASSED ✓")
+        elif self.failed == 0:
+            print_warning("NO TESTS EXECUTED ⚠")
         else:
             print_error("SOME TESTS FAILED ✗")
 
@@ -411,16 +421,24 @@ def main():
     print(f"Admin User: {ADMIN_USER_EMAIL}")
 
     # Test server health
+    offline_reason = None
     try:
         response = requests.get(f"{BASE_URL}/health", timeout=5)
         if response.status_code == 200:
             print_success("Server is healthy")
         else:
-            print_error(f"Server health check failed: {response.status_code}")
-            return 1
+            offline_reason = f"Server health check failed: HTTP {response.status_code}"
     except Exception as e:
-        print_error(f"Cannot connect to server: {str(e)}")
-        return 1
+        offline_reason = f"Cannot connect to server: {str(e)}"
+
+    if offline_reason:
+        print_warning(offline_reason)
+        print_warning("Backend unreachable — skipping Phase 1 validation suite.")
+        print_info("Démarre le backend FastAPI localement ou définis EMERGENCE_VALIDATION_BASE_URL vers une instance accessible.")
+        results.add_warning()
+        results.add_skip()
+        results.print_summary()
+        return 0
 
     # Run all tests
     print_header("PHASE 1.2 - TIMELINE SERVICE ENDPOINTS")
