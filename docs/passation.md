@@ -1,6 +1,109 @@
 # 📝 Journal de Passation Inter-Agents
 
-## [2025-10-27 16:45 CET] — Agent: Codex GPT
+## ✅ [2025-10-27 20:05 CET] - Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.2.1
+- **Nouvelle:** beta-3.2.1 (inchangée)
+
+### Fichiers modifiés
+- `src/frontend/core/__tests__/app.ensureCurrentThread.test.js`
+- `src/frontend/core/__tests__/state-manager.test.js`
+- `src/frontend/features/chat/__tests__/chat-opinion.flow.test.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- La suite `node --test` cassait (DOM absent côté chat, `api.listThreads` non mocké, et API `StateManager.get` supposée accepter une valeur par défaut). Objectif : remettre tous les tests au vert et éliminer les assertions obsolètes.
+
+### Travail réalisé
+1. Ajout d’un helper `withDomStub()` pour simuler `document`/`requestAnimationFrame` dans le test d’opinion chat, alignement des assertions sur le bucket reviewer, et correction du doublon de requêtes.
+2. Refactor des tests StateManager vers des promesses (plus de `done()` multiple) + adaptation de `get()` avec coalescing explicite.
+3. Stub `api.listThreads` dans `ensureCurrentThread` pour couvrir le cas 403 et vérifier la régénération de thread ; tous les tests Node passent.
+4. Extension du `dom-shim` pour exposer `localStorage/sessionStorage` côté global et fournir un fallback `requestAnimationFrame`, supprimant les warnings noisettes.
+
+### Tests
+- ✅ `npm run test`
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Les nouveaux comportements backend (bucket reviewer, signature `get`) respectés ; aucun contournement de ses modifications.
+
+### Blocages
+- Warnings persistants `localStorage is not defined` dans la sortie tests (harmless, à traiter plus tard).
+
+### Prochaines actions
+1. Factoriser un stub `localStorage` partagé pour nettoyer les warnings des tests StateManager.
+2. Propager `withDomStub` aux tests chat restants si d’autres scénarios font appel à `document`.
+
+## ✅ [2025-10-27 19:20 CET] - Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.2.1
+- **Nouvelle:** beta-3.2.1 (inchangée)
+
+### Fichiers modifiés
+- `src/frontend/shared/__tests__/backend-health.timeout.test.js`
+- `src/frontend/shared/backend-health.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- Besoin d’un test pour éviter la régression Safari (absence d’`AbortSignal.timeout`) et une vérif de nettoyage du timeout fallback introduit précédemment.
+
+### Travail réalisé
+1. Écriture d’un test `node:test` qui stub `AbortSignal.timeout`, `AbortController`, `fetch` et `setTimeout`, puis vérifie que `waitForBackendReady()` s’appuie sur le fallback et clear le timer.
+2. Annotation du helper (`createTimeoutSignal`) pour clarifier la durée du timeout au point d’appel.
+3. Mise à jour des journaux (`AGENT_SYNC.md`, `docs/passation.md`) avec les résultats et les tests.
+
+### Tests
+- ✅ `npm run build`
+- ❌ `npm run test` (échecs existants : scénarios `ensureCurrentThread` sans identifiants, `state-manager` callback multi, `chat-opinion.flow` assertions manquantes)
+
+### Travail de Claude Code pris en compte
+- Aucun changement backend récent nécessitant coordination.
+
+### Blocages
+- Suite Node tourne mais échoue sur les tests existants liés à l’auth et aux mocks WS; nouveau test passe bien.
+
+### Prochaines actions
+1. Fournir des fixtures auth/mocks stables pour `ensureCurrentThread` afin de fiabiliser `node --test`.
+2. Corriger les attentes du test `chat-opinion.flow` (3 évènements attendus, seulement 2 reçus).
+
+## ✅ [2025-10-27 18:05 CET] - Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.2.1
+- **Nouvelle:** beta-3.2.1 (inchangée)
+
+### Fichiers modifiés
+- `src/frontend/shared/backend-health.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- Les navigateurs ne supportant pas encore `AbortSignal.timeout` (Safari < 17, Chromium/Firefox anciens) faisaient échouer le health-check `/ready`, ce qui prolongeait l'écran « Connexion au serveur… ».
+
+### Travail réalisé
+1. Ajout du helper `createTimeoutSignal()` qui bascule vers un `AbortController` manuel quand `AbortSignal.timeout` n’est pas disponible, avec nettoyage systématique du timer à chaque tentative.
+2. Intégration du helper dans `waitForBackendReady()` pour garantir un timeout de 5 s même sur les environnements legacy, sans casser les navigateurs modernes.
+3. Mise à jour des journaux collaboratifs (`AGENT_SYNC.md`, `docs/passation.md`) pour refléter la correction et les tests effectués.
+
+### Tests
+- ✅ `npm run build`
+- ⚠️ `pwsh -File scripts/sync-workdir.ps1` (échec : tests smoke nécessitent des identifiants `EMERGENCE_SMOKE_EMAIL`/`EMERGENCE_SMOKE_PASSWORD`)
+
+### Travail de Claude Code pris en compte
+- Aucun changement backend détecté nécessitant une coordination spécifique.
+
+### Blocages
+- Scripts smoke de `sync-workdir.ps1` bloqués sans identifiants valides ; correction documentée, aucun impact sur la livraison front.
+
+### Prochaines actions
+1. QA manuelle sur Safari 16 et Chrome 108 pour confirmer la disparition du délai de connexion.
+2. Évaluer un test automatisé simulant l’absence d’`AbortSignal.timeout` afin d’éviter les régressions.
+
+## [2025-10-27 16:45 CET] - Agent: Codex GPT
 
 ### Version
 - **Ancienne:** beta-3.2.0

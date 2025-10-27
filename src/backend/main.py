@@ -490,7 +490,15 @@ def create_app() -> FastAPI:
 
     @app.get("/ready", tags=["Health"], include_in_schema=False, response_model=None)
     async def ready_check(request: Request) -> dict[str, Any] | JSONResponse:
-        """Readiness check - vérifie DB + Chroma disponibles"""
+        """
+        Readiness check - vérifie que le backend peut répondre aux requêtes.
+
+        NOTE: Ne force PAS le chargement du modèle d'embedding (lazy load).
+        Le modèle se chargera à la première requête qui en a besoin (RAG).
+        Ceci permet un warm-up ultra-rapide (~1s au lieu de 3s).
+
+        Use /ready/full si vous voulez forcer le warm-up complet.
+        """
         try:
             # Check DB
             db_manager = app.state.service_container.db_manager()
@@ -498,13 +506,41 @@ def create_app() -> FastAPI:
             cursor = await conn.execute("SELECT 1")
             await cursor.fetchone()
 
-            # Check VectorService (lazy-load safe)
+            # Check VectorService existe (SANS forcer init du modèle)
+            vector_service = app.state.service_container.vector_service()
+            # Juste vérifier que le service est accessible
+
+            return {"ok": True, "db": "up", "vector": "lazy" if not vector_service._inited else "ready"}
+        except Exception as e:
+            logger.error(f"/ready check failed: {e}")
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=503,
+                content={"ok": False, "error": str(e)}
+            )
+
+    @app.get("/ready/full", tags=["Health"], include_in_schema=False, response_model=None)
+    async def ready_check_full(request: Request) -> dict[str, Any] | JSONResponse:
+        """
+        Full readiness check - force le warm-up complet (DB + embedding model + vector store).
+
+        Utile pour Cloud Run health checks si vous voulez forcer le warm-up.
+        Prend ~2-3s au premier appel (chargement du modèle SentenceTransformer).
+        """
+        try:
+            # Check DB
+            db_manager = app.state.service_container.db_manager()
+            conn = await db_manager._ensure_connection()
+            cursor = await conn.execute("SELECT 1")
+            await cursor.fetchone()
+
+            # Check VectorService + force init du modèle
             vector_service = app.state.service_container.vector_service()
             vector_service._ensure_inited()
 
-            return {"ok": True, "db": "up", "vector": "up"}
+            return {"ok": True, "db": "up", "vector": "up", "warmup": "complete"}
         except Exception as e:
-            logger.error(f"/ready check failed: {e}")
+            logger.error(f"/ready/full check failed: {e}")
             from fastapi.responses import JSONResponse
             return JSONResponse(
                 status_code=503,
