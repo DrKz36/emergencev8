@@ -12,6 +12,51 @@
 
 ---
 
+## [beta-3.2.2] - 2025-10-27
+
+### ✅ Qualité & Maintenance
+
+**Configuration Email Officielle - emergence.app.ch@gmail.com**
+
+Migration du compte email système vers le compte officiel `emergence.app.ch@gmail.com` avec configuration SMTP Gmail complète.
+
+**Changements:**
+
+1. **Configuration SMTP Gmail**
+   - Compte: `emergence.app.ch@gmail.com`
+   - App Password Gmail configuré: `lubmqvvmxubdqsxm`
+   - SMTP: `smtp.gmail.com:587` avec TLS activé
+   - Utilisé pour: Password reset, Guardian reports, Beta invitations
+   - **Fichiers:** [`.env`](.env), [`.env.example`](.env.example)
+
+2. **Script de test email**
+   - Nouveau script: `scripts/test/test_email_config.py`
+   - Valide configuration SMTP avec envoi de test
+   - Affiche diagnostic complet (host, port, user, password, TLS)
+   - Fix encoding UTF-8 pour console Windows (emojis supportés)
+   - **Fichier:** [`scripts/test/test_email_config.py`](scripts/test/test_email_config.py)
+
+3. **Documentation mise à jour**
+   - `.env.example` synchronisé avec nouvelle config
+   - Commentaires explicites sur usage (password reset, Guardian, beta)
+   - **Fichier:** [`.env.example`](.env.example)
+
+**Impact:**
+- ✅ Email professionnel dédié au projet ÉMERGENCE
+- ✅ Séparation compte personnel vs. compte app
+- ✅ Configuration testée et validée (envoi test réussi)
+- ✅ Script de validation reproductible
+
+**Fichiers modifiés:**
+- `.env` - Configuration email officielle
+- `.env.example` - Documentation config
+- `scripts/test/test_email_config.py` - Script de test créé
+- `src/version.js` - Version beta-3.2.2
+- `src/frontend/version.js` - Synchronisation version
+- `package.json` - Version beta-3.2.2
+
+---
+
 ## [beta-3.2.1] - 2025-10-26
 
 ### 🆕 Fonctionnalités Ajoutées

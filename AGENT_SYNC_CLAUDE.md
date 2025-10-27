@@ -68,6 +68,74 @@
 
 ---
 
+## ✅ Session COMPLÉTÉE (2025-10-27 11:45 CET)
+
+### ✅ CONFIGURATION EMAIL OFFICIELLE - beta-3.2.2
+
+**Branche:** `main` (direct)
+**Status:** ✅ COMPLÉTÉ - Email système configuré avec compte officiel emergence.app.ch@gmail.com
+
+**Ce qui a été fait:**
+
+**Objectif:** Configurer le système email avec le compte Gmail officiel du projet au lieu du compte personnel.
+
+**Implémentation:**
+
+1. **Configuration SMTP Gmail**
+   - ✅ Compte: `emergence.app.ch@gmail.com`
+   - ✅ App Password Gmail: `lubmqvvmxubdqsxm` (configuré dans Gmail)
+   - ✅ SMTP: `smtp.gmail.com:587` avec TLS activé
+   - ✅ Utilisé pour: Password reset, Guardian reports, Beta invitations
+   - ✅ Fichiers: `.env`, `.env.example`
+
+2. **Script de test email créé**
+   - ✅ `scripts/test/test_email_config.py` (103 lignes)
+   - ✅ Charge `.env` avec dotenv
+   - ✅ Affiche diagnostic complet (host, port, user, password, TLS)
+   - ✅ Envoie email de test à gonzalefernando@gmail.com
+   - ✅ Fix encoding UTF-8 Windows (support emojis console)
+   - ✅ Test réussi : Email envoyé avec succès ✅
+
+3. **Documentation mise à jour**
+   - ✅ `.env.example` synchronisé avec nouvelle config
+   - ✅ Commentaires explicites sur usage (password reset, Guardian, beta)
+   - ✅ Section "Email Configuration" renommée et enrichie
+
+4. **Versioning**
+   - ✅ Version incrémentée : beta-3.2.1 → beta-3.2.2 (PATCH - config change)
+   - ✅ CHANGELOG.md mis à jour (entrée complète beta-3.2.2)
+   - ✅ Patch notes ajoutées (src/version.js + src/frontend/version.js)
+   - ✅ package.json synchronisé
+
+**Fichiers modifiés (6):**
+- `.env` - Config email officielle (emergence.app.ch@gmail.com)
+- `.env.example` - Documentation config
+- `scripts/test/test_email_config.py` - Script de test créé
+- `src/version.js` - Version beta-3.2.2 + patch notes
+- `src/frontend/version.js` - Synchronisation
+- `package.json` - Version beta-3.2.2
+- `CHANGELOG.md` - Entrée beta-3.2.2
+
+**Tests:**
+- ✅ Script test email : Email envoyé avec succès
+- ✅ `npm run build` : OK (build réussi en 969ms)
+- ✅ `ruff check src/backend/` : All checks passed!
+
+**Impact:**
+- ✅ **Email professionnel dédié** - Compte emergence.app.ch au lieu de personnel
+- ✅ **Séparation claire** - App vs. compte perso
+- ✅ **Configuration validée** - Test réussi, reproductible
+- ✅ **Documentation à jour** - .env.example synchronisé
+
+**Prochaines actions:**
+1. Committer + pusher
+2. Tester envoi email en production (password reset, Guardian reports)
+
+**Blocages:**
+Aucun.
+
+---
+
 ## ✅ Session COMPLÉTÉE (2025-10-26 16:20 CET)
 
 ### ✅ FIXES CRITIQUES + CHANGELOG ENRICHI DOCUMENTATION - beta-3.2.1
