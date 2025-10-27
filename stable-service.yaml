@@ -53,14 +53,14 @@ spec:
         - name: SMTP_PORT
           value: '587'
         - name: SMTP_USER
-          value: gonzalefernando@gmail.com
+          value: emergence.app.ch@gmail.com
         - name: SMTP_PASSWORD
           valueFrom:
             secretKeyRef:
               name: SMTP_PASSWORD
               key: latest
         - name: SMTP_FROM_EMAIL
-          value: gonzalefernando@gmail.com
+          value: emergence.app.ch@gmail.com
         - name: SMTP_FROM_NAME
           value: ÉMERGENCE
         - name: SMTP_USE_TLS
