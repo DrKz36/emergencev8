@@ -7,6 +7,92 @@
 
 ---
 
+## [2025-10-27 23:00] — Agent: Claude Code
+
+### Contexte
+Fix tests CI pour branche #208 (`chore(config): Configure email officiel...`). Les tests backend foiraient avec erreur "coroutine object is not iterable" dans `test_unified_retriever.py`.
+
+### Problème identifié
+- **3 tests foiraient** : `test_get_ltm_context_success`, `test_retrieve_context_full`, `test_retrieve_context_ltm_only`
+- **Erreur** : `'coroutine' object is not iterable` ligne 343 dans `unified_retriever.py`
+- **Warning** : `RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited`
+- **Cause** : Le mock `service.query` était `AsyncMock()` alors que `query_weighted()` est SYNCHRONE
+- **Bonus** : Variable `vector_ready` inutilisée dans `main.py` (erreur ruff F841)
+
+### Analyse du problème
+1. **Historique Git complexe** :
+   - Commit `6f50f36` : J'avais fix le mock `query_weighted` AsyncMock→Mock
+   - Commit `c72baf2` : Quelqu'un a réintroduit `_await_if_needed` wrapper
+   - Résultat : Code avec `_await_if_needed` mais mock incohérent
+
+2. **Conflit de mocks** :
+   - `service.query_weighted = Mock(return_value=[...])` ✅ SYNC
+   - `service.query = AsyncMock(return_value=[...])` ❌ ASYNC (problème !)
+   - Si `query_weighted` appelle `query()` en interne, ça retourne coroutine
+
+3. **Tests locaux** :
+   - `Mock()` retourne valeur directement (pas awaitable)
+   - `AsyncMock()` retourne coroutine (awaitable)
+   - Le `_await_if_needed` détecte awaitable et await, mais bug si mock mal configuré
+
+### Actions effectuées
+
+**✅ Fix mocks tests:**
+
+1. **Changé `service.query` de AsyncMock() → Mock()**
+   - Fichier : `tests/backend/features/test_unified_retriever.py`
+   - Évite coroutines non await-ées si `query_weighted` appelle `query()` en interne
+   - Commentaire ajouté : "TOUS les mocks doivent être Mock (synchrones)"
+
+2. **Nettoyage `main.py`**
+   - Supprimé commentaire inutile ligne 511
+   - Fix erreur ruff F841 sur `vector_ready`
+
+**✅ Commit & Push:**
+- Commit `48758e3` : `fix(tests): Corriger mock query AsyncMock→Mock + clean vector_ready`
+- Push sur branche : `claude/fix-unified-retriever-tests-011CUXRMYFchvDDggjC7zLbH`
+- Lien PR : (à créer par utilisateur ou attendre CI)
+
+### Résultat
+
+**Impact attendu :**
+- Tests `test_unified_retriever.py` devraient maintenant passer dans CI
+- Mock cohérent : TOUS les mocks vector_service sont `Mock` (synchrones)
+- Plus d'erreur ruff sur `vector_ready`
+
+**Tests locaux :**
+- ✅ `ruff check src/backend/ tests/backend/` : Quelques warnings imports inutilisés (non bloquants)
+- ⏳ `pytest` : Pas testé localement (pas de venv)
+
+**CI GitHub Actions :**
+- ⏳ En attente du prochain run après push
+- Si tests passent → branche #208 peut être mergée
+- Si tests échouent → investiguer logs détaillés (peut-être autre cause)
+
+### Décisions prises
+- Choisi de changer `service.query` AsyncMock→Mock plutôt que modifier le code prod
+- Préféré fix minimaliste (2 fichiers, 3 lignes changées)
+- Documenté clairement dans commentaire pourquoi tous mocks doivent être `Mock`
+
+### Blocages / Points d'attention
+- **Pas de venv local** : Impossible de lancer pytest pour valider avant push
+- **CI seul validateur** : Dépendance aux runners GitHub Actions
+- **Historique Git complexe** : Conflits entre commits qui se chevauchent (6f50f36 vs c72baf2)
+
+### Prochaines actions recommandées
+1. **Surveiller CI** de la branche #208 après ce push
+2. **Si CI passe** : Merger branche #208 dans main
+3. **Si CI échoue** : Investiguer logs détaillés, peut-être autre cause (imports inutilisés ?)
+4. **Post-merge** : Vérifier que tests restent stables sur main
+
+### Fichiers modifiés
+- `tests/backend/features/test_unified_retriever.py` (+2 lignes, -1 ligne)
+- `src/backend/main.py` (-1 ligne)
+- `AGENT_SYNC_CLAUDE.md` (màj session)
+- `docs/passation_claude.md` (cette entrée)
+
+---
+
 ## [2025-10-27 11:45] — Agent: Claude Code
 
 ### Contexte

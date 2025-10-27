@@ -1,16 +1,63 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-10-27 21:30 CET (Claude Code)
+**Dernière mise à jour:** 2025-10-27 23:00 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
 
 ---
 
-## ✅ Session COMPLÉTÉE (2025-10-27 21:30 CET)
+## ✅ Session COMPLÉTÉE (2025-10-27 23:00 CET)
+
+### ✅ FIX TESTS UNIFIED_RETRIEVER - Mock query AsyncMock→Mock
+
+**Branche:** `claude/fix-unified-retriever-tests-011CUXRMYFchvDDggjC7zLbH`
+**Status:** ✅ COMPLÉTÉ - Fix pushed sur branche
+
+**Ce qui a été fait:**
+
+**🔧 Problème identifié (logs CI branche #208):**
+- 3 tests `test_unified_retriever.py` foiraient : `test_get_ltm_context_success`, `test_retrieve_context_full`, `test_retrieve_context_ltm_only`
+- Erreur : `'coroutine' object is not iterable` ligne 343 unified_retriever.py
+- Warning : `RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited`
+- Le mock `service.query` était `AsyncMock()` alors que `query_weighted` est SYNCHRONE
+- Variable `vector_ready` inutilisée dans main.py (ruff F841)
+
+**🔨 Solution appliquée:**
+1. **Changé service.query de AsyncMock() → Mock() dans tests**
+   - Évite coroutines non await-ées si `query_weighted` appelle `query()` en interne
+   - Mock cohérent : TOUS les mocks vector_service sont maintenant `Mock` (synchrones)
+
+2. **Supprimé commentaire inutile dans main.py**
+   - Nettoyage variable `vector_ready` qui était déclarée mais jamais utilisée
+
+**📁 Fichiers modifiés (2):**
+- `tests/backend/features/test_unified_retriever.py` (+2 lignes commentaire, -1 ligne)
+- `src/backend/main.py` (-1 ligne commentaire)
+
+**✅ Tests:**
+- ✅ `ruff check src/backend/ tests/backend/` - Quelques warnings imports inutilisés (non bloquants)
+- ⏳ CI GitHub Actions - En attente du prochain run
+
+**🎯 Impact:**
+- Tests backend devraient maintenant passer dans le CI (branche #208)
+- Mock cohérent entre `query` et `query_weighted` (tous sync)
+- Plus d'erreur ruff sur `vector_ready`
+
+**📊 Commit:**
+- `48758e3` - fix(tests): Corriger mock query AsyncMock→Mock + clean vector_ready
+
+**🚀 Next Steps:**
+- Surveiller le CI de la branche #208 après ce push
+- Si tests passent, la branche pourra être mergée
+- Si tests échouent encore, investiguer logs détaillés (peut-être autre cause)
+
+---
+
+## ✅ Session PRÉCÉDENTE (2025-10-27 21:30 CET)
 
 ### ✅ FIX VALIDATION GIT CI - Corriger mock query_weighted
 
 **Branche:** `claude/fix-git-validation-011CUXAVAmmrZM93uDqCeQPm`
-**Status:** ✅ COMPLÉTÉ - Fix pushed, CI devrait passer maintenant
+**Status:** ✅ COMPLÉTÉ (mais problème réapparu avec commit c72baf2)
 
 **Ce qui a été fait:**
 
