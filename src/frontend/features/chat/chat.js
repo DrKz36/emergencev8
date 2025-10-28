@@ -28,6 +28,7 @@ export default class ChatModule {
     this._conversationModalVisible = false;
     this._conversationModalCleanup = null;
     this._threadsBootstrapPromise = null;
+    this._initialModalChecked = false; // 🔥 FIX: Flag pour éviter double affichage modal au démarrage
 
     // Connexion & flux
     this._wsConnected = false;
@@ -275,8 +276,44 @@ export default class ChatModule {
       this._wsConnected = (conn === 'connected');
     } catch {}
 
+    // 🔥 FIX: Setup listener pour afficher modal au démarrage (pas au mount)
+    // Écoute threads:ready pour afficher le modal dès que les threads sont chargés
+    this._setupInitialConversationCheck();
+
     this.isInitialized = true;
     console.log('✅ ChatModule V25.4 initialisé (listeners idempotents).');
+  }
+
+  /**
+   * Setup listener pour vérifier et afficher le modal au démarrage de l'app
+   * (avant même d'arriver sur le module Dialogue)
+   */
+  _setupInitialConversationCheck() {
+    if (!this.eventBus?.on) return;
+
+    const checkAndShowModal = () => {
+      if (this._initialModalChecked) return;
+      this._initialModalChecked = true;
+
+      // Attendre un tick pour que le DOM soit prêt
+      setTimeout(() => {
+        this._ensureActiveConversation();
+      }, 100);
+    };
+
+    // Écouter l'event threads:ready émis par le module Threads au démarrage
+    try {
+      this.eventBus.on(EVENTS?.THREADS_READY || 'threads:ready', checkAndShowModal);
+    } catch (err) {
+      console.warn('[Chat] Impossible d\'écouter threads:ready pour modal initial:', err);
+    }
+
+    // Fallback: si threads:ready n'est jamais émis, attendre un peu et vérifier
+    setTimeout(() => {
+      if (!this._initialModalChecked) {
+        checkAndShowModal();
+      }
+    }, 3000);
   }
 
   mount(container) {
@@ -317,9 +354,10 @@ export default class ChatModule {
     }
 
     // 🔥 FIX: Appeler _ensureActiveConversation() si pas de thread valide chargé
-    // (peu importe si getCurrentThreadId() retourne un ID ou pas)
-    if (!hasValidThreadLoaded) {
+    // ET si le modal initial n'a pas déjà été affiché au démarrage
+    if (!hasValidThreadLoaded && !this._initialModalChecked) {
       console.log('[Chat] mount() → Pas de thread valide chargé, vérification conversation active...');
+      this._initialModalChecked = true;
       this._ensureActiveConversation();
     }
   }

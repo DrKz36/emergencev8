@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.3 : Fix Pop-up Reprise - Modal Systématique + Centrage Correct [ACTUEL]
+ * - beta-3.3.4 : Fix Timing Pop-up - Affichage au Démarrage App (pas au mount module) [ACTUEL]
+ * - beta-3.3.3 : Fix Pop-up Reprise - Modal Systématique + Centrage Correct
  * - beta-3.3.2 : Fix Critiques Routing/Session - Pop-up Reprise + Validation Threads Archivés
  * - beta-3.3.1 : Fix Critiques BDD - Duplication Messages + Soft-Delete Archives
  * - beta-3.3.0 : PWA Mode Hors Ligne (P3.10 Complétée)
@@ -34,8 +35,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.3',
-  name: 'Fix Pop-up Reprise - Modal Systématique + Centrage Correct',
+  version: 'beta-3.3.4',
+  name: 'Fix Timing Pop-up - Affichage au Démarrage App (pas au mount module)',
   date: '2025-10-28',
 };
 
@@ -51,6 +52,18 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.4',
+    tagline: 'Fix Timing Pop-up - Affichage au Démarrage App (pas au mount module)',
+    date: '2025-10-28',
+    changes: [
+      { type: 'fix', text: 'Fix pop-up n\'apparaît qu\'après 20 secondes - Déplacé logique de init() vers listener threads:ready pour affichage immédiat au démarrage' },
+      { type: 'fix', text: 'Fix pop-up absent si on reste dans module Conversations - mount() appelé uniquement au switch vers Dialogue, maintenant géré dans init()' },
+      { type: 'quality', text: 'Setup listener _setupInitialConversationCheck() - Écoute threads:ready + fallback timeout 3s pour afficher modal au démarrage app' },
+      { type: 'quality', text: 'Flag _initialModalChecked - Évite double affichage modal (init() + mount()) via flag de contrôle' },
+      { type: 'quality', text: 'Modal s\'affiche maintenant <3s après connexion - Indépendant du module actif, garantit UX cohérente au démarrage' }
+    ]
+  },
   {
     version: 'beta-3.3.3',
     tagline: 'Fix Pop-up Reprise - Modal Systématique + Centrage Correct',
