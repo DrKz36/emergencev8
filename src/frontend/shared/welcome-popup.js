@@ -504,12 +504,23 @@ export class WelcomePopup {
     }
 }
 
+// Flag global pour empêcher multiples instances du popup
+let _activeWelcomePopup = null;
+
 /**
  * Show welcome popup if needed
  * @param {EventBus} eventBus
  */
 export function showWelcomePopupIfNeeded(eventBus) {
+    // Empêcher multiples instances (panneaux multiples)
+    if (_activeWelcomePopup) {
+        console.log('[WelcomePopup] Instance déjà active, skip création nouvelle instance');
+        return _activeWelcomePopup;
+    }
+
     const popup = new WelcomePopup(eventBus);
+    _activeWelcomePopup = popup;
+
     const bus = (eventBus && typeof eventBus.on === 'function') ? eventBus : null;
     const unsubscribers = [];
     let disposed = false;
@@ -526,12 +537,17 @@ export function showWelcomePopupIfNeeded(eventBus) {
             const off = unsubscribers.pop();
             try { off?.(); } catch (_) {}
         }
+        // Cleanup flag global
+        if (_activeWelcomePopup === popup) {
+            _activeWelcomePopup = null;
+        }
     };
 
     const isAppReadyForPopup = () => {
         if (typeof document === 'undefined') return false;
         const body = document.body;
         if (!body) return false;
+        // Ne PAS afficher si on est sur la page d'authentification
         if (body.classList?.contains?.('home-active')) return false;
 
         const appContainer = document.getElementById('app-container');
@@ -552,14 +568,37 @@ export function showWelcomePopupIfNeeded(eventBus) {
         return !hasHiddenAttr && !displayNone;
     };
 
+    const isUserAuthenticated = () => {
+        try {
+            // Vérifier qu'il y a un token d'authentification
+            const tokenKeys = ['emergence.id_token', 'id_token'];
+            for (const key of tokenKeys) {
+                const token = sessionStorage.getItem(key) || localStorage.getItem(key);
+                if (token && token.trim()) return true;
+            }
+            return false;
+        } catch (_) {
+            return false;
+        }
+    };
+
     const attemptShow = () => {
         if (disposed) return;
 
+        // Vérifier si popup doit être affiché (localStorage check)
         if (!popup.shouldShow()) {
             cleanup();
             return;
         }
 
+        // Vérifier si utilisateur est authentifié
+        if (!isUserAuthenticated()) {
+            console.log('[WelcomePopup] Utilisateur pas authentifié, skip affichage');
+            cleanup();
+            return;
+        }
+
+        // Vérifier si app est prête
         if (!isAppReadyForPopup()) {
             queueAttempt(250);
             return;
@@ -581,32 +620,26 @@ export function showWelcomePopupIfNeeded(eventBus) {
     };
 
     if (bus) {
-        const appReadyEvent = EVENTS.APP_READY || 'app:ready';
-        const moduleShowEvent = EVENTS.MODULE_SHOW || 'module:show';
-        const threadsReadyEvent = EVENTS.THREADS_READY || 'threads:ready';
         const authRequiredEvent = EVENTS.AUTH_REQUIRED || 'ui:auth:required';
-
-        if (typeof bus.once === 'function') {
-            unsubscribers.push(bus.once(appReadyEvent, () => queueAttempt(120)));
-            if (threadsReadyEvent) {
-                unsubscribers.push(bus.once(threadsReadyEvent, () => queueAttempt(80)));
-            }
-        }
+        const authLoginSuccessEvent = EVENTS.AUTH_LOGIN_SUCCESS || 'auth:login:success';
 
         if (typeof bus.on === 'function') {
-            unsubscribers.push(bus.on(moduleShowEvent, (moduleId) => {
-                if (!moduleId || moduleId === 'chat') {
-                    queueAttempt(120);
-                }
-            }));
+            // Masquer popup si authentification requise (déconnexion)
             unsubscribers.push(bus.on(authRequiredEvent, () => {
                 popup.hide();
                 cleanup();
             }));
+
+            // 🔥 FIX: Afficher popup UNIQUEMENT après connexion réussie
+            unsubscribers.push(bus.once(authLoginSuccessEvent, () => {
+                console.log('[WelcomePopup] Connexion réussie, affichage popup dans 500ms');
+                queueAttempt(500);
+            }));
         }
     }
 
-    queueAttempt(400);
+    // Ne PAS lancer queueAttempt() inconditionnellement ici
+    // Le popup sera affiché UNIQUEMENT après auth:login:success
 
     return popup;
 }
