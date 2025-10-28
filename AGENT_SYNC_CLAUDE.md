@@ -1,11 +1,65 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-10-27 18:25 CET (Claude Code)
+**Dernière mise à jour:** 2025-10-28 (Claude Code)
 **Mode:** Développement collaboratif multi-agents
 
 ---
 
-## ✅ Session COMPLÉTÉE (2025-10-27 18:25 CET)
+## ✅ Session COMPLÉTÉE (2025-10-28)
+
+### 🔥 FIX CRITIQUES BDD - DUPLICATION MESSAGES + SOFT-DELETE ARCHIVES (beta-3.3.1)
+
+**Status:** ✅ COMPLÉTÉ - 2 bugs critiques BDD résolus
+
+**Ce qui a été fait:**
+
+**🐛 BUG #1: Duplication messages (2-4x en BDD)**
+- **Symptôme:** Messages user dupliqués 2-4 fois, pire au changement module/reconnexion
+- **Root cause:** Double envoi REST+WebSocket dans chat.js ligne 926
+- **Analyse:** Frontend envoyait via `api.appendMessage()` REST + `eventBus.emit()` WS → 2 INSERT en BDD
+- **Fix frontend:** Supprimé `api.appendMessage()` REST (redondant avec WS) - lignes 924-949
+- **Fix backend:** Ajout vérification `message_id` existant avant INSERT (queries.py:1177-1189)
+- **Fix SQL:** Migration `20251028_unique_messages_id.sql` - contrainte UNIQUE sur messages(id, thread_id)
+
+**🐛 BUG #2: Effacement définitif archives conversations**
+- **Symptôme:** Threads archivés supprimés physiquement (DELETE), non récupérables
+- **Root cause:** `delete_thread()` faisait DELETE au lieu de soft-delete
+- **Fix:** Soft-delete par défaut `archived=1` avec param `hard_delete=False`
+- **Protection:** Messages préservés pour audit/backup, threads récupérables
+- **Fix SQL:** Migration `20251028_soft_delete_threads.sql` - index `archived_status` + `archived_at`
+
+**📁 Fichiers modifiés (7):**
+- `src/frontend/features/chat/chat.js` - Supprimé double envoi REST (lignes 924-949)
+- `src/backend/core/database/queries.py` - Protection unicité + soft-delete (lignes 1074-1144, 1177-1189)
+- `src/backend/core/migrations/20251028_unique_messages_id.sql` - Contrainte UNIQUE messages
+- `src/backend/core/migrations/20251028_soft_delete_threads.sql` - Index soft-delete
+- `src/version.js` - Version beta-3.3.1 + patch notes
+- `src/frontend/version.js` - Synchronisation beta-3.3.1
+- `package.json` - Version beta-3.3.1
+
+**✅ Tests validation:**
+- ✅ `npm run build` - Frontend OK (1.01s)
+- ✅ `ruff check queries.py` - Backend OK
+- ✅ `mypy queries.py` - Types OK
+- ✅ Guardian pre-commit - Mypy + Anima + Neo OK
+
+**🎯 Impact:**
+- ✅ Plus de duplication messages en BDD (fix frontend + backend + SQL)
+- ✅ Archives conversations préservées (soft-delete par défaut)
+- ✅ Contraintes SQL robustes (UNIQUE + index performance)
+
+**📊 Commits:**
+- `bad4420` - fix(bdd): Fix critiques duplication messages + effacement archives (beta-3.3.1)
+
+**🚀 Prochaines Actions Recommandées:**
+- Tester en environnement local (interactions Anima, changement modules, reconnexions)
+- Vérifier que duplication ne se produit plus
+- Vérifier que threads "supprimés" restent dans BDD avec `archived=1`
+- Déploiement manuel si tests OK
+
+---
+
+## ✅ Session PRÉCÉDENTE (2025-10-27 18:25 CET)
 
 ### ✅ AUDIT P2 COMPLÉTÉ - OPTIMISATIONS + PWA TEST GUIDE
 

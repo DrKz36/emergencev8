@@ -28,6 +28,7 @@ export default class ChatModule {
     this._conversationModalVisible = false;
     this._conversationModalCleanup = null;
     this._threadsBootstrapPromise = null;
+    this._initialModalChecked = false; // 🔥 FIX: Flag pour éviter double affichage modal au démarrage
 
     // Connexion & flux
     this._wsConnected = false;
@@ -275,8 +276,44 @@ export default class ChatModule {
       this._wsConnected = (conn === 'connected');
     } catch {}
 
+    // 🔥 FIX: Setup listener pour afficher modal au démarrage (pas au mount)
+    // Écoute threads:ready pour afficher le modal dès que les threads sont chargés
+    this._setupInitialConversationCheck();
+
     this.isInitialized = true;
     console.log('✅ ChatModule V25.4 initialisé (listeners idempotents).');
+  }
+
+  /**
+   * Setup listener pour vérifier et afficher le modal au démarrage de l'app
+   * (avant même d'arriver sur le module Dialogue)
+   */
+  _setupInitialConversationCheck() {
+    if (!this.eventBus?.on) return;
+
+    const checkAndShowModal = () => {
+      if (this._initialModalChecked) return;
+      this._initialModalChecked = true;
+
+      // Attendre un tick pour que le DOM soit prêt
+      setTimeout(() => {
+        this._ensureActiveConversation();
+      }, 100);
+    };
+
+    // Écouter l'event threads:ready émis par le module Threads au démarrage
+    try {
+      this.eventBus.on(EVENTS?.THREADS_READY || 'threads:ready', checkAndShowModal);
+    } catch (err) {
+      console.warn('[Chat] Impossible d\'écouter threads:ready pour modal initial:', err);
+    }
+
+    // Fallback: si threads:ready n'est jamais émis, attendre un peu et vérifier
+    setTimeout(() => {
+      if (!this._initialModalChecked) {
+        checkAndShowModal();
+      }
+    }, 3000);
   }
 
   mount(container) {
@@ -294,22 +331,33 @@ export default class ChatModule {
       }
     }
 
+    // 🔥 FIX: Vérifier si on a un thread VALIDE avec messages chargés
+    // Ne pas se contenter de vérifier si getCurrentThreadId() retourne un ID
     const currentId = this.getCurrentThreadId();
+    let hasValidThreadLoaded = false;
+
     if (currentId) {
       const cached = this.state.get(`threads.map.${currentId}`);
-      if (cached && cached.messages && this.loadedThreadId !== currentId) {
-        this.loadedThreadId = currentId;
-        this.threadId = currentId;
-        this.state.set('chat.threadId', currentId);
-        this.hydrateFromThread(cached);
-        console.log('[Chat] mount() → hydratation tardive depuis state pour', currentId);
-      } else if (!cached || !cached.messages) {
-        // Thread ID existe mais pas de data en cache → charger sans modal
-        console.log('[Chat] mount() → Thread ID existe mais pas en cache, chargement silencieux');
-        // Ne rien faire, le thread sera chargé par le flow normal
+      const isArchived = cached?.thread?.archived === true || cached?.thread?.archived === 1;
+
+      if (cached && cached.messages && !isArchived) {
+        // Thread valide avec messages et pas archivé
+        if (this.loadedThreadId !== currentId) {
+          this.loadedThreadId = currentId;
+          this.threadId = currentId;
+          this.state.set('chat.threadId', currentId);
+          this.hydrateFromThread(cached);
+          console.log('[Chat] mount() → Hydratation depuis state pour thread valide', currentId);
+        }
+        hasValidThreadLoaded = true;
       }
-    } else {
-      // ✅ Pas de conversation active : en récupérer une ou en créer une nouvelle
+    }
+
+    // 🔥 FIX: Appeler _ensureActiveConversation() si pas de thread valide chargé
+    // ET si le modal initial n'a pas déjà été affiché au démarrage
+    if (!hasValidThreadLoaded && !this._initialModalChecked) {
+      console.log('[Chat] mount() → Pas de thread valide chargé, vérification conversation active...');
+      this._initialModalChecked = true;
       this._ensureActiveConversation();
     }
   }
@@ -324,19 +372,22 @@ export default class ChatModule {
 
       console.log('[Chat] Vérification conversation active...');
 
-      // Attendre le bootstrap des threads pour avoir les données complètes
-      if (!this._hasExistingConversations()) {
-        console.log('[Chat] Attente du chargement des conversations...');
-        await this._waitForThreadsBootstrap(5000);
-      }
+      // 🔥 FIX: TOUJOURS attendre le bootstrap des threads pour éviter race condition
+      // entre localStorage (peut contenir thread archivé) et state backend
+      console.log('[Chat] Attente du chargement des conversations depuis le backend...');
+      await this._waitForThreadsBootstrap(5000);
 
-      // Vérifier si on a un thread ID ET ses données chargées
+      // Vérifier si on a un thread ID ET ses données chargées ET qu'il n'est pas archivé
       const currentThreadId = this.getCurrentThreadId();
       if (currentThreadId) {
         const threadData = this.state.get(`threads.map.${currentThreadId}`);
-        if (threadData && threadData.messages !== undefined) {
+        const isArchived = threadData?.thread?.archived === true || threadData?.thread?.archived === 1;
+
+        if (threadData && threadData.messages !== undefined && !isArchived) {
           console.log('[Chat] Thread actif avec données chargées, aucun modal nécessaire.');
           return;
+        } else if (isArchived) {
+          console.warn('[Chat] Thread ID pointe vers conversation archivée, affichage du modal...');
         } else {
           console.warn('[Chat] Thread ID présent mais données manquantes, affichage du modal...');
         }
@@ -359,14 +410,14 @@ export default class ChatModule {
   _showConversationChoiceModal(hasExistingConversations) {
     this._teardownConversationModal(true);
 
-    const host = typeof document !== 'undefined' && document.body
-      ? document.body
-      : this.container || null;
-
-    if (!host) {
-      console.warn('[Chat] Impossible d\'afficher le modal : aucun conteneur disponible.');
+    // 🔥 FIX: TOUJOURS append le modal à document.body pour centrage correct
+    // Ne jamais utiliser this.container car ça cause un décalage visuel
+    if (typeof document === 'undefined' || !document.body) {
+      console.warn('[Chat] Impossible d\'afficher le modal : document.body non disponible.');
       return;
     }
+
+    const host = document.body;
 
     const modalHTML = `
       <div class="modal-container visible" id="conversation-choice-modal" role="presentation">
@@ -519,6 +570,8 @@ export default class ChatModule {
   }
 
   _hasExistingConversations() {
+    // 🔥 FIX: Ne PAS se fier au localStorage seul car il peut contenir un thread archivé/obsolète
+    // On vérifie d'abord le state qui est synchronisé avec le backend
     try {
       const order = this.state.get('threads.order');
       if (Array.isArray(order) && order.length > 0) return true;
@@ -529,16 +582,14 @@ export default class ChatModule {
       if (map && typeof map === 'object' && Object.keys(map).length > 0) return true;
     } catch {}
 
-    try {
-      const stored = localStorage.getItem('emergence.threadId');
-      if (stored && stored.trim()) return true;
-    } catch {}
-
+    // Ne plus utiliser localStorage comme indicateur de conversations existantes
+    // car il peut pointer vers un thread archivé qui n'est plus dans le state
     return false;
   }
 
   async _waitForThreadsBootstrap(timeoutMs = 3000) {
-    if (this._hasExistingConversations()) return true;
+    // 🔥 FIX: TOUJOURS attendre les events backend, même si on pense avoir des conversations
+    // car le state peut être désynchronisé (localStorage obsolète, threads archivés, etc.)
 
     if (this._threadsBootstrapPromise) {
       return this._threadsBootstrapPromise;
@@ -775,7 +826,33 @@ export default class ChatModule {
 
   /* ============================ Utils ============================ */
   getCurrentThreadId() {
-    return this.threadId || this.state.get('threads.currentId') || null;
+    // 🔥 FIX: Valider que le thread existe dans le state ET n'est pas archivé
+    const candidateId = this.threadId || this.state.get('threads.currentId') || null;
+
+    if (!candidateId) return null;
+
+    // Vérifier si le thread existe dans threads.map
+    const threadData = this.state.get(`threads.map.${candidateId}`);
+    if (!threadData) {
+      // Thread n'existe pas dans le state (peut-être obsolète/supprimé)
+      console.warn('[Chat] getCurrentThreadId: Thread', candidateId, 'absent du state, clearing...');
+      this.threadId = null;
+      this.state.set('threads.currentId', null);
+      try { localStorage.removeItem('emergence.threadId'); } catch {}
+      return null;
+    }
+
+    // Vérifier si le thread est archivé
+    const isArchived = threadData.thread?.archived === true || threadData.thread?.archived === 1;
+    if (isArchived) {
+      console.warn('[Chat] getCurrentThreadId: Thread', candidateId, 'est archivé, clearing...');
+      this.threadId = null;
+      this.state.set('threads.currentId', null);
+      try { localStorage.removeItem('emergence.threadId'); } catch {}
+      return null;
+    }
+
+    return candidateId;
   }
 
   async _waitForWS(timeoutMs = 0) {
@@ -921,47 +998,32 @@ export default class ChatModule {
     this.state.set('chat.isLoading', true);
     this._updateThreadCacheFromBuckets();
 
+    // 🔥 FIX: Supprimé api.appendMessage() REST (redondant avec WS)
+    // Le WebSocket gère la persistance via backend (évite duplication messages)
+    // Garde seulement la logique de vérification thread valide
     let threadId = this.getCurrentThreadId();
-    if (threadId) {
-      api.appendMessage(threadId, {
-        role: 'user',
-        content: trimmed,
-        agent_id: currentAgentId,
-        meta: { ...messageMeta }
-      }).catch(async (err) => {
-        // Si le thread n'existe pas (404), créer un nouveau thread et réessayer
-        if (err?.status === 404) {
-          console.warn('[Chat] Thread introuvable (404) → création nouveau thread');
-          try {
-            const created = await api.createThread({ type: 'chat', agent_id: currentAgentId });
-            const newThreadId = created?.id;
-            if (newThreadId) {
-              // Mettre à jour l'état avec le nouveau thread
-              this.threadId = newThreadId;
-              this.loadedThreadId = newThreadId;
-              this.state.set('threads.currentId', newThreadId);
-              this.state.set('chat.threadId', newThreadId);
-              try { localStorage.setItem('emergence.threadId', newThreadId); } catch {}
-
-              // Émettre l'événement pour que le WebSocket se reconnecte avec le bon thread
-              this.eventBus.emit('threads:ready', { id: newThreadId });
-
-              // Réessayer l'ajout du message
-              await api.appendMessage(newThreadId, {
-                role: 'user',
-                content: trimmed,
-                agent_id: currentAgentId,
-                meta: { ...messageMeta }
-              });
-              console.log('[Chat] Message ajouté au nouveau thread', newThreadId);
-            }
-          } catch (retryErr) {
-            console.error('[Chat] Échec création thread/retry:', retryErr);
-          }
-        } else {
-          console.error('[Chat] Échec appendMessage(user):', err);
+    if (!threadId) {
+      // Pas de thread → en créer un (le WS gérera la persistence du message)
+      try {
+        const created = await api.createThread({ type: 'chat', agent_id: currentAgentId });
+        const newThreadId = created?.id;
+        if (newThreadId) {
+          this.threadId = newThreadId;
+          this.loadedThreadId = newThreadId;
+          this.state.set('threads.currentId', newThreadId);
+          this.state.set('chat.threadId', newThreadId);
+          try { localStorage.setItem('emergence.threadId', newThreadId); } catch {}
+          this.eventBus.emit('threads:ready', { id: newThreadId });
+          threadId = newThreadId;
+          console.log('[Chat] Nouveau thread créé:', newThreadId);
         }
-      });
+      } catch (err) {
+        console.error('[Chat] Échec création thread:', err);
+        this.showToast('Impossible de créer la conversation.');
+        this._sendLock = false;
+        this.state.set('chat.isLoading', false);
+        return;
+      }
     }
 
     // 🛡️ Anti-course: attends brièvement WS avant d'émettre

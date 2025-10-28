@@ -5,16 +5,16 @@
 
 /* Conteneur principal qui couvre toute la page */
 .modal-container {
-    position: fixed; /* Se superpose à tout le reste */
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex; /* Utilise flexbox pour centrer le contenu */
-    align-items: center;
-    justify-content: center;
-    z-index: 1000; /* Assure qu'il est au-dessus de tout */
-    
+    position: fixed !important; /* 🔥 FIX: Force fixed pour éviter tout override */
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important; /* Utilise flexbox pour centrer le contenu */
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 9999 !important; /* 🔥 FIX: z-index très élevé pour être au-dessus de tout */
+
     /* Gère la visibilité et la transition */
     opacity: 0;
     visibility: hidden;
@@ -42,13 +42,13 @@
 .modal-content {
     position: relative; /* Pour être au-dessus du backdrop */
     background-color: var(--color-background-light);
-    padding: 2rem;
+    padding: 1.75rem 2rem;
     border-radius: var(--border-radius-large);
     border: 1px solid var(--color-border);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     width: 90%;
-    max-width: 500px; /* Limite la largeur sur les grands écrans */
-    
+    max-width: 420px; /* 🔥 FIX: Réduit de 500px à 420px pour modal plus compact */
+
     /* Animation d'apparition */
     transform: scale(0.95);
     transition: transform 0.3s ease;
@@ -59,26 +59,36 @@
 }
 
 .modal-title {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     font-weight: 600;
     color: var(--color-text-primary);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+    text-align: center; /* 🔥 FIX: Centrer le titre */
 }
 
 .modal-body {
-    font-size: 1rem;
+    font-size: 0.95rem;
     color: var(--color-text-secondary);
-    line-height: 1.6;
+    line-height: 1.5;
     margin-bottom: 1.5rem;
+    text-align: center; /* 🔥 FIX: Centrer le texte */
 }
 
 .modal-actions {
     display: flex;
-    justify-content: flex-end; /* Aligne les boutons à droite */
+    justify-content: center; /* 🔥 FIX: Centrer les boutons au lieu de flex-end */
     gap: 0.75rem; /* Espace entre les boutons */
 }
 
 .modal-actions--single {
+    justify-content: center;
+}
+
+/* 🔥 FIX: Uniformiser la taille des boutons dans le modal */
+.modal-actions .btn {
+    min-width: 140px;
+    padding: 0.65rem 1.25rem;
+    font-size: 0.95rem;
     justify-content: center;
 }
 
