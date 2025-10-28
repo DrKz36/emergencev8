@@ -7,6 +7,125 @@
 
 ---
 
+## [2025-10-28 SESSION 3] — Agent: Claude Code
+
+### Contexte
+Utilisateur demande de mettre à jour les docs de coopération inter-agents (vérifier Guardian), puis faire un commit/push complet de tous les fichiers (modifiés + non trackés). Objectif: dépôt local propre, tout poussé sur main si possible.
+
+### État initial
+- **Branche courante:** `chore/sync-multi-agents-pwa-codex` (upstream gone)
+- **Fichiers modifiés:** 12 (travail Codex sur modals CSS + Guardian)
+- **Fichiers non trackés:** 5 (nouveaux scripts Guardian)
+- **Guardian:** Activé, hooks fonctionnels
+
+### Actions effectuées
+
+**1. Lecture docs coopération**
+- ✅ `SYNC_STATUS.md` - Vue d'ensemble projet (dernière update: 2025-10-26 21:45)
+- ✅ `AGENT_SYNC_CLAUDE.md` - Mon état (dernière session: beta-3.3.4 hotfix)
+- ✅ `AGENT_SYNC_CODEX.md` - État Codex (dernière session: modal rebuild 2025-10-28 12:40)
+- ✅ `docs/passation_codex.md` - Travail Codex (modal CSS 320px card, strict centering)
+
+**2. Mise à jour docs coopération**
+- ✅ `AGENT_SYNC_CLAUDE.md` - Ajout session "SYNC MULTI-AGENTS + PUSH COMPLET"
+- ✅ `docs/passation_claude.md` - Cette entrée (session 3)
+
+**3. Vérification Guardian**
+- ✅ Config: `claude-plugins/integrity-docs-guardian/config/guardian_config.json`
+- ✅ Scripts: `check_integrity.py`, `scan_docs.py`, `send_guardian_reports_email.py`, `setup_guardian.ps1`
+- ✅ Pre-commit hooks: Anima (DocKeeper), Neo (IntegrityWatcher), Mypy
+- ✅ Post-commit hooks: Nexus (Coordinator), auto-update docs
+- ✅ Status: Actif, fonctionnel
+
+**4. Préparation commit**
+- Tous fichiers à commiter (17 total):
+  - 12 modifiés par Codex (modals, Guardian, frontend)
+  - 5 non trackés (nouveaux docs/scripts Guardian)
+  - 2 mis à jour par moi (AGENT_SYNC_CLAUDE.md, passation_claude.md)
+
+**5. Commit + Push**
+- Stratégie: Commit tout d'un coup avec message descriptif
+- Branche: Rester sur `chore/sync-multi-agents-pwa-codex` puis push
+- Si main bloqué: laisser sur branche, PR à créer manuellement
+
+### Travail Codex pris en compte
+
+**Session 2025-10-28 12:40 (Codex):**
+- Rebuild `modals.css` avec 320px card (au lieu de 500px)
+- Strict centering + neutral shadow (pas de halo bleu)
+- Tuned typography/colors pour readability
+- Backdrop clicks conservés
+- Shared `modal-lg` variant pour modals plus larges (settings/doc)
+- Build frontend validé: `npm run build` OK
+
+**Fichiers touchés par Codex:**
+- `src/frontend/styles/components/modals.css`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+**Prochaines actions Codex recommandées:**
+1. QA visuel (desktop + mobile) pour confirmer layout popup
+2. Double-check autres modals (Settings, Documentation, Webhooks) pour régressions
+3. Vérifier backdrop click + pas de halo bleu
+
+### Fichiers à commiter (17)
+
+**Modifiés (12):**
+- `AGENT_SYNC_CODEX.md` (Codex)
+- `claude-plugins/integrity-docs-guardian/config/guardian_config.json`
+- `claude-plugins/integrity-docs-guardian/scripts/check_integrity.py`
+- `claude-plugins/integrity-docs-guardian/scripts/scan_docs.py`
+- `claude-plugins/integrity-docs-guardian/scripts/send_guardian_reports_email.py`
+- `claude-plugins/integrity-docs-guardian/scripts/setup_guardian.ps1`
+- `docs/passation_codex.md` (Codex)
+- `src/frontend/features/chat/chat.js`
+- `src/frontend/features/settings/settings-about.css`
+- `src/frontend/features/settings/settings-about.js`
+- `src/frontend/main.js`
+- `src/frontend/styles/components/modals.css` (Codex)
+
+**Non trackés (5):**
+- `claude-plugins/integrity-docs-guardian/EMAIL_ACTIVATION_V3.md`
+- `claude-plugins/integrity-docs-guardian/GUARDIAN_V3_CHANGELOG.md`
+- `claude-plugins/integrity-docs-guardian/scripts/guardian_monitor_with_notifications.ps1`
+- `claude-plugins/integrity-docs-guardian/scripts/send_toast_notification.ps1`
+- `scripts/test_guardian_email.ps1`
+
+**Mis à jour cette session (2):**
+- `AGENT_SYNC_CLAUDE.md`
+- `docs/passation_claude.md` (cette entrée)
+
+### Décisions
+
+**Commit message:**
+Format conventionnel incluant:
+- Type: `chore` (sync multi-agents + Guardian)
+- Scope: `sync`
+- Description: Mise à jour docs coopération + push complet fichiers
+- Body: Détails travail Codex (modal rebuild) + Guardian updates
+
+**Branche:**
+- Rester sur `chore/sync-multi-agents-pwa-codex`
+- Push vers origin
+- Si besoin, créer PR manuellement vers main
+
+### Prochaines actions recommandées
+
+**Immédiat:**
+1. ✅ Commit tous fichiers (17 total)
+2. ✅ Push vers origin
+3. ⏳ Vérifier si main accepte push direct OU créer PR
+
+**Post-push:**
+- Vérifier CI (si activé)
+- Confirmer Guardian hooks s'exécutent bien
+- QA frontend (modal rebuild Codex)
+
+### Blocages
+Aucun. Prêt pour commit/push.
+
+---
+
 ## [2025-10-28 SESSION 2] — Agent: Claude Code
 
 ### Contexte

@@ -1418,7 +1418,21 @@ class EmergenceClient {
       if (!this.app) {
         this.app = new App(this.eventBus, this.state);
       }
-      try { this.eventBus?.emit?.('module:show', 'chat'); } catch (_) {}
+      const appInstance = this.app;
+      if (appInstance && typeof appInstance.showModule === 'function') {
+        try {
+          const maybe = appInstance.showModule('chat');
+          if (maybe && typeof maybe.catch === 'function') {
+            maybe.catch((err) => {
+              console.warn('[main] Impossible de forcer le module chat apres connexion.', err);
+            });
+          }
+        } catch (err) {
+          console.warn('[main] Impossible de forcer le module chat apres connexion.', err);
+        }
+      } else {
+        try { this.eventBus?.emit?.('module:show', 'chat'); } catch (_) {}
+      }
       return this.app;
     }
 

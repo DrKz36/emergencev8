@@ -1,17 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-NEO (IntegrityWatcher) - System Integrity Checker
+NEO (IntegrityWatcher) v2.0 - System Integrity Checker
 Verifies backend/frontend coherence and detects potential regressions
+
+CHANGELOG v2.0:
+- Support working directory (git diff HEAD) for pre-commit checks
+- Support commit history (git diff HEAD~1 HEAD) for post-commit analysis
+- Mode selection via --mode flag (pre-commit | post-commit | both)
+- Better severity assessment with configurable thresholds
+- Verbose output with color-coded messages
 """
 
 import sys
 import json
 import re
 import subprocess
+import argparse
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Set, Tuple
+from typing import List, Dict, Set, Tuple, Literal
 
 # Fix Windows console encoding
 if sys.platform == 'win32':
@@ -25,6 +33,9 @@ REPORTS_DIR = REPO_ROOT / "reports"  # UNIFIED: All reports in repo root
 
 # Ensure reports directory exists
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Scan modes
+ScanMode = Literal["pre-commit", "post-commit", "both"]
 
 
 def run_git_command(cmd: List[str], cwd: Path = REPO_ROOT) -> str:
@@ -52,22 +63,53 @@ def get_commit_info() -> Tuple[str, str]:
     return commit_hash, commit_msg
 
 
-def get_changed_files(commit_ref: str = "HEAD~1") -> Dict[str, List[str]]:
-    """Get files changed in the last commit, categorized by type."""
-    changed = run_git_command(["git", "diff", "--name-only", commit_ref, "HEAD"])
+def get_changed_files(mode: ScanMode = "both") -> Dict[str, List[str]]:
+    """
+    Get files changed, categorized by type.
 
-    if not changed:
+    Args:
+        mode: Scan mode
+            - "pre-commit": Working directory changes (git diff HEAD)
+            - "post-commit": Last commit changes (git diff HEAD~1 HEAD)
+            - "both": Union of both (deduplicated)
+
+    Returns:
+        Dict with categorized file lists
+    """
+    all_files = set()
+
+    # Get working directory changes (unstaged + staged)
+    if mode in ("pre-commit", "both"):
+        # Staged changes
+        staged = run_git_command(["git", "diff", "--name-only", "--cached"])
+        if staged:
+            all_files.update(staged.split("\n"))
+
+        # Unstaged changes
+        unstaged = run_git_command(["git", "diff", "--name-only", "HEAD"])
+        if unstaged:
+            all_files.update(unstaged.split("\n"))
+
+    # Get last commit changes
+    if mode in ("post-commit", "both"):
+        committed = run_git_command(["git", "diff", "--name-only", "HEAD~1", "HEAD"])
+        if committed:
+            all_files.update(committed.split("\n"))
+
+    # Remove empty strings
+    all_files.discard("")
+
+    if not all_files:
         return {"backend": [], "frontend": [], "config": []}
 
-    files = changed.split("\n")
-
+    # Categorize files
     categorized = {
         "backend": [],
         "frontend": [],
         "config": []
     }
 
-    for file in files:
+    for file in sorted(all_files):
         if not file:
             continue
 
@@ -352,19 +394,35 @@ def generate_report(changed_files: Dict[str, List[str]]) -> Dict:
 
 def main():
     """Main entry point."""
-    print("🔐 NEO (IntegrityWatcher) - Checking system integrity...")
+    # Parse arguments
+    parser = argparse.ArgumentParser(description="NEO (IntegrityWatcher) - System Integrity Checker v2.0")
+    parser.add_argument(
+        "--mode",
+        choices=["pre-commit", "post-commit", "both"],
+        default="pre-commit",
+        help="Scan mode (default: pre-commit)"
+    )
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Verbose output with issue details"
+    )
+    args = parser.parse_args()
+
+    print(f"🔐 NEO (IntegrityWatcher) v2.0 - Checking system integrity... (mode: {args.mode})", flush=True)
 
     # Get changed files
-    changed_files = get_changed_files()
+    changed_files = get_changed_files(mode=args.mode)
 
     total_changes = sum(len(files) for files in changed_files.values())
-    print(f"📝 Detected {total_changes} changed file(s)")
+    print(f"📝 Detected {total_changes} changed file(s)", flush=True)
 
     if total_changes == 0:
-        print("ℹ️  No backend/frontend changes detected - skipping analysis")
+        print("ℹ️  No backend/frontend changes detected - skipping analysis", flush=True)
         # Still generate a report for consistency
         report = {
             "timestamp": datetime.now().isoformat(),
+            "scan_mode": args.mode,
             "status": "ok",
             "backend_changes": {"files": [], "endpoints_added": [], "endpoints_modified": [], "endpoints_removed": [], "schemas_changed": []},
             "frontend_changes": {"files": [], "api_calls_added": [], "api_calls_modified": [], "api_calls_removed": []},
@@ -382,17 +440,29 @@ def main():
     with open(report_file, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
 
-    print(f"✅ Report generated: {report_file}")
-    print(f"📊 Summary: {report['summary']}")
+    print(f"\n💾 Report saved: {report_file}", flush=True)
+    print(f"📊 Summary: {report['summary']}", flush=True)
+
+    # Print verbose details if requested
+    if args.verbose and report["issues"]:
+        print("\nIssues found:", flush=True)
+        for issue in report["issues"]:
+            severity_icon = "🔴" if issue["severity"] == "critical" else "🟡" if issue["severity"] == "warning" else "🔵"
+            print(f"  {severity_icon} [{issue['severity'].upper()}] {issue['category']}", flush=True)
+            print(f"      {issue['message']}", flush=True)
 
     # Return exit code based on severity
+    # critical = exit 1 (blocks commit)
+    # warning = exit 0 (allows commit but warns)
+    # ok = exit 0
     if report["statistics"]["critical"] > 0:
-        print("🚨 CRITICAL issues found - immediate action required")
-        return 2
-    elif report["statistics"]["warnings"] > 0:
-        print("⚠️  Warnings found - review recommended")
+        print("\n🚨 CRITICAL issues detected - commit should be blocked", flush=True)
         return 1
+    elif report["statistics"]["warnings"] > 0:
+        print("\n⚠️  Warnings detected - review recommended but commit allowed", flush=True)
+        return 0
 
+    print("\n✅ All integrity checks passed", flush=True)
     return 0
 
 

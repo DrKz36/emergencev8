@@ -9,6 +9,7 @@ import os
 import sys
 import json
 import asyncio
+import argparse
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -759,6 +760,22 @@ async def send_guardian_reports():
 
 async def main():
     """Point d'entrée principal"""
+    # Parse arguments
+    parser = argparse.ArgumentParser(description="Send Guardian reports via email")
+    parser.add_argument(
+        "--to",
+        type=str,
+        default=ADMIN_EMAIL,
+        help=f"Email recipient (default: {ADMIN_EMAIL})"
+    )
+    args = parser.parse_args()
+
+    # Override ADMIN_EMAIL si spécifié
+    global ADMIN_EMAIL
+    if args.to:
+        ADMIN_EMAIL = args.to
+        print(f"📧 Sending reports to: {ADMIN_EMAIL}")
+
     try:
         success = await send_guardian_reports()
         sys.exit(0 if success else 1)

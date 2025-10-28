@@ -646,6 +646,72 @@
     height: 20px;
 }
 
+/* Modules subsection titles */
+.modules-subsection-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: rgba(226, 232, 240, 0.9);
+    margin: 28px 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modules-subsection-title:first-of-type {
+    margin-top: 0;
+}
+
+.modules-subsection-title svg {
+    width: 20px;
+    height: 20px;
+    color: #60a5fa;
+}
+
+.module-type {
+    font-size: 12px;
+    color: rgba(148, 163, 184, 0.7);
+}
+
+/* About stats grid */
+.about-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.about-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 18px;
+    background: rgba(11, 18, 32, 0.4);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.about-stat:hover {
+    background: rgba(11, 18, 32, 0.6);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.about-stat-label {
+    font-size: 12px;
+    color: rgba(148, 163, 184, 0.8);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.about-stat-value {
+    font-size: 24px;
+    font-weight: 800;
+    color: rgba(226, 232, 240, 0.95);
+}
+
 /* ===========================
    Credits Section
    =========================== */
@@ -740,6 +806,17 @@
     background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%);
     border-color: rgba(139, 92, 246, 0.5);
     transform: translateY(-2px);
+}
+
+.tech-tag-guardian {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(6, 182, 212, 0.2) 100%);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.tech-tag-guardian:hover {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(6, 182, 212, 0.3) 100%);
+    border-color: rgba(16, 185, 129, 0.6);
 }
 
 .credits-footer {
