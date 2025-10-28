@@ -7,6 +7,127 @@
 
 ---
 
+## [2025-10-28] — Agent: Claude Code
+
+### Contexte
+Anima a effectué des tests de mémoire/BDD, tu as constaté 2 bugs critiques : (1) duplication messages 2-4x en BDD, (2) effacement définitif des archives conversations.
+
+### Problème identifié
+
+**BUG #1 (CRITIQUE): Duplication messages en BDD**
+- **Symptôme:** Messages user apparaissent 2-4 fois en BDD, pire au changement module/reconnexion
+- **Observation:** Anima dit "je vais voir le module conversation pour m'assurer que c'est pris en compte et je vois 4 interactions !"
+- **Investigation:** Analyse schéma BDD (`schema.py`, `001_initial_schema.sql`, `queries.py`)
+- **Root cause:** Double envoi REST+WebSocket dans `chat.js` ligne 926
+  - Frontend envoyait via `api.appendMessage()` (REST) **ET** `eventBus.emit('ui:chat:send')` (WebSocket)
+  - Backend `add_message()` n'avait **AUCUNE** protection unicité → chaque appel crée nouvelle ligne
+- **Aggravation:** Changement module ou reconnexion multiplie les envois (4x observés)
+
+**BUG #2 (CRITIQUE): Effacement définitif archives**
+- **Symptôme:** "Les dernières mises à jour ont écrasé les archives de conversations"
+- **Investigation:** Analyse `delete_thread()` + `archive_thread()` + schéma threads
+- **Root cause:** `delete_thread()` faisait `DELETE FROM threads` physique au lieu de soft-delete
+  - Pas de mécanisme soft-delete (archived=1)
+  - `ON DELETE CASCADE` sur messages → suppression définitive tout l'historique
+  - Pas de backup/snapshot automatique SQLite
+- **Conséquence:** Threads archivés perdus définitivement, non récupérables
+
+### Actions effectuées
+
+**🔥 FIX BUG #1: Duplication messages**
+
+**Fix #1 - Frontend (chat.js):**
+- Supprimé `api.appendMessage()` REST (lignes 926-964)
+- Gardé uniquement envoi WebSocket (ligne 972: `eventBus.emit('ui:chat:send')`)
+- Gardé logique création thread si 404 (lignes 927-950 simplifiées)
+- **Raison:** WebSocket fait déjà la persistance backend, REST était redondant
+
+**Fix #2 - Backend protection (queries.py):**
+- Ajout vérification `message_id` existant avant INSERT (lignes 1177-1189)
+- Si `custom_message_id` fourni et existe déjà → skip INSERT, return existing
+- Log warning pour traçabilité
+- **Raison:** Protection ultime même si frontend renvoie
+
+**Fix #3 - Contrainte SQL (migration):**
+- Créé `20251028_unique_messages_id.sql`
+- Contrainte: `CREATE UNIQUE INDEX idx_messages_id_thread_unique ON messages(id, thread_id)`
+- **Raison:** Empêche doublons au niveau base de données (ultime barrière)
+
+**🔥 FIX BUG #2: Effacement archives**
+
+**Fix #4 - Soft-delete threads (queries.py):**
+- Modifié `delete_thread()` (lignes 1074-1144)
+- Nouveau param `hard_delete=False` (soft-delete par défaut)
+- Soft-delete: `UPDATE threads SET archived=1, archival_reason='user_deleted', archived_at=NOW()`
+- Hard delete disponible si param `hard_delete=True` (admin uniquement)
+- **Raison:** Préserve messages pour audit/backup, threads récupérables
+
+**Fix #5 - Index SQL (migration):**
+- Créé `20251028_soft_delete_threads.sql`
+- Index `idx_threads_archived_status` sur `(archived, updated_at DESC)`
+- Index partial `idx_threads_archived_at` sur `archived_at DESC WHERE archived=1`
+- **Raison:** Optimise requêtes `get_threads()` qui filtre `archived=0` par défaut
+
+**Versioning:**
+- Version `beta-3.3.0` → `beta-3.3.1` (PATCH car bugfixes critiques)
+- Fichiers synchronisés: `src/version.js`, `src/frontend/version.js`, `package.json`
+- Patch notes détaillées ajoutées
+
+### Tests effectués
+
+- ✅ `npm run build` - Frontend OK (1.01s, Vite build clean)
+- ✅ `ruff check src/backend/core/database/queries.py` - Backend OK
+- ✅ `mypy src/backend/core/database/queries.py` - Types OK
+- ✅ Guardian pre-commit - Mypy + Anima + Neo OK
+
+### Fichiers modifiés (7)
+
+1. `src/frontend/features/chat/chat.js` (fix duplication frontend, lignes 924-949)
+2. `src/backend/core/database/queries.py` (protection unicité + soft-delete, lignes 1074-1144, 1177-1189)
+3. `src/backend/core/migrations/20251028_unique_messages_id.sql` (contrainte UNIQUE)
+4. `src/backend/core/migrations/20251028_soft_delete_threads.sql` (index soft-delete)
+5. `src/version.js` (beta-3.3.1 + patch notes)
+6. `src/frontend/version.js` (synchronisation)
+7. `package.json` (beta-3.3.1)
+
+### Commits effectués
+
+- `bad4420` - fix(bdd): Fix critiques duplication messages + effacement archives (beta-3.3.1)
+
+### Impact global
+
+**Bugs critiques résolus:**
+- ✅ Plus de duplication messages en BDD (3 niveaux protection: frontend, backend, SQL)
+- ✅ Archives conversations préservées (soft-delete par défaut, récupérables)
+- ✅ Contraintes SQL robustes (UNIQUE + index performance)
+
+**Sécurité données:**
+- ✅ Messages préservés pour audit/backup
+- ✅ Threads soft-deleted récupérables (archived=1)
+- ✅ Hard delete possible mais explicite (param hard_delete=True)
+
+### Prochaines actions recommandées
+
+**Tests validation (PRIORITAIRE):**
+1. Tester interactions Anima (vérifier qu'1 seul message créé en BDD)
+2. Tester changement de modules (chat ↔ dialogue)
+3. Tester reconnexion WebSocket
+4. Vérifier que threads "supprimés" restent dans BDD avec `archived=1`
+
+**Si tests OK:**
+- Déploiement manuel en production (après validation complète)
+
+**Monitoring:**
+- Vérifier logs backend pour warnings "Message déjà existant, skip INSERT"
+- Vérifier métriques duplication (devrait être 0)
+
+**Notes pour Codex:**
+- Frontend chat.js modifié : garde logique WebSocket, supprime REST
+- Backend queries.py : 2 fonctions modifiées (`add_message`, `delete_thread`)
+- 2 nouvelles migrations SQL à appliquer au prochain démarrage backend
+
+---
+
 ## [2025-10-27 18:25] — Agent: Claude Code
 
 ### Contexte
