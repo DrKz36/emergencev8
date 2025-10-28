@@ -1,3 +1,38 @@
+## [2025-10-28 23:40 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/frontend/styles/components/modals.css`
+- `src/backend/features/auth/models.py`
+- `src/backend/features/auth/service.py`
+- `tests/backend/features/test_auth_allowlist_snapshot.py`
+- `stable-service.yaml`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+- Le popup de bienvenue du module Dialogue restait décentré malgré les précédents correctifs.
+- Chaque redéploiement Cloud Run remettait l'allowlist à zéro (seul l'admin seed restait), bloquant l'onboarding des comptes ajoutés en production.
+
+### Travail réalisé
+- Refondu `modals.css` pour garantir centrage strict, largeur limitée et style aligné sur la capture fournie.
+- Ajouté un snapshot Firestore dans `AuthService` + configuration `stable-service.yaml` afin de restaurer l'allowlist à chaque bootstrap.
+- Écrit le test `test_auth_allowlist_snapshot.py` (stub Firestore) et relancé `test_auth_admin.py` + `npm run build` pour valider les flux critiques.
+
+### Tests
+- `pytest tests/backend/features/test_auth_allowlist_snapshot.py`
+- `pytest tests/backend/features/test_auth_admin.py`
+- `npm run build`
+
+### Travail de Claude Code pris en compte
+- Aucun changement de Claude impactant ces zones pendant la session (backend/front isolés).
+
+### Prochaines actions recommandées
+1. Vérifier que la révision Cloud Run dispose des permissions Firestore + secrets requis avant déploiement.
+2. QA manuelle des autres modales (Settings/Admin/Docs) sur desktop et mobile pour détecter d'éventuelles régressions visuelles.
+
+### Blocages
+- `curl http://localhost:8000/api/sync/status` → `Recv failure: Connection was aborted` (dashboard AutoSync indisponible durant la session).
+
 ## [2025-10-28 12:40 CET] - Agent: Codex GPT
 
 ### Fichiers modifiés

@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.4 : Fix Timing Pop-up - Affichage au Démarrage App (pas au mount module) [ACTUEL]
+ * - beta-3.3.5 : Setup Firestore Snapshot - Infrastructure Sync Allowlist Automatique [ACTUEL]
+ * - beta-3.3.4 : Fix Timing Pop-up - Affichage au Démarrage App (pas au mount module)
  * - beta-3.3.3 : Fix Pop-up Reprise - Modal Systématique + Centrage Correct
  * - beta-3.3.2 : Fix Critiques Routing/Session - Pop-up Reprise + Validation Threads Archivés
  * - beta-3.3.1 : Fix Critiques BDD - Duplication Messages + Soft-Delete Archives
@@ -35,8 +36,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.4',
-  name: 'Fix Timing Pop-up - Affichage au Démarrage App (pas au mount module)',
+  version: 'beta-3.3.5',
+  name: 'Setup Firestore Snapshot - Infrastructure Sync Allowlist Automatique',
   date: '2025-10-28',
 };
 
@@ -52,6 +53,18 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.5',
+    tagline: 'Setup Firestore Snapshot - Infrastructure Sync Allowlist Automatique',
+    date: '2025-10-28',
+    changes: [
+      { type: 'quality', text: 'Firestore activé - Mode natif région europe-west1 pour backup persistant allowlist' },
+      { type: 'quality', text: 'Service account dédié - firestore-sync@emergence-469005.iam.gserviceaccount.com avec rôles datastore.user + secretAccessor' },
+      { type: 'quality', text: 'Cloud Run service account - Basculé de compute@developer vers firestore-sync pour accès Firestore natif' },
+      { type: 'quality', text: 'Document Firestore initialisé - Collection auth_config/allowlist avec admin entry (gonzalefernando@gmail.com)' },
+      { type: 'quality', text: 'Script init_firestore_snapshot.py - Outil pour vérifier/créer document Firestore initial' }
+    ]
+  },
   {
     version: 'beta-3.3.4',
     tagline: 'Fix Timing Pop-up - Affichage au Démarrage App (pas au mount module)',

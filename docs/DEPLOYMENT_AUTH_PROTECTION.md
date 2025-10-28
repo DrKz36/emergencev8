@@ -81,6 +81,47 @@ Ajout d'une step qui **vérifie** que l'auth est bien en place après déploieme
 
 ---
 
+## 🆕 Snapshot Firestore de l'allowlist (beta-3.3.5)
+
+Depuis la version `beta-3.3.5`, `AuthService` sauvegarde l'allowlist dans Firestore pour éviter qu'un déploiement Cloud Run réécrase les comptes ajoutés en production.
+
+### Pré-requis GCP
+
+1. Activer Firestore (mode natif) pour le projet `emergence-469005`.
+2. Créer un service account dédié (ex. `firestore-sync`) avec :
+   - `roles/datastore.user`
+   - `roles/iam.serviceAccountTokenCreator`
+   - `roles/secretmanager.secretAccessor` si la clé est lue via Secret Manager.
+3. Générer une clé JSON et la monter dans la révision Cloud Run (Secret Manager + volume ou variable d'environnement).
+
+### Variables d'environnement nécessaires
+
+```yaml
+env:
+  - name: AUTH_ALLOWLIST_SNAPSHOT_BACKEND
+    value: firestore
+  - name: AUTH_ALLOWLIST_SNAPSHOT_PROJECT
+    value: emergence-469005
+  - name: AUTH_ALLOWLIST_SNAPSHOT_COLLECTION   # optionnel, défaut: auth_config
+    value: auth_config
+  - name: AUTH_ALLOWLIST_SNAPSHOT_DOCUMENT     # optionnel, défaut: allowlist
+    value: allowlist
+  - name: GOOGLE_APPLICATION_CREDENTIALS       # si clé JSON montée
+    value: /secrets/firestore/key.json
+```
+
+> Si la révision Cloud Run tourne directement avec le service account `firestore-sync`, `GOOGLE_APPLICATION_CREDENTIALS` n'est pas nécessaire.
+
+### Déploiement & logs
+
+- Déployer via `gcloud run services replace stable-service.yaml --region europe-west1`.
+- Vérifier les logs `emergence.auth` :
+  - ✅ `Allowlist snapshot restored ...` → restauration Firestore OK.
+  - ⚠️ `Allowlist snapshot sync failed ...` → vérifier permissions/secret.
+
+Chaque modification de l'allowlist (ajout, revoke, reset mot de passe, 2FA) déclenche une mise à jour du snapshot Firestore.
+
+
 ## 📋 Checklist de Déploiement Sûr
 
 Avant de modifier un workflow de déploiement Cloud Run :

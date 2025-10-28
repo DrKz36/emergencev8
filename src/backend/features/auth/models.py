@@ -37,6 +37,10 @@ class AuthConfig(BaseModel):
     admin_emails: set[str] = Field(default_factory=set)
     dev_mode: bool = False
     dev_default_email: Optional[str] = None
+    allowlist_snapshot_backend: Optional[str] = Field(default=None)
+    allowlist_snapshot_project: Optional[str] = Field(default=None)
+    allowlist_snapshot_collection: str = Field(default="auth_config")
+    allowlist_snapshot_document: str = Field(default="allowlist")
 
     model_config = {
         "frozen": True,
