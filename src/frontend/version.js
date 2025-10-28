@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.0 : PWA Mode Hors Ligne (P3.10 Complétée) [ACTUEL]
+ * - beta-3.3.1 : Fix Critiques BDD - Duplication Messages + Soft-Delete Archives [ACTUEL]
+ * - beta-3.3.0 : PWA Mode Hors Ligne (P3.10 Complétée)
  * - beta-3.2.2 : Configuration Email Officielle - emergence.app.ch@gmail.com
  * - beta-3.2.1 : Changelog enrichi - 5 révisions détaillées avec sections complètes
  * - beta-3.2.0 : Module À Propos avec Changelog enrichi (13 versions affichées)
@@ -31,9 +32,9 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.0',
-  name: 'PWA Mode Hors Ligne (P3.10)',
-  date: '2025-10-27',
+  version: 'beta-3.3.1',
+  name: 'Fix Critiques BDD - Duplication Messages + Soft-Delete Archives',
+  date: '2025-10-28',
 };
 
 export const VERSION = CURRENT_RELEASE.version;
@@ -48,6 +49,20 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.1',
+    tagline: 'Fix Critiques BDD - Duplication Messages + Soft-Delete Archives',
+    date: '2025-10-28',
+    changes: [
+      { type: 'fix', text: 'Fix duplication messages (bug critique) - Supprimé double envoi REST+WebSocket dans chat.js (ligne 926) qui créait 2-4 messages en BDD' },
+      { type: 'fix', text: 'Protection backend anti-duplication - Ajout vérification message_id existant avant INSERT (queries.py ligne 1177-1189)' },
+      { type: 'quality', text: 'Contrainte UNIQUE SQL - Migration 20251028_unique_messages_id.sql pour empêcher doublons au niveau base' },
+      { type: 'fix', text: 'Fix effacement archives (bug critique) - Soft-delete par défaut sur threads au lieu de DELETE physique (récupérable)' },
+      { type: 'quality', text: 'Soft-delete threads - Nouveau param hard_delete=False par défaut dans delete_thread() avec archival_reason' },
+      { type: 'quality', text: 'Index SQL optimisés - Migration 20251028_soft_delete_threads.sql avec index archived_status + archived_at' },
+      { type: 'quality', text: 'Audit complet BDD - Analyse schéma messages/threads, identification root causes duplication/effacement' }
+    ]
+  },
   {
     version: 'beta-3.2.2',
     tagline: 'Configuration Email Officielle - emergence.app.ch@gmail.com',

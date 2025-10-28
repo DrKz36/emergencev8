@@ -921,47 +921,32 @@ export default class ChatModule {
     this.state.set('chat.isLoading', true);
     this._updateThreadCacheFromBuckets();
 
+    // 🔥 FIX: Supprimé api.appendMessage() REST (redondant avec WS)
+    // Le WebSocket gère la persistance via backend (évite duplication messages)
+    // Garde seulement la logique de vérification thread valide
     let threadId = this.getCurrentThreadId();
-    if (threadId) {
-      api.appendMessage(threadId, {
-        role: 'user',
-        content: trimmed,
-        agent_id: currentAgentId,
-        meta: { ...messageMeta }
-      }).catch(async (err) => {
-        // Si le thread n'existe pas (404), créer un nouveau thread et réessayer
-        if (err?.status === 404) {
-          console.warn('[Chat] Thread introuvable (404) → création nouveau thread');
-          try {
-            const created = await api.createThread({ type: 'chat', agent_id: currentAgentId });
-            const newThreadId = created?.id;
-            if (newThreadId) {
-              // Mettre à jour l'état avec le nouveau thread
-              this.threadId = newThreadId;
-              this.loadedThreadId = newThreadId;
-              this.state.set('threads.currentId', newThreadId);
-              this.state.set('chat.threadId', newThreadId);
-              try { localStorage.setItem('emergence.threadId', newThreadId); } catch {}
-
-              // Émettre l'événement pour que le WebSocket se reconnecte avec le bon thread
-              this.eventBus.emit('threads:ready', { id: newThreadId });
-
-              // Réessayer l'ajout du message
-              await api.appendMessage(newThreadId, {
-                role: 'user',
-                content: trimmed,
-                agent_id: currentAgentId,
-                meta: { ...messageMeta }
-              });
-              console.log('[Chat] Message ajouté au nouveau thread', newThreadId);
-            }
-          } catch (retryErr) {
-            console.error('[Chat] Échec création thread/retry:', retryErr);
-          }
-        } else {
-          console.error('[Chat] Échec appendMessage(user):', err);
+    if (!threadId) {
+      // Pas de thread → en créer un (le WS gérera la persistence du message)
+      try {
+        const created = await api.createThread({ type: 'chat', agent_id: currentAgentId });
+        const newThreadId = created?.id;
+        if (newThreadId) {
+          this.threadId = newThreadId;
+          this.loadedThreadId = newThreadId;
+          this.state.set('threads.currentId', newThreadId);
+          this.state.set('chat.threadId', newThreadId);
+          try { localStorage.setItem('emergence.threadId', newThreadId); } catch {}
+          this.eventBus.emit('threads:ready', { id: newThreadId });
+          threadId = newThreadId;
+          console.log('[Chat] Nouveau thread créé:', newThreadId);
         }
-      });
+      } catch (err) {
+        console.error('[Chat] Échec création thread:', err);
+        this.showToast('Impossible de créer la conversation.');
+        this._sendLock = false;
+        this.state.set('chat.isLoading', false);
+        return;
+      }
     }
 
     // 🛡️ Anti-course: attends brièvement WS avant d'émettre

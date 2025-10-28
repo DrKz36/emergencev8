@@ -1077,27 +1077,70 @@ async def delete_thread(
     session_id: Optional[str],
     *,
     user_id: Optional[str] = None,
+    hard_delete: bool = False,
 ) -> bool:
+    """
+    Supprime un thread (soft-delete par défaut).
+
+    Args:
+        db: Database manager
+        thread_id: ID du thread à supprimer
+        session_id: Session ID (isolation)
+        user_id: User ID (isolation)
+        hard_delete: Si True, suppression physique définitive (défaut: False - soft delete)
+
+    Returns:
+        True si supprimé, False si thread introuvable
+
+    Notes:
+        - Par défaut (hard_delete=False): marque archived=1 (soft-delete, récupérable)
+        - Si hard_delete=True: DELETE physique définitif (non récupérable)
+        - Soft-delete préserve les messages pour audit/backup
+    """
     thread = await get_thread(db, thread_id, session_id, user_id=user_id)
     if not thread:
         return False
 
     scope_sql, scope_params = _build_scope_condition(user_id, session_id)
-    await db.execute(
-        f"DELETE FROM thread_docs WHERE thread_id = ? AND {scope_sql}",
-        (thread_id, *scope_params),
-        commit=True,
-    )
-    await db.execute(
-        f"DELETE FROM messages WHERE thread_id = ? AND {scope_sql}",
-        (thread_id, *scope_params),
-        commit=True,
-    )
-    await db.execute(
-        f"DELETE FROM threads WHERE id = ? AND {scope_sql}",
-        (thread_id, *scope_params),
-        commit=True,
-    )
+
+    if hard_delete:
+        # Suppression physique définitive (legacy behavior)
+        logger.warning(
+            f"[delete_thread] HARD DELETE thread {thread_id} (non récupérable)"
+        )
+        await db.execute(
+            f"DELETE FROM thread_docs WHERE thread_id = ? AND {scope_sql}",
+            (thread_id, *scope_params),
+            commit=True,
+        )
+        await db.execute(
+            f"DELETE FROM messages WHERE thread_id = ? AND {scope_sql}",
+            (thread_id, *scope_params),
+            commit=True,
+        )
+        await db.execute(
+            f"DELETE FROM threads WHERE id = ? AND {scope_sql}",
+            (thread_id, *scope_params),
+            commit=True,
+        )
+    else:
+        # 🔥 FIX: Soft-delete par défaut (évite perte définitive archives)
+        now = datetime.now(timezone.utc).isoformat()
+        await db.execute(
+            f"""
+            UPDATE threads
+            SET archived = 1,
+                archival_reason = 'user_deleted',
+                archived_at = ?
+            WHERE id = ? AND {scope_sql}
+            """,
+            (now, thread_id, *scope_params),
+            commit=True,
+        )
+        logger.info(
+            f"[delete_thread] Soft-deleted thread {thread_id} (archived=1, récupérable)"
+        )
+
     return True
 # -- Messages --
 async def add_message(
@@ -1173,6 +1216,21 @@ async def add_message(
         persisted_id = str(row["id"]) if row and "id" in row.keys() else None
     else:
         assigned_id = custom_message_id or uuid.uuid4().hex
+
+        # 🔥 FIX: Protection anti-duplication - vérifier si message_id existe déjà
+        if custom_message_id:
+            scope_sql, scope_params = _build_scope_condition(user_id, session_id)
+            existing = await db.fetch_one(
+                f"SELECT id, created_at FROM messages WHERE id = ? AND thread_id = ? AND {scope_sql}",
+                (assigned_id, thread_id, *scope_params)
+            )
+            if existing:
+                logger.warning(
+                    f"[add_message] Message {assigned_id} déjà existant dans thread {thread_id}, "
+                    f"skip INSERT (évite duplication)"
+                )
+                return {"id": existing["id"], "created_at": existing["created_at"]}
+
         base_cols = ["id", "thread_id", "role", "content", "tokens", "meta"]
         base_vals = [assigned_id, thread_id, role, content, tokens, meta_json]
         if include_agent:
