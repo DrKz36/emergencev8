@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import inspect
 import json
@@ -53,6 +54,14 @@ class AuthService:
         self.access_token_expire_minutes = max(1, resolved_config.token_ttl_seconds // 60)
         self.rate_limiter = rate_limiter or SlidingWindowRateLimiter(RateLimiterConfig())
         self._auth_sessions_has_user_id: Optional[bool] = None
+        snapshot_backend = (resolved_config.allowlist_snapshot_backend or "").strip().lower() if resolved_config.allowlist_snapshot_backend else None
+        self._allowlist_snapshot_backend: Optional[str] = snapshot_backend or None
+        self._allowlist_snapshot_project: Optional[str] = resolved_config.allowlist_snapshot_project
+        self._allowlist_snapshot_collection: str = (resolved_config.allowlist_snapshot_collection or "auth_config").strip() or "auth_config"
+        self._allowlist_snapshot_document: str = (resolved_config.allowlist_snapshot_document or "allowlist").strip() or "allowlist"
+        self._allowlist_snapshot_client: Optional[Any] = None
+        self._allowlist_snapshot_lock = asyncio.Lock()
+        self._allowlist_snapshot_columns: Optional[set[str]] = None
 
     def _resolve_config(self, config: Optional[AuthConfig | Mapping[str, Any]]) -> AuthConfig:
         payload: AuthConfig | Mapping[str, Any] | None = config
@@ -84,6 +93,14 @@ class AuthService:
         dev_mode = bool(payload.get("dev_mode") or payload.get("enable_dev_mode"))
         dev_default_email_raw = payload.get("dev_default_email") or payload.get("dev_email")
         dev_default_email = str(dev_default_email_raw).strip().lower() or None if dev_default_email_raw else None
+        snapshot_backend_raw = payload.get("allowlist_snapshot_backend") or payload.get("allowlist_sync_backend")
+        snapshot_backend = str(snapshot_backend_raw).strip().lower() if snapshot_backend_raw else None
+        snapshot_project_raw = payload.get("allowlist_snapshot_project") or payload.get("allowlist_firestore_project")
+        snapshot_project = str(snapshot_project_raw).strip() if snapshot_project_raw else None
+        snapshot_collection_raw = payload.get("allowlist_snapshot_collection") or payload.get("allowlist_collection")
+        snapshot_document_raw = payload.get("allowlist_snapshot_document") or payload.get("allowlist_document")
+        snapshot_collection = (str(snapshot_collection_raw).strip() if snapshot_collection_raw else "auth_config") or "auth_config"
+        snapshot_document = (str(snapshot_document_raw).strip() if snapshot_document_raw else "allowlist") or "allowlist"
         return AuthConfig(
             secret=secret,
             issuer=issuer,
@@ -93,6 +110,10 @@ class AuthService:
             admin_emails=admin_emails,
             dev_mode=dev_mode,
             dev_default_email=dev_default_email,
+            allowlist_snapshot_backend=snapshot_backend,
+            allowlist_snapshot_project=snapshot_project,
+            allowlist_snapshot_collection=snapshot_collection,
+            allowlist_snapshot_document=snapshot_document,
         )
 
     def _load_allowlist_seed_entries(self) -> list[dict[str, Any]]:
@@ -162,6 +183,7 @@ class AuthService:
                     actor=actor,
                     password=password,
                     password_generated=password_generated,
+                    sync_snapshot=False,
                 )
                 if password:
                     logger.info("Allowlist seed applied for %s (role=%s)", email, role or "member")
@@ -171,6 +193,244 @@ class AuthService:
                 logger.warning("Failed to seed allowlist entry for %s: %s", email, exc)
             except Exception as exc:
                 logger.error("Unexpected error while seeding allowlist entry for %s: %s", email, exc, exc_info=True)
+
+        await self._sync_allowlist_snapshot(reason="seed")
+    def _allowlist_snapshot_enabled(self) -> bool:
+        return self._allowlist_snapshot_backend == "firestore"
+
+    async def _get_allowlist_snapshot_client(self) -> Optional[Any]:
+        if not self._allowlist_snapshot_enabled():
+            return None
+        if self._allowlist_snapshot_client is not None:
+            return self._allowlist_snapshot_client
+
+        try:
+            from google.cloud import firestore  # type: ignore[attr-defined]
+        except Exception as exc:  # pragma: no cover - optional dependency missing
+            logger.warning("Allowlist snapshot disabled (firestore import failed): %s", exc)
+            self._allowlist_snapshot_backend = None
+            return None
+
+        project_id = self._allowlist_snapshot_project or os.getenv("AUTH_ALLOWLIST_SNAPSHOT_PROJECT") or os.getenv("GOOGLE_CLOUD_PROJECT")
+        try:
+            client = firestore.AsyncClient(project=project_id)
+        except AttributeError:
+            logger.warning("Allowlist snapshot disabled (AsyncClient not available in google-cloud-firestore).")
+            self._allowlist_snapshot_backend = None
+            return None
+        except Exception as exc:  # pragma: no cover - Firestore init failure
+            logger.warning("Allowlist snapshot disabled (Firestore client init failed): %s", exc)
+            self._allowlist_snapshot_backend = None
+            return None
+
+        self._allowlist_snapshot_client = client
+        return client
+
+    async def _get_allowlist_columns(self) -> set[str]:
+        if self._allowlist_snapshot_columns is not None:
+            return self._allowlist_snapshot_columns
+        try:
+            rows = await self.db.fetch_all("PRAGMA table_info(auth_allowlist)")
+        except Exception as exc:
+            logger.warning("Allowlist snapshot: unable to inspect auth_allowlist schema: %s", exc)
+            self._allowlist_snapshot_columns = set()
+            return set()
+
+        columns: set[str] = set()
+        for row in rows or []:
+            info = self._row_to_dict(row)
+            if not info:
+                continue
+            name = info.get("name")
+            if isinstance(name, str) and name:
+                columns.add(name)
+        self._allowlist_snapshot_columns = columns
+        return columns
+
+    async def _fetch_allowlist_snapshot_rows(self) -> list[dict[str, Any]]:
+        columns = await self._get_allowlist_columns()
+        if not columns:
+            return []
+
+        base_columns = [
+            "email",
+            "role",
+            "note",
+            "created_at",
+            "created_by",
+            "revoked_at",
+            "revoked_by",
+            "password_hash",
+            "password_updated_at",
+            "password_must_reset",
+        ]
+        optional_columns = [
+            "totp_secret",
+            "totp_enabled_at",
+            "backup_codes",
+            "oauth_sub",
+        ]
+        selected = [col for col in base_columns if col in columns]
+        selected.extend(col for col in optional_columns if col in columns and col not in selected)
+        if not selected:
+            return []
+
+        query = f"SELECT {', '.join(selected)} FROM auth_allowlist"
+        rows = await self._fetch_all_dicts(query)
+        resolved: list[dict[str, Any]] = []
+        for row in rows:
+            payload = {key: row.get(key) for key in selected}
+            resolved.append(payload)
+        return resolved
+
+    async def _persist_allowlist_snapshot(self) -> None:
+        client = await self._get_allowlist_snapshot_client()
+        if client is None:
+            return
+
+        rows = await self._fetch_allowlist_snapshot_rows()
+        collection = self._allowlist_snapshot_collection or "auth_config"
+        document = self._allowlist_snapshot_document or "allowlist"
+
+        active: list[dict[str, Any]] = []
+        revoked: list[dict[str, Any]] = []
+        for row in rows:
+            # Ensure only JSON-serializable values
+            payload = {key: row.get(key) for key in row.keys()}
+            if payload.get("revoked_at"):
+                revoked.append(payload)
+            else:
+                active.append(payload)
+
+        doc_ref = client.collection(collection).document(document)
+        data = {
+            "version": 1,
+            "updated_at": self._now().isoformat(),
+            "entries": active,
+        }
+        if revoked:
+            data["revoked_entries"] = revoked
+        await doc_ref.set(data, merge=False)
+
+    async def _load_allowlist_snapshot(self) -> Optional[dict[str, Any]]:
+        client = await self._get_allowlist_snapshot_client()
+        if client is None:
+            return None
+        collection = self._allowlist_snapshot_collection or "auth_config"
+        document = self._allowlist_snapshot_document or "allowlist"
+        doc_ref = client.collection(collection).document(document)
+        snapshot = await doc_ref.get()
+        if not snapshot.exists:
+            return None
+        data = snapshot.to_dict() or {}
+        if not isinstance(data, dict):
+            return None
+        return data
+
+    async def _apply_allowlist_snapshot_entry(
+        self,
+        entry: dict[str, Any],
+        columns: set[str],
+        *,
+        revoked: bool,
+    ) -> bool:
+        email = self._normalize_email(entry.get("email"))
+        if not email:
+            return False
+
+        role = entry.get("role") or "member"
+        note = entry.get("note")
+        password_hash = entry.get("password_hash")
+        password_updated_at = entry.get("password_updated_at")
+        try:
+            await self._upsert_allowlist(
+                email,
+                role=role,
+                note=note,
+                actor="bootstrap:snapshot",
+                password_hash=password_hash,
+                password_updated_at=password_updated_at,
+            )
+        except Exception as exc:
+            logger.warning("Allowlist snapshot: unable to upsert %s from snapshot: %s", email, exc)
+            return False
+
+        update_fields: list[str] = []
+        params: list[Any] = []
+        mutable_columns = (
+            "created_at",
+            "created_by",
+            "password_must_reset",
+            "totp_secret",
+            "totp_enabled_at",
+            "backup_codes",
+            "oauth_sub",
+        )
+        for column in mutable_columns:
+            if column in columns and column in entry:
+                value = entry.get(column)
+                if column == "password_must_reset" and value is not None:
+                    value = int(bool(value))
+                update_fields.append(f"{column} = ?")
+                params.append(value)
+
+        if revoked and "revoked_at" in columns and "revoked_at" in entry:
+            update_fields.append("revoked_at = ?")
+            params.append(entry.get("revoked_at"))
+        if revoked and "revoked_by" in columns and "revoked_by" in entry:
+            update_fields.append("revoked_by = ?")
+            params.append(entry.get("revoked_by"))
+        if not revoked and "revoked_at" in columns:
+            update_fields.append("revoked_at = NULL")
+        if not revoked and "revoked_by" in columns:
+            update_fields.append("revoked_by = NULL")
+
+        if update_fields:
+            params.append(email)
+            assignments = ", ".join(update_fields)
+            await self.db.execute(
+                f"UPDATE auth_allowlist SET {assignments} WHERE email = ?",
+                tuple(params),
+                commit=True,
+            )
+        return True
+
+    async def _restore_allowlist_from_snapshot(self) -> None:
+        if not self._allowlist_snapshot_enabled():
+            return
+        snapshot = await self._load_allowlist_snapshot()
+        if not snapshot:
+            return
+
+        entries = snapshot.get("entries") or []
+        revoked_entries = snapshot.get("revoked_entries") or []
+        if not isinstance(entries, list):
+            entries = []
+        if not isinstance(revoked_entries, list):
+            revoked_entries = []
+
+        columns = await self._get_allowlist_columns()
+        restored = 0
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            if await self._apply_allowlist_snapshot_entry(entry, columns, revoked=False):
+                restored += 1
+        for entry in revoked_entries:
+            if not isinstance(entry, dict):
+                continue
+            await self._apply_allowlist_snapshot_entry(entry, columns, revoked=True)
+        if restored:
+            logger.info("Allowlist snapshot restored %d entrie(s) from Firestore.", restored)
+
+    async def _sync_allowlist_snapshot(self, *, reason: str) -> None:
+        if not self._allowlist_snapshot_enabled():
+            return
+        async with self._allowlist_snapshot_lock:
+            try:
+                await self._persist_allowlist_snapshot()
+            except Exception as exc:  # pragma: no cover - external service failure
+                logger.warning("Allowlist snapshot sync failed (%s): %s", reason, exc)
 
     async def _auth_sessions_supports_user_id(self) -> bool:
         if self._auth_sessions_has_user_id is not None:
@@ -245,6 +505,8 @@ class AuthService:
         )
 
         await self._seed_allowlist_from_env()
+        await self._restore_allowlist_from_snapshot()
+        await self._sync_allowlist_snapshot(reason="bootstrap")
         self._auth_sessions_has_user_id = None
         await self._backfill_auth_session_user_ids()
 
@@ -1017,6 +1279,7 @@ class AuthService:
         password: Optional[str] = None,
         *,
         password_generated: bool = False,
+        sync_snapshot: bool = True,
     ) -> AllowlistEntry:
         normalized = self._normalize_email(email)
         if not normalized:
@@ -1094,6 +1357,8 @@ class AuthService:
         row = await self._get_allowlist_row(normalized)
         if not row:
             raise AuthError("Entree allowlist introuvable apres creation.", status_code=500)
+        if sync_snapshot:
+            await self._sync_allowlist_snapshot(reason="upsert")
         return self._row_to_allowlist(row)
 
     async def set_allowlist_password(self, email: str, password: str, actor: Optional[str] = None) -> AllowlistEntry:
@@ -1134,6 +1399,7 @@ class AuthService:
         updated_row = await self._get_allowlist_row(normalized)
         if not updated_row:
             raise AuthError("Entree allowlist introuvable apres mise a jour.", status_code=500)
+        await self._sync_allowlist_snapshot(reason="set_password")
         return self._row_to_allowlist(updated_row)
 
     async def change_own_password(
@@ -1187,6 +1453,7 @@ class AuthService:
             metadata={"password_updated_at": updated_at, "source": "self_service"},
         )
 
+        await self._sync_allowlist_snapshot(reason="change_password")
         return True
 
     async def remove_allowlist(self, email: str, actor: Optional[str]) -> None:
@@ -1198,6 +1465,7 @@ class AuthService:
         )
         await self.revoke_sessions_for_email(normalized, actor=actor)
         await self._write_audit("allowlist:remove", email=normalized, actor=actor)
+        await self._sync_allowlist_snapshot(reason="remove")
 
     async def create_password_reset_token(self, email: str) -> str:
         """
@@ -1652,6 +1920,7 @@ class AuthService:
             metadata={"backup_codes_count": len(backup_codes)}
         )
 
+        await self._sync_allowlist_snapshot(reason="enable_2fa")
         return {
             "secret": secret,
             "qr_code": qr_code_base64,
@@ -1716,6 +1985,7 @@ class AuthService:
             metadata={"enabled_at": now.isoformat()}
         )
 
+        await self._sync_allowlist_snapshot(reason="verify_enable_2fa")
         return True
 
     async def verify_2fa_code(self, email: str, code: str) -> bool:
@@ -1782,6 +2052,7 @@ class AuthService:
                     metadata={"remaining_codes": len(backup_codes)}
                 )
 
+                await self._sync_allowlist_snapshot(reason="backup_code_used")
                 return True
 
         # Verification failed
@@ -1843,6 +2114,7 @@ class AuthService:
             metadata={}
         )
 
+        await self._sync_allowlist_snapshot(reason="disable_2fa")
         return True
 
     async def get_2fa_status(self, email: str) -> dict[str, Any]:
@@ -1903,6 +2175,12 @@ def build_auth_config_from_env() -> AuthConfig:
     dev_default_email_raw = os.getenv("AUTH_DEV_DEFAULT_EMAIL", "") or ""
     dev_default_email = dev_default_email_raw.strip().lower() or None
     algorithm = os.getenv("AUTH_JWT_ALGORITHM", "HS256") or "HS256"
+    snapshot_backend_raw = os.getenv("AUTH_ALLOWLIST_SNAPSHOT_BACKEND", "")
+    snapshot_backend = snapshot_backend_raw.strip().lower() or None
+    snapshot_collection = os.getenv("AUTH_ALLOWLIST_SNAPSHOT_COLLECTION", "auth_config") or "auth_config"
+    snapshot_document = os.getenv("AUTH_ALLOWLIST_SNAPSHOT_DOCUMENT", "allowlist") or "allowlist"
+    snapshot_project_raw = os.getenv("AUTH_ALLOWLIST_SNAPSHOT_PROJECT", "")
+    snapshot_project = snapshot_project_raw.strip() or None
     return AuthConfig(
         secret=secret,
         issuer=issuer,
@@ -1912,4 +2190,8 @@ def build_auth_config_from_env() -> AuthConfig:
         admin_emails=admin_emails,
         dev_mode=dev_mode,
         dev_default_email=dev_default_email,
+        allowlist_snapshot_backend=snapshot_backend,
+        allowlist_snapshot_collection=snapshot_collection.strip() or "auth_config",
+        allowlist_snapshot_document=snapshot_document.strip() or "allowlist",
+        allowlist_snapshot_project=snapshot_project,
     )

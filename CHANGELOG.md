@@ -12,6 +12,73 @@
 
 ---
 
+## [beta-3.3.5] - 2025-10-28
+
+### 🔧 Setup Firestore Snapshot - Infrastructure Sync Allowlist Automatique
+
+#### 🏗️ Infrastructure
+
+**1. Firestore Activé - Backup Persistant Allowlist**
+- Firestore activé en mode natif région `europe-west1` (identique Cloud Run)
+- Base de données : `(default)` (créée 2025-08-20)
+- Collection : `auth_config` / Document : `allowlist`
+- Backup persistant des entrées allowlist (active + révoquées)
+
+**2. Service Account Dédié**
+- Service account : `firestore-sync@emergence-469005.iam.gserviceaccount.com`
+- Rôles attachés :
+  - `roles/datastore.user` - Accès lecture/écriture Firestore
+  - `roles/secretmanager.secretAccessor` - Accès secrets GCP
+  - `roles/iam.serviceAccountTokenCreator` - Génération tokens courts
+  - `roles/artifactregistry.reader` - Pull images Docker
+  - `roles/logging.logWriter` - Écriture logs
+
+**3. Cloud Run Service Account Basculé**
+- Ancien : `486095406755-compute@developer.gserviceaccount.com`
+- Nouveau : `firestore-sync@emergence-469005.iam.gserviceaccount.com`
+- Permet accès Firestore natif avec permissions minimales (principe moindre privilège)
+
+**4. Document Firestore Initialisé**
+- Script : `scripts/init_firestore_snapshot.py` (créé)
+- 1 entrée active : `gonzalefernando@gmail.com` (admin)
+- 0 entrée révoquée
+- Dernière mise à jour : 2025-10-28T13:12:18
+
+#### 📝 Synchronisation Automatique
+
+**Comportement :**
+- Au démarrage app : Restauration entrées allowlist depuis Firestore (si manquantes en local)
+- Chaque modification allowlist (ajout, suppression, password, 2FA) : Sauvegarde auto vers Firestore
+- Firestore = source de vérité persistante pour allowlist
+
+**Logs attendus :**
+- Restauration : `"Allowlist snapshot restored X entrie(s) from Firestore."`
+- Échec sync : `"Allowlist snapshot sync failed (reason): error"`
+
+#### 📁 Fichiers Modifiés
+
+- [stable-service.yaml:28](stable-service.yaml#L28) - Service account `firestore-sync@emergence-469005.iam.gserviceaccount.com`
+
+#### 📁 Fichiers Créés
+
+- [scripts/init_firestore_snapshot.py](scripts/init_firestore_snapshot.py) - Script init/vérification document Firestore
+
+#### ✅ Tests
+
+- [x] Firestore activé - Mode natif `europe-west1` ✅
+- [x] Service account créé avec rôles ✅
+- [x] Cloud Run redéployé avec nouveau service account ✅
+- [x] Document Firestore initialisé (1 admin entry) ✅
+- [x] App healthy - `/ready` retourne `{"ok":true}` ✅
+
+#### 🎯 Impact
+
+- ✅ Backup persistant allowlist (survit redéploiements)
+- ✅ Permissions minimales (principe moindre privilège)
+- ✅ Infrastructure GCP-native (pas de clé JSON à gérer)
+
+---
+
 ## [beta-3.3.0] - 2025-10-27
 
 ### 🌐 PWA Mode Hors Ligne Complet (P3.10) ✅

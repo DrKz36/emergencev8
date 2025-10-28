@@ -1,3 +1,31 @@
+## Session COMPLETED (2025-10-28 23:40 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/frontend/styles/components/modals.css`
+- `src/backend/features/auth/models.py`
+- `src/backend/features/auth/service.py`
+- `tests/backend/features/test_auth_allowlist_snapshot.py`
+- `stable-service.yaml`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Rebuilt the dialogue modal so the welcome popup stays strictly centered, width-capped, and aligned with the user's capture.
+2. Added Firestore-backed allowlist snapshots so manually added credentials survive Cloud Run redeploys, including config/env plumbing.
+3. Introduced regression tests covering snapshot round-trips and wired the production manifest to enable the new persistence path.
+
+### Tests
+- `pytest tests/backend/features/test_auth_allowlist_snapshot.py`
+- `pytest tests/backend/features/test_auth_admin.py`
+- `npm run build`
+
+### Next steps
+1. Verify Firestore permissions & required secrets in prod before deploying this change.
+2. QA other modals (settings, docs, admin) on desktop/mobile to confirm the shared styling remains stable.
+
+### Blockers
+- None.
+
 ## Session COMPLETED (2025-10-28 12:40 CET) - Agent : Codex GPT
 
 ### Files touched
