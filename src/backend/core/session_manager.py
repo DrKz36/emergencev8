@@ -395,7 +395,7 @@ class SessionManager:
             # Reconstruction de l'objet Session à partir des données de la BDD
             session_dict = dict(session_row)
             history_json = session_dict.get('session_data', '[]')
-            
+
             # Reconstruction de l'historique avec les bons modèles Pydantic
             history_list = json.loads(history_json)
             reconstructed_history: List[Dict[str, Any]] = []
@@ -855,7 +855,7 @@ class SessionManager:
             session.end_time = datetime.now(timezone.utc)
             duration = (session.end_time - session.start_time).total_seconds()
             logger.info(f"Finalisation de la session {session_id}. Durée: {duration:.2f}s.")
-            
+
             # On utilise la méthode robuste du DatabaseManager pour sauvegarder
             await self.db_manager.save_session(session)
 
@@ -922,7 +922,7 @@ class SessionManager:
 
             session.metadata.update(update_data.get("metadata", {}))
             logger.info(f"Session {session_id} mise à jour avec les données du débat.")
-            
+
             await self.db_manager.save_session(session)
         except Exception as e:
             logger.error(f"Erreur lors de la mise à jour et sauvegarde de la session {session_id}: {e}", exc_info=True)

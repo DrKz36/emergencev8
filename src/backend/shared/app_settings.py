@@ -13,7 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 SRC_DIR = BASE_DIR / "src"
 BACKEND_DIR = SRC_DIR / "backend"
 DATA_DIR = BACKEND_DIR / "data"
-PROMPTS_DIR = BASE_DIR / "prompts" 
+PROMPTS_DIR = BASE_DIR / "prompts"
 
 DEFAULT_GOOGLE_MODEL = "models/gemini-2.5-flash"
 _GOOGLE_MODEL_ALIASES = {
@@ -51,7 +51,7 @@ def _default_agent_configs() -> Dict[str, Any]:
 class RagSettings(BaseSettings):
     ENABLED: bool = True
     N_RESULTS: int = 5
-    EMBED_MODEL_NAME: str = "all-MiniLM-L6-v2" 
+    EMBED_MODEL_NAME: str = "all-MiniLM-L6-v2"
     PROMPT_TEMPLATE: str = (
         "Contexte pertinent:\n---\n{context}\n---\nEn te basant UNIQUEMENT sur ce contexte, "
         "rÃ©ponds Ã  la question suivante: {question}"
@@ -86,10 +86,10 @@ class Settings(BaseSettings):
     elevenlabs_voice_id: Optional[str] = None
     elevenlabs_model_id: Optional[str] = None
     dev_mode: bool = False
-    
+
     # Configurations des agents
     agents: Dict[str, Any] = Field(default_factory=_default_agent_configs)
-    
+
     # Configurations imbriquÃ©es
     rag: RagSettings = RagSettings()
     db: DbSettings = DbSettings()

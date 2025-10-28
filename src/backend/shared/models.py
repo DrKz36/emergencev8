@@ -83,7 +83,7 @@ class AgentMessage(BaseModel):
     id: str
     session_id: str # Ajout pour la cohérence
     role: Role
-    message: str 
+    message: str
     agent: str
     cost_info: Optional[Dict[str, Any]] = None
     timestamp: str
