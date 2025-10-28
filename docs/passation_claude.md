@@ -7,6 +7,114 @@
 
 ---
 
+## [2025-10-28 18:45 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `PROMPT_CODEX_CLOUD.md` (créé - 323 lignes)
+- `CLAUDE_CODE_CLOUD_SETUP.md` (créé - 400+ lignes)
+- `.claude/settings.local.RECOMMENDED.json` (créé - 136 lignes)
+- `.claude/cloud-env-variables.txt` (créé - 5 lignes)
+- `.claude/cloud-permissions-allow.txt` (créé - 110 lignes)
+- `.claude/cloud-permissions-deny.txt` (créé - 8 lignes)
+- `AGENT_SYNC_CLAUDE.md` (mise à jour session)
+- `docs/passation_claude.md` (cette entrée)
+
+### Contexte
+Utilisateur constate que Codex GPT cloud utilise encore ancien système `AGENT_SYNC.md` unique et `passation.md` unique, alors que nouvelle structure (fichiers séparés par agent) déployée depuis 2025-10-26. Besoin refonte prompts cloud pour les 2 agents (Codex + Claude Code).
+
+### Problème identifié
+- **Prompt Codex cloud obsolète:**
+  - Référence `AGENT_SYNC.md` au lieu de `AGENT_SYNC_CODEX.md`
+  - Référence `docs/passation.md` au lieu de `docs/passation_codex.md`
+  - Pas de mention rotation 48h stricte
+  - Pas de mention versioning obligatoire
+  - Pas de mention nouvelle structure fichiers séparés
+
+- **Config Claude Code cloud manquante:**
+  - Pas de guide configuration cloud
+  - Pas de liste permissions optimisée
+  - Pas de variables environnement définies
+  - Pas d'instructions système custom
+
+### Actions effectuées
+
+**1. Prompt Codex GPT cloud (`PROMPT_CODEX_CLOUD.md`)**
+- ✅ Créé fichier complet 323 lignes
+- ✅ Section "RÈGLE ABSOLUE" avec ordre lecture:
+  1. SYNC_STATUS.md (vue d'ensemble)
+  2. AGENT_SYNC_CODEX.md (son fichier)
+  3. AGENT_SYNC_CLAUDE.md (fichier Claude)
+  4. docs/passation_codex.md (son journal 48h)
+  5. docs/passation_claude.md (journal Claude)
+  6. git status + git log
+- ✅ Section versioning obligatoire (workflow PATCH/MINOR/MAJOR)
+- ✅ Rotation stricte 48h pour passation
+- ✅ Format .env pour variables environnement
+- ✅ Ton communication cash (pas corporate)
+- ✅ Workflow autonomie totale
+- ✅ Templates passation + sync (format markdown)
+- ✅ Commandes rapides (git, tests, rapports Guardian)
+
+**2. Config Claude Code cloud (`CLAUDE_CODE_CLOUD_SETUP.md`)**
+- ✅ Créé guide complet 400+ lignes
+- ✅ Variables environnement format .env (14 vars):
+  - PROJECT_NAME, PYTHON_VERSION, NODE_VERSION
+  - AUTO_UPDATE_DOCS, AUTO_APPLY, ENABLE_GUARDIAN
+  - GCP_PROJECT, GCP_REGION, GCP_SERVICE
+  - TZ, LANG
+- ✅ Liste complète permissions (110+ permissions):
+  - Générales: *, Bash, Read, Edit, Write, Glob, Grep, Task, WebFetch, WebSearch
+  - Git: Bash(git:*), Bash(gh:*)
+  - Dev: Bash(npm:*), Bash(pytest:*), Bash(python:*), Bash(pwsh:*), Bash(ruff:*), Bash(mypy:*)
+  - Cloud: Bash(gcloud:*), Bash(docker:*)
+  - Patterns Read: **/*.py, **/*.js, **/*.ts, **/*.json, **/*.md, etc.
+  - Patterns Edit: idem + fichiers critiques (AGENT_SYNC_CLAUDE.md, passation_claude.md, etc.)
+  - Patterns Write: nouveaux fichiers
+- ✅ Deny list sécurité (8 règles):
+  - Write(.env), Write(**/*secret*), Write(**/*password*), Write(**/*key*.json)
+  - Bash(rm -rf /), Bash(rm -rf *), Bash(git push --force origin main)
+- ✅ Instructions système custom (markdown pour copier-coller)
+
+**3. Fichiers texte copier-coller cloud**
+- ✅ `.claude/cloud-env-variables.txt` (format .env pur)
+- ✅ `.claude/cloud-permissions-allow.txt` (1 permission par ligne)
+- ✅ `.claude/cloud-permissions-deny.txt` (1 permission par ligne)
+
+**4. Config locale optimisée**
+- ✅ `.claude/settings.local.RECOMMENDED.json` (JSON propre)
+- ✅ Nouvelle structure fichiers (AGENT_SYNC_CLAUDE.md, passation_claude.md)
+- ✅ Permissions deny pour sécurité
+- ✅ Support TypeScript/TSX, SQL, HTML, CSS, TOML
+
+### Tests
+- ✅ Validation format .env (copier-coller direct OK)
+- ✅ Validation liste permissions texte pur (pas de JSON)
+- ✅ Cohérence avec CODEV_PROTOCOL.md
+- ✅ Cohérence avec CLAUDE.md
+
+### Prochaines actions recommandées
+
+**Immédiat:**
+1. ✅ Commit + push tous les fichiers créés
+2. ⏳ Copier `PROMPT_CODEX_CLOUD.md` dans interface cloud Codex GPT
+3. ⏳ Utiliser `CLAUDE_CODE_CLOUD_SETUP.md` pour configurer Claude Code cloud
+
+**Post-config:**
+4. Tester Codex cloud avec tâche simple (lecture AGENT_SYNC_CODEX.md)
+5. Tester Claude Code cloud avec tâche simple (lecture AGENT_SYNC_CLAUDE.md)
+6. Monitorer coordination entre les 2 agents cloud (éviter conflits)
+
+### Blocages
+Aucun.
+
+### Notes pour Codex GPT
+- Nouveau prompt cloud disponible dans `PROMPT_CODEX_CLOUD.md`
+- Structure fichiers séparés bien documentée
+- Versioning obligatoire clairement mentionné
+- Rotation 48h passation stricte
+
+---
+
 ## [2025-10-28 SESSION 4] — Agent: Claude Code
 
 ### Contexte

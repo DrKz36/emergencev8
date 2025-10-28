@@ -11771,6 +11771,22 @@ git push
 
 ---
 
+## [2025-10-28 15:20 CET] — Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/frontend/shared/welcome-popup.js`
+- `src/frontend/styles/components/modals.css`
+- `AGENT_SYNC.md`
+
+### Contexte
+Retour mobile production : le modal de reprise de conversation est illisible (fond clair + texte pâle) et le welcome popup débordait, masquant les avatars. Harmonisation avec le thème sombre + resserrage layout mobile.
+
+### Travail de Claude Code pris en compte
+- Conservation du workflow modal existant côté `chat.js`, uniquement retouche UI/CSS.
+
+### Blocages
+- Aucun.
+
 ## 🔄 Sessions Clés - 23 Octobre 2025
 
 ### [18:38 CET] Claude Code - Fix 4 bugs module Dialogue

@@ -1,0 +1,8 @@
+Write(.env)
+Write(**/*secret*)
+Write(**/*password*)
+Write(**/*key*.json)
+Bash(rm -rf /)
+Bash(rm -rf *)
+Bash(git push --force origin main)
+Bash(gcloud run deploy --no-confirm)

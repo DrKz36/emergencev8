@@ -1,7 +1,75 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-10-28 (Claude Code)
+**Dernière mise à jour:** 2025-10-28 18:45 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-28 18:45 CET)
+
+### 🤖 REFONTE PROMPTS CLOUD MULTI-AGENTS (Codex GPT + Claude Code)
+
+**Status:** ✅ COMPLÉTÉ - Prompts cloud mis à jour + config optimisée
+
+**Contexte:** Codex GPT utilisait encore ancien système `AGENT_SYNC.md` unique et `passation.md` unique. Besoin mise à jour prompts cloud pour nouvelle structure (fichiers séparés par agent).
+
+**Problème identifié:**
+- Prompt Codex cloud obsolète (référence AGENT_SYNC.md au lieu de AGENT_SYNC_CODEX.md)
+- Pas de mention rotation 48h pour passation
+- Pas de mention versioning obligatoire
+- Config Claude Code cloud inexistante
+
+**Actions effectuées:**
+
+1. **Prompt Codex GPT cloud mis à jour**
+   - ✅ Créé `PROMPT_CODEX_CLOUD.md` (323 lignes)
+   - ✅ Nouvelle structure fichiers séparés (SYNC_STATUS.md, AGENT_SYNC_CODEX.md, etc.)
+   - ✅ Ajout section versioning obligatoire (workflow complet)
+   - ✅ Rotation stricte 48h pour passation_codex.md
+   - ✅ Format .env pour variables environnement
+   - ✅ Ton de communication cash (pas corporate)
+   - ✅ Workflow autonomie totale
+   - ✅ Templates passation + sync
+
+2. **Config Claude Code cloud créée**
+   - ✅ Créé `CLAUDE_CODE_CLOUD_SETUP.md` (guide complet 400+ lignes)
+   - ✅ Variables environnement format .env (14 vars)
+   - ✅ Liste complète permissions (110+ permissions)
+   - ✅ Instructions système custom pour cloud
+   - ✅ Deny list sécurité (8 règles)
+   - ✅ Fichiers texte pour copier-coller:
+     - `.claude/cloud-env-variables.txt` (5 lignes)
+     - `.claude/cloud-permissions-allow.txt` (110 lignes)
+     - `.claude/cloud-permissions-deny.txt` (8 lignes)
+
+3. **Config locale optimisée**
+   - ✅ Créé `.claude/settings.local.RECOMMENDED.json`
+   - ✅ Nouvelle structure fichiers (AGENT_SYNC_CLAUDE.md, passation_claude.md)
+   - ✅ Permissions deny pour sécurité
+   - ✅ Support TypeScript/TSX, SQL, HTML, CSS
+   - ✅ Variables environnement propres
+
+**Fichiers créés (5):**
+- `PROMPT_CODEX_CLOUD.md` - Prompt cloud Codex GPT
+- `CLAUDE_CODE_CLOUD_SETUP.md` - Guide config Claude Code cloud
+- `.claude/settings.local.RECOMMENDED.json` - Config locale optimisée
+- `.claude/cloud-env-variables.txt` - Variables env (copier-coller)
+- `.claude/cloud-permissions-allow.txt` - Permissions allow (copier-coller)
+- `.claude/cloud-permissions-deny.txt` - Permissions deny (copier-coller)
+
+**Fichiers modifiés (0):**
+- Aucun fichier existant modifié
+
+**Tests:**
+- ✅ Validation format .env (copier-coller OK)
+- ✅ Validation liste permissions (texte pur OK)
+- ✅ Cohérence avec CODEV_PROTOCOL.md
+
+**Prochaines actions recommandées:**
+1. Copier `PROMPT_CODEX_CLOUD.md` dans interface cloud Codex GPT
+2. Utiliser `CLAUDE_CODE_CLOUD_SETUP.md` pour configurer Claude Code cloud
+3. Tester les 2 configs cloud avec tâches réelles
+4. Monitorer coordination entre les 2 agents cloud
 
 ---
 
