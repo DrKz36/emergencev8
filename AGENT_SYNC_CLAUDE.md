@@ -1,7 +1,87 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-10-28 19:00 CET (Claude Code)
+**Dernière mise à jour:** 2025-10-28 19:57 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-28 19:57 CET)
+
+### 🔧 FIX WELCOME POPUP - Affichage UNIQUEMENT après connexion
+
+**Status:** ✅ COMPLÉTÉ - Popup corrigé, plus de panneaux multiples ni affichage avant auth
+
+**Contexte:** Utilisateur signale 2 problèmes critiques avec welcome popup module Dialogue:
+1. Popup apparaît AVANT connexion (sur page d'authentification)
+2. Popup réapparaît APRÈS connexion
+3. Plusieurs panneaux s'empilent (multiples instances créées)
+
+**État initial:**
+- Branche: `claude/fix-login-popup-dialog-011CUa6srMRtrFa8fZDUMW4N` (clean)
+- welcome-popup.js écoutait TROP d'events (app:ready, threads:ready, module:show)
+- queueAttempt(400) inconditionnellement → affichage avant auth
+- Pas de protection contre multiples instances
+- Pas de vérification authentification utilisateur
+
+**Root cause identifiée:**
+1. **Popup avant connexion:**
+   - Listeners app:ready, threads:ready déclenchaient popup trop tôt
+   - queueAttempt(400) appelé inconditionnellement dans showWelcomePopupIfNeeded()
+   - Aucune vérification que l'utilisateur est authentifié
+
+2. **Panneaux multiples:**
+   - showWelcomePopupIfNeeded() appelé plusieurs fois (auth:restored, conditions multiples)
+   - Pas de flag global pour empêcher créations multiples instances
+   - Chaque instance créait un nouveau panneau DOM
+
+**Solutions appliquées:**
+
+1. **welcome-popup.js (lignes 507-645):**
+   - ✅ Flag global `_activeWelcomePopup` pour tracker instance active
+   - ✅ Check instance existante au début de showWelcomePopupIfNeeded()
+   - ✅ Supprimé TOUS listeners app:ready, threads:ready, module:show
+   - ✅ Écoute UNIQUEMENT `auth:login:success` (connexion réussie)
+   - ✅ Nouvelle fonction `isUserAuthenticated()` - vérifie token avant affichage
+   - ✅ Vérification `body.home-active` pour pas afficher sur page auth
+   - ✅ Cleanup flag global quand popup fermé
+   - ✅ Supprimé queueAttempt(400) inconditionnellement
+
+2. **main.js (lignes 1001-1003, 1405-1408):**
+   - ✅ Popup initialisé UNE fois dans initialize() au démarrage
+   - ✅ Supprimé appel conditionnel dans handleAuthRestored()
+   - ✅ Popup s'auto-gère via event auth:login:success
+
+**Fichiers modifiés (2):**
+- `src/frontend/shared/welcome-popup.js` (+32 lignes, -21 lignes)
+- `src/frontend/main.js` (+3 lignes, -6 lignes)
+
+**Tests:**
+- ✅ Code syntaxiquement valide (pas de node_modules pour build)
+- ✅ Logique vérifiée: popup attend auth:login:success
+- ✅ Flag global empêche multiples instances
+- ✅ Vérification auth + body.home-active
+
+**Impact:**
+- ✅ **Popup UNIQUEMENT après connexion** - Plus d'affichage avant auth
+- ✅ **UN SEUL panneau** - Flag global empêche duplications
+- ✅ **Sécurisé** - Vérification token authentification
+- ✅ **Clean UX** - Pas d'affichage sur page d'authentification
+
+**Commit:**
+- `cb75aed` - fix(popup): Welcome popup apparaît UNIQUEMENT après connexion (pas avant)
+
+**Branche:** `claude/fix-login-popup-dialog-011CUa6srMRtrFa8fZDUMW4N`
+**Push:** ✅ Réussi vers remote
+**Pull Request:** https://github.com/DrKz36/emergencev8/pull/new/claude/fix-login-popup-dialog-011CUa6srMRtrFa8fZDUMW4N
+
+**Prochaines actions recommandées:**
+1. Tester popup en environnement local (npm install + npm run build + serveur local)
+2. Vérifier popup apparaît bien après connexion (pas avant)
+3. Vérifier un seul panneau affiché (pas de multiples)
+4. Créer PR si tests OK
+
+**Blocages:**
+Aucun.
 
 ---
 

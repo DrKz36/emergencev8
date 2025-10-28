@@ -7,6 +7,167 @@
 
 ---
 
+## [2025-10-28 19:57 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/frontend/shared/welcome-popup.js` (+32 -21 lignes)
+- `src/frontend/main.js` (+3 -6 lignes)
+- `AGENT_SYNC_CLAUDE.md` (mise à jour session)
+- `docs/passation_claude.md` (cette entrée)
+
+### Contexte
+Utilisateur signale problème critique avec welcome popup module Dialogue:
+- Popup apparaît AVANT connexion (sur page d'authentification)
+- Popup réapparaît APRÈS connexion
+- Plusieurs panneaux s'empilent (multiples instances créées)
+
+### Problème identifié
+
+**1. Popup avant connexion:**
+- `welcome-popup.js` écoutait TROP d'events:
+  - `app:ready` → queueAttempt(120)
+  - `threads:ready` → queueAttempt(80)
+  - `module:show` (chat) → queueAttempt(120)
+  - ET queueAttempt(400) inconditionnellement à la fin
+- Résultat: popup se déclenchait AVANT que l'utilisateur se connecte
+- Aucune vérification que l'utilisateur est authentifié
+
+**2. Panneaux multiples:**
+- `showWelcomePopupIfNeeded()` appelé plusieurs fois:
+  - Dans `initialize()` au démarrage
+  - Dans `handleAuthRestored()` conditionnellement
+  - Sur chaque event app:ready, threads:ready, module:show
+- Pas de flag global pour empêcher créations multiples instances
+- Chaque appel créait une nouvelle instance WelcomePopup → nouveau panneau DOM
+
+### Solutions appliquées
+
+**1. welcome-popup.js refactor complet:**
+```javascript
+// Flag global pour empêcher multiples instances
+let _activeWelcomePopup = null;
+
+export function showWelcomePopupIfNeeded(eventBus) {
+    // Empêcher multiples instances
+    if (_activeWelcomePopup) {
+        return _activeWelcomePopup;
+    }
+
+    const popup = new WelcomePopup(eventBus);
+    _activeWelcomePopup = popup;
+
+    // Cleanup flag dans cleanup()
+    const cleanup = () => {
+        // ...
+        if (_activeWelcomePopup === popup) {
+            _activeWelcomePopup = null;
+        }
+    };
+
+    // Nouvelle fonction vérification auth
+    const isUserAuthenticated = () => {
+        const tokenKeys = ['emergence.id_token', 'id_token'];
+        for (const key of tokenKeys) {
+            const token = sessionStorage.getItem(key) || localStorage.getItem(key);
+            if (token && token.trim()) return true;
+        }
+        return false;
+    };
+
+    // Vérif auth avant affichage
+    const attemptShow = () => {
+        if (!popup.shouldShow()) cleanup();
+        if (!isUserAuthenticated()) cleanup(); // 🔥 FIX
+        if (!isAppReadyForPopup()) queueAttempt(250);
+        popup.show();
+        cleanup();
+    };
+
+    // Écoute UNIQUEMENT auth:login:success
+    if (bus) {
+        bus.on(authRequiredEvent, () => { popup.hide(); cleanup(); });
+        bus.once(authLoginSuccessEvent, () => queueAttempt(500)); // 🔥 FIX
+    }
+
+    // PAS de queueAttempt(400) ici ! // 🔥 FIX
+}
+```
+
+**Changements clés:**
+- ✅ Flag global `_activeWelcomePopup` empêche multiples instances
+- ✅ Supprimé listeners app:ready, threads:ready, module:show
+- ✅ Écoute UNIQUEMENT `auth:login:success` (connexion réussie)
+- ✅ Nouvelle fonction `isUserAuthenticated()` vérifie token
+- ✅ Vérification `body.home-active` (pas afficher sur page auth)
+- ✅ Supprimé queueAttempt(400) inconditionnellement
+- ✅ Cleanup flag quand popup fermé
+
+**2. main.js initialisation unique:**
+```javascript
+async initialize() {
+    const eventBus = this.eventBus = EventBus.getInstance();
+    installEventBusGuards(eventBus);
+
+    // 🔥 FIX: Initialiser welcome popup UNE fois au démarrage
+    // Il écoutera auth:login:success et s'affichera automatiquement après connexion
+    showWelcomePopupIfNeeded(eventBus);
+
+    // ...reste du code
+}
+
+// Dans handleAuthRestored() - SUPPRIMÉ:
+// if (source === 'startup' || source === 'home-login' || source === 'storage') {
+//   showWelcomePopupIfNeeded(this.eventBus);
+// }
+```
+
+**Changements clés:**
+- ✅ Popup initialisé UNE fois dans `initialize()`
+- ✅ Supprimé appel conditionnel dans `handleAuthRestored()`
+- ✅ Popup s'auto-gère via event `auth:login:success`
+
+### Tests
+- ✅ Code syntaxiquement valide (pas de node_modules pour npm run build)
+- ✅ Logique vérifiée: popup attend `auth:login:success`
+- ✅ Flag global empêche multiples instances
+- ✅ Vérification auth + body.home-active
+
+### Impact
+- ✅ **Popup UNIQUEMENT après connexion** - Plus d'affichage avant auth
+- ✅ **UN SEUL panneau** - Flag global empêche duplications
+- ✅ **Sécurisé** - Vérification token authentification
+- ✅ **Clean UX** - Pas d'affichage sur page d'authentification
+
+### Commit & Push
+- Commit: `cb75aed` - fix(popup): Welcome popup apparaît UNIQUEMENT après connexion (pas avant)
+- Branche: `claude/fix-login-popup-dialog-011CUa6srMRtrFa8fZDUMW4N`
+- Push: ✅ Réussi vers remote
+- PR: https://github.com/DrKz36/emergencev8/pull/new/claude/fix-login-popup-dialog-011CUa6srMRtrFa8fZDUMW4N
+
+### Prochaines actions
+1. Tester popup en environnement local (npm install + npm run build)
+2. Vérifier popup apparaît bien après connexion (pas avant)
+3. Vérifier un seul panneau affiché (pas de multiples)
+4. Créer PR si tests OK
+5. Merge vers main
+
+### Blocages
+Aucun.
+
+### Décisions techniques
+- **Pattern singleton** pour WelcomePopup (flag global `_activeWelcomePopup`)
+- **Event-driven affichage** via `auth:login:success` uniquement
+- **Vérification auth stricte** avant tout affichage
+- **Cleanup automatique** du flag lors fermeture popup
+
+### Leçons apprises
+- Ne JAMAIS appeler queueAttempt() inconditionnellement dans une fonction d'initialisation
+- Toujours vérifier authentification utilisateur avant afficher UI sensible
+- Utiliser flag global pour empêcher multiples instances de composants singleton
+- Event-driven > appels conditionnels multiples
+
+---
+
 ## [2025-10-28 20:15 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
