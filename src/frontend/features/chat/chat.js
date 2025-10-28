@@ -294,22 +294,32 @@ export default class ChatModule {
       }
     }
 
+    // 🔥 FIX: Vérifier si on a un thread VALIDE avec messages chargés
+    // Ne pas se contenter de vérifier si getCurrentThreadId() retourne un ID
     const currentId = this.getCurrentThreadId();
+    let hasValidThreadLoaded = false;
+
     if (currentId) {
       const cached = this.state.get(`threads.map.${currentId}`);
-      if (cached && cached.messages && this.loadedThreadId !== currentId) {
-        this.loadedThreadId = currentId;
-        this.threadId = currentId;
-        this.state.set('chat.threadId', currentId);
-        this.hydrateFromThread(cached);
-        console.log('[Chat] mount() → hydratation tardive depuis state pour', currentId);
-      } else if (!cached || !cached.messages) {
-        // Thread ID existe mais pas de data en cache → charger sans modal
-        console.log('[Chat] mount() → Thread ID existe mais pas en cache, chargement silencieux');
-        // Ne rien faire, le thread sera chargé par le flow normal
+      const isArchived = cached?.thread?.archived === true || cached?.thread?.archived === 1;
+
+      if (cached && cached.messages && !isArchived) {
+        // Thread valide avec messages et pas archivé
+        if (this.loadedThreadId !== currentId) {
+          this.loadedThreadId = currentId;
+          this.threadId = currentId;
+          this.state.set('chat.threadId', currentId);
+          this.hydrateFromThread(cached);
+          console.log('[Chat] mount() → Hydratation depuis state pour thread valide', currentId);
+        }
+        hasValidThreadLoaded = true;
       }
-    } else {
-      // ✅ Pas de conversation active : en récupérer une ou en créer une nouvelle
+    }
+
+    // 🔥 FIX: Appeler _ensureActiveConversation() si pas de thread valide chargé
+    // (peu importe si getCurrentThreadId() retourne un ID ou pas)
+    if (!hasValidThreadLoaded) {
+      console.log('[Chat] mount() → Pas de thread valide chargé, vérification conversation active...');
       this._ensureActiveConversation();
     }
   }
@@ -362,14 +372,14 @@ export default class ChatModule {
   _showConversationChoiceModal(hasExistingConversations) {
     this._teardownConversationModal(true);
 
-    const host = typeof document !== 'undefined' && document.body
-      ? document.body
-      : this.container || null;
-
-    if (!host) {
-      console.warn('[Chat] Impossible d\'afficher le modal : aucun conteneur disponible.');
+    // 🔥 FIX: TOUJOURS append le modal à document.body pour centrage correct
+    // Ne jamais utiliser this.container car ça cause un décalage visuel
+    if (typeof document === 'undefined' || !document.body) {
+      console.warn('[Chat] Impossible d\'afficher le modal : document.body non disponible.');
       return;
     }
+
+    const host = document.body;
 
     const modalHTML = `
       <div class="modal-container visible" id="conversation-choice-modal" role="presentation">

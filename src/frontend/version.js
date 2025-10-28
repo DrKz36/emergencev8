@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.2 : Fix Critiques Routing/Session - Pop-up Reprise + Validation Threads Archivés [ACTUEL]
+ * - beta-3.3.3 : Fix Pop-up Reprise - Modal Systématique + Centrage Correct [ACTUEL]
+ * - beta-3.3.2 : Fix Critiques Routing/Session - Pop-up Reprise + Validation Threads Archivés
  * - beta-3.3.1 : Fix Critiques BDD - Duplication Messages + Soft-Delete Archives
  * - beta-3.3.0 : PWA Mode Hors Ligne (P3.10 Complétée)
  * - beta-3.2.2 : Configuration Email Officielle - emergence.app.ch@gmail.com
@@ -33,8 +34,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.2',
-  name: 'Fix Critiques Routing/Session - Pop-up Reprise + Validation Threads Archivés',
+  version: 'beta-3.3.3',
+  name: 'Fix Pop-up Reprise - Modal Systématique + Centrage Correct',
   date: '2025-10-28',
 };
 
@@ -50,6 +51,17 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.3',
+    tagline: 'Fix Pop-up Reprise - Modal Systématique + Centrage Correct',
+    date: '2025-10-28',
+    changes: [
+      { type: 'fix', text: 'Fix pop-up qui n\'apparaît qu\'à la première connexion - mount() vérifie maintenant si thread valide chargé (pas juste si ID existe)' },
+      { type: 'fix', text: 'Fix pop-up décalé visuellement à gauche - Modal TOUJOURS appendé à document.body pour centrage flexbox correct' },
+      { type: 'quality', text: 'Validation robuste mount() - Vérifie thread valide (existe + messages chargés + pas archivé) avant skip modal' },
+      { type: 'quality', text: 'Modal systématique reconnexion - Affichage même après archivage conversations + création nouvelle + reconnexion' }
+    ]
+  },
   {
     version: 'beta-3.3.2',
     tagline: 'Fix Critiques Routing/Session - Pop-up Reprise + Validation Threads Archivés',
