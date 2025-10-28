@@ -1,319 +1,103 @@
-# Instructions pour GPT Codex Cloud — Synchronisation GitHub
+# Instructions pour Codex GPT Cloud — Emergence V8
 
-## 🎯 Tu travailles dans un environnement cloud SANS accès direct à GitHub
+**Version:** 2025-10-28 | **Agent:** Codex GPT (OpenAI)
+
+---
+
+## 🎯 Environnement Cloud avec Accès GitHub Direct
 
 ### Contexte Technique
-- **Ton environnement** : `/workspace/emergencev8` (ou similaire)
-- **Limitations** :
-  - ❌ Aucun remote Git configuré
-  - ❌ Pas d'accès réseau sortant
-  - ❌ Impossible de push/pull vers GitHub
-- **Solution** : Tu génères des patches, l'agent local les applique et push vers GitHub
+- **Ton environnement** : Cloud avec accès réseau
+- **Accès GitHub** : ✅ Push/pull direct possible (si token configuré)
+- **Workflow** : Travail direct sur le dépôt, comme Claude Code
+
+### Important
+**Ce fichier est OBSOLÈTE si tu as accès GitHub direct.**
+Utilise plutôt **[PROMPT_CODEX_CLOUD.md](../PROMPT_CODEX_CLOUD.md)** qui contient les instructions complètes et à jour.
 
 ---
 
-## 📝 Procédure Standard de Synchronisation
+## 🔄 Redirection vers Nouveau Prompt
 
-### AVANT de commencer à coder
+**✅ Pour la configuration complète et à jour, voir :**
 
-1. **Lire les fichiers de contexte** (OBLIGATOIRE) :
-   ```bash
-   # Dans l'ordre
-   cat AGENT_SYNC.md              # État actuel du projet
-   cat AGENTS.md                  # Consignes générales
-   cat CODEV_PROTOCOL.md          # Protocole multi-agents
-   tail -100 docs/passation.md    # 3 dernières entrées
-   git log --oneline -10          # Historique récent
-   git status                     # État working tree
-   ```
+**[PROMPT_CODEX_CLOUD.md](../PROMPT_CODEX_CLOUD.md)**
 
-2. **Vérifier que tu as la dernière version** :
-   - L'agent local doit confirmer que le code dans le cloud est à jour
-   - Si incertain, demander au développeur de synchroniser d'abord
+Ce nouveau fichier contient :
+- ✅ Nouvelle structure fichiers séparés (SYNC_STATUS.md, AGENT_SYNC_CODEX.md, passation_codex.md)
+- ✅ Versioning obligatoire (PATCH/MINOR/MAJOR)
+- ✅ Rotation stricte 48h passation
+- ✅ Variables environnement format .env
+- ✅ Ton communication cash (pas corporate)
+- ✅ Workflow autonomie totale
+- ✅ Templates passation + sync
 
 ---
+
+## 📋 Ordre de Lecture (NOUVELLE STRUCTURE)
+
+**AVANT toute session, lire dans cet ordre :**
+
+1. **`SYNC_STATUS.md`** ← VUE D'ENSEMBLE (qui a fait quoi - 2 min)
+2. **`AGENT_SYNC_CODEX.md`** ← TON FICHIER (état détaillé - 3 min)
+3. **`AGENT_SYNC_CLAUDE.md`** ← FICHIER CLAUDE (comprendre l'autre agent - 2 min)
+4. **`docs/passation_codex.md`** ← TON JOURNAL (48h max - 2 min)
+5. **`docs/passation_claude.md`** ← JOURNAL CLAUDE (contexte croisé - 1 min)
+6. **`git status` + `git log --oneline -10`** ← État Git
+
+**Temps total:** 10 minutes (OBLIGATOIRE)
+
+---
+
+## ⚠️ Fichiers Obsolètes (Ne Plus Utiliser)
+
+- ❌ `AGENT_SYNC.md` (remplacé par `AGENT_SYNC_CODEX.md` + `AGENT_SYNC_CLAUDE.md`)
+- ❌ `docs/passation.md` (remplacé par `docs/passation_codex.md` + `docs/passation_claude.md`)
+- ❌ `CODEX_SYSTEM_PROMPT.md` (remplacé par `PROMPT_CODEX_CLOUD.md`)
+
+---
+
+## 🚀 Workflow Moderne (Avec Accès GitHub)
+
+### AVANT de coder
+1. Lis `SYNC_STATUS.md` + `AGENT_SYNC_CODEX.md` + `AGENT_SYNC_CLAUDE.md`
+2. `git fetch --all --prune && git status`
+3. `git log --oneline -10`
 
 ### PENDANT le développement
+1. Modifie le code
+2. Teste (`npm run build`, `pytest`)
+3. Commit local (`git commit -m "..."`)
 
-1. **Travailler normalement** :
-   - Modifier le code
-   - Faire des commits locaux si besoin
-   - Tester autant que possible
+### APRÈS le développement
+1. Incrémente version (src/version.js + src/frontend/version.js + package.json)
+2. Mets à jour `AGENT_SYNC_CODEX.md` + `docs/passation_codex.md`
+3. Push direct (`git push origin <branche>`)
 
-2. **Documenter en continu** :
-   - Ajouter une section dans `AGENT_SYNC.md` décrivant ton travail
-   - Utiliser le format :
-     ```markdown
-     ### 🟢 GPT Codex Cloud - Session YYYY-MM-DD HH:MM (Titre Session)
-     - **Statut** : 🔄 EN COURS / ✅ TERMINÉE
-     - **Priorité** : 🔴 CRITIQUE / 🟡 MOYENNE / 🟢 BASSE
-     - **Fichiers touchés** :
-       - `chemin/fichier.py` - description modification
-       - `autre/fichier.js` - description modification
-     - **Actions réalisées** : ...
-     - **Tests / checks** : ...
-     - **Prochaines actions** : ...
-     ```
+**Voir [PROMPT_CODEX_CLOUD.md](../PROMPT_CODEX_CLOUD.md) pour détails complets.**
 
 ---
 
-### APRÈS avoir fini (FIN DE SESSION)
+## 📚 Documentation de Référence (À Jour)
 
-#### Étape 1 : Générer le patch de synchronisation
+**Fichiers à utiliser :**
+- ✅ **[PROMPT_CODEX_CLOUD.md](../PROMPT_CODEX_CLOUD.md)** - Prompt cloud complet (2025-10-28)
+- ✅ **[SYNC_STATUS.md](../SYNC_STATUS.md)** - Vue d'ensemble projet
+- ✅ **[AGENT_SYNC_CODEX.md](../AGENT_SYNC_CODEX.md)** - TON état sync
+- ✅ **[AGENT_SYNC_CLAUDE.md](../AGENT_SYNC_CLAUDE.md)** - État Claude Code
+- ✅ **[docs/passation_codex.md](passation_codex.md)** - TON journal (48h)
+- ✅ **[docs/passation_claude.md](passation_claude.md)** - Journal Claude (48h)
+- ✅ **[CODEV_PROTOCOL.md](../CODEV_PROTOCOL.md)** - Protocole multi-agents
+- ✅ **[CODEX_GPT_GUIDE.md](../CODEX_GPT_GUIDE.md)** - Guide complet local
 
-```bash
-# Créer un dossier pour l'export
-mkdir -p /workspace/sync_export
-
-# Générer le patch avec TOUTES tes modifications
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-git format-patch origin/main --stdout > /workspace/sync_export/changes_$TIMESTAMP.patch
-
-# OU si tu n'as pas origin/main configuré
-git diff HEAD > /workspace/sync_export/changes_$TIMESTAMP.patch
-
-# Lister les fichiers modifiés
-git status --short > /workspace/sync_export/files_$TIMESTAMP.txt
-
-# Résumé des commits (si tu en as fait)
-git log --oneline -20 > /workspace/sync_export/commits_$TIMESTAMP.txt
-```
-
-#### Étape 2 : Documenter la session
-
-Ajouter une entrée dans `docs/passation.md` :
-
-```markdown
-## [YYYY-MM-DD HH:MM] - Agent: GPT Codex Cloud (Titre Session)
-
-### Fichiers modifiés
-- `chemin/fichier1.py` — description modification
-- `chemin/fichier2.js` — description modification
-
-### Contexte
-Description du problème résolu ou de la feature ajoutée.
-
-### Actions Complétées
-1. Action 1
-2. Action 2
-3. ...
-
-### Résultats Tests
-- **Tests créés** : X tests
-- **Résultat** : X/X PASSED ✅
-- **Validation** : Ruff/Mypy/Build OK
-
-### Patch Généré
-📦 **Fichier** : `sync_export/changes_YYYYMMDD_HHMMSS.patch`
-
-### Next Steps
-1. Agent local doit appliquer le patch
-2. Agent local doit tester (npm build, pytest)
-3. Agent local doit push vers GitHub
-4. Vérifier synchronisation complète
-```
-
-#### Étape 3 : Mettre à jour AGENT_SYNC.md
-
-Modifier ta section dans `AGENT_SYNC.md` :
-- Passer le statut à `✅ TERMINÉE`
-- Ajouter le nom du patch généré
-- Lister les prochaines actions pour l'agent local
-
-#### Étape 4 : Informer le développeur
-
-Message clair au développeur :
-
-```
-✅ Session terminée. Modifications prêtes pour synchronisation.
-
-📦 PATCH GÉNÉRÉ : sync_export/changes_YYYYMMDD_HHMMSS.patch
-
-📝 RÉSUMÉ :
-- X fichiers modifiés
-- [Description courte des changements]
-
-📋 FICHIERS CRITIQUES :
-- chemin/fichier1.py - [description]
-- chemin/fichier2.js - [description]
-
-🧪 TESTS :
-- [Résultats des tests si applicable]
-- [Validations effectuées]
-
-🔄 PROCHAINES ÉTAPES POUR AGENT LOCAL :
-1. Récupérer le patch : sync_export/changes_YYYYMMDD_HHMMSS.patch
-2. Appliquer : git apply changes_YYYYMMDD_HHMMSS.patch
-3. Tester : npm run build && pytest
-4. Commit : git commit -m "sync: [description]"
-5. Push : git push origin main
-6. Mettre à jour AGENT_SYNC.md avec nouveau SHA
-
-📄 DOCUMENTATION :
-- AGENT_SYNC.md : Section mise à jour
-- docs/passation.md : Nouvelle entrée ajoutée
-```
+**Fichiers obsolètes (NE PLUS UTILISER) :**
+- ❌ `AGENT_SYNC.md` (remplacé)
+- ❌ `docs/passation.md` (remplacé)
+- ❌ `CODEX_SYSTEM_PROMPT.md` (remplacé)
+- ❌ `docs/CLOUD_LOCAL_SYNC_WORKFLOW.md` (workflow patches obsolète)
 
 ---
 
-## 🛠️ Commandes Utiles
-
-### Vérifier l'état avant de générer le patch
-```bash
-# Fichiers modifiés
-git status
-
-# Différences non commitées
-git diff
-
-# Différences commitées localement
-git log origin/main..HEAD --oneline
-
-# Tous les changements (staged + unstaged)
-git diff HEAD
-```
-
-### Générer différents types de patches
-
-```bash
-# Patch de tous les changements non commitées
-git diff > unstaged_changes.patch
-
-# Patch de tous les commits locaux
-git format-patch origin/main --stdout > all_commits.patch
-
-# Patch des N derniers commits
-git format-patch -N --stdout > last_N_commits.patch
-
-# Patch d'un fichier spécifique
-git diff -- chemin/fichier.py > fichier_specific.patch
-```
-
-### Vérifier le contenu du patch avant export
-```bash
-# Voir ce qui sera dans le patch
-git diff --stat HEAD
-
-# Voir le détail ligne par ligne
-git diff HEAD | less
-```
-
----
-
-## 🚨 Gestion des Cas Particuliers
-
-### Si tu as fait plusieurs commits locaux
-```bash
-# Voir tes commits
-git log --oneline -20
-
-# Générer un patch pour chaque commit
-git format-patch origin/main
-
-# OU tout regrouper en un seul patch
-git format-patch origin/main --stdout > all_changes.patch
-```
-
-### Si tu n'es pas sûr de la branche de base
-```bash
-# Voir toutes les branches
-git branch -a
-
-# Voir les différences avec main
-git diff main
-
-# Voir les différences avec la branche actuelle
-git diff HEAD
-```
-
-### Si le dépôt cloud n'a pas de remote du tout
-```bash
-# Utiliser HEAD comme référence
-git diff HEAD > all_uncommitted_changes.patch
-
-# OU créer un patch depuis le début du projet (ATTENTION : gros fichier)
-git format-patch --root --stdout > from_scratch.patch
-```
-
----
-
-## ✅ Checklist Avant de Terminer la Session
-
-- [ ] Code développé et testé (autant que possible)
-- [ ] Commits locaux faits (optionnel mais recommandé)
-- [ ] Patch généré (`git format-patch` ou `git diff`)
-- [ ] Fichiers modifiés listés (`git status --short`)
-- [ ] `AGENT_SYNC.md` mis à jour avec ta section
-- [ ] `docs/passation.md` mis à jour avec nouvelle entrée
-- [ ] Message clair au développeur avec :
-  - [ ] Nom du patch
-  - [ ] Résumé des modifications
-  - [ ] Fichiers critiques
-  - [ ] Résultats tests (si applicable)
-  - [ ] Prochaines étapes pour agent local
-
----
-
-## 🎯 Points Clés à Retenir
-
-### ❌ Tu NE PEUX PAS :
-- Ajouter un remote Git (`git remote add` échouera)
-- Push vers GitHub (`git push` échouera)
-- Pull depuis GitHub (`git pull` échouera)
-- Accéder à des URLs externes
-
-### ✅ Tu PEUX :
-- Modifier le code localement
-- Faire des commits locaux
-- Générer des patches
-- Tester le code (si l'environnement le permet)
-- Documenter dans `AGENT_SYNC.md` et `docs/passation.md`
-- Lire tous les fichiers du projet
-
-### 🔄 Le Workflow Complet est :
-1. **Toi** (GPT Codex Cloud) → Développer + Générer patch
-2. **Développeur** → Transférer patch cloud→local
-3. **Agent Local** (Claude Code) → Appliquer patch + Tester + Push GitHub
-4. **GitHub** → Code synchronisé et accessible à tous
-
----
-
-## 📚 Documentation de Référence
-
-- **[docs/CLOUD_LOCAL_SYNC_WORKFLOW.md](CLOUD_LOCAL_SYNC_WORKFLOW.md)** : Guide complet détaillé
-- **[AGENT_SYNC.md](../AGENT_SYNC.md)** : État actuel du projet
-- **[CODEV_PROTOCOL.md](../CODEV_PROTOCOL.md)** : Protocole collaboration multi-agents
-- **[docs/passation.md](passation.md)** : Journal des sessions
-
----
-
-## 💡 Exemple Complet de Fin de Session
-
-```bash
-# 1. Générer le patch
-mkdir -p /workspace/sync_export
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-git format-patch origin/main --stdout > /workspace/sync_export/changes_$TIMESTAMP.patch
-git status --short > /workspace/sync_export/files_$TIMESTAMP.txt
-
-# 2. Vérifier le contenu
-echo "📦 Patch généré : changes_$TIMESTAMP.patch"
-echo ""
-echo "📝 Fichiers modifiés :"
-cat /workspace/sync_export/files_$TIMESTAMP.txt
-echo ""
-echo "📊 Taille du patch :"
-wc -l /workspace/sync_export/changes_$TIMESTAMP.patch
-
-# 3. Maintenant éditer AGENT_SYNC.md et docs/passation.md
-# (utiliser tes outils d'édition)
-
-# 4. Message final au développeur
-echo "✅ Session terminée. Patch prêt : sync_export/changes_$TIMESTAMP.patch"
-```
-
----
-
-**Dernière mise à jour** : 2025-10-10
-**Par** : Claude Code (Agent Local)
-**Pour** : GPT Codex Cloud
+**Dernière mise à jour** : 2025-10-28
+**Par** : Claude Code
+**Statut** : ⚠️ FICHIER OBSOLÈTE - Utiliser [PROMPT_CODEX_CLOUD.md](../PROMPT_CODEX_CLOUD.md) à la place
