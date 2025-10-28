@@ -7,6 +7,57 @@
 
 ---
 
+## [2025-10-28 20:15 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `AGENT_SYNC_CLAUDE.md` (mise à jour session)
+- `docs/passation_claude.md` (cette entrée)
+- `src/frontend/shared/welcome-popup.js` (commit travail Codex)
+- `AGENT_SYNC.md` (commit travail legacy Codex)
+- `docs/passation.md` (commit travail legacy Codex)
+
+### Contexte
+Utilisateur demande update docs coopération inter-agents + commit/push de tous fichiers modifiés (y compris ceux de Codex). Dépôt local traîne 3 fichiers non commités sur branche `chore/sync-multi-agents-pwa-codex` avec upstream gone.
+
+### Problème identifié
+- **Branche PWA obsolète:** upstream gone, on laisse tomber
+- **Fichiers legacy modifiés par Codex:**
+  - `AGENT_SYNC.md` au lieu de `AGENT_SYNC_CODEX.md`
+  - `docs/passation.md` au lieu de `docs/passation_codex.md`
+  - Codex cloud n'utilise pas encore nouvelle structure fichiers séparés
+- **Travail Codex non committé:**
+  - Welcome popup refonte (affichage après auth, styles améliorés)
+
+### Actions effectuées
+1. ✅ Checkout main + pull latest (sync remote)
+2. ✅ Créé branche propre: `claude/sync-docs-update-20251028`
+3. ✅ Update AGENT_SYNC_CLAUDE.md avec session actuelle
+4. ✅ Update docs/passation_claude.md (cette entrée)
+5. ⏳ Commit tous fichiers (Codex + Claude)
+6. ⏳ Push vers remote
+
+### Travail de Codex pris en compte
+**Welcome popup refonte (18:55 CET):**
+- Affichage décalé après authentification (EventBus orchestration)
+- Styles refondus (gradient cohérent, boutons contrastés, responsive)
+- Nouvelle copie centrée sur module Dialogue
+- Focus trap conservé, dismissal localStorage OK
+
+**Fichiers Codex:**
+- `src/frontend/shared/welcome-popup.js` (264 lignes modifiées)
+- `AGENT_SYNC.md` (session 18:55)
+- `docs/passation.md` (entrée 18:55)
+
+### Prochaines actions
+1. Commit + push cette branche
+2. Informer Codex d'utiliser nouvelle structure (AGENT_SYNC_CODEX.md, passation_codex.md)
+3. Merge ou PR vers main
+
+### Blocages
+Aucun.
+
+---
+
 ## [2025-10-28 18:45 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
