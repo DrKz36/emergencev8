@@ -14,12 +14,12 @@ def json_serializer(obj):
     """
     if isinstance(obj, (datetime.datetime, datetime.date)):
         return obj.isoformat()
-    
+
     if isinstance(obj, Enum):
         return obj.value
-        
+
     if isinstance(obj, UUID):
         return str(obj)
-        
+
     # Si on ne sait pas comment le sérialiser, on lève une erreur claire.
     raise TypeError(f"Le type {type(obj)} n'est pas sérialisable en JSON")
