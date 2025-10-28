@@ -1,5 +1,4 @@
 import { EVENTS } from './constants.js';
-import { ChangePasswordModal } from './change-password-modal.js';
 
 /**
  * Welcome Popup
@@ -52,38 +51,31 @@ export class WelcomePopup {
         // Create popup element
         this.popup = document.createElement('div');
         this.popup.className = 'welcome-popup-overlay';
+        this.popup.setAttribute('role', 'presentation');
+        this.popup.tabIndex = -1;
         this.popup.innerHTML = `
-            <div class="welcome-popup">
+            <div class="welcome-popup" role="dialog" aria-modal="true" aria-labelledby="welcome-popup-title" aria-describedby="welcome-popup-description">
                 <div class="welcome-popup-header">
                     <div class="welcome-popup-avatars">
                         <img src="/assets/anima.png" alt="Anima" class="welcome-avatar">
                         <img src="/assets/neo.png" alt="Neo" class="welcome-avatar">
                         <img src="/assets/nexus.png" alt="Nexus" class="welcome-avatar">
                     </div>
-                    <h2>Bienvenue dans ÉMERGENCE !</h2>
-                    <button class="welcome-popup-close" aria-label="Fermer">×</button>
+                    <h2 id="welcome-popup-title">Bienvenue dans le module Dialogue</h2>
+                    <button class="welcome-popup-close" aria-label="Fermer">&times;</button>
                 </div>
-                <div class="welcome-popup-body">
-                    <p>
-                        Bienvenue sur ÉMERGENCE !
+                <div class="welcome-popup-body" id="welcome-popup-description">
+                    <p class="welcome-intro">
+                        Ravi(e) de te revoir&nbsp;! Les agents Anima, Néo et Nexus sont prêts à collaborer avec toi pour accélérer tes conversations.
                     </p>
-                    <p>
-                        Je suis ravi de vous accueillir sur cette plateforme d'intelligence artificielle
-                        que j'ai développée avec passion. ÉMERGENCE est bien plus qu'un simple chatbot :
-                        c'est un écosystème complet d'agents IA collaboratifs conçus pour vous accompagner.
+                    <p class="welcome-highlight">
+                        Avant de démarrer, prends deux minutes pour parcourir le guide d'embarquement&nbsp;: il rassemble les nouveautés et les meilleures pratiques pour dialoguer efficacement.
                     </p>
-                    <p>
-                        <strong>Pour bien démarrer et comprendre toutes les fonctionnalités,</strong>
-                        je vous recommande vivement de consulter le <strong>tutoriel complet</strong>
-                        disponible dans la section <strong>"À Propos"</strong> du menu.
-                    </p>
-                    <p>
-                        Ce guide vous expliquera comment tirer le meilleur parti d'ÉMERGENCE et
-                        découvrir toutes ses capacités uniques.
-                    </p>
-                    <p style="margin-top: 1.5rem; font-style: italic; color: #94a3b8; text-align: right;">
-                        Bonne exploration !
-                    </p>
+                    <ul class="welcome-features-list">
+                        <li>Découvre le pas-à-pas du module Dialogue et les focus Mémoire/RAG.</li>
+                        <li>Retrouve les raccourcis pour inviter plusieurs agents dans une même discussion.</li>
+                        <li>Accède aux checklists de démarrage rapide dans <strong>À&nbsp;Propos &gt; Tutoriel</strong>.</li>
+                    </ul>
                 </div>
                 <div class="welcome-popup-footer">
                     <label class="welcome-checkbox-label">
@@ -136,18 +128,16 @@ export class WelcomePopup {
         style.textContent = `
             .welcome-popup-overlay {
                 position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.7);
-                backdrop-filter: blur(4px);
+                inset: 0;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                z-index: 999999;
-                padding: 1rem;
-                animation: fadeIn 0.3s ease;
+                padding: clamp(16px, 4vw, 32px);
+                background: rgba(5, 12, 30, 0.78);
+                backdrop-filter: blur(10px);
+                z-index: 12000;
+                opacity: 0;
+                animation: fadeIn 0.3s ease forwards;
             }
 
             @keyframes fadeIn {
@@ -156,27 +146,48 @@ export class WelcomePopup {
             }
 
             .welcome-popup {
-                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 16px;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-                max-width: 560px;
-                width: 100%;
-                max-height: 90vh;
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-                animation: slideUp 0.4s ease;
+                position: relative;
+                width: min(420px, 100%);
+                max-height: min(88vh, 560px);
+                display: flex;
+                flex-direction: column;
+                background: linear-gradient(150deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.94) 55%, rgba(49, 46, 129, 0.9) 100%);
+                color: #e2e8f0;
+                border-radius: 20px;
+                border: 1px solid rgba(148, 163, 184, 0.24);
+                box-shadow: 0 26px 68px rgba(2, 6, 23, 0.55);
+                overflow: hidden;
+                animation: slideUp 0.32s ease;
+            }
+
+            .welcome-popup::before {
+                content: '';
+                position: absolute;
+                inset: 0;
+                pointer-events: none;
+                background:
+                    radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.22) 0%, transparent 55%),
+                    radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.22) 0%, transparent 60%);
+                opacity: 0.9;
+            }
+
+            .welcome-popup > * {
+                position: relative;
+                z-index: 1;
             }
 
             @keyframes slideUp {
-                from { transform: translateY(30px); opacity: 0; }
+                from { transform: translateY(24px); opacity: 0; }
                 to { transform: translateY(0); opacity: 1; }
             }
 
             .welcome-popup-header {
-                padding: 1.5rem 2rem;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                position: relative;
+                padding: 1.4rem 1.8rem 1rem;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 0.9rem;
+                border-bottom: 1px solid rgba(148, 163, 184, 0.18);
             }
 
             .welcome-popup-avatars {
@@ -184,50 +195,27 @@ export class WelcomePopup {
                 justify-content: center;
                 align-items: center;
                 gap: 1rem;
-                margin-bottom: 1rem;
             }
 
             .welcome-avatar {
-                width: 60px;
-                height: 60px;
+                width: 54px;
+                height: 54px;
                 border-radius: 50%;
-                border: 2px solid rgba(59, 130, 246, 0.5);
-                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-                transition: all 0.3s ease;
-                animation: avatarFloat 3s ease-in-out infinite;
-            }
-
-            .welcome-avatar:nth-child(1) {
-                animation-delay: 0s;
-            }
-
-            .welcome-avatar:nth-child(2) {
-                animation-delay: 0.5s;
-            }
-
-            .welcome-avatar:nth-child(3) {
-                animation-delay: 1s;
+                border: 2px solid rgba(148, 163, 184, 0.35);
+                background: rgba(15, 23, 42, 0.55);
+                box-shadow: 0 12px 22px rgba(15, 118, 110, 0.35);
+                transition: transform 0.25s ease, box-shadow 0.25s ease;
             }
 
             .welcome-avatar:hover {
-                transform: scale(1.1);
-                border-color: rgba(59, 130, 246, 0.8);
-                box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
-            }
-
-            @keyframes avatarFloat {
-                0%, 100% {
-                    transform: translateY(0px);
-                }
-                50% {
-                    transform: translateY(-8px);
-                }
+                transform: translateY(-4px);
+                box-shadow: 0 18px 32px rgba(14, 165, 233, 0.45);
             }
 
             .welcome-popup-header h2 {
-                font-size: 1.5rem;
+                font-size: 1.38rem;
                 font-weight: 600;
-                color: #e2e8f0;
+                color: #f8fafc;
                 margin: 0;
                 text-align: center;
             }
@@ -236,178 +224,189 @@ export class WelcomePopup {
                 position: absolute;
                 top: 1rem;
                 right: 1rem;
-                background: rgba(255, 255, 255, 0.1);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                color: #e2e8f0;
-                width: 32px;
-                height: 32px;
-                border-radius: 8px;
-                font-size: 1.5rem;
+                background: rgba(15, 23, 42, 0.6);
+                border: 1px solid rgba(148, 163, 184, 0.32);
+                color: #f8fafc;
+                width: 36px;
+                height: 36px;
+                border-radius: 12px;
+                font-size: 1.4rem;
                 line-height: 1;
                 cursor: pointer;
-                transition: all 0.2s;
+                transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
             }
 
-            .welcome-popup-close:hover {
-                background: rgba(255, 255, 255, 0.2);
-                border-color: rgba(255, 255, 255, 0.3);
+            .welcome-popup-close:hover,
+            .welcome-popup-close:focus-visible {
+                background: rgba(30, 64, 175, 0.75);
+                border-color: rgba(96, 165, 250, 0.75);
+                transform: scale(1.04);
+                outline: none;
             }
 
             .welcome-popup-body {
-                padding: 2rem;
-                color: #cbd5e1;
-                line-height: 1.6;
+                padding: 0 1.8rem 1.6rem;
+                display: flex;
+                flex-direction: column;
+                gap: 0.85rem;
+                font-size: 0.98rem;
+                line-height: 1.65;
+                color: rgba(226, 232, 240, 0.92);
             }
 
-            .welcome-popup-body p {
-                margin: 0 0 1rem 0;
+            .welcome-intro {
+                margin: 0;
+                color: rgba(226, 232, 240, 0.95);
+                font-weight: 500;
             }
 
-            .welcome-popup-body p:last-child {
-                margin-bottom: 0;
-            }
-
-            .welcome-popup-body strong {
-                color: #e2e8f0;
-                font-weight: 600;
+            .welcome-highlight {
+                margin: 0;
+                padding: 0.75rem 0.85rem;
+                border-radius: 12px;
+                background: rgba(14, 165, 233, 0.18);
+                border: 1px solid rgba(56, 189, 248, 0.35);
+                color: rgba(244, 249, 255, 0.95);
+                font-weight: 500;
             }
 
             .welcome-features-list {
                 list-style: none;
                 padding: 0;
-                margin: 1rem 0 0 0;
+                margin: 0;
+                display: grid;
+                gap: 0.65rem;
             }
 
             .welcome-features-list li {
-                padding: 0.5rem 0;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                position: relative;
+                padding-left: 1.65rem;
+                color: rgba(226, 232, 240, 0.9);
             }
 
-            .welcome-features-list li:last-child {
-                border-bottom: none;
+            .welcome-features-list li::before {
+                content: '';
+                position: absolute;
+                top: 0.55rem;
+                left: 0.55rem;
+                width: 6px;
+                height: 6px;
+                border-radius: 999px;
+                background: rgba(56, 189, 248, 0.95);
+                box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.18);
             }
 
             .welcome-popup-footer {
-                padding: 1.5rem 2rem;
-                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                margin-top: auto;
+                padding: 1.4rem 1.8rem 1.75rem;
+                border-top: 1px solid rgba(148, 163, 184, 0.2);
                 display: flex;
                 flex-direction: column;
-                gap: 1rem;
+                gap: 1.1rem;
+                background: rgba(5, 12, 30, 0.45);
             }
 
             .welcome-checkbox-label {
                 display: flex;
                 align-items: center;
-                gap: 0.5rem;
-                color: #94a3b8;
-                font-size: 0.9rem;
+                gap: 0.65rem;
+                color: rgba(148, 163, 184, 0.95);
+                font-size: 0.88rem;
                 cursor: pointer;
                 user-select: none;
             }
 
             .welcome-checkbox {
                 cursor: pointer;
-                width: 16px;
-                height: 16px;
+                width: 18px;
+                height: 18px;
+                accent-color: #16a34a;
             }
 
             .welcome-popup-actions {
                 display: flex;
                 gap: 0.75rem;
                 justify-content: flex-end;
+                flex-wrap: wrap;
             }
 
             .btn-welcome-close,
-            .btn-welcome-tutorial,
-            .btn-welcome-password {
-                padding: 0.6rem 1.2rem;
-                border-radius: 8px;
-                font-size: 0.95rem;
-                font-weight: 500;
+            .btn-welcome-tutorial {
+                padding: 0.68rem 1.4rem;
+                border-radius: 999px;
+                font-size: 0.96rem;
+                font-weight: 600;
                 cursor: pointer;
-                transition: all 0.2s;
-                border: none;
+                transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+                border: 1px solid transparent;
             }
 
             .btn-welcome-close {
-                background: rgba(255, 255, 255, 0.1);
-                color: #cbd5e1;
-                border: 1px solid rgba(255, 255, 255, 0.2);
+                background: rgba(148, 163, 184, 0.14);
+                color: rgba(226, 232, 240, 0.9);
+                border-color: rgba(148, 163, 184, 0.28);
             }
 
-            .btn-welcome-close:hover {
-                background: rgba(255, 255, 255, 0.15);
-                border-color: rgba(255, 255, 255, 0.3);
-            }
-
-            .btn-welcome-password {
-                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                color: white;
-                border: 1px solid rgba(16, 185, 129, 0.5);
-                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-            }
-
-            .btn-welcome-password:hover {
-                background: linear-gradient(135deg, #059669 0%, #047857 100%);
-                box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+            .btn-welcome-close:hover,
+            .btn-welcome-close:focus-visible {
+                background: rgba(148, 163, 184, 0.22);
+                border-color: rgba(203, 213, 225, 0.55);
+                transform: translateY(-1px);
+                outline: none;
             }
 
             .btn-welcome-tutorial {
-                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-                color: white;
-                border: 1px solid rgba(59, 130, 246, 0.5);
-                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                background: linear-gradient(135deg, #38bdf8 0%, #2563eb 55%, #7c3aed 100%);
+                color: #f8fafc;
+                border-color: rgba(59, 130, 246, 0.45);
+                box-shadow: 0 14px 28px rgba(37, 99, 235, 0.35);
             }
 
-            .btn-welcome-tutorial:hover {
-                background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-                box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+            .btn-welcome-tutorial:hover,
+            .btn-welcome-tutorial:focus-visible {
+                box-shadow: 0 18px 34px rgba(56, 189, 248, 0.45);
+                transform: translateY(-1px);
+                outline: none;
             }
 
             @media (max-width: 640px) {
                 .welcome-popup-overlay {
                     align-items: flex-start;
-                    justify-content: center;
-                    padding: clamp(24px, 8vh, 48px) 1rem 1.5rem;
+                    padding: clamp(20px, 10vh, 36px) clamp(14px, 5vw, 22px);
                 }
 
                 .welcome-popup {
-                    max-width: 100%;
-                    margin: 0;
+                    width: 100%;
+                    max-height: calc(100vh - clamp(20px, 10vh, 36px));
                     border-radius: 18px;
-                    max-height: calc(100vh - clamp(24px, 8vh, 48px));
                 }
 
                 .welcome-popup-header {
-                    padding: 1.1rem 1.35rem 0.75rem;
-                }
-
-                .welcome-popup-avatars {
+                    padding: 1.15rem 1.4rem 0.85rem;
                     gap: 0.75rem;
-                    margin-bottom: 0.75rem;
                 }
 
                 .welcome-avatar {
-                    width: 50px;
-                    height: 50px;
+                    width: 48px;
+                    height: 48px;
                 }
 
                 .welcome-popup-body {
-                    padding: 0 1.35rem 1.35rem;
-                    font-size: 0.96rem;
+                    padding: 0 1.4rem 1.45rem;
+                    font-size: 0.95rem;
                 }
 
                 .welcome-popup-footer {
-                    padding: 0 1.35rem 1.5rem;
+                    padding: 1.35rem 1.4rem 1.55rem;
                 }
 
                 .welcome-popup-actions {
                     flex-direction: column;
+                    align-items: stretch;
                 }
 
                 .btn-welcome-close,
-                .btn-welcome-tutorial,
-                .btn-welcome-password {
+                .btn-welcome-tutorial {
                     width: 100%;
                 }
             }
@@ -511,11 +510,103 @@ export class WelcomePopup {
  */
 export function showWelcomePopupIfNeeded(eventBus) {
     const popup = new WelcomePopup(eventBus);
+    const bus = (eventBus && typeof eventBus.on === 'function') ? eventBus : null;
+    const unsubscribers = [];
+    let disposed = false;
+    let pendingTimeout = null;
 
-    // Show after a short delay to let the app initialize
-    setTimeout(() => {
+    const cleanup = () => {
+        if (disposed) return;
+        disposed = true;
+        if (pendingTimeout) {
+            clearTimeout(pendingTimeout);
+            pendingTimeout = null;
+        }
+        while (unsubscribers.length > 0) {
+            const off = unsubscribers.pop();
+            try { off?.(); } catch (_) {}
+        }
+    };
+
+    const isAppReadyForPopup = () => {
+        if (typeof document === 'undefined') return false;
+        const body = document.body;
+        if (!body) return false;
+        if (body.classList?.contains?.('home-active')) return false;
+
+        const appContainer = document.getElementById('app-container');
+        if (!appContainer) return false;
+
+        const hasHiddenAttr = appContainer.hasAttribute('hidden');
+        let displayNone = false;
+        try {
+            if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+                displayNone = window.getComputedStyle(appContainer).display === 'none';
+            } else {
+                displayNone = appContainer.style.display === 'none';
+            }
+        } catch (_) {
+            displayNone = appContainer.style.display === 'none';
+        }
+
+        return !hasHiddenAttr && !displayNone;
+    };
+
+    const attemptShow = () => {
+        if (disposed) return;
+
+        if (!popup.shouldShow()) {
+            cleanup();
+            return;
+        }
+
+        if (!isAppReadyForPopup()) {
+            queueAttempt(250);
+            return;
+        }
+
         popup.show();
-    }, 500);
+        cleanup();
+    };
+
+    const queueAttempt = (delay = 0) => {
+        if (disposed) return;
+        if (pendingTimeout) {
+            clearTimeout(pendingTimeout);
+        }
+        pendingTimeout = setTimeout(() => {
+            pendingTimeout = null;
+            attemptShow();
+        }, delay);
+    };
+
+    if (bus) {
+        const appReadyEvent = EVENTS.APP_READY || 'app:ready';
+        const moduleShowEvent = EVENTS.MODULE_SHOW || 'module:show';
+        const threadsReadyEvent = EVENTS.THREADS_READY || 'threads:ready';
+        const authRequiredEvent = EVENTS.AUTH_REQUIRED || 'ui:auth:required';
+
+        if (typeof bus.once === 'function') {
+            unsubscribers.push(bus.once(appReadyEvent, () => queueAttempt(120)));
+            if (threadsReadyEvent) {
+                unsubscribers.push(bus.once(threadsReadyEvent, () => queueAttempt(80)));
+            }
+        }
+
+        if (typeof bus.on === 'function') {
+            unsubscribers.push(bus.on(moduleShowEvent, (moduleId) => {
+                if (!moduleId || moduleId === 'chat') {
+                    queueAttempt(120);
+                }
+            }));
+            unsubscribers.push(bus.on(authRequiredEvent, () => {
+                popup.hide();
+                cleanup();
+            }));
+        }
+    }
+
+    queueAttempt(400);
 
     return popup;
 }

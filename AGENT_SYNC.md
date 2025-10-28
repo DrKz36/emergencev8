@@ -3,6 +3,7 @@
 **Dernière mise à jour:** 2025-10-27 17:30 CET
 **Mode:** Développement collaboratif multi-agents
 
+**Dernière mise à jour:** 2025-10-28 18:55 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-28 15:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-28 11:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-28 08:10 CET (Codex GPT)
@@ -16,6 +17,27 @@
 **Dernière mise à jour:** 2025-10-27 10:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 21:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 18:10 CET (Codex GPT)
+
+## 🗓️ Session COMPLÉTÉE (2025-10-28 18:55 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/frontend/shared/welcome-popup.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Report du welcome popup jusqu'après authentification effective pour éviter l'apparition sur l'écran d'authentification.
+- Refonte visuelle du popup (contrastes, largeur, focus states et responsive) alignée sur la charte sombre du module Dialogue.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions
+1. Vérifier sur un parcours complet (login -> chat) que la case "Ne plus montrer" reste bien appliquée après rafraîchissement.
+2. Collecter un feedback utilisateur sur la nouvelle copie pour ajuster le ton si besoin.
+
+### Blocages
+- Aucun.
 
 ## ✅ Session COMPLÉTÉE (2025-10-28 15:20 CET) — Agent : Codex GPT
 

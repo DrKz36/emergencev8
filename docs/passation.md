@@ -1,5 +1,29 @@
 # 📝 Journal de Passation Inter-Agents
 
+## ? [2025-10-28 18:55 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/frontend/shared/welcome-popup.js`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Contexte
+- Le welcome popup apparaissait dès l'écran d'authentification et restait peu lisible (contraste faible, largeur excessive).
+
+### Travail réalisé
+1. Ajout d'une orchestration via EventBus pour n'afficher le popup qu'après authentification et chargement du module Dialogue.
+2. Refonte du markup + des styles (gradient cohérent, boutons contrastés, focus trap conservé) avec responsive revu.
+
+### Tests
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Conservation des hooks EventBus existants et du comportement de dismissal via localStorage.
+
+### Blocages
+- Aucun.
+
+
 ## ✅ [2025-10-28 11:45 CET] - Agent: Codex GPT
 
 ### Fichiers modifiés

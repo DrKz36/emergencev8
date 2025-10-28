@@ -5,6 +5,37 @@
 
 ---
 
+## ✅ Session EN COURS (2025-10-28 20:15 CET)
+
+### 🔄 SYNC DOCS + COMMIT PROPRE (nouvelle branche)
+
+**Status:** ⏳ EN COURS - Update docs coopération + commit/push propre
+
+**Contexte:** Utilisateur demande update docs pertinentes + commit/push de tous les fichiers modifiés (y compris ceux touchés par Codex). Dépôt local doit être propre.
+
+**État initial:**
+- Branche: `chore/sync-multi-agents-pwa-codex` (upstream gone)
+- 3 fichiers modifiés:
+  - `AGENT_SYNC.md` (legacy - modifié par Codex 18:55)
+  - `docs/passation.md` (legacy - modifié par Codex 18:55)
+  - `src/frontend/shared/welcome-popup.js` (refonte Codex - popup après auth)
+
+**Actions effectuées:**
+- ✅ Checkout main + pull latest
+- ✅ Créé nouvelle branche: `claude/sync-docs-update-20251028`
+- ⏳ Update AGENT_SYNC_CLAUDE.md (ce fichier)
+- ⏳ Update docs/passation_claude.md
+- ⏳ Commit + push tous fichiers modifiés
+
+**Fichiers à committer (3 + 2 docs):**
+- `src/frontend/shared/welcome-popup.js` (Codex - welcome popup refonte)
+- `AGENT_SYNC.md` (legacy Codex - garder pour transition)
+- `docs/passation.md` (legacy Codex - garder pour transition)
+- `AGENT_SYNC_CLAUDE.md` (cette session)
+- `docs/passation_claude.md` (journal session)
+
+---
+
 ## ✅ Session COMPLÉTÉE (2025-10-28 19:00 CET)
 
 ### 📝 CLEANUP DOCS OBSOLÈTES
