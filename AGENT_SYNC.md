@@ -3,6 +3,7 @@
 **Dernière mise à jour:** 2025-10-27 17:30 CET
 **Mode:** Développement collaboratif multi-agents
 
+**Dernière mise à jour:** 2025-10-28 15:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-28 11:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-28 08:10 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-27 22:45 CET (Codex GPT)
@@ -15,6 +16,28 @@
 **Dernière mise à jour:** 2025-10-27 10:20 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 21:45 CET (Codex GPT)
 **Dernière mise à jour:** 2025-10-26 18:10 CET (Codex GPT)
+
+## ✅ Session COMPLÉTÉE (2025-10-28 15:20 CET) — Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/frontend/shared/welcome-popup.js`
+- `src/frontend/styles/components/modals.css`
+- `AGENT_SYNC.md`
+- `docs/passation.md`
+
+### Actions réalisées
+- Harmonisation du modal "Reprendre" du module Dialogue avec l'identité visuelle sombre : gradient bleu nuit, texte blanc et boutons lisibles sur mobile.
+- Ajustement du welcome popup mobile (padding, avatars visibles, scroll fluide) pour éviter qu'il déborde sur les écrans étroits.
+
+### Tests
+- ✅ `npm run build`
+
+### Prochaines actions
+1. Vérifier sur device réel que l'overlay modal conserve la lisibilité sur les thèmes clair/sombre.
+2. Itérer sur l'accessibilité (focus trap + contraste boutons secondaires) si retours QA.
+
+### Blocages
+- Aucun.
 
 ## ✅ Session COMPLÉTÉE (2025-10-28 11:45 CET) — Agent : Codex GPT
 

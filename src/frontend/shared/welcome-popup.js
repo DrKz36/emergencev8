@@ -164,6 +164,7 @@ export class WelcomePopup {
                 width: 100%;
                 max-height: 90vh;
                 overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
                 animation: slideUp 0.4s ease;
             }
 
@@ -364,17 +365,40 @@ export class WelcomePopup {
             }
 
             @media (max-width: 640px) {
+                .welcome-popup-overlay {
+                    align-items: flex-start;
+                    justify-content: center;
+                    padding: clamp(24px, 8vh, 48px) 1rem 1.5rem;
+                }
+
                 .welcome-popup {
                     max-width: 100%;
                     margin: 0;
-                    border-radius: 0;
-                    max-height: 100vh;
+                    border-radius: 18px;
+                    max-height: calc(100vh - clamp(24px, 8vh, 48px));
                 }
 
-                .welcome-popup-header,
-                .welcome-popup-body,
+                .welcome-popup-header {
+                    padding: 1.1rem 1.35rem 0.75rem;
+                }
+
+                .welcome-popup-avatars {
+                    gap: 0.75rem;
+                    margin-bottom: 0.75rem;
+                }
+
+                .welcome-avatar {
+                    width: 50px;
+                    height: 50px;
+                }
+
+                .welcome-popup-body {
+                    padding: 0 1.35rem 1.35rem;
+                    font-size: 0.96rem;
+                }
+
                 .welcome-popup-footer {
-                    padding: 1.25rem;
+                    padding: 0 1.35rem 1.5rem;
                 }
 
                 .welcome-popup-actions {
