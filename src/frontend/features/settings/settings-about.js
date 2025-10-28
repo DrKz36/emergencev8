@@ -212,47 +212,91 @@ class SettingsAbout {
     }
 
     /**
-     * Render modules section
+     * Render modules section (current active modules in frontend/features)
      */
     renderModules() {
         const modules = [
-            { name: 'Home', version: 'v1.0', icon: 'home' },
-            { name: 'Cockpit', version: 'v3.0', icon: 'barChart' },
-            { name: 'Chat', version: 'v2.5', icon: 'messageCircle' },
-            { name: 'Voice', version: 'v1.2', icon: 'mic' },
-            { name: 'Memory', version: 'v2.0', icon: 'brain' },
-            { name: 'Debate', version: 'v1.5', icon: 'messageSquare' },
-            { name: 'Documents', version: 'v1.8', icon: 'fileText' },
-            { name: 'References', version: 'v1.0', icon: 'bookmark' },
-            { name: 'Threads', version: 'v1.3', icon: 'list' },
-            { name: 'Conversations', version: 'v1.4', icon: 'messageCircle' },
-            { name: 'Timeline', version: 'v1.1', icon: 'clock' },
-            { name: 'Costs', version: 'v1.0', icon: 'dollarSign' },
-            { name: 'Preferences', version: 'v1.5', icon: 'user' },
-            { name: 'Settings', version: 'v4.0', icon: 'settings' },
-            { name: 'Admin', version: 'v1.0', icon: 'shield' }
+            { name: 'Admin', icon: 'shield', type: 'Administration' },
+            { name: 'Chat', icon: 'messageCircle', type: 'Dialogue Multi-agents' },
+            { name: 'Cockpit', icon: 'barChart', type: 'Monitoring & Analytics' },
+            { name: 'Conversations', icon: 'messageCircle', type: 'Gestion Conversations' },
+            { name: 'Debate', icon: 'messageSquare', type: 'Débat Multi-agents' },
+            { name: 'Documentation', icon: 'fileText', type: 'Documentation' },
+            { name: 'Documents', icon: 'fileText', type: 'Gestion Documents' },
+            { name: 'Home', icon: 'home', type: 'Accueil' },
+            { name: 'Hymn', icon: 'music', type: 'Assistant Musical' },
+            { name: 'Memory', icon: 'brain', type: 'Centre Mémoire' },
+            { name: 'Preferences', icon: 'user', type: 'Préférences' },
+            { name: 'PWA', icon: 'smartphone', type: 'Progressive Web App' },
+            { name: 'References', icon: 'bookmark', type: 'Références & Sources' },
+            { name: 'Settings', icon: 'settings', type: 'Paramètres' },
+            { name: 'Threads', icon: 'list', type: 'Fil de Conversations' },
+            { name: 'Voice', icon: 'mic', type: 'Dialogue Vocal' }
+        ];
+
+        const backendModules = [
+            { name: 'Auth', icon: 'lock', type: 'Authentification' },
+            { name: 'Chat', icon: 'messageCircle', type: 'API Chat' },
+            { name: 'Memory', icon: 'brain', type: 'Mémoire Vectorielle' },
+            { name: 'Monitoring', icon: 'activity', type: 'Métriques Prometheus' },
+            { name: 'Webhooks', icon: 'link', type: 'Intégrations Externes' },
+            { name: 'Admin', icon: 'shield', type: 'Administration' }
         ];
 
         return `
             <div class="about-section about-modules">
                 <h3 class="about-section-title">
-                    ${getIcon('package')} Modules Installés
+                    ${getIcon('package')} Modules & Architecture
                 </h3>
                 <p class="about-section-subtitle">
-                    ${modules.length} modules actifs dans votre installation ÉMERGENCE.
+                    ${modules.length} modules frontend, ${backendModules.length} services backend actifs.
                 </p>
 
+                <h4 class="modules-subsection-title">${getIcon('layout')} Frontend (${modules.length} modules)</h4>
                 <div class="modules-grid">
                     ${modules.map(module => `
                         <div class="module-card">
                             <span class="module-icon">${getIcon(module.icon)}</span>
                             <div class="module-info">
                                 <span class="module-name">${module.name}</span>
-                                <span class="module-version">${module.version}</span>
+                                <span class="module-type">${module.type}</span>
                             </div>
                             <span class="module-status">${getIcon('checkCircle')}</span>
                         </div>
                     `).join('')}
+                </div>
+
+                <h4 class="modules-subsection-title">${getIcon('server')} Backend (${backendModules.length} services)</h4>
+                <div class="modules-grid">
+                    ${backendModules.map(module => `
+                        <div class="module-card">
+                            <span class="module-icon">${getIcon(module.icon)}</span>
+                            <div class="module-info">
+                                <span class="module-name">${module.name}</span>
+                                <span class="module-type">${module.type}</span>
+                            </div>
+                            <span class="module-status">${getIcon('checkCircle')}</span>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <div class="about-stats-grid">
+                    <div class="about-stat">
+                        <span class="about-stat-label">Fichiers Python Backend</span>
+                        <span class="about-stat-value">137</span>
+                    </div>
+                    <div class="about-stat">
+                        <span class="about-stat-label">Fichiers JavaScript Frontend</span>
+                        <span class="about-stat-value">95</span>
+                    </div>
+                    <div class="about-stat">
+                        <span class="about-stat-label">Tests Pytest</span>
+                        <span class="about-stat-value">487</span>
+                    </div>
+                    <div class="about-stat">
+                        <span class="about-stat-label">Build Vite</span>
+                        <span class="about-stat-value">~1.0s</span>
+                    </div>
                 </div>
             </div>
         `;
@@ -305,11 +349,22 @@ class SettingsAbout {
                     </div>
 
                     <div class="credits-guardian">
-                        <h4 class="credits-subtitle">${getIcon('shield')} Écosystème Guardian</h4>
+                        <h4 class="credits-subtitle">${getIcon('shield')} Écosystème Guardian v3.0</h4>
                         <p class="credits-text">
-                            Ce projet bénéficie d'un écosystème complet d'agents IA autonomes (Anima, Neo, ProdGuardian,
-                            Argus, Theia, Nexus, Claude Code) qui assurent la qualité, la documentation, le monitoring
-                            et l'optimisation en continu.
+                            Ce projet est développé avec un écosystème complet de 7 agents IA autonomes :
+                        </p>
+                        <div class="tech-tags">
+                            <span class="tech-tag tech-tag-guardian">Anima (DocKeeper)</span>
+                            <span class="tech-tag tech-tag-guardian">Neo (IntegrityWatcher)</span>
+                            <span class="tech-tag tech-tag-guardian">ProdGuardian (Monitoring)</span>
+                            <span class="tech-tag tech-tag-guardian">Argus (DevLogs)</span>
+                            <span class="tech-tag tech-tag-guardian">Theia (Optimizer)</span>
+                            <span class="tech-tag tech-tag-guardian">Nexus (Coordinator)</span>
+                            <span class="tech-tag tech-tag-guardian">Claude Code Agent</span>
+                        </div>
+                        <p class="credits-text">
+                            Automatisation complète : Git Hooks (pre-commit, post-commit, pre-push), monitoring production toutes les 6h,
+                            rapports par email, documentation auto-update, intégrité backend/frontend, versioning obligatoire.
                         </p>
                         <p class="credits-text credits-meta">
                             ÉMERGENCE n'est pas seulement une plateforme multi-agents pour les utilisateurs —

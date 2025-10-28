@@ -1,124 +1,119 @@
-﻿/*
- * --- STYLES DES MODALS V2.0 (FINAL) ---
- * Correction complète pour assurer un affichage en superposition.
+/*
+ * Modal styles v3 - centered card with transparent backdrop (no dark overlay)
  */
 
-/* Conteneur principal qui couvre toute la page */
 .modal-container {
-    position: fixed !important; /* 🔥 FIX: Force fixed pour éviter tout override */
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    display: flex !important; /* Utilise flexbox pour centrer le contenu */
-    align-items: center !important;
-    justify-content: center !important;
-    z-index: 9999 !important; /* 🔥 FIX: z-index très élevé pour être au-dessus de tout */
-
-    /* Gère la visibilité et la transition */
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0s 0.3s;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 10500;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.24s ease, visibility 0s 0.24s;
 }
 
 .modal-container.visible {
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 0.3s ease;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 0.24s ease;
 }
 
-/* Fond semi-transparent derrière le modal */
 .modal-backdrop {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(10, 10, 20, 0.7);
-    backdrop-filter: blur(5px); /* Effet de flou moderne */
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  pointer-events: auto;
 }
 
-/* La boîte de dialogue elle-même */
 .modal-content {
-    position: relative; /* Pour être au-dessus du backdrop */
-    background-color: var(--color-background-light);
-    padding: 1.75rem 2rem;
-    border-radius: var(--border-radius-large);
-    border: 1px solid var(--color-border);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    width: 90%;
-    max-width: 420px; /* 🔥 FIX: Réduit de 500px à 420px pour modal plus compact */
+  position: relative;
+  width: min(320px, 100%);
+  padding: 1.5rem 1.75rem;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background-color: var(--color-surface-base);
+  color: var(--color-text-primary);
+  box-shadow: 0 18px 42px rgba(15, 18, 25, 0.18);
+  transform: translateY(14px);
+  opacity: 0;
+  transition: transform 0.24s ease, opacity 0.24s ease;
+}
 
-    /* Animation d'apparition */
-    transform: scale(0.95);
-    transition: transform 0.3s ease;
+.modal-content.modal-lg {
+  width: min(640px, 100%);
+  padding: 1.75rem 2rem;
 }
 
 .modal-container.visible .modal-content {
-    transform: scale(1);
+  transform: translateY(0);
+  opacity: 1;
 }
 
 .modal-title {
-    font-size: 1.35rem;
-    font-weight: 600;
-    color: var(--color-text-primary);
-    margin-bottom: 0.75rem;
-    text-align: center; /* 🔥 FIX: Centrer le titre */
+  margin-bottom: 0.65rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  text-align: center;
 }
 
 .modal-body {
-    font-size: 0.95rem;
-    color: var(--color-text-secondary);
-    line-height: 1.5;
-    margin-bottom: 1.5rem;
-    text-align: center; /* 🔥 FIX: Centrer le texte */
+  margin-bottom: 1.25rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: rgba(15, 23, 42, 0.72);
+  text-align: center;
 }
 
 .modal-actions {
-    display: flex;
-    justify-content: center; /* 🔥 FIX: Centrer les boutons au lieu de flex-end */
-    gap: 0.75rem; /* Espace entre les boutons */
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
 }
 
 .modal-actions--single {
-    justify-content: center;
+  justify-content: center;
 }
 
-/* 🔥 FIX: Uniformiser la taille des boutons dans le modal */
 .modal-actions .btn {
-    min-width: 140px;
-    padding: 0.65rem 1.25rem;
-    font-size: 0.95rem;
-    justify-content: center;
+  min-width: 0;
+  padding: 0.55rem 1.35rem;
+  font-size: 0.95rem;
+  justify-content: center;
+  border-radius: 999px;
+  box-shadow: none;
 }
 
-/* Style spécifique pour le bouton de confirmation "destructeur" (rouge) */
 .modal-actions .btn.destructive {
-    --btn-bg: var(--color-danger);
-    --btn-bg-hover: var(--color-danger-hover);
-    --btn-color: #fff;
-    --btn-border: var(--color-danger);
+  --btn-bg: var(--color-error);
+  --btn-bg-hover: var(--color-error);
+  --btn-color: var(--color-text-inverse);
+  --btn-border: var(--color-error);
 }
 
 @media (max-width: 640px) {
-    .modal-content {
-        width: min(92%, 420px);
-        margin: 0 16px;
-        padding: 1.5rem 1.35rem;
-    }
+  .modal-container {
+    padding: 16px;
+  }
 
-    .modal-actions {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.65rem;
-    }
+  .modal-content {
+    width: min(92%, 320px);
+    padding: 1.4rem 1.25rem;
+    border-radius: 14px;
+  }
 
-    .modal-actions .btn {
-        width: 100%;
-        justify-content: center;
-    }
+  .modal-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem;
+  }
 
-    .modal-actions--single {
-        justify-content: center;
-    }
+  .modal-actions .btn {
+    width: 100%;
+  }
 }

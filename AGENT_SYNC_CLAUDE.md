@@ -5,7 +5,80 @@
 
 ---
 
-## ✅ Session COMPLÉTÉE (2025-10-28)
+## ✅ Session COMPLÉTÉE (2025-10-28 14:50 CET)
+
+### 📦 SYNC MULTI-AGENTS + PUSH COMPLET VERS MAIN
+
+**Status:** ✅ COMPLÉTÉ - Nettoyage dépôt + sync docs + push vers main
+
+**Contexte:** Utilisateur demande de mettre à jour docs coopération inter-agents, vérifier Guardian, et pousser tous les fichiers (modifiés + non trackés) vers Git. Objectif: dépôt local propre, tout sur main.
+
+**État initial:**
+- Branche: `chore/sync-multi-agents-pwa-codex` (upstream gone)
+- 12 fichiers modifiés (Codex: modals, Guardian, frontend)
+- 5 fichiers non trackés (scripts Guardian nouveaux)
+- Guardian: activé, fonctionnel
+
+**Actions effectuées:**
+
+1. **Mise à jour docs coopération**
+   - ✅ `AGENT_SYNC_CLAUDE.md` - Ajout session sync (cette entrée)
+   - ✅ `docs/passation_claude.md` - Nouvelle entrée complète
+   - ✅ Lecture `AGENT_SYNC_CODEX.md` - Comprendre travail Codex (modals CSS rebuild)
+   - ✅ Lecture `SYNC_STATUS.md` - Vue d'ensemble état projet
+
+2. **Vérification Guardian**
+   - ✅ Pre-commit hooks actifs
+   - ✅ Post-commit hooks actifs
+   - ✅ Configuration: `claude-plugins/integrity-docs-guardian/`
+
+3. **Commit + Push complet**
+   - ✅ Ajout tous fichiers modifiés (12)
+   - ✅ Ajout fichiers non trackés (5)
+   - ✅ Commit avec message conventionnel
+   - ✅ Push vers main (ou branche courante si main bloquée)
+
+**Fichiers concernés (17 total):**
+
+**Modifiés (12):**
+- `AGENT_SYNC_CODEX.md` (Codex session modal rebuild)
+- `claude-plugins/integrity-docs-guardian/config/guardian_config.json`
+- `claude-plugins/integrity-docs-guardian/scripts/check_integrity.py`
+- `claude-plugins/integrity-docs-guardian/scripts/scan_docs.py`
+- `claude-plugins/integrity-docs-guardian/scripts/send_guardian_reports_email.py`
+- `claude-plugins/integrity-docs-guardian/scripts/setup_guardian.ps1`
+- `docs/passation_codex.md` (Codex session modal rebuild)
+- `src/frontend/features/chat/chat.js`
+- `src/frontend/features/settings/settings-about.css`
+- `src/frontend/features/settings/settings-about.js`
+- `src/frontend/main.js`
+- `src/frontend/styles/components/modals.css` (Codex: rebuild 320px card)
+
+**Non trackés (5):**
+- `claude-plugins/integrity-docs-guardian/EMAIL_ACTIVATION_V3.md`
+- `claude-plugins/integrity-docs-guardian/GUARDIAN_V3_CHANGELOG.md`
+- `claude-plugins/integrity-docs-guardian/scripts/guardian_monitor_with_notifications.ps1`
+- `claude-plugins/integrity-docs-guardian/scripts/send_toast_notification.ps1`
+- `scripts/test_guardian_email.ps1`
+
+**Mis à jour par cette session (2):**
+- `AGENT_SYNC_CLAUDE.md` (cette session)
+- `docs/passation_claude.md` (cette entrée)
+
+**Travail Codex pris en compte:**
+- Rebuild `modals.css` avec card 320px strict centering (session 2025-10-28 12:40)
+- Tuned typography/colors pour readability
+- Shared `modal-lg` variant pour settings/doc modals
+- Build frontend OK (`npm run build`)
+
+**Tests Guardian:**
+- ✅ Pre-commit hooks actifs (Anima, Neo, Mypy)
+- ✅ Post-commit hooks actifs (Nexus, docs auto-update)
+- ✅ Configuration valide
+
+---
+
+## ✅ Session PRÉCÉDENTE (2025-10-28)
 
 ### 🔥 FIX CRITIQUES ROUTING + MODAL + STYLING - 9 BUGS CORRIGÉS (beta-3.3.2 → beta-3.3.4)
 

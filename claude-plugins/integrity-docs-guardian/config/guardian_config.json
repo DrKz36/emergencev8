@@ -93,7 +93,9 @@
     "formats": ["json", "markdown"],
     "generate_summaries": true,
     "slack_webhook": null,
-    "email_notifications": false,
+    "email_notifications": true,
+    "email_to": "emergence.app.ch@gmail.com",
+    "email_from": "emergence.app.ch@gmail.com",
     "discord_webhook": null
   },
 

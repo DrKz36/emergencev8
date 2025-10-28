@@ -10,6 +10,7 @@ import { ChatUI } from './chat-ui.js';   // cache-bust UI présent
 import { EVENTS, AGENTS } from '../../shared/constants.js';
 import { api } from '../../shared/api-client.js';
 import { ConceptRecallBanner } from './concept-recall-banner.js';
+import { fetchThreads, fetchArchivedThreads } from '../threads/threads-service.js';
 
 export default class ChatModule {
   constructor(eventBus, state) {
@@ -29,6 +30,11 @@ export default class ChatModule {
     this._conversationModalCleanup = null;
     this._threadsBootstrapPromise = null;
     this._initialModalChecked = false; // 🔥 FIX: Flag pour éviter double affichage modal au démarrage
+    this._shouldForceModal = true;      // Force l'ouverture du modal à la prochaine session
+    this._sessionPromptShown = false;
+    this._pendingModalCheckTimer = null;
+    this._awaitingConversationChoice = false;
+    this._pendingThreadDetail = null;
 
     // Connexion & flux
     this._wsConnected = false;
@@ -252,6 +258,10 @@ export default class ChatModule {
 
     // Concept Recall (Phase 3)
     this._H.CONCEPT_RECALL     = this.handleConceptRecall.bind(this);
+
+    // Auth/session
+    this._H.AUTH_LOGIN_SUCCESS = this.handleAuthLoginSuccess.bind(this);
+    this._H.AUTH_RESTORED      = this.handleAuthRestored.bind(this);
   }
 
   _onOnce(eventName, handler) {
@@ -316,6 +326,67 @@ export default class ChatModule {
     }, 3000);
   }
 
+  _scheduleConversationPromptCheck(delayMs = 120) {
+    const delay = Number.isFinite(delayMs) && delayMs >= 0 ? delayMs : 120;
+    if (this._pendingModalCheckTimer) {
+      clearTimeout(this._pendingModalCheckTimer);
+    }
+    this._pendingModalCheckTimer = setTimeout(() => {
+      this._pendingModalCheckTimer = null;
+      try {
+        this._ensureActiveConversation();
+      } catch (error) {
+        console.error('[Chat] Impossible de vérifier la conversation active forcée:', error);
+      }
+    }, delay);
+    console.log('[Chat] scheduleConversationPromptCheck -> %sms', delay);
+  }
+
+  async _prepareConversationPrompt(reason = 'auth', payload = {}) {
+    console.log('[Chat] prepareConversationPrompt reason=%s', reason);
+    this._shouldForceModal = true;
+    this._sessionPromptShown = false;
+    this._initialModalChecked = false;
+    this._awaitingConversationChoice = true;
+    this._pendingThreadDetail = null;
+    try { this.state.set('chat.threadId', null); } catch {}
+    try { this.state.set('threads.currentId', null); } catch {}
+    try {
+      this.eventBus?.emit?.(EVENTS.THREADS_REFRESH_REQUEST || 'threads:refresh', { source: 'conversation-choice' });
+    } catch (err) {
+      console.warn('[Chat] Impossible d\'émettre threads:refresh lors du reset modal', err);
+    }
+    if (this._pendingModalCheckTimer) {
+      clearTimeout(this._pendingModalCheckTimer);
+      this._pendingModalCheckTimer = null;
+    }
+    this._teardownConversationModal(true);
+    this._threadsBootstrapPromise = null;
+    try {
+      await this._primeThreadsDataForModal();
+    } catch (error) {
+      console.warn('[Chat] Préchargement des threads pour le modal impossible:', error);
+    } finally {
+      this._scheduleConversationPromptCheck(150);
+    }
+  }
+
+  handleAuthLoginSuccess(payload = {}) {
+    console.log('[Chat] handleAuthLoginSuccess');
+    this._prepareConversationPrompt('auth-login-success', payload);
+  }
+
+  handleAuthRestored(payload = {}) {
+    const sourceValue = typeof payload?.source === 'string' ? payload.source.trim().toLowerCase() : '';
+    console.log('[Chat] handleAuthRestored source=%s', sourceValue || '<none>');
+    if (sourceValue === 'ensurecurrentthread') {
+      return;
+    }
+    if (!sourceValue || sourceValue === 'startup' || sourceValue === 'home-login' || sourceValue === 'storage') {
+      this._prepareConversationPrompt('auth-restored', payload);
+    }
+  }
+
   mount(container) {
     this.container = container;
     this.ui.render(this.container, this.state.get('chat'));
@@ -362,15 +433,64 @@ export default class ChatModule {
     }
   }
 
+  async _primeThreadsDataForModal() {
+    try {
+      const [activeList, archivedList] = await Promise.all([
+        fetchThreads({ type: 'chat', limit: 50 }),
+        fetchArchivedThreads({ type: 'chat', limit: 50 }),
+      ]);
+      const existingMap = this.state.get('threads.map') || {};
+      const map = {};
+      const order = [];
+      for (const thread of Array.isArray(activeList) ? activeList : []) {
+        const id = thread?.id;
+        if (!id) continue;
+        const existing = existingMap[id] || { id, messages: [], docs: [] };
+        map[id] = { ...existing, id, thread };
+        order.push(id);
+      }
+      const fetchedAt = Date.now();
+      this.state.set('threads.map', map);
+      this.state.set('threads.order', order);
+      this.state.set('threads.lastFetchedAt', fetchedAt);
+      this.state.set('threads.status', 'ready');
+      this.state.set('threads.error', null);
+
+      const counts = {
+        active: (Array.isArray(activeList) ? activeList : []).filter((item) => item && item.archived !== true).length,
+        archived: Array.isArray(archivedList) ? archivedList.length : 0,
+      };
+      this.state.set('threads.counts', counts);
+
+      this.eventBus?.emit?.(EVENTS.THREADS_LIST_UPDATED || 'threads:list_updated', {
+        items: activeList,
+        counts,
+        fetchedAt,
+        source: 'chat-modal',
+      });
+      this.eventBus?.emit?.(EVENTS.THREADS_READY || 'threads:ready', {
+        items: activeList,
+        counts,
+        fetchedAt,
+        source: 'chat-modal',
+      });
+    } catch (error) {
+      console.warn('[Chat] Impossible de précharger les threads pour le modal (fallback ThreadsPanel nécessaire):', error);
+    }
+  }
+
   /**
    * S'assure qu'une conversation est active au chargement du module.
    * Affiche un modal demandant si l'utilisateur veut reprendre la dernière conversation ou en créer une nouvelle.
    */
   async _ensureActiveConversation() {
     try {
+      this._initialModalChecked = true;
       if (this._conversationModalVisible) return;
 
       console.log('[Chat] Vérification conversation active...');
+
+      const forcePrompt = this._shouldForceModal === true;
 
       // 🔥 FIX: TOUJOURS attendre le bootstrap des threads pour éviter race condition
       // entre localStorage (peut contenir thread archivé) et state backend
@@ -382,10 +502,14 @@ export default class ChatModule {
       if (currentThreadId) {
         const threadData = this.state.get(`threads.map.${currentThreadId}`);
         const isArchived = threadData?.thread?.archived === true || threadData?.thread?.archived === 1;
+        const hasValidThread = threadData && threadData.messages !== undefined && !isArchived;
 
-        if (threadData && threadData.messages !== undefined && !isArchived) {
-          console.log('[Chat] Thread actif avec données chargées, aucun modal nécessaire.');
+        if (hasValidThread && !forcePrompt) {
+          console.log('[Chat] Thread actif avec données chargées, prompt déjà traité pour cette session.');
           return;
+        }
+        if (hasValidThread && forcePrompt) {
+          console.log('[Chat] Thread actif détecté mais prompt forcé pour la nouvelle session.');
         } else if (isArchived) {
           console.warn('[Chat] Thread ID pointe vers conversation archivée, affichage du modal...');
         } else {
@@ -400,7 +524,7 @@ export default class ChatModule {
     } catch (error) {
       console.error('[Chat] Erreur lors de l\'affichage du modal de conversation:', error);
       // En cas d'erreur, créer une nouvelle conversation par défaut
-      await this._createNewConversation();
+      await this._createNewConversation('ensure-error');
     }
   }
 
@@ -426,7 +550,7 @@ export default class ChatModule {
           <h2 class="modal-title" id="conversation-choice-title">Bienvenue dans le module Dialogue !</h2>
           <div class="modal-body" data-role="modal-message"></div>
           <div class="modal-actions" data-role="modal-actions">
-            <button class="btn" data-action="resume">Reprendre</button>
+            <button class="btn btn-secondary" data-action="resume">Reprendre</button>
             <button class="btn btn-primary" data-action="new">Nouvelle conversation</button>
           </div>
         </div>
@@ -438,6 +562,14 @@ export default class ChatModule {
     const modal = tempDiv.firstElementChild;
     host.appendChild(modal);
     this._conversationModalVisible = true;
+    console.log('[Chat] showConversationChoiceModal -> hasExisting=%s', !!hasExistingConversations);
+    this._shouldForceModal = false;
+    this._sessionPromptShown = true;
+    this._awaitingConversationChoice = true;
+    if (this._pendingModalCheckTimer) {
+      clearTimeout(this._pendingModalCheckTimer);
+      this._pendingModalCheckTimer = null;
+    }
 
     const resumeBtn = modal.querySelector('[data-action="resume"]');
     const newBtn = modal.querySelector('[data-action="new"]');
@@ -531,21 +663,24 @@ export default class ChatModule {
     if (resumeBtn) {
       resumeBtn.addEventListener('click', async () => {
         closeModal();
-        await this._resumeLastConversation();
+        console.log('[Chat] conversation modal -> resume click');
+        await this._resumeLastConversation('button');
       });
     }
 
     newBtn.addEventListener('click', async () => {
       closeModal();
-      await this._createNewConversation();
+      console.log('[Chat] conversation modal -> new click');
+      await this._createNewConversation('button');
     });
 
     backdrop.addEventListener('click', async () => {
       closeModal();
+      console.log('[Chat] conversation modal -> backdrop click');
       if (this._hasExistingConversations()) {
-        await this._resumeLastConversation();
+        await this._resumeLastConversation('backdrop');
       } else {
-        await this._createNewConversation();
+        await this._createNewConversation('backdrop');
       }
     });
 
@@ -567,6 +702,10 @@ export default class ChatModule {
     }
     this._conversationModalVisible = false;
     this._conversationModalCleanup = null;
+    if (this._pendingModalCheckTimer) {
+      clearTimeout(this._pendingModalCheckTimer);
+      this._pendingModalCheckTimer = null;
+    }
   }
 
   _hasExistingConversations() {
@@ -657,21 +796,33 @@ export default class ChatModule {
   /**
    * Reprend la dernière conversation existante.
    */
-  async _resumeLastConversation() {
+  async _resumeLastConversation(source = 'unknown') {
     try {
+      if (this._awaitingConversationChoice && source === 'unknown') {
+        console.warn('[Chat] Ignoring auto resume while awaiting user choice.');
+        return;
+      }
       this._teardownConversationModal(true);
+      this._shouldForceModal = false;
+      this._sessionPromptShown = true;
+      this._awaitingConversationChoice = false;
+      this._pendingThreadDetail = null;
       const threadsOrder = this.state.get('threads.order') || [];
       if (threadsOrder.length === 0) {
-        console.warn('[Chat] Aucune conversation à reprendre, création d\'une nouvelle');
-        await this._createNewConversation();
+        console.warn('[Chat] (%s) Aucune conversation à reprendre, création d\'une nouvelle', source);
+        await this._createNewConversation('resume-empty');
         return;
       }
 
       const latestThreadId = threadsOrder[0];
-      const threadData = this.state.get(`threads.map.${latestThreadId}`);
+      let threadData = this.state.get(`threads.map.${latestThreadId}`);
+      if ((!threadData || threadData.messages === undefined) && this._pendingThreadDetail && (this._pendingThreadDetail.id === latestThreadId || this._pendingThreadDetail.thread_id === latestThreadId)) {
+        threadData = this._pendingThreadDetail;
+      }
+      this._pendingThreadDetail = null;
 
       if (threadData) {
-        console.log('[Chat] Reprise de la dernière conversation:', latestThreadId);
+        console.log('[Chat] Reprise de la dernière conversation (source=%s): %s', source, latestThreadId);
         this.loadedThreadId = latestThreadId;
         this.threadId = latestThreadId;
         this.state.set('chat.threadId', latestThreadId);
@@ -688,22 +839,26 @@ export default class ChatModule {
         console.log('[Chat] ✅ Dernière conversation reprise avec succès');
         this.showToast('Conversation reprise');
       } else {
-        console.warn('[Chat] Thread data introuvable, création d\'une nouvelle conversation');
-        await this._createNewConversation();
+        console.warn('[Chat] (%s) Thread data introuvable, création d\'une nouvelle conversation', source);
+        await this._createNewConversation('resume-missing-thread');
       }
     } catch (error) {
-      console.error('[Chat] Erreur lors de la reprise de conversation:', error);
-      await this._createNewConversation();
+      console.error('[Chat] Erreur lors de la reprise de conversation (source=%s):', source, error);
+      await this._createNewConversation('resume-error');
     }
   }
 
   /**
    * Crée une nouvelle conversation.
    */
-  async _createNewConversation() {
+  async _createNewConversation(source = 'unknown') {
     try {
       this._teardownConversationModal(true);
-      console.log('[Chat] Création d\'une nouvelle conversation...');
+      this._shouldForceModal = false;
+      this._sessionPromptShown = true;
+      this._awaitingConversationChoice = false;
+      this._pendingThreadDetail = null;
+      console.log('[Chat] Création d\'une nouvelle conversation (source=%s)...', source);
       const created = await api.createThread({ type: 'chat', title: 'Conversation' });
       const newThreadId = created?.id;
 
@@ -822,6 +977,10 @@ export default class ChatModule {
 
     // Concept Recall (Phase 3)
     this._onOnce('ws:concept_recall',       this._H.CONCEPT_RECALL);
+
+    // Auth/session
+    this._onOnce(EVENTS.AUTH_LOGIN_SUCCESS || 'auth:login:success', this._H.AUTH_LOGIN_SUCCESS);
+    this._onOnce(EVENTS.AUTH_RESTORED || 'ui:auth:restored', this._H.AUTH_RESTORED);
   }
 
   /* ============================ Utils ============================ */
@@ -1663,10 +1822,24 @@ handleClearChat() {
   handleThreadSwitch(payload = {}) {
     const threadId = payload?.id || payload?.thread?.id || payload?.thread_id;
     if (!threadId) return;
+    const detail = Array.isArray(payload?.messages) ? payload : this.state.get('threads.map.' + threadId);
+
+    if (this._awaitingConversationChoice) {
+      if (detail) {
+        try { this.state.set(`threads.map.${threadId}`, detail); } catch {}
+        this._pendingThreadDetail = detail;
+        const order = this.state.get('threads.order') || [];
+        if (!order.includes(threadId)) {
+          try { this.state.set('threads.order', [threadId, ...order]); } catch {}
+        }
+      }
+      console.log('[Chat] handleThreadSwitch ignored (awaiting choice) for thread %s', threadId);
+      return;
+    }
+
     this.loadedThreadId = null;
     this.state.set('chat.isLoading', false);
     try { this.state.set('threads.currentId', threadId); } catch {}
-    const detail = Array.isArray(payload?.messages) ? payload : this.state.get('threads.map.' + threadId);
     if (detail) {
       this.hydrateFromThread(detail);
     } else {

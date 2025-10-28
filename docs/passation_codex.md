@@ -1,3 +1,93 @@
+## [2025-10-28 12:40 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/frontend/styles/components/modals.css`
+
+### Contexte
+Recentrer le popup de reprise de conversation et supprimer le halo sombre pour coller au design attendu.
+
+### Travail réalisé
+- Recréation complète de `modals.css` avec carte 320 px, centrage stricte top/left et animation douce sans halo bleu.
+- Renforcement de la lisibilité (couleurs primaires, suppression du glow) tout en conservant le clic backdrop et les transitions.
+- Ajout d'une variante `modal-lg` partagée pour les écrans plus larges (settings, documentation) afin d'éviter les régressions visuelles.
+
+### Tests
+- ✓ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Aucun changement backend récent, intervention purement front/UI.
+
+### Prochaines actions recommandées
+1. QA manuelle (desktop + mobile) pour valider le centrage, le rendu sans fond bleu et la fermeture par clic backdrop.
+2. Vérifier que les autres modales (Settings, Webhooks, Documentation) conservent leur apparence attendue avec la nouvelle feuille.
+
+### Blocages
+- Aucun.
+
+## [2025-10-28 08:22 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.js`
+- `src/frontend/main.js`
+- `src/frontend/features/settings/settings-about.js` (auto-sync à confirmer)
+- `src/frontend/features/settings/settings-about.css` (auto-sync à confirmer)
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Forcer le retour systématique sur le module Dialogue après connexion et garantir l'affichage du popup de reprise/conversation nouvelle, même lorsque ThreadsPanel hydrate en arrière-plan.
+
+### Travail réalisé
+- Nouveau flag `_awaitingConversationChoice` + cache `_pendingThreadDetail` pour ignorer `THREADS_SELECTED` tant que l'utilisateur n'a pas choisi tout en conservant la data.
+- Reset explicite de l'état (`chat.threadId`, `threads.currentId`) à chaque login, logs détaillés et émission `THREADS_REFRESH_REQUEST` pour tenir les compteurs à jour.
+- `_resumeLastConversation` réutilise désormais les données en cache si ThreadsPanel hydrate pendant l'attente ; `_createNewConversation` nettoie les pending states.
+- Ajustements UI : overlay modal transparent + bouton `Reprendre` en `btn-secondary` pour un popup centré plus propre.
+### Tests
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Aucun changement backend, simple conformité aux consignes existantes.
+
+### Prochaines actions recommandées
+1. QA manuelle (desktop + mobile) du flux de connexion pour valider l'apparition du popup + blocage des hydrations auto.
+2. Décider du sort des modifications auto sur `settings-about`.
+3. Évaluer un test automatisé (Playwright) couvrant la reprise de conversation.
+
+### Blocages
+Aucun, seulement un point de vigilance sur les fichiers `settings-about` modifiés automatiquement.
+
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.js`
+- `src/frontend/main.js`
+- `src/frontend/features/settings/settings-about.js` (mise à jour auto à confirmer)
+- `src/frontend/features/settings/settings-about.css` (mise à jour auto à confirmer)
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Forcer le retour systématique sur le module Dialogue après connexion et garantir l'affichage du popup de reprise/conversation nouvelle, même lorsque les threads sont déjà cachés en cache.
+
+### Travail réalisé
+- Ajout d'un appel explicite à `App.showModule('chat')` côté `ensureApp()` pour overrider le module précédent lors d'une nouvelle session.
+- Refactor `ChatModule` : nouveau scheduler `_scheduleConversationPromptCheck`, reset des flags `_initialModalChecked` / `_shouldForceModal`, et écoute de `auth:login:success` + `ui:auth:restored` pour relancer la vérification conversation.
+- Nettoyage des promesses de bootstrap + teardown du modal pour réinitialiser l'état à chaque connexion.
+- Observation des modifications auto-générées dans `settings-about` (laisser visible pour revue).
+
+### Tests
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Aucun changement récent impactant le front, simple respect du protocole suivant les docs existantes.
+
+### Prochaines actions recommandées
+1. QA manuelle (desktop + mobile) du flux de connexion pour valider navigation + popup.
+2. Décider du sort des changements auto sur `settings-about` (les revert si non souhaités).
+3. Évaluer un test automatisé (Playwright) couvrant la reprise de conversation.
+
+### Blocages
+Aucun, seulement un point de vigilance sur les fichiers `settings-about` modifiés automatiquement.
+
 # Journal de Passation — Codex GPT
 
 **Archives >48h:** Voir `docs/archives/passation_archive_*.md`
