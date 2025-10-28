@@ -324,19 +324,22 @@ export default class ChatModule {
 
       console.log('[Chat] Vérification conversation active...');
 
-      // Attendre le bootstrap des threads pour avoir les données complètes
-      if (!this._hasExistingConversations()) {
-        console.log('[Chat] Attente du chargement des conversations...');
-        await this._waitForThreadsBootstrap(5000);
-      }
+      // 🔥 FIX: TOUJOURS attendre le bootstrap des threads pour éviter race condition
+      // entre localStorage (peut contenir thread archivé) et state backend
+      console.log('[Chat] Attente du chargement des conversations depuis le backend...');
+      await this._waitForThreadsBootstrap(5000);
 
-      // Vérifier si on a un thread ID ET ses données chargées
+      // Vérifier si on a un thread ID ET ses données chargées ET qu'il n'est pas archivé
       const currentThreadId = this.getCurrentThreadId();
       if (currentThreadId) {
         const threadData = this.state.get(`threads.map.${currentThreadId}`);
-        if (threadData && threadData.messages !== undefined) {
+        const isArchived = threadData?.thread?.archived === true || threadData?.thread?.archived === 1;
+
+        if (threadData && threadData.messages !== undefined && !isArchived) {
           console.log('[Chat] Thread actif avec données chargées, aucun modal nécessaire.');
           return;
+        } else if (isArchived) {
+          console.warn('[Chat] Thread ID pointe vers conversation archivée, affichage du modal...');
         } else {
           console.warn('[Chat] Thread ID présent mais données manquantes, affichage du modal...');
         }
@@ -519,6 +522,8 @@ export default class ChatModule {
   }
 
   _hasExistingConversations() {
+    // 🔥 FIX: Ne PAS se fier au localStorage seul car il peut contenir un thread archivé/obsolète
+    // On vérifie d'abord le state qui est synchronisé avec le backend
     try {
       const order = this.state.get('threads.order');
       if (Array.isArray(order) && order.length > 0) return true;
@@ -529,16 +534,14 @@ export default class ChatModule {
       if (map && typeof map === 'object' && Object.keys(map).length > 0) return true;
     } catch {}
 
-    try {
-      const stored = localStorage.getItem('emergence.threadId');
-      if (stored && stored.trim()) return true;
-    } catch {}
-
+    // Ne plus utiliser localStorage comme indicateur de conversations existantes
+    // car il peut pointer vers un thread archivé qui n'est plus dans le state
     return false;
   }
 
   async _waitForThreadsBootstrap(timeoutMs = 3000) {
-    if (this._hasExistingConversations()) return true;
+    // 🔥 FIX: TOUJOURS attendre les events backend, même si on pense avoir des conversations
+    // car le state peut être désynchronisé (localStorage obsolète, threads archivés, etc.)
 
     if (this._threadsBootstrapPromise) {
       return this._threadsBootstrapPromise;
@@ -775,7 +778,33 @@ export default class ChatModule {
 
   /* ============================ Utils ============================ */
   getCurrentThreadId() {
-    return this.threadId || this.state.get('threads.currentId') || null;
+    // 🔥 FIX: Valider que le thread existe dans le state ET n'est pas archivé
+    const candidateId = this.threadId || this.state.get('threads.currentId') || null;
+
+    if (!candidateId) return null;
+
+    // Vérifier si le thread existe dans threads.map
+    const threadData = this.state.get(`threads.map.${candidateId}`);
+    if (!threadData) {
+      // Thread n'existe pas dans le state (peut-être obsolète/supprimé)
+      console.warn('[Chat] getCurrentThreadId: Thread', candidateId, 'absent du state, clearing...');
+      this.threadId = null;
+      this.state.set('threads.currentId', null);
+      try { localStorage.removeItem('emergence.threadId'); } catch {}
+      return null;
+    }
+
+    // Vérifier si le thread est archivé
+    const isArchived = threadData.thread?.archived === true || threadData.thread?.archived === 1;
+    if (isArchived) {
+      console.warn('[Chat] getCurrentThreadId: Thread', candidateId, 'est archivé, clearing...');
+      this.threadId = null;
+      this.state.set('threads.currentId', null);
+      try { localStorage.removeItem('emergence.threadId'); } catch {}
+      return null;
+    }
+
+    return candidateId;
   }
 
   async _waitForWS(timeoutMs = 0) {

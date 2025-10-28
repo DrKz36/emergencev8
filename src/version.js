@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.1 : Fix Critiques BDD - Duplication Messages + Soft-Delete Archives [ACTUEL]
+ * - beta-3.3.2 : Fix Critiques Routing/Session - Pop-up Reprise + Validation Threads Archivés [ACTUEL]
+ * - beta-3.3.1 : Fix Critiques BDD - Duplication Messages + Soft-Delete Archives
  * - beta-3.3.0 : PWA Mode Hors Ligne (P3.10 Complétée)
  * - beta-3.2.2 : Configuration Email Officielle - emergence.app.ch@gmail.com
  * - beta-3.2.1 : Changelog enrichi - 5 révisions détaillées avec sections complètes
@@ -32,8 +33,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.1',
-  name: 'Fix Critiques BDD - Duplication Messages + Soft-Delete Archives',
+  version: 'beta-3.3.2',
+  name: 'Fix Critiques Routing/Session - Pop-up Reprise + Validation Threads Archivés',
   date: '2025-10-28',
 };
 
@@ -49,6 +50,20 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.2',
+    tagline: 'Fix Critiques Routing/Session - Pop-up Reprise + Validation Threads Archivés',
+    date: '2025-10-28',
+    changes: [
+      { type: 'fix', text: 'Fix pop-up reprise conversation manquant (bug critique) - TOUJOURS attendre events backend threads:ready avant affichage modal' },
+      { type: 'fix', text: 'Fix routage messages vers mauvaise conversation - Validation thread existe dans state ET n\'est pas archivé (getCurrentThreadId)' },
+      { type: 'fix', text: 'Fix conversations qui fusionnent bizarrement - Ne plus utiliser localStorage seul comme indicateur threads existants' },
+      { type: 'fix', text: 'Fix race condition localStorage/state/backend - _waitForThreadsBootstrap supprime early return qui skippait attente events' },
+      { type: 'quality', text: 'Validation robuste threads archivés - getCurrentThreadId() clear thread ID si thread archivé ou absent du state' },
+      { type: 'quality', text: 'Logs debug améliorés - Console warnings quand thread archivé/obsolète détecté avec clearing automatique' },
+      { type: 'quality', text: 'Protection frontend 3 niveaux - _hasExistingConversations(), _waitForThreadsBootstrap(), getCurrentThreadId() synchronisées' }
+    ]
+  },
   {
     version: 'beta-3.3.1',
     tagline: 'Fix Critiques BDD - Duplication Messages + Soft-Delete Archives',
