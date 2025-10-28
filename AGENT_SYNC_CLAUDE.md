@@ -1,7 +1,27 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-10-28 18:45 CET (Claude Code)
+**Dernière mise à jour:** 2025-10-28 19:00 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-28 19:00 CET)
+
+### 📝 CLEANUP DOCS OBSOLÈTES
+
+**Status:** ✅ COMPLÉTÉ - Doc obsolète mise à jour + commit/push
+
+**Contexte:** Fichier `docs/GPT_CODEX_CLOUD_INSTRUCTIONS.md` complètement obsolète (workflow patches, références AGENT_SYNC.md unique, CODEX_SYSTEM_PROMPT.md inexistant).
+
+**Actions effectuées:**
+- ✅ Nettoyé `docs/GPT_CODEX_CLOUD_INSTRUCTIONS.md` (98 lignes conservées sur 350)
+- ✅ Redirection claire vers `PROMPT_CODEX_CLOUD.md`
+- ✅ Marqué OBSOLÈTE avec liste fichiers à utiliser vs. obsolètes
+- ✅ Supprimé workflow patches cloud→local (300+ lignes inutiles)
+- ✅ Commit + push
+
+**Fichiers modifiés (1):**
+- `docs/GPT_CODEX_CLOUD_INSTRUCTIONS.md` (réduit 350 → 104 lignes)
 
 ---
 
@@ -9,7 +29,7 @@
 
 ### 🤖 REFONTE PROMPTS CLOUD MULTI-AGENTS (Codex GPT + Claude Code)
 
-**Status:** ✅ COMPLÉTÉ - Prompts cloud mis à jour + config optimisée
+**Status:** ✅ COMPLÉTÉ - Prompts cloud mis à jour + config optimisée + commit/push
 
 **Contexte:** Codex GPT utilisait encore ancien système `AGENT_SYNC.md` unique et `passation.md` unique. Besoin mise à jour prompts cloud pour nouvelle structure (fichiers séparés par agent).
 
