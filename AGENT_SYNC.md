@@ -8,12 +8,15 @@
 - `docs/GPT_CODEX_CLOUD_INSTRUCTIONS.md`
 - `AGENT_SYNC.md` (mise à jour)
 - `docs/passation.md` (nouvelle entrée)
+- `src/backend/core/database/manager_postgres.py` (lint fix)
 
 ### Actions réalisées
 - **[Bootstrap Codex Cloud - TERMINÉ ✅]**
   - Ajout d'un bootstrap unique qui installe Python + Node 18 via nvm si nécessaire.
   - Vérification des fichiers critiques (SYNC_STATUS, AGENT_SYNC_CODEX, docs/passation_codex).
   - Documentation Codex Cloud actualisée pour pointer vers le script.
+- **[CI Ruff fix - TERMINÉ ✅]**
+  - Suppression de l'import `datetime` inutilisé dans `manager_postgres.py` pour laisser la CI passer.
 
 ### Tests
 - ⏭️ Pas de tests applicatifs (scripts/docs uniquement).

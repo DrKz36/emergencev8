@@ -1,0 +1,78 @@
+# Cloud Run Service - Anima Worker (Pub/Sub subscriber)
+# Projet: emergence-469005
+# Region: europe-west1
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: anima-worker
+  namespace: 'emergence-469005'
+  labels:
+    cloud.googleapis.com/location: europe-west1
+    app: emergence
+    worker: anima
+  annotations:
+    run.googleapis.com/ingress: internal  # Seulement accessible depuis GCP (Pub/Sub)
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: '0'  # Scale to zero quand pas de trafic
+        autoscaling.knative.dev/maxScale: '10'
+        run.googleapis.com/cpu-throttling: 'false'
+    spec:
+      containerConcurrency: 10  # 10 requêtes concurrentes max par instance
+      timeoutSeconds: 600  # 10 minutes timeout (LLM calls peuvent être longs)
+      serviceAccountName: anima-worker@emergence-469005.iam.gserviceaccount.com
+      containers:
+      - name: anima-worker
+        image: gcr.io/emergence-469005/anima-worker:latest
+        ports:
+        - name: http1
+          containerPort: 8080
+        env:
+        # Cloud SQL connection
+        - name: CLOUD_SQL_UNIX_SOCKET
+          value: /cloudsql/emergence-469005:europe-west1:emergence-postgres-prod
+        - name: CLOUD_SQL_DATABASE
+          value: emergence
+        - name: CLOUD_SQL_USER
+          value: emergence-app
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: DB_PASSWORD
+              key: latest
+        # Anthropic API key
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ANTHROPIC_API_KEY
+              key: latest
+        # Google Cloud Project
+        - name: GOOGLE_CLOUD_PROJECT
+          value: emergence-469005
+        resources:
+          limits:
+            cpu: '1'
+            memory: 512Mi
+        # Cloud SQL Proxy sidecar (connexion Unix socket)
+        volumeMounts:
+        - name: cloudsql
+          mountPath: /cloudsql
+      volumes:
+      - name: cloudsql
+        emptyDir: {}
+      # Cloud SQL Proxy container
+      - name: cloud-sql-proxy
+        image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0
+        args:
+          - "--structured-logs"
+          - "--port=5432"
+          - "emergence-469005:europe-west1:emergence-postgres-prod"
+        securityContext:
+          runAsNonRoot: true
+        resources:
+          limits:
+            cpu: 250m
+            memory: 128Mi

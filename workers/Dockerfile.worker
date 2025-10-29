@@ -1,0 +1,32 @@
+# Dockerfile pour Workers Pub/Sub (Anima, Neo, Nexus)
+# Plus léger que le Dockerfile principal (pas de frontend)
+
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# System dependencies minimales
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Python dependencies (subset pour workers)
+COPY workers/requirements.txt ./requirements.txt
+RUN python -m pip install --upgrade pip && pip install -r requirements.txt
+
+# Copy backend core (database, shared modules)
+COPY src/backend/core ./src/backend/core
+COPY src/backend/shared ./src/backend/shared
+
+# Copy worker code
+COPY workers ./workers
+
+# Cloud Run exposes $PORT
+ENV PORT=8080
+
+# Default: run Anima worker (override via command)
+CMD ["python", "-m", "uvicorn", "workers.anima_worker:app", "--host", "0.0.0.0", "--port", "8080"]

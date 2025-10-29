@@ -5,6 +5,7 @@
 - Tous les échanges utilisent `{ "type": string, "payload": object }`.
 - Les événements serveur sont préfixés `ws:` ; les erreurs critiques côté serveur déclenchent `ws:error` + log.
 - Auth : JWT local (allowlist email, HS256) obligatoire (header `Authorization: Bearer <JWT>`). Le mode dev (local uniquement) tolère un ID token Google ou l'entête `X-User-Id` quand `AUTH_DEV_MODE=1`; en production le flag vaut 0 et les bypass répondent 404.
+- _Note maintenance 2025-10-29:_ nettoyage Ruff sur `manager_postgres.py` (aucun contrat REST/WS modifié).
 
 ---
 
