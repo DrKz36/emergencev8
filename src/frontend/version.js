@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.6 : About module metrics refresh & genesis timeline fix [ACTUEL]
+ * - beta-3.3.7 : Cross-agent opinion routing fix [ACTUEL]
+ * - beta-3.3.6 : About module metrics refresh & genesis timeline fix
  * - beta-3.3.5 : Setup Firestore Snapshot - Infrastructure Sync Allowlist Automatique
  * - beta-3.3.4 : Fix Timing Pop-up - Affichage au Démarrage App (pas au mount module)
  * - beta-3.3.3 : Fix Pop-up Reprise - Modal Systématique + Centrage Correct
@@ -37,8 +38,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.6',
-  name: 'About module metrics refresh & genesis timeline fix',
+  version: 'beta-3.3.7',
+  name: 'Cross-agent opinion routing fix',
   date: '2025-10-29',
 };
 
@@ -54,6 +55,16 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.7',
+    tagline: 'Cross-agent opinion routing fix',
+    date: '2025-10-29',
+    changes: [
+      { type: 'fix', text: 'Les avis demandés à un agent restent désormais dans la conversation de l’agent évalué (plus de réponses perdues dans le mauvais fil).' },
+      { type: 'fix', text: 'Fallback de routage : si la source manque côté backend, l’agent cible est utilisé avant de basculer sur le reviewer.' },
+      { type: 'tests', text: 'Tests node mis à jour pour vérifier que le bucket de réponse correspond au thread source.' }
+    ]
+  },
   {
     version: 'beta-3.3.6',
     tagline: 'About module metrics refresh & genesis timeline fix',

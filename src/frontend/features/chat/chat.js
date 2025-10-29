@@ -70,14 +70,18 @@ export default class ChatModule {
     if (metaObj) {
       const opinion = (metaObj.opinion && typeof metaObj.opinion === 'object') ? metaObj.opinion : null;
       if (opinion) {
-        // 🔥 FIX: Pour les opinions, on veut le bucket de l'agent qui DONNE l'avis (reviewer),
-        // pas l'agent source du message évalué
-        const reviewer = String(opinion.reviewer_agent_id ?? opinion.reviewer_agent ?? opinion.agent_id ?? '').trim().toLowerCase();
-        if (reviewer) return reviewer;
-
-        // Fallback sur source_agent si reviewer manque (ne devrait pas arriver)
+        // 🔄 Les réponses d'opinion doivent rester dans le fil de l'agent évalué
+        // (source), sinon elles apparaissent dans le mauvais chat côté UI.
         const source = String(opinion.source_agent_id ?? opinion.source_agent ?? opinion.agent ?? '').trim().toLowerCase();
         if (source) return source;
+
+        // Fallback : si le backend ne fournit pas la source, tente le message ciblé
+        const target = String(opinion.target_agent_id ?? opinion.target_agent ?? '').trim().toLowerCase();
+        if (target) return target;
+
+        // Dernier recours : ranger côté reviewer pour ne pas perdre le message
+        const reviewer = String(opinion.reviewer_agent_id ?? opinion.reviewer_agent ?? opinion.agent_id ?? '').trim().toLowerCase();
+        if (reviewer) return reviewer;
       }
       const opinionRequest = (metaObj.opinion_request && typeof metaObj.opinion_request === 'object') ? metaObj.opinion_request : null;
       if (opinionRequest) {

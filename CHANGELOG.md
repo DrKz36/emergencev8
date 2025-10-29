@@ -12,6 +12,32 @@
 
 ---
 
+## [beta-3.3.7] - 2025-10-29
+
+### 🔧 Cross-agent opinion routing fix
+
+#### 🗂️ Expérience conversationnelle
+
+- Les réponses d’opinion sont désormais affichées dans la conversation de l’agent évalué (ex. avis d’Anima sur Nexus → fil de Nexus).
+- Fallback de routage : si la source est absente, l’agent cible est utilisé avant de replier sur le reviewer pour éviter toute perte.
+- Nettoyage des commentaires et ajustement des tests pour refléter le comportement attendu sur les buckets.
+
+#### 📁 Fichiers Modifiés
+
+- `src/frontend/features/chat/chat.js`
+- `src/frontend/features/chat/__tests__/chat-opinion.flow.test.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+
+#### ✅ Tests
+
+- `npm run build`
+- `npm run test`
+
+---
+
 ## [beta-3.3.6] - 2025-10-29
 
 ### ✨ About module metrics refresh & genesis timeline fix

@@ -154,7 +154,7 @@ test('chat opinion flow reuses request id and routes buckets to the source agent
       meta: { opinion: { source_agent_id: 'neo', reviewer_agent_id: 'anima', request_note_id: 'client-request-id' } },
     });
     const streamBucket = module._messageBuckets.get('stream-1');
-    assert.equal(streamBucket, 'anima');
+    assert.equal(streamBucket, 'neo');
     let bucketMessages = state.get(`chat.messages.${streamBucket}`) || [];
     const streamingMsg = bucketMessages.find((msg) => msg.id === 'stream-1');
     assert(streamingMsg);
@@ -238,7 +238,6 @@ test('chat opinion duplicate request is ignored', async () => {
     message_text: 'Réponse initiale',
   });
 
-  const baselineMessages = state.get('chat.messages.neo').slice();
   bus.events.length = 0;
 
   module.handleStreamStart({
@@ -251,6 +250,8 @@ test('chat opinion duplicate request is ignored', async () => {
     id: 'stream-opinion',
     meta: { opinion: { source_agent_id: 'neo', reviewer_agent_id: 'anima', request_note_id: 'client-request-id' } },
   });
+
+  const baselineMessages = state.get('chat.messages.neo').slice();
 
   await module.handleOpinionRequest({
     target_agent_id: 'anima',

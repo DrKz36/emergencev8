@@ -398,3 +398,31 @@ Implémenter le mode hors ligne (Progressive Web App) pour permettre l'accès au
 ---
 
 **Dernière synchro:** 2025-10-26 18:10 CET (Codex GPT)
+## Session COMPLETED (2025-10-29 15:40 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/frontend/features/chat/chat.js`
+- `src/frontend/features/chat/__tests__/chat-opinion.flow.test.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `CHANGELOG.md`
+- `package.json`
+- `docs/passation_codex.md`
+- `AGENT_SYNC_CODEX.md`
+
+### Work summary
+1. Corrigé le routage des réponses d’opinion : les avis restent dans le fil de l’agent évalué (source) avec fallback cible/reviewer.
+2. Mis à jour la suite `chat-opinion.flow.test.js` pour vérifier le bucket source et éviter les régressions.
+3. Incrémenté la version `beta-3.3.7` + patch notes/changelog synchronisés.
+
+### Tests
+- `npm run build`
+- `npm run test`
+
+### Next steps
+1. QA visuelle en prod/staging pour confirmer le comportement sur mobile.
+2. Ajouter un indicateur UI si besoin pour différencier une réponse d’opinion dans un fil tiers.
+
+### Blockers
+- Aucun.
+
