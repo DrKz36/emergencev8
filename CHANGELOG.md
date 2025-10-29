@@ -10,6 +10,29 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.10] - 2025-10-30
+
+### 🔧 Sync script compatibility fix
+
+#### 🛠️ Tooling
+
+- Le script `scripts/sync_version.ps1` lit désormais l’objet `CURRENT_RELEASE` (version, nom, date) et ne plante plus lorsque `VERSION` n’est plus une chaîne littérale.
+- Sortie console enrichie : résumé des fichiers réellement modifiés et prise en charge complète du mode dry-run.
+
+#### 🧪 Tests
+
+- `npm run build`
+- `npm test`
+
+#### 📁 Fichiers Modifiés
+
+- `scripts/sync_version.ps1`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+
+---
+
 ## [beta-3.3.9] - 2025-10-29
 
 ### 🧰 Version manifest merge fix

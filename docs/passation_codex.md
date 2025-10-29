@@ -1,3 +1,43 @@
+## [2025-10-30 09:30 CET] - Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.9
+- **Nouvelle:** beta-3.3.10 (PATCH - Sync script compatibility fix)
+
+### Fichiers modifiés
+- `scripts/sync_version.ps1`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Le script PowerShell `scripts/sync_version.ps1` était incapable d’extraire la version depuis `src/version.js` depuis que `VERSION` pointe vers `CURRENT_RELEASE.version`. Guardian bloque toujours la synchro tant que le script pète → il fallait lui apprendre à lire l’objet centralisé.
+
+### Travail réalisé
+- Mis à jour l’extraction regex pour cibler `CURRENT_RELEASE` (version/nom/date) avec fallback sur l’ancien format littéral.
+- Nettoyé la sortie du script : liste réelle des fichiers touchés, dry-run plus clair, bump version `beta-3.3.10` + patch notes synchronisées.
+- Rafraîchi changelog + fichiers de version backend/frontend + package.json pour refléter la nouvelle release tooling.
+
+### Tests
+- ✅ `npm run build`
+- ✅ `npm test`
+
+### Travail de Claude Code pris en compte
+- Maintien du workflow de versioning obligatoire posé par Claude (un seul `CURRENT_RELEASE` partagé backend/frontend).
+
+### Prochaines actions recommandées
+1. Exécuter `scripts/sync_version.ps1` sur un environnement avec PowerShell pour valider la nouvelle extraction regex.
+2. Ajouter un test Node qui échoue si `CURRENT_RELEASE` perd une des clefs attendues.
+3. Finaliser le badge UI d’alerte vectorisation partielle (documents) pour clore la tâche P3.10.
+
+### Blocages
+- Absence de `pwsh` dans ce container → impossible de lancer le script PowerShell directement.
+
+---
+
 ## [2025-10-29 22:30 CET] - Agent: Codex GPT
 
 ### Version

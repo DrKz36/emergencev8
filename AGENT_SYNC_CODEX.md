@@ -1,3 +1,31 @@
+## Session COMPLETED (2025-10-30 09:30 CET) - Agent : Codex GPT
+
+### Files touched
+- `scripts/sync_version.ps1`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Adapté `scripts/sync_version.ps1` pour lire l’objet `CURRENT_RELEASE` (version/nom/date) et restauré la compatibilité avec le workflow d’incrément auto.
+2. Affiné les sorties du script (dry-run + liste réelle des fichiers modifiés) et bumpé l’app en `beta-3.3.10` avec patch notes synchro.
+3. Regénéré le changelog/versions backend & frontend afin que Guardian arrête de gueuler sur la version introuvable.
+
+### Tests
+- ✅ `npm run build`
+- ✅ `npm test`
+
+### Next steps
+1. Lancer le script PowerShell sur une machine Windows (ou container avec pwsh) pour valider la nouvelle extraction regex.
+2. Ajouter un check CI léger (Node) qui échoue si `CURRENT_RELEASE` ne respecte pas la structure attendue.
+3. Continuer la mise en place du badge vectorisation partielle côté UI Documents.
+
+### Blockers
+- Pas de `pwsh` dans ce container Linux → impossible de tester directement le script PowerShell.
+
 ## Session COMPLETED (2025-10-29 22:30 CET) - Agent : Codex GPT
 
 ### Files touched

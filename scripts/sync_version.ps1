@@ -67,7 +67,18 @@ Write-Success "Tous les fichiers requis sont présents"
 Write-Info "Lecture de la version source depuis src/version.js..."
 $versionContent = Get-Content $versionFile -Raw
 
-if ($versionContent -match "export const VERSION = '([^']+)'") {
+$sourceVersion = $null
+$sourceName = $null
+$sourceDate = $null
+
+if ($versionContent -match "(?s)export const CURRENT_RELEASE\s*=\s*\{\s*version:\s*'([^']+)',\s*name:\s*'([^']+)',\s*date:\s*'([^']+)'\s*,?\s*\}") {
+    $sourceVersion = $Matches[1]
+    $sourceName = $Matches[2]
+    $sourceDate = $Matches[3]
+    Write-Success "Version source detectee: $sourceVersion"
+    if ($sourceName) { Write-Info "  Libellé : $sourceName" }
+    if ($sourceDate) { Write-Info "  Date    : $sourceDate" }
+} elseif ($versionContent -match "export const VERSION = '([^']+)'") {
     $sourceVersion = $Matches[1]
     Write-Success "Version source detectee: $sourceVersion"
 } else {
@@ -112,6 +123,7 @@ function Update-FileVersion {
 
 # Compteur de modifications
 $changesCount = 0
+$modifiedFiles = @()
 
 # 1. Mise à jour de package.json
 Write-Info "`nMise à jour de package.json..."
@@ -119,6 +131,7 @@ $pattern = '"version":\s*"([^"]+)"'
 $replacement = """version"": ""$sourceVersion"""
 if (Update-FileVersion -FilePath $packageJson -Pattern $pattern -Replacement $replacement -Description "package.json") {
     $changesCount++
+    $modifiedFiles += "package.json"
 }
 
 # 2. Mise à jour de index.html (app-version span)
@@ -127,6 +140,7 @@ $pattern = '<span class="app-version"[^>]*>([^<]+)</span>'
 $replacement = '<span class="app-version" id="app-version-display" style="font-size: 0.65em; font-weight: 400; opacity: 0.6; letter-spacing: 0.05em;">' + $sourceVersion + '</span>'
 if (Update-FileVersion -FilePath $indexHtml -Pattern $pattern -Replacement $replacement -Description "index.html") {
     $changesCount++
+    $modifiedFiles += "index.html"
 }
 
 # 3. Mise à jour de monitoring/router.py - healthcheck endpoint (ligne 38)
@@ -135,6 +149,7 @@ $pattern = '"version":\s*"([^"]+)",\s*#\s*Synchronisé avec package\.json'
 $replacement = """version"": ""$sourceVersion"",  # Synchronisé avec package.json"
 if (Update-FileVersion -FilePath $monitoringRouter -Pattern $pattern -Replacement $replacement -Description "router.py (healthcheck)") {
     $changesCount++
+    $modifiedFiles += "src/backend/features/monitoring/router.py (healthcheck)"
 }
 
 # 4. Mise à jour de monitoring/router.py - system/info endpoint (ligne 384)
@@ -143,6 +158,7 @@ $pattern = 'backend_version = os\.getenv\("BACKEND_VERSION",\s*"([^"]+)"\)'
 $replacement = 'backend_version = os.getenv("BACKEND_VERSION", "' + $sourceVersion + '")'
 if (Update-FileVersion -FilePath $monitoringRouter -Pattern $pattern -Replacement $replacement -Description "router.py (system/info)") {
     $changesCount++
+    $modifiedFiles += "src/backend/features/monitoring/router.py (system/info)"
 }
 
 # Résumé
@@ -150,16 +166,22 @@ Write-Info "`n============================================"
 if ($DryRun) {
     Write-Warn "MODE DRY-RUN: Aucune modification appliquee"
     Write-Info "$changesCount fichier(s) seraient modifies"
+    if ($modifiedFiles.Count -gt 0) {
+        Write-Info "`nFichiers impactés :"
+        foreach ($file in ($modifiedFiles | Sort-Object -Unique)) {
+            Write-Info "  • $file"
+        }
+    }
 } else {
     if ($changesCount -eq 0) {
         Write-Success "Toutes les versions sont deja synchronisees sur $sourceVersion"
     } else {
         Write-Success "$changesCount fichier(s) mis a jour avec succes vers $sourceVersion"
-        Write-Info "`nFichiers modifies:"
-        if ($changesCount -gt 0) {
-            Write-Info "  • package.json"
-            Write-Info "  • index.html"
-            Write-Info "  • src/backend/features/monitoring/router.py (2 endroits)"
+        if ($modifiedFiles.Count -gt 0) {
+            Write-Info "`nFichiers modifiés :"
+            foreach ($file in ($modifiedFiles | Sort-Object -Unique)) {
+                Write-Info "  • $file"
+            }
         }
     }
 }

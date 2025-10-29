@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.9 : Version manifest merge fix [ACTUEL]
+ * - beta-3.3.10 : Sync script compatibility fix [ACTUEL]
+ * - beta-3.3.9 : Version manifest merge fix
  * - beta-3.3.8 : Document chunk throttling & warnings
  * - beta-3.3.7 : Document upload resilience & cross-agent routing
  * - beta-3.3.6 : About module metrics refresh & genesis timeline fix
@@ -40,9 +41,9 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.9',
-  name: 'Version manifest merge fix',
-  date: '2025-10-29',
+  version: 'beta-3.3.10',
+  name: 'Sync script compatibility fix',
+  date: '2025-10-30',
 };
 
 export const VERSION = CURRENT_RELEASE.version;
@@ -57,6 +58,16 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.10',
+    tagline: 'Sync script compatibility fix',
+    date: '2025-10-30',
+    changes: [
+      { type: 'fix', text: 'scripts/sync_version.ps1 lit CURRENT_RELEASE et ne plante plus quand VERSION n’est plus un littéral.' },
+      { type: 'quality', text: 'Le script récapitule exactement les fichiers touchés et respecte le mode dry-run.' },
+      { type: 'tests', text: 'npm run build + npm test pour valider la stabilité côté frontend.' }
+    ]
+  },
   {
     version: 'beta-3.3.9',
     tagline: 'Version manifest merge fix',
