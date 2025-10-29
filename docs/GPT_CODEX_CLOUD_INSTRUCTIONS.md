@@ -15,6 +15,7 @@
 - Exécute `bash scripts/setup-codex-cloud.sh` pour préparer Python, Node.js et valider la présence des fichiers critiques (`SYNC_STATUS.md`, `AGENT_SYNC_CODEX.md`, `docs/passation_codex.md`).
 - Le script installe automatiquement `nvm` + Node 18 si `npm` n'est pas déjà disponible et crée le virtualenv `.venv` avec la version Python spécifiée (`PYTHON_VERSION`, 3.11 par défaut).
 - En cas d'environnement legacy (fichiers `AGENT_SYNC.md` / `docs/passation.md` uniquement), le script prévient mais permet de terminer l'installation pour faciliter la migration.
+- `.codex-cloud/env.sh` est généré automatiquement puis référencé dans `~/.bashrc`, `~/.profile` et `~/.zshrc` ; les binaires `node`, `npm`, `npx`, `corepack` sont liés dans `.venv/bin` pour être disponibles immédiatement après `source .venv/bin/activate`.
 
 ### Important
 **Ce fichier est OBSOLÈTE si tu as accès GitHub direct.**

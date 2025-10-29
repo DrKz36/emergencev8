@@ -89,6 +89,7 @@ with open('c:/dev/emergenceV8/reports/prod_report.json', 'r', encoding='utf-8') 
 ```bash
 bash scripts/setup-codex-cloud.sh
 ```
+- Le script crée `.codex-cloud/env.sh`, ajoute le hook dans `~/.bashrc` / `~/.profile` / `~/.zshrc` et relie `node`, `npm`, `npx`, `corepack` dans `.venv/bin` pour que tout soit dispo dès `source .venv/bin/activate`. Sur une session déjà ouverte, tu peux exécuter `source .codex-cloud/env.sh` pour récupérer l'environnement sans relancer la shell.
 
 **Python :** 3.11 + virtualenv `.venv`
 ```bash
