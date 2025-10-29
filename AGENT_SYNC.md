@@ -1,5 +1,30 @@
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
+## 🚀 Session COMPLETÉE (2025-10-29 07:03 CET) - Agent : Codex GPT
+
+### Fichiers modifiés
+- `scripts/setup-codex-cloud.sh` (nouveau script bootstrap Codex Cloud)
+- `PROMPT_CODEX_CLOUD.md`
+- `docs/GPT_CODEX_CLOUD_INSTRUCTIONS.md`
+- `AGENT_SYNC.md` (mise à jour)
+- `docs/passation.md` (nouvelle entrée)
+
+### Actions réalisées
+- **[Bootstrap Codex Cloud - TERMINÉ ✅]**
+  - Ajout d'un bootstrap unique qui installe Python + Node 18 via nvm si nécessaire.
+  - Vérification des fichiers critiques (SYNC_STATUS, AGENT_SYNC_CODEX, docs/passation_codex).
+  - Documentation Codex Cloud actualisée pour pointer vers le script.
+
+### Tests
+- ⏭️ Pas de tests applicatifs (scripts/docs uniquement).
+
+### Prochaines actions recommandées
+1. Lancer la configuration Codex Cloud avec `bash scripts/setup-codex-cloud.sh`.
+2. Contrôler le premier run (téléchargement Node via nvm).
+
+### Blocages
+- Aucun.
+
 **Dernière mise à jour:** 2025-10-27 17:30 CET
 **Mode:** Développement collaboratif multi-agents
 
