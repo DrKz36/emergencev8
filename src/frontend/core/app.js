@@ -718,6 +718,34 @@ export class App {
       await this.ensureCurrentThread();
     }
 
+    const contentEl = this.dom.content;
+    if (contentEl && contentEl.classList) {
+      if (previousModuleId) {
+        contentEl.classList.remove(`is-module-${previousModuleId}`);
+      }
+      contentEl.classList.add(`is-module-${moduleId}`);
+      try {
+        contentEl.dataset.activeModule = moduleId;
+      } catch (_) {
+        // dataset peut ne pas �tre disponible selon l'environnement de test
+      }
+    }
+
+    if (typeof document !== 'undefined') {
+      const bodyEl = document.body || null;
+      if (bodyEl && bodyEl.classList) {
+        if (previousModuleId) {
+          bodyEl.classList.remove(`module-active-${previousModuleId}`);
+        }
+        bodyEl.classList.add(`module-active-${moduleId}`);
+        try {
+          bodyEl.dataset.activeModule = moduleId;
+        } catch (_) {
+          // S�curit�: certains environnements legacy ne supportent pas dataset
+        }
+      }
+    }
+
     this.activeModule = moduleId;
     this.renderNavigation();
     this.closeMobileNav?.();
@@ -804,6 +832,5 @@ export class App {
     this.finishOnboarding(true);
   }
 }
-
 
 

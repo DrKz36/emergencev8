@@ -17,6 +17,20 @@ Les infos techniques du module **À propos** (stats, progression, dépendances) 
 - Rafraîchi la grille des modules/services + stats du module À propos avec les compteurs actuels (fichiers, tests, dépendances, LOC, rappel 2022).
 - Synchronisé `featuresDisplay` avec la progression réelle (18/23 • 78%), mis à jour patch notes/Full changelog backend & frontend et incrémenté la version `beta-3.3.6`.
 - Corrigé `docs/story-genese-emergence.md` pour intégrer la phase 2022-2023 (GPT-3, ChatGPT beta) et consigner la timeline exacte.
+## [2025-10-29 11:40 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/frontend/styles/components/modals.css`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Le modal « Bienvenue dans le module Dialogue » affichait un halo rectangulaire plus large que la carte elle-même, parce que le container héritait d’un padding + d’un backdrop partiel. Sur desktop c’était particulièrement visible (carte décalée, overlay pas rond), et en portrait mobile ça faisait un double encadrement.
+
+### Travail réalisé
+- Suppression du padding sur `#conversation-choice-modal` et renforcement du blur plein écran pour avoir un seul overlay uniforme.
+- Revue des largeurs : `modal-content` reste clampé à 420 px mais je force désormais `calc(100% - 64px)` (desktop) / `calc(100% - 32px)` (mobile) pour garder des marges régulières sans ressusciter le faux cadre.
+- Ajustement de la build mobile (`margin: 0 16px`) afin que la carte respire sans coller aux bords.
 
 ### Tests
 - ✅ `npm run build`
@@ -27,6 +41,40 @@ Les infos techniques du module **À propos** (stats, progression, dépendances) 
 ### Prochaines actions recommandées
 1. QA visuelle du module À propos (desktop + mobile) pour vérifier le rendu des hints et la lisibilité des nouvelles stats.
 2. Mettre à jour les captures/screens si elles sont utilisées dans la communication produit.
+- Aucun impact sur ses fichiers ; CSS localisé dans `components/modals.css`.
+
+### Prochaines actions recommandées
+1. QA visuelle sur desktop + téléphone pour confirmer qu'il ne reste plus d'encadré fantôme.
+2. Affiner le blur ou la teinte de l'overlay si tu veux un rendu encore plus discret.
+
+### Blocages
+- Aucun.
+
+## [2025-10-29 11:05 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/frontend/core/app.js`
+- `src/frontend/features/chat/chat.css`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+En mode portrait mobile, le footer du chat restait suspendu au-dessus de la navbar bleue. Le padding global appliqué à `.app-content` pour la navigation mobile ajoutait un gap inutile, et le module n'avait aucun indicateur permettant au CSS de savoir quel onglet était actif.
+
+### Travail réalisé
+- Injection d’un marquage `is-module-<id>` sur `app-content` + `module-active-<id>` / `data-active-module` sur `<body>` afin d’exposer le module courant aux feuilles de style.
+- Override ciblé côté `chat.css` pour réduire le `padding-bottom` aux seuls `safe-area` lorsque le chat est actif en portrait, tout en conservant les compensations `env()` pour le footer fixe.
+- Vérifications rapides du layout afin de s’assurer que les autres breakpoints restent inchangés.
+
+### Tests
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Aucun changement récent côté Claude sur `app.js` ou le CSS mobile ; pas de conflit détecté.
+
+### Prochaines actions recommandées
+1. Valider sur devices physiques (iPhone + Pixel) que le footer colle bien à la navbar, safe area comprise.
+2. Guetter d’éventuelles régressions sur les autres modules qui s’appuyaient sur l’ancien padding global.
 
 ### Blocages
 - Aucun.
