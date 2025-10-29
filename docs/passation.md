@@ -18,6 +18,7 @@
 1. Création de `scripts/setup-codex-cloud.sh` (venv Python, nvm + Node 18, npm ci).
 2. Contrôles sur `SYNC_STATUS.md`, `AGENT_SYNC_CODEX.md`, `docs/passation_codex.md` avec warning legacy.
 3. Docs Codex Cloud mises à jour pour pointer vers le nouveau bootstrap.
+4. Nettoyage Ruff: suppression de l'import `datetime` inutilisé dans `manager_postgres.py`.
 4. Nettoyage Ruff : suppression de l'import `datetime` inutilisé dans `manager_postgres.py`.
 
 ### Tests
