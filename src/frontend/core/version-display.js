@@ -24,15 +24,7 @@ export function updateVersionDisplays() {
   // Update documentation features count
   const docFeaturesCount = document.getElementById('doc-features-count');
   if (docFeaturesCount) {
-    const totalFeatures = Object.values(versionInfo.phases).reduce(
-      (sum, phase) => sum + phase.features,
-      0
-    );
-    const completedFeatures = Object.values(versionInfo.phases)
-      .filter(phase => phase.status === 'completed')
-      .reduce((sum, phase) => sum + phase.features, 0);
-
-    docFeaturesCount.textContent = `${completedFeatures}/${totalFeatures}`;
+    docFeaturesCount.textContent = versionInfo.featuresDisplay;
   }
 
   // Update documentation completion percentage

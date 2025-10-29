@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.5 : Setup Firestore Snapshot - Infrastructure Sync Allowlist Automatique [ACTUEL]
+ * - beta-3.3.6 : About module metrics refresh & genesis timeline fix [ACTUEL]
+ * - beta-3.3.5 : Setup Firestore Snapshot - Infrastructure Sync Allowlist Automatique
  * - beta-3.3.4 : Fix Timing Pop-up - Affichage au Démarrage App (pas au mount module)
  * - beta-3.3.3 : Fix Pop-up Reprise - Modal Systématique + Centrage Correct
  * - beta-3.3.2 : Fix Critiques Routing/Session - Pop-up Reprise + Validation Threads Archivés
@@ -36,9 +37,9 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.5',
-  name: 'Setup Firestore Snapshot - Infrastructure Sync Allowlist Automatique',
-  date: '2025-10-28',
+  version: 'beta-3.3.6',
+  name: 'About module metrics refresh & genesis timeline fix',
+  date: '2025-10-29',
 };
 
 export const VERSION = CURRENT_RELEASE.version;
@@ -53,6 +54,29 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.6',
+    tagline: 'About module metrics refresh & genesis timeline fix',
+    date: '2025-10-29',
+    changes: [
+      { type: 'quality', text: 'Module À propos : statistiques projet synchronisées (139 fichiers backend, 95 JS frontend, 503 tests Pytest, 48 dépendances Python, 10 packages Node, ~88k LOC actifs).' },
+      { type: 'quality', text: 'Cartes modules frontend/backend mises à jour pour refléter Benchmarks, Usage Analytics et Guardian.' },
+      { type: 'fix', text: 'Progression 18/23 alignée : calcul featuresDisplay basé sur la progression réelle (78%) et réutilisé dans l’interface.' },
+      { type: 'fix', text: 'Chronologie Genèse corrigée : premières expérimentations LLM datées 2022 (plus 2024).' }
+    ]
+  },
+  {
+    version: 'beta-3.3.5',
+    tagline: 'Setup Firestore Snapshot - Infrastructure Sync Allowlist Automatique',
+    date: '2025-10-28',
+    changes: [
+      { type: 'quality', text: 'Firestore activé - Mode natif région europe-west1 pour backup persistant allowlist' },
+      { type: 'quality', text: 'Service account dédié - firestore-sync@emergence-469005.iam.gserviceaccount.com avec rôles datastore.user + secretAccessor' },
+      { type: 'quality', text: 'Cloud Run service account - Basculé de compute@developer vers firestore-sync pour accès Firestore natif' },
+      { type: 'quality', text: 'Document Firestore initialisé - Collection auth_config/allowlist avec admin entry (gonzalefernando@gmail.com)' },
+      { type: 'quality', text: 'Script init_firestore_snapshot.py - Outil pour vérifier/créer document Firestore initial' }
+    ]
+  },
   {
     version: 'beta-3.3.4',
     tagline: 'Fix Timing Pop-up - Affichage au Démarrage App (pas au mount module)',
@@ -275,6 +299,78 @@ export const PATCH_NOTES = [
  * Contenu enrichi depuis CHANGELOG.md pour affichage détaillé dans le module À propos
  */
 export const FULL_CHANGELOG = [
+  {
+    version: 'beta-3.3.6',
+    date: '2025-10-29',
+    title: 'Module À Propos — métriques synchronisées & genèse corrigée',
+    description: 'Actualisation du module À propos avec statistiques techniques recalculées, progression alignée sur la roadmap et chronologie LLM mise à jour (premiers prototypes en 2022).',
+    sections: [
+      {
+        type: 'quality',
+        title: '✨ Mise à jour des informations techniques',
+        items: [
+          {
+            title: 'Cartes modules synchronisées',
+            description: 'Listes frontend/backend reflétant l’architecture actuelle (Benchmarks, Usage Analytics, Guardian, Voice) avec icônes harmonisées.',
+            file: 'src/frontend/features/settings/settings-about.js'
+          },
+          {
+            title: 'Statistiques projet rafraîchies',
+            description: 'Affichage des compteurs réalistes (139 fichiers backend, 95 JS frontend, 503 tests, 48 packages Python, 10 packages Node, ~88k LOC) et date de premiers prototypes LLM (2022).',
+            file: 'src/frontend/features/settings/settings-about.js'
+          },
+          {
+            title: 'Hints & responsive grid',
+            description: 'Nouvelle grille (min 200px) avec hints explicatifs pour chaque métrique technique.',
+            file: 'src/frontend/features/settings/settings-about.css'
+          }
+        ]
+      },
+      {
+        type: 'fixes',
+        title: '🔧 Corrections',
+        items: [
+          {
+            title: 'Progression 18/23 alignée',
+            description: 'Le calcul completedFeatures utilise désormais la progression réelle (78%) et alimente directement featuresDisplay.',
+            file: 'src/frontend/version.js'
+          },
+          {
+            title: 'Version display unifié',
+            description: 'Les écrans documentation consomment featuresDisplay (au lieu d’un recalcul par phase) pour éviter les divergences.',
+            file: 'src/frontend/core/version-display.js'
+          },
+          {
+            title: 'Chronologie Genèse corrigée',
+            description: 'La documentation précise que les premières expérimentations LLM datent de 2022, pas de 2024.',
+            file: 'docs/story-genese-emergence.md'
+          }
+        ]
+      },
+      {
+        type: 'impact',
+        title: '🎯 Impact',
+        items: [
+          'Transparence accrue sur l’état réel du code et des dépendances',
+          'Progression produit cohérente avec la roadmap (18/23 • 78%)',
+          'Narratif du projet réaligné avec l’historique réel des expérimentations IA'
+        ]
+      },
+      {
+        type: 'files',
+        title: '📁 Fichiers Modifiés',
+        items: [
+          'src/frontend/features/settings/settings-about.js',
+          'src/frontend/features/settings/settings-about.css',
+          'src/frontend/core/version-display.js',
+          'src/frontend/version.js',
+          'src/version.js',
+          'docs/story-genese-emergence.md',
+          'CHANGELOG.md'
+        ]
+      }
+    ]
+  },
   {
     version: 'beta-3.2.1',
     date: '2025-10-26',
@@ -692,9 +788,7 @@ export default {
 
   // Feature count helpers
   get completedFeatures() {
-    return Object.values(this.phases)
-      .filter(phase => phase.status === 'completed')
-      .reduce((sum, phase) => sum + phase.features, 0);
+    return Math.round((this.completionPercentage / 100) * this.totalFeatures);
   },
 
   get featuresDisplay() {

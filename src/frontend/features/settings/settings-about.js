@@ -9,6 +9,49 @@ import versionInfo, { FULL_CHANGELOG } from '../../version.js';
 import logoWebpUrl from '../../../../assets/emergence_logo.webp';
 import logoPngUrl from '../../../../assets/emergence_logo.png';
 
+const FRONTEND_MODULES = [
+    { name: 'Admin', icon: 'shield', type: 'Administration' },
+    { name: 'Chat', icon: 'messageCircle', type: 'Dialogue Multi-agents' },
+    { name: 'Cockpit', icon: 'dashboard', type: 'Monitoring & Analytics' },
+    { name: 'Conversations', icon: 'thread', type: 'Gestion Conversations' },
+    { name: 'Debate', icon: 'thoughtBubble', type: 'Débat Multi-agents' },
+    { name: 'Documentation', icon: 'fileText', type: 'Documentation' },
+    { name: 'Documents', icon: 'document', type: 'Gestion Documents' },
+    { name: 'Home', icon: 'home', type: 'Accueil' },
+    { name: 'Hymn', icon: 'sparkles', type: 'Assistant Musical' },
+    { name: 'Memory', icon: 'brain', type: 'Centre Mémoire' },
+    { name: 'Preferences', icon: 'user', type: 'Préférences' },
+    { name: 'PWA', icon: 'rocket', type: 'Progressive Web App' },
+    { name: 'References', icon: 'bookmark', type: 'Références & Sources' },
+    { name: 'Settings', icon: 'settings', type: 'Paramètres' },
+    { name: 'Threads', icon: 'list', type: 'Fil de Conversations' },
+    { name: 'Voice', icon: 'mic', type: 'Dialogue Vocal' }
+];
+
+const BACKEND_SERVICES = [
+    { name: 'Auth', icon: 'lock', type: 'Authentification & Sécurité' },
+    { name: 'Chat', icon: 'messageCircle', type: 'API Chat Temps Réel' },
+    { name: 'Memory', icon: 'brain', type: 'Mémoire Vectorielle' },
+    { name: 'Documents', icon: 'document', type: 'RAG & Indexation' },
+    { name: 'Benchmarks', icon: 'award', type: 'Évaluations IA' },
+    { name: 'Monitoring', icon: 'dashboard', type: 'Prometheus & Guardian' },
+    { name: 'Webhooks', icon: 'link', type: 'Intégrations Externes' },
+    { name: 'Threads', icon: 'thread', type: 'Gestion Sessions' },
+    { name: 'Voice', icon: 'mic', type: 'Synthèse & Transcription' },
+    { name: 'Usage', icon: 'trendingUp', type: 'Analytique & Costwatch' },
+    { name: 'Guardian', icon: 'shield', type: 'Automations QA' }
+];
+
+const PROJECT_STATS = [
+    { label: 'Premiers prototypes LLM', value: '2022', hint: 'GPT-3 Playground & ChatGPT beta' },
+    { label: 'Fichiers Python Backend', value: '139', hint: 'src/backend/**/*.py' },
+    { label: 'Fichiers JavaScript Frontend', value: '95', hint: 'src/frontend/**/*.js' },
+    { label: 'Fonctions de test Pytest', value: '503', hint: 'def test_* recensés' },
+    { label: 'Packages Python', value: '48', hint: 'requirements.txt' },
+    { label: 'Packages Node (prod/dev)', value: '5 + 5', hint: 'package.json dependencies' },
+    { label: 'Lignes de code actives', value: '~45k backend / ~43k frontend', hint: 'wc -l (sources uniquement)' }
+];
+
 class SettingsAbout {
     constructor() {
         this.container = null;
@@ -215,46 +258,18 @@ class SettingsAbout {
      * Render modules section (current active modules in frontend/features)
      */
     renderModules() {
-        const modules = [
-            { name: 'Admin', icon: 'shield', type: 'Administration' },
-            { name: 'Chat', icon: 'messageCircle', type: 'Dialogue Multi-agents' },
-            { name: 'Cockpit', icon: 'barChart', type: 'Monitoring & Analytics' },
-            { name: 'Conversations', icon: 'messageCircle', type: 'Gestion Conversations' },
-            { name: 'Debate', icon: 'messageSquare', type: 'Débat Multi-agents' },
-            { name: 'Documentation', icon: 'fileText', type: 'Documentation' },
-            { name: 'Documents', icon: 'fileText', type: 'Gestion Documents' },
-            { name: 'Home', icon: 'home', type: 'Accueil' },
-            { name: 'Hymn', icon: 'music', type: 'Assistant Musical' },
-            { name: 'Memory', icon: 'brain', type: 'Centre Mémoire' },
-            { name: 'Preferences', icon: 'user', type: 'Préférences' },
-            { name: 'PWA', icon: 'smartphone', type: 'Progressive Web App' },
-            { name: 'References', icon: 'bookmark', type: 'Références & Sources' },
-            { name: 'Settings', icon: 'settings', type: 'Paramètres' },
-            { name: 'Threads', icon: 'list', type: 'Fil de Conversations' },
-            { name: 'Voice', icon: 'mic', type: 'Dialogue Vocal' }
-        ];
-
-        const backendModules = [
-            { name: 'Auth', icon: 'lock', type: 'Authentification' },
-            { name: 'Chat', icon: 'messageCircle', type: 'API Chat' },
-            { name: 'Memory', icon: 'brain', type: 'Mémoire Vectorielle' },
-            { name: 'Monitoring', icon: 'activity', type: 'Métriques Prometheus' },
-            { name: 'Webhooks', icon: 'link', type: 'Intégrations Externes' },
-            { name: 'Admin', icon: 'shield', type: 'Administration' }
-        ];
-
         return `
             <div class="about-section about-modules">
                 <h3 class="about-section-title">
                     ${getIcon('package')} Modules & Architecture
                 </h3>
                 <p class="about-section-subtitle">
-                    ${modules.length} modules frontend, ${backendModules.length} services backend actifs.
+                    ${FRONTEND_MODULES.length} modules frontend, ${BACKEND_SERVICES.length} services backend actifs.
                 </p>
 
-                <h4 class="modules-subsection-title">${getIcon('layout')} Frontend (${modules.length} modules)</h4>
+                <h4 class="modules-subsection-title">${getIcon('dashboard')} Frontend (${FRONTEND_MODULES.length} modules)</h4>
                 <div class="modules-grid">
-                    ${modules.map(module => `
+                    ${FRONTEND_MODULES.map(module => `
                         <div class="module-card">
                             <span class="module-icon">${getIcon(module.icon)}</span>
                             <div class="module-info">
@@ -266,9 +281,9 @@ class SettingsAbout {
                     `).join('')}
                 </div>
 
-                <h4 class="modules-subsection-title">${getIcon('server')} Backend (${backendModules.length} services)</h4>
+                <h4 class="modules-subsection-title">${getIcon('database')} Backend (${BACKEND_SERVICES.length} services)</h4>
                 <div class="modules-grid">
-                    ${backendModules.map(module => `
+                    ${BACKEND_SERVICES.map(module => `
                         <div class="module-card">
                             <span class="module-icon">${getIcon(module.icon)}</span>
                             <div class="module-info">
@@ -281,22 +296,13 @@ class SettingsAbout {
                 </div>
 
                 <div class="about-stats-grid">
-                    <div class="about-stat">
-                        <span class="about-stat-label">Fichiers Python Backend</span>
-                        <span class="about-stat-value">137</span>
-                    </div>
-                    <div class="about-stat">
-                        <span class="about-stat-label">Fichiers JavaScript Frontend</span>
-                        <span class="about-stat-value">95</span>
-                    </div>
-                    <div class="about-stat">
-                        <span class="about-stat-label">Tests Pytest</span>
-                        <span class="about-stat-value">487</span>
-                    </div>
-                    <div class="about-stat">
-                        <span class="about-stat-label">Build Vite</span>
-                        <span class="about-stat-value">~1.0s</span>
-                    </div>
+                    ${PROJECT_STATS.map(stat => `
+                        <div class="about-stat">
+                            <span class="about-stat-label">${stat.label}</span>
+                            <span class="about-stat-value">${stat.value}</span>
+                            ${stat.hint ? `<span class="about-stat-hint">${stat.hint}</span>` : ''}
+                        </div>
+                    `).join('')}
                 </div>
             </div>
         `;

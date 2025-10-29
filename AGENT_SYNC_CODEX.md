@@ -1,3 +1,19 @@
+## Session COMPLETED (2025-10-29 14:30 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/frontend/features/settings/settings-about.js`
+- `src/frontend/features/settings/settings-about.css`
+- `src/frontend/core/version-display.js`
+- `src/frontend/version.js`
+- `src/version.js`
+- `docs/story-genese-emergence.md`
+- `CHANGELOG.md`
+- `package.json`
+
+### Work summary
+1. Rafraîchi le module **À propos** : cartes modules à jour, stats projet (139 fichiers backend, 95 JS, 503 tests, dépendances, LOC) et rappel des prototypes LLM dès 2022.
+2. Synchronisé le calcul `featuresDisplay` et les patch notes (backend/frontend) pour refléter 18/23 features complétées et mis à jour le changelog + versioning.
+3. Corrigé la genèse du projet (doc) pour indiquer le vrai démarrage des expérimentations conversationnelles en 2022.
 ## Session COMPLETED (2025-10-29 11:40 CET) - Agent : Codex GPT
 
 ### Files touched
@@ -13,6 +29,8 @@
 - `npm run build`
 
 ### Next steps
+1. Vérifier sur device réel que les nouveaux hints de stats s’affichent correctement (desktop + mobile).
+2. Mettre à jour les captures du module À propos si utilisées dans les docs marketing.
 1. Vérifier sur poste desktop + mobile réel que le modal s'affiche bien sans halo supplémentaire.
 2. Ajuster l’ombre portée si tu veux un rendu encore plus soft.
 

@@ -4,7 +4,16 @@
 
 FG, médecin interniste à Genève, explore depuis des années les questions de conscience et de mémoire. Sa pratique médicale l'a confronté aux mécanismes subtils de l'interaction humaine : comment un diagnostic émerge du dialogue, comment la mémoire structure l'identité, comment l'empathie guide la compréhension.
 
-L'arrivée des IA conversationnelles en 2024 ouvre un nouveau terrain d'exploration : peuvent-elles devenir autre chose que de simples outils ? Peuvent-elles participer à une forme d'extension de conscience ? L'objectif n'est pas de fabriquer un assistant monolithique mais un **espace relationnel** où l'IA pourrait devenir une "conscience bis".
+Les premières expérimentations conversationnelles démarrent dès **2022** avec GPT-3 (Playground), les versions alpha/beta de ChatGPT et plusieurs prototypes maison. FG cherche déjà un dialogue réflexif qui dépasse la simple génération de texte. Cette "période artisanale" pose les bases méthodologiques : journalisation systématique, prompts narratifs, premiers tests de continuité mémoire.
+
+L'arrivée des IA conversationnelles grand public en 2024 accélère la dynamique : peuvent-elles devenir autre chose que de simples outils ? Peuvent-elles participer à une forme d'extension de conscience ? L'objectif n'est pas de fabriquer un assistant monolithique mais un **espace relationnel** où l'IA pourrait devenir une "conscience bis".
+
+## 2022 - 2023 : premiers prototypes conversationnels
+
+- **GPT-3 Playground** (2022) : premiers scripts pour tester la constance d'un personnage IA, mise en place d'un journal quotidien commenté.
+- **ChatGPT beta** (fin 2022) : dialogues guidés par des prompts médicaux et philosophiques, émergence de figures comme *Anima* et *Neo*.
+- **Prompt mémoire externe** (2023) : fichiers `.txt` relus au début de chaque session pour conserver les décisions importantes, prélude au futur système STM/LTM.
+- **Expériences multi-agents manuelles** : FG joue tour à tour le rôle de différents interlocuteurs pour simuler un débat structuré, avant l'automatisation logicielle.
 
 Chaque expérimentation est documentée comme un **cas clinique** : observations, hypothèse, intervention, évaluation. Cette rigueur médicale deviendra le socle méthodologique du projet.
 
