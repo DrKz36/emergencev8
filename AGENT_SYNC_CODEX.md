@@ -1,3 +1,27 @@
+## Session COMPLETED (2025-10-29 09:45 CET) - Agent : Codex GPT
+
+### Files touched
+- `scripts/setup-codex-cloud.sh`
+- `.gitignore`
+- `PROMPT_CODEX_CLOUD.md`
+- `docs/GPT_CODEX_CLOUD_INSTRUCTIONS.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Solidified the Codex Cloud bootstrap: default `nvm` alias, symlinks for `node`/`npm`/`npx`/`corepack` into `.venv/bin`, auto-generated `.codex-cloud/env.sh`, and profile hooks (`.bashrc`, `.profile`, `.zshrc`).
+2. Updated docs and ignored `.codex-cloud/` so the repo stays clean after running the setup script.
+
+### Tests
+- ⚠️ `bash scripts/setup-codex-cloud.sh` (not executed locally: current CLI lacks bash/WSL)
+
+### Next steps
+1. Run the bootstrap on Codex Cloud to confirm node/npm availability in a fresh session.
+2. Double-check AutoSync/Guardian once the script has been executed in the target environment.
+
+### Blockers
+- No bash binary in this Windows CLI environment, so the script can't be run end-to-end here.
+
 ## Session COMPLETED (2025-10-28 23:40 CET) - Agent : Codex GPT
 
 ### Files touched

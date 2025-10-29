@@ -1,3 +1,34 @@
+## [2025-10-29 09:45 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `scripts/setup-codex-cloud.sh`
+- `.gitignore`
+- `PROMPT_CODEX_CLOUD.md`
+- `docs/GPT_CODEX_CLOUD_INSTRUCTIONS.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Le bootstrap Codex Cloud devait être rendu autonome : après exécution, l'agent cloud n'avait toujours pas `node`/`npm` dans le PATH et la doc ne précisait pas comment récupérer un shell prêt à l'emploi.
+
+### Travail réalisé
+- Ajout d'une configuration complète côté script : alias `nvm default`, relocalisation des binaires (`node`, `npm`, `npx`, `corepack`) vers `.venv/bin`, génération de `.codex-cloud/env.sh` et hook automatique (`.bashrc`, `.profile`, `.zshrc`).
+- Ajout d'un message final pour rappeler `source .venv/bin/activate` et création d'une entrée `.gitignore` pour ignorer `.codex-cloud/`.
+- Mise à jour des prompts Cloud afin d'indiquer la présence du nouvel helper et la marche à suivre pour recharger l'environnement.
+
+### Tests
+- ⚠️ `bash scripts/setup-codex-cloud.sh` (non exécuté ici : environnement CLI sans bash/WSL disponible)
+
+### Travail de Claude Code pris en compte
+- Aucun changement récent côté Claude sur ces fichiers ; simple durcissement du script introduit précédemment.
+
+### Prochaines actions recommandées
+1. Lancer `bash scripts/setup-codex-cloud.sh` dans Codex Cloud pour valider les symlinks et le sourcing automatique.
+2. Vérifier que Guardian/AutoSync ne signalent plus de fichiers non suivis après exécution (merci à l'entrée `.gitignore`).
+
+### Blocages
+- Impossible d'exécuter le script dans ce CLI Windows (absence de bash) : validation à réaliser côté environnement Linux.
+
 ## [2025-10-28 23:40 CET] - Agent: Codex GPT
 
 ### Fichiers modifiés

@@ -32,6 +32,9 @@ dist/
 Thumbs.db
 desktop.ini
 
+# --- Codex Cloud local helpers
+.codex-cloud/
+
 # --- Claude Code snapshots and temp files
 # .claude/ → COMMENTÉ pour versionner settings.local.json
 # On ignore uniquement les fichiers temporaires
