@@ -12,6 +12,43 @@
 
 ---
 
+## [beta-3.3.6] - 2025-10-29
+
+### ✨ About module metrics refresh & genesis timeline fix
+
+#### 🔢 Statistiques synchronisées
+
+- Module **À propos** enrichi avec des compteurs à jour : 139 fichiers Python backend, 95 fichiers JavaScript frontend, 503 fonctions de test Pytest, 48 dépendances Python et 10 packages Node (prod/dev).
+- Ajout d’un indicateur loc (`~45k backend / ~43k frontend`) et de la date réelle des premiers prototypes LLM (2022).
+- Cartes Frontend/Backend alignées avec les services actifs (Benchmarks, Usage Analytics, Guardian, Voice).
+
+#### 🔧 Correctifs
+
+- Calcul `featuresDisplay` basé sur la progression réelle (18/23 • 78%) et réutilisation côté documentation (suppression du recalcul manuel).
+- Nettoyage des warnings d’icônes (icônes harmonisées pour toutes les cartes modules).
+- Chronologie de la genèse corrigée : les expérimentations LLM démarrent en 2022 (plus 2024).
+
+#### 📚 Documentation
+
+- `docs/story-genese-emergence.md` documente l’arrivée des IA conversationnelles dès 2022 et ajoute le contexte pré-2024.
+
+#### 📁 Fichiers Modifiés
+
+- `src/frontend/features/settings/settings-about.js`
+- `src/frontend/features/settings/settings-about.css`
+- `src/frontend/core/version-display.js`
+- `src/frontend/version.js`
+- `src/version.js`
+- `docs/story-genese-emergence.md`
+- `package.json`
+- `CHANGELOG.md`
+
+#### ✅ Tests
+
+- `npm run build`
+
+---
+
 ## [beta-3.3.5] - 2025-10-28
 
 ### 🔧 Setup Firestore Snapshot - Infrastructure Sync Allowlist Automatique

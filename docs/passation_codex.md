@@ -1,3 +1,36 @@
+## [2025-10-29 14:30 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/frontend/features/settings/settings-about.js`
+- `src/frontend/features/settings/settings-about.css`
+- `src/frontend/core/version-display.js`
+- `src/frontend/version.js`
+- `src/version.js`
+- `docs/story-genese-emergence.md`
+- `CHANGELOG.md`
+- `package.json`
+
+### Contexte
+Les infos techniques du module **À propos** (stats, progression, dépendances) étaient figées sur l’état d’octobre 2025 et la genèse mentionnait à tort un premier contact LLM en 2024. Il fallait réaligner l’UI et la doc avec la réalité (premiers prototypes en 2022) tout en respectant le workflow versioning obligatoire.
+
+### Travail réalisé
+- Rafraîchi la grille des modules/services + stats du module À propos avec les compteurs actuels (fichiers, tests, dépendances, LOC, rappel 2022).
+- Synchronisé `featuresDisplay` avec la progression réelle (18/23 • 78%), mis à jour patch notes/Full changelog backend & frontend et incrémenté la version `beta-3.3.6`.
+- Corrigé `docs/story-genese-emergence.md` pour intégrer la phase 2022-2023 (GPT-3, ChatGPT beta) et consigner la timeline exacte.
+
+### Tests
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Aucun changement concurrent identifié sur la zone Settings/About ou sur la documentation de genèse.
+
+### Prochaines actions recommandées
+1. QA visuelle du module À propos (desktop + mobile) pour vérifier le rendu des hints et la lisibilité des nouvelles stats.
+2. Mettre à jour les captures/screens si elles sont utilisées dans la communication produit.
+
+### Blocages
+- Aucun.
+
 ## [2025-10-29 09:45 CET] - Agent: Codex GPT
 
 ### Fichiers modifiés
