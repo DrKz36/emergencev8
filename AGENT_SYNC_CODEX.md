@@ -1,3 +1,29 @@
+## Session COMPLETED (2025-10-29 22:30 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Corrigé la fusion foireuse des fichiers de version qui dupliquait les clefs `version`/`name` et faisait planter Vite.
+2. Incrémenté la version `beta-3.3.9`, synchronisé patch notes/changelog et regroupé les notes 3.3.7/3.3.8.
+3. Ajouté une entrée de changelog dédiée pour tracer le hotfix et documenté la session/passation.
+
+### Tests
+- ✅ `npm run build`
+
+### Next steps
+1. Ajouter un test automatisé (node) qui vérifie la structure de `CURRENT_RELEASE` et l’absence de doublons.
+2. Installer les dépendances Python manquantes pour pouvoir relancer `ruff`/`pytest` dans ce container.
+3. Finaliser l’UX documents (badge vectorisation partielle) avant de boucler la tâche P3.10.
+
+### Blockers
+- Environnement Python incomplet (FastAPI/HTTPX manquants) ⇒ impossible de relancer la suite backend.
+
 ## Session COMPLETED (2025-10-29 19:45 CET) - Agent : Codex GPT
 
 ### Files touched

@@ -1,3 +1,41 @@
+## [2025-10-29 22:30 CET] - Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.8
+- **Nouvelle:** beta-3.3.9 (PATCH - Version manifest merge fix)
+
+### Fichiers modifiés
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Merge double (branches `codex/corrige-la-reponse-d-anima` + `codex/fix-document-upload-issue-in-production`) a foutu le bordel dans `CURRENT_RELEASE` : deux clefs `version`/`name` l’une à la suite de l’autre ⇒ Vite crashe (`Expected ',' got 'version'`).
+
+### Travail réalisé
+- Nettoyé les fichiers de version frontend/backend pour ne garder qu’un objet courant + patch notes valides.
+- Aligné `package.json` et le changelog avec la nouvelle version `beta-3.3.9` en combinant les notes 3.3.7/3.3.8.
+- Ajouté une entrée de changelog dédiée pour tracer le hotfix et éviter que ça se reproduise sans test.
+
+### Tests
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Respect du process de versioning obligatoire (fichiers version + changelog + patch notes synchronisés) qu’il a posé.
+
+### Prochaines actions recommandées
+1. Brancher un check lint/simple test qui valide que `CURRENT_RELEASE` ne contient pas de clefs dupliquées (ex: test node).
+2. Relancer `ruff`/`pytest` dès que les deps backend seront installées dans le container pour sécuriser la branche.
+3. Préparer le badge UI pour signaler les vectorisations partielles (restant de la tâche documents).
+
+### Blocages
+- Toujours pas de deps backend (`fastapi`, `httpx`, etc.) → impossible de relancer la suite Python.
+
+---
+
 ## [2025-10-29 19:45 CET] - Agent: Codex GPT
 
 ### Version
