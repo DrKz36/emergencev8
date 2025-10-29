@@ -19,6 +19,8 @@
 - **`features/benchmarks/service.py`** : orchestre le `BenchmarksRunner`, charge le catalogue de scénarios (ARE/Gaia2), persiste les runs en SQLite et (optionnellement) Firestore (`EMERGENCE_FIRESTORE_PROJECT`, `GOOGLE_APPLICATION_CREDENTIALS`) et expose les endpoints `/api/benchmarks/*` (fallback SQLite forcé si `EDGE_MODE=1`). **V3.1.3:** Méthode `calculate_temporal_ndcg()` pour évaluer la qualité d'un classement avec pénalisation temporelle exponentielle (formule nDCG@k temporelle : DCG^time@k = Σ (2^rel_i - 1) * exp(-λ * Δt_i) / log2(i+1)), utilisée pour mesurer l'impact des boosts fraîcheur/entropie dans le moteur de ranking ; implémentation complète dans `features/benchmarks/metrics/temporal_ndcg.py` avec 18 tests unitaires.
 - **`benchmarks/`** : noyau de benchmarking (runner, scénarios, executors, sinks).
 - **`shared/vector_service.py`** : gère Chroma + SentenceTransformer, détecte corruption, déclenche backup + reset automatique.
+- **`core/database/manager_postgres.py`** : gestionnaire async PostgreSQL (Cloud SQL + pgvector)
+  destiné aux migrations futures ; maintenance au 2025-10-29 (suppression import `datetime` inutilisé) sans impact fonctionnel.
 
 ## Frontend
 - **`core/state-manager.js`** : store global, bootstrap auth + threads (REST), conserve map des threads/messages.

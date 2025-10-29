@@ -8,6 +8,7 @@
 - `docs/GPT_CODEX_CLOUD_INSTRUCTIONS.md`
 - `AGENT_SYNC.md`
 - `docs/passation.md`
+- `src/backend/core/database/manager_postgres.py`
 
 ### Contexte
 - Le bootstrap Codex Cloud échouait (exit 127) faute de Node/npm dans l'image universal.
@@ -17,6 +18,7 @@
 1. Création de `scripts/setup-codex-cloud.sh` (venv Python, nvm + Node 18, npm ci).
 2. Contrôles sur `SYNC_STATUS.md`, `AGENT_SYNC_CODEX.md`, `docs/passation_codex.md` avec warning legacy.
 3. Docs Codex Cloud mises à jour pour pointer vers le nouveau bootstrap.
+4. Nettoyage Ruff: suppression de l'import `datetime` inutilisé dans `manager_postgres.py`.
 
 ### Tests
 - ⏭️ Pas de tests applicatifs (scripts/docs uniquement).
