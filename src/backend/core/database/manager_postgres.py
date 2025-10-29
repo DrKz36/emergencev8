@@ -4,9 +4,7 @@ Utilise asyncpg + pgvector pour embeddings
 """
 import asyncpg  # type: ignore[import-not-found]
 import logging
-import json
 from typing import Optional, List, Dict, Any, Tuple, AsyncIterator, cast
-from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 import os
 
