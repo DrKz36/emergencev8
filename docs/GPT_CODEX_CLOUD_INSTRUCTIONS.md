@@ -11,6 +11,11 @@
 - **Accès GitHub** : ✅ Push/pull direct possible (si token configuré)
 - **Workflow** : Travail direct sur le dépôt, comme Claude Code
 
+### Script de bootstrap (nouveau)
+- Exécute `bash scripts/setup-codex-cloud.sh` pour préparer Python, Node.js et valider la présence des fichiers critiques (`SYNC_STATUS.md`, `AGENT_SYNC_CODEX.md`, `docs/passation_codex.md`).
+- Le script installe automatiquement `nvm` + Node 18 si `npm` n'est pas déjà disponible et crée le virtualenv `.venv` avec la version Python spécifiée (`PYTHON_VERSION`, 3.11 par défaut).
+- En cas d'environnement legacy (fichiers `AGENT_SYNC.md` / `docs/passation.md` uniquement), le script prévient mais permet de terminer l'installation pour faciliter la migration.
+
 ### Important
 **Ce fichier est OBSOLÈTE si tu as accès GitHub direct.**
 Utilise plutôt **[PROMPT_CODEX_CLOUD.md](../PROMPT_CODEX_CLOUD.md)** qui contient les instructions complètes et à jour.

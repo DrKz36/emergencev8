@@ -85,6 +85,11 @@ with open('c:/dev/emergenceV8/reports/prod_report.json', 'r', encoding='utf-8') 
 
 ## 🛠️ ENVIRONNEMENT
 
+**Script de bootstrap (Cloud):**
+```bash
+bash scripts/setup-codex-cloud.sh
+```
+
 **Python :** 3.11 + virtualenv `.venv`
 ```bash
 .\.venv\Scripts\Activate.ps1  # Windows
