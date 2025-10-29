@@ -10,6 +10,51 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.10] - 2025-10-30
+
+### 🔧 Sync script compatibility fix
+
+#### 🛠️ Tooling
+
+- Le script `scripts/sync_version.ps1` lit désormais l’objet `CURRENT_RELEASE` (version, nom, date) et ne plante plus lorsque `VERSION` n’est plus une chaîne littérale.
+- Sortie console enrichie : résumé des fichiers réellement modifiés et prise en charge complète du mode dry-run.
+
+#### 🧪 Tests
+
+- `npm run build`
+- `npm test`
+
+#### 📁 Fichiers Modifiés
+
+- `scripts/sync_version.ps1`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+
+---
+
+## [beta-3.3.9] - 2025-10-29
+
+### 🧰 Version manifest merge fix
+
+#### 🔧 Correctifs
+
+- Nettoyage des fusions simultanées sur `src/version.js` et `src/frontend/version.js` : suppression des clefs dupliquées qui faisaient planter le build Vite (`Expected ',' got 'version'`).
+- Harmonisation des patch notes et du changelog pour refléter correctement les versions 3.3.7 et 3.3.8 sans doublons.
+
+#### 🧪 Tests
+
+- `npm run build`
+
+#### 📁 Fichiers Modifiés
+
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+
+---
+
 ## [beta-3.3.8] - 2025-10-29
 
 ### ⚙️ Document chunk throttling & warnings
@@ -24,26 +69,6 @@
 
 - Le module Documents affiche un toast d’avertissement si la vectorisation est partielle (upload ou ré-indexation), tout en conservant le succès de l’opération.
 
-#### 🧪 Tests
-
-- `tests/backend/features/test_documents_vector_resilience.py::test_process_upload_with_chunk_limit`
-- `tests/backend/features/test_documents_vector_resilience.py::test_process_upload_when_vector_store_unavailable`
-
-#### 📁 Fichiers Modifiés
-
-- `src/backend/features/documents/service.py`
-- `src/backend/features/documents/router.py`
-- `src/frontend/features/documents/documents.js`
-- `tests/backend/features/test_documents_vector_resilience.py`
-- `src/version.js`
-- `src/frontend/version.js`
-- `package.json`
-- `CHANGELOG.md`
-
----
-
-## [beta-3.3.7] - 2025-10-29
-
 ### 🛡️ Document upload resilience when vector store offline
 
 #### 🔧 Correctifs
@@ -51,8 +76,10 @@
 - Les uploads et ré-indexations de documents n’échouent plus lorsque le vector store passe en mode READ-ONLY : le backend stocke le fichier, marque le document en « erreur » et remonte un avertissement exploitable par l’UI.
 - Les notifications frontend détectent désormais les vectorisations partielles pour prévenir l’utilisateur sans masquer l’upload réussi.
 
-#### ✅ Tests
+#### 🧪 Tests
 
+- `tests/backend/features/test_documents_vector_resilience.py::test_process_upload_with_chunk_limit`
+- `tests/backend/features/test_documents_vector_resilience.py::test_process_upload_when_vector_store_unavailable`
 - `ruff check src/backend/`
 - `pytest tests/backend/`
 - `npm run build`
@@ -66,6 +93,7 @@
 - `src/version.js`
 - `src/frontend/version.js`
 - `package.json`
+- `CHANGELOG.md`
 
 ---
 
