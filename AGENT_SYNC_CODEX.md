@@ -1,3 +1,46 @@
+## Session COMPLETED (2025-10-29 11:40 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/frontend/styles/components/modals.css`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Viré le faux cadre : plus de padding ni de boîte fantôme autour du modal de reprise, l’overlay couvre tout l’écran sans créer un deuxième bloc.
+2. Recentré la carte et recalibré la largeur (desktop + mobile) pour coller aux captures de référence.
+
+### Tests
+- `npm run build`
+
+### Next steps
+1. Vérifier sur poste desktop + mobile réel que le modal s'affiche bien sans halo supplémentaire.
+2. Ajuster l’ombre portée si tu veux un rendu encore plus soft.
+
+### Blockers
+- Aucun.
+
+## Session COMPLETED (2025-10-29 11:05 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/frontend/core/app.js`
+- `src/frontend/features/chat/chat.css`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Flagged the currently mounted module on `app-content` and `body` so CSS can react when the chat tab is active.
+2. Trimmed the mobile bottom padding when chat is active and kept safe-area spacing so the composer hugs the navbar with no dead zone.
+
+### Tests
+- `npm run build`
+
+### Next steps
+1. Sanity-check the portrait view on a real device (iOS + Android) to confirm the sticky footer aligns perfectly.
+2. Ensure other modules still get the expected bottom padding after the new module-active classes.
+
+### Blockers
+- None.
+
 ## Session COMPLETED (2025-10-29 09:45 CET) - Agent : Codex GPT
 
 ### Files touched
