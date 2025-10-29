@@ -121,12 +121,22 @@
 /* Conversation choice modal overrides */
 
 #conversation-choice-modal {
-  display: grid;
-  place-items: center;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: clamp(16px, 4vw, 32px);
+  margin: 0 !important;
   pointer-events: none;
   background: rgba(6, 10, 25, 0.72);
   backdrop-filter: blur(8px);
+  z-index: 99999 !important;
 }
 
 #conversation-choice-modal.visible {
@@ -146,7 +156,7 @@
   max-height: min(80vh, 520px);
   padding: 1.45rem 1.75rem;
   border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: none;
   box-shadow: 0 22px 48px rgba(2, 6, 23, 0.55);
   transform: translateY(18px);
   color: #e2e8f0;
@@ -227,7 +237,7 @@
 @media (max-width: 640px) {
   #conversation-choice-modal {
     padding: clamp(12px, 6vh, 24px) 12px;
-    align-items: flex-start;
+    align-items: center;
   }
 
   #conversation-choice-modal .modal-content {
