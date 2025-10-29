@@ -69,14 +69,20 @@ async def upload_document(
             detail=f"Type de fichier non supporte. Types acceptes : {supported_types}",
         )
     try:
-        document_id = await service.process_uploaded_file(
+        result = await service.process_uploaded_file(
             file, session_id=session.session_id, user_id=session.user_id
         )
-        return {
-            "message": "Fichier uploade et traite avec succes.",
-            "document_id": document_id,
-            "filename": filename,
-        }
+        vectorized = bool(result.get("vectorized", True))
+        warning = result.get("warning")
+        if vectorized and warning:
+            message = warning
+        elif vectorized:
+            message = "Fichier uploade et traite avec succes."
+        else:
+            message = "Document stocké mais indexation vectorielle indisponible."
+        response = {"message": message}
+        response.update(result)
+        return response
     except Exception as exc:
         logger.error(f"Erreur critique lors de l'upload: {exc}", exc_info=True)
         raise HTTPException(
@@ -145,8 +151,16 @@ async def reindex_document(
         session.session_id,
         user_id=session.user_id,
     )
+    vectorized = bool(result.get("vectorized", True))
+    warning = result.get("warning")
+    if vectorized and warning:
+        message = warning
+    elif vectorized:
+        message = "Document ré-indexé avec succès."
+    else:
+        message = "Ré-indexation partielle : index vectoriel indisponible."
     return {
-        "message": "Document ré-indexé avec succès.",
+        "message": message,
         "document": result,
     }
 

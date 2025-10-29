@@ -370,9 +370,25 @@ export default class DocumentsModule {
         const results = [];
         for (const file of this.selectedFiles) {
             try {
-                await this.apiClient.uploadDocument(file);
-                results.push({ ok: true, name: file.name });
-                this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: `Téléversement : ${file.name}` });
+                const response = await this.apiClient.uploadDocument(file);
+                const vectorized = response?.vectorized !== false;
+                const warnMessage = response?.warning
+                    || response?.message
+                    || null;
+                results.push({ ok: vectorized, name: file.name, response });
+
+                if (vectorized) {
+                    if (warnMessage) {
+                        this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'warning', message: warnMessage });
+                    } else {
+                        this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: `Téléversement : ${file.name}` });
+                    }
+                } else {
+                    this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, {
+                        type: 'warning',
+                        message: warnMessage || `Indexation vectorielle indisponible pour ${file.name}.`,
+                    });
+                }
             } catch (error) {
                 results.push({ ok: false, name: file.name, error });
                 this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'error', message: `chec upload : ${file.name}` });
@@ -636,8 +652,23 @@ export default class DocumentsModule {
 
     async reindexDocument(docId) {
         try {
-            await this.apiClient.reindexDocument(docId);
-            this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: 'Ré-indexation lancée.' });
+            const response = await this.apiClient.reindexDocument(docId);
+            const vectorized = response?.vectorized !== false;
+            const warnMessage = response?.warning
+                || response?.message
+                || null;
+            if (vectorized) {
+                if (warnMessage) {
+                    this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'warning', message: warnMessage });
+                } else {
+                    this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'success', message: 'Ré-indexation lancée.' });
+                }
+            } else {
+                this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, {
+                    type: 'warning',
+                    message: warnMessage || 'Ré-indexation partielle : index vectoriel indisponible.',
+                });
+            }
             await this.fetchAndRenderDocuments(true);
         } catch (error) {
             this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'error', message: 'Erreur lors de la ré-indexation.' });

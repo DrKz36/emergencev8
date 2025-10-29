@@ -1,3 +1,82 @@
+## [2025-10-29 19:45 CET] - Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.7
+- **Nouvelle:** beta-3.3.8 (PATCH - Document chunk throttling & warnings)
+
+### Fichiers modifiés
+- `src/backend/features/documents/service.py`
+- `src/backend/features/documents/router.py`
+- `src/frontend/features/documents/documents.js`
+- `tests/backend/features/test_documents_vector_resilience.py`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+
+### Contexte
+Upload d’un document très long a saturé la vectorisation (trop de paragraphes → requête géante vers Chroma) et planté l’API. Il fallait limiter le nombre de chunks vectorisés, batcher les appels et avertir l’utilisateur sans 500.
+
+### Travail réalisé
+- Ajout d’une limite configurable de chunks (`DOCUMENTS_MAX_VECTOR_CHUNKS`) et vectorisation par lots côté backend, avec warning quand on dépasse la fenêtre indexée.
+- Ré-indexation alignée sur le même mécanisme (purge + batching) et retour API enrichi (`indexed_chunks`, `total_chunks`, warning conservé).
+- UI Documents : toast warning déclenché même quand l’upload/ré-indexation reste « succès » mais partielle.
+- Nouveau test backend pour valider la limite de chunks et le batching.
+
+### Tests
+- ✅ `ruff check src/backend/`
+- ⚠️ `pytest tests/backend/features/test_documents_vector_resilience.py` (KO – dépendance `httpx` manquante)
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Poursuite de la résilience entamée sur le mode READ-ONLY : on garde son statut `error` + warnings et on ajoute la limitation/batching.
+
+### Prochaines actions recommandées
+1. Installer les dépendances Python requises (`httpx`, `fastapi`, `aiosqlite`, etc.) pour exécuter `pytest` dans ce container.
+2. Ajouter un badge/tooltip sur la liste des documents pour signaler visuellement les vectorisations partielles.
+3. Implémenter un retry automatique de vectorisation lorsque le vector store redevient accessible.
+
+### Blocages
+- Pas de stack Python complète dans le container (`httpx` manquant), ce qui bloque l’exécution de la suite `pytest`.
+
+## [2025-10-29 16:20 CET] - Agent: Codex GPT
+
+### Fichiers modifiés
+- `src/backend/features/documents/service.py`
+- `src/backend/features/documents/router.py`
+- `src/frontend/features/documents/documents.js`
+- `tests/backend/features/test_documents_vector_resilience.py`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+
+### Contexte
+Upload d’un document long a explosé côté prod parce que Chroma était en mode READ-ONLY : on se prenait un 500 et la liste des documents ne chargeait plus. Objectif : garder l’upload, avertir l’utilisateur et éviter de planter quand l’index vectoriel est HS.
+
+### Travail réalisé
+- DocumentService tolère maintenant l’indispo du vector store : stockage du fichier + chunks, statut `error` avec message et réponse HTTP qui remonte l’avertissement.
+- Router + UI récupèrent `vectorized`/`warning` pour afficher un toast warning au lieu d’un faux succès et conserver la fiche dans la liste.
+- Ajout d’un test async qui vérifie que l’upload passe en mode READ-ONLY sans planter.
+- Version bump `beta-3.3.7`, changelog + patch notes synchronisés.
+
+### Tests
+- ⚠️ `mypy src/backend/` (KO – dépendances type `fastapi`, `pydantic`, `httpx`, `aiosqlite` absentes)
+- ⚠️ `pytest tests/backend/` (KO – imports `fastapi`, `httpx`, `aiosqlite` manquants)
+- ✅ `ruff check src/backend/`
+- ✅ `npm run build`
+
+### Travail de Claude Code pris en compte
+- Néant spécifique ; aucun conflit avec ses derniers commits backend.
+
+### Prochaines actions recommandées
+1. Installer les deps `fastapi`, `pydantic`, `aiosqlite`, `httpx`, `dependency-injector` dans l’environnement de CI pour faire passer mypy/pytest.
+2. Ajouter un message UI sur la carte document (tooltip) pour expliquer la marche à suivre en cas de statut `error`.
+3. Prévoir une tâche de ré-indexation automatique quand Chroma redevient accessible.
+
+### Blocages
+Environnement container sans libs Python (fastapi/pydantic/httpx/aiosqlite) → mypy et pytest échouent dès l’import.
+
 ## [2025-10-29 14:30 CET] - Agent: Codex GPT
 
 ### Fichiers modifiés
