@@ -7,6 +7,165 @@
 
 ---
 
+## [2025-10-29 08:15 CET] — Agent: Claude Code
+
+### 🚨 FIX URGENT - Timeout déploiement Cloud Run résolu
+
+#### Contexte
+L'utilisateur a tenté un déploiement avec modifications de config serveurs (ajout Firestore snapshot + service account) par Codex GPT. Le déploiement a timeout après 17 minutes avec erreur "Revision not ready, deadline exceeded".
+
+#### Diagnostique
+**Symptômes:**
+- Timeout déploiement: 07:46:27 → 08:03:55 (17 min 28s)
+- Erreur: `Revision 'emergence-app-00456-nm6' is not ready and cannot serve traffic`
+- Startup probe échoue pendant 17 minutes avant abandon
+
+**Analyse code (10 min):**
+1. `stable-service.yaml` ligne 28: Service account `firestore-sync@emergence-469005.iam.gserviceaccount.com` (nouveau, ajouté par Codex)
+2. Lignes 108-115: Config Firestore snapshot activée (`AUTH_ALLOWLIST_SNAPSHOT_BACKEND=firestore`)
+3. Ligne 143: Redis localhost (`RAG_CACHE_REDIS_URL=redis://localhost:6379/0`) - n'existe pas dans Cloud Run
+4. Code startup `main.py:209`: `await auth_service.bootstrap()`
+5. Code auth `service.py:508`: `await self._restore_allowlist_from_snapshot()`
+6. Code auth `service.py:322`: `snapshot = await doc_ref.get()` - **APPEL FIRESTORE SANS TIMEOUT EXPLICITE**
+
+**Cause racine identifiée:**
+- Firestore `doc_ref.get()` timeout car service account `firestore-sync@` n'existe pas ou permissions IAM manquantes
+- Aucun timeout explicite dans code → attente infinie → Cloud Run timeout après 17 minutes
+- Redis localhost contribue aussi (mais try/except catch l'erreur rapidement)
+
+#### Solution appliquée
+
+**Fichier modifié:** `stable-service.yaml`
+
+**Changements (3 fixes critiques):**
+
+1. **Suppression service account Firestore** (ligne 28)
+```yaml
+# Avant
+serviceAccountName: firestore-sync@emergence-469005.iam.gserviceaccount.com
+
+# Après
+# serviceAccountName removed - using default Compute Engine service account
+# TODO: Create firestore-sync@ service account with proper IAM permissions before re-enabling
+```
+
+2. **Désactivation Firestore snapshot** (lignes 108-118)
+```yaml
+# Avant
+- name: AUTH_ALLOWLIST_SNAPSHOT_BACKEND
+  value: firestore
+# ...
+
+# Après
+# Firestore snapshot DISABLED temporarily - was causing deployment timeout
+# TODO: Fix Firestore permissions before re-enabling
+# - name: AUTH_ALLOWLIST_SNAPSHOT_BACKEND
+#   value: firestore
+```
+
+3. **Désactivation Redis localhost** (lignes 142-148)
+```yaml
+# Avant
+- name: RAG_CACHE_REDIS_URL
+  value: redis://localhost:6379/0
+
+# Après
+# Redis DISABLED - localhost:6379 doesn't exist in Cloud Run
+# TODO: Use Cloud Memorystore Redis or remove redis_url config
+# - name: RAG_CACHE_REDIS_URL
+#   value: redis://localhost:6379/0
+```
+
+#### Impact & Résultat attendu
+
+**Comportement après fix:**
+- ✅ App démarre rapidement (<30s au lieu de 17 min timeout)
+- ✅ Service account: Compute Engine par défaut (permissions existantes)
+- ✅ Allowlist: Persisté en DB SQLite locale uniquement (pas de snapshot Firestore)
+- ✅ RAG cache: Fallback automatique vers cache mémoire locale (OrderedDict LRU)
+
+**Fonctionnalités conservées:**
+- Auth OAuth Google + allowlist email
+- Admin emails bootstrap (gonzalefernando@gmail.com)
+- Tous les agents (Anima/Neo/Nexus)
+- Webhooks, monitoring, metrics
+
+**Fonctionnalités temporairement désactivées:**
+- ❌ Snapshot Firestore (allowlist perd persistance entre redéploiements)
+- ❌ Cache Redis distribué (cache local par instance Cloud Run)
+
+#### Actions post-déploiement (TODO)
+
+**Pour réactiver Firestore (après validation déploiement):**
+
+1. Créer service account avec permissions:
+```bash
+# Créer service account
+gcloud iam service-accounts create firestore-sync \
+  --display-name="Firestore Sync Service Account" \
+  --project=emergence-469005
+
+# Ajouter permissions Firestore
+gcloud projects add-iam-policy-binding emergence-469005 \
+  --member=serviceAccount:firestore-sync@emergence-469005.iam.gserviceaccount.com \
+  --role=roles/datastore.user
+
+# Vérifier permissions
+gcloud projects get-iam-policy emergence-469005 \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:firestore-sync@"
+```
+
+2. Tester connexion Firestore manuellement avant réactiver
+
+3. Décommenter config dans `stable-service.yaml`:
+   - Service account ligne 28
+   - Variables env Firestore lignes 108-118
+
+**Pour Redis (optionnel):**
+- Provisionner Cloud Memorystore Redis (voir `infra/terraform/memorystore.tf` de session précédente)
+- Ou laisser cache mémoire locale (suffisant pour déploiement actuel)
+
+#### Fichiers modifiés
+- `stable-service.yaml` (3 sections modifiées, 16 lignes changed)
+
+#### Commit & Push
+```
+Commit: b0e2af7
+Branch: claude/fix-deployment-timeout-011CUb9RxwvtxyJho4Eq1Bqm
+Message: fix(deploy): Désactiver Firestore + Redis localhost - Fix timeout déploiement
+```
+
+#### Tests
+- ⏳ Redéploiement Cloud Run à effectuer par utilisateur (config fixée, prêt à deploy)
+
+#### Prochaines actions
+1. Attendre validation déploiement utilisateur
+2. Merge vers main si déploiement OK
+3. Optionnel: Setup Firestore + Redis après config propre
+
+#### Blockers
+- Aucun (config fixée, prêt pour redéploiement)
+
+#### Notes techniques
+
+**Pourquoi Firestore timeout exactement 17 minutes ?**
+- Cloud Run startup probe: `periodSeconds: 5`, `failureThreshold: 30` → 150s max
+- Cloud Run retry révisions pendant ~15-20 min avant abandon total
+- Firestore `doc_ref.get()` sans timeout → attente indéfinie si service account invalide
+
+**Pourquoi Redis localhost ne cause pas de timeout ?**
+- Code `rag_cache.py:69` a `socket_connect_timeout=2` + try/except ligne 71
+- Échec rapide (2s) puis fallback vers mémoire locale
+- Firestore n'a pas de timeout similaire dans code auth
+
+**Leçon apprise pour Codex GPT:**
+- ⚠️ Toujours vérifier que service accounts existent AVANT de les ajouter dans yaml
+- ⚠️ Toujours tester config Cloud Run localement avec Docker avant push
+- ⚠️ Ne JAMAIS ajouter `redis://localhost` dans Cloud Run (localhost n'existe pas)
+
+---
+
 ## [2025-10-29 01:15 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
