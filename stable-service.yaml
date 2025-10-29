@@ -25,7 +25,8 @@ spec:
     spec:
       containerConcurrency: 80
       timeoutSeconds: 300
-      serviceAccountName: firestore-sync@emergence-469005.iam.gserviceaccount.com
+      # serviceAccountName removed - using default Compute Engine service account
+      # TODO: Create firestore-sync@ service account with proper IAM permissions before re-enabling
       containers:
       - name: emergence-app
         image: gcr.io/emergence-469005/emergence-app:latest
@@ -105,14 +106,16 @@ spec:
           value: gonzalefernando@gmail.com
         - name: AUTH_DEV_DEFAULT_EMAIL
           value: gonzalefernando@gmail.com
-        - name: AUTH_ALLOWLIST_SNAPSHOT_BACKEND
-          value: firestore
-        - name: AUTH_ALLOWLIST_SNAPSHOT_COLLECTION
-          value: auth_config
-        - name: AUTH_ALLOWLIST_SNAPSHOT_DOCUMENT
-          value: allowlist
-        - name: AUTH_ALLOWLIST_SNAPSHOT_PROJECT
-          value: emergence-469005
+        # Firestore snapshot DISABLED temporarily - was causing deployment timeout
+        # TODO: Fix Firestore permissions before re-enabling
+        # - name: AUTH_ALLOWLIST_SNAPSHOT_BACKEND
+        #   value: firestore
+        # - name: AUTH_ALLOWLIST_SNAPSHOT_COLLECTION
+        #   value: auth_config
+        # - name: AUTH_ALLOWLIST_SNAPSHOT_DOCUMENT
+        #   value: allowlist
+        # - name: AUTH_ALLOWLIST_SNAPSHOT_PROJECT
+        #   value: emergence-469005
         # AUTH_ALLOWLIST_SEED removed - only used for local DB seeding, not needed in production
         # AI Agent Models
         - name: ANIMA_PROVIDER
@@ -139,8 +142,10 @@ spec:
           value: 'False'
         - name: CHROMA_DISABLE_TELEMETRY
           value: '1'
-        - name: RAG_CACHE_REDIS_URL
-          value: redis://localhost:6379/0
+        # Redis DISABLED - localhost:6379 doesn't exist in Cloud Run
+        # TODO: Use Cloud Memorystore Redis or remove redis_url config
+        # - name: RAG_CACHE_REDIS_URL
+        #   value: redis://localhost:6379/0
         - name: RAG_CACHE_TTL_SECONDS
           value: '300'
         - name: RAG_CACHE_MAX_MEMORY_ITEMS
