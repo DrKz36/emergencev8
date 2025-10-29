@@ -2,19 +2,20 @@
 DatabaseManager PostgreSQL - Migration depuis SQLite
 Utilise asyncpg + pgvector pour embeddings
 """
-import asyncpg
+import asyncpg  # type: ignore[import-not-found]
 import logging
 import json
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any, Tuple, AsyncIterator, cast
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 import os
 
 try:
-    from pgvector.asyncpg import register_vector
+    from pgvector.asyncpg import register_vector  # type: ignore[import-not-found]
     PGVECTOR_AVAILABLE = True
 except ImportError:
     PGVECTOR_AVAILABLE = False
+    register_vector = None  # Placeholder pour mypy
     logging.warning("pgvector not installed. Vector operations will fail.")
 
 logger = logging.getLogger(__name__)
@@ -124,7 +125,7 @@ class PostgreSQLManager:
         return self.pool is not None and not self.pool._closed
 
     @asynccontextmanager
-    async def acquire(self):
+    async def acquire(self) -> AsyncIterator[Any]:  # asyncpg.Connection
         """
         Context manager pour acquérir une connexion depuis le pool.
 
@@ -135,13 +136,16 @@ class PostgreSQLManager:
         if not self.is_connected():
             await self.connect()
 
+        if self.pool is None:
+            raise RuntimeError("Pool not initialized. Call connect() first.")
+
         async with self.pool.acquire() as connection:
             yield connection
 
     async def execute(
         self,
         query: str,
-        *args,
+        *args: Any,
         commit: bool = True
     ) -> str:
         """
@@ -158,7 +162,7 @@ class PostgreSQLManager:
         async with self.acquire() as conn:
             try:
                 result = await conn.execute(query, *args, timeout=self.command_timeout)
-                return result
+                return cast(str, result)
             except Exception as e:
                 logger.error(f"Execute failed: {e}\nQuery: {query}\nArgs: {args}", exc_info=True)
                 raise
@@ -166,7 +170,7 @@ class PostgreSQLManager:
     async def fetch_one(
         self,
         query: str,
-        *args
+        *args: Any
     ) -> Optional[Dict[str, Any]]:
         """
         Fetch une seule ligne (équivalent fetchone()).
@@ -185,7 +189,7 @@ class PostgreSQLManager:
     async def fetch_all(
         self,
         query: str,
-        *args
+        *args: Any
     ) -> List[Dict[str, Any]]:
         """
         Fetch toutes les lignes (équivalent fetchall()).
@@ -204,7 +208,7 @@ class PostgreSQLManager:
     async def fetch_val(
         self,
         query: str,
-        *args,
+        *args: Any,
         column: int = 0
     ) -> Any:
         """
@@ -226,7 +230,7 @@ class PostgreSQLManager:
     async def execute_many(
         self,
         query: str,
-        args_list: List[Tuple]
+        args_list: List[Tuple[Any, ...]]
     ) -> None:
         """
         Execute batch insert/update (équivalent executemany()).
@@ -378,7 +382,7 @@ class PostgreSQLManager:
         """Vérifie que la DB est accessible"""
         try:
             result = await self.fetch_val("SELECT 1")
-            return result == 1
+            return cast(bool, result == 1)
         except Exception as e:
             logger.error(f"Health check failed: {e}")
             return False
@@ -387,7 +391,7 @@ class PostgreSQLManager:
         """Retourne version PostgreSQL"""
         try:
             version = await self.fetch_val("SELECT version()")
-            return version
+            return cast(str, version)
         except Exception as e:
             logger.error(f"Get version failed: {e}")
             return "unknown"

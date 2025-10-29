@@ -5,7 +5,7 @@ Gère cache sessions, RAG results, agent contexts
 import redis.asyncio as aioredis
 import logging
 import json
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, cast, AsyncIterator
 from datetime import timedelta
 import os
 
@@ -73,14 +73,14 @@ class RedisManager:
             logger.error(f"Failed to connect to Redis: {e}", exc_info=True)
             raise
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """Ferme connexion Redis"""
         if self.client:
             await self.client.close()
             self.client = None
             logger.info("Redis connection closed")
 
-    async def close(self):
+    async def close(self) -> None:
         """Alias pour compatibility"""
         await self.disconnect()
 
@@ -88,10 +88,17 @@ class RedisManager:
         """Vérifie si connecté"""
         return self.client is not None
 
+    def _ensure_connected(self) -> Any:  # aioredis.Redis
+        """Helper pour vérifier connexion et retourner client (ou raise)"""
+        if self.client is None:
+            raise RuntimeError("Redis not connected. Call connect() first.")
+        return self.client
+
     async def health_check(self) -> bool:
         """Health check Redis"""
         try:
-            response = await self.client.ping()
+            client = self._ensure_connected()
+            response = await client.ping()
             return response is True
         except Exception as e:
             logger.error(f"Redis health check failed: {e}")
@@ -104,7 +111,7 @@ class RedisManager:
     async def get(self, key: str) -> Optional[str]:
         """Get string value"""
         try:
-            return await self.client.get(key)
+            return cast(Optional[str], await self._ensure_connected().get(key))
         except Exception as e:
             logger.error(f"Redis GET failed for key={key}: {e}")
             return None
@@ -133,7 +140,7 @@ class RedisManager:
             True si succès
         """
         try:
-            result = await self.client.set(key, value, ex=ex, px=px, nx=nx, xx=xx)
+            result = await self._ensure_connected().set(key, value, ex=ex, px=px, nx=nx, xx=xx)
             return result is True or result == "OK"
         except Exception as e:
             logger.error(f"Redis SET failed for key={key}: {e}")
@@ -142,7 +149,7 @@ class RedisManager:
     async def delete(self, *keys: str) -> int:
         """Delete keys"""
         try:
-            return await self.client.delete(*keys)
+            return cast(int, await self._ensure_connected().delete(*keys))
         except Exception as e:
             logger.error(f"Redis DELETE failed for keys={keys}: {e}")
             return 0
@@ -150,7 +157,7 @@ class RedisManager:
     async def exists(self, *keys: str) -> int:
         """Check if keys exist"""
         try:
-            return await self.client.exists(*keys)
+            return cast(int, await self._ensure_connected().exists(*keys))
         except Exception as e:
             logger.error(f"Redis EXISTS failed for keys={keys}: {e}")
             return 0
@@ -158,7 +165,7 @@ class RedisManager:
     async def expire(self, key: str, seconds: int) -> bool:
         """Set expiration on key"""
         try:
-            return await self.client.expire(key, seconds)
+            return cast(bool, await self._ensure_connected().expire(key, seconds))
         except Exception as e:
             logger.error(f"Redis EXPIRE failed for key={key}: {e}")
             return False
@@ -166,7 +173,7 @@ class RedisManager:
     async def ttl(self, key: str) -> int:
         """Get TTL of key (seconds)"""
         try:
-            return await self.client.ttl(key)
+            return cast(int, await self._ensure_connected().ttl(key))
         except Exception as e:
             logger.error(f"Redis TTL failed for key={key}: {e}")
             return -2  # Key doesn't exist
@@ -180,7 +187,7 @@ class RedisManager:
         value = await self.get(key)
         if value:
             try:
-                return json.loads(value)
+                return cast(Dict[str, Any], json.loads(value))
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to decode JSON for key={key}: {e}")
         return None
@@ -206,7 +213,7 @@ class RedisManager:
     async def hget(self, name: str, key: str) -> Optional[str]:
         """Get hash field value"""
         try:
-            return await self.client.hget(name, key)
+            return cast(Optional[str], await self._ensure_connected().hget(name, key))
         except Exception as e:
             logger.error(f"Redis HGET failed for name={name} key={key}: {e}")
             return None
@@ -216,11 +223,11 @@ class RedisManager:
         name: str,
         key: Optional[str] = None,
         value: Optional[str] = None,
-        mapping: Optional[Dict] = None
+        mapping: Optional[Dict[str, Any]] = None
     ) -> int:
         """Set hash field(s)"""
         try:
-            return await self.client.hset(name, key, value, mapping=mapping)
+            return cast(int, await self._ensure_connected().hset(name, key, value, mapping=mapping))
         except Exception as e:
             logger.error(f"Redis HSET failed for name={name}: {e}")
             return 0
@@ -228,7 +235,7 @@ class RedisManager:
     async def hgetall(self, name: str) -> Dict[str, str]:
         """Get all hash fields"""
         try:
-            return await self.client.hgetall(name)
+            return cast(Dict[str, str], await self._ensure_connected().hgetall(name))
         except Exception as e:
             logger.error(f"Redis HGETALL failed for name={name}: {e}")
             return {}
@@ -240,7 +247,7 @@ class RedisManager:
     async def lpush(self, key: str, *values: str) -> int:
         """Push to list (left)"""
         try:
-            return await self.client.lpush(key, *values)
+            return cast(int, await self._ensure_connected().lpush(key, *values))
         except Exception as e:
             logger.error(f"Redis LPUSH failed for key={key}: {e}")
             return 0
@@ -248,7 +255,7 @@ class RedisManager:
     async def rpush(self, key: str, *values: str) -> int:
         """Push to list (right)"""
         try:
-            return await self.client.rpush(key, *values)
+            return cast(int, await self._ensure_connected().rpush(key, *values))
         except Exception as e:
             logger.error(f"Redis RPUSH failed for key={key}: {e}")
             return 0
@@ -256,7 +263,7 @@ class RedisManager:
     async def lrange(self, key: str, start: int, stop: int) -> List[str]:
         """Get list range"""
         try:
-            return await self.client.lrange(key, start, stop)
+            return cast(List[str], await self._ensure_connected().lrange(key, start, stop))
         except Exception as e:
             logger.error(f"Redis LRANGE failed for key={key}: {e}")
             return []
@@ -264,7 +271,7 @@ class RedisManager:
     async def ltrim(self, key: str, start: int, stop: int) -> bool:
         """Trim list to range"""
         try:
-            result = await self.client.ltrim(key, start, stop)
+            result = await self._ensure_connected().ltrim(key, start, stop)
             return result is True or result == "OK"
         except Exception as e:
             logger.error(f"Redis LTRIM failed for key={key}: {e}")
@@ -374,13 +381,13 @@ class RedisManager:
 
         try:
             # Increment
-            count = await self.client.incr(key)
+            count = await self._ensure_connected().incr(key)
 
             # Set expiration on first increment
             if count == 1:
-                await self.client.expire(key, window)
+                await self._ensure_connected().expire(key, window)
 
-            return count
+            return cast(int, count)
         except Exception as e:
             logger.error(f"Rate limit increment failed for {identifier}: {e}")
             return 0
@@ -404,12 +411,12 @@ class RedisManager:
     async def publish(self, channel: str, message: str) -> int:
         """Publish message to channel"""
         try:
-            return await self.client.publish(channel, message)
+            return cast(int, await self._ensure_connected().publish(channel, message))
         except Exception as e:
             logger.error(f"Redis PUBLISH failed for channel={channel}: {e}")
             return 0
 
-    async def subscribe(self, *channels: str):
+    async def subscribe(self, *channels: str) -> AsyncIterator[Dict[str, Any]]:
         """
         Subscribe to channels (returns async generator).
 
@@ -417,7 +424,8 @@ class RedisManager:
             async for message in redis.subscribe("notifications"):
                 print(message)
         """
-        pubsub = self.client.pubsub()
+        client = self._ensure_connected()
+        pubsub = client.pubsub()
         await pubsub.subscribe(*channels)
 
         try:
