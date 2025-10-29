@@ -998,6 +998,10 @@ class EmergenceClient {
     const eventBus = this.eventBus = EventBus.getInstance();
     installEventBusGuards(eventBus);
 
+    // 🔥 FIX: Initialiser welcome popup UNE fois au démarrage
+    // Il écoutera auth:login:success et s'affichera automatiquement après connexion
+    showWelcomePopupIfNeeded(eventBus);
+
     const stateManager = this.state = new StateManager();
     await stateManager.init();
 
@@ -1406,11 +1410,6 @@ class EmergenceClient {
     this.connectWs();
 
     this.eventBus?.emit?.(EVENTS.AUTH_RESTORED, { source });
-
-    // Show welcome popup on first connection
-    if (source === 'startup' || source === 'home-login' || source === 'storage') {
-      showWelcomePopupIfNeeded(this.eventBus);
-    }
   }
 
   ensureApp() {
