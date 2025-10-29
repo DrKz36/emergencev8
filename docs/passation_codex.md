@@ -509,3 +509,42 @@ Aucun.
 ---
 
 **Note:** Pour historique complet, voir `docs/archives/passation_archive_2025-10-01_to_2025-10-26.md`
+## [2025-10-29 15:40 CET] - Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.6
+- **Nouvelle:** beta-3.3.7 (PATCH - Cross-agent opinion routing fix)
+
+### Fichiers modifiés
+- `src/frontend/features/chat/chat.js`
+- `src/frontend/features/chat/__tests__/chat-opinion.flow.test.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Les avis demandés à un agent (boutons d’opinion) réapparaissaient dans le chat du reviewer (ex. Anima) au lieu de rester dans le fil de l’agent évalué (ex. Nexus), ce qui casse la lecture croisée en prod.
+
+### Travail réalisé
+- Inversé le routage côté `chat.js` pour prioriser l’agent source dans `_determineBucketForMessage`, avec fallback sur l’agent cible puis le reviewer.
+- Aligné la suite `chat-opinion.flow.test.js` sur le nouveau bucket attendu (thread de l’agent évalué).
+- Incrémenté la version `beta-3.3.7`, synchronisé patch notes frontend/backend + changelog.
+- Journal & sync docs mis à jour avec la session.
+
+### Tests
+- ✅ `npm run build`
+- ✅ `npm run test`
+
+### Travail de Claude Code pris en compte
+- Aucun conflit : le backend expose déjà `source_agent_id`, rien à changer côté Claude.
+
+### Prochaines actions recommandées
+1. QA rapide en prod/staging : demander un avis Anima sur un message Nexus et vérifier que la réponse reste dans le fil Nexus.
+2. Vérifier si l’UI doit afficher un badge spécifique pour différencier les avis dans le thread source.
+
+### Blocages
+- Aucun.
+
