@@ -121,8 +121,9 @@
 /* Conversation choice modal overrides */
 
 #conversation-choice-modal {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: clamp(16px, 4vw, 32px);
   pointer-events: none;
   background: rgba(6, 10, 25, 0.72);
@@ -146,7 +147,7 @@
   max-height: min(80vh, 520px);
   padding: 1.45rem 1.75rem;
   border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: none;
   box-shadow: 0 22px 48px rgba(2, 6, 23, 0.55);
   transform: translateY(18px);
   color: #e2e8f0;
@@ -227,7 +228,7 @@
 @media (max-width: 640px) {
   #conversation-choice-modal {
     padding: clamp(12px, 6vh, 24px) 12px;
-    align-items: flex-start;
+    align-items: center;
   }
 
   #conversation-choice-modal .modal-content {
