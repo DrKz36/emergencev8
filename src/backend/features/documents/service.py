@@ -3,10 +3,11 @@
 import logging
 import uuid
 import asyncio
+import os
 import re
 import mimetypes
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 from fastapi import UploadFile, HTTPException
 from pathlib import Path
@@ -16,6 +17,18 @@ from backend.core.database import queries as db_queries
 from backend.features.documents.parser import ParserFactory
 from backend.features.memory.vector_service import VectorService
 from backend.core import emergence_config as config
+
+
+def _trim_error_message(message: str, limit: int = 512) -> str:
+    """Normalize and trim error messages before persisting them."""
+
+    cleaned = (message or "").strip()
+    if not cleaned:
+        return ""
+    collapsed = " ".join(cleaned.split())
+    if len(collapsed) <= limit:
+        return collapsed
+    return f"{collapsed[: limit - 1]}…"
 
 logger = logging.getLogger(__name__)
 
@@ -33,14 +46,183 @@ class DocumentService:
         self.db_manager = db_manager
         self.parser_factory = parser_factory
         self.vector_service = vector_service
-        self.document_collection = self.vector_service.get_or_create_collection(
-            config.DOCUMENT_COLLECTION_NAME
-        )
+        self.document_collection = None
+        self._vector_init_error: Optional[str] = None
+        self._vector_warning_logged = False
         self.uploads_dir = Path(uploads_dir).resolve()
         self.uploads_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(
-            f"DocumentService (V8.3) initialisé. Collection: '{config.DOCUMENT_COLLECTION_NAME}'"
+        self.max_vector_chunks = self._env_int(
+            "DOCUMENTS_MAX_VECTOR_CHUNKS",
+            self.DEFAULT_MAX_VECTOR_CHUNKS,
         )
+        self.vector_batch_size = max(
+            1,
+            self._env_int(
+                "DOCUMENTS_VECTOR_BATCH_SIZE",
+                self.DEFAULT_VECTOR_BATCH_SIZE,
+            ),
+        )
+        self.chunk_insert_batch_size = max(
+            1,
+            self._env_int(
+                "DOCUMENTS_CHUNK_INSERT_BATCH_SIZE",
+                self.DEFAULT_CHUNK_INSERT_BATCH_SIZE,
+            ),
+        )
+        if self._ensure_document_collection():
+            logger.info(
+                "DocumentService (V8.3) initialisé. Collection: '%s'",
+                config.DOCUMENT_COLLECTION_NAME,
+            )
+        else:
+            logger.warning(
+                "DocumentService initialisé sans index vectoriel disponible (%s).",
+                self._vector_init_error or "vector store indisponible",
+            )
+        logger.info(
+            f"DocumentService (V8.3) initialisé. Répertoire uploads: '{self.uploads_dir}'"
+        )
+
+    def _env_int(self, name: str, default: int) -> int:
+        raw = os.getenv(name)
+        if raw is None or not str(raw).strip():
+            return int(default)
+        try:
+            return int(str(raw).strip())
+        except (TypeError, ValueError):
+            logger.warning(
+                "Valeur d'environnement invalide pour %s: %s (fallback=%s)",
+                name,
+                raw,
+                default,
+            )
+            return int(default)
+
+    def _ensure_document_collection(self) -> bool:
+        if self.document_collection is not None:
+            return True
+        try:
+            self.document_collection = self.vector_service.get_or_create_collection(
+                config.DOCUMENT_COLLECTION_NAME
+            )
+            self._vector_init_error = None
+            self._vector_warning_logged = False
+            return True
+        except Exception as exc:  # pragma: no cover - logging only
+            self.document_collection = None
+            self._vector_init_error = str(exc)
+            if not self._vector_warning_logged:
+                logger.warning(
+                    "Impossible d'initialiser la collection vectorielle '%s': %s",
+                    config.DOCUMENT_COLLECTION_NAME,
+                    exc,
+                )
+                self._vector_warning_logged = True
+            return False
+
+    def _vector_store_available(self) -> bool:
+        reachable_checker = getattr(self.vector_service, "is_vector_store_reachable", None)
+        if callable(reachable_checker) and not reachable_checker():
+            last_error_getter = getattr(self.vector_service, "get_last_init_error", None)
+            if callable(last_error_getter):
+                self._vector_init_error = last_error_getter()
+            if not self._vector_init_error:
+                self._vector_init_error = "Vector store indisponible"
+            return False
+        return self._ensure_document_collection()
+
+    async def _persist_document_chunks(
+        self,
+        chunk_rows: list[dict[str, Any]],
+        *,
+        session_id: Optional[str],
+        user_id: Optional[str],
+    ) -> None:
+        if not chunk_rows:
+            return
+        batch_size = self.chunk_insert_batch_size
+        for start in range(0, len(chunk_rows), batch_size):
+            batch = chunk_rows[start : start + batch_size]
+            await db_queries.insert_document_chunks(
+                self.db_manager,
+                session_id=session_id,
+                chunks=batch,
+                user_id=user_id,
+            )
+
+    def _vectorize_document_chunks(
+        self,
+        doc_id: int,
+        chunk_vectors: list[dict[str, Any]],
+        *,
+        total_chunks: int,
+        scope_filter: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[bool, Optional[str], int]:
+        if not chunk_vectors:
+            return True, None, 0
+
+        if not self._vector_store_available():
+            warning = _trim_error_message(
+                self._vector_init_error or "Vector store indisponible"
+            )
+            return False, warning, 0
+
+        assert self.document_collection is not None
+
+        if scope_filter:
+            try:
+                self.vector_service.delete_vectors(
+                    collection=self.document_collection,
+                    where_filter=scope_filter,
+                )
+            except Exception as exc:  # pragma: no cover - defensive log
+                logger.warning(
+                    "Suppression des vecteurs impossible pour le document %s: %s",
+                    doc_id,
+                    exc,
+                )
+
+        vector_warning: Optional[str] = None
+        items_to_vectorize = chunk_vectors
+        total_available = len(chunk_vectors)
+        if self.max_vector_chunks and total_available > self.max_vector_chunks:
+            items_to_vectorize = chunk_vectors[: self.max_vector_chunks]
+            vector_warning = (
+                f"Document volumineux: vectorisation limitée à {self.max_vector_chunks} "
+                f"chunks sur {total_available}."
+            )
+
+        indexed = 0
+        try:
+            for start in range(0, len(items_to_vectorize), self.vector_batch_size):
+                batch = items_to_vectorize[start : start + self.vector_batch_size]
+                if not batch:
+                    continue
+                self.vector_service.add_items(
+                    collection=self.document_collection,
+                    items=batch,
+                )
+                indexed += len(batch)
+        except Exception as exc:
+            warning = _trim_error_message(str(exc)) or "Vectorisation indisponible"
+            self._vector_init_error = warning
+            logger.error(
+                "Vectorisation impossible pour le document %s: %s",
+                doc_id,
+                exc,
+                exc_info=True,
+            )
+            return False, warning, indexed
+
+        if vector_warning:
+            vector_warning = _trim_error_message(vector_warning)
+        logger.debug(
+            "Document %s vectorisé (%s/%s chunks).",
+            doc_id,
+            indexed,
+            total_chunks,
+        )
+        return True, vector_warning, indexed
 
     def _resolve_document_path(self, raw_path: str) -> Path:
         if not raw_path:
@@ -485,7 +667,7 @@ class DocumentService:
         *,
         session_id: str,
         user_id: Optional[str] = None,
-    ) -> int:
+    ) -> Dict[str, Any]:
         filename = file.filename
         if not filename:
             raise HTTPException(status_code=400, detail="Nom de fichier manquant.")
@@ -528,22 +710,54 @@ class DocumentService:
                 doc_id, filename, semantic_chunks, session_id, user_id
             )
             if chunk_rows:
-                await db_queries.insert_document_chunks(
-                    self.db_manager,
+                await self._persist_document_chunks(
+                    chunk_rows,
                     session_id=session_id,
-                    chunks=chunk_rows,
                     user_id=user_id,
                 )
 
+            vectorized = True
+            vector_warning: Optional[str] = None
+            indexed_chunks = 0
             if chunk_vectors:
-                self.vector_service.add_items(
-                    collection=self.document_collection, items=chunk_vectors
+                vectorized, vector_warning, indexed_chunks = self._vectorize_document_chunks(
+                    doc_id,
+                    chunk_vectors,
+                    total_chunks=len(chunk_rows),
                 )
 
-            logger.info(
-                f"Document '{filename}' (ID: {doc_id}) traité et vectorisé avec succès."
-            )
-            return doc_id
+            if not vectorized:
+                warning_message = vector_warning or "Vector store indisponible"
+                await db_queries.set_document_error_status(
+                    self.db_manager,
+                    doc_id,
+                    session_id=session_id,
+                    error_message=_trim_error_message(warning_message),
+                    user_id=user_id,
+                )
+                logger.warning(
+                    "Document %s stocké sans indexation vectorielle: %s",
+                    doc_id,
+                    warning_message,
+                )
+            else:
+                logger.info(
+                    "Document '%s' (ID: %s) traité et vectorisé (%s/%s chunks).",
+                    filename,
+                    doc_id,
+                    indexed_chunks,
+                    len(chunk_rows),
+                )
+
+            return {
+                "document_id": doc_id,
+                "filename": filename,
+                "status": "ready" if vectorized else "error",
+                "vectorized": vectorized,
+                "warning": vector_warning,
+                "indexed_chunks": indexed_chunks,
+                "total_chunks": len(chunk_rows),
+            }
 
         except Exception as e:
             logger.error(
@@ -726,6 +940,15 @@ class DocumentService:
             session_id,
             user_id,
         )
+        await db_queries.update_document_processing_info(
+            self.db_manager,
+            doc_id=doc_id_int,
+            session_id=session_id,
+            user_id=user_id,
+            char_count=len(text_content),
+            chunk_count=len(chunk_rows),
+            status="ready",
+        )
         try:
             await db_queries.delete_document_chunks(
                 self.db_manager,
@@ -739,55 +962,60 @@ class DocumentService:
             logger.error("Erreur lors de la purge des chunks du document %s: %s", doc_id_int, exc, exc_info=True)
             raise HTTPException(status_code=500, detail="Impossible de purger les chunks existants.") from exc
         if chunk_rows:
-            await db_queries.insert_document_chunks(
-                self.db_manager,
+            await self._persist_document_chunks(
+                chunk_rows,
                 session_id=session_id,
-                chunks=chunk_rows,
                 user_id=user_id,
             )
-        try:
-            where_filter: Dict[str, Any] = {'document_id': doc_id_int}
-            if user_id:
-                where_filter['user_id'] = user_id
-            if session_id:
-                where_filter['session_id'] = session_id
-            self.vector_service.delete_vectors(
-                collection=self.document_collection,
-                where_filter=where_filter,
-            )
-        except Exception as exc:
-            logger.warning("Suppression des vecteurs impossible pour le document %s: %s", doc_id_int, exc)
+
+        vectorized = True
+        vector_warning: Optional[str] = None
+        indexed_chunks = 0
         if chunk_vectors:
-            try:
-                self.vector_service.add_items(
-                    collection=self.document_collection,
-                    items=chunk_vectors,
-                )
-            except Exception as exc:
-                logger.error("Erreur lors de la mise à jour des vecteurs du document %s: %s", doc_id_int, exc, exc_info=True)
-                error_message = str(exc)[:512]
-                await db_queries.set_document_error_status(
-                    self.db_manager,
-                    doc_id_int,
-                    session_id,
-                    error_message=error_message,
-                    user_id=user_id,
-                )
-                raise HTTPException(status_code=500, detail="Impossible de mettre à jour l'index vectoriel.") from exc
-        await db_queries.update_document_processing_info(
-            self.db_manager,
-            doc_id=doc_id_int,
-            session_id=session_id,
-            user_id=user_id,
-            char_count=len(text_content),
-            chunk_count=len(chunk_rows),
-            status='ready',
-        )
+            scope_filter: Dict[str, Any] = {'document_id': doc_id_int}
+            if user_id:
+                scope_filter['user_id'] = user_id
+            if session_id:
+                scope_filter['session_id'] = session_id
+            vectorized, vector_warning, indexed_chunks = self._vectorize_document_chunks(
+                doc_id_int,
+                chunk_vectors,
+                total_chunks=len(chunk_rows),
+                scope_filter=scope_filter,
+            )
+
+        if not vectorized:
+            warning_message = vector_warning or "Vector store indisponible"
+            await db_queries.set_document_error_status(
+                self.db_manager,
+                doc_id_int,
+                session_id,
+                error_message=_trim_error_message(warning_message),
+                user_id=user_id,
+            )
+            logger.warning(
+                "Ré-indexation partielle pour le document %s: %s",
+                doc_id_int,
+                warning_message,
+            )
+        else:
+            logger.info(
+                "Document %s ré-indexé (%s/%s chunks).",
+                doc_id_int,
+                indexed_chunks,
+                len(chunk_rows),
+            )
+
         return {
             'document_id': doc_id_int,
             'filename': document.get('filename') or path.name,
             'chunk_count': len(chunk_rows),
             'char_count': len(text_content),
+            'status': 'ready' if vectorized else 'error',
+            'vectorized': vectorized,
+            'warning': vector_warning,
+            'indexed_chunks': indexed_chunks,
+            'total_chunks': len(chunk_rows),
         }
 
     async def delete_document(self, doc_id: int, session_id: str, user_id: Optional[str] = None) -> bool:
@@ -802,19 +1030,26 @@ class DocumentService:
         if not doc:
             return False
 
-        try:
-            # IMPORTANT: TOUJOURS filtrer par user_id pour l'isolation des données
-            where_filter: dict[str, Any] = {"document_id": int(doc_id)}
-            if user_id:
-                where_filter["user_id"] = user_id
-            if session_id:
-                where_filter["session_id"] = session_id
-            self.vector_service.delete_vectors(
-                collection=self.document_collection,
-                where_filter=where_filter,
+        if self._vector_store_available():
+            try:
+                assert self.document_collection is not None
+                # IMPORTANT: TOUJOURS filtrer par user_id pour l'isolation des données
+                where_filter: dict[str, Any] = {"document_id": int(doc_id)}
+                if user_id:
+                    where_filter["user_id"] = user_id
+                if session_id:
+                    where_filter["session_id"] = session_id
+                self.vector_service.delete_vectors(
+                    collection=self.document_collection,
+                    where_filter=where_filter,
+                )
+            except Exception as e:
+                logger.warning(f"Echec purge vecteurs pour document {doc_id}: {e}")
+        else:
+            logger.debug(
+                "Vector store indisponible, purge vecteurs ignorée pour le document %s",
+                doc_id,
             )
-        except Exception as e:
-            logger.warning(f"Echec purge vecteurs pour document {doc_id}: {e}")
 
         deleted = await db_queries.delete_document(
             self.db_manager, int(doc_id), session_id, user_id=user_id

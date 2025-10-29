@@ -20,7 +20,9 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.6 : About module metrics refresh & genesis timeline fix [ACTUEL]
+ * - beta-3.3.8 : Document chunk throttling & warnings [ACTUEL]
+ * - beta-3.3.7 : Document upload resilience when vector store offline
+ * - beta-3.3.6 : About module metrics refresh & genesis timeline fix
  * - beta-3.3.5 : Setup Firestore Snapshot - Infrastructure Sync Allowlist Automatique
  * - beta-3.3.4 : Fix Timing Pop-up - Affichage au Démarrage App (pas au mount module)
  * - beta-3.3.3 : Fix Pop-up Reprise - Modal Systématique + Centrage Correct
@@ -37,8 +39,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.6',
-  name: 'About module metrics refresh & genesis timeline fix',
+  version: 'beta-3.3.8',
+  name: 'Document chunk throttling & warnings',
   date: '2025-10-29',
 };
 
@@ -54,6 +56,27 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.8',
+    tagline: 'Document chunk throttling & warnings',
+    date: '2025-10-29',
+    changes: [
+      { type: 'fix', text: 'Uploads massifs : l’indexation est limitée et faite en batchs pour éviter les 500, avec un warning utilisateur explicite.' },
+      { type: 'quality', text: 'Les réponses backend incluent désormais le nombre de chunks indexés et relaient le warning même en cas de succès.' },
+      { type: 'ux', text: 'Le module Documents déclenche un toast d’avertissement lors d’une vectorisation partielle, y compris après ré-indexation.' },
+      { type: 'test', text: 'Ajout d’un test backend couvrant la limitation de chunks et le batching.' }
+    ]
+  },
+  {
+    version: 'beta-3.3.7',
+    tagline: 'Document upload resilience when vector store offline',
+    date: '2025-10-29',
+    changes: [
+      { type: 'fix', text: 'Le module Documents prévient désormais lorsque l’index vectoriel est hors ligne tout en conservant les fichiers téléversés.' },
+      { type: 'quality', text: 'Notifications adaptées pour les uploads et ré-indexations partielles : avertissement UI dès que la vectorisation est sautée.' },
+      { type: 'quality', text: 'Support backend exposant les avertissements de vectorisation afin de garder une trace visible dans la liste des documents.' }
+    ]
+  },
   {
     version: 'beta-3.3.6',
     tagline: 'About module metrics refresh & genesis timeline fix',

@@ -1,3 +1,64 @@
+## Session COMPLETED (2025-10-29 19:45 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/backend/features/documents/service.py`
+- `src/backend/features/documents/router.py`
+- `src/frontend/features/documents/documents.js`
+- `tests/backend/features/test_documents_vector_resilience.py`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+
+### Work summary
+1. Ajout d’une limitation configurable (`DOCUMENTS_MAX_VECTOR_CHUNKS`) et d’un batching pour la vectorisation afin d’éviter les timeouts quand un upload génère plusieurs milliers de paragraphes.
+2. Les endpoints `/documents/upload` et `/documents/{id}/reindex` renvoient désormais le nombre de chunks indexés et un warning même en cas de succès ; l’UI affiche un toast d’avertissement dans ce cas.
+3. Nouveau test backend qui vérifie le respect de la limite de chunks et le découpage en batchs.
+
+### Tests
+- ✅ `ruff check src/backend/`
+- ⚠️ `pytest tests/backend/features/test_documents_vector_resilience.py` (KO – dépendance `httpx` absente dans l’environnement)
+- ✅ `npm run build`
+
+### Next steps
+1. Installer les dépendances Python manquantes (`httpx`, `fastapi`, `aiosqlite`, etc.) pour pouvoir lancer les tests backend dans l’environnement container.
+2. Ajouter un badge/tooltip dans la liste des documents pour indiquer les vectorisations partielles.
+3. Étudier un retry automatique de vectorisation lorsque Chroma repasse en mode lecture/écriture.
+
+### Blockers
+- Environnement container toujours sans dépendances FastAPI/HTTPX, ce qui empêche `pytest` de tourner.
+
+## Session COMPLETED (2025-10-29 16:20 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/backend/features/documents/service.py`
+- `src/backend/features/documents/router.py`
+- `src/frontend/features/documents/documents.js`
+- `tests/backend/features/test_documents_vector_resilience.py`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+
+### Work summary
+1. Le service Documents encaisse désormais un vector store en READ-ONLY : stockage des chunks, statut `error` et avertissement retourné côté API sans lever de 500.
+2. L’UI documents affiche un warning quand la vectorisation est sautée (upload ou ré-indexation) et conserve la trace du document.
+3. Ajout d’un test async ciblé pour garantir qu’un upload passe sans vecteurs, plus bump version `beta-3.3.7` + changelog/patch notes synchronisés.
+
+### Tests
+- ⚠️ `mypy src/backend/` (KO - librairies FastAPI/Pydantic/httpx/aiosqlite absentes dans l’image)
+- ⚠️ `pytest tests/backend/` (KO - mêmes dépendances manquantes)
+- ✅ `ruff check src/backend/`
+- ✅ `npm run build`
+
+### Next steps
+1. Installer les dépendances Python manquantes dans l’environnement CI pour rendre mypy/pytest utiles.
+2. Ajouter un indicateur visuel dans la liste des documents (tooltip détaillé ou bouton de re-indexation rapide).
+3. Préparer un cron de ré-indexation automatique dès que Chroma repasse en mode read-write.
+
+### Blockers
+- Environnement container sans `fastapi`, `pydantic`, `httpx`, `aiosqlite`, `dependency-injector` : mypy/pytest plantent à l’import.
+
 ## Session COMPLETED (2025-10-29 14:30 CET) - Agent : Codex GPT
 
 ### Files touched
