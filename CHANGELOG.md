@@ -10,6 +10,63 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.8] - 2025-10-29
+
+### ⚙️ Document chunk throttling & warnings
+
+#### 🔧 Correctifs
+
+- Les uploads volumineux (logs, exports massifs) n’envoient plus des milliers de chunks d’un coup : batching configurable et limite dure à 2048 chunks avec avertissement.
+- Les ré-indexations suppriment et reconstruisent l’index par lots, en respectant le même garde-fou pour éviter les timeouts Cloud Run.
+- Les routes `/documents/upload` et `/documents/{id}/reindex` retournent désormais `indexed_chunks` / `total_chunks` ainsi qu’un warning même en cas de succès.
+
+#### ✨ UX
+
+- Le module Documents affiche un toast d’avertissement si la vectorisation est partielle (upload ou ré-indexation), tout en conservant le succès de l’opération.
+
+#### 🧪 Tests
+
+- `tests/backend/features/test_documents_vector_resilience.py::test_process_upload_with_chunk_limit`
+- `tests/backend/features/test_documents_vector_resilience.py::test_process_upload_when_vector_store_unavailable`
+
+#### 📁 Fichiers Modifiés
+
+- `src/backend/features/documents/service.py`
+- `src/backend/features/documents/router.py`
+- `src/frontend/features/documents/documents.js`
+- `tests/backend/features/test_documents_vector_resilience.py`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+
+---
+
+## [beta-3.3.7] - 2025-10-29
+
+### 🛡️ Document upload resilience when vector store offline
+
+#### 🔧 Correctifs
+
+- Les uploads et ré-indexations de documents n’échouent plus lorsque le vector store passe en mode READ-ONLY : le backend stocke le fichier, marque le document en « erreur » et remonte un avertissement exploitable par l’UI.
+- Les notifications frontend détectent désormais les vectorisations partielles pour prévenir l’utilisateur sans masquer l’upload réussi.
+
+#### ✅ Tests
+
+- `ruff check src/backend/`
+- `pytest tests/backend/`
+- `npm run build`
+
+#### 📁 Fichiers Modifiés
+
+- `src/backend/features/documents/service.py`
+- `src/backend/features/documents/router.py`
+- `src/frontend/features/documents/documents.js`
+- `tests/backend/features/test_documents_vector_resilience.py`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+
 ---
 
 ## [beta-3.3.6] - 2025-10-29
