@@ -547,8 +547,8 @@ export function showWelcomePopupIfNeeded(eventBus) {
         if (typeof document === 'undefined') return false;
         const body = document.body;
         if (!body) return false;
-        // Ne PAS afficher si on est sur la page d'authentification
-        if (body.classList?.contains?.('home-active')) return false;
+        // Ne PAS afficher si on est sur la page d'authentification (body sans home-active)
+        if (!body.classList?.contains?.('home-active')) return false;
 
         const appContainer = document.getElementById('app-container');
         if (!appContainer) return false;
