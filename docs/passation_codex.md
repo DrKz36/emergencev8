@@ -15,6 +15,7 @@ Le bootstrap Codex Cloud devait être rendu autonome : après exécution, l'agen
 - Ajout d'une configuration complète côté script : alias `nvm default`, relocalisation des binaires (`node`, `npm`, `npx`, `corepack`) vers `.venv/bin`, génération de `.codex-cloud/env.sh` et hook automatique (`.bashrc`, `.profile`, `.zshrc`).
 - Ajout d'un message final pour rappeler `source .venv/bin/activate` et création d'une entrée `.gitignore` pour ignorer `.codex-cloud/`.
 - Mise à jour des prompts Cloud afin d'indiquer la présence du nouvel helper et la marche à suivre pour recharger l'environnement.
+- Création de `PROMPT_CODEX_ALTER_EGO.md` + référence dans `docs/PROMPTS_AGENTS_ARCHITECTURE.md` pour qu'un backup Codex fasse un retour immédiat en cas de blocage.
 
 ### Tests
 - ⚠️ `bash scripts/setup-codex-cloud.sh` (non exécuté ici : environnement CLI sans bash/WSL disponible)
@@ -25,6 +26,7 @@ Le bootstrap Codex Cloud devait être rendu autonome : après exécution, l'agen
 ### Prochaines actions recommandées
 1. Lancer `bash scripts/setup-codex-cloud.sh` dans Codex Cloud pour valider les symlinks et le sourcing automatique.
 2. Vérifier que Guardian/AutoSync ne signalent plus de fichiers non suivis après exécution (merci à l'entrée `.gitignore`).
+3. Partager le nouveau prompt alter ego au backup et checker qu'il documente bien les blocages via `@Codex GPT -> feedback needed`.
 
 ### Blocages
 - Impossible d'exécuter le script dans ce CLI Windows (absence de bash) : validation à réaliser côté environnement Linux.

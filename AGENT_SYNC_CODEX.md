@@ -11,6 +11,7 @@
 ### Work summary
 1. Solidified the Codex Cloud bootstrap: default `nvm` alias, symlinks for `node`/`npm`/`npx`/`corepack` into `.venv/bin`, auto-generated `.codex-cloud/env.sh`, and profile hooks (`.bashrc`, `.profile`, `.zshrc`).
 2. Updated docs and ignored `.codex-cloud/` so the repo stays clean after running the setup script.
+3. Added `PROMPT_CODEX_ALTER_EGO.md` plus updated the prompt architecture doc so any backup agent pings us when something breaks.
 
 ### Tests
 - ⚠️ `bash scripts/setup-codex-cloud.sh` (not executed locally: current CLI lacks bash/WSL)
@@ -18,6 +19,7 @@
 ### Next steps
 1. Run the bootstrap on Codex Cloud to confirm node/npm availability in a fresh session.
 2. Double-check AutoSync/Guardian once the script has been executed in the target environment.
+3. Hand this alter-ego prompt to the backup agent and ensure they follow the feedback protocol.
 
 ### Blockers
 - No bash binary in this Windows CLI environment, so the script can't be run end-to-end here.

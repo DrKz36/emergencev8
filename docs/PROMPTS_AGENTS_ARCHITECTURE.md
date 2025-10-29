@@ -13,6 +13,7 @@
 |---------|-------|------|--------|
 | **CLAUDE.md** | Claude Code | Prompt système complet | ✅ ACTIF |
 | **CODEX_SYSTEM_PROMPT.md** | Codex GPT (local & cloud) | Prompt système complet | ✅ ACTIF |
+| **PROMPT_CODEX_ALTER_EGO.md** | Alter ego Codex (backup) | Prise de relai + feedback blocages | ✅ ACTIF |
 | **AGENTS.md** | Tous agents | Consignes générales dépôt | ✅ ACTIF |
 | **CODEV_PROTOCOL.md** | Tous agents | Protocole co-développement | ✅ ACTIF |
 
@@ -97,6 +98,14 @@ Tous les anciens prompts sont dans `docs/archive/2025-10/prompts-sessions/` et `
 - Accès rapports Guardian (`reports/codex_summary.md`)
 - Focus frontend JavaScript, scripts PowerShell, UI/UX
 - Instructions Python pour lire rapports locaux
+
+### Alter Ego Codex (PROMPT_CODEX_ALTER_EGO.md)
+
+**Spécificités :**
+- Destiné à un backup/alter ego qui reprend Codex en cas d'indisponibilité
+- Redemande l'ordre de lecture complet avant toute action
+- Met l'accent sur le feedback immédiat : blocages consignés dans AGENT_SYNC_CODEX.md + docs/passation_codex.md, ping explicite @Codex GPT -> feedback needed
+- Implique les mêmes obligations de tests, doc et ton que le prompt principal
 
 ### Consignes Générales (AGENTS.md)
 
