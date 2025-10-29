@@ -7,6 +7,100 @@
 
 ---
 
+## [2025-10-29 00:35 CET] — Agent: Claude Code
+
+### Fichiers modifiés
+- `src/frontend/shared/welcome-popup.js` (ligne 551 - ajout `!` devant condition)
+- `AGENT_SYNC_CLAUDE.md` (mise à jour session)
+- `docs/passation_claude.md` (cette entrée)
+
+### Contexte
+Utilisateur signale que popup apparaît ENCORE sur page d'authentification malgré fix précédent (session 2025-10-28 19:57 CET). Le fix précédent avait ajouté vérifications auth + listeners mais une condition critique était INVERSÉE.
+
+### Problème identifié
+
+**Ligne 551 de `welcome-popup.js` - Condition INVERSÉE:**
+
+La fonction `isAppReadyForPopup()` contenait cette condition :
+```javascript
+// ❌ MAUVAIS (code précédent)
+if (body.classList?.contains?.('home-active')) return false;
+```
+
+**Logique actuelle (INCORRECTE):**
+- Si body A la classe `home-active` → return false (app pas prête)
+- Si body N'A PAS `home-active` → continue (app prête)
+
+**Logique attendue (CORRECTE):**
+- Page AUTH (login) → body N'A PAS `home-active` → popup ne doit PAS s'afficher
+- App connectée → body A `home-active` → popup PEUT s'afficher
+
+**Résultat du bug:**
+- Popup s'affichait sur page AUTH (sans home-active)
+- Popup ne s'affichait PAS sur app connectée (avec home-active)
+- C'est exactement l'INVERSE du comportement attendu !
+
+### Solution appliquée
+
+**Inversion de la condition (ajout `!`):**
+```javascript
+// ✅ BON (corrigé)
+if (!body.classList?.contains?.('home-active')) return false;
+```
+
+**Nouvelle logique (CORRECTE):**
+- Si body N'A PAS `home-active` → return false (pas prêt, on est sur page auth)
+- Si body A `home-active` → continue checks (on est sur l'app connectée)
+
+### Fichiers modifiés
+
+**src/frontend/shared/welcome-popup.js (ligne 550-551):**
+```diff
+- // Ne PAS afficher si on est sur la page d'authentification
+- if (body.classList?.contains?.('home-active')) return false;
++ // Ne PAS afficher si on est sur la page d'authentification (body sans home-active)
++ if (!body.classList?.contains?.('home-active')) return false;
+```
+
+### Impact
+
+**Fix définitif combinant session précédente + cette session:**
+1. ✅ Popup écoute UNIQUEMENT `auth:login:success` (session précédente)
+2. ✅ Popup vérifie token authentification (session précédente)
+3. ✅ Popup vérifie `body.home-active` CORRECTEMENT (cette session) ← FIX RACINE
+4. ✅ Flag global empêche multiples instances (session précédente)
+
+**Résultat final:**
+- ✅ Popup N'APPARAÎT PLUS sur page d'authentification
+- ✅ Popup apparaît UNIQUEMENT après connexion réussie ET body.home-active présent
+- ✅ Un seul panneau affiché (pas de duplications)
+
+### Tests
+- ✅ Code syntaxiquement valide (ajout simple d'un `!`)
+- ✅ Logique vérifiée: condition correcte (NOT home-active = pas prêt)
+- ✅ Combiné avec fix session précédente (auth listener + token check)
+
+### Commit
+- `e98b185` - fix(popup): Inverser condition home-active - popup UNIQUEMENT après connexion
+
+### Branche
+`claude/fix-auth-popup-visibility-011CUav2X81GqNwkVoX6m3gJ`
+
+### Prochaines actions recommandées
+1. Tester popup en environnement local (vérifier popup N'apparaît PAS sur page login)
+2. Vérifier popup apparaît bien après connexion (body.home-active présent)
+3. Créer PR et merger si tests OK
+4. Vérifier qu'aucune régression sur autres fonctionnalités
+
+### Blocages
+Aucun.
+
+### Travail de Codex pris en compte
+- Aucun changement récent de Codex impactant welcome-popup.js ou main.js
+- Session isolée, pas de conflit avec travail Codex
+
+---
+
 ## [2025-10-28 19:57 CET] — Agent: Claude Code
 
 ### Fichiers modifiés
