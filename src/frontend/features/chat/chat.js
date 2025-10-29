@@ -379,6 +379,14 @@ export default class ChatModule {
   handleAuthRestored(payload = {}) {
     const sourceValue = typeof payload?.source === 'string' ? payload.source.trim().toLowerCase() : '';
     console.log('[Chat] handleAuthRestored source=%s', sourceValue || '<none>');
+
+    // 🔥 FIX: Ne déclencher le modal QUE si l'utilisateur est vraiment authentifié
+    const isAuthenticated = this.state.get('auth.isAuthenticated') === true;
+    if (!isAuthenticated) {
+      console.log('[Chat] handleAuthRestored: User not authenticated, skipping modal');
+      return;
+    }
+
     if (sourceValue === 'ensurecurrentthread') {
       return;
     }
@@ -424,12 +432,11 @@ export default class ChatModule {
       }
     }
 
-    // 🔥 FIX: Appeler _ensureActiveConversation() si pas de thread valide chargé
-    // ET si le modal initial n'a pas déjà été affiché au démarrage
-    if (!hasValidThreadLoaded && !this._initialModalChecked) {
-      console.log('[Chat] mount() → Pas de thread valide chargé, vérification conversation active...');
-      this._initialModalChecked = true;
-      this._ensureActiveConversation();
+    // 🔥 FIX: Ne PAS appeler _ensureActiveConversation() depuis mount()
+    // car l'utilisateur n'est pas encore authentifié à ce stade.
+    // Le modal sera déclenché par handleAuthRestored() une fois l'auth complète.
+    if (!hasValidThreadLoaded) {
+      console.log('[Chat] mount() → Pas de thread valide chargé, attente auth pour modal...');
     }
   }
 

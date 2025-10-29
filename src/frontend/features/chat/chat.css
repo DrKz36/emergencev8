@@ -1329,6 +1329,10 @@
   .chat-messages{
     padding: 16px 12px calc(140px + env(safe-area-inset-bottom, 0px));
   }
+  .app-content.is-module-chat,
+  body.module-active-chat .app-content{
+    padding-bottom: env(safe-area-inset-bottom, 0) !important;
+  }
   .chat-container .card-footer{
     padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
   }
@@ -1358,6 +1362,10 @@
   :root{
     --chat-bubble-width: 640px;
     --input-height: 36px;
+  }
+  .app-content.is-module-chat,
+  body.module-active-chat .app-content{
+    padding-bottom: env(safe-area-inset-bottom, 0) !important;
   }
   .chat-header{
     padding:10px;
@@ -1522,12 +1530,60 @@
 }
 
 @media (max-width: 640px) and (orientation: portrait){
-  .messages{
-    padding-bottom: calc(110px + var(--mobile-nav-height, 64px) + env(safe-area-inset-bottom, 0px));
+  /* Enlever les paddings/margins du parent */
+  #tab-content-chat.active {
+    height: 100dvh !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
+
+  /* Container chat plein écran */
+  .chat-container{
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    padding: 0;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  /* Header du chat sans padding excessif */
+  .chat-header{
+    padding: 10px 12px;
+  }
+
+  /* Messages avec padding pour footer + navbar */
+  .messages{
+    padding: 12px 12px calc(100px + var(--mobile-nav-height, 64px) + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Footer fixed au-dessus de la navbar */
   .chat-footer{
-    bottom: calc(var(--mobile-nav-height, 64px) + env(safe-area-inset-bottom, 0px) + 12px);
-    z-index: 32;
+    position: fixed;
+    bottom: var(--mobile-nav-height, 64px);
+    left: 0;
+    right: 0;
+    z-index: 999;
+    padding: 10px 12px;
+    background: rgba(15,23,42,.98);
+    backdrop-filter: blur(24px);
+    border-top: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 -4px 20px rgba(0,0,0,.4);
+  }
+
+  /* Input shell compact */
+  .chat-input-shell{
+    padding: 8px 56px 8px 10px;
+    min-height: 46px;
+  }
+
+  /* Send button positionné */
+  .chat-send-button{
+    width: 38px;
+    height: 38px;
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
   }
 }
 
