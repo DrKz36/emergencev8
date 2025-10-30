@@ -1,7 +1,83 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-10-29 08:15 CET (Claude Code)
+**Dernière mise à jour:** 2025-10-30 06:48 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
+
+---
+
+## ✅ Session COMPLÉTÉE (2025-10-30 06:48 CET)
+
+### 🔧 FIX CRITIQUE - Réparation merges foireux Codex (37/37 tests pass)
+
+**Status:** ✅ COMPLÉTÉ - Tous les tests passent maintenant
+
+**Contexte:**
+L'utilisateur signale que les tests de validation foirent sur la branche Codex `codex/fix-app-disconnection-issue-after-login-6ttt6l`. Investigation révèle que Codex a fait plusieurs commits qui se sont mal fusionnés, créant des fichiers JavaScript invalides.
+
+**Problèmes identifiés:**
+
+**1. package.json - Versions dupliquées (3x)**
+- Trois définitions de `version` au lieu d'une seule :
+  - `"version": "beta-3.3.13",` (ligne 4)
+  - `"version": "beta-3.3.11",` (ligne 5)
+  - `"version": "beta-3.3.12",` (ligne 6)
+- JSON invalide → Node ne peut pas parser le package
+- **Fix:** Gardé uniquement `beta-3.3.12` (version actuelle alignée avec src/version.js)
+
+**2. src/version.js & src/frontend/version.js - Objet beta-3.3.12 dupliqué**
+- Codex a créé DEUX objets `beta-3.3.12` séparés :
+  - Premier: "Auth session continuity"
+  - Deuxième: "Bundle analyzer ESM compatibility"
+- Merge foireux → `changes: [...]` non fermé avant nouvelle entrée
+- **SyntaxError:** `Unexpected token ':'` ligne 89
+- Apostrophes non-échappées : `lorsqu'on`, `d'erreur`, `l'analyse`, `lorsqu'une`, `d'un`
+- **Fix:** Fusionné en un seul objet avec tous les changes[] + échappé toutes apostrophes (`\'`)
+
+**3. src/frontend/core/auth.js - Doublons de code**
+- Ligne 60-61: Deux `return` à la suite (code mort unreachable)
+  ```javascript
+  return normalizeToken(remainder);
+  return normalizeToken(candidate.split('=', 2)[1] || '');  // ← DOUBLON
+  ```
+- Ligne 67-68: Deux `if` à la suite sans corps pour le premier
+  ```javascript
+  if (!isLikelyJwt(candidate)) {      // ← DOUBLON obsolète
+  if (!JWT_PATTERN.test(candidate)) {
+  ```
+- Ligne 21: `JWT_PATTERN` refusait padding `=` → tests JWT échouaient
+  - Avant: `/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/`
+  - Après: `/^[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}$/`
+- **Fix:** Supprimé doublons + JWT_PATTERN accepte maintenant `={0,2}` par segment
+
+**Fichiers modifiés:**
+- `package.json` - Version unique beta-3.3.12
+- `src/version.js` - Objet fusionné + apostrophes échappées
+- `src/frontend/version.js` - Objet fusionné + apostrophes échappées
+- `src/frontend/core/auth.js` - Doublons supprimés + JWT_PATTERN fixé
+
+**Résultats tests:**
+- ✅ **Avant:** 17/20 pass, 3 fails (SyntaxError)
+- ✅ **Après:** 37/37 pass, 0 fails
+- Tests échouants réparés:
+  - `auth.normalize-token.test.mjs` (tokens avec padding `=` acceptés)
+  - `state-manager.test.js` (imports auth.js fonctionnent)
+  - `websocket.dedupe.test.js` (imports auth.js fonctionnent)
+
+**Commit:**
+- Branche: `claude/fix-codex-merge-conflicts-011CUcqkzzQZERWMU3i8TGB4`
+- Commit: `64aa05a` "fix(tests): réparer les merges foireux de Codex - 37/37 tests pass"
+- Pushed: ✅
+
+**Impact:**
+- ✅ Tous les tests de validation passent maintenant
+- ✅ Code JavaScript syntaxiquement valide
+- ✅ Normalisation JWT fonctionne avec padding base64
+- ✅ Branche Codex récupérable pour merge vers main
+
+**Prochaines actions:**
+1. Codex doit apprendre à utiliser `git status` et valider les merges avant commit
+2. Configurer pre-commit hook qui lance `npm test` automatiquement
+3. Review cette branche et merger vers main si QA OK
 
 ---
 
