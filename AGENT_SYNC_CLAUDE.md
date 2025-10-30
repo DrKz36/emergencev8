@@ -1,7 +1,57 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-10-30 06:48 CET (Claude Code)
+**Dernière mise à jour:** 2025-10-30 09:20 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
+
+---
+
+## 🚨 Session EN COURS (2025-10-30 09:20 CET) - INCIDENT CRITICAL
+
+### 🔴 PRODUCTION DOWN - Service inaccessible (403)
+
+**Status:** 🟡 EN ATTENTE ACTION UTILISATEUR
+**Sévérité:** CRITICAL (toute l'app est down, pas juste WebSocket)
+
+**Symptômes:**
+- WebSocket fail en boucle (connexions refusées)
+- Toutes les requêtes HTTP retournent 403 Access Denied
+- `/health` et `/ready` retournent 403
+
+**Cause racine identifiée:**
+- **IAM Policy Cloud Run révoquée ou jamais appliquée**
+- Le service Cloud Run **bloque toutes les requêtes** car `allUsers` n'a PAS le rôle `roles/run.invoker`
+
+**Solution:**
+
+**Option 1 (RECOMMANDÉ) : Re-déployer**
+```bash
+gh workflow run deploy.yml
+```
+Le workflow va automatiquement réappliquer la policy IAM (ligne 75-79)
+
+**Option 2 : Fix IAM direct**
+```bash
+gcloud run services add-iam-policy-binding emergence-app \
+  --member="allUsers" \
+  --role="roles/run.invoker" \
+  --region europe-west1
+```
+
+**Fichiers modifiés:**
+- `INCIDENT_2025-10-30_WS_DOWN.md` - Rapport d'incident complet
+- `docs/passation_claude.md` - Nouvelle entrée incident
+- `AGENT_SYNC_CLAUDE.md` - Cette entrée
+
+**Blocages:**
+- Pas de `gcloud` CLI dans environnement → Impossible de fix directement
+- Pas de `gh` CLI authentifié → Impossible de déclencher workflow
+- **ACTION UTILISATEUR REQUISE**
+
+**Prochaines étapes:**
+1. Utilisateur déclenche re-deploy OU exécute commande gcloud
+2. Vérifier `/health` retourne 200
+3. Vérifier WebSocket se connecte
+4. Commit changements de cette session
 
 ---
 
