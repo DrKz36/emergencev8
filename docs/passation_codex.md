@@ -1,3 +1,41 @@
+## [2025-10-31 11:10] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.13
+- **Nouvelle:** beta-3.3.13 (inchangée)
+
+### Fichiers modifiés
+- `.github/workflows/cloud-run-iam-restore.yml`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Review utilisateur : le workflow Hotfix IAM plantait car `gcloud` n'avait aucun projet actif sur runner neuf → erreur "The required property [project] is not currently set".
+
+### Travail réalisé
+1. Donné explicitement le `project_id` au step `setup-gcloud` pour configurer le contexte par défaut.
+2. Forcé `--project $GCP_PROJECT_ID` sur chaque commande `gcloud run` histoire d'être safe même sans contexte.
+3. Mis à jour la sync + journal pour que l'astreinte sache que le fix est déployé.
+
+### Tests
+- ⚠️ Pas de tests automatisés (GitHub Actions seulement, à rejouer côté GitHub).
+
+### Versioning
+- ✅ Aucun changement produit → version inchangée.
+
+### Travail de Claude Code pris en compte
+- Aucun impact sur ses tâches.
+
+### Prochaines actions recommandées
+1. Relancer le workflow Hotfix pour valider le binding IAM.
+2. Ajouter la sortie du run réussi à l'incident.
+3. Prévoir un guard Guardian qui ping quand `allUsers` saute.
+
+### Blocages
+- Aucun.
+
+---
+
 ## [2025-10-31 09:45] — Agent: Codex GPT
 
 ### Version

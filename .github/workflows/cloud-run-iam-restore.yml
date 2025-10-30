@@ -29,6 +29,8 @@ jobs:
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
 
       - name: Context
         if: ${{ github.event.inputs.reason != '' }}
@@ -41,6 +43,7 @@ jobs:
             --member="allUsers" \
             --role="roles/run.invoker" \
             --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
             --quiet || echo "ℹ️  allUsers already bound"
 
       - name: Remove allAuthenticatedUsers binding if present
@@ -50,6 +53,7 @@ jobs:
             --member="allAuthenticatedUsers" \
             --role="roles/run.invoker" \
             --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
             --quiet && echo "✅ Removed allAuthenticatedUsers binding" || echo "ℹ️  No allAuthenticatedUsers binding found"
 
       - name: Fetch service URL
@@ -57,6 +61,7 @@ jobs:
         run: |
           SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" \
             --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
             --format 'value(status.url)')
           echo "url=$SERVICE_URL" >> "$GITHUB_OUTPUT"
           echo "🌐 Service URL: $SERVICE_URL"
@@ -69,6 +74,7 @@ jobs:
           echo "🛡️  Verifying IAM policy state"
           POLICY_JSON=$(gcloud run services get-iam-policy "$SERVICE_NAME" \
             --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
             --format json)
           export POLICY_JSON
           python - <<'PY'

@@ -1,3 +1,26 @@
+## Session COMPLETED (2025-10-31 11:10 CET) - Agent : Codex GPT
+
+### Files touched
+- `.github/workflows/cloud-run-iam-restore.yml`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Forcé `setup-gcloud` à définir le projet par défaut pour que `gcloud run ...` arrête de gueuler sur l'absence de `project`.
+2. Ajouté `--project $GCP_PROJECT_ID` sur chaque commande `gcloud` du workflow pour qu'un runner vierge n'échoue plus.
+3. Consigné la correction dans le journal de session afin que l'astreinte sache que le workflow est à nouveau exécutable.
+
+### Tests
+- ⚠️ Pas de tests automatisés (workflow GitHub Actions uniquement).
+
+### Next steps
+1. Relancer le workflow `Restore Cloud Run IAM Access` pour valider les bindings IAM depuis GitHub.
+2. Capturer le log du premier run réussi dans l'incident en cours.
+3. Ajouter un guard Guardian qui alerte si `allUsers` saute encore.
+
+### Blockers
+- Aucun.
+
 ## Session COMPLETED (2025-10-31 09:45 CET) - Agent : Codex GPT
 
 ### Files touched
