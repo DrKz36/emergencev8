@@ -35,10 +35,12 @@ logger = logging.getLogger(__name__)
 
 class DocumentService:
     MAX_PREVIEW_CHARS = 20000
-    DEFAULT_MAX_VECTOR_CHUNKS = 2048
+    DEFAULT_MAX_VECTOR_CHUNKS = 1000  # Réduit de 2048 pour éviter timeout Cloud Run
     DEFAULT_VECTOR_BATCH_SIZE = 64
     DEFAULT_CHUNK_INSERT_BATCH_SIZE = 128
     DEFAULT_MAX_PARAGRAPHS_PER_CHUNK = 2
+    MAX_TOTAL_CHUNKS_ALLOWED = 5000  # Limite absolue pour éviter timeout processing
+    MAX_FILE_SIZE_MB = 50  # Limite taille fichier upload
 
     def __init__(
         self,
@@ -691,11 +693,23 @@ class DocumentService:
         filename = file.filename
         if not filename:
             raise HTTPException(status_code=400, detail="Nom de fichier manquant.")
+
+        # Vérifier la taille du fichier AVANT de l'écrire
+        file_content = await file.read()
+        file_size_mb = len(file_content) / (1024 * 1024)
+
+        if file_size_mb > self.MAX_FILE_SIZE_MB:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Fichier trop volumineux ({file_size_mb:.1f}MB). Limite: {self.MAX_FILE_SIZE_MB}MB. "
+                       f"Pour les gros documents, découpez-les en plusieurs fichiers plus petits."
+            )
+
         filepath = self.uploads_dir / f"{uuid.uuid4()}_{filename}"
 
         try:
             with open(filepath, "wb") as buffer:
-                buffer.write(await file.read())
+                buffer.write(file_content)
 
             stored_path = self._to_storage_path(filepath)
 
@@ -714,6 +728,24 @@ class DocumentService:
 
             # ✅ Phase 2 RAG : Chunking sémantique avec métadonnées enrichies
             semantic_chunks = self._chunk_text_semantic(text_content, filename)
+
+            # Vérifier le nombre de chunks AVANT de continuer
+            if len(semantic_chunks) > self.MAX_TOTAL_CHUNKS_ALLOWED:
+                # Document trop volumineux - on le refuse
+                await db_queries.delete_document(
+                    self.db_manager,
+                    doc_id,
+                    session_id,
+                    user_id=user_id,
+                )
+                filepath.unlink(missing_ok=True)  # Supprimer le fichier
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"Document trop volumineux: {len(semantic_chunks)} chunks générés "
+                           f"(limite: {self.MAX_TOTAL_CHUNKS_ALLOWED}). "
+                           f"Le fichier contient trop de texte pour être traité en une seule fois. "
+                           f"Veuillez découper le document en plusieurs fichiers plus petits."
+                )
 
             await db_queries.update_document_processing_info(
                 self.db_manager,
@@ -779,6 +811,9 @@ class DocumentService:
                 "total_chunks": len(chunk_rows),
             }
 
+        except HTTPException:
+            # Laisser passer les HTTPException (413, 400, etc.) telles quelles
+            raise
         except Exception as e:
             logger.error(
                 f"Erreur lors du traitement du fichier '{filename}': {e}", exc_info=True

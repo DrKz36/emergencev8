@@ -20,11 +20,10 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.13 : Auth token test bundler compatibility [ACTUEL]
+ * - beta-3.3.15 : Fix upload gros documents - Limites strictes pour éviter timeout Cloud Run [ACTUEL]
+ * - beta-3.3.14 : Production connectivity fixes - WebSocket auth & thread cleanup
+ * - beta-3.3.13 : Auth token test bundler compatibility
  * - beta-3.3.12 : Auth session continuity
- * - beta-3.3.11 : Auth handshake stabilization
- * - beta-3.3.11 : Auth handshake stabilization [ACTUEL]
- * - beta-3.3.12 : Bundle analyzer ESM compatibility [ACTUEL]
  * - beta-3.3.11 : Auth handshake stabilization
  * - beta-3.3.10 : Sync script compatibility fix
  * - beta-3.3.9 : Version manifest merge fix
@@ -47,9 +46,9 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.14',
-  name: 'Production connectivity fixes - WebSocket auth & thread cleanup',
-  date: '2025-10-30',
+  version: 'beta-3.3.15',
+  name: 'Large document upload timeout fix - Strict limits to prevent Cloud Run timeout',
+  date: '2025-10-31',
 };
 
 export const VERSION = CURRENT_RELEASE.version;
@@ -64,6 +63,18 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.15',
+    tagline: 'Large document upload timeout fix - Strict limits to prevent Cloud Run timeout',
+    date: '2025-10-31',
+    changes: [
+      { type: 'fix', text: 'Upload gros documents résolu - Documents avec beaucoup de lignes causaient un timeout Cloud Run (limite 10 min) pendant parsing + chunking + vectorisation' },
+      { type: 'quality', text: 'Limites strictes ajoutées - 50MB max par fichier, 5000 chunks max (rejet explicite si dépassement)' },
+      { type: 'quality', text: 'Vectorisation optimisée - Limite réduite de 2048 à 1000 chunks pour rester sous le timeout' },
+      { type: 'fix', text: 'Messages d\'erreur clairs - Frontend affiche maintenant le détail exact de l\'erreur serveur (taille fichier, nombre de chunks, etc.)' },
+      { type: 'quality', text: 'Cleanup automatique - Si document rejeté pour taille excessive, le fichier et l\'entrée DB sont supprimés proprement' },
+    ]
+  },
   {
     version: 'beta-3.3.14',
     tagline: 'Production connectivity fixes - WebSocket auth & thread cleanup',
