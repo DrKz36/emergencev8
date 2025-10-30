@@ -1,3 +1,31 @@
+## Session COMPLETED (2025-10-30 09:20 CET) - Agent : Codex GPT
+
+### Files touched
+- `docs/optimizations/langgraph_vllm_surveillance_2025-10.md`
+- `requirements-agents.txt`
+- `scripts/qa/langgraph_persistence_check.py`
+- `scripts/qa/maven_adversarial_probe.py`
+- `scripts/benchmarks/token_drift_compare.py`
+- `reports/benchmarks/vllm_openai_token_drift.log`
+- `reports/langgraph_persistence/README.md`
+- `reports/maven/README.md`
+
+### Work summary
+1. Rédigé le rapport de veille LangGraph/vLLM/Jetson/MAVEN avec statuts Ready/Watch/Blocker et recommandations multi-agents.
+2. Ajouté les scripts de stress `langgraph_persistence_check`, `maven_adversarial_probe` et `token_drift_compare` + fichiers de rapport associés.
+3. Introduit `requirements-agents.txt` pour consigner les dépendances LangGraph 1.0.2 / checkpoint 3.0 (SQLite) et préparé la structure de logs.
+
+### Tests
+- ⚠️ Scripts non exécutés (endpoints réels / Firestore 3.0 absents dans cet environnement).
+
+### Next steps
+1. Lancer `scripts/benchmarks/token_drift_compare.py` avec un endpoint vLLM >=0.10.2 pour capter un premier log réel.
+2. Exposer `token_ids` dans les métas backend (`ws:chat_stream_chunk`) puis brancher le bench dans la CI Guardian.
+3. Surveiller la sortie de `langgraph-checkpoint-firestore` 3.0 pour activer le scénario Firestore dans le script.
+
+### Blockers
+- Extension Firestore 3.0 indisponible (dernier build 0.1.x) → reprise Firestore en attente.
+
 ## Session COMPLETED (2025-10-30 22:10 CET) - Agent : Codex GPT
 
 ### Files touched
@@ -643,4 +671,3 @@ Implémenter le mode hors ligne (Progressive Web App) pour permettre l'accès au
 
 ### Blockers
 - Aucun.
-
