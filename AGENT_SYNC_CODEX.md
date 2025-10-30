@@ -1,3 +1,31 @@
+## Session COMPLETED (2025-10-30 22:45 CET) - Agent : Codex GPT
+
+### Files touched
+- `vite.config.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Refactoré `vite.config.js` pour charger `rollup-plugin-visualizer` via `import()` dynamique et supporter Node >= 20 sans lever `ERR_REQUIRE_ESM` quand `ANALYZE_BUNDLE=1`.
+2. Ajouté un avertissement clair si le plugin n’est pas installé afin que les builds continuent en mode analyse désactivée.
+3. Bump version `beta-3.3.12`, patch notes/changelog synchronisés et tests frontend relancés.
+
+### Tests
+- ✅ `npm run build`
+- ✅ `npm test`
+
+### Next steps
+1. Vérifier dans la CI que le job "Build frontend" repasse en vert avec l’analyse bundle activée.
+2. Documenter dans le guide tooling quand activer `ANALYZE_BUNDLE=1` pour éviter les surprises côté devs.
+3. Évaluer l’ajout d’un flag CLI (`npm run build:analyze`) qui positionne automatiquement la variable d’environnement.
+
+### Blockers
+- Aucun.
+
 ## Session COMPLETED (2025-10-30 15:10 CET) - Agent : Codex GPT
 
 ### Files touched

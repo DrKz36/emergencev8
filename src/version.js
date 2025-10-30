@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.11 : Auth handshake stabilization [ACTUEL]
+ * - beta-3.3.12 : Bundle analyzer ESM compatibility [ACTUEL]
+ * - beta-3.3.11 : Auth handshake stabilization
  * - beta-3.3.10 : Sync script compatibility fix
  * - beta-3.3.9 : Version manifest merge fix
  * - beta-3.3.8 : Document chunk throttling & warnings
@@ -42,8 +43,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.11',
-  name: 'Auth handshake stabilization',
+  version: 'beta-3.3.12',
+  name: 'Bundle analyzer ESM compatibility',
   date: '2025-10-30',
 };
 
@@ -59,6 +60,16 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.12',
+    tagline: 'Bundle analyzer ESM compatibility',
+    date: '2025-10-30',
+    changes: [
+      { type: 'fix', text: 'Chargement dynamique de rollup-plugin-visualizer en ESM afin que l’analyse de bundle fonctionne avec Node >= 20.' },
+      { type: 'quality', text: 'Gestion d’erreur explicite lorsque le plugin est absent ou incompatible pour éviter les builds cassés en CI.' },
+      { type: 'build', text: 'Configuration Vite convertie en fonction async pour ne pas impacter les builds standard hors analyse.' },
+    ]
+  },
   {
     version: 'beta-3.3.11',
     tagline: 'Auth handshake stabilization',
