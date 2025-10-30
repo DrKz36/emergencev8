@@ -7,6 +7,75 @@
 
 ---
 
+## 🚨 [2025-10-30 09:20 CET] INCIDENT CRITICAL - Production DOWN (403)
+
+### Contexte
+L'utilisateur rapporte : "C'est toujours la merde en prod, ça déconnecte en permanence!!"
+
+Console logs montrent :
+```
+WebSocket connection to 'wss://emergence-app.ch/ws/...' failed
+HTTP/2 403 - Access denied
+```
+
+### Investigation (10 min)
+
+**Hypothèses testées :**
+- ❌ Config WebSocket backend cassée → Code OK
+- ❌ Cloud Run timeout → 300s configuré
+- ❌ Bug frontend → Config OK
+- ✅ **CAUSE RACINE : IAM Policy Cloud Run révoquée**
+
+**Diagnostic :**
+```bash
+curl https://emergence-app-486095406755.europe-west1.run.app/ready
+# Résultat: HTTP/2 403 - Access denied
+```
+
+**Le service Cloud Run bloque TOUTES les requêtes** (HTTP + WebSocket) car la policy IAM ne contient PAS :
+```
+--member="allUsers" --role="roles/run.invoker"
+```
+
+### Solution (2 options)
+
+**Option 1 : Re-déployer (RECOMMANDÉ)**
+```bash
+gh workflow run deploy.yml
+```
+Le workflow va automatiquement réappliquer la policy IAM (ligne 75-79 de `.github/workflows/deploy.yml`)
+
+**Option 2 : Fix IAM direct**
+```bash
+gcloud run services add-iam-policy-binding emergence-app \
+  --member="allUsers" \
+  --role="roles/run.invoker" \
+  --region europe-west1
+```
+
+### Fichiers créés
+- `INCIDENT_2025-10-30_WS_DOWN.md` - Rapport d'incident complet avec timeline, cause racine, solution
+
+### Prochaines actions
+1. **UTILISATEUR** : Déclencher re-deploy OU exécuter commande gcloud
+2. Vérifier `/health` retourne 200
+3. Vérifier WebSocket se connecte
+4. Activer monitoring IAM policy (alertes si révoquée)
+5. Ajouter health check externe (UptimeRobot)
+
+### Blocages
+- Pas de `gcloud` CLI dans cet environnement → Impossible de fix directement
+- Pas de `gh` CLI authentifié → Impossible de déclencher workflow
+- **Action utilisateur requise**
+
+### Leçons apprises
+1. Symptômes trompeurs : "WebSocket fail" → vraie cause IAM 403
+2. Toujours tester `/health` HTTP avant de débugger WebSocket
+3. IAM policy fragile, peut être révoquée manuellement
+4. Besoin monitoring proactif IAM policy
+
+---
+
 ## ✅ [2025-10-30 06:48 CET] — Agent: Claude Code
 
 ### Version
