@@ -35,6 +35,10 @@ logger = logging.getLogger(__name__)
 
 class DocumentService:
     MAX_PREVIEW_CHARS = 20000
+    DEFAULT_MAX_VECTOR_CHUNKS = 2048
+    DEFAULT_VECTOR_BATCH_SIZE = 64
+    DEFAULT_CHUNK_INSERT_BATCH_SIZE = 128
+    DEFAULT_MAX_PARAGRAPHS_PER_CHUNK = 2
 
     def __init__(
         self,
@@ -67,6 +71,13 @@ class DocumentService:
             self._env_int(
                 "DOCUMENTS_CHUNK_INSERT_BATCH_SIZE",
                 self.DEFAULT_CHUNK_INSERT_BATCH_SIZE,
+            ),
+        )
+        self.max_paragraphs_per_chunk = max(
+            1,
+            self._env_int(
+                "DOCUMENTS_MAX_PARAGRAPHS_PER_CHUNK",
+                self.DEFAULT_MAX_PARAGRAPHS_PER_CHUNK,
             ),
         )
         if self._ensure_document_collection():
@@ -541,51 +552,60 @@ class DocumentService:
         current_chunk_paragraphs: list[dict[str, Any]] = []
         current_chunk_size = 0
 
+        def flush_current_chunk() -> None:
+            nonlocal current_chunk_paragraphs, current_chunk_size
+            if not current_chunk_paragraphs:
+                return
+            chunks.append(
+                self._finalize_chunk(
+                    current_chunk_paragraphs,
+                    filename,
+                    len(chunks),
+                )
+            )
+            current_chunk_paragraphs = []
+            current_chunk_size = 0
+
+        max_paragraphs = self.max_paragraphs_per_chunk
+
         for para_dict in paragraphs:
             para_text = '\n'.join(para_dict['lines'])
             para_size = len(para_text)
 
             # Si le paragraphe seul dépasse CHUNK_SIZE, le forcer en chunk unique
             if para_size > config.CHUNK_SIZE:
-                # Flush chunk courant
-                if current_chunk_paragraphs:
-                    chunks.append(self._finalize_chunk(
-                        current_chunk_paragraphs,
-                        filename,
-                        len(chunks)
-                    ))
-                    current_chunk_paragraphs = []
-                    current_chunk_size = 0
+                flush_current_chunk()
 
-                # Créer chunk unique pour ce paragraphe long
-                chunks.append(self._finalize_chunk(
-                    [para_dict],
-                    filename,
-                    len(chunks)
-                ))
+                chunks.append(
+                    self._finalize_chunk(
+                        [para_dict],
+                        filename,
+                        len(chunks),
+                    )
+                )
                 continue
 
+            # Limiter la taille des chunks par nombre de paragraphes pour éviter les blocs trop denses
+            if (
+                max_paragraphs
+                and current_chunk_paragraphs
+                and len(current_chunk_paragraphs) >= max_paragraphs
+            ):
+                flush_current_chunk()
+
             # Si ajouter ce paragraphe dépasse CHUNK_SIZE, flush chunk courant
-            if current_chunk_size + para_size > config.CHUNK_SIZE and current_chunk_paragraphs:
-                chunks.append(self._finalize_chunk(
-                    current_chunk_paragraphs,
-                    filename,
-                    len(chunks)
-                ))
-                current_chunk_paragraphs = []
-                current_chunk_size = 0
+            if (
+                current_chunk_paragraphs
+                and current_chunk_size + para_size > config.CHUNK_SIZE
+            ):
+                flush_current_chunk()
 
             # Ajouter paragraphe au chunk courant
             current_chunk_paragraphs.append(para_dict)
             current_chunk_size += para_size + 2  # +2 pour \n\n entre paragraphes
 
         # Flush dernier chunk
-        if current_chunk_paragraphs:
-            chunks.append(self._finalize_chunk(
-                current_chunk_paragraphs,
-                filename,
-                len(chunks)
-            ))
+        flush_current_chunk()
 
         # Étape 3 : Ajouter overlap entre chunks adjacents
         for i in range(len(chunks) - 1):
@@ -1262,4 +1282,3 @@ class DocumentService:
             r["score"] = base_score + diversity_score * 0.10
 
         return results
-

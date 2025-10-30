@@ -1,3 +1,46 @@
+## [2025-10-30 09:20 CET] - Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.13
+- **Nouvelle:** beta-3.3.13 (pas de bump – travaux tooling/documentation)
+
+### Fichiers modifiés
+- `docs/optimizations/langgraph_vllm_surveillance_2025-10.md`
+- `requirements-agents.txt`
+- `scripts/qa/langgraph_persistence_check.py`
+- `scripts/qa/maven_adversarial_probe.py`
+- `scripts/benchmarks/token_drift_compare.py`
+- `reports/benchmarks/vllm_openai_token_drift.log`
+- `reports/langgraph_persistence/README.md`
+- `reports/maven/README.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Veille demandée sur les nouveautés LangGraph Checkpointers 3.0/Vigilant, vLLM `return_token_ids`, optimisations GPU Blackwell/Jetson et benchmarks MAVEN/Agent Misalignment. Besoin de livrer un rapport consolidé + scripts de test pour préparer une intégration CI/Guardian.
+
+### Travail réalisé
+- Rédaction du rapport `docs/optimizations/langgraph_vllm_surveillance_2025-10.md` avec analyse Anima/Neo/Nexus et statuts Ready/Watch/Blocker par module.
+- Création des scripts :
+  - `langgraph_persistence_check.py` pour valider la reprise sur SQLite (et futur Firestore 3.0).
+  - `maven_adversarial_probe.py` pour résumer les scénarios adversariaux et générer des prompts prêts à l’emploi.
+  - `token_drift_compare.py` pour mesurer latence + dérive de tokens entre OpenAI et vLLM (via `return_token_ids`).
+- Ajout d’un log NDJSON (`reports/benchmarks/vllm_openai_token_drift.log`) et README de dépôt pour centraliser les résultats + publication d’un `requirements-agents.txt` listant les nouvelles dépendances LangGraph.
+
+### Tests
+- ⚠️ Aucune exécution automatisée : endpoints réels (OpenAI/vLLM, Firestore 3.0) indisponibles dans l’environnement local.
+
+### Travail de Claude Code pris en compte
+- RAS – documentation construite sur la base des conventions existantes (Guardian, workflows) sans toucher au backend partagé.
+
+### Prochaines actions recommandées
+1. Faire tourner `scripts/benchmarks/token_drift_compare.py` contre un vLLM >=0.10.2 et archiver le log réel dans `reports/benchmarks/`.
+2. Exposer `token_ids` côté backend (frame WS + stockage coût) pour exploiter les mesures de drift.
+3. Ajouter au Guardian un hook optionnel qui déclenche `langgraph_persistence_check.py` dès que `requirements-agents.txt` évolue.
+
+### Blocages
+- `langgraph-checkpoint-firestore` n’a pas encore de build 3.0 → scénario Firestore impossible à valider pour le moment.
+
 ## [2025-10-30 22:10 CET] - Agent: Codex GPT
 
 ### Version
@@ -772,4 +815,3 @@ Les avis demandés à un agent (boutons d’opinion) réapparaissaient dans le c
 
 ### Blocages
 - Aucun.
-

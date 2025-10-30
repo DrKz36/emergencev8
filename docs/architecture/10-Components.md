@@ -10,7 +10,7 @@
 - **`features/chat/router.py`** : REST threads/messages, montage WS ; valide JWT (`get_user_id`) ; fallback REST si WS indisponible et dédoublonne les trames `chat.message` / `chat.opinion` avant d'attaquer le service (comparaison texte + meta).
 - **`features/chat/service.py`** : orchestration multi-agents (ordre préférentiel Google → Anthropic → OpenAI), injection mémoire/RAG, diffusion WS (`ws:chat_stream_*`, `ws:model_info`, `ws:memory_banner`).
 - **`features/memory/analyzer.py` & `memory/gardener.py`** : analyse STM/LTM via LLM, extraction faits/concepts, consolidation ciblée (thread) ou globale, publication `ws:analysis_status`.
-- **`features/documents/service.py`** : upload, parsing (`ParserFactory`), chunking, vectorisation, suppression (purge embeddings associés).
+- **`features/documents/service.py`** : upload, parsing (`ParserFactory`), chunking sémantique (limite 2 paragraphes par chunk configurable via `DOCUMENTS_MAX_PARAGRAPHS_PER_CHUNK`), vectorisation, suppression (purge embeddings associés).
 - **`features/debate/service.py`** : gère `debate:create`, chaîne les tours agents, isole les contextes, publie `ws:debate_*`.
 - **`features/dashboard/service.py`** : agrège coûts (jour/semaine/mois/total), sessions actives, documents traités.
 - **`features/monitoring/router.py`** : healthchecks (`/api/monitoring/health`, `/api/monitoring/health/detailed`) et endpoint system info (`/api/system/info`) pour About page. **V2.1.3:** Version synchronisée `beta-2.1.3` via `BACKEND_VERSION` env var (lignes 38, 384), exposée dans tous les healthchecks et system info.
