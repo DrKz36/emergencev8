@@ -6,6 +6,7 @@ on:
       reason:
         description: "Pourquoi on rétablit l'accès public (optionnel)"
         required: false
+        default: ""
         type: string
 
 env:
@@ -30,10 +31,11 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ env.GCP_PROJECT_ID }}
+          project_id: ${{ steps.auth.outputs.project_id || env.GCP_PROJECT_ID }}
+          export_default_credentials: true
 
       - name: Context
-        if: ${{ github.event.inputs.reason != '' }}
+        if: ${{ github.event.inputs.reason && github.event.inputs.reason != '' }}
         run: echo "ℹ️  Reason: ${{ github.event.inputs.reason }}"
 
       - name: Reapply public invoker binding

@@ -1,3 +1,41 @@
+## [2025-10-31 12:40] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.13
+- **Nouvelle:** beta-3.3.13 (inchangée)
+
+### Fichiers modifiés
+- `.github/workflows/cloud-run-iam-restore.yml`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Le workflow refusait toujours de se lancer: validation GitHub KO car l'expression `github.event.inputs.reason != ''` cassait quand l'input n'était pas fourni, et `gcloud` râlait encore sur le projet par défaut absent.
+
+### Travail réalisé
+1. Ajout d'un `default: ""` sur l'input `reason` + condition `if` qui checke vraiment la présence d'un motif.
+2. `setup-gcloud` pointe désormais sur `steps.auth.outputs.project_id` avec fallback env + `export_default_credentials: true`.
+3. Journal/sync mis à jour pour tracer le hotfix et pointer la prochaine QA (run GitHub réel).
+
+### Tests
+- ⚠️ Pas de tests automatisés (workflow-only, à rejouer dans GitHub Actions).
+
+### Versioning
+- ✅ Pas de code produit → version inchangée.
+
+### Travail de Claude Code pris en compte
+- Aucun impact.
+
+### Prochaines actions recommandées
+1. Relancer le workflow depuis GitHub pour vérifier qu'il passe la validation et restaure l'IAM.
+2. Logguer le run réussi dans l'incident Cloud Run.
+3. Automatiser une alerte Guardian sur le binding `allUsers`.
+
+### Blocages
+- Aucun.
+
+---
+
 ## [2025-10-31 11:10] — Agent: Codex GPT
 
 ### Version
