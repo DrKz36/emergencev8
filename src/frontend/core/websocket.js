@@ -99,7 +99,8 @@ export class WebSocketClient {
       const clientId = (opts && typeof opts === 'object') ? (opts.client_id ?? opts.clientId ?? null) : null;
       this._resetSessionId();
       await ensureAuth({ interactive: true, clientId });
-      this.connect();
+      // Note: connect() sera appelé par main.js handleTokenAvailable() après que le token soit stocké
+      // Pas besoin d'appeler connect() ici, sinon race condition token pas encore disponible
     });
     this.eventBus.on?.('auth:logout', () => {
       try { clearAuth(); } catch {}

@@ -50,7 +50,7 @@ class DocumentService:
         self.db_manager = db_manager
         self.parser_factory = parser_factory
         self.vector_service = vector_service
-        self.document_collection = None
+        self.document_collection: Optional[Any] = None
         self._vector_init_error: Optional[str] = None
         self._vector_warning_logged = False
         self.uploads_dir = Path(uploads_dir).resolve()

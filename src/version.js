@@ -47,12 +47,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.13',
-  name: 'Auth token test bundler compatibility',
-  version: 'beta-3.3.11',
-  name: 'Auth handshake stabilization',
-  version: 'beta-3.3.12',
-  name: 'Bundle analyzer ESM compatibility',
+  version: 'beta-3.3.14',
+  name: 'Production connectivity fixes - WebSocket auth & thread cleanup',
   date: '2025-10-30',
 };
 
@@ -69,11 +65,22 @@ export const TOTAL_FEATURES = 23;
  */
 export const PATCH_NOTES = [
   {
+    version: 'beta-3.3.14',
+    tagline: 'Production connectivity fixes - WebSocket auth & thread cleanup',
+    date: '2025-10-30',
+    changes: [
+      { type: 'fix', text: 'WebSocket race condition résolue - Supprimé appel connect() prématuré dans handler auth:login qui causait "Aucun ID token" à la connexion' },
+      { type: 'fix', text: 'Cleanup automatique threads 404 - localStorage nettoyé + nouveau thread ID stocké quand un thread n\'existe plus' },
+      { type: 'quality', text: 'Amélioration robustesse auth - Le WebSocket attend maintenant que le token soit stocké avant de se connecter' },
+      { type: 'fix', text: 'Fix version.js - Supprimé doublons CURRENT_RELEASE introduits par merge Codex' },
+    ]
+  },
+  {
     version: 'beta-3.3.13',
     tagline: 'Auth token test bundler compatibility',
     date: '2025-10-30',
     changes: [
-      { type: 'tests', text: 'Renommé la suite auth.normalize-token en .test.mjs pour s’aligner sur les runners Node ESM et éviter que Vite traite les tests comme modules CommonJS.' },
+      { type: 'tests', text: 'Renommé la suite auth.normalize-token en .test.mjs pour s\'aligner sur les runners Node ESM et éviter que Vite traite les tests comme modules CommonJS.' },
       { type: 'fix', text: 'Mise à jour des références documentaires et scripts pour pointer vers le nouveau chemin du test.' },
       { type: 'quality', text: 'Validation build/test pour garantir la compatibilité Guardian et pipelines CI.' },
     ]

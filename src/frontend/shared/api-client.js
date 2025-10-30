@@ -507,8 +507,21 @@ export const api = {
       return { id: t?.id || safeId, thread: t, messages: msgs, docs };
     } catch (err) {
       if (err?.status === 404) {
-        console.warn(`[API Client] Thread ${safeId} introuvable (404). Création d’un nouveau thread…`);
+        console.warn(`[API Client] Thread ${safeId} introuvable (404). Création d'un nouveau thread…`);
+        // Nettoyer le localStorage pour éviter de réessayer le thread 404
+        try {
+          const cached = localStorage.getItem('emergence.threadId');
+          if (cached === safeId) {
+            localStorage.removeItem('emergence.threadId');
+          }
+        } catch (_) {}
         const created = await api.createThread({ type: 'chat' });
+        // Stocker le nouveau thread ID
+        try {
+          if (created?.id) {
+            localStorage.setItem('emergence.threadId', created.id);
+          }
+        } catch (_) {}
         return { id: created?.id, thread: created?.thread ?? null, messages: [], docs: [] };
       }
       throw err;
