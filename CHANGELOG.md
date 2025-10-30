@@ -10,6 +10,38 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.11] - 2025-10-30
+
+### 🔒 Auth handshake stabilization
+
+#### 🐞 Correctifs
+
+- Normalisation stricte des tokens (`Bearer`, `token=`, guillemets) avant persistance pour éviter les valeurs corrompues en storage et les connexions WebSocket rejetées (code 4401).
+- Purge automatique des entrées invalides dans `sessionStorage`/`localStorage` et validation via regex JWT pour ne transmettre que des tokens valides au handshake.
+- Réinitialisation explicite de `auth.isAuthenticated` lors d’un changement de session et bascule à `true` après un login réussi afin que le module Chat ne relance plus les prompts avant authentification.
+
+#### 🧠 UI / State
+
+- Marqueur `auth.isAuthenticated` synchronisé dans le `StateManager`, le badge d’état et les listeners afin que les modules puissent détecter immédiatement la fin de l’auth flow.
+- Gestionnaire de stockage cross-onglets fiabilisé : réutilise la normalisation de token pour éviter de repropager des valeurs partielles et relance proprement `handleTokenAvailable`.
+
+#### 🧪 Tests
+
+- `npm run build`
+- `npm test`
+
+#### 📁 Fichiers Modifiés
+
+- `src/frontend/core/auth.js`
+- `src/frontend/core/state-manager.js`
+- `src/frontend/main.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+
+---
+
 ## [beta-3.3.10] - 2025-10-30
 
 ### 🔧 Sync script compatibility fix
