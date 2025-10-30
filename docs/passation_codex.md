@@ -1,3 +1,41 @@
+## [2025-10-31 09:45] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.13
+- **Nouvelle:** beta-3.3.13 (inchangée)
+
+### Fichiers modifiés
+- `.github/workflows/cloud-run-iam-restore.yml`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Premier run du workflow hotfix refusé par GitHub avec "Invalid workflow file" : l'expression utilisait `inputs.reason`, réservée aux workflows appelés. Correction pour pointer `github.event.inputs.reason`.
+
+### Travail réalisé
+1. Mise à jour de l'étape "Context" pour exploiter le bon scope d'inputs sur `workflow_dispatch` et débloquer la validation YAML.
+2. Vérification que le reste de la procédure (gcloud add/remove binding + health check) reste identique.
+3. Mise à jour des docs de session afin que l'astreinte sache que le correctif est en place avant de relancer le workflow.
+
+### Tests
+- ⚠️ Pas de tests automatisés (GitHub Actions uniquement, à rejouer sur la plateforme).
+
+### Versioning
+- ✅ Pas de changement produit → version inchangée.
+
+### Travail de Claude Code pris en compte
+- Aucun impact backend, simple correction de workflow GitHub.
+
+### Prochaines actions recommandées
+1. Relancer le workflow `Restore Cloud Run IAM Access` pour confirmer la levée de l'erreur.
+2. Capturer le log du premier run valide et l'ajouter à l'incident si besoin.
+3. Étudier une alerte Guardian qui détecte la perte du binding `allUsers`.
+
+### Blocages
+- Aucun.
+
+---
+
 ## [2025-10-30 23:15 CET] - Agent: Codex GPT
 
 ### Version
@@ -660,8 +698,6 @@ Aucun, seulement un point de vigilance sur les fichiers `settings-about` modifi�
 
 ### Blocages
 - Aucun.
-
----
 
 ## ✅ [2025-10-27 20:05] — Agent: Codex GPT
 

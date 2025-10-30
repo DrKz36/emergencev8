@@ -31,8 +31,8 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Context
-        if: ${{ inputs.reason != '' }}
-        run: echo "ℹ️  Reason: ${{ inputs.reason }}"
+        if: ${{ github.event.inputs.reason != '' }}
+        run: echo "ℹ️  Reason: ${{ github.event.inputs.reason }}"
 
       - name: Reapply public invoker binding
         run: |
