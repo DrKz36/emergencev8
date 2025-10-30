@@ -18,7 +18,7 @@ function isLikelyJwt(candidate) {
   }
   return true;
 }
-const JWT_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+const JWT_PATTERN = /^[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}$/;
 
 function shouldUseSecureCookies() {
   try {
@@ -58,13 +58,11 @@ function normalizeToken(raw) {
     const eqIndex = candidate.indexOf('=');
     const remainder = eqIndex >= 0 ? candidate.slice(eqIndex + 1) : '';
     return normalizeToken(remainder);
-    return normalizeToken(candidate.split('=', 2)[1] || '');
   }
   if (lower.startsWith('jwt ')) {
     return normalizeToken(candidate.slice(4));
   }
 
-  if (!isLikelyJwt(candidate)) {
   if (!JWT_PATTERN.test(candidate)) {
     return null;
   }

@@ -83,15 +83,11 @@ export const PATCH_NOTES = [
     tagline: 'Auth session continuity',
     date: '2025-10-30',
     changes: [
-      { type: 'fix', text: 'resetForSession() préserve auth.isAuthenticated lorsqu’on garde la session active et le client WebSocket passe ce flag pour éviter les faux prompts de reconnexion.' },
+      { type: 'fix', text: 'resetForSession() préserve auth.isAuthenticated lorsqu\'on garde la session active et le client WebSocket passe ce flag pour éviter les faux prompts de reconnexion.' },
       { type: 'fix', text: 'refreshSessionRole() réaffirme auth.hasToken et auth.isAuthenticated après chaque ping backend pour empêcher les déconnexions instantanées.' },
       { type: 'tests', text: 'Nouvelle suite node:test pour valider la normalisation des tokens (Bearer/token=/padding) et la purge des valeurs invalides.' },
-    version: 'beta-3.3.12',
-    tagline: 'Bundle analyzer ESM compatibility',
-    date: '2025-10-30',
-    changes: [
-      { type: 'fix', text: 'Chargement dynamique de rollup-plugin-visualizer en ESM afin que l’analyse de bundle fonctionne avec Node >= 20.' },
-      { type: 'quality', text: 'Gestion d’erreur explicite lorsque le plugin est absent ou incompatible pour éviter les builds cassés en CI.' },
+      { type: 'fix', text: 'Chargement dynamique de rollup-plugin-visualizer en ESM afin que l\'analyse de bundle fonctionne avec Node >= 20.' },
+      { type: 'quality', text: 'Gestion d\'erreur explicite lorsque le plugin est absent ou incompatible pour éviter les builds cassés en CI.' },
       { type: 'build', text: 'Configuration Vite convertie en fonction async pour ne pas impacter les builds standard hors analyse.' },
     ]
   },

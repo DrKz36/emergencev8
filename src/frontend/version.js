@@ -83,15 +83,11 @@ export const PATCH_NOTES = [
     tagline: 'Auth session continuity',
     date: '2025-10-30',
     changes: [
-      { type: 'fix', text: 'resetForSession() garde auth.isAuthenticated lorsqu’une session reste active pour éviter les prompts de reconnexion fantômes côté Chat.' },
+      { type: 'fix', text: 'resetForSession() garde auth.isAuthenticated lorsqu\'une session reste active pour éviter les prompts de reconnexion fantômes côté Chat.' },
       { type: 'fix', text: 'refreshSessionRole() réactive auth.hasToken/auth.isAuthenticated après chaque vérification backend afin de conserver la WebSocket ouverte.' },
-      { type: 'tests', text: 'Ajout d’un test node:test qui couvre la normalisation des tokens (Bearer/token=/padding) et la purge des entrées invalides.' },
-    version: 'beta-3.3.12',
-    tagline: 'Bundle analyzer ESM compatibility',
-    date: '2025-10-30',
-    changes: [
+      { type: 'tests', text: 'Ajout d\'un test node:test qui couvre la normalisation des tokens (Bearer/token=/padding) et la purge des entrées invalides.' },
       { type: 'fix', text: 'Chargement dynamique de rollup-plugin-visualizer en mode ESM pour que les builds CI avec Node >= 20 ne plantent plus.' },
-      { type: 'quality', text: 'Message d’erreur clair quand l’analyseur est absent ou incompatible pour éviter les pipelines rouges.' },
+      { type: 'quality', text: 'Message d\'erreur clair quand l\'analyseur est absent ou incompatible pour éviter les pipelines rouges.' },
       { type: 'build', text: 'Retourne la configuration Vite depuis une fonction async sans impacter les builds standard.' },
     ]
   },
