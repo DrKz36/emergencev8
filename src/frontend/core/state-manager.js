@@ -122,6 +122,7 @@ export class StateManager {
     if (typeof cleanState.auth.hasToken !== 'boolean') {
       cleanState.auth.hasToken = !!cleanState.auth.hasToken;
     }
+    cleanState.auth.isAuthenticated = cleanState.auth.isAuthenticated === true;
     const authRole = cleanState.auth.role;
     if (typeof authRole === 'string' && authRole.trim()) {
       cleanState.auth.role = authRole.trim().toLowerCase();
@@ -317,6 +318,9 @@ export class StateManager {
     }
 
     this.state = sanitizedState;
+    if (this.state?.auth && typeof this.state.auth === 'object') {
+      this.state.auth.isAuthenticated = false;
+    }
 
     try { localStorage.removeItem('emergence.threadId'); } catch (_) {}
     try { localStorage.removeItem('emergence.documents.selection'); } catch (_) {}
@@ -324,6 +328,7 @@ export class StateManager {
     this.notify('session');
     this.notify('auth.role');
     this.notify('auth.email');
+    this.notify('auth.isAuthenticated');
     this.notify('user');
     this.notify('user.id');
     this.notify('user.email');

@@ -1,3 +1,31 @@
+## Session COMPLETED (2025-10-30 15:10 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/frontend/core/auth.js`
+- `src/frontend/core/state-manager.js`
+- `src/frontend/main.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+
+### Work summary
+1. Durci la persistance des tokens : normalisation (`Bearer`, `token=`, guillemets) + purge des valeurs invalides pour stopper les 4401 en WebSocket.
+2. Ajout du flag `auth.isAuthenticated` dans le `StateManager`, le badge et les flux login/logout afin que le module Chat n’affiche plus le prompt avant authent réelle.
+3. Bump version `beta-3.3.11`, patch notes/changelog synchronisés et tests front exécutés pour valider la correction.
+
+### Tests
+- ✅ `npm run build`
+- ✅ `npm test`
+
+### Next steps
+1. QA manuelle en prod/staging pour vérifier que la reconnexion WS post-login ne renvoie plus de 4401.
+2. Monitorer Guardian/ProdGuardian pour confirmer l’absence de nouveaux AUTH_MISSING juste après login.
+3. Prévoir un test unitaire ciblant `normalizeToken` pour verrouiller les futurs formats de token.
+
+### Blockers
+- Aucun.
+
 ## Session COMPLETED (2025-10-30 09:30 CET) - Agent : Codex GPT
 
 ### Files touched

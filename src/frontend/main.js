@@ -1210,7 +1210,7 @@ class EmergenceClient {
         if (key !== 'emergence.id_token' && key !== 'id_token') return;
         const token = ev?.newValue;
         if (token && token.trim()) {
-          storeAuthToken(token.trim());
+          storeAuthToken(token);
           window.removeEventListener('storage', this.storageListener);
           this.storageListener = null;
           this.handleTokenAvailable('storage');
@@ -1226,6 +1226,8 @@ class EmergenceClient {
   markAuthRequired() {
     try { this.state?.set?.('auth.hasToken', false); }
     catch (err) { console.warn('[main] Impossible de mettre a jour auth.hasToken', err); }
+    try { this.state?.set?.('auth.isAuthenticated', false); }
+    catch (err) { console.warn('[main] Impossible de remettre auth.isAuthenticated', err); }
     try { this.state?.set?.('chat.authRequired', true); }
     catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=true', err); }
     try { this.state?.set?.('auth.role', 'member'); }
@@ -1278,9 +1280,11 @@ class EmergenceClient {
     try { this.state?.resetForSession?.(normalizedSessionId, { userId: normalizedUserId }); }
     catch (err) { console.warn('[main] Impossible de reset l\'etat de session apres login', err, { sessionId: normalizedSessionId }); }
     const token = payload?.token;
-    if (token && token.trim()) storeAuthToken(token.trim(), { expiresAt: payload?.expiresAt });
+    if (token && token.trim()) storeAuthToken(token, { expiresAt: payload?.expiresAt });
     try { this.state?.set?.('auth.hasToken', true); }
     catch (err) { console.warn('[main] Impossible de mettre a jour auth.hasToken', err); }
+    try { this.state?.set?.('auth.isAuthenticated', true); }
+    catch (err) { console.warn('[main] Impossible de mettre a jour auth.isAuthenticated', err); }
     const normalizedRole = this.normalizeRole(payload?.role) ?? 'member';
     try { this.state?.set?.('auth.role', normalizedRole); }
     catch (err) { console.warn('[main] Impossible de mettre a jour auth.role', err); }
@@ -1399,6 +1403,8 @@ class EmergenceClient {
 
     try { this.state?.set?.('auth.hasToken', true); }
     catch (err) { console.warn('[main] Impossible de mettre a jour auth.hasToken', err); }
+    try { this.state?.set?.('auth.isAuthenticated', true); }
+    catch (err) { console.warn('[main] Impossible de mettre a jour auth.isAuthenticated', err); }
     await this.refreshSessionRole(source);
     try { this.state?.set?.('chat.authRequired', false); }
     catch (err) { console.warn('[main] Impossible de signaler chat.authRequired=false', err); }

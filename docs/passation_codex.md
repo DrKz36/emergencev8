@@ -1,3 +1,43 @@
+## [2025-10-30 15:10 CET] - Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.10
+- **Nouvelle:** beta-3.3.11 (PATCH - Auth handshake stabilization)
+
+### Fichiers modifiés
+- `src/frontend/core/auth.js`
+- `src/frontend/core/state-manager.js`
+- `src/frontend/main.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+
+### Contexte
+Déconnexion immédiate après login : le client stockait parfois des tokens corrompus (`Bearer ...`, `token=...`, guillemets) et relançait la WebSocket avec une chaîne invalide → 4401, `auth:missing`, retour à l’écran d’accueil.
+
+### Travail réalisé
+- Ajout d’une normalisation stricte des tokens (regex JWT) + purge des valeurs invalides dans `sessionStorage`/`localStorage` + fallback cookie, ce qui évite de propager des `id_token` foireux.
+- Ajout du flag `auth.isAuthenticated` dans le `StateManager`, le badge et le flux login/logout pour bloquer les prompts/modals tant que l’auth n’est pas réellement finalisée.
+- Synchronisation version `beta-3.3.11`, patch notes + changelog à jour, build/tests front relancés.
+
+### Tests
+- ✅ `npm run build`
+- ✅ `npm test`
+
+### Travail de Claude Code pris en compte
+- Respect du workflow versioning + patch notes instauré par Claude, aucun changement backend requis.
+
+### Prochaines actions recommandées
+1. QA manuelle sur staging/prod pour confirmer qu’aucun `auth:missing` ne surgit juste après login.
+2. Ajouter un test Node ciblant `normalizeToken` pour verrouiller les formats futurs.
+3. Observer Guardian/ProdGuardian pour confirmer la disparition des 4401 post-login.
+
+### Blocages
+- Aucun.
+
+---
+
 ## [2025-10-30 09:30 CET] - Agent: Codex GPT
 
 ### Version
