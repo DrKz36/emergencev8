@@ -1,3 +1,97 @@
+## Session COMPLETED (2025-10-31 12:40 CET) - Agent : Codex GPT
+
+### Files touched
+- `.github/workflows/cloud-run-iam-restore.yml`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Donné une valeur par défaut à l'input `reason` pour éviter l'expression vide qui faisait planter la validation du workflow.
+2. Branché `setup-gcloud` sur `steps.auth.outputs.project_id` (fallback env) et exporté les credentials par défaut pour que les commandes `gcloud` héritent bien du projet.
+3. Raffiné la condition `Context` afin qu'elle ne s'exécute que si un motif est réellement fourni.
+
+### Tests
+- ⚠️ Pas de tests automatisés (workflow GitHub Actions seulement).
+
+### Next steps
+1. Relancer le workflow hotfix côté GitHub pour confirmer qu'il passe la validation YAML + IAM.
+2. Ajouter le log du premier run OK dans l'incident Cloud Run.
+3. Mettre en place un guard Guardian sur la présence du binding `allUsers`.
+
+### Blockers
+- Aucun.
+
+## Session COMPLETED (2025-10-31 11:10 CET) - Agent : Codex GPT
+
+### Files touched
+- `.github/workflows/cloud-run-iam-restore.yml`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Forcé `setup-gcloud` à définir le projet par défaut pour que `gcloud run ...` arrête de gueuler sur l'absence de `project`.
+2. Ajouté `--project $GCP_PROJECT_ID` sur chaque commande `gcloud` du workflow pour qu'un runner vierge n'échoue plus.
+3. Consigné la correction dans le journal de session afin que l'astreinte sache que le workflow est à nouveau exécutable.
+
+### Tests
+- ⚠️ Pas de tests automatisés (workflow GitHub Actions uniquement).
+
+### Next steps
+1. Relancer le workflow `Restore Cloud Run IAM Access` pour valider les bindings IAM depuis GitHub.
+2. Capturer le log du premier run réussi dans l'incident en cours.
+3. Ajouter un guard Guardian qui alerte si `allUsers` saute encore.
+
+### Blockers
+- Aucun.
+
+## Session COMPLETED (2025-10-31 09:45 CET) - Agent : Codex GPT
+
+### Files touched
+- `.github/workflows/cloud-run-iam-restore.yml`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Corrigé la condition `if` du workflow Hotfix IAM pour utiliser `github.event.inputs.reason` et respecter la syntaxe GitHub Actions.
+2. Vérifié que seul le pas d'affichage du motif dépend de l'input optionnel, sans impact sur les commandes gcloud.
+3. Mise à jour des journaux de session pour tracer le fix et rappeler le besoin de QA sur le workflow lors du prochain déclenchement.
+
+### Tests
+- ⚠️ Pas de tests automatisés (workflow GitHub Actions uniquement).
+
+### Next steps
+1. Déclencher le workflow dès que possible pour confirmer que la syntaxe corrigée passe la validation GitHub.
+2. Documenter le résultat du premier run (capture logs) dans l'incident si nécessaire.
+3. Prévoir un guard Guardian qui alerte si le binding allUsers disparaît à nouveau.
+
+### Blockers
+- Aucun.
+
+## Session COMPLETED (2025-10-30 23:15 CET) - Agent : Codex GPT
+
+### Files touched
+- `.github/workflows/cloud-run-iam-restore.yml`
+- `scripts/restore-cloud-run-iam.ps1`
+- `INCIDENT_2025-10-30_WS_DOWN.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Ajouté un workflow GitHub Actions "Restore Cloud Run IAM Access" pour réappliquer le binding `allUsers → roles/run.invoker`, retirer `allAuthenticatedUsers` et vérifier `/health` sans rebuild complet.
+2. Écrit le script PowerShell `restore-cloud-run-iam.ps1` qui déclenche le workflow Hotfix depuis la ligne de commande et guide le suivi du run.
+3. Documenté l'option de hotfix dans `INCIDENT_2025-10-30_WS_DOWN.md` pour qu'on sache qu'il suffit de lancer le workflow ou le script quand la prod retombe en 403.
+
+### Tests
+- ⚠️ Pas de tests automatisés (workflow/action seulement, pas exécutable localement).
+
+### Next steps
+1. Ajouter une alerte Guardian/monitoring qui détecte la disparition de `allUsers` pour déclencher automatiquement le workflow.
+2. Vérifier que le workflow dispose bien des permissions SA côté GitHub (premier run à planifier après merge).
+3. Intégrer le script dans le playbook d'astreinte (docs ops).
+
+### Blockers
+- Aucun.
+
 ## Session COMPLETED (2025-10-30 09:20 CET) - Agent : Codex GPT
 
 ### Files touched

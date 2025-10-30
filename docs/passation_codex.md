@@ -1,3 +1,152 @@
+## [2025-10-31 12:40] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.13
+- **Nouvelle:** beta-3.3.13 (inchangée)
+
+### Fichiers modifiés
+- `.github/workflows/cloud-run-iam-restore.yml`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Le workflow refusait toujours de se lancer: validation GitHub KO car l'expression `github.event.inputs.reason != ''` cassait quand l'input n'était pas fourni, et `gcloud` râlait encore sur le projet par défaut absent.
+
+### Travail réalisé
+1. Ajout d'un `default: ""` sur l'input `reason` + condition `if` qui checke vraiment la présence d'un motif.
+2. `setup-gcloud` pointe désormais sur `steps.auth.outputs.project_id` avec fallback env + `export_default_credentials: true`.
+3. Journal/sync mis à jour pour tracer le hotfix et pointer la prochaine QA (run GitHub réel).
+
+### Tests
+- ⚠️ Pas de tests automatisés (workflow-only, à rejouer dans GitHub Actions).
+
+### Versioning
+- ✅ Pas de code produit → version inchangée.
+
+### Travail de Claude Code pris en compte
+- Aucun impact.
+
+### Prochaines actions recommandées
+1. Relancer le workflow depuis GitHub pour vérifier qu'il passe la validation et restaure l'IAM.
+2. Logguer le run réussi dans l'incident Cloud Run.
+3. Automatiser une alerte Guardian sur le binding `allUsers`.
+
+### Blocages
+- Aucun.
+
+---
+
+## [2025-10-31 11:10] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.13
+- **Nouvelle:** beta-3.3.13 (inchangée)
+
+### Fichiers modifiés
+- `.github/workflows/cloud-run-iam-restore.yml`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Review utilisateur : le workflow Hotfix IAM plantait car `gcloud` n'avait aucun projet actif sur runner neuf → erreur "The required property [project] is not currently set".
+
+### Travail réalisé
+1. Donné explicitement le `project_id` au step `setup-gcloud` pour configurer le contexte par défaut.
+2. Forcé `--project $GCP_PROJECT_ID` sur chaque commande `gcloud run` histoire d'être safe même sans contexte.
+3. Mis à jour la sync + journal pour que l'astreinte sache que le fix est déployé.
+
+### Tests
+- ⚠️ Pas de tests automatisés (GitHub Actions seulement, à rejouer côté GitHub).
+
+### Versioning
+- ✅ Aucun changement produit → version inchangée.
+
+### Travail de Claude Code pris en compte
+- Aucun impact sur ses tâches.
+
+### Prochaines actions recommandées
+1. Relancer le workflow Hotfix pour valider le binding IAM.
+2. Ajouter la sortie du run réussi à l'incident.
+3. Prévoir un guard Guardian qui ping quand `allUsers` saute.
+
+### Blocages
+- Aucun.
+
+---
+
+## [2025-10-31 09:45] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.13
+- **Nouvelle:** beta-3.3.13 (inchangée)
+
+### Fichiers modifiés
+- `.github/workflows/cloud-run-iam-restore.yml`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Premier run du workflow hotfix refusé par GitHub avec "Invalid workflow file" : l'expression utilisait `inputs.reason`, réservée aux workflows appelés. Correction pour pointer `github.event.inputs.reason`.
+
+### Travail réalisé
+1. Mise à jour de l'étape "Context" pour exploiter le bon scope d'inputs sur `workflow_dispatch` et débloquer la validation YAML.
+2. Vérification que le reste de la procédure (gcloud add/remove binding + health check) reste identique.
+3. Mise à jour des docs de session afin que l'astreinte sache que le correctif est en place avant de relancer le workflow.
+
+### Tests
+- ⚠️ Pas de tests automatisés (GitHub Actions uniquement, à rejouer sur la plateforme).
+
+### Versioning
+- ✅ Pas de changement produit → version inchangée.
+
+### Travail de Claude Code pris en compte
+- Aucun impact backend, simple correction de workflow GitHub.
+
+### Prochaines actions recommandées
+1. Relancer le workflow `Restore Cloud Run IAM Access` pour confirmer la levée de l'erreur.
+2. Capturer le log du premier run valide et l'ajouter à l'incident si besoin.
+3. Étudier une alerte Guardian qui détecte la perte du binding `allUsers`.
+
+### Blocages
+- Aucun.
+
+---
+
+## [2025-10-30 23:15 CET] - Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.13
+- **Nouvelle:** beta-3.3.13 (pas de bump – automatisation ops)
+
+### Fichiers modifiés
+- `.github/workflows/cloud-run-iam-restore.yml`
+- `scripts/restore-cloud-run-iam.ps1`
+- `INCIDENT_2025-10-30_WS_DOWN.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Incident 403 Cloud Run toujours en attente d'action. Besoin d'un bouton rouge rapide quand `allUsers → roles/run.invoker` dégage, sans attendre un redeploy complet.
+
+### Travail réalisé
+- Workflow GitHub Actions "Restore Cloud Run IAM Access" : réapplique binding, purge `allAuthenticatedUsers`, vérifie `/health`.
+- Script PowerShell `restore-cloud-run-iam.ps1` pour déclencher le workflow via `gh workflow run` (utile en astreinte Windows).
+- Incident doc mise à jour avec l'option hotfix pour que n'importe qui sache lancer le workflow/script.
+
+### Tests
+- ⚠️ Rien d'automatisé (workflow non exécutable ici, validation à faire sur GitHub après merge).
+
+### Travail de Claude Code pris en compte
+- Doc incident initiale respectée, ajout d'une troisième option sans toucher à leurs analyses.
+
+### Prochaines actions recommandées
+1. Lancer le workflow une fois mergé pour vérifier que le SA GCP a bien les droits.
+2. Brancher un check Guardian/cron qui surveille la présence d'`allUsers` et notifie si ça saute.
+3. Ajouter le script au runbook d'astreinte (docs ops) + prévoir équivalent bash.
+
+### Blocages
+- Aucun, juste pas possible de tester le workflow depuis ce container.
+
 ## [2025-10-30 09:20 CET] - Agent: Codex GPT
 
 ### Version
@@ -625,8 +774,6 @@ Aucun, seulement un point de vigilance sur les fichiers `settings-about` modifi�
 
 ### Blocages
 - Aucun.
-
----
 
 ## ✅ [2025-10-27 20:05] — Agent: Codex GPT
 
