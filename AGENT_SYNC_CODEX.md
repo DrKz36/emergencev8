@@ -1,3 +1,28 @@
+## Session COMPLETED (2025-10-30 23:15 CET) - Agent : Codex GPT
+
+### Files touched
+- `.github/workflows/cloud-run-iam-restore.yml`
+- `scripts/restore-cloud-run-iam.ps1`
+- `INCIDENT_2025-10-30_WS_DOWN.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Ajouté un workflow GitHub Actions "Restore Cloud Run IAM Access" pour réappliquer le binding `allUsers → roles/run.invoker`, retirer `allAuthenticatedUsers` et vérifier `/health` sans rebuild complet.
+2. Écrit le script PowerShell `restore-cloud-run-iam.ps1` qui déclenche le workflow Hotfix depuis la ligne de commande et guide le suivi du run.
+3. Documenté l'option de hotfix dans `INCIDENT_2025-10-30_WS_DOWN.md` pour qu'on sache qu'il suffit de lancer le workflow ou le script quand la prod retombe en 403.
+
+### Tests
+- ⚠️ Pas de tests automatisés (workflow/action seulement, pas exécutable localement).
+
+### Next steps
+1. Ajouter une alerte Guardian/monitoring qui détecte la disparition de `allUsers` pour déclencher automatiquement le workflow.
+2. Vérifier que le workflow dispose bien des permissions SA côté GitHub (premier run à planifier après merge).
+3. Intégrer le script dans le playbook d'astreinte (docs ops).
+
+### Blockers
+- Aucun.
+
 ## Session COMPLETED (2025-10-30 09:20 CET) - Agent : Codex GPT
 
 ### Files touched

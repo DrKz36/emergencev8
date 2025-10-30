@@ -1,3 +1,38 @@
+## [2025-10-30 23:15 CET] - Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.13
+- **Nouvelle:** beta-3.3.13 (pas de bump – automatisation ops)
+
+### Fichiers modifiés
+- `.github/workflows/cloud-run-iam-restore.yml`
+- `scripts/restore-cloud-run-iam.ps1`
+- `INCIDENT_2025-10-30_WS_DOWN.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Incident 403 Cloud Run toujours en attente d'action. Besoin d'un bouton rouge rapide quand `allUsers → roles/run.invoker` dégage, sans attendre un redeploy complet.
+
+### Travail réalisé
+- Workflow GitHub Actions "Restore Cloud Run IAM Access" : réapplique binding, purge `allAuthenticatedUsers`, vérifie `/health`.
+- Script PowerShell `restore-cloud-run-iam.ps1` pour déclencher le workflow via `gh workflow run` (utile en astreinte Windows).
+- Incident doc mise à jour avec l'option hotfix pour que n'importe qui sache lancer le workflow/script.
+
+### Tests
+- ⚠️ Rien d'automatisé (workflow non exécutable ici, validation à faire sur GitHub après merge).
+
+### Travail de Claude Code pris en compte
+- Doc incident initiale respectée, ajout d'une troisième option sans toucher à leurs analyses.
+
+### Prochaines actions recommandées
+1. Lancer le workflow une fois mergé pour vérifier que le SA GCP a bien les droits.
+2. Brancher un check Guardian/cron qui surveille la présence d'`allUsers` et notifie si ça saute.
+3. Ajouter le script au runbook d'astreinte (docs ops) + prévoir équivalent bash.
+
+### Blocages
+- Aucun, juste pas possible de tester le workflow depuis ce container.
+
 ## [2025-10-30 09:20 CET] - Agent: Codex GPT
 
 ### Version

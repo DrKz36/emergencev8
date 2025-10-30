@@ -132,6 +132,24 @@ gcloud run services get-iam-policy emergence-app \
 
 ---
 
+### Option 3 : Hotfix GitHub Actions (sans accès gcloud)
+
+**Pour rétablir l'accès public directement depuis GitHub Actions :**
+
+- Via CLI : `gh workflow run cloud-run-iam-restore.yml -f reason="Hotfix 403"`
+- Via UI : Actions → "Restore Cloud Run IAM Access" → Run workflow
+
+**Ce que ça fait :**
+- ✅ Réapplique `allUsers → roles/run.invoker`
+- ✅ Supprime `allAuthenticatedUsers` si présent
+- ✅ Vérifie `/health` automatiquement
+
+**Alternative locale :** `.\scripts\restore-cloud-run-iam.ps1 -Reason "Hotfix 403"`
+
+**Durée** : ~1 minute
+
+---
+
 ## 📊 Timeline de l'incident
 
 | Heure | Event |
