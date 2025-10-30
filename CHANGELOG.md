@@ -10,6 +10,31 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.12] - 2025-10-30
+
+### 📦 Bundle analyzer ESM compatibility
+
+#### 🐞 Correctifs
+
+- Chargement du plugin `rollup-plugin-visualizer` via `import()` dynamique pour respecter le mode ESM de Node >= 20 et éviter l'erreur `ERR_REQUIRE_ESM` lors des builds CI.
+- Conversion de `vite.config.js` en configuration asynchrone permettant d'insérer l'analyseur uniquement quand `ANALYZE_BUNDLE=1` sans impacter les builds standards.
+- Gestion des erreurs avec un avertissement clair lorsque le plugin est absent ou incompatible afin de laisser le pipeline poursuivre sans crash.
+
+#### 🧪 Tests
+
+- `npm run build`
+- `npm test`
+
+#### 📁 Fichiers Modifiés
+
+- `vite.config.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+
+---
+
 ## [beta-3.3.11] - 2025-10-30
 
 ### 🔒 Auth handshake stabilization
