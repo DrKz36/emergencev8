@@ -20,11 +20,9 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.13 : Auth token test bundler compatibility [ACTUEL]
+ * - beta-3.3.14 : Production connectivity fixes - WebSocket auth & thread cleanup
+ * - beta-3.3.13 : Auth token test bundler compatibility
  * - beta-3.3.12 : Auth session continuity
- * - beta-3.3.11 : Auth handshake stabilization
- * - beta-3.3.11 : Auth handshake stabilization [ACTUEL]
- * - beta-3.3.12 : Bundle analyzer ESM compatibility [ACTUEL]
  * - beta-3.3.11 : Auth handshake stabilization
  * - beta-3.3.10 : Sync script compatibility fix
  * - beta-3.3.9 : Version manifest merge fix
@@ -47,13 +45,9 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.13',
-  name: 'Auth token test bundler compatibility',
-  version: 'beta-3.3.11',
-  name: 'Auth handshake stabilization',
-  version: 'beta-3.3.12',
-  name: 'Bundle analyzer ESM compatibility',
-  date: '2025-10-30',
+  version: 'beta-3.3.15',
+  name: 'Large document upload timeout fix - Strict limits to prevent Cloud Run timeout',
+  date: '2025-10-31',
 };
 
 export const VERSION = CURRENT_RELEASE.version;

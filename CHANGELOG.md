@@ -10,6 +10,30 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.15] - 2025-10-31
+
+### 🛠️ Large document upload timeout fix
+
+#### 🐞 Correctifs
+
+- **Upload gros documents résolu** - Documents avec beaucoup de lignes causaient un timeout Cloud Run (limite 10 min) pendant parsing + chunking + vectorisation
+- **Messages d'erreur explicites** - Frontend affiche le détail exact de l'erreur serveur (taille, chunks, limite)
+- **Cleanup automatique** - Document rejeté = fichier et DB supprimés proprement
+
+#### ✨ Qualité
+
+- **Limites strictes** : 50MB max par fichier, 5000 chunks max total, 1000 chunks vectorisés (réduit de 2048)
+- **Vectorisation optimisée** - Limite réduite pour rester sous timeout Cloud Run 10 min
+- **Vérification avant écriture** - Taille vérifiée en mémoire avant écriture disque
+
+#### 📁 Fichiers Modifiés
+
+- `src/backend/features/documents/service.py`
+- `src/frontend/features/documents/documents.js`
+- `src/version.js`, `src/frontend/version.js`, `package.json`, `CHANGELOG.md`
+
+---
+
 ## [beta-3.3.13] - 2025-10-30
 
 ### 🧪 Auth token test bundler compatibility

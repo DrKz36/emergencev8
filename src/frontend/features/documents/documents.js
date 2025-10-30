@@ -391,7 +391,12 @@ export default class DocumentsModule {
                 }
             } catch (error) {
                 results.push({ ok: false, name: file.name, error });
-                this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, { type: 'error', message: `chec upload : ${file.name}` });
+                // Extraire le message d'erreur du serveur (ex: fichier trop volumineux, trop de chunks, etc.)
+                const errorDetail = error?.message || 'Erreur inconnue';
+                this.eventBus.emit(EVENTS.SHOW_NOTIFICATION, {
+                    type: 'error',
+                    message: `Échec upload ${file.name}: ${errorDetail}`
+                });
             }
         }
 

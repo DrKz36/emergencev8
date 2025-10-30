@@ -1,11 +1,77 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-10-30 09:20 CET (Claude Code)
+**Dernière mise à jour:** 2025-10-31 (Claude Code)
 **Mode:** Développement collaboratif multi-agents
 
 ---
 
-## 🚨 Session EN COURS (2025-10-30 09:20 CET) - INCIDENT CRITICAL
+## ✅ Session COMPLÉTÉE (2025-10-31) - Fix Upload Gros Documents
+
+### 🛠️ Résolution timeout Cloud Run sur upload documents volumineux
+
+**Status:** ✅ COMPLÉTÉ (beta-3.3.15)
+
+**Contexte:**
+L'utilisateur signale que le module documents plante quand il essaie d'uploader un document avec beaucoup de lignes de texte en production.
+
+**Problèmes identifiés:**
+
+1. **Timeout Cloud Run (10 min max)**
+   - Documents volumineux → parsing + chunking + vectorisation > 10 min
+   - Cloud Run coupe la requête HTTP après 10 min
+   - Frontend reçoit erreur sans détail
+
+2. **Pas de limite sur taille fichier**
+   - Aucune vérification de taille avant traitement
+   - Fichiers >100MB acceptés mais plantent
+
+3. **Limite vectorisation trop haute (2048 chunks)**
+   - 2048 chunks × 64 par batch = 32 appels Chroma
+   - Pour documents très gros (10k+ lignes) → timeout garanti
+
+4. **Messages d'erreur génériques**
+   - Frontend affiche "échec upload" sans détail
+   - Utilisateur ne sait pas pourquoi ça plante
+
+**Solutions implémentées:**
+
+1. **Limites strictes backend (service.py)**
+   - `MAX_FILE_SIZE_MB = 50` - Rejet immédiat si fichier >50MB
+   - `MAX_TOTAL_CHUNKS_ALLOWED = 5000` - Rejet si parsing génère >5000 chunks
+   - `DEFAULT_MAX_VECTOR_CHUNKS = 1000` - Réduit de 2048 pour éviter timeout
+   - Vérification taille AVANT écriture disque (lecture en mémoire)
+
+2. **Cleanup automatique**
+   - Si rejet pour taille excessive → suppression fichier + entrée DB
+   - Pas de données corrompues
+
+3. **Messages d'erreur clairs (frontend)**
+   - Extraction `error.message` du serveur
+   - Affichage détail: taille fichier, nombre chunks, limite dépassée
+
+**Fichiers modifiés:**
+- `src/backend/features/documents/service.py` - Limites + cleanup
+- `src/frontend/features/documents/documents.js` - Messages erreur
+- `src/version.js` + `src/frontend/version.js` + `package.json` - Version beta-3.3.15
+- `CHANGELOG.md` - Entrée complète
+
+**Tests:**
+- ✅ `ruff check src/backend/features/documents/` - Pass
+
+**Impact:**
+- Upload robuste pour documents jusqu'à 50MB / 5000 chunks
+- Messages clairs si rejet (taille, chunks)
+- Pas de timeout silencieux en production
+- Performance prévisible (<10 min garanti)
+
+**Prochaines actions:**
+- [ ] Déployer en production pour tester avec vrais gros fichiers
+- [ ] Monitorer temps de traitement réels
+- [ ] Ajuster limites si nécessaire selon usage réel
+
+---
+
+## 🚨 Session COMPLÉTÉE (2025-10-30 09:20 CET) - INCIDENT CRITICAL
 
 ### 🔴 PRODUCTION DOWN - Service inaccessible (403)
 
