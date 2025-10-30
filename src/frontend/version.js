@@ -23,6 +23,7 @@
  * - beta-3.3.13 : Auth token test bundler compatibility [ACTUEL]
  * - beta-3.3.12 : Auth session continuity
  * - beta-3.3.11 : Auth handshake stabilization
+ * - beta-3.3.11 : Auth handshake stabilization [ACTUEL]
  * - beta-3.3.10 : Sync script compatibility fix
  * - beta-3.3.9 : Version manifest merge fix
  * - beta-3.3.8 : Document chunk throttling & warnings
@@ -46,6 +47,8 @@
 export const CURRENT_RELEASE = {
   version: 'beta-3.3.13',
   name: 'Auth token test bundler compatibility',
+  version: 'beta-3.3.11',
+  name: 'Auth handshake stabilization',
   date: '2025-10-30',
 };
 
