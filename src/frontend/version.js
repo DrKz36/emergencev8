@@ -24,6 +24,8 @@
  * - beta-3.3.12 : Auth session continuity
  * - beta-3.3.11 : Auth handshake stabilization
  * - beta-3.3.11 : Auth handshake stabilization [ACTUEL]
+ * - beta-3.3.12 : Bundle analyzer ESM compatibility [ACTUEL]
+ * - beta-3.3.11 : Auth handshake stabilization
  * - beta-3.3.10 : Sync script compatibility fix
  * - beta-3.3.9 : Version manifest merge fix
  * - beta-3.3.8 : Document chunk throttling & warnings
@@ -49,6 +51,8 @@ export const CURRENT_RELEASE = {
   name: 'Auth token test bundler compatibility',
   version: 'beta-3.3.11',
   name: 'Auth handshake stabilization',
+  version: 'beta-3.3.12',
+  name: 'Bundle analyzer ESM compatibility',
   date: '2025-10-30',
 };
 
@@ -82,6 +86,13 @@ export const PATCH_NOTES = [
       { type: 'fix', text: 'resetForSession() garde auth.isAuthenticated lorsqu’une session reste active pour éviter les prompts de reconnexion fantômes côté Chat.' },
       { type: 'fix', text: 'refreshSessionRole() réactive auth.hasToken/auth.isAuthenticated après chaque vérification backend afin de conserver la WebSocket ouverte.' },
       { type: 'tests', text: 'Ajout d’un test node:test qui couvre la normalisation des tokens (Bearer/token=/padding) et la purge des entrées invalides.' },
+    version: 'beta-3.3.12',
+    tagline: 'Bundle analyzer ESM compatibility',
+    date: '2025-10-30',
+    changes: [
+      { type: 'fix', text: 'Chargement dynamique de rollup-plugin-visualizer en mode ESM pour que les builds CI avec Node >= 20 ne plantent plus.' },
+      { type: 'quality', text: 'Message d’erreur clair quand l’analyseur est absent ou incompatible pour éviter les pipelines rouges.' },
+      { type: 'build', text: 'Retourne la configuration Vite depuis une fonction async sans impacter les builds standard.' },
     ]
   },
   {

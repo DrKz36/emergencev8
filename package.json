@@ -3,6 +3,7 @@
   "private": true,
   "version": "beta-3.3.13",
   "version": "beta-3.3.11",
+  "version": "beta-3.3.12",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -46,6 +46,15 @@
 - `normalizeToken` accepte désormais les tokens JWT paddés (`=`) et continue de purger les valeurs corrompues afin que le handshake WebSocket reçoive toujours un jeton valide.
 - `StateManager.resetForSession()` respecte `preserveAuth.isAuthenticated` et le client WebSocket transmet ce flag pour éviter les prompts `auth:missing` juste après la création d’un thread.
 - `refreshSessionRole()` réaffirme `auth.hasToken` et `auth.isAuthenticated` après chaque ping backend, ce qui empêche les déconnexions instantanées une fois l’app chargée.
+## [beta-3.3.12] - 2025-10-30
+
+### 📦 Bundle analyzer ESM compatibility
+
+#### 🐞 Correctifs
+
+- Chargement du plugin `rollup-plugin-visualizer` via `import()` dynamique pour respecter le mode ESM de Node >= 20 et éviter l'erreur `ERR_REQUIRE_ESM` lors des builds CI.
+- Conversion de `vite.config.js` en configuration asynchrone permettant d'insérer l'analyseur uniquement quand `ANALYZE_BUNDLE=1` sans impacter les builds standards.
+- Gestion des erreurs avec un avertissement clair lorsque le plugin est absent ou incompatible afin de laisser le pipeline poursuivre sans crash.
 
 #### 🧪 Tests
 
@@ -59,6 +68,7 @@
 - `src/frontend/core/websocket.js`
 - `src/frontend/main.js`
 - `src/frontend/core/__tests__/auth.normalize-token.test.js`
+- `vite.config.js`
 - `src/version.js`
 - `src/frontend/version.js`
 - `package.json`

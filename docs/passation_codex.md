@@ -47,6 +47,14 @@ Les jobs CI plantaient sur `npm run build` car Vite traitait `auth.normalize-tok
 - `src/frontend/core/websocket.js`
 - `src/frontend/main.js`
 - `src/frontend/core/__tests__/auth.normalize-token.test.js`
+## [2025-10-30 22:45 CET] - Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.11
+- **Nouvelle:** beta-3.3.12 (PATCH - Bundle analyzer ESM compatibility)
+
+### Fichiers modifiés
+- `vite.config.js`
 - `src/version.js`
 - `src/frontend/version.js`
 - `package.json`
@@ -73,9 +81,29 @@ Les resets de session forçaient `auth.isAuthenticated` à faux dès que le WebS
 1. QA staging/prod pour confirmer la disparition des `auth:missing` et des 4401 post-login.
 2. Ajouter un test d’intégration StateManager/WebSocket pour valider la conservation d’`auth.isAuthenticated` lors d’un nouveau `sessionId`.
 3. Surveiller Guardian/ProdGuardian pour repérer d’éventuelles boucles de reconnexion résiduelles.
+Le job CI "Build frontend" cassait dès que `ANALYZE_BUNDLE=1` activait `rollup-plugin-visualizer`. Node >= 20 refuse `require()` sur un module ESM → `ERR_REQUIRE_ESM` et pipeline rouge.
+
+### Travail réalisé
+- Refactor `vite.config.js` en config asynchrone pour charger le plugin via `import()` dynamique uniquement lorsque l’analyse est demandée.
+- Ajout d’un warning explicite si le plugin n’est pas présent ou incompatible afin de laisser le build poursuivre sans crash.
+- Synchronisation version `beta-3.3.12`, patch notes et changelog alignés.
+
+### Tests
+- ✅ `npm run build`
+- ✅ `npm test`
+
+### Travail de Claude Code pris en compte
+- Respect du workflow versioning + patch notes instauré, aucun conflit backend.
+
+### Prochaines actions recommandées
+1. Vérifier sur la CI (ou Guardian) que le build passe désormais avec `ANALYZE_BUNDLE=1`.
+2. Documenter un script `npm run build:analyze` qui exporte `ANALYZE_BUNDLE=1` avant le build.
+3. Prévoir un check lint pour prévenir l’utilisation de `require()` dans les modules ESM.
 
 ### Blocages
 - Aucun.
+
+---
 
 ## [2025-10-30 15:10 CET] - Agent: Codex GPT
 

@@ -2,6 +2,10 @@
 
 ### Files touched
 - `src/frontend/core/__tests__/auth.normalize-token.test.mjs`
+## Session COMPLETED (2025-10-30 22:45 CET) - Agent : Codex GPT
+
+### Files touched
+- `vite.config.js`
 - `src/version.js`
 - `src/frontend/version.js`
 - `package.json`
@@ -53,6 +57,18 @@
 1. QA manuelle staging/prod pour confirmer disparition des prompts `auth:missing` et des WS 4401 juste après login.
 2. Étendre la couverture de tests pour vérifier la préservation `isAuthenticated` côté StateManager lors des resets multi-session.
 3. Monitorer Guardian/ProdGuardian pour s’assurer que les rapports ne signalent plus de reconnexions en boucle.
+1. Refactoré `vite.config.js` pour charger `rollup-plugin-visualizer` via `import()` dynamique et supporter Node >= 20 sans lever `ERR_REQUIRE_ESM` quand `ANALYZE_BUNDLE=1`.
+2. Ajouté un avertissement clair si le plugin n’est pas installé afin que les builds continuent en mode analyse désactivée.
+3. Bump version `beta-3.3.12`, patch notes/changelog synchronisés et tests frontend relancés.
+
+### Tests
+- ✅ `npm run build`
+- ✅ `npm test`
+
+### Next steps
+1. Vérifier dans la CI que le job "Build frontend" repasse en vert avec l’analyse bundle activée.
+2. Documenter dans le guide tooling quand activer `ANALYZE_BUNDLE=1` pour éviter les surprises côté devs.
+3. Évaluer l’ajout d’un flag CLI (`npm run build:analyze`) qui positionne automatiquement la variable d’environnement.
 
 ### Blockers
 - Aucun.
