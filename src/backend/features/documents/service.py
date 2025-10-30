@@ -811,6 +811,9 @@ class DocumentService:
                 "total_chunks": len(chunk_rows),
             }
 
+        except HTTPException:
+            # Laisser passer les HTTPException (413, 400, etc.) telles quelles
+            raise
         except Exception as e:
             logger.error(
                 f"Erreur lors du traitement du fichier '{filename}': {e}", exc_info=True
