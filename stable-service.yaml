@@ -24,7 +24,7 @@ spec:
         run.googleapis.com/startup-cpu-boost: 'true'
     spec:
       containerConcurrency: 80
-      timeoutSeconds: 300
+      timeoutSeconds: 600
       # serviceAccountName removed - using default Compute Engine service account
       # TODO: Create firestore-sync@ service account with proper IAM permissions before re-enabling
       containers:

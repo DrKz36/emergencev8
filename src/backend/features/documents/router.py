@@ -57,6 +57,7 @@ async def upload_document(
     file: UploadFile = File(...),
     session: deps.SessionContext = Depends(deps.get_session_context),
     service: DocumentService = Depends(_get_document_service),
+    request: Request = None,
 ) -> Dict[str, Any]:
     supported_types = [".pdf", ".txt", ".docx"]
     filename = file.filename or ""
@@ -68,10 +69,27 @@ async def upload_document(
             status_code=400,
             detail=f"Type de fichier non supporte. Types acceptes : {supported_types}",
         )
+
+    # Keep-alive session pendant upload long pour éviter inactivity timeout
+    session_manager = None
+    if request:
+        try:
+            session_manager = await deps.get_session_manager_optional(request)
+        except Exception:
+            pass  # Continuer même si session_manager non disponible
+
     try:
         result = await service.process_uploaded_file(
             file, session_id=session.session_id, user_id=session.user_id
         )
+
+        # Marquer activité session après upload réussi
+        if session_manager:
+            try:
+                session_manager._update_session_activity(session.session_id)
+            except Exception as e:
+                logger.warning(f"Impossible de mettre à jour l'activité session: {e}")
+
         vectorized = bool(result.get("vectorized", True))
         warning = result.get("warning")
         if vectorized and warning:
