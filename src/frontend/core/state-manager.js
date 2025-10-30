@@ -122,6 +122,7 @@ export class StateManager {
     if (typeof cleanState.auth.hasToken !== 'boolean') {
       cleanState.auth.hasToken = !!cleanState.auth.hasToken;
     }
+    cleanState.auth.isAuthenticated = cleanState.auth.isAuthenticated === true;
     const authRole = cleanState.auth.role;
     if (typeof authRole === 'string' && authRole.trim()) {
       cleanState.auth.role = authRole.trim().toLowerCase();
@@ -242,12 +243,14 @@ export class StateManager {
       role: keepRole = false,
       email: keepEmail = false,
       hasToken: keepHasToken = true,
+      isAuthenticated: keepIsAuthenticated = false,
     } = preserveAuth;
 
     const preservedAuth = { ...(this.state?.auth || {}) };
     if (!keepRole) delete preservedAuth.role;
     if (!keepEmail) delete preservedAuth.email;
     if (!keepHasToken) delete preservedAuth.hasToken;
+    if (!keepIsAuthenticated) delete preservedAuth.isAuthenticated;
 
     const rawCurrentUserId = this.state?.user?.id;
     const currentUserId = typeof rawCurrentUserId === 'string' ? rawCurrentUserId.trim() : (rawCurrentUserId == null ? null : String(rawCurrentUserId).trim());
@@ -317,6 +320,12 @@ export class StateManager {
     }
 
     this.state = sanitizedState;
+    if (this.state?.auth && typeof this.state.auth === 'object') {
+      const preservedValue = keepIsAuthenticated && Object.prototype.hasOwnProperty.call(preservedAuth, 'isAuthenticated')
+        ? !!preservedAuth.isAuthenticated
+        : false;
+      this.state.auth.isAuthenticated = preservedValue;
+    }
 
     try { localStorage.removeItem('emergence.threadId'); } catch (_) {}
     try { localStorage.removeItem('emergence.documents.selection'); } catch (_) {}
@@ -324,6 +333,7 @@ export class StateManager {
     this.notify('session');
     this.notify('auth.role');
     this.notify('auth.email');
+    this.notify('auth.isAuthenticated');
     this.notify('user');
     this.notify('user.id');
     this.notify('user.email');

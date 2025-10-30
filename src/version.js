@@ -20,7 +20,9 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.10 : Sync script compatibility fix [ACTUEL]
+ * - beta-3.3.12 : Auth session continuity [ACTUEL]
+ * - beta-3.3.11 : Auth handshake stabilization
+ * - beta-3.3.10 : Sync script compatibility fix
  * - beta-3.3.9 : Version manifest merge fix
  * - beta-3.3.8 : Document chunk throttling & warnings
  * - beta-3.3.7 : Document upload resilience & cross-agent routing
@@ -41,8 +43,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.10',
-  name: 'Sync script compatibility fix',
+  version: 'beta-3.3.12',
+  name: 'Auth session continuity',
   date: '2025-10-30',
 };
 
@@ -58,6 +60,26 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.12',
+    tagline: 'Auth session continuity',
+    date: '2025-10-30',
+    changes: [
+      { type: 'fix', text: 'resetForSession() préserve auth.isAuthenticated lorsqu’on garde la session active et le client WebSocket passe ce flag pour éviter les faux prompts de reconnexion.' },
+      { type: 'fix', text: 'refreshSessionRole() réaffirme auth.hasToken et auth.isAuthenticated après chaque ping backend pour empêcher les déconnexions instantanées.' },
+      { type: 'tests', text: 'Nouvelle suite node:test pour valider la normalisation des tokens (Bearer/token=/padding) et la purge des valeurs invalides.' },
+    ]
+  },
+  {
+    version: 'beta-3.3.11',
+    tagline: 'Auth handshake stabilization',
+    date: '2025-10-30',
+    changes: [
+      { type: 'fix', text: 'Normalisation stricte des tokens (Bearer/token=/guillemets) avant stockage + purge des entrées invalides pour éviter les WebSocket 4401.' },
+      { type: 'quality', text: 'StateManager expose désormais auth.isAuthenticated pour bloquer les prompts tant que l’auth n’est pas finalisée.' },
+      { type: 'quality', text: 'Listener storage multi-onglets et badge auth synchronisés avec la nouvelle normalisation de token.' },
+    ]
+  },
   {
     version: 'beta-3.3.10',
     tagline: 'Sync script compatibility fix',
