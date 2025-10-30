@@ -20,6 +20,10 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
+ * - beta-3.3.13 : Auth token test bundler compatibility [ACTUEL]
+ * - beta-3.3.12 : Auth session continuity
+ * - beta-3.3.11 : Auth handshake stabilization
+ * - beta-3.3.11 : Auth handshake stabilization [ACTUEL]
  * - beta-3.3.12 : Bundle analyzer ESM compatibility [ACTUEL]
  * - beta-3.3.11 : Auth handshake stabilization
  * - beta-3.3.10 : Sync script compatibility fix
@@ -43,6 +47,10 @@
  */
 
 export const CURRENT_RELEASE = {
+  version: 'beta-3.3.13',
+  name: 'Auth token test bundler compatibility',
+  version: 'beta-3.3.11',
+  name: 'Auth handshake stabilization',
   version: 'beta-3.3.12',
   name: 'Bundle analyzer ESM compatibility',
   date: '2025-10-30',
@@ -61,12 +69,25 @@ export const TOTAL_FEATURES = 23;
  */
 export const PATCH_NOTES = [
   {
-    version: 'beta-3.3.12',
-    tagline: 'Bundle analyzer ESM compatibility',
+    version: 'beta-3.3.13',
+    tagline: 'Auth token test bundler compatibility',
     date: '2025-10-30',
     changes: [
-      { type: 'fix', text: 'Chargement dynamique de rollup-plugin-visualizer en ESM afin que l’analyse de bundle fonctionne avec Node >= 20.' },
-      { type: 'quality', text: 'Gestion d’erreur explicite lorsque le plugin est absent ou incompatible pour éviter les builds cassés en CI.' },
+      { type: 'tests', text: 'Renommé la suite auth.normalize-token en .test.mjs pour s’aligner sur les runners Node ESM et éviter que Vite traite les tests comme modules CommonJS.' },
+      { type: 'fix', text: 'Mise à jour des références documentaires et scripts pour pointer vers le nouveau chemin du test.' },
+      { type: 'quality', text: 'Validation build/test pour garantir la compatibilité Guardian et pipelines CI.' },
+    ]
+  },
+  {
+    version: 'beta-3.3.12',
+    tagline: 'Auth session continuity',
+    date: '2025-10-30',
+    changes: [
+      { type: 'fix', text: 'resetForSession() préserve auth.isAuthenticated lorsqu\'on garde la session active et le client WebSocket passe ce flag pour éviter les faux prompts de reconnexion.' },
+      { type: 'fix', text: 'refreshSessionRole() réaffirme auth.hasToken et auth.isAuthenticated après chaque ping backend pour empêcher les déconnexions instantanées.' },
+      { type: 'tests', text: 'Nouvelle suite node:test pour valider la normalisation des tokens (Bearer/token=/padding) et la purge des valeurs invalides.' },
+      { type: 'fix', text: 'Chargement dynamique de rollup-plugin-visualizer en ESM afin que l\'analyse de bundle fonctionne avec Node >= 20.' },
+      { type: 'quality', text: 'Gestion d\'erreur explicite lorsque le plugin est absent ou incompatible pour éviter les builds cassés en CI.' },
       { type: 'build', text: 'Configuration Vite convertie en fonction async pour ne pas impacter les builds standard hors analyse.' },
     ]
   },

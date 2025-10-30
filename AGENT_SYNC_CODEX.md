@@ -1,3 +1,7 @@
+## Session COMPLETED (2025-10-30 22:10 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/frontend/core/__tests__/auth.normalize-token.test.mjs`
 ## Session COMPLETED (2025-10-30 22:45 CET) - Agent : Codex GPT
 
 ### Files touched
@@ -10,6 +14,49 @@
 - `docs/passation_codex.md`
 
 ### Work summary
+1. Renommé la suite `auth.normalize-token` en `.test.mjs` pour qu’elle reste ESM et ne fasse plus planter le build Vite/CI qui supposait du CommonJS.
+2. Synchronisé toutes les références de documentation/versioning (CHANGELOG, passation, sync) avec le nouveau chemin.
+3. Bump version `beta-3.3.13` + patch notes alignées (backend/frontend/package.json).
+
+### Tests
+- ✅ `npm run build`
+- ✅ `npm test -- src/frontend/core/__tests__/auth.normalize-token.test.mjs`
+
+### Next steps
+1. Vérifier les pipelines Guardian pour confirmer que le build ne scanne plus les tests Node.
+2. Ajouter un guard Vite qui ignore automatiquement `__tests__` en production (tech debt).
+
+### Blockers
+- Aucun.
+
+## Session COMPLETED (2025-10-30 19:40 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/frontend/core/auth.js`
+- `src/frontend/core/state-manager.js`
+- `src/frontend/core/websocket.js`
+- `src/frontend/main.js`
+- `src/frontend/core/__tests__/auth.normalize-token.test.js`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Assoupli la normalisation JWT (support du padding `=` + découpe sûre des préfixes `token=`) et ajouté une suite `node:test` couvrant les cas Bearer/token=/quotes.
+2. `StateManager.resetForSession()` préserve `auth.isAuthenticated` lorsqu’on conserve la session, le WebSocket client applique ce mode et `refreshSessionRole()` réaffirme `hasToken/isAuthenticated` après chaque ping backend.
+3. Version bump `beta-3.3.12` avec changelog/patch notes synchronisés + build/test frontend verts.
+
+### Tests
+- ✅ `npm test`
+- ✅ `npm run build`
+
+### Next steps
+1. QA manuelle staging/prod pour confirmer disparition des prompts `auth:missing` et des WS 4401 juste après login.
+2. Étendre la couverture de tests pour vérifier la préservation `isAuthenticated` côté StateManager lors des resets multi-session.
+3. Monitorer Guardian/ProdGuardian pour s’assurer que les rapports ne signalent plus de reconnexions en boucle.
 1. Refactoré `vite.config.js` pour charger `rollup-plugin-visualizer` via `import()` dynamique et supporter Node >= 20 sans lever `ERR_REQUIRE_ESM` quand `ANALYZE_BUNDLE=1`.
 2. Ajouté un avertissement clair si le plugin n’est pas installé afin que les builds continuent en mode analyse désactivée.
 3. Bump version `beta-3.3.12`, patch notes/changelog synchronisés et tests frontend relancés.

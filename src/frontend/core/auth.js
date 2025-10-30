@@ -5,7 +5,20 @@
 const TOKEN_KEYS = ['emergence.id_token', 'id_token'];
 const COOKIE_NAME = 'id_token';
 const SESSION_COOKIE = 'emergence_session_id';
-const JWT_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+const JWT_SEGMENT_PATTERN = /^[A-Za-z0-9_-]+={0,2}$/;
+
+function isLikelyJwt(candidate) {
+  if (typeof candidate !== 'string') return false;
+  const parts = candidate.split('.');
+  if (!Array.isArray(parts) || parts.length !== 3) return false;
+  for (const part of parts) {
+    if (!part || !JWT_SEGMENT_PATTERN.test(part)) {
+      return false;
+    }
+  }
+  return true;
+}
+const JWT_PATTERN = /^[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}\.[A-Za-z0-9_-]+={0,2}$/;
 
 function shouldUseSecureCookies() {
   try {
@@ -42,7 +55,9 @@ function normalizeToken(raw) {
     return normalizeToken(candidate.slice(7));
   }
   if (lower.startsWith('token=')) {
-    return normalizeToken(candidate.split('=', 2)[1] || '');
+    const eqIndex = candidate.indexOf('=');
+    const remainder = eqIndex >= 0 ? candidate.slice(eqIndex + 1) : '';
+    return normalizeToken(remainder);
   }
   if (lower.startsWith('jwt ')) {
     return normalizeToken(candidate.slice(4));

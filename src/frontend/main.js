@@ -1373,6 +1373,12 @@ class EmergenceClient {
     try { this.app?.handleRoleChange?.(normalizedRole); }
     catch (err) { console.warn('[main] Impossible de rafraichir la navigation (refreshSessionRole)', err); }
 
+    try { this.state?.set?.('auth.hasToken', true); }
+    catch (err) { console.warn('[main] Impossible de confirmer auth.hasToken après refreshSessionRole', err); }
+
+    try { this.state?.set?.('auth.isAuthenticated', true); }
+    catch (err) { console.warn('[main] Impossible de confirmer auth.isAuthenticated après refreshSessionRole', err); }
+
     // FIX: Mettre à jour le badge après le refresh de session
     try {
       this.badge?.setLogged?.(true);

@@ -7,6 +7,47 @@
 
 ---
 
+## ✅ [2025-10-30 06:48 CET] — Agent: Claude Code
+
+### Version
+- **Ancienne:** beta-3.3.12 (cassée)
+- **Nouvelle:** beta-3.3.12 (réparée)
+
+### Fichiers modifiés
+- `package.json`
+- `src/version.js`
+- `src/frontend/version.js`
+- `src/frontend/core/auth.js`
+- `AGENT_SYNC_CLAUDE.md`
+- `docs/passation_claude.md`
+
+### Contexte
+Les tests de validation foiraient sur la branche Codex `codex/fix-app-disconnection-issue-after-login-6ttt6l` à cause de multiples merges Git foireux qui ont créé des fichiers JavaScript invalides.
+
+### Travail réalisé
+**1. package.json** - Supprimé 3 versions dupliquées (beta-3.3.13, beta-3.3.11, beta-3.3.12), gardé beta-3.3.12 uniquement.
+
+**2. src/version.js + src/frontend/version.js** - Fusionné DEUX objets beta-3.3.12 dupliqués ("Auth session" + "Bundle analyzer") en un seul, échappé toutes les apostrophes non-échappées (`lorsqu'on` → `lorsqu\'on`, `d'erreur` → `d\'erreur`, etc).
+
+**3. src/frontend/core/auth.js** - Supprimé doublons de code (deux `return` consécutifs ligne 60-61, deux `if` consécutifs ligne 67-68), fixé `JWT_PATTERN` pour accepter padding base64 `={0,2}` dans chaque segment JWT.
+
+### Tests
+- ✅ **Avant:** 17/20 pass, 3 fails (SyntaxError)
+- ✅ **Après:** 37/37 pass, 0 fails
+
+### Travail de Codex pris en compte
+Codex a fait plusieurs commits qui se sont mal fusionnés automatiquement (Git a gardé toutes les versions au lieu de choisir). Tous les problèmes viennent de merges Git foireux, pas de bugs logiques.
+
+### Prochaines actions recommandées
+1. Codex doit valider `git status` et `npm test` avant chaque commit
+2. Configurer pre-commit hook qui bloque si tests échouent
+3. Review branche `claude/fix-codex-merge-conflicts-011CUcqkzzQZERWMU3i8TGB4` et merger vers main si QA OK
+
+### Blocages
+- Aucun.
+
+---
+
 ## [2025-10-29 08:15 CET] — Agent: Claude Code
 
 ### 🚨 FIX URGENT - Timeout déploiement Cloud Run résolu

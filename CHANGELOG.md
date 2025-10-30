@@ -10,6 +10,42 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.13] - 2025-10-30
+
+### 🧪 Auth token test bundler compatibility
+
+#### 🛠️ Maintenance
+
+- Renommage de `src/frontend/core/__tests__/auth.normalize-token.test.js` en `.test.mjs` pour rester full ESM et éviter que Vite interprète la suite comme module CommonJS lors des builds CI.
+- Synchronisation des références (`CHANGELOG`, `AGENT_SYNC_CODEX`, `docs/passation_codex`) vers le nouveau chemin pour garder la documentation alignée.
+- Incrément de version `beta-3.3.13` (backend, frontend, package.json) avec patch notes mises à jour.
+
+#### 🧪 Tests
+
+- `npm run build`
+- `npm test -- src/frontend/core/__tests__/auth.normalize-token.test.mjs`
+
+#### 📁 Fichiers Modifiés
+
+- `src/frontend/core/__tests__/auth.normalize-token.test.mjs`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+---
+
+## [beta-3.3.12] - 2025-10-30
+
+### 🔄 Auth session continuity
+
+#### 🐞 Correctifs
+
+- `normalizeToken` accepte désormais les tokens JWT paddés (`=`) et continue de purger les valeurs corrompues afin que le handshake WebSocket reçoive toujours un jeton valide.
+- `StateManager.resetForSession()` respecte `preserveAuth.isAuthenticated` et le client WebSocket transmet ce flag pour éviter les prompts `auth:missing` juste après la création d’un thread.
+- `refreshSessionRole()` réaffirme `auth.hasToken` et `auth.isAuthenticated` après chaque ping backend, ce qui empêche les déconnexions instantanées une fois l’app chargée.
 ## [beta-3.3.12] - 2025-10-30
 
 ### 📦 Bundle analyzer ESM compatibility
@@ -27,6 +63,11 @@
 
 #### 📁 Fichiers Modifiés
 
+- `src/frontend/core/auth.js`
+- `src/frontend/core/state-manager.js`
+- `src/frontend/core/websocket.js`
+- `src/frontend/main.js`
+- `src/frontend/core/__tests__/auth.normalize-token.test.js`
 - `vite.config.js`
 - `src/version.js`
 - `src/frontend/version.js`

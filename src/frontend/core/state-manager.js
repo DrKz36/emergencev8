@@ -243,12 +243,14 @@ export class StateManager {
       role: keepRole = false,
       email: keepEmail = false,
       hasToken: keepHasToken = true,
+      isAuthenticated: keepIsAuthenticated = false,
     } = preserveAuth;
 
     const preservedAuth = { ...(this.state?.auth || {}) };
     if (!keepRole) delete preservedAuth.role;
     if (!keepEmail) delete preservedAuth.email;
     if (!keepHasToken) delete preservedAuth.hasToken;
+    if (!keepIsAuthenticated) delete preservedAuth.isAuthenticated;
 
     const rawCurrentUserId = this.state?.user?.id;
     const currentUserId = typeof rawCurrentUserId === 'string' ? rawCurrentUserId.trim() : (rawCurrentUserId == null ? null : String(rawCurrentUserId).trim());
@@ -319,6 +321,10 @@ export class StateManager {
 
     this.state = sanitizedState;
     if (this.state?.auth && typeof this.state.auth === 'object') {
+      const preservedValue = keepIsAuthenticated && Object.prototype.hasOwnProperty.call(preservedAuth, 'isAuthenticated')
+        ? !!preservedAuth.isAuthenticated
+        : false;
+      this.state.auth.isAuthenticated = preservedValue;
       this.state.auth.isAuthenticated = false;
     }
 
