@@ -64,6 +64,9 @@ L'utilisateur signale que le module documents plante quand il essaie d'uploader 
 - Pas de timeout silencieux en production
 - Performance prévisible (<10 min garanti)
 
+**Review Codex (fix appliqué):**
+Codex a détecté que le `except Exception` global catchait mon `HTTPException(413)` et le transformait en 500 générique. Fix appliqué: ajout `except HTTPException: raise` avant le catch global pour préserver les codes d'erreur intentionnels.
+
 **Prochaines actions:**
 - [ ] Déployer en production pour tester avec vrais gros fichiers
 - [ ] Monitorer temps de traitement réels
