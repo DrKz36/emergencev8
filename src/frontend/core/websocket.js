@@ -5,7 +5,7 @@ import { EVENTS } from '../shared/constants.js';
 import { ensureAuth, getIdToken, clearAuth } from './auth.js';
 
 const SESSION_STATE_PRESERVE = {
-  preserveAuth: { role: true, email: true, hasToken: true },
+  preserveAuth: { role: true, email: true, hasToken: true, isAuthenticated: true },
   preserveUser: true,
   preserveThreads: true,
 };

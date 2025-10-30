@@ -20,7 +20,10 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.10 : Sync script compatibility fix [ACTUEL]
+ * - beta-3.3.13 : Auth token test bundler compatibility [ACTUEL]
+ * - beta-3.3.12 : Auth session continuity
+ * - beta-3.3.11 : Auth handshake stabilization
+ * - beta-3.3.10 : Sync script compatibility fix
  * - beta-3.3.9 : Version manifest merge fix
  * - beta-3.3.8 : Document chunk throttling & warnings
  * - beta-3.3.7 : Document upload resilience & cross-agent routing
@@ -41,8 +44,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.10',
-  name: 'Sync script compatibility fix',
+  version: 'beta-3.3.13',
+  name: 'Auth token test bundler compatibility',
   date: '2025-10-30',
 };
 
@@ -58,6 +61,36 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.13',
+    tagline: 'Auth token test bundler compatibility',
+    date: '2025-10-30',
+    changes: [
+      { type: 'tests', text: 'Renommé auth.normalize-token.test en .test.mjs pour rester 100% ESM et compatible avec les runners Node/GitLab.' },
+      { type: 'fix', text: 'Références doc & scripts alignées sur la nouvelle extension pour éviter les erreurs 404.' },
+      { type: 'quality', text: 'npm run build + npm test relancés pour verrouiller la compatibilité CI.' },
+    ]
+  },
+  {
+    version: 'beta-3.3.12',
+    tagline: 'Auth session continuity',
+    date: '2025-10-30',
+    changes: [
+      { type: 'fix', text: 'resetForSession() garde auth.isAuthenticated lorsqu’une session reste active pour éviter les prompts de reconnexion fantômes côté Chat.' },
+      { type: 'fix', text: 'refreshSessionRole() réactive auth.hasToken/auth.isAuthenticated après chaque vérification backend afin de conserver la WebSocket ouverte.' },
+      { type: 'tests', text: 'Ajout d’un test node:test qui couvre la normalisation des tokens (Bearer/token=/padding) et la purge des entrées invalides.' },
+    ]
+  },
+  {
+    version: 'beta-3.3.11',
+    tagline: 'Auth handshake stabilization',
+    date: '2025-10-30',
+    changes: [
+      { type: 'fix', text: 'Normalisation des tokens (Bearer/token=/guillemets) avant stockage + purge des valeurs invalides pour empêcher les WebSocket 4401.' },
+      { type: 'quality', text: 'StateManager et badge auth exposent auth.isAuthenticated pour bloquer les prompts tant que l’utilisateur n’est pas réellement connecté.' },
+      { type: 'quality', text: 'Listeners multi-onglets & reconnecteurs WS réutilisent la normalisation afin d’éviter les replays de tokens corrompus.' },
+    ]
+  },
   {
     version: 'beta-3.3.10',
     tagline: 'Sync script compatibility fix',
