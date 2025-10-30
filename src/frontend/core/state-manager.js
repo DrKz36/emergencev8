@@ -325,6 +325,7 @@ export class StateManager {
         ? !!preservedAuth.isAuthenticated
         : false;
       this.state.auth.isAuthenticated = preservedValue;
+      this.state.auth.isAuthenticated = false;
     }
 
     try { localStorage.removeItem('emergence.threadId'); } catch (_) {}

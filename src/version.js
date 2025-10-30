@@ -22,6 +22,7 @@
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
  * - beta-3.3.12 : Auth session continuity [ACTUEL]
  * - beta-3.3.11 : Auth handshake stabilization
+ * - beta-3.3.11 : Auth handshake stabilization [ACTUEL]
  * - beta-3.3.10 : Sync script compatibility fix
  * - beta-3.3.9 : Version manifest merge fix
  * - beta-3.3.8 : Document chunk throttling & warnings
@@ -45,6 +46,8 @@
 export const CURRENT_RELEASE = {
   version: 'beta-3.3.12',
   name: 'Auth session continuity',
+  version: 'beta-3.3.11',
+  name: 'Auth handshake stabilization',
   date: '2025-10-30',
 };
 
