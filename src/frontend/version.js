@@ -21,8 +21,10 @@
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
  * - beta-3.3.21 : Fix allowlist overwrite FINAL - Merge intelligent Firestore (union emails) [ACTUEL]
+ * - beta-3.3.21 : Fix bouton TTS mobile disparu + Sync desktop/mobile [ACTUEL]
  * - beta-3.3.20 : Fix allowlist overwrite on redeploy - Preserve manually added accounts
  * - beta-3.3.19 : Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur
+ * - beta-3.3.19 : TTS toggle header + Voix par agent + Auto-play silencieux
  * - beta-3.3.18 : Fix Voice DI container leak - Réutilise app.state container
  * - beta-3.3.17 : Fix Voice TTS - Auth token + SVG icon cohérent
  * - beta-3.3.16 : Voice agents avec ElevenLabs TTS - Écouter les messages
@@ -54,6 +56,7 @@
 export const CURRENT_RELEASE = {
   version: 'beta-3.3.21',
   name: 'Fix allowlist overwrite FINAL - Merge intelligent Firestore',
+  name: 'Fix bouton TTS mobile disparu + Sync desktop/mobile',
   date: '2025-10-31',
 };
 
@@ -70,6 +73,18 @@ export const TOTAL_FEATURES = 23;
  */
 export const PATCH_NOTES = [
   {
+    version: 'beta-3.3.21',
+    tagline: 'Fix TTS mobile - Bouton disparu + Synchronisation desktop/mobile',
+    date: '2025-10-31',
+    changes: [
+      { type: 'fix', text: 'Fix bouton TTS mobile disparu - Le bouton pour activer/désactiver la synthèse vocale était invisible sur mobile (manquait dans header-right)' },
+      { type: 'fix', text: 'Ajout bouton TTS mobile dans chat-header-right - Même structure que le bouton RAG mobile (rag-control--mobile)' },
+      { type: 'fix', text: 'Synchronisation état TTS desktop/mobile - Les deux boutons (desktop + mobile) se synchronisent maintenant automatiquement quand on toggle l\'un ou l\'autre' },
+      { type: 'quality', text: 'Event listeners unifiés - Pattern Array.forEach pour gérer desktop + mobile simultanément (cohérence avec bouton RAG)' },
+      { type: 'quality', text: 'CSS responsive déjà OK - Le fichier rag-power-button.css gère automatiquement l\'affichage/masquage selon le breakpoint mobile (<=760px portrait)' },
+    ]
+  },
+  {
     version: 'beta-3.3.20',
     tagline: 'Fix allowlist overwrite - Preserve manually added accounts',
     date: '2025-10-31',
@@ -82,13 +97,18 @@ export const PATCH_NOTES = [
   },
   {
     version: 'beta-3.3.19',
-    tagline: 'Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur',
+    tagline: 'Fix modal reprise + TTS toggle header + Voix par agent',
     date: '2025-10-31',
     changes: [
       { type: 'fix', text: 'Modal de reprise ne réapparaît plus après que l\'utilisateur ait fait son choix (nouvelle conversation ou reprendre)' },
       { type: 'fix', text: 'Événements auth:restored et auth:login:success n\'affichent plus le modal si un thread actif valide existe déjà' },
       { type: 'quality', text: 'Vérification thread valide dans _prepareConversationPrompt avant de réinitialiser les flags' },
       { type: 'quality', text: 'Logs de debug améliorés pour tracer les appels de modal de reprise' },
+      { type: 'feature', text: 'Bouton toggle TTS dans header - Active/désactive la synthèse vocale des réponses (plus besoin de cliquer "Écouter" sur chaque message)' },
+      { type: 'feature', text: 'Voix personnalisées par agent - Anima voix féminine (Rachel), Neo voix masculine jeune (Antoni), Nexus voix masculine posée (Josh)' },
+      { type: 'feature', text: 'Auto-play silencieux - Les réponses des agents sont lues automatiquement quand TTS activé (pas de player audio visible)' },
+      { type: 'quality', text: 'Mapping voice_id backend - API /api/voice/tts accepte agent_id optionnel pour sélectionner la voix ElevenLabs dynamiquement' },
+      { type: 'fix', text: 'Suppression player audio flottant - Le lecteur visible en bas à droite qui ne disparaissait pas a été remplacé par audio invisible' },
     ]
   },
   {
@@ -96,9 +116,56 @@ export const PATCH_NOTES = [
     tagline: 'Fix Voice DI container leak - Réutilise app.state container',
     date: '2025-10-31',
     changes: [
-      { type: 'fix', text: 'Fix memory leak critique - Endpoint /api/voice/tts créait un nouveau ServiceContainer() à chaque appel' },
-      { type: 'fix', text: 'Sockets httpx leakés - Chaque requête TTS instanciait un nouveau httpx.AsyncClient jamais fermé' },
-      { type: 'quality', text: 'Pattern DI unifié - _ensure_voice_service_rest() utilise request.app.state.service_container' },
+      { type: 'fix', text: 'Fix memory leak critique - Endpoint /api/voice/tts créait un nouveau ServiceContainer() à chaque appel au lieu de réutiliser app.state.service_container' },
+      { type: 'fix', text: 'Sockets httpx leakés - Chaque requête TTS instanciait un nouveau httpx.AsyncClient jamais fermé par shutdown hook' },
+      { type: 'quality', text: 'Pattern DI unifié - _ensure_voice_service_rest() utilise maintenant request.app.state.service_container comme le WebSocket' },
+      { type: 'quality', text: 'Review Codex appliquée - Correctif suite à review de Codex GPT qui a détecté le leak avant merge' },
+    ]
+  },
+  {
+    version: 'beta-3.3.17',
+    tagline: 'Fix Voice TTS - Auth token + SVG icon cohérent',
+    date: '2025-10-31',
+    changes: [
+      { type: 'fix', text: 'Fix authentification TTS - Utilisait le mauvais nom de clé localStorage (\'authToken\' au lieu de \'emergence.id_token\'), causait erreur 401 Unauthorized' },
+      { type: 'fix', text: 'Utilisation de getIdToken() - Import de la fonction auth officielle qui gère correctement le token JWT (sessionStorage + localStorage)' },
+      { type: 'quality', text: 'Icône speaker cohérente - SVG refait avec stroke-linecap="round", stroke-linejoin="round", fill="none" pour matcher le design des autres icônes' },
+      { type: 'fix', text: 'Fix Response format - Bypass api-client (qui parse JSON) pour appeler fetch() direct et récupérer Response brute nécessaire pour .blob()' },
+    ]
+  },
+  {
+    version: 'beta-3.3.16',
+    tagline: 'Voice agents with ElevenLabs TTS - Listen to agent responses',
+    date: '2025-10-31',
+    changes: [
+      { type: 'feature', text: 'Voix des agents avec ElevenLabs - Les messages d\'agents peuvent maintenant être écoutés via TTS (Text-to-Speech) de haute qualité' },
+      { type: 'feature', text: 'Bouton Écouter sur chaque message - Un bouton speaker apparaît sur tous les messages d\'agents pour générer l\'audio à la demande' },
+      { type: 'feature', text: 'Player audio flottant - Le player audio apparaît en bas à droite avec contrôles (play/pause/volume) pour une UX propre' },
+      { type: 'feature', text: 'API REST TTS - Endpoint POST /api/voice/tts pour générer de l\'audio à partir de n\'importe quel texte (streaming MP3)' },
+      { type: 'quality', text: 'Configuration ElevenLabs centralisée - Clés API, voice ID et model ID configurés via .env (eleven_multilingual_v2)' },
+    ]
+  },
+  {
+    version: 'beta-3.3.15',
+    tagline: 'Large document upload timeout fix - Strict limits to prevent Cloud Run timeout',
+    date: '2025-10-31',
+    changes: [
+      { type: 'fix', text: 'Upload gros documents résolu - Documents avec beaucoup de lignes causaient un timeout Cloud Run (limite 10 min) pendant parsing + chunking + vectorisation' },
+      { type: 'quality', text: 'Limites strictes ajoutées - 50MB max par fichier, 5000 chunks max (rejet explicite si dépassement)' },
+      { type: 'quality', text: 'Vectorisation optimisée - Limite réduite de 2048 à 1000 chunks pour rester sous le timeout' },
+      { type: 'fix', text: 'Messages d\'erreur clairs - Frontend affiche maintenant le détail exact de l\'erreur serveur (taille fichier, nombre de chunks, etc.)' },
+      { type: 'quality', text: 'Cleanup automatique - Si document rejeté pour taille excessive, le fichier et l\'entrée DB sont supprimés proprement' },
+    ]
+  },
+  {
+    version: 'beta-3.3.14',
+    tagline: 'Production connectivity fixes - WebSocket auth & thread cleanup',
+    date: '2025-10-30',
+    changes: [
+      { type: 'fix', text: 'WebSocket race condition résolue - Supprimé appel connect() prématuré dans handler auth:login qui causait "Aucun ID token" à la connexion' },
+      { type: 'fix', text: 'Cleanup automatique threads 404 - localStorage nettoyé + nouveau thread ID stocké quand un thread n\'existe plus' },
+      { type: 'quality', text: 'Amélioration robustesse auth - Le WebSocket attend maintenant que le token soit stocké avant de se connecter' },
+      { type: 'fix', text: 'Fix version.js - Supprimé doublons CURRENT_RELEASE introduits par merge Codex' },
     ]
   },
   {
@@ -106,9 +173,9 @@ export const PATCH_NOTES = [
     tagline: 'Auth token test bundler compatibility',
     date: '2025-10-30',
     changes: [
-      { type: 'tests', text: 'Renommé auth.normalize-token.test en .test.mjs pour rester 100% ESM et compatible avec les runners Node/GitLab.' },
-      { type: 'fix', text: 'Références doc & scripts alignées sur la nouvelle extension pour éviter les erreurs 404.' },
-      { type: 'quality', text: 'npm run build + npm test relancés pour verrouiller la compatibilité CI.' },
+      { type: 'tests', text: 'Renommé la suite auth.normalize-token en .test.mjs pour s\'aligner sur les runners Node ESM et éviter que Vite traite les tests comme modules CommonJS.' },
+      { type: 'fix', text: 'Mise à jour des références documentaires et scripts pour pointer vers le nouveau chemin du test.' },
+      { type: 'quality', text: 'Validation build/test pour garantir la compatibilité Guardian et pipelines CI.' },
     ]
   },
   {
@@ -116,12 +183,12 @@ export const PATCH_NOTES = [
     tagline: 'Auth session continuity',
     date: '2025-10-30',
     changes: [
-      { type: 'fix', text: 'resetForSession() garde auth.isAuthenticated lorsqu\'une session reste active pour éviter les prompts de reconnexion fantômes côté Chat.' },
-      { type: 'fix', text: 'refreshSessionRole() réactive auth.hasToken/auth.isAuthenticated après chaque vérification backend afin de conserver la WebSocket ouverte.' },
-      { type: 'tests', text: 'Ajout d\'un test node:test qui couvre la normalisation des tokens (Bearer/token=/padding) et la purge des entrées invalides.' },
-      { type: 'fix', text: 'Chargement dynamique de rollup-plugin-visualizer en mode ESM pour que les builds CI avec Node >= 20 ne plantent plus.' },
-      { type: 'quality', text: 'Message d\'erreur clair quand l\'analyseur est absent ou incompatible pour éviter les pipelines rouges.' },
-      { type: 'build', text: 'Retourne la configuration Vite depuis une fonction async sans impacter les builds standard.' },
+      { type: 'fix', text: 'resetForSession() préserve auth.isAuthenticated lorsqu\'on garde la session active et le client WebSocket passe ce flag pour éviter les faux prompts de reconnexion.' },
+      { type: 'fix', text: 'refreshSessionRole() réaffirme auth.hasToken et auth.isAuthenticated après chaque ping backend pour empêcher les déconnexions instantanées.' },
+      { type: 'tests', text: 'Nouvelle suite node:test pour valider la normalisation des tokens (Bearer/token=/padding) et la purge des valeurs invalides.' },
+      { type: 'fix', text: 'Chargement dynamique de rollup-plugin-visualizer en ESM afin que l\'analyse de bundle fonctionne avec Node >= 20.' },
+      { type: 'quality', text: 'Gestion d\'erreur explicite lorsque le plugin est absent ou incompatible pour éviter les builds cassés en CI.' },
+      { type: 'build', text: 'Configuration Vite convertie en fonction async pour ne pas impacter les builds standard hors analyse.' },
     ]
   },
   {
@@ -129,9 +196,9 @@ export const PATCH_NOTES = [
     tagline: 'Auth handshake stabilization',
     date: '2025-10-30',
     changes: [
-      { type: 'fix', text: 'Normalisation des tokens (Bearer/token=/guillemets) avant stockage + purge des valeurs invalides pour empêcher les WebSocket 4401.' },
-      { type: 'quality', text: 'StateManager et badge auth exposent auth.isAuthenticated pour bloquer les prompts tant que l’utilisateur n’est pas réellement connecté.' },
-      { type: 'quality', text: 'Listeners multi-onglets & reconnecteurs WS réutilisent la normalisation afin d’éviter les replays de tokens corrompus.' },
+      { type: 'fix', text: 'Normalisation stricte des tokens (Bearer/token=/guillemets) avant stockage + purge des entrées invalides pour éviter les WebSocket 4401.' },
+      { type: 'quality', text: 'StateManager expose désormais auth.isAuthenticated pour bloquer les prompts tant que l’auth n’est pas finalisée.' },
+      { type: 'quality', text: 'Listener storage multi-onglets et badge auth synchronisés avec la nouvelle normalisation de token.' },
     ]
   },
   {
@@ -139,9 +206,9 @@ export const PATCH_NOTES = [
     tagline: 'Sync script compatibility fix',
     date: '2025-10-30',
     changes: [
-      { type: 'fix', text: 'scripts/sync_version.ps1 lit CURRENT_RELEASE et ne plante plus quand VERSION n’est plus un littéral.' },
-      { type: 'quality', text: 'Le script récapitule exactement les fichiers touchés et respecte le mode dry-run.' },
-      { type: 'tests', text: 'npm run build + npm test pour valider la stabilité côté frontend.' }
+      { type: 'fix', text: 'scripts/sync_version.ps1 sait lire CURRENT_RELEASE et ne casse plus quand VERSION n’est plus un littéral.' },
+      { type: 'quality', text: 'Le script liste précisément les fichiers mis à jour et respecte le mode dry-run sans bruit inutile.' },
+      { type: 'tests', text: 'npm run build + npm test pour vérifier que la refactorisation n’impacte pas le front.' }
     ]
   },
   {
@@ -149,9 +216,9 @@ export const PATCH_NOTES = [
     tagline: 'Version manifest merge fix',
     date: '2025-10-29',
     changes: [
-      { type: 'fix', text: 'Résout la fusion simultanée des fichiers de version qui dupliquait les clefs et cassait le build Vite.' },
-      { type: 'quality', text: 'Mise en cohérence des métadonnées frontend/backend et nettoyage du changelog.' },
-      { type: 'tests', text: 'Build frontend relancé pour valider l’intégration post-merge.' }
+      { type: 'fix', text: 'Corrige la fusion simultanée des fichiers de version qui cassait le build Vite suite à la duplication des clefs.' },
+      { type: 'quality', text: 'Synchronisation des métadonnées de version frontend/backend + changelog remis en cohérence.' },
+      { type: 'tests', text: 'Le build frontend repasse et protège contre les futures régressions de merge.' }
     ]
   },
   {
@@ -159,10 +226,10 @@ export const PATCH_NOTES = [
     tagline: 'Document chunk throttling & warnings',
     date: '2025-10-29',
     changes: [
-      { type: 'fix', text: 'Uploads massifs : indexation en batch avec limite de chunks configurable et warning utilisateur explicite.' },
-      { type: 'quality', text: 'Les réponses backend incluent désormais le nombre de chunks indexés et relaient le warning même en cas de succès.' },
-      { type: 'ux', text: 'Le module Documents déclenche un toast d’avertissement lors d’une vectorisation partielle, y compris après ré-indexation.' },
-      { type: 'test', text: 'Ajout d’un test backend couvrant la limitation de chunks et le batching.' }
+      { type: 'fix', text: 'Les uploads massifs gèrent désormais des milliers de paragraphes : vectorisation en lots, limite de chunks configurable et warning explicite plutôt qu’un 500.' },
+      { type: 'quality', text: 'L’API documents retourne le nombre de chunks indexés et remonte un avertissement même lorsque l’upload réussit.' },
+      { type: 'ux', text: 'Le module Documents affiche un toast d’avertissement quand la vectorisation est partielle, y compris après ré-indexation.' },
+      { type: 'test', text: 'Nouveau test backend qui valide la limitation de chunks et le découpage en batchs d’indexation.' }
     ]
   },
   {
@@ -170,9 +237,8 @@ export const PATCH_NOTES = [
     tagline: 'Document upload resilience & cross-agent routing',
     date: '2025-10-29',
     changes: [
-      { type: 'fix', text: 'Le module Documents prévient lorsque l’index vectoriel est hors ligne tout en conservant les fichiers téléversés.' },
-      { type: 'quality', text: 'Notifications adaptées pour les uploads et ré-indexations partielles : avertissement UI dès que la vectorisation est sautée.' },
-      { type: 'quality', text: 'Support backend exposant les avertissements de vectorisation afin de garder une trace visible dans la liste des documents.' },
+      { type: 'fix', text: 'Les uploads et ré-indexations de documents restent possibles même lorsque le vector store est en READ-ONLY : statut “erreur” explicite et avertissement UI.' },
+      { type: 'quality', text: 'Les avertissements de vectorisation sont stockés et renvoyés côté API/Frontend pour garder la trace des indexations partielles.' },
       { type: 'fix', text: 'Les réponses d’opinion restent dans la conversation de l’agent évalué avec fallback propre si la source est absente.' },
       { type: 'tests', text: 'Suite node:test mise à jour pour vérifier le bucket source lors des réponses d’opinion.' }
     ]
@@ -183,9 +249,9 @@ export const PATCH_NOTES = [
     date: '2025-10-29',
     changes: [
       { type: 'quality', text: 'Module À propos : statistiques projet synchronisées (139 fichiers backend, 95 JS frontend, 503 tests Pytest, 48 dépendances Python, 10 packages Node, ~88k LOC actifs).' },
-      { type: 'quality', text: 'Cartes modules frontend/backend mises à jour pour refléter Benchmarks, Usage Analytics et Guardian.' },
-      { type: 'fix', text: 'Progression 18/23 alignée : calcul featuresDisplay basé sur la progression réelle (78%) et réutilisé dans l’interface.' },
-      { type: 'fix', text: 'Chronologie Genèse corrigée : premières expérimentations LLM datées 2022 (plus 2024).' }
+      { type: 'quality', text: 'Listes frontend/backend mises à jour pour refléter Benchmarks, Usage Analytics et Guardian.' },
+      { type: 'quality', text: 'featuresDisplay s’appuie désormais sur la progression réelle (18/23 • 78%) et est utilisé côté documentation.' },
+      { type: 'fix', text: 'Chronologie Genèse corrigée : premières expérimentations LLM datées 2022, plus 2024.' }
     ]
   },
   {
@@ -456,7 +522,7 @@ export const FULL_CHANGELOG = [
           {
             title: 'Progression 18/23 alignée',
             description: 'Le calcul completedFeatures utilise désormais la progression réelle (78%) et alimente directement featuresDisplay.',
-            file: 'src/frontend/version.js'
+            file: 'src/version.js'
           },
           {
             title: 'Version display unifié',

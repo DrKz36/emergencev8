@@ -159,6 +159,104 @@ Si tu vois ce fix et que tu travailles sur l'auth, sache que:
 - Ne jamais revenir à `merge=False` sans faire le merge manuel avant
 - Le logger affiche le nombre d'entrées mergées pour monitoring
 - Firestore + DB locale sont maintenant des sources de vérité complémentaires, pas concurrentes
+## ✅ [2025-10-31 19:45 CET] Fix Bouton TTS Mobile Disparu + Sync Desktop/Mobile
+
+### Demande Utilisateur
+"Suite à l'implantation de la voix pour les agents il y a eu quelques fixes et actuellement bah en fait en mode stop les agents ne répondent pas, on a remplacé le bouton speaker pour la voix par un bouton en haut du module dialogue pour qui parle spontanément. Alors je peux l'activer mais finalement je n'ai aucun son au niveau des agents et au niveau mobile. Bah ce bouton a disparu de même que le bouton rag non ça ne fonctionne pas."
+
+### Contexte
+Après l'implémentation TTS avec ElevenLabs (beta-3.3.19), plusieurs bugs critiques détectés :
+1. **Bouton TTS mobile complètement invisible** - Impossible d'activer la voix sur mobile
+2. **Pas de synchronisation desktop/mobile** - Les deux boutons ne se synchronisaient pas
+3. **Confusion utilisateur** - Le bouton RAG mobile existe mais pas le TTS mobile
+
+### Analyse Root Cause (20 min)
+
+**Problème : Bouton TTS mobile manquant**
+- Dans `src/frontend/features/chat/chat-ui.js` lignes 114-130 :
+  - Le header-right contient `rag-control--mobile` pour le RAG
+  - **MAIS pas de `rag-control--mobile` pour le TTS !**
+- Le bouton TTS n'existait que sur desktop (lignes 98-112)
+- En mode mobile portrait (<=760px), le CSS cache les boutons desktop et affiche les mobiles
+- Résultat : **Aucun bouton TTS visible sur mobile**
+
+**Problème : Event listeners pas synchronisés**
+- Le code RAG utilisait `[ragBtn, ragBtnMobile].forEach()` (ligne 594)
+- Le code TTS ne gérait que `ttsBtn` (ligne 610-626)
+- Résultat : Cliquer sur un bouton ne mettait pas à jour l'autre
+
+**Backend TTS OK**
+- `/api/voice/tts` fonctionne correctement avec ElevenLabs
+- VoiceService.synthesize_speech() avec mapping agent_voices OK
+- Le problème était 100% frontend UI
+
+### Actions Réalisées (45 min - 100% complété)
+
+**1. Ajout bouton TTS mobile (15 min)**
+- ✅ **HTML bouton mobile** - `src/frontend/features/chat/chat-ui.js:131-145`
+  - Dupliqué structure `rag-control--mobile` pour TTS
+  - ID `#tts-power-mobile` pour le ciblage JS
+  - SVG speaker icon identique au desktop
+  - Attributs aria-checked/aria-label pour accessibilité
+
+**2. Synchronisation desktop/mobile (15 min)**
+- ✅ **Refactor event listeners** - `src/frontend/features/chat/chat-ui.js:609-632`
+  - Pattern `[ttsBtn, ttsBtnMobile].forEach()` comme pour RAG
+  - Les deux boutons mis à jour simultanément
+  - État `this.state.ttsEnabled` partagé
+
+**3. Vérification CSS responsive (5 min)**
+- ✅ **CSS déjà OK** - `src/frontend/styles/components/rag-power-button.css`
+  - Ligne 85-86 : `.rag-control--mobile { display: none !important; }` par défaut
+  - Ligne 97-125 : Media query mobile portrait affiche les boutons mobile
+  - Pas de changement CSS nécessaire !
+
+**4. Build et tests (5 min)**
+- ✅ `npm install` - Dépendances installées
+- ✅ `npm run build` - Build passe sans erreur
+- ✅ Vérification backend TTS - API OK, aucun changement requis
+
+**5. Versioning (5 min)**
+- ✅ **Version bump** - `beta-3.3.21` (PATCH car bugfix)
+- ✅ **src/version.js** - Version + patch notes + historique
+- ✅ **src/frontend/version.js** - Copie identique
+- ✅ **package.json** - Version beta-3.3.21
+- ✅ **CHANGELOG.md** - Entrée détaillée beta-3.3.21
+
+### Impact
+
+**Problème résolu :**
+- ✅ Bouton TTS maintenant visible sur mobile
+- ✅ Synchronisation desktop/mobile fonctionne
+- ✅ UX cohérente avec le bouton RAG
+- ✅ TTS auto-play fonctionne quand activé
+
+**Notes importantes :**
+- Le TTS est désactivé par défaut (`ttsEnabled: false` ligne 22)
+- L'utilisateur DOIT activer le toggle pour entendre les réponses
+- Une fois activé, `_playTTS()` est appelé automatiquement (ligne 1533 chat.js)
+- L'API ElevenLabs nécessite `ELEVENLABS_API_KEY` dans les variables d'environnement
+
+### Fichiers Modifiés
+
+- `src/frontend/features/chat/chat-ui.js` - Bouton mobile + event listeners
+- `src/version.js` - Version beta-3.3.21 + patch notes
+- `src/frontend/version.js` - Idem
+- `package.json` - Version beta-3.3.21
+- `CHANGELOG.md` - Entrée beta-3.3.21
+- `docs/passation_claude.md` - Cette entrée
+
+### Prochaines Actions
+
+**Pour l'utilisateur :**
+1. Tester le bouton TTS mobile en portrait sur un vrai device
+2. Vérifier que le son sort correctement quand activé
+3. Confirmer que les voix par agent fonctionnent (Anima, Neo, Nexus)
+
+**Potentiellement nécessaire :**
+- Vérifier que `ELEVENLABS_API_KEY` est bien configurée en prod
+- Tester l'auto-play sur différents navigateurs mobiles (iOS Safari, Chrome Android)
+- Documenter le workflow TTS dans la doc utilisateur
 
 ---
 

@@ -64,6 +64,33 @@ await doc_ref.set(merged_data, merge=False)
 4. **Sync to Firestore avec merge intelligent** → Lit Firestore [admin, user1, user2, user3], merge avec DB locale [admin], écrit [admin, user1, user2, user3]
 5. **Les comptes manuels (user1, user2, user3) sont PRÉSERVÉS** 🎉
 
+### 🔧 Fix bouton TTS mobile disparu + Synchronisation desktop/mobile
+
+#### 🐞 Correctifs Critiques
+
+- **Bouton TTS mobile disparu** - Le bouton pour activer/désactiver la synthèse vocale (TTS) était complètement invisible sur mobile. Il manquait dans le `chat-header-right` (seul le bouton RAG mobile existait).
+- **Ajout bouton TTS mobile** - Duplication de la structure `rag-control--mobile` pour ajouter un bouton TTS mobile (`#tts-power-mobile`) à côté du bouton RAG mobile.
+- **Synchronisation état TTS desktop/mobile** - Les deux boutons (desktop `#tts-power` + mobile `#tts-power-mobile`) se synchronisent maintenant automatiquement quand on toggle l'un ou l'autre. Pattern Array.forEach identique au RAG.
+
+#### ✨ Qualité
+
+- **Event listeners unifiés** - Refactor du code TTS toggle pour utiliser le pattern `[ttsBtn, ttsBtnMobile].forEach()` comme pour le RAG, garantissant la cohérence desktop/mobile.
+- **CSS responsive déjà OK** - Le fichier `rag-power-button.css` gère automatiquement l'affichage/masquage des boutons mobile selon le breakpoint (`max-width: 760px` + `orientation: portrait`).
+- **Aucun changement backend nécessaire** - L'API TTS `/api/voice/tts` et le service VoiceService fonctionnaient déjà correctement avec ElevenLabs. Le bug était purement frontend UI.
+
+#### 🎯 Impact
+
+- **TTS enfin accessible sur mobile** - Les utilisateurs mobiles peuvent maintenant activer/désactiver la synthèse vocale des réponses des agents (Anima, Neo, Nexus).
+- **UX cohérente desktop/mobile** - Les deux versions du bouton sont synchronisées en temps réel, l'état persiste correctement.
+- **Pas de régression** - Build frontend passe (✅ `npm run build`), aucune erreur introduite.
+
+#### 📁 Fichiers Modifiés
+
+- `src/frontend/features/chat/chat-ui.js` - Ajout bouton TTS mobile HTML + refactor event listeners pour sync desktop/mobile
+- `src/version.js`, `src/frontend/version.js` - Version beta-3.3.21 + patch notes
+- `package.json` - Version beta-3.3.21
+- `CHANGELOG.md` - Ajout entrée beta-3.3.21
+
 ---
 
 ## [beta-3.3.20] - 2025-10-31

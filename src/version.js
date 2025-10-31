@@ -21,6 +21,7 @@
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
  * - beta-3.3.21 : Fix allowlist overwrite FINAL - Merge intelligent Firestore (union emails) [ACTUEL]
+ * - beta-3.3.21 : Fix bouton TTS mobile disparu + Sync desktop/mobile [ACTUEL]
  * - beta-3.3.20 : Fix allowlist overwrite on redeploy - Preserve manually added accounts
  * - beta-3.3.19 : Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur
  * - beta-3.3.19 : TTS toggle header + Voix par agent + Auto-play silencieux
@@ -55,6 +56,7 @@
 export const CURRENT_RELEASE = {
   version: 'beta-3.3.21',
   name: 'Fix allowlist overwrite FINAL - Merge intelligent Firestore',
+  name: 'Fix bouton TTS mobile disparu + Sync desktop/mobile',
   date: '2025-10-31',
 };
 
@@ -80,6 +82,15 @@ export const PATCH_NOTES = [
       { type: 'fix', text: 'Logique merge: 1) Load Firestore 2) Union emails 3) Priorité DB locale si conflit 4) Gestion réactivation/révocation' },
       { type: 'fix', text: 'Logger info détaillé du merge: nombre active/revoked après fusion Firestore + DB locale' },
     ],
+    tagline: 'Fix TTS mobile - Bouton disparu + Synchronisation desktop/mobile',
+    date: '2025-10-31',
+    changes: [
+      { type: 'fix', text: 'Fix bouton TTS mobile disparu - Le bouton pour activer/désactiver la synthèse vocale était invisible sur mobile (manquait dans header-right)' },
+      { type: 'fix', text: 'Ajout bouton TTS mobile dans chat-header-right - Même structure que le bouton RAG mobile (rag-control--mobile)' },
+      { type: 'fix', text: 'Synchronisation état TTS desktop/mobile - Les deux boutons (desktop + mobile) se synchronisent maintenant automatiquement quand on toggle l\'un ou l\'autre' },
+      { type: 'quality', text: 'Event listeners unifiés - Pattern Array.forEach pour gérer desktop + mobile simultanément (cohérence avec bouton RAG)' },
+      { type: 'quality', text: 'CSS responsive déjà OK - Le fichier rag-power-button.css gère automatiquement l\'affichage/masquage selon le breakpoint mobile (<=760px portrait)' },
+    ]
   },
   {
     version: 'beta-3.3.20',
