@@ -10,6 +10,34 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.17] - 2025-10-31
+
+### 🔧 Fix Voice TTS - Auth token + SVG icon cohérent
+
+#### 🐞 Correctifs
+
+- **Fix authentification TTS** - Le bouton Écouter utilisait le mauvais nom de clé localStorage (`'authToken'` au lieu de `'emergence.id_token'`), causait erreur 401 Unauthorized sur tous les appels TTS
+- **Utilisation de getIdToken()** - Import de la fonction auth officielle depuis `core/auth.js` qui gère correctement le token JWT (sessionStorage + localStorage + normalisation)
+- **Fix Response format** - L'api-client parse automatiquement JSON, mais TTS nécessite Response brute pour `.blob()`. Solution: appel `fetch()` direct avec token JWT
+
+#### ✨ Qualité
+
+- **Icône speaker cohérente** - SVG refait avec `stroke-linecap="round"`, `stroke-linejoin="round"`, `fill="none"` pour matcher exactement le design des autres icônes (copy, sources, etc.)
+- **Endpoints voice fonctionnels** - TTS maintenant 100% opérationnel avec auth correcte + streaming MP3 + player audio
+
+#### 📁 Fichiers Modifiés
+
+- `src/frontend/features/chat/chat-ui.js` - Fix auth token + SVG icon
+- `src/version.js`, `src/frontend/version.js`, `package.json` - Version beta-3.3.17
+- `CHANGELOG.md` - Ajout entrée beta-3.3.17
+
+#### 🎯 Impact
+
+- **Fonctionnalité voice complètement opérationnelle** - Les utilisateurs peuvent maintenant réellement écouter les messages d'agents (pas seulement voir l'icône)
+- **UX cohérente** - Icône speaker alignée avec le design system de l'app
+
+---
+
 ## [beta-3.3.16] - 2025-10-31
 
 ### 🎙️ Voice Agents with ElevenLabs TTS

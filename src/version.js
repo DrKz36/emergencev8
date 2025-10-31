@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.16 : Voice agents avec ElevenLabs TTS - Écouter les messages [ACTUEL]
+ * - beta-3.3.17 : Fix Voice TTS - Auth token + SVG icon cohérent [ACTUEL]
+ * - beta-3.3.16 : Voice agents avec ElevenLabs TTS - Écouter les messages
  * - beta-3.3.15 : Fix upload gros documents - Limites strictes pour éviter timeout Cloud Run
  * - beta-3.3.14 : Production connectivity fixes - WebSocket auth & thread cleanup
  * - beta-3.3.13 : Auth token test bundler compatibility
@@ -47,8 +48,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.16',
-  name: 'Voice agents with ElevenLabs TTS - Listen to agent responses',
+  version: 'beta-3.3.17',
+  name: 'Fix Voice TTS - Auth token + SVG icon cohérent',
   date: '2025-10-31',
 };
 
@@ -64,6 +65,17 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.17',
+    tagline: 'Fix Voice TTS - Auth token + SVG icon cohérent',
+    date: '2025-10-31',
+    changes: [
+      { type: 'fix', text: 'Fix authentification TTS - Utilisait le mauvais nom de clé localStorage (\'authToken\' au lieu de \'emergence.id_token\'), causait erreur 401 Unauthorized' },
+      { type: 'fix', text: 'Utilisation de getIdToken() - Import de la fonction auth officielle qui gère correctement le token JWT (sessionStorage + localStorage)' },
+      { type: 'quality', text: 'Icône speaker cohérente - SVG refait avec stroke-linecap="round", stroke-linejoin="round", fill="none" pour matcher le design des autres icônes' },
+      { type: 'fix', text: 'Fix Response format - Bypass api-client (qui parse JSON) pour appeler fetch() direct et récupérer Response brute nécessaire pour .blob()' },
+    ]
+  },
   {
     version: 'beta-3.3.16',
     tagline: 'Voice agents with ElevenLabs TTS - Listen to agent responses',

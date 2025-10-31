@@ -1196,8 +1196,8 @@ _hasOpinionFromAgent(agentId, messageId) {
                 aria-label="Écouter ce message"
               >
                 <span class="sr-only">Écouter</span>
-                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="none"></polygon>
                   <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
                   <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
                 </svg>
@@ -1329,11 +1329,18 @@ _hasOpinionFromAgent(agentId, messageId) {
     button.title = 'Génération audio...';
 
     try {
-      // Import API client
-      const { api } = await import('../../shared/api-client.js');
-
-      // Appeler l'endpoint TTS
-      const response = await api.post('/api/voice/tts', { text });
+      // Pour TTS, on a besoin de la Response brute (pour .blob())
+      // On bypass api-client qui parse JSON par défaut
+      const { getIdToken } = await import('../../core/auth.js');
+      const token = getIdToken();
+      const response = await fetch('/api/voice/tts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({ text })
+      });
 
       if (!response.ok) {
         throw new Error(`TTS API error: ${response.status}`);

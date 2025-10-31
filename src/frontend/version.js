@@ -45,8 +45,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.16',
-  name: 'Voice agents with ElevenLabs TTS - Listen to agent responses',
+  version: 'beta-3.3.17',
+  name: 'Fix Voice TTS - Auth token + SVG icon cohérent',
   date: '2025-10-31',
 };
 
