@@ -128,6 +128,21 @@ export class ChatUI {
               </button>
               <span class="rag-label">RAG</span>
             </div>
+            <div class="rag-control rag-control--mobile">
+              <button
+                type="button"
+                id="tts-power-mobile"
+                class="rag-power"
+                role="switch"
+                aria-checked="${String(!!this.state.ttsEnabled)}"
+                aria-label="${this.state.ttsEnabled ? 'TTS actif' : 'TTS inactif'}"
+                title="${this.state.ttsEnabled ? 'Désactiver la synthèse vocale' : 'Activer la synthèse vocale'}">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                  <path d="M11 5 6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                </svg>
+              </button>
+              <span class="rag-label">TTS</span>
+            </div>
             <div class="chat-actions" role="group" aria-label="Actions de conversation">
               <button type="button" class="chat-action-btn" data-role="chat-clear" title="Effacer les messages de l'agent actif" data-label="Effacer les messages de l'agent actif" data-title="Effacer les messages de l'agent actif">
                 <span class="sr-only">Effacer les messages de l'agent actif</span>
@@ -591,24 +606,30 @@ export class ChatUI {
     ragBtn?.addEventListener('click', toggleRag);
     ragBtnMobile?.addEventListener('click', toggleRag);
 
-    // TTS Toggle
+    // TTS Toggle (desktop + mobile)
     const ttsBtn = container.querySelector('#tts-power');
+    const ttsBtnMobile = container.querySelector('#tts-power-mobile');
     const toggleTTS = (e) => {
       const clickedBtn = e.currentTarget;
       const on = clickedBtn.getAttribute('aria-checked') === 'true';
       const next = !on;
 
-      if (ttsBtn) {
-        ttsBtn.setAttribute('aria-checked', String(next));
-        ttsBtn.setAttribute('aria-label', next ? 'TTS actif' : 'TTS inactif');
-        ttsBtn.title = next ? 'Désactiver la synthèse vocale' : 'Activer la synthèse vocale';
-      }
+      // Synchroniser les deux boutons (desktop + mobile)
+      [ttsBtn, ttsBtnMobile].forEach(btn => {
+        if (btn) {
+          btn.setAttribute('aria-checked', String(next));
+          btn.setAttribute('aria-label', next ? 'TTS actif' : 'TTS inactif');
+          btn.title = next ? 'Désactiver la synthèse vocale' : 'Activer la synthèse vocale';
+        }
+      });
 
       this.state.ttsEnabled = next;
       console.log(`[ChatUI] TTS ${next ? 'activé' : 'désactivé'}`);
     };
 
+    // Attacher le handler aux deux boutons
     ttsBtn?.addEventListener('click', toggleTTS);
+    ttsBtnMobile?.addEventListener('click', toggleTTS);
 
     const docChipHost = container.querySelector('#chat-doc-chips');
     docChipHost?.addEventListener('click', (e) => {
