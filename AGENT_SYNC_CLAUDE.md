@@ -1,11 +1,102 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-10-31 06:10 CET (Claude Code)
+**Dernière mise à jour:** 2025-10-31 08:09 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
 
 ---
 
-## ✅ Session COMPLÉTÉE (2025-10-31 06:10) - Fix Voice TTS auth + SVG icon
+## ✅ Session COMPLÉTÉE (2025-10-31 08:09 CET) - Fix tests validation après merges multiples
+
+### 🐛 Erreurs syntaxe bloquant collection pytest
+
+**Status:** ✅ COMPLÉTÉ
+**Branch:** `claude/fix-validation-tests-011CUeqSL3bzaasyEAeCCz4y`
+**Commit:** 15518aa
+
+**Problème signalé par utilisateur:**
+> "j'ai fait plusieurs fixes en même temps des branches différentes j'ai tout vu merger à la suite et les tests de validation foire"
+
+**Analyse root cause:**
+Plusieurs merges successifs ont introduit du **code dupliqué avec erreurs de syntaxe** :
+1. `tests/memory/test_thread_consolidation_timestamps.py:234` - Parenthèse jamais fermée
+2. `tests/scripts/test_guardian_email_e2e.py:304` - Crochet jamais fermé
+
+Les deux erreurs suivaient le même pattern :
+- Ligne N : début d'appel (parenthèse/crochet ouvrant)
+- Ligne N+1-2 : commentaire
+- Ligne N+3 : même appel refait correctement
+- Résultat : SyntaxError lors de la collection pytest
+
+**Résolution appliquée:**
+1. **test_thread_consolidation_timestamps.py** - Suppression lignes 234-237 (appel incomplet `query_concept_history()`)
+2. **test_guardian_email_e2e.py** - Suppression lignes 304-306 (liste incomplète `css_properties`)
+3. **src/version.js** - Fusion patch notes beta-3.3.19 dupliqués (ligne 81 - tableau changes pas fermé)
+
+**Fichiers modifiés:**
+- `tests/memory/test_thread_consolidation_timestamps.py` (fix syntaxe ligne 234)
+- `tests/scripts/test_guardian_email_e2e.py` (fix syntaxe ligne 304)
+- `src/version.js` (fix syntaxe ligne 81 - patch notes dupliqués)
+
+**Tests:**
+- ✅ **16/16 tests validation passent** (phase1 + phase3)
+- ✅ **140 tests collectés** (vs 69 avant avec erreurs)
+- ✅ **Build npm OK** (syntaxe JS validée)
+- ⚠️ Erreurs restantes (chromadb, etc.) = dépendances environnement container
+
+**Impact:**
+- ✅ Tests validation 100% opérationnels
+- ✅ Collection pytest ne bloque plus sur erreurs syntaxe
+- ✅ Code propre prêt pour CI/CD
+
+**Prochaines actions:**
+- Merge dans main si tests CI passent
+- Installer dépendances complètes (chromadb) si nécessaire pour tests memory
+
+---
+
+## ✅ Session PRÉCÉDENTE (2025-10-31 14:30) - Fix modal reprise conversation intempestif
+
+### 🔧 Bug critique UX - Modal apparaît en boucle
+
+**Status:** ✅ COMPLÉTÉ (beta-3.3.19)
+**Branch:** `claude/fix-conversation-resume-bug-011CUenBHscm2YjSzfK5okve`
+**Commit:** À venir
+
+**Problème signalé par utilisateur:**
+> "j'ai toujours des problèmes pour l'apparition intempestive de la reprise de l'ancienne conversation d'une nouvelle, il apparaît encore alors, je suis au login parfois et parfois plusieurs fois alors que j'ai déjà dit que je voulais reprendre une nouvelle conversation ou une ancienne"
+
+**Analyse root cause:**
+1. **Race condition événements auth** - `handleAuthLoginSuccess` et `handleAuthRestored` peuvent être émis plusieurs fois (login initial, refresh token, reconnexion)
+2. **Reset flags intempestif** - `_prepareConversationPrompt()` réinitialisait TOUJOURS les flags (`_shouldForceModal = true`, `_initialModalChecked = false`) sans vérifier si l'utilisateur avait déjà un thread actif
+3. **Modal réaffiche après choix** - Même après que l'utilisateur ait choisi (reprendre/nouvelle), le prochain événement auth déclenchait à nouveau le modal
+
+**Résolution appliquée:**
+1. **Vérification thread valide avant reset** - Ajout dans `_prepareConversationPrompt()` d'une vérification: thread ID existe + données chargées + pas archivé
+2. **Return early si thread actif** - Si thread valide détecté, la fonction return immédiatement sans réinitialiser les flags
+3. **Logs debug améliorés** - Message clair: "Thread actif valide détecté (%s), skip modal"
+
+**Fichiers modifiés:**
+- `src/frontend/features/chat/chat.js` (fix logique `_prepareConversationPrompt`)
+- `src/version.js`, `src/frontend/version.js`, `package.json` (v3.3.19)
+- `CHANGELOG.md` (entrée beta-3.3.19)
+- `AGENT_SYNC_CLAUDE.md` (cette session)
+- `docs/passation_claude.md` (entrée détaillée)
+
+**Tests:** ✅ Build frontend OK (npm run build)
+
+**Impact:**
+- ✅ Modal ne réapparaît plus après choix utilisateur
+- ✅ UX significativement améliorée (plus de harcèlement modal)
+- ✅ Logique auth robuste face aux événements multiples
+
+**Prochaines actions:**
+- Commit + push vers branche `claude/fix-conversation-resume-bug-011CUenBHscm2YjSzfK5okve`
+- Test manuel en prod pour valider comportement
+- Créer PR si demandé
+
+---
+
+## ✅ Session PRÉCÉDENTE (2025-10-31 06:10) - Fix Voice TTS auth + SVG icon
 
 ### 🔧 Correctifs critiques fonctionnalité voice
 
