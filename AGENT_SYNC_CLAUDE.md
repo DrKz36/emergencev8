@@ -30,14 +30,17 @@ Les deux erreurs suivaient le même pattern :
 **Résolution appliquée:**
 1. **test_thread_consolidation_timestamps.py** - Suppression lignes 234-237 (appel incomplet `query_concept_history()`)
 2. **test_guardian_email_e2e.py** - Suppression lignes 304-306 (liste incomplète `css_properties`)
+3. **src/version.js** - Fusion patch notes beta-3.3.19 dupliqués (ligne 81 - tableau changes pas fermé)
 
 **Fichiers modifiés:**
 - `tests/memory/test_thread_consolidation_timestamps.py` (fix syntaxe ligne 234)
 - `tests/scripts/test_guardian_email_e2e.py` (fix syntaxe ligne 304)
+- `src/version.js` (fix syntaxe ligne 81 - patch notes dupliqués)
 
 **Tests:**
 - ✅ **16/16 tests validation passent** (phase1 + phase3)
 - ✅ **140 tests collectés** (vs 69 avant avec erreurs)
+- ✅ **Build npm OK** (syntaxe JS validée)
 - ⚠️ Erreurs restantes (chromadb, etc.) = dépendances environnement container
 
 **Impact:**
