@@ -231,8 +231,6 @@ async def test_concept_query_returns_historical_dates(
     # Note: Offline analysis extracts "CI/CD" and "pipeline" as separate concepts
     # So we search for "CI/CD" specifically to match extracted concept
     # Use lower threshold (0.3) for offline mode heuristic extraction
-    history = await tracker.query_concept_history(
-        concept_text="CI/CD",
     # Fix: Query avec le texte exact du message pour mieux matcher
     # Le message contient "pipeline CI/CD" donc on query avec ça
     history = await tracker.query_concept_history(
