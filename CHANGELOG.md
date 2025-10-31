@@ -10,6 +10,27 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.19] - 2025-10-31
+
+### 🔧 Réactivation snapshot Firestore allowlist Cloud Run
+
+#### 🐞 Correctifs Critiques
+
+- **Snapshot Firestore réactivé** - Les YAML `stable-service` et `canary-service` ré-exportent `AUTH_ALLOWLIST_SNAPSHOT_*` pour que `AuthService` persiste l'allowlist dans Firestore après chaque ajout/suppression.
+- **Service account restauré** - Les révisions Cloud Run tournent à nouveau avec `firestore-sync@emergence-469005.iam.gserviceaccount.com`, garantissant les permissions `datastore.user` requises pour Firestore.
+
+#### ✨ Qualité
+
+- **Persistences garanties** - Les emails ajoutés depuis le cockpit admin survivent aux nouvelles révisions sans passer par `AUTH_ALLOWLIST_SEED`.
+
+#### 📁 Fichiers Modifiés
+
+- `stable-service.yaml`, `canary-service.yaml` - Service account Firestore + variables d'environnement snapshot réactivées.
+- `src/version.js`, `src/frontend/version.js`, `package.json` - Version bump beta-3.3.19.
+- `CHANGELOG.md` - Entrée détaillée beta-3.3.19.
+
+---
+
 ## [beta-3.3.18] - 2025-10-31
 
 ### 🔧 Fix Voice DI container leak - Réutilise app.state container

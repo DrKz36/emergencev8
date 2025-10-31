@@ -49,8 +49,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.18',
-  name: 'Fix Voice DI container leak - Réutilise app.state container',
+  version: 'beta-3.3.19',
+  name: 'Réactivation snapshot Firestore allowlist Cloud Run',
   date: '2025-10-31',
 };
 
@@ -66,6 +66,16 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.19',
+    tagline: 'Réactivation snapshot Firestore allowlist Cloud Run',
+    date: '2025-10-31',
+    changes: [
+      { type: 'fix', text: 'Réactive la persistance Firestore de l’allowlist sur les déploiements canary/stable pour éviter la perte des membres ajoutés en production.' },
+      { type: 'fix', text: 'Assigne le service account firestore-sync@emergence-469005.iam.gserviceaccount.com aux révisions Cloud Run pour autoriser l’accès Firestore natif.' },
+      { type: 'quality', text: 'Les emails ajoutés via l’UI survivent désormais aux nouvelles révisions Cloud Run sans repasser par AUTH_ALLOWLIST_SEED.' },
+    ]
+  },
   {
     version: 'beta-3.3.18',
     tagline: 'Fix Voice DI container leak - Réutilise app.state container',

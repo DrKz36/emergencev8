@@ -25,7 +25,7 @@ spec:
     spec:
       containerConcurrency: 80
       timeoutSeconds: 300
-      serviceAccountName: emergence-469005@appspot.gserviceaccount.com
+      serviceAccountName: firestore-sync@emergence-469005.iam.gserviceaccount.com
       containers:
       - name: emergence-app
         image: app  # Replaced by Skaffold/Cloud Deploy
@@ -49,6 +49,15 @@ spec:
           value: '120'
         - name: CONCEPT_RECALL_METRICS_ENABLED
           value: '1'
+        # Firestore allowlist snapshot (persists members added in production)
+        - name: AUTH_ALLOWLIST_SNAPSHOT_BACKEND
+          value: firestore
+        - name: AUTH_ALLOWLIST_SNAPSHOT_COLLECTION
+          value: auth_config
+        - name: AUTH_ALLOWLIST_SNAPSHOT_DOCUMENT
+          value: allowlist
+        - name: AUTH_ALLOWLIST_SNAPSHOT_PROJECT
+          value: emergence-469005
         # Email Configuration for Password Reset
         - name: EMAIL_ENABLED
           value: '1'

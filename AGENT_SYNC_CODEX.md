@@ -1,3 +1,32 @@
+## Session COMPLETED (2025-10-31 15:20 CET) - Agent : Codex GPT
+
+### Files touched
+- `stable-service.yaml`
+- `canary-service.yaml`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+- `AGENT_SYNC.md`
+
+### Work summary
+1. Réactivé le snapshot Firestore de l'allowlist en remettant les variables `AUTH_ALLOWLIST_SNAPSHOT_*` sur les manifests Cloud Run (stable + canary).
+2. Assigné le service account `firestore-sync@emergence-469005.iam.gserviceaccount.com` aux deux révisions pour garantir l'accès Firestore natif.
+3. Synchronisé le versioning (beta-3.3.19), patch notes et changelog + journaux de session.
+
+### Tests
+- ⚠️ Pas de tests automatisés (modifications manifests Cloud Run uniquement).
+
+### Next steps
+1. Redéployer les services Cloud Run `stable` et `canary` avec les YAML mis à jour.
+2. Vérifier les logs `Allowlist snapshot restored` / `Allowlist snapshot sync failed` après déploiement.
+3. Ajouter un compte membre en prod puis déclencher un redeploy pour confirmer la persistance Firestore.
+
+### Blockers
+- Aucun.
+
 ## Session COMPLETED (2025-10-31 12:40 CET) - Agent : Codex GPT
 
 ### Files touched
