@@ -71,16 +71,13 @@ export const TOTAL_FEATURES = 23;
 export const PATCH_NOTES = [
   {
     version: 'beta-3.3.19',
-    tagline: 'Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur',
+    tagline: 'Fix modal reprise + TTS toggle header + Voix par agent',
     date: '2025-10-31',
     changes: [
       { type: 'fix', text: 'Modal de reprise ne réapparaît plus après que l\'utilisateur ait fait son choix (nouvelle conversation ou reprendre)' },
       { type: 'fix', text: 'Événements auth:restored et auth:login:success n\'affichent plus le modal si un thread actif valide existe déjà' },
       { type: 'quality', text: 'Vérification thread valide dans _prepareConversationPrompt avant de réinitialiser les flags' },
       { type: 'quality', text: 'Logs de debug améliorés pour tracer les appels de modal de reprise' },
-    tagline: 'TTS toggle header + Voix par agent + Auto-play silencieux',
-    date: '2025-10-31',
-    changes: [
       { type: 'feature', text: 'Bouton toggle TTS dans header - Active/désactive la synthèse vocale des réponses (plus besoin de cliquer "Écouter" sur chaque message)' },
       { type: 'feature', text: 'Voix personnalisées par agent - Anima voix féminine (Rachel), Neo voix masculine jeune (Antoni), Nexus voix masculine posée (Josh)' },
       { type: 'feature', text: 'Auto-play silencieux - Les réponses des agents sont lues automatiquement quand TTS activé (pas de player audio visible)' },
