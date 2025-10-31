@@ -45,8 +45,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.18',
-  name: 'Fix Voice DI container leak - Réutilise app.state container',
+  version: 'beta-3.3.19',
+  name: 'TTS toggle header + Voix par agent + Auto-play silencieux',
   date: '2025-10-31',
 };
 

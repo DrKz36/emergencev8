@@ -10,6 +10,40 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.19] - 2025-10-31
+
+### 🔊 TTS toggle header + Voix par agent + Auto-play silencieux
+
+#### 🆕 Nouvelles Fonctionnalités
+
+- **Bouton toggle TTS dans header** - Nouveau bouton dans le header du module Dialogue (à côté du RAG) pour activer/désactiver la synthèse vocale des réponses des agents
+- **Voix personnalisées par agent** - Chaque agent a sa propre voix ElevenLabs distinctive (Anima féminine, Neo/Nexus masculins différents)
+- **Auto-play silencieux** - Les réponses sont automatiquement lues quand TTS activé, sans player audio visible
+
+#### ✨ Qualité
+
+- **Mapping voice_id backend** - API /api/voice/tts accepte agent_id optionnel pour sélection voix dynamique
+- **Architecture propre** - Refactor complet système TTS avec cleanup automatique URLs blob
+
+#### 🐞 Correctifs
+
+- **Suppression player audio flottant** - Le lecteur visible qui ne disparaissait pas a été remplacé par audio invisible
+- **Suppression bouton Écouter** - Boutons redondants supprimés (toggle global dans header suffit)
+
+#### 📁 Fichiers Modifiés
+
+- Backend: `voice/models.py`, `voice/service.py`, `voice/router.py`, `containers.py`
+- Frontend: `chat/chat-ui.js`, `chat/chat.js`
+- Versioning: `src/version.js`, `src/frontend/version.js`, `package.json`, `CHANGELOG.md`
+
+#### 🎯 Impact
+
+- UX vocale fluide (toggle ON/OFF simple)
+- Immersion accrue (voix uniques par agent)
+- Performance (pas de DOM pollution, cleanup propre)
+
+---
+
 ## [beta-3.3.18] - 2025-10-31
 
 ### 🔧 Fix Voice DI container leak - Réutilise app.state container

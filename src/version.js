@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.18 : Fix Voice DI container leak - Réutilise app.state container [ACTUEL]
+ * - beta-3.3.19 : TTS toggle header + Voix par agent + Auto-play silencieux [ACTUEL]
+ * - beta-3.3.18 : Fix Voice DI container leak - Réutilise app.state container
  * - beta-3.3.17 : Fix Voice TTS - Auth token + SVG icon cohérent
  * - beta-3.3.16 : Voice agents avec ElevenLabs TTS - Écouter les messages
  * - beta-3.3.15 : Fix upload gros documents - Limites strictes pour éviter timeout Cloud Run
@@ -49,8 +50,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.18',
-  name: 'Fix Voice DI container leak - Réutilise app.state container',
+  version: 'beta-3.3.19',
+  name: 'TTS toggle header + Voix par agent + Auto-play silencieux',
   date: '2025-10-31',
 };
 
@@ -66,6 +67,18 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.19',
+    tagline: 'TTS toggle header + Voix par agent + Auto-play silencieux',
+    date: '2025-10-31',
+    changes: [
+      { type: 'feature', text: 'Bouton toggle TTS dans header - Active/désactive la synthèse vocale des réponses (plus besoin de cliquer "Écouter" sur chaque message)' },
+      { type: 'feature', text: 'Voix personnalisées par agent - Anima voix féminine (Rachel), Neo voix masculine jeune (Antoni), Nexus voix masculine posée (Josh)' },
+      { type: 'feature', text: 'Auto-play silencieux - Les réponses des agents sont lues automatiquement quand TTS activé (pas de player audio visible)' },
+      { type: 'quality', text: 'Mapping voice_id backend - API /api/voice/tts accepte agent_id optionnel pour sélectionner la voix ElevenLabs dynamiquement' },
+      { type: 'fix', text: 'Suppression player audio flottant - Le lecteur visible en bas à droite qui ne disparaissait pas a été remplacé par audio invisible' },
+    ]
+  },
   {
     version: 'beta-3.3.18',
     tagline: 'Fix Voice DI container leak - Réutilise app.state container',
