@@ -10,6 +10,62 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.21] - 2025-10-31
+
+### 🔥 FIX CRITIQUE - Fix allowlist overwrite FINAL - Merge intelligent Firestore
+
+#### 🐞 Correctifs Critiques
+
+- **Implémentation merge intelligent Firestore (union emails)** - Les comptes ajoutés manuellement en production NE SONT PLUS JAMAIS PERDUS lors des redéploiements Cloud Run. Le système fait maintenant un merge intelligent entre Firestore et la DB locale au lieu d'écraser.
+- **Réécriture complète `_persist_allowlist_snapshot()`** - La fonction lit d'abord le snapshot Firestore existant, fait l'union des emails avec la DB locale, puis écrit le résultat fusionné. Logique: 1) Load Firestore 2) Union emails 3) Priorité DB locale si conflit 4) Gestion réactivation/révocation.
+- **Logger info détaillé du merge** - Affiche maintenant le nombre d'entrées active et revoked après la fusion Firestore + DB locale pour debugging et monitoring.
+
+#### 🎯 Impact
+
+- **Production bulletproof** - Même si la DB locale est vide au bootstrap, les comptes Firestore existants sont préservés et fusionnés
+- **Workflow robuste** - Le merge intelligent garantit qu'aucune entrée n'est jamais perdue, quelle que soit la source (Firestore, DB locale, env)
+- **Monitoring amélioré** - Les logs indiquent clairement combien d'entrées ont été mergées
+
+#### 📁 Fichiers Modifiés
+
+- `src/backend/features/auth/service.py` - Réécriture complète `_persist_allowlist_snapshot()` avec merge intelligent
+- `src/version.js`, `src/frontend/version.js` - Version beta-3.3.21 + patch notes détaillées
+- `package.json` - Version beta-3.3.21
+- `CHANGELOG.md` - Ajout entrée beta-3.3.21
+
+#### 🔧 Détails Techniques
+
+**Avant (beta-3.3.20):**
+```python
+await doc_ref.set(data, merge=False)  # ← ÉCRASE Firestore complètement
+```
+
+**Après (beta-3.3.21):**
+```python
+# 1. Load existing Firestore snapshot
+existing_snapshot = await self._load_allowlist_snapshot()
+
+# 2. Build dictionaries for merge (indexed by email)
+existing_active, existing_revoked = parse_firestore_snapshot(existing_snapshot)
+local_active, local_revoked = parse_local_db(rows)
+
+# 3. Intelligent merge: union of emails, local DB has priority
+merged_active.update(existing_active)  # Firestore first
+merged_active.update(local_active)     # Then local (priority)
+
+# 4. Write merged result
+await doc_ref.set(merged_data, merge=False)
+```
+
+**Scénario typique:**
+1. Cloud Run démarre nouvelle révision → DB SQLite vide
+2. Bootstrap seed admins → DB locale = [admin@example.com]
+3. Restore from Firestore → DB locale = [admin@example.com] (restore échoue si Firestore vide)
+4. **Sync to Firestore avec merge intelligent** → Lit Firestore [admin, user1, user2, user3], merge avec DB locale [admin], écrit [admin, user1, user2, user3]
+5. **Les comptes manuels (user1, user2, user3) sont PRÉSERVÉS** 🎉
+
+---
+
 ## [beta-3.3.20] - 2025-10-31
 
 ### 🔧 Fix allowlist overwrite on redeploy - Preserve manually added accounts
