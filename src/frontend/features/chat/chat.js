@@ -348,6 +348,21 @@ export default class ChatModule {
 
   async _prepareConversationPrompt(reason = 'auth', payload = {}) {
     console.log('[Chat] prepareConversationPrompt reason=%s', reason);
+
+    // 🔥 FIX: Ne PAS réinitialiser si l'utilisateur a déjà un thread actif valide
+    // Évite l'affichage intempestif du modal après que l'utilisateur ait fait son choix
+    const currentThreadId = this.getCurrentThreadId();
+    if (currentThreadId) {
+      const threadData = this.state.get(`threads.map.${currentThreadId}`);
+      const isArchived = threadData?.thread?.archived === true || threadData?.thread?.archived === 1;
+      const hasValidThread = threadData && threadData.messages !== undefined && !isArchived;
+
+      if (hasValidThread) {
+        console.log('[Chat] prepareConversationPrompt: Thread actif valide détecté (%s), skip modal', currentThreadId);
+        return;
+      }
+    }
+
     this._shouldForceModal = true;
     this._sessionPromptShown = false;
     this._initialModalChecked = false;

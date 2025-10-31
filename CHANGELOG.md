@@ -10,6 +10,36 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.19] - 2025-10-31
+
+### 🔧 Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur
+
+#### 🐞 Correctifs Critiques
+
+- **Modal ne réapparaît plus en boucle** - Le modal de reprise de conversation ne s'affiche plus de manière intempestive après que l'utilisateur ait déjà fait son choix (reprendre ou nouvelle conversation)
+- **Événements auth ne déclenchent plus le modal inutilement** - Les événements `auth:restored` et `auth:login:success` qui pouvaient être émis plusieurs fois ne réaffichent plus le modal si un thread actif valide existe déjà
+- **Fix race condition flags** - `_prepareConversationPrompt()` vérifie maintenant si un thread actif valide existe avant de réinitialiser les flags (`_shouldForceModal`, `_initialModalChecked`, etc.)
+
+#### ✨ Qualité
+
+- **Vérification thread valide** - Nouvelle logique dans `_prepareConversationPrompt()` qui vérifie : thread ID existe + données chargées + pas archivé
+- **Logs de debug améliorés** - Messages de log plus clairs pour tracer les appels de modal et comprendre pourquoi il s'affiche ou non
+- **Meilleure UX** - L'utilisateur n'est plus harcelé par un modal qui réapparaît constamment alors qu'il a déjà choisi
+
+#### 📁 Fichiers Modifiés
+
+- `src/frontend/features/chat/chat.js` - Fix logique modal reprise conversation
+- `src/version.js`, `src/frontend/version.js`, `package.json` - Version beta-3.3.19
+- `CHANGELOG.md` - Ajout entrée beta-3.3.19
+
+#### 🎯 Impact
+
+- **UX améliorée significativement** - Plus de frustration utilisateur avec modal intempestif
+- **Logique auth plus robuste** - Les événements auth multiples n'interfèrent plus avec l'état du chat
+- **Code plus maintenable** - Logique de décision centralisée et claire
+
+---
+
 ## [beta-3.3.18] - 2025-10-31
 
 ### 🔧 Fix Voice DI container leak - Réutilise app.state container
