@@ -1,3 +1,94 @@
+## [2025-10-31 19:30] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.19
+- **Nouvelle:** beta-3.3.20 (PATCH – hotfix patch notes & versioning)
+
+### Fichiers modifiés
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `package-lock.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Reset de branche post-merge : le bump `beta-3.3.20` et la structure `PATCH_NOTES` corrigée avaient sauté, et la CI Guardian retombait en erreur `vite build`.
+
+### Travail réalisé
+1. Réappliqué le bump `beta-3.3.20` + patch notes backend/frontend pour restaurer la structure JSON correcte.
+2. Aligné `package.json` / `package-lock.json`, changelog et journaux de sync sur le hotfix Firestore.
+3. Relancé `npm run build` + `npm run test` pour valider que la stack frontend tient avec la structure corrigée.
+
+### Tests
+- ✅ `npm run build`
+- ✅ `npm run test`
+
+### Versioning
+- ✅ Version incrémentée (PATCH)
+- ✅ CHANGELOG.md mis à jour
+- ✅ Patch notes ajoutées
+
+### Travail de Claude Code pris en compte
+- Aucun changement requis côté backend, le fix reste 100% frontend/docs.
+
+### Prochaines actions recommandées
+1. Vérifier que la GitHub Action "Build frontend" repasse au vert sur la PR.
+2. Confirmer sur le prochain redeploy Cloud Run que la persistance allowlist Firestore reste ok.
+3. Nettoyer les branches de hotfix une fois la PR mergée.
+
+### Blocages
+- Aucun.
+
+---
+
+## [2025-10-31 15:20] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.18
+- **Nouvelle:** beta-3.3.19 (PATCH - Réactivation snapshot Firestore)
+
+### Fichiers modifiés
+- `stable-service.yaml`
+- `canary-service.yaml`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+- `AGENT_SYNC.md`
+
+### Contexte
+Les variables d’environnement Firestore étaient commentées dans les manifests Cloud Run et le service tournait avec le compte Compute Engine par défaut, donc `AuthService` n’activait jamais le snapshot Firestore. Résultat : chaque déploiement écrasait les membres ajoutés depuis le cockpit.
+
+### Travail réalisé
+- Réactivé les variables `AUTH_ALLOWLIST_SNAPSHOT_*` dans `stable-service.yaml` et `canary-service.yaml`.
+- Réassigné le service account Cloud Run à `firestore-sync@emergence-469005.iam.gserviceaccount.com` pour restaurer les permissions Firestore.
+- Bump version vers `beta-3.3.19` + patch notes + changelog synchronisés frontend/backend.
+- Journal & sync mis à jour (AGENT_SYNC, AGENT_SYNC_CODEX, passation).
+
+### Tests
+- ⚠️ Pas de tests automatisés (modifs manifests Cloud Run uniquement).
+
+### Versioning
+- ✅ Version incrémentée
+- ✅ CHANGELOG.md mis à jour
+- ✅ Patch notes ajoutées
+
+### Travail de Claude Code pris en compte
+- Aucun conflit : le backend existant gère déjà Firestore, seules les variables Cloud Run manquaient.
+
+### Prochaines actions recommandées
+1. Redéployer `stable-service.yaml` et `canary-service.yaml` via `gcloud run services replace ...`.
+2. Vérifier les logs `Allowlist snapshot restored` / `Allowlist snapshot sync failed` juste après déploiement.
+3. Tester l’ajout d’un membre en prod puis forcer un redeploy pour confirmer la persistance.
+
+### Blocages
+- Aucun.
+
 ## [2025-10-31 12:40] — Agent: Codex GPT
 
 ### Version

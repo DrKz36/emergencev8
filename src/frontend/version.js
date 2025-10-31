@@ -45,8 +45,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.18',
-  name: 'Fix Voice DI container leak - Réutilise app.state container',
+  version: 'beta-3.3.20',
+  name: 'Patch notes TTS & modal stabilisés',
   date: '2025-10-31',
 };
 
@@ -62,6 +62,27 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.20',
+    tagline: 'Patch notes TTS & modal stabilisés',
+    date: '2025-10-31',
+    changes: [
+      { type: 'fix', text: 'Corrige la structure PATCH_NOTES backend pour que les builds CI ne plantent plus.' },
+      { type: 'fix', text: 'Synchronise les patch notes frontend/backend et supprime le doublon de libellé courant.' },
+      { type: 'quality', text: 'Versioning (package.json/package-lock) aligné sur beta-3.3.20 pour tracer le hotfix.' },
+    ]
+  },
+  {
+    version: 'beta-3.3.19',
+    tagline: 'Modal reprise stabilisée + toggle TTS global',
+    date: '2025-10-31',
+    changes: [
+      { type: 'feature', text: 'Nouveau toggle TTS global dans le header avec auto-play silencieux et voix ElevenLabs par agent.' },
+      { type: 'fix', text: 'Player audio flottant et boutons Écouter redondants supprimés au profit du toggle global.' },
+      { type: 'fix', text: 'Modal de reprise n\'apparaît plus en boucle après un choix utilisateur et ignore les événements auth dupliqués.' },
+      { type: 'quality', text: 'Logs supplémentaires pour tracer les déclencheurs du modal et valider les threads actifs.' },
+    ]
+  },
   {
     version: 'beta-3.3.13',
     tagline: 'Auth token test bundler compatibility',

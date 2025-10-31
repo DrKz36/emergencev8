@@ -1,5 +1,63 @@
 # 📋 AGENT_SYNC.md - État Synchronisation Multi-Agents
 
+## 🚀 Session COMPLETÉE (2025-10-31 19:30 CET) - Agent : Codex GPT
+
+### Fichiers modifiés
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `package-lock.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Actions réalisées
+- Réinstauré le bump `beta-3.3.20` et la structure `PATCH_NOTES` qui corrigeaient le plantage `vite build` de la CI.
+- Synchronisé `package.json` / `package-lock.json` + changelog et journaux pour tracer le hotfix Firestore.
+- Relancé la batterie `npm run build` / `npm run test` pour générer des logs propres après ré-application du patch.
+
+### Tests
+- ✅ `npm run build`
+- ✅ `npm run test`
+
+### Prochaines actions recommandées
+1. Relire les workflows GitHub qui consomment `CURRENT_RELEASE` pour confirmer l'absence d'effets de bord.
+2. Vérifier le déploiement Cloud Run suivant afin de confirmer que la persistance allowlist reste opérationnelle.
+3. Garder un œil sur Guardian Validation : le pipeline doit repasser au vert maintenant que le build tient.
+
+### Blocages
+- Aucun.
+
+## 🚀 Session COMPLETÉE (2025-10-31 15:20 CET) - Agent : Codex GPT
+
+### Fichiers modifiés
+- `stable-service.yaml`
+- `canary-service.yaml`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+- `AGENT_SYNC.md`
+
+### Actions réalisées
+- Réactivation complète du snapshot Firestore de l'allowlist sur Cloud Run (vars d'env + service account `firestore-sync`).
+- Synchronisation version `beta-3.3.19` + patch notes + changelog pour tracer le hotfix persistance membres.
+- Mise à jour des journaux (passation & agent sync) avec les prochaines étapes de déploiement.
+
+### Tests
+- ⚠️ Pas de tests automatisés (modifs manifests Cloud Run uniquement).
+
+### Prochaines actions recommandées
+1. Re-déployer `stable-service.yaml` et `canary-service.yaml` via `gcloud run services replace`.
+2. Contrôler les logs `Allowlist snapshot restored` après déploiement.
+3. QA manuelle : ajouter un membre en prod puis relancer un redeploy pour confirmer la persistance Firestore.
+
+### Blocages
+- Aucun.
+
 ## 🚀 Session COMPLETÉE (2025-10-29 07:03 CET) - Agent : Codex GPT
 
 ### Fichiers modifiés
