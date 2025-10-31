@@ -16,8 +16,10 @@ Le module Voice offre des capacités de synthèse vocale (TTS) et de reconnaissa
 voice/
 ├── models.py          # Pydantic models (VoiceServiceConfig, TTSRequest)
 ├── service.py         # VoiceService (synthesize_speech, transcribe_audio)
-└── router.py          # REST + WebSocket endpoints
+└── router.py          # REST + WebSocket endpoints (V1.2 - fix DI container leak)
 ```
+
+**⚠️ Note technique (v3.3.18):** Le router utilise `request.app.state.service_container` pour éviter un memory leak. Avant cette version, `_ensure_voice_service_rest()` créait un nouveau `ServiceContainer()` à chaque appel, leakant les sockets httpx jamais fermés.
 
 ### Services
 

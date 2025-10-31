@@ -1,9 +1,9 @@
 ﻿# src/backend/features/voice/router.py
-# V1.1 - Ajout endpoint REST TTS pour messages existants
+# V1.2 - Fix DI container leak (utilise app.state au lieu de créer nouveau container)
 import logging
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -102,18 +102,22 @@ async def voice_chat_ws(
             logger.info("Connexion WebSocket fermee pour la session %s.", session_id)
 
 
-def _ensure_voice_service_rest() -> VoiceService:
-    """Récupère VoiceService depuis le container DI pour les endpoints REST."""
-    from backend.containers import ServiceContainer
+def _ensure_voice_service_rest(request: Request) -> VoiceService:
+    """Récupère VoiceService depuis le container DI de l'app (pas de leak)."""
+    container = getattr(request.app.state, "service_container", None)
+    if container is None:
+        raise HTTPException(status_code=503, detail="Voice service unavailable.")
+    provider = getattr(container, "voice_service", None)
+    if provider is None:
+        raise HTTPException(status_code=503, detail="Voice service unavailable.")
     try:
-        container = ServiceContainer()
-        service = container.voice_service()
-        if not isinstance(service, VoiceService):
-            raise HTTPException(status_code=503, detail="Voice service invalide.")
-        return service
+        service = provider()
     except Exception as exc:
         logger.error(f"Impossible de recuperer VoiceService: {exc}", exc_info=True)
         raise HTTPException(status_code=503, detail="Voice service indisponible.")
+    if not isinstance(service, VoiceService):
+        raise HTTPException(status_code=503, detail="Voice service invalide.")
+    return service
 
 
 @router.post("/tts", tags=["Voice"])

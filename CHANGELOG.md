@@ -10,6 +10,35 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.18] - 2025-10-31
+
+### 🔧 Fix Voice DI container leak - Réutilise app.state container
+
+#### 🐞 Correctifs Critiques
+
+- **Fix memory leak critique** - L'endpoint REST `/api/voice/tts` créait un nouveau `ServiceContainer()` à chaque appel au lieu de réutiliser le container singleton `app.state.service_container`
+- **Sockets httpx leakés** - Chaque requête TTS instanciait un nouveau `httpx.AsyncClient` qui n'était jamais fermé par le shutdown hook de l'application, causant un leak de sockets/tasks sous charge
+- **État partagé bypassé** - Le nouveau container ignorait tout état partagé avec le reste de l'app (sessions, cache, métriques)
+
+#### ✨ Qualité
+
+- **Pattern DI unifié** - `_ensure_voice_service_rest(request: Request)` utilise maintenant `request.app.state.service_container` exactement comme `_ensure_voice_service(websocket: WebSocket)` pour le WebSocket
+- **Review Codex appliquée** - Correctif appliqué suite à review de Codex GPT qui a détecté le problème de DI avant merge vers main
+
+#### 📁 Fichiers Modifiés
+
+- `src/backend/features/voice/router.py` - Fix DI container (import Request + utilise app.state)
+- `src/version.js`, `src/frontend/version.js`, `package.json` - Version beta-3.3.18
+- `CHANGELOG.md` - Ajout entrée beta-3.3.18
+
+#### 🎯 Impact
+
+- **Performance améliorée** - Plus de leak de sockets, les connexions httpx sont réutilisées et fermées proprement
+- **Stabilité production** - Évite épuisement de file descriptors sous charge soutenue
+- **Code maintenable** - Pattern DI cohérent entre REST et WebSocket
+
+---
+
 ## [beta-3.3.17] - 2025-10-31
 
 ### 🔧 Fix Voice TTS - Auth token + SVG icon cohérent

@@ -45,8 +45,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.17',
-  name: 'Fix Voice TTS - Auth token + SVG icon cohérent',
+  version: 'beta-3.3.18',
+  name: 'Fix Voice DI container leak - Réutilise app.state container',
   date: '2025-10-31',
 };
 
