@@ -18,6 +18,7 @@ router = APIRouter()
 class TTSRequest(BaseModel):
     """Request body pour générer du TTS à partir de texte."""
     text: str
+    agent_id: str | None = None  # Optionnel : agent_id pour choisir la voix
 
 
 def _ensure_voice_service(websocket: WebSocket) -> VoiceService:
@@ -142,12 +143,12 @@ async def text_to_speech(
     if not request.text or not request.text.strip():
         raise HTTPException(status_code=400, detail="Le texte ne peut pas être vide.")
 
-    logger.info(f"TTS request from user {user_id}: {request.text[:50]}...")
+    logger.info(f"TTS request from user {user_id} (agent={request.agent_id}): {request.text[:50]}...")
 
     async def audio_generator() -> AsyncGenerator[bytes, None]:
         """Generator pour streamer l'audio."""
         try:
-            async for chunk in service.synthesize_speech(request.text):
+            async for chunk in service.synthesize_speech(request.text, agent_id=request.agent_id):
                 yield chunk
         except Exception as exc:
             logger.error(f"Erreur pendant génération TTS: {exc}", exc_info=True)

@@ -19,6 +19,7 @@ export class ChatUI {
       isLoading: false,
       currentAgentId: 'anima',
       ragEnabled: false,
+      ttsEnabled: false,  // TTS activé/désactivé
       messages: {},
       memoryBannerAt: null,
       lastAnalysis: null,
@@ -93,6 +94,21 @@ export class ChatUI {
                 </svg>
               </button>
               <span class="rag-label">RAG</span>
+            </div>
+            <div class="rag-control">
+              <button
+                type="button"
+                id="tts-power"
+                class="rag-power"
+                role="switch"
+                aria-checked="${String(!!this.state.ttsEnabled)}"
+                aria-label="${this.state.ttsEnabled ? 'TTS actif' : 'TTS inactif'}"
+                title="${this.state.ttsEnabled ? 'Désactiver la synthèse vocale' : 'Activer la synthèse vocale'}">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                  <path d="M11 5 6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                </svg>
+              </button>
+              <span class="rag-label">TTS</span>
             </div>
           </div>
           <div class="chat-header-right">
@@ -575,6 +591,25 @@ export class ChatUI {
     ragBtn?.addEventListener('click', toggleRag);
     ragBtnMobile?.addEventListener('click', toggleRag);
 
+    // TTS Toggle
+    const ttsBtn = container.querySelector('#tts-power');
+    const toggleTTS = (e) => {
+      const clickedBtn = e.currentTarget;
+      const on = clickedBtn.getAttribute('aria-checked') === 'true';
+      const next = !on;
+
+      if (ttsBtn) {
+        ttsBtn.setAttribute('aria-checked', String(next));
+        ttsBtn.setAttribute('aria-label', next ? 'TTS actif' : 'TTS inactif');
+        ttsBtn.title = next ? 'Désactiver la synthèse vocale' : 'Activer la synthèse vocale';
+      }
+
+      this.state.ttsEnabled = next;
+      console.log(`[ChatUI] TTS ${next ? 'activé' : 'désactivé'}`);
+    };
+
+    ttsBtn?.addEventListener('click', toggleTTS);
+
     const docChipHost = container.querySelector('#chat-doc-chips');
     docChipHost?.addEventListener('click', (e) => {
       const target = e.target;
@@ -682,13 +717,7 @@ export class ChatUI {
           return;
         }
 
-        // Handle listen button
-        const listenBtn = event.target.closest('[data-role="listen-message"]');
-        if (listenBtn && !listenBtn.hasAttribute('disabled')) {
-          await this._handleListenMessage(listenBtn);
-          event.preventDefault();
-          return;
-        }
+        // Listen button supprimé - TTS auto-play géré via toggle header
 
         // Handle copy button
         const button = event.target.closest('[data-role="copy-message"]');
@@ -1185,23 +1214,6 @@ _hasOpinionFromAgent(agentId, messageId) {
               <time class="message-time" datetime="${timestamp.iso}">${this._escapeHTML(timestamp.display)}</time>
             </div>
             <div class="message-actions">
-              ${m.role === 'assistant' ? `
-              <button
-                type="button"
-                class="btn-icon btn-listen"
-                data-role="listen-message"
-                data-message="${encodedRaw}"
-                data-message-id="${this._escapeHTML(m.id || '')}"
-                title="Écouter ce message"
-                aria-label="Écouter ce message"
-              >
-                <span class="sr-only">Écouter</span>
-                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="none"></polygon>
-                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-                </svg>
-              </button>` : ''}
               <button
                 type="button"
                 class="${copyClass}"
@@ -1311,26 +1323,27 @@ _hasOpinionFromAgent(agentId, messageId) {
     return this._decoderEl.value;
   }
 
-  async _handleListenMessage(button) {
-    if (!button) return;
-
-    const raw = button.getAttribute('data-message') || '';
-    const text = this._decodeHTML(raw).replace(/\r?\n/g, '\n').trimEnd();
-
-    if (!text) {
-      console.warn('[ChatUI] Pas de texte à lire');
+  /**
+   * Génère et joue automatiquement le TTS pour un message d'agent.
+   * Auto-play silencieux (pas de player visible).
+   * @param {string} text - Le texte du message à synthétiser
+   * @param {string} agentId - L'ID de l'agent (pour voice mapping)
+   */
+  async _playTTS(text, agentId = null) {
+    if (!text || !text.trim()) {
+      console.warn('[ChatUI] Pas de texte à synthétiser');
       return;
     }
 
-    // Désactiver le bouton pendant la requête
-    button.setAttribute('disabled', 'true');
-    button.setAttribute('aria-disabled', 'true');
-    const originalTitle = button.title;
-    button.title = 'Génération audio...';
+    if (!this.state.ttsEnabled) {
+      console.log('[ChatUI] TTS désactivé, skip');
+      return;
+    }
+
+    console.log(`[ChatUI] TTS auto-play pour agent "${agentId}"`);
 
     try {
-      // Pour TTS, on a besoin de la Response brute (pour .blob())
-      // On bypass api-client qui parse JSON par défaut
+      // Appel API TTS avec agent_id pour voice mapping
       const { getIdToken } = await import('../../core/auth.js');
       const token = getIdToken();
       const response = await fetch('/api/voice/tts', {
@@ -1339,7 +1352,10 @@ _hasOpinionFromAgent(agentId, messageId) {
           'Content-Type': 'application/json',
           'Authorization': token ? `Bearer ${token}` : ''
         },
-        body: JSON.stringify({ text })
+        body: JSON.stringify({
+          text: text.trim(),
+          agent_id: agentId
+        })
       });
 
       if (!response.ok) {
@@ -1350,40 +1366,25 @@ _hasOpinionFromAgent(agentId, messageId) {
       const blob = await response.blob();
       const audioUrl = URL.createObjectURL(blob);
 
-      // Créer ou réutiliser le player audio
-      let audio = document.getElementById('chat-audio-player');
-      if (!audio) {
-        audio = document.createElement('audio');
-        audio.id = 'chat-audio-player';
-        audio.controls = true;
-        audio.style.cssText = 'position: fixed; bottom: 80px; right: 20px; z-index: 1000; max-width: 300px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
-        document.body.appendChild(audio);
+      // Créer audio element invisible (pas de controls)
+      const audio = new Audio(audioUrl);
 
-        // Cleanup URL après lecture
-        audio.addEventListener('ended', () => {
-          URL.revokeObjectURL(audio.src);
-        });
-      }
-
-      // Cleanup ancien URL si existant
-      if (audio.src) {
-        URL.revokeObjectURL(audio.src);
-      }
-
-      audio.src = audioUrl;
-      audio.play().catch(err => {
-        console.error('[ChatUI] Audio play failed:', err);
+      // Cleanup URL après lecture
+      audio.addEventListener('ended', () => {
+        URL.revokeObjectURL(audioUrl);
       });
 
-      console.log('[ChatUI] Audio TTS généré et lecture démarrée');
+      // Cleanup URL en cas d'erreur
+      audio.addEventListener('error', () => {
+        URL.revokeObjectURL(audioUrl);
+      });
+
+      // Auto-play (silencieux, en arrière-plan)
+      await audio.play();
+      console.log('[ChatUI] TTS lecture démaré (auto-play)');
 
     } catch (error) {
-      console.error('[ChatUI] TTS failed:', error);
-      // TODO: Afficher un toast d'erreur
-    } finally {
-      button.removeAttribute('disabled');
-      button.removeAttribute('aria-disabled');
-      button.title = originalTitle;
+      console.error('[ChatUI] TTS auto-play failed:', error);
     }
   }
 
