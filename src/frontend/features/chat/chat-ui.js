@@ -682,6 +682,15 @@ export class ChatUI {
           return;
         }
 
+        // Handle listen button
+        const listenBtn = event.target.closest('[data-role="listen-message"]');
+        if (listenBtn && !listenBtn.hasAttribute('disabled')) {
+          await this._handleListenMessage(listenBtn);
+          event.preventDefault();
+          return;
+        }
+
+        // Handle copy button
         const button = event.target.closest('[data-role="copy-message"]');
         if (!button || button.hasAttribute('disabled')) return;
         const raw = button.getAttribute('data-message') || '';
@@ -1176,6 +1185,23 @@ _hasOpinionFromAgent(agentId, messageId) {
               <time class="message-time" datetime="${timestamp.iso}">${this._escapeHTML(timestamp.display)}</time>
             </div>
             <div class="message-actions">
+              ${m.role === 'assistant' ? `
+              <button
+                type="button"
+                class="btn-icon btn-listen"
+                data-role="listen-message"
+                data-message="${encodedRaw}"
+                data-message-id="${this._escapeHTML(m.id || '')}"
+                title="Écouter ce message"
+                aria-label="Écouter ce message"
+              >
+                <span class="sr-only">Écouter</span>
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="none"></polygon>
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                </svg>
+              </button>` : ''}
               <button
                 type="button"
                 class="${copyClass}"
@@ -1283,6 +1309,82 @@ _hasOpinionFromAgent(agentId, messageId) {
     }
     this._decoderEl.innerHTML = value;
     return this._decoderEl.value;
+  }
+
+  async _handleListenMessage(button) {
+    if (!button) return;
+
+    const raw = button.getAttribute('data-message') || '';
+    const text = this._decodeHTML(raw).replace(/\r?\n/g, '\n').trimEnd();
+
+    if (!text) {
+      console.warn('[ChatUI] Pas de texte à lire');
+      return;
+    }
+
+    // Désactiver le bouton pendant la requête
+    button.setAttribute('disabled', 'true');
+    button.setAttribute('aria-disabled', 'true');
+    const originalTitle = button.title;
+    button.title = 'Génération audio...';
+
+    try {
+      // Pour TTS, on a besoin de la Response brute (pour .blob())
+      // On bypass api-client qui parse JSON par défaut
+      const { getIdToken } = await import('../../core/auth.js');
+      const token = getIdToken();
+      const response = await fetch('/api/voice/tts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({ text })
+      });
+
+      if (!response.ok) {
+        throw new Error(`TTS API error: ${response.status}`);
+      }
+
+      // Lire l'audio stream
+      const blob = await response.blob();
+      const audioUrl = URL.createObjectURL(blob);
+
+      // Créer ou réutiliser le player audio
+      let audio = document.getElementById('chat-audio-player');
+      if (!audio) {
+        audio = document.createElement('audio');
+        audio.id = 'chat-audio-player';
+        audio.controls = true;
+        audio.style.cssText = 'position: fixed; bottom: 80px; right: 20px; z-index: 1000; max-width: 300px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
+        document.body.appendChild(audio);
+
+        // Cleanup URL après lecture
+        audio.addEventListener('ended', () => {
+          URL.revokeObjectURL(audio.src);
+        });
+      }
+
+      // Cleanup ancien URL si existant
+      if (audio.src) {
+        URL.revokeObjectURL(audio.src);
+      }
+
+      audio.src = audioUrl;
+      audio.play().catch(err => {
+        console.error('[ChatUI] Audio play failed:', err);
+      });
+
+      console.log('[ChatUI] Audio TTS généré et lecture démarrée');
+
+    } catch (error) {
+      console.error('[ChatUI] TTS failed:', error);
+      // TODO: Afficher un toast d'erreur
+    } finally {
+      button.removeAttribute('disabled');
+      button.removeAttribute('aria-disabled');
+      button.title = originalTitle;
+    }
   }
 
   async _copyToClipboard(text) {

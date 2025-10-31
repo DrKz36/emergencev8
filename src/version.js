@@ -20,7 +20,10 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.15 : Fix upload gros documents - Limites strictes pour éviter timeout Cloud Run [ACTUEL]
+ * - beta-3.3.18 : Fix Voice DI container leak - Réutilise app.state container [ACTUEL]
+ * - beta-3.3.17 : Fix Voice TTS - Auth token + SVG icon cohérent
+ * - beta-3.3.16 : Voice agents avec ElevenLabs TTS - Écouter les messages
+ * - beta-3.3.15 : Fix upload gros documents - Limites strictes pour éviter timeout Cloud Run
  * - beta-3.3.14 : Production connectivity fixes - WebSocket auth & thread cleanup
  * - beta-3.3.13 : Auth token test bundler compatibility
  * - beta-3.3.12 : Auth session continuity
@@ -46,8 +49,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.15',
-  name: 'Large document upload timeout fix - Strict limits to prevent Cloud Run timeout',
+  version: 'beta-3.3.18',
+  name: 'Fix Voice DI container leak - Réutilise app.state container',
   date: '2025-10-31',
 };
 
@@ -63,6 +66,40 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.18',
+    tagline: 'Fix Voice DI container leak - Réutilise app.state container',
+    date: '2025-10-31',
+    changes: [
+      { type: 'fix', text: 'Fix memory leak critique - Endpoint /api/voice/tts créait un nouveau ServiceContainer() à chaque appel au lieu de réutiliser app.state.service_container' },
+      { type: 'fix', text: 'Sockets httpx leakés - Chaque requête TTS instanciait un nouveau httpx.AsyncClient jamais fermé par shutdown hook' },
+      { type: 'quality', text: 'Pattern DI unifié - _ensure_voice_service_rest() utilise maintenant request.app.state.service_container comme le WebSocket' },
+      { type: 'quality', text: 'Review Codex appliquée - Correctif suite à review de Codex GPT qui a détecté le leak avant merge' },
+    ]
+  },
+  {
+    version: 'beta-3.3.17',
+    tagline: 'Fix Voice TTS - Auth token + SVG icon cohérent',
+    date: '2025-10-31',
+    changes: [
+      { type: 'fix', text: 'Fix authentification TTS - Utilisait le mauvais nom de clé localStorage (\'authToken\' au lieu de \'emergence.id_token\'), causait erreur 401 Unauthorized' },
+      { type: 'fix', text: 'Utilisation de getIdToken() - Import de la fonction auth officielle qui gère correctement le token JWT (sessionStorage + localStorage)' },
+      { type: 'quality', text: 'Icône speaker cohérente - SVG refait avec stroke-linecap="round", stroke-linejoin="round", fill="none" pour matcher le design des autres icônes' },
+      { type: 'fix', text: 'Fix Response format - Bypass api-client (qui parse JSON) pour appeler fetch() direct et récupérer Response brute nécessaire pour .blob()' },
+    ]
+  },
+  {
+    version: 'beta-3.3.16',
+    tagline: 'Voice agents with ElevenLabs TTS - Listen to agent responses',
+    date: '2025-10-31',
+    changes: [
+      { type: 'feature', text: 'Voix des agents avec ElevenLabs - Les messages d\'agents peuvent maintenant être écoutés via TTS (Text-to-Speech) de haute qualité' },
+      { type: 'feature', text: 'Bouton Écouter sur chaque message - Un bouton speaker apparaît sur tous les messages d\'agents pour générer l\'audio à la demande' },
+      { type: 'feature', text: 'Player audio flottant - Le player audio apparaît en bas à droite avec contrôles (play/pause/volume) pour une UX propre' },
+      { type: 'feature', text: 'API REST TTS - Endpoint POST /api/voice/tts pour générer de l\'audio à partir de n\'importe quel texte (streaming MP3)' },
+      { type: 'quality', text: 'Configuration ElevenLabs centralisée - Clés API, voice ID et model ID configurés via .env (eleven_multilingual_v2)' },
+    ]
+  },
   {
     version: 'beta-3.3.15',
     tagline: 'Large document upload timeout fix - Strict limits to prevent Cloud Run timeout',

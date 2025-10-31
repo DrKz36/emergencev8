@@ -21,6 +21,8 @@
 - **`shared/vector_service.py`** : gère Chroma + SentenceTransformer, détecte corruption, déclenche backup + reset automatique.
 - **`core/database/manager_postgres.py`** : gestionnaire async PostgreSQL (Cloud SQL + pgvector)
   destiné aux migrations futures ; maintenance au 2025-10-29 (suppression import `datetime` inutilisé) sans impact fonctionnel.
+- **`features/voice/service.py`** : gestion TTS/STT avec ElevenLabs (`synthesize_speech`) et OpenAI Whisper (`transcribe_audio`), configuration via `.env` (ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, ELEVENLABS_MODEL_ID), intégration avec ChatService pour interactions vocales complètes.
+- **`features/voice/router.py`** : endpoints REST `POST /api/voice/tts` (génération audio MP3 streaming) et WebSocket `/api/voice/ws/{agent_name}` (interaction vocale bi-directionnelle STT→LLM→TTS).
 
 ## Frontend
 - **`core/state-manager.js`** : store global, bootstrap auth + threads (REST), conserve map des threads/messages.

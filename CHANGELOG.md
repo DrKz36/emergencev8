@@ -10,6 +10,99 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.18] - 2025-10-31
+
+### 🔧 Fix Voice DI container leak - Réutilise app.state container
+
+#### 🐞 Correctifs Critiques
+
+- **Fix memory leak critique** - L'endpoint REST `/api/voice/tts` créait un nouveau `ServiceContainer()` à chaque appel au lieu de réutiliser le container singleton `app.state.service_container`
+- **Sockets httpx leakés** - Chaque requête TTS instanciait un nouveau `httpx.AsyncClient` qui n'était jamais fermé par le shutdown hook de l'application, causant un leak de sockets/tasks sous charge
+- **État partagé bypassé** - Le nouveau container ignorait tout état partagé avec le reste de l'app (sessions, cache, métriques)
+
+#### ✨ Qualité
+
+- **Pattern DI unifié** - `_ensure_voice_service_rest(request: Request)` utilise maintenant `request.app.state.service_container` exactement comme `_ensure_voice_service(websocket: WebSocket)` pour le WebSocket
+- **Review Codex appliquée** - Correctif appliqué suite à review de Codex GPT qui a détecté le problème de DI avant merge vers main
+
+#### 📁 Fichiers Modifiés
+
+- `src/backend/features/voice/router.py` - Fix DI container (import Request + utilise app.state)
+- `src/version.js`, `src/frontend/version.js`, `package.json` - Version beta-3.3.18
+- `CHANGELOG.md` - Ajout entrée beta-3.3.18
+
+#### 🎯 Impact
+
+- **Performance améliorée** - Plus de leak de sockets, les connexions httpx sont réutilisées et fermées proprement
+- **Stabilité production** - Évite épuisement de file descriptors sous charge soutenue
+- **Code maintenable** - Pattern DI cohérent entre REST et WebSocket
+
+---
+
+## [beta-3.3.17] - 2025-10-31
+
+### 🔧 Fix Voice TTS - Auth token + SVG icon cohérent
+
+#### 🐞 Correctifs
+
+- **Fix authentification TTS** - Le bouton Écouter utilisait le mauvais nom de clé localStorage (`'authToken'` au lieu de `'emergence.id_token'`), causait erreur 401 Unauthorized sur tous les appels TTS
+- **Utilisation de getIdToken()** - Import de la fonction auth officielle depuis `core/auth.js` qui gère correctement le token JWT (sessionStorage + localStorage + normalisation)
+- **Fix Response format** - L'api-client parse automatiquement JSON, mais TTS nécessite Response brute pour `.blob()`. Solution: appel `fetch()` direct avec token JWT
+
+#### ✨ Qualité
+
+- **Icône speaker cohérente** - SVG refait avec `stroke-linecap="round"`, `stroke-linejoin="round"`, `fill="none"` pour matcher exactement le design des autres icônes (copy, sources, etc.)
+- **Endpoints voice fonctionnels** - TTS maintenant 100% opérationnel avec auth correcte + streaming MP3 + player audio
+
+#### 📁 Fichiers Modifiés
+
+- `src/frontend/features/chat/chat-ui.js` - Fix auth token + SVG icon
+- `src/version.js`, `src/frontend/version.js`, `package.json` - Version beta-3.3.17
+- `CHANGELOG.md` - Ajout entrée beta-3.3.17
+
+#### 🎯 Impact
+
+- **Fonctionnalité voice complètement opérationnelle** - Les utilisateurs peuvent maintenant réellement écouter les messages d'agents (pas seulement voir l'icône)
+- **UX cohérente** - Icône speaker alignée avec le design system de l'app
+
+---
+
+## [beta-3.3.16] - 2025-10-31
+
+### 🎙️ Voice Agents with ElevenLabs TTS
+
+#### ✨ Nouvelles Fonctionnalités
+
+- **Voix des agents avec ElevenLabs** - Les messages d'agents peuvent maintenant être écoutés via TTS (Text-to-Speech) de haute qualité avec voix française naturelle
+- **Bouton Écouter sur chaque message** - Un bouton speaker apparaît automatiquement sur tous les messages d'agents pour générer l'audio à la demande
+- **Player audio flottant** - Le player audio apparaît en bas à droite avec contrôles HTML5 natifs (play/pause/volume/timeline) pour une UX propre et non-intrusive
+- **API REST TTS** - Endpoint `POST /api/voice/tts` pour générer de l'audio à partir de n'importe quel texte (streaming MP3 direct depuis ElevenLabs)
+- **WebSocket vocal** - Endpoint `WS /api/voice/ws/{agent_name}` pour interaction vocale complète (STT Whisper → LLM → TTS) - non encore utilisé par l'UI
+
+#### 🏗️ Architecture
+
+- **VoiceService backend** - Service complet avec méthodes `transcribe_audio()` (Whisper) et `synthesize_speech()` (ElevenLabs)
+- **Configuration centralisée** - Clés API, voice ID (`ohItIVrXTBI80RrUECOD`) et model ID (`eleven_multilingual_v2`) configurés via `.env`
+- **Router voice monté** - Routes REST et WebSocket exposées via `/api/voice/*` dans `main.py`
+- **Dependency Injection** - VoiceService intégré dans containers.py avec httpx.AsyncClient et ChatService
+
+#### 📁 Fichiers Modifiés
+
+- `src/backend/features/voice/router.py` - Ajout endpoint REST `/tts` + WebSocket `/ws/{agent_name}`
+- `src/backend/containers.py` - Fix valeurs par défaut ElevenLabs (voice ID + model ID)
+- `src/backend/main.py` - Montage VOICE_ROUTER avec prefix `/api/voice`
+- `src/frontend/features/chat/chat-ui.js` - Bouton Écouter + handler `_handleListenMessage()` + player audio flottant
+- `src/version.js` - Version beta-3.3.16 + patch notes
+- `src/frontend/version.js` - Synchronisation version
+- `package.json` - Version beta-3.3.16
+
+#### 🎯 Impact
+
+- **UX immersive** - Les utilisateurs peuvent maintenant écouter les réponses des agents au lieu de seulement les lire
+- **Accessibilité** - Permet aux utilisateurs malvoyants ou en situation de multitâche d'interagir avec les agents
+- **Voix naturelle** - ElevenLabs `eleven_multilingual_v2` offre une qualité vocale supérieure aux TTS standards
+- **Infrastructure voice réutilisable** - Base solide pour futures features (STT, conversation vocale complète, voice cloning)
+
 ## [beta-3.3.15] - 2025-10-31
 
 ### 🛠️ Large document upload timeout fix

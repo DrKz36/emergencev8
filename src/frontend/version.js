@@ -45,8 +45,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.15',
-  name: 'Large document upload timeout fix - Strict limits to prevent Cloud Run timeout',
+  version: 'beta-3.3.18',
+  name: 'Fix Voice DI container leak - Réutilise app.state container',
   date: '2025-10-31',
 };
 

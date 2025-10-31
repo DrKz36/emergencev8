@@ -156,6 +156,54 @@
 
 ---
 
+## 6) Voice API Endpoints (TTS/STT avec ElevenLabs + Whisper)
+
+### REST Endpoints
+
+- `POST /api/voice/tts` → **Génération audio TTS (Text-to-Speech)**
+  - **Auth:** JWT Bearer token requis
+  - **Body:** `{ "text": "Texte à synthétiser" }`
+  - **Retourne:** Stream audio/mpeg (MP3)
+  - **Headers response:**
+    - `Content-Type: audio/mpeg`
+    - `Content-Disposition: inline`
+    - `Cache-Control: no-cache`
+  - **Provider:** ElevenLabs API (model: `eleven_multilingual_v2`, voice: `ohItIVrXTBI80RrUECOD`)
+  - **Erreurs:**
+    - 400 si texte vide
+    - 503 si VoiceService indisponible
+    - 500 si génération TTS échoue
+
+### WebSocket Endpoints
+
+- `WS /api/voice/ws/{agent_name}?session_id=<uuid>` → **Interaction vocale bi-directionnelle**
+  - **Auth:** JWT via query param ou header
+  - **Flow:**
+    1. Client envoie bytes audio (format: webm/opus)
+    2. Serveur transcrit via Whisper (`transcribe_audio`)
+    3. Serveur génère réponse LLM via ChatService
+    4. Serveur synthétise réponse via ElevenLabs
+    5. Serveur stream audio MP3 au client
+  - **Messages serveur:**
+    - `{ "type": "text", "data": "réponse textuelle" }` - Réponse LLM
+    - `{ "type": "audio", "data": bytes }` - Chunks audio MP3
+    - `{ "type": "error", "data": "message d'erreur" }` - Erreur serveur
+  - **Erreurs:**
+    - 4401 si auth échoue
+    - Fermeture propre si client déconnecte
+  - **Note:** WebSocket vocal non encore utilisé par l'UI (prévu pour v3.4+)
+
+### Configuration (.env)
+
+```
+ELEVENLABS_API_KEY=sk_...
+ELEVENLABS_VOICE_ID=ohItIVrXTBI80RrUECOD  # Voix française naturelle
+ELEVENLABS_MODEL_ID=eleven_multilingual_v2
+OPENAI_API_KEY=sk-proj-...  # Pour Whisper STT
+```
+
+---
+
 ## 7) Gmail API Endpoints (Phase 3 Guardian Cloud)
 
 ### OAuth Flow (Admin uniquement)

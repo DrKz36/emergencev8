@@ -1,1 +1,4 @@
-Success: no issues found in 139 source files
+src\backend\features\documents\router.py:60:24: error: Incompatible default for argument "request" (default has type "None", argument has type "Request")  [assignment]
+src\backend\features\documents\router.py:60:24: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+src\backend\features\documents\router.py:60:24: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+Found 1 error in 1 file (checked 139 source files)

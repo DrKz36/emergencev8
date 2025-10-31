@@ -69,8 +69,8 @@ except Exception:  # pragma: no cover
     VoiceServiceConfig = None  # type: ignore[assignment,misc]
 
 _VOICE_STT_MODEL_DEFAULT = "whisper-1"
-_VOICE_TTS_MODEL_DEFAULT = "a_model_id_here"
-_VOICE_TTS_VOICE_DEFAULT = "a_voice_id_here"
+_VOICE_TTS_MODEL_DEFAULT = "eleven_multilingual_v2"
+_VOICE_TTS_VOICE_DEFAULT = "ohItIVrXTBI80RrUECOD"
 
 
 

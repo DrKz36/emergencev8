@@ -77,6 +77,7 @@ USAGE_ROUTER = _import_router("backend.features.usage.router")  # Usage tracking
 GMAIL_ROUTER = _import_router("backend.features.gmail.router")  # Gmail API (Phase 3 Guardian Cloud)
 TRACING_ROUTER = _import_router("backend.features.tracing.router")  # Distributed tracing (Phase 3)
 WEBHOOKS_ROUTER = _import_router("backend.features.webhooks.router")  # Webhooks & external integrations (P3.11)
+VOICE_ROUTER = _import_router("backend.features.voice.router")  # Voice TTS/STT with ElevenLabs
 
 
 def _migrations_dir() -> str:
@@ -584,6 +585,7 @@ def create_app() -> FastAPI:
     _mount_router(GMAIL_ROUTER)  # Gmail API at /auth/gmail + /api/gmail/* (Phase 3 Guardian Cloud)
     _mount_router(TRACING_ROUTER, "/api")  # Tracing endpoints at /api/traces/* (Phase 3)
     _mount_router(WEBHOOKS_ROUTER)  # Webhooks at /api/webhooks/* (P3.11)
+    _mount_router(VOICE_ROUTER, "/api/voice")  # Voice TTS/STT at /api/voice/* + /api/voice/ws/{agent_name}
 
     # ⚠️ WS: **uniquement** features.chat.router (déclare /ws/{session_id})
     _mount_router(CHAT_ROUTER)  # pas de prefix → garde /ws/{session_id}
