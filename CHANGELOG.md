@@ -10,6 +10,32 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.20] - 2025-10-31
+
+### 🔧 Fix allowlist overwrite on redeploy - Preserve manually added accounts
+
+#### 🐞 Correctifs Critiques
+
+- **Fix allowlist écrasée à chaque redéploiement** - Les comptes ajoutés manuellement en production survivent maintenant aux redéploiements Cloud Run. L'allowlist n'est plus remise à zéro à chaque révision.
+- **Inversion ordre bootstrap auth** - RESTORE depuis Firestore snapshot AVANT SEED depuis env pour préserver les données existantes. L'ordre correct garantit que les comptes manuels ne sont pas perdus.
+- **Suppression sync prématuré** - Supprimé `_sync_allowlist_snapshot("seed")` dans `_seed_allowlist_from_env()` qui écrasait Firestore avant que restoration ne soit appelée.
+- **Fix duplicate key build error** - Fix duplicate key "name" dans CURRENT_RELEASE (merge Codex foireux) qui faisait planter Vite build avec "Expected ',', got ':'".
+
+#### 🎯 Impact
+
+- **Production stable** - Les comptes utilisateurs ajoutés manuellement (onboarding, tests, admin secondaires) ne sont plus perdus lors des déploiements
+- **Workflow auth robuste** - L'ordre correct restore → seed → sync garantit la persistance des données
+- **Build frontend fixé** - Plus d'erreur syntax lors du `npm run build`
+
+#### 📁 Fichiers Modifiés
+
+- `src/backend/features/auth/service.py` - Inversion ordre bootstrap + suppression sync prématuré
+- `src/version.js`, `src/frontend/version.js` - Fix duplicate key "name" + version beta-3.3.20
+- `package.json` - Version beta-3.3.20
+- `CHANGELOG.md` - Ajout entrée beta-3.3.20
+
+---
+
 ## [beta-3.3.19] - 2025-10-31
 
 ### 🔧 Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur

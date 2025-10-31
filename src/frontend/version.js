@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.19 : Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur [ACTUEL]
+ * - beta-3.3.20 : Fix allowlist overwrite on redeploy - Preserve manually added accounts [ACTUEL]
+ * - beta-3.3.19 : Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur
  * - beta-3.3.18 : Fix Voice DI container leak - Réutilise app.state container
  * - beta-3.3.17 : Fix Voice TTS - Auth token + SVG icon cohérent
  * - beta-3.3.16 : Voice agents avec ElevenLabs TTS - Écouter les messages
@@ -50,9 +51,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.19',
-  name: 'Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur',
-  name: 'TTS toggle header + Voix par agent + Auto-play silencieux',
+  version: 'beta-3.3.20',
+  name: 'Fix allowlist overwrite on redeploy - Preserve manually added accounts',
   date: '2025-10-31',
 };
 
@@ -68,6 +68,17 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.20',
+    tagline: 'Fix allowlist overwrite - Preserve manually added accounts',
+    date: '2025-10-31',
+    changes: [
+      { type: 'fix', text: 'Fix allowlist écrasée à chaque redéploiement Cloud Run - Les comptes ajoutés manuellement en prod survivent maintenant aux révisions' },
+      { type: 'fix', text: 'Inversion ordre bootstrap auth: RESTORE depuis Firestore snapshot avant SEED depuis env pour préserver les données existantes' },
+      { type: 'fix', text: 'Suppression sync prématuré dans _seed_allowlist_from_env() qui écrasait Firestore avant restoration' },
+      { type: 'fix', text: 'Fix duplicate key "name" dans CURRENT_RELEASE (merge Codex foireux) qui faisait planter Vite build' },
+    ]
+  },
   {
     version: 'beta-3.3.19',
     tagline: 'Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur',

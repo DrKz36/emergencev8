@@ -194,7 +194,8 @@ class AuthService:
             except Exception as exc:
                 logger.error("Unexpected error while seeding allowlist entry for %s: %s", email, exc, exc_info=True)
 
-        await self._sync_allowlist_snapshot(reason="seed")
+        # NOTE: Sync removed here - will be done once at the end of bootstrap()
+        # This prevents overwriting Firestore snapshot before restore is called
     def _allowlist_snapshot_enabled(self) -> bool:
         return self._allowlist_snapshot_backend == "firestore"
 
@@ -504,8 +505,10 @@ class AuthService:
             commit=True,
         )
 
-        await self._seed_allowlist_from_env()
+        # FIX: Restore snapshot BEFORE seeding to preserve manually added accounts
+        # Order matters: restore from Firestore first, then seed missing entries, then sync back
         await self._restore_allowlist_from_snapshot()
+        await self._seed_allowlist_from_env()
         await self._sync_allowlist_snapshot(reason="bootstrap")
         self._auth_sessions_has_user_id = None
         await self._backfill_auth_session_user_ids()
