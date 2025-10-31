@@ -233,12 +233,24 @@ def _build_voice_config(settings: Settings) -> VoiceServiceConfig:
     tts_model_id = getattr(settings, "elevenlabs_model_id", None)
     tts_voice_id = getattr(settings, "elevenlabs_voice_id", None)
 
+    # Mapping des voix par agent (ElevenLabs voice IDs)
+    # Voix publiques pré-configurées :
+    # - Anima (féminine) : Rachel - 21m00Tcm4TlvDq8ikWAM
+    # - Neo (masculin jeune) : Antoni - ErXwobaYiN019PkySvjV
+    # - Nexus (masculin posé) : Josh - TxGEqnHWrfWFTfGW9XjX
+    agent_voices = {
+        "anima": "21m00Tcm4TlvDq8ikWAM",  # Rachel - Voix féminine claire
+        "neo": "ErXwobaYiN019PkySvjV",    # Antoni - Voix masculine jeune
+        "nexus": "TxGEqnHWrfWFTfGW9XjX",  # Josh - Voix masculine mûre
+    }
+
     return VoiceServiceConfig(
         stt_api_key=str(stt_api_key).strip(),
         stt_model=str(stt_model).strip() if stt_model else _VOICE_STT_MODEL_DEFAULT,
         tts_api_key=str(tts_api_key).strip(),
         tts_model_id=str(tts_model_id).strip() if tts_model_id else _VOICE_TTS_MODEL_DEFAULT,
         tts_voice_id=str(tts_voice_id).strip() if tts_voice_id else _VOICE_TTS_VOICE_DEFAULT,
+        agent_voices=agent_voices,
     )
 
 

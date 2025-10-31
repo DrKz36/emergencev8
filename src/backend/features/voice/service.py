@@ -55,24 +55,33 @@ class VoiceService:
             )
             raise Exception("Erreur de transcription.")
 
-    async def synthesize_speech(self, text: str) -> AsyncGenerator[bytes, None]:
+    async def synthesize_speech(self, text: str, agent_id: str | None = None) -> AsyncGenerator[bytes, None]:
         logger.info(
-            "Debut de la synthese vocale avec ElevenLabs pour le texte: '%s'...",
+            "Debut de la synthese vocale avec ElevenLabs pour le texte: '%s'... (agent=%s)",
             text[:30],
+            agent_id,
         )
 
+        # Choisir la voice_id en fonction de l'agent (ou fallback sur default)
+        voice_id = self.config.tts_voice_id  # Fallback par défaut
+        if agent_id and agent_id in self.config.agent_voices:
+            voice_id = self.config.agent_voices[agent_id]
+            logger.info(f"Voix spécifique pour agent '{agent_id}': {voice_id}")
+        else:
+            logger.info(f"Voix par défaut utilisée: {voice_id}")
+
         if (
-            not self.config.tts_voice_id
-            or not isinstance(self.config.tts_voice_id, str)
-            or self.config.tts_voice_id.startswith("sk_")
+            not voice_id
+            or not isinstance(voice_id, str)
+            or voice_id.startswith("sk_")
         ):
             logger.error(
                 "ID de voix ElevenLabs invalide ou manquant. ID actuel : '%s'.",
-                self.config.tts_voice_id,
+                voice_id,
             )
             raise ValueError("ID de voix ElevenLabs non configure ou invalide.")
 
-        url = f"https://api.elevenlabs.io/v1/text-to-speech/{self.config.tts_voice_id}/stream"
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
         headers = {
             "Accept": "audio/mpeg",
             "Content-Type": "application/json",

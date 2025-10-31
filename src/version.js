@@ -21,6 +21,7 @@
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
  * - beta-3.3.19 : Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur [ACTUEL]
+ * - beta-3.3.19 : TTS toggle header + Voix par agent + Auto-play silencieux [ACTUEL]
  * - beta-3.3.18 : Fix Voice DI container leak - Réutilise app.state container
  * - beta-3.3.17 : Fix Voice TTS - Auth token + SVG icon cohérent
  * - beta-3.3.16 : Voice agents avec ElevenLabs TTS - Écouter les messages
@@ -52,6 +53,7 @@
 export const CURRENT_RELEASE = {
   version: 'beta-3.3.19',
   name: 'Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur',
+  name: 'TTS toggle header + Voix par agent + Auto-play silencieux',
   date: '2025-10-31',
 };
 
@@ -76,6 +78,14 @@ export const PATCH_NOTES = [
       { type: 'fix', text: 'Événements auth:restored et auth:login:success n\'affichent plus le modal si un thread actif valide existe déjà' },
       { type: 'quality', text: 'Vérification thread valide dans _prepareConversationPrompt avant de réinitialiser les flags' },
       { type: 'quality', text: 'Logs de debug améliorés pour tracer les appels de modal de reprise' },
+    tagline: 'TTS toggle header + Voix par agent + Auto-play silencieux',
+    date: '2025-10-31',
+    changes: [
+      { type: 'feature', text: 'Bouton toggle TTS dans header - Active/désactive la synthèse vocale des réponses (plus besoin de cliquer "Écouter" sur chaque message)' },
+      { type: 'feature', text: 'Voix personnalisées par agent - Anima voix féminine (Rachel), Neo voix masculine jeune (Antoni), Nexus voix masculine posée (Josh)' },
+      { type: 'feature', text: 'Auto-play silencieux - Les réponses des agents sont lues automatiquement quand TTS activé (pas de player audio visible)' },
+      { type: 'quality', text: 'Mapping voice_id backend - API /api/voice/tts accepte agent_id optionnel pour sélectionner la voix ElevenLabs dynamiquement' },
+      { type: 'fix', text: 'Suppression player audio flottant - Le lecteur visible en bas à droite qui ne disparaissait pas a été remplacé par audio invisible' },
     ]
   },
   {

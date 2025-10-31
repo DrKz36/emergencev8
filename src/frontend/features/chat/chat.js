@@ -1527,6 +1527,15 @@ export default class ChatModule {
       this.ui.update(this.container, this.state.get('chat'));
     }
 
+    // 🔊 TTS Auto-play : Si TTS activé, jouer la réponse de l'agent
+    if (this.ui && finalMsg && finalMsg.content && finalMsg.role === 'assistant') {
+      try {
+        this.ui._playTTS(finalMsg.content, agentId);
+      } catch (err) {
+        console.error('[Chat] TTS auto-play failed:', err);
+      }
+    }
+
     try {
       if (this._assistantPersistedIds.has(messageId)) return;
 
@@ -1534,16 +1543,16 @@ export default class ChatModule {
 
       const threadId = this.getCurrentThreadId();
       const finalBucketList = this.state.get(`chat.messages.${bucketId}`) || [];
-      const finalMsg = finalBucketList.find((m) => m.id === messageId);
+      const finalMsgForPersist = finalBucketList.find((m) => m.id === messageId);
 
-      if (!backendPersisted && threadId && finalMsg) {
+      if (!backendPersisted && threadId && finalMsgForPersist) {
         const payloadToPersist = {
           role: 'assistant',
-          content: typeof finalMsg.content === 'string' ? finalMsg.content : String(finalMsg.content ?? ''),
-          agent_id: finalMsg.agent_id || agentId,
+          content: typeof finalMsgForPersist.content === 'string' ? finalMsgForPersist.content : String(finalMsgForPersist.content ?? ''),
+          agent_id: finalMsgForPersist.agent_id || agentId,
         };
-        if (finalMsg.meta && typeof finalMsg.meta === 'object') {
-          payloadToPersist.meta = { ...finalMsg.meta };
+        if (finalMsgForPersist.meta && typeof finalMsgForPersist.meta === 'object') {
+          payloadToPersist.meta = { ...finalMsgForPersist.meta };
         }
         api.appendMessage(threadId, payloadToPersist)
           .then(() => this._assistantPersistedIds.add(messageId))
