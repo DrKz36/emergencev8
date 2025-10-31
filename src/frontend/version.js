@@ -20,6 +20,11 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
+ * - beta-3.3.19 : Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur [ACTUEL]
+ * - beta-3.3.18 : Fix Voice DI container leak - Réutilise app.state container
+ * - beta-3.3.17 : Fix Voice TTS - Auth token + SVG icon cohérent
+ * - beta-3.3.16 : Voice agents avec ElevenLabs TTS - Écouter les messages
+ * - beta-3.3.15 : Fix upload gros documents - Limites strictes pour éviter timeout Cloud Run
  * - beta-3.3.14 : Production connectivity fixes - WebSocket auth & thread cleanup
  * - beta-3.3.13 : Auth token test bundler compatibility
  * - beta-3.3.12 : Auth session continuity
@@ -46,6 +51,7 @@
 
 export const CURRENT_RELEASE = {
   version: 'beta-3.3.19',
+  name: 'Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur',
   name: 'TTS toggle header + Voix par agent + Auto-play silencieux',
   date: '2025-10-31',
 };
@@ -62,6 +68,27 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.19',
+    tagline: 'Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur',
+    date: '2025-10-31',
+    changes: [
+      { type: 'fix', text: 'Modal de reprise ne réapparaît plus après que l\'utilisateur ait fait son choix (nouvelle conversation ou reprendre)' },
+      { type: 'fix', text: 'Événements auth:restored et auth:login:success n\'affichent plus le modal si un thread actif valide existe déjà' },
+      { type: 'quality', text: 'Vérification thread valide dans _prepareConversationPrompt avant de réinitialiser les flags' },
+      { type: 'quality', text: 'Logs de debug améliorés pour tracer les appels de modal de reprise' },
+    ]
+  },
+  {
+    version: 'beta-3.3.18',
+    tagline: 'Fix Voice DI container leak - Réutilise app.state container',
+    date: '2025-10-31',
+    changes: [
+      { type: 'fix', text: 'Fix memory leak critique - Endpoint /api/voice/tts créait un nouveau ServiceContainer() à chaque appel' },
+      { type: 'fix', text: 'Sockets httpx leakés - Chaque requête TTS instanciait un nouveau httpx.AsyncClient jamais fermé' },
+      { type: 'quality', text: 'Pattern DI unifié - _ensure_voice_service_rest() utilise request.app.state.service_container' },
+    ]
+  },
   {
     version: 'beta-3.3.13',
     tagline: 'Auth token test bundler compatibility',
