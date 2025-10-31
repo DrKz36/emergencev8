@@ -1330,10 +1330,10 @@ _hasOpinionFromAgent(agentId, messageId) {
 
     try {
       // Import API client
-      const { apiClient } = await import('../../shared/api-client.js');
+      const { api } = await import('../../shared/api-client.js');
 
       // Appeler l'endpoint TTS
-      const response = await apiClient.post('/api/voice/tts', { text });
+      const response = await api.post('/api/voice/tts', { text });
 
       if (!response.ok) {
         throw new Error(`TTS API error: ${response.status}`);
