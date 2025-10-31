@@ -285,33 +285,98 @@ class AuthService:
         return resolved
 
     async def _persist_allowlist_snapshot(self) -> None:
+        """
+        Persist allowlist to Firestore with intelligent merge.
+
+        This ensures manually added accounts are never lost during redeploy.
+        The merge strategy is:
+        1. Load existing Firestore snapshot
+        2. Merge with local DB entries (union of emails)
+        3. Local DB has priority for conflicts
+        4. Write merged result to Firestore
+        """
         client = await self._get_allowlist_snapshot_client()
         if client is None:
             return
 
+        # Load existing Firestore snapshot for intelligent merge
+        existing_snapshot = await self._load_allowlist_snapshot()
+
+        # Build dictionaries of existing Firestore entries (indexed by email)
+        existing_active: dict[str, dict[str, Any]] = {}
+        existing_revoked: dict[str, dict[str, Any]] = {}
+        if existing_snapshot:
+            for entry in existing_snapshot.get("entries") or []:
+                if isinstance(entry, dict):
+                    email = self._normalize_email(entry.get("email"))
+                    if email:
+                        existing_active[email] = entry
+            for entry in existing_snapshot.get("revoked_entries") or []:
+                if isinstance(entry, dict):
+                    email = self._normalize_email(entry.get("email"))
+                    if email:
+                        existing_revoked[email] = entry
+
+        # Load local DB entries
         rows = await self._fetch_allowlist_snapshot_rows()
         collection = self._allowlist_snapshot_collection or "auth_config"
         document = self._allowlist_snapshot_document or "allowlist"
 
-        active: list[dict[str, Any]] = []
-        revoked: list[dict[str, Any]] = []
+        # Build dictionaries for merge
+        local_active: dict[str, dict[str, Any]] = {}
+        local_revoked: dict[str, dict[str, Any]] = {}
+
         for row in rows:
             # Ensure only JSON-serializable values
             payload = {key: row.get(key) for key in row.keys()}
+            email = self._normalize_email(payload.get("email"))
+            if not email:
+                continue
+
             if payload.get("revoked_at"):
-                revoked.append(payload)
+                local_revoked[email] = payload
             else:
-                active.append(payload)
+                local_active[email] = payload
+
+        # Intelligent merge: union of emails, local DB has priority
+        merged_active: dict[str, dict[str, Any]] = {}
+        merged_revoked: dict[str, dict[str, Any]] = {}
+
+        # First copy existing Firestore entries
+        merged_active.update(existing_active)
+        merged_revoked.update(existing_revoked)
+
+        # Then override with local DB entries (local priority)
+        merged_active.update(local_active)
+        merged_revoked.update(local_revoked)
+
+        # Remove entries that are in local_active but were in existing_revoked (reactivation)
+        for email in local_active:
+            if email in merged_revoked:
+                del merged_revoked[email]
+
+        # Remove entries that are in local_revoked but were in existing_active (revocation)
+        for email in local_revoked:
+            if email in merged_active:
+                del merged_active[email]
 
         doc_ref = client.collection(collection).document(document)
         data = {
             "version": 1,
             "updated_at": self._now().isoformat(),
-            "entries": active,
+            "entries": list(merged_active.values()),
         }
-        if revoked:
-            data["revoked_entries"] = revoked
+        if merged_revoked:
+            data["revoked_entries"] = list(merged_revoked.values())
+
+        # Now safe to use merge=False since we already did manual merge
         await doc_ref.set(data, merge=False)
+
+        logger.info(
+            "Allowlist snapshot persisted: %d active, %d revoked (merged from Firestore + local DB)",
+            len(merged_active),
+            len(merged_revoked),
+        )
 
     async def _load_allowlist_snapshot(self) -> Optional[dict[str, Any]]:
         client = await self._get_allowlist_snapshot_client()

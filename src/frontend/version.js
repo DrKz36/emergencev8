@@ -20,6 +20,7 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
+ * - beta-3.3.21 : Fix allowlist overwrite FINAL - Merge intelligent Firestore (union emails) [ACTUEL]
  * - beta-3.3.21 : Fix bouton TTS mobile disparu + Sync desktop/mobile [ACTUEL]
  * - beta-3.3.20 : Fix allowlist overwrite on redeploy - Preserve manually added accounts
  * - beta-3.3.19 : Fix modal reprise conversation - Évite affichage intempestif après choix utilisateur
@@ -54,6 +55,7 @@
 
 export const CURRENT_RELEASE = {
   version: 'beta-3.3.21',
+  name: 'Fix allowlist overwrite FINAL - Merge intelligent Firestore',
   name: 'Fix bouton TTS mobile disparu + Sync desktop/mobile',
   date: '2025-10-31',
 };
