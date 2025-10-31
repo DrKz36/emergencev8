@@ -7,6 +7,84 @@
 
 ---
 
+## ✅ [2025-10-31 06:10 CET] Fix Voice TTS - Auth token + SVG icon cohérent
+
+### Demande Utilisateur
+"Ca fonctionne! Maintenant retravaille l'icone du speacker en svg, documente tout le bordel et commit/push"
+
+### Contexte
+Session précédente (05:50) avait implémenté feature voice TTS, mais 2 bugs empêchaient le fonctionnement:
+1. **Erreur 401 Unauthorized** - Token JWT récupéré depuis mauvaise clé localStorage
+2. **SVG icon incohérent** - Manquait attributs stroke pour matcher design system
+
+### Actions Réalisées (20 min - 100% complété)
+
+**1. Debug & Fix auth token (10 min)**
+- ❌ **Problème identifié:** `localStorage.getItem('authToken')` retournait `null`
+  - Log backend: `401 Unauthorized` sur POST `/api/voice/tts`
+  - Vrai nom clé: `'emergence.id_token'` ou `'id_token'`
+- ✅ **Solution:** Import `getIdToken()` depuis `core/auth.js`
+  - Fonction officielle qui gère sessionStorage + localStorage + normalisation JWT
+  - Bypass api-client (parse JSON automatiquement) pour appeler `fetch()` direct
+  - Nécessaire pour TTS car on a besoin de Response brute pour `.blob()`
+
+**2. Fix SVG icon cohérent (5 min)**
+- ✅ Ajout attributs manquants sur icône speaker:
+  - `stroke-linecap="round"`
+  - `stroke-linejoin="round"`
+  - `fill="none"` sur polygon
+- Résultat: Match exactement design des autres icônes (copy, sources, etc.)
+
+**3. Versioning + Documentation (5 min)**
+- ✅ Version bumped: beta-3.3.16 → **beta-3.3.17**
+- ✅ Fichiers synchronisés:
+  - `src/version.js` (CURRENT_RELEASE + PATCH_NOTES + historique)
+  - `src/frontend/version.js` (CURRENT_RELEASE)
+  - `package.json` (version)
+  - `CHANGELOG.md` (entrée beta-3.3.17 complète)
+
+**4. Tests + Commit/Push**
+- ✅ `npm run build` - OK (vite build 1.05s)
+- ✅ Guardian pre-commit - OK (mypy + Anima + Neo)
+- ✅ Guardian post-commit - OK (Nexus + docs auto-update)
+- ✅ Guardian pre-push - OK (ProdGuardian: production healthy)
+- ✅ Git commit: `fix(voice): TTS auth token + SVG icon cohérent - v3.3.17`
+- ✅ Git push: `origin feat/voice-agents-elevenlabs`
+
+### Résultat Final
+**TTS maintenant 100% opérationnel** ✅
+- Auth JWT correcte (getIdToken())
+- Streaming MP3 fonctionnel
+- Player audio affiche et joue l'audio
+- Icône speaker cohérente avec design system
+
+### Fichiers Modifiés
+```
+Frontend:
+  src/frontend/features/chat/chat-ui.js  (fix auth getIdToken() + SVG stroke attributes)
+
+Versioning:
+  src/version.js                         (v3.3.17 + PATCH_NOTES)
+  src/frontend/version.js                (v3.3.17)
+  package.json                           (v3.3.17)
+  CHANGELOG.md                           (entrée beta-3.3.17)
+
+Sync docs:
+  AGENT_SYNC_CLAUDE.md                   (session 06:10)
+  docs/passation_claude.md               (cette entrée)
+```
+
+### Décisions Techniques
+1. **Bypass api-client pour TTS** - api-client parse automatiquement JSON, mais TTS retourne audio binaire MP3. Solution: appel `fetch()` direct avec token JWT pour récupérer Response brute nécessaire pour `.blob()`
+2. **getIdToken() au lieu de localStorage direct** - Utilise fonction officielle auth qui gère tous les cas edge (sessionStorage fallback, normalisation token, cleanup invalid tokens)
+
+### Prochaines Actions Recommandées
+- ⚠️ **Créer PR feat/voice-agents-elevenlabs → main** (feature complète + tests OK + production healthy)
+- 🔮 **Future v3.4:** Implémenter WebSocket vocal bi-directionnel (STT + TTS en temps réel)
+- 🔮 **Future v3.5:** Voix personnalisées par agent (multi-voice) + voice cloning
+
+---
+
 ## ✅ [2025-10-31 05:50 CET] Session Voice Agents avec ElevenLabs TTS
 
 ### Demande Utilisateur

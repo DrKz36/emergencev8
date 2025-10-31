@@ -1,17 +1,43 @@
 # 📋 AGENT_SYNC — Claude Code
 
-**Dernière mise à jour:** 2025-10-31 05:50 CET (Claude Code)
+**Dernière mise à jour:** 2025-10-31 06:10 CET (Claude Code)
 **Mode:** Développement collaboratif multi-agents
 
 ---
 
-## ✅ Session COMPLÉTÉE (2025-10-31 05:50) - Voice Agents avec ElevenLabs TTS
+## ✅ Session COMPLÉTÉE (2025-10-31 06:10) - Fix Voice TTS auth + SVG icon
+
+### 🔧 Correctifs critiques fonctionnalité voice
+
+**Status:** ✅ COMPLÉTÉ (beta-3.3.17)
+**Branch:** `feat/voice-agents-elevenlabs`
+**Commit:** 9346b0c
+
+**Problème rencontré:**
+- TTS générait erreur 401 Unauthorized (mauvais nom clé token: 'authToken' vs 'emergence.id_token')
+- Icône speaker pas cohérente avec design system (manquait stroke-linecap/linejoin)
+
+**Résolution:**
+1. **Fix auth TTS** - Import getIdToken() depuis core/auth.js (gère sessionStorage + localStorage + normalisation JWT)
+2. **Fix Response format** - Bypass api-client (parse JSON) pour appeler fetch() direct (besoin Response brute pour .blob())
+3. **SVG icon cohérent** - Ajout stroke-linecap="round", stroke-linejoin="round", fill="none" sur polygon speaker
+
+**Fichiers modifiés:**
+- `src/frontend/features/chat/chat-ui.js` (fix auth + SVG)
+- `src/version.js`, `src/frontend/version.js`, `package.json` (v3.3.17)
+- `CHANGELOG.md` (entrée beta-3.3.17)
+
+**Tests:** ✅ Build frontend OK, Guardian OK, Production healthy
+**Résultat:** TTS 100% opérationnel avec streaming MP3 + player audio + auth correcte ✅
+
+---
+
+## ✅ Session PRÉCÉDENTE (2025-10-31 05:50) - Voice Agents avec ElevenLabs TTS
 
 ### 🎙️ Intégration synthèse vocale pour messages agents
 
 **Status:** ✅ COMPLÉTÉ (beta-3.3.16)
 **Branch:** `feat/voice-agents-elevenlabs`
-**PR:** https://github.com/DrKz36/emergencev8/pull/new/feat/voice-agents-elevenlabs
 
 **Demande utilisateur:**
 "j'aimerais implémenter la voix des agents. J'ai une clé api pour elevenlabs dans .env avec les voice ID et model id"
