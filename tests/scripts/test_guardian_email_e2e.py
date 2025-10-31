@@ -300,8 +300,6 @@ class TestGuardianEmailE2E:
         """Test présence styles CSS inline (compatibilité email)."""
         html = await generate_html_email(mock_reports_all_ok)
 
-        # Emails HTML doivent avoir styles (either inline or in <style> block)
-        css_properties = [
         # Emails HTML doivent avoir styles inline
         # Fix: accept "background:" instead of "background-color:"
         css_properties = [
