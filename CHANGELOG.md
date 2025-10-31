@@ -10,6 +10,42 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.16] - 2025-10-31
+
+### 🎙️ Voice Agents with ElevenLabs TTS
+
+#### ✨ Nouvelles Fonctionnalités
+
+- **Voix des agents avec ElevenLabs** - Les messages d'agents peuvent maintenant être écoutés via TTS (Text-to-Speech) de haute qualité avec voix française naturelle
+- **Bouton Écouter sur chaque message** - Un bouton speaker apparaît automatiquement sur tous les messages d'agents pour générer l'audio à la demande
+- **Player audio flottant** - Le player audio apparaît en bas à droite avec contrôles HTML5 natifs (play/pause/volume/timeline) pour une UX propre et non-intrusive
+- **API REST TTS** - Endpoint `POST /api/voice/tts` pour générer de l'audio à partir de n'importe quel texte (streaming MP3 direct depuis ElevenLabs)
+- **WebSocket vocal** - Endpoint `WS /api/voice/ws/{agent_name}` pour interaction vocale complète (STT Whisper → LLM → TTS) - non encore utilisé par l'UI
+
+#### 🏗️ Architecture
+
+- **VoiceService backend** - Service complet avec méthodes `transcribe_audio()` (Whisper) et `synthesize_speech()` (ElevenLabs)
+- **Configuration centralisée** - Clés API, voice ID (`ohItIVrXTBI80RrUECOD`) et model ID (`eleven_multilingual_v2`) configurés via `.env`
+- **Router voice monté** - Routes REST et WebSocket exposées via `/api/voice/*` dans `main.py`
+- **Dependency Injection** - VoiceService intégré dans containers.py avec httpx.AsyncClient et ChatService
+
+#### 📁 Fichiers Modifiés
+
+- `src/backend/features/voice/router.py` - Ajout endpoint REST `/tts` + WebSocket `/ws/{agent_name}`
+- `src/backend/containers.py` - Fix valeurs par défaut ElevenLabs (voice ID + model ID)
+- `src/backend/main.py` - Montage VOICE_ROUTER avec prefix `/api/voice`
+- `src/frontend/features/chat/chat-ui.js` - Bouton Écouter + handler `_handleListenMessage()` + player audio flottant
+- `src/version.js` - Version beta-3.3.16 + patch notes
+- `src/frontend/version.js` - Synchronisation version
+- `package.json` - Version beta-3.3.16
+
+#### 🎯 Impact
+
+- **UX immersive** - Les utilisateurs peuvent maintenant écouter les réponses des agents au lieu de seulement les lire
+- **Accessibilité** - Permet aux utilisateurs malvoyants ou en situation de multitâche d'interagir avec les agents
+- **Voix naturelle** - ElevenLabs `eleven_multilingual_v2` offre une qualité vocale supérieure aux TTS standards
+- **Infrastructure voice réutilisable** - Base solide pour futures features (STT, conversation vocale complète, voice cloning)
+
 ## [beta-3.3.15] - 2025-10-31
 
 ### 🛠️ Large document upload timeout fix
