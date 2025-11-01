@@ -36,8 +36,8 @@ logger = logging.getLogger(__name__)
 class DocumentService:
     MAX_PREVIEW_CHARS = 20000
     DEFAULT_MAX_VECTOR_CHUNKS = 5000  # Phase 4 RAG: augmenté pour gros documents (1000 → 5000)
-    DEFAULT_VECTOR_BATCH_SIZE = 64
-    DEFAULT_CHUNK_INSERT_BATCH_SIZE = 128
+    DEFAULT_VECTOR_BATCH_SIZE = 256  # Augmenté de 64 → 256 pour réduire timeouts (moins d'appels Chroma)
+    DEFAULT_CHUNK_INSERT_BATCH_SIZE = 512  # Augmenté de 128 → 512 pour réduire timeouts (moins d'appels DB)
     DEFAULT_MAX_PARAGRAPHS_PER_CHUNK = 2
     MAX_TOTAL_CHUNKS_ALLOWED = 5000  # Limite absolue pour éviter timeout processing
     MAX_FILE_SIZE_MB = 50  # Limite taille fichier upload
@@ -206,16 +206,19 @@ class DocumentService:
             )
 
         indexed = 0
+        total_batches = (len(items_to_vectorize) + self.vector_batch_size - 1) // self.vector_batch_size
         try:
-            for start in range(0, len(items_to_vectorize), self.vector_batch_size):
+            for batch_idx, start in enumerate(range(0, len(items_to_vectorize), self.vector_batch_size), 1):
                 batch = items_to_vectorize[start : start + self.vector_batch_size]
                 if not batch:
                     continue
+                logger.info(f"[Vectorisation] Batch {batch_idx}/{total_batches}: traitement de {len(batch)} chunks...")
                 self.vector_service.add_items(
                     collection=self.document_collection,
                     items=batch,
                 )
                 indexed += len(batch)
+                logger.debug(f"[Vectorisation] Batch {batch_idx}/{total_batches} terminé ({indexed}/{len(items_to_vectorize)} total)")
         except Exception as exc:
             warning = _trim_error_message(str(exc)) or "Vectorisation indisponible"
             self._vector_init_error = warning
@@ -727,10 +730,14 @@ class DocumentService:
             )
 
             parser = self.parser_factory.get_parser(filepath.suffix)
+            logger.info(f"[Document Upload] Parsing fichier '{filename}' ({file_size_mb:.1f}MB)...")
             text_content = await asyncio.to_thread(parser.parse, str(filepath))
+            logger.info(f"[Document Upload] Parsing terminé: {len(text_content)} caractères extraits")
 
             # ✅ Phase 2 RAG : Chunking sémantique avec métadonnées enrichies
+            logger.info(f"[Document Upload] Chunking sémantique de '{filename}'...")
             semantic_chunks = self._chunk_text_semantic(text_content, filename)
+            logger.info(f"[Document Upload] Chunking terminé: {len(semantic_chunks)} chunks générés")
 
             # Vérifier le nombre de chunks AVANT de continuer
             if len(semantic_chunks) > self.MAX_TOTAL_CHUNKS_ALLOWED:
@@ -765,21 +772,25 @@ class DocumentService:
                 doc_id, filename, semantic_chunks, session_id, user_id
             )
             if chunk_rows:
+                logger.info(f"[Document Upload] Insertion de {len(chunk_rows)} chunks en DB...")
                 await self._persist_document_chunks(
                     chunk_rows,
                     session_id=session_id,
                     user_id=user_id,
                 )
+                logger.info("[Document Upload] Chunks insérés en DB avec succès")
 
             vectorized = True
             vector_warning: Optional[str] = None
             indexed_chunks = 0
             if chunk_vectors:
+                logger.info(f"[Document Upload] Vectorisation de {len(chunk_vectors)} chunks...")
                 vectorized, vector_warning, indexed_chunks = self._vectorize_document_chunks(
                     doc_id,
                     chunk_vectors,
                     total_chunks=len(chunk_rows),
                 )
+                logger.info(f"[Document Upload] Vectorisation terminée: {indexed_chunks}/{len(chunk_vectors)} chunks indexés")
 
             if not vectorized:
                 warning_message = vector_warning or "Vector store indisponible"

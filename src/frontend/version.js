@@ -56,8 +56,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.28',
-  name: 'TTS Mobile Autoplay Fix - Déblocage restrictions navigateurs mobiles',
+  version: 'beta-3.3.29',
+  name: 'Fix Document Upload Timeout - Gros documents fonctionnels en production',
   date: '2025-11-01',
 };
 

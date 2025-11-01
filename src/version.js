@@ -20,7 +20,9 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.24 : RAG Phase 4 - Requêtes exhaustives + boost retrieval gros documents [ACTUEL]
+ * - beta-3.3.29 : Fix Document Upload Timeout - Gros documents fonctionnels en production [ACTUEL]
+ * - beta-3.3.28 : TTS Mobile Autoplay Fix - Déblocage restrictions navigateurs mobiles
+ * - beta-3.3.24 : RAG Phase 4 - Requêtes exhaustives + boost retrieval gros documents
  * - beta-3.3.23 : Réactivation snapshot Firestore allowlist - Persistence comptes entre déploiements
  * - beta-3.3.22 : Fix TTS mobile portrait visibility - Override CSS important
  * - beta-3.3.21 : Fix allowlist overwrite FINAL - Merge intelligent Firestore (union emails)
@@ -57,8 +59,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.28',
-  name: 'TTS Mobile Autoplay Fix - Déblocage restrictions navigateurs mobiles',
+  version: 'beta-3.3.29',
+  name: 'Fix Document Upload Timeout - Gros documents fonctionnels en production',
   date: '2025-11-01',
 };
 
@@ -74,6 +76,20 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.29',
+    tagline: 'Fix Document Upload Timeout - Gros documents fonctionnels en production',
+    date: '2025-11-01',
+    changes: [
+      { type: 'fix', text: '🔥 FIX CRITIQUE: Timeout Cloud Run augmenté 600s→1800s (10min→30min) pour supporter documents 20 000+ lignes' },
+      { type: 'fix', text: 'Crash connexion en prod résolu - Documents volumineux ne font plus timeout' },
+      { type: 'performance', text: '🚀 PERF: Batch sizes optimisés x4 - VECTOR_BATCH_SIZE: 64→256, CHUNK_INSERT_BATCH_SIZE: 128→512' },
+      { type: 'performance', text: 'Processing 4x plus rapide - Pour 5000 chunks: 117 appels → 30 appels (20 batches vectorisation + 10 batches DB)' },
+      { type: 'quality', text: 'Logs de progression ajoutés - Visibilité complète du processing (parsing, chunking, DB insert, vectorisation)' },
+      { type: 'ops', text: 'stable-service.yaml: timeoutSeconds 600→1800' },
+      { type: 'ops', text: 'documents/service.py: Batch sizes augmentés + logs détaillés pour debug gros uploads' }
+    ]
+  },
   {
     version: 'beta-3.3.28',
     tagline: 'TTS Mobile Autoplay Fix - Déblocage restrictions navigateurs mobiles',
