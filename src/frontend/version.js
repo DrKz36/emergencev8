@@ -56,8 +56,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.29',
-  name: 'Fix Document Upload Timeout - Gros documents fonctionnels en production',
+  version: 'beta-3.3.30',
+  name: 'Investigation Cross-Device Persistence - Outils de diagnostic et migration',
   date: '2025-11-01',
 };
 

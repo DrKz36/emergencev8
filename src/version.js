@@ -59,8 +59,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.29',
-  name: 'Fix Document Upload Timeout - Gros documents fonctionnels en production',
+  version: 'beta-3.3.30',
+  name: 'Investigation Cross-Device Persistence - Outils de diagnostic et migration',
   date: '2025-11-01',
 };
 
@@ -76,6 +76,21 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.30',
+    tagline: 'Investigation Cross-Device Persistence - Outils de diagnostic et migration',
+    date: '2025-11-01',
+    changes: [
+      { type: 'investigation', text: '🔍 INVESTIGATION COMPLÈTE: Analyse du système de persistance cross-device (mobile ↔ desktop)' },
+      { type: 'quality', text: '✅ Code vérifié: Backend JWT contient bien `sub` constant (hash email), frontend stocke `user_id`, queries priorisent `user_id`' },
+      { type: 'quality', text: '⚠️  Problème identifié: Si JWT ancien SANS `sub` OU tables DB sans colonne `user_id` → isolation par session' },
+      { type: 'feature', text: '📊 Nouveau: Script diagnostic `scripts/diagnose_cross_device.py` - Vérifie schéma DB + données manquantes' },
+      { type: 'feature', text: '🔧 Nouveau: Script migration `scripts/migrate_cross_device.py` - Ajoute colonnes + backfill user_id automatique' },
+      { type: 'docs', text: '📝 Rapport complet: `CROSS_DEVICE_INVESTIGATION.md` - Analyse détaillée + solutions proposées' },
+      { type: 'fix', text: '🎯 Action recommandée: Lancer diagnostic puis migration si nécessaire + test 2 devices (mobile + desktop)' },
+      { type: 'quality', text: 'Architecture validée: Système CORRECT pour cross-device, problème vient probablement de données legacy' }
+    ]
+  },
   {
     version: 'beta-3.3.29',
     tagline: 'Fix Document Upload Timeout - Gros documents fonctionnels en production',
