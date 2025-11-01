@@ -55,8 +55,7 @@
 
 export const CURRENT_RELEASE = {
   version: 'beta-3.3.21',
-  name: 'Fix allowlist overwrite FINAL - Merge intelligent Firestore',
-  name: 'Fix bouton TTS mobile disparu + Sync desktop/mobile',
+  name: 'Fix allowlist overwrite + Fix bouton TTS mobile',
   date: '2025-10-31',
 };
 
@@ -74,9 +73,13 @@ export const TOTAL_FEATURES = 23;
 export const PATCH_NOTES = [
   {
     version: 'beta-3.3.21',
-    tagline: 'Fix TTS mobile - Bouton disparu + Synchronisation desktop/mobile',
+    tagline: 'Fix allowlist overwrite + Fix bouton TTS mobile',
     date: '2025-10-31',
     changes: [
+      { type: 'fix', text: '🔥 FIX CRITIQUE: Implémentation merge intelligent Firestore (union emails) - Les comptes manuels NE SONT PLUS JAMAIS PERDUS' },
+      { type: 'fix', text: 'Réécriture complète _persist_allowlist_snapshot() - Lit Firestore existant, merge avec DB locale, écrit résultat uni' },
+      { type: 'fix', text: 'Logique merge: 1) Load Firestore 2) Union emails 3) Priorité DB locale si conflit 4) Gestion réactivation/révocation' },
+      { type: 'fix', text: 'Logger info détaillé du merge: nombre active/revoked après fusion Firestore + DB locale' },
       { type: 'fix', text: 'Fix bouton TTS mobile disparu - Le bouton pour activer/désactiver la synthèse vocale était invisible sur mobile (manquait dans header-right)' },
       { type: 'fix', text: 'Ajout bouton TTS mobile dans chat-header-right - Même structure que le bouton RAG mobile (rag-control--mobile)' },
       { type: 'fix', text: 'Synchronisation état TTS desktop/mobile - Les deux boutons (desktop + mobile) se synchronisent maintenant automatiquement quand on toggle l\'un ou l\'autre' },
