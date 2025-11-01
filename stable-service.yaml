@@ -106,16 +106,15 @@ spec:
           value: gonzalefernando@gmail.com
         - name: AUTH_DEV_DEFAULT_EMAIL
           value: gonzalefernando@gmail.com
-        # Firestore snapshot DISABLED temporarily - was causing deployment timeout
-        # TODO: Fix Firestore permissions before re-enabling
-        # - name: AUTH_ALLOWLIST_SNAPSHOT_BACKEND
-        #   value: firestore
-        # - name: AUTH_ALLOWLIST_SNAPSHOT_COLLECTION
-        #   value: auth_config
-        # - name: AUTH_ALLOWLIST_SNAPSHOT_DOCUMENT
-        #   value: allowlist
-        # - name: AUTH_ALLOWLIST_SNAPSHOT_PROJECT
-        #   value: emergence-469005
+        # Firestore snapshot ENABLED - Comptes ajoutés manuellement survivent aux déploiements
+        - name: AUTH_ALLOWLIST_SNAPSHOT_BACKEND
+          value: firestore
+        - name: AUTH_ALLOWLIST_SNAPSHOT_COLLECTION
+          value: auth_config
+        - name: AUTH_ALLOWLIST_SNAPSHOT_DOCUMENT
+          value: allowlist
+        - name: AUTH_ALLOWLIST_SNAPSHOT_PROJECT
+          value: emergence-469005
         # AUTH_ALLOWLIST_SEED removed - only used for local DB seeding, not needed in production
         # AI Agent Models
         - name: ANIMA_PROVIDER

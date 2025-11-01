@@ -55,9 +55,9 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.22',
-  name: 'Fix TTS mobile portrait visibility',
-  date: '2025-10-31',
+  version: 'beta-3.3.23',
+  name: 'Réactivation snapshot Firestore allowlist',
+  date: '2025-11-01',
 };
 
 export const VERSION = CURRENT_RELEASE.version;

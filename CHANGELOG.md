@@ -10,6 +10,28 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.23] - 2025-11-01
+
+### 🔥 FIX CRITIQUE - Réactivation snapshot Firestore allowlist
+
+#### 🐞 Correctifs Critiques
+
+- **Snapshot Firestore réactivé en production** - Les variables d'environnement `AUTH_ALLOWLIST_SNAPSHOT_BACKEND=firestore` ont été décommentées dans `stable-service.yaml`. Les comptes ajoutés manuellement via l'admin UI survivront maintenant aux redéploiements Cloud Run.
+- **Fin de l'écrasement de l'allowlist** - Le système de merge intelligent Firestore (implémenté en beta-3.3.21) est maintenant activé en production. Chaque compte ajouté via l'UI sera automatiquement sauvegardé dans Firestore et persistera entre révisions.
+- **Snapshot Firestore existant détecté** - Un snapshot avec 2 comptes (admin + membre) a été trouvé dans Firestore. Il sera automatiquement restauré au prochain déploiement.
+
+#### 🎯 Impact
+
+- **Gestion allowlist robuste** - Les administrateurs peuvent maintenant ajouter des comptes en production sans craindre qu'ils disparaissent au prochain déploiement.
+- **Workflow simplifié** - Plus besoin de re-créer manuellement les comptes après chaque révision Cloud Run.
+- **Backup automatique** - Chaque modification de l'allowlist (ajout, suppression, changement de rôle) est automatiquement sauvegardée dans Firestore.
+
+#### 📁 Fichiers Modifiés
+
+- `stable-service.yaml` - Décommentées variables `AUTH_ALLOWLIST_SNAPSHOT_*` (lignes 110-117)
+- `src/version.js`, `src/frontend/version.js`, `package.json` - Version `beta-3.3.23` + patch notes
+- `CHANGELOG.md` - Entrée `beta-3.3.23` (celle-ci)
+
 ## [beta-3.3.22] - 2025-10-31
 
 ### 🔊 Fix TTS mobile portrait – Bouton réellement visible

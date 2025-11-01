@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.22 : Fix TTS mobile portrait visibility - Override CSS important [ACTUEL]
+ * - beta-3.3.23 : Réactivation snapshot Firestore allowlist - Persistence comptes entre déploiements [ACTUEL]
+ * - beta-3.3.22 : Fix TTS mobile portrait visibility - Override CSS important
  * - beta-3.3.21 : Fix allowlist overwrite FINAL - Merge intelligent Firestore (union emails)
  * - beta-3.3.21 : Fix bouton TTS mobile disparu + Sync desktop/mobile
  * - beta-3.3.20 : Fix allowlist overwrite on redeploy - Preserve manually added accounts
@@ -55,9 +56,9 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.22',
-  name: 'Fix TTS mobile portrait visibility',
-  date: '2025-10-31',
+  version: 'beta-3.3.23',
+  name: 'Réactivation snapshot Firestore allowlist',
+  date: '2025-11-01',
 };
 
 export const VERSION = CURRENT_RELEASE.version;
@@ -72,6 +73,18 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.23',
+    tagline: 'Réactivation snapshot Firestore allowlist',
+    date: '2025-11-01',
+    changes: [
+      { type: 'fix', text: '🔥 FIX CRITIQUE: Réactivation snapshot Firestore pour persistence allowlist entre déploiements Cloud Run' },
+      { type: 'fix', text: 'Les comptes ajoutés manuellement via l\'admin UI survivent maintenant aux révisions (plus d\'écrasement de l\'allowlist)' },
+      { type: 'ops', text: 'Décommentées variables d\'env AUTH_ALLOWLIST_SNAPSHOT_BACKEND=firestore dans stable-service.yaml' },
+      { type: 'quality', text: 'Le système de merge intelligent Firestore (beta-3.3.21) est maintenant activé en production' },
+      { type: 'quality', text: 'Snapshot Firestore existant détecté avec 2 comptes (admin + membre) - sera restauré au prochain déploiement' }
+    ]
+  },
   {
     version: 'beta-3.3.22',
     tagline: 'Fix TTS mobile portrait visibility',
