@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 class DocumentService:
     MAX_PREVIEW_CHARS = 20000
-    DEFAULT_MAX_VECTOR_CHUNKS = 1000  # Réduit de 2048 pour éviter timeout Cloud Run
+    DEFAULT_MAX_VECTOR_CHUNKS = 5000  # Phase 4 RAG: augmenté pour gros documents (1000 → 5000)
     DEFAULT_VECTOR_BATCH_SIZE = 64
     DEFAULT_CHUNK_INSERT_BATCH_SIZE = 128
     DEFAULT_MAX_PARAGRAPHS_PER_CHUNK = 2
@@ -363,10 +363,13 @@ class DocumentService:
                 'chunk_index': chunk_index,
                 'content': text,
             })
+            # 🔥 Phase 4.1 RAG: session_id RETIRÉ des metadata pour scope user global
+            # Rationale: Documents doivent être accessibles à toutes sessions du user
+            # session_id reste en paramètre pour logs/audit, mais PAS stocké dans ChromaDB
             metadata = {
                 'document_id': doc_id,
                 'filename': filename,
-                'session_id': session_id,
+                # 'session_id': session_id,  # ← RETIRÉ - Chunks scopés par user_id uniquement
                 'user_id': user_id,
                 'owner_id': user_id,
                 'chunk_type': chunk.get('chunk_type', 'prose'),
@@ -1027,11 +1030,11 @@ class DocumentService:
         vector_warning: Optional[str] = None
         indexed_chunks = 0
         if chunk_vectors:
+            # 🔥 Phase 4.1 RAG: session_id RETIRÉ du scope_filter (chunks scopés user uniquement)
             scope_filter: Dict[str, Any] = {'document_id': doc_id_int}
             if user_id:
                 scope_filter['user_id'] = user_id
-            if session_id:
-                scope_filter['session_id'] = session_id
+            # Note: session_id retiré - les chunks sont scopés par user_id uniquement
             vectorized, vector_warning, indexed_chunks = self._vectorize_document_chunks(
                 doc_id_int,
                 chunk_vectors,
@@ -1089,11 +1092,11 @@ class DocumentService:
             try:
                 assert self.document_collection is not None
                 # IMPORTANT: TOUJOURS filtrer par user_id pour l'isolation des données
+                # 🔥 Phase 4.1 RAG: session_id RETIRÉ du filtre delete (chunks scopés user uniquement)
                 where_filter: dict[str, Any] = {"document_id": int(doc_id)}
                 if user_id:
                     where_filter["user_id"] = user_id
-                if session_id:
-                    where_filter["session_id"] = session_id
+                # Note: session_id retiré - les chunks sont scopés par user_id uniquement
                 self.vector_service.delete_vectors(
                     collection=self.document_collection,
                     where_filter=where_filter,
@@ -1147,16 +1150,26 @@ class DocumentService:
 
         try:
             # Construire le filtre pour la session/user (TOUJOURS filtrer par user_id)
+            # 🆕 Phase 4 RAG : Documents accessibles à toutes les sessions du user (pas de filtre session_id)
+            # Rationale: Un document uploadé doit être accessible partout dans le compte user
             where_filter: Dict[str, Any] = {"user_id": user_id}
-            if session_id:
-                where_filter["session_id"] = session_id
+            # Note: session_id retiré du filtre - les docs sont scopés par user, pas par session
 
             # Étape 1 : Recherche vectorielle (récupère plus que nécessaire pour re-ranking)
+            # 🆕 Phase 4 RAG : Augmenter multiplicateur (x3 → x10) pour gros documents
+            # Limite max 500 chunks pour éviter timeout
+            n_results_requested = min(top_k * 10, 500)
+
             results = self.vector_service.query(
                 collection=self.document_collection,
                 query_text=query,
-                n_results=top_k * 3,  # Sur-échantillonner pour re-ranking
+                n_results=n_results_requested,  # Augmenté de x3 à x10 avec limite 500
                 where_filter=where_filter,
+            )
+
+            logger.info(
+                f"[RAG Phase 4] Document search: top_k={top_k}, n_results={n_results_requested}, "
+                f"retrieved={len(results) if results else 0} chunks"
             )
 
             if not results:

@@ -1788,6 +1788,8 @@ class ChatService:
         Ordre de priorité :
         1. Documents (avec scoring multi-critères)
         2. Mémoire conversationnelle (fallback si pas de documents)
+
+        🆕 Phase 4 RAG : Détection requêtes exhaustives pour augmenter top_k dynamiquement
         """
         # 🔍 P3 Tracing: Start retrieval span
         span_id = self.trace_manager.start_span("retrieval", attrs={"agent": agent_id or "unknown", "top_k": top_k})
@@ -1799,6 +1801,24 @@ class ChatService:
                 return result_text
 
             uid = self._try_get_user_id(session_id)
+
+            # 🆕 Phase 4 RAG : Détection requêtes exhaustives pour gros documents
+            # Pattern similaire à _build_temporal_context() ligne 1487
+            # 🔥 Phase 4.1: Inclut mots SANS accent (resume, detail, etc.) pour support clavier US/international
+            is_exhaustive_query = bool(re.search(
+                r'\b(tous|toutes|tout|exhaustif|complet|résumer|résumé|résume|resume|resumer|'
+                r'analyse|analyser|détail|détaillé|detail|detaille|intégral|integral|'
+                r'entier|concepts?|global|synthèse|synthese)\b',
+                last_user_message.lower()
+            ))
+
+            # Augmenter dynamiquement top_k pour requêtes exhaustives
+            if is_exhaustive_query and top_k < 100:
+                top_k = 100  # Au lieu de 5 - récupère beaucoup plus de contexte
+                logger.info(
+                    f"[RAG Phase 4] Exhaustive query detected - boosting top_k to {top_k} "
+                    f"for query: {last_user_message[:100]}"
+                )
 
             # ✅ Phase 3 RAG : Recherche dans les DOCUMENTS en priorité
             document_results = []
@@ -1812,7 +1832,7 @@ class ChatService:
                         query=intent.get("expanded_query", last_user_message),
                         session_id=session_id,
                         user_id=uid,
-                        top_k=top_k,
+                        top_k=top_k,  # Maintenant peut être 100 pour requêtes exhaustives
                         intent=intent
                     )
 

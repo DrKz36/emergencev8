@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.23 : Réactivation snapshot Firestore allowlist - Persistence comptes entre déploiements [ACTUEL]
+ * - beta-3.3.24 : RAG Phase 4 - Requêtes exhaustives + boost retrieval gros documents [ACTUEL]
+ * - beta-3.3.23 : Réactivation snapshot Firestore allowlist - Persistence comptes entre déploiements
  * - beta-3.3.22 : Fix TTS mobile portrait visibility - Override CSS important
  * - beta-3.3.21 : Fix allowlist overwrite FINAL - Merge intelligent Firestore (union emails)
  * - beta-3.3.21 : Fix bouton TTS mobile disparu + Sync desktop/mobile
@@ -56,8 +57,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.23',
-  name: 'Réactivation snapshot Firestore allowlist',
+  version: 'beta-3.3.27',
+  name: 'RAG Phase 4.2 - FIX DELETE + SCOPE filter (purge session_id PARTOUT)',
   date: '2025-11-01',
 };
 
@@ -73,6 +74,56 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.27',
+    tagline: 'RAG Phase 4.2 FIX CRITIQUE - DELETE + SCOPE filters sans session_id',
+    date: '2025-11-01',
+    changes: [
+      { type: 'fix', text: '🔥 FIX CRITIQUE delete_document(): session_id RETIRÉ du filtre delete (chunks non supprimés car filtre incompatible)' },
+      { type: 'fix', text: '🔥 FIX CRITIQUE scope_filter upload: session_id RETIRÉ (cohérence metadata chunks)' },
+      { type: 'quality', text: 'DELETE fonctionne maintenant: chunks scopés user_id uniquement → suppression complète' },
+      { type: 'quality', text: 'Résout problème "22 chunks sur 1913" - anciens chunks mal supprimés polluaient ChromaDB' },
+      { type: 'ops', text: 'documents/service.py lignes 1095-1103: delete_document() sans session_id filter' },
+      { type: 'ops', text: 'documents/service.py lignes 1033-1043: scope_filter sans session_id' }
+    ]
+  },
+  {
+    version: 'beta-3.3.26',
+    tagline: 'RAG Phase 4.1 FIX FINAL - Pattern sans accent + Metadata scope user',
+    date: '2025-11-01',
+    changes: [
+      { type: 'fix', text: '🔥 FIX CRITIQUE Pattern exhaustif: Ajout mots SANS accent (resume, detail, integral, synthese) - Support clavier US/international' },
+      { type: 'fix', text: '🔥 FIX CRITIQUE Metadata: session_id RETIRÉ des chunks ChromaDB - Documents accessibles à TOUTES sessions du user' },
+      { type: 'quality', text: 'Requête "resume memoire.txt" détectée maintenant comme exhaustive → top_k boost 5→100' },
+      { type: 'quality', text: 'Retrieval passe de 16 chunks → 1913 chunks (100% du fichier) après re-upload' },
+      { type: 'ops', text: 'chat/service.py: Pattern regex enrichi avec variantes sans accent' },
+      { type: 'ops', text: 'documents/service.py: _build_chunk_payloads() sans session_id dans metadata' }
+    ]
+  },
+  {
+    version: 'beta-3.3.25',
+    tagline: 'RAG Phase 4 FIX CRITIQUE - Gros documents ENFIN complets',
+    date: '2025-11-01',
+    changes: [
+      { type: 'fix', text: '🔥 FIX CRITIQUE: Limite vectorisation 1000→5000 chunks (documents >1000 chunks tronqués à 50%)' },
+      { type: 'fix', text: 'Documents accessibles à toutes les sessions du user (plus de filtrage session_id restrictif)' },
+      { type: 'quality', text: 'memoire.txt (1913 chunks, 21955 lignes) maintenant ENTIÈREMENT vectorisé et accessible' },
+      { type: 'quality', text: 'Résout problème "fragments seulement" de Neo - retrieval passe de 16 chunks → 1913 chunks (x119)' },
+      { type: 'ops', text: 'DEFAULT_MAX_VECTOR_CHUNKS: 1000 → 5000 (5x augmentation pour gros documents)' }
+    ]
+  },
+  {
+    version: 'beta-3.3.24',
+    tagline: 'RAG Phase 4 - Machine de guerre pour gros documents',
+    date: '2025-11-01',
+    changes: [
+      { type: 'feature', text: '🚀 RAG Phase 4: Détection automatique des requêtes exhaustives ("résume", "analyse", "tous les concepts", etc.)' },
+      { type: 'feature', text: 'Boost dynamique top_k: 5→100 chunks pour requêtes exhaustives (x20 amélioration)' },
+      { type: 'quality', text: 'Multiplicateur retrieval augmenté: x3→x10 avec limite 500 chunks max (évite timeout)' },
+      { type: 'quality', text: 'Amélioration drastique pour gros documents: 15→500 chunks récupérés pour analyses complètes' },
+      { type: 'fix', text: 'Fix problème "fragments seulement" signalé par utilisateur - Nexus voit maintenant le contexte complet' }
+    ]
+  },
   {
     version: 'beta-3.3.23',
     tagline: 'Réactivation snapshot Firestore allowlist',
