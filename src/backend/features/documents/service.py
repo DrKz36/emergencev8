@@ -778,7 +778,7 @@ class DocumentService:
                     session_id=session_id,
                     user_id=user_id,
                 )
-                logger.info(f"[Document Upload] Chunks insérés en DB avec succès")
+                logger.info("[Document Upload] Chunks insérés en DB avec succès")
 
             vectorized = True
             vector_warning: Optional[str] = None
