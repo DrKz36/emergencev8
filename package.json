@@ -1,7 +1,7 @@
 {
   "name": "emergence-v8",
   "private": true,
-  "version": "beta-3.3.26",
+  "version": "beta-3.3.27",
   "type": "module",
   "scripts": {
     "dev": "vite",

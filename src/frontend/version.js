@@ -56,8 +56,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.26',
-  name: 'RAG Phase 4.1 - Machine de guerre FINALE (pattern sans accent + metadata fix)',
+  version: 'beta-3.3.27',
+  name: 'RAG Phase 4.2 - FIX DELETE + SCOPE filter (purge session_id PARTOUT)',
   date: '2025-11-01',
 };
 

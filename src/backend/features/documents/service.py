@@ -1030,11 +1030,11 @@ class DocumentService:
         vector_warning: Optional[str] = None
         indexed_chunks = 0
         if chunk_vectors:
+            # 🔥 Phase 4.1 RAG: session_id RETIRÉ du scope_filter (chunks scopés user uniquement)
             scope_filter: Dict[str, Any] = {'document_id': doc_id_int}
             if user_id:
                 scope_filter['user_id'] = user_id
-            if session_id:
-                scope_filter['session_id'] = session_id
+            # Note: session_id retiré - les chunks sont scopés par user_id uniquement
             vectorized, vector_warning, indexed_chunks = self._vectorize_document_chunks(
                 doc_id_int,
                 chunk_vectors,
@@ -1092,11 +1092,11 @@ class DocumentService:
             try:
                 assert self.document_collection is not None
                 # IMPORTANT: TOUJOURS filtrer par user_id pour l'isolation des données
+                # 🔥 Phase 4.1 RAG: session_id RETIRÉ du filtre delete (chunks scopés user uniquement)
                 where_filter: dict[str, Any] = {"document_id": int(doc_id)}
                 if user_id:
                     where_filter["user_id"] = user_id
-                if session_id:
-                    where_filter["session_id"] = session_id
+                # Note: session_id retiré - les chunks sont scopés par user_id uniquement
                 self.vector_service.delete_vectors(
                     collection=self.document_collection,
                     where_filter=where_filter,

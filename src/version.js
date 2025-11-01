@@ -57,8 +57,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.26',
-  name: 'RAG Phase 4.1 - Machine de guerre FINALE (pattern sans accent + metadata fix)',
+  version: 'beta-3.3.27',
+  name: 'RAG Phase 4.2 - FIX DELETE + SCOPE filter (purge session_id PARTOUT)',
   date: '2025-11-01',
 };
 
@@ -74,6 +74,19 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.27',
+    tagline: 'RAG Phase 4.2 FIX CRITIQUE - DELETE + SCOPE filters sans session_id',
+    date: '2025-11-01',
+    changes: [
+      { type: 'fix', text: '🔥 FIX CRITIQUE delete_document(): session_id RETIRÉ du filtre delete (chunks non supprimés car filtre incompatible)' },
+      { type: 'fix', text: '🔥 FIX CRITIQUE scope_filter upload: session_id RETIRÉ (cohérence metadata chunks)' },
+      { type: 'quality', text: 'DELETE fonctionne maintenant: chunks scopés user_id uniquement → suppression complète' },
+      { type: 'quality', text: 'Résout problème "22 chunks sur 1913" - anciens chunks mal supprimés polluaient ChromaDB' },
+      { type: 'ops', text: 'documents/service.py lignes 1095-1103: delete_document() sans session_id filter' },
+      { type: 'ops', text: 'documents/service.py lignes 1033-1043: scope_filter sans session_id' }
+    ]
+  },
   {
     version: 'beta-3.3.26',
     tagline: 'RAG Phase 4.1 FIX FINAL - Pattern sans accent + Metadata scope user',
