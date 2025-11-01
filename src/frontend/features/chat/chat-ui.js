@@ -625,6 +625,35 @@ export class ChatUI {
 
       this.state.ttsEnabled = next;
       console.log(`[ChatUI] TTS ${next ? 'activé' : 'désactivé'}`);
+
+      // 🔊 FIX MOBILE: Débloquer l'autoplay audio sur mobile
+      // Sur mobile, audio.play() est bloqué sauf si déclenché par interaction utilisateur
+      // On crée un audio element au clic du bouton TTS pour débloquer l'autoplay
+      if (next && !this._ttsAudioElement) {
+        try {
+          // Créer un audio element réutilisable
+          this._ttsAudioElement = new Audio();
+
+          // Sur mobile, il faut play() suite à l'interaction pour débloquer l'autoplay
+          // On joue un silence très court (data URL) puis on pause immédiatement
+          const silenceDataUrl = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAABhADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD/////////////////////////////////////////////////////////////////AAAAAExhdmM1OC4xMzQAAAAAAAAAAAAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//sQZDgP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=';
+          this._ttsAudioElement.src = silenceDataUrl;
+
+          // Play puis pause immédiatement pour débloquer l'autoplay
+          const playPromise = this._ttsAudioElement.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              this._ttsAudioElement.pause();
+              this._ttsAudioElement.currentTime = 0;
+              console.log('[ChatUI] TTS autoplay débloqué pour mobile ✅');
+            }).catch(err => {
+              console.warn('[ChatUI] Impossible de débloquer autoplay (normal sur certains mobiles):', err);
+            });
+          }
+        } catch (err) {
+          console.warn('[ChatUI] Erreur lors du déblocage autoplay:', err);
+        }
+      }
     };
 
     // Attacher le handler aux deux boutons
@@ -1347,6 +1376,7 @@ _hasOpinionFromAgent(agentId, messageId) {
   /**
    * Génère et joue automatiquement le TTS pour un message d'agent.
    * Auto-play silencieux (pas de player visible).
+   * 🔊 FIX MOBILE: Réutilise l'audio element débloqué au clic du bouton TTS.
    * @param {string} text - Le texte du message à synthétiser
    * @param {string} agentId - L'ID de l'agent (pour voice mapping)
    */
@@ -1387,25 +1417,46 @@ _hasOpinionFromAgent(agentId, messageId) {
       const blob = await response.blob();
       const audioUrl = URL.createObjectURL(blob);
 
-      // Créer audio element invisible (pas de controls)
-      const audio = new Audio(audioUrl);
+      // 🔊 FIX MOBILE: Réutiliser l'audio element débloqué (si existe) pour contourner restrictions autoplay
+      // Sur mobile, créer un nouveau Audio() à chaque fois peut être bloqué
+      // En réutilisant l'element créé au clic du bouton TTS, l'autoplay fonctionne
+      let audio = this._ttsAudioElement;
+      if (!audio) {
+        // Fallback: créer un nouvel element (peut être bloqué sur mobile sans interaction)
+        audio = new Audio();
+        console.warn('[ChatUI] TTS audio element pas débloqué, peut être bloqué sur mobile');
+      }
+
+      // Stocker l'URL actuelle pour cleanup
+      const previousUrl = audio.src;
+
+      // Changer la source de l'audio
+      audio.src = audioUrl;
+
+      // Cleanup de l'ancienne URL si existe
+      if (previousUrl && previousUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previousUrl);
+      }
 
       // Cleanup URL après lecture
-      audio.addEventListener('ended', () => {
+      const cleanupHandler = () => {
         URL.revokeObjectURL(audioUrl);
-      });
-
-      // Cleanup URL en cas d'erreur
-      audio.addEventListener('error', () => {
-        URL.revokeObjectURL(audioUrl);
-      });
+        audio.removeEventListener('ended', cleanupHandler);
+        audio.removeEventListener('error', cleanupHandler);
+      };
+      audio.addEventListener('ended', cleanupHandler);
+      audio.addEventListener('error', cleanupHandler);
 
       // Auto-play (silencieux, en arrière-plan)
       await audio.play();
-      console.log('[ChatUI] TTS lecture démaré (auto-play)');
+      console.log('[ChatUI] TTS lecture démarée (auto-play)');
 
     } catch (error) {
       console.error('[ChatUI] TTS auto-play failed:', error);
+      // Si l'erreur est liée à l'autoplay mobile, afficher un message utile
+      if (error.name === 'NotAllowedError') {
+        console.error('[ChatUI] ⚠️ Autoplay bloqué par le navigateur. Sur mobile, assurez-vous d\'activer le TTS via le bouton.');
+      }
     }
   }
 
