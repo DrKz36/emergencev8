@@ -1,3 +1,30 @@
+## Session COMPLETED (2025-10-31 16:05 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/frontend/styles/components/rag-power-button.css`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Forcé la règle responsive mobile à utiliser `display:flex !important` pour que les boutons RAG/TTS mobiles apparaissent en portrait.
+2. Incrémenté la version vers `beta-3.3.22` + patch notes/changelog alignés avec le hotfix.
+3. Mis à jour la passation et la sync agent pour tracer la correction QA prod.
+
+### Tests
+- ✅ `npm run build`
+
+### Next steps
+1. QA manuelle sur mobile (Safari/Chrome) pour valider la visibilité du bouton TTS.
+2. Vérifier que Guardian/CI relaie bien la version `beta-3.3.22`.
+3. Surveiller éventuels retours utilisateurs sur le mode vocal.
+
+### Blockers
+- Aucun.
+
 ## Session COMPLETED (2025-10-31 12:40 CET) - Agent : Codex GPT
 
 ### Files touched

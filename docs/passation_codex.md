@@ -1,3 +1,46 @@
+## [2025-10-31 16:05] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.21
+- **Nouvelle:** beta-3.3.22 (PATCH — Fix TTS mobile portrait visibility)
+
+### Fichiers modifiés
+- `src/frontend/styles/components/rag-power-button.css`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Retour prod: en mobile portrait le bouton TTS restait invisible malgré le fix précédent. Le `display:none !important` de base écrasait la media query mobile, donc aucun toggle vocal utilisable sur Safari iOS/Android.
+
+### Travail réalisé
+1. Ajout de `display:flex !important` dans la règle responsive portrait pour forcer l'affichage des boutons mobiles RAG/TTS.
+2. Bump version vers `beta-3.3.22` + patch notes/changelog alignés.
+3. Synchronisation journaux (`AGENT_SYNC_CODEX.md`, `docs/passation_codex.md`).
+
+### Tests
+- ✅ `npm run build`
+
+### Versioning
+- ✅ Version incrémentée
+- ✅ CHANGELOG.md mis à jour
+- ✅ Patch notes ajoutées
+
+### Travail de Claude Code pris en compte
+- Aucun impact sur ses modifications backend/auth.
+
+### Prochaines actions recommandées
+1. QA mobile réelle (iOS/Android) pour confirmer visibilité bouton TTS et fonctionnement toggle.
+2. Vérifier que Guardian/CI pick up la version `beta-3.3.22`.
+
+### Blocages
+- Aucun.
+
+---
+
 ## [2025-10-31 12:40] — Agent: Codex GPT
 
 ### Version
