@@ -1433,6 +1433,10 @@ _hasOpinionFromAgent(agentId, messageId) {
       // Changer la source de l'audio
       audio.src = audioUrl;
 
+      // CRITIQUE: Appeler load() pour réinitialiser l'audio element après changement de src
+      // Sans ça, si l'audio était en pause ou déjà joué, il ne se relancera pas
+      audio.load();
+
       // Cleanup de l'ancienne URL si existe
       if (previousUrl && previousUrl.startsWith('blob:')) {
         URL.revokeObjectURL(previousUrl);
