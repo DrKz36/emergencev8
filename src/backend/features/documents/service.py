@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 class DocumentService:
     MAX_PREVIEW_CHARS = 20000
-    DEFAULT_MAX_VECTOR_CHUNKS = 1000  # Réduit de 2048 pour éviter timeout Cloud Run
+    DEFAULT_MAX_VECTOR_CHUNKS = 5000  # Phase 4 RAG: augmenté pour gros documents (1000 → 5000)
     DEFAULT_VECTOR_BATCH_SIZE = 64
     DEFAULT_CHUNK_INSERT_BATCH_SIZE = 128
     DEFAULT_MAX_PARAGRAPHS_PER_CHUNK = 2
@@ -1147,9 +1147,10 @@ class DocumentService:
 
         try:
             # Construire le filtre pour la session/user (TOUJOURS filtrer par user_id)
+            # 🆕 Phase 4 RAG : Documents accessibles à toutes les sessions du user (pas de filtre session_id)
+            # Rationale: Un document uploadé doit être accessible partout dans le compte user
             where_filter: Dict[str, Any] = {"user_id": user_id}
-            if session_id:
-                where_filter["session_id"] = session_id
+            # Note: session_id retiré du filtre - les docs sont scopés par user, pas par session
 
             # Étape 1 : Recherche vectorielle (récupère plus que nécessaire pour re-ranking)
             # 🆕 Phase 4 RAG : Augmenter multiplicateur (x3 → x10) pour gros documents

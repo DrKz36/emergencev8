@@ -55,8 +55,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.24',
-  name: 'RAG Phase 4 - Requêtes exhaustives + boost retrieval',
+  version: 'beta-3.3.25',
+  name: 'RAG Phase 4 FIX - Gros documents COMPLETS (5000 chunks + scope user)',
   date: '2025-11-01',
 };
 

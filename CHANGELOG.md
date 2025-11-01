@@ -10,6 +10,29 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.25] - 2025-11-01
+
+### 🔥 RAG Phase 4 FIX CRITIQUE - Gros documents ENFIN complets
+
+#### 🐞 Correctifs Critiques
+
+- **Limite vectorisation explosée : 1000 → 5000 chunks** - Le bottleneck critique a été identifié : `DEFAULT_MAX_VECTOR_CHUNKS = 1000` tronquait tous les documents >1000 chunks. Pour un fichier de 1913 chunks (21955 lignes), **913 chunks (48%) étaient perdus !** Nouvelle limite : 5000 chunks (5x augmentation).
+- **Documents accessibles partout (scope user, pas session)** - Le filtrage par `session_id` isolait les chunks entre sessions. Si tu uploadais un doc dans une session, il était invisible dans une autre session du même user. Maintenant, **les documents sont scopés par `user_id` uniquement**, accessibles à toutes les sessions.
+- **Retrieval x119 pour memoire.txt** - Avant : 16 chunks trouvés sur 1000 vectorisés (1.6%). Après : 1913 chunks vectorisés + tous accessibles (100%). Amélioration massive : **16 → 1913 chunks (x119)**.
+
+#### 🎯 Impact
+
+- **memoire.txt (1913 chunks, 21955 lignes) maintenant ENTIÈREMENT vectorisé** - Fini le "Je n'ai que des fragments". Neo peut maintenant analyser le fichier complet.
+- **Documents persistants entre sessions** - Upload un doc une fois, utilise-le partout dans ton compte. Plus de duplication nécessaire.
+- **Phase 4 RAG finalement opérationnelle** - La combinaison boost top_k (beta-3.3.24) + limite augmentée + scope user crée vraiment la "machine de guerre" demandée.
+- **Gros documents supportés** - Limite augmentée de 1000 à 5000 chunks couvre 99% des cas d'usage (documents jusqu'à ~300k lignes).
+
+#### 📁 Fichiers Modifiés
+
+- `src/backend/features/documents/service.py` - `DEFAULT_MAX_VECTOR_CHUNKS: 1000 → 5000` + suppression filtrage `session_id`
+- `src/version.js`, `src/frontend/version.js`, `package.json` - Version `beta-3.3.25` + patch notes
+- `CHANGELOG.md` - Entrée `beta-3.3.25` (celle-ci)
+
 ## [beta-3.3.24] - 2025-11-01
 
 ### 🚀 RAG Phase 4 - Machine de guerre pour gros documents

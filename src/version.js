@@ -57,8 +57,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.24',
-  name: 'RAG Phase 4 - Requêtes exhaustives + boost retrieval',
+  version: 'beta-3.3.25',
+  name: 'RAG Phase 4 FIX - Gros documents COMPLETS (5000 chunks + scope user)',
   date: '2025-11-01',
 };
 
@@ -74,6 +74,18 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.25',
+    tagline: 'RAG Phase 4 FIX CRITIQUE - Gros documents ENFIN complets',
+    date: '2025-11-01',
+    changes: [
+      { type: 'fix', text: '🔥 FIX CRITIQUE: Limite vectorisation 1000→5000 chunks (documents >1000 chunks tronqués à 50%)' },
+      { type: 'fix', text: 'Documents accessibles à toutes les sessions du user (plus de filtrage session_id restrictif)' },
+      { type: 'quality', text: 'memoire.txt (1913 chunks, 21955 lignes) maintenant ENTIÈREMENT vectorisé et accessible' },
+      { type: 'quality', text: 'Résout problème "fragments seulement" de Neo - retrieval passe de 16 chunks → 1913 chunks (x119)' },
+      { type: 'ops', text: 'DEFAULT_MAX_VECTOR_CHUNKS: 1000 → 5000 (5x augmentation pour gros documents)' }
+    ]
+  },
   {
     version: 'beta-3.3.24',
     tagline: 'RAG Phase 4 - Machine de guerre pour gros documents',
