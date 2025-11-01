@@ -1,3 +1,34 @@
+## Session COMPLETED (2025-11-01 15:40 CET) - Agent : Codex GPT
+
+### Files touched
+- `src/backend/features/documents/service.py`
+- `tests/backend/features/test_documents_vector_resilience.py`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Work summary
+1. Implémenté un fallback multi-phase pour le chunking : levée de la limite 2 paragraphes, scaling du `chunk_size` et fusion contrôlée afin d'éviter l'erreur 413 sur documents > 10 000 sections.
+2. Ajouté le test `test_process_upload_with_massive_line_count` pour valider l'upload complet de 12 500 paragraphes.
+3. Bump version → `beta-3.3.31` avec patch notes/changelog synchronisés (backend + frontend + package.json).
+
+### Tests
+- ✅ `ruff check src/backend/`
+- ❌ `mypy src/backend/` (environnement dépourvu de stubs FastAPI/Pydantic)
+- ❌ `pytest tests/backend/features/test_documents_vector_resilience.py` (module `httpx` absent)
+- ✅ `npm run build`
+
+### Next steps
+1. Installer les dépendances manquantes (`fastapi`, `pydantic`, `httpx`) pour repasser `mypy`/`pytest` en vert.
+2. QA manuelle d'un upload 20k+ lignes sur staging/prod pour vérifier les warnings fallback.
+3. Surveiller Guardian pour confirmer l'apparition des logs `[Document Upload]` lors d'uploads massifs.
+
+### Blockers
+- Environnement agents incomplet (pas de FastAPI/Pydantic/httpx) → linters/tests partiels.
+
 ## Session COMPLETED (2025-10-31 16:05 CET) - Agent : Codex GPT
 
 ### Files touched

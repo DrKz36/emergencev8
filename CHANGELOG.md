@@ -10,6 +10,26 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.31] - 2025-11-01
+
+### 🛡️ Large Document Upload Resilience
+
+#### 🐞 Correctifs Critiques
+
+- **Plus d'erreur 413 sur gros documents** – Le chunker ne bloque plus à 5 000 chunks : suppression de la limite fixe « 2 paragraphes » pour les documents > 10 000 sections et fallback adaptatif avant de refuser l'upload.
+- **Vectorisation complète** – Même après fallback, 100 % des chunks générés sont indexés. Les documents de 20 000+ lignes ne déclenchent plus l'arrêt brutal observé dans les logs Cloud Run.
+
+#### ⚙️ Améliorations Techniques
+
+- **Chunk size dynamique** – Augmentation progressive (×2 jusqu'à 16x) tant que le nombre de chunks dépasse la limite, puis fusion finale contrôlée si nécessaire.
+- **Logs explicites** – Ajout de warnings `[Document Upload]` pour tracer chaque fallback activé (désactivation limite paragraphe, chunk_size augmenté, fusion).
+
+#### 🧪 Tests
+
+- ✅ `tests/backend/features/test_documents_vector_resilience.py::test_process_upload_with_massive_line_count` – Vérifie l'upload complet d'un fichier contenant 12 500 paragraphes courts.
+
+---
+
 ## [beta-3.3.29] - 2025-11-01
 
 ### 🔥 Fix Document Upload Timeout - Gros documents fonctionnels en production

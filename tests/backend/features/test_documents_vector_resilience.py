@@ -156,3 +156,50 @@ async def test_process_upload_with_chunk_limit(tmp_path: Path) -> None:
     assert documents[0]["status"] == "ready"
 
     await manager.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_process_upload_with_massive_line_count(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    uploads_dir = tmp_path / "uploads"
+
+    manager = DatabaseManager(str(db_path))
+    await manager.connect()
+    await manager.initialize()
+
+    parser_factory = ParserFactory()
+    vector_service = RecordingVectorService()
+
+    service = DocumentService(
+        db_manager=manager,
+        parser_factory=parser_factory,
+        vector_service=vector_service,
+        uploads_dir=str(uploads_dir),
+    )
+
+    # Crée un document artificiel avec > 10 000 paragraphes très courts
+    paragraphs = [f"Paragraphe {i}" for i in range(12_500)]
+    payload = "\n\n".join(paragraphs)
+    upload = UploadFile(filename="huge.txt", file=BytesIO(payload.encode("utf-8")))
+
+    result = await service.process_uploaded_file(
+        upload,
+        session_id="sess-huge",
+        user_id="user-huge",
+    )
+
+    assert result["vectorized"] is True
+    assert result["total_chunks"] <= service.MAX_TOTAL_CHUNKS_ALLOWED
+    assert result["indexed_chunks"] == result["total_chunks"]
+    assert sum(len(batch) for batch in vector_service.add_calls) == result["indexed_chunks"]
+
+    documents = await db_queries.get_all_documents(
+        manager,
+        session_id="sess-huge",
+        user_id="user-huge",
+    )
+    assert documents
+    assert documents[0]["status"] == "ready"
+    assert documents[0]["chunk_count"] == result["total_chunks"]
+
+    await manager.disconnect()

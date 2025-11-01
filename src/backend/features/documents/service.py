@@ -1,6 +1,7 @@
 # src/backend/features/documents/service.py
 # V8.3 - Ajout de get_all_documents/delete_document + purge vecteurs par document_id
 import logging
+import math
 import uuid
 import asyncio
 import os
@@ -526,7 +527,6 @@ class DocumentService:
         if not text or not text.strip():
             return []
 
-        chunks: list[dict[str, Any]] = []
         lines = text.split('\n')
         total_lines = len(lines)
 
@@ -537,7 +537,6 @@ class DocumentService:
 
         for i, line in enumerate(lines):
             if not line.strip() and current_paragraph:
-                # Fin de paragraphe
                 paragraphs.append({
                     'lines': current_paragraph,
                     'line_start': paragraph_line_start,
@@ -548,7 +547,6 @@ class DocumentService:
             else:
                 current_paragraph.append(line)
 
-        # Dernier paragraphe
         if current_paragraph:
             paragraphs.append({
                 'lines': current_paragraph,
@@ -556,77 +554,153 @@ class DocumentService:
                 'line_end': len(lines)
             })
 
-        # Étape 2 : Regrouper les paragraphes en chunks sémantiques
-        current_chunk_paragraphs: list[dict[str, Any]] = []
-        current_chunk_size = 0
+        base_chunk_size = config.CHUNK_SIZE
+        paragraph_limit = max(1, self.max_paragraphs_per_chunk)
 
-        def flush_current_chunk() -> None:
-            nonlocal current_chunk_paragraphs, current_chunk_size
-            if not current_chunk_paragraphs:
-                return
-            chunks.append(
-                self._finalize_chunk(
-                    current_chunk_paragraphs,
-                    filename,
-                    len(chunks),
-                )
-            )
-            current_chunk_paragraphs = []
+        def build_chunks(
+            max_paragraphs: Optional[int],
+            chunk_size: int,
+        ) -> list[dict[str, Any]]:
+            chunk_list: list[dict[str, Any]] = []
+            current_chunk_paragraphs: list[dict[str, Any]] = []
             current_chunk_size = 0
 
-        max_paragraphs = self.max_paragraphs_per_chunk
-
-        for para_dict in paragraphs:
-            para_text = '\n'.join(para_dict['lines'])
-            para_size = len(para_text)
-
-            # Si le paragraphe seul dépasse CHUNK_SIZE, le forcer en chunk unique
-            if para_size > config.CHUNK_SIZE:
-                flush_current_chunk()
-
-                chunks.append(
+            def flush_current_chunk() -> None:
+                nonlocal current_chunk_paragraphs, current_chunk_size
+                if not current_chunk_paragraphs:
+                    return
+                chunk_list.append(
                     self._finalize_chunk(
-                        [para_dict],
+                        current_chunk_paragraphs,
                         filename,
-                        len(chunks),
+                        len(chunk_list),
+                        chunk_size,
                     )
                 )
-                continue
+                current_chunk_paragraphs = []
+                current_chunk_size = 0
 
-            # Limiter la taille des chunks par nombre de paragraphes pour éviter les blocs trop denses
-            if (
-                max_paragraphs
-                and current_chunk_paragraphs
-                and len(current_chunk_paragraphs) >= max_paragraphs
+            for para_dict in paragraphs:
+                para_text = '\n'.join(para_dict['lines'])
+                para_size = len(para_text)
+
+                if para_size > chunk_size:
+                    flush_current_chunk()
+                    chunk_list.append(
+                        self._finalize_chunk(
+                            [para_dict],
+                            filename,
+                            len(chunk_list),
+                            chunk_size,
+                        )
+                    )
+                    continue
+
+                if (
+                    max_paragraphs
+                    and current_chunk_paragraphs
+                    and len(current_chunk_paragraphs) >= max_paragraphs
+                ):
+                    flush_current_chunk()
+
+                if (
+                    current_chunk_paragraphs
+                    and current_chunk_size + para_size > chunk_size
+                ):
+                    flush_current_chunk()
+
+                current_chunk_paragraphs.append(para_dict)
+                current_chunk_size += para_size + 2  # +2 pour \n\n
+
+            flush_current_chunk()
+            return chunk_list
+
+        def apply_overlap(chunks: list[dict[str, Any]]) -> None:
+            for i in range(len(chunks) - 1):
+                current_text = chunks[i]['text']
+                next_text = chunks[i + 1]['text']
+                if len(current_text) > config.CHUNK_OVERLAP:
+                    overlap_text = current_text[-config.CHUNK_OVERLAP:]
+                    if not next_text.startswith(overlap_text):
+                        chunks[i + 1]['text'] = f"{overlap_text}\n\n{next_text}"
+                        chunks[i + 1]['has_overlap'] = True
+
+        def merge_chunks(
+            chunks: list[dict[str, Any]],
+            merge_factor: int,
+            chunk_size: int,
+        ) -> list[dict[str, Any]]:
+            merged: list[dict[str, Any]] = []
+            for start in range(0, len(chunks), merge_factor):
+                group = chunks[start : start + merge_factor]
+                if not group:
+                    continue
+                merged_text = "\n\n".join(chunk.get('text', '') for chunk in group)
+                merged_lines = merged_text.split('\n')
+                line_start = group[0].get('line_start', 0)
+                line_end = group[-1].get('line_end', line_start)
+                section_title = next(
+                    (chunk.get('section_title') for chunk in group if chunk.get('section_title')),
+                    None,
+                )
+                if not section_title:
+                    section_title = self._extract_section_title(merged_lines)
+                metadata_chunk = {
+                    'text': merged_text,
+                    'chunk_type': group[0].get('chunk_type', 'prose'),
+                    'section_title': section_title,
+                    'keywords': self._extract_keywords(merged_text),
+                    'line_start': line_start,
+                    'line_end': line_end,
+                    'line_range': f"{line_start}-{line_end}",
+                    'is_complete': len(merged_text) <= chunk_size
+                    and all(chunk.get('is_complete', False) for chunk in group),
+                    'has_overlap': False,
+                    'chunk_index': len(merged),
+                }
+                merged.append(metadata_chunk)
+            return merged
+
+        chunk_size = base_chunk_size
+        max_paragraphs: Optional[int] = paragraph_limit
+        chunks = build_chunks(max_paragraphs, chunk_size)
+
+        if len(chunks) > self.MAX_TOTAL_CHUNKS_ALLOWED:
+            logger.warning(
+                "[Document Upload] %s chunks générés pour '%s' (> %s) — fallback sans limite de paragraphes.",
+                len(chunks),
+                filename,
+                self.MAX_TOTAL_CHUNKS_ALLOWED,
+            )
+            max_paragraphs = None
+            chunks = build_chunks(max_paragraphs, chunk_size)
+
+        if len(chunks) > self.MAX_TOTAL_CHUNKS_ALLOWED:
+            max_chunk_multiplier = 16
+            while (
+                len(chunks) > self.MAX_TOTAL_CHUNKS_ALLOWED
+                and chunk_size < base_chunk_size * max_chunk_multiplier
             ):
-                flush_current_chunk()
+                chunk_size = min(chunk_size * 2, base_chunk_size * max_chunk_multiplier)
+                logger.warning(
+                    "[Document Upload] Fallback gros document — chunk_size augmenté à %s (chunks=%s).",
+                    chunk_size,
+                    len(chunks),
+                )
+                chunks = build_chunks(max_paragraphs, chunk_size)
 
-            # Si ajouter ce paragraphe dépasse CHUNK_SIZE, flush chunk courant
-            if (
-                current_chunk_paragraphs
-                and current_chunk_size + para_size > config.CHUNK_SIZE
-            ):
-                flush_current_chunk()
+        if len(chunks) > self.MAX_TOTAL_CHUNKS_ALLOWED:
+            merge_factor = math.ceil(len(chunks) / self.MAX_TOTAL_CHUNKS_ALLOWED)
+            logger.warning(
+                "[Document Upload] Fallback ultime — fusion de %s chunks par paquets de %s.",
+                len(chunks),
+                merge_factor,
+            )
+            chunks = merge_chunks(chunks, merge_factor, chunk_size)
 
-            # Ajouter paragraphe au chunk courant
-            current_chunk_paragraphs.append(para_dict)
-            current_chunk_size += para_size + 2  # +2 pour \n\n entre paragraphes
-
-        # Flush dernier chunk
-        flush_current_chunk()
-
-        # Étape 3 : Ajouter overlap entre chunks adjacents
-        for i in range(len(chunks) - 1):
-            current_text = chunks[i]['text']
-            next_text = chunks[i + 1]['text']
-
-            # Prendre les 100 derniers caractères du chunk courant
-            if len(current_text) > config.CHUNK_OVERLAP:
-                overlap_text = current_text[-config.CHUNK_OVERLAP:]
-                # Ajouter au début du chunk suivant (si pas déjà présent)
-                if not next_text.startswith(overlap_text):
-                    chunks[i + 1]['text'] = f"{overlap_text}\n\n{next_text}"
-                    chunks[i + 1]['has_overlap'] = True
+        apply_overlap(chunks)
+        for index, chunk in enumerate(chunks):
+            chunk['chunk_index'] = index
 
         logger.info(
             f"Chunking sémantique terminé : {len(chunks)} chunks pour '{filename}' "
@@ -639,7 +713,8 @@ class DocumentService:
         self,
         paragraphs: List[Dict[str, Any]],
         filename: str,
-        chunk_index: int
+        chunk_index: int,
+        chunk_size: int,
     ) -> Dict[str, Any]:
         """
         Finalise un chunk en extrayant ses métadonnées.
@@ -674,7 +749,7 @@ class DocumentService:
         # Déterminer si le chunk est complet
         # Heuristique : un chunk est complet s'il contient < CHUNK_SIZE caractères
         # (pas tronqué) et qu'il forme une unité cohérente
-        is_complete = len(text) < config.CHUNK_SIZE
+        is_complete = len(text) < chunk_size
 
         return {
             'text': text,

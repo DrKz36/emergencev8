@@ -59,8 +59,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.30',
-  name: 'Investigation Cross-Device Persistence - Outils de diagnostic et migration',
+  version: 'beta-3.3.31',
+  name: 'Large Document Upload Resilience',
   date: '2025-11-01',
 };
 
@@ -76,6 +76,16 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.31',
+    tagline: 'Large Document Upload Resilience - Chunk fallback multi-phase',
+    date: '2025-11-01',
+    changes: [
+      { type: 'fix', text: 'Fallback de chunking dynamique : suppression de la limite 2 paragraphes pour les documents > 10 000 sections afin d\'éviter l\'erreur 413.' },
+      { type: 'performance', text: 'Augmentation adaptative du chunk_size et fusion progressive pour maintenir ≤ 5 000 chunks tout en vectorisant 100 % du document.' },
+      { type: 'quality', text: 'Test d\'intégration `test_process_upload_with_massive_line_count` pour garantir l\'upload complet de 12 500 paragraphes.' }
+    ]
+  },
   {
     version: 'beta-3.3.30',
     tagline: 'Investigation Cross-Device Persistence - Outils de diagnostic et migration',
