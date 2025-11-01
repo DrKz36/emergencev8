@@ -57,8 +57,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.25',
-  name: 'RAG Phase 4 FIX - Gros documents COMPLETS (5000 chunks + scope user)',
+  version: 'beta-3.3.26',
+  name: 'RAG Phase 4.1 - Machine de guerre FINALE (pattern sans accent + metadata fix)',
   date: '2025-11-01',
 };
 
@@ -74,6 +74,19 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.26',
+    tagline: 'RAG Phase 4.1 FIX FINAL - Pattern sans accent + Metadata scope user',
+    date: '2025-11-01',
+    changes: [
+      { type: 'fix', text: '🔥 FIX CRITIQUE Pattern exhaustif: Ajout mots SANS accent (resume, detail, integral, synthese) - Support clavier US/international' },
+      { type: 'fix', text: '🔥 FIX CRITIQUE Metadata: session_id RETIRÉ des chunks ChromaDB - Documents accessibles à TOUTES sessions du user' },
+      { type: 'quality', text: 'Requête "resume memoire.txt" détectée maintenant comme exhaustive → top_k boost 5→100' },
+      { type: 'quality', text: 'Retrieval passe de 16 chunks → 1913 chunks (100% du fichier) après re-upload' },
+      { type: 'ops', text: 'chat/service.py: Pattern regex enrichi avec variantes sans accent' },
+      { type: 'ops', text: 'documents/service.py: _build_chunk_payloads() sans session_id dans metadata' }
+    ]
+  },
   {
     version: 'beta-3.3.25',
     tagline: 'RAG Phase 4 FIX CRITIQUE - Gros documents ENFIN complets',

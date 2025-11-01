@@ -18,6 +18,7 @@
  * - beta-2.1.3 : Guardian email reports automation
  * - beta-2.1.4 : Fix 404 production (reset-password, favicon)
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
+ * - beta-3.3.26 : RAG Phase 4.1 - Pattern sans accent + metadata fix [ACTUEL]
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
  * - beta-3.3.22 : Fix TTS mobile portrait visibility - Override CSS important [ACTUEL]
@@ -55,8 +56,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.25',
-  name: 'RAG Phase 4 FIX - Gros documents COMPLETS (5000 chunks + scope user)',
+  version: 'beta-3.3.26',
+  name: 'RAG Phase 4.1 - Machine de guerre FINALE (pattern sans accent + metadata fix)',
   date: '2025-11-01',
 };
 

@@ -363,10 +363,13 @@ class DocumentService:
                 'chunk_index': chunk_index,
                 'content': text,
             })
+            # 🔥 Phase 4.1 RAG: session_id RETIRÉ des metadata pour scope user global
+            # Rationale: Documents doivent être accessibles à toutes sessions du user
+            # session_id reste en paramètre pour logs/audit, mais PAS stocké dans ChromaDB
             metadata = {
                 'document_id': doc_id,
                 'filename': filename,
-                'session_id': session_id,
+                # 'session_id': session_id,  # ← RETIRÉ - Chunks scopés par user_id uniquement
                 'user_id': user_id,
                 'owner_id': user_id,
                 'chunk_type': chunk.get('chunk_type', 'prose'),

@@ -1804,9 +1804,11 @@ class ChatService:
 
             # 🆕 Phase 4 RAG : Détection requêtes exhaustives pour gros documents
             # Pattern similaire à _build_temporal_context() ligne 1487
+            # 🔥 Phase 4.1: Inclut mots SANS accent (resume, detail, etc.) pour support clavier US/international
             is_exhaustive_query = bool(re.search(
-                r'\b(tous|toutes|tout|exhaustif|complet|résumer|résume|analyse|analyser|'
-                r'détail|détaillé|intégral|complet|entier|concepts?|global|synthèse)\b',
+                r'\b(tous|toutes|tout|exhaustif|complet|résumer|résumé|résume|resume|resumer|'
+                r'analyse|analyser|détail|détaillé|detail|detaille|intégral|integral|'
+                r'entier|concepts?|global|synthèse|synthese)\b',
                 last_user_message.lower()
             ))
 

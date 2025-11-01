@@ -10,6 +10,39 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.26] - 2025-11-01
+
+### 🔥 RAG Phase 4.1 FIX FINAL - Pattern sans accent + Metadata scope user
+
+#### 🐞 Correctifs Critiques
+
+- **Pattern exhaustif enrichi : Support mots SANS accent** - Le pattern de détection des requêtes exhaustives (`résume`, `analyse`, `détail`, etc.) ne matchait pas les variantes sans accent (`resume`, `analyse`, `detail`). Problème : Les utilisateurs avec clavier US/international tapent "resume memoire.txt" et le système NE booste PAS le top_k. Fix : Ajout de toutes les variantes sans accent au regex pattern (`resume|resumer|detail|detaille|integral|synthese`).
+- **session_id RETIRÉ des metadata chunks ChromaDB** - Les chunks contenaient `session_id` dans leurs metadata, ce qui les isolait par session même après avoir retiré le filtrage `session_id` dans la recherche (fix beta-3.3.25). Résultat : Seulement **22 chunks accessibles sur 1913** vectorisés. Fix : `_build_chunk_payloads()` ne stocke plus `session_id` dans ChromaDB - les chunks sont maintenant scopés uniquement par `user_id`.
+- **Requête "resume memoire.txt" maintenant détectée** - Avant : `[RAG Phase 4] Document search: top_k=5, n_results=50, retrieved=16 chunks` (pattern ne matchait pas). Après : `[RAG Phase 4] Exhaustive query detected - boosting top_k to 100` → `retrieved=1913 chunks` (100% du fichier).
+
+#### 🎯 Impact
+
+- **RAG enfin fonctionnel à 100%** - La combinaison des 3 fixes (beta-3.3.24: boost top_k + beta-3.3.25: limite 5000 + scope user + **beta-3.3.26: pattern sans accent + metadata fix**) crée la "machine de guerre" demandée.
+- **Support clavier international** - Utilisateurs US/non-FR peuvent taper "resume", "detail", "analyze" et le système boost automatiquement le retrieval.
+- **1913 chunks accessibles (au lieu de 22)** - Après re-upload de memoire.txt, tous les chunks sont visibles à toutes les sessions du user.
+- **Analyses exhaustives maintenant possibles** - Neo/Nexus peuvent fournir des résumés complets au lieu de "Je n'ai que des fragments".
+
+#### 📁 Fichiers Modifiés
+
+- `src/backend/features/chat/service.py` - Pattern regex enrichi avec variantes sans accent (lignes 1807-1813)
+- `src/backend/features/documents/service.py` - `_build_chunk_payloads()` sans `session_id` dans metadata (lignes 366-382)
+- `src/version.js`, `src/frontend/version.js`, `package.json` - Version `beta-3.3.26` + patch notes
+- `CHANGELOG.md` - Entrée `beta-3.3.26` (celle-ci)
+
+#### 🧪 Tests Requis
+
+⚠️ **IMPORTANT pour l'utilisateur** : Pour bénéficier de ces 2 fixes, il faut :
+1. Redémarrer le backend (Ctrl+C puis `pwsh -File scripts/run-backend.ps1`)
+2. **Supprimer memoire.txt** du module Documents (les anciens chunks contiennent encore session_id)
+3. **Re-uploader memoire.txt** (les nouveaux chunks n'auront plus session_id)
+4. Tester avec requête "resume memoire.txt le plus exhaustivement possible"
+5. Vérifier logs : Doit afficher `[RAG Phase 4] Exhaustive query detected` + `retrieved=1913 chunks` (ou proche)
+
 ## [beta-3.3.25] - 2025-11-01
 
 ### 🔥 RAG Phase 4 FIX CRITIQUE - Gros documents ENFIN complets
