@@ -430,8 +430,9 @@ export const api = {
   uploadDocument: (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    // Timeout augmenté pour gros fichiers (10 min: parsing PDF + chunking sémantique + vectorisation)
-    return fetchApi(API_ENDPOINTS.DOCUMENTS_UPLOAD, { method: 'POST', body: formData, timeoutMs: 600000 });
+    // Timeout augmenté à 30 min pour gros fichiers (20 000+ lignes : parsing + chunking + DB + vectorisation)
+    // Aligné avec timeoutSeconds Cloud Run (1800s)
+    return fetchApi(API_ENDPOINTS.DOCUMENTS_UPLOAD, { method: 'POST', body: formData, timeoutMs: 1800000 });
   },
 
   deleteDocument: (docId) =>
