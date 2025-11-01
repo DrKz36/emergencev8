@@ -55,8 +55,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.23',
-  name: 'Réactivation snapshot Firestore allowlist',
+  version: 'beta-3.3.24',
+  name: 'RAG Phase 4 - Requêtes exhaustives + boost retrieval',
   date: '2025-11-01',
 };
 

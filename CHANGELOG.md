@@ -10,6 +10,34 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.24] - 2025-11-01
+
+### 🚀 RAG Phase 4 - Machine de guerre pour gros documents
+
+#### ✨ Nouvelles Fonctionnalités
+
+- **Détection automatique des requêtes exhaustives** - Le système détecte maintenant automatiquement les requêtes qui nécessitent beaucoup de contexte ("résume", "analyse", "tous les concepts", "détail", "intégral", "synthèse", etc.)
+- **Boost dynamique top_k** - Pour les requêtes exhaustives, `top_k` passe automatiquement de **5 à 100 chunks** (x20 amélioration)
+- **Multiplicateur retrieval augmenté** - Passage de `top_k * 3` à `top_k * 10` avec limite max 500 chunks pour éviter timeout
+
+#### 🐞 Correctifs Critiques
+
+- **Fix problème "fragments seulement"** - Résout le problème signalé par l'utilisateur où Nexus ne voyait que des fragments de gros documents. Avant: 15 chunks max, Après: jusqu'à 500 chunks pour analyses complètes.
+
+#### 🎯 Impact
+
+- **Requêtes normales** - Amélioration x3.3: 15 → 50 chunks récupérés
+- **Requêtes exhaustives** - Amélioration x33: 15 → 500 chunks récupérés 🔥
+- **Gros documents** - Les fichiers avec des centaines de chunks (comme `memoire.txt`) sont maintenant analysés en profondeur au lieu de retourner "pas assez de contexte"
+- **Performance** - Limite max 500 chunks pour éviter timeout Cloud Run
+
+#### 📁 Fichiers Modifiés
+
+- `src/backend/features/chat/service.py` - Ajout détection requêtes exhaustives + boost dynamique top_k
+- `src/backend/features/documents/service.py` - Multiplicateur retrieval x10 avec limite 500
+- `src/version.js`, `src/frontend/version.js`, `package.json` - Version `beta-3.3.24` + patch notes
+- `CHANGELOG.md` - Entrée `beta-3.3.24` (celle-ci)
+
 ## [beta-3.3.23] - 2025-11-01
 
 ### 🔥 FIX CRITIQUE - Réactivation snapshot Firestore allowlist

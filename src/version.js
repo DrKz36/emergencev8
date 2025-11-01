@@ -20,7 +20,8 @@
  * - beta-2.1.5 : Fix responsive mobile admin dashboard
  * - beta-2.2.0 : Mypy 100% clean (0 errors) + monitoring router fix
  * - beta-3.0.0 : Phase P2 complétée (Admin & Sécurité - 3/3)
- * - beta-3.3.23 : Réactivation snapshot Firestore allowlist - Persistence comptes entre déploiements [ACTUEL]
+ * - beta-3.3.24 : RAG Phase 4 - Requêtes exhaustives + boost retrieval gros documents [ACTUEL]
+ * - beta-3.3.23 : Réactivation snapshot Firestore allowlist - Persistence comptes entre déploiements
  * - beta-3.3.22 : Fix TTS mobile portrait visibility - Override CSS important
  * - beta-3.3.21 : Fix allowlist overwrite FINAL - Merge intelligent Firestore (union emails)
  * - beta-3.3.21 : Fix bouton TTS mobile disparu + Sync desktop/mobile
@@ -56,8 +57,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.23',
-  name: 'Réactivation snapshot Firestore allowlist',
+  version: 'beta-3.3.24',
+  name: 'RAG Phase 4 - Requêtes exhaustives + boost retrieval',
   date: '2025-11-01',
 };
 
@@ -73,6 +74,18 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.24',
+    tagline: 'RAG Phase 4 - Machine de guerre pour gros documents',
+    date: '2025-11-01',
+    changes: [
+      { type: 'feature', text: '🚀 RAG Phase 4: Détection automatique des requêtes exhaustives ("résume", "analyse", "tous les concepts", etc.)' },
+      { type: 'feature', text: 'Boost dynamique top_k: 5→100 chunks pour requêtes exhaustives (x20 amélioration)' },
+      { type: 'quality', text: 'Multiplicateur retrieval augmenté: x3→x10 avec limite 500 chunks max (évite timeout)' },
+      { type: 'quality', text: 'Amélioration drastique pour gros documents: 15→500 chunks récupérés pour analyses complètes' },
+      { type: 'fix', text: 'Fix problème "fragments seulement" signalé par utilisateur - Nexus voit maintenant le contexte complet' }
+    ]
+  },
   {
     version: 'beta-3.3.23',
     tagline: 'Réactivation snapshot Firestore allowlist',

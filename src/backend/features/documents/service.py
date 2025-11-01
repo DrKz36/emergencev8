@@ -1152,11 +1152,20 @@ class DocumentService:
                 where_filter["session_id"] = session_id
 
             # Étape 1 : Recherche vectorielle (récupère plus que nécessaire pour re-ranking)
+            # 🆕 Phase 4 RAG : Augmenter multiplicateur (x3 → x10) pour gros documents
+            # Limite max 500 chunks pour éviter timeout
+            n_results_requested = min(top_k * 10, 500)
+
             results = self.vector_service.query(
                 collection=self.document_collection,
                 query_text=query,
-                n_results=top_k * 3,  # Sur-échantillonner pour re-ranking
+                n_results=n_results_requested,  # Augmenté de x3 à x10 avec limite 500
                 where_filter=where_filter,
+            )
+
+            logger.info(
+                f"[RAG Phase 4] Document search: top_k={top_k}, n_results={n_results_requested}, "
+                f"retrieved={len(results) if results else 0} chunks"
             )
 
             if not results:
