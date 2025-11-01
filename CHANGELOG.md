@@ -10,8 +10,27 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
-## [beta-3.3.21] - 2025-10-31
+## [beta-3.3.22] - 2025-10-31
 
+### 🔊 Fix TTS mobile portrait – Bouton réellement visible
+
+#### 🐞 Correctifs Critiques
+
+- **Règle responsive prioritaire** – La media query mobile portrait n'écrasait pas le `display: none !important` appliqué au bouton TTS. Résultat: le toggle vocal restait invisible sur tous les devices portrait (Safari iOS, PWA Android, etc.).
+- **Affichage forcé du toggle TTS/RAG** – Ajout de `display: flex !important` dans la règle `@media (max-width: 760px) and (orientation: portrait)` pour s'assurer que les boutons RAG et TTS mobiles apparaissent systématiquement au-dessus de la navbar.
+
+#### 🎯 Impact
+
+- **Mode vocal utilisable partout** – Le bouton TTS est enfin visible sur mobile portrait, permettant d'activer la synthèse vocale comme sur desktop.
+- **QA prod validée** – Correction déclenchée suite au retour utilisateur en production; aucune dépendance backend, uniquement CSS.
+
+#### 📁 Fichiers Modifiés
+
+- `src/frontend/styles/components/rag-power-button.css` – Ajout de `display:flex !important` sur la règle mobile portrait.
+- `src/version.js`, `src/frontend/version.js`, `package.json` – Version `beta-3.3.22` + patch notes dédiées.
+- `CHANGELOG.md` – Entrée `beta-3.3.22` (celle-ci).
+
+## [beta-3.3.21] - 2025-10-31
 ### 🔥 FIX CRITIQUE - Fix allowlist overwrite FINAL - Merge intelligent Firestore
 
 #### 🐞 Correctifs Critiques
