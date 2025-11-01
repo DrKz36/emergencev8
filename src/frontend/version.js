@@ -56,8 +56,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.27',
-  name: 'RAG Phase 4.2 - FIX DELETE + SCOPE filter (purge session_id PARTOUT)',
+  version: 'beta-3.3.28',
+  name: 'TTS Mobile Autoplay Fix - Déblocage restrictions navigateurs mobiles',
   date: '2025-11-01',
 };
 

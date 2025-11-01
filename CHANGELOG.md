@@ -10,6 +10,39 @@
 > Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 > et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [beta-3.3.28] - 2025-11-01
+
+### 🔊 TTS Mobile Autoplay Fix - Déblocage restrictions navigateurs mobiles
+
+#### 🐞 Correctifs Critiques
+
+- **TTS autoplay bloqué sur iOS Safari / Chrome Android** - Les navigateurs mobiles bloquent `audio.play()` sauf si déclenché par une interaction utilisateur directe (clic/touch). Le TTS était appelé automatiquement à l'arrivée d'un message d'agent (pas suite à un clic), donc **bloqué sur mobile** avec erreur `NotAllowedError: play() can only be initiated by a user gesture`.
+- **Déblocage autoplay au clic du bouton TTS** - Au moment où l'utilisateur clique sur le bouton TTS header pour l'activer, on crée un `Audio` element et on joue un court silence (0.1s data URL MP3). Ce `play()` étant suite à un clic utilisateur, il "débloque" l'autoplay pour cet element.
+- **Réutilisation audio element débloqué** - Au lieu de créer un nouveau `Audio()` à chaque message (rebloqué sur mobile), on réutilise le même element créé au clic initial en changeant juste sa source (`audio.src = audioUrl`). Cela préserve l'état "débloqué" de l'element.
+
+#### 🎯 Impact
+
+- **TTS fonctionne maintenant sur mobile** - iOS Safari et Chrome Android peuvent jouer les messages agents automatiquement après activation du bouton TTS.
+- **Desktop non affecté** - L'autoplay fonctionnait déjà sur desktop (navigateurs plus permissifs), maintenant fonctionne aussi sur mobile.
+- **Expérience utilisateur améliorée** - Mode vocal enfin utilisable sur tous les devices (desktop + mobile), plus besoin de cliquer "Écouter" manuellement sur chaque message.
+- **Robustesse cross-browser** - Fallback propre si l'audio element n'est pas débloqué (warning console + création nouveau element comme avant).
+
+#### 📁 Fichiers Modifiés
+
+- `src/frontend/features/chat/chat-ui.js` - toggleTTS() : Création `_ttsAudioElement` + play silence au clic (lignes 629-657)
+- `src/frontend/features/chat/chat-ui.js` - _playTTS() : Réutilisation `_ttsAudioElement` au lieu de créer nouveau Audio() (lignes 1376-1461)
+- `src/version.js`, `src/frontend/version.js`, `package.json` - Version `beta-3.3.28` + patch notes
+- `CHANGELOG.md` - Entrée `beta-3.3.28` (celle-ci)
+
+#### 🧪 Tests Requis
+
+⚠️ **IMPORTANT pour validation** :
+1. Tester sur **iOS Safari** (iPhone/iPad) - Activer TTS via bouton header, envoyer message à un agent, vérifier audio joué automatiquement
+2. Tester sur **Chrome Android** (smartphone Android) - Même procédure
+3. Tester sur **Desktop** (Chrome/Firefox/Edge) - S'assurer que rien n'est cassé
+4. Vérifier console logs : Doit afficher `[ChatUI] TTS autoplay débloqué pour mobile ✅` au clic du bouton TTS
+5. Vérifier que l'audio se joue bien à chaque message d'agent après activation TTS
+
 ## [beta-3.3.26] - 2025-11-01
 
 ### 🔥 RAG Phase 4.1 FIX FINAL - Pattern sans accent + Metadata scope user

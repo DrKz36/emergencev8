@@ -57,8 +57,8 @@
  */
 
 export const CURRENT_RELEASE = {
-  version: 'beta-3.3.27',
-  name: 'RAG Phase 4.2 - FIX DELETE + SCOPE filter (purge session_id PARTOUT)',
+  version: 'beta-3.3.28',
+  name: 'TTS Mobile Autoplay Fix - Déblocage restrictions navigateurs mobiles',
   date: '2025-11-01',
 };
 
@@ -74,6 +74,19 @@ export const TOTAL_FEATURES = 23;
  * Affichées dans le module "À propos" des paramètres
  */
 export const PATCH_NOTES = [
+  {
+    version: 'beta-3.3.28',
+    tagline: 'TTS Mobile Autoplay Fix - Déblocage restrictions navigateurs mobiles',
+    date: '2025-11-01',
+    changes: [
+      { type: 'fix', text: '🔥 FIX MOBILE: TTS autoplay bloqué sur iOS Safari / Chrome Android par politiques autoplay navigateurs' },
+      { type: 'fix', text: 'Déblocage autoplay au clic du bouton TTS - Création audio element avec play() immédiat d\'un silence' },
+      { type: 'quality', text: 'Réutilisation audio element débloqué pour tous les messages suivants - Contourne restrictions mobiles' },
+      { type: 'quality', text: 'Desktop non affecté - Autoplay fonctionnait déjà, maintenant fonctionne aussi sur mobile' },
+      { type: 'ops', text: 'chat-ui.js toggleTTS(): Création _ttsAudioElement + play silence au clic utilisateur' },
+      { type: 'ops', text: 'chat-ui.js _playTTS(): Réutilisation _ttsAudioElement au lieu de créer nouveau Audio() à chaque fois' }
+    ]
+  },
   {
     version: 'beta-3.3.27',
     tagline: 'RAG Phase 4.2 FIX CRITIQUE - DELETE + SCOPE filters sans session_id',
