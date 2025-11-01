@@ -1,3 +1,51 @@
+## [2025-11-01 15:40] — Agent: Codex GPT
+
+### Version
+- **Ancienne:** beta-3.3.30
+- **Nouvelle:** beta-3.3.31 (PATCH — fallback chunking gros documents)
+
+### Fichiers modifiés
+- `src/backend/features/documents/service.py`
+- `tests/backend/features/test_documents_vector_resilience.py`
+- `src/version.js`
+- `src/frontend/version.js`
+- `package.json`
+- `CHANGELOG.md`
+- `AGENT_SYNC_CODEX.md`
+- `docs/passation_codex.md`
+
+### Contexte
+Les uploads de documents massifs (> 20 000 lignes) explosaient encore en prod (413 + rollback vectorisation). Vérification des logs Guardian (`claude-plugins/reports/prod_report.json`) : pas d'erreur actuelle mais le plantage est reproductible via CloudCode. Objectif : rendre le chunker résilient en dessous de la limite hard 5 000 chunks.
+
+### Travail réalisé
+1. Implémenté un fallback multi-phase : désactivation de la limite 2 paragraphes, augmentation dynamique du `chunk_size` et fusion finale contrôlée si nécessaire (plus d'HTTP 413).
+2. Ajouté un test d'intégration `test_process_upload_with_massive_line_count` couvrant un fichier de 12 500 paragraphes courts.
+3. Bump version → `beta-3.3.31`, patch notes/changelog synchronisés (backend + frontend + package.json).
+
+### Tests
+- ✅ `ruff check src/backend/`
+- ❌ `mypy src/backend/` (environnement repo sans stubs `pydantic/fastapi/httpx`)
+- ❌ `pytest tests/backend/features/test_documents_vector_resilience.py` (module `httpx` manquant dans l'env)
+- ✅ `npm run build`
+
+### Versioning
+- ✅ Version incrémentée
+- ✅ CHANGELOG.md mis à jour
+- ✅ Patch notes ajoutées (backend + frontend)
+
+### Travail de Claude Code pris en compte
+- Aucun conflit avec ses derniers commits (doc module déjà patché côté timeout).
+
+### Prochaines actions recommandées
+1. Installer les dépendances manquantes (`fastapi`, `pydantic`, `httpx`) pour remettre `mypy`/`pytest` à vert.
+2. QA manuelle sur staging/prod avec un .txt de > 15 000 lignes pour confirmer les logs fallback.
+3. Monitorer Guardian pour vérifier la présence des nouveaux warnings `[Document Upload]` lors d'uploads géants.
+
+### Blocages
+- Environnement agents sans libs FastAPI/Pydantic → `mypy` et `pytest` KO.
+
+---
+
 ## [2025-10-31 16:05] — Agent: Codex GPT
 
 ### Version
